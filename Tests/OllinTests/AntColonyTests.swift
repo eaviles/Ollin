@@ -19,7 +19,7 @@ import Testing
         a.step(6); b.step(6)
         #expect(a.bestTour == b.bestTour)
         #expect(a.bestLength == b.bestLength)
-        #expect(a.iterations == 6)
+        #expect(a.stepCount == 6)
     }
 
     /// Every best tour is a true permutation: each city exactly once.
@@ -67,6 +67,6 @@ import Testing
     @Test func degenerateColoniesAreCalm() {
         let colony = AntColony(cities: [Vector2(5, 5)], seed: 0)
         colony.step(3)
-        #expect(colony.bestTour.isEmpty && colony.iterations == 0)
+        #expect(colony.bestTour.isEmpty && colony.stepCount == 0)
     }
 }

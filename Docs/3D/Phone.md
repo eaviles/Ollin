@@ -35,14 +35,14 @@ final class Pose: Sketch {
 ### Contents
 
 - [Setup](#setup) - install the capture app, connect the cable
-- [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `sceneMesh`, `planes`, `latestLight`, `latestMotion`, the connection state
+- [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestFrame`, `sceneMesh`, `planes`, `latestLight`, `latestMotion`, the connection state
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton, where the person stands, joints that turn
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh and its texture coordinates, [the eyes and the gaze](#the-eyes-and-the-gaze)
 - [The hands](#the-hands) - `PhoneHand`, 21 joints, the 3D lift, `pinchDistance`
 - [The text in view](#the-text-in-view) - `PhoneText`, the corners, `worldTransform`
 - [The pictures and objects it knows](#the-pictures-and-objects-it-knows) - `PhoneMarker`, the reference folder, `placement`
 - [The phone as a pointer](#the-phone-as-a-pointer) - `PhoneWand`, the beam, the button, the thumb
-- [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
+- [World depth](#world-depth) - `latestFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labeled surface, the Room mode
 - [The flat surfaces](#the-flat-surfaces) - `planes`, somewhere to stand something, no LiDAR needed
@@ -82,7 +82,7 @@ device.latestHand                    // PhoneHand?, the most confident one
 device.latestTexts                   // [PhoneText], the lines it can read (Text mode)
 device.latestMarkers                 // [PhoneMarker], the pictures it knows (Markers mode)
 device.latestWand                    // PhoneWand?, the phone as a pointer (Wand mode)
-device.latestDepthFrame              // RGBDFrame?, the latest depth frame (World mode)
+device.latestFrame              // RGBDFrame?, the latest depth frame (World mode)
 device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Room mode)
 device.planes                        // PhonePlanes, the flat surfaces found (Room mode)
 device.latestLight                   // PhoneLight?, how bright and how warm the room is
@@ -91,7 +91,7 @@ device.latestMotion                  // PhoneMotion?, the latest device-motion s
 
 These are fresh each time the phone sends one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion typically lights up first, since it needs no camera or model, proving the wire before ARKit has found a body, face, or depth.
 
-**The camera modes are mutually exclusive.** Body, World, Segment, Room, Hands, Text, Markers, and Wand use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room / Hands / Text / Markers / Wand** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestHands`, `latestTexts`, `latestMarkers`, `latestWand`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
+**The camera modes are mutually exclusive.** Body, World, Segment, Room, Hands, Text, Markers, and Wand use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room / Hands / Text / Markers / Wand** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestHands`, `latestTexts`, `latestMarkers`, `latestWand`, `latestFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
 
 ## The body
 
@@ -135,14 +135,14 @@ drawPointCloud(body.cloud().transformed(by: body.worldTransform))
 
 ### Joints that turn
 
-Every joint carries its orientation beside its position, as a quaternion `(x, y, z, w)` in model space. Compose it with the position through `modelTransform(_:)` (or `worldTransform(of:)` to stand it in the room) and hand the result to [`transform(_:)`](3D.md#transforms) to pose a solid part at the joint:
+Every joint carries its orientation beside its position, as a quaternion `(x, y, z, w)` in model space. Compose it with the position through `modelTransform(_:)` (or `worldTransform(ofJoint:)` to stand it in the room) and hand the result to [`transform(_:)`](3D.md#transforms) to pose a solid part at the joint:
 
 ```swift
 body.orientation(.head)              // SIMD4<Float>?, the joint's quaternion
 body.modelTransform(.head)           // simd_float4x4?, orientation + position composed
-body.worldTransform(of: .head)       // simd_float4x4?, the same, stood in the world
+body.worldTransform(ofJoint: .head)       // simd_float4x4?, the same, stood in the world
 
-if let pose = body.worldTransform(of: .head) {
+if let pose = body.worldTransform(ofJoint: .head) {
     withState {
         transform(pose)              // the head's full pose, one call
         drawSphere(radius: 0.11)
@@ -346,11 +346,11 @@ if let cloud = device.pointCloud(depthRange: 0.3...5.0) {
     drawPointCloud(cloud)
 }
 
-device.latestDepthFrame              // RGBDFrame?, depth + color + intrinsics
+device.latestFrame              // RGBDFrame?, depth + color + intrinsics
 device.latestPose                    // simd_float4x4?, the camera's 6DoF pose
 ```
 
-`pointCloud(...)` is sugar over `latestDepthFrame?.pointCloud(...)` with rear-LiDAR defaults: `minimumConfidence: .medium` and an open depth range. See [`RGBD.md`](../3D/RGBD.md) for the full unprojection parameters and the coordinate space, which is camera-relative, +x right, +y up, looking −z. For finer control, like sampling a single depth point or lifting a 2D pose to metric 3D, reach for `latestDepthFrame` and the `RGBDFrame` API directly.
+`pointCloud(...)` is sugar over `latestFrame?.pointCloud(...)` with rear-LiDAR defaults: `minConfidence: .medium` and an open depth range. See [`RGBD.md`](../3D/RGBD.md) for the full unprojection parameters and the coordinate space, which is camera-relative, +x right, +y up, looking −z. For finer control, like sampling a single depth point or lifting a 2D pose to metric 3D, reach for `latestFrame` and the `RGBDFrame` API directly.
 
 `PhoneDevice` is also a `FrameSource` and a `VideoFeed` in this mode. A vision tracker can analyze the color feed and `drawFrame` can letterbox it. The color frame is only present while World mode is streaming.
 
@@ -369,9 +369,9 @@ var world = WorldCloud(voxelSize: 0.025)   // fuse at 2.5 cm
 
 override func draw() {
     // Fuse each fresh frame once, draw() runs faster than frames stream in.
-    if let id = device.latestDepthFrameID, id != lastFused,
+    if let id = device.latestFrameVersion, id != lastFused,
        let pose = device.latestPose,
-       let cameraCloud = device.pointCloud(minimumConfidence: .low, depthRange: 0.3...5.0) {
+       let cameraCloud = device.pointCloud(minConfidence: .low, depthRange: 0.3...5.0) {
         world.add(cameraCloud, correcting: pose)
         lastFused = id
     }
@@ -380,7 +380,7 @@ override func draw() {
 }
 ```
 
-`add(_:transformedBy:)` applies the camera-to-world pose and merges in one pass, `add(_:correcting:)` corrects that pose first (see below), and `add(_:)` merges an already-world-space cloud. `latestDepthFrameID` changes only when a new depth frame arrives, so comparing it against the last fused id adds each frame exactly once. `world.cloud` is the fused `PointCloud`, `world.count` its point total, and `world.reset()` starts a fresh scan. The placement primitive underneath, `PointCloud.transformed(by:)`, is public too, so any 4×4 matrix can be applied to a cloud's positions, and `Vector3.transformed(by:)` does the same for one point.
+`add(_:transformedBy:)` applies the camera-to-world pose and merges in one pass, `add(_:correcting:)` corrects that pose first (see below), and `add(_:)` merges an already-world-space cloud. `latestFrameVersion` changes only when a new depth frame arrives, so comparing it against the last fused id adds each frame exactly once. `world.cloud` is the fused `PointCloud`, `world.count` its point total, and `world.reset()` starts a fresh scan. The placement primitive underneath, `PointCloud.transformed(by:)`, is public too, so any 4×4 matrix can be applied to a cloud's positions, and `Vector3.transformed(by:)` does the same for one point.
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneWorldScan`. Sweep the phone, press **C** to turn the correction off, and **R** to reset.
 
@@ -452,7 +452,7 @@ if let loop = update.loop {
 
 **The envelope.** The search compares position and viewing direction, so `searchRadius`, 1.5 m by default, is the limit. A scan that drifts further than that before returning is out of its own reach. Each candidate is then fitted, twice: wide, then narrow. The wide pass finds an error too big for the narrow one to see. The narrow pass is the one that is scored, and a candidate that scores badly is refused.
 
-**One guard is not obvious.** A camera facing one flat wall can slide along that wall and turn about its normal. Every such pose fits the wall equally well. Three of the six reported numbers are then unmeasured; they record drift as though it were measured. Overlap and leftover error both appear perfect. Only the fit's conditioning reveals this, reported as `stability` on `CloudAlignment`, and a match under `matching.minimumStability` is refused. A room with objects in it is therefore easier to scan than a bare corridor.
+**One guard is not obvious.** A camera facing one flat wall can slide along that wall and turn about its normal. Every such pose fits the wall equally well. Three of the six reported numbers are then unmeasured; they record drift as though it were measured. Overlap and leftover error both appear perfect. Only the fit's conditioning reveals this, reported as `stability` on `CloudAlignment`, and a match under `matching.minStability` is refused. A room with objects in it is therefore easier to scan than a bare corridor.
 
 **A straightened scan is rebuilt from the keyframes.** So `keyframeDetail`, 4 cm by default, sets both the detail the finished scan holds and the memory the keyframes cost. Use a value near the fusion `voxelSize` for the most detail, or several times it to stay light. Frames after the last keyframe are not kept and are not laid down again; the sweep replaces their detail as it continues.
 

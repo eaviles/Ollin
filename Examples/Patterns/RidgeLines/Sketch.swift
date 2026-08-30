@@ -44,7 +44,7 @@ final class RidgeLines_Example: Sketch {
             var panel = skyline
             panel.append(Vector2(width, height))
             panel.append(Vector2(0, height))
-            fill(Color.mix(paper, ink, t: 0.04 + depth * 0.10))
+            fill(Color.mix(paper, ink, 0.04 + depth * 0.10))
             noStroke()
             drawPolygon(panel)
 

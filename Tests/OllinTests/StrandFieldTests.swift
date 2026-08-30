@@ -125,7 +125,7 @@ private final class StrandBenchScene: Sketch {
         meadow.heightVariance = 0.45
         meadow.bladeWidth = 0.045
         meadow.lean = 0.34
-        meadow.swayAmount = 0.14
+        meadow.swayAmplitude = 0.14
         meadow.detailNear = 10
         meadow.detailFar = 42
         blades = meadow.bladeCount
@@ -133,7 +133,7 @@ private final class StrandBenchScene: Sketch {
 
     override func draw() {
         background(Color(hex: 0x11141B))
-        meadow.levelOfDetailEnabled = detail
+        meadow.isLevelOfDetailEnabled = detail
         let t = time * 0.04
         camera(Camera3D(eye: Vector3(cos(t * .tau) * 26, 2.6, sin(t * .tau) * 26),
                         target: Vector3(cos(t * .tau + 0.16) * 24, 0.9, sin(t * .tau + 0.16) * 24),
@@ -185,8 +185,8 @@ private final class StrandABSketch: Sketch {
         }
         var meadow = StrandField(width: 16, depth: 16, count: 60_000)
         meadow.bladeHeight = 0.55
-        meadow.swayAmount = 0.08
-        meadow.cullingEnabled = culling
+        meadow.swayAmplitude = 0.08
+        meadow.isCullingEnabled = culling
         drawStrands(meadow)
     }
 }

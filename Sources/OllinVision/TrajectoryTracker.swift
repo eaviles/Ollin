@@ -93,7 +93,7 @@ public struct DetectedTrajectory: Sendable, Identifiable {
 ///
 /// override func draw() {
 ///     guard let frame = camera.frame else { return }
-///     let view = camera.fittedRect(in: bounds) ?? bounds
+///     let view = camera.fittedRectangle(in: bounds) ?? bounds
 ///     drawImage(frame, in: view)
 ///     for arc in tracker.trajectories {
 ///         stroke(Color.green.opacity(arc.confidence))

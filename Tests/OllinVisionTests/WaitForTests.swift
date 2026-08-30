@@ -33,7 +33,7 @@ import Ollin
         let a = Self.diskImage(size: 160, cx: 70, cy: 80, r: 30)
         let b = Self.diskImage(size: 160, cx: 90, cy: 80, r: 30)
         let field = try waitFor(a, b) {
-            try await FlowTracker.flow(from: $0, to: $1, accuracy: .low)
+            try await FlowTracker.detect(from: $0, to: $1, quality: .low)
         }
         #expect(field != nil)
     }

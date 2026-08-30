@@ -16,7 +16,7 @@ final class SoftBodies_Example: Sketch {
     @Param(0.0 ... 0.9, icon: "arrow.uturn.down") var bounce = 0.35
 
     override func setup() {
-        blobs = softBodies(count: 12, radius: 84)
+        blobs = makeSoftBodies(bodies: 12, radius: 84)
     }
 
     override func draw() {

@@ -212,21 +212,21 @@ struct ShapeGrammarTests {
     @Test func aRunKeepsTheWholeArea() {
         // Cuts partition, so a whole ice-ray design still covers its frame.
         let frame = Rectangle(x: 0, y: 0, width: 900, height: 600)
-        let pieces = ShapeGrammar.iceRay(in: frame, minimumArea: 4_000).run(generations: 9, seed: 4)
+        let pieces = ShapeGrammar.iceRay(in: frame, minArea: 4_000).run(generations: 9, seed: 4)
         let total = pieces.reduce(0) { $0 + $1.area }
         #expect(abs(total - frame.width * frame.height) < 1e-4)
         #expect(pieces.count > 30)
     }
 
     @Test func noPieceFallsBelowTheFloorTheMinimumSets() {
-        // A piece is only ever cut while it is at least `minimumArea`, and the
+        // A piece is only ever cut while it is at least `minArea`, and the
         // smaller part of a cut keeps at least `(1 - balance) / 2` of it. So
         // the smallest piece a run can leave is known before it runs.
         let balance = 0.3
-        let minimumArea = 5_000.0
-        let floor = minimumArea * (0.5 - balance / 2)
+        let minArea = 5_000.0
+        let floor = minArea * (0.5 - balance / 2)
         let grammar = ShapeGrammar.iceRay(in: Rectangle(x: 0, y: 0, width: 1000, height: 800),
-                                          minimumArea: minimumArea, balance: balance)
+                                          minArea: minArea, balance: balance)
         for seed in 0 ..< 6 {
             let pieces = grammar.run(generations: 12, seed: seed)
             #expect(pieces.allSatisfy { $0.area > floor - 1e-6 })
@@ -235,14 +235,14 @@ struct ShapeGrammarTests {
 
     @Test func aRunReproducesFromItsSeed() {
         let grammar = ShapeGrammar.iceRay(in: Rectangle(x: 0, y: 0, width: 800, height: 800),
-                                          minimumArea: 6_000)
+                                          minArea: 6_000)
         #expect(grammar.run(generations: 8, seed: 12) == grammar.run(generations: 8, seed: 12))
         #expect(grammar.run(generations: 8, seed: 12) != grammar.run(generations: 8, seed: 13))
     }
 
     @Test func everyPieceOfALatticeStaysConvex() {
         let grammar = ShapeGrammar.iceRay(in: Rectangle(x: 0, y: 0, width: 900, height: 900),
-                                          minimumArea: 5_000)
+                                          minArea: 5_000)
         let pieces = grammar.run(generations: 10, seed: 8)
         #expect(pieces.allSatisfy { isConvex($0.corners) })
         #expect(pieces.allSatisfy { (3 ... 5).contains($0.corners.count) })
@@ -261,7 +261,7 @@ struct ShapeGrammarTests {
     @Test func depthCountsTheRulesApplied() {
         let grammar = ShapeGrammar(start: square(400),
                                    rules: [.split("cell", along: .longest, at: [0.5],
-                                                  into: ["cell"], minimumArea: 5_000)])
+                                                  into: ["cell"], minArea: 5_000)])
         let pieces = grammar.run(generations: 4, seed: 1)
         #expect(pieces.count == 16)
         #expect(pieces.allSatisfy { $0.depth == 4 })
@@ -270,7 +270,7 @@ struct ShapeGrammarTests {
     @Test func aRunStopsAtTheCeiling() {
         var grammar = ShapeGrammar(start: square(4_000),
                                    rules: [.split("cell", along: .longest, at: [0.5], into: ["cell"])])
-        grammar.maximumPieces = 100
+        grammar.maxPieces = 100
         let pieces = grammar.run(generations: 20, seed: 1)
         #expect(pieces.count >= 100 && pieces.count <= 101)
     }
@@ -280,7 +280,7 @@ struct ShapeGrammarTests {
         // generation or two rather than run to the size limit.
         let grammar = ShapeGrammar(
             start: Piece("cell", Rectangle(x: 0, y: 0, width: 1000, height: 1000)),
-            rules: [.cut("cell", into: ("cell", "cell"), minimumArea: 100, weight: 1),
+            rules: [.cut("cell", into: ("cell", "cell"), minArea: 100, weight: 1),
                     .stop("cell", into: "done", weight: 3)])
         let pieces = grammar.run(generations: 10, seed: 2)
         #expect(pieces.allSatisfy { $0.label == "done" })
@@ -327,7 +327,7 @@ struct ShapeGrammarTests {
         // point of `.longest` is that the parts stay near square.
         let grammar = ShapeGrammar(start: Piece("cell", Rectangle(x: 0, y: 0, width: 800, height: 100)),
                                    rules: [.split("cell", along: .longest, at: [0.5],
-                                                  into: ["cell"], minimumArea: 2_000)])
+                                                  into: ["cell"], minArea: 2_000)])
         let pieces = grammar.run(generations: 5, seed: 1)
         for piece in pieces {
             let ratio = piece.bounds.width / piece.bounds.height
@@ -381,7 +381,7 @@ struct ShapeGrammarTests {
         let grammar = ShapeGrammar(start: Piece("square", start.contour),
                                    rules: [.nested("square", scale: 0.8, turn: .pi / 6,
                                                    into: "square", keeping: "drawn",
-                                                   minimumArea: 1)])
+                                                   minArea: 1)])
         let pieces = grammar.run(generations: 5, seed: 1)
         for piece in pieces where piece.label == "drawn" {
             let expected = start.area * pow(0.8, 2 * Double(piece.depth - 1))
@@ -402,7 +402,7 @@ struct ShapeGrammarTests {
         // whole family is named for: every corner of the copy sits on the
         // middle of an edge of the square that holds it.
         let frame = Rectangle(x: 0, y: 0, width: 400, height: 400)
-        let pieces = ShapeGrammar.nestedSquares(in: frame, minimumArea: 100)
+        let pieces = ShapeGrammar.nestedSquares(in: frame, minArea: 100)
             .run(generations: 3, seed: 1)
         let inner = try! #require(pieces.first { $0.depth == 2 && $0.label == "drawn" })
         let outer = try! #require(pieces.first { $0.depth == 1 && $0.label == "drawn" })

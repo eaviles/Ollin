@@ -170,9 +170,9 @@ struct AutomationTests {
                 == .vector(x: 2, y: 5))
         #expect(Automation.blend(.vector3(x: 0, y: 0, z: 0), .vector3(x: 2, y: 4, z: 8), 0.25)
                 == .vector3(x: 0.5, y: 1, z: 2))
-        #expect(Automation.blend(.rect(x: 0, y: 0, width: 10, height: 20),
-                                 .rect(x: 10, y: 10, width: 20, height: 20), 0.5)
-                == .rect(x: 5, y: 5, width: 15, height: 20))
+        #expect(Automation.blend(.rectangle(x: 0, y: 0, width: 10, height: 20),
+                                 .rectangle(x: 10, y: 10, width: 20, height: 20), 0.5)
+                == .rectangle(x: 5, y: 5, width: 15, height: 20))
         #expect(Automation.blend(.insets(top: 0, right: 0, bottom: 0, left: 0),
                                  .insets(top: 4, right: 8, bottom: 12, left: 16), 0.5)
                 == .insets(top: 2, right: 4, bottom: 6, left: 8))
@@ -774,7 +774,7 @@ struct FormulaPartTests {
             .vector(x: 1, y: 2),
             .vector3(x: 1, y: 2, z: 3),
             .color(red: 0.1, green: 0.2, blue: 0.3, alpha: 0.4),
-            .rect(x: 1, y: 2, width: 3, height: 4),
+            .rectangle(x: 1, y: 2, width: 3, height: 4),
             .insets(top: 1, right: 2, bottom: 3, left: 4),
             .range(lower: 1, upper: 2),
         ]

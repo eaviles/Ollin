@@ -28,10 +28,21 @@ public final class EtherDreamDAC: @unchecked Sendable {
     /// The control port (the protocol's own is the default).
     public let port: Int
 
-    /// The point clock to play at. Read when the stream starts.
+    /// The point clock to play at. Before the DAC plays, setting it only
+    /// records the rate, which the start command then carries; while it
+    /// plays, the change is queued for the next point.
     public var pointsPerSecond: Int {
         get { settings.withLock { $0.pointsPerSecond } }
-        set { settings.withLock { $0.pointsPerSecond = max(1, newValue) } }
+        set {
+            let rate = max(1, newValue)
+            let changed = settings.withLock { state -> Bool in
+                guard state.pointsPerSecond != rate else { return false }
+                state.pointsPerSecond = rate
+                return true
+            }
+            guard changed, isPlaying else { return }
+            send(EtherDreamWire.queueRateChange(pointsPerSecond: rate))
+        }
     }
 
     /// How many points the DAC can hold. A DAC that announced itself over the
@@ -190,20 +201,6 @@ public final class EtherDreamDAC: @unchecked Sendable {
                 $0.pending = points
             }
         }
-    }
-
-    /// Ask the DAC to play at a new point rate. Before it is playing this only
-    /// records the rate, which the start command then carries; while it plays,
-    /// the change is queued for the next point.
-    public func setPointRate(_ rate: Int) {
-        let rate = max(1, rate)
-        let changed = settings.withLock { state -> Bool in
-            guard state.pointsPerSecond != rate else { return false }
-            state.pointsPerSecond = rate
-            return true
-        }
-        guard changed, isPlaying else { return }
-        send(EtherDreamWire.queueRateChange(pointsPerSecond: rate))
     }
 
     // MARK: The pump

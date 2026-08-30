@@ -44,11 +44,11 @@ final class SyphonLoopback: Sketch {
 
         // Reconnect to our own source once it's been announced (the server starts
         // on the first published frame, so the client connects a frame or two in).
-        if !feed.isActive { feed.reconnect(named: sourceName) }
+        if !feed.isActive { feed.connect(named: sourceName) }
 
         // Draw the received frame as a slightly inset, slightly rotated panel — the
         // recursion makes a feedback tunnel that proves the loop is live.
-        if let frame = feed.newFrame() {
+        if let frame = feed.frame {
             withState {
                 translate(center)
                 rotate(0.04 * sin(time * 0.5))

@@ -14,7 +14,7 @@ import OllinPhysics
 /// up spins it faster.
 ///
 /// This is the headline for `OllinPhysics.World` collisions: 256 disks resolved
-/// pairwise every frame with `world.collisions = true`, no gravity, walls at the
+/// pairwise every frame with `world.particlesCollide = true`, no gravity, walls at the
 /// canvas edge.
 @main
 final class Packing: Sketch {
@@ -34,8 +34,8 @@ final class Packing: Sketch {
     override func setup() {
         world.gravity = .zero              // weightless drift
         world.drag = 0                     // no damping — the field drifts forever
-        world.bounce = 1.0                 // walls lose no speed
-        world.collisions = true
+        world.restitution = 1.0                 // walls lose no speed
+        world.particlesCollide = true
         world.iterations = 3               // a packing needs few passes to settle
         world.bounds = bounds
 
@@ -72,7 +72,7 @@ final class Packing: Sketch {
 
     override func draw() {
         background(.black)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         let weight = 2 * scale
         for particle in world.particles {

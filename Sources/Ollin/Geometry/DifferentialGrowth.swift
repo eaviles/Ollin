@@ -38,7 +38,7 @@ public final class DifferentialGrowth {
     /// The current node positions, in path order.
     public private(set) var nodes: [Vector2]
     /// Whether the path is a closed loop (its last node joins the first).
-    public let closed: Bool
+    public let isClosed: Bool
 
     /// An edge longer than this splits, inserting a node at its midpoint.
     public var maxSegmentLength: Double
@@ -68,7 +68,7 @@ public final class DifferentialGrowth {
     ///
     /// - Parameters:
     ///   - nodes: The starting path (at least two points).
-    ///   - closed: Whether it is a closed loop (the default) or an open line.
+    ///   - isClosed: Whether it is a closed loop (the default) or an open line.
     ///   - seed: The random seed; the same seed grows the same form.
     ///   - maxSegmentLength: The edge length above which a node is inserted.
     ///   - repulsionRadius: The radius within which nodes push apart.
@@ -81,7 +81,7 @@ public final class DifferentialGrowth {
     ///   - bounds: An optional rectangle to keep nodes inside.
     ///   - fixedEnds: For an open path, whether to pin the endpoints.
     public init(nodes: [Vector2],
-                closed: Bool = true,
+                isClosed: Bool = true,
                 seed: UInt64 = 0,
                 maxSegmentLength: Double = 9,
                 repulsionRadius: Double = 18,
@@ -94,7 +94,7 @@ public final class DifferentialGrowth {
                 bounds: Rectangle? = nil,
                 fixedEnds: Bool = false) {
         self.nodes = nodes
-        self.closed = closed
+        self.isClosed = isClosed
         self.rng = SplitMix64(seed: seed)
         self.maxSegmentLength = maxSegmentLength
         self.repulsionRadius = repulsionRadius
@@ -111,8 +111,8 @@ public final class DifferentialGrowth {
     /// The number of nodes currently in the line.
     public var count: Int { nodes.count }
 
-    /// The current line as a `Contour` (closed or open to match `closed`).
-    public var contour: Contour { Contour(nodes, closed: closed) }
+    /// The current line as a `Contour` (closed or open to match `isClosed`).
+    public var contour: Contour { Contour(nodes, closed: isClosed) }
 
     /// Advance the growth by one step: apply the three forces to every node, keep
     /// nodes inside `bounds`, then split long edges (and inject growth).
@@ -126,8 +126,8 @@ public final class DifferentialGrowth {
         var delta = [Vector2](repeating: .zero, count: n)
         for i in 0 ..< n {
             let p = nodes[i]
-            let hasPrev = closed || i > 0
-            let hasNext = closed || i < n - 1
+            let hasPrev = isClosed || i > 0
+            let hasNext = isClosed || i < n - 1
             var force = Vector2.zero
 
             if hasPrev {
@@ -144,7 +144,7 @@ public final class DifferentialGrowth {
             }
 
             // Repulsion from the nearby nodes the index hands back.
-            index.forNeighbors(of: i, within: cell) { j, dist2 in
+            index.forEachNeighbor(of: i, within: cell) { j, dist2 in
                 guard dist2 < repulsionRadius * repulsionRadius, dist2 > 1e-12 else { return }
                 let diff = p - nodes[j]
                 let dist = dist2.squareRoot()
@@ -161,7 +161,7 @@ public final class DifferentialGrowth {
         }
 
         for i in 0 ..< n {
-            if fixedEnds, !closed, i == 0 || i == n - 1 { continue }
+            if fixedEnds, !isClosed, i == 0 || i == n - 1 { continue }
             nodes[i] = nodes[i] + delta[i]
         }
         if let bounds { for i in nodes.indices { nodes[i] = clampInside(nodes[i], bounds) } }
@@ -181,7 +181,7 @@ public final class DifferentialGrowth {
     private func splitLongEdges() {
         guard nodes.count < maxNodes else { return }
         let n = nodes.count
-        let edgeCount = closed ? n : n - 1
+        let edgeCount = isClosed ? n : n - 1
         var result: [Vector2] = []
         result.reserveCapacity(n)
         for i in 0 ..< n {
@@ -203,7 +203,7 @@ public final class DifferentialGrowth {
         let extra = whole + (Double.random(in: 0 ..< 1, using: &rng) < growthRate - Double(whole) ? 1 : 0)
         for _ in 0 ..< extra {
             guard nodes.count < maxNodes, nodes.count >= 2 else { break }
-            let edgeCount = closed ? nodes.count : nodes.count - 1
+            let edgeCount = isClosed ? nodes.count : nodes.count - 1
             let i = Int.random(in: 0 ..< Swift.max(edgeCount, 1), using: &rng)
             let a = nodes[i], b = nodes[(i + 1) % nodes.count]
             nodes.insert((a + b) * 0.5, at: i + 1)
@@ -238,7 +238,7 @@ public extension DifferentialGrowth {
             let a = Double(i) / Double(Swift.max(count, 3)) * 2 * .pi
             return Vector2(center.x + cos(a) * radius, center.y + sin(a) * radius)
         }
-        return DifferentialGrowth(nodes: nodes, closed: true, seed: seed,
+        return DifferentialGrowth(nodes: nodes, isClosed: true, seed: seed,
                                   maxSegmentLength: maxSegmentLength, repulsionRadius: repulsionRadius,
                                   attraction: attraction, repulsion: repulsion, alignment: alignment,
                                   jitter: jitter, growthRate: growthRate, maxNodes: maxNodes, bounds: bounds)
@@ -263,7 +263,7 @@ public extension DifferentialGrowth {
             let t = Double(i) / Double(Swift.max(count, 2) - 1)
             return Vector2(start.x + (end.x - start.x) * t, start.y + (end.y - start.y) * t)
         }
-        let growth = DifferentialGrowth(nodes: nodes, closed: false, seed: seed,
+        let growth = DifferentialGrowth(nodes: nodes, isClosed: false, seed: seed,
                                         maxSegmentLength: maxSegmentLength, repulsionRadius: repulsionRadius,
                                         attraction: attraction, repulsion: repulsion, alignment: alignment,
                                         jitter: jitter, growthRate: growthRate, maxNodes: maxNodes, bounds: bounds)

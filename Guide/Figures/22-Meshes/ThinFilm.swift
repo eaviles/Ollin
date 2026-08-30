@@ -15,7 +15,7 @@ final class ThinFilm: Sketch {
         camera(.perspective(eye: Vector3(0, 0.5, 8.2), target: Vector3(0, 0.15, 0),
                             fieldOfView: .pi / 4.3))
         // A room to reflect, kept off the backdrop so the bodies carry the picture.
-        environment(.courtyard.intensity(1.2).rotated(-0.8).lightingOnly())
+        environment(.courtyard.intensified(to: 1.2).rotated(-0.8).lightingOnly())
         sceneThroughGlass()
         toneMap(.aces, exposure: 1.1)
         pointLight(Color(kelvin: 5200), at: Vector3(3, 4, 6), intensity: 1.0)

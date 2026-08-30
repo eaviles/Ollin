@@ -17,7 +17,7 @@ final class MachineRoute: Sketch {
         background(theme.paper)
         let source = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let work = lineWork()
-        let drawn = GCode(.plotter(), width: 150, ordered: false, joinTolerance: 0)
+        let drawn = GCode(.plotter(), width: 150, optimizesTravel: false, joinTolerance: 0)
             .toolpath(work, in: source)
         let planned = GCode(.plotter(), width: 150).toolpath(work, in: source)
 

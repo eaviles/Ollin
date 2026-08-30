@@ -14,7 +14,7 @@ import Foundation
 /// let land = Heightfield(columns: 257, rows: 257).diamondSquare(seed: 7)
 ///     .eroded(.hydraulic())
 /// let water = land.drainage()
-/// for river in water.rivers(minimumFlow: 60, in: frame) {
+/// for river in water.rivers(minFlow: 60, in: bounds) {
 ///     strokeWeight(Double(river.order))
 ///     drawPolyline(river.points)
 /// }
@@ -76,7 +76,7 @@ public extension Drainage {
     }
 
     /// The cell the water leaves by for the basin this cell belongs to.
-    func outlet(of x: Int, _ y: Int) -> Int? {
+    func outlet(_ x: Int, _ y: Int) -> Int? {
         let which = basin(x, y)
         guard which >= 0, which < outlets.count else { return nil }
         return outlets[which]
@@ -88,7 +88,7 @@ public extension Drainage {
 /// One reach of a river network: an unbroken run of cells from a source, or
 /// from a meeting of two rivers, down to where it meets the next one.
 public struct River: Sendable {
-    /// The run itself, in the frame it was asked for.
+    /// The run itself, in the bounds it was asked for.
     public var points: [Vector2]
 
     /// Strahler's order for this reach. A headwater is 1. Two reaches of equal
@@ -102,9 +102,9 @@ public struct River: Sendable {
 }
 
 public extension Drainage {
-    /// The river network, as runs of points laid out in `frame`.
+    /// The river network, as runs of points laid out in `bounds`.
     ///
-    /// A cell joins the network when at least `minimumFlow` cells run through
+    /// A cell joins the network when at least `minFlow` cells run through
     /// it, so the threshold is the whole difference between a few great rivers
     /// and a fine tracery of creeks. It has a real meaning: it is the smallest
     /// catchment you are willing to call a river, measured in cells.
@@ -116,8 +116,8 @@ public extension Drainage {
     /// at once, fed only by ground too small to be called a river. Ordering follows Strahler, which is what
     /// ``River/order`` carries, and stroking by it draws a network that
     /// thickens downstream.
-    func rivers(minimumFlow: Double, in frame: Rectangle) -> [River] {
-        let inNetwork = flow.map { $0 >= minimumFlow }
+    func rivers(minFlow: Double, in bounds: Rectangle) -> [River] {
+        let inNetwork = flow.map { $0 >= minFlow }
         guard inNetwork.contains(true) else { return [] }
 
         // Who runs into whom, inside the network only.
@@ -144,7 +144,7 @@ public extension Drainage {
             // to be called a river. It is one cell long, and it is kept so the
             // network is covered rather than quietly short.
             if feeders[cell].isEmpty {
-                reaches.append(reach(cells: [cell], order: order, frame: frame))
+                reaches.append(reach(cells: [cell], order: order, bounds: bounds))
                 continue
             }
 
@@ -155,7 +155,7 @@ public extension Drainage {
                     walker = feeders[walker][0]
                     chain.append(walker)
                 }
-                reaches.append(reach(cells: chain.reversed(), order: order, frame: frame))
+                reaches.append(reach(cells: chain.reversed(), order: order, bounds: bounds))
             }
         }
         return reaches
@@ -163,8 +163,8 @@ public extension Drainage {
 
     /// Strahler's order for every cell of the network, and 0 for every cell
     /// outside it.
-    func strahlerOrders(minimumFlow: Double) -> [Int] {
-        let inNetwork = flow.map { $0 >= minimumFlow }
+    func strahlerOrders(minFlow: Double) -> [Int] {
+        let inNetwork = flow.map { $0 >= minFlow }
         var feeders = [[Int]](repeating: [], count: columns * rows)
         for cell in 0 ..< columns * rows where inNetwork[cell] {
             let next = downstream[cell]
@@ -173,16 +173,16 @@ public extension Drainage {
         return strahlerOrders(inNetwork: inNetwork, feeders: feeders)
     }
 
-    /// Where a cell sits in `frame`.
-    func point(_ x: Int, _ y: Int, in frame: Rectangle) -> Vector2 {
-        frame.point(u: columns > 1 ? Double(x) / Double(columns - 1) : 0.5,
+    /// Where a cell sits in `bounds`.
+    func point(_ x: Int, _ y: Int, in bounds: Rectangle) -> Vector2 {
+        bounds.point(u: columns > 1 ? Double(x) / Double(columns - 1) : 0.5,
                     v: rows > 1 ? Double(y) / Double(rows - 1) : 0.5)
     }
 
     // MARK: private
 
-    private func reach(cells: [Int], order: [Int], frame: Rectangle) -> River {
-        let points = cells.map { point($0 % columns, $0 / columns, in: frame) }
+    private func reach(cells: [Int], order: [Int], bounds: Rectangle) -> River {
+        let points = cells.map { point($0 % columns, $0 / columns, in: bounds) }
         let last = cells[cells.count - 1]
         return River(points: points, order: max(1, order[last]), flow: flow[last])
     }
@@ -217,8 +217,8 @@ public extension Heightfield {
     /// ends up running through it. Hollows are filled first unless you ask for
     /// them to be left, since water arriving in an unfilled one has nowhere to
     /// go and the network stops dead there.
-    func drainage(fillingHollows: Bool = true, minimumDrop: Double = 1e-7) -> Drainage {
-        let flood = fillingHollows ? flooded(minimumDrop: minimumDrop) : nil
+    func drainage(fillingHollows: Bool = true, minDrop: Double = 1e-7) -> Drainage {
+        let flood = fillingHollows ? flooded(minDrop: minDrop) : nil
         let ground = flood.map { Heightfield(columns: columns, rows: rows, values: $0.heights) } ?? self
         let count = columns * rows
 
@@ -304,18 +304,18 @@ public extension Heightfield {
     /// is the brim of the hollow holding it, and nothing else moves. A field
     /// that already drains everywhere comes back unchanged.
     ///
-    /// `minimumDrop` is the hair of slope a filled cell keeps over the one that
+    /// `minDrop` is the hair of slope a filled cell keeps over the one that
     /// flooded it. Without it a filled hollow is dead flat, and a flat has no
     /// downhill neighbor at all, so the water would stop there exactly as it
     /// did in the hollow.
-    func filled(minimumDrop: Double = 1e-7) -> Heightfield {
-        Heightfield(columns: columns, rows: rows, values: flooded(minimumDrop: minimumDrop).heights)
+    func filled(minDrop: Double = 1e-7) -> Heightfield {
+        Heightfield(columns: columns, rows: rows, values: flooded(minDrop: minDrop).heights)
     }
 
     /// The filling pass itself, which knows one thing more than the heights it
     /// hands back: which cell let the water into each cell it raised. Inside a
     /// filled hollow that link is the only honest direction there is.
-    internal func flooded(minimumDrop: Double) -> (heights: [Double], parent: [Int]) {
+    internal func flooded(minDrop: Double) -> (heights: [Double], parent: [Int]) {
         let count = columns * rows
         var result = values
         var parent = [Int](repeating: -1, count: count)
@@ -339,7 +339,7 @@ public extension Heightfield {
                 guard !closed[there] else { continue }
                 closed[there] = true
                 parent[there] = cell
-                result[there] = max(result[there], height + minimumDrop)
+                result[there] = max(result[there], height + minDrop)
                 queue.push(height: result[there], cell: there)
             }
         }

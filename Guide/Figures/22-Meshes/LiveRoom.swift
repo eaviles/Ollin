@@ -62,7 +62,7 @@ final class LiveRoom: Sketch {
                 } else {
                     let warm = Color(hue: 0.07, saturation: 0.55, brightness: 0.75 - 0.45 * fy)
                     let cool = Color(hue: 0.58, saturation: 0.45, brightness: 0.55 - 0.25 * fy)
-                    c = Color.mix(warm, cool, t: fx)
+                    c = Color.mix(warm, cool, fx)
                     if fx > 0.62, fx < 0.9, fy > 0.12, fy < 0.55 {
                         c = Color(hue: 0.56, saturation: 0.18, brightness: 0.95)   // the window
                     }

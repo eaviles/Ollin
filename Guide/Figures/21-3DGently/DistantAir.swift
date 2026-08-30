@@ -20,7 +20,7 @@ final class DistantAir: Sketch {
             ridges.append(land.mesh(width: 380, depth: 22, height: height)
                 .colored(by: { p, _ in
                     let h = min(max(p.y / height, 0), 1)
-                    return Color.mix(Color(hex: 0x2A2F28), Color(hex: 0x6E6B5E), t: h)
+                    return Color.mix(Color(hex: 0x2A2F28), Color(hex: 0x6E6B5E), h)
                 }))
         }
     }

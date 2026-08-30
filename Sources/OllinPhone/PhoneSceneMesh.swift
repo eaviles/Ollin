@@ -294,7 +294,7 @@ public struct PhoneSceneMesh: Sendable {
 /// Free function (not a method) so the reader thread calls it without main-actor
 /// isolation, the way the depth and segmentation decoders do.
 func phoneSceneChunk(from sample: PhoneSceneMeshSample) -> PhoneSceneChunk? {
-    guard !sample.removed, !sample.vertices.isEmpty, sample.triangleIndices.count >= 3 else { return nil }
+    guard !sample.isRemoved, !sample.vertices.isEmpty, sample.triangleIndices.count >= 3 else { return nil }
 
     let m = sample.transform
     let positions = sample.vertices.map { v -> Vector3 in
@@ -319,7 +319,7 @@ func phoneSceneChunk(from sample: PhoneSceneMeshSample) -> PhoneSceneChunk? {
         indices.append(sample.triangleIndices[i])
     }
 
-    let surfaces = sample.surfaces.map { PhoneSurface(rawValue: $0) ?? .unclassified }
+    let surfaces = sample.surfaces
     return PhoneSceneChunk(id: sample.id, positions: positions,
                            normals: normals.count == positions.count ? normals : [],
                            indices: indices, surfaces: surfaces)

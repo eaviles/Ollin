@@ -94,7 +94,7 @@ public enum OllinInspector {
 
     /// The title-bar gradient from the design tokens (dark `#2B2B2D`→`#262628`,
     /// light `#E6E6E8`→`#EDEDEF`).
-    public static func titleBarGradient(_ scheme: ColorScheme) -> LinearGradient {
+    public static func titleBarGradient(for scheme: ColorScheme) -> LinearGradient {
         let top: SwiftUI.Color, bottom: SwiftUI.Color
         if scheme == .dark {
             top = SwiftUI.Color(red: 0x2B / 255, green: 0x2B / 255, blue: 0x2D / 255)
@@ -110,7 +110,7 @@ public enum OllinInspector {
     /// `rgba(255,255,255,0.085)`, light `rgba(0,0,0,0.09)`. The card-internal
     /// rules use it; exposed so the live host draws the same window-chrome
     /// hairlines (under the title bar, at the sidebar's edge).
-    public static func separator(_ scheme: ColorScheme) -> SwiftUI.Color {
+    public static func separator(for scheme: ColorScheme) -> SwiftUI.Color {
         Palette.resolve(scheme).separator
     }
 
@@ -710,11 +710,11 @@ public struct ParamSaveAction {
     /// Write them, and hand back the one line to show underneath (what landed,
     /// and the first knob that could not), or `nil` to say nothing. It runs on
     /// the main thread, where the button is pressed and the knobs are read.
-    public let run: @MainActor () -> String?
+    public let perform: @MainActor () -> String?
 
-    public init(title: String, run: @escaping @MainActor () -> String?) {
+    public init(title: String, perform: @escaping @MainActor () -> String?) {
         self.title = title
-        self.run = run
+        self.perform = perform
     }
 }
 
@@ -727,7 +727,7 @@ public struct ParamSaveAction {
 /// writes the value into the live `Param` regardless, so a standalone panel
 /// can leave it a no-op and still tune live.
 public struct ParametersListView: View {
-    let params: [ParamHandle]
+    let parameters: [ParamHandle]
     let onChange: (String, ParamStored) -> Void
     let save: ParamSaveAction?
 
@@ -740,31 +740,31 @@ public struct ParametersListView: View {
     /// knob it could not write, which is worth reading twice.
     @State private var saveMessage: String?
 
-    public init(params: [ParamHandle],
+    public init(parameters: [ParamHandle],
                 onChange: @escaping (String, ParamStored) -> Void = { _, _ in },
                 save: ParamSaveAction? = nil) {
-        self.params = params
+        self.parameters = parameters
         self.onChange = onChange
         self.save = save
-        _hiddenIDs = State(initialValue: Self.hiddenIDs(in: params))
+        _hiddenIDs = State(initialValue: Self.hiddenIDs(in: parameters))
     }
 
     private var palette: OllinInspector.Palette { .resolve(scheme) }
 
     /// The ids of the rows whose `show(when:_:)` rule currently fails.
-    package nonisolated static func hiddenIDs(in params: [ParamHandle]) -> Set<String> {
-        Set(params.lazy.filter { !$0.isShown }.map(\.id))
+    package nonisolated static func hiddenIDs(in parameters: [ParamHandle]) -> Set<String> {
+        Set(parameters.lazy.filter { !$0.isShown }.map(\.id))
     }
 
     /// The handles split into sections with the hidden rows left out: the
     /// ungrouped knobs first (under the default header), then each named group
     /// in order of first declaration. A group whose rows are all hidden drops
     /// its whole card. Package-visible so tests can drive the split without a view.
-    package nonisolated static func visibleSections(of params: [ParamHandle], hiding hidden: Set<String>)
+    package nonisolated static func visibleSections(of parameters: [ParamHandle], hiding hidden: Set<String>)
         -> [(title: String, handles: [ParamHandle])] {
         var order: [String?] = []
         var byGroup: [String?: [ParamHandle]] = [:]
-        for handle in params where !hidden.contains(handle.id) {
+        for handle in parameters where !hidden.contains(handle.id) {
             if byGroup[handle.group] == nil { order.append(handle.group) }
             byGroup[handle.group, default: []].append(handle)
         }
@@ -776,11 +776,11 @@ public struct ParametersListView: View {
     }
 
     private var sections: [(title: String, handles: [ParamHandle])] {
-        Self.visibleSections(of: params, hiding: hiddenIDs)
+        Self.visibleSections(of: parameters, hiding: hiddenIDs)
     }
 
     public var body: some View {
-        if params.isEmpty {
+        if parameters.isEmpty {
             section(title: "Parameters") { emptyState }
         } else {
             VStack(alignment: .leading, spacing: 14) {
@@ -792,10 +792,10 @@ public struct ParametersListView: View {
             // The visibility poll, on the rows' own 100ms sync-pull cadence.
             // Keyed on the handle identities so a reload's fresh params restart
             // it (the old task would keep reading the swapped-out sketch's knobs).
-            .task(id: params.map { ObjectIdentifier($0.param) }) {
+            .task(id: parameters.map { ObjectIdentifier($0.param) }) {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(100))
-                    let hidden = Self.hiddenIDs(in: params)
+                    let hidden = Self.hiddenIDs(in: parameters)
                     if hidden != hiddenIDs { hiddenIDs = hidden }
                 }
             }
@@ -838,7 +838,7 @@ public struct ParametersListView: View {
     private func saveRow(_ save: ParamSaveAction) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Button {
-                saveMessage = save.run()
+                saveMessage = save.perform()
             } label: {
                 HStack(spacing: 6) {
                     SwiftUI.Image(systemName: "square.and.arrow.down")
@@ -1303,7 +1303,7 @@ private struct SliderParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _value = State(initialValue: current)
         _lastKnown = State(initialValue: current)
     }
@@ -1316,8 +1316,8 @@ private struct SliderParamRow: View {
             // can't); the param also snaps to any step. Write, then read back
             // the value the param actually holds, so the pill, the param, and
             // the host's persisted record all agree.
-            control.set(newValue)
-            let actual = control.get()
+            control.write(newValue)
+            let actual = control.read()
             if actual != newValue { value = actual }
             lastKnown = actual
             onChange(.number(actual))
@@ -1326,7 +1326,7 @@ private struct SliderParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !isDragging, !isEditingField else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != value {
                     lastKnown = live
                     value = live
@@ -1421,7 +1421,7 @@ private struct StepperParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = Double(control.get())
+        let current = Double(control.read())
         _value = State(initialValue: current)
         _lastKnown = State(initialValue: current)
     }
@@ -1444,8 +1444,8 @@ private struct StepperParamRow: View {
         }
         .onChange(of: value) { _, newValue in
             guard newValue != lastKnown else { return }
-            control.set(Int(newValue.rounded()))
-            let actual = Double(control.get())
+            control.write(Int(newValue.rounded()))
+            let actual = Double(control.read())
             if actual != newValue { value = actual }
             lastKnown = actual
             onChange(.number(actual))
@@ -1454,7 +1454,7 @@ private struct StepperParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !isEditingField else { continue }
-                let live = Double(control.get())
+                let live = Double(control.read())
                 if live != value {
                     lastKnown = live
                     value = live
@@ -1498,7 +1498,7 @@ private struct ToggleParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        _isOn = State(initialValue: control.get())
+        _isOn = State(initialValue: control.read())
     }
 
     var body: some View {
@@ -1510,14 +1510,14 @@ private struct ToggleParamRow: View {
                 .tint(OllinInspector.accent)
         }
         .onChange(of: isOn) { _, newValue in
-            guard newValue != control.get() else { return }
-            control.set(newValue)
+            guard newValue != control.read() else { return }
+            control.write(newValue)
             onChange(.boolean(newValue))
         }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
-                let live = control.get()
+                let live = control.read()
                 if live != isOn { isOn = live }
             }
         }
@@ -1541,7 +1541,7 @@ private struct MenuParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        _selection = State(initialValue: control.get())
+        _selection = State(initialValue: control.read())
     }
 
     var body: some View {
@@ -1549,7 +1549,7 @@ private struct MenuParamRow: View {
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
-                let live = control.get()
+                let live = control.read()
                 if live != selection { selection = live }
             }
         }
@@ -1564,8 +1564,8 @@ private struct MenuParamRow: View {
             get: { selection },
             set: { newValue in
                 selection = newValue
-                guard newValue != control.get() else { return }
-                control.set(newValue)
+                guard newValue != control.read() else { return }
+                control.write(newValue)
                 // Report what the param now holds (the case name, not the index).
                 onChange(handle.param.stored)
             })
@@ -1633,7 +1633,7 @@ private struct ColorParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _color = State(initialValue: swiftUIColor(current))
         _lastKnown = State(initialValue: current)
     }
@@ -1647,14 +1647,14 @@ private struct ColorParamRow: View {
         .onChange(of: color) { _, newValue in
             guard let value = ollinColor(newValue) else { return }
             guard value != lastKnown else { return }
-            control.set(value)
+            control.write(value)
             lastKnown = value
             onChange(handle.param.stored)
         }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
-                let live = control.get()
+                let live = control.read()
                 if live != lastKnown {
                     lastKnown = live
                     color = swiftUIColor(live)
@@ -1685,7 +1685,7 @@ private struct VectorParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _x = State(initialValue: current.x)
         _y = State(initialValue: current.y)
         _lastKnown = State(initialValue: current)
@@ -1702,7 +1702,7 @@ private struct VectorParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !isEditingX, !isEditingY, !isPadding else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != lastKnown {
                     lastKnown = live
                     x = live.x
@@ -1754,8 +1754,8 @@ private struct VectorParamRow: View {
     private func push() {
         let candidate = Vector2(x, y)
         guard candidate != lastKnown else { return }   // the sync pull's own echo
-        control.set(candidate)
-        let actual = control.get()
+        control.write(candidate)
+        let actual = control.read()
         if actual.x != x { x = actual.x }
         if actual.y != y { y = actual.y }
         lastKnown = actual
@@ -1767,7 +1767,7 @@ private struct VectorParamRow: View {
 /// (three pills don't fit beside it at the sidebar width).
 private struct Vector3ParamRow: View {
     let handle: ParamHandle
-    let control: ParamControl.VectorXYZ
+    let control: ParamControl.Vector3Fields
     let palette: OllinInspector.Palette
     let iconGutter: Bool
     let onChange: (ParamStored) -> Void
@@ -1780,14 +1780,14 @@ private struct Vector3ParamRow: View {
     @State private var isEditingY = false
     @State private var isEditingZ = false
 
-    init(handle: ParamHandle, control: ParamControl.VectorXYZ, palette: OllinInspector.Palette,
+    init(handle: ParamHandle, control: ParamControl.Vector3Fields, palette: OllinInspector.Palette,
          iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
         self.handle = handle
         self.control = control
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _x = State(initialValue: current.x)
         _y = State(initialValue: current.y)
         _z = State(initialValue: current.z)
@@ -1831,7 +1831,7 @@ private struct Vector3ParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !isEditingX, !isEditingY, !isEditingZ else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != lastKnown {
                     lastKnown = live
                     x = live.x
@@ -1847,8 +1847,8 @@ private struct Vector3ParamRow: View {
     private func push() {
         let candidate = Vector3(x, y, z)
         guard candidate != lastKnown else { return }   // the sync pull's own echo
-        control.set(candidate)
-        let actual = control.get()
+        control.write(candidate)
+        let actual = control.read()
         if actual.x != x { x = actual.x }
         if actual.y != y { y = actual.y }
         if actual.z != z { z = actual.z }
@@ -1880,7 +1880,7 @@ private struct RectangleParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _x = State(initialValue: current.x)
         _y = State(initialValue: current.y)
         _w = State(initialValue: current.width)
@@ -1915,7 +1915,7 @@ private struct RectangleParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !editing.contains(true) else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != lastKnown {
                     lastKnown = live
                     x = live.x
@@ -1941,14 +1941,14 @@ private struct RectangleParamRow: View {
     private func push() {
         let candidate = Rectangle(x: x, y: y, width: w, height: h)
         guard candidate != lastKnown else { return }   // the sync pull's own echo
-        control.set(candidate)
-        let actual = control.get()
+        control.write(candidate)
+        let actual = control.read()
         if actual.x != x { x = actual.x }
         if actual.y != y { y = actual.y }
         if actual.width != w { w = actual.width }
         if actual.height != h { h = actual.height }
         lastKnown = actual
-        onChange(.rect(x: actual.x, y: actual.y, width: actual.width, height: actual.height))
+        onChange(.rectangle(x: actual.x, y: actual.y, width: actual.width, height: actual.height))
     }
 }
 
@@ -1975,7 +1975,7 @@ private struct InsetsParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _top = State(initialValue: current.top)
         _right = State(initialValue: current.right)
         _bottom = State(initialValue: current.bottom)
@@ -2010,7 +2010,7 @@ private struct InsetsParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !editing.contains(true) else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != lastKnown {
                     lastKnown = live
                     top = live.top
@@ -2035,8 +2035,8 @@ private struct InsetsParamRow: View {
     private func push() {
         let candidate = Insets(top: top, right: right, bottom: bottom, left: left)
         guard candidate != lastKnown else { return }   // the sync pull's own echo
-        control.set(candidate)
-        let actual = control.get()
+        control.write(candidate)
+        let actual = control.read()
         if actual.top != top { top = actual.top }
         if actual.right != right { right = actual.right }
         if actual.bottom != bottom { bottom = actual.bottom }
@@ -2070,7 +2070,7 @@ private struct RangeParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _lower = State(initialValue: current.lowerBound)
         _upper = State(initialValue: current.upperBound)
         _lastKnown = State(initialValue: current)
@@ -2087,7 +2087,7 @@ private struct RangeParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !isEditingLower, !isEditingUpper, !isSliding else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != lastKnown {
                     lastKnown = live
                     lower = live.lowerBound
@@ -2139,8 +2139,8 @@ private struct RangeParamRow: View {
     /// pair it actually holds, and reflect + report that.
     private func push() {
         guard lower != lastKnown.lowerBound || upper != lastKnown.upperBound else { return }
-        control.set(Swift.min(lower, upper)...Swift.max(lower, upper))
-        let actual = control.get()
+        control.write(Swift.min(lower, upper)...Swift.max(lower, upper))
+        let actual = control.read()
         if actual.lowerBound != lower { lower = actual.lowerBound }
         if actual.upperBound != upper { upper = actual.upperBound }
         lastKnown = actual
@@ -2167,7 +2167,7 @@ private struct TextParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        _text = State(initialValue: control.get())
+        _text = State(initialValue: control.read())
     }
 
     var body: some View {
@@ -2186,15 +2186,15 @@ private struct TextParamRow: View {
                     .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
         }
         .onChange(of: text) { _, newValue in
-            guard newValue != control.get() else { return }
-            control.set(newValue)
+            guard newValue != control.read() else { return }
+            control.write(newValue)
             onChange(.text(newValue))
         }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !isTyping else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != text { text = live }
             }
         }
@@ -2235,7 +2235,7 @@ private struct SwatchesParamRow: View {
         self.palette = palette
         self.iconGutter = iconGutter
         self.onChange = onChange
-        let current = control.get()
+        let current = control.read()
         _stops = State(initialValue: current)
         _lastKnown = State(initialValue: current)
         _selected = State(initialValue: 0)
@@ -2262,7 +2262,7 @@ private struct SwatchesParamRow: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard !isDragging else { continue }
-                let live = control.get()
+                let live = control.read()
                 if live != lastKnown {
                     lastKnown = live
                     stops = live
@@ -2397,8 +2397,8 @@ private struct SwatchesParamRow: View {
     /// holds, and reflect + report that.
     private func push() {
         guard stops != lastKnown else { return }
-        control.set(stops)
-        let actual = control.get()
+        control.write(stops)
+        let actual = control.read()
         if actual != stops { stops = actual }
         lastKnown = actual
         selected = Swift.min(selected, Swift.max(actual.count - 1, 0))

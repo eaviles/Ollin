@@ -32,7 +32,7 @@ var run: Evolution!
 
 override func setup() {
     background(.black); noClear()
-    run = evolution(count: 30_000, genes: 28,
+    run = makeEvolution(count: 30_000, genes: 28,
                     from: Vector2(540, 990), to: Vector2(540, 110))
     run.obstacles = [Rectangle(x: 0, y: 620, width: 640, height: 34),
                      Rectangle(x: 800, y: 620, width: 280, height: 34)]
@@ -166,7 +166,7 @@ A `Genome` is a bag of numbers between 0 and 1 that your sketch reads as whateve
 let radius = g.value(0, in: 20 ... 180)                   // a Double in a range
 let arms   = g.value(1, in: 3 ... 9)                      // a whole number, both ends reachable
 let style  = g.value(2, among: [Style.solid, .hollow])    // one of a list
-let filled = g.flag(3, chance: 0.3)                       // yes or no
+let filled = g.isSet(3, chance: 0.3)                       // yes or no
 ```
 
 Read a gene through one of those rather than by hand. The mapping from 0…1 into what you actually want then stays in one place. Genes past the end wrap round to the start rather than trapping. A sketch that grows a new trait still draws while you widen the genome. Two traits reading the same gene move together, which is worth knowing if a drawing suddenly starts rhyming with itself.

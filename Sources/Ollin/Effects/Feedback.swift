@@ -10,7 +10,7 @@ import Metal
 ///
 /// ```swift
 /// var trail: Feedback!
-/// override func setup() { trail = feedback() }   // make once, store it
+/// override func setup() { trail = makeFeedback() }   // make once, store it
 ///
 /// override func draw() {
 ///     background(.black)
@@ -25,7 +25,7 @@ import Metal
 /// }
 /// ```
 ///
-/// Unlike `renderTarget()` (a per-frame handle), a `Feedback` is **persistent**:
+/// Unlike `makeRenderTarget()` (a per-frame handle), a `Feedback` is **persistent**:
 /// create it once in `setup()` and hold it. Its identity is what ties this frame's
 /// write to last frame's read: make a fresh one each `draw()` and it never builds
 /// up. A reference type, for the same reason `RenderTarget` is: it names GPU

@@ -94,7 +94,7 @@ let a = mesh.colors[Int(mesh.indices[i])]
 let b = mesh.colors[Int(mesh.indices[i + 1])]
 let c = mesh.colors[Int(mesh.indices[i + 2])]
 let w = spot.barycentric
-let tint = Color.mix(Color.mix(a, b, t: w.y / max(w.x + w.y, 1e-9)), c, t: w.z)
+let tint = Color.mix(Color.mix(a, b, w.y / max(w.x + w.y, 1e-9)), c, t: w.z)
 ```
 
 They are also how a scatter is filtered by something the surface already knows. Keep the spots facing up, and only those:

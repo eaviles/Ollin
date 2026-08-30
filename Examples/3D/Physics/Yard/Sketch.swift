@@ -72,12 +72,12 @@ final class Yard: Sketch {
     let cloth = Color(hex: 0xD8CBB4)
 
     override func setup() {
-        skin = Scene(resource: "figure", extension: "gltf", in: Bundle.module)
+        skin = Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
         standing = skin
         idle = skin.animations.first
         groundMesh = ground.mesh(width: 40, depth: 34, height: 1.6)
         world.ground = nil
-        world.bounce = 0.1
+        world.restitution = 0.1
 
         if world.load(contentsOf: file, resolving: asset) {
             adopt()
@@ -162,7 +162,7 @@ final class Yard: Sketch {
                                    pinned: { $0.z < -1.1 && abs($0.x) > 2.2 })
         banner?.assetName = "banner"
 
-        for _ in 0 ..< 300 { world.step(dt: 1.0 / 60) }
+        for _ in 0 ..< 300 { world.advance(by: 1.0 / 60) }
 
         kept = world.snapshot()
         say("a fresh yard")
@@ -228,7 +228,7 @@ final class Yard: Sketch {
         if let idle {
             standing.apply(idle, at: time.truncatingRemainder(dividingBy: idle.duration))
         }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         if let fallen { skin.apply(fallen) }
 
         drawGround()

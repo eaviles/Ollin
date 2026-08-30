@@ -154,6 +154,6 @@ public extension Progression {
     init(_ chords: [Chord]) {
         let written = chords.isEmpty ? [Chord("C4", .major)] : chords
         self.init([], in: Scale(.chromatic, root: written[0].root))
-        self.written = written
+        self.writtenChords = written
     }
 }

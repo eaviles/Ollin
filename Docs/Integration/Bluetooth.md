@@ -74,7 +74,7 @@ An export never asks. A headless run reports the radio as absent, since a device
 let scan = BluetoothScan()              // or BluetoothScan(service: .heartRate)
 scan.start()
 
-scan.devices        // [BluetoothPeripheral], strongest first
+scan.peripherals        // [BluetoothPeripheral], strongest first
 scan.forgetAfter    // seconds of silence before a device drops off the list (10)
 scan.isScanning
 ```

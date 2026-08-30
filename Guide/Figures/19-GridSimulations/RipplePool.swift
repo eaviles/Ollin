@@ -12,7 +12,7 @@ final class RipplePool: Sketch {
     var pool: SimField!
 
     override func setup() {
-        pool = simField(.ripples(damping: 0.995))
+        pool = makeSimField(.ripples(damping: 0.995))
     }
 
     override func draw() {

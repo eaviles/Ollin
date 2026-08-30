@@ -41,7 +41,7 @@ public extension Mesh {
     /// color and a material rather than an image.
     static func text(_ string: String, font: OutlineFont = .systemMedium,
                      size: Double = 1, depth: Double = 0.25,
-                     align: TextAlignH = .center) -> Mesh {
+                     align: HorizontalTextAlign = .center) -> Mesh {
         Mesh.joined(textGlyphs(string, font: font, size: size, depth: depth, align: align))
     }
 
@@ -68,7 +68,7 @@ public extension Mesh {
     /// glyphs that draw something, not the number of characters.
     static func textGlyphs(_ string: String, font: OutlineFont = .systemMedium,
                            size: Double = 1, depth: Double = 0.25,
-                           align: TextAlignH = .center) -> [Mesh] {
+                           align: HorizontalTextAlign = .center) -> [Mesh] {
         guard size > 0, !string.isEmpty else { return [] }
         // Glyph curves are flattened and then simplified back to a fixed
         // tolerance in the units they were asked for, so a one-unit em would be

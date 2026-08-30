@@ -139,15 +139,15 @@ final class RoomStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
             if let mesh = anchor as? ARMeshAnchor {
                 pending.removeValue(forKey: mesh.identifier)
                 queue.removeAll { $0 == mesh.identifier }
-                onChunk?(PhoneSceneMeshSample(tracked: tracking, timestamp: frameTime,
+                onChunk?(PhoneSceneMeshSample(isTracked: tracking, timestamp: frameTime,
                                               id: mesh.identifier, scan: scan,
-                                              removed: true, transform: mesh.transform))
+                                              isRemoved: true, transform: mesh.transform))
             } else if let plane = anchor as? ARPlaneAnchor {
                 pendingPlanes.removeValue(forKey: plane.identifier)
                 planeQueue.removeAll { $0 == plane.identifier }
-                onPlane?(PhonePlaneSample(tracked: tracking, timestamp: frameTime,
+                onPlane?(PhonePlaneSample(isTracked: tracking, timestamp: frameTime,
                                           id: plane.identifier, scan: scan,
-                                          removed: true, transform: plane.transform))
+                                          isRemoved: true, transform: plane.transform))
             }
         }
     }
@@ -213,8 +213,8 @@ final class RoomStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
             return nil
         }
 
-        return PhoneSceneMeshSample(tracked: tracking, timestamp: frameTime,
-                                    id: anchor.identifier, scan: scan, removed: false,
+        return PhoneSceneMeshSample(isTracked: tracking, timestamp: frameTime,
+                                    id: anchor.identifier, scan: scan, isRemoved: false,
                                     transform: anchor.transform, vertices: vertices,
                                     normals: normals, triangleIndices: indices,
                                     surfaces: surfaces)
@@ -225,13 +225,13 @@ final class RoomStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
     private func sample(from anchor: ARPlaneAnchor) -> PhonePlaneSample {
         let extent = anchor.planeExtent
         let boundary = anchor.geometry.boundaryVertices.map { SIMD3<Float>($0.x, $0.y, $0.z) }
-        return PhonePlaneSample(tracked: tracking, timestamp: frameTime,
-                                id: anchor.identifier, scan: scan, removed: false,
+        return PhonePlaneSample(isTracked: tracking, timestamp: frameTime,
+                                id: anchor.identifier, scan: scan, isRemoved: false,
                                 transform: anchor.transform, center: anchor.center,
                                 width: extent.width, height: extent.height,
                                 rotationOnYAxis: extent.rotationOnYAxis,
                                 alignment: Self.alignment(anchor.alignment),
-                                surface: Self.surface(anchor.classification).rawValue,
+                                surface: Self.surface(anchor.classification),
                                 boundary: boundary)
     }
 
@@ -275,15 +275,15 @@ final class RoomStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
     /// One label per triangle, mapped onto the wire's own names. A session running
     /// without classification has none, and the Mac then treats every triangle as
     /// unclassified.
-    private static func surfaces(_ source: ARGeometrySource?) -> [UInt8] {
+    private static func surfaces(_ source: ARGeometrySource?) -> [PhoneSurface] {
         guard let source, source.format == .uchar, source.count > 0 else { return [] }
         let base = source.buffer.contents().advanced(by: source.offset)
-        var out = [UInt8](); out.reserveCapacity(source.count)
+        var out = [PhoneSurface](); out.reserveCapacity(source.count)
         for i in 0..<source.count {
             let raw = base.advanced(by: i * source.stride)
                 .assumingMemoryBound(to: UInt8.self).pointee
             let label = ARMeshClassification(rawValue: Int(raw)) ?? ARMeshClassification.none
-            out.append(surface(label).rawValue)
+            out.append(surface(label))
         }
         return out
     }

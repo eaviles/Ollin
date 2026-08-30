@@ -19,7 +19,7 @@ final class SoapFilm: Sketch {
 
         // The dust: fixed bright specks, streaked into grating orders that
         // slowly turn with time.
-        let dust = renderTarget()
+        let dust = makeRenderTarget()
         withTarget(dust) {
             for i in 0..<26 {
                 let n = Double(i)
@@ -34,7 +34,7 @@ final class SoapFilm: Sketch {
 
         // The film: a bright round wash whose mean thickness swings a few
         // hundred nanometers, so it drains through the color orders and back.
-        let film = renderTarget()
+        let film = makeRenderTarget()
         withTarget(film) {
             fill(Color(white: 0.85))
             drawCircle(width / 2, height / 2, 330)

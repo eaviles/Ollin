@@ -387,10 +387,10 @@ final class MaquinaEstetica: Sketch {
             case .disk:
                 drawCircle(0, 0, w / 2)
             case .halfDisk:
-                drawArc(center: Vector2(0, h / 2), rx: w / 2, ry: w / 2,
+                drawArc(center: Vector2(0, h / 2), radiusX: w / 2, radiusY: w / 2,
                         start: .pi, stop: 2 * .pi, mode: .chord)
             case .wedge:
-                drawArc(center: Vector2(-w / 2, h / 2), rx: w, ry: w,
+                drawArc(center: Vector2(-w / 2, h / 2), radiusX: w, radiusY: w,
                         start: 1.5 * .pi, stop: 2 * .pi, mode: .pie)
             case .triangle:
                 drawTriangle(Vector2(-w / 2, h / 2), Vector2(w / 2, h / 2), Vector2(-w / 2, -h / 2))

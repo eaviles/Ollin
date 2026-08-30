@@ -86,7 +86,7 @@ public struct Rhythm: Sendable, Hashable, CustomStringConvertible {
     public var length: Int { steps.count }
 
     /// How many of them are struck.
-    public var pulseCount: Int { steps.count(where: { $0 }) }
+    public var onsetCount: Int { steps.count(where: { $0 }) }
 
     /// The step numbers that are struck, in order.
     public var onsets: [Int] { steps.indices.filter { steps[$0] } }

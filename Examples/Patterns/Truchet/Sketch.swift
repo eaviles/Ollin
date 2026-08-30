@@ -32,7 +32,7 @@ final class TruchetTiles: Sketch {
             // connect across cells, the hue sweeps along the loops as waves.
             let mid = arc.points[arc.points.count / 2]
             let flow = signedNoise(mid.x * 0.003, mid.y * 0.003, time * 0.9)
-            stroke(Color.mix(a, b, t: (flow + 1) * 0.5))
+            stroke(Color.mix(a, b, (flow + 1) * 0.5))
             drawPolyline(arc.points, closed: false)
         }
     }

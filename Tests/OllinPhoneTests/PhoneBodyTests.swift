@@ -20,10 +20,10 @@ import Ollin
         var anchor = quarterTurnY
         anchor.columns.3 = SIMD4<Float>(1, 2, 3, 1)
         return PhoneBody(PhonePoseSample(
-            tracked: true, timestamp: 1, anchor: anchor, scaleFactor: 0.9,
+            isTracked: true, timestamp: 1, anchor: anchor, scaleFactor: 0.9,
             joints: [
                 .head: PhoneJointSample(position: SIMD3<Float>(0, 1, 0)),
-                .hips: PhoneJointSample(position: SIMD3<Float>(1, 0, 0), tracked: false),
+                .hips: PhoneJointSample(position: SIMD3<Float>(1, 0, 0), isTracked: false),
             ]))
     }
 
@@ -55,7 +55,7 @@ import Ollin
         // pointing along +y, from the joint's own position.
         let q = simd_quatf(angle: .pi / 2, axis: SIMD3<Float>(0, 0, 1))
         let body = PhoneBody(PhonePoseSample(
-            tracked: true, timestamp: 0,
+            isTracked: true, timestamp: 0,
             joints: [.leftWrist: PhoneJointSample(position: SIMD3<Float>(0, 1, 0),
                                                   orientation: q.vector)]))
         let m = try #require(body.modelTransform(.leftWrist))
@@ -67,7 +67,7 @@ import Ollin
         // The identity-oriented head, through the body's quarter turn and offset:
         // its transform's position column must match `worldPosition`.
         let body = turnedBody
-        let m = try #require(body.worldTransform(of: .head))
+        let m = try #require(body.worldTransform(ofJoint: .head))
         let p = try #require(body.worldPosition(.head))
         #expect(abs(Double(m.columns.3.x) - p.x) < 1e-5)
         #expect(abs(Double(m.columns.3.y) - p.y) < 1e-5)

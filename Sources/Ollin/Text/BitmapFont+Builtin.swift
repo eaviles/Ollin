@@ -10,7 +10,7 @@ public extension BitmapFont {
     /// Loaded once from the bundled BDF (see `BitmapFont(bdfContentsOf:)`); if the
     /// resource is somehow unavailable, this is an empty font (text draws nothing
     /// rather than crashing).
-    static let builtin: BitmapFont = {
+    static let builtIn: BitmapFont = {
         if let url = OllinResources.bundle.url(forResource: "cozette", withExtension: "bdf"),
            let font = BitmapFont(bdfContentsOf: url) {
             return font

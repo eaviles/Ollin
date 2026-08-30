@@ -81,7 +81,7 @@ public struct DMXUniverse: Equatable, Sendable {
     }
 
     /// Three consecutive channels read back as a color (red at `channel`).
-    public func color(at channel: Int) -> Color {
+    public func color(_ channel: Int) -> Color {
         Color(red: level(channel), green: level(channel + 1), blue: level(channel + 2))
     }
 

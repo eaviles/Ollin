@@ -45,9 +45,9 @@ public final class DMXSender {
     /// The transmit ceiling in packets per second per universe. 44 matches
     /// what a DMX512 gateway can put on the wire; raise it only for pure
     /// network rigs that declare a higher rate.
-    public var maximumRate = 44.0
+    public var maxRate = 44.0
 
-    private let cid = UUID()
+    private let componentID = UUID()
     private var pacers: [Int: DMXPacer] = [:]
     private var sequences: [Int: UInt8] = [:]
     private var connections: [Int: NWConnection] = [:]
@@ -71,7 +71,7 @@ public final class DMXSender {
 
     /// An Art-Net sender pointed at a node's IP or hostname. Art-Net 4 sends
     /// DMX unicast, so the node's address is the one thing to name.
-    public init(artNet host: String, port: Int = ArtDmxPacket.port) {
+    public init(artNet host: String, port: Int = ArtDMXPacket.port) {
         dmxProtocol = .artNet
         self.host = host
         self.port = port
@@ -90,7 +90,7 @@ public final class DMXSender {
         guard !closed else { return }
         let universe = validated(universe)
         var pacer = pacers[universe] ?? DMXPacer()
-        pacer.maximumRate = maximumRate
+        pacer.maxRate = maxRate
         let now = ProcessInfo.processInfo.systemUptime
         let sending = pacer.shouldSend(channels, now: now)
         pacers[universe] = pacer
@@ -131,7 +131,7 @@ public final class DMXSender {
     private func encode(channels: [UInt8], universe: Int, terminated: Bool = false) -> Data {
         switch dmxProtocol {
         case .artNet:
-            return ArtDmxPacket(
+            return ArtDMXPacket(
                 universe: universe,
                 channels: channels.isEmpty ? [0, 0] : channels,
                 sequence: nextSequence(universe: universe)
@@ -143,7 +143,7 @@ public final class DMXSender {
                 sequence: nextSequence(universe: universe),
                 priority: UInt8(clamping: min(max(priority, 0), 200)),
                 sourceName: sourceName,
-                cid: cid,
+                componentID: componentID,
                 isTerminated: terminated
             ).encode()
         }

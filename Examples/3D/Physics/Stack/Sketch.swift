@@ -7,7 +7,7 @@ import OllinPhysics
 /// **Space** rebuilds the pyramid.
 ///
 /// This is the 3D rigid-body world at its simplest: one `World3D` with a
-/// `ground`, one `addBody` per crate, `step(dt:)` each frame, and every crate
+/// `ground`, one `addBody` per crate, `advance(by:)` each frame, and every crate
 /// drawn by `withBody`, which moves the transform stack to the body's pose so
 /// the mesh and the physics can't drift apart. The cannonball is the same
 /// `addBody` with a `.sphere` collider, `density: 6`, and an opening
@@ -24,7 +24,7 @@ final class Stack3D: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.1
+        world.restitution = 0.1
         buildTower()
     }
 
@@ -72,7 +72,7 @@ final class Stack3D: Sketch {
         castShadows()
         cameraShowcase(.autoOrbit(period: 34), radius: 9.5, elevation: 0.24)
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         // Cannonballs that rolled off the slab are gone for good.
         for body in world.bodies where body.position.y < -8 {

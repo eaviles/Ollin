@@ -134,7 +134,7 @@ private final class CoatProbe: Sketch {
             material(kind == .coatPoint ? coated : roughBlack)
             drawSphere(radius: 1.2)
         case .coatPanel, .barePanel:
-            rectLight(.white, at: Vector3(2.2, 1.5, 3.5), direction: Vector3(-0.5, -0.3, -0.8),
+            rectangleLight(.white, at: Vector3(2.2, 1.5, 3.5), direction: Vector3(-0.5, -0.3, -0.8),
                       width: 2.5, height: 2.5, intensity: 3)
             fill(Color(white: 0.03))
             material(kind == .coatPanel ? coated : roughBlack)

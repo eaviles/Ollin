@@ -27,7 +27,7 @@ struct MongolianTextTests {
     private let word = "ᠮᠣᠩᠭᠣᠯ"
 
     private func placed(_ string: String, _ direction: TextDirection,
-                        alignH: TextAlignH = .left, alignV: TextAlignV = .baseline,
+                        alignH: HorizontalTextAlign = .left, alignV: VerticalTextAlign = .baseline,
                         at origin: Vector2 = Vector2(0, 0)) -> [Shape] {
         font.glyphShapes(for: string, size: size, alignH: alignH, alignV: alignV,
                          direction: direction, at: origin)
@@ -177,7 +177,7 @@ struct MongolianTextTests {
         drawer.textSize(size)
         drawer.textDirection(.topToBottomLeftToRight)
         let text = "\(word)\n\(word)"
-        for alignment in [(TextAlignH.left, TextAlignV.top), (.center, .middle), (.right, .bottom)] {
+        for alignment in [(HorizontalTextAlign.left, VerticalTextAlign.top), (.center, .middle), (.right, .bottom)] {
             drawer.textAlign(alignment.0, alignment.1)
             let reported = drawer.textBounds(text, 400, 300)
             let ink = bounds(of: font.glyphShapes(for: text, size: size,

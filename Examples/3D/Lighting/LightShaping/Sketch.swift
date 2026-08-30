@@ -69,13 +69,13 @@ final class LightShaping: Sketch {
         // the tilt plane, so the throw climbs the wall and the room stays quiet.
         pointLight(Color(hue: 0.58, saturation: 0.35, brightness: 1.0),
                    at: Vector3(3.2, 2.2, 0.8), intensity: 1.6,
-                   profile: wallwash, axis: Vector3(0, -0.55, -1), roll: .pi / 2)
+                   profile: wallwash, direction: Vector3(0, -0.55, -1), roll: .pi / 2)
 
         // The window: a warm spot from high front-left, its gobo projected
         // across the floor, rocking gently on its roll.
         spotLight(Color(hue: 0.09, saturation: 0.38, brightness: 1.0),
                   at: Vector3(-4.6, 3.4, 4.4), direction: Vector3(0.62, -0.62, -0.48),
-                  angle: 0.8, penumbra: 0.15, intensity: 1.35,
+                  coneAngle: 0.8, penumbra: 0.15, intensity: 1.35,
                   cookie: windowGobo, roll: sin(time * 0.25) * 0.12)
 
         // --- The set: a matte room that shows throw patterns honestly ---

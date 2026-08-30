@@ -74,21 +74,21 @@ enum SaveTest {
         }
 
         var tuned: [(name: String, stored: ParamStored)] = []
-        tuned.append(turn("radius") { if case .slider(let c) = $0 { c.set(86.5) } })
-        tuned.append(turn("rings") { if case .stepper(let c) = $0 { c.set(9) } })
-        tuned.append(turn("filled") { if case .toggle(let c) = $0 { c.set(false) } })
-        tuned.append(turn("tint") { if case .colorWell(let c) = $0 { c.set(Color(red: 0.2, green: 0.4, blue: 0.6)) } })
-        tuned.append(turn("style") { if case .menu(let c) = $0 { c.set(2) } })
-        tuned.append(turn("anchor") { if case .vector(let c) = $0 { c.set(Vector2(120, 480.5)) } })
-        tuned.append(turn("margins") { if case .insets(let c) = $0 { c.set(Insets(top: 4, right: 8, bottom: 12, left: 16)) } })
-        tuned.append(turn("sizes") { if case .range(let c) = $0 { c.set(12...34) } })
+        tuned.append(turn("radius") { if case .slider(let c) = $0 { c.write(86.5) } })
+        tuned.append(turn("rings") { if case .stepper(let c) = $0 { c.write(9) } })
+        tuned.append(turn("filled") { if case .toggle(let c) = $0 { c.write(false) } })
+        tuned.append(turn("tint") { if case .colorWell(let c) = $0 { c.write(Color(red: 0.2, green: 0.4, blue: 0.6)) } })
+        tuned.append(turn("style") { if case .menu(let c) = $0 { c.write(2) } })
+        tuned.append(turn("anchor") { if case .vector(let c) = $0 { c.write(Vector2(120, 480.5)) } })
+        tuned.append(turn("margins") { if case .insets(let c) = $0 { c.write(Insets(top: 4, right: 8, bottom: 12, left: 16)) } })
+        tuned.append(turn("sizes") { if case .range(let c) = $0 { c.write(12...34) } })
         tuned.append(turn("inks") { if case .swatches(let c) = $0 {
-            c.set([.init(position: 0, color: .black), .init(position: 1, color: .orange)])
+            c.write([.init(position: 0, color: .black), .init(position: 1, color: .orange)])
         } })
         // The two that cannot be written: one names a value the sketch works
         // out, the other is arithmetic.
-        tuned.append(turn("borrowed") { if case .slider(let c) = $0 { c.set(150) } })
-        tuned.append(turn("half") { if case .slider(let c) = $0 { c.set(200) } })
+        tuned.append(turn("borrowed") { if case .slider(let c) = $0 { c.write(150) } })
+        tuned.append(turn("half") { if case .slider(let c) = $0 { c.write(200) } })
 
         print("OllinLive savetest: write them into the @Param lines …")
         let text = try! String(contentsOfFile: file, encoding: .utf8)

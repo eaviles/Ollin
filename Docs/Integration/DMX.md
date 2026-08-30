@@ -55,7 +55,7 @@ rig.clear()                          // all dark
 
 A `DMXUniverse` is a plain value of 512 bytes, one per channel. The channels are numbered 1 to 512, the way every console and fixture manual numbers them. Reading outside that range returns 0. Writing outside it does nothing, so an off-by-one never traps mid-performance.
 
-`set(_:level:)` takes the 0…1 range the rest of a sketch already works in and scales it to the wire's 0…255. `set(_:color:)` lays a `Color`'s red, green, and blue across three consecutive channels, and `color(at:)` reads three back.
+`set(_:level:)` takes the 0…1 range the rest of a sketch already works in and scales it to the wire's 0…255. `set(_:color:)` lays a `Color`'s red, green, and blue across three consecutive channels, and `color(_:)` reads three back.
 
 <a name="dmxfixture"></a>
 
@@ -90,12 +90,12 @@ func close()
 
 var sourceName: String                   // what sACN monitors show, "Ollin" by default
 var priority: Int                        // sACN source priority 0…200, 100 by default
-var maximumRate: Double                  // transmit ceiling, 44 packets/s per universe
+var maxRate: Double                  // transmit ceiling, 44 packets/s per universe
 ```
 
 The zero-config form is plain `DMXSender()`. sACN multicasts each universe to its standard group address. Any sACN node on the network that listens to that universe picks it up, with no addressing at all. Art-Net 4 sends DMX unicast, so there the node's IP is the one thing to name. Universe numbers run 1 to 63999 on sACN. On Art-Net the number is the 15-bit port-address, 1 to 32767, which packs the net, sub-net, and universe switches together.
 
-Call `send` every frame with whatever the sketch computed. The sender takes care of the wire cadence both specs ask for. Changed data goes out immediately, capped at `maximumRate` to match what a DMX gateway can physically output. Unchanged data is re-sent a few times, so a receiver that missed a packet still converges. After that a keep-alive goes out every ~0.9 s, so nodes know the source is alive. Sequence numbers, sACN's source identity (CID), and priorities are handled for you.
+Call `send` every frame with whatever the sketch computed. The sender takes care of the wire cadence both specs ask for. Changed data goes out immediately, capped at `maxRate` to match what a DMX gateway can physically output. Unchanged data is re-sent a few times, so a receiver that missed a packet still converges. After that a keep-alive goes out every ~0.9 s, so nodes know the source is alive. Sequence numbers, sACN's source identity (CID), and priorities are handled for you.
 
 `close()` on an sACN sender says goodbye first. It sends three stream-terminated packets per universe, which is the standard's clean ending. Receivers then drop the look immediately instead of waiting out a timeout.
 
@@ -166,8 +166,8 @@ func stop()
 func universe(_ number: Int = 1) -> DMXUniverse?
 func channel(_ channel: Int, universe: Int = 1) -> UInt8
 func level(_ channel: Int, universe: Int = 1) -> Double     // 0…1
-func color(at channel: Int, universe: Int = 1) -> Color     // three channels
-func universes() -> [Int]                                   // what's been heard
+func color(_ channel: Int, universe: Int = 1) -> Color     // three channels
+func universeNumbers() -> [Int]                                   // what's been heard
 ```
 
 The receiver turns the sketch into a fixture. A lighting console, or another sketch, fades a channel, and `draw()` reads it like any other input. DMX carries continuous levels rather than events, so the read surface gives the latest value only. Read it fresh each frame.
@@ -176,7 +176,7 @@ The receiver turns the sketch into a fixture. A lighting console, or another ske
 let dmx = DMXReceiver()
 override func setup() { try? dmx.start(universes: [1]) }
 override func draw() {
-    background(dmx.color(at: 1))                 // the console paints the canvas
+    background(dmx.color(1))                 // the console paints the canvas
     let size = dmx.level(4) * 400                // channel 4 runs a radius
     drawCircle(width / 2, height / 2, size)
 }

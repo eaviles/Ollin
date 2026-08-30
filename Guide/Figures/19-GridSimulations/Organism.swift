@@ -15,7 +15,7 @@ final class Organism: Sketch {
 
     override func draw() {
         background(Color(hex: 0x04070B))
-        if dish == nil { dish = simField(.reactionDiffusion(feed: 0.055, kill: 0.062), scale: 0.5) }
+        if dish == nil { dish = makeSimField(.reactionDiffusion(feed: 0.055, kill: 0.062), scale: 0.5) }
         guard let dish else { return }
 
         withField(dish) {

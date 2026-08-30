@@ -9,7 +9,7 @@ final class SelfWarp: Sketch {
     var warp: SimField!
 
     override func setup() {
-        warp = simField(.selfWarp(strength: 0.55, refresh: 0.05))
+        warp = makeSimField(.selfWarp(amount: 0.55, refresh: 0.05))
     }
 
     override func draw() {

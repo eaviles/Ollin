@@ -65,7 +65,7 @@ final class PhoneCostume: Sketch {
         if let c = orbitCenter { orbitCenter = c.lerp(to: center, 0.1) } else { orbitCenter = center }
         cameraShowcase(.turntable(period: .tau / 0.3), target: orbitCenter ?? center, radius: 3.0,
                        elevation: 0.15, fieldOfView: .pi / 3)
-        environment(.studio.intensity(0.85))
+        environment(.studio.intensified(to: 0.85))
 
         drawFloor(under: body)
         drawSilhouette(body)
@@ -143,7 +143,7 @@ final class PhoneCostume: Sketch {
             material(.plastic)
             for (boneIndex, bone) in PhoneBody.skeleton.enumerated() {
                 guard let a = body.worldPosition(bone.0), let b = body.worldPosition(bone.1),
-                      let pose = body.worldTransform(of: bone.0) else { continue }
+                      let pose = body.worldTransform(ofJoint: bone.0) else { continue }
                 let axis = (b - a).normalized
                 guard axis.lengthSquared > 0 else { continue }
                 // The joint's local x axis, made perpendicular to the bone: the

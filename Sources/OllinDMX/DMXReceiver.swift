@@ -19,7 +19,7 @@ public enum DMXError: Error, Sendable {
 /// override func setup() { try? dmx.start() }
 /// override func draw() {
 ///     let brightness = dmx.level(1)            // channel 1, universe 1, 0…1
-///     let wash = dmx.color(at: 10)             // channels 10-12 as a color
+///     let wash = dmx.color(10)             // channels 10-12 as a color
 /// }
 /// ```
 ///
@@ -64,7 +64,7 @@ public final class DMXReceiver: @unchecked Sendable {
     private struct Slot: Sendable {
         var channels: [UInt8]
         var priority: UInt8
-        var cid: UUID?
+        var componentID: UUID?
         var sequence: UInt8
         var sequenced: Bool
         var arrival: Double
@@ -183,7 +183,7 @@ public final class DMXReceiver: @unchecked Sendable {
     }
 
     /// The universe numbers heard so far, in order.
-    public func universes() -> [Int] {
+    public func universeNumbers() -> [Int] {
         state.withLock { $0.slots.keys.sorted() }
     }
 
@@ -202,7 +202,7 @@ public final class DMXReceiver: @unchecked Sendable {
     }
 
     /// Three consecutive channels read as a color (red at `channel`).
-    public func color(at channel: Int, universe: Int = 1) -> Color {
+    public func color(_ channel: Int, universe: Int = 1) -> Color {
         Color(
             red: level(channel, universe: universe),
             green: level(channel + 1, universe: universe),
@@ -250,7 +250,7 @@ public final class DMXReceiver: @unchecked Sendable {
             guard let packet = SACNDataPacket(data: datagram) else { return }
             ingest(packet, now: now)
         case .artNet:
-            guard let packet = ArtDmxPacket(data: datagram) else { return }
+            guard let packet = ArtDMXPacket(data: datagram) else { return }
             ingest(packet, now: now)
         }
     }
@@ -262,13 +262,13 @@ public final class DMXReceiver: @unchecked Sendable {
         let bindings: [(binding: ParamBinding, value: UInt8)] = state.withLock { state in
             if packet.isTerminated {
                 // The source's goodbye: forget the universe if it was ours.
-                if (state.slots[packet.universe]?.cid ?? packet.cid) == packet.cid {
+                if (state.slots[packet.universe]?.componentID ?? packet.componentID) == packet.componentID {
                     state.slots[packet.universe] = nil
                 }
                 return []
             }
             if let slot = state.slots[packet.universe], now - slot.arrival < Self.sourceTimeout {
-                if slot.cid == packet.cid {
+                if slot.componentID == packet.componentID {
                     // The standard's out-of-order window: a step back of up to
                     // 19 is a straggler to drop, a bigger jump is a reset.
                     let diff = Int8(bitPattern: packet.sequence &- slot.sequence)
@@ -281,7 +281,7 @@ public final class DMXReceiver: @unchecked Sendable {
             state.slots[packet.universe] = Slot(
                 channels: packet.channels,
                 priority: packet.priority,
-                cid: packet.cid,
+                componentID: packet.componentID,
                 sequence: packet.sequence,
                 sequenced: true,
                 arrival: now
@@ -291,7 +291,7 @@ public final class DMXReceiver: @unchecked Sendable {
         apply(bindings)
     }
 
-    private func ingest(_ packet: ArtDmxPacket, now: Double) {
+    private func ingest(_ packet: ArtDMXPacket, now: Double) {
         let bindings: [(binding: ParamBinding, value: UInt8)] = state.withLock { state in
             if let slot = state.slots[packet.universe],
                 slot.sequenced, packet.sequence != 0,
@@ -302,7 +302,7 @@ public final class DMXReceiver: @unchecked Sendable {
             state.slots[packet.universe] = Slot(
                 channels: packet.channels,
                 priority: 100,
-                cid: nil,
+                componentID: nil,
                 sequence: packet.sequence,
                 sequenced: packet.sequence != 0,
                 arrival: now

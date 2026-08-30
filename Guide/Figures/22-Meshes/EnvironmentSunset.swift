@@ -11,7 +11,7 @@ final class EnvironmentSunset: Sketch {
     override func draw() {
         camera(.perspective(eye: Vector3(2.2, 1.9, 5.2), target: Vector3(0, 1.0, 0),
                             fieldOfView: .pi / 4.4))
-        environment(.sunset.backgroundBlur(0.2))
+        environment(.sunset.backgroundBlurred(0.2))
         toneMap(.aces, exposure: 1.0)
 
         material(.matte)

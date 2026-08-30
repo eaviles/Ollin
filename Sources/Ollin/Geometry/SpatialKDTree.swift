@@ -173,7 +173,7 @@ struct KDTree2 {
         visit(node)
     }
 
-    func forNeighbors(of p: Vector2, within radius: Double, skipping: Int,
+    func forEachNeighbor(of p: Vector2, within radius: Double, skipping: Int,
                       _ body: (Int, Double) -> Void) {
         guard root >= 0 else { return }
         let r2 = radius * radius

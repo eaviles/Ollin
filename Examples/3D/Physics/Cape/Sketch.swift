@@ -47,11 +47,11 @@ final class Cape: Sketch {
     let capeColor = Color(hex: 0x9E2B3A)
 
     override func setup() {
-        figure = Scene(resource: "figure", extension: "gltf", in: Bundle.module)
+        figure = Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
         target = figure
         wave = figure.animations.first
         world.ground = 0
-        world.bounce = 0.05
+        world.restitution = 0.05
         ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 0.95, 0),
                                    mass: 72, friction: 0.7)
         standUp()
@@ -67,7 +67,7 @@ final class Cape: Sketch {
             // The sheet is centered on its own origin, so standing the collar at
             // the shoulders puts the body half a cape lower.
             at: Vector3(0, 1.45 - Cape.length / 2, -0.13),
-            rotation: .pi / 2, axis: Vector3(1, 0, 0),
+            rotated: .pi / 2, axis: Vector3(1, 0, 0),
             mass: 1.2, stiffness: 0.92, bend: 0.01, damping: 0.06,
             friction: 0.4, iterations: 8, vertexRadius: 0.01,
             // Clasped at the neck only. A whole edge pinned is a flag; a cape
@@ -111,7 +111,7 @@ final class Cape: Sketch {
         // pose, then step. A cape told after the step is a frame behind.
         figure.apply(ragdoll)
         cape.follow(figure)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         figure.apply(ragdoll)
 
         drawFloor()

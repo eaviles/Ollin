@@ -55,15 +55,15 @@ public final class Spring {
         return (a.position.distance(to: b.position) - length) / length
     }
 
-    /// Pull the two ends back toward `length`. Called by `World.step(dt:)` once
+    /// Pull the two ends back toward `length`. Called by `World.advance(by:)` once
     /// per relaxation iteration; a sketch doesn't call this directly.
     func solve() {
         let delta = b.position - a.position
         let distance = delta.length
         guard distance > 0 else { return }
 
-        let wA = a.pinned ? 0 : a.inverseMass
-        let wB = b.pinned ? 0 : b.inverseMass
+        let wA = a.isPinned ? 0 : a.inverseMass
+        let wB = b.isPinned ? 0 : b.inverseMass
         let wSum = wA + wB
         guard wSum > 0 else { return }
 

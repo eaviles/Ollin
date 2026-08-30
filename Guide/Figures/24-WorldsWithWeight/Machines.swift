@@ -103,7 +103,7 @@ final class Machines: Sketch {
                             fieldOfView: .pi / 4.6))
 
         crank?.drive(at: -1.1, strength: 600)
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         fill(Color(hex: 0x11151F))
         material(.dielectric(roughness: 0.94))

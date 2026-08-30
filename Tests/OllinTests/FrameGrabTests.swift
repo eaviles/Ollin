@@ -54,7 +54,7 @@ private final class Recorder: SketchExtension {
     var armed = false
     var received = 0
     var wantsRenderedFrame: Bool { armed }
-    func frameRendered(_ sketch: Sketch, _ image: CGImage) { received += 1 }
+    func frameRendered(_ sketch: Sketch, image: CGImage) { received += 1 }
 }
 
 private final class NoOpExtension: SketchExtension {}

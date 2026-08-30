@@ -30,7 +30,7 @@ final class NBodyCollision: Sketch {
 
     override func draw() {
         background(Color(hex: 0x07080D))
-        system.step()
+        system.advance()
 
         let bodies = system.bodies
         withState {

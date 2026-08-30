@@ -14,24 +14,24 @@ import Foundation
 /// may rewrite it, and a label that no rule names is finished. A run sweeps the
 /// design once per generation: it offers each piece to the rules that name its
 /// label, picks one of them by weight, and puts the pieces that come back in
-/// its place. A piece smaller than a rule's `minimumArea` is left alone, which
+/// its place. A piece smaller than a rule's `minArea` is left alone, which
 /// is what brings a run to a stop.
 ///
 /// The built-in rules are the moves the classic grammars are written from:
 ///
-/// - ``Rule/cut(_:into:balance:sides:avoidingCorners:minimumArea:weight:)``
+/// - ``Rule/cut(_:into:balance:sides:avoidingCorners:minArea:weight:)``
 ///   draws one straight line between two edges of the piece. This is the
 ///   ice-ray move, the one behind the lattice window frames whose bars look
 ///   like cracks in river ice.
-/// - ``Rule/split(_:along:at:into:minimumArea:weight:)`` cuts straight across
+/// - ``Rule/split(_:along:at:into:minArea:weight:)`` cuts straight across
 ///   at fractions of the piece's width or height, which is how a wall becomes
 ///   floors and a floor becomes windows.
-/// - ``Rule/inset(_:by:into:border:minimumArea:weight:)`` pulls the outline
+/// - ``Rule/inset(_:by:into:border:minArea:weight:)`` pulls the outline
 ///   inward by the same distance all the way round, which is how a cell becomes
 ///   a bar of a lattice.
-/// - ``Rule/nested(_:scale:turn:into:keeping:minimumArea:weight:)`` puts a
+/// - ``Rule/nested(_:scale:turn:into:keeping:minArea:weight:)`` puts a
 ///   smaller copy of the piece inside itself.
-/// - ``Rule/custom(_:weight:minimumArea:_:)`` does anything else.
+/// - ``Rule/custom(_:weight:minArea:_:)`` does anything else.
 ///
 /// The built-in rules expect a **convex** piece, and they hand back convex
 /// pieces, so a run that starts convex stays that way. A `custom` rule may
@@ -43,8 +43,8 @@ import Foundation
 ///
 /// ```swift
 /// // In setup():
-/// let frame = Rectangle(center: center, width: 900, height: 900)
-/// pieces = ShapeGrammar.iceRay(in: frame, minimumArea: 9_000)
+/// let bounds = Rectangle(center: center, width: 900, height: 900)
+/// pieces = ShapeGrammar.iceRay(in: bounds, minArea: 9_000)
 ///     .run(generations: 9, seed: 7)
 ///
 /// // In draw():
@@ -61,16 +61,16 @@ public struct ShapeGrammar: Sendable {
     /// A run stops rewriting once the design holds this many pieces, give or
     /// take the pieces one last rule hands back. It is a backstop against a
     /// grammar that never settles, not a target.
-    public var maximumPieces: Int
+    public var maxPieces: Int
 
-    public init(start: [Piece], rules: [Rule], maximumPieces: Int = 20_000) {
+    public init(start: [Piece], rules: [Rule], maxPieces: Int = 20_000) {
         self.start = start
         self.rules = rules
-        self.maximumPieces = maximumPieces
+        self.maxPieces = maxPieces
     }
 
-    public init(start: Piece, rules: [Rule], maximumPieces: Int = 20_000) {
-        self.init(start: [start], rules: rules, maximumPieces: maximumPieces)
+    public init(start: Piece, rules: [Rule], maxPieces: Int = 20_000) {
+        self.init(start: [start], rules: rules, maxPieces: maxPieces)
     }
 
     /// Which way a `split` rule cuts.
@@ -125,7 +125,7 @@ public struct ShapeGrammar: Sendable {
     // MARK: - A rule
 
     /// One rule: a label on the left, and what that label turns into on the
-    /// right. Build one with ``Rule/cut(_:into:balance:sides:avoidingCorners:minimumArea:weight:)``
+    /// right. Build one with ``Rule/cut(_:into:balance:sides:avoidingCorners:minArea:weight:)``
     /// and its siblings.
     public struct Rule: Sendable {
         /// The label this rule rewrites.
@@ -137,26 +137,26 @@ public struct ShapeGrammar: Sendable {
         public var weight: Double
         /// A piece of less area than this is left alone by this rule. It is
         /// what the classic grammars use to decide when a design is finished.
-        public var minimumArea: Double
+        public var minArea: Double
 
         let body: @Sendable (Piece, inout SplitMix64) -> [Piece]?
 
-        init(label: String, weight: Double, minimumArea: Double,
+        init(label: String, weight: Double, minArea: Double,
              body: @escaping @Sendable (Piece, inout SplitMix64) -> [Piece]?) {
             self.label = label
             self.weight = max(weight, 0)
-            self.minimumArea = minimumArea
+            self.minArea = minArea
             self.body = body
         }
     }
 
     // MARK: - Running it
 
-    /// The design after `generations` sweeps, driven by `source`.
-    public func run(generations: Int, source: inout SplitMix64) -> [Piece] {
+    /// The design after `generations` sweeps, driven by `rng`.
+    public func run(generations: Int, using rng: inout SplitMix64) -> [Piece] {
         var pieces = start
         for _ in 0 ..< max(generations, 0) {
-            pieces = step(pieces, source: &source)
+            pieces = step(pieces, using: &rng)
         }
         return pieces
     }
@@ -165,27 +165,27 @@ public struct ShapeGrammar: Sendable {
     /// grammar draws one number from `rng` and runs off that, so a seeded
     /// generator gives a design that reproduces.
     public func run<R: RandomNumberGenerator>(generations: Int, using rng: inout R) -> [Piece] {
-        var source = SplitMix64(seed: rng.next())
-        return run(generations: generations, source: &source)
+        var rng = SplitMix64(seed: rng.next())
+        return run(generations: generations, using: &rng)
     }
 
     /// The design after `generations` sweeps, from a seed. The same seed always
     /// gives the same design.
     public func run(generations: Int, seed: Int = 0) -> [Piece] {
-        var source = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
-        return run(generations: generations, source: &source)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
+        return run(generations: generations, using: &rng)
     }
 
     /// One sweep: every piece offered to its rules once. Hold the pieces and
-    /// the source yourself to grow a design a generation per frame.
-    public func step(_ pieces: [Piece], source: inout SplitMix64) -> [Piece] {
+    /// the rng yourself to grow a design a generation per bounds.
+    public func step(_ pieces: [Piece], using rng: inout SplitMix64) -> [Piece] {
         guard !rules.isEmpty else { return pieces }
         var grown: [Piece] = []
         grown.reserveCapacity(pieces.count * 2)
         for (index, piece) in pieces.enumerated() {
             let waiting = pieces.count - index - 1
-            guard grown.count + waiting < maximumPieces,
-                  let children = rewrite(piece, source: &source) else {
+            guard grown.count + waiting < maxPieces,
+                  let children = rewrite(piece, using: &rng) else {
                 grown.append(piece)
                 continue
             }
@@ -196,16 +196,16 @@ public struct ShapeGrammar: Sendable {
 
     /// The pieces one rule application leaves in place of `piece`, or `nil`
     /// when no rule takes it.
-    private func rewrite(_ piece: Piece, source: inout SplitMix64) -> [Piece]? {
+    private func rewrite(_ piece: Piece, using rng: inout SplitMix64) -> [Piece]? {
         let area = piece.area
         var candidates = rules.indices.filter {
-            rules[$0].label == piece.label && area >= rules[$0].minimumArea
+            rules[$0].label == piece.label && area >= rules[$0].minArea
         }
         while !candidates.isEmpty {
-            let slot = pick(candidates, source: &source)
+            let slot = pick(candidates, using: &rng)
             let rule = rules[candidates[slot]]
             candidates.remove(at: slot)
-            if let children = rule.body(piece, &source) {
+            if let children = rule.body(piece, &rng) {
                 return children.map { Piece($0.label, $0.contour, depth: piece.depth + 1) }
             }
         }
@@ -213,11 +213,11 @@ public struct ShapeGrammar: Sendable {
     }
 
     /// A slot in `candidates`, drawn in proportion to the rules' weights.
-    private func pick(_ candidates: [Int], source: inout SplitMix64) -> Int {
+    private func pick(_ candidates: [Int], using rng: inout SplitMix64) -> Int {
         guard candidates.count > 1 else { return 0 }
         let total = candidates.reduce(0.0) { $0 + rules[$1].weight }
         guard total > 0 else { return 0 }
-        var roll = Double.random(in: 0 ..< total, using: &source)
+        var roll = Double.random(in: 0 ..< total, using: &rng)
         for (slot, index) in candidates.enumerated() {
             roll -= rules[index].weight
             if roll < 0 { return slot }
@@ -257,16 +257,16 @@ public extension ShapeGrammar.Rule {
     ///     length of a piece leaves two pieces just as long, and the shortest
     ///     stick that reaches always goes across. At 1 the rule keeps the first
     ///     cut that fits, and the parts grow long and thin.
-    ///   - minimumArea: a piece smaller than this is left alone.
+    ///   - minArea: a piece smaller than this is left alone.
     ///   - weight: how often this rule is picked against others on the label.
     static func cut(_ label: String, into parts: (String, String),
                     balance: Double = 0.2, sides: ClosedRange<Int> = 3 ... 5,
                     avoidingCorners: Double = 0.2, tries: Int = 4,
-                    minimumArea: Double = 0, weight: Double = 1) -> Self {
+                    minArea: Double = 0, weight: Double = 1) -> Self {
         let low = min(max(avoidingCorners, 0), 0.49)
         let high = 1 - low
         let spread = min(max(balance, 0), 1)
-        return Self(label: label, weight: weight, minimumArea: minimumArea) { piece, source in
+        return Self(label: label, weight: weight, minArea: minArea) { piece, rng in
             let points = piece.contour.points
             let n = points.count
             guard n >= 3 else { return nil }
@@ -285,13 +285,13 @@ public extension ShapeGrammar.Rule {
                 }
             }
             guard !pairs.isEmpty else { return nil }
-            pairs.shuffle(using: &source)
+            pairs.shuffle(using: &rng)
             var best: (length: Double, parts: ([Vector2], [Vector2]))?
             var weighed = 0
 
             for (i, j) in pairs {
                 if weighed >= max(tries, 1) { break }
-                let s = Double.random(in: low ... high, using: &source)
+                let s = Double.random(in: low ... high, using: &rng)
                 // The first part's area moves in a straight line as the far end
                 // of the cut slides along its edge, so the reach of this pair
                 // is its two ends and the balance solves in one step.
@@ -304,7 +304,7 @@ public extension ShapeGrammar.Rule {
                 let fullest = min(atHigh, (0.5 + spread / 2) * area)
                 guard leanest <= fullest else { continue }
                 let target = leanest < fullest
-                    ? Double.random(in: leanest ... fullest, using: &source)
+                    ? Double.random(in: leanest ... fullest, using: &rng)
                     : leanest
                 let t = low + (target - atLow) / (atHigh - atLow) * (high - low)
                 let (first, second) = cutParts(points, from: i, at: s, to: j, at: t)
@@ -327,9 +327,9 @@ public extension ShapeGrammar.Rule {
     /// two labels stripe a piece.
     static func split(_ label: String, along axis: ShapeGrammar.Axis,
                       at fractions: [Double], into labels: [String],
-                      minimumArea: Double = 0, weight: Double = 1) -> Self {
+                      minArea: Double = 0, weight: Double = 1) -> Self {
         let cuts = fractions.map { min(max($0, 0), 1) }.sorted()
-        return Self(label: label, weight: weight, minimumArea: minimumArea) { piece, _ in
+        return Self(label: label, weight: weight, minArea: minArea) { piece, _ in
             guard !labels.isEmpty else { return nil }
             let points = piece.contour.points
             guard points.count >= 3 else { return nil }
@@ -349,8 +349,8 @@ public extension ShapeGrammar.Rule {
     /// how a cell of a lattice becomes its bars.
     static func inset(_ label: String, by distance: Double, into inner: String,
                       border: String? = nil,
-                      minimumArea: Double = 0, weight: Double = 1) -> Self {
-        Self(label: label, weight: weight, minimumArea: minimumArea) { piece, _ in
+                      minArea: Double = 0, weight: Double = 1) -> Self {
+        Self(label: label, weight: weight, minArea: minArea) { piece, _ in
             let points = piece.contour.points
             guard distance > 0, let pulled = insetPolygon(points, by: distance) else { return nil }
             var made = [ShapeGrammar.Piece(inner, pulled)]
@@ -374,8 +374,8 @@ public extension ShapeGrammar.Rule {
     /// design under that name; leave it out and only the copy stays.
     static func nested(_ label: String, scale: Double, turn: Double = 0,
                        into inner: String, keeping outline: String? = nil,
-                       minimumArea: Double = 0, weight: Double = 1) -> Self {
-        Self(label: label, weight: weight, minimumArea: minimumArea) { piece, _ in
+                       minArea: Double = 0, weight: Double = 1) -> Self {
+        Self(label: label, weight: weight, minArea: minArea) { piece, _ in
             guard scale > 0, piece.contour.points.count >= 3 else { return nil }
             let middle = piece.centroid
             let copy = piece.contour.points.map {
@@ -391,7 +391,7 @@ public extension ShapeGrammar.Rule {
     /// Rename the piece and leave its outline alone. Weighted against another
     /// rule on the same label, this is how a branch of a run stops early.
     static func stop(_ label: String, into finished: String, weight: Double = 1) -> Self {
-        Self(label: label, weight: weight, minimumArea: 0) { piece, _ in
+        Self(label: label, weight: weight, minArea: 0) { piece, _ in
             [ShapeGrammar.Piece(finished, piece.contour)]
         }
     }
@@ -399,10 +399,10 @@ public extension ShapeGrammar.Rule {
     /// Anything else. Hand back the pieces that replace `piece`, or `nil` to
     /// say this rule does not apply, which passes the piece to the other rules
     /// on its label. Depth is stamped for you.
-    static func custom(_ label: String, weight: Double = 1, minimumArea: Double = 0,
+    static func custom(_ label: String, weight: Double = 1, minArea: Double = 0,
                        _ body: @escaping @Sendable (ShapeGrammar.Piece, inout SplitMix64)
                            -> [ShapeGrammar.Piece]?) -> Self {
-        Self(label: label, weight: weight, minimumArea: minimumArea, body: body)
+        Self(label: label, weight: weight, minArea: minArea, body: body)
     }
 }
 
@@ -410,33 +410,33 @@ public extension ShapeGrammar.Rule {
 
 public extension ShapeGrammar {
 
-    /// The lattice grammar: cut a frame in two again and again, each cut a
+    /// The lattice grammar: cut a bounds in two again and again, each cut a
     /// straight line between two edges, each pair of parts about equal in area,
     /// and nothing cut once it is small enough.
     ///
-    /// It is the whole of a traditional ice-ray window frame, whose bars were
+    /// It is the whole of a traditional ice-ray window bounds, whose bars were
     /// cut from finished sticks and fitted one at a time, and the run tells the
     /// same story: divide the area into large and equal spots, then keep
     /// dividing until the pieces are the size you wanted.
-    static func iceRay(in frame: Rectangle, minimumArea: Double,
+    static func iceRay(in bounds: Rectangle, minArea: Double,
                        balance: Double = 0.2, sides: ClosedRange<Int> = 3 ... 5,
                        avoidingCorners: Double = 0.2) -> ShapeGrammar {
-        ShapeGrammar(start: Piece("cell", frame),
+        ShapeGrammar(start: Piece("cell", bounds),
                      rules: [.cut("cell", into: ("cell", "cell"), balance: balance,
                                   sides: sides, avoidingCorners: avoidingCorners,
-                                  minimumArea: minimumArea)])
+                                  minArea: minArea)])
     }
 
     /// A square holding a smaller turned square, holding a smaller turned
     /// square, for as long as there is room. The default scale and turn land
     /// each copy on the middle of the last one's edges.
-    static func nestedSquares(in frame: Rectangle, minimumArea: Double,
+    static func nestedSquares(in bounds: Rectangle, minArea: Double,
                               scale: Double = 0.707_106_781_186_547_6,
                               turn: Double = .pi / 4) -> ShapeGrammar {
-        ShapeGrammar(start: Piece("square", frame),
+        ShapeGrammar(start: Piece("square", bounds),
                      rules: [.nested("square", scale: scale, turn: turn,
                                      into: "square", keeping: "drawn",
-                                     minimumArea: minimumArea)])
+                                     minArea: minArea)])
     }
 }
 
@@ -449,7 +449,7 @@ public extension Sketch {
     /// ```swift
     /// seed(4)
     /// noFill(); stroke(.white); strokeWeight(2)
-    /// for piece in shapeGrammar(.iceRay(in: bounds, minimumArea: 8_000),
+    /// for piece in shapeGrammar(.iceRay(in: bounds, minArea: 8_000),
     ///                           generations: 9) {
     ///     drawPolyline(piece.corners, closed: true)
     /// }

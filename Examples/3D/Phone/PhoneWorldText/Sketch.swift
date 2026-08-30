@@ -75,7 +75,7 @@ final class PhoneWorldText: Sketch {
         let spread = lines.map { $0.worldCenter.distance(to: center) }.max() ?? 0
         cameraShowcase(.turntable(period: .tau / 0.3), target: orbitCenter ?? center,
                        radius: 1.2 + spread * 1.6, elevation: 0.12, fieldOfView: .pi / 3)
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
 
         for line in lines {
             guard let placement = line.worldTransform else { continue }

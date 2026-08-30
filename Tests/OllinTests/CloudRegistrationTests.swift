@@ -285,7 +285,7 @@ struct CloudRegistrationTests {
         world.add(seen(points, from: truth), transformedBy: truth)
 
         var settings = CloudAlignment.Settings()
-        settings.maximumShift = 0.001                       // refuse anything real
+        settings.maxShift = 0.001                       // refuse anything real
         let wrong = pose(0.53, 0.5, 0.5)
         let fix = world.align(seen(points, from: truth), from: wrong, settings: settings)
 

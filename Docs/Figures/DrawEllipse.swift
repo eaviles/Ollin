@@ -27,7 +27,7 @@ final class DrawEllipse: Sketch {
         fill(wash)
         stroke(ink)
         strokeWeight(3)
-        drawEllipse(center: c, rx: rx, ry: ry)
+        drawEllipse(center: c, radiusX: rx, radiusY: ry)
 
         stroke(accent)
         strokeWeight(2)
@@ -46,7 +46,7 @@ final class DrawEllipse: Sketch {
         fill(wash)
         stroke(ink)
         strokeWeight(3)
-        drawEllipse(center: c2, rx: 84, ry: 84)
+        drawEllipse(center: c2, radiusX: 84, radiusY: 84)
         noStroke()
         fill(accent)
         drawCircle(center: c2, radius: 3.5)

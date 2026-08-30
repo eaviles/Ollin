@@ -134,7 +134,7 @@ public final class SoundClassifier {
 
     /// The single most confident label right now, whatever the threshold, or
     /// `nil` before the first judgment.
-    public var top: SoundClassification? { engine.top }
+    public var topClassification: SoundClassification? { engine.top }
 
     /// How sure the classifier is about one label right now, `0...1`, and `0`
     /// for a label it has not reported.

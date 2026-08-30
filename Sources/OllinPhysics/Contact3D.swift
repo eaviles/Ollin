@@ -4,10 +4,10 @@ internal import CJolt
 
 /// One touch between two bodies in a `World3D`, reported the way input is: the
 /// solver records them while it steps, and `world.contacts` holds the list from
-/// the most recent `step(dt:)` for `draw()` to read.
+/// the most recent `advance(by:)` for `draw()` to read.
 ///
 /// ```swift
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// for contact in world.contacts where contact.phase == .began {
 ///     sparks.append(Spark(at: contact.point, strength: contact.speed))
 /// }

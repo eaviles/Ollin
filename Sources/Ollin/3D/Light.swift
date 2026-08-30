@@ -42,7 +42,7 @@ public struct Light: Equatable, Sendable {
         case directional
         case point
         case spot
-        case rect
+        case rectangle
         case disk
         case tube
     }
@@ -88,7 +88,7 @@ public struct Light: Equatable, Sendable {
     public var up: Vector3
     /// Rect and disk lights: `true` emits from both faces of the panel; `false`
     /// (the default) lights only what the panel faces. A tube always emits radially.
-    public var twoSided: Bool
+    public var isTwoSided: Bool
     /// An IES photometric profile shaping where this light sends its intensity
     /// (point and spot only; `nil`, the default, keeps the plain falloff). The
     /// profile's 0° aims along the light's axis: a spot's `direction`, or the
@@ -128,7 +128,7 @@ public struct Light: Equatable, Sendable {
                 position: Vector3 = .zero, direction: Vector3 = Vector3(0, -1, 0),
                 coneAngle: Double = .pi / 6, penumbra: Double = 0.2,
                 width: Double = 1, height: Double = 1, radius: Double = 0.5,
-                length: Double = 1, up: Vector3 = .unitY, twoSided: Bool = false,
+                length: Double = 1, up: Vector3 = .unitY, isTwoSided: Bool = false,
                 profile: IESProfile? = nil, cookie: LightCookie? = nil,
                 roll: Double = 0, castsShadow: Bool = true) {
         self.kind = kind
@@ -145,7 +145,7 @@ public struct Light: Equatable, Sendable {
         self.radius = max(0, radius)
         self.length = max(0, length)
         self.up = up
-        self.twoSided = twoSided
+        self.isTwoSided = isTwoSided
         self.profile = profile
         self.cookie = cookie
         self.roll = roll
@@ -182,11 +182,11 @@ public struct Light: Equatable, Sendable {
                              intensity: Double = 1,
                              specular: Color? = nil, softness: Double = 0,
                              profile: IESProfile? = nil,
-                             axis: Vector3 = Vector3(0, -1, 0),
+                             direction: Vector3 = Vector3(0, -1, 0),
                              roll: Double = 0, castsShadow: Bool = true) -> Light {
         Light(kind: .point, color: color, intensity: intensity,
               specular: specular, softness: softness, position: position,
-              direction: axis, profile: profile, roll: roll,
+              direction: direction, profile: profile, roll: roll,
               castsShadow: castsShadow)
     }
 
@@ -197,43 +197,43 @@ public struct Light: Equatable, Sendable {
     /// `cookie` projects an image through it, and `roll` spins both about
     /// the beam.
     public static func spot(_ color: Color, at position: Vector3, direction: Vector3,
-                            angle: Double = .pi / 6, penumbra: Double = 0.2,
+                            coneAngle: Double = .pi / 6, penumbra: Double = 0.2,
                             intensity: Double = 1,
                             specular: Color? = nil, softness: Double = 0,
                             profile: IESProfile? = nil, cookie: LightCookie? = nil,
                             roll: Double = 0, castsShadow: Bool = true) -> Light {
         Light(kind: .spot, color: color, intensity: intensity,
               specular: specular, softness: softness,
-              position: position, direction: direction, coneAngle: angle, penumbra: penumbra,
+              position: position, direction: direction, coneAngle: coneAngle, penumbra: penumbra,
               profile: profile, cookie: cookie, roll: roll, castsShadow: castsShadow)
     }
 
     /// A rect area light: a glowing `width` × `height` panel centered at `position`,
     /// facing along `direction` (its travel direction, like a spot's axis), the height
-    /// axis oriented by the `up` hint. `twoSided` makes both faces emit. Highlights
+    /// axis oriented by the `up` hint. `isTwoSided` makes both faces emit. Highlights
     /// stretch into the panel's reflection and brightness falls off with distance;
     /// `color` × `intensity` is the panel's radiance, so a bigger panel casts more
     /// light. `specular` (default `nil` = `color`) tints its highlight.
-    public static func rect(_ color: Color, at position: Vector3, direction: Vector3,
+    public static func rectangle(_ color: Color, at position: Vector3, direction: Vector3,
                             width: Double, height: Double, up: Vector3 = .unitY,
-                            twoSided: Bool = false, intensity: Double = 1,
+                            isTwoSided: Bool = false, intensity: Double = 1,
                             specular: Color? = nil, castsShadow: Bool = true) -> Light {
-        Light(kind: .rect, color: color, intensity: intensity, specular: specular,
+        Light(kind: .rectangle, color: color, intensity: intensity, specular: specular,
               position: position, direction: direction,
-              width: width, height: height, up: up, twoSided: twoSided,
+              width: width, height: height, up: up, isTwoSided: isTwoSided,
               castsShadow: castsShadow)
     }
 
     /// A disk area light: a glowing circular panel of `radius` centered at `position`,
-    /// facing along `direction`. `twoSided` makes both faces emit. Falls off with
+    /// facing along `direction`. `isTwoSided` makes both faces emit. Falls off with
     /// distance like the rect; `color` × `intensity` is the disk's radiance.
     /// `specular` (default `nil` = `color`) tints its highlight.
     public static func disk(_ color: Color, at position: Vector3, direction: Vector3,
-                            radius: Double, twoSided: Bool = false, intensity: Double = 1,
+                            radius: Double, isTwoSided: Bool = false, intensity: Double = 1,
                             specular: Color? = nil, castsShadow: Bool = true) -> Light {
         Light(kind: .disk, color: color, intensity: intensity, specular: specular,
               position: position, direction: direction,
-              radius: radius, twoSided: twoSided, castsShadow: castsShadow)
+              radius: radius, isTwoSided: isTwoSided, castsShadow: castsShadow)
     }
 
     /// A tube area light: a glowing cylinder of `radius` running `from` one point `to`

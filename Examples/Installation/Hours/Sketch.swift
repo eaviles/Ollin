@@ -51,7 +51,7 @@ final class Hours: Sketch {
         let bands = 96.0
         for band in 0 ..< Int(bands) {
             let t = Double(band) / (bands - 1)
-            fill(Color.mix(high, low, t: t))
+            fill(Color.mix(high, low, t))
             drawRect(0, t * height, width, height / bands + 1)
         }
 
@@ -73,8 +73,8 @@ final class Hours: Sketch {
         }
         let here = day[index], next = day[(index + 1) % day.count]
         let turn = max(0, (scheduledProgress - 0.75) / 0.25)
-        return (Color.mix(here.high, next.high, t: turn),
-                Color.mix(here.low, next.low, t: turn))
+        return (Color.mix(here.high, next.high, turn),
+                Color.mix(here.low, next.low, turn))
     }
 
     private func label() {

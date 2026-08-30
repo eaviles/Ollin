@@ -20,7 +20,7 @@ final class Inhabit: Sketch {
         guard let frame else { return }
 
         // A camera built from the feed's own lens: one metric space.
-        camera(.fromIntrinsics(frame.intrinsics))
+        camera(.intrinsic(frame.intrinsics))
         drawDepthScene(frame)
 
         // A run of marbles marching into the room, in meters. The ones that

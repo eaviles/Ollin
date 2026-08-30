@@ -41,7 +41,7 @@ final class Springs: Sketch {
                 drawLine(x, y - 16, x, y + 16)
             }
 
-            racers[i].step(toward: target, dt: deltaTime)
+            racers[i].advance(toward: target, by: deltaTime)
             noStroke()
             fill(Color(hue: 0.5 + Double(i) * 0.09, saturation: 0.65, brightness: 0.95))
             drawCircle(racers[i].value, y, 17)

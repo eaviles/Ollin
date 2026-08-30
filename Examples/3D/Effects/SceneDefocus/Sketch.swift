@@ -9,7 +9,7 @@ import Ollin
 /// `.defocus` as the aux and the scene racks focus like a real lens.
 ///
 /// ```swift
-/// let scene = renderTarget()
+/// let scene = makeRenderTarget()
 /// withTarget(scene) { camera(...); drawSphere(...) }      // 3D → depth captured
 /// let dof = scene.combined(with: scene.depth, .defocus(focus: ...))
 /// drawImage(dof.image, 0, 0)
@@ -32,7 +32,7 @@ final class SceneDefocus: Sketch {
         // The 3D scene, drawn into a render target. Drawing meshes into it turns on
         // depth capture (3D needs a depth buffer to occlude correctly), so `scene.depth`
         // becomes available below. A pure-2D target would carry no depth and cost nothing.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x0A0B12))
             // near/far bracket the orb row so the normalized depth spans 0…1 across it.

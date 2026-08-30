@@ -135,7 +135,7 @@ final class SceneAsSource: Sketch {
         guard !listing.isEmpty else { return }
 
         let longest = listing.max { textWidth($0) < textWidth($1) } ?? ""
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         var size = 16.0
         textSize(size)
         while size > 6, textWidth(longest) > codeBox.width {
@@ -165,7 +165,7 @@ final class SceneAsSource: Sketch {
         // corner of the canvas: a 3D camera frames whatever surface it draws
         // into, so only its own layer gives it the panel's shape.
         if let described {
-            let panel = renderTarget(width: Int(viewBox.width), height: Int(viewBox.height))
+            let panel = makeRenderTarget(width: Int(viewBox.width), height: Int(viewBox.height))
             withTarget(panel) {
                 background(Color(hex: 0x14161C))
                 drawPanelContents(described)
@@ -218,9 +218,9 @@ final class SceneAsSource: Sketch {
         switch l.kind {
         case .directional: return .directional(color, direction: toward, intensity: l.intensity)
         case .point:       return .point(color, at: at, intensity: l.intensity)
-        case .spot:        return .spot(color, at: at, direction: toward, angle: l.coneAngle,
+        case .spot:        return .spot(color, at: at, direction: toward, coneAngle: l.coneAngle,
                                         penumbra: l.penumbra, intensity: l.intensity)
-        case .rect:        return .rect(color, at: at, direction: toward, width: l.width,
+        case .rectangle:   return .rectangle(color, at: at, direction: toward, width: l.width,
                                         height: l.height, intensity: l.intensity)
         case .disk:        return .disk(color, at: at, direction: toward, radius: l.radius,
                                         intensity: l.intensity)

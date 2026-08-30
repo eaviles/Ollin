@@ -17,7 +17,7 @@ final class ShaderBlend_Example: Sketch {
 
     override func draw() {
         // Base: warm concentric rings.
-        let warm = renderTarget()
+        let warm = makeRenderTarget()
         withTarget(warm) {
             background(Color(hex: 0x2B1B12))
             noFill(); strokeWeight(14)
@@ -27,7 +27,7 @@ final class ShaderBlend_Example: Sketch {
             }
         }
         // Aux: cool grid.
-        let cool = renderTarget()
+        let cool = makeRenderTarget()
         withTarget(cool) {
             background(Color(hex: 0x0E1B2A))
             stroke(Color(hex: 0x4CC9F0)); strokeWeight(6)

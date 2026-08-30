@@ -32,7 +32,7 @@ final class Rigging: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.05
+        world.restitution = 0.05
 
         // A hanging line is a polyline running straight down from the beam.
         // Anything that makes points makes a rope, so this could as easily be a
@@ -88,7 +88,7 @@ final class Rigging: Sketch {
             }
         }
         if let grip { dragSoftGrab(grip, to: mouse) }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         drawSetting()
 

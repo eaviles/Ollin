@@ -44,7 +44,7 @@ final class Changes: Sketch {
 
     private func rebuild() {
         let key = Scale(mode, root: Pitch(48 + Double(root)))
-        let base = Progression("I vi IV V ii V", in: key, notes: notes)
+        let base = Progression("I vi IV V ii V", in: key, noteCount: notes)
         // A wander is seeded, so the same one comes back rather than a new one
         // every time a knob moves.
         changes = wandering ? base.wandering(24, seed: 5) : base
@@ -89,7 +89,7 @@ final class Changes: Sketch {
                                         / Double(max(1, changes.scale.degreeCount)) * 0.55)
                 .withAlpha(0.2 + glow * 0.8))
             strokeWeight((3 + glow * 9) * scale)
-            drawArc(center: middle, rx: radius, ry: radius,
+            drawArc(center: middle, radiusX: radius, radiusY: radius,
                     start: from + 0.02, stop: to - 0.02, mode: .open)
         }
 

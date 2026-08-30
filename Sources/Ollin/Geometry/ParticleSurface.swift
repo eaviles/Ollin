@@ -61,7 +61,7 @@ public func particleSurface(of points: [Vector3],
         // `radius` from it. The kernel is the smooth compact bump (1 - s²)³.
         var weightSum = 0.0
         var average = Vector3.zero
-        grid.forNeighbors(of: p, within: support) { i, d2 in
+        grid.forEachNeighbor(of: p, within: support) { i, d2 in
             let s = 1 - d2 / s2
             let w = s * s * s
             weightSum += w

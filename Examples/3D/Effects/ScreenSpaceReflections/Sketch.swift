@@ -10,7 +10,7 @@ import Ollin
 /// captures depth, and feed `scene.depth` to `.screenSpaceReflections`:
 ///
 /// ```swift
-/// let scene = renderTarget()
+/// let scene = makeRenderTarget()
 /// withTarget(scene) { camera(...); material(.polishedMetal); drawSphere(...) }   // depth captured
 /// let ssr = scene.combined(with: scene.depth, .screenSpaceReflections())
 /// drawImage(ssr.image, 0, 0)
@@ -27,7 +27,7 @@ import Ollin
 final class ScreenSpaceReflections: Sketch {
 
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x20242c))
             cameraShowcase(.autoOrbit(period: .tau / 0.12),
@@ -36,7 +36,7 @@ final class ScreenSpaceReflections: Sketch {
             // A bright studio environment: it lights and reflects in the metals, and its softly
             // blurred backdrop fills the scene with light (a bright scene reveals the reflections
             // a dark one would hide).
-            environment(.studio.intensity(1.15).backgroundBlur(0.6))
+            environment(.studio.intensified(to: 1.15).backgroundBlurred(0.6))
             directionalLight(.white, direction: Vector3(-0.3, -1, -0.2), intensity: 0.85)
 
             // A light glossy showroom floor: bright, and its reflection comes from SSR.
@@ -80,7 +80,7 @@ final class ScreenSpaceReflections: Sketch {
             drawCaption("Screen-space reflections: OFF (release space to compare)")
         } else {
             let ssr = scene.combined(with: scene.depth,
-                                     .screenSpaceReflections(intensity: 0.9, roughness: 0.2, fresnel: 0.5))
+                                     .screenSpaceReflections(amount: 0.9, roughness: 0.2, fresnel: 0.5))
             drawImage(ssr.image, 0, 0)
             drawCaption("Screen-space reflections: ON (hold space to compare)")
         }

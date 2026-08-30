@@ -38,7 +38,7 @@ internal import CJolt
 /// vehicles, ragdolls, and soft bodies are each built from something a
 /// snapshot has no way to carry (a rig, a wheel layout, a skinned scene, a
 /// mesh), so they are left out, with a note naming what was skipped. Contacts
-/// are left out too: they are worked out again by the next `step(dt:)`.
+/// are left out too: they are worked out again by the next `advance(by:)`.
 public struct PhysicsSnapshot: Sendable, Equatable {
 
     /// The bytes. Write them anywhere; hand them back to `init(data:)`.
@@ -182,7 +182,7 @@ extension World3D {
         // World settings.
         writer.vector(gravity)
         writer.optionalDouble(ground)
-        writer.f64(bounce)
+        writer.f64(restitution)
         writer.f64(maxTimestep)
         writer.f64(unitsPerMeter)
         writer.water(water)
@@ -195,7 +195,7 @@ extension World3D {
         writer.u32(UInt32(groupIndex(groundGroup)))
         var separated: [(UInt32, UInt32)] = []
         for a in 0 ..< groupNames.count {
-            for b in a ..< groupNames.count where !collides(groupNames[a], with: groupNames[b]) {
+            for b in a ..< groupNames.count where !collides(between: groupNames[a], and: groupNames[b]) {
                 separated.append((UInt32(a), UInt32(b)))
             }
         }
@@ -397,7 +397,7 @@ extension World3D {
         // from the snapshot's own level, group, bounce, and unit scale.
         self.ground = nil
         self.unitsPerMeter = unitsPerMeter
-        self.bounce = bounce
+        self.restitution = bounce
         self.maxTimestep = maxTimestep
         self.gravity = gravity
         groundGroup = group(at: Int32(groundGroupIndex))
@@ -431,7 +431,7 @@ extension World3D {
                                velocity: saved.velocity,
                                angularVelocity: saved.angularVelocity,
                                asleep: !saved.isAwake)
-            body.buoyancy = saved.buoyancy
+            body.buoyancyScale = saved.buoyancyScale
             body.assetName = saved.assetName
             restoredBodies.append(body)
         }
@@ -540,7 +540,7 @@ extension World3D {
                                       restitution: saved.restitution,
                                       iterations: saved.iterations,
                                       vertexRadius: saved.vertexRadius,
-                                      twoSided: saved.twoSided, pinned: nil,
+                                      isTwoSided: saved.isTwoSided, pinned: nil,
                                       group: group(at: Int32(saved.group)),
                                       skeleton: [], carriedBy: nil, sway: nil,
                                       backStop: nil,
@@ -581,7 +581,7 @@ extension World3D {
                                        friction: saved.friction,
                                        balances: saved.balances,
                                        maxLeanAngle: saved.maxLeanAngle,
-                                       tracked: saved.tracked,
+                                       isTracked: saved.tracked,
                                        group: group(at: Int32(saved.group)))
         else { return nil }
         place(vehicle.body, at: saved.pose)
@@ -737,7 +737,7 @@ private struct SavedBody {
     var density: Double
     var friction: Double
     var restitution: Double
-    var buoyancy: Double
+    var buoyancyScale: Double
     var gravityScale: Double
     var freedom: Freedom3D
     var checksPath: Bool
@@ -849,7 +849,7 @@ private struct SavedSoftBody {
     var restitution: Double
     var iterations: Int
     var vertexRadius: Double
-    var twoSided: Bool
+    var isTwoSided: Bool
     var group: UInt32
     var positions: [Vector3]
     var velocities: [Vector3]
@@ -1147,7 +1147,7 @@ private struct SnapshotWriter {
         f64(body.density)
         f64(body.friction)
         f64(body.restitution)
-        f64(body.buoyancy)
+        f64(body.buoyancyScale)
         f64(body.gravityScale)
         u32(body.freedom.rawValue)
         bool(body.checksPath)
@@ -1612,7 +1612,7 @@ private struct SnapshotReader {
                          angularVelocity: spin, kind: kind,
                          isSensor: try bool(), density: try f64(),
                          friction: try f64(), restitution: try f64(),
-                         buoyancy: try f64(), gravityScale: try f64(),
+                         buoyancyScale: try f64(), gravityScale: try f64(),
                          freedom: Freedom3D(rawValue: try u32()),
                          checksPath: try bool(), group: try u32(),
                          isAwake: try bool())
@@ -1813,7 +1813,7 @@ private struct SnapshotReader {
                              pressure: pressure, damping: damping,
                              friction: friction, restitution: restitution,
                              iterations: iterations, vertexRadius: vertexRadius,
-                             twoSided: twoSided, group: group,
+                             isTwoSided: twoSided, group: group,
                              positions: positions, velocities: velocities,
                              pinned: pinned,
                              maxStretch: stretch > 0 ? stretch : nil,

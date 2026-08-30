@@ -18,7 +18,7 @@ import Ollin
     @Test func detectsARectangleInTheTopHalf() async throws {
         // A black rectangle in the upper portion: center ≈ (200, 90) of a 400×300.
         let image = rectImage(width: 400, height: 300, x0: 120, y0: 40, x1: 280, y1: 140)
-        let rects = try await RectangleDetector.detect(in: image, minimumConfidence: 0.0)
+        let rects = try await RectangleDetector.detect(in: image, minConfidence: 0.0)
         #expect(!rects.isEmpty)
         guard let r = rects.first else { return }
 

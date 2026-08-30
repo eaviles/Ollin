@@ -82,7 +82,7 @@ struct StateAutomataTests {
         // all three branches (catch, worsen with the averaged sum, recover).
         let n = 10
         let start = randomGrid(levels: n + 1, seed: 19)
-        let sketch = probe(.hodgepodge(states: n, k1: 2, k2: 3, g: 3,
+        let sketch = probe(.hodgepodge(states: n, infectedDivisor: 2, illDivisor: 3, infectionRate: 3,
                                        neighborhood: .moore, seed: 5),
                            stamps: fullStamps(start, levels: n + 1))
         let gpu = try grid(sketch, generations: 10, levels: n + 1)
@@ -268,7 +268,7 @@ private final class AutomatonProbeSketch: Sketch {
     private var field: SimField!
 
     override func setup() {
-        field = simField(probeSim, scale: 1)
+        field = makeSimField(probeSim, scale: 1)
     }
 
     override func draw() {

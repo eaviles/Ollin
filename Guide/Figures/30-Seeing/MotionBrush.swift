@@ -108,6 +108,6 @@ final class StagePerformer {
     /// Run the one-shot flow measurement and wait for it, so a figure renders
     /// deterministically frame by frame.
     private static func measureFlow(from a: Image, to b: Image) -> MotionField? {
-        try? waitFor(a, b) { try await FlowTracker.flow(from: $0, to: $1, accuracy: .high) }
+        try? waitFor(a, b) { try await FlowTracker.detect(from: $0, to: $1, quality: .high) }
     }
 }

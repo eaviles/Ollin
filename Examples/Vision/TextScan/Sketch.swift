@@ -8,7 +8,7 @@ import OllinVision
 @main
 final class TextScan: Sketch {
     let camera = Camera()
-    lazy var reader = TextRecognizer(camera, level: .fast)
+    lazy var reader = TextRecognizer(camera, quality: .fast)
 
     override func setup() {
         try? camera.start()

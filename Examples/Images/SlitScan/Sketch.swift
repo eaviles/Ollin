@@ -16,12 +16,12 @@ import Ollin
 final class SlitScan: Sketch {
     // The sketch class takes the technique's name, so the framework type is
     // reached through the module.
-    private let history = Ollin.SlitScan(frames: 90)
+    private let history = Ollin.SlitScan(capacity: 90)
     private let source = Image(width: 256, height: 256, color: .black)
 
     override func draw() {
         paint()
-        history.push(source)
+        history.append(source)
 
         background(.black)
         let warped = mouseIsPressed
@@ -62,7 +62,7 @@ final class SlitScan: Sketch {
                 // The ball, with a soft rim.
                 let d = dist(u, v, ballX, ballY)
                 if d < 0.11 {
-                    color = Color.mix(.white, color, t: smoothstep(0.07, 0.11, d))
+                    color = Color.mix(.white, color, smoothstep(0.07, 0.11, d))
                 }
                 source[x, y] = color
             }

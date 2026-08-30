@@ -6,9 +6,9 @@ import OllinVision
 /// Nothing to download for this one: one script command trains a style-transfer
 /// model from a single style image in a couple of minutes, and the model is
 /// yours — no license to check, no weights to fetch. The
-/// surface doing the work is `outputImage`: where `DepthRelief` reads its
+/// surface doing the work is `image`: where `DepthRelief` reads its
 /// model's output as a gray value *map*, a style model *paints a picture*, and
-/// `outputImage` hands it over in full color, drawn like any image. Slide the
+/// `image` hands it over in full color, drawn like any image. Slide the
 /// mouse left and right to crossfade between the camera and the painting.
 ///
 /// To train a model (a couple of minutes, one command — the Create ML app no
@@ -76,7 +76,7 @@ final class StyleMirror: Sketch {
                               "after that it starts instantly.")
         }
 
-        if let painting = styler.outputImage {
+        if let painting = styler.image {
             // Crossfade by mouse: camera at the left edge, painting at the right.
             let blend = map(mouseX, rect.x, rect.x + rect.width, 0, 1, clamp: true)
             tint(Color(white: 1, alpha: blend))

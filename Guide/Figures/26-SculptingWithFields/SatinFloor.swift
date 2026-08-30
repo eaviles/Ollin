@@ -19,7 +19,7 @@ final class SatinFloor: Sketch {
         background(Color(hex: 0x0A0D12))
         camera(.orbiting(target: Vector3(0, 0.9, 0), radius: 9.0, azimuth: 0.35,
                          elevation: 0.26, fieldOfView: .pi / 4.4, near: 1, far: 40))
-        environment(.studio.intensity(1.0))
+        environment(.studio.intensified(to: 1.0))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.3), intensity: 0.8)
         rayTracedReflections()
         if lobe { glossyReflections() }

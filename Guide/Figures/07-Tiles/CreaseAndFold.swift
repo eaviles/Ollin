@@ -79,7 +79,7 @@ final class CreaseAndFold: Sketch {
             let corners = Array(placed[(index * 4) ..< (index * 4 + 4)])
             let normal = (panels[index][1] - panels[index][0])
                 .cross(panels[index][3] - panels[index][0]).normalized
-            fill(Color.mix(Color(hex: 0x3A4258), chalk, t: 0.30 + abs(normal.dot(light)) * 0.66))
+            fill(Color.mix(Color(hex: 0x3A4258), chalk, 0.30 + abs(normal.dot(light)) * 0.66))
             stroke(paper.withAlpha(0.6))
             drawPolygon(corners)
         }
@@ -94,7 +94,7 @@ final class CreaseAndFold: Sketch {
         noStroke()
         for (index, square) in lattice.squares.enumerated() {
             let along = Double(index) / Double(lattice.squares.count - 1)
-            fill(Color.mix(chalk, warm, t: along * 0.8))
+            fill(Color.mix(chalk, warm, along * 0.8))
             drawPolygon(square.points.map {
                 Vector2(frame.center.x + ($0.x - box.center.x) * scale,
                         frame.center.y + ($0.y - box.center.y) * scale)

@@ -161,7 +161,7 @@ enum WallPlan {
             let wall = union(of: ordered.map(\.frame))
             built = ordered.map { screen in
                 var part = base
-                part.shows = slice(of: base.shows, taking: screen.frame, of: wall)
+                part.visibleRegion = slice(of: base.visibleRegion, taking: screen.frame, of: wall)
                 // A display's own corners are the room's business, so a spread
                 // canvas opens square and is dragged on to the wall from there.
                 part.corners = .fit
@@ -231,7 +231,7 @@ enum WallPlan {
 
         let area = screen.visible.inset(by: 0.04)
         let gap = 14.0
-        let aspects = projections.map { pictureAspect($0.shows, canvas: canvas) }
+        let aspects = projections.map { pictureAspect($0.visibleRegion, canvas: canvas) }
         let spread = aspects.reduce(0, +)
         let room = max(1, area.width - gap * Double(projections.count - 1))
         let height = max(1, min(area.height, room / max(spread, 0.0001)))
@@ -262,10 +262,10 @@ enum WallPlan {
             let strips = max(1, count)
             return (0..<strips).map { index in
                 var part = base
-                part.shows = Rectangle(x: base.shows.x + base.shows.width * Double(index) / Double(strips),
-                                       y: base.shows.y,
-                                       width: base.shows.width / Double(strips),
-                                       height: base.shows.height)
+                part.visibleRegion = Rectangle(x: base.visibleRegion.x + base.visibleRegion.width * Double(index) / Double(strips),
+                                       y: base.visibleRegion.y,
+                                       width: base.visibleRegion.width / Double(strips),
+                                       height: base.visibleRegion.height)
                 part.corners = .fit
                 return part
             }

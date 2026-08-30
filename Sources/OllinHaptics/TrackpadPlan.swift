@@ -53,7 +53,7 @@ public enum TrackpadPlan {
 
     /// The shortest gap between two knocks, in seconds. About 50 a second,
     /// which is past the rate a hand can separate.
-    public static let minimumSpacing = 0.02
+    public static let minSpacing = 0.02
 
     /// The knock rate of the weakest hum that still gets planned.
     public static let slowestHum = 6.0
@@ -131,7 +131,7 @@ public enum TrackpadPlan {
         var kept: [TrackpadKnock] = []
         kept.reserveCapacity(knocks.count)
         var last = -Double.infinity
-        for knock in knocks where knock.time - last >= minimumSpacing {
+        for knock in knocks where knock.time - last >= minSpacing {
             kept.append(knock)
             last = knock.time
         }

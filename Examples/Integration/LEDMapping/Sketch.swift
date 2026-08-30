@@ -107,7 +107,7 @@ final class LEDMapping: Sketch {
         let stripSpacing = (width - inset * 2) / Double(strip.ledCount - 1)
         for i in 0..<strip.ledCount {
             guard let slot = strip.address(ofLED: i) else { continue }
-            let color = receiver.color(at: slot.channel, universe: slot.universe)
+            let color = receiver.color(slot.channel, universe: slot.universe)
             drawLED(at: Vector2(inset + Double(i) * stripSpacing, stripY),
                     color: color, radius: 7 * scale)
         }
@@ -122,7 +122,7 @@ final class LEDMapping: Sketch {
         for row in 0..<8 {
             for column in 0..<12 {
                 guard let slot = panel.address(ofLED: row * 12 + column) else { continue }
-                let color = receiver.color(at: slot.channel, universe: slot.universe)
+                let color = receiver.color(slot.channel, universe: slot.universe)
                 drawLED(at: panelOrigin + Vector2((Double(column) + 0.5) * cell,
                                                   (Double(row) + 0.5) * cell),
                         color: color, radius: 9 * scale)

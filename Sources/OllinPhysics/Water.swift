@@ -118,7 +118,7 @@ public struct Water: Equatable, Sendable {
         return level + waves.amplitude * sum / Waves.totalWeight
     }
 
-    /// The plane the buoyancy is measured against under `point`: the surface
+    /// The plane the buoyancyScale is measured against under `point`: the surface
     /// point directly above or below it, and the way the surface faces there.
     /// A wavy surface is handed to the solver one body at a time as the plane
     /// tangent to it, which is exact for still water and a good approximation
@@ -284,7 +284,7 @@ extension World3D {
 
         for index in 0..<Int(found) {
             let id = waterBodies[index]
-            let scale = bodyByID[id]?.buoyancy ?? 1
+            let scale = bodyByID[id]?.buoyancyScale ?? 1
             guard scale > 0 else { continue }
             let center = units(from: waterCenters[3 * index],
                                waterCenters[3 * index + 1],
@@ -308,7 +308,7 @@ extension World3D {
             }
         }
 
-        // Soft bodies are not in that sweep: the solver's own buoyancy works
+        // Soft bodies are not in that sweep: the solver's own buoyancyScale works
         // through one mass and one inertia, which a bag of particles has
         // neither of, so each is floated particle by particle instead. They are
         // few and each is one call, so the list is walked rather than queried.
@@ -331,12 +331,12 @@ extension World3D {
             // dimensionless number the rigid path forms from a body's mass and
             // the volume it displaces. A surface with no inside cannot be
             // measured that way, which is why it is formed here instead.
-            let buoyancy = Float(max(0, water.density) / soft.density)
+            let buoyancyScale = Float(max(0, water.density) / soft.density)
             soft.surfaceHeights.withUnsafeBufferPointer { heights in
                 withFloats3(flow) { current in
                     _ = cjolt_soft_body_apply_buoyancy(
                         handle, soft.handle, heights.baseAddress,
-                        Int32(heights.count), buoyancy, fluidDensity, linearDrag,
+                        Int32(heights.count), buoyancyScale, fluidDensity, linearDrag,
                         Float(soft.dragArea), Float(soft.particleSpacing),
                         current, Float(dt), wake)
                 }

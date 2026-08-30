@@ -8,7 +8,7 @@ import Ollin
 /// only pile new draws onto an unchanging canvas; feedback hands you the previous
 /// frame as an *image you can transform* before drawing it back.
 ///
-/// The pieces: `feedback()` makes a persistent layer (made once in `setup()` and
+/// The pieces: `makeFeedback()` makes a persistent layer (made once in `setup()` and
 /// held, its identity carrying state from frame to frame); `withFeedback`
 /// redirects drawing into it and hands in last frame as `prev`; `feedback.image`
 /// composites the result onto the canvas.
@@ -21,7 +21,7 @@ final class Feedback_Example: Sketch {
     var trail: Feedback!
 
     override func setup() {
-        trail = feedback()
+        trail = makeFeedback()
     }
 
     override func draw() {

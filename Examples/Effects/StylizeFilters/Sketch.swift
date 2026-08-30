@@ -14,10 +14,10 @@ final class StylizeFilters_Example: Sketch {
 
     private var tiles: [(String, Filter?)] {
         [
-            ("edges", .edges(intensity: 2.5)),
+            ("edges", .edges(amount: 2.5)),
             ("sharpen", .sharpen(amount: 2.5)),
             ("emboss", .emboss(amount: 2)),
-            ("normalMap", .normalMap(strength: 2)),
+            ("normalMap", .normalMap(amount: 2)),
             ("toon", .toon(levels: 5)),
             ("oilPaint", .oilPaint(radius: 5)),
             ("crosshatch", .crosshatch(scale: 95)),
@@ -41,7 +41,7 @@ final class StylizeFilters_Example: Sketch {
 
         // A scene with color, smooth tone, and crisp edges, so the edge/relief and
         // painterly passes all have structure to work on.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x101826))
             noStroke()

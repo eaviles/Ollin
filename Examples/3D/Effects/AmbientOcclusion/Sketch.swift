@@ -14,7 +14,7 @@ import Ollin
 /// separate normal buffer:
 ///
 /// ```swift
-/// let scene = renderTarget()
+/// let scene = makeRenderTarget()
 /// withTarget(scene) { camera(...); drawBox(...) }      // 3D → depth captured
 /// let ao = scene.combined(with: scene.depth, .ambientOcclusion(radius: 0.6))
 /// drawImage(ao.image, 0, 0)
@@ -30,7 +30,7 @@ import Ollin
 final class AmbientOcclusion: Sketch {
 
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x121318))
             // near/far bracket the block field so the reconstruction has depth precision.
@@ -73,7 +73,7 @@ final class AmbientOcclusion: Sketch {
             drawCaption("Ambient occlusion: OFF (release space to compare)")
         } else {
             let ao = scene.combined(with: scene.depth,
-                                    .ambientOcclusion(radius: 0.5, intensity: 1.0))
+                                    .ambientOcclusion(radius: 0.5, amount: 1.0))
             drawImage(ao.image, 0, 0)
             drawCaption("Ambient occlusion: ON (hold space to compare)")
         }

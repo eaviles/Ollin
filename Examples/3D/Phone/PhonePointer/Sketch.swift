@@ -68,7 +68,7 @@ final class PhonePointer: Sketch {
         guard let wand = device.latestWand else { return drawWaiting() }
 
         camera(view())
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
         material(.clay)
 
         carry(with: wand)

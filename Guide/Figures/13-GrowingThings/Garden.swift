@@ -71,7 +71,7 @@ final class Garden: Sketch {
         }
 
         // The tree, weighted by the pipe model.
-        let widths = tree.thicknesses(leafWidth: 1.1, exponent: 2.4)
+        let widths = tree.thicknesses(tipWidth: 1.1, exponent: 2.4)
         stroke(Color(hex: 0xD9C9A0))
         for (i, node) in tree.nodes.enumerated() {
             guard let parent = node.parent else { continue }

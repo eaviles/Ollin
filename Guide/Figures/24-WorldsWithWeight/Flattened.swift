@@ -27,7 +27,7 @@ final class Flattened: Sketch {
 
     override func setup() {
         world.ground = floorY
-        world.bounce = 0.1
+        world.restitution = 0.1
 
         for side in [-1.0, 1.0] { buildBoard(at: side * boardX) }
 
@@ -99,7 +99,7 @@ final class Flattened: Sketch {
 
         let poured = beads.count / 2
         if poured < 9 && frameCount % 16 == 1 { release(poured) }
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         fill(Color(hex: 0x11151F))
         material(.dielectric(roughness: 0.94))

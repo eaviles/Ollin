@@ -21,7 +21,7 @@ final class SandpileFigure: Sketch {
                                       (1.00, Color(hex: 0xB3402A))])
 
     override func setup() {
-        pile = simField(.sandpile(pour: 1024, topplings: 128), scale: 1)
+        pile = makeSimField(.sandpile(pour: 1024, topplings: 128), scale: 1)
     }
 
     override func draw() {

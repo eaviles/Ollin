@@ -52,7 +52,7 @@ final class DataAsMaterial: Sketch {
         textAlign(.left, .baseline)
         drawText("the file", 60, 84)
 
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         textSize(16)
         for (index, line) in source.split(separator: "\n").enumerated() {
             let y = 130 + Double(index) * 30

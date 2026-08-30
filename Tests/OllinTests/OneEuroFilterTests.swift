@@ -20,14 +20,14 @@ struct OneEuroFilterTests {
 
     @Test func firstSamplePassesThrough() {
         var filter = OneEuroFilter<Double>()
-        #expect(filter.filter(42, dt: Self.dt) == 42)
+        #expect(filter.filter(42, deltaTime: Self.dt) == 42)
     }
 
     @Test func constantInputSettlesOnTheConstant() {
         var filter = OneEuroFilter<Double>()
-        _ = filter.filter(0, dt: Self.dt)             // seed away from the target
+        _ = filter.filter(0, deltaTime: Self.dt)             // seed away from the target
         var out = 0.0
-        for _ in 0..<300 { out = filter.filter(5, dt: Self.dt) }
+        for _ in 0..<300 { out = filter.filter(5, deltaTime: Self.dt) }
         #expect(abs(out - 5) < 1e-3)
     }
 
@@ -38,7 +38,7 @@ struct OneEuroFilterTests {
         var outputs: [Double] = []
         for i in 0..<400 {
             let x = mean + Self.noise(i) * 20            // ±10 of jitter
-            let y = filter.filter(x, dt: Self.dt)
+            let y = filter.filter(x, deltaTime: Self.dt)
             if i >= 100 {                                // skip warmup
                 inputs.append(x)
                 outputs.append(y)
@@ -51,36 +51,36 @@ struct OneEuroFilterTests {
     @Test func higherBetaTracksAJumpFaster() {
         var lazy = OneEuroFilter<Double>(minCutoff: 1, beta: 0)
         var eager = OneEuroFilter<Double>(minCutoff: 1, beta: 1)
-        _ = lazy.filter(0, dt: Self.dt)
-        _ = eager.filter(0, dt: Self.dt)
+        _ = lazy.filter(0, deltaTime: Self.dt)
+        _ = eager.filter(0, deltaTime: Self.dt)
         var lazyOut = 0.0, eagerOut = 0.0
         for _ in 0..<5 {                                 // a sudden jump to 100
-            lazyOut = lazy.filter(100, dt: Self.dt)
-            eagerOut = eager.filter(100, dt: Self.dt)
+            lazyOut = lazy.filter(100, deltaTime: Self.dt)
+            eagerOut = eager.filter(100, deltaTime: Self.dt)
         }
         #expect(eagerOut > lazyOut, "a larger beta opens the cutoff and catches up sooner")
     }
 
     @Test func nonPositiveDtHolds() {
         var filter = OneEuroFilter<Double>()
-        _ = filter.filter(0, dt: Self.dt)
-        let settled = filter.filter(10, dt: Self.dt)
-        #expect(filter.filter(999, dt: 0) == settled, "no time passed — hold the last value")
+        _ = filter.filter(0, deltaTime: Self.dt)
+        let settled = filter.filter(10, deltaTime: Self.dt)
+        #expect(filter.filter(999, deltaTime: 0) == settled, "no time passed; hold the last value")
     }
 
     @Test func resetClearsHistory() {
         var filter = OneEuroFilter<Double>()
-        _ = filter.filter(0, dt: Self.dt)
-        _ = filter.filter(7, dt: Self.dt)
+        _ = filter.filter(0, deltaTime: Self.dt)
+        _ = filter.filter(7, deltaTime: Self.dt)
         filter.reset()
-        #expect(filter.filter(99, dt: Self.dt) == 99, "after reset the next sample passes through")
+        #expect(filter.filter(99, deltaTime: Self.dt) == 99, "after reset the next sample passes through")
     }
 
     @Test func vectorFormTracksBothComponents() {
         var filter = OneEuroFilter<Vector2>()
-        _ = filter.filter(.zero, dt: Self.dt)
+        _ = filter.filter(.zero, deltaTime: Self.dt)
         var out = Vector2.zero
-        for _ in 0..<300 { out = filter.filter(Vector2(10, -4), dt: Self.dt) }
+        for _ in 0..<300 { out = filter.filter(Vector2(10, -4), deltaTime: Self.dt) }
         #expect(abs(out.x - 10) < 1e-3)
         #expect(abs(out.y + 4) < 1e-3)
     }

@@ -158,7 +158,7 @@ public struct HapticPattern: Equatable, Sendable {
     }
 
     /// The same pattern played faster or slower. 2 plays it twice as fast.
-    public func speed(_ factor: Double) -> HapticPattern {
+    public func scaled(speed factor: Double) -> HapticPattern {
         let rate = factor.finiteOrZero
         guard rate > 0, rate != 1 else { return self }
         return HapticPattern(events.map { $0.timeScaled(by: rate) })

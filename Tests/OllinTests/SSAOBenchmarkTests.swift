@@ -23,7 +23,7 @@ struct SSAOBenchmarkTests {
     /// deterministic.
     final class BenchScene: Sketch {
         override func draw() {
-            let scene = renderTarget()
+            let scene = makeRenderTarget()
             withTarget(scene) {
                 background(Color(hex: 0x121318))
                 camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 9,
@@ -50,7 +50,7 @@ struct SSAOBenchmarkTests {
                 }
             }
             let ao = scene.combined(with: scene.depth,
-                                    .ambientOcclusion(radius: 0.5, intensity: 1.0))
+                                    .ambientOcclusion(radius: 0.5, amount: 1.0))
             drawImage(ao.image, 0, 0)
         }
     }

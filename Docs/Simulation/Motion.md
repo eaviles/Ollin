@@ -6,7 +6,7 @@
 
 Three CPU motion systems you hold on the sketch and drive each frame: an inverse-kinematics chain that reaches (tentacles, limbs, ropes), the double pendulum (the classic chaos machine), and a gravitational n-body simulation (orbits, galaxies, collisions). All three are deterministic, with no hidden randomness and fixed iteration orders, and the n-body factories roll from a seed, so a run replays exactly and a fixed-frame export reproduces.
 
-They pair naturally with the rest of the family. The [strange attractors](../Drawing/Attractors.md) are the *baked-orbit* side of chaos (build once, draw the path), while `DoublePendulum` and `NBody` are the *live* side you step and watch. The [`@Sprung` damped spring](../Helpers/Animation.md#sprung) is the third member of the motion-helper family beside them.
+They pair naturally with the rest of the family. The [strange attractors](../Drawing/Attractors.md) are the *baked-orbit* side of chaos (build once, draw the path), while `DoublePendulum` and `NBody` are the *live* side you advance and watch. The [`@Sprung` damped spring](../Helpers/Animation.md#sprung) is the third member of the motion-helper family beside them.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/Articulated-dark.jpg">
@@ -47,7 +47,7 @@ var trail: [Vector2] = []
 
 override func draw() {
     background(.white)
-    pendulum.step()
+    pendulum.advance()
     withState {
         translate(width / 2, height / 3)
         trail.append(pendulum.bob2)
@@ -67,7 +67,7 @@ let galaxy = NBody.disk(count: 2000, center: Vector2(540, 540), radius: 380)
 
 override func draw() {
     background(.black)
-    galaxy.step()
+    galaxy.advance()
     noStroke()
     fill(.white)
     for p in galaxy.positions { drawCircle(center: p, radius: 2) }
@@ -100,13 +100,13 @@ The [InverseKinematics example](../../Examples/Motion/InverseKinematics/Sketch.s
 
 ### `DoublePendulum`: chaos from two arms
 
-Two point masses on rigid arms, swinging under gravity, which is the simplest system with genuinely chaotic motion. Configure it at creation (`length1`/`length2` in canvas units, `mass1`/`mass2`, starting `angle1`/`angle2` in radians measured from hanging straight down, optional starting velocities, and `gravity`, whose default treats 100 canvas units as a meter), then `step()` it each frame.
+Two point masses on rigid arms, swinging under gravity, which is the simplest system with genuinely chaotic motion. Configure it at creation (`length1`/`length2` in canvas units, `mass1`/`mass2`, starting `angle1`/`angle2` in radians measured from hanging straight down, optional starting velocities, and `gravity`, whose default treats 100 canvas units as a meter), then `advance()` it each frame.
 
 Read positions through **`bob1`** and **`bob2`**, both relative to the pivot with y pointing down, so drawing is a `translate` to the pivot and two lines. `bob2` is the point worth tracing, because all the drama lives at the end of the second arm.
 
-`step(_ dt:)` defaults to one 60 fps frame and splits the interval into fixed substeps sized so the integration holds energy steady (the `energy` property is the check, and it stays put to a hair). Two consequences worth knowing:
+`advance(by:)` defaults to one 60 fps frame and splits the interval into fixed substeps sized so the integration holds energy steady (the `energy` property is the check, and it stays put to a hair). Two consequences worth knowing:
 
-- **Determinism:** calling `step()` with the default every frame makes the whole run a pure function of the starting angles. The same start replays the same chaos, while a start a ten-thousandth of a radian away diverges into a completely different dance within seconds. That sensitivity is the classic demonstration, and the [DoublePendulum example](../../Examples/Motion/DoublePendulum/Sketch.swift) draws it as a 24-pendulum fan.
+- **Determinism:** calling `advance()` with the default every frame makes the whole run a pure function of the starting angles. The same start replays the same chaos, while a start a ten-thousandth of a radian away diverges into a completely different dance within seconds. That sensitivity is the classic demonstration, and the [DoublePendulum example](../../Examples/Motion/DoublePendulum/Sketch.swift) draws it as a 24-pendulum fan.
 - Passing a live `deltaTime` follows the wall clock instead, at the cost of exact reproducibility. For exports and snapshots, keep the default.
 
 <a name="nbody"></a>
@@ -121,7 +121,7 @@ Three knobs shape the physics:
 - **`theta`** (default `0.7`) is the accuracy dial for the far field. Forces run through a quadtree, where clumps of distant bodies act as single points when their region looks smaller than `theta` times its distance, which is what makes a few thousand bodies cheap. Use `0` for the exact all-pairs sum, `0.5` when accuracy shows, and `1` for fast and loose.
 - **`softening`** (default `4`) caps how hard a close encounter pulls, so near-collisions swing through smoothly instead of slingshotting to infinity. A few pixels, about the typical body spacing, reads well.
 
-The integrator is the standard leapfrog for gravity, which holds orbital energy bounded over long runs instead of letting orbits slowly decay, and it costs one force pass per step. Keep `dt` fixed frame to frame (the default is one 60 fps frame), because that fixedness is part of what keeps orbits stable.
+The integrator is the standard leapfrog for gravity, which holds orbital energy bounded over long runs instead of letting orbits slowly decay, and it costs one force pass per step. Keep the interval fixed frame to frame (the default is one 60 fps frame), because that fixedness is part of what keeps orbits stable.
 
 Two seeded factories stage the classic scenes:
 

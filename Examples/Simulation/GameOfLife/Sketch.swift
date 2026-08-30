@@ -16,7 +16,7 @@ final class GameOfLife_Example: Sketch {
 
     override func setup() {
         // A field ~`cells` across, so each texel reads as a chunky, visible cell.
-        life = simField(.gameOfLife(), scale: Double(cells) / width)
+        life = makeSimField(.gameOfLife(), scale: Double(cells) / width)
     }
 
     override func draw() {

@@ -52,19 +52,19 @@ public enum Truchet {
         return out
     }
 
-    /// The line-work of a single tile laid in `rect` at a *chosen* spin: the
+    /// The line-work of a single tile laid in `bounds` at a *chosen* spin: the
     /// two quarter-arcs of `.arcs`, or the one diagonal of `.diagonals`
     /// (`flipped: false` is `╲`, `true` is `╱`). The grid form above places
     /// these per cell with seeded spins; this form is for hand-authoring a
     /// tiling one tile at a time (a weighted layout, a hover preview, a
     /// diagram of the tile itself).
-    public static func contours(in rect: Rectangle, tile: Tile = .arcs,
+    public static func contours(in bounds: Rectangle, tile: Tile = .arcs,
                                 flipped: Bool = false) -> [Contour] {
         switch tile {
         case .arcs:
-            return arcContours(in: rect, flipped: flipped)
+            return arcContours(in: bounds, flipped: flipped)
         case .diagonals:
-            return [diagonalContour(in: rect, flipped: flipped)]
+            return [diagonalContour(in: bounds, flipped: flipped)]
         }
     }
 

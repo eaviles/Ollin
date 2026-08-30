@@ -19,7 +19,7 @@ final class ParticleFluid_Example: Sketch {
     @Param(0.0 ... 0.9, icon: "arrow.uturn.down") var bounce = 0.25
 
     override func setup() {
-        fluid = particleFluid(count: 26_000, radius: 12)
+        fluid = makeParticleFluid(count: 26_000, radius: 12)
     }
 
     override func draw() {

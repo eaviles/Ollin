@@ -25,7 +25,7 @@ final class StarPoints: Sketch {
         // The ghosts are held back so the star is what the eye lands on. Both
         // come from the same opening: turn the blades to 0 and the arms go with
         // the hexagons.
-        lensFlare(LensFlare(lens: Lens.heliar.stopped(to: 5.6), strength: 0.35,
+        lensFlare(LensFlare(lens: Lens.heliar.stopped(to: 5.6), amount: 0.35,
                             star: 1.3, starSize: 0.42))
 
         withState {

@@ -2,12 +2,12 @@ import Metal
 
 /// A persistent layer that runs a built-in `Sim` on the GPU each frame: the stateful
 /// effects surface for reaction-diffusion, cellular automata, and other fields that
-/// evolve by reading their own neighborhood. Make one in `setup()` with `simField(_:)`,
+/// evolve by reading their own neighborhood. Make one in `setup()` with `makeSimField(_:)`,
 /// draw into it to seed/force it (`withField`), and composite its `image`.
 ///
 /// ```swift
 /// var life: SimField!
-/// override func setup() { life = simField(.gameOfLife(), scale: 0.15) }   // chunky cells
+/// override func setup() { life = makeSimField(.gameOfLife(), scale: 0.15) }   // chunky cells
 ///
 /// override func draw() {
 ///     background(.black)

@@ -25,7 +25,7 @@ final class BrushedMetal: Sketch {
 
         cameraShowcase(.sway(amplitude: 0.22, period: .tau / 0.1), target: .zero, radius: 15,
                        elevation: 0.22, fieldOfView: .pi / 4)
-        environment(.studio.intensity(1.05).backgroundBlur(0.55))
+        environment(.studio.intensified(to: 1.05).backgroundBlurred(0.55))
 
         // A warm key sweeping with time so the streaks travel; the environment
         // supplies the smeared reflections and the fill light.

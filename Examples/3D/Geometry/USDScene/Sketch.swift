@@ -31,7 +31,7 @@ final class USDScene: Sketch {
            let s = loadScene(path) {
             court = s
         } else {
-            court = Scene(resource: "stage", extension: "usda", in: Bundle.module)
+            court = Scene(resource: "stage", withExtension: "usda", in: Bundle.module)
         }
     }
 

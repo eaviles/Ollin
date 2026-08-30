@@ -134,7 +134,7 @@ final class ProjectionCalibrator {
     }
 
     private var pictureAspect: Double {
-        let shows = projection.shows
+        let shows = projection.visibleRegion
         guard shows.height > 0, canvas.y > 0 else { return 1 }
         return (shows.width * canvas.x) / (shows.height * canvas.y)
     }

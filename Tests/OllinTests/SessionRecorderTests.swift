@@ -139,7 +139,7 @@ struct SessionRecorderWriterTests {
         var fed = 0
         for _ in 0..<1000 {
             if recorder.elapsed >= 0.6 && fed >= 30 { break }
-            recorder.frameRendered(sketch, frame)
+            recorder.frameRendered(sketch, image: frame)
             fed += 1
             try await Task.sleep(for: .milliseconds(20))
         }
@@ -179,12 +179,12 @@ struct SessionRecorderWriterTests {
         // queue (the first few are dropped by design; see above).
         let frame = solidFrame(64)
         for _ in 0..<30 {
-            recorder.frameRendered(sketch, frame)
+            recorder.frameRendered(sketch, image: frame)
             try await Task.sleep(for: .milliseconds(20))
         }
         // A swapped-in sketch rendering at another size must end the file,
         // not corrupt it.
-        recorder.frameRendered(sketch, solidFrame(48))
+        recorder.frameRendered(sketch, image: solidFrame(48))
         #expect(!recorder.isRecording)
         // The stop above finishes asynchronously; wait for a readable movie.
         var videoTracks = 0

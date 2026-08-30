@@ -237,14 +237,14 @@ struct SpatialIndexTests {
         let index = SpatialIndex(points, kind: kind)
         func walk() -> [Int] {
             var seen: [Int] = []
-            index.forNeighbors(of: Vector2(300, 300), within: 90) { i, _ in seen.append(i) }
+            index.forEachNeighbor(of: Vector2(300, 300), within: 90) { i, _ in seen.append(i) }
             return seen
         }
         let first = walk()
         #expect(walk() == first)
         #expect(first.sorted() == index.neighbors(of: Vector2(300, 300), within: 90))
         // The squared distance handed to the closure is the real one.
-        index.forNeighbors(of: Vector2(300, 300), within: 90) { i, d2 in
+        index.forEachNeighbor(of: Vector2(300, 300), within: 90) { i, d2 in
             #expect(abs(d2 - points[i].distanceSquared(to: Vector2(300, 300))) < 1e-9)
         }
     }
@@ -260,7 +260,7 @@ struct SpatialIndexTests {
         func walk(_ points: [Vector2]) -> [Int] {
             let index = SpatialIndex(points, cellSize: 20)
             var seen: [Int] = []
-            index.forNeighbors(of: Vector2(120, 120), within: 20) { i, _ in seen.append(i) }
+            index.forEachNeighbor(of: Vector2(120, 120), within: 20) { i, _ in seen.append(i) }
             return seen
         }
         let alone = walk(core)
@@ -287,7 +287,7 @@ struct SpatialIndexTests {
         let index = SpatialIndex(points, kind: kind)
         var near = [Set<Int>](repeating: [], count: points.count)
         for i in points.indices {
-            index.forNeighbors(of: i, within: 20) { j, _ in near[i].insert(j) }
+            index.forEachNeighbor(of: i, within: 20) { j, _ in near[i].insert(j) }
         }
         var pairs = 0
         for i in points.indices {

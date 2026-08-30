@@ -57,10 +57,10 @@ The three distances need to sit in a particular relationship. Keep `stepLength` 
 
 #### Segments and thickness
 
-Each `Node` carries its `position` and the index of its `parent`, so the structure is a tree. `segments` flattens it to `(parent, child)` line pairs for `drawLine`, hatching, or SVG export. For organic weight, `thicknesses(leafWidth:exponent:)` runs the pipe model. Every tip gets `leafWidth`, and a parent's width aggregates its children's, raised to `exponent` and then re-rooted. Trunks come out thick and twigs hairline:
+Each `Node` carries its `position` and the index of its `parent`, so the structure is a tree. `segments` flattens it to `(parent, child)` line pairs for `drawLine`, hatching, or SVG export. For organic weight, `thicknesses(tipWidth:exponent:)` runs the pipe model. Every tip gets `tipWidth`, and a parent's width aggregates its children's, raised to `exponent` and then re-rooted. Trunks come out thick and twigs hairline:
 
 ```swift
-let widths = growth.thicknesses(leafWidth: 1.4, exponent: 2.2)
+let widths = growth.thicknesses(tipWidth: 1.4, exponent: 2.2)
 for (i, node) in growth.nodes.enumerated() {
     guard let parent = node.parent else { continue }
     strokeWeight(widths[i])

@@ -722,7 +722,7 @@ struct SubdivisionMesh {
                       blue: min(max($0.z, 0), 1), alpha: min(max($0.w, 0), 1))
             }
         }
-        return out.withSmoothNormals()
+        return out.generatingSmoothNormals()
     }
 
     // MARK: Support

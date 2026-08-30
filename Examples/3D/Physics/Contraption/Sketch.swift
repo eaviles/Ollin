@@ -64,7 +64,7 @@ final class Contraption: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.15
+        world.restitution = 0.15
         // Gear teeth mesh; plain cylinders would jam. Nothing in the frame
         // needs to collide with anything else in it.
         world.ignoreCollisions(between: "frame", and: "frame")
@@ -278,7 +278,7 @@ final class Contraption: Sketch {
         ride?.drive(at: power ? 5 : 0, strength: 400)
 
         if let grabbed { dragGrab(grabbed, to: mouse) }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         // A block shoved off the end of its shelf goes back on it.
         for block in blocks where block.position.y < 0.6 {

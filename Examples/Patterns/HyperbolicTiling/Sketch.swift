@@ -40,7 +40,7 @@ final class HyperbolicDisk: Sketch {
             } else {
                 // Fade with distance from the central tile instead.
                 let fade = min(Double(tile.depth) / 9, 1)
-                fill(Color.mix(Color(hex: 0xF2E9DC), Color(hex: 0x24476B), t: fade))
+                fill(Color.mix(Color(hex: 0xF2E9DC), Color(hex: 0x24476B), fade))
             }
             drawShape(tile.shape)
         }

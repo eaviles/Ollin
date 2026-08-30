@@ -31,7 +31,7 @@ final class SeeThrough: Sketch {
         cameraShowcase(.sway(amplitude: 0.2, period: .tau / 0.09),
                        target: Vector3(0, 1.2, 0), radius: 10, elevation: 0.16,
                        fieldOfView: .pi / 4, near: 1, far: 40)
-        environment(.studio.intensity(1.1).backgroundBlur(0.5))
+        environment(.studio.intensified(to: 1.1).backgroundBlurred(0.5))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
 
         // The whole feature, in one line (hold space to compare).

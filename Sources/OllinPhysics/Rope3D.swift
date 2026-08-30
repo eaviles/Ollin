@@ -56,7 +56,7 @@ public struct RopeSegment: Sendable {
 ///                          thickness: 0.04,
 ///                          pinned: { $0.y > 2.9 })       // hung from the top
 /// // each frame:
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// drawSoftBody(rope)
 /// ```
 ///
@@ -116,7 +116,7 @@ public final class Rope3D: SoftBody3D {
                    stiffness: stiffness, bend: bend, pressure: 0,
                    damping: damping, friction: friction,
                    restitution: restitution, iterations: iterations,
-                   vertexRadius: max(0, thickness), twoSided: true,
+                   vertexRadius: max(0, thickness), isTwoSided: true,
                    pinned: pinned, group: group, maxStretch: maxStretch,
                    rope: RopeShape(points: spine, thickness: max(0, thickness),
                                    sides: max(3, sides),

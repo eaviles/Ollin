@@ -32,7 +32,7 @@ final class Kaleidoscope: Sketch {
             let f = Double(i) / 8
             let radius = (90 + f * 380) * scale
             let swing = 0.34 - f * 0.16 + sin(lap + f * .tau) * 0.10
-            fill(Color.mix(teal, ember, t: f, in: .oklch))
+            fill(Color.mix(teal, ember, f, in: .oklch))
             drawCircle(cos(swing) * radius, sin(swing) * radius, (30 - f * 22) * scale)
         }
 
@@ -48,7 +48,7 @@ final class Kaleidoscope: Sketch {
                    Vector2(reach, sin(lap * 2 + 1.3) * 40 * scale))
 
         // A small orbiting ring, melting hue against its neighbors.
-        stroke(Color.mix(ember, teal, t: (sin(lap) + 1) / 2, in: .oklch))
+        stroke(Color.mix(ember, teal, (sin(lap) + 1) / 2, in: .oklch))
         strokeWeight(3 * scale)
         let orbit = (250 + cos(lap) * 60) * scale
         drawCircle(cos(0.55) * orbit, sin(0.55) * orbit, 26 * scale)

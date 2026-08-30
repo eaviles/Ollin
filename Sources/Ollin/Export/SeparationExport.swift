@@ -34,7 +34,7 @@ extension OllinApp {
     /// plus the overprint preview (`art-preview.png`), each carrying the
     /// reproduction recipe. `screen` transforms the separation before writing
     /// (pass `{ $0.halftoned(pitch: 8) }` or `{ $0.dithered() }` for 1-bit
-    /// masters); `registrationMarks` adds the white margin band with corner
+    /// masters); `drawsRegistrationMarks` adds the white margin band with corner
     /// targets and the layer label, identical on every file.
     ///
     /// ```swift
@@ -47,7 +47,7 @@ extension OllinApp {
     public static func exportSeparations(_ sketch: Sketch, to path: String,
                                          inks: [Ink]? = nil, paper: Color = .white,
                                          frame: Int = 0, fps: Double = 60,
-                                         registrationMarks: Bool = true,
+                                         drawsRegistrationMarks: Bool = true,
                                          quality: RenderQuality = .detail,
                                          screen: (PrintSeparation) -> PrintSeparation = { $0 }) {
         guard let inkSet = inks ?? sketch.printInks, !inkSet.isEmpty else {
@@ -75,7 +75,7 @@ extension OllinApp {
         let recipe = metadata.recipe
 
         let stem = (path as NSString).deletingPathExtension
-        let band = registrationMarks ? max(24, min(separation.width, separation.height) / 24) : 0
+        let band = drawsRegistrationMarks ? max(24, min(separation.width, separation.height) / 24) : 0
 
         for (index, layer) in separation.layers.enumerated() {
             let label = "\(index + 1)/\(separation.layers.count)  \(layer.ink.name)  " +

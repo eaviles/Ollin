@@ -10,12 +10,12 @@ import simd
 ///
 /// ```swift
 /// override func draw() {
-///     let layer = renderTarget()                 // a full-canvas off-screen layer
+///     let layer = makeRenderTarget()                 // a full-canvas off-screen layer
 ///     withTarget(layer) {
 ///         background(.black)
 ///         fill(.orange); drawCircle(width / 2, height / 2, 200)
 ///     }
-///     let glow = layer.filtered(.bloom(intensity: 1.4))
+///     let glow = layer.filtered(.bloom(amount: 1.4))
 ///     drawImage(layer.image, 0, 0)               // the sharp shape…
 ///     blendMode(.add)
 ///     drawImage(glow.image, 0, 0)                // …plus its glow, added as light
@@ -141,7 +141,7 @@ public final class RenderTarget {
     /// empty, so the combine that reads it is a no-op.
     ///
     /// ```swift
-    /// let scene = renderTarget()
+    /// let scene = makeRenderTarget()
     /// withTarget(scene) {
     ///     camera(.perspective(eye: Vector3(0, 0, 6), target: .zero))
     ///     drawSphere(radius: 1)                       // 3D → depth captured

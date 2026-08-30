@@ -69,7 +69,7 @@ final class LensFlare: Sketch {
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 18)
         let lens = multicoated ? Lens.heliar.multicoated() : .heliar
         if flare {
-            lensFlare(Ollin.LensFlare(lens: lens.stopped(to: fStop), strength: strength,
+            lensFlare(Ollin.LensFlare(lens: lens.stopped(to: fStop), amount: strength,
                                       star: star, starSize: starSize))
         }
 
@@ -103,6 +103,6 @@ final class LensFlare: Sketch {
         // A bloom after the flare, so the ghosts glow the way everything else
         // bright in the frame does. The flare composites before the filters for
         // exactly this reason.
-        postProcess(.bloom(threshold: 0.7, intensity: 0.8, radius: 0.05))
+        postProcess(.bloom(threshold: 0.7, amount: 0.8, radius: 0.05))
     }
 }

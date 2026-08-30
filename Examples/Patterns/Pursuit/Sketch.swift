@@ -58,7 +58,7 @@ final class PursuitSketch: Sketch {
         strokeWeight(width * 0.004)
         for (index, trail) in chase.trails.enumerated() {
             let along = Double(index) / Double(max(chase.runners.count - 1, 1))
-            stroke(Color.mix(chalk, warm, t: along))
+            stroke(Color.mix(chalk, warm, along))
             drawPolyline(trail.points)
         }
 

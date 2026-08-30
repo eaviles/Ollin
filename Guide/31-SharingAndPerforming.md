@@ -241,7 +241,7 @@ postProcess(.softProof(press))          // the canvas, as it will print
 
 That is a **soft proof**. Every color on the canvas is carried into the press's profile and back out again. Whatever comes home changed is exactly what the press is going to change. It runs on the GPU, so you can leave it on while you work and watch the piece the way the paper will hold it.
 
-Two things always move on that trip. Saturated colors come back duller, because ink covers less ground than a lit screen. Blacks come back lighter, because ink on paper is not as dark as a black pixel. Ollin shows you both rather than flattering the picture. Paper color is the third, and you have to ask for it: `press.simulatePaper = true`. A proof of cream stock reads as a wrong-looking white until you are expecting it.
+Two things always move on that trip. Saturated colors come back duller, because ink covers less ground than a lit screen. Blacks come back lighter, because ink on paper is not as dark as a black pixel. Ollin shows you both rather than flattering the picture. Paper color is the third, and you have to ask for it: `press.simulatesPaper = true`. A proof of cream stock reads as a wrong-looking white until you are expecting it.
 
 The proof shows what changes. The **gamut check** names what is unreachable at all, which is the third panel above:
 
@@ -760,7 +760,7 @@ What you'll build here is a short performed set. Open the host with a fresh buff
 1. Start with breath. Type `drawVisual(.oscillator(frequency: 11, speed: 0.6, colorShift: 0.5))`, press ⌘↩, and drifting bands fill the stage.
 2. Fold space by adding `.kaleidoscope(5)`, which turns the bands into a five-pointed mandala, still breathing.
 3. Melt the fold with `.displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)`.
-4. Make it a print with `.posterized(bins: 6, gamma: 0.75)`, and the melt hardens into contour bands like a screen print.
+4. Make it a print with `.posterized(levels: 6, gamma: 0.75)`, and the melt hardens into contour bands like a screen print.
 5. Set it flying with `.rotated(time * 0.03)` and `.colorCycled(time * 0.04)`, a slow spin through the whole color wheel.
 
 The finished buffer is the whole piece, and it's small enough to retype from memory, which is rather the point. The committed figure is [`Finale.swift`](Figures/31-SharingAndPerforming/Finale.swift):
@@ -774,7 +774,7 @@ final class Finale: Sketch {
             .oscillator(frequency: 11, speed: 0.6, colorShift: 0.5)
                 .kaleidoscope(5)
                 .displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)
-                .posterized(bins: 6, gamma: 0.75)
+                .posterized(levels: 6, gamma: 0.75)
                 .rotated(time * 0.03)
                 .colorCycled(time * 0.04)
         )

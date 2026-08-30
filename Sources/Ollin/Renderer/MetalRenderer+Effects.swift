@@ -1515,7 +1515,7 @@ extension MetalRenderer {
             step = (sim.stepFragment, [])
         }
         var read = s0
-        let steps = max(1, sim.subSteps)
+        let steps = max(1, sim.substeps)
         for i in 0..<steps {
             let write = (i == steps - 1) ? output : (read === s0 ? s1 : s0)
             encodeEffectFragment(step.name, inputs: [read] + step.extra, output: write,
@@ -2795,7 +2795,7 @@ extension MetalRenderer {
         // frame so `ltcEnabled` gates the fragment's reads. The tables bind below with a
         // never-sampled stand-in when absent, so the declared textures are never missing.
         if lighting.enabled != 0,
-           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+           drawer.lights.contains(where: { $0.kind == .rectangle || $0.kind == .disk || $0.kind == .tube }) {
             lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
         }
         // Light shaping (IES profiles / cookies): bake the frame's arrays once so the
@@ -3960,7 +3960,7 @@ extension MetalRenderer {
             params.fieldModel = batch.fieldTransform
             params.copyCount = UInt32(field.copyCount)
             params.entryCount = UInt32(resources.entryCount)
-            params.cullEnabled = field.cullingEnabled ? 1 : 0
+            params.cullEnabled = field.isCullingEnabled ? 1 : 0
             let width = cullState.threadExecutionWidth
             compute.setComputePipelineState(cullState)
             compute.setBuffer(resources.instances, offset: 0, index: 0)
@@ -4022,7 +4022,7 @@ extension MetalRenderer {
             }
             let eye = camera.eye.simd3
             params.eye = SIMD4<Float>(eye.x, eye.y, eye.z,
-                                      field.levelOfDetailEnabled ? 1 : 0)
+                                      field.isLevelOfDetailEnabled ? 1 : 0)
         }
         params.fieldModel = batch.fieldTransform
         params.lowColor = field.lowColor.simd4
@@ -4032,18 +4032,18 @@ extension MetalRenderer {
                                     Float(tiling.tileEdge), 0)
         params.blade = SIMD4<Float>(Float(field.bladeHeight), Float(field.heightVariance),
                                     Float(field.bladeWidth), Float(field.lean))
-        params.sway = SIMD4<Float>(Float(field.swayAmount), Float(field.swayFrequency),
+        params.sway = SIMD4<Float>(Float(field.swayAmplitude), Float(field.swayFrequency),
                                    drawer.computeUniforms.time, Float(field.seed))
         params.lod = SIMD4<Float>(Float(field.detailNear), Float(field.detailFar), 0, 0)
         params.tilesX = UInt32(tiling.tilesX)
         params.tilesZ = UInt32(tiling.tilesZ)
         params.bladesPerTile = UInt32(StrandField.bladesPerTile)
-        params.cullEnabled = field.cullingEnabled ? 1 : 0
+        params.cullEnabled = field.isCullingEnabled ? 1 : 0
         return params
     }
 
     /// The constants one ocean draw needs: where the patch sits, what the water
-    /// looks like, and the one light the glitter comes from. The camera position
+    /// looks like, and the one light the sparkle comes from. The camera position
     /// is read back out of the view matrix rather than off the camera value, so
     /// every projection (and a camera a move is driving) gives the same answer.
     func makeOceanParams(_ draw: OceanDraw, batch: GeometryBatch, drawer: Drawer,
@@ -4057,20 +4057,20 @@ extension MetalRenderer {
         params.skyColor = water.sky.simd4
         params.foamColor = water.foam.simd4
         // The sun of this scene: the first directional light, pointed back at
-        // where it comes from. With none set the glitter is off and the water is
+        // where it comes from. With none set the sparkle is off and the water is
         // body color and reflection alone.
         if let sun = drawer.lights.first(where: { $0.kind == .directional }) {
             let toLight = (-sun.direction).normalized
             params.sun = SIMD4<Float>(Float(toLight.x), Float(toLight.y), Float(toLight.z), 1)
             let tint = sun.specular ?? sun.color
             params.sunColor = SIMD4<Float>(Float(tint.red), Float(tint.green), Float(tint.blue),
-                                           Float(water.glitter * sun.intensity))
+                                           Float(water.sparkle * sun.intensity))
         }
         let eye = simd_inverse(view).columns.3
         params.eye = SIMD4<Float>(eye.x, eye.y, eye.z, Float(draw.field.ocean.patchSize))
         params.grid = SIMD4<Float>(Float(draw.segments), Float(draw.field.resolution),
                                    Float(water.foamAmount), environment ? 1 : 0)
-        params.tuning = SIMD4<Float>(Float(water.reflectance), Float(water.glitterTightness),
+        params.tuning = SIMD4<Float>(Float(water.reflectance), Float(water.sparkleTightness),
                                      Float(draw.tiles),
                                      Float(max(0.01, draw.field.ocean.waveHeight * 0.5)))
         params.environment = SIMD4<Float>(lighting.iblRotation, lighting.iblIntensity, 0, 0)

@@ -144,7 +144,7 @@ Image-based lighting: HDRIs bundled, downloaded, loaded from a URL, or synthesiz
 | --- | --- |
 | [ImageBasedLighting](Environments/ImageBasedLighting/) | `environment(_:)` lights the scene from an HDRI, so physically-based metals fill in with real reflections instead of reading near-black; the environment also doubles as the skybox backdrop. |
 | [EnvironmentGallery](Environments/EnvironmentGallery/) | The eight bundled CC0 HDRI environments (studio, courtyard, forest, interior, city, sunrise, sunset, night) stepped through over one PBR still life, auto-advancing (or arrow keys to step). |
-| [HighResEnvironment](Environments/HighResEnvironment/) | `highRes(_:)` fetches a sharper 2K/4K/8K backdrop for a bundled environment on first run (the 1K shows meanwhile), lighting unchanged. |
+| [HighResEnvironment](Environments/HighResEnvironment/) | `highResolution(_:)` fetches a sharper 2K/4K/8K backdrop for a bundled environment on first run (the 1K shows meanwhile), lighting unchanged. |
 | [EnvironmentURL](Environments/EnvironmentURL/) | An environment loaded from any equirectangular HDRI URL (`Environment.hdri(downloadURL:)`), downloaded once and cached. |
 | [ProceduralSky](Environments/ProceduralSky/) | A zero-asset daylight dome: `environment(.sky(...))` synthesizes a physically-based sky at runtime and sweeps its sun through a full day. |
 | [Cloudscape](Environments/Cloudscape/) | A raymarched cloudscape over the procedural sky. |

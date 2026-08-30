@@ -30,7 +30,7 @@ final class Caustics: Sketch {
         cameraShowcase(.sway(amplitude: 0.2, period: .tau / 0.08),
                        target: Vector3(0, 0.6, 0), radius: 10.5, elevation: 0.42,
                        fieldOfView: .pi / 4, near: 1, far: 40)
-        environment(.studio.intensity(0.55).backgroundBlur(0.6))
+        environment(.studio.intensified(to: 0.55).backgroundBlurred(0.6))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.2), intensity: 2.2)
         castShadows()
         rayTracedReflections()   // the glass shows the actual scene through itself

@@ -360,7 +360,7 @@ let sticker = Decal(loadImage("label.png")!)!
 
 override func draw() {
     // camera, lights, floor, crates ...
-    decal(sticker, at: dropPoint, width: 140)   // projects straight down by default
+    drawDecal(sticker, at: dropPoint, width: 140)   // projects straight down by default
 }
 ```
 
@@ -447,7 +447,7 @@ environment(.sky(sunElevation: 0.5).clouds(coverage: 0.9))       // a gray lid: 
 
 `coverage` runs from a few fair-weather puffs to overcast. Because the clouds live in the environment, sliding it dims and diffuses the whole scene the way a real gray day does. `tallness` trades flat sheets for building towers. `phase` is the wind's clock, so advance it and the weather drifts, deterministically, and an export plays the same sky. A still sky bakes once and costs nothing per frame. The `3D/Environments/Cloudscape` example puts all of it on knobs.
 
-Two knobs come up immediately in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlur(_:)` softens just the backdrop, which pushes it back behind the subject. Both figures above use a little.
+Two knobs come up immediately in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlurred(_:)` softens just the backdrop, which pushes it back behind the subject. Both figures above use a little.
 
 ### The room as the light: Environment.feed
 
@@ -679,7 +679,7 @@ The second part builds the objects. The slab has no texture coordinates worth ha
         // stone draws a straight line wherever the picture wraps.
         let stone = picture(size: 512) { u, v in
             let grain = tilingFbm(u, v, detail: 5, octaves: 5)
-            return Color.mix(Color(hex: 0x585A5C), Color(hex: 0x7C7B74), t: grain)
+            return Color.mix(Color(hex: 0x585A5C), Color(hex: 0x7C7B74), grain)
         }
         let stoneRelief = normalMap(size: 512, strength: 0.35) { u, v in
             tilingFbm(u, v, detail: 8, octaves: 5) * 0.5
@@ -689,7 +689,7 @@ The second part builds the objects. The slab has no texture coordinates worth ha
 
         // Painted metal, and a map that says where the paint has gone.
         let paint = picture(size: 512) { u, v in
-            Color.mix(Color(hex: 0x1D5450), Color(hex: 0xC7BFB0), t: self.bareness(u, v))
+            Color.mix(Color(hex: 0x1D5450), Color(hex: 0xC7BFB0), self.bareness(u, v))
         }
         let wear = picture(size: 512) { u, v in
             let b = self.bareness(u, v)
@@ -714,7 +714,7 @@ The second part builds the objects. The slab has no texture coordinates worth ha
         // A tile whose device is carved by a height map rather than by geometry.
         let carved = picture(size: 512) { u, v in Color(white: self.device(u, v)) }
         let slate = picture(size: 512) { u, v in
-            Color.mix(Color(hex: 0x3E4A52), Color(hex: 0x8FA0A8), t: self.device(u, v))
+            Color.mix(Color(hex: 0x3E4A52), Color(hex: 0x8FA0A8), self.device(u, v))
         }
         tile = Mesh.plane(width: 1.15, depth: 1.15)
             .textured(slate)
@@ -745,7 +745,7 @@ The third part is the frame. There is one directional light and one environment,
         background(Color(hex: 0x0D0E12))
         camera(Camera3D(eye: Vector3(0.55, 2.35, 6.4), target: Vector3(0.15, 0.35, 0.2),
                         projection: .perspective(fieldOfView: .pi / 4.8)))
-        environment(.interior.backgroundBlur(0.55))
+        environment(.interior.backgroundBlurred(0.55))
         directionalLight(Color(kelvin: 4600), direction: Vector3(-0.5, -0.72, -0.5),
                          intensity: 0.85, softness: 0.22)
         castShadows()
@@ -758,7 +758,7 @@ The third part is the frame. There is one directional light and one environment,
             material(.dielectric(roughness: 0.85))
             drawMesh(bench)
         }
-        if let mark { decal(mark, at: Vector3(-1.4, 0, 1.25), width: 0.7) }
+        if let mark { drawDecal(mark, at: Vector3(-1.4, 0, 1.25), width: 0.7) }
 
         // The crystal on its lacquered plinth.
         withState {

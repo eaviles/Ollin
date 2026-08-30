@@ -19,7 +19,7 @@ public struct LensInterface: Equatable, Sendable {
     public var thickness: Double
 
     /// The refractive index of the medium *after* this interface. Air is `1`.
-    public var refractiveIndex: Double
+    public var ior: Double
 
     /// The radius of the clear opening. Only two of these matter to a flare:
     /// the front interface, which is the entrance pupil, and the iris.
@@ -39,11 +39,11 @@ public struct LensInterface: Equatable, Sendable {
     /// glasses.
     public var coating: Double?
 
-    public init(radius: Double, thickness: Double, refractiveIndex: Double = 1,
+    public init(radius: Double, thickness: Double, ior: Double = 1,
                 height: Double, isIris: Bool = false, coating: Double? = nil) {
         self.radius = radius
         self.thickness = thickness
-        self.refractiveIndex = refractiveIndex
+        self.ior = ior
         self.height = height
         self.isIris = isIris
         self.coating = coating
@@ -52,7 +52,7 @@ public struct LensInterface: Equatable, Sendable {
     /// An iris: a flat stop of a given opening radius, `thickness` to the next
     /// interface.
     public static func iris(thickness: Double, height: Double) -> LensInterface {
-        LensInterface(radius: 0, thickness: thickness, refractiveIndex: 1,
+        LensInterface(radius: 0, thickness: thickness, ior: 1,
                       height: height, isIris: true)
     }
 }
@@ -111,8 +111,8 @@ public struct Lens: Equatable, Sendable {
         var lens = self
         let exposed = lens.interfaces.indices.filter { i in
             !lens.interfaces[i].isIris
-                && (i == 0 || lens.interfaces[i - 1].refractiveIndex < 1.05
-                    || lens.interfaces[i].refractiveIndex < 1.05)
+                && (i == 0 || lens.interfaces[i - 1].ior < 1.05
+                    || lens.interfaces[i].ior < 1.05)
         }
         guard exposed.count > 1 else { return lens }
         for (step, index) in exposed.enumerated() {
@@ -130,15 +130,15 @@ public struct Lens: Equatable, Sendable {
     /// The prescription is the published table from the patent literature, in
     /// the form the flare paper credited in `ATTRIBUTION.md` tabulates it.
     public static let heliar = Lens(interfaces: [
-        LensInterface(radius:  30.810, thickness:  7.700, refractiveIndex: 1.652, height: 14.5),
-        LensInterface(radius: -89.350, thickness:  1.850, refractiveIndex: 1.603, height: 14.5),
-        LensInterface(radius: 580.380, thickness:  3.520, refractiveIndex: 1.000, height: 14.5),
-        LensInterface(radius: -80.630, thickness:  1.850, refractiveIndex: 1.643, height: 12.3),
-        LensInterface(radius:  28.340, thickness:  4.180, refractiveIndex: 1.000, height: 12.0),
+        LensInterface(radius:  30.810, thickness:  7.700, ior: 1.652, height: 14.5),
+        LensInterface(radius: -89.350, thickness:  1.850, ior: 1.603, height: 14.5),
+        LensInterface(radius: 580.380, thickness:  3.520, ior: 1.000, height: 14.5),
+        LensInterface(radius: -80.630, thickness:  1.850, ior: 1.643, height: 12.3),
+        LensInterface(radius:  28.340, thickness:  4.180, ior: 1.000, height: 12.0),
         LensInterface.iris(thickness: 3.000, height: 11.6),
-        LensInterface(radius:   0.000, thickness:  1.850, refractiveIndex: 1.581, height: 12.3),
-        LensInterface(radius:  32.190, thickness:  7.270, refractiveIndex: 1.694, height: 12.3),
-        LensInterface(radius: -52.990, thickness: 81.857, refractiveIndex: 1.000, height: 12.3),
+        LensInterface(radius:   0.000, thickness:  1.850, ior: 1.581, height: 12.3),
+        LensInterface(radius:  32.190, thickness:  7.270, ior: 1.694, height: 12.3),
+        LensInterface(radius: -52.990, thickness: 81.857, ior: 1.000, height: 12.3),
     ])
 }
 
@@ -165,14 +165,14 @@ public struct LensFlare: Equatable, Sendable {
     /// against it, so this means the same thing whatever numbers a sketch lights
     /// its scene with. What each ghost does relative to the others, in size,
     /// place, and color, is the lens's business and not this dial's.
-    public var strength: Double
+    public var amount: Double
 
     /// How far off the edge of the frame a light still flares, as a fraction of
     /// the frame height. A source just outside the picture is the classic case,
     /// so this reaches past the frame by default.
     public var reach: Double
 
-    /// How strong the star on the source itself is, over and above `strength`.
+    /// How strong the star on the source itself is, over and above `amount`.
     /// `0` leaves the ghosts alone without it, which is a real choice: the chain
     /// across the frame and the star on the source are two different effects and
     /// a piece may want one and not the other.
@@ -189,11 +189,11 @@ public struct LensFlare: Equatable, Sendable {
     /// switching off the moment the source's center goes behind something.
     public var sourceSize: Double
 
-    public init(lens: Lens = .heliar, strength: Double = 1, star: Double = 1,
+    public init(lens: Lens = .heliar, amount: Double = 1, star: Double = 1,
                 starSize: Double = 0.35, reach: Double = 0.55,
                 sourceSize: Double = 0.035) {
         self.lens = lens
-        self.strength = max(0, strength)
+        self.amount = max(0, amount)
         self.star = max(0, star)
         self.starSize = max(0, starSize)
         self.reach = max(0, reach)
@@ -296,20 +296,20 @@ extension Lens {
 
     /// The index of the medium in front of interface `i`.
     private func indexBefore(_ i: Int) -> Double {
-        i == 0 ? 1 : interfaces[i - 1].refractiveIndex
+        i == 0 ? 1 : interfaces[i - 1].ior
     }
 
     /// Whether interface `i` reflects. The iris is an opening, not a surface,
     /// and a boundary between two identical media reflects nothing.
     private func reflects(_ i: Int) -> Bool {
-        !interfaces[i].isIris && abs(indexBefore(i) - interfaces[i].refractiveIndex) > 1e-9
+        !interfaces[i].isIris && abs(indexBefore(i) - interfaces[i].ior) > 1e-9
     }
 
     /// Refract at interface `i`, then travel to the next one.
     private func forwardStep(_ i: Int) -> RayTransfer {
         RayTransfer.travel(interfaces[i].thickness)
             * RayTransfer.refraction(radius: interfaces[i].radius,
-                                     from: indexBefore(i), to: interfaces[i].refractiveIndex)
+                                     from: indexBefore(i), to: interfaces[i].ior)
     }
 
     /// The run from a ray leaving interface `a` forward (it has just reflected
@@ -329,7 +329,7 @@ extension Lens {
     /// between the two reflections.
     private func backwardStep(_ i: Int) -> RayTransfer {
         RayTransfer.refraction(radius: interfaces[i].radius,
-                               from: indexBefore(i), to: interfaces[i].refractiveIndex).inverse
+                               from: indexBefore(i), to: interfaces[i].ior).inverse
             * RayTransfer.travel(interfaces[i].thickness)
     }
 
@@ -352,7 +352,7 @@ extension Lens {
         var m = RayTransfer.identity
         for i in interfaces.indices {
             m = RayTransfer.refraction(radius: interfaces[i].radius,
-                                       from: indexBefore(i), to: interfaces[i].refractiveIndex) * m
+                                       from: indexBefore(i), to: interfaces[i].ior) * m
             if i < interfaces.count - 1 { m = RayTransfer.travel(interfaces[i].thickness) * m }
         }
         return m.c == 0 ? 0 : -1 / m.c
@@ -563,8 +563,8 @@ extension Lens {
         let inner = interfaces[ghost.firstInterface]
         let innerAngle = abs(slope - (inner.radius == 0 ? 0 : height / inner.radius))
         // Coming back, the light meets the inner surface from the far side.
-        return ((outerAngle, indexBefore(ghost.secondInterface), outer.refractiveIndex),
-                (innerAngle, inner.refractiveIndex, indexBefore(ghost.firstInterface)))
+        return ((outerAngle, indexBefore(ghost.secondInterface), outer.ior),
+                (innerAngle, inner.ior, indexBefore(ghost.firstInterface)))
     }
 
     /// What each ghost reflects, per channel, for light arriving at `angle`. The

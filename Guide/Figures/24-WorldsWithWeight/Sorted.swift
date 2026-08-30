@@ -25,7 +25,7 @@ final class Sorted: Sketch {
 
     override func setup() {
         world.ground = floorY
-        world.bounce = 0.05
+        world.restitution = 0.05
 
         // One rule, and it is the only difference between the two halves.
         world.ignoreCollisions(between: "passing", and: "grating")
@@ -84,7 +84,7 @@ final class Sorted: Sketch {
         camera(.perspective(eye: Vector3(0, 2.6, 7.2),
                             target: Vector3(0, 0.15, 0), fieldOfView: .pi / 4.4))
 
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         fill(Color(hex: 0x11151F))
         material(.dielectric(roughness: 0.94))

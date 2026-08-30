@@ -49,7 +49,7 @@ struct StringArtTests {
     @Test
     func everyChordHonorsTheMinimumSpan() {
         let art = StringArt(of: darkLeftHalves(), center: .zero, radius: 100,
-                            pins: 60, minimumSpan: 9, resolution: 96)
+                            pins: 60, minSpan: 9, resolution: 96)
         art.step(80)
         for i in 1 ..< art.sequence.count {
             let gap = abs(art.sequence[i] - art.sequence[i - 1])

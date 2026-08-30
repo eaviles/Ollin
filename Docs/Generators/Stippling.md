@@ -34,7 +34,7 @@ stipple(_ image: Image,
 Stipple `image` with `count` dots inside `bounds` (the whole canvas by default). Darkness is read as 1 − linear luminance, scaled by alpha, so transparent pixels carry no ink. The image is stretched over `bounds`. To keep its aspect, pass the shared letterbox helper:
 
 ```swift
-let dots = stipple(picture, count: 4000,
+let dots = stipple(of: picture, count: 4000,
                    in: Rectangle(fitting: picture.size, in: canvasRectangle))
 noStroke(); fill(.black)
 for d in dots { drawCircle(center: d, radius: 2) }
@@ -79,7 +79,7 @@ The free functions take the rectangle and the rng explicitly:
 
 ```swift
 var rng = SplitMix64(seed: 7)
-let dots = stipple(picture, count: 4000, in: frame, using: &rng)
+let dots = stipple(of: picture, count: 4000, in: frame, using: &rng)
 let field = stipple(count: 800, in: frame, using: &rng) { p in p.x / frame.width }
 ```
 

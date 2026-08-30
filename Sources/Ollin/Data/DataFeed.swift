@@ -32,8 +32,8 @@ import os
 /// can tell news from a poll that changed nothing:
 ///
 /// ```swift
-/// if tide.updates != seen {
-///     seen = tide.updates
+/// if tide.updateCount != seen {
+///     seen = tide.updateCount
 ///     startTheTransition()
 /// }
 /// ```
@@ -245,7 +245,7 @@ public final class DataFeed: @unchecked Sendable {
 
     /// How many answers have differed from the one before. A poll that brings
     /// back what the feed already had does not count.
-    public var updates: Int { state.withLock { $0.updates } }
+    public var updateCount: Int { state.withLock { $0.updates } }
 
     /// Seconds since the answer last changed, or `nil` before the first one.
     ///
@@ -267,7 +267,7 @@ public final class DataFeed: @unchecked Sendable {
     public var isWaiting: Bool { state.withLock { $0.waiting } }
 
     /// Requests that have failed in a row. Back to zero on the next answer.
-    public var failures: Int { state.withLock { $0.failures } }
+    public var failureCount: Int { state.withLock { $0.failures } }
 
     /// Why the last request failed, in a sentence a sketch can draw. `nil` once
     /// an answer arrives.

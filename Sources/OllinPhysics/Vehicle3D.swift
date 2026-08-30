@@ -24,7 +24,7 @@ internal import CJolt
 /// // each frame:
 /// car.throttle = isKeyDown(.upArrow) ? 1 : 0
 /// car.steering = isKeyDown(.rightArrow) ? 1 : 0
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// withBody(car.body) { drawBox(width: 1.8, height: 0.6, depth: 4) }
 /// for wheel in car.wheels {
 ///     withWheel(wheel) { drawCylinder(height: wheel.width, radius: wheel.radius) }
@@ -755,7 +755,7 @@ public final class Wheel3D {
 
     /// How far the tire is being dragged sideways, in radians: the slip angle.
     /// It grows through a corner and spikes when the vehicle lets go.
-    public var slideAngle: Double { abs(Double(readState().lateralSlip)) }
+    public var slipAngle: Double { abs(Double(readState().lateralSlip)) }
 
     /// The wheel's orientation as an angle (radians) about `rotationAxis`,
     /// posing a cylinder modeled along +y onto the wheel (steering and spin

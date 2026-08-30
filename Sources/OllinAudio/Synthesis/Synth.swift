@@ -126,7 +126,7 @@ public final class Synth: AudioSource {
     /// voice says how to play them and this says which.
     ///
     /// ```swift
-    /// synth.instrument = SampledInstrument.builtin
+    /// synth.instrument = SampledInstrument.builtIn
     /// synth.voice = Voice(sampled: Sampled())
     /// ```
     ///

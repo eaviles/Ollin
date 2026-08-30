@@ -28,7 +28,7 @@ made.
 ### Quick start
 
 ```swift
-let plate = renderTarget(width: 512, height: 512)
+let plate = makeRenderTarget(width: 512, height: 512)
 withTarget(plate) {
     background(.black)
     fill(.white)
@@ -69,7 +69,7 @@ Multiplying a spectrum keeps some waves and drops others, and multiplying is wha
 does:
 
 ```swift
-let mask = renderTarget(width: 512, height: 512)
+let mask = makeRenderTarget(width: 512, height: 512)
 withTarget(mask) {
     background(.black)
     fill(.white)
@@ -106,7 +106,7 @@ measurement *is* the sea. [The ocean](../3D/Ocean.md) is that, and nothing else.
 - **The layer must be square, and its side a power of two.** 256, 512, 1024. The butterfly
   halves the length at every rung, so anything else has no ladder to climb. A layer that
   does not fit comes back untouched with a note naming its size, rather than as a black
-  rectangle. `renderTarget(width: 512, height: 512)` is how you make one.
+  rectangle. `makeRenderTarget(width: 512, height: 512)` is how you make one.
 - **A round trip is the picture that went in.** The transform is exact to float32 through
   all sixteen rungs of a 256 square, which is inside one 8-bit level.
 - **The spectrum layer is float32, not the usual half float.** The sum a transform builds is

@@ -13,7 +13,7 @@ public extension BitmapFont {
     ///
     /// ```swift
     /// // A font sitting beside the sketch, in this target's resources:
-    /// let font = BitmapFont(resource: "MarbleMadness.fnt", in: .module) ?? .builtin
+    /// let font = BitmapFont(resource: "MarbleMadness.fnt", in: .module) ?? .builtIn
     /// textFont(font)
     /// ```
     init?(resource name: String, in bundle: Bundle = .main) {

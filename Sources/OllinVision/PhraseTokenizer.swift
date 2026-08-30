@@ -36,7 +36,7 @@ struct PhraseTokenizer: Sendable {
 
     /// Reads the merges file (the first line is a header; the model's
     /// vocabulary uses the first 48,894 merge lines).
-    init(vocabAt url: URL) throws {
+    init(vocabularyAt url: URL) throws {
         let text = try String(contentsOf: url, encoding: .utf8)
         var lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         // Header line, then exactly the merges the model's vocabulary covers.

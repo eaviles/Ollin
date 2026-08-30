@@ -110,7 +110,7 @@ final class Planet_Example: Sketch {
         // its own, so this draws as the cities and nothing else.
         cities = ball.textured(lightMap.image, baseColor: .black)
         cities.material?.emissiveTexture = lightMap.image
-        cities.material?.emissiveFactor = .white
+        cities.material?.emissiveColor = .white
 
         // Cloud, a hair above the ground, its cover riding the texture's alpha
         // and its own relief read back off that cover, so a bank of it catches
@@ -192,7 +192,7 @@ final class Planet_Example: Sketch {
         // so adding light inside a see-through layer can leave its alpha above 1,
         // and drawing that layer back then subtracts what is behind it. Light is
         // added at the canvas here, where the destination is already opaque.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             drawImage(generate(starField).image, 0, 0)
@@ -218,20 +218,20 @@ final class Planet_Example: Sketch {
         }
 
         // The cities, alone. Same camera, same turn, so they land on the world.
-        let lights = renderTarget()
+        let lights = makeRenderTarget()
         withTarget(lights) {
             camera(eye)
             fill(.white)
             material(Material())
             var lit = cities
-            lit.material?.emissiveFactor = Color(white: cityGlow)
+            lit.material?.emissiveColor = Color(white: cityGlow)
             withState { rotateY(turn); drawMesh(lit) }
         }
 
         // The air, also alone: a shell a little wider than the world, black but
         // for its Fresnel rim. Black adds nothing, so adding this layer at the
         // canvas leaves a ring of light standing off the planet's own edge.
-        let atmosphere = renderTarget()
+        let atmosphere = makeRenderTarget()
         withTarget(atmosphere) {
             camera(eye)
             fill(.white)
@@ -259,9 +259,9 @@ final class Planet_Example: Sketch {
             drawImage(night.image, 0, 0)
             drawImage(halo.filtered(.gaussianBlur(radius: 4)).image, 0, 0)
             // The glow the eye expects around a lit limb, and around a city.
-            drawImage(scene.filtered(.bloom(threshold: 0.80, intensity: 0.5,
+            drawImage(scene.filtered(.bloom(threshold: 0.80, amount: 0.5,
                                             radius: 46)).image, 0, 0)
-            drawImage(night.filtered(.bloom(threshold: 0.12, intensity: 0.7,
+            drawImage(night.filtered(.bloom(threshold: 0.12, amount: 0.7,
                                             radius: 14)).image, 0, 0)
         }
 

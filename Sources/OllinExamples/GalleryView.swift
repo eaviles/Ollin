@@ -81,7 +81,7 @@ struct GalleryView: View {
                     }
                 }
                 .overlay(alignment: .trailing) {
-                    SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 0.5)
+                    SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 0.5)
                 }
             }
             stage
@@ -95,22 +95,22 @@ struct GalleryView: View {
                         }
                     }
                     .overlay(alignment: .leading) {
-                        SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 0.5)
+                        SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 0.5)
                     }
             }
         }
         // A hairline under the title bar, framing the content off the gradient
         // bar (the system separator doesn't read against the custom gradient).
         .overlay(alignment: .top) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(selectedExample?.name ?? "Ollin Examples")
         .background(WindowCustomizer { window in
             window.titlebarSeparatorStyle = .none
         })
-        .background(TitlebarAccessory(attribute: .leading) {
+        .background(TitleBarAccessory(attribute: .leading) {
             HStack(spacing: 10) {
-                SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 1, height: 22)
+                SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 1, height: 22)
                 Button { examplesShown.toggle() } label: {
                     SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
                 }
@@ -122,7 +122,7 @@ struct GalleryView: View {
             .padding(.leading, 8)
             .frame(maxHeight: .infinity)
         })
-        .background(TitlebarAccessory(attribute: .trailing) {
+        .background(TitleBarAccessory(attribute: .trailing) {
             Button { inspectorShown.toggle() } label: {
                 SwiftUI.Image(systemName: "sidebar.right").font(.system(size: 14))
             }
@@ -141,7 +141,7 @@ struct GalleryView: View {
             }
             .sharedBackgroundVisibility(.hidden)   // drop the glass capsule around the title
         }
-        .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
+        .toolbarBackground(OllinInspector.titleBarGradient(for: colorScheme), for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
         .task(id: model.runRequest) { await model.loadSelected() }
         .task { await model.runHarnessIfRequested() }
@@ -832,11 +832,11 @@ private struct FilterBar: View {
                 .fill(colorScheme == .dark ? SwiftUI.Color.white.opacity(0.07) : .black.opacity(0.05)))
         .overlay(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .strokeBorder(OllinInspector.separator(colorScheme), lineWidth: 0.5))
+                .strokeBorder(OllinInspector.separator(for: colorScheme), lineWidth: 0.5))
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .overlay(alignment: .top) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
         }
     }
 }
@@ -879,7 +879,7 @@ private struct InspectorSidebar: View {
                                     ?? example.category),
                             stats: stats)
                         VariationCardView(stats: stats)
-                        ParametersListView(params: sketch.parameters())
+                        ParametersListView(parameters: sketch.parameters())
                     }
                 }
                 .padding(14)

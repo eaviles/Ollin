@@ -95,7 +95,7 @@ There are two kinds of question, so there are two kinds of read.
 
 ```swift
 let musical = ears.confidence(of: "music")     // 0...1
-let now = ears.top                             // the strongest label right now
+let now = ears.topClassification               // the strongest label right now
 let all = ears.classifications                 // everything over `threshold`
 ```
 

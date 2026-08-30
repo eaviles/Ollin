@@ -63,7 +63,7 @@ final class BallInARoom: Sketch {
             let heading = 0.31 * .tau + (Double(ball) / 2 - 0.5) * 0.06
             let path = room.path(from: start, heading: heading, bounces: 200)
             guard path.count > 2 else { continue }
-            stroke(Color.mix(color, ink, t: Double(ball) / 6).withAlpha(0.32))
+            stroke(Color.mix(color, ink, Double(ball) / 6).withAlpha(0.32))
             drawPolyline(path)
         }
 

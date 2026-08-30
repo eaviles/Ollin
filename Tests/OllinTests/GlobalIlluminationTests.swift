@@ -377,7 +377,7 @@ private final class GIMirrorProbe: Sketch {
                     fieldOfView: .pi / 3.2, near: 0.5, far: 40)
         environment(.sky().lightingOnly())
         spotLight(.white, at: Vector3(0, 3.8, -2.0), direction: Vector3(0, -1, 0),
-                  angle: .pi / 3, penumbra: 0.4, intensity: 3)
+                  coneAngle: .pi / 3, penumbra: 0.4, intensity: 3)
         castShadows()
         rayTracedReflections()
         if gi { globalIllumination() }
@@ -420,10 +420,10 @@ private final class GITargetProbe: Sketch {
                          azimuth: 0, elevation: 0.02, fieldOfView: .pi / 3.2,
                          near: 1, far: 40))
         spotLight(.white, at: Vector3(0, 3.8, 0), direction: Vector3(0, -1, 0),
-                  angle: .pi / 3, penumbra: 0.4, intensity: 3)
+                  coneAngle: .pi / 3, penumbra: 0.4, intensity: 3)
         castShadows()
         if gi { globalIllumination() }
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             withState { fill(Color(white: 0.9)); translate(0, -0.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }
@@ -487,7 +487,7 @@ private final class GIRoomProbe: Sketch {
                          azimuth: 0, elevation: 0.02, fieldOfView: .pi / 3.2,
                          near: 1, far: 40))
         spotLight(.white, at: Vector3(0, 3.8, 0), direction: Vector3(0, -1, 0),
-                  angle: .pi / 3, penumbra: 0.4, intensity: 3)
+                  coneAngle: .pi / 3, penumbra: 0.4, intensity: 3)
         castShadows()
         if gi { globalIllumination(intensity: intensity) }
         if let quality { globalIlluminationQuality(quality) }

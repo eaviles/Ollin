@@ -24,7 +24,7 @@ final class Tumble3D: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.15
+        world.restitution = 0.15
     }
 
     /// Drop one random solid from above the pile with a little spin.
@@ -68,7 +68,7 @@ final class Tumble3D: Sketch {
 
         if frameCount % 18 == 0 { spawn() }
         if let grabbed { dragGrab(grabbed, to: mouse) }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         fill(Color(hex: 0x1C222C))
         material(.dielectric(roughness: 0.85))

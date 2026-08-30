@@ -131,7 +131,7 @@ final class VectorMoves: Sketch {
 
     // An arc with a small arrowhead at its end, showing the turn's sense.
     func arc(center: Vector2, radius: Double, from: Double, to: Double) {
-        drawArc(center: center, rx: radius, ry: radius, start: from, stop: to)
+        drawArc(center: center, radiusX: radius, radiusY: radius, start: from, stop: to)
         let tip = center + Vector2(angle: to, length: radius)
         let dir = Vector2(angle: to + 0.5 * Double.pi)
         noStroke()

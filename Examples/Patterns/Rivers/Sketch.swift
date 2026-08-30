@@ -12,14 +12,14 @@ import Ollin
 /// keeps the larger, so the thickness counts how much of the branching upstream
 /// is behind a reach.
 ///
-/// Try it: `minimumFlow` is the smallest catchment you are willing to call a
+/// Try it: `minFlow` is the smallest catchment you are willing to call a
 /// river, in cells. Take it down and a fine tracery fills every crease of the
 /// terrain. Take it up and only a few trunks are left. `weathered` runs the
 /// rain erosion first, and the network sharpens because the valleys it carved
 /// are the ones the water then finds.
 @main
 final class RiversSketch: Sketch {
-    @Param(20 ... 900, icon: "drop") var minimumFlow = 140.0
+    @Param(20 ... 900, icon: "drop") var minFlow = 140.0
     @Param(1 ... 99, icon: "dice") var landSeed = 7.0
     @Param(icon: "cloud.rain") var weathered = true
     @Param(icon: "square.grid.3x3") var showBasins = false
@@ -56,9 +56,9 @@ final class RiversSketch: Sketch {
         noFill()
         strokeCap(.round)
         strokeJoin(.round)
-        for river in drainage.rivers(minimumFlow: minimumFlow, in: map) {
+        for river in drainage.rivers(minFlow: minFlow, in: map) {
             guard river.points.count >= 2 else { continue }
-            stroke(Color.mix(water, chalk, t: min(1, Double(river.order - 1) / 4))
+            stroke(Color.mix(water, chalk, min(1, Double(river.order - 1) / 4))
                 .withAlpha(0.55 + 0.1 * Double(min(river.order, 4))))
             strokeWeight(0.7 + Double(river.order) * 0.9)
             drawPolyline(river.points)
@@ -84,7 +84,7 @@ final class RiversSketch: Sketch {
         drainage = field.drainage()
         let box = map
         contours = isolines(at: (1 ... 13).map { Double($0) / 14 }, in: box, resolution: 220) {
-            field.value(atU: box.uv(of: $0).x, v: box.uv(of: $0).y)
+            field.value(u: box.uv(of: $0).x, v: box.uv(of: $0).y)
         }.flatMap { $0 }
     }
 
@@ -108,12 +108,12 @@ final class RiversSketch: Sketch {
     }
 
     private func drawCaption(_ drainage: Drainage) {
-        let reaches = drainage.rivers(minimumFlow: minimumFlow, in: map).count
+        let reaches = drainage.rivers(minFlow: minFlow, in: map).count
         let biggest = drainage.flow.max() ?? 0
         textSize(17)
         textAlign(.center)
         fill(chalk.withAlpha(0.55))
-        drawText("\(reaches) reaches over \(Int(minimumFlow)) cells, in \(drainage.outlets.count) basins",
+        drawText("\(reaches) reaches over \(Int(minFlow)) cells, in \(drainage.outlets.count) basins",
                  width / 2, height * 0.955)
         fill(warm.withAlpha(0.75))
         drawText("the largest river carries \(Int(biggest)) of the \(drainage.columns * drainage.rows)",

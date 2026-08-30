@@ -26,7 +26,7 @@ final class ScreenAsMaterial: Sketch {
         // this is a picture, so everything downstream of it is honest. It is
         // built inside `draw()` because a layer is resolved as part of rendering
         // a frame, and `setup()` is not one.
-        let screen = renderTarget()
+        let screen = makeRenderTarget()
         withTarget(screen) { drawDesktop(in: bounds) }
         let desktop = screen.image
 
@@ -73,7 +73,7 @@ final class ScreenAsMaterial: Sketch {
         // A plain gradient stands in for a wallpaper.
         for row in 0 ..< 40 {
             let t = Double(row) / 39
-            fill(Color.mix(Color(hex: 0x1B3A5C), Color(hex: 0x6E4B7A), t: t, in: .oklab))
+            fill(Color.mix(Color(hex: 0x1B3A5C), Color(hex: 0x6E4B7A), t, in: .oklab))
             drawRect(area.x, area.y + t * area.height,
                      area.width, area.height / 39 + 1)
         }

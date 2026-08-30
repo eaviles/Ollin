@@ -29,7 +29,7 @@ var life: ParticleLife!
 
 override func setup() {
     background(.black); noClear()
-    life = particleLife(count: 24_000, kinds: 6, radius: 46)
+    life = makeParticleLife(count: 24_000, kinds: 6, radius: 46)
 }
 
 override func draw() {
@@ -60,12 +60,12 @@ var pps: PPS!
 
 override func setup() {
     let radius = 22.0
-    pps = primordialParticles(count: PPS.suggestedCount(for: radius, in: bounds), radius: radius)
+    pps = makePrimordialParticles(count: PPS.suggestedCount(for: radius, in: bounds), radius: radius)
 }
 
 override func draw() {
     background(Color(white: 0.06))
-    updatePPS(pps)
+    updatePrimordialParticles(pps)
     drawParticles(pps)
 }
 ```
@@ -82,7 +82,7 @@ Thousands of agents that lay down a chemical trail and steer toward it, growing 
 ```swift
 var slime: Physarum!
 
-override func setup() { slime = physarum(agents: 220_000, resolution: 1024) }
+override func setup() { slime = makePhysarum(agents: 220_000, resolution: 1024) }
 
 override func draw() {
     updatePhysarum(slime)
@@ -101,7 +101,7 @@ The agents start in a central disc facing out, so a radial web reaches across th
 | `evaporation` | fraction of the trail that dissipates each step (0…1) | 0.1 |
 | `glow` | display gain (how fast trail strength saturates to white) | 1 |
 
-`resolution` is the trail-map size (the sim runs at that resolution, independent of canvas size). Use `physarum(agents:width:height:seed:)` for a non-square map. Deposit is accumulated with an atomic grid, so the trail is well defined despite many agents landing on the same texel.
+`resolution` is the trail-map size (the sim runs at that resolution, independent of canvas size). Use `makePhysarum(agents:width:height:seed:)` for a non-square map. Deposit is accumulated with an atomic grid, so the trail is well defined despite many agents landing on the same texel.
 
 Example: `Examples/Simulation/Physarum`.
 
@@ -117,7 +117,7 @@ var lenia: ParticleLenia!
 
 override func setup() {
     background(.black); noClear()
-    lenia = particleLenia(count: 6000, spacing: 9)
+    lenia = makeParticleLenia(count: 6000, spacing: 9)
 }
 
 override func draw() {
@@ -158,7 +158,7 @@ A **recipe** is eight numbers. Three of them are how far a particle sees, the sp
 var chem: SwarmChemistry!
 
 override func setup() {
-    chem = swarmChemistry(count: 4000, kinds: 6)
+    chem = makeSwarmChemistry(count: 4000, kinds: 6)
 }
 
 override func draw() {
@@ -185,7 +185,7 @@ Color is the recipe itself. Cohesion, alignment and separation are drawn as red,
 
 <img src="../../Guide/Images/20-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
-Read the state back with `lineageCounts()`, `snapshotRecipes()`, and `snapshotLineages()`. `lineageCounts()` says how many particles each opening line still holds. That is the scoreboard the model never keeps for itself. All three stall until the GPU has caught up, so call them a few times a second rather than every frame.
+Read the state back with `snapshotLineageCounts()`, `snapshotRecipes()`, and `snapshotLineages()`. `snapshotLineageCounts()` says how many particles each opening line still holds. That is the scoreboard the model never keeps for itself. All three stall until the GPU has caught up, so call them a few times a second rather than every frame.
 
 **Recipes are stored in the published units**, so one written down anywhere means the same behavior here. That takes a conversion, because those ranges were chosen for a world whose particles sit about fifty units apart. They also carry length, since separation is in length² per step². Ollin derives the conversion from how densely `count` particles fill `bounds`, and derives the sight radius and the contact distance the same way. A particle then sees about as many others as one in the published world did, and there is nothing else for you to name. Dropped in unconverted, separation comes out several times too strong and the swarm blows apart.
 

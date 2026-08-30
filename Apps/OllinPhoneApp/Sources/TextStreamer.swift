@@ -81,13 +81,13 @@ final class TextStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
         let pixelBuffer = frame.capturedImage
         let timestamp = frame.timestamp
         let turns = captureQuarterTurns()
-        let tracked: Bool = if case .normal = frame.camera.trackingState { true } else { false }
+        let isTracked: Bool = if case .normal = frame.camera.trackingState { true } else { false }
         let lift = liftContext(of: frame)
 
         queue.async { [weak self] in
             guard let self else { return }
             let texts = self.readTexts(in: pixelBuffer, timestamp: timestamp,
-                                       tracked: tracked, turns: turns, lift: lift)
+                                       isTracked: tracked, turns: turns, lift: lift)
             DispatchQueue.main.async {
                 self.busy = false
                 if let texts { self.onTexts?(texts) }
@@ -101,7 +101,7 @@ final class TextStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
     /// when the pass itself failed (the last good set stays put on the Mac), and
     /// the empty list when it ran and read nothing.
     private func readTexts(in pixelBuffer: CVPixelBuffer, timestamp: Double,
-                           tracked: Bool, turns: UInt8, lift: LiftContext?) -> [PhoneTextSample]? {
+                           isTracked: Bool, turns: UInt8, lift: LiftContext?) -> [PhoneTextSample]? {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
@@ -120,7 +120,7 @@ final class TextStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
             let corners = [observation.topLeft, observation.topRight,
                            observation.bottomRight, observation.bottomLeft]
                 .map { SIMD2<Float>(Float($0.x), Float($0.y)) }
-            var sample = PhoneTextSample(tracked: tracked, timestamp: timestamp,
+            var sample = PhoneTextSample(isTracked: tracked, timestamp: timestamp,
                                          text: candidate.string,
                                          confidence: Float(candidate.confidence),
                                          corners: corners)

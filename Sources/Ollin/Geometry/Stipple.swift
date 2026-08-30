@@ -41,7 +41,7 @@ import Foundation
 ///   - rng: The random source for the initial scatter; seed it to reproduce.
 /// - Returns: The dot positions.
 public func stipple<R: RandomNumberGenerator>(
-    _ image: Image,
+    of image: Image,
     count: Int,
     in bounds: Rectangle,
     iterations: Int = 40,
@@ -251,11 +251,11 @@ public extension Sketch {
     /// light, so the scatter reads as the image. Driven by the seeded `random`,
     /// so `seed(_:)` reproduces the stipple. Setup-time work: compute once and
     /// hold the points.
-    func stipple(_ image: Image,
+    func stipple(of image: Image,
                  count: Int,
                  in bounds: Rectangle? = nil,
                  iterations: Int = 40) -> [Vector2] {
-        Ollin.stipple(image, count: count,
+        Ollin.stipple(of: image, count: count,
                       in: bounds ?? canvasRectangle,
                       iterations: iterations, using: &rng)
     }

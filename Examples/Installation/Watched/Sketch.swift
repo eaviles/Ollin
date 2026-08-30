@@ -76,7 +76,7 @@ final class Watched: Sketch {
             stroke(ink.color(at: live ? 0.75 : Double(index) / Double(max(1, shown.count)))
                     .withAlpha(live ? 1 : 0.55))
             strokeWeight(live ? step * 0.42 : step * 0.30)
-            drawArc(center: center, rx: radius, ry: radius,
+            drawArc(center: center, radiusX: radius, radiusY: radius,
                     start: -.pi / 2, stop: -.pi / 2 + turn * .tau)
         }
 

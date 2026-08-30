@@ -127,9 +127,9 @@ struct LensFlareTests {
         let coated = plain.multicoated(from: 440, to: 660)
         #expect(plain.interfaces.allSatisfy { $0.coating == nil })
         for (index, interface) in coated.interfaces.enumerated() {
-            let before = index == 0 ? 1.0 : coated.interfaces[index - 1].refractiveIndex
+            let before = index == 0 ? 1.0 : coated.interfaces[index - 1].ior
             let exposed = !interface.isIris
-                && (before < 1.05 || interface.refractiveIndex < 1.05)
+                && (before < 1.05 || interface.ior < 1.05)
             if exposed {
                 let value = try #require(interface.coating)
                 #expect(value >= 440 && value <= 660, "interface \(index) at \(value)")
@@ -188,7 +188,7 @@ struct LensFlareTests {
     @Test func aLensWithTooFewSurfacesMakesNoGhosts() {
         #expect(Lens(interfaces: []).optics().ghosts.isEmpty)
         let single = Lens(interfaces: [LensInterface(radius: 30, thickness: 50,
-                                                     refractiveIndex: 1.5, height: 10)])
+                                                     ior: 1.5, height: 10)])
         #expect(single.optics().ghosts.isEmpty, "one surface cannot reflect twice")
     }
 }

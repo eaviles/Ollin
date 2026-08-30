@@ -23,7 +23,7 @@ final class WordsInPlace: Sketch {
     /// world side), so they mirror the world quad loosely.
     static func stagedLine(_ text: String, corners: [SIMD3<Float>]) -> PhoneText {
         PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: text, confidence: 0.95,
+            isTracked: true, timestamp: 0, text: text, confidence: 0.95,
             corners: [SIMD2<Float>(0.3, 0.7), SIMD2<Float>(0.7, 0.7),
                       SIMD2<Float>(0.7, 0.6), SIMD2<Float>(0.3, 0.6)],
             hasWorldCorners: true, worldCorners: corners))
@@ -45,7 +45,7 @@ final class WordsInPlace: Sketch {
         background(Color(hex: 0x0D1017))
         camera(.orbiting(target: Vector3(0, 1.05, -0.35), radius: 2.5,
                          azimuth: 0.42, elevation: 0.3, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
 
         // The surfaces the lines sit on, hinted: a wall pane and a table slab.
         material(.clay)

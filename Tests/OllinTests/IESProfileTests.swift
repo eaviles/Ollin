@@ -278,7 +278,7 @@ struct IESProfileTests {
         d.beginFrame()
         d.camera(Camera3D(eye: Vector3(0, 0, 5), target: .zero))
         d.addLight(.point(.white, at: .zero, profile: p,
-                          axis: Vector3(2, 0, 0), roll: 1.5))
+                          direction: Vector3(2, 0, 0), roll: 1.5))
         let l = d.makeLighting().lights.0
         #expect(abs(l.direction.x - 1) < 1e-6)   // axis normalized into direction
         #expect(abs(l.shaping.z - 1.5) < 1e-6)

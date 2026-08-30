@@ -25,7 +25,7 @@ final class Grassland: Sketch {
         meadow.heightVariance = 0.45
         meadow.bladeWidth = 0.045
         meadow.lean = 0.34
-        meadow.swayAmount = 0.14
+        meadow.swayAmplitude = 0.14
         meadow.swayFrequency = 1.9
         meadow.lowColor = Color(hue: 0.31, saturation: 0.6, brightness: 0.18)
         meadow.tipColor = Color(hue: 0.24, saturation: 0.52, brightness: 0.66)
@@ -35,7 +35,7 @@ final class Grassland: Sketch {
 
     override func draw() {
         background(Color(hex: 0x11141B))
-        meadow.levelOfDetailEnabled = detail
+        meadow.isLevelOfDetailEnabled = detail
 
         let t = time * 0.04
         let eye = Vector3(cos(t * .tau) * 26, 2.6, sin(t * .tau) * 26)

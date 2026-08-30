@@ -70,7 +70,7 @@ final class Joyride: Sketch {
             car.steering = 1
             car.handBrake = 1
         }
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         // The floor: `world.ground` is a slab the world keeps out of `bodies`,
         // so the sketch draws its own.
@@ -109,7 +109,7 @@ final class Joyride: Sketch {
             // A tire that is sliding rather than rolling lights up, which is
             // the one thing a driver wants to see.
             fill(Color.mix(Color(hex: 0x232B36), Color(hex: 0xF2A93B),
-                           t: min(1, wheel.slip)))
+                           min(1, wheel.slip)))
             withWheel(wheel) {
                 drawCylinder(radius: wheel.radius, height: wheel.width)
                 fill(Color(hex: 0xB9AE9C))

@@ -69,7 +69,7 @@ public final class StringArt {
     private let pinCount: Int
     private let maxChords: Int
     private let ink: Double
-    private let minimumSpan: Int
+    private let minSpan: Int
     private let diameter: Int
     private var residual: [Double]        // darkness left to cover, per grid cell
     private let gridPins: [Vector2]       // pin positions in grid coordinates
@@ -93,7 +93,7 @@ public final class StringArt {
     ///   - ink: how much darkness one pass of thread pays down (`0...1`).
     ///     Lower ink winds more, finer chords before a region reads as done;
     ///     it pairs with the stroke alpha the chords are drawn at.
-    ///   - minimumSpan: the shortest chord allowed, measured in pins around
+    ///   - minSpan: the shortest chord allowed, measured in pins around
     ///     the rim, so the thread crosses the picture instead of hugging the
     ///     rim. Defaults to a tenth of the pins.
     ///   - inverted: wind the light instead of the dark, for bright thread
@@ -103,13 +103,13 @@ public final class StringArt {
     ///     detail at a cost in setup and per-chord time.
     public init(of image: Image, center: Vector2, radius: Double,
                 pins: Int = 200, chords: Int = 4000, ink: Double = 0.055,
-                minimumSpan: Int? = nil, inverted: Bool = false,
+                minSpan: Int? = nil, inverted: Bool = false,
                 resolution: Int = 300) {
         self.pinCount = Swift.max(pins, 3)
         self.maxChords = Swift.max(chords, 0)
         self.ink = Swift.min(Swift.max(ink, 0.001), 1)
-        let span = minimumSpan ?? self.pinCount / 10
-        self.minimumSpan = Swift.min(Swift.max(span, 1), (self.pinCount - 1) / 2)
+        let span = minSpan ?? self.pinCount / 10
+        self.minSpan = Swift.min(Swift.max(span, 1), (self.pinCount - 1) / 2)
         self.diameter = Swift.max(resolution, 16)
         self.sequence = [0]
 
@@ -147,7 +147,7 @@ public final class StringArt {
         residual.withUnsafeBufferPointer { grid in
             for candidate in 0 ..< pinCount {
                 let gap = abs(candidate - from)
-                guard Swift.min(gap, pinCount - gap) >= minimumSpan else { continue }
+                guard Swift.min(gap, pinCount - gap) >= minSpan else { continue }
                 guard !usedPairs.contains(pairKey(from, candidate)) else { continue }
                 let score = meanDarkness(from: gridPins[from], to: gridPins[candidate],
                                          in: grid)

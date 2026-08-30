@@ -24,7 +24,7 @@ final class KnobParts: Sketch {
     let tall = "150 + cos(time) * 60"
 
     /// Where the hand put the rectangle. Only its size is ever worked out.
-    let placed = ParamStored.rect(x: 62, y: 108, width: 300, height: 150)
+    let placed = ParamStored.rectangle(x: 62, y: 108, width: 300, height: 150)
 
     lazy var track = Automation.Track(name: "frame", parts: [
         "width": try! Formula(wide),
@@ -43,7 +43,7 @@ final class KnobParts: Sketch {
         drawText("one knob, four parts", 62, 52)
 
         for (index, at) in moments.enumerated() {
-            guard case .rect(let x, let y, let w, let h) =
+            guard case .rectangle(let x, let y, let w, let h) =
                     Automation.applying(track.partValues(at: at), to: placed) else { continue }
             noFill()
             stroke(index == 0 ? ink : faint)

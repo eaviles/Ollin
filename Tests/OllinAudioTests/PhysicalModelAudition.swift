@@ -40,7 +40,7 @@ import Testing
         // because every harmonic with a node in the middle is missing; near the
         // end keeps them all and comes out thin.
         for pick in [0.5, 0.38, 0.26, 0.16, 0.08, 0.04] {
-            let string = PluckedString(pick: pick, hardness: 0.75, decay: 2.4, damping: 0.35)
+            let string = PluckedString(position: pick, hardness: 0.75, decay: 2.4, damping: 0.35)
             samples += render(sampleRate: sampleRate, voice: Voice(string: string, gain: 0.85)) {
                 [(at: 0, pitch: 52, velocity: 0.9, hold: 1.0)]
             }
@@ -48,7 +48,7 @@ import Testing
 
         // How hard the pluck is: what part of the string it sets moving.
         for hardness in [0.0, 0.3, 0.6, 1.0] {
-            let string = PluckedString(pick: 0.2, hardness: hardness, decay: 2.2, damping: 0.4)
+            let string = PluckedString(position: 0.2, hardness: hardness, decay: 2.2, damping: 0.4)
             samples += render(sampleRate: sampleRate, voice: Voice(string: string, gain: 0.85)) {
                 [(at: 0, pitch: 45, velocity: 0.9, hold: 1.0)]
             }
@@ -57,7 +57,7 @@ import Testing
         // How fast the top goes compared with the bottom, which is what makes a
         // held note darken as it rings.
         for damping in [0.0, 0.35, 0.7, 1.0] {
-            let string = PluckedString(pick: 0.22, hardness: 0.9, decay: 3.5, damping: damping)
+            let string = PluckedString(position: 0.22, hardness: 0.9, decay: 3.5, damping: damping)
             samples += render(sampleRate: sampleRate, voice: Voice(string: string, gain: 0.85)) {
                 [(at: 0, pitch: 40, velocity: 0.95, hold: 1.6)]
             }

@@ -84,16 +84,16 @@ SyphonClient()                                  // first available source
 SyphonClient(named: String?, appName: String?)  // match by name and/or app
 SyphonClient(source: SyphonServerInfo)          // a specific discovered source
 
-func newFrame() -> Image?     // the latest frame, or nil if none yet
+var frame: Image?             // the latest frame, or nil if none yet
 var isActive: Bool            // connected to a live source?
-var hasNewFrame: Bool         // a new frame since the last newFrame()?
+var hasNewFrame: Bool         // a new frame since the last read of frame?
 var serverName: String?
 var appName: String?
-func reconnect(named: String?, appName: String?)
+func connect(named: String?, appName: String?)
 func stop()
 ```
 
-Make a client, then read its frames in `draw()`. `newFrame()` hands you the latest frame as an [`Image`](../Drawing/Images.md), backed by the source's live GPU texture. You draw it like any other image, so it scales, fits into a `Rectangle`, takes a tint, and obeys the transform stack:
+Make a client, then read its frames in `draw()`. `frame` hands you the latest frame as an [`Image`](../Drawing/Images.md), backed by the source's live GPU texture. You draw it like any other image, so it scales, fits into a `Rectangle`, takes a tint, and obeys the transform stack:
 
 ```swift
 final class Viewer: Sketch {
@@ -101,14 +101,14 @@ final class Viewer: Sketch {
 
     override func draw() {
         background(.black)
-        if let frame = feed.newFrame() {
+        if let frame = feed.frame {
             drawImage(frame, 0, 0, width, height)
         }
     }
 }
 ```
 
-Call `newFrame()` each frame and draw the result, and don't hold onto it across frames (the next call gives you the current frame). A source can come and go, so if the publishing app quits, `isActive` goes `false` and `newFrame()` returns `nil`, and `reconnect()` looks again. Because the returned `Image` wraps a live texture, its CPU side (the `[x, y]` pixel subscript, `cgImage`) isn't meaningful, since it's for drawing.
+Read `frame` each frame and draw the result, and don't hold onto it across frames (the next read gives you the current frame). A source can come and go, so if the publishing app quits, `isActive` goes `false` and `frame` reads `nil`, and `connect()` looks again. Because the returned `Image` wraps a live texture, its CPU side (the `[x, y]` pixel subscript, `cgImage`) isn't meaningful, since it's for drawing.
 
 <a name="discovering-sources"></a>
 

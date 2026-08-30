@@ -165,13 +165,13 @@ public struct PhoneJointSample: Sendable, Equatable {
     /// The joint's orientation as a quaternion `(x, y, z, w)`, model space.
     public var orientation: SIMD4<Float>
     /// Whether the camera observed this joint (vs. the rig filling it in).
-    public var tracked: Bool
+    public var isTracked: Bool
 
     public init(position: SIMD3<Float>, orientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
-                tracked: Bool = true) {
+                isTracked: Bool = true) {
         self.position = position
         self.orientation = orientation
-        self.tracked = tracked
+        self.isTracked = isTracked
     }
 }
 
@@ -180,7 +180,7 @@ public struct PhoneJointSample: Sendable, Equatable {
 /// convention), the anchor transform that places that model space in ARKit world
 /// space, the person's estimated size, and whether ARKit currently has tracking.
 public struct PhonePoseSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     /// Model space → ARKit world space (meters, y up, the origin where the
     /// session started). Multiply a model-space joint through this to stand the
@@ -191,9 +191,9 @@ public struct PhonePoseSample: Sendable, Equatable {
     public var scaleFactor: Float
     public var joints: [PhoneJoint: PhoneJointSample]
 
-    public init(tracked: Bool, timestamp: Double, anchor: simd_float4x4 = matrix_identity_float4x4,
+    public init(isTracked: Bool, timestamp: Double, anchor: simd_float4x4 = matrix_identity_float4x4,
                 scaleFactor: Float = 1, joints: [PhoneJoint: PhoneJointSample]) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.anchor = anchor
         self.scaleFactor = scaleFactor
@@ -243,7 +243,7 @@ public enum PhoneBlendShape: UInt8, CaseIterable, Sendable {
 /// each eye as a rotation `(x,y,z,w)` + position, and `lookAtPoint` as the point the
 /// two eyes converge on. Multiply by the head pose to stand them in world space.
 public struct PhoneFaceSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     public var headOrientation: SIMD4<Float>
     public var headPosition: SIMD3<Float>
@@ -257,7 +257,7 @@ public struct PhoneFaceSample: Sendable, Equatable {
     public var rightEyePosition: SIMD3<Float>
     public var lookAtPoint: SIMD3<Float>
 
-    public init(tracked: Bool, timestamp: Double, headOrientation: SIMD4<Float>,
+    public init(isTracked: Bool, timestamp: Double, headOrientation: SIMD4<Float>,
                 headPosition: SIMD3<Float>, blendShapes: [Float], meshVertices: [SIMD3<Float>],
                 triangleIndices: [UInt16] = [], textureCoordinates: [SIMD2<Float>] = [],
                 leftEyeOrientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
@@ -265,7 +265,7 @@ public struct PhoneFaceSample: Sendable, Equatable {
                 rightEyeOrientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
                 rightEyePosition: SIMD3<Float> = .zero,
                 lookAtPoint: SIMD3<Float> = .zero) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.headOrientation = headOrientation
         self.headPosition = headPosition
@@ -295,7 +295,7 @@ public struct PhoneFaceSample: Sendable, Equatable {
 /// comfortable over USB; LZFSE compression is a documented later optimization. The
 /// color JPEG keeps the payload well under `PhoneWire.maxPayloadBytes`.
 public struct PhoneDepthSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     public var depthWidth: Int
     public var depthHeight: Int
@@ -308,10 +308,10 @@ public struct PhoneDepthSample: Sendable, Equatable {
     public var depth: [Float]
     public var confidence: [UInt8]?
 
-    public init(tracked: Bool, timestamp: Double, depthWidth: Int, depthHeight: Int,
+    public init(isTracked: Bool, timestamp: Double, depthWidth: Int, depthHeight: Int,
                 fx: Float, fy: Float, cx: Float, cy: Float, cameraTransform: simd_float4x4,
                 colorJPEG: Data, depth: [Float], confidence: [UInt8]?) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.depthWidth = depthWidth
         self.depthHeight = depthHeight
@@ -340,7 +340,7 @@ public struct PhoneDepthSample: Sendable, Equatable {
 /// buffers with the turn count that fixes them; Selfie mode rotates on the phone
 /// and always sends 0. Rotating both by the same amount keeps them aligned.
 public struct PhoneSegmentationSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     public var matteWidth: Int
     public var matteHeight: Int
@@ -348,9 +348,9 @@ public struct PhoneSegmentationSample: Sendable, Equatable {
     public var matte: [UInt8]
     public var colorJPEG: Data
 
-    public init(tracked: Bool, timestamp: Double, matteWidth: Int, matteHeight: Int,
+    public init(isTracked: Bool, timestamp: Double, matteWidth: Int, matteHeight: Int,
                 orientation: UInt8 = 0, matte: [UInt8], colorJPEG: Data) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.matteWidth = matteWidth
         self.matteHeight = matteHeight
@@ -378,7 +378,7 @@ public enum PhoneSurface: UInt8, CaseIterable, Sendable {
 /// anchor: `vertices` and `normals` are anchor-local meters, and `transform` places
 /// the block in ARKit's fixed world (the same world `PhoneDepthSample.cameraTransform`
 /// reports). `triangleIndices` is a triangle list, three indices per triangle, and
-/// `surfaces` carries one `PhoneSurface` raw value per triangle (empty when the
+/// `surfaces` carries one `PhoneSurface` per triangle (empty when the
 /// device scans without classification).
 ///
 /// `id` is the block's stable identity: the phone sends the same `id` again with a
@@ -395,26 +395,26 @@ public enum PhoneSurface: UInt8, CaseIterable, Sendable {
 /// only a few blocks per second, and skips a block too big for one payload, so the
 /// wire stays quiet while a whole room accumulates.
 public struct PhoneSceneMeshSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     public var id: UUID
     public var scan: UInt32
-    public var removed: Bool
+    public var isRemoved: Bool
     public var transform: simd_float4x4
     public var vertices: [SIMD3<Float>]
     public var normals: [SIMD3<Float>]
     public var triangleIndices: [UInt32]
-    public var surfaces: [UInt8]
+    public var surfaces: [PhoneSurface]
 
-    public init(tracked: Bool, timestamp: Double, id: UUID, scan: UInt32 = 0,
-                removed: Bool = false, transform: simd_float4x4,
+    public init(isTracked: Bool, timestamp: Double, id: UUID, scan: UInt32 = 0,
+                isRemoved: Bool = false, transform: simd_float4x4,
                 vertices: [SIMD3<Float>] = [], normals: [SIMD3<Float>] = [],
-                triangleIndices: [UInt32] = [], surfaces: [UInt8] = []) {
-        self.tracked = tracked
+                triangleIndices: [UInt32] = [], surfaces: [PhoneSurface] = []) {
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.id = id
         self.scan = scan
-        self.removed = removed
+        self.isRemoved = isRemoved
         self.transform = transform
         self.vertices = vertices
         self.normals = normals
@@ -448,30 +448,30 @@ public enum PhonePlaneAlignment: UInt8, CaseIterable, Sendable {
 /// restarted and the old world is gone, and a removal carries no geometry (ARKit
 /// retires a plane when it merges it into a bigger one).
 public struct PhonePlaneSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     public var id: UUID
     public var scan: UInt32
-    public var removed: Bool
+    public var isRemoved: Bool
     public var transform: simd_float4x4
     public var center: SIMD3<Float>
     public var width: Float
     public var height: Float
     public var rotationOnYAxis: Float
     public var alignment: PhonePlaneAlignment
-    public var surface: UInt8
+    public var surface: PhoneSurface
     public var boundary: [SIMD3<Float>]
 
-    public init(tracked: Bool, timestamp: Double, id: UUID, scan: UInt32 = 0,
-                removed: Bool = false, transform: simd_float4x4,
+    public init(isTracked: Bool, timestamp: Double, id: UUID, scan: UInt32 = 0,
+                isRemoved: Bool = false, transform: simd_float4x4,
                 center: SIMD3<Float> = .zero, width: Float = 0, height: Float = 0,
                 rotationOnYAxis: Float = 0, alignment: PhonePlaneAlignment = .horizontal,
-                surface: UInt8 = 0, boundary: [SIMD3<Float>] = []) {
-        self.tracked = tracked
+                surface: PhoneSurface = .unclassified, boundary: [SIMD3<Float>] = []) {
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.id = id
         self.scan = scan
-        self.removed = removed
+        self.isRemoved = isRemoved
         self.transform = transform
         self.center = center
         self.width = width
@@ -569,15 +569,15 @@ public struct PhoneHandJointSample: Sendable, Equatable {
 /// absent). `tracked` reports the ARKit session's own tracking state, which is
 /// what says whether the world positions are standing in a steady world.
 public struct PhoneHandSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     public var chirality: PhoneHandChirality
     public var confidence: Float
     public var joints: [PhoneHandJoint: PhoneHandJointSample]
 
-    public init(tracked: Bool, timestamp: Double, chirality: PhoneHandChirality = .unknown,
+    public init(isTracked: Bool, timestamp: Double, chirality: PhoneHandChirality = .unknown,
                 confidence: Float = 1, joints: [PhoneHandJoint: PhoneHandJointSample]) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.chirality = chirality
         self.confidence = confidence
@@ -597,7 +597,7 @@ public struct PhoneHandSample: Sendable, Equatable {
 /// session's own tracking state, which is what says whether the world corners
 /// stand in a steady world.
 public struct PhoneTextSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     public var text: String
     public var confidence: Float
@@ -607,10 +607,10 @@ public struct PhoneTextSample: Sendable, Equatable {
     /// Four metric world-space corners in the same order, or empty.
     public var worldCorners: [SIMD3<Float>]
 
-    public init(tracked: Bool, timestamp: Double, text: String, confidence: Float = 1,
+    public init(isTracked: Bool, timestamp: Double, text: String, confidence: Float = 1,
                 corners: [SIMD2<Float>], hasWorldCorners: Bool = false,
                 worldCorners: [SIMD3<Float>] = []) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.text = text
         self.confidence = confidence
@@ -641,7 +641,7 @@ public enum PhoneMarkerKind: UInt8, CaseIterable, Sendable {
 /// to estimate it: 1.1 means the picture in the room is a tenth bigger than the
 /// name said.
 public struct PhoneMarkerSample: Sendable, Equatable {
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     /// The anchor's own id, stable for as long as the phone holds this find.
     public var id: UUID
@@ -659,11 +659,11 @@ public struct PhoneMarkerSample: Sendable, Equatable {
     /// What ARKit makes of the stated size, 1 when it has nothing to say.
     public var scaleFactor: Float
 
-    public init(tracked: Bool, timestamp: Double, id: UUID, name: String,
+    public init(isTracked: Bool, timestamp: Double, id: UUID, name: String,
                 kind: PhoneMarkerKind, transform: simd_float4x4,
                 size: SIMD3<Float>, center: SIMD3<Float> = .zero,
                 scaleFactor: Float = 1) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.id = id
         self.name = name
@@ -691,7 +691,7 @@ public struct PhoneMarkerSample: Sendable, Equatable {
 public struct PhoneWandSample: Sendable, Equatable {
     /// Whether ARKit is tracking the room normally. False while it is starting up
     /// or has lost its place, when the pose is worth nothing.
-    public var tracked: Bool
+    public var isTracked: Bool
     public var timestamp: Double
     /// The camera pose in ARKit world space (meters, y up, the origin where the
     /// session started), landscape axes.
@@ -700,7 +700,7 @@ public struct PhoneWandSample: Sendable, Equatable {
     /// phone is being held. Portrait is 1, the same count the other streams carry.
     public var quarterTurnsCW: UInt8
     /// Whether a finger is on the screen right now.
-    public var pressed: Bool
+    public var isPressed: Bool
     /// How many presses have happened since the app started. Rises by one as each
     /// finger lands, and never falls.
     public var pressCount: UInt32
@@ -710,14 +710,14 @@ public struct PhoneWandSample: Sendable, Equatable {
     /// at zero. Zero when nothing is touching.
     public var touch: SIMD2<Float>
 
-    public init(tracked: Bool, timestamp: Double, transform: simd_float4x4,
-                quarterTurnsCW: UInt8 = 1, pressed: Bool = false, pressCount: UInt32 = 0,
+    public init(isTracked: Bool, timestamp: Double, transform: simd_float4x4,
+                quarterTurnsCW: UInt8 = 1, isPressed: Bool = false, pressCount: UInt32 = 0,
                 hasTouch: Bool = false, touch: SIMD2<Float> = .zero) {
-        self.tracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.transform = transform
         self.quarterTurnsCW = quarterTurnsCW
-        self.pressed = pressed
+        self.isPressed = isPressed
         self.pressCount = pressCount
         self.hasTouch = hasTouch
         self.touch = touch
@@ -998,7 +998,7 @@ public extension PhoneWire {
     /// One body record: tracked, timestamp, the world anchor, the scale factor,
     /// and the joints. Self-contained so the list decoder reads records back to back.
     private static func appendPoseRecord(_ p: inout Data, _ pose: PhonePoseSample) {
-        p.append(pose.tracked ? 1 : 0)
+        p.append(pose.isTracked ? 1 : 0)
         appendF64(&p, pose.timestamp)
         appendMatrix(&p, pose.anchor)
         appendF32(&p, pose.scaleFactor)
@@ -1011,7 +1011,7 @@ public extension PhoneWire {
             for v in [j.orientation.x, j.orientation.y, j.orientation.z, j.orientation.w] {
                 appendF32(&p, v)
             }
-            p.append(j.tracked ? 1 : 0)
+            p.append(j.isTracked ? 1 : 0)
         }
     }
 
@@ -1028,7 +1028,7 @@ public extension PhoneWire {
     /// and the face-local mesh. Self-contained so the list decoder reads records back
     /// to back.
     private static func appendFaceRecord(_ p: inout Data, _ face: PhoneFaceSample) {
-        p.append(face.tracked ? 1 : 0)
+        p.append(face.isTracked ? 1 : 0)
         appendF64(&p, face.timestamp)
         for v in [face.headOrientation.x, face.headOrientation.y,
                   face.headOrientation.z, face.headOrientation.w] { appendF32(&p, v) }
@@ -1062,7 +1062,7 @@ public extension PhoneWire {
 
     private static func encodeDepthPayload(_ d: PhoneDepthSample) -> Data {
         var p = Data()
-        p.append(d.tracked ? 1 : 0)
+        p.append(d.isTracked ? 1 : 0)
         appendF64(&p, d.timestamp)
         appendU32(&p, UInt32(max(0, d.depthWidth)))
         appendU32(&p, UInt32(max(0, d.depthHeight)))
@@ -1087,7 +1087,7 @@ public extension PhoneWire {
 
     private static func encodeSegmentationPayload(_ s: PhoneSegmentationSample) -> Data {
         var p = Data()
-        p.append(s.tracked ? 1 : 0)
+        p.append(s.isTracked ? 1 : 0)
         appendF64(&p, s.timestamp)
         appendU32(&p, UInt32(max(0, s.matteWidth)))
         appendU32(&p, UInt32(max(0, s.matteHeight)))
@@ -1103,14 +1103,14 @@ public extension PhoneWire {
 
     private static func encodeSceneMeshPayload(_ c: PhoneSceneMeshSample) -> Data {
         var p = Data()
-        p.append(c.tracked ? 1 : 0)
+        p.append(c.isTracked ? 1 : 0)
         appendF64(&p, c.timestamp)
         appendUUID(&p, c.id)
         appendU32(&p, c.scan)
-        p.append(c.removed ? 1 : 0)
+        p.append(c.isRemoved ? 1 : 0)
         appendMatrix(&p, c.transform)
         // A retirement notice carries no geometry, so the counts stop here.
-        guard !c.removed else { return p }
+        guard !c.isRemoved else { return p }
         // Vertices and normals: a count each, then xyz per entry (anchor-local).
         appendU32(&p, UInt32(c.vertices.count))
         for v in c.vertices { appendF32(&p, v.x); appendF32(&p, v.y); appendF32(&p, v.z) }
@@ -1121,24 +1121,24 @@ public extension PhoneWire {
         for i in c.triangleIndices { appendU32(&p, i) }
         // Classification: a count, then one PhoneSurface raw value per triangle.
         appendU32(&p, UInt32(c.surfaces.count))
-        p.append(contentsOf: c.surfaces)
+        p.append(contentsOf: c.surfaces.map(\.rawValue))
         return p
     }
 
     private static func encodePlanePayload(_ p0: PhonePlaneSample) -> Data {
         var p = Data()
-        p.append(p0.tracked ? 1 : 0)
+        p.append(p0.isTracked ? 1 : 0)
         appendF64(&p, p0.timestamp)
         appendUUID(&p, p0.id)
         appendU32(&p, p0.scan)
-        p.append(p0.removed ? 1 : 0)
+        p.append(p0.isRemoved ? 1 : 0)
         appendMatrix(&p, p0.transform)
         // A retirement notice carries no shape, so the rest stops here.
-        guard !p0.removed else { return p }
+        guard !p0.isRemoved else { return p }
         for v in [p0.center.x, p0.center.y, p0.center.z] { appendF32(&p, v) }
         for v in [p0.width, p0.height, p0.rotationOnYAxis] { appendF32(&p, v) }
         p.append(p0.alignment.rawValue)
-        p.append(p0.surface)
+        p.append(p0.surface.rawValue)
         // The outline: a point count, then xyz per point (anchor-local).
         appendU32(&p, UInt32(p0.boundary.count))
         for v in p0.boundary { appendF32(&p, v.x); appendF32(&p, v.y); appendF32(&p, v.z) }
@@ -1172,7 +1172,7 @@ public extension PhoneWire {
     /// One hand record: tracked, timestamp, chirality, the model's confidence, and
     /// the joints. Self-contained so the list decoder reads records back to back.
     private static func appendHandRecord(_ p: inout Data, _ hand: PhoneHandSample) {
-        p.append(hand.tracked ? 1 : 0)
+        p.append(hand.isTracked ? 1 : 0)
         appendF64(&p, hand.timestamp)
         p.append(hand.chirality.rawValue)
         appendF32(&p, hand.confidence)
@@ -1209,7 +1209,7 @@ public extension PhoneWire {
     /// confidence, the four image corners, and (when lifted) the four world
     /// corners. Self-contained so the list decoder reads records back to back.
     private static func appendTextRecord(_ p: inout Data, _ line: PhoneTextSample) {
-        p.append(line.tracked ? 1 : 0)
+        p.append(line.isTracked ? 1 : 0)
         appendF64(&p, line.timestamp)
         // The string as UTF-8: a byte count, then the bytes (capped defensively;
         // a recognized line is far under the cap).
@@ -1248,7 +1248,7 @@ public extension PhoneWire {
     /// name, the placement, the real size, the box center, and the estimated scale.
     /// Self-contained so the list decoder reads records back to back.
     private static func appendMarkerRecord(_ p: inout Data, _ m: PhoneMarkerSample) {
-        p.append(m.tracked ? 1 : 0)
+        p.append(m.isTracked ? 1 : 0)
         appendF64(&p, m.timestamp)
         appendUUID(&p, m.id)
         p.append(m.kind.rawValue)
@@ -1265,11 +1265,11 @@ public extension PhoneWire {
     /// turns, the button, the running press count, and the thumb point.
     private static func encodeWandPayload(_ w: PhoneWandSample) -> Data {
         var p = Data()
-        p.append(w.tracked ? 1 : 0)
+        p.append(w.isTracked ? 1 : 0)
         appendF64(&p, w.timestamp)
         appendMatrix(&p, w.transform)
         p.append(w.quarterTurnsCW)
-        p.append(w.pressed ? 1 : 0)
+        p.append(w.isPressed ? 1 : 0)
         appendU32(&p, w.pressCount)
         p.append(w.hasTouch ? 1 : 0)
         appendF32(&p, w.touch.x); appendF32(&p, w.touch.y)
@@ -1361,10 +1361,10 @@ public extension PhoneWire {
             let jointTracked = data[s + o] != 0; o += 1
             if let joint = PhoneJoint(rawValue: raw) {
                 joints[joint] = PhoneJointSample(position: position, orientation: orientation,
-                                                 tracked: jointTracked)
+                                                 isTracked: jointTracked)
             }
         }
-        return PhonePoseSample(tracked: tracked, timestamp: timestamp, anchor: anchor,
+        return PhonePoseSample(isTracked: tracked, timestamp: timestamp, anchor: anchor,
                                scaleFactor: scaleFactor, joints: joints)
     }
 
@@ -1426,7 +1426,7 @@ public extension PhoneWire {
         let rightEyePosition = SIMD3<Float>(f32(), f32(), f32())
         let lookAtPoint = SIMD3<Float>(f32(), f32(), f32())
 
-        return PhoneFaceSample(tracked: tracked, timestamp: timestamp, headOrientation: headOrientation,
+        return PhoneFaceSample(isTracked: tracked, timestamp: timestamp, headOrientation: headOrientation,
                                headPosition: headPosition, blendShapes: blendShapes,
                                meshVertices: meshVertices, triangleIndices: triangleIndices,
                                textureCoordinates: textureCoordinates,
@@ -1468,7 +1468,7 @@ public extension PhoneWire {
             confidence = [UInt8](data[(s + o)..<(s + o + confCount)])
         }
 
-        return PhoneDepthSample(tracked: tracked, timestamp: timestamp,
+        return PhoneDepthSample(isTracked: tracked, timestamp: timestamp,
                                 depthWidth: depthWidth, depthHeight: depthHeight,
                                 fx: fx, fy: fy, cx: cx, cy: cy, cameraTransform: transform,
                                 colorJPEG: colorJPEG, depth: depth, confidence: confidence)
@@ -1495,7 +1495,7 @@ public extension PhoneWire {
         guard matteCount >= 0, data.count >= o + matteCount else { return nil }
         let matte = [UInt8](data[(s + o)..<(s + o + matteCount)])
 
-        return PhoneSegmentationSample(tracked: tracked, timestamp: timestamp,
+        return PhoneSegmentationSample(isTracked: tracked, timestamp: timestamp,
                                        matteWidth: matteWidth, matteHeight: matteHeight,
                                        orientation: orientation, matte: matte, colorJPEG: colorJPEG)
     }
@@ -1518,8 +1518,8 @@ public extension PhoneWire {
 
         // A retirement notice ends here, with no geometry to read.
         guard !removed else {
-            return PhoneSceneMeshSample(tracked: tracked, timestamp: timestamp, id: id,
-                                        scan: scan, removed: true, transform: transform)
+            return PhoneSceneMeshSample(isTracked: tracked, timestamp: timestamp, id: id,
+                                        scan: scan, isRemoved: true, transform: transform)
         }
 
         guard data.count >= o + 4 else { return nil }
@@ -1540,10 +1540,10 @@ public extension PhoneWire {
 
         let surfaceCount = u32()
         guard surfaceCount >= 0, data.count >= o + surfaceCount else { return nil }
-        let surfaces = [UInt8](data[(s + o)..<(s + o + surfaceCount)])
+        let surfaces = data[(s + o)..<(s + o + surfaceCount)].map { PhoneSurface(rawValue: $0) ?? .unclassified }
 
-        return PhoneSceneMeshSample(tracked: tracked, timestamp: timestamp, id: id,
-                                    scan: scan, removed: false, transform: transform,
+        return PhoneSceneMeshSample(isTracked: tracked, timestamp: timestamp, id: id,
+                                    scan: scan, isRemoved: false, transform: transform,
                                     vertices: vertices, normals: normals,
                                     triangleIndices: triangleIndices, surfaces: surfaces)
     }
@@ -1566,8 +1566,8 @@ public extension PhoneWire {
 
         // A retirement notice ends here, with no shape to read.
         guard !removed else {
-            return PhonePlaneSample(tracked: tracked, timestamp: timestamp, id: id,
-                                    scan: scan, removed: true, transform: transform)
+            return PhonePlaneSample(isTracked: tracked, timestamp: timestamp, id: id,
+                                    scan: scan, isRemoved: true, transform: transform)
         }
 
         // center(12) + width/height/rotation(12) + alignment(1) + surface(1) + count(4).
@@ -1575,15 +1575,15 @@ public extension PhoneWire {
         let center = SIMD3<Float>(f32(), f32(), f32())
         let width = f32(), height = f32(), rotation = f32()
         let alignment = PhonePlaneAlignment(rawValue: data[s + o]) ?? .horizontal; o += 1
-        let surface = data[s + o]; o += 1
+        let surface = PhoneSurface(rawValue: data[s + o]) ?? .unclassified; o += 1
 
         let pointCount = u32()
         guard pointCount >= 0, data.count >= o + pointCount * 12 else { return nil }
         var boundary = [SIMD3<Float>](); boundary.reserveCapacity(pointCount)
         for _ in 0..<pointCount { boundary.append(SIMD3<Float>(f32(), f32(), f32())) }
 
-        return PhonePlaneSample(tracked: tracked, timestamp: timestamp, id: id, scan: scan,
-                                removed: false, transform: transform, center: center,
+        return PhonePlaneSample(isTracked: tracked, timestamp: timestamp, id: id, scan: scan,
+                                isRemoved: false, transform: transform, center: center,
                                 width: width, height: height, rotationOnYAxis: rotation,
                                 alignment: alignment, surface: surface, boundary: boundary)
     }
@@ -1665,7 +1665,7 @@ public extension PhoneWire {
                                                      hasWorldPosition: hasWorld, worldPosition: world)
             }
         }
-        return PhoneHandSample(tracked: tracked, timestamp: timestamp, chirality: chirality,
+        return PhoneHandSample(isTracked: tracked, timestamp: timestamp, chirality: chirality,
                                confidence: confidence, joints: joints)
     }
 
@@ -1709,7 +1709,7 @@ public extension PhoneWire {
             worldCorners.reserveCapacity(4)
             for _ in 0..<4 { worldCorners.append(SIMD3<Float>(f32(), f32(), f32())) }
         }
-        return PhoneTextSample(tracked: tracked, timestamp: timestamp, text: text,
+        return PhoneTextSample(isTracked: tracked, timestamp: timestamp, text: text,
                                confidence: confidence, corners: corners,
                                hasWorldCorners: hasWorld, worldCorners: worldCorners)
     }
@@ -1749,7 +1749,7 @@ public extension PhoneWire {
         let size = SIMD3<Float>(f32(), f32(), f32())
         let center = SIMD3<Float>(f32(), f32(), f32())
         let scaleFactor = f32()
-        return PhoneMarkerSample(tracked: tracked, timestamp: timestamp, id: id, name: name,
+        return PhoneMarkerSample(isTracked: tracked, timestamp: timestamp, id: id, name: name,
                                  kind: kind, transform: transform, size: size,
                                  center: center, scaleFactor: scaleFactor)
     }
@@ -1769,8 +1769,8 @@ public extension PhoneWire {
         let pressCount = readU32(data, s + o); o += 4
         let hasTouch = data[s + o] != 0; o += 1
         let touch = SIMD2<Float>(f32(), f32())
-        return PhoneWandSample(tracked: tracked, timestamp: timestamp, transform: transform,
-                               quarterTurnsCW: turns, pressed: pressed, pressCount: pressCount,
+        return PhoneWandSample(isTracked: tracked, timestamp: timestamp, transform: transform,
+                               quarterTurnsCW: turns, isPressed: pressed, pressCount: pressCount,
                                hasTouch: hasTouch, touch: touch)
     }
 }

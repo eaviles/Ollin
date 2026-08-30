@@ -39,7 +39,7 @@ struct SkinnedCloth3DTests {
               backStop: Double? = nil, maxStretch: Double? = nil) throws -> SoftBody3D {
         try #require(world.addSoftBody(
             from: Self.sheet, at: Vector3(0, 0.9, -0.13),
-            rotation: .pi / 2, axis: Vector3(1, 0, 0),
+            rotated: .pi / 2, axis: Vector3(1, 0, 0),
             mass: 0.6, stiffness: 0.9, bend: 0.02, damping: 0.2,
             pinned: { $0.z < -0.5 },
             skinnedTo: scene,
@@ -74,7 +74,7 @@ struct SkinnedCloth3DTests {
         for step in 0 ..< steps {
             let x = sin(Double(step) / 60 * 3) * amplitude
             cape.follow(walk(figure, to: x))
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             guard step > settle else { continue }
             for (index, point) in cape.particlePositions.enumerated() {
                 let skinned = Vector3(rest[index].x + x, rest[index].y, rest[index].z)
@@ -95,9 +95,9 @@ struct SkinnedCloth3DTests {
 
         for step in 0 ..< 240 {
             cape.follow(walk(figure, to: Double(step) / 240 * 2))
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
-        let carried = cape.center.x
+        let carried = cape.position.x
         #expect(abs(carried - 2) < 0.1,
                 "a cape hung on a figure that walked to x=2 read \(carried)")
     }
@@ -113,10 +113,10 @@ struct SkinnedCloth3DTests {
 
         for step in 0 ..< 240 {
             cloth.follow(walk(figure, to: Double(step) / 240 * 2))
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
-        #expect(abs(cloth.center.x) < 0.05,
-                "an unskinned cloth moved to x=\(cloth.center.x)")
+        #expect(abs(cloth.position.x) < 0.05,
+                "an unskinned cloth moved to x=\(cloth.position.x)")
     }
 
     /// A cape that has hung still long enough to settle and go to sleep still
@@ -129,16 +129,16 @@ struct SkinnedCloth3DTests {
         let cape = try cape(in: world, on: figure)
         for _ in 0 ..< 900 {
             cape.follow(figure)
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
         #expect(!cape.isAwake, "the cape never settled, so this proves nothing")
 
         for step in 0 ..< 180 {
             cape.follow(walk(figure, to: Double(step) / 180 * 1.5))
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
-        #expect(abs(cape.center.x - 1.5) < 0.1,
-                "a settled cape read \(cape.center.x) after the figure walked to 1.5")
+        #expect(abs(cape.position.x - 1.5) < 0.1,
+                "a settled cape read \(cape.position.x) after the figure walked to 1.5")
     }
 
     // MARK: The leash
@@ -221,7 +221,7 @@ struct SkinnedCloth3DTests {
                 // Blow it forward, into the back it hangs on.
                 cape.applyForce(Vector3(0, 0, 8))
                 cape.follow(figure)
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 guard step > 120 else { continue }
                 for (index, point) in cape.particlePositions.enumerated() {
                     deepest = max(deepest, point.z - rest[index].z)
@@ -246,10 +246,10 @@ struct SkinnedCloth3DTests {
             world.ground = -20
             let cloth = try #require(world.addSoftBody(
                 from: Mesh.plane(width: 2, depth: 2, segments: 16),
-                at: Vector3(0, 4, 0), rotation: .pi / 2, axis: Vector3(1, 0, 0),
+                at: Vector3(0, 4, 0), rotated: .pi / 2, axis: Vector3(1, 0, 0),
                 mass: 8, stiffness: 0.4, damping: 0.1,
                 pinned: { $0.z < -0.95 }, maxStretch: stretch))
-            for _ in 0 ..< 600 { world.step(dt: 1.0 / 60) }
+            for _ in 0 ..< 600 { world.advance(by: 1.0 / 60) }
             lowest.append(cloth.particlePositions.min { $0.y < $1.y }!.y)
         }
         // The sheet hangs from y = 5 and is 2 long, so its rest hem is y = 3.
@@ -270,14 +270,14 @@ struct SkinnedCloth3DTests {
             world.ground = 0
             let cape = try #require(world.addSoftBody(
                 from: Self.sheet, at: Vector3(0, 0.9, -0.13),
-                rotation: .pi / 2, axis: Vector3(1, 0, 0),
+                rotated: .pi / 2, axis: Vector3(1, 0, 0),
                 mass: 6, stiffness: 0.3, damping: 0.2,
                 pinned: { $0.z < -0.5 },
                 skinnedTo: figure, carriedBy: { _ in "chest" },
                 maxStretch: stretch))
             for _ in 0 ..< 600 {
                 cape.follow(figure)
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
             }
             lowest.append(cape.particlePositions.min { $0.y < $1.y }!.y)
         }
@@ -309,7 +309,7 @@ struct SkinnedCloth3DTests {
         world.ground = 0
         let cape = try #require(world.addSoftBody(
             from: Self.sheet, at: Vector3(0, 0.9, -0.13),
-            rotation: .pi / 2, axis: Vector3(1, 0, 0),
+            rotated: .pi / 2, axis: Vector3(1, 0, 0),
             pinned: { $0.z < -0.5 },
             skinnedTo: figure,
             // Only the collar names a joint the figure has.
@@ -351,10 +351,10 @@ struct SkinnedCloth3DTests {
         let moved = walk(figure, to: 3)
         for _ in 0 ..< 180 {
             back.follow(moved)
-            rebuilt.step(dt: 1.0 / 60)
+            rebuilt.advance(by: 1.0 / 60)
         }
-        #expect(abs(back.center.x - 3) < 0.1,
-                "a restored cape read \(back.center.x) after its figure stood at 3")
+        #expect(abs(back.position.x - 3) < 0.1,
+                "a restored cape read \(back.position.x) after its figure stood at 3")
     }
 
     /// A world with a cape in it replays exactly, the way every other tier

@@ -45,7 +45,7 @@ final class VideoTrace: Sketch {
 
         let margin = 40 * scale
         let container = Rectangle(x: margin, y: margin, width: width - 2 * margin, height: height - 2 * margin)
-        guard let player, let contours, let rect = player.fittedRect(in: container) else {
+        guard let player, let contours, let rect = player.fittedRectangle(in: container) else {
             return drawStatus("Waiting for video…")
         }
 

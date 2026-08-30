@@ -188,7 +188,7 @@ public struct Sonification: Sendable, Equatable {
         let values = (0 ..< steps).map { index -> Double in
             let t = Double(index) / Double(steps - 1)
             let point = start + (end - start) * t
-            return field.value(atU: point.x, v: point.y)
+            return field.value(u: point.x, v: point.y)
         }
         self.init(values, in: scale, pitches: pitches,
                   bounds: bounds, polarity: polarity, length: length)

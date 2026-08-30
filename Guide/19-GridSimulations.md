@@ -19,7 +19,7 @@ var life: SimField?
 override func setup() { }                     // created on first draw, held forever
 
 override func draw() {
-    if life == nil { life = simField(.gameOfLife(), scale: 0.08) }
+    if life == nil { life = makeSimField(.gameOfLife(), scale: 0.08) }
     guard let life else { return }
     withField(life) {
         if mouseIsPressed { fill(.white); drawCircle(mouseX, mouseY, 20) }
@@ -88,7 +88,7 @@ for painted in ant.paintedCells { /* draw a cell */ }
 **Lenia** goes the other way and makes the Game of Life *continuous*. Instead of cells that are alive or dead, every texel carries a smooth mass between 0 and 1. And instead of counting eight neighbors, each texel weighs a soft ring of neighborhood around it. It then grows or starves, depending on how close that weight lands to a target. It's a `Sim` like the others:
 
 ```swift
-dish = simField(.lenia(radius: 13), scale: 0.55)
+dish = makeSimField(.lenia(radius: 13), scale: 0.55)
 ```
 
 <img src="Images/19-GridSimulations/Lenia.jpg" alt="Lenia colonies on near-black: several large patches of fine cream-colored ridges with soft glowing teal edges, growing outward into open space, with a few small round organisms drifting alone at the left" width="560">
@@ -102,7 +102,7 @@ There is a family of automata built on one restriction: a cell that fires cannot
 The plainest member is the Greenberg-Hastings model, `.excitable`. A resting cell fires when a neighbor is firing. A fired cell then climbs alone through a refractory tail, one step per frame, and comes back ready. The field starts at rest, so you draw to spark it:
 
 ```swift
-medium = simField(.excitable(states: 5), scale: 0.25)
+medium = makeSimField(.excitable(states: 5), scale: 0.25)
 
 // in draw(), inside withField(medium) { }:
 if mouseIsPressed { fill(.white); drawCircle(mouseX, mouseY, 8) }
@@ -131,7 +131,7 @@ let counts = Ramp(stops: [(0.00, Color(hex: 0x10141F)),
                           (1.00, .white)])
 
 override func setup() {
-    pile = simField(.sandpile(pour: 1024), scale: 0.5)
+    pile = makeSimField(.sandpile(pour: 1024), scale: 0.5)
 }
 
 override func draw() {
@@ -191,7 +191,7 @@ Now run five of those rules side by side, with radii doubling from small to larg
 var field: SimField!
 
 override func setup() {
-    field = simField(.multiScaleTuring(), scale: 0.5)
+    field = makeSimField(.multiScaleTuring(), scale: 0.5)
 }
 
 override func draw() {
@@ -209,7 +209,7 @@ Two knobs repay understanding, because each one is the difference between the pa
 Add `symmetry` and the field folds around its center. `.rosette(n)` does it to every rung at once, which is where the diatom resemblance becomes uncanny:
 
 ```swift
-field = simField(.multiScaleTuring(scales: .rosette(9)), scale: 0.5)
+field = makeSimField(.multiScaleTuring(scales: .rosette(9)), scale: 0.5)
 ```
 
 ## Water you can stir: fluid
@@ -221,7 +221,7 @@ var fluid: SimField?
 
 override func draw() {
     background(Color(hex: 0x05070C))
-    if fluid == nil { fluid = simField(.fluid(curl: 34), scale: 0.5) }
+    if fluid == nil { fluid = makeSimField(.fluid(curl: 34), scale: 0.5) }
     guard let fluid else { return }
 
     let a = time * 1.4
@@ -233,7 +233,7 @@ override func draw() {
         fill(Color(hue: time * 0.07, saturation: 0.85, brightness: 1))
         drawCircle(center: brush, radius: 15)
     }
-    drawImage(fluid.filtered(.bloom(threshold: 0.4, intensity: 1.1, radius: 14)).image, 0, 0)
+    drawImage(fluid.filtered(.bloom(threshold: 0.4, amount: 1.1, radius: 14)).image, 0, 0)
 }
 ```
 
@@ -251,7 +251,7 @@ The fluid above carries color around. The fourth built-in sim is water of a diff
 var pool: SimField!
 
 override func setup() {
-    pool = simField(.ripples(damping: 0.995))
+    pool = makeSimField(.ripples(damping: 0.995))
 }
 
 override func draw() {
@@ -316,7 +316,7 @@ Every sim so far evolves a state of its own. The last one has no chemistry insid
 var warp: SimField!
 
 override func setup() {
-    warp = simField(.selfWarp(strength: 0.55, refresh: 0.05))
+    warp = makeSimField(.selfWarp(amount: 0.55, refresh: 0.05))
 }
 
 override func draw() {
@@ -364,7 +364,7 @@ final class Organism: Sketch {
 
     override func draw() {
         background(Color(hex: 0x04070B))
-        if dish == nil { dish = simField(.reactionDiffusion(feed: 0.055, kill: 0.062), scale: 0.5) }
+        if dish == nil { dish = makeSimField(.reactionDiffusion(feed: 0.055, kill: 0.062), scale: 0.5) }
         guard let dish else { return }
 
         withField(dish) {

@@ -60,14 +60,14 @@ final class PictureFit: Sketch {
         let sun = Vector2(Double(w) * 0.30, Double(h) * 0.33), radius = 29.0
         for y in 0..<h {
             let v = Double(y) / Double(h - 1)
-            let sky = Color.mix(Color(hex: 0x3E5C7E), Color(hex: 0xE8B478), t: pow(v, 0.7))
+            let sky = Color.mix(Color(hex: 0x3E5C7E), Color(hex: 0xE8B478), pow(v, 0.7))
             for x in 0..<w {
                 let d = Vector2(Double(x), Double(y)).distance(to: sun)
                 var c = sky
                 if d < radius {
                     c = Color(hex: 0xFFF0C2)
                 } else if d < radius * 2.4 {
-                    c = Color.mix(c, Color(hex: 0xFFD98F), t: (1 - (d - radius) / (radius * 1.4)) * 0.5)
+                    c = Color.mix(c, Color(hex: 0xFFD98F), (1 - (d - radius) / (radius * 1.4)) * 0.5)
                 }
                 picture[x, y] = c
             }

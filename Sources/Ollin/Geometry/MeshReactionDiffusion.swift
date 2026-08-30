@@ -130,7 +130,7 @@ public final class MeshReactionDiffusion {
         self.operators = MeshOperators(positions: welded.positions, triangles: welded.triangles)
         self.normals = mesh.normals.count == mesh.positions.count
             ? mesh.normals
-            : mesh.withSmoothNormals().normals
+            : mesh.generatingSmoothNormals().normals
 
         self.weldedSubstrate = [Double](repeating: 1, count: welded.positions.count)
         self.weldedValues = [Double](repeating: 0, count: welded.positions.count)
@@ -211,7 +211,7 @@ public final class MeshReactionDiffusion {
         for v in out.positions.indices where v < values.count {
             out.positions[v] = out.positions[v] + normals[v] * (values[v] * amount)
         }
-        return out.withSmoothNormals()
+        return out.generatingSmoothNormals()
     }
 }
 

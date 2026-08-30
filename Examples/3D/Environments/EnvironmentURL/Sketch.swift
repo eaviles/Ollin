@@ -3,7 +3,7 @@ import Ollin
 /// An environment loaded from a URL.
 ///
 /// `Environment.hdri(downloadURL:)` downloads any equirectangular HDRI (`.exr` / `.hdr`) from
-/// a URL on the first run and caches it, the same way `highRes(_:)` fetches the built-ins. So
+/// a URL on the first run and caches it, the same way `highResolution(_:)` fetches the built-ins. So
 /// a sketch can light itself with any HDRI on the web (here `golden_gate_hills` from Poly
 /// Haven, CC0). The scene is unlit until the download lands; the `placeholder:` shows a
 /// bundled built-in (the studio) meanwhile, then it swaps in.

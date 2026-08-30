@@ -14,15 +14,20 @@ import Ollin
 /// Values ride `ParamStored`, the same payload the hosts persist, with one
 /// exception: a menu travels as its option *index* (`.number`), because the
 /// page knows the display options and their order, not the enum's case names.
+/// The control kind a knob renders as on the page. Raw values are the wire
+/// spelling, so the JSON the page reads is unchanged by the Swift casing.
+public enum RemoteControlKind: String, Codable, Equatable, Sendable {
+    case slider, stepper, toggle, menu, color, vector, vector3, rect
+    case insets, range, text, swatches
+}
+
 public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
     public var name: String
     public var label: String
     public var icon: String?
     public var group: String?
-    public var shown: Bool
-    /// One of: slider, stepper, toggle, menu, color, vector, vector3, rect,
-    /// insets, range, text, swatches.
-    public var kind: String
+    public var isShown: Bool
+    public var kind: RemoteControlKind
     public var value: ParamStored
 
     // Constraints, present per kind.
@@ -30,13 +35,13 @@ public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
     public var upper: Double?
     public var step: Double?
     /// A numeric knob declared `style: .field`: no track, value field only.
-    public var field: Bool?
+    public var isField: Bool?
     public var options: [String]?
-    public var segmented: Bool?
-    public var pad: Bool?
+    public var isSegmented: Bool?
+    public var isPad: Bool?
     /// A swatch strip that reads as one blended band (a `Ramp`) rather than
     /// separate blocks (a `Palette`).
-    public var gradient: Bool?
+    public var isGradient: Bool?
     public var xLower: Double?
     public var xUpper: Double?
     public var yLower: Double?
@@ -49,9 +54,14 @@ public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
     public var hUpper: Double?
 }
 
+/// The wire discriminator on every message; raw values are the wire spelling.
+public enum RemoteMessageKind: String, Codable, Sendable {
+    case hello, update, stats, set
+}
+
 /// Server to client, once per connection: the sketch's identity and every knob.
 public struct RemoteHello: Codable, Sendable {
-    public var kind = "hello"
+    public var kind = RemoteMessageKind.hello
     public var sketch: String
     public var host: String
     public var params: [RemoteParamDescriptor]
@@ -60,14 +70,14 @@ public struct RemoteHello: Codable, Sendable {
 /// Server to client: values that changed since the last push (edits made on
 /// the Mac, or by the sketch itself), plus rows whose visibility flipped.
 public struct RemoteUpdate: Codable, Sendable {
-    public var kind = "update"
+    public var kind = RemoteMessageKind.update
     public var values: [String: ParamStored]
     public var shown: [String: Bool]
 }
 
 /// Server to client, a few times a second: the monitor strip.
 public struct RemoteStats: Codable, Sendable {
-    public var kind = "stats"
+    public var kind = RemoteMessageKind.stats
     public var fps: Double
     public var clock: Double
     public var frame: Int
@@ -75,7 +85,7 @@ public struct RemoteStats: Codable, Sendable {
 
 /// Client to server: one knob moved on the phone.
 public struct RemoteSet: Codable, Sendable {
-    public var kind = "set"
+    public var kind = RemoteMessageKind.set
     public var name: String
     public var value: ParamStored
 }
@@ -87,55 +97,55 @@ public enum RemoteWire {
     public static func descriptor(for handle: ParamHandle) -> RemoteParamDescriptor {
         var d = RemoteParamDescriptor(
             name: handle.name, label: handle.label, icon: handle.icon,
-            group: handle.group, shown: handle.isShown, kind: "text",
+            group: handle.group, isShown: handle.isShown, kind: .text,
             value: snapshotValue(of: handle))
         switch handle.control {
         case .slider(let s):
-            d.kind = "slider"
+            d.kind = .slider
             d.lower = s.range.lowerBound; d.upper = s.range.upperBound
             d.step = s.step
-            if case .field = s.style { d.field = true }
+            if case .field = s.style { d.isField = true }
         case .stepper(let s):
-            d.kind = "stepper"
+            d.kind = .stepper
             d.lower = Double(s.range.lowerBound); d.upper = Double(s.range.upperBound)
             d.step = Double(s.step)
         case .toggle:
-            d.kind = "toggle"
+            d.kind = .toggle
         case .menu(let m):
-            d.kind = "menu"
+            d.kind = .menu
             d.options = m.options
-            if case .segmented = m.style { d.segmented = true }
+            if case .segmented = m.style { d.isSegmented = true }
         case .colorWell:
-            d.kind = "color"
+            d.kind = .color
         case .vector(let v):
-            d.kind = "vector"
-            if case .pad = v.style { d.pad = true }
+            d.kind = .vector
+            if case .pad = v.style { d.isPad = true }
             d.xLower = v.xRange.lowerBound; d.xUpper = v.xRange.upperBound
             d.yLower = v.yRange.lowerBound; d.yUpper = v.yRange.upperBound
         case .vector3(let v):
-            d.kind = "vector3"
+            d.kind = .vector3
             d.xLower = v.xRange.lowerBound; d.xUpper = v.xRange.upperBound
             d.yLower = v.yRange.lowerBound; d.yUpper = v.yRange.upperBound
             d.zLower = v.zRange.lowerBound; d.zUpper = v.zRange.upperBound
         case .rectangle(let r):
-            d.kind = "rect"
+            d.kind = .rect
             d.xLower = r.xRange.lowerBound; d.xUpper = r.xRange.upperBound
             d.yLower = r.yRange.lowerBound; d.yUpper = r.yRange.upperBound
             d.wLower = r.widthRange.lowerBound; d.wUpper = r.widthRange.upperBound
             d.hLower = r.heightRange.lowerBound; d.hUpper = r.heightRange.upperBound
         case .insets(let i):
-            d.kind = "insets"
+            d.kind = .insets
             d.lower = i.edgeRange.lowerBound; d.upper = i.edgeRange.upperBound
         case .range(let r):
-            d.kind = "range"
+            d.kind = .range
             d.lower = r.outer.lowerBound; d.upper = r.outer.upperBound
-            if case .field = r.style { d.field = true }
+            if case .field = r.style { d.isField = true }
         case .text:
-            d.kind = "text"
+            d.kind = .text
         case .swatches(let s):
-            d.kind = "swatches"
+            d.kind = .swatches
             d.lower = Double(s.count.lowerBound); d.upper = Double(s.count.upperBound)
-            if case .gradient = s.style { d.gradient = true }
+            if case .gradient = s.style { d.isGradient = true }
         }
         return d
     }
@@ -143,7 +153,7 @@ public enum RemoteWire {
     /// The current value in wire form. Every kind is its persisted payload,
     /// except a menu, which travels by index (see `RemoteParamDescriptor`).
     public static func snapshotValue(of handle: ParamHandle) -> ParamStored {
-        if case .menu(let m) = handle.control { return .number(Double(m.get())) }
+        if case .menu(let m) = handle.control { return .number(Double(m.read())) }
         return handle.param.stored
     }
 
@@ -156,7 +166,7 @@ public enum RemoteWire {
             guard case .number(let index) = value else { return }
             let i = Int(index.rounded())
             guard m.options.indices.contains(i) else { return }
-            m.set(i)
+            m.write(i)
             return
         }
         handle.param.restore(value)
@@ -245,7 +255,7 @@ public enum RemoteHTTP {
 
 // MARK: - WebSocket frames
 
-public enum WSFrameCodec {
+public enum WebSocketFraming {
     public enum Opcode: UInt8, Sendable {
         case continuation = 0x0
         case text = 0x1

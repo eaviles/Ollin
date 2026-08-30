@@ -113,10 +113,10 @@ private final class ClonesProbe: Sketch {
 
     override func draw() {
         background(.black)
-        let backdrop = renderTarget()
+        let backdrop = makeRenderTarget()
         withTarget(backdrop) { background(Color(red: 0.25, green: 0.55, blue: 0.40)) }
         guard let gray = patchGray else { drawImage(backdrop.image, 0, 0); return }
-        let patch = renderTarget()
+        let patch = makeRenderTarget()
         withTarget(patch) {
             noStroke()
             fill(Color(red: gray, green: gray, blue: gray))

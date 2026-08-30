@@ -12,7 +12,7 @@ final class Comets: Sketch {
 
     override func setup() {
         toneMap(.aces, exposure: 1.3)
-        trail = feedback()
+        trail = makeFeedback()
     }
 
     override func draw() {
@@ -46,7 +46,7 @@ final class Comets: Sketch {
         }
 
         blendMode(.add)
-        drawImage(trail.filtered(.bloom(threshold: 0.25, intensity: 1.5, radius: 16)).image, 0, 0)
+        drawImage(trail.filtered(.bloom(threshold: 0.25, amount: 1.5, radius: 16)).image, 0, 0)
         blendMode(.normal)
     }
 }

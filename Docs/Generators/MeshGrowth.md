@@ -91,7 +91,7 @@ Two things about pace are worth knowing.
 
 The reaction has to organize into a pattern before it can steer anything, so a chemical growth's opening steps are steered mostly by noise. Setting **`settleSteps`** runs that opening chemistry all at once when the first step is taken. The surface is refined to its target triangle size, holding still, and the pattern organizes on it. The first folds then land where the pattern says, and `chemistry` reads as a formed pattern from step one.
 
-The pattern also only ever covers part of the surface. At the same `growthAmount` a chemical growth therefore makes area a few times slower than `.uniform`. Budget more steps, or raise `growthAmount`. That is a permanent character of the driver rather than something settling changes.
+The pattern also only ever covers part of the surface. At the same `growthRate` a chemical growth therefore makes area a few times slower than `.uniform`. Budget more steps, or raise `growthRate`. That is a permanent character of the driver rather than something settling changes.
 
 Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded geometry whose triangles share no vertices. An icosphere is therefore, by index, thousands of loose triangles. Without welding, nothing can spread across it at all.
 
@@ -102,7 +102,7 @@ Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded ge
 | Knob | Does | Notes |
 |---|---|---|
 | `edgeLength` | the triangle size the remesher holds | sets the finest fold the surface can hold, and is where the cost lives |
-| `growthAmount` | how fast area is made | 0 leaves the surface only relaxing |
+| `growthRate` | how fast area is made | 0 leaves the surface only relaxing |
 | `stiffness` | resistance to bending | the fold size: raise for smooth open ruffles, drop toward 0 for crumpled |
 | `repulsionRadius` | how near separate parts may come | past about `3 × edgeLength` it starts pushing on neighbors that are legitimately that close, and the form inflates instead of folding |
 | `maxVertices` | the ceiling | growth stops when reached and the surface only relaxes, so it decides how far a form develops |

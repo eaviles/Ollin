@@ -48,7 +48,7 @@ public struct StrandField: Sendable {
     public var lean: Double = 0.3
 
     /// How far the sway carries a tip, world units (0 = still).
-    public var swayAmount: Double = 0.12
+    public var swayAmplitude: Double = 0.12
     /// Sway speed, radians per second on the sketch clock.
     public var swayFrequency: Double = 1.6
     /// Color at the blade root (straight sRGB, like a vertex color).
@@ -56,7 +56,7 @@ public struct StrandField: Sendable {
     /// Color at the tip.
     public var tipColor = Color(hue: 0.26, saturation: 0.5, brightness: 0.62)
     /// Seeds the per-blade hashes, so two fields can differ.
-    public var seed: Double = 0
+    public var seed: Int = 0
 
     /// Camera distance at which blades still get full detail.
     public var detailNear: Double = 12
@@ -65,11 +65,11 @@ public struct StrandField: Sendable {
 
     /// Skip tiles outside the camera's view (the default). The A/B switch:
     /// turning it off draws every tile and must not change the picture.
-    public var cullingEnabled = true
+    public var isCullingEnabled = true
     /// Reduce distant blades' segment counts (the default). Turning it off
     /// gives every blade full detail everywhere, the honest way to measure
     /// what the adaptive detail saves.
-    public var levelOfDetailEnabled = true
+    public var isLevelOfDetailEnabled = true
 
     /// A patch of about `count` blades over `width` x `depth` world units.
     public init(width: Double, depth: Double, count: Int) {

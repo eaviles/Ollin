@@ -11,7 +11,7 @@ final class FilterSheet: Sketch {
 
         // A small landscape with smooth tone, color, and crisp edges, so every
         // filter family has something to bite on.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             noStroke()
             fill(.linear(from: Vector2(0, 0), to: Vector2(0, height),
@@ -31,12 +31,12 @@ final class FilterSheet: Sketch {
         let tiles: [(String, Filter?)] = [
             ("the layer", nil),
             ("gaussianBlur", .gaussianBlur(radius: 22)),
-            ("bloom", .bloom(threshold: 0.5, intensity: 1.6, radius: 22)),
+            ("bloom", .bloom(threshold: 0.5, amount: 1.6, radius: 22)),
             ("posterize", .posterize(levels: 4)),
             ("duotone", .duotone(dark: Color(hex: 0x1B1040), light: Color(hex: 0xFFD98A))),
             ("halftone", .halftone(scale: 52)),
             ("pixelate", .pixelate(size: 26)),
-            ("edges", .edges(intensity: 2.2)),
+            ("edges", .edges(amount: 2.2)),
             ("oilPaint", .oilPaint(radius: 5)),
             ("glitch", .glitch(amount: 0.12, seed: 3)),
             ("swirl", .swirl(angle: 2.6, radius: 0.55)),

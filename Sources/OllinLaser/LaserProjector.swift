@@ -100,7 +100,7 @@ public final class LaserProjector: @unchecked Sendable {
     }
 
     /// Whether the DAC is connected and taking points.
-    public var isPlaying: Bool { dac?.isPlaying ?? false }
+    public var isConnected: Bool { dac?.isPlaying ?? false }
 
     /// What the DAC last said about itself.
     public var status: EtherDreamStatus? { dac?.status }
@@ -137,7 +137,7 @@ public final class LaserProjector: @unchecked Sendable {
         lock.withLock { $0.stream = guarded }
         if let dac {
             dac.stallTimeout = safety.stallTimeout
-            dac.setPointRate(optimizer.pointsPerSecond)
+            dac.pointsPerSecond = optimizer.pointsPerSecond
             dac.play(isArmed ? guarded.points : LaserSafety.blankHold())
         }
         return guarded

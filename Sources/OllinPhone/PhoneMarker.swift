@@ -74,7 +74,7 @@ public struct PhoneMarker: Sendable {
     public init(_ sample: PhoneMarkerSample) {
         name = sample.name
         kind = sample.kind
-        isTracked = sample.tracked
+        isTracked = sample.isTracked
         timestamp = sample.timestamp
         id = sample.id
         transform = sample.transform

@@ -61,7 +61,7 @@ public struct Genome: Sendable, Hashable, RandomAccessCollection {
     }
 
     /// Gene `index` as a yes or no, true `chance` of the time.
-    public func flag(_ index: Int, chance: Double = 0.5) -> Bool { self[index] < chance }
+    public func isSet(_ index: Int, chance: Double = 0.5) -> Bool { self[index] < chance }
 
     /// A copy with one gene set (clamped to 0…1). For nudging a genome by hand.
     public func setting(_ index: Int, to value: Double) -> Genome {

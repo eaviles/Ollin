@@ -175,13 +175,13 @@ public final class SpaceColonization {
     }
 
     /// A thickness per node from the pipe model: every leaf tip has
-    /// `leafWidth`, and a parent's width is the sum of its children's raised
+    /// `tipWidth`, and a parent's width is the sum of its children's raised
     /// to `exponent`, re-rooted (so trunks are thick and twigs thin, the way
     /// real branches carry their load). Index-aligned with `nodes`.
-    public func thicknesses(leafWidth: Double = 1.5, exponent: Double = 2.2) -> [Double] {
+    public func thicknesses(tipWidth: Double = 1.5, exponent: Double = 2.2) -> [Double] {
         var flow = [Double](repeating: 0, count: nodes.count)
         for i in stride(from: nodes.count - 1, through: 0, by: -1) {
-            if flow[i] == 0 { flow[i] = pow(leafWidth, exponent) }   // a leaf tip
+            if flow[i] == 0 { flow[i] = pow(tipWidth, exponent) }   // a leaf tip
             if let parent = nodes[i].parent { flow[parent] += flow[i] }
         }
         return flow.map { pow($0, 1 / exponent) }

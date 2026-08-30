@@ -82,7 +82,7 @@ a.delayed(by: 0.2)      // the whole thing, later
 a.repeated(3)           // three copies, end to end
 a.repeated(3, every: 0.1)   // three copies, 0.1 s apart, overlapping if that is shorter
 a.scaled(intensity: 0.5)    // the same shape, softer
-a.speed(2)              // the same shape, twice as fast
+a.scaled(speed: 2)      // the same shape, twice as fast
 a.reversed()            // what landed last lands first
 ```
 
@@ -135,7 +135,7 @@ On a machine with nothing to feel, and in an export, every call above does nothi
 ### What is on the other end
 
 ```swift
-hapticsAvailable            // Bool
+hapticsAreAvailable            // Bool
 hapticHardware              // .engine, .trackpad, or .none
 hapticsUnavailableReason    // a sentence, or nil
 ```

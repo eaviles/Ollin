@@ -28,11 +28,11 @@ public struct StrokeGlyph: Equatable, Sendable {
 /// so `drawText` draws it with the current `stroke` (weight, join, cap) and the
 /// `fill` is ignored.
 ///
-/// The built-in ``builtin`` font is **Hershey Sans** (`futural`), so stroke text
+/// The built-in ``builtIn`` font is **Hershey Sans** (`futural`), so stroke text
 /// works with no setup once you switch to it:
 ///
 /// ```swift
-/// textFont(StrokeFont.builtin)   // Hershey Sans
+/// textFont(StrokeFont.builtIn)   // Hershey Sans
 /// textSize(140)
 /// stroke(.white); strokeWeight(2); noFill()
 /// drawText("ollin", width / 2, height / 2)

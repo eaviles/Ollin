@@ -28,7 +28,7 @@ override func setup() {
 override func draw() {
     background(.black)
     cameraShowcase()
-    world.step(dt: deltaTime)
+    world.advance(by: deltaTime)
     for body in world.bodies {
         withBody(body) { drawBox(width: 1, height: 1, depth: 1) }
     }
@@ -76,14 +76,14 @@ world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
 
 <img src="Images/24-WorldsWithWeight/Rockslide.jpg" alt="Brightly colored rocks, spheres, boxes, and cones, spread mid-slide down a pale eroded mountainside, a gold box caught mid-tumble, green scrub at the foot of the slope" width="560">
 
-The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticColliders(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice knob that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
+The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice knob that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
 
 ## Asking what hit what
 
 So far the world has been something to watch. To make it something to *play*, you need to know when things happen. A ball reached the goal, a crate landed hard, or the plate has something on it. Ollin hands that over the way it hands over the mouse. Every `step` leaves a list on the world, and `draw()` reads it:
 
 ```swift
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 for contact in world.contacts where contact.phase == .began {
     knocks.append(Knock(at: contact.point, strength: contact.speed))
 }
@@ -471,7 +471,7 @@ final class Contraption: Sketch {
                     fieldOfView: 0.85)
 
         crank?.drive(at: speed, strength: 900)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         // A crate swept off the shelf goes back on it, so the machine never
         // runs out of work to do.

@@ -143,7 +143,7 @@ The flags:
 
 | Flag | Effect |
 |---|---|
-| `--codec h264` \| `hevc` \| `prores422` \| `prores4444` | the encoder (default `h264`) |
+| `--codec h264` \| `hevc` \| `proRes422` \| `proRes4444` | the encoder (default `h264`) |
 | `--bitrate MBPS` | average bitrate in Mbit/s, the file-size dial |
 | `--quality 0..1` | constant-quality rate control instead of a bitrate (Apple silicon only) |
 
@@ -355,7 +355,7 @@ The same thing is available as a value:
 
 ```swift
 OllinApp.exportSVG(MySketch(), to: "/tmp/hatched.svg",
-                   hatching: Hatching(spacing: 6, angle: .pi / 4, crossHatch: true))
+                   hatching: Hatching(spacing: 6, angle: .pi / 4, crossHatches: true))
 ```
 
 And because hatching is a transform over geometry, not a render trick, a sketch can ask for the lines directly. Draw them on the canvas, or feed them anywhere:

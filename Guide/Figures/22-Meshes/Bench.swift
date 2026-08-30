@@ -102,7 +102,7 @@ final class Bench: Sketch {
         // stone draws a straight line wherever the picture wraps.
         let stone = picture(size: 512) { u, v in
             let grain = tilingFbm(u, v, detail: 5, octaves: 5)
-            return Color.mix(Color(hex: 0x585A5C), Color(hex: 0x7C7B74), t: grain)
+            return Color.mix(Color(hex: 0x585A5C), Color(hex: 0x7C7B74), grain)
         }
         let stoneRelief = normalMap(size: 512, strength: 0.35) { u, v in
             tilingFbm(u, v, detail: 8, octaves: 5) * 0.5
@@ -112,7 +112,7 @@ final class Bench: Sketch {
 
         // Painted metal, and a map that says where the paint has gone.
         let paint = picture(size: 512) { u, v in
-            Color.mix(Color(hex: 0x1D5450), Color(hex: 0xC7BFB0), t: self.bareness(u, v))
+            Color.mix(Color(hex: 0x1D5450), Color(hex: 0xC7BFB0), self.bareness(u, v))
         }
         let wear = picture(size: 512) { u, v in
             let b = self.bareness(u, v)
@@ -137,7 +137,7 @@ final class Bench: Sketch {
         // A tile whose device is carved by a height map rather than by geometry.
         let carved = picture(size: 512) { u, v in Color(white: self.device(u, v)) }
         let slate = picture(size: 512) { u, v in
-            Color.mix(Color(hex: 0x3E4A52), Color(hex: 0x8FA0A8), t: self.device(u, v))
+            Color.mix(Color(hex: 0x3E4A52), Color(hex: 0x8FA0A8), self.device(u, v))
         }
         tile = Mesh.plane(width: 1.15, depth: 1.15)
             .textured(slate)
@@ -163,7 +163,7 @@ final class Bench: Sketch {
         background(Color(hex: 0x0D0E12))
         camera(Camera3D(eye: Vector3(0.55, 2.35, 6.4), target: Vector3(0.15, 0.35, 0.2),
                         projection: .perspective(fieldOfView: .pi / 4.8)))
-        environment(.interior.backgroundBlur(0.55))
+        environment(.interior.backgroundBlurred(0.55))
         directionalLight(Color(kelvin: 4600), direction: Vector3(-0.5, -0.72, -0.5),
                          intensity: 0.85, softness: 0.22)
         castShadows()
@@ -176,7 +176,7 @@ final class Bench: Sketch {
             material(.dielectric(roughness: 0.85))
             drawMesh(bench)
         }
-        if let mark { decal(mark, at: Vector3(-1.4, 0, 1.25), width: 0.7) }
+        if let mark { drawDecal(mark, at: Vector3(-1.4, 0, 1.25), width: 0.7) }
 
         // The crystal on its lacquered plinth.
         withState {

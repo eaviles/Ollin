@@ -18,7 +18,7 @@ final class SelfWarp_Example: Sketch {
     private var warp: SimField!
 
     override func setup() {
-        warp = simField(.selfWarp())
+        warp = makeSimField(.selfWarp())
     }
 
     /// A soft-cored orb: a radial gradient from a hot center through its color to
@@ -31,7 +31,7 @@ final class SelfWarp_Example: Sketch {
 
     override func draw() {
         // The knobs retune the sim live; the field's accumulated history carries on.
-        warp.sim = .selfWarp(strength: strength, refresh: refresh, smoothing: smoothing)
+        warp.sim = .selfWarp(amount: strength, refresh: refresh, smoothing: smoothing)
 
         withField(warp) {
             background(Color(red: 0.03, green: 0.03, blue: 0.06))

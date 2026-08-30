@@ -44,7 +44,7 @@ final class Cloth: Sketch {
         camera(.perspective(eye: Vector3(0.05, 1.35, 5.4),
                             target: Vector3(0.05, 0.5, 0), fieldOfView: .pi / 4))
 
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         fill(Color(hex: 0x2A3242))
         material(.dielectric(roughness: 0.92))

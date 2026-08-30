@@ -21,14 +21,14 @@ final class ChainGraph: Sketch {
         background(paper)
 
         let source: Visual = .oscillator(frequency: 24, colorShift: 0.12)
-        let folded = source.kaleidoscope(6)
+        let folded = source.kaleidoscope(segments: 6)
         let driver: Visual = .noise(scale: 3)
         let final = folded.displaced(by: driver, amount: 0.12)
 
         let w = 210.0, h = 210.0
         let y = 100.0
         thumb(source, 40, y, w, h, ".oscillator(frequency: 24)")
-        thumb(folded, 335, y, w, h, ".kaleidoscope(6)")
+        thumb(folded, 335, y, w, h, ".kaleidoscope(segments: 6)")
         thumb(final, 630, y, w, h, ".displaced(by: noise)")
         thumb(driver.brightness(0.5), 483, 370, w * 0.55, h * 0.55, "the noise driver")
 

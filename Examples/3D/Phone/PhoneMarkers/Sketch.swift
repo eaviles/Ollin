@@ -48,7 +48,7 @@ final class PhoneMarkers: Sketch {
         guard !markers.isEmpty else { return drawWaiting() }
 
         aimAt(markers)
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
 
         for marker in markers {
             if marker.isObject {

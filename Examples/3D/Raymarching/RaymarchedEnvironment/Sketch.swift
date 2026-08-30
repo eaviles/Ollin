@@ -28,8 +28,8 @@ final class RaymarchedEnvironment: Sketch {
             material(.polishedMetal)
             fill(Color(white: 0.95))
             let melt = SDF3D.torus(radius: 1.15, tube: 0.42)
-                .smoothUnion(.sphere(radius: 0.62).at(x: 0, y: sin(t * 0.9) * 0.9, z: 0), k: 0.55)
-            drawSDF3D(melt.rotatedX(0.5 * .pi).at(x: -2.4, y: 0.4, z: 0))
+                .smoothUnion(.sphere(radius: 0.62).at(0, sin(t * 0.9) * 0.9, 0), k: 0.55)
+            drawSDF3D(melt.rotatedX(0.5 * .pi).at(-2.4, 0.4, 0))
         }
 
         // A matte melt in the standard material: the diffuse irradiance is its ambient,
@@ -38,9 +38,9 @@ final class RaymarchedEnvironment: Sketch {
             material(.matte)
             let melt = SDF3D.sphere(radius: 0.95).colored(Color(hex: 0x3ad6c5))
                 .smoothUnion(.octahedron(radius: 1.05)
-                    .at(x: 0.9, y: 0.75 + sin(t * 1.3) * 0.25, z: 0)
+                    .at(0.9, 0.75 + sin(t * 1.3) * 0.25, 0)
                     .colored(Color(hex: 0xffb84d)), k: 0.6)
-            drawSDF3D(melt.at(x: 2.2, y: 0.2, z: 0))
+            drawSDF3D(melt.at(2.2, 0.2, 0))
         }
 
         // Mesh parity: the same two materials on rasterized spheres, sharing the frame

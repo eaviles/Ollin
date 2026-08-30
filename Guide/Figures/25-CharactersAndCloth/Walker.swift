@@ -55,7 +55,7 @@ final class Walker: Sketch {
 
         // The scripted walk: east, at a steady pace, the whole time.
         walker.move(x: 2.2, z: 0)
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         let travel = Vector3(walker.actualVelocity.x, 0, walker.actualVelocity.z)
         if travel.length > 0.2 { walker.facing = atan2(travel.x, travel.z) }

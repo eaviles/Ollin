@@ -17,7 +17,7 @@ final class FeedbackSteps: Sketch {
     var panels: [Feedback] = []
 
     override func setup() {
-        panels = (0 ..< 4).map { _ in feedback(scale: 0.5) }
+        panels = (0 ..< 4).map { _ in makeFeedback(scale: 0.5) }
     }
 
     override func draw() {

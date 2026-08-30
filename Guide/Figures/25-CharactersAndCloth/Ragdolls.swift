@@ -24,7 +24,7 @@ final class Ragdolls: Sketch {
         limp = rest
         held = rest
         world.ground = 0
-        world.bounce = 0.05
+        world.restitution = 0.05
         limpDoll = world.addRagdoll(from: rest, at: Vector3(-0.85, 1.35, 0),
                                     mass: 72, friction: 0.7)
         heldDoll = world.addRagdoll(from: rest, at: Vector3(0.85, 1.35, 0),
@@ -42,7 +42,7 @@ final class Ragdolls: Sketch {
         // The one difference between the two falls.
         heldDoll.drive(toward: rest, strength: 260)
 
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
         limp.apply(limpDoll)
         held.apply(heldDoll)
 

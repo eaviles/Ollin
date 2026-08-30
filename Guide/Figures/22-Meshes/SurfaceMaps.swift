@@ -96,7 +96,7 @@ final class SurfaceMaps: Sketch {
             return (seam * 0.25, seam * 0.85, seam)
         })
         lit.material?.baseColor = Color(red: 0.09, green: 0.1, blue: 0.12)
-        lit.material?.emissiveFactor = Color(white: 0.5)
+        lit.material?.emissiveColor = Color(white: 0.5)
 
         spheres = [("worn metal", worn, .physicallyBased(metallic: 1, roughness: 1)),
                    ("occlusion", grooved, .dielectric(roughness: 0.55)),
@@ -109,7 +109,7 @@ final class SurfaceMaps: Sketch {
         camera(.perspective(eye: Vector3(0, 0.45, 9.2), target: .zero, fieldOfView: .pi / 4))
         // The environment lights the metals; the backdrop stays the dark card
         // (the sibling figure's look), so the maps carry the picture.
-        environment(.studio.intensity(1.05).lightingOnly())
+        environment(.studio.intensified(to: 1.05).lightingOnly())
 
         fill(.white)
         let xs: [Double] = [-3.6, -1.2, 1.2, 3.6]

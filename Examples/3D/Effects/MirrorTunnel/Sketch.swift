@@ -34,7 +34,7 @@ final class MirrorTunnel: Sketch {
                          azimuth: -1.216 + sin(time * 0.25) * 0.08,
                          elevation: 0.12 + sin(time * 0.17) * 0.05,
                          fieldOfView: .pi / 3, near: 0.2, far: 40))
-        environment(.sunset.intensity(1.15))
+        environment(.sunset.intensified(to: 1.15))
         directionalLight(.white, direction: Vector3(0.3, 1, 0.4), intensity: 1.8)
         rayTracedReflections()
         reflectionBounces(isKeyDown(" ") ? 2 : bounces)

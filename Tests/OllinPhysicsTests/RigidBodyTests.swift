@@ -20,7 +20,7 @@ import CBox2D
 struct RigidBodyTests {
 
     func run(_ world: World, steps: Int, dt: Double) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// Low-level certification that the vendored Box2D builds, links, and steps
@@ -60,7 +60,7 @@ struct RigidBodyTests {
     @Test func staticFloorStopsAFallingBody() {
         let world = World()
         world.gravity = Vector2(0, 2000)
-        world.bounce = 0
+        world.restitution = 0
         world.bounds = Rectangle(x: 0, y: 0, width: 600, height: 600)
         let halfHeight = 20.0
         let body = world.addBody(.box(width: 40, height: 2 * halfHeight),
@@ -115,7 +115,7 @@ struct RigidBodyTests {
         // damped, so it oscillates rather than settling — track the deepest swing.
         var maxY = bar.position.y
         for _ in 0 ..< 180 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             maxY = Swift.max(maxY, bar.position.y)
         }
 
@@ -153,7 +153,7 @@ struct RigidBodyTests {
     @Test func aBodyComingToRestOnAnotherStacks() {
         let world = World()
         world.gravity = Vector2(0, 2000)
-        world.bounce = 0
+        world.restitution = 0
         world.bounds = Rectangle(x: 0, y: 0, width: 600, height: 600)
         let half = 25.0
         // A floor-resting box and one dropped right above it.

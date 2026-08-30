@@ -20,7 +20,7 @@ final class DepthEffects: Sketch {
     override func draw() {
         background(paper)
 
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) { blocks() }
 
         let panels = (0 ..< 3).map {
@@ -29,7 +29,7 @@ final class DepthEffects: Sketch {
 
         drawImage(scene.image, in: panels[0])
         drawImage(scene.combined(with: scene.depth,
-                                 .ambientOcclusion(radius: 0.7, intensity: 1.5)).image,
+                                 .ambientOcclusion(radius: 0.7, amount: 1.5)).image,
                   in: panels[1])
         drawImage(scene.combined(with: scene.depth,
                                  .defocus(focus: 0.46, range: 0.13, maxBlur: 16)).image,

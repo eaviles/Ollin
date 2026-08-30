@@ -63,7 +63,7 @@ struct SpaceColonizationTests {
         let growth = SpaceColonization(attractors: attractors, roots: [Vector2(0, -80)],
                                        influenceRadius: 200, killRadius: 20, stepLength: 10)
         growth.grow()
-        let widths = growth.thicknesses(leafWidth: 1.5)
+        let widths = growth.thicknesses(tipWidth: 1.5)
         #expect(widths.count == growth.count)
         for (i, node) in growth.nodes.enumerated() {
             if let parent = node.parent {

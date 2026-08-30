@@ -51,8 +51,8 @@ Everything above used the default font, which is one of three kinds Ollin draws.
 Switching kinds is the same `textFont` call:
 
 ```swift
-textFont(BitmapFont.builtin)               // Cozette, the bundled pixel font
-textFont(StrokeFont.builtin)               // Hershey Sans, the bundled pen font
+textFont(BitmapFont.builtIn)               // Cozette, the bundled pixel font
+textFont(StrokeFont.builtIn)               // Hershey Sans, the bundled pen font
 textFont(OutlineFont.systemMedium)         // back to the default
 ```
 
@@ -294,13 +294,13 @@ final class Specimen: Sketch {
         noFill()
         stroke(ink)
         strokeWeight(1.6)
-        textFont(StrokeFont.builtin)
+        textFont(StrokeFont.builtIn)
         textSize(34)
         drawText("stroke, drawn by a pen", 120, 587)
 
         noStroke()
         fill(ink)
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         textSize(24)
         drawText("bitmap, one pixel at a time", 120, 662)
 

@@ -150,7 +150,7 @@ final class HapticHub {
     /// on its own and the pile of them is not.
     private func deliver(_ knock: TrackpadKnock) {
         let now = clock()
-        guard now - lastKnock >= TrackpadPlan.minimumSpacing else { return }
+        guard now - lastKnock >= TrackpadPlan.minSpacing else { return }
         lastKnock = now
         #if os(macOS)
         performer.perform(knock.feel.systemPattern, performanceTime: .now)

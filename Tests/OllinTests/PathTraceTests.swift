@@ -149,7 +149,7 @@ struct PathTraceTests {
         override func draw() {
             background(Color(hex: 0x101218))
             ambientLight(Color(white: 0.18))
-            rectLight(Color(hue: 0.1, saturation: 0.3, brightness: 1.0),
+            rectangleLight(Color(hue: 0.1, saturation: 0.3, brightness: 1.0),
                       at: Vector3(-2.2, 2.4, 1.2),
                       direction: Vector3(0.6, -0.65, -0.45),
                       width: 2, height: 1.4, intensity: 5)
@@ -256,7 +256,7 @@ struct PathTraceTests {
         private func emissivePanelMesh() -> Mesh {
             var panel = Mesh.box(width: 0.4, height: 0.05, depth: 0.4)
             let f = Self.panelFactor
-            panel.material = MeshMaterial(emissiveFactor: Color(red: f, green: f, blue: f))
+            panel.material = MeshMaterial(emissiveColor: Color(red: f, green: f, blue: f))
             return panel
         }
 
@@ -774,7 +774,7 @@ struct PathTraceTests {
         /// that makes an unfinished render speckle.
         private func oneSmallPanel() {
             ambientLight(Color(white: 0.03))
-            rectLight(Color(white: 7), at: Vector3(1.7, 2.4, 1.6),
+            rectangleLight(Color(white: 7), at: Vector3(1.7, 2.4, 1.6),
                       direction: Vector3(-0.6, -1, -0.6), width: 0.45, height: 0.45)
         }
 

@@ -20,7 +20,7 @@ struct RagdollLimit {
 /// var figure = loadScene("figure.gltf")!
 /// let ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 3, 0))!
 /// // each frame:
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// figure.apply(ragdoll)        // the pose the solver just found
 /// drawScene(figure)
 /// ```
@@ -33,7 +33,7 @@ struct RagdollLimit {
 /// ```swift
 /// figure.apply(walk, at: time)     // where the animation wants the limbs
 /// ragdoll.drive(toward: figure)    // and how hard they try to get there
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// figure.apply(ragdoll)            // where they actually ended up
 /// ```
 ///
@@ -180,7 +180,7 @@ public final class Ragdoll3D {
         let created: OpaquePointer? = withExtendedLifetime(arena) {
             parts.withUnsafeMutableBufferPointer {
                 cjolt_ragdoll_create(world.handle, $0.baseAddress, Int32($0.count),
-                                     Float(friction), Float(world.bounce),
+                                     Float(friction), Float(world.restitution),
                                      world.groupIndex(group))
             }
         }
@@ -467,11 +467,11 @@ extension Scene {
 
     /// Pose the figure's joints from a simulated `ragdoll`: the inverse of
     /// `apply(_:at:)`, taking the pose the solver found instead of the one an
-    /// animation asked for. Call it after `world.step(dt:)` and draw the scene
+    /// animation asked for. Call it after `world.advance(by:)` and draw the scene
     /// as usual.
     ///
     /// ```swift
-    /// world.step(dt: deltaTime)
+    /// world.advance(by: deltaTime)
     /// figure.apply(ragdoll)
     /// drawScene(figure)
     /// ```

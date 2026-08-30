@@ -2,7 +2,7 @@ import Ollin
 
 /// A sea, made the way the ocean is measured.
 ///
-/// Nothing here places a wave. `oceanField(_:)` writes a *spectrum* on the GPU,
+/// Nothing here places a wave. `makeOceanField(_:)` writes a *spectrum* on the GPU,
 /// which says how much water stands at each wavelength and heading for this
 /// wind, and one inverse Fourier transform turns that whole field of
 /// frequencies into the moving surface in a single step. What comes back is a
@@ -32,7 +32,7 @@ final class OceanSurface: Sketch {
         toneMap(.aces)
 
         // The sun stands in a fixed compass direction (+Z) at this elevation,
-        // and the same elevation aims the light, so the glitter on the water
+        // and the same elevation aims the light, so the sparkle on the water
         // and the sun in the sky are the same sun.
         let elevation = lowSun ? 0.13 : 0.55
         environment(.sky(turbidity: 2.6, sunElevation: elevation))
@@ -40,11 +40,11 @@ final class OceanSurface: Sketch {
                            direction: Vector3(0, -sin(elevation), -cos(elevation)),
                            intensity: 1.1))
 
-        // Low over the water, looking down the glitter path toward the sun.
+        // Low over the water, looking down the sparkle path toward the sun.
         camera(.perspective(eye: Vector3(0, 4.6, -95), target: Vector3(0, 2.6, 220),
                             fieldOfView: .pi / 3.4))
 
-        let sea = oceanField(Ocean(waveHeight: waveHeight,
+        let sea = makeOceanField(Ocean(waveHeight: waveHeight,
                                    windSpeed: windSpeed,
                                    windDirection: 90,
                                    choppiness: choppiness,

@@ -81,13 +81,13 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
         let pixelBuffer = frame.capturedImage
         let timestamp = frame.timestamp
         let turns = captureQuarterTurns()
-        let tracked: Bool = if case .normal = frame.camera.trackingState { true } else { false }
+        let isTracked: Bool = if case .normal = frame.camera.trackingState { true } else { false }
         let lift = liftContext(of: frame)
 
         queue.async { [weak self] in
             guard let self else { return }
             let hands = self.findHands(in: pixelBuffer, timestamp: timestamp,
-                                       tracked: tracked, turns: turns, lift: lift)
+                                       isTracked: isTracked, turns: turns, lift: lift)
             DispatchQueue.main.async {
                 self.busy = false
                 if let hands { self.onHands?(hands) }
@@ -101,7 +101,7 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
     /// `nil` when the pass itself failed (the last good set stays put on the Mac),
     /// and the empty list when it ran and saw no hand.
     private func findHands(in pixelBuffer: CVPixelBuffer, timestamp: Double,
-                           tracked: Bool, turns: UInt8, lift: LiftContext?) -> [PhoneHandSample]? {
+                           isTracked: Bool, turns: UInt8, lift: LiftContext?) -> [PhoneHandSample]? {
         let request = VNDetectHumanHandPoseRequest()
         request.maximumHandCount = maximumHandCount
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer,
@@ -129,7 +129,7 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
             case .right: .right
             default: .unknown
             }
-            return PhoneHandSample(tracked: tracked, timestamp: timestamp,
+            return PhoneHandSample(isTracked: isTracked, timestamp: timestamp,
                                    chirality: chirality,
                                    confidence: Float(observation.confidence),
                                    joints: joints)

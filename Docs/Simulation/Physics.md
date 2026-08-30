@@ -26,7 +26,7 @@ final class Drops: Sketch {
 
     override func setup() {
         world.bounds = Rectangle(x: 0, y: 0, width: width, height: height)
-        world.collisions = true
+        world.particlesCollide = true
         for _ in 0 ..< 200 {
             world.addParticle(at: Vector2(random(width), random(height * 0.3)),
                               radius: 14 * scale)
@@ -35,7 +35,7 @@ final class Drops: Sketch {
 
     override func draw() {
         background(.black)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         fill(.white)
         for p in world.particles {
             drawCircle(center: p.position, radius: p.radius)
@@ -63,7 +63,7 @@ Gravity pulls the discs down, the walls catch them, and `collisions` keeps them 
 let world = World()
 ```
 
-The container for everything. You add particles and springs to it, set its rules, and call `step(dt:)` each frame.
+The container for everything. You add particles and springs to it, set its rules, and call `advance(by:)` each frame.
 
 **Building it**
 
@@ -88,7 +88,7 @@ var springs: [Spring] { get }
 var gravity: Vector2 = Vector2(0, 980)   // points per second², y-down
 var drag: Double = 0.01                  // velocity damping, 0…1
 var bounds: Rectangle?                   // optional container; nil lets bodies leave
-var bounce: Double = 0.5                 // wall restitution, 0…1
+var restitution: Double = 0.5            // how much speed survives a hit, 0…1
 var collisions: Bool = false             // push particles apart as solid disks
 var iterations: Int = 8                  // relaxation passes per step
 var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
@@ -108,7 +108,7 @@ var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 **Stepping**
 
 ```swift
-func step(dt: Double)
+func advance(by dt: Double)
 ```
 
 Advance the simulation by `dt` seconds, passing `deltaTime`. A `dt` of `0` (a paused or first frame) does nothing, and a large one is clamped to `maxTimestep` so a stutter or a window drag doesn't launch everything off-screen.
@@ -197,7 +197,7 @@ final class Tower: Sketch {
 
     override func draw() {
         background(.black)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         fill(.white)
         for body in world.bodies {
             withState {
@@ -257,13 +257,13 @@ func applyTorque(_ torque: Double)    // spin it
 
 **Shared rules and units**
 
-The rigid side reads the same `gravity`, `bounds` (as walls), `bounce` (wall and default contact restitution), and `drag` (as body damping) you already set, and rides the same `step(dt:)`. One knob is its own:
+The rigid side reads the same `gravity`, `bounds` (as walls), `bounce` (wall and default contact restitution), and `drag` (as body damping) you already set, and rides the same `advance(by:)`. One knob is its own:
 
 ```swift
-var pixelsPerMeter: Double = 100
+var pointsPerMeter: Double = 100
 ```
 
-Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pixelsPerMeter` bridges that to sketch points, and the default of 100 puts a 100-point shape at 1 m, right in its sweet spot, so you keep thinking in points. (The Verlet particle side works in points directly and ignores this.)
+Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pointsPerMeter` bridges that to sketch points, and the default of 100 puts a 100-point shape at 1 m, right in its sweet spot, so you keep thinking in points. (The Verlet particle side works in points directly and ignores this.)
 
 **Joints**
 
@@ -310,7 +310,7 @@ Each `step` integrates every particle forward (time-corrected Verlet, so a wande
 
 ### Soft bodies
 
-A squishy blob is a small composition: a hub particle, spokes out to a ring of rim particles, and springs around the rim. Slack spokes let it deform, the rim springs keep it roughly round, and giving the rim particles a radius (with `world.collisions = true`) stops blobs passing through each other.
+A squishy blob is a small composition: a hub particle, spokes out to a ring of rim particles, and springs around the rim. Slack spokes let it deform, the rim springs keep it roughly round, and giving the rim particles a radius (with `world.particlesCollide = true`) stops blobs passing through each other.
 
 ```swift
 func makeBlob(at center: Vector2, radius: Double) -> [Particle] {

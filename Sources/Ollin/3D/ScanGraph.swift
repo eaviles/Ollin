@@ -23,7 +23,7 @@ import simd
 /// var scan = ScanGraph(voxelSize: 0.025)
 ///
 /// // each new frame, in draw():
-/// if let frame = device.latestDepthFrame, let pose = device.latestPose {
+/// if let frame = device.latestFrame, let pose = device.latestPose {
 ///     let update = scan.add(frame.pointCloud(pointSize: 0.01), correcting: pose)
 ///     if let loop = update.loop { print("been here before, map moved \(loop.moved) m") }
 /// }
@@ -113,20 +113,20 @@ public struct ScanGraph {
         public var neighborhood: Int = 2
 
         /// The least the two clouds have to overlap for a match to be believed, 0 to 1.
-        public var minimumOverlap: Double = 0.55
+        public var minOverlap: Double = 0.55
 
         /// The most a believed match may leave over, in world units.
-        public var maximumError: Double = 0.05
+        public var maxError: Double = 0.05
 
         /// How differently the camera may have been facing, in radians. Two views of one
         /// place from opposite sides share almost no surface, so a match between them is
         /// far more likely to be a mistake than a memory.
-        public var maximumViewAngle: Double = .pi / 2
+        public var maxViewAngle: Double = .pi / 2
 
         /// How much a match has to disagree with where things already stand before the
         /// scan is straightened, in world units. Below it the match is kept as a
         /// measurement and nothing is moved.
-        public var minimumSnap: Double = 0.01
+        public var minSnap: Double = 0.01
 
         /// How far from the camera a turn is weighed when the scan is straightened, in
         /// world units. Turns are measured in radians and moves in meters, and the two
@@ -150,7 +150,7 @@ public struct ScanGraph {
         /// per-frame one, because it is looking for an error a whole sweep long rather
         /// than one frame's worth, and it runs rarely.
         ///
-        /// It also asks for `minimumStability`, which the per-frame fit does not. A match
+        /// It also asks for `minStability`, which the per-frame fit does not. A match
         /// is kept as a measurement and believed from then on, so one taken against a
         /// bare wall is worse than no match at all: it would hand the scan three measured
         /// numbers and three that are simply the drift, written down as though they had
@@ -160,9 +160,9 @@ public struct ScanGraph {
             settings.samples = 900
             settings.passes = 14
             settings.range = 0.2
-            settings.maximumShift = 1.5
-            settings.maximumTurn = .pi / 4
-            settings.minimumStability = 0.005
+            settings.maxShift = 1.5
+            settings.maxTurn = .pi / 4
+            settings.minStability = 0.005
             return settings
         }()
 
@@ -281,8 +281,8 @@ public struct ScanGraph {
             let disagreement = match.measured.inverse * standing
             var moved = 0.0
             let lever = Swift.max(turnWeighing(), 1e-6)
-            if disagreement.shift >= settings.minimumSnap
-                || disagreement.turn >= settings.minimumSnap / lever {
+            if disagreement.shift >= settings.minSnap
+                || disagreement.turn >= settings.minSnap / lever {
                 moved = straighten()
             }
             return Loop(keyframe: index, recognized: candidate, overlap: match.overlap,
@@ -299,7 +299,7 @@ public struct ScanGraph {
         let here = keyframes[index]
         let position = place(here.pose)
         let looking = facing(here.pose)
-        let widest = cos(Swift.max(settings.maximumViewAngle, 0))
+        let widest = cos(Swift.max(settings.maxViewAngle, 0))
 
         var near: [(index: Int, distance: Double)] = []
         for other in 0 ..< reach {
@@ -336,15 +336,15 @@ public struct ScanGraph {
         var wide = settings.matching
         wide.range = settings.matching.range * settings.reach
         wide.passes = Swift.max(4, settings.matching.passes / 2)
-        wide.minimumStability = 0
+        wide.minStability = 0
         let rough = patch.align(keyframes[index].cloud, from: keyframes[index].pose,
                                 settings: wide)
 
         let alignment = patch.align(keyframes[index].cloud, from: rough.pose,
                                     settings: settings.matching)
         guard alignment.applied,
-              alignment.overlap >= settings.minimumOverlap,
-              alignment.error <= settings.maximumError else { return nil }
+              alignment.overlap >= settings.minOverlap,
+              alignment.error <= settings.maxError else { return nil }
         // However it got there, the answer still has to be a place this keyframe could
         // plausibly be. The wide pass is allowed to move a long way, so this is what
         // stops it from moving somewhere absurd.

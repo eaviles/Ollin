@@ -51,7 +51,7 @@ final class ShapeGrammarSketch: Sketch {
 
         // One sweep every few frames, so the rule can be watched working.
         if frameCount % 6 == 0 {
-            let grown = grammar.step(cells, source: &source)
+            let grown = grammar.step(cells, using: &source)
             if grown.count == cells.count {
                 restingFrames -= 1
                 if restingFrames < 0 { run += 1; start() }
@@ -80,7 +80,7 @@ final class ShapeGrammarSketch: Sketch {
 
     private func start() {
         source = SplitMix64(seed: UInt64(run &* 977 &+ 13))
-        grammar = ShapeGrammar.iceRay(in: frame, minimumArea: cellSize, balance: balance)
+        grammar = ShapeGrammar.iceRay(in: frame, minArea: cellSize, balance: balance)
         cells = grammar.start
         asked = (cellSize, balance)
         restingFrames = 40

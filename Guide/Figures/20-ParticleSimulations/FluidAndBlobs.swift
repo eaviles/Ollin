@@ -18,8 +18,8 @@ final class FluidAndBlobs: Sketch {
     var blobs: SoftBodies!
 
     override func setup() {
-        fluid = particleFluid(count: 4200, radius: 11, bounds: left, seed: 3)
-        blobs = softBodies(count: 9, radius: 44, bounds: right, seed: 5)
+        fluid = makeParticleFluid(count: 4200, radius: 11, bounds: left, seed: 3)
+        blobs = makeSoftBodies(bodies: 9, radius: 44, bounds: right, seed: 5)
     }
 
     override func draw() {

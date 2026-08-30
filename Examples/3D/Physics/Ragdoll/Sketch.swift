@@ -41,11 +41,11 @@ final class Ragdoll: Sketch {
     var appliedLooseness = 0.0
 
     override func setup() {
-        figure = Scene(resource: "figure", extension: "gltf", in: Bundle.module)
+        figure = Scene(resource: "figure", withExtension: "gltf", in: Bundle.module)
         target = figure
         wave = figure.animations.first
         world.ground = 0
-        world.bounce = 0.05
+        world.restitution = 0.05
         ragdoll = world.addRagdoll(from: figure, at: Vector3(0, 0.95, 0),
                                    mass: 72, friction: 0.7)
         standUp()
@@ -71,7 +71,7 @@ final class Ragdoll: Sketch {
         }
         dragBodies(in: world)
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         figure.apply(ragdoll)
 
         drawFloor()

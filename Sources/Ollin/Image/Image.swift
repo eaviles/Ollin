@@ -231,7 +231,7 @@ public final class Image {
     /// Decode a bundled image resource. `in:` has no default on purpose: a
     /// default argument would resolve to Ollin's own bundle, never the caller's —
     /// pass `.module` from the sketch that bundles the asset.
-    public convenience init?(resource name: String, extension ext: String?, in bundle: Bundle) {
+    public convenience init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {
         guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
         self.init(contentsOf: url)
     }

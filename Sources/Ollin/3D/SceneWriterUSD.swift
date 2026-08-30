@@ -226,8 +226,8 @@ struct USDSceneWriter {
                    mr.map(String.init) ?? "-",
                    occlusion.map(String.init) ?? "-", num(material.occlusionStrength),
                    emissive.map(String.init) ?? "-",
-                   num(material.emissiveFactor.red), num(material.emissiveFactor.green),
-                   num(material.emissiveFactor.blue),
+                   num(material.emissiveColor.red), num(material.emissiveColor.green),
+                   num(material.emissiveColor.blue),
                    heightMap.map(String.init) ?? "-", num(material.heightScale)]
             .joined(separator: "/")
         if let found = materials.first(where: { $0.key == key }) { return found.path }
@@ -363,16 +363,16 @@ struct USDSceneWriter {
             mapInputs += "  float inputs:displacement.connect = <\(path)/heightMap.outputs:r>\n"
         }
 
-        let emissiveOn = material.emissiveFactor.red > 0 || material.emissiveFactor.green > 0
-            || material.emissiveFactor.blue > 0
+        let emissiveOn = material.emissiveColor.red > 0 || material.emissiveColor.green > 0
+            || material.emissiveColor.blue > 0
         if emissiveOn, let emissive = material.emissiveTexture, let file = textureFile(emissive) {
             shaders += textureShader("emissiveTexture", file: file, raw: false,
-                                     scale: linearScale(material.emissiveFactor),
+                                     scale: linearScale(material.emissiveColor),
                                      outputs: ["float3 outputs:rgb"])
-            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveFactor))\n"
+            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveColor))\n"
             mapInputs += "  color3f inputs:emissiveColor.connect = <\(path)/emissiveTexture.outputs:rgb>\n"
         } else if emissiveOn {
-            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveFactor))\n"
+            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveColor))\n"
         }
 
         if needsST {
@@ -516,7 +516,7 @@ struct USDSceneWriter {
             extra += "\(pad) bool treatAsPoint = 1\n"
             extra += "\(pad) float inputs:shaping:cone:angle = \(num(light.coneAngle / 2 * 180 / .pi))\n"
             extra += "\(pad) float inputs:shaping:cone:softness = \(num(light.penumbra))\n"
-        case .rect:
+        case .rectangle:
             type = "RectLight"
             extra += "\(pad) float inputs:width = \(num(light.width))\n"
             extra += "\(pad) float inputs:height = \(num(light.height))\n"

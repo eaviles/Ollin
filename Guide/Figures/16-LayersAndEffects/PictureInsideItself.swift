@@ -19,7 +19,7 @@ final class PictureInsideItself: Sketch {
     override func draw() {
         background(paper)
 
-        let scene = renderTarget(width: 260, height: 260)
+        let scene = makeRenderTarget(width: 260, height: 260)
         withTarget(scene) { paintRing() }
 
         let boxes = [Rectangle(x: 68, y: 56, width: 240, height: 240),

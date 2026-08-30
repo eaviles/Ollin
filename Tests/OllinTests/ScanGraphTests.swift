@@ -224,8 +224,8 @@ struct ScanGraphTests {
         #expect(!run.loops.isEmpty, "walked a full lap and recognized nothing")
         guard let first = run.loops.first else { return }
         #expect(first.recognized < first.keyframe)
-        #expect(first.overlap >= run.scan.settings.minimumOverlap)
-        #expect(first.error <= run.scan.settings.maximumError)
+        #expect(first.overlap >= run.scan.settings.minOverlap)
+        #expect(first.error <= run.scan.settings.maxError)
         // It has to be the beginning of the sweep it recognized, not just anywhere.
         let start = ScanGraphTests.place(run.truths[0])
         let found = ScanGraphTests.place(run.truths[first.recognized])
@@ -238,12 +238,12 @@ struct ScanGraphTests {
     /// is what proves each guard is read at all.
     @Test func aMatchThatDoesNotMeasureUpIsRefused() {
         var overlap = ScanGraph.Settings()
-        overlap.minimumOverlap = 1.01
+        overlap.minOverlap = 1.01
         #expect(ScanGraphTests.sweep(settings: overlap).loops.isEmpty,
                 "believed a match that did not overlap enough")
 
         var exact = ScanGraph.Settings()
-        exact.maximumError = 0
+        exact.maxError = 0
         #expect(ScanGraphTests.sweep(settings: exact).loops.isEmpty,
                 "believed a match that left something over")
     }

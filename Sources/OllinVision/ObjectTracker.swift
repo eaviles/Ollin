@@ -60,7 +60,7 @@ public struct TrackedObject: Sendable {
 ///
 /// override func draw() {
 ///     guard let frame = camera.frame else { return }
-///     view = camera.fittedRect(in: bounds) ?? bounds
+///     view = camera.fittedRectangle(in: bounds) ?? bounds
 ///     drawImage(frame, in: view)
 ///     if let object = tracker.trackedObject {
 ///         noFill(); stroke(.green)
@@ -140,7 +140,7 @@ public final class ObjectTracker: VisionTracking, @unchecked Sendable {
     }
 
     /// Stop tracking and clear the result.
-    public func stop() {
+    public func stopTracking() {
         lock.withLock { state in
             state.tracking = false
             state.pendingSeed = nil

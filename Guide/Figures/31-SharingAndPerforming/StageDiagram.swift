@@ -30,19 +30,19 @@ final class StageDiagram: Sketch {
         let stage = Rectangle(x: window.center.x - 150, y: window.y + 40,
                               width: 300, height: 300)
         let piece: Visual = .oscillator(frequency: 11, speed: 0.6, colorShift: 0.5)
-            .kaleidoscope(5)
+            .kaleidoscope(segments: 5)
             .displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)
-            .posterized(bins: 6, gamma: 0.75)
+            .posterized(levels: 6, gamma: 0.75)
         drawImage(generate(piece, width: 300, height: 300).image, in: stage)
 
         // The code, riding over the visuals on translucent strips.
         let lines = [
             "drawVisual(",
             "    .oscillator(frequency: 11, colorShift: 0.5)",
-            "        .kaleidoscope(5)",
+            "        .kaleidoscope(segments: 5)",
             "        .displaced(by: .noise(scale: 3),",
             "                   amount: 0.09)",
-            "        .posterized(bins: 6, gamma: 0.75)",
+            "        .posterized(levels: 6, gamma: 0.75)",
             ")",
         ]
         textSize(14)

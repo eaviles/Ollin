@@ -36,7 +36,7 @@ final class Percolation_Example: Sketch {
             if k == spanning { continue }
             let size = Double(grid.clusterSizes[k])
             let t = min(size / 400, 1)
-            fill(Color.mix(Color(hex: 0x24506B), Color(hex: 0x88C7E8), t: t))
+            fill(Color.mix(Color(hex: 0x24506B), Color(hex: 0x88C7E8), t))
             for cell in grid.cellRects(of: k, in: area) { drawRect(cell) }
         }
         if let spanning {

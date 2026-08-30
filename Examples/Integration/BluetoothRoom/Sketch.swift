@@ -49,7 +49,7 @@ final class BluetoothRoom: Sketch {
     // MARK: - The room
 
     private func drawDevices(around center: Vector2, reach: Double) {
-        let devices = scan.devices
+        let devices = scan.peripherals
         for device in devices {
             let place = position(of: device, around: center, reach: reach)
             let closeness = closeness(of: device)
@@ -125,7 +125,7 @@ final class BluetoothRoom: Sketch {
     }
 
     private func drawCaption() {
-        let devices = scan.devices
+        let devices = scan.peripherals
         noStroke()
         fill(Color(white: 0.8))
         textSize(22)

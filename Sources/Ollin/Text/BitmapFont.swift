@@ -78,12 +78,12 @@ public struct GlyphPair: Hashable, Sendable {
 /// to lay them out. Drawn by `drawText`, which stamps one square per lit pixel on
 /// the instanced-SDF path — no rasterization, no new pipeline.
 ///
-/// The built-in ``builtin`` font is ready to use, so `drawText("hi", x, y)` works
+/// The built-in ``builtIn`` font is ready to use, so `drawText("hi", x, y)` works
 /// with no setup. Hand-author your own with the grid initializer
 /// (`BitmapFont(grid:…)`), which takes the same ASCII-art form as `BitmapGlyph`.
 ///
 /// ```swift
-/// textFont(.builtin)        // the default; shown here for clarity
+/// textFont(.builtIn)        // the default; shown here for clarity
 /// textSize(120)             // rendered glyph height, in points
 /// fill(.black)
 /// drawText("ollin", width / 2, height / 2)

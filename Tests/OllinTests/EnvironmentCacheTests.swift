@@ -73,16 +73,16 @@ import os
     }
 
     @Test func highResUpgradesABuiltinToARemoteDownload() {
-        // A bundled built-in is a `.resource`; highRes(_:) turns it into a `.remote` download
+        // A bundled built-in is a `.resource`; highResolution(_:) turns it into a `.remote` download
         // (with the bundled 1K kept as the placeholder), and .oneK returns the bundled form.
         guard case .resource = Environment.studio.source else { Issue.record("studio not bundled"); return }
-        guard case .remote(let url, let fallback) = Environment.studio.highRes(.fourK).source else {
+        guard case .remote(let url, let fallback) = Environment.studio.highResolution(.fourK).source else {
             Issue.record("highRes not remote"); return
         }
         #expect(url.absoluteString.contains("4k"))
         #expect(url.absoluteString.contains("studio_small_01"))
         #expect(fallback == "studio")
-        guard case .resource = Environment.studio.highRes(.oneK).source else {
+        guard case .resource = Environment.studio.highResolution(.oneK).source else {
             Issue.record(".oneK not bundled"); return
         }
     }

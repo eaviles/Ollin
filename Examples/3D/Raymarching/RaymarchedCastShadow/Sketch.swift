@@ -30,8 +30,8 @@ final class RaymarchedCastShadow: Sketch {
         // A raymarched SDF blob floating above the floor: it drops a soft shadow onto the mesh
         // floor through the field-into-shadow-map pass, the same way the mesh sphere does.
         let blob = SDF3D.sphere(radius: 0.7)
-            .smoothUnion(SDF3D.sphere(radius: 0.5).at(x: 0.85, y: 0.35, z: 0.2), k: 0.45)
-            .smoothUnion(SDF3D.sphere(radius: 0.5).at(x: -0.2, y: 0.5, z: -0.4), k: 0.45)
+            .smoothUnion(SDF3D.sphere(radius: 0.5).at(0.85, 0.35, 0.2), k: 0.45)
+            .smoothUnion(SDF3D.sphere(radius: 0.5).at(-0.2, 0.5, -0.4), k: 0.45)
             .colored(Color(hex: 0x38bdf8))
         withState { translate(-1.8, 0.1, 0); rotateY(t * 0.4); drawSDF3D(blob) }
     }

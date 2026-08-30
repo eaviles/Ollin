@@ -774,7 +774,7 @@ final class Plate: Sketch {
         }
 
         // The ribbon in the second pen, crosshatched.
-        let hatch = Hatching(spacing: 9, angle: -.pi / 5, crossHatch: true)
+        let hatch = Hatching(spacing: 9, angle: -.pi / 5, crossHatches: true)
         penLines = hatch.lines(filling: ribbon)
         penOutlines = ribbon.contours.map(\.points)
     }

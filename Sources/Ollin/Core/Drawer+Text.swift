@@ -44,7 +44,7 @@ extension Drawer {
     /// suppressed, since a one-call color asks for exactly that color), or the
     /// stroke for a stroke font. A `nil` argument changes nothing.
     func withTextStyle(size: Double?, color: Color?,
-                       alignH: TextAlignH?, alignV: TextAlignV?, _ body: () -> Void) {
+                       alignH: HorizontalTextAlign?, alignV: VerticalTextAlign?, _ body: () -> Void) {
         let savedSize = textPixelSize
         let savedH = textAlignH
         let savedV = textAlignV
@@ -75,7 +75,7 @@ extension Drawer {
     /// The one-call styled label: `drawText` with `size`/`color`/`align`
     /// applied through `withTextStyle` for this draw alone.
     func drawText(_ string: String, _ x: Double, _ y: Double,
-                  size: Double?, color: Color?, alignH: TextAlignH?, alignV: TextAlignV?) {
+                  size: Double?, color: Color?, alignH: HorizontalTextAlign?, alignV: VerticalTextAlign?) {
         withTextStyle(size: size, color: color, alignH: alignH, alignV: alignV) {
             drawText(string, x, y)
         }

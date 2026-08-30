@@ -19,7 +19,7 @@ final class FirstLayer: Sketch {
     override func draw() {
         background(.black)
 
-        let art = renderTarget()
+        let art = makeRenderTarget()
         withTarget(art) {
             background(Color(hex: 0x0E1B33))
             noStroke()
@@ -39,9 +39,9 @@ final class FirstLayer: Sketch {
 
 <img src="Images/16-LayersAndEffects/FirstLayer.jpg" alt="A wave of colored dots shown twice: hugely blurred across the whole canvas, and sharp inside a smaller card floating in front of its own blur" width="560">
 
-Three calls carry the whole idea. `renderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 8](08-Words.md)'s `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
+Three calls carry the whole idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 8](08-Words.md)'s `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
 
-Two habits worth forming now. A `renderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
+Two habits worth forming now. A `makeRenderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
 
 Here's the same idea as a picture, one thumbnail per stage:
 
@@ -199,7 +199,7 @@ Every filter so far took a picture and did something to it. This one makes the p
 Draw a few marks into a layer. `.diffuse` holds each drawn pixel as a color source and lets the color out into the empty space between them until it settles:
 
 ```swift
-let marks = renderTarget()
+let marks = makeRenderTarget()
 withTarget(marks) {
     drawDiffusionCurve(horizon, left: Color(hex: 0xE86F4A), right: Color(hex: 0x101A2E))
     noStroke(); fill(Color(hex: 0xFFE9B0))
@@ -230,10 +230,10 @@ You have a patch you want to drop into a picture: a slab of texture, a cut-out, 
 `.seamlessClone` fixes both without touching the patch's detail:
 
 ```swift
-let backdrop = renderTarget()
+let backdrop = makeRenderTarget()
 withTarget(backdrop) { drawImage(wall, 0, 0) }
 
-let patch = renderTarget()
+let patch = makeRenderTarget()
 withTarget(patch) { drawImage(stones, 240, 180) }   // transparent everywhere else
 
 drawImage(backdrop.combined(with: patch, .seamlessClone()).image, 0, 0)
@@ -346,7 +346,7 @@ nothing else. A ring keeps one band of scales and drops both the coarse and the 
 no ordinary blur can do at all.
 
 Three things to know before you reach for it. The layer has to be square with a side that is
-a power of two (`renderTarget(width: 512, height: 512)`), because the transform works by
+a power of two (`makeRenderTarget(width: 512, height: 512)`), because the transform works by
 halving. It reads one channel, the brightness unless you name another, so what comes back is
 gray. And a hard-edged mask *rings*: look at the ripples around every shape in the third
 panel, which are the price of cutting a band off sharply, and soften the mask's own edge to
@@ -385,7 +385,7 @@ At `0` every surface stays black and only the lamps are seen. That is the middle
 
 Two more knobs are worth knowing early. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed knob.
 
-Speed is the thing to say plainly. This is the most expensive effect in the chapter. It is also the one whose cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`renderTarget(scale: 0.5)`), or pass `quality: .performance`.
+Speed is the thing to say plainly. This is the most expensive effect in the chapter. It is also the one whose cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
 
 Underneath, the answer is a ladder of light fields. Each one holds a single ring of distance around every point it samples. Close in there are many places and few directions; further out there are few places and many directions, over a span four times as long. That trade is exactly why one lamp on the far side of the room costs no more than one beside you. The rays are marched against the measured field from the section above, which is why an empty room is crossed in a single step.
 
@@ -468,7 +468,7 @@ The bottom row is what you'd expect from a filter. Hand it a picture, and get th
 The top row works the other way, and this is the part that isn't obvious from the names. `.liquidMetal`, `.heatmap`, and `.gemSmoke` mostly ignore your layer's colors and read its **alpha**, the silhouette. All three tiles above started as one white heart on a transparent layer, and each filter built a whole material out of that outline. So the working method for these is simple. Draw a shape into a layer, then filter the layer.
 
 ```swift
-let shape = renderTarget()
+let shape = makeRenderTarget()
 withTarget(shape) {
     noStroke(); fill(.white)
     drawHeart(width / 2, height / 2, width * 0.5)
@@ -542,8 +542,8 @@ final class ComposeStack: Sketch {
                 stroke(Color(hex: 0xFFD98A)); strokeWeight(3); noFill()
                 drawCircle(width / 2, height / 2, 300)
             }
-            .post(.bloom(threshold: 0.4, intensity: 1.8, radius: 26))
-            .blend(.add)
+            .post(.bloom(threshold: 0.4, amount: 1.8, radius: 26))
+            .blended(.add)
         }
     }
 }
@@ -656,7 +656,7 @@ A `Feedback` layer is made once in `setup()` and kept, because its identity is w
 
 ```swift
 var trail: Feedback?
-override func setup() { trail = feedback() }
+override func setup() { trail = makeFeedback() }
 ```
 
 Then each frame runs the loop. It reads, transforms, redraws, and adds. This is the heart of the finished piece below:
@@ -696,7 +696,7 @@ final class Comets: Sketch {
 
     override func setup() {
         toneMap(.aces, exposure: 1.3)
-        trail = feedback()
+        trail = makeFeedback()
     }
 
     override func draw() {
@@ -730,7 +730,7 @@ final class Comets: Sketch {
         }
 
         blendMode(.add)
-        drawImage(trail.filtered(.bloom(threshold: 0.25, intensity: 1.5, radius: 16)).image, 0, 0)
+        drawImage(trail.filtered(.bloom(threshold: 0.25, amount: 1.5, radius: 16)).image, 0, 0)
         blendMode(.normal)
     }
 }

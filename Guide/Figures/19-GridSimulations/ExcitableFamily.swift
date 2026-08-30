@@ -27,10 +27,10 @@ final class ExcitableFamilyFigure: Sketch {
                                     (1.0, .white)])
 
     override func setup() {
-        cyclic = simField(.cyclic(seed: 4), scale: 0.25)
-        medium = simField(.excitable(states: 5), scale: 0.25)
-        brain = simField(.briansBrain(), scale: 0.25)
-        hodgepodge = simField(.hodgepodge(seed: 4), scale: 0.25)
+        cyclic = makeSimField(.cyclic(seed: 4), scale: 0.25)
+        medium = makeSimField(.excitable(states: 5), scale: 0.25)
+        brain = makeSimField(.briansBrain(), scale: 0.25)
+        hodgepodge = makeSimField(.hodgepodge(seed: 4), scale: 0.25)
         randomSeed(7)
     }
 

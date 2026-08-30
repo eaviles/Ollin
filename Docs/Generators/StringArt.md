@@ -26,7 +26,7 @@ The winding is fully deterministic: the same picture and settings always wind th
 ```swift
 StringArt(of: Image, center: Vector2, radius: Double,
           pins: Int = 200, chords: Int = 4000, ink: Double = 0.055,
-          minimumSpan: Int? = nil, inverted: Bool = false,
+          minSpan: Int? = nil, inverted: Bool = false,
           resolution: Int = 300)
 ```
 
@@ -49,7 +49,7 @@ override func draw() {
 The canvas never clears, so each frame winds a few more chords onto the accumulation and the picture knits itself over the first seconds of the run.
 
 - **`ink`** is how much darkness one pass of thread pays down (`0...1`). It is the winding-density dial: lower ink winds more, finer chords before a region reads as done. Pair it with the stroke alpha you draw at, so the solver's idea of one pass roughly matches what a drawn chord darkens.
-- **`minimumSpan`** is the shortest chord allowed, in pins around the rim (a tenth of the pins by default), so the thread crosses the picture instead of hugging the rim.
+- **`minSpan`** is the shortest chord allowed, in pins around the rim (a tenth of the pins by default), so the thread crosses the picture instead of hugging the rim.
 - **`inverted`** winds the light instead of the dark, for a bright thread on a dark ground.
 - **`resolution`** is the side of the internal grid the scoring runs on. The default suits canvas-sized work; raise it for fine detail at a cost in setup and per-chord time.
 

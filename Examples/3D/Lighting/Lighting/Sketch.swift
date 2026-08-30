@@ -36,7 +36,7 @@ final class Lighting3D: Sketch {
                          direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.8)
         pointLight(Color(hue: 0.5, saturation: 0.8, brightness: 1.0), at: pointPos, intensity: 1.0)
         spotLight(Color(hue: 0.85, saturation: 0.7, brightness: 1.0),
-                  at: spotPos, direction: spotAim, angle: .pi / 5, penumbra: 0.5, intensity: 1.4)
+                  at: spotPos, direction: spotAim, coneAngle: .pi / 5, penumbra: 0.5, intensity: 1.4)
 
         // Ground plane — matte, so it shows the spot's pool and the moving highlights.
         withState {

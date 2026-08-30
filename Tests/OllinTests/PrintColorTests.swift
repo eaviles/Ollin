@@ -116,7 +116,7 @@ struct PrintColorTests {
 
     @Test func paperSimulationTintsTheWhite() {
         var withPaper = cmyk
-        withPaper.simulatePaper = true
+        withPaper.simulatesPaper = true
         let plain = mean(flat(.white).softProofed(cmyk))
         let onPaper = mean(flat(.white).softProofed(withPaper))
         // Simulated stock is darker than paper-white and no longer neutral.
@@ -376,7 +376,7 @@ struct PrintColorTests {
         let second = ProofLUTCache.lut(for: SoftProof(.genericCMYK))
         #expect(first === second)
         var other = cmyk
-        other.simulatePaper = true
+        other.simulatesPaper = true
         #expect(ProofLUTCache.lut(for: other) !== first)
     }
 }

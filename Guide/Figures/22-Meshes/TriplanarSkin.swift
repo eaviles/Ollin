@@ -58,7 +58,7 @@ final class TriplanarSkin: Sketch {
     override func draw() {
         background(Color(hex: 0x0B0D12))
         camera(.perspective(eye: Vector3(-1.6, 1.1, 7.4), target: .zero, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
         directionalLight(Color(white: 0.9), direction: Vector3(-0.5, -0.6, -0.55))
 
         fill(.white)

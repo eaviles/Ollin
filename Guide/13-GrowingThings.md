@@ -148,7 +148,7 @@ Notice what the sentence leaves out. It does not say which edges, or where along
 
 ```swift
 let frame = Rectangle(center: center, width: 880, height: 880)
-let lattice = ShapeGrammar.iceRay(in: frame, minimumArea: 7_000)
+let lattice = ShapeGrammar.iceRay(in: frame, minArea: 7_000)
 
 noFill(); stroke(.white); strokeWeight(2)
 for cell in lattice.run(generations: 9, seed: 7) {
@@ -161,7 +161,7 @@ for cell in lattice.run(generations: 9, seed: 7) {
   <img src="Images/13-GrowingThings/CutAndCutAgain.jpg" alt="Four panels of the same frame cut by one rule after one, three, six, and nine sweeps: two cells, then eight, then fifty-one, then fifty-five and finished, with cells still large enough to cut drawn in warm orange and the rest in black" width="680">
 </picture>
 
-A sweep offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minimumArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. That is the real difference between the two kinds of rewriting. Symbols can always be rewritten again, so an L-system grows forever. Shapes are rewritten in place, so a shape grammar runs out of room.
+A sweep offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. That is the real difference between the two kinds of rewriting. Symbols can always be rewritten again, so an L-system grows forever. Shapes are rewritten in place, so a shape grammar runs out of room.
 
 One arithmetic fact sits behind this whole family. It is worth knowing, because it saves you from writing rules down. The cut meets two edges away from their ends. So it hands one new corner to each part at each end, and every corner the cell had lands in exactly one part. Whatever the cell was, **the two parts carry four more corners between them than the cell had**. Now say that the parts may only have three, four, or five corners. A triangle can then only become a triangle and a quadrilateral. A quadrilateral can only become a triangle and a pentagon, or two quadrilaterals. A pentagon can only become a quadrilateral and another pentagon. A hexagon has exactly one legal cut. A shape with seven corners has none at all, so it is finished however large it is. Nobody writes those rules. They are what is left once you name the corner range.
 
@@ -235,7 +235,7 @@ let veins = SpaceColonization(attractors: poissonDisk(radius: 26),
 
 Three distances shape the result, and they want a particular relationship. `stepLength` is how far a tip grows per step, and `killRadius` is how close counts as reached. Keep `stepLength` smaller than `killRadius`, or a tip can step right over its goal. Keep `killRadius` well under `influenceRadius`, which is how far an attractor's pull reaches. There's one practical gotcha. Growth only *starts* if some attractor's pull can reach a root. A tree whose crown floats high above its root needs an `influenceRadius` at least as long as the trunk-to-crown gap. The garden's tree hit exactly this.
 
-The last touch is weight. `thicknesses(leafWidth:exponent:)` gives every node a stroke width by the pipe model. Tips are hairline, and every fork is as thick as its children can justify, the way a real trunk carries its crown. The `Patterns/Venation` example grows a whole leaf's veins this way, live.
+The last touch is weight. `thicknesses(tipWidth:exponent:)` gives every node a stroke width by the pipe model. Tips are hairline, and every fork is as thick as its children can justify, the way a real trunk carries its crown. The `Patterns/Venation` example grows a whole leaf's veins this way, live.
 
 ## Growth by chance: DLA
 
@@ -457,7 +457,7 @@ final class Garden: Sketch {
         }
 
         // The tree, weighted by the pipe model.
-        let widths = tree.thicknesses(leafWidth: 1.1, exponent: 2.4)
+        let widths = tree.thicknesses(tipWidth: 1.1, exponent: 2.4)
         stroke(Color(hex: 0xD9C9A0))
         for (i, node) in tree.nodes.enumerated() {
             guard let parent = node.parent else { continue }

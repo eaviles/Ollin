@@ -33,7 +33,7 @@ final class Venation: Sketch {
         drawCircles(growth.attractors, radius: 3 * scale)
 
         // The vein network, thick where it carries many branches.
-        let widths = growth.thicknesses(leafWidth: 1.4 * scale, exponent: 2.2)
+        let widths = growth.thicknesses(tipWidth: 1.4 * scale, exponent: 2.2)
         stroke(Color(hex: 0xBFE8C2))
         for (i, node) in growth.nodes.enumerated() {
             guard let parent = node.parent else { continue }

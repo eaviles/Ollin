@@ -54,7 +54,7 @@ OSCMessage("/x", .float(value), .int(count))     // a variable is wrapped by its
 
 An `OSCMessage` is an `address` and an array of `arguments`. Literals turn into arguments on their own, so the common case stays terse. `0.8` is a float, `1` an int, `"on"` a string, and `true` a bool. A value held in a variable is wrapped by its case, as `.float(x)`, `.int(n)`, or `.string(s)`. Swift does not convert a `Float` to an argument on its own.
 
-`OSCArgument` covers the OSC 1.0 types. Those are `.int` at 32 bits, `.float`, `.string`, and `.blob` for raw bytes, plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` as a bare trigger. Reading back, the coercing accessors save a `switch`, so `.asFloat`, `.asInt`, `.asString`, and `.asBool` convert across the numeric types where it makes sense.
+`OSCArgument` covers the OSC 1.0 types. Those are `.int` at 32 bits, `.float`, `.string`, and `.blob` for raw bytes, plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` as a bare trigger. Reading back, the coercing accessors save a `switch`, so `.float`, `.int`, `.string`, and `.bool` convert across the numeric types where it makes sense.
 
 <a name="oscsender"></a>
 

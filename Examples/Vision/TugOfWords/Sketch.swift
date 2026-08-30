@@ -40,7 +40,7 @@ final class TugOfWords: Sketch {
         camera,
         imageModelAt: URL(fileURLWithPath: Self.imageModelPath),
         textModelAt: URL(fileURLWithPath: Self.textModelPath),
-        vocabAt: URL(fileURLWithPath: Self.vocabPath),
+        vocabularyAt: URL(fileURLWithPath: Self.vocabPath),
         concepts: [left, right])
 
     /// Where the knot sits, `0…1` left-to-right, eased so it slides rather

@@ -14,7 +14,7 @@ import CJolt
 struct Contact3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// Step until `body` reports something, up to `limit` steps, and return
@@ -24,7 +24,7 @@ struct Contact3DTests {
         -> [Contact3D] {
         var seen: [Contact3D] = []
         for _ in 0 ..< steps {
-            world.step(dt: dt)
+            world.advance(by: dt)
             seen.append(contentsOf: world.contacts)
         }
         return seen
@@ -92,7 +92,7 @@ struct Contact3DTests {
         /// Every step's began events, for a run.
         func beginnings(_ world: World3D, steps: Int) -> [[Contact3D]] {
             (0 ..< steps).map { _ in
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 return world.contacts.filter { $0.phase == .began }
             }
         }
@@ -137,7 +137,7 @@ struct Contact3DTests {
 
         var landed = false
         for _ in 0 ..< 120 where !landed {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             landed = world.contacts.contains { $0.phase == .began }
         }
         #expect(landed)
@@ -155,7 +155,7 @@ struct Contact3DTests {
         // (the last few report the pair parting as the ball falls asleep).
         var quiet = 0
         for _ in 0 ..< 200 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             if world.contacts.isEmpty { quiet += 1 }
         }
         #expect(quiet > 190)
@@ -294,7 +294,7 @@ struct Contact3DTests {
         var entered = 0
         var exited = 0
         for _ in 0 ..< 240 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             entered += zone.entered.count
             exited += zone.exited.count
             // Occupancy and the transitions agree at every single step.
@@ -345,7 +345,7 @@ struct Contact3DTests {
             }
             var log: [String] = []
             for step in 0 ..< 200 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 for contact in world.contacts {
                     let a = world.bodies.firstIndex { $0 === contact.a } ?? -1
                     let b = world.bodies.firstIndex { $0 === contact.b } ?? -1
@@ -426,7 +426,7 @@ struct Contact3DTests {
             for vertex in 0 ..< Self.clothMesh.positions.count {
                 cloth.move(vertex, to: cloth.positions[vertex] + Vector3(0, 0.05, 0))
             }
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             if cloth.contacts.contains(where: { $0.phase == .ended }) { parted = true }
         }
         #expect(parted, "the ended event arrives as it comes off")
@@ -448,7 +448,7 @@ struct Contact3DTests {
             }
             var seen = 0
             for _ in 0 ..< 120 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 seen += plate.entered.count
             }
             return seen
@@ -468,7 +468,7 @@ struct Contact3DTests {
             _ = try #require(world.addSoftBody(from: Self.clothMesh, at: Vector3(0, 2, 0)))
             var lines: [String] = []
             for step in 0 ..< 200 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 for contact in world.contacts {
                     lines.append("\(step) \(contact.phase) "
                                  + "\(String(format: "%.4f", contact.point.x))")

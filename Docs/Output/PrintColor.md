@@ -40,12 +40,12 @@ A `SoftProof` is the printing condition: which press, from which canvas, under w
 
 ```swift
 var press = SoftProof(.genericCMYK, from: .sRGB, intent: .relative)
-press.simulatePaper = true                      // show the stock's own color too
+press.simulatesPaper = true                      // show the stock's own color too
 ```
 
 `intent` decides how a color the press cannot reach is brought inside its gamut. `.relative` (the default) keeps every reproducible color exactly and clips the rest to the nearest one it holds, which is what flat graphic work wants. `.perceptual` compresses the whole picture so the relationships between colors survive, at the price of shifting colors that would have printed correctly. It is only as good as the tables the profile carries for it, and a profile without them falls back to relative. `.saturation` favors vividness over accuracy, for charts. `.absolute` is relative without remapping white, which is what puts the paper's own color into the picture.
 
-Two things are always shown and one is opt-in. Saturated colors always come back duller, and black always comes back lighter (the proof runs without black point compensation on purpose, so it shows the real ceiling on contrast rather than hiding it). Paper color is `simulatePaper`, off by default, because a proof of cream stock reads as a wrong-looking white until you are expecting it.
+Two things are always shown and one is opt-in. Saturated colors always come back duller, and black always comes back lighter (the proof runs without black point compensation on purpose, so it shows the real ceiling on contrast rather than hiding it). Paper color is `simulatesPaper`, off by default, because a proof of cream stock reads as a wrong-looking white until you are expecting it.
 
 Proofing an `Image` is one call:
 

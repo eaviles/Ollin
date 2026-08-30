@@ -195,7 +195,7 @@ final class Generative: Sketch {
     /// The same three rhythms written out, which is the notation the algorithm
     /// is usually discussed in.
     private func drawNotation(rings: [Rhythm]) {
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         textSize(20 * scale)
         textAlign(.center)
         let names = ["bass", "chord", "air"]

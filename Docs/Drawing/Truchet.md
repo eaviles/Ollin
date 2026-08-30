@@ -39,7 +39,7 @@ seed(3)
 noFill(); strokeCap(.round); strokeWeight(11)
 for arc in truchet(columns: 12, rows: 12, tile: .arcs) {
     let mid = arc.midpoint
-    stroke(Color.mix(.teal, .orange, t: (signedNoise(mid.x * 0.003, mid.y * 0.003, time) + 1) * 0.5))
+    stroke(Color.mix(.teal, .orange, (signedNoise(mid.x * 0.003, mid.y * 0.003, time) + 1) * 0.5))
     drawPolyline(arc.points)
 }
 ```

@@ -238,7 +238,7 @@ Rectangle(covering size: Vector2, in container: Rectangle)
 - **Inset:** `inset(by: Insets)`, the rectangle shrunk inward by a per-edge margin (see [`Grid`](#grid)).
 - **Normalized coordinates:** `point(u:v:)`, the point at 0…1 fractions of the rectangle (`point(u: 0.5, v: 0.5)` is `center`; values outside 0…1 land proportionally outside), and its inverse `uv(of:)`. The canvas-wide sugar is [`uv(u, v)`](../Core/Canvas.md#uv).
 
-`Rectangle(fitting:in:)` is the letterbox fit, the largest rectangle of `size`'s aspect ratio centered inside `container`. That is the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRect(in:)`). `Rectangle(covering:in:)` is its other end: the *smallest* rectangle of that shape that covers the container, so it runs past two edges and what falls outside is meant to be cropped. The two are what [`drawImage`'s](Images.md#fit) `.contain` and `.cover` are built on.
+`Rectangle(fitting:in:)` is the letterbox fit, the largest rectangle of `size`'s aspect ratio centered inside `container`. That is the box to draw an image or video frame into without stretching it (the fit behind `drawFrame` and `fittedRectangle(in:)`). `Rectangle(covering:in:)` is its other end: the *smallest* rectangle of that shape that covers the container, so it runs past two edges and what falls outside is meant to be cropped. The two are what [`drawImage`'s](Images.md#fit) `.contain` and `.cover` are built on.
 
 ```swift
 let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)

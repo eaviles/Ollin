@@ -31,7 +31,7 @@ final class SwarmChemistry_Example: Sketch {
     @Param(0.01 ... 0.4, icon: "arrow.up.and.down") var mutationSize = 0.1
 
     override func setup() {
-        chem = swarmChemistry(count: 4000, kinds: 6)
+        chem = makeSwarmChemistry(count: 4000, kinds: 6)
     }
 
     override func draw() {
@@ -48,7 +48,7 @@ final class SwarmChemistry_Example: Sketch {
 
         // Reading the tally stalls on the GPU, so do it a few times a second, not every
         // frame.
-        if frameCount % 20 == 0 { tally = chem.lineageCounts() }
+        if frameCount % 20 == 0 { tally = chem.snapshotLineageCounts() }
         drawTally()
     }
 

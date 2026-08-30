@@ -60,7 +60,7 @@ final class Sieve: Sketch {
 
     override func setup() {
         world.ground = -1.5
-        world.bounce = 0.1
+        world.restitution = 0.1
         buildRamp()
         buildChutes()
         buildTrays()
@@ -241,7 +241,7 @@ final class Sieve: Sketch {
         }
 
         dragBodies(in: world)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         drawFloor()
         drawMachine()

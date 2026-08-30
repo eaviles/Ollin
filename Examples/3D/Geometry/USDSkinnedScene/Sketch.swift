@@ -27,7 +27,7 @@ final class USDSkinnedScene: Sketch {
            let s = loadScene(path) {
             pond = s
         } else {
-            pond = Scene(resource: "stage", extension: "usda", in: Bundle.module)
+            pond = Scene(resource: "stage", withExtension: "usda", in: Bundle.module)
         }
     }
 

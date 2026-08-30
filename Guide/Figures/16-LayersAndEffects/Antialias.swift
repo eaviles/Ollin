@@ -76,7 +76,7 @@ final class Antialias: Sketch {
     func panel(_ layer: RenderTarget, at r: Rectangle) -> RenderTarget {
         let placed = Shader(magnifySource,
                             params: [Float(r.x), Float(r.y), Float(side), Float(texels)])
-        let base = renderTarget()
+        let base = makeRenderTarget()
         withTarget(base) { background(paper) }
         return base.combined(with: layer, .shader(placed))
     }

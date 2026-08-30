@@ -332,7 +332,7 @@ final class RingPulse: Sketch {
                 let angle = Double(i) / Double(count) * .tau
                 let wave = sin(angle * Double(waves) - beat * 2 * direction)
                 let lit = smoothstep(1 - pulseWidth * 2, 1, wave)
-                fill(Color.mix(base, Color(hex: 0xFFF6E8), t: lit * 0.4))
+                fill(Color.mix(base, Color(hex: 0xFFF6E8), lit * 0.4))
                 let x = width / 2 + cos(angle) * (radius + lit * 18)
                 let y = height / 2 + sin(angle) * (radius + lit * 18)
                 drawCircle(x, y, 6 + lit * 20)

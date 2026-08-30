@@ -22,15 +22,15 @@ final class SetSteps: Sketch {
         background(paper)
 
         let bands: Visual = .oscillator(frequency: 11, speed: 0.6, colorShift: 0.5)
-        let folded = bands.kaleidoscope(5)
+        let folded = bands.kaleidoscope(segments: 5)
         let melted = folded.displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)
-        let printed = melted.posterized(bins: 6, gamma: 0.75)
+        let printed = melted.posterized(levels: 6, gamma: 0.75)
         let flying = printed.rotated(time * 0.03).colorCycled(time * 0.04)
 
         thumb(bands, index: 0, note: "the oscillator")
-        thumb(folded, index: 1, note: ".kaleidoscope(5)")
+        thumb(folded, index: 1, note: ".kaleidoscope(segments: 5)")
         thumb(melted, index: 2, note: ".displaced(by: noise)")
-        thumb(printed, index: 3, note: ".posterized(bins: 6)")
+        thumb(printed, index: 3, note: ".posterized(levels: 6)")
         thumb(flying, index: 4, note: ".rotated .colorCycled")
 
         noStroke()

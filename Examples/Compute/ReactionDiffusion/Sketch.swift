@@ -27,7 +27,7 @@ final class ReactionDiffusion_Example: Sketch {
     /// sub-steps per frame keep the explicit integration stable and the patterns
     /// lively.
     lazy var field = Simulation(width: Self.gridSize, height: Self.gridSize,
-                                subSteps: 12, step: rdStep)
+                                substeps: 12, step: rdStep)
 
     /// A second texture the colourise pass writes for display, kept off the
     /// simulation state so the chemistry stays pure float concentration.

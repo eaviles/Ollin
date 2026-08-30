@@ -23,13 +23,13 @@ final class Droste_Example: Sketch {
     override func draw() {
         background(.black)
 
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) { paint() }
 
         let twist = mouseIsPressed ? 0.0 : 1.0
         drawImage(scene.filtered(.droste(inner: 0.42, twist: twist,
                                          zoom: loopProgress(over: 16) * 2,
-                                         rotation: 0.12)).image,
+                                         angle: 0.12)).image,
                   in: canvasRectangle)
 
         drawCaption(mouseIsPressed

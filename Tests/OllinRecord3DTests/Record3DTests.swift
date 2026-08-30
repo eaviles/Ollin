@@ -23,7 +23,7 @@ import Ollin
     @Test func opensAndParsesMetadata() throws {
         let recording = try Record3DRecording(data: makeRecording())
         #expect(recording.frameCount == 1)
-        #expect(recording.fps == 30)
+        #expect(recording.frameRate == 30)
         // K is column-major [fx,0,0, 0,fy,0, cx,cy,1] at the capture resolution.
         #expect(recording.intrinsics.fx == 16)
         #expect(recording.intrinsics.fy == 16)
@@ -68,7 +68,7 @@ import Ollin
 
     @Test func unprojectsIntoPointCloud() throws {
         let recording = try Record3DRecording(data: makeRecording())
-        let cloud = try recording.pointCloud(at: 0, minimumConfidence: .high)
+        let cloud = try recording.pointCloud(at: 0, minConfidence: .high)
         // All 48 samples are positive depth at full confidence, so none drop.
         #expect(cloud.count == depthW * depthH)
 
@@ -90,8 +90,8 @@ import Ollin
     @Test func confidenceFloorDropsLowSamples() throws {
         // Half the grid at low confidence, dropped by a `.high` floor.
         let recording = try Record3DRecording(data: makeRecording(highConfidenceRows: depthH / 2))
-        let strict = try recording.pointCloud(at: 0, minimumConfidence: .high)
-        let loose = try recording.pointCloud(at: 0, minimumConfidence: .low)
+        let strict = try recording.pointCloud(at: 0, minConfidence: .high)
+        let loose = try recording.pointCloud(at: 0, minConfidence: .low)
         #expect(strict.count == depthW * (depthH / 2))
         #expect(loose.count == depthW * depthH)
     }

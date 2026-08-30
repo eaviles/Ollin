@@ -236,19 +236,19 @@ struct TilingTests {
             var frontier = [(0, 0)]
             for row in 0..<11 {
                 for column in 0..<14 {
-                    if maze.isOpen(.east, atColumn: column, row: row) {
+                    if maze.isOpen(.east, column: column, row: row) {
                         carved += 1
-                        #expect(maze.isOpen(.west, atColumn: column + 1, row: row))
+                        #expect(maze.isOpen(.west, column: column + 1, row: row))
                     }
-                    if maze.isOpen(.south, atColumn: column, row: row) {
+                    if maze.isOpen(.south, column: column, row: row) {
                         carved += 1
-                        #expect(maze.isOpen(.north, atColumn: column, row: row + 1))
+                        #expect(maze.isOpen(.north, column: column, row: row + 1))
                     }
                 }
             }
             #expect(carved == 14 * 11 - 1)
             while let (c, r) = frontier.popLast() {
-                for direction in Maze.Direction.allCases where maze.isOpen(direction, atColumn: c, row: r) {
+                for direction in Maze.Direction.allCases where maze.isOpen(direction, column: c, row: r) {
                     let (dc, dr) = direction == .north ? (0, -1)
                         : direction == .east ? (1, 0)
                         : direction == .south ? (0, 1) : (-1, 0)
@@ -284,7 +284,7 @@ struct TilingTests {
             let dc = b.column - a.column, dr = b.row - a.row
             #expect(abs(dc) + abs(dr) == 1)
             let direction: Maze.Direction = dc == 1 ? .east : dc == -1 ? .west : dr == 1 ? .south : .north
-            #expect(maze.isOpen(direction, atColumn: a.column, row: a.row))
+            #expect(maze.isOpen(direction, column: a.column, row: a.row))
         }
         #expect(maze.longestPath().count >= path.count)
     }

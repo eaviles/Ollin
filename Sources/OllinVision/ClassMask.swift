@@ -10,7 +10,7 @@ import os
 /// segmenters produce.
 ///
 /// Three readings of the same plane:
-/// - **What's in frame**: `presentClasses` / `presentLabels` (largest first)
+/// - **What's in frame**: `presentClassIndices` / `presentLabels` (largest first)
 ///   and `coverage(of:)`, the fraction of the picture a class fills.
 /// - **What's under a point**: `classIndex(at:in:)` / `label(at:in:)` — the
 ///   class under any canvas point, the field-shaped query the other map
@@ -39,7 +39,7 @@ public final class ClassMask: @unchecked Sendable {
     public let labels: [String]
 
     /// The classes present in this frame, largest pixel count first.
-    public let presentClasses: [Int]
+    public let presentClassIndices: [Int]
 
     /// The class index per pixel, top-down row-major (row 0 is the picture's
     /// top) — pinned by probe against footage with a known subject.
@@ -59,7 +59,7 @@ public final class ClassMask: @unchecked Sendable {
         self.height = height
         self.counts = counts
         self.labels = labels
-        self.presentClasses = counts.indices
+        self.presentClassIndices = counts.indices
             .filter { counts[$0] > 0 }
             .sorted { counts[$0] > counts[$1] }
     }
@@ -126,7 +126,7 @@ public final class ClassMask: @unchecked Sendable {
     /// The classes present in this frame by name, largest first — skips
     /// classes the model didn't name.
     public var presentLabels: [String] {
-        presentClasses.compactMap { labels.indices.contains($0) ? labels[$0] : nil }
+        presentClassIndices.compactMap { labels.indices.contains($0) ? labels[$0] : nil }
     }
 
     /// The fraction of the picture a class fills, `0…1`.

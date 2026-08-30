@@ -58,9 +58,9 @@ final class Articulated: Sketch {
 
         // All three advance by a fixed step, so the figure reproduces exactly.
         arm.reach(toward: target)
-        pendulum.step()
+        pendulum.advance()
         trail.append(pendulum.bob2)
-        galaxy.step()
+        galaxy.advance()
 
         frame(left, title: "a chain that reaches")
         noFill()

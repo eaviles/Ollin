@@ -114,7 +114,7 @@ var world = WorldCloud(voxelSize: 0.02)
 var path: [Vector3] = []
 
 // Each frame, while scanning:
-if let frame = device.latestDepthFrame, let pose = device.latestPose {
+if let frame = device.latestFrame, let pose = device.latestPose {
     world.add(frame.pointCloud(), transformedBy: pose)
     path.append(Vector3(Double(pose.columns.3.x),
                         Double(pose.columns.3.y),

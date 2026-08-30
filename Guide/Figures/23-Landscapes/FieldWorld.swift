@@ -34,19 +34,19 @@ final class FieldWorld_Figure: Sketch {
             MeshInstance(position: Vector3(x, 0.17, z),
                          rotation: Vector3(0, random(.tau), 0),
                          scale: random(0.5, 1.6),
-                         color: Color.mix(stoneGray, mossGreen, t: random(0.5)))
+                         color: Color.mix(stoneGray, mossGreen, random(0.5)))
         })
         field.place(Mesh.sphere(radius: 0.3, segments: 10, rings: 6),
                     at: scatter(80_000) { x, z in
             MeshInstance(position: Vector3(x, 0.24, z),
                          scale: Vector3(random(0.7, 1.4), random(0.5, 0.9), random(0.7, 1.4)),
-                         color: Color.mix(mossGreen, pineGreen, t: random(1)))
+                         color: Color.mix(mossGreen, pineGreen, random(1)))
         })
         field.place(Mesh.cone(radius: 0.55, height: 2.2, segments: 10),
                     at: scatter(50_000) { x, z in
             MeshInstance(position: Vector3(x, 1.1, z),
                          scale: Vector3(1, random(0.7, 1.8), 1),
-                         color: Color.mix(pineGreen, mossGreen, t: random(0.6)))
+                         color: Color.mix(pineGreen, mossGreen, random(0.6)))
         })
         field.place(Mesh.sphere(radius: 0.7, segments: 12, rings: 8),
                     at: scatter(15_000) { x, z in
@@ -59,7 +59,7 @@ final class FieldWorld_Figure: Sketch {
             MeshInstance(position: Vector3(x, 1.6, z),
                          rotation: Vector3(random(-0.05, 0.05), random(.tau), random(-0.05, 0.05)),
                          scale: random(0.7, 1.3),
-                         color: Color.mix(stoneGray, Color(white: 0.7), t: random(0.5)))
+                         color: Color.mix(stoneGray, Color(white: 0.7), random(0.5)))
         })
     }
 

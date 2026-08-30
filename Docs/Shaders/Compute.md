@@ -129,7 +129,7 @@ import Ollin
 
 @main
 final class RD: Sketch {
-    lazy var field = Simulation(width: 512, height: 512, subSteps: 12, step: """
+    lazy var field = Simulation(width: 512, height: 512, substeps: 12, step: """
         // Gray-Scott reaction-diffusion: chemical A in .r, B in .g.
         float2 lap = -value.xy
             + 0.20 * (tap(-1,0).xy + tap(1,0).xy + tap(0,-1).xy + tap(0,1).xy)
@@ -158,7 +158,7 @@ final class RD: Sketch {
 }
 ```
 
-- **`updateSimulation(_:custom:)`** records the sim, so `subSteps` kernel iterations run, on the GPU, before the frame is drawn. `custom` passes up to four live floats the snippet reads as `custom.x…w`.
+- **`updateSimulation(_:custom:)`** records the sim, so `substeps` kernel iterations run, on the GPU, before the frame is drawn. `custom` passes up to four live floats the snippet reads as `custom.x…w`.
 - **`field.image`** wraps the current field as an [`Image`](../Drawing/Drawing.md) for `drawImage`, so it composites in draw order, rides the transform stack, and takes `tint`, like any image. Its texels are treated as **linear** color, so author sRGB tones through `srgbToLinear` in the kernel.
 
 In the `step:` snippet these are in scope:
@@ -283,7 +283,7 @@ The one-thread-per-particle model can't let a particle see the others near it, w
 It powers the built-in [artificial-life sims](../Simulation/ArtificialLife.md) (`ParticleLife`, `PPS`), and you can reach for it directly to write your own. The `neighborStep(_:over:reading:writing:)` facade builds the hash over your `reading` particles, then runs your `kernel` with the particle buffers and the hash's buffers bound at fixed indices. Your kernel walks the neighbors with the `OLLIN_FOR_NEIGHBORS` macro (spliced into every kernel, with `ollin_torus_delta` for wrap-correct distances):
 
 ```swift
-let hash = spatialHash(radius: 40, count: 18_000)         // cells over the canvas
+let hash = makeSpatialHash(radius: 40, count: 18_000)         // cells over the canvas
 let particles = PingPong<OllinParticle>(count: 18_000)     // your own buffers (import COllinShaders)
 
 let step = ComputeKernel(entry: "my_step", """

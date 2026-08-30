@@ -27,11 +27,11 @@ final class SyphonViewer: Sketch {
         // Keep trying to (re)connect while there's nothing live (gently — each
         // attempt opens and drops a connection).
         if !feed.isActive, time - lastSeen > 1.5 {
-            feed.reconnect()
+            feed.connect()
             lastSeen = time
         }
 
-        if let frame = feed.newFrame() {
+        if let frame = feed.frame {
             // Letterboxed to fit, centered — the same fit `drawFrame` does.
             drawImage(frame, in: Rectangle(fitting: Vector2(Double(frame.width), Double(frame.height)),
                                            in: bounds))

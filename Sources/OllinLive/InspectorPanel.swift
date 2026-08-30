@@ -20,7 +20,7 @@ struct InspectorPanel: View {
                     VariationCardView(stats: session.stats) { seed in
                         session.recordSeed(seed)
                     }
-                    ParametersListView(params: session.params,
+                    ParametersListView(parameters: session.params,
                                        onChange: { name, value in
                                            session.recordParam(name, value)
                                        },

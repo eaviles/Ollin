@@ -32,7 +32,7 @@ final class HitomezashiStitches: Sketch {
             let tide = signedNoise(cell.center.x * 0.002, cell.center.y * 0.002,
                                    time * 0.4) * 0.2
             let t = (tone ? 0.85 : 0.15) + tide
-            fill(Color.mix(low, high, t: t))
+            fill(Color.mix(low, high, t))
             drawRect(cell.frame)
         }
 

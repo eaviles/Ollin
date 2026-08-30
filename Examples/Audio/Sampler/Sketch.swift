@@ -48,17 +48,17 @@ final class SamplerSketch: Sketch {
         // The whole feature, in two lines: which recordings, and how to play
         // them. They are set apart because recordings are far too large to
         // travel inside a note.
-        if oneRecording, let full = SampledInstrument.builtin {
+        if oneRecording, let full = SampledInstrument.builtIn {
             // Just the middle recording, stretched over everything.
             let middle = full.recordingCount / 2
             synth.instrument = SampledInstrument(
                 name: "one", recordings: [full.recording(at: middle, over: 0 ... 127)]
             )
         } else {
-            synth.instrument = SampledInstrument.builtin
+            synth.instrument = SampledInstrument.builtIn
         }
         synth.voice = Voice(sampled: Sampled(velocitySensitivity: velocityFeel,
-                                             transpose: transpose),
+                                             transposition: transpose),
                             envelope: .plucked, gain: 0.8)
         roots = synth.instrument?.recordingRoots ?? []
         lit = [Double](repeating: 0, count: max(1, roots.count))

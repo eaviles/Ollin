@@ -120,13 +120,13 @@ public struct Scale: Sendable, Hashable {
     ///
     /// - Parameters:
     ///   - degree: the degree the chord is built on.
-    ///   - notes: how many notes to stack. Three is a triad, four adds a
+    ///   - noteCount: how many notes to stack. Three is a triad, four adds a
     ///     seventh.
     ///   - spacing: how many degrees to skip between them. Two takes every
     ///     other note, which is the usual one.
-    public func chord(on degree: Int, notes: Int = 3, spacing: Int = 2) -> [Pitch] {
-        guard notes > 0 else { return [] }
-        return (0..<notes).map { pitch(degree + $0 * spacing) }
+    public func chord(on degree: Int, noteCount: Int = 3, spacing: Int = 2) -> [Pitch] {
+        guard noteCount > 0 else { return [] }
+        return (0..<noteCount).map { pitch(degree + $0 * spacing) }
     }
 
     /// The same scale moved by a number of semitones.

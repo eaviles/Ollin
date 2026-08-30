@@ -225,7 +225,7 @@ extension MetalRenderer {
             tuple.withMemoryRebound(to: simd_float4.self,
                                    capacity: Int(OLLIN_MAX_FLARE_LIGHTS)) { buffer in
                 for (index, source) in sources.enumerated() {
-                    let level = flare.strength * flare.star * MetalRenderer.lensFlareStarGain
+                    let level = flare.amount * flare.star * MetalRenderer.lensFlareStarGain
                     let color = (source.color / brightest) * level
                     buffer[index] = SIMD4(Float(color.x), Float(color.y), Float(color.z), 0)
                 }
@@ -268,7 +268,7 @@ extension MetalRenderer {
                         peak = max(peak, 0.2126 * value.x + 0.7152 * value.y + 0.0722 * value.z)
                     }
                     guard peak > 0 else { continue }
-                    let scale = flare.strength * MetalRenderer.lensFlareGain
+                    let scale = flare.amount * MetalRenderer.lensFlareGain
                     for (ghostIndex, value) in raw.enumerated() {
                         // Measured against the brightest ghost this source makes,
                         // and tinted by both the coating and the source's color.

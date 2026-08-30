@@ -88,7 +88,7 @@ func start() throws
 func stop()
 var frame: Image? { get }
 var frameSize: Vector2? { get }
-func fittedRect(in container: Rectangle) -> Rectangle?
+func fittedRectangle(in container: Rectangle) -> Rectangle?
 
 // on Sketch, for any VideoFeed (a Camera, a VideoPlayer, your own):
 @discardableResult
@@ -102,7 +102,7 @@ A frame source. Create it in `setup()`, `start()` it, and draw it with `drawFram
 guard let rect = drawFrame(camera) else { return }
 ```
 
-`drawFrame` works on any `VideoFeed`. That is the core protocol `Camera` and [`VideoPlayer`](../Video/Video.md) conform to, and `frame`, `frameSize`, and the letterboxing `fittedRect(in:)` come with it. Reaching for the typed pieces, `frame` is the latest captured frame, or `nil` before the first one. `fittedRect(in:)` is the letterboxed rectangle alone. A sketch uses that when it draws a frame's *derivatives*, like a segmentation matte or a cutout, rather than the frame itself.
+`drawFrame` works on any `VideoFeed`. That is the core protocol `Camera` and [`VideoPlayer`](../Video/Video.md) conform to, and `frame`, `frameSize`, and the letterboxing `fittedRectangle(in:)` come with it. Reaching for the typed pieces, `frame` is the latest captured frame, or `nil` before the first one. `fittedRectangle(in:)` is the letterboxed rectangle alone. A sketch uses that when it draws a frame's *derivatives*, like a segmentation matte or a cutout, rather than the frame itself.
 
 `Camera.Device` picks which camera. The choices are `.default`, `.builtIn`, `.continuity`, `.external`, and `.deskView`. `.default` is the system default, `.continuity` a nearby iPhone, and `.external` a USB or Thunderbolt webcam.
 
@@ -397,7 +397,7 @@ let camera = Camera()
 lazy var people = PersonSegmenter(camera)
 override func draw() {
     drawMyBackground()                        // anything, the replacement backdrop
-    guard let rect = camera.fittedRect(in: bounds) else { return }
+    guard let rect = camera.fittedRectangle(in: bounds) else { return }
     if let cutout = people.cutout { drawImage(cutout, in: rect) }
 }
 ```
@@ -458,7 +458,7 @@ let camera = Camera()
 lazy var picker = PointSegmenter(camera, imageEncoderAt: encoderURL,
                                  promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
 override func mousePressed() {
-    guard let rect = camera.fittedRect(in: bounds) else { return }
+    guard let rect = camera.fittedRectangle(in: bounds) else { return }
     if modifiers.contains(.shift) {
         picker.exclude(Vector2(mouseX, mouseY), in: rect)
     } else {
@@ -496,9 +496,9 @@ What the still-image `detect(in:)` calls return, the same two images the live tr
 </picture>
 
 ```swift
-RectangleDetector(_ source: any FrameSource, minimumAspectRatio: Float = 0.2,
-                  maximumAspectRatio: Float = 1.0, minimumSize: Float = 0.1,
-                  minimumConfidence: Float = 0.6, maximumCount: Int = 8)
+RectangleDetector(_ source: any FrameSource, minAspectRatio: Float = 0.2,
+                  maxAspectRatio: Float = 1.0, minimumSize: Float = 0.1,
+                  minConfidence: Float = 0.6, maxCount: Int = 8)
 var rectangles: [DetectedRectangle] { get }
 static func detect(in: Image, …) async throws -> [DetectedRectangle]
 ```
@@ -548,7 +548,7 @@ A `DetectedBarcode` carries a `payload`, a `symbology`, a `confidence`, and `cor
 ### TextRecognizer
 
 ```swift
-TextRecognizer(_ source: any FrameSource, level: Level = .fast)
+TextRecognizer(_ source: any FrameSource, quality: Quality = .fast)
 var lines: [DetectedText] { get }
 var text: String { get }            // all lines joined
 static func detect(in: Image, level: Level = .accurate) async throws -> [DetectedText]
@@ -682,19 +682,19 @@ An arc keeps its `id` as more of it comes into view. Accumulate results by `id` 
 </picture>
 
 ```swift
-FlowTracker(_ source: any FrameSource, accuracy: Accuracy = .medium)
+FlowTracker(_ source: any FrameSource, quality: Quality = .medium)
 var field: MotionField? { get }
 func reset()
-static func flow(from previous: Image, to current: Image,
-                 accuracy: Accuracy = .high) async throws -> MotionField?
-static func flow(across: [Image], accuracy: Accuracy = .medium) async throws -> [MotionField?]
+static func detect(from previous: Image, to current: Image,
+                 quality: Quality = .high) async throws -> MotionField?
+static func detect(across: [Image], quality: Quality = .medium) async throws -> [MotionField?]
 ```
 
 Where `ObjectTracker` follows one patch and `TrajectoryTracker` finds arcs, this one measures **all** the motion. Optical flow is a dense field of vectors describing how every part of the picture moved since the previous analyzed frame. Wave a hand and the pixels under it get vectors, or pan the camera and the whole field drifts together. It's classical, with no neural model, so it runs on any Mac.
 
-Read `field` each frame, and sample it wherever you like. See [`MotionField`](#motionfield). It is `nil` until the second analyzed frame, since flow needs a pair. `accuracy` trades speed for a finer field, from `.low` through `.medium` and `.high` to `.veryHigh`. `.medium` keeps up with a live camera. Call `reset()` after the scene jumps, like a video loop or a seek, so the discontinuity isn't read as one huge motion.
+Read `field` each frame, and sample it wherever you like. See [`MotionField`](#motionfield). It is `nil` until the second analyzed frame, since flow needs a pair. `quality` trades speed for a finer field, from `.low` through `.medium` and `.high` to `.veryHigh`. `.medium` keeps up with a live camera. Call `reset()` after the scene jumps, like a video loop or a seek, so the discontinuity isn't read as one huge motion.
 
-There are two camera-free forms. `flow(from:to:)` measures a single pair of stills. `flow(across:)` runs an ordered array of frames through the same frame-over-frame path the live tracker uses. Its first entry is `nil`, since flow needs a frame before it.
+There are two camera-free forms. `detect(from:to:)` measures a single pair of stills. `detect(across:)` runs an ordered array of frames through the same frame-over-frame path the live tracker uses. Its first entry is `nil`, since flow needs a frame before it.
 
 <a name="motionfield"></a>
 
@@ -739,11 +739,11 @@ Two practical notes. Magnitudes are conservative estimates. Treat them as a sign
 ### ImageClassifier
 
 ```swift
-ImageClassifier(_ source: any FrameSource, minimumConfidence: Double = 0.1)
+ImageClassifier(_ source: any FrameSource, minConfidence: Double = 0.1)
 var labels: [Classification] { get }
-var top: Classification? { get }
+var topClassification: Classification? { get }
 func confidence(of label: String) -> Double
-static func detect(in: Image, minimumConfidence: Double = 0.1) async throws -> [Classification]
+static func detect(in: Image, minConfidence: Double = 0.1) async throws -> [Classification]
 static func supportedLabels() -> [String]
 ```
 
@@ -762,9 +762,9 @@ override func draw() {
 }
 ```
 
-`labels` is everything at or above `minimumConfidence`, strongest first, and `top` is the single strongest. The other read surface goes by name. `confidence(of: "dog")` answers `0…1` for any label in the vocabulary, unfiltered. A concept below the floor still reads its true, small value. That's the knob-shaped form, letting "how much does this look like a plant" drive a color, a speed, or a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
+`labels` is everything at or above `minConfidence`, strongest first, and `topClassification` is the single strongest. The other read surface goes by name. `confidence(of: "dog")` answers `0…1` for any label in the vocabulary, unfiltered. A concept below the floor still reads its true, small value. That's the knob-shaped form, letting "how much does this look like a plant" drive a color, a speed, or a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
 
-Two things worth knowing about the vocabulary. It's hierarchical, so one clear subject lights up its whole lineage, and a blue sky scores `blue_sky`, `sky`, and `outdoor` together. The classifier also scores *all* of it every frame, mostly near zero. `minimumConfidence` (default `0.1`) is what keeps `labels` down to the meaningful few. `supportedLabels()` lists the full vocabulary when you want to browse for a concept to key on.
+Two things worth knowing about the vocabulary. It's hierarchical, so one clear subject lights up its whole lineage, and a blue sky scores `blue_sky`, `sky`, and `outdoor` together. The classifier also scores *all* of it every frame, mostly near zero. `minConfidence` (default `0.1`) is what keeps `labels` down to the meaningful few. `supportedLabels()` lists the full vocabulary when you want to browse for a concept to key on.
 
 The model is neural, so the [availability](#availability) surface applies (`isAvailable` / `unavailableReason`).
 
@@ -844,13 +844,13 @@ What the still-image `detect(in:mode:)` returns, the same three surfaces the liv
 
 ```swift
 ConceptTracker(_ source: any FrameSource,
-               imageModelAt: URL, textModelAt: URL, vocabAt: URL,
+               imageModelAt: URL, textModelAt: URL, vocabularyAt: URL,
                concepts: [String] = [])
-ConceptTracker(imageModelAt: URL, textModelAt: URL, vocabAt: URL,
+ConceptTracker(imageModelAt: URL, textModelAt: URL, vocabularyAt: URL,
                concepts: [String] = [])       // bound to no source; still images only
 var concepts: [String] { get set }            // the phrases being scored
 var labels: [Classification] { get }          // shares over the concepts, strongest first
-var top: Classification? { get }
+var topClassification: Classification? { get }
 func confidence(of phrase: String) -> Double  // one phrase's share, 0…1
 func similarity(of phrase: String) -> Double  // the raw cosine, unshared
 var imageEmbedding: [Double]? { get }         // the frame as a unit vector
@@ -866,7 +866,7 @@ let camera = Camera()
 lazy var ideas = ConceptTracker(camera,
     imageModelAt: URL(fileURLWithPath: "Models/mobileclip_s0_image.mlpackage"),
     textModelAt: URL(fileURLWithPath: "Models/mobileclip_s0_text.mlpackage"),
-    vocabAt: URL(fileURLWithPath: "Models/bpe_simple_vocab_16e6.txt"),
+    vocabularyAt: URL(fileURLWithPath: "Models/bpe_simple_vocab_16e6.txt"),
     concepts: ["a spooky scene", "a cheerful scene"])
 
 override func draw() {
@@ -889,11 +889,11 @@ ModelTracker(_ source: any FrameSource, modelAt: URL)
 ModelTracker(_ source: any FrameSource, model: MLModel)   // a model you configured yourself
 ModelTracker(modelAt: URL)                                // bound to no source; still images only
 var labels: [Classification] { get }                      // classifier outputs, strongest first
-var top: Classification? { get }
+var topClassification: Classification? { get }
 func confidence(of: String) -> Double
 var objects: [DetectedObject] { get }                     // object-detector outputs
 var map: Image? { get }                                   // image-typed output, white-alpha
-var outputImage: Image? { get }                           // image-typed output, full color
+var image: Image? { get }                           // image-typed output, full color
 var classMask: ClassMask? { get }                         // semantic-segmenter output
 func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
 var isLoaded: Bool { get }
@@ -904,8 +904,8 @@ Runs **your own Core ML model** over the frames, the open end of the tracker cat
 
 A model fills the surfaces matching what it outputs, decoded the same way the built-in trackers decode theirs:
 
-- **Classifier** (label + confidence outputs) → `labels` / `top` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
-- **Image-to-image** (a depth estimator, a custom matte, a style-transfer model) → two readings of the same output. `map` is the output as a *value field*, a white-alpha `Image` like the segmentation matte. `tint(_:)` recolors it, and drawing it into the frame's rectangle stretches it onto the picture. `value(at:in:)` gives the value under any canvas point, the same field-shaped query [`SaliencyTracker`](#saliencytracker) offers. It answers `0…1`, and out-of-range points clamp to the edge. `outputImage` is the output as a *picture*, in full color, for a model that paints rather than measures. A style-transfer model's stylized frame draws as any image would (the `StyleMirror` example). Each surface converts only once something reads it, so a sketch pays for the reading it uses.
+- **Classifier** (label + confidence outputs) → `labels` / `topClassification` / `confidence(of:)`, like [`ImageClassifier`](#imageclassifier) but over your model's own vocabulary.
+- **Image-to-image** (a depth estimator, a custom matte, a style-transfer model) → two readings of the same output. `map` is the output as a *value field*, a white-alpha `Image` like the segmentation matte. `tint(_:)` recolors it, and drawing it into the frame's rectangle stretches it onto the picture. `value(at:in:)` gives the value under any canvas point, the same field-shaped query [`SaliencyTracker`](#saliencytracker) offers. It answers `0…1`, and out-of-range points clamp to the edge. `image` is the output as a *picture*, in full color, for a model that paints rather than measures. A style-transfer model's stylized frame draws as any image would (the `StyleMirror` example). Each surface converts only once something reads it, so a sketch pays for the reading it uses.
 - **Object detector** (a detector exported with its non-maximum-suppression head, the form Apple's gallery ships) → `objects`, labeled boxes mapped by `bounds(in:)`.
 - **Semantic segmenter** (a model whose output is a plane of class indices, one per pixel, the DeepLabV3 form) → `classMask`, a [`ClassMask`](#classmask). That reads three ways. It says what classes are in frame and how much of it they fill. It gives the class under any canvas point. And it hands over each class as a drawable, tintable mask. The model's own vocabulary comes along when it declares one (Apple's gallery models do).
 
@@ -941,7 +941,7 @@ struct ModelOutput {
     var labels: [Classification]     // classifier outputs, strongest first
     var objects: [DetectedObject]    // detector outputs
     var map: Image?                  // image-typed output, white-alpha
-    var outputImage: Image?          // image-typed output, full color
+    var image: Image?          // image-typed output, full color
     var classMask: ClassMask?        // semantic-segmenter output
     func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
     func valueNormalized(at: Vector2) -> Double
@@ -963,7 +963,7 @@ What the still-image `detect(in:)` returns, the same surfaces the live tracker p
 
 ```swift
 var labels: [String] { get }                 // the model's class vocabulary, by index
-var presentClasses: [Int] { get }            // classes in frame, largest first
+var presentClassIndices: [Int] { get }            // classes in frame, largest first
 var presentLabels: [String] { get }          // the same, by name
 func coverage(of label: String) -> Double            // fraction of the picture, 0…1
 func coverage(ofClass index: Int) -> Double
@@ -976,7 +976,7 @@ func mask(ofClass index: Int) -> Image?
 
 What a semantic-segmentation model labeled, pixel by pixel, in three readings of one plane.
 
-- **What's in frame.** `presentClasses` / `presentLabels` (largest first) and `coverage(of:)`, the share of the picture a class fills.
+- **What's in frame.** `presentClassIndices` / `presentLabels` (largest first) and `coverage(of:)`, the share of the picture a class fills.
 - **What's under a point.** `classIndex(at:in:)` / `label(at:in:)` give the class under any canvas point. Out-of-range points clamp, and you pass the rectangle you drew the frame into, like every `in:` helper.
 - **One class as pixels.** `mask(of: "person")` is white where the picture is that class and transparent elsewhere, like the segmentation matte. Draw it into the frame's rectangle and it lands on the picture, with `tint(_:)` recoloring it.
 
@@ -1010,14 +1010,14 @@ The recognizers report geometry in **normalized** coordinates. That is `0…1` a
   <img src="../Images/VisionMapping.jpg" alt="A normalized panel with its origin at the lower left and y up beside a canvas panel with its origin at the top left and y down, the same reported point flipped in y and scaled into the rectangle the frame was drawn in" width="680">
 </picture>
 
-The `Face` helpers (`bounds(in:)`, `landmarks(_:in:)`) do this for you. Pass the rectangle you drew the frame into, usually `camera.fittedRect(in: bounds)`, so the overlay sits on the picture. Set `mirrored: true` when you draw the frame flipped left-to-right, so the overlay flips with it. That is the natural "selfie" orientation for a front camera.
+The `Face` helpers (`bounds(in:)`, `landmarks(_:in:)`) do this for you. Pass the rectangle you drew the frame into, usually `camera.fittedRectangle(in: bounds)`, so the overlay sits on the picture. Set `mirrored: true` when you draw the frame flipped left-to-right, so the overlay flips with it. That is the natural "selfie" orientation for a front camera.
 
 For mapping points from a source the built-in trackers don't cover (say, a custom Core ML model), `VisionSpace` exposes the same math directly:
 
 ```swift
 VisionSpace.point(_ x: Double, _ y: Double, in: Rectangle, mirrored: Bool = false) -> Vector2
 VisionSpace.rectangle(_ normalized: Rectangle, in: Rectangle, mirrored: Bool = false) -> Rectangle
-VisionSpace.fittedRect(imageSize: Vector2, in container: Rectangle) -> Rectangle
+VisionSpace.fittedRectangle(imageSize: Vector2, in container: Rectangle) -> Rectangle
 ```
 
 The inverse goes the other way. It takes a point or box you drew in canvas space back to normalized coordinates. That is how `ObjectTracker` is seeded from where something sits on the canvas:
@@ -1039,13 +1039,13 @@ let found = try await FaceTracker.detect(in: image)
 print("\(found.count) faces")
 ```
 
-The trackers that work *across* frames are the exception, because one frame isn't enough. Their camera-free forms take more than one. `ObjectTracker.track(seed, across: frames)` and `TrajectoryTracker.detect(across: frames)` take an ordered sequence. `FlowTracker.flow(from:to:)` takes the pair of stills to measure between, and `flow(across:)` handles a sequence.
+The trackers that work *across* frames are the exception, because one frame isn't enough. Their camera-free forms take more than one. `ObjectTracker.track(seed, across: frames)` and `TrajectoryTracker.detect(across: frames)` take an ordered sequence. `FlowTracker.detect(from:to:)` takes the pair of stills to measure between, and `detect(across:)` handles a sequence.
 
 Every one of these calls is `async`, which is fine in a `Task`. But `setup()` isn't one, and a deterministic render can't wait a few frames for a result to land. A figure or an export is that kind of render. `waitFor` runs the call inline and blocks until it's done:
 
 ```swift
 let shapes = try waitFor(image) { try await ContourDetector.detect(in: $0) }
-let field  = try waitFor(before, after) { try await FlowTracker.flow(from: $0, to: $1) }
+let field  = try waitFor(before, after) { try await FlowTracker.detect(from: $0, to: $1) }
 let arcs   = try waitFor(frames) { try await TrajectoryTracker.detect(across: $0) }
 ```
 
@@ -1056,7 +1056,7 @@ The same parking makes one small mistake hang with nothing printed: reading a pr
 ```swift
 let floor = minimumScore              // a property of the sketch, read out here
 let labels = try waitFor(image) {
-    try await ImageClassifier.detect(in: $0, minimumConfidence: floor)
+    try await ImageClassifier.detect(in: $0, minConfidence: floor)
 }
 ```
 

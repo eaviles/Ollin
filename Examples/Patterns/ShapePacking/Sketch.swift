@@ -50,7 +50,7 @@ final class ShapePacking: Sketch {
         for i in start ..< packer.count {
             let c = packer.circles[i].center
             let t = noise(c.x * 0.0016, c.y * 0.0016)
-            fill(Color.mix(ink, accent, t: t))
+            fill(Color.mix(ink, accent, t))
             drawShape(packer.shapes[i])
         }
     }

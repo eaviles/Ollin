@@ -12,7 +12,7 @@ import Foundation
 ///
 /// ```swift
 /// var spring = DampedSpring(value: Vector2.zero, duration: 0.6, bounce: 0.3)
-/// let p = spring.step(toward: mouse, dt: deltaTime)
+/// let p = spring.advance(toward: mouse, by: deltaTime)
 /// ```
 ///
 /// Two knobs, both perceptual. `duration` is the response time in seconds,
@@ -81,17 +81,17 @@ public struct DampedSpring<Value: Smoothable>: Sendable {
     }
 
     /// Retarget and advance in one call, returning the new value; sugar for
-    /// setting `target` then calling `update(dt:)`.
+    /// setting `target` then calling `advance(by:)`.
     @discardableResult
-    public mutating func step(toward newTarget: Value, dt: Double) -> Value {
+    public mutating func advance(toward newTarget: Value, by dt: Double) -> Value {
         target = newTarget
-        update(dt: dt)
+        advance(by: dt)
         return value
     }
 
     /// Advance the spring by `dt` seconds toward `target`: one exact
     /// closed-form step of the damped oscillator.
-    public mutating func update(dt: Double) {
+    public mutating func advance(by dt: Double) {
         guard dt > 0 else { return }
 
         // The oscillator constants from the perceptual knobs: the undamped
@@ -219,6 +219,6 @@ public final class Sprung<Value: Smoothable>: FrameAdvancing {
 
     /// Advance the spring by `dt` seconds. Called by the sketch each frame.
     package func advance(by dt: Double) {
-        spring.update(dt: dt)
+        spring.advance(by: dt)
     }
 }

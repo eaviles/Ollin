@@ -31,10 +31,10 @@ final class EvolutionFigure: Sketch {
         for (i, panel) in [left, middle, right].enumerated() {
             let bars = [Rectangle(x: panel.x, y: panel.y + 196, width: 168, height: 13),
                         Rectangle(x: panel.x + 203, y: panel.y + 196, width: 50, height: 13)]
-            let run = evolution(count: 3000, genes: 20,
+            let run = makeEvolution(count: 3000, genes: 20,
                                 from: Vector2(panel.x + panel.width / 2, panel.y + panel.height - 22),
                                 to: Vector2(panel.x + panel.width / 2, panel.y + 34),
-                                seed: UInt64(11 + i))
+                                seed: 11 + i)
             run.obstacles = bars
             run.targetRadius = 20
             // A short trial with a proportionally quick flight, so a figure can

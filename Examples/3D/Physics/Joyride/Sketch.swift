@@ -59,12 +59,12 @@ final class Joyride: Sketch {
             let apron = 0.2
             let hills = smoothstep(0.34, 0.8, d) * (1 - smoothstep(0.84, 1, d))
             let shore = 1 - smoothstep(0.88, 1.0, d)
-            return (apron + hills * (0.25 + 0.75 * bumps.value(atU: u, v: v))) * shore
+            return (apron + hills * (0.25 + 0.75 * bumps.value(u: u, v: v))) * shore
         }
         .eroded(.hydraulic(drops: 40_000), seed: 12)
         .eroded(.thermal(talus: 0.02, iterations: 20))
         .normalized()
-        apronY = land.value(atU: 0.5, v: 0.5) * landHeight
+        apronY = land.value(u: 0.5, v: 0.5) * landHeight
         terrain = terrainMesh(land)
         // The tires want grip: a slick island is a skating rink.
         world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
@@ -136,7 +136,7 @@ final class Joyride: Sketch {
         castShadows()
 
         steer()
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         // Off the edge and into the sea: put it back on the apron.
         if car.body.position.y < -4 { reset() }
@@ -223,7 +223,7 @@ final class Joyride: Sketch {
             // rather than rolling, which is the one thing a driver wants to see.
             let spinning = min(1, wheel.slip)
             fill(Color.mix(Color(hex: 0x39424E), Color(hex: 0xF2A93B),
-                           t: spinning))
+                           spinning))
             withWheel(wheel) {
                 drawCylinder(radius: wheel.radius, height: wheel.width)
                 fill(Color(hex: 0xB9AE9C))

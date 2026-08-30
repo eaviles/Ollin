@@ -250,7 +250,7 @@ struct EvolutionTests {
     private func distinct(_ genes: [SIMD2<Float>]) -> Int { Set(genes).count }
 
     /// The genomes a run holds after `generations` generations.
-    private func genomes(generations: Int, seed: UInt64 = 7,
+    private func genomes(generations: Int, seed: Int = 7,
                          _ configure: @escaping (Evolution) -> Void) throws -> [SIMD2<Float>] {
         let probe = EvolutionProbe()
         probe.generations = generations
@@ -264,7 +264,7 @@ struct EvolutionTests {
 
     /// Run a population for `generations` generations and hand back what each one
     /// managed, so a test can compare a run against its counterfactual.
-    private func run(generations: Int, seed: UInt64 = 7,
+    private func run(generations: Int, seed: Int = 7,
                      _ configure: @escaping (Evolution) -> Void) throws -> [Evolution.Report] {
         let probe = EvolutionProbe()
         probe.generations = generations
@@ -286,7 +286,7 @@ private final class EvolutionProbe: Sketch {
     static let population = 2000
     static let genes = 20
     var generations = 8
-    var seed: UInt64 = 7
+    var seed: Int = 7
     var targetRadius = 30.0
     var configure: (Evolution) -> Void = { _ in }
     /// The frame each generation was bred on, for the pacing test.

@@ -66,8 +66,8 @@ struct SurfaceMapTests {
         // carried defaults, 0 and 0.5, would kill or halve the map), and an
         // emissive map with no color emits at full strength.
         #expect(m.metallic == 1 && m.roughness == 1)
-        #expect(m.emissiveFactor.red == 1 && m.emissiveFactor.green == 1
-                && m.emissiveFactor.blue == 1)
+        #expect(m.emissiveColor.red == 1 && m.emissiveColor.green == 1
+                && m.emissiveColor.blue == 1)
     }
 
     @Test func surfaceMappedComposesWithTexturedAndNormalMapped() throws {
@@ -83,7 +83,7 @@ struct SurfaceMapTests {
         // A constant emissive color needs no map.
         let glowing = mesh.surfaceMapped(emissiveColor: Color(red: 0.2, green: 0.4, blue: 0.6))
         #expect(glowing.material?.emissiveTexture == nil)
-        #expect(glowing.material?.emissiveFactor.blue == 0.6)
+        #expect(glowing.material?.emissiveColor.blue == 0.6)
         #expect(glowing.material?.metallicRoughnessTexture === orm,
                 "surfaceMapped must leave the channels it wasn't given alone")
     }
@@ -146,8 +146,8 @@ struct SurfaceMapTests {
         #expect(abs(m.occlusionStrength - 0.6) < 1e-9)
         // The emissive factor is authored linear; the reader re-encodes to the
         // display-encoded Color like every glTF factor.
-        #expect(abs(m.emissiveFactor.red - 1) < 1e-6)
-        #expect(abs(m.emissiveFactor.green - Color.linearToSrgb(0.5)) < 1e-6)
+        #expect(abs(m.emissiveColor.red - 1) < 1e-6)
+        #expect(abs(m.emissiveColor.green - Color.linearToSrgb(0.5)) < 1e-6)
     }
 
     // MARK: - The USD reader
@@ -268,8 +268,8 @@ struct SurfaceMapTests {
         #expect(abs(m.normalScale - 0.8) < 1e-6)
         // The emissive factor is the map's scale, linear re-encoded.
         #expect(m.emissiveTexture != nil)
-        #expect(abs(m.emissiveFactor.red - Color.linearToSrgb(0.25)) < 1e-6)
-        #expect(abs(m.emissiveFactor.green - Color.linearToSrgb(0.5)) < 1e-6)
+        #expect(abs(m.emissiveColor.red - Color.linearToSrgb(0.25)) < 1e-6)
+        #expect(abs(m.emissiveColor.green - Color.linearToSrgb(0.5)) < 1e-6)
         // Carried constants.
         #expect(abs(m.ior - 1.42) < 1e-6)
         #expect(abs(m.opacity - 0.9) < 1e-6)
@@ -316,7 +316,7 @@ struct SurfaceMapTests {
         material.occlusionTexture = orm          // the shared-ORM arrangement
         material.occlusionStrength = 0.65
         material.emissiveTexture = solidMap(0, 200, 255)
-        material.emissiveFactor = Color(red: 0.9, green: 0.5, blue: 0.2)
+        material.emissiveColor = Color(red: 0.9, green: 0.5, blue: 0.2)
         material.metallic = 0.7
         material.roughness = 0.8
         mesh.material = material
@@ -348,9 +348,9 @@ struct SurfaceMapTests {
         #expect(abs(m.roughness - 0.8) < 1e-5)
         #expect(abs(m.occlusionStrength - 0.65) < 1e-5)
         #expect((m.emissiveTexture?[0, 0].blue ?? 0) > 0.9)
-        #expect(abs(m.emissiveFactor.red - 0.9) < 1e-3)
-        #expect(abs(m.emissiveFactor.green - 0.5) < 1e-3)
-        #expect(abs(m.emissiveFactor.blue - 0.2) < 1e-3)
+        #expect(abs(m.emissiveColor.red - 0.9) < 1e-3)
+        #expect(abs(m.emissiveColor.green - 0.5) < 1e-3)
+        #expect(abs(m.emissiveColor.blue - 0.2) < 1e-3)
     }
 
     @Test func aMappedPackagePassesTheSystemValidator() throws {
@@ -364,7 +364,7 @@ struct SurfaceMapTests {
         material.metallicRoughnessTexture = orm
         material.occlusionTexture = orm
         material.emissiveTexture = solidMap(0, 200, 255)
-        material.emissiveFactor = .white
+        material.emissiveColor = .white
         material.metallic = 1
         material.roughness = 1
         mesh.material = material

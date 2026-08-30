@@ -51,7 +51,7 @@ final class PhoneBodyFigure: Sketch {
         cameraShowcase(.turntable(period: .tau / 0.35), target: orbitCenter ?? center, radius: 3.2,
                        elevation: 0.18, fieldOfView: .pi / 3)
 
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
 
         drawFloor(under: body)
         drawFigure(body)
@@ -96,7 +96,7 @@ final class PhoneBodyFigure: Sketch {
     /// Stand one solid part at a joint: the joint's full world pose (orientation
     /// and position composed) goes onto the transform stack in one `transform` call.
     private func part(_ body: PhoneBody, at joint: PhoneJoint, _ piece: () -> Void) {
-        guard let pose = body.worldTransform(of: joint) else { return }
+        guard let pose = body.worldTransform(ofJoint: joint) else { return }
         withState {
             material(.clay)
             fill(body.isJointTracked(joint) ? seenColor : filledColor)

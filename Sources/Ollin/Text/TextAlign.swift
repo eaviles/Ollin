@@ -3,7 +3,7 @@ import Foundation
 /// Horizontal anchoring of text relative to the `drawText` position (see
 /// `textAlign`). `.left` (default) starts the text at the x; `.center` centers
 /// it on the x; `.right` ends it at the x.
-public enum TextAlignH: Sendable {
+public enum HorizontalTextAlign: Sendable {
     case left
     case center
     case right
@@ -13,7 +13,7 @@ public enum TextAlignH: Sendable {
 /// `textAlign`). `.baseline` (default) sits the first line's baseline on the y —
 /// the conventional default; `.top`/`.bottom` align the block's top/bottom edge to the y, and
 /// `.middle` centers the whole block on the y.
-public enum TextAlignV: Sendable {
+public enum VerticalTextAlign: Sendable {
     case top
     case middle
     case baseline
@@ -22,7 +22,7 @@ public enum TextAlignV: Sendable {
     /// `.middle`, under the name the horizontal axis uses, so
     /// `textAlign(.center, .center)` also compiles. Vertical centering is
     /// typographically "middle"; the canonical case stays `.middle`.
-    public static var center: TextAlignV { .middle }
+    public static var center: VerticalTextAlign { .middle }
 }
 
 /// The base direction a line of text is laid out in (see `textDirection`).

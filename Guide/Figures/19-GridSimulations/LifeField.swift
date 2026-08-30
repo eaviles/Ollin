@@ -14,7 +14,7 @@ final class LifeField: Sketch {
 
     override func draw() {
         background(.black)
-        if life == nil { life = simField(.gameOfLife(), scale: 0.08) }   // chunky cells
+        if life == nil { life = makeSimField(.gameOfLife(), scale: 0.08) }   // chunky cells
         guard let life else { return }
 
         withField(life) {

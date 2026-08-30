@@ -137,7 +137,7 @@ An effect that has to remember something between blocks takes its memory as `sta
 Everything in this chapter so far is worked out as it goes. The other way round is to start from a recording.
 
 ```swift
-synth.instrument = SampledInstrument.builtin
+synth.instrument = SampledInstrument.builtIn
 synth.voice = Voice(sampled: Sampled(), envelope: .plucked)
 synth.play("C4", for: 1.5)
 ```
@@ -185,7 +185,7 @@ What makes this worth the trouble is what you get without asking. The note attac
 
 ```swift
 var string = PluckedString.steel
-string.pick = 0.5              // halfway along
+string.position = 0.5          // halfway along
 synth.voice = Voice(string: string)
 ```
 

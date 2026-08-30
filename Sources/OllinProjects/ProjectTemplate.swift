@@ -205,7 +205,7 @@ extension ProjectTemplate {
         title: "Layered effects",
         summary: "Draw into an off-screen layer, filter it on the GPU, composite it back.",
         source: """
-        /// Layers: `renderTarget()` makes an off-screen surface, `withTarget { }`
+        /// Layers: `makeRenderTarget()` makes an off-screen surface, `withTarget { }`
         /// redirects drawing into it, `filtered(_:)` runs a GPU filter over it, and
         /// `drawImage(layer.image)` puts the result on the canvas. Nothing goes
         /// back to the CPU in between.
@@ -220,7 +220,7 @@ extension ProjectTemplate {
             override func draw() {
                 background(Color(white: 0.03))
 
-                let marks = renderTarget()
+                let marks = makeRenderTarget()
                 withTarget(marks) {
                     background(.clear)
                     let n = 40
@@ -234,7 +234,7 @@ extension ProjectTemplate {
                     }
                 }
 
-                drawImage(marks.filtered(.bloom(threshold: 0.35, intensity: glow)).image, 0, 0)
+                drawImage(marks.filtered(.bloom(threshold: 0.35, amount: glow)).image, 0, 0)
             }
         }
         """
@@ -396,8 +396,8 @@ extension ProjectTemplate {
                 noStroke()
 
                 world.bounds = bounds
-                world.bounce = 0.4
-                world.collisions = true
+                world.restitution = 0.4
+                world.particlesCollide = true
 
                 for _ in 0 ..< count {
                     let radius = random(10, 26) * scale
@@ -408,7 +408,7 @@ extension ProjectTemplate {
 
             override func draw() {
                 background(Color(hex: 0x101318))
-                world.step(dt: deltaTime)
+                world.advance(by: deltaTime)
 
                 for (i, particle) in world.particles.enumerated() {
                     fill(Color(hue: Double(i) / Double(count) * 0.5 + 0.5, saturation: 0.4, brightness: 1))

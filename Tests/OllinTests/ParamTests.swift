@@ -84,7 +84,7 @@ struct ParamTests {
             return
         }
         #expect(control.range == 1...12 && control.step == 1)
-        control.set(3)
+        control.write(3)
         #expect(p.wrappedValue == 3)
         #expect(p.stored == .number(3))
         p.restore(.number(7))
@@ -97,7 +97,7 @@ struct ParamTests {
             Issue.record("Bool should present a toggle")
             return
         }
-        control.set(false)
+        control.write(false)
         #expect(p.wrappedValue == false)
         #expect(p.stored == .boolean(false))
         p.restore(.boolean(true))
@@ -110,7 +110,7 @@ struct ParamTests {
             Issue.record("Color should present a color well")
             return
         }
-        control.set(.orange)
+        control.write(.orange)
         #expect(p.wrappedValue == .orange)
         let stored = p.stored
         let q = Param(wrappedValue: Color.white)
@@ -127,7 +127,7 @@ struct ParamTests {
             return
         }
         #expect(control.options == ["Dots", "Rings", "Mesh Lines"])   // humanized case names
-        control.set(2)
+        control.write(2)
         #expect(p.wrappedValue == .meshLines)
         #expect(p.stored == .option("meshLines"))
         p.restore(.option("rings"))
@@ -162,7 +162,7 @@ struct ParamTests {
             return
         }
         #expect(control.xRange == 0...1080 && control.yRange == 0...400)
-        control.set(Vector2(100, 200))
+        control.write(Vector2(100, 200))
         #expect(p.wrappedValue == Vector2(100, 200))
         #expect(p.stored == .vector(x: 100, y: 200))
         p.restore(.vector(x: 300, y: 100))
@@ -178,7 +178,7 @@ struct ParamTests {
             return
         }
         #expect(control.zRange == 0...10)
-        control.set(Vector3(0.5, -0.5, 3))
+        control.write(Vector3(0.5, -0.5, 3))
         #expect(p.stored == .vector3(x: 0.5, y: -0.5, z: 3))
         p.restore(.vector3(x: 0, y: 1, z: 9))
         #expect(p.wrappedValue == Vector3(0, 1, 9))
@@ -217,7 +217,7 @@ struct ParamTests {
             return
         }
         #expect(control.widthRange == 10...500)
-        p.restore(.rect(x: 10, y: 20, width: 30, height: 40))
+        p.restore(.rectangle(x: 10, y: 20, width: 30, height: 40))
         #expect(p.wrappedValue == Rectangle(x: 10, y: 20, width: 30, height: 40))
     }
 
@@ -258,7 +258,7 @@ struct ParamTests {
             Issue.record("String should present a text field")
             return
         }
-        control.set("ollin")
+        control.write("ollin")
         #expect(p.wrappedValue == "ollin")
         #expect(p.stored == .text("ollin"))
         p.restore(.text("moved"))
@@ -272,7 +272,7 @@ struct ParamTests {
             return
         }
         #expect(control.options.contains("Golden Hour"))   // humanized choice name
-        control.set(control.options.firstIndex(of: "Noir") ?? 0)
+        control.write(control.options.firstIndex(of: "Noir") ?? 0)
         #expect(p.wrappedValue == .noir)
         #expect(p.stored == .option("noir"))
         p.restore(.option("moonlight"))
@@ -288,7 +288,7 @@ struct ParamTests {
             return
         }
         #expect(control.options.contains("Frosted Glass"))  // humanized choice name
-        control.set(control.options.firstIndex(of: "Gummy") ?? 0)
+        control.write(control.options.firstIndex(of: "Gummy") ?? 0)
         #expect(p.wrappedValue == .gummy)
         #expect(p.stored == .option("gummy"))
         p.restore(.option("polishedMetal"))
@@ -343,10 +343,10 @@ struct ParamTests {
         }
         #expect(control.options.contains("Ease Out Bounce"))       // humanized name
         // The friendly alias reads as the curve it is: easeInOut is the cubic.
-        #expect(control.options[control.get()] == "Ease In Out Cubic")
+        #expect(control.options[control.read()] == "Ease In Out Cubic")
         #expect(p.stored == .option("easeInOutCubic"))
 
-        control.set(control.options.firstIndex(of: "Ease Out Bounce") ?? 0)
+        control.write(control.options.firstIndex(of: "Ease Out Bounce") ?? 0)
         #expect(p.wrappedValue == .easeOutBounce)
         #expect(p.stored == .option("easeOutBounce"))
         p.restore(.option("linear"))
@@ -368,13 +368,13 @@ struct ParamTests {
         #expect(control.style == .blocks)
         #expect(control.count == 1...12)
         // The colors come back in order, spread evenly over 0...1.
-        #expect(control.get().map(\.color) == [.red, .white, .black])
-        #expect(control.get().map(\.position) == [0, 0.5, 1])
+        #expect(control.read().map(\.color) == [.red, .white, .black])
+        #expect(control.read().map(\.position) == [0, 0.5, 1])
         // The strip draws what the palette itself shows at each step.
         #expect(control.sample(0.1) == .red)
         #expect(control.sample(0.9) == .black)
 
-        control.set([.init(position: 0, color: .blue), .init(position: 1, color: .green)])
+        control.write([.init(position: 0, color: .blue), .init(position: 1, color: .green)])
         #expect(p.wrappedValue.colors == [.blue, .green])
     }
 
@@ -408,15 +408,15 @@ struct ParamTests {
         }
         #expect(control.style == .gradient)
         #expect(control.count == 2...8)
-        #expect(control.get().map(\.position) == [0, 0.25, 1])
+        #expect(control.read().map(\.position) == [0, 0.25, 1])
         // The band is the ramp's own blend, not a straight line between stops.
         #expect(control.sample(0) == .black)
         #expect(control.sample(0.25) == p.wrappedValue.color(at: 0.25))
         #expect(control.sample(0.6) == p.wrappedValue.color(at: 0.6))
-        #expect(control.sample(0.6) != Color.mix(.red, .white, t: 0.4))   // not a plain line
+        #expect(control.sample(0.6) != Color.mix(.red, .white, 0.4))   // not a plain line
 
         // Moving a stop keeps the space the ramp blends through.
-        control.set([.init(position: 0, color: .black), .init(position: 0.7, color: .red),
+        control.write([.init(position: 0, color: .black), .init(position: 0.7, color: .red),
                      .init(position: 1, color: .white)])
         #expect(p.wrappedValue.stops.map(\.position) == [0, 0.7, 1])
         #expect(p.wrappedValue.space == .oklch)

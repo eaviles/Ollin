@@ -14,7 +14,7 @@ final class Lenia: Sketch {
 
     override func draw() {
         background(Color(hex: 0x05070C))
-        if dish == nil { dish = simField(.lenia(radius: 13), scale: 0.55) }
+        if dish == nil { dish = makeSimField(.lenia(radius: 13), scale: 0.55) }
         guard let dish else { return }
 
         withField(dish) {

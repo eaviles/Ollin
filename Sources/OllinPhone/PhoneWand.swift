@@ -69,11 +69,11 @@ public struct PhoneWand: Sendable {
     /// test or a figure builds a `PhoneWandSample` and reads it back through the
     /// same accessors the live stream uses).
     public init(_ sample: PhoneWandSample) {
-        isTracked = sample.tracked
+        isTracked = sample.isTracked
         timestamp = sample.timestamp
         transform = sample.transform
         quarterTurns = Int(sample.quarterTurnsCW % 4)
-        isPressed = sample.pressed
+        isPressed = sample.isPressed
         pressCount = Int(sample.pressCount)
         touch = sample.hasTouch
             ? Vector2(Double(sample.touch.x), Double(sample.touch.y))

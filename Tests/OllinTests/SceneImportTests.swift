@@ -214,7 +214,7 @@ struct SceneImportTests {
         for (described, authored) in zip(imported.lights, scene.lights) {
             switch (described.kind, authored.kind) {
             case (.directional, .directional), (.point, .point), (.spot, .spot),
-                 (.rect, .rect), (.disk, .disk), (.tube, .tube):
+                 (.rectangle, .rectangle), (.disk, .disk), (.tube, .tube):
                 break
             default:
                 Issue.record("a \(authored.kind) light came over as \(described.kind)")

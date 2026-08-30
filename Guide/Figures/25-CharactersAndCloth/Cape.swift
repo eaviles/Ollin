@@ -30,7 +30,7 @@ final class Cape: Sketch {
         carriedFigure = rest
         pinnedFigure = rest
         world.ground = 0
-        world.bounce = 0.05
+        world.restitution = 0.05
 
         carriedDoll = stand(at: -1.0)
         pinnedDoll = stand(at: 1.0)
@@ -55,7 +55,7 @@ final class Cape: Sketch {
     func hang(at x: Double, on figure: Scene?) -> SoftBody3D {
         world.addSoftBody(
             from: Cape.sheet, at: Vector3(x, 1.45 - Cape.length / 2, -0.13),
-            rotation: .pi / 2, axis: Vector3(1, 0, 0),
+            rotated: .pi / 2, axis: Vector3(1, 0, 0),
             mass: 1.0, stiffness: 0.92, bend: 0.01, damping: 0.06,
             iterations: 8, vertexRadius: 0.01,
             pinned: { $0.z < Cape.collar && abs($0.x) < 0.2 },
@@ -82,7 +82,7 @@ final class Cape: Sketch {
         carriedFigure.apply(carriedDoll)
         pinnedFigure.apply(pinnedDoll)
         carried.follow(carriedFigure)
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
         carriedFigure.apply(carriedDoll)
         pinnedFigure.apply(pinnedDoll)
 

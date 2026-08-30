@@ -10,7 +10,7 @@ import Ollin
 struct UsdPhysicsTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// The hand-authored arrangement the Imported example runs.
@@ -57,7 +57,7 @@ struct UsdPhysicsTests {
     /// annotations, which gets nothing.
     @Test func aFileSaysWhichPrimsFall() throws {
         let world = World3D()
-        let made = world.addBodies(from: try Self.yard(), applyGravity: true)
+        let made = world.addBodies(from: try Self.yard(), usesSceneGravity: true)
         #expect(made.count == world.bodies.count)
         #expect(made.count > 8, "the whole yard came across")
         #expect(world.joints.count == 2, "and both hinges")
@@ -290,7 +290,7 @@ struct UsdPhysicsTests {
         func height(bouncy: Bool) throws -> Double {
             let world = World3D()
             world.ground = 0
-            world.bounce = 0.05
+            world.restitution = 0.05
             world.addBodies(from: try scene("""
                 def Sphere "Ball" (
                     prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsRigidBodyAPI", "PhysicsMassAPI"]
@@ -314,9 +314,9 @@ struct UsdPhysicsTests {
             let ball = try body(world, "Ball")
             var highest = 0.0
             // How high it comes back after the first landing.
-            for _ in 0 ..< 200 { world.step(dt: 1.0 / 60) }
+            for _ in 0 ..< 200 { world.advance(by: 1.0 / 60) }
             for _ in 0 ..< 120 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 highest = max(highest, ball.position.y)
             }
             return highest
@@ -484,7 +484,7 @@ struct UsdPhysicsTests {
     /// it that breaks a rule shows up here.
     @Test func theShippedYardComesInAsAuthored() throws {
         let world = World3D()
-        world.addBodies(from: try Self.yard(), applyGravity: true)
+        world.addBodies(from: try Self.yard(), usesSceneGravity: true)
 
         #expect(try body(world, "Ground").kind == .static)
         #expect(try body(world, "Fulcrum").kind == .static)
@@ -518,7 +518,7 @@ struct UsdPhysicsTests {
     /// way a hand-built world is.
     @Test func animportedWorldSnapshotsLikeAnyOther() throws {
         let world = World3D()
-        world.addBodies(from: try Self.yard(), applyGravity: true)
+        world.addBodies(from: try Self.yard(), usesSceneGravity: true)
         run(world, steps: 400)
         let settled = world.bodies.map(\.position)
 

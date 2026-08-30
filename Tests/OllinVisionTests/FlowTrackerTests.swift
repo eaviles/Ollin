@@ -49,7 +49,7 @@ import Foundation
         // couldn't catch, being invariant under the flip).
         let a = splitFrame(shiftTopRightBy: 0)
         let b = splitFrame(shiftTopRightBy: 7)
-        let field = try #require(try await FlowTracker.flow(from: a, to: b))
+        let field = try #require(try await FlowTracker.detect(from: a, to: b))
         let top = field.vector(at: Vector2(160, 60), in: imageRect)
         let bottom = field.vector(at: Vector2(160, 180), in: imageRect)
         #expect(top.x > bottom.x + 2)
@@ -90,7 +90,7 @@ import Foundation
     @Test func pairReportsTheShift() async throws {
         let a = texturedFrame()
         let b = texturedFrame(shiftRight: 8, shiftDown: 5)
-        let field = try #require(try await FlowTracker.flow(from: a, to: b))
+        let field = try #require(try await FlowTracker.detect(from: a, to: b))
 
         // The flow map comes back at the input's own resolution.
         #expect(field.size.x == 320 && field.size.y == 240)
@@ -113,7 +113,7 @@ import Foundation
     @Test func mappingScalesAndMirrors() async throws {
         let a = texturedFrame()
         let b = texturedFrame(shiftRight: 8, shiftDown: 5)
-        let field = try #require(try await FlowTracker.flow(from: a, to: b))
+        let field = try #require(try await FlowTracker.detect(from: a, to: b))
 
         // Drawn into a rect twice the size, the same motion is twice as long.
         let doubled = Rectangle(x: 0, y: 0, width: 640, height: 480)
@@ -131,7 +131,7 @@ import Foundation
     @Test func samplesCoverTheRect() async throws {
         let a = texturedFrame()
         let b = texturedFrame(shiftRight: 8, shiftDown: 0)
-        let field = try #require(try await FlowTracker.flow(from: a, to: b))
+        let field = try #require(try await FlowTracker.detect(from: a, to: b))
 
         let samples = field.samples(in: imageRect, every: 32)
         // One sample per 32-point cell: 10 columns × 7 rows.
@@ -152,7 +152,7 @@ import Foundation
     @Test func edgeQueriesAreSafe() async throws {
         let a = texturedFrame()
         let b = texturedFrame(shiftRight: 8, shiftDown: 5)
-        let field = try #require(try await FlowTracker.flow(from: a, to: b))
+        let field = try #require(try await FlowTracker.detect(from: a, to: b))
 
         // The coordinates that trap unclamped: exactly 1 and just under it.
         _ = field.flowNormalized(at: Vector2(1, 1))
@@ -170,7 +170,7 @@ import Foundation
         let frames = [texturedFrame(),
                       texturedFrame(shiftRight: 6, shiftDown: 4),
                       texturedFrame(shiftRight: 12, shiftDown: 8)]
-        let fields = try await FlowTracker.flow(across: frames)
+        let fields = try await FlowTracker.detect(across: frames)
         #expect(fields.count == 3)
 
         // Flow needs a frame before it, so the first produces nothing.

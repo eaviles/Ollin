@@ -145,10 +145,10 @@ private final class SecondCasterBeamProbe: Sketch {
         // second. A directional key would be the primary instead, but its own air glow
         // washes the empty sky white and buries the shaft this probe reads.
         light(Light.spot(Color(white: 1.0), at: Vector3(-5, 6, 0), direction: Vector3(0.4, -1, 0),
-                         angle: .pi / 9, penumbra: 0.2, intensity: 2)
+                         coneAngle: .pi / 9, penumbra: 0.2, intensity: 2)
                 .castingShadow(true))
         light(Light.spot(Color(white: 1.0), at: Vector3(0, 7, 0), direction: Vector3(0, -1, 0),
-                         angle: .pi / 10, penumbra: 0.2, intensity: 3)
+                         coneAngle: .pi / 10, penumbra: 0.2, intensity: 3)
                 .castingShadow(secondCasts))
         castShadows()
         volumetricLight(1.0, anisotropy: 0.2)
@@ -180,7 +180,7 @@ private final class SecondCasterContactProbe: Sketch {
         light(Light.directional(.white, direction: Vector3(-0.7, -0.55, -0.3),
                                 intensity: 1.0).castingShadow(true))
         light(Light.spot(.white, at: Vector3(-4.5, 1.6, 2.5), direction: Vector3(4.5, -1.4, -2.5).normalized,
-                         angle: .pi / 2.5, intensity: 1.2).castingShadow(secondCasts))
+                         coneAngle: .pi / 2.5, intensity: 1.2).castingShadow(secondCasts))
         castShadows()
         shadowSoftness(0.8)
         if contact { contactShadows(length: 0.9) }
@@ -219,7 +219,7 @@ private final class SecondCasterTransmitProbe: Sketch {
         light(Light.directional(.white, direction: Vector3(0, -1, 0),
                                 intensity: 0.6).castingShadow(true))
         light(Light.spot(.white, at: Vector3(0.3, 1.2, -6.5), direction: Vector3(-0.05, -0.05, 1),
-                         angle: 0.9, intensity: 1.5).castingShadow(secondCasts))
+                         coneAngle: 0.9, intensity: 1.5).castingShadow(secondCasts))
         castShadows()
         noStroke()
         fill(Color(red: 0.92, green: 0.72, blue: 0.62))
@@ -255,7 +255,7 @@ private final class SecondCasterFieldProbe: Sketch {
         drawPlane(width: 20, depth: 20)
         withState {
             fill(Color(white: 0.8))
-            drawSDF3D(SDF3D.sphere(radius: 1.1).at(x: 0, y: 1.8, z: 0))
+            drawSDF3D(SDF3D.sphere(radius: 1.1).at(0, 1.8, 0))
         }
     }
 }
@@ -278,10 +278,10 @@ private final class SecondCasterCarrierProbe: Sketch {
         light(Light.directional(.white, direction: Vector3(-1, -0.9, -0.4),
                                 intensity: 0.35).castingShadow(true))
         light(Light.spot(.white, at: Vector3(0, 6, 0), direction: Vector3(0, -1, 0),
-                         angle: 0.9, intensity: 1.6).castingShadow(secondCasts))
+                         coneAngle: 0.9, intensity: 1.6).castingShadow(secondCasts))
         castShadows()
         fill(Color(white: 0.85))
-        drawSDF3D(SDF3D.box(width: 14, height: 0.4, depth: 14).at(x: 0, y: 0, z: 0))
+        drawSDF3D(SDF3D.box(width: 14, height: 0.4, depth: 14).at(0, 0, 0))
         withState {
             fill(Color(white: 0.8))
             translate(0, 2.2, 0)

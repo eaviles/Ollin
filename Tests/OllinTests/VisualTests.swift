@@ -12,7 +12,7 @@ struct VisualTests {
     private func chain(angle: Double, frequency: Double) -> Visual {
         .oscillator(frequency: frequency, speed: 1.2, colorShift: 0.3)
             .rotated(angle)
-            .kaleidoscope(6)
+            .kaleidoscope(segments: 6)
             .displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.1)
             .saturation(1.3)
     }

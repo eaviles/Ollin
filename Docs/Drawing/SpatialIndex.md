@@ -9,7 +9,7 @@ A `SpatialIndex` answers "what is near here" over a set of points, without compa
 Three questions, one type:
 
 - **Which point is nearest?** `nearest(to:)`, and `kNearest(_:to:)` for the few nearest.
-- **Which points are within reach?** `neighbors(of:within:)`, and the allocation-free `forNeighbors(of:within:_:)`.
+- **Which points are within reach?** `neighbors(of:within:)`, and the allocation-free `forEachNeighbor(of:within:_:)`.
 - **Which points are inside this box?** `indices(in:)`.
 
 Every answer is an **index into `points`**. A sketch keeps its own payload in its own array (a color, a velocity, an age) and reads it back with the same index.
@@ -104,7 +104,7 @@ Flocking, relaxation, and repulsion all have every point ask about the others. P
 ```swift
 for i in points.indices {
     var push = Vector2.zero
-    index.forNeighbors(of: i, within: 40) { j, distanceSquared in
+    index.forEachNeighbor(of: i, within: 40) { j, distanceSquared in
         push = push + (points[i] - points[j]) / max(distanceSquared, 1)
     }
     points[i] = points[i] + push
@@ -154,8 +154,8 @@ A seeded sketch has to draw the same picture twice, so the index is built to be 
 | `kNearest(_ k: Int, to: Vector2) -> [Int]` | The `k` nearest, ascending by distance then index. |
 | `neighbors(of: Vector2, within: Double) -> [Int]` | Every point within the radius, ascending by index. |
 | `neighbors(of: Int, within: Double) -> [Int]` | The same, around a point of the set, leaving that point out. |
-| `forNeighbors(of: Vector2, within: Double, _ body: (Int, Double) -> Void)` | The same walk with no array built; `body` gets the index and the squared distance. |
-| `forNeighbors(of: Int, within: Double, _ body: (Int, Double) -> Void)` | The same, leaving the point itself out. |
+| `forEachNeighbor(of: Vector2, within: Double, _ body: (Int, Double) -> Void)` | The same walk with no array built; `body` gets the index and the squared distance. |
+| `forEachNeighbor(of: Int, within: Double, _ body: (Int, Double) -> Void)` | The same, leaving the point itself out. |
 | `anyNeighbor(of: Vector2, within: Double) -> Int?` | The first point found within the radius. |
 | `hasNeighbor(of: Vector2, within: Double) -> Bool` | Whether anything is within the radius. |
 | `indices(in: Rectangle) -> [Int]` | Every point inside the region, ascending by index, boundary included. |

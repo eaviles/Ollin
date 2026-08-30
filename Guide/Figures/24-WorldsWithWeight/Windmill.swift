@@ -19,7 +19,7 @@ final class Windmill: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.3
+        world.restitution = 0.3
 
         let tower = world.addBody(.box(width: 0.4, height: 2.9, depth: 0.3),
                                   at: Vector3(0, 1.45, -0.5), kind: .static)
@@ -72,7 +72,7 @@ final class Windmill: Sketch {
         castShadows()
         perspective(eye: Vector3(-4.2, 3.8, 8.8), target: Vector3(0, 2.2, 0))
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         fill(Color(hex: 0x1A202A))
         material(.dielectric(roughness: 0.85))

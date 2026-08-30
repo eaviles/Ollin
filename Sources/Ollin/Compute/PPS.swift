@@ -15,10 +15,10 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid
 ///
 /// ```swift
 /// var pps: PPS!
-/// override func setup() { pps = primordialParticles(count: 12_000, radius: 36) }
+/// override func setup() { pps = makePrimordialParticles(count: 12_000, radius: 36) }
 /// override func draw() {
 ///     background(Color(white: 0.05))
-///     updatePPS(pps)
+///     updatePrimordialParticles(pps)
 ///     drawParticles(pps)
 /// }
 /// ```
@@ -53,13 +53,13 @@ public final class PPS {
 
     /// Build `count` particles over `bounds` interacting within `radius`, headings and
     /// positions randomized from `seed`.
-    public init(count: Int, bounds: Rectangle, radius: Double, seed: UInt64) {
+    public init(count: Int, bounds: Rectangle, radius: Double, seed: Int) {
         precondition(count > 0, "PPS needs a positive count")
         self.count = count
         self.speed = 0.67 * (radius / 5.0)
         self.hash = SpatialHash(bounds: bounds, cellSize: radius, count: count)
 
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let origin = hash.origin, world = hash.worldSize
         var seeds: [OllinParticle] = []
         seeds.reserveCapacity(count)
@@ -81,7 +81,7 @@ public final class PPS {
     var current: ComputeBuffer<OllinParticle> { pingpong.read }
 
     /// Record one step: build the neighbor hash, then the turn/move kernel. Called by
-    /// `Sketch.updatePPS`.
+    /// `Sketch.updatePrimordialParticles`.
     func recordStep(into drawer: Drawer) {
         let read = pingpong.read, write = pingpong.write
         hash.recordBuild(into: drawer, positions: read)

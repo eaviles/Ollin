@@ -23,7 +23,7 @@ final class NormalizedCoordinates: Sketch {
         let daylight = sin(t * .pi)       // 0 at both horizons, 1 at noon
 
         // The sky brightens with the sun's height.
-        background(Color.mix(Color(hex: 0x0B1526), Color(hex: 0x8EC9E8), t: daylight))
+        background(Color.mix(Color(hex: 0x0B1526), Color(hex: 0x8EC9E8), daylight))
         noStroke()
 
         // Stars hold their normalized places and fade out by day.
@@ -32,7 +32,7 @@ final class NormalizedCoordinates: Sketch {
 
         // The sun rises from uv(0, 0.62), peaks at uv(0.5, 0.2), and sets.
         let sun = uv(t, 0.62 - 0.42 * daylight)
-        fill(Color.mix(Color(hex: 0xFF7043), Color(hex: 0xFFD166), t: daylight))
+        fill(Color.mix(Color(hex: 0xFF7043), Color(hex: 0xFFD166), daylight))
         drawCircle(center: sun, radius: 42 * scale)
 
         // Mountains and ground: polygons whose corners are plain proportions.

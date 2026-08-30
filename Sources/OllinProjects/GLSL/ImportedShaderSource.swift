@@ -90,7 +90,7 @@ enum ImportedShaderSource {
         case .filter:
             return """
                     // What the shader reads with sample(info, uv). Draw anything here.
-                    let layer = renderTarget()
+                    let layer = makeRenderTarget()
                     withTarget(layer) {
                         background(Color(hex: 0x0E1116))
                         noStroke()
@@ -103,7 +103,7 @@ enum ImportedShaderSource {
         case .combine:
             return """
                     // The first input, read with sample(info, uv).
-                    let base = renderTarget()
+                    let base = makeRenderTarget()
                     withTarget(base) {
                         background(Color(hex: 0x2B1B12))
                         noStroke()
@@ -111,7 +111,7 @@ enum ImportedShaderSource {
                         drawCircle(width / 2, height / 2, width * 0.3)
                     }
                     // The second, read with sampleAux(info, uv).
-                    let aux = renderTarget()
+                    let aux = makeRenderTarget()
                     withTarget(aux) {
                         background(Color(hex: 0x0E1B2A))
                         stroke(Color(hex: 0x4CC9F0))

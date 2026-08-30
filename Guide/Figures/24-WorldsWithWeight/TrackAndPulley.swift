@@ -73,7 +73,7 @@ final class TrackAndPulley: Sketch {
                             target: Vector3(-0.3, 1.2, 0),
                             fieldOfView: .pi / 4.4))
 
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         fill(Color(hex: 0x11151F))
         material(.dielectric(roughness: 0.94))

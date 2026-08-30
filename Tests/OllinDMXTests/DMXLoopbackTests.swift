@@ -46,7 +46,7 @@ struct DMXLoopbackTests {
             return receiver.channel(1) == 200 ? true : nil
         }
         #expect(receiver.channel(2) == 255)
-        #expect(receiver.universes() == [1])
+        #expect(receiver.universeNumbers() == [1])
     }
 
     @Test func artNetRoundTripsOverLoopback() async throws {
@@ -62,7 +62,7 @@ struct DMXLoopbackTests {
             sender.send(channels: [90, attempt], universe: 4)
             return receiver.channel(1, universe: 4) == 90 ? true : nil
         }
-        #expect(receiver.universes() == [4])
+        #expect(receiver.universeNumbers() == [4])
     }
 
     @Test func bindingDrivesAParamOverLoopback() async throws {

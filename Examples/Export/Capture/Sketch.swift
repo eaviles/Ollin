@@ -60,7 +60,7 @@ final class FrameSaver: SketchExtension {
         }
     }
 
-    func frameRendered(_ sketch: Sketch, _ image: CGImage) {
+    func frameRendered(_ sketch: Sketch, image: CGImage) {
         armed = false                // one frame only
         flash = 30                   // confirm on the frames after (kept out of the saved PNG)
 

@@ -51,7 +51,7 @@ final class Rope: Sketch {
         castShadows()
         camera(.perspective(eye: Vector3(-0.1, 2.0, 9.9),
                             target: Vector3(-0.1, 1.55, 0), fieldOfView: .pi / 5.4))
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         material(.dielectric(roughness: 0.9))
         fill(Color(hex: 0x2B3442))

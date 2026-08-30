@@ -2,7 +2,7 @@ import Foundation
 import os
 
 /// Downloads and caches remote HDRI environments (`Environment.hdri(downloadURL:)` and the
-/// `highRes(_:)` built-in upgrades). The bundled 1K environments need none of this; a remote
+/// `highResolution(_:)` built-in upgrades). The bundled 1K environments need none of this; a remote
 /// one is fetched once, written to a cache directory, and loaded from there forever after.
 ///
 /// The cache lives at `~/Library/Caches/Ollin/Environments/` by default, overridable with the

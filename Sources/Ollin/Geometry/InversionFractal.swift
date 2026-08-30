@@ -41,14 +41,14 @@ public func inverted(_ point: Vector2, in circle: Circle) -> Vector2 {
 ///   - circles: The arrangement (two or more circles; tangent rings give the
 ///     classic lace, separated circles give dust).
 ///   - count: How many points to return.
-///   - burnIn: Steps discarded up front while the orbit falls onto the
+///   - settle: Steps discarded up front while the orbit falls onto the
 ///     limit set.
 ///   - rng: The random source; seed it for a reproducible cloud.
 /// - Returns: `count` points on the arrangement's limit set, in visit order.
 public func inversionLimitSet<R: RandomNumberGenerator>(
     of circles: [Circle],
     count: Int,
-    burnIn: Int = 16,
+    settle: Int = 16,
     using rng: inout R
 ) -> [Vector2] {
     guard circles.count >= 2, count > 0 else { return [] }
@@ -79,7 +79,7 @@ public func inversionLimitSet<R: RandomNumberGenerator>(
         point = inverted(point, in: circles[pick])
         previous = pick
         step += 1
-        if step > burnIn {
+        if step > settle {
             points.append(point)
             produced += 1
         }
@@ -92,12 +92,12 @@ public func inversionLimitSet<R: RandomNumberGenerator>(
 public extension Sketch {
     /// The chaos game over circle inversions, driven by the seeded `random`,
     /// so `seed(_:)` reproduces the cloud. See
-    /// `inversionLimitSet(of:count:burnIn:using:)`.
+    /// `inversionLimitSet(of:count:settle:using:)`.
     func inversionLimitSet(of circles: [Circle],
                            count: Int,
-                           burnIn: Int = 16) -> [Vector2] {
+                           settle: Int = 16) -> [Vector2] {
         Ollin.inversionLimitSet(of: circles, count: count,
-                                burnIn: burnIn, using: &rng)
+                                settle: settle, using: &rng)
     }
 
     /// The explicit-generator form, mirrored so the free function stays
@@ -105,9 +105,9 @@ public extension Sketch {
     /// global).
     func inversionLimitSet<R: RandomNumberGenerator>(of circles: [Circle],
                                                      count: Int,
-                                                     burnIn: Int = 16,
+                                                     settle: Int = 16,
                                                      using rng: inout R) -> [Vector2] {
         Ollin.inversionLimitSet(of: circles, count: count,
-                                burnIn: burnIn, using: &rng)
+                                settle: settle, using: &rng)
     }
 }

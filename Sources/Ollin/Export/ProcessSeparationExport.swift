@@ -37,7 +37,7 @@ extension OllinApp {
     ///
     /// `screen` transforms the separation before writing (pass
     /// `{ $0.halftoned(pitch: 8) }` for 1-bit films at the conventional
-    /// rosette angles); `registrationMarks` adds the white margin band with
+    /// rosette angles); `drawsRegistrationMarks` adds the white margin band with
     /// corner targets and the plate label, identical on every file.
     ///
     /// ```swift
@@ -50,9 +50,9 @@ extension OllinApp {
     public static func exportPlates(_ sketch: Sketch, to path: String,
                                     profile: ICCProfile? = nil,
                                     intent: RenderingIntent = .relative,
-                                    simulatePaper: Bool = false,
+                                    simulatesPaper: Bool = false,
                                     frame: Int = 0, fps: Double = 60,
-                                    registrationMarks: Bool = true,
+                                    drawsRegistrationMarks: Bool = true,
                                     quality: RenderQuality = .detail,
                                     screen: (ProcessSeparation) -> ProcessSeparation = { $0 }) {
         guard let press = profile ?? sketch.printProfile else {
@@ -72,7 +72,7 @@ extension OllinApp {
             fatalError("Ollin: failed to render the frame for separation (no Metal device?)")
         }
         var proof = SoftProof(press, from: ICCProfile.canvas(sketch.colorOutput), intent: intent)
-        proof.simulatePaper = simulatePaper
+        proof.simulatesPaper = simulatesPaper
         let separation = screen(Image(cgImage: cgImage).separated(into: proof))
         guard !separation.plates.isEmpty else {
             fatalError("Ollin: the separation produced no plates (is \(press.name) readable?)")
@@ -84,7 +84,7 @@ extension OllinApp {
         let recipe = metadata.recipe
 
         let stem = (path as NSString).deletingPathExtension
-        let band = registrationMarks ? max(24, min(separation.width, separation.height) / 24) : 0
+        let band = drawsRegistrationMarks ? max(24, min(separation.width, separation.height) / 24) : 0
 
         for (index, plate) in separation.plates.enumerated() {
             let file = platePath(stem: stem, index: index, name: plate.name)

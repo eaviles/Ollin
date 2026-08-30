@@ -39,7 +39,7 @@ import Ollin
         // Soft-skip: the model needs a compute device some test environments
         // lack; a throw there isn't a code failure.
         guard let all = try? await ImageClassifier.detect(in: diskImage(),
-                                                          minimumConfidence: 0) else { return }
+                                                          minConfidence: 0) else { return }
         // The request scores the entire vocabulary, strongest first.
         #expect(all.count > 1000)
         #expect(zip(all, all.dropFirst()).allSatisfy { $0.confidence >= $1.confidence })
@@ -48,7 +48,7 @@ import Ollin
 
     @Test func detectCutsAtTheConfidenceFloor() async throws {
         guard let labels = try? await ImageClassifier.detect(in: diskImage(),
-                                                             minimumConfidence: 0.05) else { return }
+                                                             minConfidence: 0.05) else { return }
         #expect(labels.allSatisfy { $0.confidence >= 0.05 })
         // The floor keeps the meaningful few, not the ~1,300-label tail.
         #expect(labels.count < 100)
@@ -59,13 +59,13 @@ import Ollin
         // Gate on the still path: only run the live assertion where the model
         // demonstrably runs (elsewhere this is the soft-skip).
         let image = diskImage()
-        guard (try? await ImageClassifier.detect(in: image, minimumConfidence: 0)) != nil else { return }
+        guard (try? await ImageClassifier.detect(in: image, minConfidence: 0)) != nil else { return }
 
         // The camera-free live path: a hand-driven source standing in for the
         // capture queue. Floor 0 so publishing doesn't depend on what the model
         // makes of the synthetic disk.
         let source = FrameSourceTests.ManualFrameSource()
-        let classifier = ImageClassifier(source, minimumConfidence: 0)
+        let classifier = ImageClassifier(source, minConfidence: 0)
         let tap = try #require(source.frameTap)
         let frame = image.currentCGImage()
 
@@ -81,7 +81,7 @@ import Ollin
         #expect(!labels.isEmpty)
 
         // The read surfaces agree with each other.
-        let top = try #require(classifier.top)
+        let top = try #require(classifier.topClassification)
         #expect(top.label == labels[0].label)
         #expect(classifier.confidence(of: top.label) == top.confidence)
         // Spaces stand in for underscores in the by-name query.

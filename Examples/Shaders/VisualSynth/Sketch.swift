@@ -11,7 +11,7 @@ final class VisualSynth_Example: Sketch {
     override func draw() {
         drawVisual(
             .oscillator(frequency: 24, speed: 1.2, colorShift: 0.35)
-                .kaleidoscope(6)
+                .kaleidoscope(segments: 6)
                 .displaced(by: .noise(scale: 2.5, speed: 0.25), amount: 0.12)
                 .rotated(time * 0.05)
                 .blended(with: .voronoi(scale: 8, speed: 0.4)

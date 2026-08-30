@@ -45,7 +45,7 @@ final class SoftProofSketch: Sketch {
     /// intent, and whether the paper's own color is shown.
     private var proof: SoftProof {
         var condition = SoftProof(printProfile ?? .genericCMYK, intent: intent)
-        condition.simulatePaper = showPaperColor
+        condition.simulatesPaper = showPaperColor
         return condition
     }
 
@@ -69,7 +69,7 @@ final class SoftProofSketch: Sketch {
     /// light on the right. The edge travels, so the difference reads as
     /// movement rather than as two pictures to compare from memory.
     private func drawSweep() {
-        let layer = renderTarget()
+        let layer = makeRenderTarget()
         withTarget(layer) { drawImage(artwork, in: bounds) }
         drawImage(artwork, in: bounds)
 
@@ -96,7 +96,7 @@ final class SoftProofSketch: Sketch {
     /// are left as drawn and only the warning shows, which is the mode for
     /// checking a palette without living inside the proof.
     private func drawProofed(warning: Color?, amount: Double) {
-        let layer = renderTarget()
+        let layer = makeRenderTarget()
         withTarget(layer) { drawImage(artwork, in: bounds) }
         let proofed = layer.filtered(.softProof(proof, warning: warning, amount: amount))
         drawImage(proofed.image, in: bounds)
@@ -142,7 +142,7 @@ final class SoftProofSketch: Sketch {
         platesIntent = intent
     }
 
-    private func label(_ text: String, at position: Vector2, align: TextAlignH) {
+    private func label(_ text: String, at position: Vector2, align: HorizontalTextAlign) {
         withState {
             noStroke()
             fill(Color(white: 1, alpha: 0.85))
@@ -170,20 +170,20 @@ final class SoftProofSketch: Sketch {
             for x in 0..<w {
                 let u = Double(x) / Double(w - 1)
 
-                var c = Color.mix(dusk, heat, t: smoothstep(0.05, 0.62, v))
+                var c = Color.mix(dusk, heat, smoothstep(0.05, 0.62, v))
                 let disk = dist(u, v, 0.62, 0.30)
-                c = Color.mix(c, sun, t: 1 - smoothstep(0.145, 0.152, disk))
-                c = Color.mix(c, sun, t: clamp(1 - disk * 2.6, 0, 1) * 0.35)
+                c = Color.mix(c, sun, 1 - smoothstep(0.145, 0.152, disk))
+                c = Color.mix(c, sun, clamp(1 - disk * 2.6, 0, 1) * 0.35)
 
                 // The sea starts at a flat horizon and carries a few bands.
                 if v > 0.62 {
                     let bands = 0.5 + 0.5 * sin((v - 0.62) * 90 + sin(u * 6) * 1.4)
-                    c = Color.mix(sea, dusk, t: bands * 0.35 * smoothstep(0.62, 0.95, v))
+                    c = Color.mix(sea, dusk, bands * 0.35 * smoothstep(0.62, 0.95, v))
                 }
                 // A fluorescent headland cuts in from the left.
                 let ridge = 0.78 + 0.10 * sin(u * 3.4 + 2.1)
                 if v > ridge {
-                    c = Color.mix(hill, dusk, t: smoothstep(ridge, 1.15, v) * 0.5)
+                    c = Color.mix(hill, dusk, smoothstep(ridge, 1.15, v) * 0.5)
                 }
                 // The control strip: neutrals a press reproduces exactly. The
                 // margin under it is the poster's own, and keeps the caption

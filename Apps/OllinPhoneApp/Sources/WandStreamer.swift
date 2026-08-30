@@ -83,11 +83,11 @@ final class WandStreamer: NSObject, ARSessionDelegate, LightReporting {
         case .normal: tracking = true
         default:      tracking = false
         }
-        let sample = PhoneWandSample(tracked: tracking,
+        let sample = PhoneWandSample(isTracked: tracking,
                                      timestamp: frame.timestamp,
                                      transform: frame.camera.transform,
                                      quarterTurnsCW: captureQuarterTurns(),
-                                     pressed: pressed,
+                                     isPressed: pressed,
                                      pressCount: pressCount,
                                      hasTouch: touch != nil,
                                      touch: touch ?? .zero)

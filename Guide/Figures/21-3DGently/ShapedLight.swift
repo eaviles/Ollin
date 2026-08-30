@@ -51,7 +51,7 @@ final class ShapedLight: Sketch {
         let rock = sin(loopProgress(over: 6) * .tau) * 0.16
         spotLight(Color(hue: 0.12, saturation: 0.25, brightness: 1.0),
                   at: Vector3(3.6, 4.6, 4.2), direction: Vector3(-0.32, -0.66, -0.55),
-                  angle: 0.85, penumbra: 0.12, intensity: 1.25,
+                  coneAngle: 0.85, penumbra: 0.12, intensity: 1.25,
                   cookie: window, roll: rock)
 
         fill(Color(hex: 0x8A94A6))

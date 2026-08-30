@@ -213,7 +213,7 @@ struct FrameProfileTests {
         let sketch = Sketch()
         sketch.drawer.beginFrame()
         sketch.noStroke()
-        let target = sketch.renderTarget(width: 120, height: 120)
+        let target = sketch.makeRenderTarget(width: 120, height: 120)
         sketch.withTarget(target) {
             sketch.drawCircle(60, 60, 20)
         }

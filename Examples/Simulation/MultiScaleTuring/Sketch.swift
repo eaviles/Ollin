@@ -20,7 +20,7 @@ final class MultiScaleTuring_Example: Sketch {
     private var field: SimField!
 
     override func setup() {
-        field = simField(.multiScaleTuring(seed: Double(variation)), scale: 0.5)
+        field = makeSimField(.multiScaleTuring(seed: Double(variation)), scale: 0.5)
     }
 
     override func draw() {

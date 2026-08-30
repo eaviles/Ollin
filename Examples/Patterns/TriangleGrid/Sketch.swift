@@ -14,8 +14,8 @@ final class TriangleWeave: Sketch {
         noStroke()
         for cell in grid.cells {
             let n = noise(cell.center.x * 0.0022, cell.center.y * 0.0022, time * 0.35)
-            let up = Color.mix(Color(hex: 0x113A4E), Color(hex: 0x3FB8AF), t: n)
-            let down = Color.mix(Color(hex: 0x3A1330), Color(hex: 0xEE7752), t: n)
+            let up = Color.mix(Color(hex: 0x113A4E), Color(hex: 0x3FB8AF), n)
+            let down = Color.mix(Color(hex: 0x3A1330), Color(hex: 0xEE7752), n)
             fill(cell.pointsUp ? up : down)
             drawPolygon(cell.vertices)
         }

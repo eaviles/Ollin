@@ -14,7 +14,7 @@ import Ollin
     /// could not lift (2D only, over a depth hole).
     private var liftedHand: PhoneHand {
         PhoneHand(PhoneHandSample(
-            tracked: true, timestamp: 2, chirality: .right, confidence: 0.9,
+            isTracked: true, timestamp: 2, chirality: .right, confidence: 0.9,
             joints: [
                 .wrist: PhoneHandJointSample(point: SIMD2<Float>(0.5, 0.5), confidence: 0.95,
                                              hasWorldPosition: true,
@@ -30,7 +30,7 @@ import Ollin
         // Normalized (0.25, 0.75), lower-left origin, into a 100x200 rectangle at
         // the origin: x = 25, and y flips to (1 - 0.75) * 200 = 50.
         let hand = PhoneHand(PhoneHandSample(
-            tracked: true, timestamp: 0, joints: [
+            isTracked: true, timestamp: 0, joints: [
                 .wrist: PhoneHandJointSample(point: SIMD2<Float>(0.25, 0.75)),
             ]))
         let rect = Rectangle(x: 0, y: 0, width: 100, height: 200)
@@ -70,7 +70,7 @@ import Ollin
     @Test func adjacentLiftedJointsMakeABone() throws {
         // Lift two joints that share a skeleton bone and it comes through in 3D.
         let hand = PhoneHand(PhoneHandSample(
-            tracked: true, timestamp: 0, joints: [
+            isTracked: true, timestamp: 0, joints: [
                 .indexDIP: PhoneHandJointSample(point: SIMD2<Float>(0.5, 0.5),
                                                 hasWorldPosition: true,
                                                 worldPosition: SIMD3<Float>(0, 1, -1)),
@@ -98,7 +98,7 @@ import Ollin
         // The staged hand's thumb tip is 2D-only, so there is no pinch to measure.
         #expect(liftedHand.pinchDistance == nil)
         let pinching = PhoneHand(PhoneHandSample(
-            tracked: true, timestamp: 0, joints: [
+            isTracked: true, timestamp: 0, joints: [
                 .thumbTip: PhoneHandJointSample(point: SIMD2<Float>(0.5, 0.5),
                                                 hasWorldPosition: true,
                                                 worldPosition: SIMD3<Float>(0, 1, -1)),
@@ -112,7 +112,7 @@ import Ollin
 
     @Test func cloudIsEmptyWithoutWorldPositions() {
         let flat = PhoneHand(PhoneHandSample(
-            tracked: true, timestamp: 0, joints: [
+            isTracked: true, timestamp: 0, joints: [
                 .wrist: PhoneHandJointSample(point: SIMD2<Float>(0.5, 0.5)),
             ]))
         #expect(flat.cloud().isEmpty)

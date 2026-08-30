@@ -19,12 +19,12 @@ final class Hodgepodge: Sketch {
     private var field: SimField!
 
     override func setup() {
-        field = simField(.hodgepodge(seed: Double(variation)), scale: 0.25)
+        field = makeSimField(.hodgepodge(seed: Double(variation)), scale: 0.25)
     }
 
     override func draw() {
         background(.black)
-        field.sim = .hodgepodge(g: speed, seed: Double(variation))
+        field.sim = .hodgepodge(infectionRate: speed, seed: Double(variation))
 
         withField(field) {
             noStroke()

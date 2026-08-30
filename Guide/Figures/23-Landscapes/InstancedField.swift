@@ -56,7 +56,7 @@ final class InstancedField_Figure: Sketch {
             let h = 0.25 + crest * (1.4 + swirl * 1.1)
             copies.append(MeshInstance(position: Vector3(seat.x, h / 2, seat.z),
                                        scale: Vector3(1, h, 1),
-                                       color: Color.mix(low, high, t: (h - 0.25) / 2.5)))
+                                       color: Color.mix(low, high, (h - 0.25) / 2.5)))
         }
         drawMesh(pillar, instances: copies)
     }

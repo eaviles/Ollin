@@ -18,7 +18,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSwarmChemistryPa
 /// var chem: SwarmChemistry!
 /// override func setup() {
 ///     background(.black); noClear()
-///     chem = swarmChemistry(count: 4000, kinds: 6)
+///     chem = makeSwarmChemistry(count: 4000, kinds: 6)
 /// }
 /// override func draw() {
 ///     background(Color.black.withAlpha(0.08))
@@ -181,7 +181,7 @@ public final class SwarmChemistry {
     private let pingpong: PingPong<OllinParticle>
     private let recipes: PingPong<Float>
     private let kernel: ComputeKernel
-    private let seed: UInt64
+    private let seed: Int
     private var stepCount: UInt32 = 0
     private var stepDebt: Double = 0
 
@@ -197,7 +197,7 @@ public final class SwarmChemistry {
     /// for are made of many particles agreeing, so there would be nothing to see and
     /// nothing to spread. A handful of recipes each held in quantity is the state the
     /// model was described in, and it is what makes the first contest visible.
-    public init(count: Int, bounds: Rectangle, kinds: Int, size: Double, seed: UInt64) {
+    public init(count: Int, bounds: Rectangle, kinds: Int, size: Double, seed: Int) {
         precondition(count > 0, "SwarmChemistry needs a positive count")
         precondition(kinds > 0, "SwarmChemistry needs at least one kind")
         self.count = count
@@ -216,7 +216,7 @@ public final class SwarmChemistry {
         self.contactRadius = spacing * 0.2
         self.hash = SpatialHash(bounds: bounds, cellSize: perceptionLimit, count: count)
 
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         var opening: [Recipe] = []
         for _ in 0..<kinds { opening.append(Recipe.random(using: &rng)) }
         self.openingRecipes = opening
@@ -270,7 +270,7 @@ public final class SwarmChemistry {
 
     /// How many particles each opening line still holds, in line order. This is the
     /// scoreboard the model never keeps for itself.
-    public func lineageCounts() -> [Int] {
+    public func snapshotLineageCounts() -> [Int] {
         var counts = [Int](repeating: 0, count: kinds)
         for line in snapshotLineages() where line >= 0 && line < kinds { counts[line] += 1 }
         return counts

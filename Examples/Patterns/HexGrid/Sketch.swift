@@ -24,7 +24,7 @@ final class HexGridPulse: Sketch {
         for cell in grid.cells {
             let rings = Double(grid.distance(from: focus, to: cell))
             let wave = pingPong(over: 1, phase: phase - rings * 0.08)
-            fill(Color.mix(Color(hex: 0x15414B), Color(hex: 0x7BE0C8), t: wave * wave))
+            fill(Color.mix(Color(hex: 0x15414B), Color(hex: 0x7BE0C8), wave * wave))
             drawPolygon(cell.corners)
         }
 

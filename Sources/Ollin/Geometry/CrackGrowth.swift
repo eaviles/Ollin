@@ -29,10 +29,10 @@ import Foundation
 ///         for grain in CrackGrowth.grains(from: mark.point, to: mark.washExtent,
 ///                                         gain: mark.gain) {
 ///             fill(ink.withAlpha(grain.alpha))
-///             drawPoint(grain.position)
+///             drawPoint(at: grain.position)
 ///         }
 ///         fill(Color.black.withAlpha(0.33))
-///         drawPoint(mark.point)
+///         drawPoint(at: mark.point)
 ///     }
 /// }
 /// ```
@@ -139,11 +139,11 @@ public final class CrackGrowth {
         return marks
     }
 
-    /// Advance every active crack `ticks` times, collecting all the marks.
+    /// Advance every active crack `steps` times, collecting all the marks.
     @discardableResult
-    public func step(_ ticks: Int) -> [Mark] {
+    public func step(_ steps: Int) -> [Mark] {
         var marks: [Mark] = []
-        for _ in 0 ..< Swift.max(ticks, 0) { marks.append(contentsOf: step()) }
+        for _ in 0 ..< Swift.max(steps, 0) { marks.append(contentsOf: step()) }
         return marks
     }
 

@@ -36,7 +36,7 @@ struct SamplerVoice {
     mutating func start(instrument: SampledInstrument, pitch: Double, velocity: Double,
                         spec: Sampled, sampleRate: Double) {
         reset()
-        let played = pitch + spec.transpose
+        let played = pitch + spec.transposition
         let key = Int(played.rounded())
         guard let index = instrument.zone(for: key, velocity: velocity) else { return }
 

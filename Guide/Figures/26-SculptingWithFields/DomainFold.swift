@@ -24,16 +24,16 @@ final class DomainFold: Sketch {
         // One asymmetric cluster, used by all three panels.
         let cell = SDF.circle(radius: 30).colored(coral)
             .smoothUnion(SDF.rect(width: 52, height: 30, cornerRadius: 9)
-                .colored(blue).at(x: 34, y: 24), k: 16)
+                .colored(blue).at(34, 24), k: 16)
 
         // A petal for the mandala: symmetric across its wedge, so the fold is seamless.
-        let petal = SDF.ellipse(rx: 42, ry: 20).colored(coral)
-            .smoothUnion(SDF.circle(radius: 13).colored(blue).at(x: 52, y: 0), k: 14)
+        let petal = SDF.ellipse(radiusX: 42, radiusY: 20).colored(coral)
+            .smoothUnion(SDF.circle(radius: 13).colored(blue).at(52, 0), k: 14)
 
         let tiles: [(String, SDF)] = [
-            ("mirrored(x:)", cell.at(x: 52, y: 0).mirrored(x: true)),
+            ("mirrored(x:)", cell.at(52, 0).mirrored(x: true)),
             ("repeated(spacing:count:)", cell.scaled(0.72).repeated(spacing: Vector2(88, 88), count: 1)),
-            ("repeatedRadially(9)", petal.at(x: 82, y: 0).repeatedRadially(count: 9)),
+            ("repeatedRadially(9)", petal.at(82, 0).repeatedRadially(count: 9)),
         ]
 
         for (i, tile) in tiles.enumerated() {

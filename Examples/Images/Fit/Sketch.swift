@@ -109,7 +109,7 @@ final class Fit: Sketch {
 
         for y in 0..<h {
             let v = Double(y) / Double(h - 1)
-            let sky = Color.mix(Color(hex: 0x3E5C7E), Color(hex: 0xE8B478), t: pow(v, 0.7))
+            let sky = Color.mix(Color(hex: 0x3E5C7E), Color(hex: 0xE8B478), pow(v, 0.7))
             for x in 0..<w {
                 var c = sky
                 let d = Vector2(Double(x), Double(y)).distance(to: sun)
@@ -117,7 +117,7 @@ final class Fit: Sketch {
                     c = Color(hex: 0xFFF0C2)
                 } else if d < sunRadius * 2.4 {
                     let glow = 1 - (d - sunRadius) / (sunRadius * 1.4)
-                    c = Color.mix(c, Color(hex: 0xFFD98F), t: glow * 0.5)
+                    c = Color.mix(c, Color(hex: 0xFFD98F), glow * 0.5)
                 }
                 picture[x, y] = c
             }

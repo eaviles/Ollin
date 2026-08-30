@@ -21,7 +21,7 @@ final class Dispersion_Example: Sketch {
         // One scene with hard edges, fine lines, and flat color, so the modes that
         // read edges have something to find and the modes that shift the whole frame
         // have somewhere flat to show it.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x0B1020))
             noStroke()
@@ -44,7 +44,7 @@ final class Dispersion_Example: Sketch {
         // The aux layer for the driven tile: white where the split should happen. One
         // disc drifts on its own so the tile reads without a mouse; a second follows
         // the pointer, so you can smear a fringe over whatever you point at.
-        let drive = renderTarget()
+        let drive = makeRenderTarget()
         withTarget(drive) {
             background(.black)
             noStroke()

@@ -110,7 +110,7 @@ its primitives.
 
 ```swift
 let lit = smoothstep(0.3, 1.0, sin(angle * 3 - time))  // a soft traveling window
-fill(Color.mix(.navy, .white, t: lit))
+fill(Color.mix(.navy, .white, lit))
 ```
 
 `smoothstep(0, 1, t)` is the plain `0...1` reshape, the same curve as

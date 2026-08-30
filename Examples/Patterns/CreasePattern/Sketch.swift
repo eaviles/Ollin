@@ -129,7 +129,7 @@ final class CreasePatternSketch: Sketch {
             var normal = edge1.cross(edge2)
             if normal.length > 0 { normal = normal.normalized } else { normal = Vector3.unitZ }
             let lit = max(0, abs(normal.dot(light)))
-            fill(Color.mix(Color(hex: 0x2B3550), chalk, t: 0.18 + lit * 0.72))
+            fill(Color.mix(Color(hex: 0x2B3550), chalk, 0.18 + lit * 0.72))
             stroke(paper.withAlpha(0.55))
             drawPolygon(corners)
         }
@@ -172,7 +172,7 @@ final class CreasePatternSketch: Sketch {
         noStroke()
         for (index, square) in squares.enumerated() {
             let along = Double(index) / Double(max(squares.count - 1, 1))
-            fill(Color.mix(chalk, ridge, t: along * 0.8))
+            fill(Color.mix(chalk, ridge, along * 0.8))
             drawPolygon(place(square.points, from: frame, in: right))
         }
 

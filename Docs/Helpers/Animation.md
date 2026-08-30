@@ -281,7 +281,7 @@ To smooth a value that isn't a sketch property, the `OneEuroFilter<Value>` under
 
 ```swift
 var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.02)
-let clean = filter.filter(noisy, dt: deltaTime)
+let clean = filter.filter(noisy, deltaTime: deltaTime)
 ```
 
 The [Smoothing example](../../Examples/Motion/Smoothing/Sketch.swift) shakes jitter onto a moving target so you can watch the filter glide through the noise.
@@ -319,7 +319,7 @@ For spring state that isn't a sketch property (values in an array, say), the `Da
 
 ```swift
 var spring = DampedSpring(value: 0.0, duration: 0.6, bounce: 0.3)
-let x = spring.step(toward: target, dt: deltaTime)
+let x = spring.advance(toward: target, by: deltaTime)
 ```
 
 The [Springs example](../../Examples/Motion/Springs/Sketch.swift) races five bounces side by side and hangs a kickable chaser on the mouse.

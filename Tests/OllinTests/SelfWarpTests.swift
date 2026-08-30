@@ -22,7 +22,7 @@ struct SelfWarpTests {
         var field: SimField!
         override var canvasSize: CanvasSize { .square(256) }
         override func setup() {
-            field = simField(.selfWarp(strength: strength, refresh: 0.25,
+            field = makeSimField(.selfWarp(amount: strength, refresh: 0.25,
                                        smoothing: 0.3))
         }
         override func draw() {
@@ -42,7 +42,7 @@ struct SelfWarpTests {
         var field: SimField!
         override var canvasSize: CanvasSize { .square(256) }
         override func setup() {
-            if warped { field = simField(.selfWarp(refresh: 0.25)) }
+            if warped { field = makeSimField(.selfWarp(refresh: 0.25)) }
         }
         private func scene() {
             background(Color(red: 0.1, green: 0.1, blue: 0.15))

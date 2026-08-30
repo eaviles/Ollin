@@ -402,10 +402,10 @@ struct SceneLightSpec: Equatable, Sendable {
             return .point(color, at: position, intensity: intensity)
         case .spot:
             return .spot(color, at: position, direction: direction,
-                         angle: coneAngle, penumbra: penumbra, intensity: intensity)
-        case .rect:
+                         coneAngle: coneAngle, penumbra: penumbra, intensity: intensity)
+        case .rectangle:
             let up = yAxis.lengthSquared > 1e-12 ? yAxis.normalized : .unitY
-            return .rect(color, at: position, direction: direction,
+            return .rectangle(color, at: position, direction: direction,
                          width: width * xAxis.length, height: height * yAxis.length,
                          up: up, intensity: intensity)
         case .disk:
@@ -466,7 +466,7 @@ extension Scene {
     /// Load a scene bundled as a resource. Mirrors `Mesh(resource:extension:in:)`;
     /// `in:` has no default, since a default argument would resolve to *Ollin's*
     /// bundle, not the caller's.
-    public init?(resource name: String, extension ext: String?, in bundle: Bundle) {
+    public init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {
         guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
         self.init(contentsOf: url)
     }

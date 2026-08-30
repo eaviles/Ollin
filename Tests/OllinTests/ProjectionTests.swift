@@ -102,7 +102,7 @@ struct ProjectionTests {
     /// runs in fractions of that part, so it has to be converted on the way in.
     @Test func theFadeIsMeasuredAgainstTheShownPart() throws {
         let projection = Installation.Projection(
-            shows: Rectangle(x: 0, y: 0, width: 0.5, height: 1),
+            visibleRegion: Rectangle(x: 0, y: 0, width: 0.5, height: 1),
             blend: Insets(right: 0.1))
         let placement = try #require(ProjectionPlacement(projection,
                                                          canvas: Vector2(1000, 1000),
@@ -126,7 +126,7 @@ struct ProjectionTests {
     /// mouse somewhere else entirely.
     @Test func thePointerComesBackThroughTheWarp() throws {
         let projection = Installation.Projection(
-            shows: Rectangle(x: 0.5, y: 0, width: 0.5, height: 1),
+            visibleRegion: Rectangle(x: 0.5, y: 0, width: 0.5, height: 1),
             corners: Installation.Projection.Corners(topLeft: Vector2(0, 0),
                                                      topRight: Vector2(0.5, 0),
                                                      bottomRight: Vector2(0.5, 1),
@@ -344,12 +344,12 @@ struct ProjectionTests {
     func twoMachinesFadingIntoEachOtherMakeOneCoat() throws {
         let wall = try Wall(canvas: .white)
         let left = try wall.present(Installation.Projection(
-            shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
+            visibleRegion: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
             corners: .init(topLeft: Vector2(0, 0), topRight: Vector2(0.6, 0),
                            bottomRight: Vector2(0.6, 1), bottomLeft: Vector2(0, 1)),
             blend: Insets(right: 0.2)))
         let right = try wall.present(Installation.Projection(
-            shows: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1),
+            visibleRegion: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1),
             corners: .init(topLeft: Vector2(0.4, 0), topRight: Vector2(1, 0),
                            bottomRight: Vector2(1, 1), bottomLeft: Vector2(0.4, 1)),
             blend: Insets(left: 0.2)))
@@ -380,9 +380,9 @@ struct ProjectionTests {
     @Test(.enabled(if: hasMetal))
     func everyDisplayCarriesItsOwnPart() throws {
         let wall = try Wall()
-        let left = Installation.Projection(shows: Rectangle(x: 0, y: 0, width: 0.5, height: 1),
+        let left = Installation.Projection(visibleRegion: Rectangle(x: 0, y: 0, width: 0.5, height: 1),
                                            corners: .filling)
-        let right = Installation.Projection(shows: Rectangle(x: 0.5, y: 0, width: 0.5, height: 1),
+        let right = Installation.Projection(visibleRegion: Rectangle(x: 0.5, y: 0, width: 0.5, height: 1),
                                             corners: .filling)
 
         let onTheLeft = try wall.present(part: left, whileFittedTo: right)

@@ -14,7 +14,7 @@ final class Physarum_Example: Sketch {
     var slime: Physarum!
 
     override func setup() {
-        slime = physarum(agents: 220_000, resolution: 1024)
+        slime = makePhysarum(agents: 220_000, resolution: 1024)
     }
 
     override func draw() {

@@ -58,7 +58,7 @@ import Testing
             for pulses in 1..<steps {
                 let rhythm = Rhythm(pulses, in: steps)
                 let gaps = Set(rhythm.intervals)
-                #expect(rhythm.pulseCount == pulses, "E(\(pulses),\(steps)) lost a strike")
+                #expect(rhythm.onsetCount == pulses, "E(\(pulses),\(steps)) lost a strike")
                 #expect(rhythm.length == steps)
                 #expect(rhythm.intervals.reduce(0, +) == steps)
                 #expect(gaps.count <= 2, "E(\(pulses),\(steps)) has gaps \(gaps.sorted())")
@@ -75,7 +75,7 @@ import Testing
         let base = Rhythm(7, in: 16)
         for offset in 1..<16 {
             let turned = base.rotated(by: offset)
-            #expect(turned.pulseCount == base.pulseCount)
+            #expect(turned.onsetCount == base.onsetCount)
             #expect(Set(turned.intervals) == Set(base.intervals))
             #expect(turned.intervals.reduce(0, +) == 16)
         }
@@ -92,8 +92,8 @@ import Testing
 
     @Test func degenerateCountsDoTheObviousThing() {
         #expect(Rhythm(0, in: 8).onsets.isEmpty)
-        #expect(Rhythm(8, in: 8).pulseCount == 8)
-        #expect(Rhythm(12, in: 8).pulseCount == 8)
+        #expect(Rhythm(8, in: 8).onsetCount == 8)
+        #expect(Rhythm(12, in: 8).onsetCount == 8)
         #expect(Rhythm(-3, in: 8).onsets.isEmpty)
         #expect(Rhythm(3, in: 0).length == 0)
         #expect(Rhythm(3, in: 0)[5] == false)
@@ -142,8 +142,8 @@ import Testing
         let onTheSecond = major.chord(on: 1).map { $0.midi - major[1].midi }
         #expect(onTheRoot == [0, 4, 7])       // major
         #expect(onTheSecond == [0, 3, 7])     // minor, from the same call
-        #expect(major.chord(on: 0, notes: 4).count == 4)
-        #expect(major.chord(on: 0, notes: 4).map { $0.midi - 60 } == [0, 4, 7, 11])
+        #expect(major.chord(on: 0, noteCount: 4).count == 4)
+        #expect(major.chord(on: 0, noteCount: 4).map { $0.midi - 60 } == [0, 4, 7, 11])
     }
 
     /// Snapping moves a pitch onto the scale, and the twin that contains every
@@ -253,9 +253,9 @@ import Testing
     @Test func octavesStackTheLadderRatherThanStretchIt() {
         let one = Arpeggio([60, 64, 67], .up)
         let two = Arpeggio([60, 64, 67], .up, octaves: 2)
-        #expect(two.notes.count == one.notes.count * 2)
-        #expect(two.notes.map(\.midi) == [60, 64, 67, 72, 76, 79])
-        #expect(two.notes == two.notes.sorted())
+        #expect(two.spreadPitches.count == one.spreadPitches.count * 2)
+        #expect(two.spreadPitches.map(\.midi) == [60, 64, 67, 72, 76, 79])
+        #expect(two.spreadPitches == two.spreadPitches.sorted())
     }
 
     /// `asPlayed` is the only pattern that keeps a hand made voicing. Its twin
@@ -284,9 +284,9 @@ import Testing
         let first = (0..<64).map { one[$0].midi }
         #expect(first == (0..<64).map { same[$0].midi })
         #expect(first != (0..<64).map { other[$0].midi })
-        #expect(first.allSatisfy { midi in one.notes.contains { $0.midi == midi } })
+        #expect(first.allSatisfy { midi in one.spreadPitches.contains { $0.midi == midi } })
         // Over enough steps it should reach every note it was given.
-        #expect(Set(first).count == one.notes.count)
+        #expect(Set(first).count == one.spreadPitches.count)
     }
 
     @Test func theFigureWrapsForeverAndNeverRunsOut() {

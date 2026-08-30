@@ -12,7 +12,7 @@ import Ollin
 struct Motion3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     // MARK: Which plane the body lives in

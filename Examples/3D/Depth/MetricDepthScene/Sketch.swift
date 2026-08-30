@@ -7,7 +7,7 @@ import OllinRecord3D
 /// 0…1 value; here it's a real distance in **meters**, because the camera is built
 /// from the depth frame's own lens.
 ///
-/// `camera(.fromIntrinsics(frame.intrinsics))` makes a metric camera from the
+/// `camera(.intrinsic(frame.intrinsics))` makes a metric camera from the
 /// stream's calibration, then `drawDepthScene(frame)` lays down the color picture
 /// *and* writes the frame's metric depth (meters) into the depth buffer. So a marker
 /// placed at a world point a fixed number of meters away — `withBillboard(at:)`
@@ -49,7 +49,7 @@ final class MetricDepthScene: Sketch {
 
         // A metric camera from the feed's own intrinsics: a point cloud, a depth
         // scene, and any placed object now share one space measured in meters.
-        camera(.fromIntrinsics(frame.intrinsics))
+        camera(.intrinsic(frame.intrinsics))
 
         // The backdrop picture + the frame's metric depth, written into the depth
         // buffer. Fills the canvas (the camera projects the scene across the canvas).

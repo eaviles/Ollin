@@ -149,14 +149,14 @@ final class SensorStreamer {
         ar.onBodies = { [weak self] samples in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.pose(samples)))
-            self.bodyTracked = samples.contains { $0.tracked }
+            self.bodyTracked = samples.contains { $0.isTracked }
             self.jointCount = samples.first?.joints.count ?? 0
         }
 
         face.onFaces = { [weak self] samples in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.face(samples)))
-            self.faceTracked = samples.contains { $0.tracked }
+            self.faceTracked = samples.contains { $0.isTracked }
             if let primary = samples.first {
                 let expr = Self.describe(primary.blendShapes)
                 self.topExpression = samples.count > 1 ? "\(samples.count) faces · \(expr)" : expr

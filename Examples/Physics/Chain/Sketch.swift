@@ -119,7 +119,7 @@ final class Chain: Sketch {
         background(Color(white: 0.11))
 
         held?.target = mouse   // drag the held body to the cursor
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         for body in world.bodies {
             guard let look = body.userData as? Look else { continue }

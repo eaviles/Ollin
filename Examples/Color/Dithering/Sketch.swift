@@ -97,8 +97,8 @@ final class Dithering: Sketch {
                 let v = Double(y) / Double(h - 1)
                 let t = clamp(1 - dist(u, v, 0.28, 0.78) * 1.35, 0, 1)
                 image[x, y] = t < 0.5
-                    ? Color.mix(deep, mid, t: t * 2)
-                    : Color.mix(mid, warm, t: (t - 0.5) * 2)
+                    ? Color.mix(deep, mid, t * 2)
+                    : Color.mix(mid, warm, (t - 0.5) * 2)
             }
         }
         return image

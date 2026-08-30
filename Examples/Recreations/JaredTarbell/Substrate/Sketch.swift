@@ -54,7 +54,7 @@ final class Substrate: Sketch {
             for grain in CrackGrowth.grains(from: mark.point, to: mark.washExtent,
                                             gain: mark.gain) {
                 fill(wash.withAlpha(grain.alpha))
-                drawPoint(grain.position)
+                drawPoint(at: grain.position)
             }
 
             // The crack: a faint dark point with sub-pixel shiver, so the

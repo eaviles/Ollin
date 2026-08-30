@@ -42,7 +42,7 @@ public struct PhoneBody: Sendable {
     /// (a test or a figure builds a `PhonePoseSample` and reads it back through
     /// the same accessors the live stream uses).
     public init(_ sample: PhonePoseSample) {
-        isTracked = sample.tracked
+        isTracked = sample.isTracked
         timestamp = sample.timestamp
         worldTransform = sample.anchor
         scaleFactor = Double(sample.scaleFactor)
@@ -72,7 +72,7 @@ public struct PhoneBody: Sendable {
 
     /// Whether the camera actually observed a joint this frame. ARKit's rig fills
     /// unseen joints in from their neighbors; those report `false`.
-    public func isJointTracked(_ joint: PhoneJoint) -> Bool { joints[joint]?.tracked ?? false }
+    public func isJointTracked(_ joint: PhoneJoint) -> Bool { joints[joint]?.isTracked ?? false }
 
     /// One joint's full model-space pose (orientation and position composed into a
     /// 4x4), or `nil` if it wasn't reported. Hand it to `transform(_:)` inside
@@ -86,7 +86,7 @@ public struct PhoneBody: Sendable {
 
     /// One joint's full pose stood in ARKit world space (the anchor applied), or
     /// `nil` if it wasn't reported.
-    public func worldTransform(of joint: PhoneJoint) -> simd_float4x4? {
+    public func worldTransform(ofJoint joint: PhoneJoint) -> simd_float4x4? {
         modelTransform(joint).map { worldTransform * $0 }
     }
 

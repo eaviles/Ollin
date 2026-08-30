@@ -6,7 +6,7 @@ import Testing
 /// floor really is empty, and the whole pass is deterministic. No GPU.
 @Suite @MainActor
 struct GlyphMosaicTests {
-    private let font = ActiveFont.bitmap(.builtin)
+    private let font = ActiveFont.bitmap(.builtIn)
 
     /// In the bundled bitmap font, a dot inks less than a cross, which inks
     /// less than a full block; the measured ramp orders them so.

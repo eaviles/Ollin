@@ -64,7 +64,7 @@ final class Separations: Sketch {
                 var c = sky.color(at: v)
                 if dist(u, v, 0.38, 0.42) < 0.24 { c = Color(hex: 0x2B5DD7) }
                 if dist(u, v, 0.64, 0.62) < 0.20 {
-                    c = Color.mix(c, Color(hex: 0x1B1B3A), t: 0.7)
+                    c = Color.mix(c, Color(hex: 0x1B1B3A), 0.7)
                 }
                 image[x, y] = c
             }

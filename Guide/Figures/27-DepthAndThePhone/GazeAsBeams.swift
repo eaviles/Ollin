@@ -75,7 +75,7 @@ final class GazeAsBeams: Sketch {
         background(Color(hex: 0x0D1017))
         camera(.orbiting(target: Vector3(0.11, 0.055, 0.28), radius: 0.62,
                          azimuth: 0.55, elevation: 0.14, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
 
         // The shell stands under the full head pose, so the eyes sit inside it.
         withState {

@@ -95,7 +95,7 @@ struct GainMapExportTests {
         #expect(frame.peak > 3.5, "the sketch should draw well above white")
 
         let url = temporary("small.heic")
-        let written = try #require(OllinApp.writeHEIC(image, to: url.path))
+        let written = try #require(OllinApp.exportHEIC(image, to: url.path))
         #expect(written.keepsHighlights)
         #expect(abs(written.peak - Double(frame.peak)) < 0.01)
 
@@ -116,7 +116,7 @@ struct GainMapExportTests {
         let (image, frame) = try rendered(sketch)
 
         let url = temporary("color.heic")
-        _ = try #require(OllinApp.writeHEIC(image, to: url.path))
+        _ = try #require(OllinApp.exportHEIC(image, to: url.path))
         let expanded = try pixels(of: url, expanded: true, width: image.width, height: image.height)
         let got = brightest(expanded).color
         let want = brightest(frame.pixels).color
@@ -137,7 +137,7 @@ struct GainMapExportTests {
         sketch.side = 61
         let (image, frame) = try rendered(sketch)
         let url = temporary("odd.heic")
-        _ = try #require(OllinApp.writeHEIC(image, to: url.path))
+        _ = try #require(OllinApp.exportHEIC(image, to: url.path))
         let expanded = try pixels(of: url, expanded: true, width: image.width, height: image.height)
         #expect(abs(brightest(expanded).peak / frame.peak - 1) < 0.02)
         try? FileManager.default.removeItem(at: url)
@@ -150,7 +150,7 @@ struct GainMapExportTests {
         let sketch = Core()
         let (image, _) = try rendered(sketch)
         let url = temporary("base.heic")
-        _ = try #require(OllinApp.writeHEIC(image, to: url.path))
+        _ = try #require(OllinApp.exportHEIC(image, to: url.path))
         let plain = try pixels(of: url, expanded: false, width: image.width, height: image.height)
         #expect(brightest(plain).peak <= 1.01,
                 "a reader without headroom must never be handed a value above white")
@@ -162,7 +162,7 @@ struct GainMapExportTests {
         let sketch = Core()
         let (image, frame) = try rendered(sketch)
         let url = temporary("clamped.heic")
-        _ = try #require(OllinApp.writeHEIC(image, to: url.path))
+        _ = try #require(OllinApp.exportHEIC(image, to: url.path))
         let plain = try pixels(of: url, expanded: false, width: image.width, height: image.height)
         var worst: Float = 0
         for i in stride(from: 0, to: plain.count, by: 4) {
@@ -183,7 +183,7 @@ struct GainMapExportTests {
         sketch.core = Color(white: 0.9)
         let (image, _) = try rendered(sketch)
         let url = temporary("flat.heic")
-        let written = try #require(OllinApp.writeHEIC(image, to: url.path))
+        let written = try #require(OllinApp.exportHEIC(image, to: url.path))
         #expect(!written.keepsHighlights)
         #expect(written.peak <= 1.01)
 
@@ -202,7 +202,7 @@ struct GainMapExportTests {
         sketch.core = Color(displayP3: 1, green: 0, blue: 0)
         let (image, frame) = try rendered(sketch)
         let url = temporary("wide.heic")
-        let written = try #require(OllinApp.writeHEIC(image, to: url.path))
+        let written = try #require(OllinApp.exportHEIC(image, to: url.path))
         #expect(!written.keepsHighlights)
 
         let plain = try pixels(of: url, expanded: false, width: image.width, height: image.height)
@@ -225,7 +225,7 @@ struct GainMapExportTests {
         #expect(GainMap.floatSamples(of: image, context: context()) == nil,
                 "an eight-bit frame has no values above white to read")
         let url = temporary("standard.heic")
-        let written = try #require(OllinApp.writeHEIC(image, to: url.path))
+        let written = try #require(OllinApp.exportHEIC(image, to: url.path))
         #expect(!written.keepsHighlights, "eight bits cannot hold anything above white")
 
         let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
@@ -242,7 +242,7 @@ struct GainMapExportTests {
         let sketch = Core()
         let (image, _) = try rendered(sketch)
         let url = temporary("iso.heic")
-        _ = try #require(OllinApp.writeHEIC(image, to: url.path))
+        _ = try #require(OllinApp.exportHEIC(image, to: url.path))
 
         let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
         let iso = CGImageSourceCopyAuxiliaryDataInfoAtIndex(
@@ -260,7 +260,7 @@ struct GainMapExportTests {
         let sketch = Core()
         let (image, frame) = try rendered(sketch)
         let url = temporary("ceiling.heic")
-        _ = try #require(OllinApp.writeHEIC(image, to: url.path))
+        _ = try #require(OllinApp.exportHEIC(image, to: url.path))
 
         // Applying the map at a headroom far past anything real is limited to
         // the map's own declared ceiling, so what comes back *is* that ceiling.
@@ -288,7 +288,7 @@ struct GainMapExportTests {
         let (image, _) = try rendered(sketch)
         let url = temporary("recipe.heic")
         let recipe = "{\"tool\":\"Ollin\",\"seed\":42}"
-        _ = try #require(OllinApp.writeHEIC(image, to: url.path, recipe: recipe))
+        _ = try #require(OllinApp.exportHEIC(image, to: url.path, recipe: recipe))
 
         let source = try #require(CGImageSourceCreateWithURL(url as CFURL, nil))
         let properties = try #require(

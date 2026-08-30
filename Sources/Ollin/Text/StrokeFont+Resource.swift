@@ -12,7 +12,7 @@ public extension StrokeFont {
     /// or the default `.main` for an app's main bundle.
     ///
     /// ```swift
-    /// let font = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtin
+    /// let font = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtIn
     /// textFont(font)
     /// ```
     init?(resource name: String, in bundle: Bundle = .main) {

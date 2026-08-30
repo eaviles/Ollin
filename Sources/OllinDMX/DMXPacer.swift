@@ -12,7 +12,7 @@ import Foundation
 struct DMXPacer {
 
     /// The transmit ceiling, matching a DMX512 gateway's maximum refresh.
-    var maximumRate: Double = 44
+    var maxRate: Double = 44
 
     /// How often unchanged data is re-sent so receivers hold the look.
     var keepAliveInterval: Double = 0.9
@@ -33,7 +33,7 @@ struct DMXPacer {
 
         let due: Bool
         if changed || repeatsRemaining > 0 {
-            due = elapsed >= 1 / maximumRate
+            due = elapsed >= 1 / maxRate
         } else {
             due = elapsed >= keepAliveInterval
         }

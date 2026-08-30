@@ -27,8 +27,8 @@ struct DisplayWallTests {
         let parts = WallPlan.parts(.spanning, base: .direct, canvas: Self.canvas,
                                    screens: Self.pair())
         #expect(parts.count == 2)
-        #expect(parts[0].projection.shows == Rectangle(x: 0, y: 0, width: 0.5, height: 1))
-        #expect(parts[1].projection.shows == Rectangle(x: 0.5, y: 0, width: 0.5, height: 1))
+        #expect(parts[0].projection.visibleRegion == Rectangle(x: 0, y: 0, width: 0.5, height: 1))
+        #expect(parts[1].projection.visibleRegion == Rectangle(x: 0.5, y: 0, width: 0.5, height: 1))
         #expect(parts[0].key == "left" && parts[1].key == "right")
     }
 
@@ -38,8 +38,8 @@ struct DisplayWallTests {
                        WallScreen(frame: Rectangle(x: 0, y: 1080, width: 1920, height: 1080),
                                   key: "bottom")]
         let parts = WallPlan.parts(.spanning, base: .direct, canvas: Self.canvas, screens: screens)
-        #expect(parts[0].projection.shows == Rectangle(x: 0, y: 0, width: 1, height: 0.5))
-        #expect(parts[1].projection.shows == Rectangle(x: 0, y: 0.5, width: 1, height: 0.5))
+        #expect(parts[0].projection.visibleRegion == Rectangle(x: 0, y: 0, width: 1, height: 0.5))
+        #expect(parts[1].projection.visibleRegion == Rectangle(x: 0, y: 0.5, width: 1, height: 0.5))
     }
 
     /// A display that is half the size of the one beside it carries half as much
@@ -51,9 +51,9 @@ struct DisplayWallTests {
                        WallScreen(frame: Rectangle(x: 2000, y: 0, width: 1000, height: 1000),
                                   key: "small")]
         let parts = WallPlan.parts(.spanning, base: .direct, canvas: Self.canvas, screens: screens)
-        #expect(abs(parts[0].projection.shows.width - 2.0 / 3) < 1e-12)
-        #expect(abs(parts[1].projection.shows.width - 1.0 / 3) < 1e-12)
-        #expect(abs(parts[1].projection.shows.x - 2.0 / 3) < 1e-12)
+        #expect(abs(parts[0].projection.visibleRegion.width - 2.0 / 3) < 1e-12)
+        #expect(abs(parts[1].projection.visibleRegion.width - 1.0 / 3) < 1e-12)
+        #expect(abs(parts[1].projection.visibleRegion.x - 2.0 / 3) < 1e-12)
     }
 
     /// The gap between two monitors carries part of the canvas that nobody sees.
@@ -65,20 +65,20 @@ struct DisplayWallTests {
                        WallScreen(frame: Rectangle(x: 1500, y: 0, width: 1000, height: 1000),
                                   key: "right")]
         let parts = WallPlan.parts(.spanning, base: .direct, canvas: Self.canvas, screens: screens)
-        let carried = parts.map(\.projection.shows.width).reduce(0, +)
+        let carried = parts.map(\.projection.visibleRegion.width).reduce(0, +)
         #expect(abs(carried - 0.8) < 1e-12, "the gap should carry the fifth nobody sees")
-        #expect(abs(parts[1].projection.shows.x - 0.6) < 1e-12)
+        #expect(abs(parts[1].projection.visibleRegion.x - 0.6) < 1e-12)
     }
 
     /// A machine that carries part of a longer wall divides that part between
     /// its own displays, not the whole canvas. Two machines with two projectors
     /// each is four beams, and each of them has to know its own quarter.
     @Test func aWallInsideAWallDividesWhatThisMachineCarries() {
-        let base = Installation.Projection(shows: Rectangle(x: 0, y: 0, width: 0.5, height: 1),
+        let base = Installation.Projection(visibleRegion: Rectangle(x: 0, y: 0, width: 0.5, height: 1),
                                            blend: Insets(right: 0.1))
         let parts = WallPlan.parts(.spanning, base: base, canvas: Self.canvas, screens: Self.pair())
-        #expect(parts[0].projection.shows == Rectangle(x: 0, y: 0, width: 0.25, height: 1))
-        #expect(parts[1].projection.shows == Rectangle(x: 0.25, y: 0, width: 0.25, height: 1))
+        #expect(parts[0].projection.visibleRegion == Rectangle(x: 0, y: 0, width: 0.25, height: 1))
+        #expect(parts[1].projection.visibleRegion == Rectangle(x: 0.25, y: 0, width: 0.25, height: 1))
         // The fades and the gamma are the machine's, so they come along.
         #expect(parts[0].projection.blend == base.blend)
     }
@@ -87,7 +87,7 @@ struct DisplayWallTests {
         let parts = WallPlan.parts(.mirroring, base: .direct, canvas: Self.canvas,
                                    screens: Self.pair())
         #expect(parts.count == 2)
-        #expect(parts.allSatisfy { $0.projection.shows == Installation.Projection.wholeCanvas })
+        #expect(parts.allSatisfy { $0.projection.visibleRegion == Installation.Projection.wholeCanvas })
     }
 
     @Test func oneDisplayIsTheRunItAlwaysWas() {
@@ -102,9 +102,9 @@ struct DisplayWallTests {
     /// The declarations are matched up left to right, whatever order the system
     /// hands the displays over in.
     @Test func declaredPartsAreMatchedLeftToRight() {
-        let left = Installation.Projection(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
+        let left = Installation.Projection(visibleRegion: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
                                            blend: Insets(right: 0.2))
-        let right = Installation.Projection(shows: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1),
+        let right = Installation.Projection(visibleRegion: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1),
                                             blend: Insets(left: 0.2))
         let backwards = Array(Self.pair().reversed())
         let parts = WallPlan.parts(.parts([left, right]), base: .direct,
@@ -114,7 +114,7 @@ struct DisplayWallTests {
     }
 
     @Test func aDisplayPastTheDeclarationsStaysDark() {
-        let only = Installation.Projection(shows: Rectangle(x: 0, y: 0, width: 0.5, height: 1))
+        let only = Installation.Projection(visibleRegion: Rectangle(x: 0, y: 0, width: 0.5, height: 1))
         let parts = WallPlan.parts(.parts([only]), base: .direct,
                                    canvas: Self.canvas, screens: Self.pair())
         #expect(parts.count == 1, "the display with nothing declared for it should carry nothing")
@@ -122,8 +122,8 @@ struct DisplayWallTests {
     }
 
     @Test func aDeclarationPastTheDisplaysIsIgnored() {
-        let one = Installation.Projection(shows: Rectangle(x: 0, y: 0, width: 0.5, height: 1))
-        let two = Installation.Projection(shows: Rectangle(x: 0.5, y: 0, width: 0.5, height: 1))
+        let one = Installation.Projection(visibleRegion: Rectangle(x: 0, y: 0, width: 0.5, height: 1))
+        let two = Installation.Projection(visibleRegion: Rectangle(x: 0.5, y: 0, width: 0.5, height: 1))
         let parts = WallPlan.parts(.parts([one, two, two]), base: .direct,
                                    canvas: Self.canvas, screens: Self.pair())
         #expect(parts.count == 2)
@@ -133,7 +133,7 @@ struct DisplayWallTests {
     /// window is moved to it. Without that, a run whose own display had no
     /// declaration would be drawing frames with nowhere to put them.
     @Test func exactlyOnePartIsTheOneTheWindowIsOn() {
-        let onlyTheRight = Installation.Projection(shows: Rectangle(x: 0.5, y: 0,
+        let onlyTheRight = Installation.Projection(visibleRegion: Rectangle(x: 0.5, y: 0,
                                                                     width: 0.5, height: 1))
         let screens = [WallScreen(frame: Rectangle(x: 0, y: 0, width: 1920, height: 1080),
                                   key: "left"),
@@ -167,8 +167,8 @@ struct DisplayWallTests {
         #expect(parts.filter(\.isPrimary).count == 1)
         // Three equal strips of the canvas.
         for (index, part) in parts.enumerated() {
-            #expect(abs(part.projection.shows.width - 1.0 / 3) < 1e-12)
-            #expect(abs(part.projection.shows.x - Double(index) / 3) < 1e-12)
+            #expect(abs(part.projection.visibleRegion.width - 1.0 / 3) < 1e-12)
+            #expect(abs(part.projection.visibleRegion.x - Double(index) / 3) < 1e-12)
         }
         // Laid out in a row, in order, without touching, inside the desk.
         for (a, b) in zip(parts, parts.dropFirst()) {

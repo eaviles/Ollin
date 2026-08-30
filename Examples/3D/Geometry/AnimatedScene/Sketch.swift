@@ -25,7 +25,7 @@ final class AnimatedScene: Sketch {
            let s = loadScene(path) {
             orrery = s
         } else {
-            orrery = Scene(resource: "scene", extension: "gltf", in: Bundle.module)
+            orrery = Scene(resource: "scene", withExtension: "gltf", in: Bundle.module)
         }
     }
 

@@ -36,7 +36,7 @@ final class TypeSpecimen: Sketch {
         row(name: "bitmap", note: "a grid of pixels, scaled up square by square", y: 274)
         noStroke()
         fill(ink)
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         textSize(58)
         drawText("ollin", 80, 268)
 
@@ -47,7 +47,7 @@ final class TypeSpecimen: Sketch {
         strokeWeight(3)
         strokeCap(.round)
         strokeJoin(.round)
-        textFont(StrokeFont.builtin)
+        textFont(StrokeFont.builtIn)
         textSize(88)
         drawText("ollin", 80, 442)
     }

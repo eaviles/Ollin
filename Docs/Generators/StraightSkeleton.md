@@ -83,7 +83,7 @@ That loop is the topographic-contour look in four lines. Every ring is real geom
 noStroke()
 for face in skeleton.faces {
     let depth = (face.distances.max() ?? 0) / skeleton.maxInset
-    fill(Color.mix(.white, .black, t: depth))
+    fill(Color.mix(.white, .black, depth))
     drawShape(Shape(face.points))
 }
 ```

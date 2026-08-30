@@ -26,8 +26,8 @@ final class MeltStrip: Sketch {
         for (i, k) in ks.enumerated() {
             let cx = 120.0 + Double(i) * 215
             let cy = 255.0
-            let pair = SDF.circle(radius: 62).colored(coral).at(x: -46, y: -26)
-                .smoothUnion(SDF.circle(radius: 54).colored(blue).at(x: 40, y: 34), k: k)
+            let pair = SDF.circle(radius: 62).colored(coral).at(-46, -26)
+                .smoothUnion(SDF.circle(radius: 54).colored(blue).at(40, 34), k: k)
             withState {
                 translate(cx, cy)
                 drawSDF(pair)

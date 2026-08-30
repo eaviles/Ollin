@@ -63,7 +63,7 @@ extension World3D {
     ///
     /// Naming a group here is enough to create it, so the rule can be written
     /// before anything is in either group. It takes effect on the next
-    /// `step(dt:)`, which is also when a pair that was already touching comes
+    /// `advance(by:)`, which is also when a pair that was already touching comes
     /// apart.
     public func ignoreCollisions(between a: CollisionGroup, and b: CollisionGroup) {
         setCollisions(between: a, and: b, to: false)
@@ -77,7 +77,7 @@ extension World3D {
     /// Whether two groups currently collide. True unless something said
     /// otherwise, the diagonal included (two bodies in one group collide with
     /// each other by default).
-    public func collides(_ a: CollisionGroup, with b: CollisionGroup) -> Bool {
+    public func collides(between a: CollisionGroup, and b: CollisionGroup) -> Bool {
         cjolt_world_group_collision(handle, groupIndex(a), groupIndex(b))
     }
 

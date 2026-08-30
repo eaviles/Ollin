@@ -3,7 +3,7 @@ import Foundation
 @testable import Ollin
 import Testing
 
-/// Projected decals (`decal(_:at:...)`): a picture stamped onto the mesh
+/// Projected decals (`drawDecal(_:at:...)`): a picture stamped onto the mesh
 /// surfaces inside an oriented projection box. The CPU half pins the value
 /// type (proportions kept, layer sharing, the per-frame cap and reset, the
 /// opacity-zero early-out). The Metal-gated probes pin the projection against
@@ -274,7 +274,7 @@ private final class DecalProbe: Sketch {
         case .stampLeft, .stampRight:
             let x = mode == .stampLeft ? -0.9 : 0.9
             drawMesh(floor().textured(Self.solidImage(150, 150, 150)))
-            decal(redSticker, at: Vector3(x, 0, 0), width: 0.7)
+            drawDecal(redSticker, at: Vector3(x, 0, 0), width: 0.7)
             // The marker sits outside the box's footprint (offset along z
             // only) or the stamp would cover it; the probe compares x alone.
             withState {
@@ -286,7 +286,7 @@ private final class DecalProbe: Sketch {
             drawMesh(floor().textured(Self.solidImage(150, 150, 150)))
             // The box is 1 wide and defaults its depth to 1, centered 2 above
             // the floor: the floor sits well outside its depth range.
-            decal(redSticker, at: Vector3(0, 2, 0), width: 1)
+            drawDecal(redSticker, at: Vector3(0, 2, 0), width: 1)
         case .stampOnEdgeOnWall:
             // A wall standing straight up (its normals along +z): projecting
             // straight down runs exactly edge-on to it.
@@ -296,24 +296,24 @@ private final class DecalProbe: Sketch {
                             indices: [0, 1, 2, 0, 2, 3],
                             uvs: [Vector2(0, 1), Vector2(1, 1), Vector2(1, 0), Vector2(0, 0)])
             drawMesh(wall.textured(Self.solidImage(150, 150, 150)))
-            decal(redSticker, at: Vector3(0, 0, 0), width: 2, depth: 4)
+            drawDecal(redSticker, at: Vector3(0, 0, 0), width: 2, depth: 4)
         case .redThenBlue:
             drawMesh(floor().textured(Self.solidImage(150, 150, 150)))
-            decal(redSticker, at: Vector3(0, 0, 0), width: 1)
-            decal(blueSticker, at: Vector3(0, 0, 0), width: 1.4)
+            drawDecal(redSticker, at: Vector3(0, 0, 0), width: 1)
+            drawDecal(blueSticker, at: Vector3(0, 0, 0), width: 1.4)
         case .blueThenRed:
             drawMesh(floor().textured(Self.solidImage(150, 150, 150)))
-            decal(blueSticker, at: Vector3(0, 0, 0), width: 1.4)
-            decal(redSticker, at: Vector3(0, 0, 0), width: 1)
+            drawDecal(blueSticker, at: Vector3(0, 0, 0), width: 1.4)
+            drawDecal(redSticker, at: Vector3(0, 0, 0), width: 1)
         case .stampOnSolid:
             drawMesh(floor())
-            decal(redSticker, at: Vector3(0, 0, 0), width: 1.2)
+            drawDecal(redSticker, at: Vector3(0, 0, 0), width: 1.2)
         case .transparentBorder:
             drawMesh(floor().textured(Self.solidImage(150, 150, 150)))
-            decal(Decal(Self.discImage())!, at: Vector3(0, 0, 0), width: 1.2)
+            drawDecal(Decal(Self.discImage())!, at: Vector3(0, 0, 0), width: 1.2)
         case .fullyTransparent:
             drawMesh(floor().textured(Self.solidImage(150, 150, 150)))
-            decal(Decal(Self.clearImage())!, at: Vector3(0, 0, 0), width: 1.2)
+            drawDecal(Decal(Self.clearImage())!, at: Vector3(0, 0, 0), width: 1.2)
         }
     }
 }

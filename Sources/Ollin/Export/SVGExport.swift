@@ -30,7 +30,7 @@ struct SVGStyle {
 /// One vector primitive, in user space (before the CTM). The serializer maps each
 /// case to an SVG element; the matching CTM rides alongside as a `transform`.
 enum SVGGeometry {
-    case ellipse(center: Vector2, rx: Double, ry: Double)   // circle when rx == ry
+    case ellipse(center: Vector2, radiusX: Double, radiusY: Double)   // circle when the radii match
     case rect(corner: Vector2, width: Double, height: Double, cornerRadius: Double)
     case line(Vector2, Vector2)                             // stroke-only
     case quad(start: Vector2, control: Vector2, end: Vector2)  // stroke-only
@@ -115,18 +115,18 @@ func applyHatching(_ commands: [SVGCommand], _ options: Hatching) -> [SVGCommand
         // gradient fill keys density to its ramp's midpoint tone (one density
         // per shape — the hatch is a single pen pass, not a shaded raster).
         let tone = paintTone(fill)
-        let spacing = options.toneDensity ? toneSpacing(options.spacing, tone) : options.spacing
+        let spacing = options.usesToneDensity ? toneSpacing(options.spacing, tone) : options.spacing
         if let spacing {
             let device = contours.map { $0.map { transformed($0, command.transform) } }
             let pen = SVGStyle(fill: nil, stroke: .color(opaque(tone)), strokeWidth: options.penWidth,
                                join: .miter, cap: .butt)
             for line in hatchLines(device, winding: winding, spacing: spacing,
-                                   angle: options.angle, crossHatch: options.crossHatch) {
+                                   angle: options.angle, crossHatches: options.crossHatches) {
                 out.append(.draw(RecordedSVG(geometry: .polyline(line), style: pen,
                                              transform: matrix_identity_float3x3)))
             }
         }
-        if options.keepOutline {
+        if options.keepsOutline {
             var style = command.style          // keep the original border as a stroke
             style.fill = nil
             if style.stroke == nil {

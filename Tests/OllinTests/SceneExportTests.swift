@@ -262,8 +262,8 @@ struct SceneExportTests {
             .directional(.white, direction: Vector3(-1, -2, -0.5).normalized, intensity: 1),
             .point(Color(red: 1, green: 0.8, blue: 0.6), at: Vector3(3, 4, 5), intensity: 1),
             .spot(.white, at: Vector3(-2, 6, 1), direction: Vector3(0, -1, 0),
-                  angle: .pi / 5, penumbra: 0.35, intensity: 1),
-            .rect(.white, at: Vector3(0, 4, 2), direction: Vector3(0, -1, 0),
+                  coneAngle: .pi / 5, penumbra: 0.35, intensity: 1),
+            .rectangle(.white, at: Vector3(0, 4, 2), direction: Vector3(0, -1, 0),
                   width: 2.5, height: 1.25, up: Vector3(0, 0, -1), intensity: 1),
             .disk(.white, at: Vector3(1, 3, 0), direction: Vector3(0, -1, 0),
                   radius: 0.8, intensity: 1),
@@ -291,7 +291,7 @@ struct SceneExportTests {
                 #expect(near(back.coneAngle, sent.coneAngle, 1e-4),
                         "cone went out \(sent.coneAngle) and came back \(back.coneAngle)")
                 #expect(near(back.penumbra, sent.penumbra, 1e-4))
-            case .rect:
+            case .rectangle:
                 #expect(near(back.position, sent.position, 1e-4))
                 #expect(near(back.direction, sent.direction, 1e-4))
                 #expect(near(back.width, sent.width, 1e-4))
@@ -313,7 +313,7 @@ struct SceneExportTests {
         var node = SceneNode(name: "piece")
         node.mesh = lopsidedTriangle()
         let scene = Scene(nodes: [node], lights: [
-            .spot(.white, at: .zero, direction: Vector3(0, -1, 0), angle: .pi / 2,
+            .spot(.white, at: .zero, direction: Vector3(0, -1, 0), coneAngle: .pi / 2,
                   penumbra: 0, intensity: 1),
         ])
         let text = String(decoding: scene.data(as: .usda), as: UTF8.self)
@@ -576,13 +576,13 @@ struct SceneExportTests {
                           cameras: [.orbiting(radius: 8)],
                           lights: [.point(.white, at: Vector3(2, 3, 4)),
                                    .directional(.white, direction: Vector3(0, -1, -0.3)),
-                                   .rect(.white, at: Vector3(0, 4, 0),
+                                   .rectangle(.white, at: Vector3(0, 4, 0),
                                          direction: Vector3(0, -1, 0), width: 2, height: 1),
                                    .disk(.white, at: Vector3(2, 4, 0),
                                          direction: Vector3(0, -1, 0), radius: 1),
                                    .tube(.white, from: Vector3(-2, 4, 0), to: Vector3(2, 4, 0)),
                                    .spot(.white, at: Vector3(0, 5, 0),
-                                         direction: Vector3(0, -1, 0), angle: .pi / 4,
+                                         direction: Vector3(0, -1, 0), coneAngle: .pi / 4,
                                          penumbra: 0.2)])
 
         let url = temporaryURL("checked.usdz")

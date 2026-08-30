@@ -39,7 +39,7 @@ final class SmoothedSignal: Sketch {
         var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.01)
         var smooth: [Vector2] = []
         for p in raw {
-            smooth.append(Vector2(p.x, filter.filter(p.y, dt: 1.0 / 60.0)))
+            smooth.append(Vector2(p.x, filter.filter(p.y, deltaTime: 1.0 / 60.0)))
         }
 
         noFill()

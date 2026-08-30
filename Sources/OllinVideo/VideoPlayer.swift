@@ -15,7 +15,7 @@ import os
 /// let player = try VideoPlayer(path: "/path/to/clip.mp4")
 /// override func setup() { player.loops = true; player.play() }
 /// override func draw() {
-///     if let frame = player.frame, let rect = player.fittedRect(in: bounds) {
+///     if let frame = player.frame, let rect = player.fittedRectangle(in: bounds) {
 ///         drawImage(frame, in: rect)
 ///     }
 /// }
@@ -66,7 +66,7 @@ public final class VideoPlayer: FrameSource, VideoFeed {
     public private(set) var size: Vector2?
 
     /// `size`, under the name the `VideoFeed` seam reads (`drawFrame` and
-    /// `fittedRect(in:)` letterbox by it).
+    /// `fittedRectangle(in:)` letterbox by it).
     public var frameSize: Vector2? { size }
 
     /// The current playback position in seconds.

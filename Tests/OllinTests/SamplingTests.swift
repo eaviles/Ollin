@@ -70,7 +70,7 @@ struct StippleTests {
         }
         let bounds = Rectangle(x: 0, y: 0, width: 200, height: 200)
         var rng = SplitMix64(seed: 7)
-        let dots = stipple(image, count: 300, in: bounds, iterations: 10, using: &rng)
+        let dots = stipple(of: image, count: 300, in: bounds, iterations: 10, using: &rng)
         #expect(dots.count == 300)
         let inDark = dots.filter { $0.x < 100 }.count
         #expect(inDark > 280)
@@ -94,7 +94,7 @@ struct StippleTests {
     @Test func emptyDensityYieldsNoDots() {
         let bounds = Rectangle(x: 0, y: 0, width: 100, height: 100)
         var rng = SplitMix64(seed: 1)
-        #expect(stipple(Image(width: 8, height: 8, color: .white),
+        #expect(stipple(of: Image(width: 8, height: 8, color: .white),
                         count: 50, in: bounds, using: &rng).isEmpty)
         #expect(stipple(count: 50, in: bounds, using: &rng) { _ in 0 }.isEmpty)
     }

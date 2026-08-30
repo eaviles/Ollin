@@ -28,10 +28,10 @@ final class WandAsPointer: Sketch {
         let right = simd_normalize(simd_cross(SIMD3<Float>(0, 1, 0), -forward))
         let up = simd_cross(-forward, right)
         return PhoneWand(PhoneWandSample(
-            tracked: true, timestamp: 0,
+            isTracked: true, timestamp: 0,
             transform: simd_float4x4(SIMD4(right, 0), SIMD4(up, 0),
                                      SIMD4(-forward, 0), SIMD4(position, 1)),
-            quarterTurnsCW: 0, pressed: true, pressCount: 1,
+            quarterTurnsCW: 0, isPressed: true, pressCount: 1,
             hasTouch: true, touch: SIMD2<Float>(0, 0.4)))
     }
 
@@ -50,7 +50,7 @@ final class WandAsPointer: Sketch {
         camera(.perspective(eye: Vector3(-0.38, 1.36, 1.31),
                             target: Vector3(-0.22, 1.2, -0.78),
                             fieldOfView: .pi / 5))
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
         material(.clay)
 
         // What the beam lands on, and how far away it is. This is the one question

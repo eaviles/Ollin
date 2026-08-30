@@ -24,8 +24,8 @@ final class CombinatorsGradient: Sketch {
         //    as a single surface (the seams don't break it). The melt amount breathes.
         let k = 26 + unipolar(sin(t)) * 70
         let blob = SDF.circle(radius: 120)
-            .smoothUnion(SDF.rect(width: 210, height: 120, cornerRadius: 28).at(x: 135, y: 12), k: k)
-            .smoothUnion(SDF.circle(radius: 72).at(x: 44, y: 124), k: k)
+            .smoothUnion(SDF.rect(width: 210, height: 120, cornerRadius: 28).at(135, 12), k: k)
+            .smoothUnion(SDF.circle(radius: 72).at(44, 124), k: k)
         withState {
             translate(width * 0.32, height * 0.34)
             noStroke()
@@ -42,8 +42,8 @@ final class CombinatorsGradient: Sketch {
             rotate(t * 0.3)
             noStroke()
             fill(.radial(center: .zero, radius: 215, cool))
-            let petal = SDF.ellipse(rx: 92, ry: 28).at(x: 128, y: 0)
-                .smoothUnion(SDF.circle(radius: 30).at(x: 172, y: 0), k: 22)
+            let petal = SDF.ellipse(radiusX: 92, radiusY: 28).at(128, 0)
+                .smoothUnion(SDF.circle(radius: 30).at(172, 0), k: 22)
                 .repeatedRadially(count: 9)
             drawSDF(petal)
         }
@@ -55,9 +55,9 @@ final class CombinatorsGradient: Sketch {
             noFill()
             stroke(.linear(from: Vector2(-230, 0), to: Vector2(230, 0), warm))
             strokeWeight(9)
-            let bar = SDF.circle(radius: 70).at(x: -155, y: 0)
+            let bar = SDF.circle(radius: 70).at(-155, 0)
                 .smoothUnion(SDF.rect(width: 210, height: 46, cornerRadius: 23), k: 44)
-                .smoothUnion(SDF.circle(radius: 70).at(x: 155, y: 0), k: 44)
+                .smoothUnion(SDF.circle(radius: 70).at(155, 0), k: 44)
             drawSDF(bar)
         }
 

@@ -48,12 +48,12 @@ extension World3D {
     /// - Parameters:
     ///   - scene: a scene loaded from a `.usd`, `.usdc`, `.usda`, or `.usdz`
     ///     file carrying `UsdPhysics` annotations.
-    ///   - applyGravity: whether a `PhysicsScene` prim's gravity replaces this
+    ///   - usesSceneGravity: whether a `PhysicsScene` prim's gravity replaces this
     ///     world's. Off by default: a sketch's own gravity is usually the one
     ///     it wants.
     ///   - group: which collision group everything joins.
     @discardableResult
-    public func addBodies(from scene: Scene, applyGravity: Bool = false,
+    public func addBodies(from scene: Scene, usesSceneGravity: Bool = false,
                           group: CollisionGroup = .default) -> [Body3D] {
         let description = scene.physics
         guard !description.isEmpty else {
@@ -63,7 +63,7 @@ extension World3D {
                      + "across as any")
             return []
         }
-        if applyGravity, let authored = description.gravity { gravity = authored }
+        if usesSceneGravity, let authored = description.gravity { gravity = authored }
 
         var made: [Body3D] = []
         var byPath: [String: Body3D] = [:]

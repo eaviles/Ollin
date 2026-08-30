@@ -196,7 +196,7 @@ import Ollin
                     <= bounds.x + bounds.width + 1)
         }
 
-        segmenter.clear()
+        segmenter.reset()
         #expect(segmenter.pick == nil)
         #expect(segmenter.isAvailable)
     }

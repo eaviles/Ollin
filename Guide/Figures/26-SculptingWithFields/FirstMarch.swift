@@ -14,9 +14,9 @@ final class FirstMarch: Sketch {
 
         let blob = SDF3D.sphere(radius: 1).colored(Color(hex: 0x39D0C8))
             .smoothUnion(SDF3D.sphere(radius: 0.72)
-                .at(x: 1.0, y: 0.42, z: 0.1)
+                .at(1.0, 0.42, 0.1)
                 .colored(Color(hex: 0xFF4F97)), k: 0.5)
-            .smoothSubtract(SDF3D.sphere(radius: 0.55).at(x: -0.45, y: 0.75, z: 0.5), k: 0.25)
+            .smoothSubtract(SDF3D.sphere(radius: 0.55).at(-0.45, 0.75, 0.5), k: 0.25)
 
         drawSDF3D(blob)
     }

@@ -157,7 +157,7 @@ public struct MotionField: @unchecked Sendable {
 ///
 /// override func draw() {
 ///     guard let frame = camera.frame else { return }
-///     let view = camera.fittedRect(in: bounds) ?? bounds
+///     let view = camera.fittedRectangle(in: bounds) ?? bounds
 ///     drawImage(frame, in: view)
 ///     if let field = flow.field {
 ///         stroke(.white)
@@ -177,7 +177,7 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     /// The speed/quality trade for the flow computation. `.medium` is the live
     /// default; `.low` is the low-latency end (a coarser field) and `.veryHigh`
     /// the finest, at still-image cost.
-    public enum Accuracy: Sendable {
+    public enum Quality: Sendable {
         case low, medium, high, veryHigh
 
         var visionAccuracy: TrackOpticalFlowRequest.ComputationAccuracy {
@@ -199,7 +199,7 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     }
     private let lock = OSAllocatedUnfairLock(initialState: State())
     private let status = VisionStatus("optical flow")
-    private let accuracy: Accuracy
+    private let quality: Quality
 
     /// The flow field between the two most recent analyzed frames, or `nil`
     /// before the first pair (flow needs two frames, so the first analyzed frame
@@ -215,8 +215,8 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     /// Measure optical flow across `source`'s frames — the live camera, a
     /// playing video, or any frame source.
     @MainActor
-    public init(_ source: any FrameSource, accuracy: Accuracy = .medium) {
-        self.accuracy = accuracy
+    public init(_ source: any FrameSource, quality: Quality = .medium) {
+        self.quality = quality
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
@@ -234,10 +234,10 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     /// The flow between two still images — how the picture moved from
     /// `previous` to `current`. The camera-free path, at still-image accuracy by
     /// default. Returns `nil` if the pair produced no field.
-    public static func flow(from previous: Image, to current: Image,
-                            accuracy: Accuracy = .high) async throws -> MotionField? {
+    public static func detect(from previous: Image, to current: Image,
+                            quality: Quality = .high) async throws -> MotionField? {
         let request = TrackOpticalFlowRequest()
-        request.computationAccuracy = accuracy.visionAccuracy
+        request.computationAccuracy = quality.visionAccuracy
         let handler = TargetedImageRequestHandler(source: previous.currentCGImage(),
                                                   target: current.currentCGImage())
         guard let observation = try await handler.perform(request) else { return nil }
@@ -248,10 +248,10 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
     /// field per frame (the first is `nil` — flow needs a frame before it). The
     /// camera-free sequence path — run a recorded clip's frames through the same
     /// stateful request the live path uses, and how that path is tested.
-    public static func flow(across images: [Image],
-                            accuracy: Accuracy = .medium) async throws -> [MotionField?] {
+    public static func detect(across images: [Image],
+                            quality: Quality = .medium) async throws -> [MotionField?] {
         let request = TrackOpticalFlowRequest()
-        request.computationAccuracy = accuracy.visionAccuracy
+        request.computationAccuracy = quality.visionAccuracy
         var results: [MotionField?] = []
         for image in images {
             let observation = try await request.perform(on: image.currentCGImage())
@@ -268,7 +268,7 @@ public final class FlowTracker: VisionTracking, @unchecked Sendable {
         let request: TrackOpticalFlowRequest = lock.withLock { state in
             if state.request == nil {
                 let request = TrackOpticalFlowRequest()
-                request.computationAccuracy = accuracy.visionAccuracy
+                request.computationAccuracy = quality.visionAccuracy
                 state.request = request
             }
             return state.request!

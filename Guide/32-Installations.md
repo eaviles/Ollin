@@ -81,7 +81,7 @@ That last one is the surprise. Ten thousand circles in a row cost one draw call.
 The rest of the reading is short:
 
 - **CPU bar long?** You are making geometry. Hover Draws for the vertex count. Static geometry belongs in a [retained batch](../Docs/Drawing/Batches.md), recorded once and replayed from the card.
-- **GPU bar long?** You are filling pixels. Look at the pass count, and give soft layers a smaller `renderTarget(scale:)`.
+- **GPU bar long?** You are filling pixels. Look at the pass count, and give soft layers a smaller `makeRenderTarget(scale:)`.
 - **Both short and still slow?** Something outside the drawing is holding the frame, like a file read in the middle of `draw()`.
 
 When you need to know which pass, hand the frame to Xcode:
@@ -244,7 +244,7 @@ A wall longer than one projector takes two machines, each carrying a part of the
 
 ```swift
 // The machine on the left.
-Installation(projection: .init(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
+Installation(projection: .init(visibleRegion: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
                                blend: Insets(right: 0.2)))
 ```
 
@@ -275,8 +275,8 @@ For a wall that is not a plain row of monitors, declare the parts yourself. Two 
 
 ```swift
 Installation(displays: .parts([
-    .init(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1), blend: Insets(right: 0.2)),
-    .init(shows: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1), blend: Insets(left: 0.2)),
+    .init(visibleRegion: Rectangle(x: 0, y: 0, width: 0.6, height: 1), blend: Insets(right: 0.2)),
+    .init(visibleRegion: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1), blend: Insets(left: 0.2)),
 ]))
 ```
 

@@ -53,7 +53,7 @@ final class DepthLiftedPose: Sketch {
 
         // The person, as a depth cloud — tuned for whichever camera is streaming.
         let tuning = Tuning.forCamera(frame.camera)
-        let cloud = frame.pointCloud(minimumConfidence: tuning.confidence,
+        let cloud = frame.pointCloud(minConfidence: tuning.confidence,
                                      depthRange: tuning.range, pointSize: tuning.pointSize)
         guard !cloud.isEmpty else { return }
 

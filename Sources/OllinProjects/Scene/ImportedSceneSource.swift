@@ -77,7 +77,7 @@ enum ImportedSceneSource {
             "    /// Reads the scene file and keeps every mesh it carries, walking each node",
             "    /// before its children so the meshes line up with `partNames`.",
             "    private func loadParts() {",
-            "        guard let scene = Scene(resource: \"\(escaped(name))\", extension: \"\(escaped(ext))\", in: .module) else {",
+            "        guard let scene = Scene(resource: \"\(escaped(name))\", withExtension: \"\(escaped(ext))\", in: .module) else {",
             "            print(\"\(className): \(escaped(name)).\(escaped(ext)) did not load\")",
             "            return",
             "        }",
@@ -233,20 +233,20 @@ enum ImportedSceneSource {
             name = "spot"
             arguments = ["at: \(vector(light.position))",
                          "direction: \(vector(light.direction))",
-                         "angle: \(num(light.coneAngle))",
+                         "coneAngle: \(num(light.coneAngle))",
                          "penumbra: \(num(light.penumbra))", intensity]
-        case .rect:
-            name = "rect"
+        case .rectangle:
+            name = "rectangle"
             arguments = ["at: \(vector(light.position))",
                          "direction: \(vector(light.direction))",
                          "width: \(num(light.width))", "height: \(num(light.height))",
-                         "up: \(vector(light.up))", "twoSided: \(light.twoSided)", intensity]
+                         "up: \(vector(light.up))", "isTwoSided: \(light.isTwoSided)", intensity]
         case .disk:
             name = "disk"
             arguments = ["at: \(vector(light.position))",
                          "direction: \(vector(light.direction))",
                          "radius: \(num(light.radius))",
-                         "twoSided: \(light.twoSided)", intensity]
+                         "isTwoSided: \(light.isTwoSided)", intensity]
         case .tube:
             name = "tube"
             arguments = ["from: \(vector(light.endA))", "to: \(vector(light.endB))",

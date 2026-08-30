@@ -37,7 +37,7 @@ final class FaceAlign: Sketch {
 
         // The rectangle the feed would land in un-aligned — eyes and picture
         // are both placed in this one space, so the math stays consistent.
-        guard let rect = camera.fittedRect(in: bounds) else {
+        guard let rect = camera.fittedRectangle(in: bounds) else {
             drawFrame(camera)
             return
         }

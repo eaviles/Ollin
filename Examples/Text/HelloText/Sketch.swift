@@ -13,7 +13,7 @@ final class HelloText: Sketch {
     let specimen = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789  áéíóú ñ ü ¿¡  ハローワールド こんにちは  .,!?:;-+=/()[]<>#@%&   "
 
     override func setup() {
-        textFont(BitmapFont.builtin)   // Cozette, the bundled pixel font
+        textFont(BitmapFont.builtIn)   // Cozette, the bundled pixel font
     }
 
     override func draw() {

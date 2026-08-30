@@ -31,10 +31,10 @@ Neither one throws. A file that can't be read, or that holds nothing usable, com
 ### loadTable
 
 ```swift
-func loadTable(_ path: String, format: TableFormat = .auto, header: Bool? = nil) -> Table?
-func loadTable(_ url: URL, format: TableFormat = .auto, header: Bool? = nil) -> Table?
+func loadTable(_ path: String, format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table?
+func loadTable(_ url: URL, format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table?
 func loadTable(resource: String, withExtension ext: String? = "csv", in bundle: Bundle,
-               format: TableFormat = .auto, header: Bool? = nil) -> Table?
+               format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table?
 ```
 
 Read a delimited file. The `resource:` form is the one to use for a file sitting beside the sketch; pass `.module` for the sketch's own bundle, which has no default because a default would resolve to Ollin's bundle rather than yours.
@@ -145,7 +145,7 @@ loadTable("odd.txt", format: .delimited("|"))
 **Whether the first row names the columns.** A first row holding no numbers is a header; one holding a number is data. That is the whole rule, and it is what a person reads too. A file of names with no header is the case it gets wrong, so say which:
 
 ```swift
-loadTable("names.csv", header: false)   // no header row; read cells by position
+loadTable("names.csv", hasHeader: false)   // no header row; read cells by position
 ```
 
 Read headerless, `columns` is empty and cells come back by position: `row[0]`.

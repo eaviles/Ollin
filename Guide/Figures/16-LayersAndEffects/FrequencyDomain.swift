@@ -13,7 +13,7 @@ final class FrequencyDomain_Figure: Sketch {
         background(Color(hex: 0x0B0E14))
 
         // The picture: hard shapes for broad tones, fine stripes for detail.
-        let plate = renderTarget(width: 512, height: 512)
+        let plate = makeRenderTarget(width: 512, height: 512)
         withTarget(plate) {
             background(Color(hex: 0x101010))
             noStroke()
@@ -30,7 +30,7 @@ final class FrequencyDomain_Figure: Sketch {
         }
 
         // Keep the middle of the spectrum: the slow, wide waves.
-        let mask = renderTarget(width: 512, height: 512)
+        let mask = makeRenderTarget(width: 512, height: 512)
         withTarget(mask) {
             background(.black)
             noStroke()

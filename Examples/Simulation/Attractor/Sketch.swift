@@ -26,7 +26,7 @@ final class Attractor_Example: Sketch {
     ]
 
     override func setup() {
-        flow = attractorFlow(count: 1_000_000, systems[which].1)
+        flow = makeAttractorFlow(count: 1_000_000, systems[which].1)
     }
 
     override func draw() {

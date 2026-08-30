@@ -29,7 +29,7 @@ import Darwin
 /// ```
 ///
 /// In **World** mode the capture app streams a world-facing RGBD frame from the
-/// rear LiDAR instead — `latestDepthFrame` / `pointCloud(...)` unproject it into a
+/// rear LiDAR instead: `latestFrame` / `pointCloud(...)` unproject it into a
 /// colored cloud, and each frame's `latestPose` carries the 6DoF camera transform
 /// for world fusion. The device is also a `FrameSource` + `VideoFeed`, so a vision
 /// tracker can analyze the depth-mode color feed and `drawFrame` can letterbox it.
@@ -193,7 +193,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// when the capture app is in **World** mode (rear LiDAR); body/face modes don't
     /// produce depth. A fresh frame each time the phone sends one — read it within
     /// the current `draw()`.
-    public var latestDepthFrame: RGBDFrame? {
+    public var latestFrame: RGBDFrame? {
         guard let box = reader.latestDepth else { return nil }
         if cachedSequence == box.sequence, let cachedFrame { return cachedFrame }
         let frame = RGBDFrame(color: Image(cgImage: box.color), depth: box.depth,
@@ -207,11 +207,11 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// Unproject the latest depth frame into a `PointCloud` (see `RGBDFrame.pointCloud`
     /// for the parameters). `nil` until the first World-mode frame arrives. The rear
     /// LiDAR reaches across a room, so the defaults open the depth range up.
-    public func pointCloud(minimumConfidence: DepthConfidence = .medium,
+    public func pointCloud(minConfidence: DepthConfidence = .medium,
                            depthRange: ClosedRange<Double>? = nil,
                            step: Int = 1,
                            pointSize: Double = 0.009) -> PointCloud? {
-        latestDepthFrame?.pointCloud(minimumConfidence: minimumConfidence, depthRange: depthRange,
+        latestFrame?.pointCloud(minConfidence: minConfidence, depthRange: depthRange,
                                      step: step, pointSize: pointSize)
     }
 
@@ -226,7 +226,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// the frame's stream sequence number. `draw()` runs faster than depth frames
     /// stream in, so a fusion sketch compares this against the last value it fused
     /// to add each frame exactly once. `nil` before the first frame.
-    public var latestDepthFrameID: Int? { reader.latestDepth?.sequence }
+    public var latestFrameVersion: Int? { reader.latestDepth?.sequence }
 
     // MARK: - Segment and Selfie modes (person segmentation)
 
@@ -324,7 +324,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     }
 
     /// The latest World-mode color frame as a drawable `Image` (`VideoFeed`).
-    public var frame: Image? { latestDepthFrame?.color }
+    public var frame: Image? { latestFrame?.color }
 
     /// The pixel size of the latest World-mode color frame (`VideoFeed`).
     public var frameSize: Vector2? {
@@ -477,8 +477,8 @@ final class PhoneStreamReader: @unchecked Sendable {
                     // Place the block into world space on this thread, off the main
                     // actor and outside the lock (a block carries thousands of
                     // vertices, and the lock is held by every read in draw()).
-                    let chunk = sample.removed ? nil : phoneSceneChunk(from: sample)
-                    guard sample.removed || chunk != nil else { continue }
+                    let chunk = sample.isRemoved ? nil : phoneSceneChunk(from: sample)
+                    guard sample.isRemoved || chunk != nil else { continue }
                     lock.withLock { state in
                         // A new run of the scanner resets the phone's world origin,
                         // so blocks from the run before it are in a space that no
@@ -497,8 +497,8 @@ final class PhoneStreamReader: @unchecked Sendable {
                 case .message(.plane(let sample)):
                     // Place the surface into world space on this thread, off the main
                     // actor and outside the lock, the way a mesh block is.
-                    let plane = sample.removed ? nil : phonePlane(from: sample)
-                    guard sample.removed || plane != nil else { continue }
+                    let plane = sample.isRemoved ? nil : phonePlane(from: sample)
+                    guard sample.isRemoved || plane != nil else { continue }
                     lock.withLock { state in
                         // A new run of the scanner moves the world origin, so surfaces
                         // from the run before it describe a space that is gone.

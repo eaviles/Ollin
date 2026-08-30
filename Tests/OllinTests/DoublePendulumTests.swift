@@ -11,7 +11,7 @@ struct DoublePendulumTests {
         let initial = pendulum.energy
         let scale = max(abs(initial), 1)
         for _ in 0 ..< 600 {
-            pendulum.step()
+            pendulum.advance()
             #expect(abs(pendulum.energy - initial) / scale < 1e-4)
         }
     }
@@ -19,7 +19,7 @@ struct DoublePendulumTests {
     @Test func runsAreDeterministic() {
         let a = DoublePendulum()
         let b = DoublePendulum()
-        for _ in 0 ..< 300 { a.step(); b.step() }
+        for _ in 0 ..< 300 { a.advance(); b.advance() }
         #expect(a.angle1 == b.angle1 && a.angle2 == b.angle2)
         #expect(a.velocity1 == b.velocity1 && a.velocity2 == b.velocity2)
     }
@@ -29,7 +29,7 @@ struct DoublePendulumTests {
         // a radian ends somewhere completely different within half a minute.
         let a = DoublePendulum()
         let b = DoublePendulum(angle1: 2.1 + 1e-4)
-        for _ in 0 ..< 1800 { a.step(); b.step() }
+        for _ in 0 ..< 1800 { a.advance(); b.advance() }
         #expect(abs(a.angle1 - b.angle1) + abs(a.angle2 - b.angle2) > 0.1)
     }
 
@@ -53,14 +53,14 @@ struct DoublePendulumTests {
                                       angle1: 0.05, angle2: 0.05)
         let period = 2 * Double.pi * (200.0 / 980.0).squareRoot()
         let steps = 600
-        for _ in 0 ..< steps { pendulum.step(period / Double(steps)) }
+        for _ in 0 ..< steps { pendulum.advance(by: period / Double(steps)) }
         #expect(abs(pendulum.angle1 - 0.05) < 0.002)
     }
 
     @Test func restStaysAtRest() {
         // Hanging straight down with no velocity is an equilibrium.
         let pendulum = DoublePendulum(angle1: 0, angle2: 0)
-        for _ in 0 ..< 120 { pendulum.step() }
+        for _ in 0 ..< 120 { pendulum.advance() }
         #expect(abs(pendulum.angle1) < 1e-12 && abs(pendulum.angle2) < 1e-12)
     }
 }

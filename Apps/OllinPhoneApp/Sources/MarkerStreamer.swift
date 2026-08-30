@@ -216,7 +216,7 @@ final class MarkerStreamer: NSObject, ARSessionDelegate, LightReporting, @unchec
             }
         }
 
-        let following = found.contains { $0.tracked }
+        let following = found.contains { $0.isTracked }
         guard following || frame.timestamp - lastSent >= quietInterval else { return }
         lastSent = frame.timestamp
         onMarkers?(found)
@@ -229,7 +229,7 @@ final class MarkerStreamer: NSObject, ARSessionDelegate, LightReporting, @unchec
         let reference = anchor.referenceImage
         let size = SIMD3<Float>(Float(reference.physicalSize.width),
                                 Float(reference.physicalSize.height), 0)
-        return PhoneMarkerSample(tracked: anchor.isTracked, timestamp: timestamp,
+        return PhoneMarkerSample(isTracked: anchor.isTracked, timestamp: timestamp,
                                  id: anchor.identifier, name: reference.name ?? "picture",
                                  kind: .image, transform: anchor.transform, size: size,
                                  scaleFactor: Float(anchor.estimatedScaleFactor))
@@ -240,7 +240,7 @@ final class MarkerStreamer: NSObject, ARSessionDelegate, LightReporting, @unchec
     /// box the scan measured and where the middle of that box sits.
     private static func sample(of anchor: ARObjectAnchor, at timestamp: TimeInterval) -> PhoneMarkerSample {
         let reference = anchor.referenceObject
-        return PhoneMarkerSample(tracked: true, timestamp: timestamp,
+        return PhoneMarkerSample(isTracked: true, timestamp: timestamp,
                                  id: anchor.identifier, name: reference.name ?? "object",
                                  kind: .object, transform: anchor.transform,
                                  size: reference.extent, center: reference.center)

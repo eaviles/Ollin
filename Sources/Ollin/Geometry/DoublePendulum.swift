@@ -104,7 +104,7 @@ public final class DoublePendulum {
     /// accuracy. Calling with the default every frame is deterministic;
     /// passing a live `deltaTime` follows the wall clock instead, at the cost
     /// of exact reproducibility.
-    public func step(_ dt: Double = 1.0 / 60.0) {
+    public func advance(by dt: Double = 1.0 / 60.0) {
         guard dt > 0 else { return }
         let substeps = max(1, Int((dt * 480).rounded(.up)))
         let h = dt / Double(substeps)

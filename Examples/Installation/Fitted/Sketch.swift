@@ -18,10 +18,10 @@ import Ollin
 ///
 /// ```swift
 /// // The machine on the left.
-/// Installation(projection: .init(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
+/// Installation(projection: .init(visibleRegion: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
 ///                                blend: Insets(right: 0.2)))
 /// // The machine on the right.
-/// Installation(projection: .init(shows: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1),
+/// Installation(projection: .init(visibleRegion: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1),
 ///                                blend: Insets(left: 0.2)))
 /// ```
 ///

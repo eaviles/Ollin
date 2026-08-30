@@ -57,11 +57,12 @@ photo = loadImage("/Users/me/Pictures/leaf.png")
 
 ```swift
 drawImage(_ image: Image, _ x: Double, _ y: Double)
+drawImage(_ image: Image, corner: Vector2)
 drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double)
 drawImage(_ image: Image, in rect: Rectangle)
 ```
 
-Draw `image` with its top-left corner at `(x, y)`. The first form uses the image's native pixel size, and the second stretches it to fill a `width`×`height` box. The [`Rectangle`](../Drawing/Geometry.md#rectangle) form does the same with a value you can pass around.
+Draw `image` with its top-left corner at `(x, y)`, or at a `Vector2` you already hold (`corner:`, the same anchor label `drawRect` uses). The first two forms use the image's native pixel size, and the scalar box form stretches it to fill a `width`×`height` box. The [`Rectangle`](../Drawing/Geometry.md#rectangle) form does the same with a value you can pass around.
 
 ```swift
 drawImage(logo, 40, 40)                       // native size, top-left at (40, 40)
@@ -172,7 +173,7 @@ Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose, because a default argument would resolve to *Ollin's* bundle and never yours. So pass `.module` from the target that bundles the file:
 
 ```swift
-let texture = Image(resource: "paper", extension: "png", in: .module)
+let texture = Image(resource: "paper", withExtension: "png", in: .module)
 ```
 
 `Image(cgImage:)` wraps an image you already have in memory. That can be a `CGImage` you rendered yourself, decoded elsewhere, or built procedurally, so anything that can produce a `CGImage` becomes drawable.

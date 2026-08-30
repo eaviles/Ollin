@@ -74,10 +74,10 @@ final class CrackedCity: Sketch {
                 for grain in CrackGrowth.grains(from: mark.point, to: mark.washExtent,
                                                 gain: mark.gain, count: 12) {
                     fill(ink.withAlpha(grain.alpha))
-                    drawPoint(grain.position)
+                    drawPoint(at: grain.position)
                 }
                 fill(self.ink.withAlpha(0.33))
-                drawPoint(mark.point)
+                drawPoint(at: mark.point)
             }
         }
 

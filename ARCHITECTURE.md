@@ -700,7 +700,7 @@ to every layer: it cannot tell a stair-step from genuine one-pixel detail.
 
 ### Feedback (previous-frame) layers
 
-`feedback(scale:)` returns a *persistent* `Feedback` layer: made once in
+`makeFeedback(scale:)` returns a *persistent* `Feedback` layer: made once in
 `setup()` and held, unlike the per-frame `RenderTarget`, because its identity is
 what carries state across frames. `withFeedback(_:) { prev in ... }` redirects
 drawing into it and hands in last frame's result as `prev` (the
@@ -724,7 +724,7 @@ layers, sim fields, and SSR ops alike.
 
 ### Simulation fields
 
-`simField(_:scale:)` returns a persistent `SimField` (`Effects/SimField.swift`)
+`makeSimField(_:scale:)` returns a persistent `SimField` (`Effects/SimField.swift`)
 that runs a built-in `Sim` on its state each frame: the stateful sibling of the
 stateless `Filter`. `Sim` is a `Sendable` value catalog like `Filter`:
 `.reactionDiffusion(feed:kill:)` (Gray-Scott), `.gameOfLife` (Conway),
@@ -901,7 +901,7 @@ The GPU realization has four more load-bearing choices:
   also absorbs the ulp in a white mark's luminance. Nothing erases; easing off
   the pour is the only way to stop.
 
-`topplings` is `subSteps`, a factory knob rather than a constant because an
+`topplings` is `substeps`, a factory knob rather than a constant because an
 avalanche front moves one texel per pass, which makes it the pacing dial: watch
 single waves at 1, hurry a collapse at 128. The two pour protocols look very
 different and both are honest physics: the *classic relaxed figure* comes from
@@ -1335,7 +1335,7 @@ current reflection's 3x3 AABB to reject ghosting, then EMA-blends at
 `resolveSSRAlpha`. History is an `SSRHistorySlot` ping-pong keyed by the SSR op's
 **call site** (`#fileID:#line`, captured by the `.screenSpaceReflections`
 factory) plus an occurrence index for same-site ops, not by an owner identity: a
-sketch makes its `renderTarget()` fresh each frame (unlike a persistent
+sketch makes its `makeRenderTarget()` fresh each frame (unlike a persistent
 `Feedback`/`SimField`), so there is no stable object to key on. It is not a
 frame-wide ordinal either: an ordinal shifts when an earlier SSR op is recorded
 only conditionally, briefly handing a later op the wrong history. Only same-site
@@ -3439,7 +3439,7 @@ sabotage-verified red.
 A picture stamped through an oriented box onto whatever lit mesh surfaces
 sit inside it: `Decal` (the LightCookie construction: one 512-square
 premultiplied resample at wrap time, content hash, plus the source aspect so
-a placement can default its height) and the per-frame `decal(_:at:...)`
+a placement can default its height) and the per-frame `drawDecal(_:at:...)`
 placement, capped at `OLLIN_MAX_DECALS` (8) with repeated placements of one
 image sharing a texture layer. The CPU builds each box's world→unit-box
 transform once (`Drawer.placeDecal`: the light-cookie projector frame with
@@ -7962,7 +7962,7 @@ wrong:
 - **The module must be imported `@preconcurrency`.** The SDK spells its
   CFString keys as mutable globals, which Swift 6 rejects at every use.
 
-Black point compensation stays off and `simulatePaper` switches the *return*
+Black point compensation stays off and `simulatesPaper` switches the *return*
 leg's intent, which is what makes the proof honest in the two ways that
 matter. Measured on the generic four-ink profile: relative in and relative
 out leaves white at 1.005 and lifts black to 0.055 (ink black, always shown);
@@ -8203,7 +8203,7 @@ bad shader edit cannot blank the renderer. `reload(to:keepClock:)`
 re-instantiates and re-runs `setup()`; by default it resets
 `time`/`frameCount`, and `--keep-clock` carries them forward (offsets
 `startTime` so `time` continues, copies `frameCount`) so an animation's phase
-does not jump. `Sketch.onReload()` fires once after the post-reload setup,
+does not jump. `Sketch.reloaded()` fires once after the post-reload setup,
 never on first launch. `SketchRunner.reload(to:)` honors the *new* sketch's
 declared `canvasSize` for non-`.resizable` modes, so an edited resolution
 takes effect on the swap.

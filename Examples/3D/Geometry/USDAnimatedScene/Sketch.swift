@@ -27,7 +27,7 @@ final class USDAnimatedScene: Sketch {
            let s = loadScene(path) {
             mobile = s
         } else {
-            mobile = Scene(resource: "stage", extension: "usda", in: Bundle.module)
+            mobile = Scene(resource: "stage", withExtension: "usda", in: Bundle.module)
         }
     }
 

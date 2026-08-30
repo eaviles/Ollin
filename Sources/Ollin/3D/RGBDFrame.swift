@@ -60,7 +60,7 @@ public struct RGBDFrame {
     /// matching spot in the color frame.
     ///
     /// - Parameters:
-    ///   - minimumConfidence: drop depth samples below this confidence (default
+    ///   - minConfidence: drop depth samples below this confidence (default
     ///     `.high`). Ignored when the frame has no confidence map.
     ///   - depthRange: keep only samples whose depth (meters) falls in this range;
     ///     `nil` keeps every positive depth.
@@ -68,7 +68,7 @@ public struct RGBDFrame {
     ///     a 256×192 LiDAR map is ~49k points at full density, comfortable per frame).
     ///   - pointSize: the splat diameter in world units (meters); perspective
     ///     shrinks distant points.
-    public func pointCloud(minimumConfidence: DepthConfidence = .high,
+    public func pointCloud(minConfidence: DepthConfidence = .high,
                            depthRange: ClosedRange<Double>? = nil,
                            step: Int = 1,
                            pointSize: Double = 0.012) -> PointCloud {
@@ -77,7 +77,7 @@ public struct RGBDFrame {
             return cloud
         }
         let stride = max(1, step)
-        let floor = minimumConfidence.rawValue
+        let floor = minConfidence.rawValue
         let conf = (confidence?.count == depth.count) ? confidence : nil
         // Map a depth pixel to the (higher-res) color frame by the ratio of grids.
         let colorW = color.width, colorH = color.height

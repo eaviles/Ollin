@@ -14,9 +14,9 @@ import Foundation
 /// result as a new, filterable layer:
 ///
 /// ```swift
-/// let scene = renderTarget()
+/// let scene = makeRenderTarget()
 /// withTarget(scene) { background(.black); fill(.orange); drawCircle(width / 2, height / 2, 300) }
-/// let mask = renderTarget()
+/// let mask = makeRenderTarget()
 /// withTarget(mask) { fill(.white); drawCircle(mouseX, mouseY, 200) }   // white where visible
 /// drawImage(scene.combined(with: mask, .mask()).image, 0, 0)           // scene seen through the mask
 /// ```
@@ -128,7 +128,7 @@ public struct Combine: Sendable {
     /// put a fringe on one thing in a scene instead of on the whole frame.
     ///
     /// ```swift
-    /// let heat = renderTarget()
+    /// let heat = makeRenderTarget()
     /// withTarget(heat) { fill(.white); drawCircle(mouseX, mouseY, 220) }
     /// drawImage(scene.combined(with: heat, .disperse(amount: 0.02)).image, 0, 0)
     /// ```
@@ -226,7 +226,7 @@ public struct Combine: Sendable {
     /// with `intensity`.
     ///
     /// ```swift
-    /// let scene = renderTarget()
+    /// let scene = makeRenderTarget()
     /// withTarget(scene) { camera(.perspective(eye: Vector3(0, 3, 7), target: .zero)); drawBox(...) }
     /// drawImage(scene.combined(with: scene.depth, .ambientOcclusion(radius: 0.6)).image, 0, 0)
     /// ```
@@ -239,9 +239,9 @@ public struct Combine: Sendable {
     ///     it if flat faces show faint speckle (acne), lower it if contacts look weak.
     ///   - quality: the sample-count tier (`.default`/`.performance`/`.detail`,
     ///     hardware-relative). More samples trade frame rate for smoother occlusion.
-    public static func ambientOcclusion(radius: Double = 0.5, intensity: Double = 1.0,
+    public static func ambientOcclusion(radius: Double = 0.5, amount: Double = 1,
                                         bias: Double = 0.05, quality: RenderQuality = .default) -> Combine {
-        Combine(kind: .ambientOcclusion(radius: max(0.0001, radius), intensity: max(0, intensity),
+        Combine(kind: .ambientOcclusion(radius: max(0.0001, radius), intensity: max(0, amount),
                                         bias: max(0, bias), quality: quality))
     }
 
@@ -254,9 +254,9 @@ public struct Combine: Sendable {
     /// cloned. Position it by drawing it where you want it.
     ///
     /// ```swift
-    /// let backdrop = renderTarget()
+    /// let backdrop = makeRenderTarget()
     /// withTarget(backdrop) { drawImage(wall, 0, 0) }
-    /// let patch = renderTarget()
+    /// let patch = makeRenderTarget()
     /// withTarget(patch) { drawImage(leaf, mouseX - 120, mouseY - 120) }   // transparent elsewhere
     /// drawImage(backdrop.combined(with: patch, .seamlessClone()).image, 0, 0)
     /// ```
@@ -295,7 +295,7 @@ public struct Combine: Sendable {
     /// out (`edgeFade`), and off-screen or hidden geometry can't be reflected.
     ///
     /// ```swift
-    /// let scene = renderTarget()
+    /// let scene = makeRenderTarget()
     /// withTarget(scene) { camera(.perspective(eye: Vector3(0, 2, 6), target: .zero)); drawBox(...) }
     /// drawImage(scene.combined(with: scene.depth, .screenSpaceReflections()).image, 0, 0)
     /// ```
@@ -316,12 +316,12 @@ public struct Combine: Sendable {
     ///     the screen border, hiding the screen-space cutoff.
     ///   - quality: the ray-march step-count tier (`.default`/`.performance`/`.detail`).
     public static func screenSpaceReflections(
-        intensity: Double = 0.6, maxDistance: Double = 8, thickness: Double = 0.025,
+        amount: Double = 0.6, maxDistance: Double = 8, thickness: Double = 0.025,
         roughness: Double = 0, fresnel: Double = 0.5, edgeFade: Double = 0.1,
         quality: RenderQuality = .default,
         file: String = #fileID, line: Int = #line) -> Combine {
         Combine(kind: .screenSpaceReflections(
-            intensity: max(0, intensity), maxDistance: max(0.0001, maxDistance),
+            intensity: max(0, amount), maxDistance: max(0.0001, maxDistance),
             thickness: max(0.0001, thickness), roughness: min(max(roughness, 0), 1),
             fresnel: max(0, fresnel), edgeFade: min(max(edgeFade, 0), 0.5), quality: quality),
                 sourceID: "\(file):\(line)")
@@ -337,9 +337,9 @@ public struct Combine: Sendable {
     /// so you draw it as the frame rather than over the scene.
     ///
     /// ```swift
-    /// let room = renderTarget()
+    /// let room = makeRenderTarget()
     /// withTarget(room) { fill(Color(hex: 0x2E6F5E)); drawRect(300, 500, 480, 40) }
-    /// let lamps = renderTarget()
+    /// let lamps = makeRenderTarget()
     /// withTarget(lamps) { fill(.white); drawCircle(mouseX, mouseY, 18) }
     /// drawImage(room.combined(with: lamps, .light()).image, 0, 0)
     /// ```

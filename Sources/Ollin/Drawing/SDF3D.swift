@@ -137,10 +137,10 @@ public extension SDF3D {
         .init(.leaf(shape: .octahedron, geo0: SIMD4(Float(radius), 0, 0, 0),
                     geo1: .zero, color: nil))
     }
-    /// An ellipsoid centered at the origin, with semi-axis radii `rx`/`ry`/`rz`.
-    static func ellipsoid(rx: Double, ry: Double, rz: Double) -> SDF3D {
+    /// An ellipsoid centered at the origin, with semi-axis radii `radiusX`/`radiusY`/`radiusZ`.
+    static func ellipsoid(radiusX: Double, radiusY: Double, radiusZ: Double) -> SDF3D {
         .init(.leaf(shape: .ellipsoid,
-                    geo0: SIMD4(Float(max(rx, 1e-4)), Float(max(ry, 1e-4)), Float(max(rz, 1e-4)), 0),
+                    geo0: SIMD4(Float(max(radiusX, 1e-4)), Float(max(radiusY, 1e-4)), Float(max(radiusZ, 1e-4)), 0),
                     geo1: .zero, color: nil))
     }
     /// An infinite plane: the half-space boundary at signed distance `offset` from the origin
@@ -198,7 +198,7 @@ public extension SDF3D {
 
 public extension SDF3D {
     /// Move the field so its origin lands at `(x, y, z)`.
-    func at(x: Double, y: Double, z: Double) -> SDF3D {
+    func at(_ x: Double, _ y: Double, _ z: Double) -> SDF3D {
         translated(SIMD3(Float(x), Float(y), Float(z)))
     }
     /// Move the field so its origin lands at `p`.

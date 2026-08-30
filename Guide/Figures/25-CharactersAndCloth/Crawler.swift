@@ -49,7 +49,7 @@ final class Crawler: Sketch {
         crawler = world.addVehicle(.box(width: hull.x, height: hull.y, depth: hull.z),
                                    at: Vector3(0, 1.2, -3), wheels: wheels,
                                    mass: 4200, engineTorque: 520, topSpeed: 9,
-                                   tracked: true)
+                                   isTracked: true)
         crawler.maxTilt = .pi / 3
     }
 
@@ -66,7 +66,7 @@ final class Crawler: Sketch {
         // backwards, and the machine turns where it stands.
         crawler.throttle = 1
         if frameCount > 60 { crawler.steering = 1 }
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
         bandPhase[0] += crawler.trackSpeed(.left) / 60
         bandPhase[1] += crawler.trackSpeed(.right) / 60
 

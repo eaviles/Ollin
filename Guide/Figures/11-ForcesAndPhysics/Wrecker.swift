@@ -27,7 +27,7 @@ final class Wrecker: Sketch {
 
     override func setup() {
         world.gravity = Vector2(0, 2600)
-        world.bounce = 0.05
+        world.restitution = 0.05
         world.bounds = bounds
         build()
         strokeCap(.round)
@@ -94,7 +94,7 @@ final class Wrecker: Sketch {
     override func draw() {
         background(Color(hex: 0x12151C))
         held?.target = Vector2(mouseX, mouseY)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         noStroke()
         for i in bricks.indices {

@@ -48,7 +48,7 @@ final class CrateFall: Sketch {
         castShadows()
         perspective(eye: Vector3(6.6, 4.0, 9.6), target: Vector3(0.9, 0.9, 0))
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         fill(Color(hex: 0x1A1F28))
         material(.dielectric(roughness: 0.85))

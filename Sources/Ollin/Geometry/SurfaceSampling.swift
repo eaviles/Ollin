@@ -332,7 +332,7 @@ private func thinToBlueNoise(_ samples: [SurfaceSample], count: Int,
     heap.reserve(m * 2)
     for i in 0 ..< m {
         var w = 0.0
-        grid.forNeighbors(of: positions[i], within: dMax) { j, d2 in
+        grid.forEachNeighbor(of: positions[i], within: dMax) { j, d2 in
             if j != i { w += weight(d2) }
         }
         weights[i] = w
@@ -349,7 +349,7 @@ private func thinToBlueNoise(_ samples: [SurfaceSample], count: Int,
         if top.key != weights[i] { heap.push(weights[i], top.item); continue }
         dropped[i] = true
         left -= 1
-        grid.forNeighbors(of: positions[i], within: dMax) { j, d2 in
+        grid.forEachNeighbor(of: positions[i], within: dMax) { j, d2 in
             guard j != i, !dropped[j] else { return }
             weights[j] -= weight(d2)
             heap.push(weights[j], Int32(j))

@@ -34,7 +34,7 @@ import Foundation
 
         // `.fast` is the level a live feed reads at, and it round-trips the
         // rendered word here.
-        let quick = try await TextRecognizer.detect(in: image, level: .fast)
+        let quick = try await TextRecognizer.detect(in: image, quality: .fast)
         #expect(quick.map(\.text).joined(separator: " ").uppercased().contains("OLLIN"))
 
         // `.accurate` reaches a second, precompiled model, and on this machine
@@ -49,7 +49,7 @@ import Foundation
         // meaning something.
         await withKnownIssue("the accurate text model does not build on this system",
                              isIntermittent: true) {
-            let lines = try await TextRecognizer.detect(in: image, level: .accurate)
+            let lines = try await TextRecognizer.detect(in: image, quality: .accurate)
             let all = lines.map(\.text).joined(separator: " ").uppercased()
             #expect(all.contains("OLLIN"))
         }

@@ -98,7 +98,7 @@ public final class NBody {
     /// default) with a leapfrog step: half a velocity kick, a full position
     /// drift, one fresh force pass, half a kick. Keep `dt` fixed frame to
     /// frame; that fixedness is what keeps orbits from drifting.
-    public func step(_ dt: Double = 1.0 / 60.0) {
+    public func advance(by dt: Double = 1.0 / 60.0) {
         guard dt > 0, !bodies.isEmpty else { return }
         // Forces at the current positions: reused from the last step's tail
         // when the bodies haven't been touched, recomputed when they have.

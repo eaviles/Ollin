@@ -146,7 +146,7 @@ private final class FilterProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             noStroke(); fill(.white)
@@ -164,7 +164,7 @@ private final class FlatFieldProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) { background(Color(white: 0.5)) }
         drawImage((filter.map { scene.filtered($0) } ?? scene).image, 0, 0)
     }
@@ -178,7 +178,7 @@ private final class DotProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             noStroke(); fill(.white)
@@ -198,17 +198,17 @@ private final class PaintMixProbe: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
         let blue = Color(red: 0.1, green: 0.25, blue: 0.9)
-        let base = renderTarget()
+        let base = makeRenderTarget()
         withTarget(base) { background(blue) }
         switch mode {
         case .plainBase:
             drawImage(base.image, 0, 0)
         case .equalAux:
-            let aux = renderTarget()
+            let aux = makeRenderTarget()
             withTarget(aux) { background(blue) }
             drawImage(base.combined(with: aux, .paintMix(amount: 0.5)).image, 0, 0)
         case .yellowDisc:
-            let aux = renderTarget()
+            let aux = makeRenderTarget()
             withTarget(aux) {
                 noStroke(); fill(Color(red: 1, green: 0.85, blue: 0.05))
                 drawCircle(128, 128, 60)

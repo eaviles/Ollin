@@ -11,7 +11,7 @@ import Foundation
 /// and hand them to `RenderTarget.filtered(_:)` or `postProcess(_:)`:
 ///
 /// ```swift
-/// let layer = renderTarget()
+/// let layer = makeRenderTarget()
 /// withTarget(layer) {
 ///     background(.black)
 ///     fill(.orange); drawCircle(width / 2, height / 2, 200)
@@ -398,10 +398,10 @@ public struct Filter: Sendable {
     /// vivid full-brightness mark blooms whatever its hue); `threshold` runs 0…1
     /// over the linear-light frame, so values above 1 (HDR highlights) bloom hardest.
     public static func bloom(threshold: Double = 0.6,
-                             intensity: Double = 1.0,
+                             amount: Double = 1,
                              radius: Double = 16) -> Filter {
         Filter(kind: .bloom(threshold: max(0, threshold),
-                            intensity: max(0, intensity),
+                            intensity: max(0, amount),
                             radius: max(0, radius)))
     }
 
@@ -477,7 +477,7 @@ public struct Filter: Sendable {
 
     /// Soft proof: show the layer as a printing condition will reproduce it. The
     /// colors ink cannot reach come in, the blacks lift to what ink can actually
-    /// do, and with `simulatePaper` the stock's own color arrives too.
+    /// do, and with `simulatesPaper` the stock's own color arrives too.
     ///
     /// ```swift
     /// let press = SoftProof(.genericCMYK)
@@ -501,9 +501,9 @@ public struct Filter: Sendable {
     /// Soft proof against a printer profile, from an sRGB canvas: the short
     /// form of `softProof(SoftProof(...))`.
     public static func softProof(_ profile: ICCProfile, intent: RenderingIntent = .relative,
-                                 simulatePaper: Bool = false, warning: Color? = nil,
+                                 simulatesPaper: Bool = false, warning: Color? = nil,
                                  amount: Double = 1) -> Filter {
-        softProof(SoftProof(profile, intent: intent, simulatePaper: simulatePaper),
+        softProof(SoftProof(profile, intent: intent, simulatesPaper: simulatesPaper),
                   warning: warning, amount: amount)
     }
 
@@ -537,7 +537,7 @@ public struct Filter: Sendable {
     /// its own scales.
     ///
     /// ```swift
-    /// let plate = renderTarget(width: 512, height: 512)
+    /// let plate = makeRenderTarget(width: 512, height: 512)
     /// withTarget(plate) { background(.black); fill(.white); drawCircle(256, 256, 90) }
     /// drawImage(plate.filtered(.fourier()).filtered(.spectrum()).image, 0, 0)
     /// ```
@@ -576,8 +576,8 @@ public struct Filter: Sendable {
 
     /// Sobel edge detection: bright edges on black, scaled by `intensity`. A quick
     /// outline / comic-ink pass.
-    public static func edges(intensity: Double = 1) -> Filter {
-        Filter(kind: .edges(intensity: max(0, intensity)))
+    public static func edges(amount: Double = 1) -> Filter {
+        Filter(kind: .edges(intensity: max(0, amount)))
     }
 
     /// Unsharp sharpen: emphasize local detail by `amount` (0 = unchanged).
@@ -777,8 +777,8 @@ public struct Filter: Sendable {
 
     /// Contour: draw dark iso-brightness lines (a contour every `1/levels` of the range)
     /// over the image at `intensity`, turning tone into a topographic map.
-    public static func contour(levels: Double = 10, intensity: Double = 1) -> Filter {
-        Filter(kind: .contour(levels: max(1, levels), intensity: min(max(intensity, 0), 1)))
+    public static func contour(levels: Double = 10, amount: Double = 1) -> Filter {
+        Filter(kind: .contour(levels: max(1, levels), intensity: min(max(amount, 0), 1)))
     }
 
     /// CMYK halftone: separate the image into cyan/magenta/yellow/black and screen each as
@@ -790,8 +790,8 @@ public struct Filter: Sendable {
     /// Normal map: read the image as a height field and output its surface normal as an RGB
     /// vector (the bluish bump-map look), ready to feed `displace` or a lighting pass.
     /// `strength` exaggerates the slope.
-    public static func normalMap(strength: Double = 1) -> Filter {
-        Filter(kind: .normalMap(strength: max(0, strength)))
+    public static func normalMap(amount: Double = 1) -> Filter {
+        Filter(kind: .normalMap(strength: max(0, amount)))
     }
 
     /// The curated material a `relight` shades the height field with: `matte`
@@ -902,8 +902,8 @@ public struct Filter: Sendable {
 
     /// Scanlines: darken alternating horizontal lines, the CRT look. `count` is how many
     /// lines span the height, `intensity` (0…1) how dark the gaps go.
-    public static func scanlines(count: Double = 240, intensity: Double = 0.4) -> Filter {
-        Filter(kind: .scanlines(count: max(1, count), intensity: min(max(intensity, 0), 1)))
+    public static func scanlines(count: Double = 240, amount: Double = 0.4) -> Filter {
+        Filter(kind: .scanlines(count: max(1, count), intensity: min(max(amount, 0), 1)))
     }
 
     /// Glitch: tear random blocks of rows sideways and split their channels, the corrupted-
@@ -956,9 +956,9 @@ public struct Filter: Sendable {
     ///   - rotation: Turn the whole thing, in radians.
     public static func droste(inner: Double = 0.35, twist: Double = 1, zoom: Double = 0,
                               center: Vector2 = Vector2(0.5, 0.5),
-                              rotation: Double = 0) -> Filter {
+                              angle: Double = 0) -> Filter {
         Filter(kind: .droste(inner: min(max(inner, 0.001), 0.99), twist: twist,
-                             zoom: zoom, center: center, rotation: rotation))
+                             zoom: zoom, center: center, rotation: angle))
     }
 
     /// Bulge / pinch: a radial lens within `radius` of `center`. `amount` > 0 bulges (fisheye
@@ -1087,13 +1087,13 @@ public struct Filter: Sendable {
     public static func water(scale: Double = 1, waves: Double = 0.3,
                              refraction: Double = 0.1, layering: Double = 0.5,
                              edges: Double = 0.8,
-                             highlights: Double = 0.07, highlight: Color = .white,
+                             highlightAmount: Double = 0.07, highlightColor: Color = .white,
                              phase: Double = 0) -> Filter {
         Filter(kind: .water(scale: min(max(scale, 0.05), 7), waves: min(max(waves, 0), 1),
                             refraction: min(max(refraction, 0), 1),
                             layering: min(max(layering, 0), 1), edges: min(max(edges, 0), 1),
-                            highlights: min(max(highlights, 0), 1),
-                            highlight: highlight.linearRGBA, phase: phase))
+                            highlights: min(max(highlightAmount, 0), 1),
+                            highlight: highlightColor.linearRGBA, phase: phase))
     }
 
     /// Paper: lay the image onto a synthesized sheet of paper, embossed by its
@@ -1222,7 +1222,7 @@ public struct Filter: Sendable {
     /// draw the marks into a layer of their own and filter that:
     ///
     /// ```swift
-    /// let marks = renderTarget()
+    /// let marks = makeRenderTarget()
     /// withTarget(marks) {
     ///     strokeWeight(6); stroke(Color(hex: 0xE2544C))
     ///     drawLine(120, 200, 900, 340)
@@ -1263,7 +1263,7 @@ public struct Filter: Sendable {
     /// picture), or to push things apart along the direction they are crowded from.
     ///
     /// ```swift
-    /// let marks = renderTarget()
+    /// let marks = makeRenderTarget()
     /// withTarget(marks) { fill(.white); drawCircle(540, 540, 200) }
     /// let field = marks.filtered(.distanceField())
     /// drawImage(field.filtered(.fieldMap(.viridis, from: -200, to: 200)).image, 0, 0)
@@ -1315,7 +1315,7 @@ public struct Filter: Sendable {
     /// large or when the radius has to change while a sketch runs.
     ///
     /// ```swift
-    /// let layer = renderTarget()
+    /// let layer = makeRenderTarget()
     /// withTarget(layer) { background(.black); fill(.orange); drawCircle(540, 540, 120) }
     /// drawImage(layer.filtered(.boxBlur(radius: 300)).image, 0, 0)
     /// ```
@@ -1347,7 +1347,7 @@ public struct Filter: Sendable {
     /// ignores a slow change in illumination, so both corners come out.
     ///
     /// ```swift
-    /// let page = renderTarget()
+    /// let page = makeRenderTarget()
     /// withTarget(page) { drawImage(photo, 0, 0) }
     /// drawImage(page.filtered(.adaptiveThreshold()).image, 0, 0)
     /// ```

@@ -201,7 +201,7 @@ private final class FieldProbe: Sketch {
 
     override func draw() {
         background(.black)
-        let marks = renderTarget()
+        let marks = makeRenderTarget()
         withTarget(marks) {
             noStroke()
             switch subject {

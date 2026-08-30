@@ -200,7 +200,7 @@ private final class FieldBenchScene: Sketch {
 
     override func draw() {
         background(Color(hex: 0x0D1017))
-        field.cullingEnabled = fieldCulling
+        field.isCullingEnabled = fieldCulling
         let t = time * 0.05
         camera(Camera3D(eye: Vector3(cos(t * .tau) * 130, 4.2, sin(t * .tau) * 130),
                         target: Vector3(cos(t * .tau + 0.12) * 128, 1.4, sin(t * .tau + 0.12) * 128),
@@ -257,7 +257,7 @@ private final class FieldABSketch: Sketch {
                  (Mesh.sphere(radius: 0.6), spheres),
                  (Mesh.cone(radius: 0.5, height: 1.1), cones)]
         for (mesh, copies) in world { field.place(mesh, at: copies) }
-        field.cullingEnabled = (mode != .fieldUnculled)
+        field.isCullingEnabled = (mode != .fieldUnculled)
     }
 
     override func draw() {

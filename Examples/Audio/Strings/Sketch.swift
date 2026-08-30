@@ -73,7 +73,7 @@ final class Strings: Sketch {
         // Changing the voice does not disturb notes already ringing, so each
         // pluck can have its own pick position and the previous ones carry on.
         synth.voice = Voice(
-            string: PluckedString(pick: pick, hardness: hardness, decay: ring, damping: damping),
+            string: PluckedString(position: pick, hardness: hardness, decay: ring, damping: damping),
             gain: 0.85
         )
         // The note is held for as long as the string would ring, so the

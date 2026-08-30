@@ -26,7 +26,7 @@ final class LightWithABody: Sketch {
         // total light steady, so only the softness changes.
         let side = 1.0 + pingPong(over: 6) * 2.2
         let facing = Vector3(0.55, -0.58, 0.6)          // aimed down across the set
-        rectLight(Color(hue: 0.09, saturation: 0.22, brightness: 1.0),
+        rectangleLight(Color(hue: 0.09, saturation: 0.22, brightness: 1.0),
                   at: Vector3(-3.4, 4.8, -1.2), direction: facing,
                   width: side, height: side, intensity: 70 / (side * side))
         castShadows()

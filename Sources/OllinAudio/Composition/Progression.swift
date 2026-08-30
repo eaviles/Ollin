@@ -29,7 +29,7 @@ public struct Progression: Sendable, Hashable {
     public var scale: Scale
 
     /// How many notes each chord has. Three is triads, four is sevenths.
-    public var notes: Int
+    public var noteCount: Int
 
     /// How far apart the stacked notes are, in scale degrees. Two is the usual
     /// stack of thirds; three gives the open, fourth-stacked sound.
@@ -41,19 +41,19 @@ public struct Progression: Sendable, Hashable {
     /// that survives changing key. Written as chord symbols instead, the
     /// chords carry their own qualities and this holds them; the degrees are
     /// then unused.
-    public internal(set) var written: [Chord]?
+    public internal(set) var writtenChords: [Chord]?
 
     // MARK: Making one
 
     /// A progression from scale degrees you have already worked out.
-    public init(_ degrees: [Int], in scale: Scale, notes: Int = 3, spacing: Int = 2) {
+    public init(_ degrees: [Int], in scale: Scale, noteCount: Int = 3, spacing: Int = 2) {
         self.degrees = degrees.isEmpty ? [0] : degrees
         self.scale = scale
-        self.notes = max(1, notes)
+        self.noteCount = max(1, noteCount)
         self.spacing = max(1, spacing)
     }
 
-    /// A progression written the way progressions are usually written.
+    /// A progression writtenChords the way progressions are usually writtenChords.
     ///
     /// ```swift
     /// Progression("I vi IV V", in: key)
@@ -65,14 +65,14 @@ public struct Progression: Sendable, Hashable {
     /// or minor is decided by the key it is built from, which is the whole
     /// reason to write a progression this way. Anything unreadable is skipped,
     /// and a line with nothing readable in it gives the key's own chord.
-    public init(_ text: String, in scale: Scale, notes: Int = 3, spacing: Int = 2) {
-        self.init(Progression.parse(text), in: scale, notes: notes, spacing: spacing)
+    public init(_ text: String, in scale: Scale, noteCount: Int = 3, spacing: Int = 2) {
+        self.init(Progression.parse(text), in: scale, noteCount: noteCount, spacing: spacing)
     }
 
     // MARK: Reading it
 
     /// How many chords there are before it repeats.
-    public var count: Int { written?.count ?? degrees.count }
+    public var count: Int { writtenChords?.count ?? degrees.count }
 
     /// The chord at a step. The cycle wraps, so any step number works.
     public subscript(step: Int) -> [Pitch] { pitches(at: step) }
@@ -80,14 +80,14 @@ public struct Progression: Sendable, Hashable {
     /// The notes of the chord at a step, lowest first.
     public func pitches(at step: Int) -> [Pitch] {
         if let chord = chord(at: step) { return chord.pitches }
-        return scale.chord(on: degree(at: step), notes: notes, spacing: spacing)
+        return scale.chord(on: degree(at: step), noteCount: noteCount, spacing: spacing)
     }
 
     /// The chord at a step, for a progression written as chord symbols. Nil
     /// for one written as degrees, whose chords come out of the key instead.
     public func chord(at step: Int) -> Chord? {
-        guard let written, !written.isEmpty else { return nil }
-        return written[((step % written.count) + written.count) % written.count]
+        guard let writtenChords, !writtenChords.isEmpty else { return nil }
+        return writtenChords[((step % writtenChords.count) + writtenChords.count) % writtenChords.count]
     }
 
     /// The scale degree the chord at a step is built on.
@@ -108,16 +108,16 @@ public struct Progression: Sendable, Hashable {
     public func transposed(by semitones: Double) -> Progression {
         var moved = self
         moved.scale = scale.transposed(by: semitones)
-        moved.written = written?.map { $0.transposed(by: semitones) }
+        moved.writtenChords = writtenChords?.map { $0.transposed(by: semitones) }
         return moved
     }
 
     /// The same chords starting somewhere else in the cycle.
     public func rotated(by amount: Int) -> Progression {
-        if let written, !written.isEmpty {
-            let shift = ((amount % written.count) + written.count) % written.count
+        if let writtenChords, !writtenChords.isEmpty {
+            let shift = ((amount % writtenChords.count) + writtenChords.count) % writtenChords.count
             var moved = self
-            moved.written = Array(written[shift...] + written[..<shift])
+            moved.writtenChords = Array(writtenChords[shift...] + writtenChords[..<shift])
             return moved
         }
         guard !degrees.isEmpty else { return self }
@@ -164,7 +164,7 @@ public struct Progression: Sendable, Hashable {
 
     // MARK: Reading roman numerals
 
-    /// The degrees a written progression names, zero based.
+    /// The degrees a writtenChords progression names, zero based.
     ///
     /// Walked one character at a time rather than split on spaces, so `I-vi-IV`
     /// and `I vi IV` and `I, vi, IV` all read the same: anything that is not a
@@ -219,12 +219,12 @@ public extension Progression {
     /// Two chords leaning on each other and resolving, the commonest move in
     /// tonal music and most of what jazz is holding together.
     static func twoFiveOne(in scale: Scale) -> Progression {
-        Progression([1, 4, 0], in: scale, notes: 4)
+        Progression([1, 4, 0], in: scale, noteCount: 4)
     }
 
     /// A twelve bar blues, one chord per bar.
     static func blues(in scale: Scale) -> Progression {
-        Progression([0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], in: scale, notes: 4)
+        Progression([0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], in: scale, noteCount: 4)
     }
 
     /// The descending line heard through flamenco and a great deal else.
@@ -235,6 +235,6 @@ public extension Progression {
     /// A circle of falling fifths, which is the strongest way to move a long
     /// way and still sound as though it had to happen.
     static func circleOfFifths(in scale: Scale) -> Progression {
-        Progression([0, 3, 6, 2, 5, 1, 4, 0], in: scale, notes: 4)
+        Progression([0, 3, 6, 2, 5, 1, 4, 0], in: scale, noteCount: 4)
     }
 }

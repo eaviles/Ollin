@@ -173,21 +173,21 @@ struct SVGExportTests {
     }
 
     @Test func hatchingKeepsTheOutline() {
-        let hatched = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepOutline: true))
+        let hatched = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepsOutline: true))
         // The circle survives as a stroked, unfilled outline.
         #expect(hatched.contains("<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"none\" stroke="))
-        let dropped = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepOutline: false))
+        let dropped = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, keepsOutline: false))
         #expect(!dropped.contains("<circle"))
     }
 
     @Test func crossHatchAddsLines() {
         func lineCount(_ svg: String) -> Int { svg.components(separatedBy: "<polyline").count - 1 }
-        let single = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatch: false))
-        let cross = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatch: true))
+        let single = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: false))
+        let cross = OllinApp.svg(of: Disk(), hatching: Hatching(spacing: 6, crossHatches: true))
         #expect(lineCount(cross) > lineCount(single))
     }
 
-    @Test func toneDensitySkipsLightFills() {
+    @Test func usesToneDensitySkipsLightFills() {
         // A near-white fill drops out of the hatch entirely.
         final class Faint: Sketch {
             override var canvasSize: CanvasSize { .square(100) }
@@ -196,7 +196,7 @@ struct SVGExportTests {
                 fill(Color(white: 0.98)); drawCircle(50, 50, 30)
             }
         }
-        let hatched = OllinApp.svg(of: Faint(), hatching: Hatching(spacing: 6, keepOutline: false))
+        let hatched = OllinApp.svg(of: Faint(), hatching: Hatching(spacing: 6, keepsOutline: false))
         #expect(!hatched.contains("<polyline"))   // too light to hatch
     }
 

@@ -18,7 +18,7 @@ final class DesignFilters_Example: Sketch {
 
         // The alpha shape the top-row filters read.
         func heartLayer() -> RenderTarget {
-            let layer = renderTarget()
+            let layer = makeRenderTarget()
             withTarget(layer) {
                 noStroke(); fill(.white)
                 drawHeart(width / 2, height / 2, width * 0.5)

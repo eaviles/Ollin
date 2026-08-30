@@ -98,7 +98,7 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
     private let status = VisionStatus("contour detection")
 
     /// The contours found in the most recent analyzed frame.
-    public var latest: DetectedContours { lock.withLock { $0 } }
+    public var contourTree: DetectedContours { lock.withLock { $0 } }
     /// How many contours were found, nesting included.
     public var count: Int { lock.withLock { $0.count } }
 
@@ -111,13 +111,13 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
     /// The contours mapped into `rect` (canvas space) — see
     /// `DetectedContours.contours(in:)`.
     public func contours(in rect: Rectangle, mirrored: Bool = false) -> [Contour] {
-        latest.contours(in: rect, mirrored: mirrored)
+        contourTree.contours(in: rect, mirrored: mirrored)
     }
 
     /// The contours as even-odd `Shape`s mapped into `rect` — see
     /// `DetectedContours.shapes(in:)`.
     public func shapes(in rect: Rectangle, mirrored: Bool = false) -> [Shape] {
-        latest.shapes(in: rect, mirrored: mirrored)
+        contourTree.shapes(in: rect, mirrored: mirrored)
     }
 
     /// Trace contours in `source`'s frames — the live camera, or a playing video.

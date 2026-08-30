@@ -114,7 +114,7 @@ public struct GCode: Equatable, Sendable {
     /// nearest-neighbor walk from the machine origin, free to reverse a path
     /// or start a closed loop at any of its points). Off, paths run in draw
     /// order.
-    public var ordered: Bool
+    public var optimizesTravel: Bool
 
     /// Open paths whose ends meet within this distance (millimeters) merge
     /// into one, so the pen stays down across what was drawn as several calls.
@@ -122,11 +122,11 @@ public struct GCode: Equatable, Sendable {
     public var joinTolerance: Double
 
     public init(_ machine: Machine, width: Double, margin: Double = 0,
-                ordered: Bool = true, joinTolerance: Double = 0.1) {
+                optimizesTravel: Bool = true, joinTolerance: Double = 0.1) {
         self.machine = machine
         self.width = width
         self.margin = margin
-        self.ordered = ordered
+        self.optimizesTravel = optimizesTravel
         self.joinTolerance = joinTolerance
     }
 
@@ -152,10 +152,10 @@ public struct GCode: Equatable, Sendable {
             work = work.flatMap { clipPolyline($0, to: page, convexAllInside: canvas) }
         }
         if joinTolerance > 0 {
-            work = mergedPaths(work, tolerance: joinTolerance / scale, sequentialOnly: !ordered)
+            work = mergedPaths(work, tolerance: joinTolerance / scale, sequentialOnly: !optimizesTravel)
         }
         let origin = Vector2(canvas.x, canvas.y + canvas.height)
-        if ordered {
+        if optimizesTravel {
             work = orderedPaths(work, from: origin)
         }
         var travels: [(from: Vector2, to: Vector2)] = []

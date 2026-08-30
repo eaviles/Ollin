@@ -57,7 +57,7 @@ public final class MeshField {
     /// default). Turn it off to draw every copy regardless: the A/B switch for
     /// feeling what culling saves, and the picture must not change either way
     /// (a culled copy was off-screen by definition).
-    public var cullingEnabled = true
+    public var isCullingEnabled = true
 
     /// How many copies this field may put into the ray-traced passes
     /// (reflections, ray-traced shadows, global illumination). A copy there is

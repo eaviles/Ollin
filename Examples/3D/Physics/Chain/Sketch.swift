@@ -27,7 +27,7 @@ final class Chain3D: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.1
+        world.restitution = 0.1
 
         // The beam, the chain, and the ball, joined top to bottom. Each link
         // meets the next where cap touches cap, and a ball joint there lets
@@ -86,7 +86,7 @@ final class Chain3D: Sketch {
         perspective(eye: Vector3(-5.6, 4.2, 8.6), target: Vector3(0.8, 2.0, 0))
 
         dragBodies(in: world)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         fill(Color(hex: 0x1A202A))
         material(.dielectric(roughness: 0.85))

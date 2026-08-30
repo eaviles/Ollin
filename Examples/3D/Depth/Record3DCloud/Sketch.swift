@@ -60,9 +60,9 @@ final class Record3DCloud: Sketch {
         guard let recording, recording.frameCount > 0 else { return }
 
         // Play the clip, looping, at its own frame rate.
-        let rate = recording.fps > 0 ? recording.fps : 15
+        let rate = recording.frameRate > 0 ? recording.frameRate : 15
         let index = recording.frameCount == 1 ? 0 : Int(time * rate) % recording.frameCount
-        guard let cloud = try? recording.pointCloud(at: index, minimumConfidence: .medium,
+        guard let cloud = try? recording.pointCloud(at: index, minConfidence: .medium,
                                                     depthRange: 0.1...8, pointSize: 0.005) else { return }
         guard !cloud.isEmpty else { return }
 

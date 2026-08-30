@@ -14,7 +14,7 @@ struct SoftBody3DTests {
     static let ball = Mesh.icosphere(radius: 0.5, subdivisions: 2)
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// Every edge's length now, over its length in the rest mesh: 1 is
@@ -268,7 +268,7 @@ struct SoftBody3DTests {
         let target = Vector3(1, 3.5, 0.4)
         for _ in 0 ..< 90 {
             cloth.move(corner, to: target)
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
         #expect((cloth.positions[corner] - target).length < 1e-3)
         // Moving it pinned it, and the sheet came with it rather than tearing
@@ -295,8 +295,8 @@ struct SoftBody3DTests {
             var samples = 0
             for step in 0 ..< 300 {
                 cloth.applyForce(wind)
-                world.step(dt: 1.0 / 60)
-                if step >= 180 { total += cloth.center.y; samples += 1 }
+                world.advance(by: 1.0 / 60)
+                if step >= 180 { total += cloth.position.y; samples += 1 }
             }
             return total / Double(samples)
         }

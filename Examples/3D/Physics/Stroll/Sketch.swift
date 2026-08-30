@@ -63,13 +63,13 @@ final class Stroll: Sketch {
             // Flat out to the plaza, then hills, then falling into the water.
             let hills = smoothstep(0.3, 0.78, d) * (1 - smoothstep(0.82, 1, d))
             let shore = 1 - smoothstep(0.86, 1.0, d)
-            return (self.plazaLevel + hills * (0.3 + 0.7 * bumps.value(atU: u, v: v)))
+            return (self.plazaLevel + hills * (0.3 + 0.7 * bumps.value(u: u, v: v)))
                 * shore
         }
         .eroded(.hydraulic(drops: 30_000), seed: 7)
         .eroded(.thermal(talus: 0.014, iterations: 24))
         .normalized()
-        plazaY = land.value(atU: 0.5, v: 0.5) * landHeight
+        plazaY = land.value(u: 0.5, v: 0.5) * landHeight
         terrain = terrainMesh(land)
         world.addBody(.heightfield(land, width: landWidth, depth: landDepth,
                                    height: landHeight),
@@ -117,7 +117,7 @@ final class Stroll: Sketch {
         castShadows()
 
         steer()
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         // Fallen off the island: put the walker back on the plaza.
         if walker.position.y < -3 {

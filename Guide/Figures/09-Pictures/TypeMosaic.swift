@@ -42,7 +42,7 @@ final class TypeMosaic: Sketch {
                 // whole picture breathe without changing what it says.
                 let sway = 1 + signedNoise(u * 3, v * 3, time * 0.25) * 0.18 * breathe
                 textSize(cell * (0.4 + 1.25 * brightness * brightness) * sway)
-                fill(Color.mix(c, .white, t: brightness * 0.22))
+                fill(Color.mix(c, .white, brightness * 0.22))
                 drawText(String(chars[k % chars.count]),
                          (Double(col) + 0.5) * cell, (Double(row) + 0.5) * cell)
                 k += 1
@@ -66,15 +66,15 @@ final class TypeMosaic: Sketch {
                     let d = ((u - sunX) * (u - sunX) + (v - sunY) * (v - sunY)).squareRoot()
                     let disk = 1 - smoothstep(0.075, 0.095, d)
                     let glow = (1 - smoothstep(0.04, 0.4, d)) * 0.5
-                    color = Color.mix(color, Color(hex: 0xFFF3D6), t: min(1, disk + glow))
+                    color = Color.mix(color, Color(hex: 0xFFF3D6), min(1, disk + glow))
                 } else {
                     let w = (v - horizon) / (1 - horizon)
                     let reflected = sky.color(at: max(0, 0.92 - w * 0.9))
-                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), t: 0.45 + w * 0.4)
+                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), 0.45 + w * 0.4)
                     let streak = noise(u * 5, v * 120)
                     let path = 1 - smoothstep(0.02, 0.16 + w * 0.3, abs(u - sunX))
                     color = Color.mix(dark, Color(hex: 0xFFD98A),
-                                      t: min(1, path * (0.2 + streak * 0.8)))
+                                      min(1, path * (0.2 + streak * 0.8)))
                 }
                 image[px, py] = color
             }

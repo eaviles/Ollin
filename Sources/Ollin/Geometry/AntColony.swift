@@ -43,8 +43,8 @@ public final class AntColony {
     public private(set) var bestTour: [Int] = []
     /// The length of `bestTour` (closed, back to its start).
     public private(set) var bestLength: Double = .infinity
-    /// Full iterations run so far.
-    public private(set) var iterations = 0
+    /// Full stepCount run so far.
+    public private(set) var stepCount = 0
 
     private let ants: Int
     private var pheromone: [Double]
@@ -53,7 +53,7 @@ public final class AntColony {
     private var rng: SplitMix64
 
     /// A colony over `cities`. `ants` defaults to one per city (the paper's
-    /// choice). The pheromone starts level, so the first iterations explore
+    /// choice). The pheromone starts level, so the first stepCount explore
     /// on closeness and the web differentiates as tours come in.
     public init(cities: [Vector2], ants: Int? = nil, alpha: Double = 1,
                 beta: Double = 4, evaporation: Double = 0.5,
@@ -109,10 +109,10 @@ public final class AntColony {
         if elitism > 0, !bestTour.isEmpty {
             deposit(along: bestTour, amount: elitism * depositScale / bestLength)
         }
-        iterations += 1
+        stepCount += 1
     }
 
-    /// Run a batch of iterations (the usual per-frame call is one or two).
+    /// Run a batch of stepCount (the usual per-frame call is one or two).
     public func step(_ steps: Int) {
         for _ in 0..<Swift.max(0, steps) { step() }
     }

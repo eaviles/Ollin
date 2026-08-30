@@ -44,7 +44,7 @@ Everything decomposes into the core types you already use. `scene.camera` is a [
 ```swift
 let scene = loadScene("Stage.gltf")                            // path (Sketch sugar)
 let scene = Scene(contentsOf: url)                             // URL
-let scene = Scene(resource: "scene", extension: "gltf", in: .module)   // bundled
+let scene = Scene(resource: "scene", withExtension: "gltf", in: .module)   // bundled
 ```
 
 Structure comes from two families:

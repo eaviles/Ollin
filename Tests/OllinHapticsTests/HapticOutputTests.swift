@@ -213,7 +213,7 @@ struct HapticHubTests {
     @Test func aKnockLandsOnceTheGapHasPassed() {
         let (hub, performer, timeline) = prepare()
         hub.play(.tap())
-        timeline.start = TrackpadPlan.minimumSpacing
+        timeline.start = TrackpadPlan.minSpacing
         hub.play(.tap())
         #expect(performer.performed.count == 2)
     }

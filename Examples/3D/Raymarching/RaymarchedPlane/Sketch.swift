@@ -24,11 +24,11 @@ final class RaymarchedPlane: Sketch {
         // casts a soft self-shadow onto the plane (and onto its neighbors).
         let floor = SDF3D.plane(offset: -0.85).colored(Color(hex: 0x5b6472))
         let ball = SDF3D.sphere(radius: 0.7).colored(Color(hex: 0x38bdf8))
-            .at(x: -1.5, y: -0.15, z: 0.2)
+            .at(-1.5, -0.15, 0.2)
         let bar = SDF3D.capsule(radius: 0.3, height: 1.0).colored(Color(hex: 0xf472b6))
-            .rotatedZ(0.5).at(x: 0.3, y: 0.05, z: -0.7)
+            .rotatedZ(0.5).at(0.3, 0.05, -0.7)
         let pin = SDF3D.cone(radius: 0.55, height: 1.6).colored(Color(hex: 0xfacc15))
-            .at(x: 1.7, y: -0.05, z: 0.6)
+            .at(1.7, -0.05, 0.6)
 
         drawSDF3D(floor.union(ball).union(bar).union(pin))
     }

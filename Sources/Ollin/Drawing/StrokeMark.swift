@@ -71,7 +71,7 @@ public struct StrokeMark: Sendable {
     /// points into one spot, and it is what makes the recorded speed meaningful:
     /// each step spans a real distance over a real time. Set it to `0` to record
     /// every frame.
-    public var minimumSpacing: Double
+    public var minSpacing: Double
 
     /// How much the measured speed and pressure are smoothed, `0` (raw, jumpy)
     /// to `1` (heavy, laggy). Raw per-frame speed is far too noisy to drive a
@@ -88,7 +88,7 @@ public struct StrokeMark: Sendable {
     private var pressureFilter = OneEuroFilter<Double>(minCutoff: 3, beta: 0.03)
 
     /// Time banked since the last recorded point, including frames whose motion
-    /// fell under `minimumSpacing`. Spending it all on the point that finally
+    /// fell under `minSpacing`. Spending it all on the point that finally
     /// qualifies is what makes the measured speed independent of the frame rate.
     private var pendingTime: Double = 0
 
@@ -110,10 +110,10 @@ public struct StrokeMark: Sendable {
     /// An empty mark, ready to record.
     public init(_ dynamics: StrokeDynamics = .speed(),
                 smoothing: Double = 0.5,
-                minimumSpacing: Double = 1.5) {
+                minSpacing: Double = 1.5) {
         self.dynamics = dynamics
         self.smoothing = smoothing
-        self.minimumSpacing = minimumSpacing
+        self.minSpacing = minSpacing
     }
 
     /// A mark built from samples you already have, for replaying a gesture or
@@ -121,8 +121,8 @@ public struct StrokeMark: Sendable {
     public init(samples: [Sample],
                 dynamics: StrokeDynamics = .speed(),
                 smoothing: Double = 0.5,
-                minimumSpacing: Double = 1.5) {
-        self.init(dynamics, smoothing: smoothing, minimumSpacing: minimumSpacing)
+                minSpacing: Double = 1.5) {
+        self.init(dynamics, smoothing: smoothing, minSpacing: minSpacing)
         self.samples = samples
         for (a, b) in zip(samples, samples.dropFirst()) {
             traveled += (b.position - a.position).length
@@ -131,34 +131,34 @@ public struct StrokeMark: Sendable {
 
     // MARK: Recording
 
-    /// Record where the pointer is now. `dt` is the time since the last call
+    /// Record where the pointer is now. `deltaTime` is the time since the last call
     /// (pass `deltaTime`), which is what keeps the measured speed the same
     /// whether the sketch is running at 60 or 120 frames per second. `pressure`
     /// is `0...1`; leave it out on an input that has none.
     ///
-    /// A call closer than `minimumSpacing` to the last recorded point banks its
+    /// A call closer than `minSpacing` to the last recorded point banks its
     /// time and returns without recording, so the next point that does qualify
     /// measures its speed over the whole interval.
     ///
     /// The `Sketch.record(into:)` sugar fills all three arguments from the
     /// running sketch.
-    public mutating func record(_ position: Vector2, dt: Double, pressure: Double = 1) {
-        pendingTime += max(dt, 0)
+    public mutating func record(_ position: Vector2, deltaTime: Double, pressure: Double = 1) {
+        pendingTime += max(deltaTime, 0)
         let force = min(max(pressure, 0), 1)
 
         guard let last = samples.last ?? pending.map({ Sample(position: $0.position) }) else {
             // Nothing recorded yet: hold this point until a second one arrives to
             // give it a heading, and seed the filters from it.
             pending = (position, force)
-            _ = speedFilter.filter(0, dt: max(pendingTime, 1e-6))
-            _ = pressureFilter.filter(force, dt: max(pendingTime, 1e-6))
+            _ = speedFilter.filter(0, deltaTime: max(pendingTime, 1e-6))
+            _ = pressureFilter.filter(force, deltaTime: max(pendingTime, 1e-6))
             pendingTime = 0
             return
         }
 
         let step = position - last.position
         let distance = step.length
-        guard distance >= minimumSpacing else { return }
+        guard distance >= minSpacing else { return }
 
         let elapsed = max(pendingTime, 1e-6)
         pendingTime = 0
@@ -169,8 +169,8 @@ public struct StrokeMark: Sendable {
         speedFilter.minCutoff = cutoff
         pressureFilter.minCutoff = cutoff
         let raw = distance / elapsed
-        let speed = max(0, speedFilter.filter(raw / Self.speedScale, dt: elapsed) * Self.speedScale)
-        let smoothedForce = min(max(pressureFilter.filter(force, dt: elapsed), 0), 1)
+        let speed = max(0, speedFilter.filter(raw / Self.speedScale, deltaTime: elapsed) * Self.speedScale)
+        let smoothedForce = min(max(pressureFilter.filter(force, deltaTime: elapsed), 0), 1)
 
         // The held first point can be placed now that the heading is known.
         if let first = pending {
@@ -187,7 +187,7 @@ public struct StrokeMark: Sendable {
     }
 
     /// Throw away everything recorded and reset the measurement, ready for the
-    /// next mark. Keeps `dynamics`, `smoothing`, and `minimumSpacing`.
+    /// next mark. Keeps `dynamics`, `smoothing`, and `minSpacing`.
     public mutating func clear() {
         samples.removeAll(keepingCapacity: true)
         speedFilter = OneEuroFilter<Double>(minCutoff: 3, beta: 0.03)

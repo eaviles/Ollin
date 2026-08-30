@@ -21,7 +21,7 @@ final class ParticleLife_Example: Sketch {
     @Param(0.01 ... 0.15, icon: "drop") var friction = 0.045
 
     override func setup() {
-        life = particleLife(count: 24_000, kinds: 6, radius: 46)
+        life = makeParticleLife(count: 24_000, kinds: 6, radius: 46)
     }
 
     override func draw() {
@@ -39,6 +39,6 @@ final class ParticleLife_Example: Sketch {
     }
 
     override func mousePressed() {
-        life.randomizeMatrix(seed: UInt64(frameCount) &* 2654435761)
+        life.randomizeMatrix(seed: frameCount &* 2654435761)
     }
 }

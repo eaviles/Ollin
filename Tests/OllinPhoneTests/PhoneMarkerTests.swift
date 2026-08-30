@@ -65,7 +65,7 @@ import Ollin
         let y = SIMD3<Float>(0, 0, 1) * scale
         let z = SIMD3<Float>(0, -1, 0) * scale
         return PhoneMarker(PhoneMarkerSample(
-            tracked: true, timestamp: 4, id: UUID(), name: "poster", kind: .image,
+            isTracked: true, timestamp: 4, id: UUID(), name: "poster", kind: .image,
             transform: simd_float4x4(SIMD4(x, 0), SIMD4(y, 0), SIMD4(z, 0),
                                      SIMD4<Float>(0, 1.5, -2, 1)),
             size: SIMD3<Float>(0.3, 0.42, 0), scaleFactor: scale))
@@ -115,7 +115,7 @@ import Ollin
         // A matrix of zeros would divide by zero. It reads as the world's own axes
         // instead, so a bad frame draws in the wrong place rather than as NaN.
         let marker = PhoneMarker(PhoneMarkerSample(
-            tracked: false, timestamp: 0, id: UUID(), name: "broken", kind: .image,
+            isTracked: false, timestamp: 0, id: UUID(), name: "broken", kind: .image,
             transform: simd_float4x4(SIMD4<Float>(repeating: 0), SIMD4<Float>(repeating: 0),
                                      SIMD4<Float>(repeating: 0), SIMD4<Float>(repeating: 0)),
             size: .zero))
@@ -133,7 +133,7 @@ import Ollin
         let quarter = simd_float4x4(SIMD4<Float>(0, 0, -1, 0), SIMD4<Float>(0, 1, 0, 0),
                                     SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0.5, 0, -1, 1))
         let marker = PhoneMarker(PhoneMarkerSample(
-            tracked: true, timestamp: 2, id: UUID(), name: "teapot", kind: .object,
+            isTracked: true, timestamp: 2, id: UUID(), name: "teapot", kind: .object,
             transform: quarter, size: SIMD3<Float>(0.18, 0.12, 0.14),
             center: SIMD3<Float>(0, 0.06, 0)))
         #expect(marker.isObject)
@@ -149,7 +149,7 @@ import Ollin
         // Only a picture is measured against a stated width, so an object's box is
         // reported exactly as its scan measured it whatever the scale field says.
         let marker = PhoneMarker(PhoneMarkerSample(
-            tracked: true, timestamp: 0, id: UUID(), name: "cup", kind: .object,
+            isTracked: true, timestamp: 0, id: UUID(), name: "cup", kind: .object,
             transform: matrix_identity_float4x4, size: SIMD3<Float>(0.1, 0.1, 0.1),
             scaleFactor: 2))
         #expect(abs(marker.width - 0.1) < 1e-6)

@@ -81,7 +81,7 @@ struct SurfaceReconstructionTests {
             #expect(grid.kNearest(9, to: q) == Array(byDistance.prefix(9)))
 
             var gathered: Set<Int> = []
-            grid.forNeighbors(of: q, within: 0.5) { i, _ in gathered.insert(i) }
+            grid.forEachNeighbor(of: q, within: 0.5) { i, _ in gathered.insert(i) }
             let expected = Set(points.indices.filter { (points[$0] - q).length <= 0.5 })
             #expect(gathered == expected)
         }

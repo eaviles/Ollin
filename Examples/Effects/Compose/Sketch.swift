@@ -3,7 +3,7 @@ import Ollin
 /// `compose { }` is the declarative form of layered effects. Instead of making each
 /// off-screen layer, filtering it, and compositing it back by hand, you declare the
 /// whole stack as one block: each `layer { }` is drawn, run through its
-/// `.post(...)` filters, and composited in its `.blend(...)` mode, in the order
+/// `.post(...)` filters, and composited in its `.blended(...)` mode, in the order
 /// written. The intermediate layers are managed for you.
 ///
 /// Three layers here: a **blurred** color-field backdrop (rendered at half
@@ -12,7 +12,7 @@ import Ollin
 /// overlay.
 ///
 /// Try it: reorder the `layer { }` blocks (the first sits beneath the rest), change
-/// a `.blend(...)`, add a `.post(...)` to a layer, or drop a layer's `.scale(...)`.
+/// a `.blended(...)`, add a `.post(...)` to a layer, or drop a layer's `.scale(...)`.
 @main
 final class Compose_Example: Sketch {
     override func draw() {
@@ -32,7 +32,7 @@ final class Compose_Example: Sketch {
                 }
             }
             .post(.gaussianBlur(radius: 48))
-            .scale(0.5)
+            .scaled(0.5)
 
             // A breathing ring of bright dots that bloom, added as light so the glow
             // brightens the haze rather than covering it.
@@ -48,8 +48,8 @@ final class Compose_Example: Sketch {
                     drawCircle(x, y, 12)
                 }
             }
-            .post(.bloom(threshold: 0.4, intensity: 1.8, radius: 30))
-            .blend(.add)
+            .post(.bloom(threshold: 0.4, amount: 1.8, radius: 30))
+            .blended(.add)
 
             // A slowly turning lattice, dim enough to read as structure rather than a
             // cage, screened on top so it brightens the scene beneath it.
@@ -66,7 +66,7 @@ final class Compose_Example: Sketch {
                     while y < height + step { drawLine(-step, y, width + step, y); y += step }
                 }
             }
-            .blend(.screen)
+            .blended(.screen)
         }
 
         drawCaption("compose { }: blurred backdrop + bloomed ring + screened lattice")

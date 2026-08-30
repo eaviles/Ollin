@@ -31,7 +31,7 @@ final class ThinFilm: Sketch {
                        elevation: 0.2, fieldOfView: .pi / 4)
         // The room lights the bodies and fills their reflections; the backdrop stays
         // out of the way, so what is left on each sphere is the film's own doing.
-        environment(.courtyard.intensity(1.25).rotated(-0.8).lightingOnly())
+        environment(.courtyard.intensified(to: 1.25).rotated(-0.8).lightingOnly())
         // A wall you see through then carries the room behind it rather than the
         // environment, which is what lets the soap film read as a bubble against the dark.
         sceneThroughGlass()

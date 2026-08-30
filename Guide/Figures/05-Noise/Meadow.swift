@@ -40,7 +40,7 @@ final class Meadow: Sketch {
                     let angle = up + signedNoise(px * 0.0016, py * 0.0016, loop: breeze, radius: 0.5) * 1.15 * sway
                     let nx = px + cos(angle) * 8
                     let ny = py + sin(angle) * 8
-                    stroke(Color.mix(blade, Color(hex: 0xFFF2CC), t: Double(segment) / 5 * glow))
+                    stroke(Color.mix(blade, Color(hex: 0xFFF2CC), Double(segment) / 5 * glow))
                     drawLine(px, py, nx, ny)
                     px = nx
                     py = ny

@@ -248,7 +248,7 @@ The glyph [`drawPoint`](#point) stamps: `.circle` (the default), `.square`, `.di
 ```swift
 pointMarker(.cross)
 pointSize(10)
-for p in cloud { drawPoint(p) }          // a scatter of plus signs
+for p in cloud { drawPoint(at: p) }          // a scatter of plus signs
 ```
 
 <a name="blendMode"></a>
@@ -304,7 +304,7 @@ A filled marker in the current `fill` color (it ignores stroke, so `noFill()` dr
 ```swift
 fill(.black)
 pointSize(3)
-for p in cloud { drawPoint(p) }          // a scatter of dots
+for p in cloud { drawPoint(at: p) }          // a scatter of dots
 drawPoint(width / 2, height / 2, 12)     // one bigger dot
 ```
 
@@ -388,8 +388,8 @@ To draw a whole array at once, see [batches](#batches).
 #### drawEllipse
 
 ```swift
-drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double)
-drawEllipse(center: Vector2, rx: Double, ry: Double)
+drawEllipse(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double)
+drawEllipse(center: Vector2, radiusX: Double, radiusY: Double)
 ```
 
 An ellipse, by scalar center (positional `x, y, rx, ry`) or a `Vector2` `center:`. As with `drawCircle`, the size is given as *radii* (`rx`, `ry`), not diameters, so equal radii draw a circle.
@@ -401,7 +401,7 @@ An ellipse, by scalar center (positional `x, y, rx, ry`) or a `Vector2` `center:
 
 ```swift
 drawEllipse(width / 2, height / 2, 160, 90)
-drawEllipse(center: Vector2(200, 200), rx: 60, ry: 90)
+drawEllipse(center: Vector2(200, 200), radiusX: 60, radiusY: 90)
 ```
 
 <a name="rect"></a>
@@ -482,8 +482,8 @@ withState { translate(300, 300); rotate(time); drawTriangle(0, 0, 80, 200) }  //
 #### drawArc
 
 ```swift
-drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double, start: Double, stop: Double, mode: ArcMode = .open)
-drawArc(center: Vector2, rx: Double, ry: Double, start: Double, stop: Double, mode: ArcMode = .open)
+drawArc(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double, start: Double, stop: Double, mode: ArcMode = .open)
+drawArc(center: Vector2, radiusX: Double, radiusY: Double, start: Double, stop: Double, mode: ArcMode = .open)
 ```
 
 An elliptical arc sweeping from `start` to `stop` (radians, measured from the positive x-axis and increasing clockwise). `mode` decides how the ends close, which sets both the stroked outline and the filled region:

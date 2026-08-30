@@ -36,11 +36,11 @@ struct TrackedVehicle3DTests {
         return world.addVehicle(.box(width: 2.6, height: 1, depth: 5),
                                 at: position, wheels: wheels, mass: mass,
                                 engineTorque: engineTorque, topSpeed: topSpeed,
-                                friction: 0.9, tracked: true)
+                                friction: 0.9, isTracked: true)
     }
 
     func run(_ world: World3D, steps: Int) {
-        for _ in 0 ..< steps { world.step(dt: 1.0 / 60) }
+        for _ in 0 ..< steps { world.advance(by: 1.0 / 60) }
     }
 
     /// A world with a floor and a settled crawler standing on it.
@@ -169,7 +169,7 @@ struct TrackedVehicle3DTests {
         var turned = 0.0
         var was = heading(pivot)
         for _ in 0 ..< 300 {
-            pivotWorld.step(dt: 1.0 / 60)
+            pivotWorld.advance(by: 1.0 / 60)
             let now = heading(pivot)
             turned += abs(atan2(sin(now - was), cos(now - was)))
             was = now
@@ -245,7 +245,7 @@ struct TrackedVehicle3DTests {
         run(world, steps: 120)
 
         #expect(crawler.wheels.allSatisfy { $0.steerAngle == 0 })
-        #expect(crawler.wheels.allSatisfy { $0.slip == 0 && $0.slideAngle == 0 })
+        #expect(crawler.wheels.allSatisfy { $0.slip == 0 && $0.slipAngle == 0 })
         // The wheels are turning, though: they run with their band.
         #expect(crawler.wheels(on: .left).allSatisfy { $0.spinRate > 1 })
     }
@@ -331,7 +331,7 @@ struct TrackedVehicle3DTests {
             crawler.throttle = 1
             var highest = 0.0
             for _ in 0 ..< 480 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 highest = max(highest, crawler.body.position.y - from)
             }
             return highest
@@ -374,15 +374,15 @@ struct TrackedVehicle3DTests {
             let world = World3D()
             world.ground = 0
             let car = Vehicle3DTests.car(in: world, drive: .rear, frontGrip: 0.02)
-            for _ in 0 ..< 90 { world.step(dt: 1.0 / 60) }
+            for _ in 0 ..< 90 { world.advance(by: 1.0 / 60) }
             if switchToFront {
                 for wheel in car.wheels { wheel.driven = wheel.position.z > 0 }
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 #expect(car.wheels.filter(\.driven).count == 2)
                 #expect(car.wheels.filter(\.driven).allSatisfy { $0.position.z > 0 })
             }
             car.throttle = 1
-            for _ in 0 ..< 300 { world.step(dt: 1.0 / 60) }
+            for _ in 0 ..< 300 { world.advance(by: 1.0 / 60) }
             return car.body.position.z
         }
 
@@ -412,7 +412,7 @@ struct TrackedVehicle3DTests {
             crawler.steering = 0.4
             var trace: [Double] = []
             for step in 0 ..< 300 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 if step % 60 == 0 {
                     trace.append(crawler.body.position.x)
                     trace.append(crawler.body.position.z)

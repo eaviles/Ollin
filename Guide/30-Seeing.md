@@ -248,7 +248,7 @@ for (i, found) in classifier.labels.prefix(5).enumerated() {
 }
 ```
 
-The bars on the right of the figure are that list, drawn for the made-up card. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `document` and `printed page` tie. And the classifier scores every word it knows on every frame, nearly all of them near zero. `minimumConfidence`, `0.1` by default, is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
+The bars on the right of the figure are that list, drawn for the made-up card. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `document` and `printed page` tie. And the classifier scores every word it knows on every frame, nearly all of them near zero. `minConfidence`, `0.1` by default, is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
 
 The other way to read the same result suits knobs better. `confidence(of: "plant")` answers for any word in the vocabulary, whether or not it cleared the floor. So "how much does this look like a plant" can drive a color or a speed straight from the room.
 
@@ -269,7 +269,7 @@ lazy var picker = PointSegmenter(camera,
     imageEncoderAt: encoderURL, promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
 
 override func mousePressed() {
-    guard let rect = camera.fittedRect(in: bounds) else { return }
+    guard let rect = camera.fittedRectangle(in: bounds) else { return }
     picker.pick(at: Vector2(mouseX, mouseY), in: rect)
 }
 
@@ -289,7 +289,7 @@ The three URLs in the listing point at the files the fetch script pulled. `Examp
 
 When the built-ins run out, **`ModelTracker`** runs a Core ML model of your own over the same frames, with the same attach-and-read shape. That opens the whole published-model world: depth estimators, object detectors, style transfer, semantic segmentation, anything that converts to Core ML.
 
-It fills whichever read surfaces match what your model puts out. A classifier gives you `labels` and `top` and `confidence(of:)`, over your own vocabulary rather than Apple's. A detector gives you `objects`, labeled boxes you map with `bounds(in:)`. An image-to-image model, a depth estimator say, shows up in two forms at once. `map` reads its output as a value field, white-alpha and tintable, with `value(at:in:)` for the number under a point. `outputImage` reads the same output as a picture, which is what you want from a model that paints rather than measures. And a semantic segmenter fills `classMask`. It knows which classes are in frame, which one sits under a point, and how to hand you any of them as a drawable mask.
+It fills whichever read surfaces match what your model puts out. A classifier gives you `labels` and `topClassification` and `confidence(of:)`, over your own vocabulary rather than Apple's. A detector gives you `objects`, labeled boxes you map with `bounds(in:)`. An image-to-image model, a depth estimator say, shows up in two forms at once. `map` reads its output as a value field, white-alpha and tintable, with `value(at:in:)` for the number under a point. `image` reads the same output as a picture, which is what you want from a model that paints rather than measures. And a semantic segmenter fills `classMask`. It knows which classes are in frame, which one sits under a point, and how to hand you any of them as a drawable mask.
 
 ```swift
 lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath:
@@ -314,7 +314,7 @@ The classifier's `confidence(of: "plant")` only answers for the 1,300 words it w
 lazy var ideas = ConceptTracker(camera,
     imageModelAt: URL(fileURLWithPath: "Models/mobileclip_s0_image.mlpackage"),
     textModelAt: URL(fileURLWithPath: "Models/mobileclip_s0_text.mlpackage"),
-    vocabAt: URL(fileURLWithPath: "Models/bpe_simple_vocab_16e6.txt"),
+    vocabularyAt: URL(fileURLWithPath: "Models/bpe_simple_vocab_16e6.txt"),
     concepts: ["a spooky scene", "a cheerful scene"])
 
 // in draw():
@@ -401,10 +401,10 @@ Everything so far reads the frame in front of you. Keeping the *previous* frames
 A `SlitScan` is a rolling history of frames. You push the newest one every time you draw, and it keeps the last few dozen. Then you ask it for a picture in which each pixel comes from a different moment.
 
 ```swift
-let history = Ollin.SlitScan(frames: 48)
+let history = Ollin.SlitScan(capacity: 48)
 
 override func draw() {
-    history.push(camera.snapshot())
+    history.append(camera.snapshot())
     if let warped = history.image(delay: { uv in uv.x }) {
         drawImage(warped, in: canvasRectangle)
     }

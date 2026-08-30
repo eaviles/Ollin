@@ -12,7 +12,7 @@ final class SceneInTheGlass: Sketch {
 
     override func draw() {
         background(Color(hex: 0x0A0D12))
-        environment(.studio.intensity(1.1))
+        environment(.studio.intensified(to: 1.1))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.6)
         camera(.orbiting(target: Vector3(0, 0.9, 0), radius: 8.8, azimuth: 0.05,
                          elevation: 0.12, fieldOfView: .pi / 4.4, near: 2, far: 24))

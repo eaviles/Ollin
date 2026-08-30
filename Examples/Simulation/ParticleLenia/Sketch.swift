@@ -24,7 +24,7 @@ final class ParticleLenia_Example: Sketch {
     @Param(0.2 ... 4.0, icon: "gauge") var pace = 1.0
 
     override func setup() {
-        lenia = particleLenia(count: 6000, spacing: 8)
+        lenia = makeParticleLenia(count: 6000, spacing: 8)
     }
 
     override func draw() {

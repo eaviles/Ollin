@@ -64,9 +64,9 @@ final class ARStreamer: NSObject, ARSessionDelegate, LightReporting {
                 let tracked = indices[phoneJoint].map { skeleton.isJointTracked($0) } ?? false
                 joints[phoneJoint] = PhoneJointSample(position: SIMD3<Float>(p.x, p.y, p.z),
                                                       orientation: simd_quatf(transform).vector,
-                                                      tracked: tracked)
+                                                      isTracked: tracked)
             }
-            bodies.append(PhonePoseSample(tracked: body.isTracked, timestamp: frame.timestamp,
+            bodies.append(PhonePoseSample(isTracked: body.isTracked, timestamp: frame.timestamp,
                                           anchor: body.transform,
                                           scaleFactor: Float(body.estimatedScaleFactor),
                                           joints: joints))

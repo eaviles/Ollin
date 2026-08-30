@@ -13,7 +13,7 @@ import os
 /// lazy var people = PersonSegmenter(camera)
 /// override func draw() {
 ///     drawAnimatedBackground()
-///     let rect = camera.fittedRect(in: bounds) ?? bounds
+///     let rect = camera.fittedRectangle(in: bounds) ?? bounds
 ///     if let cutout = people.cutout { drawImage(cutout, in: rect) }
 /// }
 /// ```

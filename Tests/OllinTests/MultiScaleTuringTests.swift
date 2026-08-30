@@ -220,7 +220,7 @@ private final class TuringProbeSketch: Sketch {
     private var field: SimField!
 
     override func setup() {
-        field = simField(.multiScaleTuring(scales: scales, seed: turingSeed), scale: 1)
+        field = makeSimField(.multiScaleTuring(scales: scales, seed: turingSeed), scale: 1)
     }
 
     override func draw() {
@@ -237,7 +237,7 @@ private final class ReadOnlyTuringSketch: Sketch {
     override var canvasSize: CanvasSize { .square(128) }
     private var field: SimField!
 
-    override func setup() { field = simField(.multiScaleTuring(seed: 7), scale: 1) }
+    override func setup() { field = makeSimField(.multiScaleTuring(seed: 7), scale: 1) }
 
     override func draw() {
         background(.black)

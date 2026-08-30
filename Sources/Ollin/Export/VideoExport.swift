@@ -15,22 +15,32 @@ import UniformTypeIdentifiers
 public enum VideoCodec: String, CaseIterable, Sendable {
     case h264
     case hevc
-    case prores422
-    case prores4444
+    case proRes422
+    case proRes4444
+
+    /// The CLI spelling is matched case-insensitively, so `--codec prores422`
+    /// and `--codec ProRes422` both land here.
+    public init?(flag: String) {
+        let lowered = flag.lowercased()
+        guard let match = VideoCodec.allCases.first(where: { $0.rawValue.lowercased() == lowered }) else {
+            return nil
+        }
+        self = match
+    }
 
     var avCodec: AVVideoCodecType {
         switch self {
         case .h264: .h264
         case .hevc: .hevc
-        case .prores422: .proRes422
-        case .prores4444: .proRes4444
+        case .proRes422: .proRes422
+        case .proRes4444: .proRes4444
         }
     }
 
     /// ProRes only fits the QuickTime container; H.264/HEVC fit `.mp4` too.
     var requiresQuickTime: Bool {
         switch self {
-        case .prores422, .prores4444: true
+        case .proRes422, .proRes4444: true
         case .h264, .hevc: false
         }
     }
@@ -47,7 +57,7 @@ public extension OllinApp {
     /// The container comes from the path's extension (`.mp4`/`.m4v` or `.mov`).
     /// `bitsPerSecond` sets the average bitrate — the file-size dial: a 1080²
     /// clip looks clean around 10–15 Mbps in `h264` and ~60% of that in `hevc`;
-    /// omit it for the encoder's own (generous) default. `quality` (0…1) is
+    /// omit it for the encoder's own (generous) default. `encodeQuality` (0…1) is
     /// constant-quality rate control instead of a bitrate — supported by the
     /// Apple-silicon hardware encoder only, so on an Intel Mac use
     /// `bitsPerSecond`. ProRes takes neither (it's effectively a fixed,
@@ -60,7 +70,7 @@ public extension OllinApp {
                             frames: Int, fps: Double = 60,
                             codec: VideoCodec = .h264,
                             bitsPerSecond: Int? = nil,
-                            quality: Double? = nil,
+                            encodeQuality: Double? = nil,
                             renderQuality: RenderQuality = .detail,
                             skipSeconds: Double = 0,
                             slowMotion: SlowMotion? = nil) {
@@ -83,7 +93,7 @@ public extension OllinApp {
             fatalError("Ollin: unsupported video extension '.\(ext)' — use .mp4, .m4v, or .mov")
         }
 
-        var quality = quality
+        var quality = encodeQuality
         if quality != nil {
             #if arch(arm64)
             if bitsPerSecond != nil {

@@ -334,7 +334,7 @@
     root.className = 'card';
     var current = 0;
     var paint;
-    if (desc.segmented && desc.options.length <= 4) {
+    if (desc.isSegmented && desc.options.length <= 4) {
       root.innerHTML = '<div class="row"><div class="label"></div><div class="segment"></div></div>';
       var seg = root.querySelector('.segment');
       desc.options.forEach(function (option, i) {
@@ -550,13 +550,13 @@
       strip.innerHTML = '';
       chips = [];
       band = null;
-      if (desc.gradient) {
+      if (desc.isGradient) {
         band = document.createElement('div');
         band.className = 'band';
         strip.appendChild(band);
       }
       var host = document.createElement('div');
-      host.className = desc.gradient ? 'chips' : 'blocks';
+      host.className = desc.isGradient ? 'chips' : 'blocks';
       current.stops.forEach(function (stop, index) {
         var chip = document.createElement('label');
         chip.className = 'chip';
@@ -609,18 +609,18 @@
 
   function build(desc) {
     switch (desc.kind) {
-      case 'slider': return desc.field ? numberField(desc) : barSlider(desc);
+      case 'slider': return desc.isField ? numberField(desc) : barSlider(desc);
       case 'stepper': return stepperRow(desc);
       case 'toggle': return toggleRow(desc);
       case 'menu': return menuRow(desc);
       case 'color': return colorRow(desc);
       case 'vector':
-        if (desc.pad) { return padControl(desc); }
+        if (desc.isPad) { return padControl(desc); }
         return fieldsControl(desc, ['x', 'y'], 'vector');
       case 'vector3': return fieldsControl(desc, ['x', 'y', 'z'], 'vector3');
       case 'rect': return fieldsControl(desc, ['x', 'y', 'width', 'height'], 'rect', ['X', 'Y', 'W', 'H']);
       case 'insets': return fieldsControl(desc, ['top', 'right', 'bottom', 'left'], 'insets', ['T', 'R', 'B', 'L']);
-      case 'range': return desc.field ? fieldsControl(desc, ['lower', 'upper'], 'range', ['Min', 'Max']) : rangeControl(desc);
+      case 'range': return desc.isField ? fieldsControl(desc, ['lower', 'upper'], 'range', ['Min', 'Max']) : rangeControl(desc);
       case 'swatches': return swatchesRow(desc);
       default: return textRow(desc);
     }
@@ -665,7 +665,7 @@
         var control = build(desc);
         var stored = readStored(desc.value);
         if (stored) { control.seed(stored.value); }
-        control.root.classList.toggle('hidden', desc.shown === false);
+        control.root.classList.toggle('hidden', desc.isShown === false);
         rows[desc.name] = control;
         stack.appendChild(control.root);
       });
@@ -681,9 +681,9 @@
       var stored = readStored(update.values[name]);
       if (stored) { row.update(stored); }
     });
-    Object.keys(update.shown || {}).forEach(function (name) {
+    Object.keys(update.isShown || {}).forEach(function (name) {
       var row = rows[name];
-      if (row) { row.root.classList.toggle('hidden', update.shown[name] === false); }
+      if (row) { row.root.classList.toggle('hidden', update.isShown[name] === false); }
     });
   }
 

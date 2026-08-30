@@ -26,7 +26,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSwarmParams
 /// var swarm: Swarm!
 /// override func setup() {
 ///     background(.black); noClear()
-///     swarm = swarm(count: 120_000, perceptionRadius: 34)
+///     swarm = makeSwarm(count: 120_000, perceptionRadius: 34)
 ///     swarm.alignment = 1.2
 ///     swarm.cohesion = 0.7
 ///     swarm.separation = 1.6
@@ -125,7 +125,7 @@ public final class Swarm {
     /// default, which makes the mixing legible; pass one color for a uniform swarm).
     /// `seed` makes the starting scatter reproducible.
     public init(count: Int, bounds: Rectangle, perceptionRadius: Double,
-                colors: [Color] = [], size: Double = 2.0, seed: UInt64) {
+                colors: [Color] = [], size: Double = 2.0, seed: Int) {
         precondition(count > 0, "Swarm needs a positive count")
         precondition(perceptionRadius > 0, "Swarm needs a positive perceptionRadius")
         self.count = count
@@ -135,7 +135,7 @@ public final class Swarm {
         let palette = colors.isEmpty
             ? (0..<6).map { Color(hue: 0.5 + Double($0) / 18, saturation: 0.55, brightness: 1) }
             : colors
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let origin = hash.origin, world = hash.worldSize
         var seeds: [OllinParticle] = []
         seeds.reserveCapacity(count)

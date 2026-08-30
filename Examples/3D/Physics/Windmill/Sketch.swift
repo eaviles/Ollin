@@ -29,7 +29,7 @@ final class Windmill: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.3
+        world.restitution = 0.3
 
         buildMill()
         buildGate(at: 3.4)
@@ -125,7 +125,7 @@ final class Windmill: Sketch {
         // awake; the strength cap gives it a mechanical spin-up.
         if powered { mill?.drive(at: millSpeed, strength: 500) }
         dragBodies(in: world)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         // Batted past the gates, or parked out of the blades' reach for a
         // couple of seconds: either way, back into the drop.
         for (index, ball) in balls.enumerated() {

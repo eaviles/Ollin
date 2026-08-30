@@ -23,11 +23,11 @@ final class RaymarchedRadial: Sketch {
         // the Y axis and melted onto a central hub — one built wedge, fourteen copies, one
         // surface. `.rotatedZ` lays the upright capsule flat, `.at` pushes it out to its radius.
         let spoke = SDF3D.capsule(radius: 0.12, height: 1.25).rotatedZ(.pi / 2)
-            .at(x: 0.95, y: 0, z: 0)
+            .at(0.95, 0, 0)
             .colored(Color(hex: 0x38bdf8))
         let hub = SDF3D.sphere(radius: 0.55).colored(Color(hex: 0x22d3ee))
         drawSDF3D(spoke.repeatedRadially(count: 14).smoothUnion(hub, k: 0.25)
-            .at(x: 0, y: -0.7, z: 0))
+            .at(0, -0.7, 0))
 
         // Block form: a leaning cone petal folded into a ring of 6 and melted with a central
         // bud, the whole flower slowly turning — the same fold written as a scoped block.

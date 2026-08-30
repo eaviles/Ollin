@@ -70,7 +70,7 @@ struct SymmetryTests {
     @Test func combinatorGroupsShareTheirNodeProgram() {
         let d = freshDrawer()
         d.symmetry(5)
-        d.drawSDF(SDF.circle(radius: 20).smoothUnion(SDF.circle(radius: 12).at(x: 15, y: 0), k: 6))
+        d.drawSDF(SDF.circle(radius: 20).smoothUnion(SDF.circle(radius: 12).at(15, 0), k: 6))
         #expect(d.sdfGroups.count == 5)
         let first = d.sdfGroups[0]
         for group in d.sdfGroups.dropFirst() {

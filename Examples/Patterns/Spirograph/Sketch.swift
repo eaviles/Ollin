@@ -46,7 +46,7 @@ final class Spirograph: Sketch {
             for i in 0..<count {
                 let t = Double(i) / Double(max(1, count - 1))
                 let pen = Double(w) * map(t, 0, 1, 0.2, 1.0) * breathe
-                stroke(Color.mix(a, b, t: t).withAlpha(0.55))
+                stroke(Color.mix(a, b, t).withAlpha(0.55))
                 drawPolyline(hypotrochoid(ring: r, wheel: w, pen: pen).points,
                              closed: true)
             }

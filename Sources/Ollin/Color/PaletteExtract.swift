@@ -24,11 +24,11 @@ public extension Palette {
     /// than `count` yields only the colors it has, and a texture-backed image
     /// (a video frame, a Syphon feed) has no readable pixels, so it yields an
     /// empty palette; call `snapshot()` on the feed first.
-    init(extractedFrom image: Image, count: Int = 5, seed: UInt64 = 0) {
+    init(extractedFrom image: Image, count: Int = 5, seed: Int = 0) {
         guard count > 0 else { self.init([]); return }
         let samples = Palette.samples(of: image)
         guard !samples.isEmpty else { self.init([]); return }
-        self.init(Palette.cluster(samples, into: count, seed: seed))
+        self.init(Palette.cluster(samples, into: count, seed: UInt64(bitPattern: Int64(seed))))
     }
 }
 
@@ -184,7 +184,7 @@ private extension Palette {
 public extension Sketch {
     /// The `count` colors an image is mostly made of, most-used first:
     /// `extractPalette(from: photo)`.
-    func extractPalette(from image: Image, count: Int = 5, seed: UInt64 = 0) -> Palette {
+    func extractPalette(from image: Image, count: Int = 5, seed: Int = 0) -> Palette {
         Palette(extractedFrom: image, count: count, seed: seed)
     }
 }

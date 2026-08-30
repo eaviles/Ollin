@@ -42,13 +42,13 @@ public struct WatercolorPigment: Sendable, Equatable {
     /// (0 = indifferent to the tooth, 1 = strongly granulating).
     public var granulation: Double
 
-    /// Build a pigment from raw Kubelka-Munk coefficients (absorption `k` and
-    /// scattering `s`, each an RGB triple). The escape hatch for measured data;
+    /// Build a pigment from raw Kubelka-Munk coefficients (`absorption` and
+    /// `scattering`, each an RGB triple). The escape hatch for measured data;
     /// prefer `init(overWhite:overBlack:...)` for inventing paints by eye.
-    public init(k: (Double, Double, Double), s: (Double, Double, Double),
+    public init(absorption: (Double, Double, Double), scattering: (Double, Double, Double),
                 density: Double = 0.05, staining: Double = 1, granulation: Double = 0.3) {
-        self.k = SIMD3(max(0, k.0), max(0, k.1), max(0, k.2))
-        self.s = SIMD3(max(1e-4, s.0), max(1e-4, s.1), max(1e-4, s.2))
+        self.k = SIMD3(max(0, absorption.0), max(0, absorption.1), max(0, absorption.2))
+        self.s = SIMD3(max(1e-4, scattering.0), max(1e-4, scattering.1), max(1e-4, scattering.2))
         self.density = max(0, density)
         self.staining = max(1e-3, staining)
         self.granulation = min(1, max(0, granulation))
@@ -70,7 +70,7 @@ public struct WatercolorPigment: Sendable, Equatable {
             let (kk, ss) = KubelkaMunk.coefficients(overWhite: rw[c], overBlack: rb[c])
             k[c] = kk; s[c] = ss
         }
-        self.init(k: (k.x, k.y, k.z), s: (s.x, s.y, s.z),
+        self.init(absorption: (k.x, k.y, k.z), scattering: (s.x, s.y, s.z),
                   density: density, staining: staining, granulation: granulation)
     }
 
@@ -83,51 +83,51 @@ public struct WatercolorPigment: Sendable, Equatable {
 
     /// A cool transparent rose: vivid over white, nearly black over black.
     public static let quinacridoneRose = WatercolorPigment(
-        k: (0.22, 1.47, 0.57), s: (0.05, 0.003, 0.03),
+        absorption: (0.22, 1.47, 0.57), scattering: (0.05, 0.003, 0.03),
         density: 0.02, staining: 5.5, granulation: 0.81)
     /// An opaque earth red: looks much the same over white and black.
     public static let indianRed = WatercolorPigment(
-        k: (0.46, 1.07, 1.50), s: (1.28, 0.38, 0.21),
+        absorption: (0.46, 1.07, 1.50), scattering: (1.28, 0.38, 0.21),
         density: 0.05, staining: 7.0, granulation: 0.40)
     /// A dense, fairly opaque warm yellow.
     public static let cadmiumYellow = WatercolorPigment(
-        k: (0.10, 0.36, 3.45), s: (0.97, 0.65, 0.007),
+        absorption: (0.10, 0.36, 3.45), scattering: (0.97, 0.65, 0.007),
         density: 0.05, staining: 3.4, granulation: 0.81)
     /// A deep transparent leaf green.
     public static let hookersGreen = WatercolorPigment(
-        k: (1.62, 0.61, 1.64), s: (0.01, 0.012, 0.003),
+        absorption: (1.62, 0.61, 1.64), scattering: (0.01, 0.012, 0.003),
         density: 0.09, staining: 1.0, granulation: 0.31)
     /// A granulating sky blue with real body.
     public static let ceruleanBlue = WatercolorPigment(
-        k: (1.52, 0.32, 0.25), s: (0.06, 0.26, 0.40),
+        absorption: (1.52, 0.32, 0.25), scattering: (0.06, 0.26, 0.40),
         density: 0.01, staining: 1.0, granulation: 0.31)
     /// A heavy, strongly granulating, staining brown earth.
     public static let burntUmber = WatercolorPigment(
-        k: (0.74, 1.54, 2.10), s: (0.09, 0.09, 0.004),
+        absorption: (0.74, 1.54, 2.10), scattering: (0.09, 0.09, 0.004),
         density: 0.09, staining: 9.3, granulation: 0.90)
     /// A warm semi-opaque red.
     public static let cadmiumRed = WatercolorPigment(
-        k: (0.14, 1.08, 1.68), s: (0.77, 0.015, 0.018),
+        absorption: (0.14, 1.08, 1.68), scattering: (0.77, 0.015, 0.018),
         density: 0.02, staining: 1.0, granulation: 0.63)
     /// A very transparent glowing orange.
     public static let brilliantOrange = WatercolorPigment(
-        k: (0.13, 0.81, 3.45), s: (0.005, 0.009, 0.007),
+        absorption: (0.13, 0.81, 3.45), scattering: (0.005, 0.009, 0.007),
         density: 0.01, staining: 1.0, granulation: 0.14)
     /// A light, smooth, semi-opaque yellow, the classic glazing yellow.
     public static let hansaYellow = WatercolorPigment(
-        k: (0.06, 0.21, 1.78), s: (0.50, 0.88, 0.009),
+        absorption: (0.06, 0.21, 1.78), scattering: (0.50, 0.88, 0.009),
         density: 0.06, staining: 1.0, granulation: 0.08)
     /// An intense transparent blue-green.
     public static let phthaloGreen = WatercolorPigment(
-        k: (1.55, 0.47, 0.63), s: (0.01, 0.05, 0.035),
+        absorption: (1.55, 0.47, 0.63), scattering: (0.01, 0.05, 0.035),
         density: 0.02, staining: 1.0, granulation: 0.12)
     /// The classic granulating warm blue.
     public static let frenchUltramarine = WatercolorPigment(
-        k: (0.86, 0.86, 0.06), s: (0.005, 0.005, 0.09),
+        absorption: (0.86, 0.86, 0.06), scattering: (0.005, 0.005, 0.09),
         density: 0.01, staining: 3.1, granulation: 0.91)
     /// An interference paint: white-ish over white, colored over black.
     public static let interferenceLilac = WatercolorPigment(
-        k: (0.08, 0.11, 0.07), s: (1.25, 0.42, 1.43),
+        absorption: (0.08, 0.11, 0.07), scattering: (1.25, 0.42, 1.43),
         density: 0.06, staining: 1.0, granulation: 0.08)
 }
 
@@ -267,7 +267,7 @@ extension Sim {
     ///   - grain: The paper texture's feature scale in field texels.
     ///   - paperSeed: Picks the sheet of paper; same seed, same tooth.
     ///   - paperColor: The sheet's own color, shown wherever no pigment covers.
-    ///   - speed: Main simulation steps per frame (1...4). More evolves the wash
+    ///   - substeps: Main simulation steps per frame (1...4). More evolves the wash
     ///     faster, at proportional GPU cost.
     public static func watercolor(pigments: [WatercolorPigment] = [.frenchUltramarine,
                                                                    .quinacridoneRose,
@@ -279,7 +279,7 @@ extension Sim {
                                   grain: Double = 14,
                                   paperSeed: Double = 7,
                                   paperColor: Color = Color(red: 1, green: 0.995, blue: 0.98),
-                                  speed: Int = 1) -> Sim {
+                                  substeps: Int = 1) -> Sim {
         let palette = pigments.isEmpty ? [.frenchUltramarine] : Array(pigments.prefix(3))
         return Sim(kind: .watercolor(WatercolorConfig(
             pigments: palette,
@@ -294,7 +294,7 @@ extension Sim {
             grain: Float(min(max(grain, 2), 128)),
             paperSeed: Float(paperSeed),
             paperColor: SIMD3(Float(paperColor.red), Float(paperColor.green), Float(paperColor.blue)),
-            speed: max(1, min(4, speed)))))
+            speed: max(1, min(4, substeps)))))
     }
 }
 
@@ -358,7 +358,7 @@ public final class WatercolorField: SimField {
 
 public extension Sketch {
     /// Make a full-canvas watercolor field (see `Sim.watercolor`): wet paint on
-    /// textured paper, painted by drawing into it. Persistent, like `simField(_:)`;
+    /// textured paper, painted by drawing into it. Persistent, like `makeSimField(_:)`;
     /// create it once in `setup()` and store it. `scale` is the field's internal
     /// resolution as a fraction of the canvas; the default half resolution keeps
     /// the many passes cheap and reads as paper-soft rather than blurry.

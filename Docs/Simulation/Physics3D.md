@@ -32,7 +32,7 @@ final class Crates: Sketch {
     override func draw() {
         background(.black)
         cameraShowcase()
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         for body in world.bodies {
             withBody(body) { drawBox(width: 1, height: 1, depth: 1) }
         }
@@ -69,7 +69,7 @@ Distances are the 3D scene's world units, y-up, matching the camera. The solver 
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
 - [Ropes](#ropes) - a line of particles on rigid rods, each carrying an orientation
 - [Cloth a figure carries](#carriedcloth) - a cape on a skeleton: what is held, what hangs
-- [Water](#water) - buoyancy: what floats, how deep it sits, and what carries it
+- [Water](#water) - buoyancyScale: what floats, how deep it sits, and what carries it
 - [Saving and loading](#snapshots) - keeping an arrangement you like, and putting it back
 - [Reading physics from a file](#importing) - picking up `UsdPhysics` bodies and joints authored elsewhere
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
@@ -83,11 +83,11 @@ Distances are the 3D scene's world units, y-up, matching the camera. The solver 
 let world = World3D()
 world.gravity = Vector3(0, -9.8, 0)   // the default: earth, pulling down y
 world.ground = 0                      // optional static floor at a y level
-world.bounce = 0.2                    // default restitution (ground + bodies)
-world.step(dt: deltaTime)             // once per frame
+world.restitution = 0.2                    // default restitution (ground + bodies)
+world.advance(by: deltaTime)             // once per frame
 ```
 
-`ground` is a wide static slab whose top face sits at the given level. `nil`, the default, lets bodies fall forever. `step(dt:)` clamps to `maxTimestep`, which is 1/30 s, so a stalled frame can't launch the scene. It runs one collision pass per ~60 Hz of simulated time.
+`ground` is a wide static slab whose top face sits at the given level. `nil`, the default, lets bodies fall forever. `advance(by:)` clamps to `maxTimestep`, which is 1/30 s, so a stalled frame can't launch the scene. It runs one collision pass per ~60 Hz of simulated time.
 
 Bodies and joints are managed the way the 2D world manages its own:
 
@@ -101,7 +101,7 @@ world.remove(crate)      // removes its joints too
 world.removeAll()
 ```
 
-`density` is relative, where 1 is the default material and heavier shoves lighter. `friction` runs 0 slick … 1 grippy. `restitution` defaults to the world's `bounce`.
+`density` is relative, where 1 is the default material and heavier shoves lighter. `friction` runs 0 slick … 1 grippy. `restitution` defaults to the world's own `restitution`.
 
 <a name="body3d"></a>
 
@@ -237,7 +237,7 @@ For scenery that arrives as a file, one call colliders a whole [`Scene`](../3D/S
 
 ```swift
 let hall = loadScene("hall.usdz")!
-world.addStaticColliders(from: hall)
+world.addStaticBodies(from: hall)
 ```
 
 It walks the node tree and adds one static mesh body per mesh node. The node's world transform is baked into the triangles, nested groups and authored rotations and scales included. Colliders take each mesh as authored, at rest, so skins and morph targets aren't posed. `friction:` and `restitution:` apply to all of them, and the scene itself keeps drawing through `drawScene(_:)`.
@@ -417,7 +417,7 @@ world.ignoreCollisions(between: "gears", and: "gears")
 Touches are polled, not delivered. Each `step` fills `world.contacts` with everything that started or stopped touching during it, and `draw()` reads the list the way it reads mouse state:
 
 ```swift
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 for contact in world.contacts where contact.phase == .began {
     sparks.append(Spark(at: contact.point, size: contact.speed))
 }
@@ -528,7 +528,7 @@ world.addCharacter(…, group: "phantoms")
 world.addVehicle(…, group: "traffic")
 world.addRagdoll(from: figure, group: "phantoms")
 world.addSoftBody(from: cloth, group: "drapes")
-world.addStaticColliders(from: hall, group: "scenery")
+world.addStaticBodies(from: hall, group: "scenery")
 ```
 
 and each of them can be moved between groups while it runs, through `body.group`, `character.group`, `vehicle.group`, `ragdoll.group`, and `softBody.group`. A rule written after things have already settled on each other still applies. The bodies are woken so the solver looks at the pair again.
@@ -638,12 +638,12 @@ override func draw() {
     walker.move(heading.length > 0 ? heading.normalized * 3 : .zero)
     if isKeyDown(" ") { walker.jump() }
 
-    world.step(dt: deltaTime)
+    world.advance(by: deltaTime)
     withCharacter(walker) { drawCapsule(radius: 0.3, height: 1.2) }
 }
 ```
 
-`step(dt:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `move(_:)` sets the horizontal velocity the character is *trying* to walk at, and holds it until changed. Falling and jumping are the world's business, so the vertical part is ignored. `jump(_:)` is granted only if the character is on the ground on the next step. Calling it every frame while a key is held therefore gives a hop each time it lands, rather than flight.
+`advance(by:)` sweeps every character forward along with the bodies, so there is no second update call to remember. `move(_:)` sets the horizontal velocity the character is *trying* to walk at, and holds it until changed. Falling and jumping are the world's business, so the vertical part is ignored. `jump(_:)` is granted only if the character is on the ground on the next step. Calling it every frame while a key is held therefore gives a hop each time it lands, rather than flight.
 
 **Position is the feet.** `walker.position` is the point the capsule stands on, so a figure modeled standing at the origin lands where it should. `withCharacter(_:)` moves the 3D transform stack there and turns it by `facing`, the mirror of `withBody(_:)`.
 
@@ -722,7 +722,7 @@ override func draw() {
     car.steering = (isKeyDown(.rightArrow) ? 1 : 0) - (isKeyDown(.leftArrow) ? 1 : 0)
     car.handBrake = isKeyDown(" ") ? 1 : 0
 
-    world.step(dt: deltaTime)
+    world.advance(by: deltaTime)
 
     withBody(car.body) { drawBox(width: 1.8, height: 0.7, depth: 4) }
     for wheel in car.wheels {
@@ -731,7 +731,7 @@ override func draw() {
 }
 ```
 
-`step(dt:)` hands each vehicle's controls to the solver along with everything else, so there is no second update call. **The vehicle drives along the chassis's local +z**, with +y up, so model whatever you draw facing that way. Positive `steering` turns it to its own right.
+`advance(by:)` hands each vehicle's controls to the solver along with everything else, so there is no second update call. **The vehicle drives along the chassis's local +z**, with +y up, so model whatever you draw facing that way. Positive `steering` turns it to its own right.
 
 The chassis is an ordinary `Body3D`. `car.body` collides, takes impulses, reports contacts, and is in `world.bodies` like anything the sketch added. What makes it a vehicle is the constraint on top, which owns the wheels. Its weight is `mass`, 1500 kg by default, rather than the shape's volume. Its center of mass also drops to the height of the wheel mounts, which is what stops a car rolling over the first time it turns hard.
 
@@ -776,7 +776,7 @@ Everything on a wheel can be changed while the vehicle drives, so a slider on th
 
 ```swift
 for wheel in car.wheels { wheel.driven = wheel.position.z > 0 }   // front drive
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 ```
 
 #### The engine
@@ -799,7 +799,7 @@ Both can be changed while driving. The gearbox shifts itself. `gear` reads which
 | `wheel.spin` / `wheel.steerAngle` | How far it has rolled and how far it is turned. |
 | `wheel.isOnGround` / `wheel.groundBody` / `wheel.groundNormal` | What that tire is on. |
 | `wheel.suspensionCompression` | `0` fully extended … `1` bottomed out. Watch a car squat under power and dive under braking. |
-| `wheel.slip` / `wheel.slideAngle` | How much the tire is sliding along itself and across itself. Color a wheel by `slip` and a spinning one lights up. |
+| `wheel.slip` / `wheel.slipAngle` | How much the tire is sliding along itself and across itself. Color a wheel by `slip` and a spinning one lights up. |
 
 `withWheel(_:)` moves the 3D transform stack to a wheel's pose, steering and spin included, the way `withBody(_:)` does for a body. A tire modeled as a cylinder along +y lands right.
 
@@ -833,7 +833,7 @@ The worked example is [`3D/Physics/Joyride`](../../Examples/3D/Physics/Joyride/)
 
 ### Tracks
 
-`tracked: true` builds the same machine on two tracks. The wheels become road wheels, split into a left and a right band by **which side of the hull they sit on**. The three controls mean what they always did:
+`isTracked: true` builds the same machine on two tracks. The wheels become road wheels, split into a left and a right band by **which side of the hull they sit on**. The three controls mean what they always did:
 
 ```swift
 var wheels: [Wheel3D] = []
@@ -845,7 +845,7 @@ for side in [1.3, -1.3] {                       // +x is its left, -x its right
 }
 let crawler = world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
                                at: Vector3(0, 1.2, 0), wheels: wheels,
-                               mass: 4200, topSpeed: 9, tracked: true)!
+                               mass: 4200, topSpeed: 9, isTracked: true)!
 ```
 
 Steering is the one that reaches the ground differently, because a track has nothing to turn. The number sets how much slower the inside band runs. Half lock stops it, so the machine turns about its own inside track. **Full lock runs it backwards, which spins the machine where it stands.** It needs throttle to do any of that, the way a real one does. The bands are turned by the engine, so with the engine idle there is nothing to run one against the other.
@@ -865,7 +865,7 @@ Most of a wheel means the same thing on a band. These do not:
 | `brakeTorque` | Adds up over a band, so the whole band's brake is the sum of its wheels'. There is no separate hand brake, so `handBrake` pulls the same one. |
 | `grip` | Scales a flat pair of friction coefficients rather than a tire's slip curves. This is why a track keeps pulling while it slides, and what lets one climb a bank that would leave a wheel spinning. |
 | `steers` / `maxSteerAngle` / `casterAngle` | Inert. A road wheel never turns, and `steerAngle` always reads zero. |
-| `slip` / `slideAngle` | Always zero. A road wheel only ever turns as fast as the band it rides, so it has no slip of its own to report. |
+| `slip` / `slipAngle` | Always zero. A road wheel only ever turns as fast as the band it rides, so it has no slip of its own to report. |
 
 Everything else, the suspension especially, works exactly as it does on a wheel. A tracked machine takes `maxTilt`, `wheelContact`, `engineTorque`, and `topSpeed` unchanged. It cannot also `balance`, since a machine on tracks does not lean.
 
@@ -890,7 +890,7 @@ override func setup() {
 }
 
 override func draw() {
-    world.step(dt: deltaTime)
+    world.advance(by: deltaTime)
     figure.apply(ragdoll)     // the pose the solver just found
     drawScene(figure)
 }
@@ -917,7 +917,7 @@ for limb in ragdoll.limbs {
 ```swift
 target.apply(walk, at: time)          // where the animation wants the limbs
 ragdoll.drive(toward: target, strength: effort)
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 figure.apply(ragdoll)                 // where they actually ended up
 ```
 
@@ -963,7 +963,7 @@ let cloth = world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
                               pinned: { $0.z < -1.4 })   // hung from one edge
 
 // each frame:
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 fill(.crimson)
 drawSoftBody(cloth)
 ```
@@ -1055,7 +1055,7 @@ let rope = world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1,
                          pinned: { $0.y > -0.001 })       // hung from the top
 
 // each frame:
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 drawSoftBody(rope)                                        // a tube along the rope
 ```
 
@@ -1135,7 +1135,7 @@ cape = world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
 // each frame, after the figure is posed and before the world steps:
 figure.apply(ragdoll)
 cape.follow(figure)
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 ```
 
 **The pose the figure is standing in when you build the cloth is the bind pose.** Nothing has to be authored in a modeling tool, and no weights have to be painted. Hang the cloth where it belongs, name the joints, and every later pose is read as the motion since. `carriedBy:` is given a vertex in the mesh's own space, the same space `pinned:` reads. It answers with a joint's name, or `nil` for a part that is ordinary cloth. A name the skeleton does not have is skipped with a note. A typo therefore leaves that part hanging free, rather than silently doing something else.
@@ -1150,7 +1150,7 @@ Three more numbers shape what the rest of it may do, and all three are **lengths
 
 Two knobs work while it runs. **`swayScale`** multiplies every leash at once, so one slider lets a whole cape out. **`followsSkin`** turns the leashes off entirely, leaving only the parts held exactly on the skin still following. That is the way to let a cape go loose without rebuilding it.
 
-**`follow(_:)` before `step(dt:)`, once a frame.** The solver eases the cloth from the previous pose to this one across the step. A second call in the same frame loses that, and a call after the step leaves the cloth a frame behind. **`snap(to:)`** is the other one. It puts every carried particle exactly where the skeleton says and stops it dead. That is what a figure that was *stood* somewhere rather than *moved* there needs, so the cloth arrives with it instead of being dragged across the room.
+**`follow(_:)` before `advance(by:)`, once a frame.** The solver eases the cloth from the previous pose to this one across the step. A second call in the same frame loses that, and a call after the step leaves the cloth a frame behind. **`snap(to:)`** is the other one. It puts every carried particle exactly where the skeleton says and stops it dead. That is what a figure that was *stood* somewhere rather than *moved* there needs, so the cloth arrives with it instead of being dragged across the room.
 
 A carried cape is otherwise an ordinary soft body. It collides with the rigid world, floats, turns up in `world.contacts`, can be grabbed, and rides in a snapshot. A snapshot writes down what the closures decided, since it cannot carry the closures. Its own gap is the one every soft body has. **It does not collide with itself**, so a cape passes through its own folds and through any other cloth on the same figure.
 
@@ -1211,7 +1211,7 @@ if let surface = world.waterMesh(extent: 40) {
 
 `waterHeight(at:)` asks the same question for a single point, for sitting something exactly on the waterline. Both read the surface as it stands this frame. `world.waterPhase` is the clock behind it, if a shader needs to move in step.
 
-**Riding higher than it should.** `Body3D.buoyancy` multiplies what the water would otherwise do to one body. `1` is what its density says, `2` floats it as though it were half as heavy, and `0` sinks it whatever it is made of. Reach for `density` first, and keep this for the one crate that has to bob higher than the rest.
+**Riding higher than it should.** `Body3D.buoyancyScale` multiplies what the water would otherwise do to one body. `1` is what its density says, `2` floats it as though it were half as heavy, and `0` sinks it whatever it is made of. Reach for `density` first, and keep this for the one crate that has to bob higher than the rest.
 
 **Cloth floats too.** A [soft body](#softbodies) is floated particle by particle, since it has neither the one mass nor the one shape the rigid path works from. Each particle rides the surface directly above it rather than a plane through the body's middle, so a raft follows the swell instead of being curled by it. Its own `density` decides how high it rides. A closed surface derives one from mass and volume, so a beach ball just floats. A sheet holds no volume to derive one from and starts at `1`, so `raft.density = 0.3` is what makes a sail into a raft. Drag bites much harder on cloth than on a crate, because a sheet's area for its weight is enormous. A heavy one sinks slowly, and a floating one is carried by a current rather than left behind by it.
 
@@ -1260,7 +1260,7 @@ The snapshot's own `bodyCount` and `jointCount` say what is in it before anythin
 
 **What comes back.**
 
-- Every rigid `Body3D` with its collider, pose, velocity, and every knob `addBody` takes: kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, and buoyancy.
+- Every rigid `Body3D` with its collider, pose, velocity, and every knob `addBody` takes: kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, and buoyancyScale.
 - Every `Joint3D` between them, gears and racks included.
 - The collision-group table with its rules.
 - The world's `gravity`, `ground`, `bounce`, `maxTimestep`, `unitsPerMeter`, and `water`.
@@ -1281,7 +1281,7 @@ figure = world.ragdolls.first
 
 **What it costs.** A snapshot is self-contained, which is what makes it a file you can commit beside a sketch, and it holds geometry the same way. A `.mesh` or `.heightfield` collider is written out whole, so a world that colliders a loaded set piece carries that set piece inside every snapshot of it. The bytes are packed, which costs nothing and is why a settled arrangement is small. A heap of sixty primitives is about a kilobyte. A world carrying a heightfield and two loaded meshes runs to about a megabyte, roughly half the scenery's own weight. A damaged or half-written file is refused rather than half-read. When that size matters, name the scenery instead of holding it, below.
 
-**What does not.** A grab is a hand on a body rather than part of the world, and contacts are worked out again by the next `step(dt:)`, so neither is saved. Motors are not saved either. `drive(at:)` and friends are things a sketch says, usually every frame, so say them again. A soft body is nothing but its mesh, so it is saved only when it has been given a name to write down in place of one.
+**What does not.** A grab is a hand on a body rather than part of the world, and contacts are worked out again by the next `advance(by:)`, so neither is saved. Motors are not saved either. `drive(at:)` and friends are things a sketch says, usually every frame, so say them again. A soft body is nothing but its mesh, so it is saved only when it has been given a name to write down in place of one.
 
 **The bodies are new objects.** `restore(_:)` empties the world first, so any `Body3D` or `Joint3D` you were holding is gone. Take them from `world.bodies` and `world.joints` again. They come back in the order they were saved in, so an index still names the same body. Each one still knows its own `collider`, which is usually all a drawing loop needs.
 
@@ -1346,7 +1346,7 @@ world.addBodies(from: scene)          // every body and joint the file describes
 
 Nothing else is needed. The bodies are ordinary `Body3D`s, so they collide, stack, take impulses, snapshot, and draw the way any others do. Each one's `assetName` is the name of the prim it came from, which is how a drawing loop tells them apart.
 
-**What comes across.** Rigid bodies (falling, driven with `physics:kinematicEnabled`, or scenery), with their mass, density, center of mass, velocity, and whether they start asleep. Colliders as boxes, balls, capsules, cylinders, cones, hulls, and exact meshes. Friction and restitution from a bound physics material. The fixed, revolute, prismatic, spherical, and distance joints, with their limits. And the scene's gravity, if you ask for it with `applyGravity: true`.
+**What comes across.** Rigid bodies (falling, driven with `physics:kinematicEnabled`, or scenery), with their mass, density, center of mass, velocity, and whether they start asleep. Colliders as boxes, balls, capsules, cylinders, cones, hulls, and exact meshes. Friction and restitution from a bound physics material. The fixed, revolute, prismatic, spherical, and distance joints, with their limits. And the scene's gravity, if you ask for it with `usesSceneGravity: true`.
 
 Four rules are worth knowing, because each is the schema's and not a choice made here:
 

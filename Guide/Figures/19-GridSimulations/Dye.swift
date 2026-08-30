@@ -10,7 +10,7 @@ final class Dye: Sketch {
 
     override func draw() {
         background(Color(hex: 0x05070C))
-        if fluid == nil { fluid = simField(.fluid(curl: 34), scale: 0.5) }
+        if fluid == nil { fluid = makeSimField(.fluid(curl: 34), scale: 0.5) }
         guard let fluid else { return }
 
         let a = time * 1.4
@@ -22,6 +22,6 @@ final class Dye: Sketch {
             fill(Color(hue: time * 0.07, saturation: 0.85, brightness: 1))
             drawCircle(center: brush, radius: 15)
         }
-        drawImage(fluid.filtered(.bloom(threshold: 0.4, intensity: 1.1, radius: 14)).image, 0, 0)
+        drawImage(fluid.filtered(.bloom(threshold: 0.4, amount: 1.1, radius: 14)).image, 0, 0)
     }
 }

@@ -25,7 +25,7 @@ final class AntColonySearch: Sketch {
         let colony = AntColony(cities: cities, elitism: 2, seed: 7)
 
         for (panel, stop) in stops.enumerated() {
-            colony.step(stop - colony.iterations)
+            colony.step(stop - colony.stepCount)
             withState {
                 translate(Double(panel) * panelStep, 0)
                 strokeCap(.round)

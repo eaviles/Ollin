@@ -15,7 +15,7 @@ final class BouncedLight: Sketch {
                             fieldOfView: .pi / 3.4))
         toneMap(.aces, exposure: 1.35)
         spotLight(.white, at: Vector3(0.5, 3.8, 0.9), direction: Vector3(0.05, -1, -0.02),
-                  angle: .pi / 3.2, penumbra: 0.5, intensity: 3.4)
+                  coneAngle: .pi / 3.2, penumbra: 0.5, intensity: 3.4)
         castShadows()
         globalIllumination(intensity: 1.6)
 

@@ -135,10 +135,10 @@ final class SurfaceMaps: Sketch {
         background(Color(hex: 0x0E1116))
         cameraShowcase(.sway(amplitude: 0.14, period: 26), target: .zero, radius: 11.2,
                        elevation: 0.14, fieldOfView: .pi / 4)
-        environment(.studio.intensity(1.05))
+        environment(.studio.intensified(to: 1.05))
 
         var glowing = lit
-        glowing.material?.emissiveFactor = Color(white: min(1, glow / 4))
+        glowing.material?.emissiveColor = Color(white: min(1, glow / 4))
 
         fill(.white)
         let xs: [Double] = [-3.45, -1.15, 1.15, 3.45]

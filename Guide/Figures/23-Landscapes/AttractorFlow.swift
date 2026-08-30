@@ -13,7 +13,7 @@ final class AttractorFlow_Figure: Sketch {
     var flow: AttractorFlow!
 
     override func setup() {
-        flow = attractorFlow(count: 600_000, .lorenz(), seed: 11)
+        flow = makeAttractorFlow(count: 600_000, .lorenz(), seed: 11)
         flow.size = flow.extent / 190
 
         // The single orbit, moved to sit beside the flow. A cloud drawn from the

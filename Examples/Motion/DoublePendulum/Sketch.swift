@@ -30,7 +30,7 @@ final class DoublePendulumFan: Sketch {
         let pivot = Vector2(width / 2, height * 0.38)
 
         for (i, pendulum) in pendulums.enumerated() {
-            pendulum.step()
+            pendulum.advance()
             trails[i].append(pivot + pendulum.bob2)
             if trails[i].count > trailLength { trails[i].removeFirst() }
         }

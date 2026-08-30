@@ -244,7 +244,7 @@ private final class SeaProbe: Sketch {
 
     override func draw() {
         background(.black)
-        let sea = oceanField(ocean, at: at, resolution: resolution)
+        let sea = makeOceanField(ocean, at: at, resolution: resolution)
         let mapped = sea.layer.filtered(.shader(Shader("""
         float4 shade(float2 uv, ShaderInfo info) {
             float4 field = sampleRaw(info, uv);
@@ -265,7 +265,7 @@ private final class DrawnSeaProbe: Sketch {
         background(Color(hex: 0x8FB6D4))
         light(.directional(.white, direction: Vector3(0, -0.3, -0.95)))
         camera(.perspective(eye: Vector3(0, 6, -60), target: Vector3(0, 2, 120)))
-        let sea = oceanField(Ocean(waveHeight: 3, patchSize: 200, seed: 6), resolution: 128)
+        let sea = makeOceanField(Ocean(waveHeight: 3, patchSize: 200, seed: 6), resolution: 128)
         drawOcean(sea, segments: 96, tiles: 3)
     }
 }
@@ -322,7 +322,7 @@ private final class OceanBenchScene: Sketch {
                            intensity: 1.1))
         camera(.perspective(eye: Vector3(0, 4.6, -95), target: Vector3(0, 2.6, 220),
                             fieldOfView: .pi / 3.4))
-        let sea = oceanField(Ocean(waveHeight: 2.6, windSpeed: 12, windDirection: 90,
+        let sea = makeOceanField(Ocean(waveHeight: 2.6, windSpeed: 12, windDirection: 90,
                                    choppiness: 1.25, patchSize: 170, seed: 7),
                              resolution: resolution)
         drawOcean(sea, segments: segments, tiles: 7)

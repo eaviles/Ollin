@@ -4,7 +4,7 @@
 
 ## The ocean
 
-A sea, built the way the ocean is measured. `oceanField(_:)` writes a wave spectrum on the
+A sea, built the way the ocean is measured. `makeOceanField(_:)` writes a wave spectrum on the
 GPU, which says how much water stands at each wavelength and heading for a given wind, and
 one [inverse Fourier transform](../Drawing/Fourier.md) turns that whole field of frequencies
 into the moving surface in a single step. `drawOcean(_:)` draws it as water.
@@ -34,7 +34,7 @@ override func draw() {
     light(.directional(Color(hex: 0xFFF1DC), direction: Vector3(0, -0.13, -0.99)))
     camera(.perspective(eye: Vector3(0, 4.6, -95), target: Vector3(0, 2.6, 220)))
 
-    let sea = oceanField(.breeze)            // the transform runs here
+    let sea = makeOceanField(.breeze)            // the transform runs here
     drawOcean(sea, segments: 320, tiles: 5)
 }
 ```
@@ -78,7 +78,7 @@ Four presets to start from: `.calm`, `.breeze` (the default), `.swell`, `.storm`
 like a generator. Call it in `draw()`.
 
 ```swift
-let sea = oceanField(.swell, resolution: 512)
+let sea = makeOceanField(.swell, resolution: 512)
 ```
 
 `resolution` is how many texels the field carries along each side (256 by default), rounded
@@ -94,7 +94,7 @@ that works on a layer works on it.
 To scrub, or to run the water at its own speed, name the instant:
 
 ```swift
-let sea = oceanField(.breeze, at: time * 0.4)
+let sea = makeOceanField(.breeze, at: time * 0.4)
 ```
 
 **A looping sea.** With `loopSeconds` set, every wave's frequency is rounded down to a
@@ -106,7 +106,7 @@ long unless a short loop is the point.
 ### Drawing it
 
 ```swift
-let sea = oceanField(.breeze)
+let sea = makeOceanField(.breeze)
 drawOcean(sea, segments: 320, tiles: 5, water: .open)
 ```
 
@@ -129,13 +129,13 @@ its own index and reads the field for where the water has carried it. `segments:
 - `sky`, what a flat surface reflects when no environment is set
 - `foam` and `foamAmount`, the color of a folding crest and how much of a fold turns white
 - `reflectance`, how much light the surface returns looked at straight down (0.02 is water)
-- `glitter` and `glitterTightness`, the sun's own highlight
+- `sparkle` and `sparkleTightness`, the sun's own highlight
 
 Four to start from: `.open`, `.tropical`, `.dusk`, `.ink`.
 
 With an environment set (`environment(.sky(...))` or a loaded HDRI) the surface reflects that
 environment, and the water and the sky behind it agree. The first directional light in the
-scene is the sun the glitter comes from; with no light set the water is body color and
+scene is the sun the sparkle comes from; with no light set the water is body color and
 reflection alone.
 
 <a id="cost"></a>

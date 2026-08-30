@@ -39,9 +39,9 @@ Per-frame state like the lights and camera: call it in `draw()`, after both. A f
 
 ```swift
 lensFlare()                                       // the bundled lens, strength 1
-lensFlare(strength: 0.4)                          // the same, held back
-lensFlare(strength: 1, lens: .heliar.stopped(to: 11))
-lensFlare(LensFlare(lens: myLens, strength: 1.2, reach: 0.8, sourceSize: 0.02))
+lensFlare(amount: 0.4)                          // the same, held back
+lensFlare(amount: 1, lens: .heliar.stopped(to: 11))
+lensFlare(LensFlare(lens: myLens, amount: 1.2, reach: 0.8, sourceSize: 0.02))
 noLensFlare()                                     // back off (the default)
 ```
 
@@ -66,7 +66,7 @@ Its arms are light **bending at the edges of the iris**. Far from an opening, wh
 <img src="../../Guide/Images/26-SculptingWithFields/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, fanning into color at their tips, around a blown-out core" width="640">
 
 ```swift
-lensFlare(LensFlare(strength: 1, star: 1.4, starSize: 0.5))   // a bigger, stronger star
+lensFlare(LensFlare(amount: 1, star: 1.4, starSize: 0.5))   // a bigger, stronger star
 lensFlare(LensFlare(star: 0))                                 // the ghosts, and no star
 ```
 
@@ -102,15 +102,15 @@ Lens.heliar.multicoated(from: 480, to: 620)
 <a id="prescription"></a>
 ### Writing your own prescription
 
-A lens patent prints the same table `Lens` holds, so a published prescription can be typed in directly. Distances are millimeters, read from the front of the barrel toward the sensor, and `refractiveIndex` is the medium *after* each interface.
+A lens patent prints the same table `Lens` holds, so a published prescription can be typed in directly. Distances are millimeters, read from the front of the barrel toward the sensor, and `ior` is the medium *after* each interface.
 
 Here are the first rows of the bundled lens, as an example of the shape. Its front group is a cemented doublet: two glasses meeting at the second surface, with air after the third.
 
 ```swift
 let lens = Lens(interfaces: [
-    LensInterface(radius:  30.810, thickness: 7.700, refractiveIndex: 1.652, height: 14.5),
-    LensInterface(radius: -89.350, thickness: 1.850, refractiveIndex: 1.603, height: 14.5),
-    LensInterface(radius: 580.380, thickness: 3.520, refractiveIndex: 1.000, height: 14.5),
+    LensInterface(radius:  30.810, thickness: 7.700, ior: 1.652, height: 14.5),
+    LensInterface(radius: -89.350, thickness: 1.850, ior: 1.603, height: 14.5),
+    LensInterface(radius: 580.380, thickness: 3.520, ior: 1.000, height: 14.5),
     // ... the middle element ...
     LensInterface.iris(thickness: 3.000, height: 11.6),
     // ... the rear group, ending with the gap to the sensor ...

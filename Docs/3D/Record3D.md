@@ -63,7 +63,7 @@ var intrinsics: CameraIntrinsics   // at the capture resolution
 
 ```swift
 func pointCloud(at index: Int,
-                minimumConfidence: DepthConfidence = .high,
+                minConfidence: DepthConfidence = .high,
                 depthRange: ClosedRange<Double>? = nil,
                 step: Int = 1,
                 pointSize: Double = 0.012) throws -> PointCloud
@@ -71,7 +71,7 @@ func pointCloud(at index: Int,
 
 This is the one call you usually need. It decodes frame `index` and unprojects every depth pixel into a colored [`PointCloud`](../3D/3D.md), ready for `drawPointCloud`. The most recent frame is cached, so orbiting a held frame costs nothing: re-reading the same index is free.
 
-- **`minimumConfidence`** drops the samples that fall below the floor you pick. ARKit tags each depth sample `.low`, `.medium`, or `.high`, so `.high` is cleanest while `.medium` keeps a denser cloud. It's ignored if the recording has no confidence map.
+- **`minConfidence`** drops the samples that fall below the floor you pick. ARKit tags each depth sample `.low`, `.medium`, or `.high`, so `.high` is cleanest while `.medium` keeps a denser cloud. It's ignored if the recording has no confidence map.
 - **`depthRange`** keeps only samples whose depth in meters falls in the range, trimming sensor noise near zero and far-away outliers. `nil` keeps every positive depth.
 - **`step`** samples every *n*-th pixel per axis, so `1` is full density. A 256×192 LiDAR map is ~49k points at full density, comfortable to rebuild each frame.
 - **`pointSize`** is the splat diameter in world units (meters), and perspective shrinks distant points.
@@ -90,7 +90,7 @@ struct RGBDFrame {
     let depthWidth, depthHeight: Int
     let intrinsics: CameraIntrinsics   // scaled to the depth grid
 
-    func pointCloud(minimumConfidence:depthRange:step:pointSize:) -> PointCloud
+    func pointCloud(minConfidence:depthRange:step:pointSize:) -> PointCloud
 }
 ```
 
@@ -139,7 +139,7 @@ var isStreaming: Bool          // frames currently arriving
 var latestFrame: RGBDFrame?    // the most recent decoded frame (same type as the file path)
 var latestPose: Record3DPose?  // the frame's ARKit camera pose (see below)
 var camera: Record3DCamera?    // .trueDepth (front), .lidar (rear), or .unknown (nil before the first frame)
-func pointCloud(minimumConfidence:depthRange:step:pointSize:) -> PointCloud?
+func pointCloud(minConfidence:depthRange:step:pointSize:) -> PointCloud?
 ```
 
 **Which camera is streaming** is detectable, which is worth acting on because the two behave very differently. `camera`, and also `RGBDFrame.camera`, reports `.trueDepth` or `.lidar`, inferred from the depth grid. The front TrueDepth camera streams a dense 640×480 map and the rear LiDAR a sparse 256×192 one. No iPhone pairs them the other way, so the resolution identifies the camera.

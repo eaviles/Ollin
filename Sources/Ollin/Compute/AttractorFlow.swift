@@ -171,7 +171,7 @@ public struct AttractorSystem: Sendable, Equatable {
 /// var flow: AttractorFlow!
 ///
 /// override func setup() {
-///     flow = attractorFlow(count: 1_000_000, .lorenz())
+///     flow = makeAttractorFlow(count: 1_000_000, .lorenz())
 /// }
 ///
 /// override func draw() {
@@ -264,7 +264,7 @@ public final class AttractorFlow {
     /// Build `count` particles spread over the attractor itself (a settled CPU orbit,
     /// nudged off it so they are a million trajectories rather than one). `seed` makes
     /// that spread reproducible.
-    public init(count: Int, system: AttractorSystem, seed: UInt64) {
+    public init(count: Int, system: AttractorSystem, seed: Int) {
         precondition(count > 0, "AttractorFlow needs a positive count")
         self.count = count
         self.system = system
@@ -284,7 +284,7 @@ public final class AttractorFlow {
         self.speedLow = sample.speedLow
         self.speedHigh = sample.speedHigh
 
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         var seeds: [OllinPoint] = []
         seeds.reserveCapacity(count)
         let path = sample.path
@@ -455,7 +455,7 @@ public final class AttractorFlow {
                 let t = Double(i) / 7 * Double(source.count - 1)
                 let a = min(Int(t), source.count - 1)
                 let b = min(a + 1, source.count - 1)
-                return Color.mix(source[a], source[b], t: t - Double(a)).simd4
+                return Color.mix(source[a], source[b], t - Double(a)).simd4
             }
         }
         // `opacity` scales whatever alpha the colors carry, so a stop that was already

@@ -185,7 +185,7 @@ A string is a disturbance running up and down a length of something under tensio
 
 ```swift
 var string = PluckedString.steel
-string.pick = 0.5              // halfway along
+string.position = 0.5          // halfway along
 synth.voice = Voice(string: string)
 ```
 
@@ -406,7 +406,7 @@ Modulators always end up in an earlier lane than what they push, so one forward 
 Everything else a `Synth` plays is worked out as it goes. This is the other way. Someone recorded the thing, and a note means finding the nearest recording and moving it to the pitch asked for.
 
 ```swift
-synth.instrument = SampledInstrument.builtin
+synth.instrument = SampledInstrument.builtIn
 synth.voice = Voice(sampled: Sampled(), envelope: .plucked)
 synth.play("C4", for: 1.5)
 ```
@@ -423,7 +423,7 @@ A `Voice` travels to the audio thread inside a note and has to be copyable a wor
 | `Voice(sampled:)` | how they are played |
 | `Sampled.loops` | whether a note holds by repeating the looped part, where the recording says where that is |
 | `Sampled.velocitySensitivity` | `0` plays every note as loud as it was recorded, which suits an instrument whose recordings are already its dynamics. `1` makes velocity the whole of it |
-| `Sampled.transpose` | moves every note, for an instrument recorded at the wrong pitch |
+| `Sampled.transposition` | moves every note, for an instrument recorded at the wrong pitch |
 
 The read head moves through a recording at whatever rate the pitch asks for. That moves its pitch and its length together, exactly as a tape does. That is also the limitation. Move a recording far enough and the instrument audibly changes size. A real library therefore ships many recordings rather than one, and the nearest is always chosen.
 
@@ -630,7 +630,7 @@ Reverb(.hall, mix: 0.3)
 #### Equalizer
 
 ```swift
-Equalizer(low: -6, high: 3)                 // thinner and brighter
+Equalizer(lowGain: -6, highGain: 3)         // thinner and brighter
 Equalizer.lowCut(below: 300)                // when a sound is muddy
 ```
 

@@ -708,7 +708,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "The procedural planet: six compute kernels bake the height, surface, relief, finish, city-light and cloud maps into textures the sketch keeps, a sphere wears them under one directional sun, and the night lights are drawn into a second layer and masked by the darkness of the lit one (Combine.mask, inverted), so the terminator decides where a city shows. Pins the whole chain, the compute-texture-as-mesh-texture path (base color, normal, metallic-roughness and emissive maps all GPU-written), the layer mask, and the bloom. The kernels are read from the example's own .metal files. t = 0, one world, deterministic.",
                  make: { PlanetScene() }),
     SnapshotCase("ocean",
-                 note: "A wave field (oceanField) drawn as water (drawOcean): the spectrum pass, the inverse Fourier ladder, and the resolve run on the GPU, then a grid with no geometry buffers reads the field for where each corner has moved. Pins the whole chain, the per-pixel normal read off the field (the light running over the water), the body color, the Fresnel sky mix, the sun glitter, and foam where the crests fold. No environment (the flat sky color path), t = 0, one seed, deterministic.",
+                 note: "A wave field (oceanField) drawn as water (drawOcean): the spectrum pass, the inverse Fourier ladder, and the resolve run on the GPU, then a grid with no geometry buffers reads the field for where each corner has moved. Pins the whole chain, the per-pixel normal read off the field (the light running over the water), the body color, the Fresnel sky mix, the sun sparkle, and foam where the crests fold. No environment (the flat sky color path), t = 0, one seed, deterministic.",
                  make: { OceanScene() }),
     SnapshotCase("fourier-spectrum",
                  note: "The transform itself: a plate of concentric rings beside its own frequency spectrum (.fourier + .spectrum) and the round trip back (.inverseFourier). Pins the butterfly ladder both ways, the quadrant shift that puts the lowest frequency in the middle, the channel extract, and the log view. No time and no rng, deterministic.",
@@ -835,7 +835,7 @@ private final class SpecularAntialiasScene: Sketch {
         perspective(eye: Vector3(0, 3.0, 8.2), target: Vector3(0, 0.1, 0),
                     fieldOfView: .pi / 3.4, near: 0.5, far: 60)
         directionalLight(.white, direction: Vector3(0.35, -0.5, 0.79), intensity: 0.9)
-        environment(.studio.intensity(0.35))
+        environment(.studio.intensified(to: 0.35))
         specularAntialiasing()
         randomSeed(7)
         var balls: [MeshInstance] = []
@@ -920,7 +920,7 @@ private final class LensFlareScene: Sketch {
         ambientLight(Color(white: 0.06))
         directionalLight(Color(white: 0.85), direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.35)
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 18)
-        lensFlare(strength: 1, lens: Lens.heliar.multicoated().stopped(to: 4.5))
+        lensFlare(amount: 1, lens: Lens.heliar.multicoated().stopped(to: 4.5))
 
         fill(.white)
         matcap(bulb)
@@ -1132,7 +1132,7 @@ private final class LoadedSceneScene: Sketch {
             lights: [
                 .point(Color(hex: 0xFFC780), at: Vector3(-1.4, 2.0, -0.4), intensity: 0.9),
                 .spot(.white, at: Vector3(1.9, 2.7, 1.6), direction: Vector3(-1.9, -1.7, -1.6),
-                      angle: 1.1, penumbra: 0.5),
+                      coneAngle: 1.1, penumbra: 0.5),
                 .directional(Color(hex: 0x9FB3E6), direction: Vector3(0.4, -0.8, -0.45),
                              intensity: 0.35),
             ])
@@ -1210,7 +1210,7 @@ private final class SceneDefocus3DScene: Sketch {
         background(Color(white: 0.04))
         let spheres: [(x: Double, z: Double, hue: Double)] =
             [(-2.5, 8, 0.0), (0, 0, 0.35), (2.5, -8, 0.62)]   // near → far
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(white: 0.04))
             perspective(eye: Vector3(0, 1.5, 14), target: Vector3(0, 0, -3),
@@ -1235,7 +1235,7 @@ private final class AmbientOcclusionScene: Sketch {
 
     override func draw() {
         background(Color(white: 0.07))
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x121318))
             // Fixed camera + near/far bracketing the block field (deterministic).
@@ -1264,7 +1264,7 @@ private final class AmbientOcclusionScene: Sketch {
             }
         }
         drawImage(scene.combined(with: scene.depth,
-                                 .ambientOcclusion(radius: 0.5, intensity: 1.0)).image, 0, 0)
+                                 .ambientOcclusion(radius: 0.5, amount: 1.0)).image, 0, 0)
     }
 }
 
@@ -1272,7 +1272,7 @@ private final class ScreenSpaceReflectionsScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x06080d))
             // Fixed camera + near/far bracketing the scene (deterministic).
@@ -1302,7 +1302,7 @@ private final class ScreenSpaceReflectionsScene: Sketch {
             }
         }
         drawImage(scene.combined(with: scene.depth,
-                                 .screenSpaceReflections(intensity: 0.9, roughness: 0.15,
+                                 .screenSpaceReflections(amount: 0.9, roughness: 0.15,
                                                          fresnel: 0.8)).image, 0, 0)
     }
 }
@@ -1316,7 +1316,7 @@ private final class RayTracedReflectionsScene: Sketch {
         camera(.orbiting(target: Vector3(0, 0.7, 0), radius: 8,
                          azimuth: 0.6, elevation: 0.36,
                          fieldOfView: .pi / 4, near: 2, far: 24))
-        environment(.studio.intensity(1.1))
+        environment(.studio.intensified(to: 1.1))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
         castShadows()
         rayTracedReflections()
@@ -1351,7 +1351,7 @@ private final class GlossyReflectionsScene: Sketch {
         camera(.orbiting(target: Vector3(0, 0.9, 0), radius: 9.0,
                          azimuth: 0.35, elevation: 0.28,
                          fieldOfView: .pi / 4, near: 1, far: 40))
-        environment(.studio.intensity(1.0))
+        environment(.studio.intensified(to: 1.0))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.3), intensity: 0.8)
         rayTracedReflections()
         glossyReflections()
@@ -1425,7 +1425,7 @@ private final class GlobalIlluminationScene: Sketch {
                          azimuth: 0, elevation: 0.03, fieldOfView: .pi / 3.2,
                          near: 1, far: 40))
         spotLight(.white, at: Vector3(0, 3.8, 0.4), direction: Vector3(0, -1, -0.1),
-                  angle: .pi / 3.4, penumbra: 0.5, intensity: 3)
+                  coneAngle: .pi / 3.4, penumbra: 0.5, intensity: 3)
         castShadows()
         globalIllumination()
         withState { fill(Color(white: 0.88)); translate(0, -0.1, 0); drawBox(width: 8.4, height: 0.2, depth: 8.4) }
@@ -1453,7 +1453,7 @@ private final class MeshLightingScene: Sketch {
         directionalLight(Color(hue: 0.09, saturation: 0.3, brightness: 1), direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.7)
         pointLight(Color(hue: 0.5, saturation: 0.8, brightness: 1), at: Vector3(3, 2.5, 2.5), intensity: 1.2)
         spotLight(Color(hue: 0.85, saturation: 0.7, brightness: 1), at: Vector3(-2, 4, 1),
-                  direction: Vector3(0.4, -1, -0.2), angle: .pi / 4, penumbra: 0.5, intensity: 1.6)
+                  direction: Vector3(0.4, -1, -0.2), coneAngle: .pi / 4, penumbra: 0.5, intensity: 1.6)
         withState {
             fill(Color(white: 0.85)); specular(0.7); shininess(80)
             translate(-1.6, 0, 0); drawSphere(radius: 1.0)
@@ -1575,7 +1575,7 @@ private final class AreaReflectionsScene: Sketch {
                          azimuth: 0.2, elevation: 0.35))
         environment(.night)
         rayTracedReflections()
-        rectLight(Color(hue: 0.09, saturation: 0.3, brightness: 1.0),
+        rectangleLight(Color(hue: 0.09, saturation: 0.3, brightness: 1.0),
                   at: Vector3(0, 2.2, -1.0), direction: Vector3(0, -0.35, -1),
                   width: 3.0, height: 0.8, intensity: 10)
         withState {
@@ -1605,7 +1605,7 @@ private final class AreaShadowsScene: Sketch {
         camera(.orbiting(target: Vector3(0, 0.6, 0), radius: 7,
                          azimuth: 0.5, elevation: 0.45, fieldOfView: .pi / 3.6))
         ambientLight(Color(white: 0.1))
-        rectLight(Color(hue: 0.09, saturation: 0.2, brightness: 1.0),
+        rectangleLight(Color(hue: 0.09, saturation: 0.2, brightness: 1.0),
                   at: Vector3(-1.5, 4.5, 1.2), direction: Vector3(0.3, -1, -0.25),
                   width: 4.0, height: 0.8, intensity: 4)
         castShadows()
@@ -1637,7 +1637,7 @@ private final class SpotShadowsScene: Sketch {
         pointLight(Color(white: 0.4), at: Vector3(-4, 3, 4), intensity: 0.4)
         spotLight(.white, at: Vector3(-1.5, 6, 3),
                   direction: (Vector3(0, 0.6, 0) - Vector3(-1.5, 6, 3)).normalized,
-                  angle: .pi / 4, penumbra: 0.4, intensity: 1.3)
+                  coneAngle: .pi / 4, penumbra: 0.4, intensity: 1.3)
         castShadows()
         withState { fill(Color(white: 0.82)); specular(0.05); drawPlane(width: 10, depth: 10) }
         withState {
@@ -1763,7 +1763,7 @@ private final class AnisotropyScene: Sketch {
         background(Color(white: 0.05))
         camera(.orbiting(target: .zero, radius: 8,
                          azimuth: 0.0, elevation: 0.18, fieldOfView: .pi / 3.4))
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
         directionalLight(Color(kelvin: 5400), direction: Vector3(-0.2, -0.4, -0.9), intensity: 1.1)
 
         // Top row: the strength sweep on one steel.
@@ -1843,7 +1843,7 @@ private final class AreaLightsScene: Sketch {
         camera(.orbiting(target: Vector3(0, -0.3, 0), radius: 9,
                          azimuth: 0.15, elevation: 0.3, fieldOfView: .pi / 3.4))
         ambientLight(Color(white: 0.02))
-        rectLight(Color(hue: 0.09, saturation: 0.32, brightness: 1.0),
+        rectangleLight(Color(hue: 0.09, saturation: 0.32, brightness: 1.0),
                   at: Vector3(-3.0, 1.2, -1.6), direction: Vector3(0.6, -0.35, 0.7),
                   width: 2.6, height: 1.8, intensity: 7)
         diskLight(Color(hue: 0.55, saturation: 0.5, brightness: 1.0),
@@ -1991,11 +1991,11 @@ private final class VolumetricLightScene: Sketch {
         ambientLight(Color(white: 0.015))
         spotLight(Color(hue: 0.10, saturation: 0.28, brightness: 1.0),
                   at: Vector3(-4.6, 6.0, 2.6), direction: Vector3(0.62, -0.74, -0.28),
-                  angle: .pi / 8, penumbra: 0.22, intensity: 3.2,
+                  coneAngle: .pi / 8, penumbra: 0.22, intensity: 3.2,
                   cookie: VolumetricLightScene.gobo, roll: 0.18)
         spotLight(Color(hue: 0.58, saturation: 0.45, brightness: 1.0),
                   at: Vector3(5.6, 2.6, -4.8), direction: Vector3(-0.92, -0.18, 0.36),
-                  angle: .pi / 10, penumbra: 0.5, intensity: 0.7)
+                  coneAngle: .pi / 10, penumbra: 0.5, intensity: 0.7)
         castShadows()
         volumetricLight(0.9, anisotropy: 0.45)
         fog(Color(hex: 0x0A0E18), density: 0.02)
@@ -2078,10 +2078,10 @@ private final class LightShapingScene: Sketch {
         pointLight(Color(hue: 0.58, saturation: 0.35, brightness: 1.0),
                    at: Vector3(2.6, 1.6, 0.8), intensity: 1.5,
                    profile: LightShapingScene.fan,
-                   axis: Vector3(0, -0.6, -1), roll: .pi / 2)
+                   direction: Vector3(0, -0.6, -1), roll: .pi / 2)
         spotLight(Color(hue: 0.13, saturation: 0.3, brightness: 1.0),
                   at: Vector3(-3.4, 2.8, 3.6), direction: Vector3(0.55, -0.6, -0.5),
-                  angle: 0.75, penumbra: 0.15, intensity: 1.3,
+                  coneAngle: 0.75, penumbra: 0.15, intensity: 1.3,
                   cookie: LightShapingScene.gobo, roll: 0.15)
 
         withState {
@@ -2169,7 +2169,7 @@ private final class ThinFilmScene: Sketch {
         background(Color(white: 0.04))
         camera(.orbiting(target: .zero, radius: 7.4,
                          azimuth: 0.0, elevation: 0.16, fieldOfView: .pi / 3.4))
-        environment(.courtyard.intensity(1.25).rotated(-0.8).lightingOnly())
+        environment(.courtyard.intensified(to: 1.25).rotated(-0.8).lightingOnly())
         directionalLight(Color(kelvin: 5400), direction: Vector3(-0.25, -0.45, -0.85),
                          intensity: 1.1)
 
@@ -2208,7 +2208,7 @@ private final class SoapFilmScene: Sketch {
         background(Color(white: 0.03))
         camera(.orbiting(target: .zero, radius: 4.6, azimuth: 0.0, elevation: 0.02,
                          fieldOfView: .pi / 4.2))
-        environment(.studio.intensity(0.9).lightingOnly())
+        environment(.studio.intensified(to: 0.9).lightingOnly())
         directionalLight(.white, direction: Vector3(-0.5, -0.6, -0.6), intensity: 1.0)
         var film = Material.glass()
         film.iridescence = 1.0
@@ -2261,7 +2261,7 @@ private final class SceneThroughGlassScene: Sketch {
         camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 8,
                          azimuth: 0.15, elevation: 0.14,
                          fieldOfView: .pi / 4, near: 2, far: 24))
-        environment(.studio.intensity(1.1))
+        environment(.studio.intensified(to: 1.1))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
         sceneThroughGlass()
         // The content the glass has to carry: a floor and three colored pillars.
@@ -2294,15 +2294,15 @@ private final class NormalMapScene: Sketch {
     /// A tiling green-up normal map authored from a height function: engraved
     /// rings on the left sphere, a diagonal weave on the right. Pure math, no
     /// rng, so the render is a fixed function of nothing.
-    private func map(strength: Double, height: (Double, Double) -> Double) -> Image {
+    private func map(amount: Double, height: (Double, Double) -> Double) -> Image {
         let size = 128
         var bytes = [UInt8](repeating: 0, count: size * size * 4)
         let d = 1.0 / Double(size)
         for y in 0..<size {
             for x in 0..<size {
                 let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
-                let dx = (height(u + d, v) - height(u - d, v)) / (2 * d) * strength
-                let dy = (height(u, v + d) - height(u, v - d)) / (2 * d) * strength
+                let dx = (height(u + d, v) - height(u - d, v)) / (2 * d) * amount
+                let dy = (height(u, v + d) - height(u, v - d)) / (2 * d) * amount
                 let len = (dx * dx + dy * dy + 1).squareRoot()
                 let i = (y * size + x) * 4
                 bytes[i]     = UInt8((-dx / len * 0.5 + 0.5) * 255)
@@ -2320,11 +2320,11 @@ private final class NormalMapScene: Sketch {
                          fieldOfView: .pi / 3.4))
         directionalLight(.white, direction: Vector3(-0.6, -0.7, -0.5), intensity: 1.1)
         ambientLight(Color(white: 0.08))
-        let rings = map(strength: 0.1) { u, v in
+        let rings = map(amount: 0.1) { u, v in
             let r = ((u - 0.5) * (u - 0.5) + (v - 0.5) * (v - 0.5)).squareRoot()
             return sin(r * 14 * .tau) * 0.5 + 0.5
         }
-        let weave = map(strength: 0.06) { u, v in
+        let weave = map(amount: 0.06) { u, v in
             (sin(u * 10 * .tau) * 0.5 + 0.5) * (sin(v * 10 * .tau) * 0.5 + 0.5)
         }
         fill(Color(hex: 0xBFC3CC))
@@ -2360,11 +2360,11 @@ private final class SurfaceMapScene: Sketch {
         return Image(width: size, height: size, premultipliedRGBA: bytes)!
     }
 
-    private func normalMap(strength: Double, height: @escaping (Double, Double) -> Double) -> Image {
+    private func normalMap(amount: Double, height: @escaping (Double, Double) -> Double) -> Image {
         let d = 1.0 / 128.0
         return map { u, v in
-            let dx = (height(u + d, v) - height(u - d, v)) / (2 * d) * strength
-            let dy = (height(u, v + d) - height(u, v - d)) / (2 * d) * strength
+            let dx = (height(u + d, v) - height(u - d, v)) / (2 * d) * amount
+            let dy = (height(u, v + d) - height(u, v - d)) / (2 * d) * amount
             let len = (dx * dx + dy * dy + 1).squareRoot()
             return (-dx / len * 0.5 + 0.5, dy / len * 0.5 + 0.5, 1 / len * 0.5 + 0.5)
         }
@@ -2395,7 +2395,7 @@ private final class SurfaceMapScene: Sketch {
             let a = min(abs(u * 6 - (u * 6).rounded()), abs(v * 6 - (v * 6).rounded()))
             return min(max((a - 0.06) / 0.14, 0), 1)
         }
-        var grooved = base.normalMapped(normalMap(strength: 0.12, height: coffer))
+        var grooved = base.normalMapped(normalMap(amount: 0.12, height: coffer))
             .surfaceMapped(occlusion: map { u, v in
                 let ao = 0.25 + 0.75 * coffer(u, v)
                 return (ao, ao, ao)
@@ -2413,7 +2413,7 @@ private final class SurfaceMapScene: Sketch {
                 return (seam * 0.25, seam * 0.85, seam)
             })
         lit.material?.baseColor = Color(red: 0.09, green: 0.1, blue: 0.12)
-        lit.material?.emissiveFactor = Color(white: 0.5)
+        lit.material?.emissiveColor = Color(white: 0.5)
 
         let placed: [(Mesh, Material, Double)] = [
             (worn, .physicallyBased(metallic: 1, roughness: 1), -3.15),
@@ -2704,11 +2704,11 @@ private final class DecalScene: Sketch {
         }
         // One box conforming over floor and crate at once; the crate's
         // vertical faces sit edge-on to the downward projection and fade.
-        decal(roundel, at: Vector3(0, 0.4, 0.4), width: 2.4, depth: 2)
+        drawDecal(roundel, at: Vector3(0, 0.4, 0.4), width: 2.4, depth: 2)
         // A half-opacity ring composited over the roundel, later in call order.
-        decal(ring, at: Vector3(-0.7, 0.2, 0.9), width: 1.8, opacity: 0.5)
+        drawDecal(ring, at: Vector3(-0.7, 0.2, 0.9), width: 1.8, opacity: 0.5)
         // A tag stamped sideways onto the crate's front face, rolled a little.
-        decal(tag, at: Vector3(0.6, 0.55, 0.25), direction: Vector3(0, 0, -1),
+        drawDecal(tag, at: Vector3(0.6, 0.55, 0.25), direction: Vector3(0, 0, -1),
               width: 1.1, depth: 1.6, roll: 0.18)
     }
 }
@@ -2803,7 +2803,7 @@ private final class GlassRefractionScene: Sketch {
         camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 8,
                          azimuth: 0.15, elevation: 0.14,
                          fieldOfView: .pi / 4, near: 2, far: 24))
-        environment(.studio.intensity(1.1))
+        environment(.studio.intensified(to: 1.1))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
         rayTracedReflections()
         // The content the glass has to transmit: a floor and three colored pillars.
@@ -2954,7 +2954,7 @@ private final class BlueNoiseScene: Sketch {
         noStroke()
         for p in points {
             let flow = signedNoise(p.x * 0.01, p.y * 0.01)
-            fill(Color.mix(Color(hex: 0xE8ECF4), Color(hex: 0x5AA9E6), t: (flow + 1) * 0.5))
+            fill(Color.mix(Color(hex: 0xE8ECF4), Color(hex: 0x5AA9E6), (flow + 1) * 0.5))
             drawCircle(center: p, radius: 1.6 + (flow + 1) * 1.4)
         }
     }
@@ -2995,7 +2995,7 @@ private final class StippleScene: Sketch {
                 image[x, y] = Color(white: clamp(d * 1.1, 0, 1))
             }
         }
-        dots = stipple(image, count: 380, in: canvasRectangle.inset(by: 16), iterations: 12)
+        dots = stipple(of: image, count: 380, in: canvasRectangle.inset(by: 16), iterations: 12)
     }
 
     override func draw() {
@@ -3377,7 +3377,7 @@ private final class GlyphMosaicScene: Sketch {
                 image[x, y] = Color(white: tone)
             }
         }
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         fill(.white)
         drawGlyphMosaic(image, columns: 20, in: canvasRectangle.inset(by: 8))
     }
@@ -3409,7 +3409,7 @@ private final class ColorVisionScene: Sketch {
         // per kind so one frame holds both paths.
         for (column, vision) in views.enumerated() {
             let x = 8.0 + Double(column) * 62
-            let layer = renderTarget()
+            let layer = makeRenderTarget()
             withTarget(layer) {
                 noStroke()
                 strip(chart, vision: .normal, x: x, y: 132, width: 26, height: 110)
@@ -3480,7 +3480,7 @@ private final class LuminanceMeltScene: Sketch {
                 image[x, y] = Color(white: min(tone, 1))
             }
         }
-        let layer = renderTarget()
+        let layer = makeRenderTarget()
         withTarget(layer) { drawImage(image, in: canvasRectangle) }
         drawImage(layer.filtered(.melt(phase: 3)).image, in: canvasRectangle)
     }
@@ -3494,7 +3494,7 @@ private final class MeasuredFieldScene: Sketch {
 
     override func draw() {
         background(Color(hex: 0x101820))
-        let marks = renderTarget()
+        let marks = makeRenderTarget()
         withTarget(marks) {
             noStroke()
             fill(Color(hex: 0xE8734A)); drawCircle(70, 78, 26)
@@ -3639,7 +3639,7 @@ private final class DrosteScene: Sketch {
 
     override func draw() {
         background(.black)
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x0A0E1A))
             noStroke()
@@ -3755,7 +3755,7 @@ private final class SlitScanScene: Sketch {
     private var warped: Image?
 
     override func setup() {
-        let history = SlitScan(frames: 12)
+        let history = SlitScan(capacity: 12)
         let n = 128
         for frame in 0 ..< 12 {
             let source = Image(width: n, height: n, color: .black)
@@ -3766,7 +3766,7 @@ private final class SlitScanScene: Sketch {
                                          saturation: 0.6, brightness: 0.9)
                 }
             }
-            history.push(source)
+            history.append(source)
         }
         warped = history.image(delay: { uv in uv.x })
     }
@@ -3840,10 +3840,10 @@ private final class CrackGrowthScene: Sketch {
             for grain in CrackGrowth.grains(from: mark.point, to: mark.washExtent,
                                             gain: mark.gain, count: 24) {
                 fill(ink.withAlpha(grain.alpha))
-                drawPoint(grain.position)
+                drawPoint(at: grain.position)
             }
             fill(Color.black.withAlpha(0.33))
-            drawPoint(mark.point)
+            drawPoint(at: mark.point)
         }
     }
 }
@@ -3866,7 +3866,7 @@ private final class PercolationScene: Sketch {
         noStroke()
         for k in 0 ..< grid.clusterCount where k != spanning {
             let t = min(Double(grid.clusterSizes[k]) / 150, 1)
-            fill(Color.mix(Color(hex: 0x24506B), Color(hex: 0x88C7E8), t: t))
+            fill(Color.mix(Color(hex: 0x24506B), Color(hex: 0x88C7E8), t))
             for cell in grid.cellRects(of: k, in: area) { drawRect(cell) }
         }
         if let spanning {
@@ -3954,8 +3954,8 @@ private final class DitherScene: Sketch {
                 let v = Double(y) / Double(n - 1)
                 let t = clamp(1 - dist(u, v, 0.3, 0.75) * 1.3, 0, 1)
                 image[x, y] = t < 0.5
-                    ? Color.mix(palette[0], palette[1], t: t * 2)
-                    : Color.mix(palette[1], palette[2], t: (t - 0.5) * 2)
+                    ? Color.mix(palette[0], palette[1], t * 2)
+                    : Color.mix(palette[1], palette[2], (t - 0.5) * 2)
             }
         }
         return image
@@ -4042,7 +4042,7 @@ private final class SoftProofScene: Sketch {
 
     override func draw() {
         background(.black)
-        let layer = renderTarget()
+        let layer = makeRenderTarget()
         withTarget(layer) { drawImage(source, in: Rectangle(x: 0, y: 0, width: 256, height: 256)) }
 
         func panel(_ index: Int) -> Rectangle {
@@ -4066,9 +4066,9 @@ private final class SoftProofScene: Sketch {
             for x in 0..<n {
                 let u = Double(x) / Double(n - 1)
                 var c = Color.mix(Color(hex: 0x2B1B6B), Color(hex: 0xFF2D55),
-                                  t: smoothstep(0.05, 0.62, v))
+                                  smoothstep(0.05, 0.62, v))
                 c = Color.mix(c, Color(hex: 0xFFD400),
-                              t: 1 - smoothstep(0.145, 0.152, dist(u, v, 0.62, 0.30)))
+                              1 - smoothstep(0.145, 0.152, dist(u, v, 0.62, 0.30)))
                 if v > 0.62 { c = Color(hex: 0x00E5FF) }
                 if v > 0.78 + 0.10 * sin(u * 3.4 + 2.1) { c = Color(hex: 0x00FF66) }
                 if v > 0.9 { c = Color(white: 0.12 + (u * 8).rounded(.down) / 7 * 0.8) }
@@ -4262,7 +4262,7 @@ private final class HyperbolicTilingScene: Sketch {
         let right = Rectangle(x: 128, y: 66, width: 124, height: 124)
         for tile in hyperbolicTiling(sides: 7, meeting: 3, in: right, minEdge: 1.5) {
             fill(Color.mix(Color(hex: 0xF2E9DC), Color(hex: 0x2EC4B6),
-                           t: min(Double(tile.depth) / 6, 1)))
+                           min(Double(tile.depth) / 6, 1)))
             drawShape(tile.shape)
         }
         noFill()
@@ -4525,7 +4525,7 @@ private final class ShapePackingScene: Sketch {
         for shape in packed {
             let pts = shape.contours.flatMap(\.points)
             let c = pts.reduce(Vector2.zero, +) * (1 / Double(max(pts.count, 1)))
-            fill(Color.mix(Color(hex: 0x6FD3C7), Color(hex: 0xF2799E), t: c.x / 256))
+            fill(Color.mix(Color(hex: 0x6FD3C7), Color(hex: 0xF2799E), c.x / 256))
             drawShape(shape)
         }
     }
@@ -4893,7 +4893,7 @@ private final class DoublePendulumScene: Sketch {
     override func draw() {
         let pivot = Vector2(128, 100)
         for (i, pendulum) in pendulums.enumerated() {
-            pendulum.step()
+            pendulum.advance()
             trails[i].append(pivot + pendulum.bob2)
         }
 
@@ -4924,7 +4924,7 @@ private final class NBodyScene: Sketch {
                                     centralMass: 60_000, seed: 6)
 
     override func draw() {
-        system.step()
+        system.advance()
         background(Color(hex: 0x0E1016))
         noStroke()
         for body in system.bodies.dropFirst() {
@@ -4958,7 +4958,7 @@ private final class SpaceColonizationScene: Sketch {
         noStroke()
         fill(Color(hex: 0x3A4A3A))
         drawCircles(growth.attractors, radius: 1.5)
-        let widths = growth.thicknesses(leafWidth: 0.8, exponent: 2.2)
+        let widths = growth.thicknesses(tipWidth: 0.8, exponent: 2.2)
         stroke(Color(hex: 0xBFE8C2))
         for (i, node) in growth.nodes.enumerated() {
             guard let parent = node.parent else { continue }
@@ -4984,7 +4984,7 @@ private final class DLAScene: Sketch {
         noStroke()
         let count = Double(cluster.count)
         for (i, particle) in cluster.particles.enumerated() {
-            fill(Color.mix(Color(hex: 0xF2EFE8), Color(hex: 0x5B8FB9), t: Double(i) / count))
+            fill(Color.mix(Color(hex: 0xF2EFE8), Color(hex: 0x5B8FB9), Double(i) / count))
             drawCircle(center: particle.position, radius: 2.2)
         }
     }
@@ -5264,7 +5264,7 @@ private final class MetricDepthSceneScene: Sketch {
 
     override func draw() {
         background(.black)
-        camera(.fromIntrinsics(frame.intrinsics, near: 0.1, far: 10))
+        camera(.intrinsic(frame.intrinsics, near: 0.1, far: 10))
         drawDepthScene(frame)
         depth(at: Vector3(0, 0, -1.5))   // a true 1.5 m depth, between the halves
         noStroke()
@@ -5305,7 +5305,7 @@ private final class VisualChainScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
-        let rings = renderTarget()
+        let rings = makeRenderTarget()
         withTarget(rings) {
             background(.black)
             noFill()
@@ -5317,7 +5317,7 @@ private final class VisualChainScene: Sketch {
         }
         drawVisual(
             .oscillator(frequency: 18, speed: 1, colorShift: 0.3)
-                .kaleidoscope(5)
+                .kaleidoscope(segments: 5)
                 .displaced(by: .noise(scale: 3, speed: 0.2), amount: 0.08)
                 .blended(with: .layer(rings).tinted(Color(hex: 0xFF8040)), .add, amount: 0.5)
                 .saturation(1.2)
@@ -5496,26 +5496,26 @@ private final class SDFCombinatorsScene: Sketch {
         // Smooth union: two colors melt across the seam.
         drawSDF(SDF.circle(radius: 34).colored(Color(red: 1, green: 0.33, blue: 0.44))
             .smoothUnion(SDF.rect(width: 56, height: 40, cornerRadius: 8)
-                .colored(Color(red: 0.23, green: 0.52, blue: 1)).at(x: 34, y: 0), k: 16)
-            .at(x: 64, y: 56))
+                .colored(Color(red: 0.23, green: 0.52, blue: 1)).at(34, 0), k: 16)
+            .at(64, 56))
 
         // Smooth subtract: a bite carved out.
         drawSDF(SDF.rect(width: 64, height: 52, cornerRadius: 10)
             .colored(Color(red: 0.02, green: 0.82, blue: 0.63))
-            .smoothSubtract(SDF.circle(radius: 26).at(x: 18, y: 0), k: 10)
-            .at(x: 192, y: 56))
+            .smoothSubtract(SDF.circle(radius: 26).at(18, 0), k: 10)
+            .at(192, 56))
 
         // Intersect: the lens where two disks overlap.
         drawSDF(SDF.circle(radius: 38).colored(Color(red: 1, green: 0.82, blue: 0.4))
-            .intersect(SDF.circle(radius: 38).at(x: 34, y: 0))
-            .at(x: 56, y: 150))
+            .intersect(SDF.circle(radius: 38).at(34, 0))
+            .at(56, 150))
 
         // Morph (star ⇄ circle) hollowed into a shell with onion.
         drawSDF(SDF.star(outerRadius: 40, innerRadius: 18, points: 5)
             .colored(Color(red: 0.74, green: 0.70, blue: 1))
             .morph(SDF.circle(radius: 36), amount: 0.45)
             .onion(7)
-            .at(x: 150, y: 150))
+            .at(150, 150))
 
         // Block sugar + domain mirror: a little cluster reflected into a symmetric form.
         withState {
@@ -5559,8 +5559,8 @@ private final class SDFCombinatorsGradientScene: Sketch {
             noStroke()
             fill(.linear(from: Vector2(-44, -40), to: Vector2(52, 44), warm))
             drawSDF(SDF.circle(radius: 32)
-                .smoothUnion(SDF.rect(width: 56, height: 32, cornerRadius: 8).at(x: 36, y: 4), k: 22)
-                .smoothUnion(SDF.circle(radius: 18).at(x: 12, y: 32), k: 22))
+                .smoothUnion(SDF.rect(width: 56, height: 32, cornerRadius: 8).at(36, 4), k: 22)
+                .smoothUnion(SDF.circle(radius: 18).at(12, 32), k: 22))
         }
 
         // Radial fill on a mandala: a +x petal repeated around the origin; the ramp rings
@@ -5569,8 +5569,8 @@ private final class SDFCombinatorsGradientScene: Sketch {
             translate(186, 74)
             noStroke()
             fill(.radial(center: .zero, radius: 58, cool))
-            drawSDF(SDF.ellipse(rx: 26, ry: 9).at(x: 34, y: 0)
-                .smoothUnion(SDF.circle(radius: 9).at(x: 46, y: 0), k: 7)
+            drawSDF(SDF.ellipse(radiusX: 26, radiusY: 9).at(34, 0)
+                .smoothUnion(SDF.circle(radius: 9).at(46, 0), k: 7)
                 .repeatedRadially(count: 8))
         }
 
@@ -5580,9 +5580,9 @@ private final class SDFCombinatorsGradientScene: Sketch {
             noFill()
             stroke(.linear(from: Vector2(-62, 0), to: Vector2(62, 0), warm))
             strokeWeight(4)
-            drawSDF(SDF.circle(radius: 20).at(x: -42, y: 0)
+            drawSDF(SDF.circle(radius: 20).at(-42, 0)
                 .smoothUnion(SDF.rect(width: 56, height: 12, cornerRadius: 6), k: 12)
-                .smoothUnion(SDF.circle(radius: 20).at(x: 42, y: 0), k: 12))
+                .smoothUnion(SDF.circle(radius: 20).at(42, 0), k: 12))
         }
     }
 }
@@ -5601,7 +5601,7 @@ private final class SDFCombinatorsStretchScene: Sketch {
         withState { translate(78, 128); drawSDF(cross) }
         // Non-uniform scale (bound): a circle scaled into an ellipse, smooth-unioned with a bead.
         let ell = SDF.circle(radius: 30).scaled(x: 1.5, y: 0.55).colored(Color(hex: 0xffd166))
-            .smoothUnion(SDF.circle(radius: 13).at(x: 44, y: 0).colored(Color(hex: 0x8ac926)), k: 14)
+            .smoothUnion(SDF.circle(radius: 13).at(44, 0).colored(Color(hex: 0x8ac926)), k: 14)
         withState { translate(180, 128); drawSDF(ell) }
     }
 }
@@ -5625,15 +5625,15 @@ private final class RaymarchedSDF3DEnvironmentScene: Sketch {
             material(.polishedMetal)
             fill(Color(white: 0.95))
             let melt = SDF3D.torus(radius: 1.15, tube: 0.42)
-                .smoothUnion(.sphere(radius: 0.62).at(x: 0, y: 0.5, z: 0), k: 0.55)
-            drawSDF3D(melt.rotatedX(0.5 * .pi).at(x: -2.4, y: 0.4, z: 0))
+                .smoothUnion(.sphere(radius: 0.62).at(0, 0.5, 0), k: 0.55)
+            drawSDF3D(melt.rotatedX(0.5 * .pi).at(-2.4, 0.4, 0))
         }
         withState {
             material(.matte)
             let melt = SDF3D.sphere(radius: 0.95).colored(Color(hex: 0x3ad6c5))
-                .smoothUnion(.octahedron(radius: 1.05).at(x: 0.9, y: 0.85, z: 0)
+                .smoothUnion(.octahedron(radius: 1.05).at(0.9, 0.85, 0)
                     .colored(Color(hex: 0xffb84d)), k: 0.6)
-            drawSDF3D(melt.at(x: 2.2, y: 0.2, z: 0))
+            drawSDF3D(melt.at(2.2, 0.2, 0))
         }
         withState {
             translate(-0.1, -1.4, 1.6)
@@ -5685,8 +5685,8 @@ private final class SDFCombinatorsJoineryScene: Sketch {
         stroke(Color(white: 0.85))
         strokeWeight(1.5)
         let a = SDF.rect(width: 150, height: 64).colored(Color(hex: 0x46c2ff))
-        let b = SDF.rect(width: 64, height: 150).at(x: 6, y: 0).colored(Color(hex: 0xffb454))
-        let bite = SDF.circle(radius: 34).at(x: -70, y: -48)
+        let b = SDF.rect(width: 64, height: 150).at(6, 0).colored(Color(hex: 0xffb454))
+        let bite = SDF.circle(radius: 34).at(-70, -48)
         withState {
             translate(96, 92)
             drawSDF(a.stairsUnion(b, radius: 18, steps: 4).chamferSubtract(bite, radius: 8))
@@ -5773,25 +5773,25 @@ private final class SDFCombinatorsDetailingScene: Sketch {
         stroke(Color(white: 0.85))
         strokeWeight(1.5)
         let a = SDF.rect(width: 120, height: 56).colored(Color(hex: 0x46c2ff))
-        let b = SDF.rect(width: 56, height: 120).at(x: 4, y: 0).colored(Color(hex: 0xffb454))
+        let b = SDF.rect(width: 56, height: 120).at(4, 0).colored(Color(hex: 0xffb454))
         withState {
             translate(66, 62)
             drawSDF(a.columnsUnion(b, radius: 18, count: 4))
         }
         withState {
             translate(190, 58)
-            drawSDF(a.pipe(b, radius: 9).scaled(0.62).at(x: 0, y: -28)
-                .union(a.columnsIntersect(b, radius: 16, count: 3).scaled(0.62).at(x: 0, y: 34)))
+            drawSDF(a.pipe(b, radius: 9).scaled(0.62).at(0, -28)
+                .union(a.columnsIntersect(b, radius: 16, count: 3).scaled(0.62).at(0, 34)))
         }
         withState {
             translate(64, 186)
-            drawSDF(a.engrave(.circle(radius: 42).at(x: 4, y: 0), depth: 7)
-                .tongue(.circle(radius: 58).at(x: 4, y: 0), height: 8, width: 6))
+            drawSDF(a.engrave(.circle(radius: 42).at(4, 0), depth: 7)
+                .tongue(.circle(radius: 58).at(4, 0), height: 8, width: 6))
         }
         withState {
             translate(190, 186)
             drawSDF(a.columnsSubtract(b, radius: 16, count: 3)
-                .groove(.circle(radius: 46).at(x: 4, y: 0), depth: 8, width: 6))
+                .groove(.circle(radius: 46).at(4, 0), depth: 8, width: 6))
         }
     }
 }
@@ -5812,26 +5812,26 @@ private final class RaymarchedSDF3DDetailingScene: Sketch {
         ambientLight(Color(white: 0.18))
         material(.glossy)
 
-        let post = SDF3D.cylinder(radius: 0.4, height: 2.4).at(x: -2.6, y: 0.1, z: 0)
+        let post = SDF3D.cylinder(radius: 0.4, height: 2.4).at(-2.6, 0.1, 0)
             .colored(Color(hex: 0x9adcf0))
-        let bar = SDF3D.box(width: 2.0, height: 0.5, depth: 0.5).at(x: -1.9, y: 0.6, z: 0)
+        let bar = SDF3D.box(width: 2.0, height: 0.5, depth: 0.5).at(-1.9, 0.6, 0)
             .colored(Color(hex: 0xffb454))
         drawSDF3D(post.columnsUnion(bar, radius: 0.26, count: 4))
 
         let globe = SDF3D.sphere(radius: 0.9).colored(Color(hex: 0xff6f61))
             .engrave(.plane(normal: Vector3(0, 1, 0), offset: 0.1), depth: 0.05)
             .groove(.plane(normal: Vector3(0, 1, 0), offset: 0.6), depth: 0.06, width: 0.06)
-        drawSDF3D(globe.at(x: -0.2, y: 0.1, z: 0))
+        drawSDF3D(globe.at(-0.2, 0.1, 0))
 
         let beaded = SDF3D.box(width: 1.1, height: 1.1, depth: 1.1)
             .tongue(.sphere(radius: 0.78), height: 0.07, width: 0.055)
             .colored(Color(hex: 0x46c2ff))
-        drawSDF3D(beaded.at(x: 1.8, y: 0.1, z: 0))
+        drawSDF3D(beaded.at(1.8, 0.1, 0))
 
         let ring = SDF3D.sphere(radius: 0.7)
             .pipe(.plane(normal: Vector3(0, 1, 0), offset: 0), radius: 0.08)
             .colored(Color(hex: 0xb6ff5a))
-        drawSDF3D(ring.rotatedZ(0.5).at(x: 3.3, y: 0.4, z: 0))
+        drawSDF3D(ring.rotatedZ(0.5).at(3.3, 0.4, 0))
     }
 }
 
@@ -5850,22 +5850,22 @@ private final class RaymarchedSDF3DJoineryScene: Sketch {
         ambientLight(Color(white: 0.18))
         material(.glossy)
 
-        let piece = SDF3D.hexPrism(radius: 0.5, height: 0.45).at(x: 0, y: 1.3, z: 0)
+        let piece = SDF3D.hexPrism(radius: 0.5, height: 0.45).at(0, 1.3, 0)
             .colored(Color(hex: 0xffb454))
-            .chamferUnion(SDF3D.cylinder(radius: 0.26, height: 1.7).at(x: 0, y: 0.5, z: 0)
+            .chamferUnion(SDF3D.cylinder(radius: 0.26, height: 1.7).at(0, 0.5, 0)
                 .colored(Color(hex: 0x9adcf0)), radius: 0.12)
-            .stairsUnion(SDF3D.box(width: 2.0, height: 0.6, depth: 2.0).at(x: 0, y: -0.7, z: 0)
+            .stairsUnion(SDF3D.box(width: 2.0, height: 0.6, depth: 2.0).at(0, -0.7, 0)
                 .colored(Color(hex: 0x5f6f86)), radius: 0.3, steps: 4)
-            .chamferSubtract(SDF3D.sphere(radius: 0.5).at(x: 0.8, y: -0.3, z: 0.8), radius: 0.1)
+            .chamferSubtract(SDF3D.sphere(radius: 0.5).at(0.8, -0.3, 0.8), radius: 0.1)
         drawSDF3D(piece)
 
         let hardware = SDF3D.link(height: 0.3, radius: 0.28, tube: 0.085)
-            .at(x: -2.0, y: 0.9, z: 0).colored(Color(hex: 0xd8dee6))
+            .at(-2.0, 0.9, 0).colored(Color(hex: 0xd8dee6))
             .union(.cappedTorus(radius: 0.4, tube: 0.1, angle: 2.1)
-                .at(x: -2.0, y: -0.35, z: 0).colored(Color(hex: 0xff6f61)))
+                .at(-2.0, -0.35, 0).colored(Color(hex: 0xff6f61)))
             .union(.line(from: Vector3(1.7, -1.0, 0.6), to: Vector3(2.3, 0.6, -0.2), radius: 0.09)
                 .colored(Color(hex: 0x8fa3bd)))
-            .union(.pyramid(base: 0.7, height: 0.65).at(x: 2.35, y: 1.15, z: -0.35)
+            .union(.pyramid(base: 0.7, height: 0.65).at(2.35, 1.15, -0.35)
                 .colored(Color(hex: 0xb6ff5a)))
         drawSDF3D(hardware)
     }
@@ -5887,13 +5887,13 @@ private final class RaymarchedSDF3DDistortScene: Sketch {
         material(.jade)
 
         drawSDF3D(SDF3D.box(width: 0.8, height: 2.4, depth: 0.8).twisted(1.2)
-            .at(x: -2.9, y: 0.2, z: 0).colored(Color(hex: 0x46c2ff)))
+            .at(-2.9, 0.2, 0).colored(Color(hex: 0x46c2ff)))
         drawSDF3D(SDF3D.box(width: 2.4, height: 0.45, depth: 0.65).bent(0.55)
-            .at(x: -0.9, y: 0.2, z: 0).colored(Color(hex: 0xffb454)))
+            .at(-0.9, 0.2, 0).colored(Color(hex: 0xffb454)))
         drawSDF3D(SDF3D.sphere(radius: 0.9).displaced(amplitude: 0.1, frequency: 6.5)
-            .at(x: 1.1, y: 0.1, z: 0).colored(Color(hex: 0xff6f61)))
+            .at(1.1, 0.1, 0).colored(Color(hex: 0xff6f61)))
         drawSDF3D(SDF3D.sphere(radius: 0.9).roughened(amplitude: 0.15, frequency: 3.2)
-            .at(x: 3.0, y: 0.1, z: 0).colored(Color(hex: 0x9aa7b8)))
+            .at(3.0, 0.1, 0).colored(Color(hex: 0x9aa7b8)))
     }
 }
 
@@ -5920,11 +5920,11 @@ private final class RaymarchedSDF3DScene: Sketch {
         // A merged metaball: spheres melting (the smin color-melt), a sphere carved off.
         material(.jade)
         let blob = SDF3D.sphere(radius: 1.05).colored(Color(hex: 0x39d0ff))
-            .smoothUnion(SDF3D.sphere(radius: 0.85).at(x: 1.0, y: 0.4, z: 0.6)
+            .smoothUnion(SDF3D.sphere(radius: 0.85).at(1.0, 0.4, 0.6)
                 .colored(Color(hex: 0xff4f97)), k: 0.7)
-            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: -1.1, y: 0.7, z: 0.4)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(-1.1, 0.7, 0.4)
                 .colored(Color(hex: 0xb6ff5a)), k: 0.5)
-            .smoothSubtract(SDF3D.sphere(radius: 0.7).at(x: 0.2, y: 1.15, z: 0), k: 0.25)
+            .smoothSubtract(SDF3D.sphere(radius: 0.7).at(0.2, 1.15, 0), k: 0.25)
         drawSDF3D(blob)
     }
 }
@@ -5975,14 +5975,14 @@ private final class RaymarchedSDF3DDomainScene: Sketch {
 
         // A unit cell (sphere melted with a box), tiled into a 3×3 lattice.
         let cell = SDF3D.sphere(radius: 0.4).colored(Color(hex: 0x38bdf8))
-            .smoothUnion(SDF3D.box(size: 0.4).at(x: 0, y: 0.5, z: 0)
+            .smoothUnion(SDF3D.box(size: 0.4).at(0, 0.5, 0)
                 .colored(Color(hex: 0xf472b6)), k: 0.25)
-        drawSDF3D(cell.repeated(spacing: Vector3(1.6, 0, 1.6), count: 1).at(x: 0, y: -0.6, z: 0))
+        drawSDF3D(cell.repeated(spacing: Vector3(1.6, 0, 1.6), count: 1).at(0, -0.6, 0))
 
         // One wedge folded four-fold across x and z.
         let wedge = SDF3D.cone(radius: 0.4, height: 0.9).colored(Color(hex: 0xfacc15))
-            .at(x: 0.7, y: 0, z: 0.7)
-        drawSDF3D(wedge.mirrored(x: true, y: false, z: true).at(x: 0, y: 1.6, z: 0))
+            .at(0.7, 0, 0.7)
+        drawSDF3D(wedge.mirrored(x: true, y: false, z: true).at(0, 1.6, 0))
     }
 }
 
@@ -6033,10 +6033,10 @@ private final class RaymarchedSDF3DRadialScene: Sketch {
 
         // Value-type: a radial capsule spoke folded into a 14-spoke sunburst melted onto a hub.
         let spoke = SDF3D.capsule(radius: 0.12, height: 1.25).rotatedZ(.pi / 2)
-            .at(x: 0.95, y: 0, z: 0).colored(Color(hex: 0x38bdf8))
+            .at(0.95, 0, 0).colored(Color(hex: 0x38bdf8))
         let hub = SDF3D.sphere(radius: 0.55).colored(Color(hex: 0x22d3ee))
         drawSDF3D(spoke.repeatedRadially(count: 14).smoothUnion(hub, k: 0.25)
-            .at(x: 0, y: -0.7, z: 0))
+            .at(0, -0.7, 0))
 
         // Block-form: a cone petal folded into a ring of 6 melted with a central bud.
         withState {
@@ -6072,11 +6072,11 @@ private final class RaymarchedSDF3DPlaneScene: Sketch {
 
         let floor = SDF3D.plane(offset: -0.85).colored(Color(hex: 0x5b6472))
         let ball = SDF3D.sphere(radius: 0.7).colored(Color(hex: 0x38bdf8))
-            .at(x: -1.5, y: -0.15, z: 0.2)
+            .at(-1.5, -0.15, 0.2)
         let bar = SDF3D.capsule(radius: 0.3, height: 1.0).colored(Color(hex: 0xf472b6))
-            .rotatedZ(0.5).at(x: 0.3, y: 0.05, z: -0.7)
+            .rotatedZ(0.5).at(0.3, 0.05, -0.7)
         let pin = SDF3D.cone(radius: 0.55, height: 1.6).colored(Color(hex: 0xfacc15))
-            .at(x: 1.7, y: -0.05, z: 0.6)
+            .at(1.7, -0.05, 0.6)
         drawSDF3D(floor.union(ball).union(bar).union(pin))
     }
 }
@@ -6104,8 +6104,8 @@ private final class RaymarchedSDF3DCastShadowScene: Sketch {
         withState { translate(2.1, -0.3, 0); drawSphere(radius: 0.6) }
 
         let blob = SDF3D.sphere(radius: 0.7)
-            .smoothUnion(SDF3D.sphere(radius: 0.5).at(x: 0.85, y: 0.35, z: 0.2), k: 0.45)
-            .smoothUnion(SDF3D.sphere(radius: 0.5).at(x: -0.2, y: 0.5, z: -0.4), k: 0.45)
+            .smoothUnion(SDF3D.sphere(radius: 0.5).at(0.85, 0.35, 0.2), k: 0.45)
+            .smoothUnion(SDF3D.sphere(radius: 0.5).at(-0.2, 0.5, -0.4), k: 0.45)
             .colored(Color(hex: 0x38bdf8))
         withState { translate(-1.8, 0.1, 0); drawSDF3D(blob) }
     }
@@ -6128,8 +6128,8 @@ private final class RaymarchedSDF3DReceiveShadowScene: Sketch {
         material(.glossy)
 
         let slab = SDF3D.roundBox(width: 5.0, height: 0.6, depth: 4.0, radius: 0.25)
-            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: -1.3, y: 0.4, z: 0.6), k: 0.5)
-            .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: 1.4, y: 0.35, z: -0.7), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(-1.3, 0.4, 0.6), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.55).at(1.4, 0.35, -0.7), k: 0.5)
             .colored(Color(hex: 0x6aa9ff))
         withState { translate(0, -1.0, 0); drawSDF3D(slab) }
 
@@ -6157,8 +6157,8 @@ private final class RaymarchedSDF3DPointCastScene: Sketch {
         withState { fill(Color(hex: 0xf472b6)); translate(2.2, 1.4, 0); drawSphere(radius: 0.8) }
 
         let blob = SDF3D.sphere(radius: 0.8)
-            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: 0.9, y: 0.3, z: 0.2), k: 0.5)
-            .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: -0.3, y: 0.5, z: -0.4), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(0.9, 0.3, 0.2), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.55).at(-0.3, 0.5, -0.4), k: 0.5)
             .colored(Color(hex: 0x38bdf8))
         withState { translate(-2.0, 1.5, 0); drawSDF3D(blob) }
     }
@@ -6181,8 +6181,8 @@ private final class RaymarchedSDF3DPointReceiveScene: Sketch {
         material(.glossy)
 
         let slab = SDF3D.roundBox(width: 5.0, height: 0.6, depth: 4.0, radius: 0.25)
-            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: -1.3, y: 0.4, z: 0.6), k: 0.5)
-            .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: 1.4, y: 0.35, z: -0.7), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(-1.3, 0.4, 0.6), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.55).at(1.4, 0.35, -0.7), k: 0.5)
             .colored(Color(hex: 0x6aa9ff))
         withState { translate(0, -1.0, 0); drawSDF3D(slab) }
 
@@ -6209,9 +6209,9 @@ private final class RaymarchedSDF3DGradientScene: Sketch {
         fill(.linear(from: Vector2(0, height * 0.18), to: Vector2(0, height * 0.82),
                      [Color(hex: 0xfb923c), Color(hex: 0xec4899), Color(hex: 0x6366f1)]))
         let blob = SDF3D.sphere(radius: 1.05)
-            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: 1.3, y: 0.4, z: 0), k: 0.55)
-            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: -1.1, y: 0.55, z: 0.3), k: 0.55)
-            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: 0.1, y: -1.15, z: 0), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(1.3, 0.4, 0), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(-1.1, 0.55, 0.3), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(0.1, -1.15, 0), k: 0.55)
         drawSDF3D(blob)
     }
 }
@@ -6372,7 +6372,7 @@ private final class TextSpecimen: Sketch {
     override func draw() {
         background(.white)
         fill(.black)
-        textFont(BitmapFont.builtin)   // the fixture is about Cozette, not the default font
+        textFont(BitmapFont.builtIn)   // the fixture is about Cozette, not the default font
         textAlign(.left, .top)
         textSize(24)
         drawText("¡Hola! Ñ", 14, 12)
@@ -6581,7 +6581,7 @@ private final class EffectsLayers: Sketch {
         background(Color(white: 0.04))
 
         // A blurred soft band (target → gaussianBlur → composite).
-        let soft = renderTarget()
+        let soft = makeRenderTarget()
         withTarget(soft) {
             background(.clear)
             noStroke()
@@ -6591,7 +6591,7 @@ private final class EffectsLayers: Sketch {
         drawImage(soft.filtered(.gaussianBlur(radius: 12)).image, 0, 0)
 
         // A row of bright disks that bloom (target → bloom → additive composite).
-        let marks = renderTarget()
+        let marks = makeRenderTarget()
         withTarget(marks) {
             background(.clear)
             noStroke()
@@ -6603,7 +6603,7 @@ private final class EffectsLayers: Sketch {
             drawCircle(width * 0.70, height * 0.68, 15)
         }
         blendMode(.add)
-        drawImage(marks.filtered(.bloom(threshold: 0.4, intensity: 1.6, radius: 14)).image, 0, 0)
+        drawImage(marks.filtered(.bloom(threshold: 0.4, amount: 1.6, radius: 14)).image, 0, 0)
     }
 }
 
@@ -6615,7 +6615,7 @@ private final class EffectsCatalog: Sketch {
 
         // One fixed scene drawn into a layer, shown through three filters; the
         // fourth tile is a procedural generator (no input).
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x14233B))
             noStroke()
@@ -6625,7 +6625,7 @@ private final class EffectsCatalog: Sketch {
         }
         drawImage(scene.filtered(.posterize(levels: 4)).image, in: Rectangle(x: 0, y: 0, width: 128, height: 128))
         drawImage(scene.filtered(.gradientMap(.turbo)).image, in: Rectangle(x: 128, y: 0, width: 128, height: 128))
-        drawImage(scene.filtered(.edges(intensity: 2)).image, in: Rectangle(x: 0, y: 128, width: 128, height: 128))
+        drawImage(scene.filtered(.edges(amount: 2)).image, in: Rectangle(x: 0, y: 128, width: 128, height: 128))
         drawImage(generate(.checkers(scale: 6)).image, in: Rectangle(x: 128, y: 128, width: 128, height: 128))
     }
 }
@@ -6640,7 +6640,7 @@ private final class EffectsFilters: Sketch {
 
     override func draw() {
         background(Color(white: 0.05))
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x14233B))
             noStroke()
@@ -6669,7 +6669,7 @@ private final class EffectsDispersion: Sketch {
 
     override func draw() {
         background(Color(white: 0.05))
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x0B1020))
             noStroke()
@@ -6679,7 +6679,7 @@ private final class EffectsDispersion: Sketch {
             for i in 0 ..< 8 { drawLine(24, 150 + Double(i) * 13, 232, 150 + Double(i) * 13) }
         }
         // Half black, half white: the driven tile may only split on the right.
-        let drive = renderTarget()
+        let drive = makeRenderTarget()
         withTarget(drive) {
             background(.black)
             noStroke(); fill(.white); drawRect(128, 0, 128, 256)
@@ -6708,7 +6708,7 @@ private final class EffectsRelight: Sketch {
 
     override func draw() {
         background(Color(white: 0.05))
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x101826))
             noStroke()
@@ -6770,13 +6770,13 @@ private final class EffectsGlitter: Sketch {
 
     override func draw() {
         background(Color(white: 0.04))
-        let sheen = renderTarget()
+        let sheen = makeRenderTarget()
         withTarget(sheen) {
             noStroke(); fill(Color(white: 0.8))
             drawHeart(width * 0.27, height * 0.5, 120)
         }
         drawImage(sheen.filtered(.iridescence(amount: 0.85, scale: 2.2, bands: 2.4, shift: 0.4)).image, 0, 0)
-        let sparkle = renderTarget()
+        let sparkle = makeRenderTarget()
         withTarget(sparkle) {
             noStroke(); fill(Color(hex: 0xC2185B))
             drawStar(width * 0.73, height * 0.5, 62, 31, points: 5)
@@ -6797,9 +6797,9 @@ private final class SpectralSheet: Sketch {
         let blue = Color(red: 0.1, green: 0.25, blue: 0.9)
 
         // Top left: yellow paint over a blue field, meeting in green.
-        let field = renderTarget()
+        let field = makeRenderTarget()
         withTarget(field) { background(blue) }
-        let wash = renderTarget()
+        let wash = makeRenderTarget()
         withTarget(wash) {
             noStroke(); fill(yellow)
             drawCircle(128, 128, 80)
@@ -6808,7 +6808,7 @@ private final class SpectralSheet: Sketch {
                   in: Rectangle(x: 1, y: 1, width: 126, height: 126))
 
         // Top right: the measured film over a bright heart.
-        let sheen = renderTarget()
+        let sheen = makeRenderTarget()
         withTarget(sheen) {
             background(Color(white: 0.08))
             noStroke(); fill(Color(white: 0.85))
@@ -6819,7 +6819,7 @@ private final class SpectralSheet: Sketch {
                   in: Rectangle(x: 129, y: 1, width: 126, height: 126))
 
         // Bottom left: bright dots streaking into grating orders.
-        let sparks = renderTarget()
+        let sparks = makeRenderTarget()
         withTarget(sparks) {
             background(.black)
             noStroke(); fill(.white)
@@ -6937,7 +6937,7 @@ private final class KolamScene: Sketch {
             strokeWeight(2)
             for (loop, contour) in design.loops.enumerated() {
                 let spread = Double(design.loops.count - 1)
-                stroke(spread == 0 ? chalk : Color.mix(chalk, warm, t: Double(loop) / spread))
+                stroke(spread == 0 ? chalk : Color.mix(chalk, warm, Double(loop) / spread))
                 drawPolyline(contour.smoothed(iterations: 3).points, closed: true)
             }
         }
@@ -6984,7 +6984,7 @@ private final class DiffusionCurveScene: Sketch {
         for index in 0 ... 1 {
             let side = 104.0
             let frame = Rectangle(x: Double(index) * 128 + 12, y: 12, width: side, height: side)
-            let marks = renderTarget(width: Int(side), height: Int(side))
+            let marks = makeRenderTarget(width: Int(side), height: Int(side))
             withTarget(marks) {
                 background(Color(white: 0, alpha: 0))
                 let horizon = stride(from: -8.0, through: side + 8, by: 6).map { t in
@@ -7019,7 +7019,7 @@ private final class SummedAreaScene: Sketch {
         let readings: [Filter?] = [nil, .boxBlur(radius: 10), .threshold(0.34),
                                    .adaptiveThreshold(window: 34, bias: 0.15)]
         for (index, filter) in readings.enumerated() {
-            let page = renderTarget(width: Int(side), height: Int(side))
+            let page = makeRenderTarget(width: Int(side), height: Int(side))
             withTarget(page) { paint(side) }
             let layer = filter.map { page.filtered($0) } ?? page
             drawImage(layer.image,
@@ -7168,7 +7168,7 @@ private final class SeamlessCloneScene: Sketch {
             // from, so a rim laid across a hard edge in the backdrop smears that
             // edge inward, and a snapshot of that is a picture of the technique's
             // documented limit rather than of the technique.
-            let backdrop = renderTarget(width: Int(side), height: Int(side))
+            let backdrop = makeRenderTarget(width: Int(side), height: Int(side))
             withTarget(backdrop) {
                 noStroke()
                 for row in 0 ..< Int(side) {
@@ -7178,7 +7178,7 @@ private final class SeamlessCloneScene: Sketch {
                     drawRect(0, Double(row), side, 2)
                 }
             }
-            let patch = renderTarget(width: Int(side), height: Int(side))
+            let patch = makeRenderTarget(width: Int(side), height: Int(side))
             withTarget(patch) {
                 background(Color(white: 0, alpha: 0))
                 noStroke()
@@ -7223,7 +7223,7 @@ private final class PursuitScene: Sketch {
             strokeWeight(1.1)
             for (runner, trail) in chase.trails.enumerated() {
                 let spread = Double(chase.runners.count - 1)
-                stroke(Color.mix(chalk, warm, t: Double(runner) / spread))
+                stroke(Color.mix(chalk, warm, Double(runner) / spread))
                 drawPolyline(trail.points)
             }
         }
@@ -7277,7 +7277,7 @@ private final class BilliardsScene: Sketch {
             let heading = 0.31 * .tau + (Double(ball) / 2 - 0.5) * 0.06
             let path = room.path(from: start, heading: heading, bounces: 190)
             guard path.count > 2 else { continue }
-            stroke(Color.mix(ink, chalk, t: Double(ball) / 2).withAlpha(0.4))
+            stroke(Color.mix(ink, chalk, Double(ball) / 2).withAlpha(0.4))
             drawPolyline(path)
         }
     }
@@ -7306,14 +7306,14 @@ private final class DrainageScene: Sketch {
         strokeWeight(1)
         for level in 1 ... 9 {
             for line in isolines(at: Double(level) / 10, in: map, resolution: 120,
-                                 field: { land.value(atU: map.uv(of: $0).x, v: map.uv(of: $0).y) }) {
+                                 field: { land.value(u: map.uv(of: $0).x, v: map.uv(of: $0).y) }) {
                 drawPolyline(line.points, closed: line.isClosed)
             }
         }
         strokeCap(.round)
         strokeJoin(.round)
-        for river in water.rivers(minimumFlow: 60, in: map) where river.points.count >= 2 {
-            stroke(Color.mix(cool, chalk, t: min(1, Double(river.order - 1) / 4)))
+        for river in water.rivers(minFlow: 60, in: map) where river.points.count >= 2 {
+            stroke(Color.mix(cool, chalk, min(1, Double(river.order - 1) / 4)))
             strokeWeight(0.5 + Double(river.order) * 0.7)
             drawPolyline(river.points)
         }
@@ -7341,7 +7341,7 @@ private final class DrainageScene: Sketch {
         for y in 0 ..< flow.rows {
             for x in 0 ..< flow.columns {
                 let carried = log(1 + flow[x, y]) / log(1 + loudest)
-                fill(Color.mix(Color(hex: 0x11131A), warm, t: carried))
+                fill(Color.mix(Color(hex: 0x11131A), warm, carried))
                 drawRect(corner: water.point(x, y, in: field), width: cell + 0.6, height: cell + 0.6)
             }
         }
@@ -7478,7 +7478,7 @@ private final class ClothoidScene: Sketch {
             for i in 0...6 {
                 let angle = (Double(i) / 6 * 2 - 1) * 2.2
                 guard let fit = Clothoid(from: from, heading: 0, to: to, heading: angle) else { continue }
-                stroke(Color.mix(chalk, warm, t: Double(i) / 6))
+                stroke(Color.mix(chalk, warm, Double(i) / 6))
                 drawPolyline(fit.points(spacing: 0.6))
             }
         }
@@ -7595,7 +7595,7 @@ private final class RipplesScene: Sketch {
 
     override func setup() {
         seed(7)
-        pool = simField(.ripples())
+        pool = makeSimField(.ripples())
     }
 
     override func draw() {
@@ -7782,7 +7782,7 @@ private final class RidgeLinesScene: Sketch {
             var panel = skyline
             panel.append(Vector2(width, height))
             panel.append(Vector2(0, height))
-            fill(Color.mix(paper, ink, t: 0.04 + depth * 0.10))
+            fill(Color.mix(paper, ink, 0.04 + depth * 0.10))
             noStroke()
             drawPolygon(panel)
             stroke(ink)
@@ -7827,7 +7827,7 @@ private final class EffectsSimField: Sketch {
     var rd: SimField!
     var seeded = false
 
-    override func setup() { rd = simField(.reactionDiffusion(), scale: 0.5) }
+    override func setup() { rd = makeSimField(.reactionDiffusion(), scale: 0.5) }
 
     override func draw() {
         withField(rd) {
@@ -7858,9 +7858,9 @@ private final class EffectsSimFieldModulated: Sketch {
     var seeded = false
 
     override func setup() {
-        rd = simField(.reactionDiffusion(feed: 0.046, kill: 0.065,
+        rd = makeSimField(.reactionDiffusion(feed: 0.046, kill: 0.065,
                                          toFeed: 0.055, toKill: 0.062), scale: 0.5)
-        mask = renderTarget()
+        mask = makeRenderTarget()
         rd.modulation = mask
     }
 
@@ -7895,7 +7895,7 @@ private final class EffectsFluid: Sketch {
     var prev = Vector2.zero
 
     override func setup() {
-        fluid = simField(.fluid(curl: 30), scale: 0.5)
+        fluid = makeSimField(.fluid(curl: 30), scale: 0.5)
         prev = Vector2(width / 2, height / 2)   // start at center = the path's t = 0 (no jump)
     }
 
@@ -7923,7 +7923,7 @@ private final class EffectsSelfWarp: Sketch {
     var warp: SimField!
 
     override func setup() {
-        warp = simField(.selfWarp(strength: 0.55, refresh: 0.06, smoothing: 0.6))
+        warp = makeSimField(.selfWarp(amount: 0.55, refresh: 0.06, smoothing: 0.6))
     }
 
     private func orb(at center: Vector2, radius: Double, _ color: Color) {
@@ -7950,7 +7950,7 @@ private final class EffectsFeedback: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     var trail: Feedback!
 
-    override func setup() { trail = feedback() }
+    override func setup() { trail = makeFeedback() }
 
     override func draw() {
         background(.black)
@@ -7989,7 +7989,7 @@ private final class EffectsCompose: Sketch {
                 drawRect(width * 0.18, height * 0.24, width * 0.64, height * 0.26)
             }
             .post(.gaussianBlur(radius: 12))
-            .scale(0.5)
+            .scaled(0.5)
 
             layer {
                 noStroke()
@@ -7997,8 +7997,8 @@ private final class EffectsCompose: Sketch {
                 fill(Color(red: 1, green: 0.4, blue: 0.1)); drawCircle(width * 0.30, height * 0.68, 15)
                 fill(Color(red: 0.3, green: 1, blue: 0.5)); drawCircle(width * 0.70, height * 0.68, 15)
             }
-            .post(.bloom(threshold: 0.4, intensity: 1.6, radius: 14))
-            .blend(.add)
+            .post(.bloom(threshold: 0.4, amount: 1.6, radius: 14))
+            .blended(.add)
         }
     }
 }
@@ -8011,7 +8011,7 @@ private final class EffectsCombine: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
     private func scene() -> RenderTarget {
-        let t = renderTarget()
+        let t = makeRenderTarget()
         withTarget(t) {
             background(Color(hex: 0x14233B))
             noStroke()
@@ -8026,13 +8026,13 @@ private final class EffectsCombine: Sketch {
         background(Color(white: 0.05))
 
         // mask (luminance): the scene seen through a soft white disc.
-        let mask = renderTarget()
+        let mask = makeRenderTarget()
         withTarget(mask) { background(.clear); noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 90) }
         drawImage(scene().combined(with: mask.filtered(.gaussianBlur(radius: 8)), .mask()).image,
                   in: Rectangle(x: 0, y: 0, width: 128, height: 128))
 
         // displace: the scene pushed around by a blurred off-center bump on mid-gray.
-        let dmap = renderTarget()
+        let dmap = makeRenderTarget()
         withTarget(dmap) { background(Color(white: 0.5)); noStroke(); fill(.white); drawCircle(width * 0.65, height * 0.35, 80) }
         drawImage(scene().combined(with: dmap.filtered(.gaussianBlur(radius: 20)), .displace(amount: 0.08)).image,
                   in: Rectangle(x: 128, y: 0, width: 128, height: 128))
@@ -8042,7 +8042,7 @@ private final class EffectsCombine: Sketch {
                   in: Rectangle(x: 0, y: 128, width: 128, height: 128))
 
         // mask (alpha, inverted): hide the scene under an opaque disc, show it around.
-        let amask = renderTarget()
+        let amask = makeRenderTarget()
         withTarget(amask) { background(.clear); noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 70) }
         drawImage(scene().combined(with: amask, .mask(channel: .alpha, invert: true)).image,
                   in: Rectangle(x: 128, y: 128, width: 128, height: 128))
@@ -8088,12 +8088,12 @@ private final class EffectsDefocus: Sketch {
         let near  = (x: 0.40, gray: 0.18, color: Color(red: 1, green: 0.35, blue: 0.2))
         let discs = [far, mid, near]
 
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(white: 0.05)); noStroke()
             for d in discs { fill(d.color); drawCircle(width * d.x, height * 0.5, 58) }
         }
-        let depth = renderTarget()
+        let depth = makeRenderTarget()
         withTarget(depth) {
             background(.white); noStroke()   // gaps read as far
             for d in discs { fill(Color(white: d.gray)); drawCircle(width * d.x, height * 0.5, 58) }
@@ -8303,7 +8303,7 @@ private final class DesignFiltersSheet: Sketch {
     override func draw() {
         background(.black)
         func heartLayer() -> RenderTarget {
-            let layer = renderTarget()
+            let layer = makeRenderTarget()
             withTarget(layer) {
                 noStroke(); fill(.white)
                 drawHeart(width / 2, height / 2, width * 0.5)
@@ -8364,13 +8364,13 @@ private final class SymmetryScene: Sketch {
         // A composed SDF field: the merged blob replicates as one group per fold.
         noStroke()
         let blob = SDF.circle(radius: 9).colored(Color(hex: 0xB388EB))
-            .smoothUnion(SDF.circle(radius: 7).at(x: 14, y: -6), k: 8)
-            .at(x: 104, y: -12)
+            .smoothUnion(SDF.circle(radius: 7).at(14, -6), k: 8)
+            .at(104, -12)
         drawSDF(blob)
 
         // Bitmap text rides the folds too (each pixel an SDF box).
         fill(.white)
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         textSize(10)
         drawText("ollin", 62, 34)
 
@@ -8426,7 +8426,7 @@ private final class ClipScene: Sketch {
         // A rect clip cutting a bitmap-text run (the glyph-atlas quad path).
         withClip(Rectangle(x: 128, y: 196, width: 84, height: 36)) {
             fill(Color(hex: 0xFFD166))
-            textFont(BitmapFont.builtin)
+            textFont(BitmapFont.builtIn)
             textSize(14)
             drawText("clipped text runs long", 96, 220)
         }
@@ -8462,7 +8462,7 @@ private final class StrandsScene: Sketch {
         }
         var meadow = StrandField(width: 16, depth: 16, count: 60_000)
         meadow.bladeHeight = 0.55
-        meadow.swayAmount = 0.08
+        meadow.swayAmplitude = 0.08
         drawStrands(meadow)
     }
 }
@@ -8506,7 +8506,7 @@ private final class PlanetScene: Sketch {
             .surfaceMapped(metallicRoughness: finishMap.image)
         cities = ball.textured(lightMap.image, baseColor: .black)
         cities.material?.emissiveTexture = lightMap.image
-        cities.material?.emissiveFactor = Color(white: 1.4)
+        cities.material?.emissiveColor = Color(white: 1.4)
         weather = Mesh.sphere(radius: 1.003, segments: 128, rings: 64)
             .textured(cloudMap.image)
             .normalMapped(cloudReliefMap.image, scale: 1)
@@ -8542,7 +8542,7 @@ private final class PlanetScene: Sketch {
 
         let eye = Camera3D.perspective(eye: Vector3(0, 0.26, 3.55), target: .zero,
                                        fieldOfView: .pi / 4.6)
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             if let stars { drawImage(generate(stars).image, 0, 0) }
@@ -8559,14 +8559,14 @@ private final class PlanetScene: Sketch {
             material(.dielectric(roughness: 0.92))
             drawMesh(weather)
         }
-        let lights = renderTarget()
+        let lights = makeRenderTarget()
         withTarget(lights) {
             camera(eye)
             fill(.white)
             material(Material())
             drawMesh(cities)
         }
-        let atmosphere = renderTarget()
+        let atmosphere = makeRenderTarget()
         withTarget(atmosphere) {
             camera(eye)
             fill(.white)
@@ -8586,9 +8586,9 @@ private final class PlanetScene: Sketch {
             blendMode(.add)
             drawImage(night.image, 0, 0)
             drawImage(halo.filtered(.gaussianBlur(radius: 4)).image, 0, 0)
-            drawImage(scene.filtered(.bloom(threshold: 0.80, intensity: 0.5,
+            drawImage(scene.filtered(.bloom(threshold: 0.80, amount: 0.5,
                                             radius: 46)).image, 0, 0)
-            drawImage(night.filtered(.bloom(threshold: 0.12, intensity: 0.7,
+            drawImage(night.filtered(.bloom(threshold: 0.12, amount: 0.7,
                                             radius: 14)).image, 0, 0)
         }
     }
@@ -8606,7 +8606,7 @@ private final class OceanScene: Sketch {
                            intensity: 1.1))
         camera(.perspective(eye: Vector3(0, 5, -70), target: Vector3(0, 3, 200),
                             fieldOfView: .pi / 3.4))
-        let sea = oceanField(Ocean(waveHeight: 3.2, windSpeed: 13, windDirection: 90,
+        let sea = makeOceanField(Ocean(waveHeight: 3.2, windSpeed: 13, windDirection: 90,
                                    choppiness: 1.3, patchSize: 160, seed: 4),
                              resolution: 256)
         drawOcean(sea, segments: 200, tiles: 5)
@@ -8620,7 +8620,7 @@ private final class FourierScene: Sketch {
 
     override func draw() {
         background(Color(hex: 0x0B0E14))
-        let plate = renderTarget(width: 256, height: 256)
+        let plate = makeRenderTarget(width: 256, height: 256)
         withTarget(plate) {
             background(.black)
             noStroke()
@@ -8780,14 +8780,14 @@ private final class TilingGridsScene: Sketch {
         let home = hexes.cell(column: 3, row: 3)
         for cell in hexes.cells {
             let rings = Double(hexes.distance(from: home, to: cell))
-            fill(Color.mix(Color(hex: 0x7BE0C8), Color(hex: 0x15414B), t: min(1, rings / 5)))
+            fill(Color.mix(Color(hex: 0x7BE0C8), Color(hex: 0x15414B), min(1, rings / 5)))
             drawPolygon(cell.corners)
         }
 
         let flat = HexGrid(in: Rectangle(x: 128, y: 0, width: 128, height: 128),
                            columns: 6, rows: 6, orientation: .flat, padding: 5, gutter: 2)
         for cell in flat.cells {
-            fill(Color.mix(Color(hex: 0xF9DC5C), Color(hex: 0xC5283D), t: Double(cell.column) / 5))
+            fill(Color.mix(Color(hex: 0xF9DC5C), Color(hex: 0xC5283D), Double(cell.column) / 5))
             drawPolygon(cell.corners)
         }
 
@@ -8796,8 +8796,8 @@ private final class TilingGridsScene: Sketch {
         for cell in tris.cells {
             let t = Double(cell.column) / Double(tris.columns - 1)
             fill(cell.pointsUp
-                ? Color.mix(Color(hex: 0x113A4E), Color(hex: 0x3FB8AF), t: t)
-                : Color.mix(Color(hex: 0x3A1330), Color(hex: 0xEE7752), t: t))
+                ? Color.mix(Color(hex: 0x113A4E), Color(hex: 0x3FB8AF), t)
+                : Color.mix(Color(hex: 0x3A1330), Color(hex: 0xEE7752), t))
             drawPolygon(cell.vertices)
         }
     }
@@ -8830,7 +8830,7 @@ private final class SubdivisionScene: Sketch {
         noStroke()
         for cell in subdivide(in: Rectangle(x: 132, y: 8, width: 116, height: 240),
                               minSize: 10, maxDepth: 5, chance: 0.75, style: .quad) {
-            fill(Color.mix(Color(hex: 0x0E1116), Color(hex: 0x7BE0C8), t: Double(cell.depth) / 5))
+            fill(Color.mix(Color(hex: 0x0E1116), Color(hex: 0x7BE0C8), Double(cell.depth) / 5))
             drawRect(cell.frame.inset(by: 1))
         }
     }
@@ -8844,7 +8844,7 @@ private final class Light2DScene: Sketch {
 
     override func draw() {
         background(.black)
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             noStroke()
             fill(Color(hex: 0x2B3138))
@@ -8859,7 +8859,7 @@ private final class Light2DScene: Sketch {
             fill(Color(hex: 0xD9A441))
             drawCircle(180, 180, 20)
         }
-        let lamps = renderTarget()
+        let lamps = makeRenderTarget()
         withTarget(lamps) {
             noStroke()
             fill(.white)
@@ -8912,7 +8912,7 @@ private final class ApollonianScene: Sketch {
         noStroke()
         for (i, circle) in foam.enumerated() {
             fill(Color.mix(Color(hex: 0x1D5C63), Color(hex: 0xF9DC5C),
-                           t: Double(i) / Double(foam.count)))
+                           Double(i) / Double(foam.count)))
             drawCircle(circle)
         }
     }
@@ -8976,7 +8976,7 @@ private final class MultiScaleTuringScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     var field: SimField!
 
-    override func setup() { field = simField(.multiScaleTuring(seed: 4), scale: 0.5) }
+    override func setup() { field = makeSimField(.multiScaleTuring(seed: 4), scale: 0.5) }
 
     override func draw() {
         background(.black)
@@ -8991,7 +8991,7 @@ private final class SandpileScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     var pile: SimField!
 
-    override func setup() { pile = simField(.sandpile(pour: 1024), scale: 1) }
+    override func setup() { pile = makeSimField(.sandpile(pour: 1024), scale: 1) }
 
     override func draw() {
         background(.black)
@@ -9018,7 +9018,7 @@ private final class CyclicScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     var field: SimField!
 
-    override func setup() { field = simField(.cyclic(seed: 4), scale: 0.5) }
+    override func setup() { field = makeSimField(.cyclic(seed: 4), scale: 0.5) }
 
     override func draw() {
         background(.black)
@@ -9037,7 +9037,7 @@ private final class ExcitableScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     var field: SimField!
 
-    override func setup() { field = simField(.excitable(states: 5), scale: 0.5) }
+    override func setup() { field = makeSimField(.excitable(states: 5), scale: 0.5) }
 
     override func draw() {
         background(.black)
@@ -9066,7 +9066,7 @@ private final class BriansBrainScene: Sketch {
     var field: SimField!
 
     override func setup() {
-        field = simField(.briansBrain(), scale: 0.5)
+        field = makeSimField(.briansBrain(), scale: 0.5)
         randomSeed(7)
     }
 
@@ -9094,7 +9094,7 @@ private final class HodgepodgeScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     var field: SimField!
 
-    override func setup() { field = simField(.hodgepodge(seed: 4), scale: 0.5) }
+    override func setup() { field = makeSimField(.hodgepodge(seed: 4), scale: 0.5) }
 
     override func draw() {
         background(.black)
@@ -9110,7 +9110,7 @@ private final class LeniaScene: Sketch {
     var life: SimField!
     var seeded = false
 
-    override func setup() { life = simField(.lenia(), scale: 0.5) }
+    override func setup() { life = makeSimField(.lenia(), scale: 0.5) }
 
     override func draw() {
         withField(life) {
@@ -9405,7 +9405,7 @@ private final class ShapeGrammarScene: Sketch {
         // One rule cuts the frame into cells; a second takes the middle out of
         // each cell, and what is left is the wood.
         let frame = Rectangle(x: 10, y: 20, width: 148, height: 160)
-        let cells = ShapeGrammar.iceRay(in: frame, minimumArea: 620, balance: 0.3)
+        let cells = ShapeGrammar.iceRay(in: frame, minArea: 620, balance: 0.3)
             .run(generations: 9, seed: 3)
         let panes = ShapeGrammar(start: cells,
                                  rules: [.inset("cell", by: 2.4, into: "pane"),
@@ -9436,12 +9436,12 @@ private final class ShapeGrammarScene: Sketch {
 
         // A square holding a turned copy of itself, all the way down.
         let nest = ShapeGrammar.nestedSquares(in: Rectangle(x: 344, y: 22, width: 156, height: 156),
-                                              minimumArea: 24)
+                                              minArea: 24)
             .run(generations: 14, seed: 1)
         noFill()
         strokeWeight(0.9)
         for piece in nest {
-            stroke(Color.mix(chalk, warm, t: min(Double(piece.depth) / 12, 1)))
+            stroke(Color.mix(chalk, warm, min(Double(piece.depth) / 12, 1)))
             drawPolyline(piece.corners, closed: true)
         }
     }
@@ -9487,7 +9487,7 @@ private final class CreasePatternScene: Sketch {
             let corners = Array(placed[(index * 4) ..< (index * 4 + 4)])
             let normal = (panels[index][1] - panels[index][0])
                 .cross(panels[index][3] - panels[index][0]).normalized
-            fill(Color.mix(Color(hex: 0x2B3550), chalk, t: 0.18 + abs(normal.dot(light)) * 0.72))
+            fill(Color.mix(Color(hex: 0x2B3550), chalk, 0.18 + abs(normal.dot(light)) * 0.72))
             stroke(Color(hex: 0x11131A).withAlpha(0.55))
             drawPolygon(corners)
         }
@@ -9502,7 +9502,7 @@ private final class CreasePatternScene: Sketch {
         let scale = min(stage.width / box.width, stage.height / box.height)
         noStroke()
         for (index, square) in lattice.squares.enumerated() {
-            fill(Color.mix(chalk, warm, t: Double(index) / Double(lattice.squares.count - 1) * 0.8))
+            fill(Color.mix(chalk, warm, Double(index) / Double(lattice.squares.count - 1) * 0.8))
             drawPolygon(square.points.map {
                 Vector2(stage.center.x + ($0.x - box.center.x) * scale,
                         stage.center.y + ($0.y - box.center.y) * scale)

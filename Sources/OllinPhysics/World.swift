@@ -5,19 +5,19 @@ internal import CBox2D
 /// The simulation: a bag of `Particle`s and the `Spring`s between them, plus the
 /// global rules they live under — gravity, drag, an optional container, and
 /// whether particles collide as disks. A sketch builds a world once, then calls
-/// `step(dt:)` each frame and draws from `particles`.
+/// `advance(by:)` each frame and draws from `particles`.
 ///
 /// ```swift
 /// let world = World()
 /// world.gravity = Vector2(0, 1200)
 /// world.bounds = Rectangle(x: 0, y: 0, width: width, height: height)
-/// world.collisions = true
+/// world.particlesCollide = true
 /// for _ in 0..<200 {
 ///     world.addParticle(at: Vector2(random(width), random(height)),
 ///                       radius: 12 * scale)
 /// }
 /// // each frame:
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// for p in world.particles { drawCircle(center: p.position, radius: p.radius) }
 /// ```
 ///
@@ -46,7 +46,7 @@ public final class World {
     public var drag: Double = 0.01
 
     /// How many relaxation passes run per step. Higher holds springs and
-    /// collisions together under stress (a tall stack, a stiff cloth); lower is
+    /// particlesCollide together under stress (a tall stack, a stiff cloth); lower is
     /// cheaper and looser. Costs scale linearly.
     public var iterations: Int = 8
 
@@ -61,16 +61,16 @@ public final class World {
 
     /// Wall restitution, `0…1`: how much speed a particle keeps when it bounces
     /// off `bounds`. `0` sticks, `1` bounces with no loss.
-    public var bounce: Double = 0.5
+    public var restitution: Double = 0.5
 
     /// When `true`, particles with a positive `radius` push apart as solid disks,
     /// broad-phased through a spatial hash so it scales to thousands of bodies.
     /// Off by default — a cloth or chain doesn't want its own points colliding,
     /// and it adds a per-frame pass — so a sketch opts in for a packing or a pile.
     /// Points with `radius == 0` never collide.
-    public var collisions: Bool = false
+    public var particlesCollide: Bool = false
 
-    /// The largest timestep a single `step(dt:)` will integrate, in seconds.
+    /// The largest timestep a single `advance(by:)` will integrate, in seconds.
     /// `deltaTime` can spike after a stall or while a window is dragged; clamping
     /// keeps one long frame from launching everything off-screen. The simulation
     /// runs a little slow through a hitch rather than exploding.
@@ -161,9 +161,9 @@ public final class World {
     // MARK: Stepping
 
     /// Advance the simulation by `dt` seconds (pass `deltaTime`). Integrates every
-    /// particle, then relaxes springs, collisions, and bounds. A `dt` of `0` (a
+    /// particle, then relaxes springs, particlesCollide, and bounds. A `dt` of `0` (a
     /// paused or first frame) is a no-op; a large `dt` is clamped to `maxTimestep`.
-    public func step(dt: Double) {
+    public func advance(by dt: Double) {
         guard dt > 0 else { return }
         let h = Swift.min(dt, maxTimestep)
 
@@ -175,7 +175,7 @@ public final class World {
 
         for _ in 0 ..< Swift.max(1, iterations) {
             for spring in springs { spring.solve() }
-            if collisions { solveCollisions() }
+            if particlesCollide { solveCollisions() }
             if bounds != nil {
                 for particle in particles { constrainToBounds(particle) }
             }
@@ -194,7 +194,7 @@ public final class World {
     /// acceleration·dt²`. Scaling the velocity term by the timestep ratio keeps
     /// speeds steady when the frame rate wanders.
     private func integrate(_ p: Particle, dt: Double) {
-        guard !p.pinned else { p.acceleration = .zero; return }
+        guard !p.isPinned else { p.acceleration = .zero; return }
         let ratio = lastTimestep > 0 ? dt / lastTimestep : 1
         let velocity = (p.position - p.previous) * (ratio * (1 - drag))
         let next = p.position + velocity + p.acceleration * (dt * dt)
@@ -253,8 +253,8 @@ public final class World {
         let distanceSquared = delta.lengthSquared
         guard distanceSquared < minDistance * minDistance else { return }
 
-        let wA = a.pinned ? 0 : a.inverseMass
-        let wB = b.pinned ? 0 : b.inverseMass
+        let wA = a.isPinned ? 0 : a.inverseMass
+        let wB = b.isPinned ? 0 : b.inverseMass
         let wSum = wA + wB
         guard wSum > 0 else { return }
 
@@ -268,7 +268,7 @@ public final class World {
     }
 
     /// Keep a particle inside `bounds`, reflecting its implicit velocity by
-    /// `bounce` when it hits a wall (by nudging `previous`, the Verlet way).
+    /// `restitution` when it hits a wall (by nudging `previous`, the Verlet way).
     private func constrainToBounds(_ p: Particle) {
         guard let bounds else { return }
         let r = p.radius
@@ -281,20 +281,20 @@ public final class World {
         if position.x < minX {
             let v = position.x - previous.x
             position = position.with(x: minX)
-            previous = previous.with(x: minX + v * bounce)
+            previous = previous.with(x: minX + v * restitution)
         } else if position.x > maxX {
             let v = position.x - previous.x
             position = position.with(x: maxX)
-            previous = previous.with(x: maxX + v * bounce)
+            previous = previous.with(x: maxX + v * restitution)
         }
         if position.y < minY {
             let v = position.y - previous.y
             position = position.with(y: minY)
-            previous = previous.with(y: minY + v * bounce)
+            previous = previous.with(y: minY + v * restitution)
         } else if position.y > maxY {
             let v = position.y - previous.y
             position = position.with(y: maxY)
-            previous = previous.with(y: maxY + v * bounce)
+            previous = previous.with(y: maxY + v * restitution)
         }
 
         p.position = position
@@ -306,13 +306,13 @@ public final class World {
     /// Add a rigid `Body` with `collider` at `position` and return it. Unlike a
     /// `Particle` (a soft Verlet point), a `Body` has orientation, rotates, stacks
     /// stably, and bounces with real contact response — it's backed by Box2D. It
-    /// shares the world's `gravity`, `bounds` (as walls), and `bounce` (used as
+    /// shares the world's `gravity`, `bounds` (as walls), and `restitution` (used as
     /// the wall and default contact restitution).
     /// - Parameters:
     ///   - kind: `.dynamic` (default) is moved by forces; `.static` is immovable.
     ///   - density: mass per area; heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.
-    ///   - restitution: bounciness `0…1`; defaults to the world's `bounce`.
+    ///   - restitution: bounciness `0…1`; defaults to the world's `restitution`.
     @discardableResult
     public func addBody(_ collider: Collider, at position: Vector2,
                         kind: Body.Kind = .dynamic, density: Double = 1,
@@ -328,7 +328,7 @@ public final class World {
         var shapeDef = b2DefaultShapeDef()
         shapeDef.density = Float(Swift.max(0.0001, density))
         shapeDef.material.friction = Float(friction)
-        shapeDef.material.restitution = Float(restitution ?? bounce)
+        shapeDef.material.restitution = Float(restitution ?? self.restitution)
         switch collider {
         case .circle(let r):
             var circle = b2Circle(center: b2Vec2(x: 0, y: 0), radius: meters(from: r))
@@ -472,7 +472,7 @@ public final class World {
         wallBodyId = wall
 
         var shapeDef = b2DefaultShapeDef()
-        shapeDef.material.restitution = Float(bounce)
+        shapeDef.material.restitution = Float(restitution)
 
         let corners = [
             b2Vec2(x: meters(from: b.x), y: meters(from: b.y)),

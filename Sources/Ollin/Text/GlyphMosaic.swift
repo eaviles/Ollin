@@ -8,7 +8,7 @@ import Foundation
 /// dots, and plain letters all sort themselves correctly.
 ///
 /// ```swift
-/// textFont(.builtin)                       // the bundled bitmap font
+/// textFont(.builtIn)                       // the bundled bitmap font
 /// fill(.white)
 /// drawGlyphMosaic(picture, columns: 72)    // white marks on the dark canvas
 /// ```
@@ -24,7 +24,7 @@ import Foundation
 public enum GlyphSet {
     /// Geometric and technical marks: dots, crosses, bars, fine grids,
     /// checkered squares, quadrant blocks, braille textures. The default, at
-    /// its best in the bundled bitmap font (`textFont(BitmapFont.builtin)`),
+    /// its best in the bundled bitmap font (`textFont(BitmapFont.builtIn)`),
     /// which covers every mark.
     public static let technical =
         "·⠂∙•⠒1x∷+=⠶✕▪∴≡⁘┼⠿※╬◌═◇○▖▘▝▗⊘⊞◐⊗✚✜▚▞⣤▤◈⊠□▣⣶◆●◉▧▦▀▄▌▐▙▟⊡◘░▩◙⣿■▒▬▓█"
@@ -306,7 +306,7 @@ public extension Sketch {
     /// bitmap font covers every mark in the default set:
     ///
     /// ```swift
-    /// textFont(.builtin)
+    /// textFont(.builtIn)
     /// fill(.white)
     /// drawGlyphMosaic(picture, columns: 72)
     /// ```

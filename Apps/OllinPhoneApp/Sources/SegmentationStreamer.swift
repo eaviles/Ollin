@@ -65,7 +65,7 @@ final class SegmentationStreamer: NSObject, ARSessionDelegate, LightReporting {
         // there can't break matte/color alignment, since the Mac turns both by the
         // same N.
         onSegmentation?(PhoneSegmentationSample(
-            tracked: normal, timestamp: frame.timestamp,
+            isTracked: normal, timestamp: frame.timestamp,
             matteWidth: mw, matteHeight: mh, orientation: captureQuarterTurns(),
             matte: matte, colorJPEG: jpeg))
     }

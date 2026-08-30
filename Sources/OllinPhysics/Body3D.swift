@@ -50,7 +50,7 @@ public final class Body3D {
     /// its `density` puts it; above 1 rides it higher than it should; `0` sinks
     /// it whatever it is made of. Reach for `density` first and keep this for
     /// the one crate that has to bob higher than the rest.
-    public var buoyancy: Double = 1
+    public var buoyancyScale: Double = 1
 
     /// Free-form tag so a sketch can hang its own data off a body (its color,
     /// its mesh, a group id) without a parallel array.
@@ -538,7 +538,7 @@ extension Collider3D {
             for iz in 0 ..< n {
                 let v = Double(iz) / Double(n - 1)
                 for ix in 0 ..< n {
-                    heights.append(Float(field.value(atU: Double(ix) / Double(n - 1),
+                    heights.append(Float(field.value(u: Double(ix) / Double(n - 1),
                                                      v: v)))
                 }
             }

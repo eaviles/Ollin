@@ -21,7 +21,7 @@ final class CombinatorsStretch: Sketch {
 
         // Non-uniform scale (bound): a circle scaled into an ellipse, smooth-unioned with a bead.
         let ell = SDF.circle(radius: 95).scaled(x: 1.0 + a / 160, y: 0.55).colored(Color(hex: 0xffd166))
-            .smoothUnion(SDF.circle(radius: 38).at(x: 130, y: 0).colored(Color(hex: 0x8ac926)), k: 44)
+            .smoothUnion(SDF.circle(radius: 38).at(130, 0).colored(Color(hex: 0x8ac926)), k: 44)
         withState { translate(width * 0.72, height * 0.5); rotate(t * 0.2); drawSDF(ell) }
 
         drawCaption("Per-axis SDF sizing: stretched (exact, left) vs scaled x/y (bound, right)")

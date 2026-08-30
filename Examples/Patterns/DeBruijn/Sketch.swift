@@ -43,7 +43,7 @@ final class DeBruijn_Example: Sketch {
             let inWindow = (0 ..< code.window).contains { (at + $0) % beads == index }
             stroke(inks[symbol].withAlpha(inWindow ? 1 : 0.4))
             strokeWeight(inWindow ? 44 : 26)
-            drawArc(center: middle, rx: radius, ry: radius,
+            drawArc(center: middle, radiusX: radius, radiusY: radius,
                     start: start + step * 0.08, stop: start + step * 0.92)
         }
 

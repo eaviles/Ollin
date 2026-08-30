@@ -42,7 +42,7 @@ struct FluidDynamicsTests {
 
     @Test func softBodyDerivations() {
         let box = Rectangle(x: 0, y: 0, width: 500, height: 500)
-        let blobs = SoftBodies(count: 3, bounds: box, radius: 60, seed: 5)
+        let blobs = SoftBodies(bodies: 3, bounds: box, radius: 60, seed: 5)
         #expect(blobs.bodies == 3)
         #expect(blobs.count > 3)   // each blob carries a lattice of particles
         #expect(blobs.spacing > 0 && blobs.spacing < 60)
@@ -127,7 +127,7 @@ private final class FluidProbe: Sketch {
 private final class SoftBodyProbe: Sketch {
     var blobs: SoftBodies!
     override func setup() {
-        blobs = SoftBodies(count: 3, bounds: Rectangle(x: 0, y: 0, width: 500, height: 500),
+        blobs = SoftBodies(bodies: 3, bounds: Rectangle(x: 0, y: 0, width: 500, height: 500),
                            radius: 60, seed: 5)
     }
     override func draw() { updateSoftBodies(blobs) }
@@ -141,7 +141,7 @@ private final class DriftProbe: Sketch {
         return SIMD2<Float>(Float(c.x), Float(c.y))   // the seeded centroid is exact
     }
     override func setup() {
-        blobs = SoftBodies(count: 1, bounds: Rectangle(x: 0, y: 0, width: 600, height: 600),
+        blobs = SoftBodies(bodies: 1, bounds: Rectangle(x: 0, y: 0, width: 600, height: 600),
                            radius: 70, seed: 9)
         blobs.gravity = Vector2(0, 0)
     }

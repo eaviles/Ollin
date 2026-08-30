@@ -288,7 +288,7 @@ public struct PhonePlanes: Sendable {
 /// Free function (not a method) so the reader thread calls it without main-actor
 /// isolation, the way the depth and room-mesh decoders do.
 func phonePlane(from sample: PhonePlaneSample) -> PhonePlane? {
-    guard !sample.removed else { return nil }
+    guard !sample.isRemoved else { return nil }
 
     let m = sample.transform
     func world(_ v: SIMD3<Float>) -> Vector3 {
@@ -326,7 +326,7 @@ func phonePlane(from sample: PhonePlaneSample) -> PhonePlane? {
     if wound.dot(normal) < 0 { boundary.reverse() }
 
     return PhonePlane(id: sample.id,
-                      surface: PhoneSurface(rawValue: sample.surface) ?? .unclassified,
+                      surface: sample.surface,
                       alignment: sample.alignment,
                       center: world(sample.center), normal: normal,
                       width: Double(sample.width), height: Double(sample.height),

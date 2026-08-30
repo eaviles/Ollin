@@ -87,7 +87,7 @@ final class StereoPair: Sketch {
     /// separate claim. Nothing here is a special case: the three objects differ
     /// only in where they stand.
     private func object(at point: Vector2, color: Color, name: String,
-                        note: String, labelAt: Vector2, align: TextAlignH) {
+                        note: String, labelAt: Vector2, align: HorizontalTextAlign) {
         let stop = min(point.y, screenY) - 28
         let eyes = [(leftEye, "L"), (rightEye, "R")]
         let marks = eyes.map { eye, _ -> Vector2 in

@@ -27,12 +27,12 @@ final class BodyAsFigure: Sketch {
         func j(_ x: Float, _ y: Float, _ z: Float,
                turn: simd_quatf = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0)),
                seen: Bool = true) -> PhoneJointSample {
-            PhoneJointSample(position: SIMD3<Float>(x, y, z), orientation: turn.vector, tracked: seen)
+            PhoneJointSample(position: SIMD3<Float>(x, y, z), orientation: turn.vector, isTracked: seen)
         }
         let headTurn = simd_quatf(angle: 0.55, axis: SIMD3<Float>(0, 1, 0))
         let lean = simd_quatf(angle: 0.14, axis: SIMD3<Float>(0, 0, 1))
         return PhoneBody(PhonePoseSample(
-            tracked: true, timestamp: 0, scaleFactor: 0.95,
+            isTracked: true, timestamp: 0, scaleFactor: 0.95,
             joints: [
                 .root: j(0, 0, 0), .hips: j(0, 0.02, 0),
                 .spine: j(0, 0.25, 0, turn: lean), .chest: j(0.02, 0.42, 0, turn: lean),
@@ -55,7 +55,7 @@ final class BodyAsFigure: Sketch {
         background(Color(hex: 0x0D1017))
         camera(.orbiting(target: Vector3(0, -0.12, 0), radius: 3.4,
                          azimuth: 0, elevation: 0.12, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
 
         let xs: [Double] = [-0.85, 0.85]
         // Left: the joints as dots, the way LiftedPose and the first body slice draw.

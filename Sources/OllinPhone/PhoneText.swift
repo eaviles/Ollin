@@ -48,7 +48,7 @@ public struct PhoneText: Sendable {
     /// (a test or a figure builds a `PhoneTextSample` and reads it back through
     /// the same accessors the live stream uses).
     public init(_ sample: PhoneTextSample) {
-        isTracked = sample.tracked
+        isTracked = sample.isTracked
         timestamp = sample.timestamp
         text = sample.text
         confidence = Double(sample.confidence)

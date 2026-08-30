@@ -28,7 +28,7 @@ final class CyclicAutomaton: Sketch {
     })
 
     override func setup() {
-        field = simField(.cyclic(seed: Double(variation)), scale: 0.25)
+        field = makeSimField(.cyclic(seed: Double(variation)), scale: 0.25)
     }
 
     override func draw() {

@@ -30,7 +30,7 @@ final class Diffusion: Sketch {
             let x = left + Double(index) * (tile + gap)
             let frame = Rectangle(x: x, y: 20, width: tile, height: tile)
 
-            let marks = renderTarget(width: Int(tile), height: Int(tile))
+            let marks = makeRenderTarget(width: Int(tile), height: Int(tile))
             withTarget(marks) {
                 background(Color(white: 0, alpha: 0))
                 let horizon = stride(from: -10.0, through: tile + 10, by: 8).map { t in

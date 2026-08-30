@@ -17,7 +17,7 @@ struct BluetoothScanTests {
         radio.advertise(UUID(), name: "near", signal: -41)
         radio.advertise(UUID(), name: "middle", signal: -60)
 
-        #expect(scan.devices.map(\.name) == ["near", "middle", "far"])
+        #expect(scan.peripherals.map(\.name) == ["near", "middle", "far"])
         #expect(scan.isScanning)
         #expect(scan.isAvailable)
     }
@@ -32,8 +32,8 @@ struct BluetoothScanTests {
         radio.advertise(one, name: "a strap", signal: -70)
         radio.advertise(one, name: "a strap", signal: -45)
 
-        #expect(scan.devices.count == 1)
-        #expect(scan.devices.first?.signal == -45)
+        #expect(scan.peripherals.count == 1)
+        #expect(scan.peripherals.first?.signal == -45)
     }
 
     @Test func aDeviceNotHeardFromIsForgotten() {
@@ -47,7 +47,7 @@ struct BluetoothScanTests {
         radio.advertise(
             UUID(), name: "gone", signal: -50, at: Date().addingTimeInterval(-30))
 
-        #expect(scan.devices.map(\.name) == ["here now"])
+        #expect(scan.peripherals.map(\.name) == ["here now"])
     }
 
     @Test func theScanAsksForRepeatsSoASignalCanMove() {
@@ -78,16 +78,16 @@ struct BluetoothScanTests {
         scan.start()
         radio.powerOn()
         radio.advertise(UUID(), name: "a strap", signal: -50)
-        #expect(scan.devices.count == 1)
+        #expect(scan.peripherals.count == 1)
 
         scan.stop()
         #expect(!scan.isScanning)
-        #expect(scan.devices.isEmpty)
+        #expect(scan.peripherals.isEmpty)
         #expect(radio.stops == 1)
 
         // News from the scan that just ended changes nothing.
         radio.advertise(UUID(), name: "late", signal: -50)
-        #expect(scan.devices.isEmpty)
+        #expect(scan.peripherals.isEmpty)
     }
 
     @Test func theReasonIsAboutTheMacRatherThanAboutADevice() {
@@ -99,6 +99,6 @@ struct BluetoothScanTests {
         radio.powerOn()
         // On, and nothing found yet, is not a problem to report.
         #expect(scan.unavailableReason == nil)
-        #expect(scan.devices.isEmpty)
+        #expect(scan.peripherals.isEmpty)
     }
 }

@@ -89,7 +89,7 @@ public struct ModelOutput: @unchecked Sendable {
     /// image-to-image model painted (a style-transfer model's stylized frame) —
     /// or `nil` when the model has none. `map` reads the output as a gray
     /// value map; this keeps the model's own colors.
-    public let outputImage: Image?
+    public let image: Image?
 
     /// What a semantic-segmentation model labeled, pixel by pixel — or `nil`
     /// when the model's output isn't a class-index plane.
@@ -137,7 +137,7 @@ public struct ModelOutput: @unchecked Sendable {
 ///   vocabulary.
 /// - **Image-to-image** (a depth estimator, a custom matte, a style-transfer
 ///   model): `map` — a white-alpha `Image` like the segmentation matte — plus
-///   `value(at:in:)`, the value under any canvas point; and `outputImage`, the
+///   `value(at:in:)`, the value under any canvas point; and `image`, the
 ///   same output at face value — full color, for a model that paints a
 ///   picture rather than a value map.
 /// - **Object detector** (a model with its non-maximum-suppression head, the
@@ -180,7 +180,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         var labels: [Classification] = []
         var objects: [DetectedObject] = []
         var map: Image?
-        var outputImage: Image?
+        var image: Image?
         var mapBytes: MapBytes?
         var classMask: ClassMask?
         var sourceFrame: Image?
@@ -203,7 +203,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
     public var labels: [Classification] { lock.withLockUnchecked { $0.labels } }
 
     /// The single strongest label, or `nil` while there is none.
-    public var top: Classification? { labels.first }
+    public var topClassification: Classification? { labels.first }
 
     /// The confidence for one label by name, `0…1` — `0` when the model didn't
     /// score it. Spaces work in place of underscores.
@@ -250,10 +250,10 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
     /// conversion, so it can stay `nil` until the next analyzed frame
     /// publishes. `map` reads the same output as a gray white-alpha map; this
     /// surface keeps the model's own colors.
-    public var outputImage: Image? {
+    public var image: Image? {
         lock.withLockUnchecked { state in
             state.wantsOutputImage = true
-            return state.outputImage
+            return state.image
         }
     }
 
@@ -352,13 +352,13 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         let map = mapBytes.flatMap {
             SegmentationImages.matteImage(fromGray: $0.bytes, width: $0.width, height: $0.height)
         }
-        let outputImage = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
+        let image = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
         let modelLabels = lock.withLockUnchecked { $0.modelLabels }
         let classMask = decoded.featureValue.flatMap {
             ClassMask(featureValue: $0, labels: modelLabels)
         }
         return ModelOutput(labels: decoded.labels, objects: decoded.objects,
-                           map: map, outputImage: outputImage, classMask: classMask,
+                           map: map, image: image, classMask: classMask,
                            mapBytes: mapBytes)
     }
 
@@ -380,7 +380,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             let decoded = Self.decode(observations)
             // Convert the image-typed output only once some read has armed it
             // (value queries arm the byte plane; a `map` read additionally arms
-            // the gray drawable; an `outputImage` read arms the full-color
+            // the gray drawable; an `image` read arms the full-color
             // decode; a `classMask` read arms the class-plane decode) — a
             // sketch reading only labels never pays a conversion.
             let (wantsMap, wantsValues, wantsOutputImage, wantsClassMask, wantsSourceFrame, modelLabels) =
@@ -394,7 +394,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             }
             var mapBytes: MapBytes?
             var map: Image?
-            var outputImage: Image?
+            var image: Image?
             if wantsMap || wantsValues {
                 mapBytes = outputCGImage.flatMap(Self.mapBytes(from:))
             }
@@ -404,7 +404,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                                                     height: mapBytes.height)
             }
             if wantsOutputImage {
-                outputImage = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
+                image = outputCGImage.flatMap(SegmentationImages.colorImage(from:))
             }
             var classMask: ClassMask?
             if wantsClassMask {
@@ -418,7 +418,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                 state.objects = decoded.objects
                 if wantsMap || wantsValues { state.mapBytes = mapBytes }
                 if wantsMap { state.map = map }
-                if wantsOutputImage { state.outputImage = outputImage }
+                if wantsOutputImage { state.image = image }
                 if wantsClassMask { state.classMask = classMask }
                 if wantsSourceFrame { state.sourceFrame = sourceFrame }
             }

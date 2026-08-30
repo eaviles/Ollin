@@ -32,7 +32,7 @@ final class Swarm_Example: Sketch {
         // others, which sets the perception radius against how densely the canvas is
         // filled, and it has to take several frames to cross that radius, or it
         // outruns the neighbors it is supposed to be reacting to.
-        flock = swarm(count: 30_000, perceptionRadius: 16, colors: palette, size: 1.5)
+        flock = makeSwarm(count: 30_000, perceptionRadius: 16, colors: palette, size: 1.5)
         flock.separationRadius = 5.5
         flock.maxForce = 800           // a wide enough turn to travel, not orbit
         flock.minSpeed = 45            // keeps a crowded swarm flowing instead of jamming

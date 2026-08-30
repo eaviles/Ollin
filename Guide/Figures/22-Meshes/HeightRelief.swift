@@ -67,7 +67,7 @@ final class HeightRelief: Sketch {
         // straight-on camera would show only the craters' floors. From the
         // left, so the parallax sphere sits nearest the eye.
         camera(.perspective(eye: Vector3(-2.1, 0.95, 7.0), target: .zero, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.05).lightingOnly())
+        environment(.studio.intensified(to: 1.05).lightingOnly())
         directionalLight(Color(white: 0.9), direction: Vector3(-0.5, -0.6, -0.6))
 
         fill(.white)

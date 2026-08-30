@@ -224,7 +224,7 @@ struct ComplexTextTests {
     /// and not the Devanagari.
     @Test func aBitmapFontReportsWhatItCannotDraw() {
         let drawer = Drawer()
-        drawer.textFont(BitmapFont.builtin)
+        drawer.textFont(BitmapFont.builtIn)
         #expect(drawer.textMissingCharacters("Ollin").isEmpty)
         #expect(drawer.textMissingCharacters("日本語").isEmpty)
         #expect(drawer.textMissingCharacters("मनम").count == 3)

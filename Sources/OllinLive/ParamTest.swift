@@ -67,35 +67,35 @@ enum ParamTest {
         // backing instance); this is how the inspector drives the sketch.
         guard case .slider(let slider) = params[2].control else { fatal("speed isn't a slider") }
         check(slider.range == 0.1...4, "slider range wrong")
-        slider.set(2.5)
+        slider.write(2.5)
         check(subject.speed == 2.5, "handle write not reflected: \(subject.speed)")
 
         guard case .stepper(let stepper) = params[4].control else { fatal("rings isn't a stepper") }
         check(stepper.range == 1...12, "stepper range wrong")
-        stepper.set(99)
+        stepper.write(99)
         check(subject.rings == 12, "Int clamp failed: \(subject.rings)")
 
         guard case .toggle(let toggle) = params[5].control else { fatal("visible isn't a toggle") }
-        toggle.set(false)
+        toggle.write(false)
         check(subject.visible == false, "toggle write not reflected")
 
         guard case .colorWell(let well) = params[6].control else { fatal("tint isn't a color well") }
-        well.set(.orange)
+        well.write(.orange)
         check(subject.tint == .orange, "color write not reflected")
 
         guard case .vector(let vector) = params[8].control else { fatal("anchor isn't a vector") }
-        vector.set(Vector2(2000, -10))
+        vector.write(Vector2(2000, -10))
         check(subject.anchor == Vector2(1080, 0), "per-axis clamp failed: \(subject.anchor)")
 
         guard case .vector3(let xyz) = params[9].control else { fatal("eye isn't a vector3") }
-        xyz.set(Vector3(9, -9, -1))
+        xyz.write(Vector3(9, -9, -1))
         check(subject.eye == Vector3(1, -1, 0), "vector3 per-axis clamp failed: \(subject.eye)")
 
         guard case .slider(let field) = params[10].control else { fatal("iterations isn't a slider kind") }
         check(field.style == .field, "field style lost")
 
         guard case .rectangle(let rect) = params[11].control else { fatal("region isn't a rectangle") }
-        rect.set(Rectangle(x: -5, y: 0, width: 900, height: 50))
+        rect.write(Rectangle(x: -5, y: 0, width: 900, height: 50))
         check(subject.region == Rectangle(x: 0, y: 0, width: 500, height: 50),
               "rectangle per-field clamp failed: \(subject.region)")
 
@@ -105,41 +105,41 @@ enum ParamTest {
               "insets per-edge clamp failed")
 
         guard case .range(let sizes) = params[13].control else { fatal("sizes isn't a range") }
-        sizes.set(40...400)
+        sizes.write(40...400)
         check(subject.sizes == 40...50, "range clamp failed: \(subject.sizes)")
 
         guard case .text(let caption) = params[14].control else { fatal("caption isn't a text box") }
-        caption.set("ollin")
+        caption.write("ollin")
         check(subject.caption == "ollin", "text write not reflected")
 
         guard case .menu(let mood) = params[15].control else { fatal("mood isn't a choices menu") }
         check(mood.options.contains("Golden Hour"), "choice names not humanized: \(mood.options)")
-        mood.set(mood.options.firstIndex(of: "Noir") ?? 0)
+        mood.write(mood.options.firstIndex(of: "Noir") ?? 0)
         check(subject.mood == .noir, "choices write not reflected")
 
         guard case .menu(let menu) = params[7].control else { fatal("style isn't a menu") }
         check(menu.options == ["Dots", "Rings", "Mesh Lines"], "menu labels wrong: \(menu.options)")
-        menu.set(2)
+        menu.write(2)
         check(subject.style == .meshLines, "menu write not reflected")
-        check(menu.get() == 2, "menu selection readback wrong")
+        check(menu.read() == 2, "menu selection readback wrong")
 
         guard case .menu(let curve) = params[16].control else { fatal("curve isn't a menu") }
         check(curve.options.contains("Ease Out Bounce"), "curve names not humanized: \(curve.options)")
-        curve.set(curve.options.firstIndex(of: "Ease Out Bounce") ?? 0)
+        curve.write(curve.options.firstIndex(of: "Ease Out Bounce") ?? 0)
         check(subject.curve == .easeOutBounce, "curve write not reflected")
         check(subject.curve(1) == 1, "the picked curve should still shape a value")
 
         guard case .swatches(let inks) = params[17].control else { fatal("inks isn't a swatch strip") }
         check(inks.style == .blocks && inks.count == 1...6, "swatch strip metadata wrong")
-        check(inks.get().map(\.position) == [0, 0.5, 1], "palette colors should spread evenly")
-        inks.set([.init(position: 0, color: .blue), .init(position: 1, color: .green)])
+        check(inks.read().map(\.position) == [0, 0.5, 1], "palette colors should spread evenly")
+        inks.write([.init(position: 0, color: .blue), .init(position: 1, color: .green)])
         check(subject.inks.colors == [.blue, .green], "swatch write not reflected")
         subject.inks = Palette(.red, .white, .black, .blue, .orange, .purple, .green)
         check(subject.inks.count == 6, "swatch count clamp failed: \(subject.inks.count)")
 
         guard case .swatches(let fade) = params[18].control else { fatal("fade isn't a swatch strip") }
         check(fade.style == .gradient, "a ramp should read as a band")
-        fade.set([.init(position: 0, color: .black), .init(position: 0.7, color: .red),
+        fade.write([.init(position: 0, color: .black), .init(position: 0.7, color: .red),
                   .init(position: 1, color: .white)])
         check(subject.fade.stops.map(\.position) == [0, 0.7, 1], "ramp stops not reflected")
 

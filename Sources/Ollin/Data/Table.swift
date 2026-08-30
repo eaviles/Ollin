@@ -187,30 +187,30 @@ public extension Table {
     /// - Parameters:
     ///   - path: the file to read.
     ///   - format: how cells are separated. `.auto` decides from the first line.
-    ///   - header: whether the first row names the columns. `nil` lets the file
+    ///   - hasHeader: whether the first row names the columns. `nil` lets the file
     ///     decide: a first row holding no numbers is a header, anything else is
     ///     data. Say which when the guess goes wrong.
-    init?(contentsOf path: String, format: TableFormat = .auto, header: Bool? = nil) {
-        self.init(url: URL(fileURLWithPath: path), format: format, header: header)
+    init?(contentsOfFile path: String, format: TableFormat = .auto, hasHeader: Bool? = nil) {
+        self.init(url: URL(fileURLWithPath: path), format: format, hasHeader: hasHeader)
     }
 
     /// Read a table from a URL. A network URL blocks until it arrives, so call
     /// this in `setup()` rather than `draw()`.
-    init?(url: URL, format: TableFormat = .auto, header: Bool? = nil) {
+    init?(url: URL, format: TableFormat = .auto, hasHeader: Bool? = nil) {
         guard let data = try? Data(contentsOf: url) else { return nil }
-        self.init(data: data, format: format, header: header)
+        self.init(data: data, format: format, hasHeader: hasHeader)
     }
 
     /// Read a table from bytes. Bytes that aren't text yield `nil` rather than
     /// trapping, so a file from the network fails quietly.
-    init?(data: Data, format: TableFormat = .auto, header: Bool? = nil) {
+    init?(data: Data, format: TableFormat = .auto, hasHeader: Bool? = nil) {
         guard let text = String(data: data, encoding: .utf8)
                 ?? String(data: data, encoding: .isoLatin1) else { return nil }
-        self.init(text: text, format: format, header: header)
+        self.init(text: text, format: format, hasHeader: hasHeader)
     }
 
     /// Read a table from text already in hand.
-    init?(text: String, format: TableFormat = .auto, header: Bool? = nil) {
+    init?(text: String, format: TableFormat = .auto, hasHeader: Bool? = nil) {
         var bytes = [UInt8](text.utf8)
         // A byte-order mark would otherwise ride into the first column's name,
         // where it is invisible and breaks every lookup of it.
@@ -222,8 +222,8 @@ public extension Table {
         var records = Table.parse(bytes, separator: separator)
         guard !records.isEmpty else { return nil }
 
-        let hasHeader = header ?? Table.looksLikeHeader(records[0])
-        let columns = hasHeader ? records.removeFirst() : []
+        let firstRowIsHeader = hasHeader ?? Table.looksLikeHeader(records[0])
+        let columns = firstRowIsHeader ? records.removeFirst() : []
         self.init(columns: columns, records: records)
     }
 
@@ -232,9 +232,9 @@ public extension Table {
     /// `in:` has no default on purpose: a default would resolve to Ollin's own
     /// bundle rather than the caller's. Pass `.module` from your sketch.
     init?(resource: String, withExtension ext: String? = "csv", in bundle: Bundle,
-          format: TableFormat = .auto, header: Bool? = nil) {
+          format: TableFormat = .auto, hasHeader: Bool? = nil) {
         guard let url = bundle.url(forResource: resource, withExtension: ext) else { return nil }
-        self.init(url: url, format: format, header: header)
+        self.init(url: url, format: format, hasHeader: hasHeader)
     }
 }
 
@@ -399,19 +399,19 @@ public extension Sketch {
     /// Read a CSV or TSV file by path: `loadTable("readings.csv")`. Returns `nil`
     /// when the file can't be read or holds no rows. Call it in `setup()` and
     /// keep the result in a property.
-    func loadTable(_ path: String, format: TableFormat = .auto, header: Bool? = nil) -> Table? {
-        Table(contentsOf: path, format: format, header: header)
+    func loadTable(_ path: String, format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table? {
+        Table(contentsOfFile: path, format: format, hasHeader: hasHeader)
     }
 
     /// Read a table from a URL. A network URL blocks until it arrives.
-    func loadTable(_ url: URL, format: TableFormat = .auto, header: Bool? = nil) -> Table? {
-        Table(url: url, format: format, header: header)
+    func loadTable(_ url: URL, format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table? {
+        Table(url: url, format: format, hasHeader: hasHeader)
     }
 
     /// Read a table bundled as a resource. Pass `.module` for the sketch's own
     /// bundle; a default here would resolve to Ollin's.
     func loadTable(resource: String, withExtension ext: String? = "csv", in bundle: Bundle,
-                   format: TableFormat = .auto, header: Bool? = nil) -> Table? {
-        Table(resource: resource, withExtension: ext, in: bundle, format: format, header: header)
+                   format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table? {
+        Table(resource: resource, withExtension: ext, in: bundle, format: format, hasHeader: hasHeader)
     }
 }

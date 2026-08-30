@@ -32,7 +32,7 @@ picture.
 ### Quick start
 
 ```swift
-let layer = renderTarget()
+let layer = makeRenderTarget()
 withTarget(layer) {
     background(.white)
     fill(.black)
@@ -87,7 +87,7 @@ number that works: the one that keeps the shadowed corner floods the lit one.
 illumination does not, so both corners come out:
 
 ```swift
-let page = renderTarget()
+let page = makeRenderTarget()
 withTarget(page) { drawImage(photo, 0, 0) }
 drawImage(page.filtered(.adaptiveThreshold()).image, 0, 0)
 ```

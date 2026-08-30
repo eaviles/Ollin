@@ -296,7 +296,7 @@ import Testing
         var engine = BeatEngine()
         // Two beats a second is 120 bpm.
         for index in 0..<12 {
-            engine.heardBeat(at: Double(index) * 0.5)
+            engine.hearBeat(at: Double(index) * 0.5)
         }
         #expect(engine.isFollowing)
         #expect(abs(engine.tempo - 120) < 0.5, "read \(engine.tempo) bpm")
@@ -311,11 +311,11 @@ import Testing
         var engine = BeatEngine()
         #expect(!engine.isFollowing)
         #expect(engine.tempo == 0)
-        engine.heardBeat(at: 0)
-        engine.heardBeat(at: 0.5)
+        engine.hearBeat(at: 0)
+        engine.hearBeat(at: 0.5)
         #expect(!engine.isFollowing)
-        engine.heardBeat(at: 1.0)
-        engine.heardBeat(at: 1.5)
+        engine.hearBeat(at: 1.0)
+        engine.hearBeat(at: 1.5)
         #expect(engine.isFollowing)
     }
 
@@ -323,13 +323,13 @@ import Testing
     /// a beat reads as twice the tempo, and that is the same music.
     @Test func atempoOutsideTheRangeIsFoldedIntoIt() {
         var fast = BeatEngine(range: 60...160)
-        for index in 0..<12 { fast.heardBeat(at: Double(index) * 0.125) }   // 480 bpm
+        for index in 0..<12 { fast.hearBeat(at: Double(index) * 0.125) }   // 480 bpm
         #expect(abs(fast.tempo - 120) < 1, "read \(fast.tempo) bpm")
 
         // And a detector that only fires on every other beat reads half the
         // tempo, which doubles back into the range at its bottom.
         var slow = BeatEngine(range: 60...160)
-        for index in 0..<12 { slow.heardBeat(at: Double(index) * 2.0) }     // 30 bpm
+        for index in 0..<12 { slow.hearBeat(at: Double(index) * 2.0) }     // 30 bpm
         #expect(abs(slow.tempo - 60) < 1, "read \(slow.tempo) bpm")
     }
 
@@ -339,7 +339,7 @@ import Testing
         var engine = BeatEngine()
         var time = 0.0
         for index in 0..<14 {
-            engine.heardBeat(at: time)
+            engine.hearBeat(at: time)
             // Every fifth beat goes unheard, so that gap is twice as long.
             time += index % 5 == 4 ? 1.0 : 0.5
         }
@@ -350,13 +350,13 @@ import Testing
     /// confidence. The twin is the same number of beats, evenly spaced.
     @Test func steadinessTellsAMachineFromAPlayer() {
         var machine = BeatEngine()
-        for index in 0..<12 { machine.heardBeat(at: Double(index) * 0.5) }
+        for index in 0..<12 { machine.hearBeat(at: Double(index) * 0.5) }
 
         var player = BeatEngine()
         var time = 0.0
         let wobble = [0.42, 0.58, 0.47, 0.61, 0.44, 0.56, 0.49, 0.6, 0.41, 0.59, 0.52]
-        for gap in wobble { player.heardBeat(at: time); time += gap }
-        player.heardBeat(at: time)
+        for gap in wobble { player.hearBeat(at: time); time += gap }
+        player.hearBeat(at: time)
 
         #expect(machine.steadiness > player.steadiness)
         #expect(machine.steadiness > 0.95)
@@ -367,7 +367,7 @@ import Testing
     @Test func whatWasHeardComesBackAsARhythm() {
         var engine = BeatEngine()
         // Four to the bar, so a four step cycle is struck on every step.
-        for index in 0..<12 { engine.heardBeat(at: Double(index) * 0.5) }
+        for index in 0..<12 { engine.hearBeat(at: Double(index) * 0.5) }
         let steady = engine.rhythm(steps: 4)
         #expect(steady.steps.allSatisfy { $0 })
 
@@ -379,7 +379,7 @@ import Testing
 
     @Test func forgettingPutsItBackWhereItStarted() {
         var engine = BeatEngine()
-        for index in 0..<12 { engine.heardBeat(at: Double(index) * 0.5) }
+        for index in 0..<12 { engine.hearBeat(at: Double(index) * 0.5) }
         #expect(engine.isFollowing)
         engine.reset()
         #expect(!engine.isFollowing)

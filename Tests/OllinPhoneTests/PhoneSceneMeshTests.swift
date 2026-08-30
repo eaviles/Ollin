@@ -27,8 +27,8 @@ import Ollin
         }
         #expect(back.scan == 0xDEAD_BEEF)
 
-        let retired = PhoneSceneMeshSample(tracked: false, timestamp: 1, id: UUID(),
-                                           scan: 7, removed: true,
+        let retired = PhoneSceneMeshSample(isTracked: false, timestamp: 1, id: UUID(),
+                                           scan: 7, isRemoved: true,
                                            transform: matrix_identity_float4x4)
         guard case .sceneMesh(let retiredBack)? = roundTrip(.sceneMesh(retired)) else {
             Issue.record("the retirement did not come back")
@@ -47,8 +47,8 @@ import Ollin
     /// enough to send the moment ARKit drops a block.
     @Test func roundTripsARetirement() {
         let id = UUID()
-        let sample = PhoneSceneMeshSample(tracked: true, timestamp: 9.5, id: id,
-                                          removed: true, transform: moveAndTurn)
+        let sample = PhoneSceneMeshSample(isTracked: true, timestamp: 9.5, id: id,
+                                          isRemoved: true, transform: moveAndTurn)
         let back = roundTrip(.sceneMesh(sample))
         #expect(back == .sceneMesh(sample))
         guard case .sceneMesh(let decoded)? = back else { return }
@@ -90,7 +90,7 @@ import Ollin
         sample.vertices = [SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 0, 0), SIMD3<Float>(0, 0, 1)]
         sample.normals = [SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 0, 0), SIMD3<Float>(1, 0, 0)]
         sample.triangleIndices = [0, 1, 2]
-        sample.surfaces = [PhoneSurface.floor.rawValue]
+        sample.surfaces = [PhoneSurface.floor]
 
         let chunk = try #require(phoneSceneChunk(from: sample))
         // A quarter turn about z sends +x to +y, then the move adds (10, 2, 3).
@@ -102,8 +102,8 @@ import Ollin
     }
 
     @Test func aRetirementIsNotABlock() {
-        let sample = PhoneSceneMeshSample(tracked: true, timestamp: 0, id: UUID(),
-                                          removed: true, transform: matrix_identity_float4x4)
+        let sample = PhoneSceneMeshSample(isTracked: true, timestamp: 0, id: UUID(),
+                                          isRemoved: true, transform: matrix_identity_float4x4)
         #expect(phoneSceneChunk(from: sample) == nil)
     }
 
@@ -284,13 +284,13 @@ import Ollin
     /// wall, sharing two vertices so a filter has something to drop.
     private func block(id: UUID, transform: simd_float4x4) -> PhoneSceneMeshSample {
         PhoneSceneMeshSample(
-            tracked: true, timestamp: 4.25, id: id, removed: false, transform: transform,
+            isTracked: true, timestamp: 4.25, id: id, isRemoved: false, transform: transform,
             vertices: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0),
                        SIMD3<Float>(0, 0, 1), SIMD3<Float>(1, 0, 1)],
             normals: [SIMD3<Float>(0, 1, 0), SIMD3<Float>(0, 1, 0),
                       SIMD3<Float>(0, 1, 0), SIMD3<Float>(0, 1, 0)],
             triangleIndices: [0, 1, 2, 1, 2, 3],
-            surfaces: [PhoneSurface.floor.rawValue, PhoneSurface.wall.rawValue])
+            surfaces: [PhoneSurface.floor, PhoneSurface.wall])
     }
 
     private func close(_ a: Vector3, _ b: Vector3, _ tolerance: Double = 1e-5) -> Bool {

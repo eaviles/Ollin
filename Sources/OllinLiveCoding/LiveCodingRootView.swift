@@ -40,7 +40,7 @@ struct LiveCodingRootView: View {
             }
         }
         .overlay(alignment: .top) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
         }
         .frame(minWidth: 480, minHeight: 360)
         .navigationTitle(session.title)
@@ -57,7 +57,7 @@ struct LiveCodingRootView: View {
             }
             .sharedBackgroundVisibility(.hidden)   // drop the glass capsule around the title
         }
-        .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
+        .toolbarBackground(OllinInspector.titleBarGradient(for: colorScheme), for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
         .task { session.start() }
         .onChange(of: session.evaluateCount) { _, count in
@@ -157,7 +157,7 @@ struct LiveCodingRootView: View {
                     VariationCardView(stats: session.core.stats) { seed in
                         session.core.recordSeed(seed)
                     }
-                    ParametersListView(params: session.core.params,
+                    ParametersListView(parameters: session.core.params,
                                        onChange: { name, value in
                                            session.core.recordParam(name, value)
                                        },
@@ -175,7 +175,7 @@ struct LiveCodingRootView: View {
             }
         }
         .overlay(alignment: .leading) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 0.5)
         }
     }
 

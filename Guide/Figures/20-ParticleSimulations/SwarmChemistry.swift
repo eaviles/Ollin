@@ -47,7 +47,7 @@ final class SwarmChemistryFigure: Sketch {
         }
         // Reading the tally stalls on the GPU, so take it once, at the end.
         if frameCount >= 1499 {
-            for (i, run) in runs.enumerated() { tallies[i] = run.lineageCounts() }
+            for (i, run) in runs.enumerated() { tallies[i] = run.snapshotLineageCounts() }
         }
 
         for (i, panel) in [left, middle, right].enumerated() {

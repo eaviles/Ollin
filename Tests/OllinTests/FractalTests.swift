@@ -68,7 +68,7 @@ import Testing
         // x' = x/2 + 1 has fixed point 2; y' = y/2 + 3 has fixed point 6.
         let system = IFS(maps: [IFS.Map(0.5, 0, 0, 0.5, 1, 3)])
         var rng = SplitMix64(seed: 4)
-        let points = system.points(count: 50, burnIn: 60, using: &rng)
+        let points = system.points(count: 50, settle: 60, using: &rng)
         #expect(points.count == 50)
         for point in points {
             #expect(abs(point.x - 2) < 1e-6)

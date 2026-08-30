@@ -79,7 +79,7 @@ final class Detail: Sketch {
         background(Color(hex: 0x10131A))
         cameraShowcase(.sway(amplitude: 0.12, period: 22), target: .zero, radius: 4.4,
                        elevation: 0.1, fieldOfView: .pi / 4)
-        environment(.studio.intensity(0.8))
+        environment(.studio.intensified(to: 0.8))
         directionalLight(Color(kelvin: 5400), direction: Vector3(-0.6, -0.5, -0.6))
         ambientLight(Color(white: 0.06))
         fill(.white)

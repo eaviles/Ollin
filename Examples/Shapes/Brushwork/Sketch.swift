@@ -118,7 +118,7 @@ final class Brushwork: Sketch {
                 let u = smootherstep(Double(step) / Double(steps))
                 let x = lerp(width * 0.1, width * 0.9, u)
                 let wobble = sin(u * .tau * 1.5) * height * 0.035
-                mark.record(Vector2(x, y + wobble), dt: 1.0 / 240)
+                mark.record(Vector2(x, y + wobble), deltaTime: 1.0 / 240)
             }
             return mark
         }

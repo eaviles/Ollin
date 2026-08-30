@@ -31,7 +31,7 @@ final class AreaShadows: Sketch {
         // the area so the light poured on the set holds steady while the shadow
         // edges do all the talking.
         let side = 1.0 + pingPong(over: 12) * 3.0
-        rectLight(Color(hue: 0.09, saturation: 0.25, brightness: 1.0),
+        rectangleLight(Color(hue: 0.09, saturation: 0.25, brightness: 1.0),
                   at: Vector3(-2.6, 5.4, 2.2), direction: Vector3(0.4, -1, -0.35),
                   width: side, height: side, intensity: 26 / (side * side))
         castShadows()

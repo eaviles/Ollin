@@ -36,7 +36,7 @@ final class PhoneDepthCloud: Sketch {
         // `.low` confidence floor keeps the dimmer/farther points `.medium` would drop,
         // and a slightly larger splat reads as a solid surface rather than dots.
         guard let pose = device.latestPose,
-              let cameraCloud = device.pointCloud(minimumConfidence: .low,
+              let cameraCloud = device.pointCloud(minConfidence: .low,
                                                   depthRange: 0.3...5.0, pointSize: 0.014),
               !cameraCloud.isEmpty else {
             return drawStatus(device.waitingMessage + "\n\n" +
@@ -79,7 +79,7 @@ final class PhoneDepthCloud: Sketch {
                     elevation: 0.18, fieldOfView: .pi / 3)
         drawPointCloud(cloud)
 
-        if let frame = device.latestDepthFrame {
+        if let frame = device.latestFrame {
             drawCaption("PhoneDepthCloud — \(frame.depthWidth)×\(frame.depthHeight) depth, " +
                         "\(cloud.count) pts; drag to spin")
         }

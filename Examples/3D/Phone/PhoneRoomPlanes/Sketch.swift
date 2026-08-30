@@ -118,7 +118,7 @@ final class PhoneRoomPlanes: Sketch {
     /// fixed angle in the room's own color.
     private func applyLight() {
         guard roomLight, let measured = device.latestLight else {
-            return environment(.studio.intensity(0.9))
+            return environment(.studio.intensified(to: 0.9))
         }
         ambientLight(measured.ambient)
         if let key = measured.key {

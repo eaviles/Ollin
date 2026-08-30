@@ -7,7 +7,7 @@ import Foundation
 /// universe switches packed into one number, 1 to 32767; 0 exists but the
 /// spec deprecates it). Decoding is total: a malformed datagram returns `nil`,
 /// never a trap, and unknown opcodes are simply not this packet.
-public struct ArtDmxPacket: Equatable, Sendable {
+public struct ArtDMXPacket: Equatable, Sendable {
 
     /// The one UDP port Art-Net uses, source and destination (0x1936).
     public static let port = 6454

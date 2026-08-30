@@ -19,7 +19,7 @@ final class Fluid_Example: Sketch {
     override func setup() {
         // A half-resolution field: cheaper, with broad, creamy swirls. A gentle `curl`
         // and a little more velocity damping keep the flow soft rather than gusty.
-        fluid = simField(.fluid(curl: 12, velocityDissipation: 0.8), scale: 0.5)
+        fluid = makeSimField(.fluid(curl: 12, velocityDissipation: 0.8), scale: 0.5)
         prev = Vector2(width * 0.5, height * 0.5)   // the brush starts at center (orbit's t = 0)
     }
 
@@ -52,7 +52,7 @@ final class Fluid_Example: Sketch {
         // The dye covers the canvas, bloomed for glow. (`drawImage` already fills the
         // frame, so no `background` is needed — and a main-canvas `background` here would
         // wipe the seed drawn above, since it runs before the field is composited.)
-        drawImage(fluid.filtered(.bloom(threshold: 0.15, intensity: 0.9)).image, 0, 0)
+        drawImage(fluid.filtered(.bloom(threshold: 0.15, amount: 0.9)).image, 0, 0)
         drawCaption("Fluid · a SimField evolving on the GPU · drag to stir")
     }
 }

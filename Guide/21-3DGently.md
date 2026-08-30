@@ -153,7 +153,7 @@ ambientLight(Color(white: 0.1))                                     // a floor f
 directionalLight(Color(hex: 0xFFD9A8), direction: Vector3(-0.6, -1, -0.35))
 pointLight(Color(hex: 0x39D8E8), at: Vector3(2.7, 1.7, 1.9))
 spotLight(Color(hex: 0xE85FD0), at: Vector3(-3.4, 4.6, 2.6),
-          direction: Vector3(0, -1, 0), angle: .pi / 5, penumbra: 0.4)
+          direction: Vector3(0, -1, 0), coneAngle: .pi / 5, penumbra: 0.4)
 castShadows()
 ```
 
@@ -256,7 +256,7 @@ What a body buys you is easiest to see by changing its size and nothing else:
 ```swift
 let side = 1.0 + pingPong(over: 6) * 2.2
 let facing = Vector3(0.55, -0.58, 0.6)          // aimed down across the set
-rectLight(Color(hue: 0.09, saturation: 0.22, brightness: 1.0),
+rectangleLight(Color(hue: 0.09, saturation: 0.22, brightness: 1.0),
           at: Vector3(-3.4, 4.8, -1.2), direction: facing,
           width: side, height: side, intensity: 70 / (side * side))
 castShadows()
@@ -283,7 +283,7 @@ pointLight(Color(hue: 0.09, saturation: 0.35, brightness: 1.0),
 let rock = sin(loopProgress(over: 6) * .tau) * 0.16
 spotLight(Color(hue: 0.12, saturation: 0.25, brightness: 1.0),
           at: Vector3(3.6, 4.6, 4.2), direction: Vector3(-0.32, -0.66, -0.55),
-          angle: 0.85, penumbra: 0.12, intensity: 1.25,
+          coneAngle: 0.85, penumbra: 0.12, intensity: 1.25,
           cookie: window, roll: rock)
 ```
 
@@ -380,11 +380,11 @@ Two smaller things. The current `fill` tints the result, so keep it `.white` to 
 [Chapter 16](16-LayersAndEffects.md) filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has. For every pixel, it knows how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.
 
 ```swift
-let scene = renderTarget()
+let scene = makeRenderTarget()
 withTarget(scene) { /* your 3D scene */ }
 
 drawImage(scene.combined(with: scene.depth,
-                         .ambientOcclusion(radius: 0.7, intensity: 1.5)).image, 0, 0)
+                         .ambientOcclusion(radius: 0.7, amount: 1.5)).image, 0, 0)
 ```
 
 <picture>

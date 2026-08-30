@@ -21,12 +21,12 @@ struct HeightfieldTests {
         var field = Heightfield(columns: 2, rows: 2)
         field[0, 0] = 0; field[1, 0] = 1
         field[0, 1] = 0; field[1, 1] = 1
-        #expect(field.value(atU: 0, v: 0) == 0)
-        #expect(field.value(atU: 1, v: 1) == 1)
-        #expect(abs(field.value(atU: 0.5, v: 0.5) - 0.5) < 1e-12)
+        #expect(field.value(u: 0, v: 0) == 0)
+        #expect(field.value(u: 1, v: 1) == 1)
+        #expect(abs(field.value(u: 0.5, v: 0.5) - 0.5) < 1e-12)
         // Clamped past the edges.
-        #expect(field.value(atU: -1, v: 0) == 0)
-        #expect(field.value(atU: 2, v: 0) == 1)
+        #expect(field.value(u: -1, v: 0) == 0)
+        #expect(field.value(u: 2, v: 0) == 1)
     }
 
     @Test func normalizedSpansZeroToOne() {

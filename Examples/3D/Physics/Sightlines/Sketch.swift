@@ -43,7 +43,7 @@ final class Sightlines: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.15
+        world.restitution = 0.15
 
         // Five pillars in a ring: the things that get in the way.
         for index in 0 ..< 5 {
@@ -89,7 +89,7 @@ final class Sightlines: Sketch {
             .perspective(eye: Vector3(2.4, 6.2, 11.5), target: Vector3(0, 1.6, 0)))
 
         dragBodies(in: world)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         lookAround()
         flyTheDrone()

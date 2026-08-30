@@ -45,7 +45,7 @@ final class Trigger: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.35
+        world.restitution = 0.35
         buildHoop()
         buildTray()
         for index in 0 ..< 5 { dropBall(stagger: index) }
@@ -125,7 +125,7 @@ final class Trigger: Sketch {
         perspective(eye: Vector3(1.4, 4.0, 7.6), target: Vector3(0, 2.4, 0))
 
         dragBodies(in: world)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         readTheTriggers()
         keepBallsInPlay()
 
@@ -185,7 +185,7 @@ final class Trigger: Sketch {
         // The tray lights with its load: an empty pan is nearly dark, a full
         // one glows.
         let load = min(1.0, Double(tray?.touching.count ?? 0) / 6)
-        fill(Color.mix(Color(hex: 0x252D3B), Color(hex: 0x2F8E76), t: load))
+        fill(Color.mix(Color(hex: 0x252D3B), Color(hex: 0x2F8E76), load))
         material(.dielectric(roughness: 0.55))
         for body in world.bodies where body.kind == .static {
             // The tray's slabs; the hoop's rim is a compound and draws as the
@@ -199,7 +199,7 @@ final class Trigger: Sketch {
         // Lit while a ball is crossing, and flaring for a moment after a score.
         let inside = hoop.map { !$0.touching.isEmpty } ?? false
         let heat = max(scoreGlow, inside ? 1 : 0)
-        fill(Color.mix(Color(hex: 0xB8C0CC), Color(hex: 0xF2A93B), t: heat))
+        fill(Color.mix(Color(hex: 0xB8C0CC), Color(hex: 0xF2A93B), heat))
         material(.metal(roughness: 0.3 - 0.15 * heat))
         withState {
             translate(hoopCenter)

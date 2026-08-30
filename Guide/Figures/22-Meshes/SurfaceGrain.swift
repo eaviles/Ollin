@@ -66,7 +66,7 @@ final class SurfaceGrain: Sketch {
         background(Color(hex: 0x0B0D12))
         camera(.perspective(eye: Vector3(0, 0.25, 4.2), target: .zero,
                             fieldOfView: .pi / 4.6))
-        environment(.studio.intensity(0.8).lightingOnly())
+        environment(.studio.intensified(to: 0.8).lightingOnly())
         directionalLight(Color(kelvin: 5400), direction: Vector3(-0.6, -0.5, -0.6))
         ambientLight(Color(white: 0.06))
         fill(.white)

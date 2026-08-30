@@ -12,7 +12,7 @@ import simd
 ///     background(Color(hex: 0x9FC4DE))
 ///     camera(.perspective(eye: Vector3(0, 18, 90), target: Vector3(0, 0, -40)))
 ///     light(.directional(Vector3(-0.4, -0.7, -0.5)))
-///     let sea = oceanField(.breeze)          // the GPU transform runs here
+///     let sea = makeOceanField(.breeze)          // the GPU transform runs here
 ///     drawOcean(sea, segments: 220, tiles: 3)
 /// }
 /// ```
@@ -242,11 +242,11 @@ public struct WaterSurface: Hashable, Sendable {
     /// at every angle.
     public var reflectance: Double
 
-    /// How tight the sun's glitter is. Higher is a smaller, harder highlight.
-    public var glitterTightness: Double
+    /// How tight the sun's sparkle is. Higher is a smaller, harder highlight.
+    public var sparkleTightness: Double
 
-    /// How bright the sun's glitter is.
-    public var glitter: Double
+    /// How bright the sun's sparkle is.
+    public var sparkle: Double
 
     public init(deep: Color = Color(hex: 0x0A2A3E),
                 shallow: Color = Color(hex: 0x2E7E8C),
@@ -254,16 +254,16 @@ public struct WaterSurface: Hashable, Sendable {
                 foam: Color = Color(hex: 0xF2F6F7),
                 foamAmount: Double = 1,
                 reflectance: Double = 0.02,
-                glitterTightness: Double = 900,
-                glitter: Double = 26) {
+                sparkleTightness: Double = 900,
+                sparkle: Double = 26) {
         self.deep = deep
         self.shallow = shallow
         self.sky = sky
         self.foam = foam
         self.foamAmount = max(0, foamAmount)
         self.reflectance = min(1, max(0, reflectance))
-        self.glitterTightness = max(1, glitterTightness)
-        self.glitter = max(0, glitter)
+        self.sparkleTightness = max(1, sparkleTightness)
+        self.sparkle = max(0, sparkle)
     }
 
     /// The default: open sea under a daylight sky.
@@ -276,16 +276,16 @@ public struct WaterSurface: Hashable, Sendable {
     /// Late light: a warm, low sun over darker water.
     public static let dusk = WaterSurface(deep: Color(hex: 0x101B33), shallow: Color(hex: 0x3B4C77),
                                    sky: Color(hex: 0xE0A16A), foam: Color(hex: 0xEBD5C4),
-                                   glitter: 3.4)
+                                   sparkle: 3.4)
 
     /// Black water with white crests, for a drawing rather than a photograph.
     public static let ink = WaterSurface(deep: Color(hex: 0x07080B), shallow: Color(hex: 0x1D2330),
                                   sky: Color(hex: 0x3A4351), foam: .white,
-                                  foamAmount: 1.6, glitter: 0.6)
+                                  foamAmount: 1.6, sparkle: 0.6)
 }
 
 /// One frame of a moving sea: the layer the transform wrote, plus the sea state
-/// that made it. Build it in `draw()` with `oceanField(_:)` and hand it to
+/// that made it. Build it in `draw()` with `makeOceanField(_:)` and hand it to
 /// `drawOcean(_:)`.
 ///
 /// The layer holds the surface in world units, one texel per grid point: red

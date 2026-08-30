@@ -690,21 +690,21 @@ struct GLTFDocument {
             occlusionStrength = occlusion.strength ?? 1
         }
         var emissiveTexture: Image?
-        var emissiveFactor = Color.black
+        var emissiveColor = Color.black
         if let f = materials[matIndex].emissiveFactor, f.count == 3 {
-            emissiveFactor = Color(red: enc(f[0]), green: enc(f[1]), blue: enc(f[2]))
+            emissiveColor = Color(red: enc(f[0]), green: enc(f[1]), blue: enc(f[2]))
         }
         if let ti = materials[matIndex].emissiveTexture?.index {
             emissiveTexture = textureImage(ti)
         }
-        let emissiveOn = emissiveFactor.red > 0 || emissiveFactor.green > 0 || emissiveFactor.blue > 0
+        let emissiveOn = emissiveColor.red > 0 || emissiveColor.green > 0 || emissiveColor.blue > 0
         if texture == nil, normalTexture == nil, pbr == nil,
            occlusionTexture == nil, emissiveTexture == nil, !emissiveOn { return nil }
         return MeshMaterial(baseColor: baseColor, texture: texture, wrap: wrap,
                             normalTexture: normalTexture, normalScale: normalScale,
                             metallicRoughnessTexture: mrTexture,
                             occlusionTexture: occlusionTexture, occlusionStrength: occlusionStrength,
-                            emissiveTexture: emissiveTexture, emissiveFactor: emissiveFactor,
+                            emissiveTexture: emissiveTexture, emissiveColor: emissiveColor,
                             metallic: metallic, roughness: roughness)
     }
 

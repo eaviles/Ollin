@@ -28,7 +28,7 @@ final class Trigger: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.35
+        world.restitution = 0.35
 
         var rim: [Collider3D.Part] = []
         for index in 0 ..< 28 {
@@ -84,7 +84,7 @@ final class Trigger: Sketch {
         perspective(eye: Vector3(1.4, 4.0, 7.6), target: Vector3(0, 2.4, 0))
 
         releaseDue()
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         if let hoop {
             score += hoop.entered.count
@@ -106,7 +106,7 @@ final class Trigger: Sketch {
         }
 
         let load = min(1.0, Double(tray?.touching.count ?? 0) / 6)
-        fill(Color.mix(Color(hex: 0x252D3B), Color(hex: 0x2F8E76), t: load))
+        fill(Color.mix(Color(hex: 0x252D3B), Color(hex: 0x2F8E76), load))
         material(.dielectric(roughness: 0.55))
         for body in world.bodies where body.kind == .static {
             guard case .box(let w, let h, let d) = body.collider else { continue }
@@ -115,7 +115,7 @@ final class Trigger: Sketch {
 
         let inside = hoop.map { !$0.touching.isEmpty } ?? false
         let heat = max(scoreGlow, inside ? 1 : 0)
-        fill(Color.mix(Color(hex: 0xB8C0CC), Color(hex: 0xF2A93B), t: heat))
+        fill(Color.mix(Color(hex: 0xB8C0CC), Color(hex: 0xF2A93B), heat))
         material(.metal(roughness: 0.3 - 0.15 * heat))
         withState {
             translate(hoopCenter)

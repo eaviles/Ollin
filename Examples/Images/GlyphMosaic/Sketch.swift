@@ -24,7 +24,7 @@ final class GlyphMosaic: Sketch {
         paint(phase: loopProgress(over: 10) * .tau)
 
         background(.black)
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         noStroke()
         fill(.white)
         // The default set ends in full-cell blocks and shades, which tile

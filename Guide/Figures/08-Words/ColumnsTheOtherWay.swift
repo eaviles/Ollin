@@ -62,7 +62,7 @@ final class ColumnsTheOtherWay: Sketch {
         stroke(accent)
         strokeWeight(1.5)
         noFill()
-        drawArc(center: Vector2(lineEnd + 20, 130), rx: 52, ry: 52,
+        drawArc(center: Vector2(lineEnd + 20, 130), radiusX: 52, radiusY: 52,
                 start: -1.5708, stop: 0)
         noStroke()
         fill(accent)

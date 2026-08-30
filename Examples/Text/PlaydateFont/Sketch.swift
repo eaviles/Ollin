@@ -16,7 +16,7 @@ final class PlaydateFont: Sketch {
     // The font sits beside this sketch; one call loads it (the loader picks the
     // format from the file extension), falling back to the built-in font if it's
     // missing. `.module` is this target's own resource bundle.
-    let arcade = BitmapFont(resource: "MarbleMadness.fnt", in: .module) ?? .builtin
+    let arcade = BitmapFont(resource: "MarbleMadness.fnt", in: .module) ?? .builtIn
     let charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789   "
 
     override func draw() {

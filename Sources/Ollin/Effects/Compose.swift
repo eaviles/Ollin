@@ -20,8 +20,8 @@
 ///             noStroke(); fill(.cyan)
 ///             drawCircle(mouseX, mouseY, 60)
 ///         }
-///         .post(.bloom(intensity: 1.6))
-///         .blend(.add)                             // …added as light
+///         .post(.bloom(amount: 1.6))
+///         .blended(.add)                             // …added as light
 ///     }
 /// }
 /// ```
@@ -37,7 +37,7 @@
 /// chainable modifiers (`.post(_:)`, `.blend(_:)`, `.scale(_:)`) in any order:
 ///
 /// ```swift
-/// layer { … }.post(.colorGrade(saturation: 1.4)).post(.vignette()).blend(.screen)
+/// layer { … }.post(.colorGrade(saturation: 1.4)).post(.vignette()).blended(.screen)
 /// ```
 public struct ComposeLayer {
 
@@ -215,16 +215,16 @@ public struct ComposeLayer {
 
     /// Composite this layer with `mode` instead of the default `.normal` (so a glow
     /// layer can add as light, a shade layer can multiply, and so on).
-    public func blend(_ mode: BlendMode) -> ComposeLayer {
+    public func blended(_ mode: BlendMode) -> ComposeLayer {
         var copy = self
         copy.blend = mode
         return copy
     }
 
     /// Render this layer at `fraction` of the canvas resolution (1 = full), the way
-    /// `renderTarget(scale:)` does. The result upsamples when it composites, so a
+    /// `makeRenderTarget(scale:)` does. The result upsamples when it composites, so a
     /// blurred or glowing layer can render cheaply without a visible difference.
-    public func scale(_ fraction: Double) -> ComposeLayer {
+    public func scaled(_ fraction: Double) -> ComposeLayer {
         var copy = self
         copy.renderScale = fraction
         return copy
@@ -302,7 +302,7 @@ public extension Sketch {
     /// composites and the asides those layers reference; an aside is resolved here
     /// but never composited, which is the whole of "drawn only to feed another".
     private func resolveComposeLayer(_ cl: ComposeLayer) -> RenderTarget {
-        let target = renderTarget(scale: cl.renderScale)
+        let target = makeRenderTarget(scale: cl.renderScale)
         withTarget(target) { cl.content() }
         var result = target
         for step in cl.steps {

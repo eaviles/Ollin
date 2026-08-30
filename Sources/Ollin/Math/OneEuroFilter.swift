@@ -32,7 +32,7 @@ extension Vector2: Smoothable {
 ///
 /// ```swift
 /// var filter = OneEuroFilter<Double>(minCutoff: 1, beta: 0.01)
-/// let clean = filter.filter(noisy, dt: deltaTime)
+/// let clean = filter.filter(noisy, deltaTime: deltaTime)
 /// ```
 ///
 /// Tuning is two knobs: lower `minCutoff` to cut jitter while the signal is slow;
@@ -73,9 +73,9 @@ public struct OneEuroFilter<Value: Smoothable>: Sendable {
         prev + (x - prev) * a
     }
 
-    /// Feed one sample taken `dt` seconds after the last, and read back the
+    /// Feed one sample taken `deltaTime` seconds after the last, and read back the
     /// smoothed value. The first sample (no history yet) passes through untouched.
-    public mutating func filter(_ x: Value, dt: Double) -> Value {
+    public mutating func filter(_ x: Value, deltaTime dt: Double) -> Value {
         guard let lastRaw, let lastSpeed, let lastValue else {
             self.lastRaw = x
             self.lastSpeed = x - x        // the zero of Value's type
@@ -107,7 +107,7 @@ public struct OneEuroFilter<Value: Smoothable>: Sendable {
 
     /// Re-seat the filter on `value` with zero speed, so the next output starts
     /// from there with no jump.
-    public mutating func reset(to value: Value) {
+    public mutating func set(_ value: Value) {
         lastRaw = value
         lastSpeed = value - value
         lastValue = value
@@ -178,12 +178,12 @@ public final class Smoothed<Value: Smoothable>: FrameAdvancing {
     public func set(_ value: Value) {
         input = value
         output = value
-        filter.reset(to: value)
+        filter.set(value)
     }
 
     /// Run the filter one step against the latest assigned value. Called by the
     /// sketch each frame.
     package func advance(by dt: Double) {
-        output = filter.filter(input, dt: dt)
+        output = filter.filter(input, deltaTime: dt)
     }
 }

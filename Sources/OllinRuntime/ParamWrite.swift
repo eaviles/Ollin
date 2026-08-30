@@ -359,7 +359,7 @@ package enum ParamWrite {
             return .success("Vector2(\(argument(x)), \(argument(y)))")
         case .vector3(let x, let y, let z):
             return .success("Vector3(\(argument(x)), \(argument(y)), \(argument(z)))")
-        case .rect(let x, let y, let width, let height):
+        case .rectangle(let x, let y, let width, let height):
             return .success("Rectangle(x: \(argument(x)), y: \(argument(y)), "
                             + "width: \(argument(width)), height: \(argument(height)))")
         case .insets(let top, let right, let bottom, let left):

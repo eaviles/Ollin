@@ -61,7 +61,7 @@ Read the bars first, then act on the longer one.
 **The GPU bar is longer.** The frame is spending its time shading pixels.
 
 - Look at the pass count. A long [filter chain](../Drawing/Effects.md) is passes over the whole canvas, and each one is fill rate.
-- An effects layer can render at a fraction of the canvas. Pass `scale:` to `renderTarget(scale:)` for anything soft, such as a blur or a glow.
+- An effects layer can render at a fraction of the canvas. Pass `scale:` to `makeRenderTarget(scale:)` for anything soft, such as a blur or a glow.
 - In 3D, shadows, reflections, and global illumination each add passes. The [3D pages](../3D/3D.md) name the cost of each.
 
 **Both bars are short and the frame rate is still low.** Something outside the drawing is holding the frame up. A file read or a heavy `setup()` in the middle of `draw()` will do it.

@@ -1,4 +1,8 @@
-// figure: frame=0 themed
+// figure: frame=0 themed unstable
+//
+// Unstable: the detections are live Vision requests, and the system's own
+// models answer with slightly different boxes from run to run (two lossless
+// back-to-back renders moved; the same cause as the other ML-driven figures).
 //
 // Guide diagram (Chapter 30): two classical detectors reading a made-up scene.
 // Left: a printed card lying at an angle on a speckled desk, built pixel by

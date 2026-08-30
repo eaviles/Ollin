@@ -72,7 +72,7 @@ import CSyphon
         // Keep publishing and confirm a frame comes back as an Image of the right size.
         let frame = await waitFor { () -> Image? in
             publishOnce()
-            return client.newFrame()
+            return client.frame
         }
         #expect(frame != nil)
         #expect(frame?.width == size)

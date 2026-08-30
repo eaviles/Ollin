@@ -31,7 +31,7 @@ final class FeedKillMap: Sketch {
         if dishes.isEmpty {
             for kill in kills {
                 for feed in feeds {
-                    let dish = simField(.reactionDiffusion(feed: feed, kill: kill),
+                    let dish = makeSimField(.reactionDiffusion(feed: feed, kill: kill),
                                         width: Int(tile), height: Int(tile))
                     withField(dish) {
                         noStroke()

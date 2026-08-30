@@ -155,7 +155,7 @@ struct HopfFibrationTests {
     /// The spiral covers the sphere from pole to pole and every point of it is on the
     /// sphere.
     @Test func theSpiralCoversTheSphere() {
-        let bases = hopfBases(spiral: 200)
+        let bases = hopfBases(spiralCount: 200)
         #expect(bases.count == 200)
         for base in bases { #expect(abs(base.length - 1) < 1e-12) }
         #expect(abs(bases.first!.y - 1) < 1e-12)
@@ -165,7 +165,7 @@ struct HopfFibrationTests {
     /// Nothing asked for is nothing handed back, rather than a crash.
     @Test func anEmptyRequestIsEmpty() {
         #expect(hopfBases(latitudes: 0, perCircle: 8).isEmpty)
-        #expect(hopfBases(spiral: 0).isEmpty)
+        #expect(hopfBases(spiralCount: 0).isEmpty)
         #expect(hopfFibers(over: []).isEmpty)
     }
 

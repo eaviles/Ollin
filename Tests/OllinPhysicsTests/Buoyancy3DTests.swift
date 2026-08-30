@@ -11,7 +11,7 @@ import Ollin
 struct Buoyancy3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// A world with a floor well below the surface, so a sinking body has
@@ -101,7 +101,7 @@ struct Buoyancy3DTests {
                                      at: Vector3(0, 2, 0), density: 0.5)
             var tail: [Double] = []
             for step in 0 ..< 3600 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 if step >= 3480 { tail.append(cube.position.y) }
             }
             return (tail.max() ?? 0) - (tail.min() ?? 0)
@@ -170,7 +170,7 @@ struct Buoyancy3DTests {
         run(world, steps: 600)
         var heights: [Double] = []
         for _ in 0 ..< 600 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             heights.append(raft.position.y)
         }
         let swing = (heights.max() ?? 0) - (heights.min() ?? 0)
@@ -187,7 +187,7 @@ struct Buoyancy3DTests {
         run(world, steps: 1200)
         var heights: [Double] = []
         for _ in 0 ..< 600 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             heights.append(raft.position.y)
         }
         #expect((heights.max() ?? 0) - (heights.min() ?? 0) < 0.01)
@@ -210,18 +210,18 @@ struct Buoyancy3DTests {
     /// The per-body override, both ways: enough of it floats a stone, none of
     /// it sinks a cork.
     @Test func perBodyBuoyancyOverridesWhatDensityAloneWouldDo() {
-        func settle(density: Double, buoyancy: Double) -> Double {
+        func settle(density: Double, buoyancyScale: Double) -> Double {
             let world = pool(Water(level: 0))
             let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
                                      at: Vector3(0, 2, 0), density: density)
-            cube.buoyancy = buoyancy
+            cube.buoyancyScale = buoyancyScale
             run(world, steps: 900)
             return cube.position.y
         }
-        #expect(settle(density: 3, buoyancy: 1) < -9)
-        #expect(settle(density: 3, buoyancy: 6) > -0.5, "6x lift floats a stone")
-        #expect(settle(density: 0.3, buoyancy: 1) > -0.5)
-        #expect(settle(density: 0.3, buoyancy: 0) < -9, "no lift sinks a cork")
+        #expect(settle(density: 3, buoyancyScale: 1) < -9)
+        #expect(settle(density: 3, buoyancyScale: 6) > -0.5, "6x lift floats a stone")
+        #expect(settle(density: 0.3, buoyancyScale: 1) > -0.5)
+        #expect(settle(density: 0.3, buoyancyScale: 0) < -9, "no lift sinks a cork")
     }
 
     /// A stone lifted by exactly its own density ratio rides half under, the
@@ -231,7 +231,7 @@ struct Buoyancy3DTests {
         let world = pool(Water(level: 0))
         let cube = world.addBody(.box(width: 1, height: 1, depth: 1),
                                  at: Vector3(0, 2, 0), density: 3)
-        cube.buoyancy = 6 // 6 x (1/3) = 2, so half of it should sit under
+        cube.buoyancyScale = 6 // 6 x (1/3) = 2, so half of it should sit under
         run(world, steps: 2400)
         #expect(abs(submergedFraction(cube) - 0.5) < 0.08)
     }
@@ -249,7 +249,7 @@ struct Buoyancy3DTests {
     }
 
     /// A soft body floats too, though nothing about it is the rigid path: the
-    /// library's own buoyancy asserts on one, so each particle is pushed up on
+    /// library's own buoyancyScale asserts on one, so each particle is pushed up on
     /// its own. Twins: the same sheet, one lighter than the water and one
     /// heavier.
     @Test func aLightClothFloatsWhereAHeavyOneSinks() throws {
@@ -260,7 +260,7 @@ struct Buoyancy3DTests {
                                   at: Vector3(0, 3, 0), mass: 1, stiffness: 0.9))
             cloth.density = density
             run(world, steps: 900)
-            return cloth.center.y
+            return cloth.position.y
         }
         let raft = try drop(density: 0.3)
         let soaked = try drop(density: 4)
@@ -283,7 +283,7 @@ struct Buoyancy3DTests {
                                                       mass: 2, stiffness: 0.9))
             raft.density = density
             run(world, steps: 900)
-            return raft.center.y
+            return raft.position.y
         }
         let cork = try settle(density: 0.2)
         let heavier = try settle(density: 0.6)
@@ -307,7 +307,7 @@ struct Buoyancy3DTests {
         #expect(ball.density < 0.01)
         #expect(cloth.density == 1)
         run(world, steps: 600)
-        #expect(ball.center.y > 0.25, "it sits on top: \(ball.center.y)")
+        #expect(ball.position.y > 0.25, "it sits on top: \(ball.position.y)")
     }
 
     /// The fix the first probe of this tier asked for. A sheet's area for its
@@ -323,9 +323,9 @@ struct Buoyancy3DTests {
                                                        mass: 2, stiffness: 0.9))
             cloth.density = density
             run(world, steps: 600)
-            let half = cloth.center.y
+            let half = cloth.position.y
             run(world, steps: 600)
-            return (half, cloth.center.y, cloth.isAwake)
+            return (half, cloth.position.y, cloth.isAwake)
         }
         let sinking = try fall(density: 4)
         #expect(sinking.full < sinking.half - 0.1,
@@ -347,13 +347,13 @@ struct Buoyancy3DTests {
             raft.density = 0.3
             var low = Double.infinity, high = -Double.infinity
             for step in 0 ..< 600 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 if step > 240 {
-                    low = min(low, raft.center.y)
-                    high = max(high, raft.center.y)
+                    low = min(low, raft.position.y)
+                    high = max(high, raft.position.y)
                 }
             }
-            return (high - low, raft.center.x)
+            return (high - low, raft.position.x)
         }
         let calm = try sail(waves: nil, flow: .zero)
         #expect(calm.heave < 0.02 && abs(calm.drift) < 0.2, "still water holds it still")

@@ -31,7 +31,7 @@ final class Photo: Sketch {
 }
 ```
 
-`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends) and returns an optional, since a path can be wrong. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", extension: "jpg", in: .module)`.
+`loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends) and returns an optional, since a path can be wrong. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
 
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 
@@ -99,7 +99,7 @@ Reading a pixel and drawing a mark is such a common move that Ollin ships two fi
 `drawGlyphMosaic` divides the picture into a grid and puts one character in each cell:
 
 ```swift
-textFont(BitmapFont.builtin)
+textFont(BitmapFont.builtIn)
 fill(.white)
 drawGlyphMosaic(picture, columns: 72)
 ```
@@ -171,7 +171,7 @@ Four things decide whether one works, and only the first is code.
 The other family turns a picture into line work, and all of it starts with **stippling**, which is placing loose dots so that their density reproduces the picture's tone. Getting that right is harder than scattering dots at random, because random placement clumps. The method Ollin uses is a settling process. Give every dot the patch of canvas that lies closer to it than to any other dot, move the dot to the center of that patch weighted by how dark the picture is there, and repeat. Dots drift toward darkness and away from each other at the same time, and after a few dozen rounds they sit in an even spread that is dense in the shadows and sparse in the light. ([Chapter 15](15-ShapesAsMaterial.md) names the structure underneath this, since it turns out to be useful for a lot more than dots.)
 
 ```swift
-let dots = stipple(picture, count: 4000, in: frame)
+let dots = stipple(of: picture, count: 4000, in: frame)
 ```
 
 <picture>
@@ -384,8 +384,8 @@ When something goes wrong, `problem` says what, in a sentence you can put on the
 The number to watch is `updates`. It counts the answers that *differed* from the one before, so a poll that brought back the same bytes doesn't move it:
 
 ```swift
-if tide.updates != seen {
-    seen = tide.updates
+if tide.updateCount != seen {
+    seen = tide.updateCount
     arrivedAt = time            // start a fade from this moment
 }
 ```
@@ -475,7 +475,7 @@ final class TypeMosaic: Sketch {
                 // whole picture breathe without changing what it says.
                 let sway = 1 + signedNoise(u * 3, v * 3, time * 0.25) * 0.18 * breathe
                 textSize(cell * (0.4 + 1.25 * brightness * brightness) * sway)
-                fill(Color.mix(c, .white, t: brightness * 0.22))
+                fill(Color.mix(c, .white, brightness * 0.22))
                 drawText(String(chars[k % chars.count]),
                          (Double(col) + 0.5) * cell, (Double(row) + 0.5) * cell)
                 k += 1
@@ -499,11 +499,11 @@ final class TypeMosaic: Sketch {
                     let d = ((u - sunX) * (u - sunX) + (v - sunY) * (v - sunY)).squareRoot()
                     let disk = 1 - smoothstep(0.075, 0.095, d)
                     let glow = (1 - smoothstep(0.04, 0.4, d)) * 0.5
-                    color = Color.mix(color, Color(hex: 0xFFF3D6), t: min(1, disk + glow))
+                    color = Color.mix(color, Color(hex: 0xFFF3D6), min(1, disk + glow))
                 } else {
                     let w = (v - horizon) / (1 - horizon)
                     let reflected = sky.color(at: max(0, 0.92 - w * 0.9))
-                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), t: 0.45 + w * 0.4)
+                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), 0.45 + w * 0.4)
                     let streak = noise(u * 5, v * 120)
                     let path = 1 - smoothstep(0.02, 0.16 + w * 0.3, abs(u - sunX))
                     color = Color.mix(dark, Color(hex: 0xFFD98A),
@@ -530,7 +530,7 @@ Run it with `swift run OllinLive MySketches/TypeMosaic.swift` and take it apart:
 Then make it yours:
 
 - Swap the source for a photo: `source = loadImage("/path/to/portrait.jpg")` is the whole change. Faces work beautifully at 60 to 80 columns.
-- Change the alphabet. A message of `"·•●"` becomes halftone dots, and `textFont(BitmapFont.builtin)` in `setup()` makes it a terminal.
+- Change the alphabet. A message of `"·•●"` becomes halftone dots, and `textFont(BitmapFont.builtIn)` in `setup()` makes it a terminal.
 - Sample with an offset. Read the pixel at `u + time * 0.01` (wrapped with `fract`) and the picture slides through the words.
 - Recolor by replacing the sampled color with `Colormap.magma.color(at: brightness)` for a duotone poster.
 - Trade the letters for line work. Feed the same sunset to `singleLine(of:points:in:)` and the poster becomes one unbroken thread a plotter could draw.

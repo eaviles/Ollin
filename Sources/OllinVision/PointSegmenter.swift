@@ -16,7 +16,7 @@ import os
 /// lazy var picker = PointSegmenter(camera,
 ///     imageEncoderAt: encoderURL, promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
 /// override func mousePressed() {
-///     guard let rect = camera.fittedRect(in: bounds) else { return }
+///     guard let rect = camera.fittedRectangle(in: bounds) else { return }
 ///     picker.pick(at: Vector2(mouseX, mouseY), in: rect)
 /// }
 /// override func draw() {
@@ -204,7 +204,7 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
     }
 
     /// Drop the current pick and its frozen frame.
-    public func clear() {
+    public func reset() {
         lock.withLockUnchecked { state in
             state.frozen = nil
             state.embeddings = nil

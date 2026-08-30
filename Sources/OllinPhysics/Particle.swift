@@ -35,7 +35,7 @@ public final class Particle {
 
     /// Collision radius. `0` makes the particle a pure point (it takes part in
     /// springs and bounds but never collides with other particles); a positive
-    /// radius lets it collide as a disk when `World.collisions` is on.
+    /// radius lets it collide as a disk when `World.particlesCollide` is on.
     public var radius: Double
 
     /// `1 / mass`, the weight constraints use to share a correction. A heavier
@@ -46,7 +46,7 @@ public final class Particle {
     /// When `true`, the particle is held in place: the integrator skips it and
     /// constraints treat it as immovable (infinite mass). Use it for anchors —
     /// the top of a cloth, a fixed pivot.
-    public var pinned: Bool = false
+    public var isPinned: Bool = false
 
     /// Free-form tag so a sketch can hang its own data off a particle (an index,
     /// a color, a group id) without a parallel array.
@@ -97,11 +97,11 @@ public final class Particle {
         previous = point
     }
 
-    /// Pin the particle in place (anchor it). Equivalent to `pinned = true`.
+    /// Pin the particle in place (anchor it). Equivalent to `isPinned = true`.
     @discardableResult
-    public func pin() -> Particle { pinned = true; return self }
+    public func pin() -> Particle { isPinned = true; return self }
 
     /// Release a pinned particle so forces and constraints move it again.
     @discardableResult
-    public func unpin() -> Particle { pinned = false; return self }
+    public func unpin() -> Particle { isPinned = false; return self }
 }

@@ -91,7 +91,7 @@ package enum SegmentationImages {
 
     /// `frame`'s own pixels as premultiplied RGBA8 bytes at its native size —
     /// the full-color decode shared by the cutout (which masks it next) and the
-    /// model tracker's `outputImage` (which keeps it as-is).
+    /// model tracker's `image` (which keeps it as-is).
     package static func colorRGBABytes(from frame: CGImage) -> [UInt8]? {
         let width = frame.width, height = frame.height
         guard width > 0, height > 0 else { return nil }

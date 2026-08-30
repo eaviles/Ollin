@@ -214,21 +214,21 @@ private final class HashProbeSketch: Sketch {
 @MainActor
 private final class ParticleLifeProbe: Sketch {
     var life: ParticleLife!
-    override func setup() { life = particleLife(count: 2_000, kinds: 4, radius: 40, seed: 7) }
+    override func setup() { life = makeParticleLife(count: 2_000, kinds: 4, radius: 40, seed: 7) }
     override func draw() { updateParticleLife(life) }
 }
 
 @MainActor
 private final class PPSProbe: Sketch {
     var pps: PPS!
-    override func setup() { pps = primordialParticles(count: 3_000, radius: 24, seed: 9) }
-    override func draw() { updatePPS(pps) }
+    override func setup() { pps = makePrimordialParticles(count: 3_000, radius: 24, seed: 9) }
+    override func draw() { updatePrimordialParticles(pps) }
 }
 
 @MainActor
 private final class PhysarumProbe: Sketch {
     var slime: Physarum!
-    override func setup() { slime = physarum(agents: 20_000, resolution: 256, seed: 3) }
+    override func setup() { slime = makePhysarum(agents: 20_000, resolution: 256, seed: 3) }
     override func draw() {
         updatePhysarum(slime)
         drawImage(slime.image, in: bounds)

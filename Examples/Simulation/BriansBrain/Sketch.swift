@@ -22,7 +22,7 @@ final class BriansBrain: Sketch {
                                     (1.0, .white)])
 
     override func setup() {
-        field = simField(.briansBrain(), scale: 0.15)
+        field = makeSimField(.briansBrain(), scale: 0.15)
     }
 
     override func draw() {

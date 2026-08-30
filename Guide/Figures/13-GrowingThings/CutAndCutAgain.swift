@@ -26,7 +26,7 @@ final class CutAndCutAgain: Sketch {
         let smallest = 900.0
         for (slot, sweeps) in [1, 3, 6, 9].enumerated() {
             let panel = Rectangle(x: 26 + Double(slot) * 212, y: 26, width: 186, height: 186)
-            let grammar = ShapeGrammar.iceRay(in: panel, minimumArea: smallest, balance: 0.3)
+            let grammar = ShapeGrammar.iceRay(in: panel, minArea: smallest, balance: 0.3)
             let cells = grammar.run(generations: sweeps, seed: 6)
 
             noFill()

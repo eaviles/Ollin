@@ -59,7 +59,7 @@ struct RGBDFrame {
     let depthWidth, depthHeight: Int
     let intrinsics: CameraIntrinsics   // already scaled to the depth grid
 
-    func pointCloud(minimumConfidence:depthRange:step:pointSize:) -> PointCloud
+    func pointCloud(minConfidence:depthRange:step:pointSize:) -> PointCloud
     func unproject(normalized: Vector2, radius: Int = 2) -> Vector3?
     func depth(atNormalizedX: Double, y: Double, radius: Int = 2) -> Double?
 }

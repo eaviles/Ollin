@@ -280,7 +280,7 @@ Ollin ships that as `SpatialIndex`, and `Boids` is only one of its customers. Ha
 let index = SpatialIndex(points, cellSize: 60)
 
 for i in points.indices {
-    index.forNeighbors(of: i, within: 60) { j, distanceSquared in
+    index.forEachNeighbor(of: i, within: 60) { j, distanceSquared in
         // j is near i, and you already have the distance squared
     }
 }

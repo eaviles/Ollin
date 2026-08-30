@@ -65,7 +65,7 @@ struct NBodyTests {
             system.bodies.reduce(.zero) { $0 + $1.velocity * $1.mass }
         }
         let before = momentum()
-        for _ in 0 ..< 60 { system.step() }
+        for _ in 0 ..< 60 { system.advance() }
         let speedScale = system.bodies.reduce(0.0) { $0 + $1.velocity.length * $1.mass }
         #expect(momentum().distance(to: before) < max(speedScale, 1) * 1e-9)
     }
@@ -82,7 +82,7 @@ struct NBodyTests {
         for a in accelerations {
             #expect(a.x.isFinite && a.y.isFinite)
         }
-        system.step()
+        system.advance()
         for body in system.bodies {
             #expect(body.position.x.isFinite && body.position.y.isFinite)
         }
@@ -103,7 +103,7 @@ struct NBodyTests {
         let period = 2 * Double.pi * radius / speed
         let steps = Int((period * 60).rounded())
         for _ in 0 ..< steps {
-            system.step()
+            system.advance()
             let r = system.bodies[1].position.distance(to: system.bodies[0].position)
             #expect(abs(r - radius) < radius * 0.01)
         }
@@ -112,7 +112,7 @@ struct NBodyTests {
     @Test func seededRunsAreDeterministic() {
         let a = NBody.disk(count: 200, center: Vector2(500, 500), radius: 300, seed: 5)
         let b = NBody.disk(count: 200, center: Vector2(500, 500), radius: 300, seed: 5)
-        for _ in 0 ..< 30 { a.step(); b.step() }
+        for _ in 0 ..< 30 { a.advance(); b.advance() }
         for i in a.bodies.indices {
             #expect(a.bodies[i].position == b.bodies[i].position)
             #expect(a.bodies[i].velocity == b.bodies[i].velocity)

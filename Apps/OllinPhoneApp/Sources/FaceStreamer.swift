@@ -71,7 +71,7 @@ final class FaceStreamer: NSObject, ARSessionDelegate, LightReporting {
             let rightT = face.rightEyeTransform.columns.3
 
             return PhoneFaceSample(
-                tracked: face.isTracked,
+                isTracked: face.isTracked,
                 timestamp: frame.timestamp,
                 headOrientation: SIMD4<Float>(q.vector.x, q.vector.y, q.vector.z, q.vector.w),
                 headPosition: SIMD3<Float>(t.x, t.y, t.z),

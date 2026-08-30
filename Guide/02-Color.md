@@ -61,9 +61,9 @@ Here's the trap every beginner falls into. Take a blue and a yellow, average the
 Ollin gives you mixing as one call, with the space as a choice:
 
 ```swift
-Color.mix(blue, yellow, t: 0.5)              // OKLab, the default
-Color.mix(blue, yellow, t: 0.5, in: .rgb)    // the muddy one, when you want it
-Color.mix(blue, yellow, t: 0.5, in: .hsb)    // walks the hue wheel between them
+Color.mix(blue, yellow, 0.5)              // OKLab, the default
+Color.mix(blue, yellow, 0.5, in: .rgb)    // the muddy one, when you want it
+Color.mix(blue, yellow, 0.5, in: .hsb)    // walks the hue wheel between them
 ```
 
 `t` says how far along you are, so 0 gives the first color, 1 gives the second, and 0.5 gives the halfway point. The default space is **OKLab**, which arranges color's numbers so that equal moves *look* equal, meaning a step of a given size changes the appearance by about the same amount wherever you take it. Blue and yellow are opposites, so their midpoint is still a neutral, but it's an even, steady neutral with no lurch in brightness and no accidental detour through some other hue. You don't need the math behind it, and this guide doesn't contain any. The practical version is short: mix in OKLab unless you have a reason not to.
@@ -71,7 +71,7 @@ Color.mix(blue, yellow, t: 0.5, in: .hsb)    // walks the hue wheel between them
 Try it live on the swinging circle:
 
 ```swift
-fill(Color.mix(Color(hex: 0x2050C8), Color(hex: 0xFFC800), t: sin(time) * 0.5 + 0.5))
+fill(Color.mix(Color(hex: 0x2050C8), Color(hex: 0xFFC800), sin(time) * 0.5 + 0.5))
 ```
 
 The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into the `0...1` that `t` wants, so the circle breathes between the two colors. That squeeze is worth remembering, and [Chapter 3](03-MotionAndTime.md) turns it into a proper tool with a name.
@@ -99,7 +99,7 @@ Every space above still disagrees with your childhood. Mix blue and yellow in RG
 </picture>
 
 ```swift
-Color.mix(blue, yellow, t: 0.5, in: .paint)   // green, the way a palette gives it
+Color.mix(blue, yellow, 0.5, in: .paint)   // green, the way a palette gives it
 ```
 
 Behind the call, each color becomes the reflectance curve of a surface painted with it. The two curves then mix the way scattering pigments mix, wavelength by wavelength. The mixes also darken a little, because pigment only ever absorbs, and that darkening is half of what makes the result read as paint. It's the same trade as before, one level up: `.oklab` gives you even steps, `.paint` gives you a medium's honesty. Pick by what the piece needs.

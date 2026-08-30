@@ -19,7 +19,7 @@ import COllinShaders   // OllinParticle, OllinEvolutionParams
 /// var run: Evolution!
 ///
 /// override func setup() {
-///     run = evolution(count: 30_000, genes: 32,
+///     run = makeEvolution(count: 30_000, genes: 32,
 ///                     from: Vector2(540, 980), to: Vector2(540, 120))
 ///     run.obstacles = [Rectangle(x: 180, y: 520, width: 720, height: 40)]
 /// }
@@ -162,7 +162,7 @@ public final class Evolution {
     /// can be a frame stale: a summary, not a ledger.
     public private(set) var lastGeneration: Report?
 
-    private let seed: UInt64
+    private let seed: Int
     private let pingpong: PingPong<OllinParticle>
     private let genePingpong: PingPong<SIMD2<Float>>
     private let stepKernel: ComputeKernel
@@ -176,7 +176,7 @@ public final class Evolution {
     /// Build a population of `count` individuals, each carrying `genes` steering
     /// impulses, flying from `start` toward `target`. `seed` makes the opening
     /// generation reproducible.
-    public init(count: Int, genes: Int, start: Vector2, target: Vector2, seed: UInt64) {
+    public init(count: Int, genes: Int, start: Vector2, target: Vector2, seed: Int) {
         precondition(count > 0, "Evolution needs a positive count")
         precondition(genes > 0, "Evolution needs at least one gene")
         self.count = count
@@ -201,7 +201,7 @@ public final class Evolution {
         }
         self.pingpong = PingPong(seeds)
 
-        self.genePingpong = PingPong(Evolution.seedGenomes(count: count, genes: genes, seed: seed))
+        self.genePingpong = PingPong(Evolution.seedGenomes(count: count, genes: genes, seed: UInt64(bitPattern: Int64(seed))))
     }
 
     /// The opening generation, which is where a run either has something to select from
@@ -215,7 +215,7 @@ public final class Evolution {
     /// job is then to bend the good ones, which it can do in a handful of generations
     /// rather than a hundred.
     static func seedGenomes(count: Int, genes: Int, seed: UInt64) -> [SIMD2<Float>] {
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         var initial = [SIMD2<Float>]()
         initial.reserveCapacity(count * genes)
         for _ in 0..<count {
@@ -376,7 +376,7 @@ public final class Evolution {
                 let t = Double(i) / 3 * Double(source.count - 1)
                 let a = min(Int(t), source.count - 1)
                 let b = min(a + 1, source.count - 1)
-                return Color.mix(source[a], source[b], t: t - Double(a)).simd4
+                return Color.mix(source[a], source[b], t - Double(a)).simd4
             }
         }
         return stops.map { SIMD4<Float>($0.x, $0.y, $0.z, $0.w * alpha) }

@@ -40,7 +40,7 @@ final class UlamSpiral_Example: Sketch {
         for point in spiral.primePoints {
             // Warmer toward the middle, so the eye finds the center of the count.
             let reach = (point - bounds.center).length / (Double(size) * spiral.grid.cellWidth / 2)
-            fill(Color.mix(Color(hex: 0xFFD166), Color(hex: 0x6FB1FF), t: clamp(reach, 0, 1)))
+            fill(Color.mix(Color(hex: 0xFFD166), Color(hex: 0x6FB1FF), clamp(reach, 0, 1)))
             drawCircle(center: point, radius: radius)
         }
 

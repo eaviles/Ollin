@@ -355,7 +355,7 @@ private final class AerialBeamProbe: Sketch {
         // 1000-unit path saturates to the sky tone, hiding the beam on top).
         camera(Camera3D(eye: Vector3(0, 1, 9), target: Vector3(0, 1, 0), near: 0.1, far: 40))
         spotLight(Color(white: 1.0), at: Vector3(0, 7, 0), direction: Vector3(0, -1, 0),
-                  angle: .pi / 10, penumbra: 0.2, intensity: 3)
+                  coneAngle: .pi / 10, penumbra: 0.2, intensity: 3)
         // The march's scattering coefficient is the aerial density (thin air), so
         // the gain is turned up to keep the beam readable over the veil.
         volumetricLight(6.0, anisotropy: 0.2)

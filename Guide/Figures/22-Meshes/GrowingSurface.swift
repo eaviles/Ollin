@@ -50,7 +50,7 @@ final class GrowingSurface: Sketch {
     /// figure renders the same form every time.
     private func grown(_ driver: GrowthDriver, amount: Double) -> Mesh {
         let growth = MeshGrowth(mesh: seed, driver: driver, edgeLength: 0.11, seed: 4)
-        growth.growthAmount = amount
+        growth.growthRate = amount
         growth.maxVertices = 4200
         growth.step(140)
         return growth.mesh

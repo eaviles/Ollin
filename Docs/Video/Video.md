@@ -76,7 +76,7 @@ Set `loops = true` before `play()` for the usual creative-coding loop. `rate` ch
 ```swift
 var frame: Image?                                    // the current frame
 var size: Vector2?                                   // pixel dimensions
-func fittedRect(in container: Rectangle) -> Rectangle?
+func fittedRectangle(in container: Rectangle) -> Rectangle?
 
 // on Sketch, for any VideoFeed (a VideoPlayer, a Camera, your own):
 @discardableResult
@@ -88,7 +88,7 @@ func drawFrame(_ feed: some VideoFeed, in container: Rectangle? = nil,
 
 Working from the typed pieces instead, `frame` is the current video frame, ready for `drawImage`. It's `nil` until the first frame decodes, and after that it always returns a frame. Between video frames (your sketch usually draws faster than the video's frame rate) you get the same one again, so there's never a gap. The image wraps the decoder's texture directly, which is what keeps per-frame cost near zero.
 
-`fittedRect(in:)` letterboxes the video into a rectangle without stretching, typically `bounds` for a full-canvas draw:
+`fittedRectangle(in:)` letterboxes the video into a rectangle without stretching, typically `bounds` for a full-canvas draw:
 
 ```text
 bounds (1080×1080)                 a 16:9 video, fitted

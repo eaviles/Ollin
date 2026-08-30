@@ -176,7 +176,7 @@ private func jsonValue(_ stored: ParamStored) -> String {
     case let .color(r, g, b, a): return jsonArray([r, g, b, a])
     case let .vector(x, y): return jsonArray([x, y])
     case let .vector3(x, y, z): return jsonArray([x, y, z])
-    case let .rect(x, y, w, h): return jsonArray([x, y, w, h])
+    case let .rectangle(x, y, w, h): return jsonArray([x, y, w, h])
     case let .insets(top, right, bottom, left): return jsonArray([top, right, bottom, left])
     case let .range(lower, upper): return jsonArray([lower, upper])
     case let .colors(stops, _):

@@ -75,7 +75,7 @@ final class MeshGrowthDemo: Sketch {
             // The chemistry's pattern covers only part of the surface where the
             // other drivers push everywhere, so it earns a faster rate; the
             // settle hands it a formed pattern to grow from on the first step.
-            growth.growthAmount = 0.85
+            growth.growthRate = 0.85
             growth.settleSteps = 60
             return growth
 
@@ -91,7 +91,7 @@ final class MeshGrowthDemo: Sketch {
                                         1 - smoothstep(0.05, 0.45, abs(position.y))
                                     },
                                     edgeLength: coarseness, seed: UInt64(variation))
-            growth.growthAmount = 0.9
+            growth.growthRate = 0.9
             return growth
 
         case .even:

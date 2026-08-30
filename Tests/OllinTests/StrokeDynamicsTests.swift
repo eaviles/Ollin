@@ -86,7 +86,7 @@ struct StrokeDynamicsTests {
             var mark = StrokeMark(.speed(reference: 1200, fast: 0.1), smoothing: 0.5)
             let dt = 1 / fps, step = 600 / fps
             for i in 0...Int(fps) {   // one second of travel either way
-                mark.record(Vector2(20 + step * Double(i), 50), dt: dt)
+                mark.record(Vector2(20 + step * Double(i), 50), deltaTime: dt)
             }
             return mark
         }
@@ -106,12 +106,12 @@ struct StrokeDynamicsTests {
     @Test
     func aStillHandRecordsNothing() {
         var mark = StrokeMark()
-        for _ in 0..<200 { mark.record(Vector2(40, 40), dt: 1.0 / 60) }
+        for _ in 0..<200 { mark.record(Vector2(40, 40), deltaTime: 1.0 / 60) }
         #expect(mark.count == 0)
         #expect(mark.isEmpty)
     }
 
-    /// Frames whose motion falls under `minimumSpacing` bank their time rather
+    /// Frames whose motion falls under `minSpacing` bank their time rather
     /// than dropping it, so the point that finally lands measures its speed over
     /// the whole interval. Spending only the last frame's time instead would read
     /// a slow, finely-sampled hand as a fast one.
@@ -119,9 +119,9 @@ struct StrokeDynamicsTests {
     func skippedFramesBankTheirTime() {
         var mark = StrokeMark(StrokeDynamics(width: .speed(reference: 1000, fast: 0)),
                               smoothing: 0)
-        mark.minimumSpacing = 5
+        mark.minSpacing = 5
         // One point per frame, 1 point apart, at 60 fps: a true 60 points/second.
-        for i in 0...120 { mark.record(Vector2(Double(i), 0), dt: 1.0 / 60) }
+        for i in 0...120 { mark.record(Vector2(Double(i), 0), deltaTime: 1.0 / 60) }
         #expect(mark.count > 2)
         // 60 of 1000 leaves the width at 0.94. Reading 5 points against a single
         // frame's 1/60 s would give 300 points/second and a width of 0.7.
@@ -134,9 +134,9 @@ struct StrokeDynamicsTests {
     @Test
     func theFirstPointWaitsForItsHeading() {
         var mark = StrokeMark(StrokeDynamics(width: StrokeResponse { $0.direction.y }))
-        mark.record(Vector2(0, 0), dt: 1.0 / 60)
+        mark.record(Vector2(0, 0), deltaTime: 1.0 / 60)
         #expect(mark.count == 0)
-        mark.record(Vector2(0, 30), dt: 1.0 / 60)      // heading straight down
+        mark.record(Vector2(0, 30), deltaTime: 1.0 / 60)      // heading straight down
         #expect(mark.count == 2)
         #expect(abs(mark.samples[0].width - 1) < 1e-9) // and the held point got it
     }
@@ -144,14 +144,14 @@ struct StrokeDynamicsTests {
     @Test
     func clearResetsTheMeasurement() {
         var mark = StrokeMark()
-        for i in 0...30 { mark.record(Vector2(Double(i) * 10, 0), dt: 1.0 / 60) }
+        for i in 0...30 { mark.record(Vector2(Double(i) * 10, 0), deltaTime: 1.0 / 60) }
         #expect(mark.count > 2)
         mark.clear()
         #expect(mark.count == 0)
         #expect(mark.length == 0)
         #expect(mark.bounds == nil)
         // A fresh first point is held again, which means the filters really reset.
-        mark.record(Vector2(500, 500), dt: 1.0 / 60)
+        mark.record(Vector2(500, 500), deltaTime: 1.0 / 60)
         #expect(mark.count == 0)
     }
 
@@ -336,7 +336,7 @@ private final class PacedMarkProbe: Sketch {
         var x = 20.0
         var speed = 90.0
         while x < 236 {
-            mark.record(Vector2(x, 64), dt: 1.0 / 60)
+            mark.record(Vector2(x, 64), deltaTime: 1.0 / 60)
             x += speed / 60
             speed *= 1.045
         }

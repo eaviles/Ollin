@@ -56,7 +56,7 @@ public struct Matcap {
     /// Glossy candy car paint (a clear-coat metallic red).
     @MainActor public static let carpaint = Matcap(bundled("carpaint"))
     /// Machined hard-surface metal, neutral gray.
-    @MainActor public static let hardSurfaceGrey = Matcap(bundled("hardSurfaceGrey"))
+    @MainActor public static let hardSurfaceGray = Matcap(bundled("hardSurfaceGray"))
     /// Machined hard-surface metal, red.
     @MainActor public static let hardSurfaceRed = Matcap(bundled("hardSurfaceRed"))
 

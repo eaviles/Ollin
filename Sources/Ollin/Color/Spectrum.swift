@@ -19,10 +19,10 @@ import CSpectralData
 /// wavelength keeps the product of what both would pass, which is subtractive
 /// mixing), `+` adds light, and `mixedAsPaint(with:_:)` blends two curves the
 /// way scattering pigments blend. The everyday form of that last one is
-/// `Color.mix(a, b, t: 0.5, in: .paint)`.
+/// `Color.mix(a, b, 0.5, in: .paint)`.
 ///
 /// ```swift
-/// let green = Color.mix(.yellow, .blue, t: 0.5, in: .paint)   // paint, not gray
+/// let green = Color.mix(.yellow, .blue, 0.5, in: .paint)   // paint, not gray
 /// let stained = (glass.spectrum * light.spectrum).color        // filtered light
 /// let glow = Color(.blackbody(1800))                           // candle orange
 /// ```

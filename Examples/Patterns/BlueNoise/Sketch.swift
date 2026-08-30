@@ -42,7 +42,7 @@ final class BlueNoise: Sketch {
             let wobble = Vector2(signedNoise(p.y * 0.004, time * 0.8),
                                  signedNoise(p.x * 0.004, time * 0.8 + 42)) * (5 * scale)
             let size = (2.0 + (flow + 1) * 2.8) * scale
-            fill(Color.mix(ink, accent, t: (flow + 1) * 0.5))
+            fill(Color.mix(ink, accent, (flow + 1) * 0.5))
             drawCircle(center: p + wobble, radius: size)
         }
     }

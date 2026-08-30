@@ -22,7 +22,7 @@ final class DiffusionCurves_Example: Sketch {
     let sand = Color(hex: 0xE8C98A)
 
     override func draw() {
-        let marks = renderTarget()
+        let marks = makeRenderTarget()
         withTarget(marks) {
             background(Color(white: 0, alpha: 0))
 

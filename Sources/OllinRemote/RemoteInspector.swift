@@ -132,7 +132,7 @@ public final class RemoteInspector: SketchExtension {
         fresh.descriptors = handles.map(RemoteWire.descriptor(for:))
         for descriptor in fresh.descriptors {
             fresh.values[descriptor.name] = descriptor.value
-            fresh.shown[descriptor.name] = descriptor.shown
+            fresh.shown[descriptor.name] = descriptor.isShown
         }
         return fresh
     }
@@ -170,7 +170,7 @@ final class RemoteServer: @unchecked Sendable {
         var buffer: [UInt8] = []
         var upgraded = false
         var fragments: [UInt8] = []
-        var fragmentOpcode: WSFrameCodec.Opcode?
+        var fragmentOpcode: WebSocketFraming.Opcode?
         init(_ connection: NWConnection) { self.connection = connection }
     }
 
@@ -344,14 +344,14 @@ final class RemoteServer: @unchecked Sendable {
             }
         }
         guard link.upgraded else { return }
-        guard let frames = WSFrameCodec.decode(buffer: &link.buffer) else {
+        guard let frames = WebSocketFraming.decode(buffer: &link.buffer) else {
             drop(link)
             return
         }
         for frame in frames { handle(frame, on: link) }
     }
 
-    private func handle(_ frame: WSFrameCodec.Frame, on link: Link) {
+    private func handle(_ frame: WebSocketFraming.Frame, on link: Link) {
         switch frame.opcode {
         case .text, .binary, .continuation:
             if frame.opcode != .continuation {
@@ -366,10 +366,10 @@ final class RemoteServer: @unchecked Sendable {
             link.fragmentOpcode = nil
             receiveMessage(payload)
         case .ping:
-            link.connection.send(content: WSFrameCodec.encode(.pong, payload: frame.payload),
+            link.connection.send(content: WebSocketFraming.encode(.pong, payload: frame.payload),
                                  completion: .contentProcessed { _ in })
         case .close:
-            link.connection.send(content: WSFrameCodec.encode(.close, payload: []),
+            link.connection.send(content: WebSocketFraming.encode(.close, payload: []),
                                  completion: .contentProcessed { _ in })
             drop(link)
         case .pong:
@@ -379,7 +379,7 @@ final class RemoteServer: @unchecked Sendable {
 
     private func receiveMessage(_ payload: [UInt8]) {
         guard let set = try? JSONDecoder().decode(RemoteSet.self, from: Data(payload)),
-              set.kind == "set" else { return }
+              set.kind == .set else { return }
         enqueue(set.name, set.value)
     }
 
@@ -391,14 +391,14 @@ final class RemoteServer: @unchecked Sendable {
                                 params: current.descriptors)
         guard let data = try? JSONEncoder().encode(hello),
               let text = String(data: data, encoding: .utf8) else { return }
-        link.connection.send(content: WSFrameCodec.encodeText(text),
+        link.connection.send(content: WebSocketFraming.encodeText(text),
                              completion: .contentProcessed { _ in })
     }
 
     func broadcast(_ message: some Encodable) {
         guard let data = try? JSONEncoder().encode(message),
               let text = String(data: data, encoding: .utf8) else { return }
-        let frame = WSFrameCodec.encodeText(text)
+        let frame = WebSocketFraming.encodeText(text)
         let all = links.withLock { $0.values.filter(\.upgraded) }
         for link in all {
             link.connection.send(content: frame, completion: .contentProcessed { _ in })

@@ -371,7 +371,7 @@ private final class TransmitProbe: Sketch {
         switch kind {
         case .thinSpot, .thickSpot:
             spotLight(.white, at: Vector3(0.3, 1.2, -6.5), direction: Vector3(-0.05, -0.05, 1),
-                      angle: 0.9, intensity: 1.5)
+                      coneAngle: 0.9, intensity: 1.5)
         case .thinPoint, .thickPoint:
             pointLight(.white, at: Vector3(0.3, 1.2, -5.5), intensity: 1.5)
         default:

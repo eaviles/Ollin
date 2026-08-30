@@ -13,10 +13,10 @@ final class RetroFilters_Example: Sketch {
 
     private func tiles(_ t: Double) -> [(String, Filter?)] {
         [
-            ("scanlines", .scanlines(count: 120, intensity: 0.45)),
+            ("scanlines", .scanlines(count: 120, amount: 0.45)),
             ("glitch", .glitch(amount: 0.32, seed: t * 8)),
             ("crt", .crt(curvature: 0.18, scanline: 0.35)),
-            ("bloom", .bloom(threshold: 0.5, intensity: 1.6, radius: 22)),
+            ("bloom", .bloom(threshold: 0.5, amount: 1.6, radius: 22)),
         ]
     }
 
@@ -25,7 +25,7 @@ final class RetroFilters_Example: Sketch {
 
         // A bright, high-contrast scene — a glowing ring, vivid bars, bold text —
         // the kind of thing a CRT and a bloom flatter.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x05080F))
             noStroke()

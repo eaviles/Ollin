@@ -120,9 +120,9 @@ A response runs where the stroke is expanded rather than inside `draw()`, so lik
 ```swift
 StrokeMark(_ dynamics: StrokeDynamics = .speed(),
            smoothing: Double = 0.5,
-           minimumSpacing: Double = 1.5)
+           minSpacing: Double = 1.5)
 
-mark.record(_ position: Vector2, dt: Double, pressure: Double = 1)
+mark.record(_ position: Vector2, deltaTime: Double, pressure: Double = 1)
 mark.clear()
 mark.append(_ sample: StrokeMark.Sample)
 
@@ -141,7 +141,7 @@ Three knobs:
 
 - **`dynamics`** is settable mid-mark, so a live knob can change the brush while a stroke is in progress. Points already recorded keep what they were given.
 - **`smoothing`** (`0` raw to `1` heavy, default `0.5`) is how much the measured speed and pressure are filtered. Raw per-frame speed is far too noisy to drive a width directly. The default sits where a mark reads as deliberate without visibly trailing the pointer.
-- **`minimumSpacing`** (default `1.5` points) is how far the pointer must travel before a new point is recorded. It keeps a slow hand from piling hundreds of near-identical points into one spot. Frames under it bank their time rather than dropping it, so the point that does land measures its speed over the whole interval.
+- **`minSpacing`** (default `1.5` points) is how far the pointer must travel before a new point is recorded. It keeps a slow hand from piling hundreds of near-identical points into one spot. Frames under it bank their time rather than dropping it, so the point that does land measures its speed over the whole interval.
 
 Passing `dt` is what makes a mark come out the same on a 60 Hz display and a 120 Hz one. A mark measures distance per frame, so without the real elapsed time a faster display would read every stroke as half as fast and lay down a fatter mark.
 

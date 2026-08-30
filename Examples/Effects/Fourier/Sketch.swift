@@ -32,7 +32,7 @@ final class FourierPanels: Sketch {
 
         // The picture: a few hard shapes and one fine grating, so the spectrum
         // has both broad tones and sharp detail to show.
-        let plate = renderTarget(width: 512, height: 512)
+        let plate = makeRenderTarget(width: 512, height: 512)
         withTarget(plate) {
             background(Color(hex: 0x101010))
             noStroke()
@@ -57,7 +57,7 @@ final class FourierPanels: Sketch {
         // A round mask over the spectrum: inside it the slow waves, outside the
         // fast ones. Keeping one and dropping the other is a blur or an edge
         // finder, chosen by which side of the shape survives.
-        let mask = renderTarget(width: 512, height: 512)
+        let mask = makeRenderTarget(width: 512, height: 512)
         withTarget(mask) {
             background(keepTheMiddle ? .black : .white)
             noStroke()

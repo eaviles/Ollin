@@ -55,7 +55,7 @@ final class SpecularAntialias: Sketch {
         // Metal has no color of its own without something to reflect, and the
         // environment is a second thing the widening reaches: a rougher pixel
         // reads the environment through a blurrier level of it.
-        environment(.studio.intensity(0.35))
+        environment(.studio.intensified(to: 0.35))
         if specularAA { specularAntialiasing(strength: strength) }
 
         // The bed of balls: 57 by 57 of them over a ten-unit square, each one

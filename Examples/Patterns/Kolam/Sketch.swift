@@ -46,7 +46,7 @@ final class Kolam_Example: Sketch {
             // Each loop gets its own tone, so the count is readable at a glance.
             let tone = design.loops.count == 1 ? chalk
                 : Color.mix(chalk, Color(hex: 0xE0724A),
-                            t: Double(index) / Double(design.loops.count - 1))
+                            Double(index) / Double(design.loops.count - 1))
             stroke(tone)
             strokeWeight(width * 0.008)
             drawPolyline(loop.smoothed(iterations: Int(rounding)).points, closed: true)

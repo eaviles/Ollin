@@ -96,28 +96,28 @@ struct GeneratorView: View {
         // A hairline under the title bar: the system separator does not read
         // against the custom gradient.
         .overlay(alignment: .top) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
         }
         .navigationTitle("New project")
         .background(WindowCustomizer { window in
             window.titlebarSeparatorStyle = .none
         })
-        .background(TitlebarAccessory(attribute: .leading) { leadingChrome })
-        .background(TitlebarAccessory(attribute: .trailing) { trailingChrome })
+        .background(TitleBarAccessory(attribute: .leading) { leadingChrome })
+        .background(TitleBarAccessory(attribute: .trailing) { trailingChrome })
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("New project").font(.system(size: 13.5, weight: .semibold))
             }
             .sharedBackgroundVisibility(.hidden)
         }
-        .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
+        .toolbarBackground(OllinInspector.titleBarGradient(for: colorScheme), for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
         .task(id: previewKey) { await showPreview() }
         .task { await load() }
     }
 
     private var hairline: some View {
-        SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 0.5)
+        SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 0.5)
     }
 
     private var sidebarBackground: some View {
@@ -138,7 +138,7 @@ struct GeneratorView: View {
     /// roadmap in the main flow reads as a control that does not work.
     private var leadingChrome: some View {
         HStack(spacing: 10) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 1, height: 22)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 1, height: 22)
 
             Button { sidebarShown.toggle() } label: {
                 SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
@@ -283,7 +283,7 @@ struct GeneratorView: View {
         .padding(.vertical, 7)
         .background(.bar)
         .overlay(alignment: .top) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
         }
     }
 
@@ -467,7 +467,7 @@ struct GeneratorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             statusLine
             if template.id == ProjectTemplate.threeD.id && example == nil {
-                SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+                SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
                 ThreeDStrip(recipe: $threeD, hovered: $hovered)
                     .tint(OllinInspector.accent)
                     .onChange(of: threeD) { _, _ in outcome = nil }
@@ -770,7 +770,7 @@ struct GeneratorView: View {
         .padding(14)
         .background(.bar)
         .overlay(alignment: .top) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
         }
     }
 

@@ -65,6 +65,6 @@ public struct Ramp: Equatable, Hashable, Sendable {
         let b = stops[upper]
         let span = b.position - a.position
         guard span > 0 else { return b.color }
-        return Color.mix(a.color, b.color, t: (t - a.position) / span, in: space)
+        return Color.mix(a.color, b.color, (t - a.position) / span, in: space)
     }
 }

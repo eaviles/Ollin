@@ -137,7 +137,7 @@ public final class Camera: FrameSource, VideoFeed {
     }
 
     /// The notice `drawFrame(camera)` shows before the first frame (`VideoFeed`;
-    /// `fittedRect(in:)` comes from the same conformance).
+    /// `fittedRectangle(in:)` comes from the same conformance).
     public var waitingMessage: String { "Waiting for camera…" }
 
     private func configureAndRun() throws {

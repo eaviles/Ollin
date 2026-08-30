@@ -1,4 +1,7 @@
-// figure: frame=0
+// figure: frame=0 unstable
+//
+// Unstable: two lossless back-to-back renders moved even though the finds are
+// staged by hand; measured but not yet diagnosed.
 //
 // Guide figure (Chapter 27): two printed pictures the phone knows, each carrying
 // the same little city of columns. One card lies flat on a table, one poster hangs
@@ -28,7 +31,7 @@ final class PrintAsStage: Sketch {
                             width: Float, height: Float) -> PhoneMarker {
         let z = simd_cross(across, outOfTheFace)
         return PhoneMarker(PhoneMarkerSample(
-            tracked: true, timestamp: 0, id: UUID(), name: name, kind: .image,
+            isTracked: true, timestamp: 0, id: UUID(), name: name, kind: .image,
             transform: simd_float4x4(SIMD4(across, 0), SIMD4(outOfTheFace, 0),
                                      SIMD4(z, 0), SIMD4(position, 1)),
             size: SIMD3<Float>(width, height, 0)))
@@ -50,7 +53,7 @@ final class PrintAsStage: Sketch {
         background(Color(hex: 0x0D1017))
         camera(.orbiting(target: Vector3(0.02, 1.0, -0.45), radius: 1.95,
                          azimuth: 0.5, elevation: 0.3, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
 
         // The surfaces the prints sit on, hinted: a wall pane and a table slab.
         material(.clay)

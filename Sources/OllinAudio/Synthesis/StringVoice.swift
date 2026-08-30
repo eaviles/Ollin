@@ -128,7 +128,7 @@ struct StringVoice {
         // notches exactly those harmonics; the subtraction wraps because the
         // line is a loop, so the notches land on the harmonics rather than near
         // them.
-        let offset = max(1, min(count - 1, Int((spec.pick * Double(count)).rounded())))
+        let offset = max(1, min(count - 1, Int((spec.position * Double(count)).rounded())))
         var peak = 0.0
         for index in 0..<count {
             buffer[index] = scratch[index] - scratch[(index + count - offset) % count]

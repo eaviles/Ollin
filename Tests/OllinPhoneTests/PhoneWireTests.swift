@@ -36,13 +36,13 @@ import Darwin
                                     orientation: SIMD4<Float>(0, 0.383, 0, 0.924)),
             .leftHand: PhoneJointSample(position: SIMD3<Float>(-0.55, 1.0, 0.1),
                                         orientation: SIMD4<Float>(0.5, 0.5, 0.5, 0.5),
-                                        tracked: false),
+                                        isTracked: false),
             .rightAnkle: PhoneJointSample(position: SIMD3<Float>(0.18, -0.9, 0.02)),
         ]
         let anchor = simd_float4x4(SIMD4<Float>(0, 0, -1, 0), SIMD4<Float>(0, 1, 0, 0),
                                    SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0.4, 0.9, -2.5, 1))
         let message = PhoneMessage.pose([PhonePoseSample(
-            tracked: true, timestamp: 3.25, anchor: anchor, scaleFactor: 0.93, joints: joints)])
+            isTracked: true, timestamp: 3.25, anchor: anchor, scaleFactor: 0.93, joints: joints)])
         #expect(roundTrip(message) == message)
     }
 
@@ -61,10 +61,10 @@ import Darwin
             var anchor = matrix_identity_float4x4
             anchor.columns.3 = SIMD4<Float>(f, 0, -f, 1)
             return PhonePoseSample(
-                tracked: i == 0, timestamp: Double(i), anchor: anchor, scaleFactor: 1 + 0.1 * f,
+                isTracked: i == 0, timestamp: Double(i), anchor: anchor, scaleFactor: 1 + 0.1 * f,
                 joints: [.hips: PhoneJointSample(position: SIMD3<Float>(0, 0.9 + f, 0),
                                                  orientation: SIMD4<Float>(0, 0, 0, 1),
-                                                 tracked: i == 0)])
+                                                 isTracked: i == 0)])
         }
         let message = PhoneMessage.pose([body(0), body(1)])
         #expect(roundTrip(message) == message)
@@ -75,7 +75,7 @@ import Darwin
         let blendShapes = (0..<PhoneBlendShape.allCases.count).map { Float($0) / 100 }
         let mesh = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(0.01, -0.02, 0.03), SIMD3<Float>(-0.04, 0.05, -0.06)]
         let message = PhoneMessage.face([PhoneFaceSample(
-            tracked: true, timestamp: 8.75,
+            isTracked: true, timestamp: 8.75,
             headOrientation: SIMD4<Float>(0.1, 0.2, 0.3, 0.9),
             headPosition: SIMD3<Float>(0.05, -0.1, -0.4),
             blendShapes: blendShapes, meshVertices: mesh)])
@@ -89,7 +89,7 @@ import Darwin
                     SIMD3<Float>(0, 1, 0), SIMD3<Float>(1, 1, 0)]
         let indices: [UInt16] = [0, 1, 2, 0, 2, 3]
         let message = PhoneMessage.face([PhoneFaceSample(
-            tracked: true, timestamp: 1.5,
+            isTracked: true, timestamp: 1.5,
             headOrientation: SIMD4<Float>(0, 0, 0, 1), headPosition: .zero,
             blendShapes: [Float](repeating: 0.1, count: PhoneBlendShape.allCases.count),
             meshVertices: mesh, triangleIndices: indices)])
@@ -102,7 +102,7 @@ import Darwin
         // eyes converge on. All must survive alongside the mesh and its topology.
         let mesh = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0)]
         let message = PhoneMessage.face([PhoneFaceSample(
-            tracked: true, timestamp: 2.25,
+            isTracked: true, timestamp: 2.25,
             headOrientation: SIMD4<Float>(0, 0.383, 0, 0.924),
             headPosition: SIMD3<Float>(0.1, 0.2, -0.5),
             blendShapes: [Float](repeating: 0.2, count: PhoneBlendShape.allCases.count),
@@ -119,7 +119,7 @@ import Darwin
     @Test func roundTripsFaceWithoutMesh() {
         // Blendshapes only, no mesh vertices — the lightweight case.
         let message = PhoneMessage.face([PhoneFaceSample(
-            tracked: false, timestamp: 0,
+            isTracked: false, timestamp: 0,
             headOrientation: SIMD4<Float>(0, 0, 0, 1), headPosition: .zero,
             blendShapes: [Float](repeating: 0, count: PhoneBlendShape.allCases.count),
             meshVertices: [])])
@@ -132,7 +132,7 @@ import Darwin
         func face(_ i: Int) -> PhoneFaceSample {
             let f = Float(i)
             return PhoneFaceSample(
-                tracked: i != 1, timestamp: Double(i),
+                isTracked: i != 1, timestamp: Double(i),
                 headOrientation: SIMD4<Float>(0.1 * f, 0.2 * f, 0.3 * f, 1),
                 headPosition: SIMD3<Float>(0.2 * f - 0.2, 0, -0.5),
                 blendShapes: (0..<PhoneBlendShape.allCases.count).map { Float($0 + i) / 100 },
@@ -157,7 +157,7 @@ import Darwin
         let transform = simd_float4x4(SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0, 1, 0, 0),
                                       SIMD4<Float>(0, 0, 1, 0), SIMD4<Float>(0.1, 0.2, -0.3, 1))
         let message = PhoneMessage.depth(PhoneDepthSample(
-            tracked: true, timestamp: 5.5, depthWidth: 4, depthHeight: 2,
+            isTracked: true, timestamp: 5.5, depthWidth: 4, depthHeight: 2,
             fx: 211.5, fy: 211.5, cx: 128.25, cy: 96.5, cameraTransform: transform,
             colorJPEG: Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]), depth: depth, confidence: confidence))
         #expect(roundTrip(message) == message)
@@ -166,7 +166,7 @@ import Darwin
     @Test func roundTripsDepthWithoutConfidence() {
         // The TrueDepth front camera (and a missing confidence map) — depth only.
         let message = PhoneMessage.depth(PhoneDepthSample(
-            tracked: false, timestamp: 0, depthWidth: 2, depthHeight: 1,
+            isTracked: false, timestamp: 0, depthWidth: 2, depthHeight: 1,
             fx: 100, fy: 100, cx: 1, cy: 0.5, cameraTransform: matrix_identity_float4x4,
             colorJPEG: Data(), depth: [1.0, 2.0], confidence: nil))
         #expect(roundTrip(message) == message)
@@ -177,7 +177,7 @@ import Darwin
         // JPEG-stand-in color bytes.
         let matte: [UInt8] = [0, 64, 128, 192, 255, 32]
         let message = PhoneMessage.segmentation(PhoneSegmentationSample(
-            tracked: true, timestamp: 7.0, matteWidth: 3, matteHeight: 2, orientation: 1,
+            isTracked: true, timestamp: 7.0, matteWidth: 3, matteHeight: 2, orientation: 1,
             matte: matte, colorJPEG: Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10])))
         #expect(roundTrip(message) == message)
     }
@@ -186,7 +186,7 @@ import Darwin
         // A matte with no color frame and no rotation — the degenerate case the codec
         // must survive.
         let message = PhoneMessage.segmentation(PhoneSegmentationSample(
-            tracked: false, timestamp: 0, matteWidth: 2, matteHeight: 1, orientation: 0,
+            isTracked: false, timestamp: 0, matteWidth: 2, matteHeight: 1, orientation: 0,
             matte: [10, 250], colorJPEG: Data()))
         #expect(roundTrip(message) == message)
     }
@@ -218,7 +218,7 @@ import Darwin
         // Two hands in one frame: a lifted right hand (every joint carrying a world
         // position) and a 2D-only left hand with a low-confidence joint.
         let right = PhoneHandSample(
-            tracked: true, timestamp: 4.5, chirality: .right, confidence: 0.98,
+            isTracked: true, timestamp: 4.5, chirality: .right, confidence: 0.98,
             joints: [
                 .wrist: PhoneHandJointSample(point: SIMD2<Float>(0.5, 0.4), confidence: 0.99,
                                              hasWorldPosition: true,
@@ -228,7 +228,7 @@ import Darwin
                                                 worldPosition: SIMD3<Float>(0.14, 1.35, -0.78)),
             ])
         let left = PhoneHandSample(
-            tracked: false, timestamp: 4.5, chirality: .left, confidence: 0.7,
+            isTracked: false, timestamp: 4.5, chirality: .left, confidence: 0.7,
             joints: [
                 .thumbTip: PhoneHandJointSample(point: SIMD2<Float>(0.2, 0.3), confidence: 0.31),
             ])
@@ -247,14 +247,14 @@ import Darwin
         // Two lines in one frame: a lifted one whose four corners carry world
         // positions (and whose string leaves ASCII), and a flat 2D-only one.
         let lifted = PhoneTextSample(
-            tracked: true, timestamp: 6.25, text: "Café ☕ 24h", confidence: 0.92,
+            isTracked: true, timestamp: 6.25, text: "Café ☕ 24h", confidence: 0.92,
             corners: [SIMD2<Float>(0.2, 0.7), SIMD2<Float>(0.6, 0.72),
                       SIMD2<Float>(0.6, 0.62), SIMD2<Float>(0.2, 0.6)],
             hasWorldCorners: true,
             worldCorners: [SIMD3<Float>(-0.4, 1.6, -2), SIMD3<Float>(0.4, 1.6, -2),
                            SIMD3<Float>(0.4, 1.4, -2), SIMD3<Float>(-0.4, 1.4, -2)])
         let flat = PhoneTextSample(
-            tracked: false, timestamp: 6.25, text: "EXIT", confidence: 0.55,
+            isTracked: false, timestamp: 6.25, text: "EXIT", confidence: 0.55,
             corners: [SIMD2<Float>(0.1, 0.9), SIMD2<Float>(0.2, 0.9),
                       SIMD2<Float>(0.2, 0.85), SIMD2<Float>(0.1, 0.85)])
         let message = PhoneMessage.texts([lifted, flat])
@@ -273,13 +273,13 @@ import Darwin
         // and ARKit has an opinion about its printed size), and a scanned object,
         // which reports the box its scan measured and where that box's middle sits.
         let picture = PhoneMarkerSample(
-            tracked: true, timestamp: 9.5, id: UUID(), name: "cartel café",
+            isTracked: true, timestamp: 9.5, id: UUID(), name: "cartel café",
             kind: .image,
             transform: simd_float4x4(SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0, 0, -1, 0),
                                      SIMD4<Float>(0, 1, 0, 0), SIMD4<Float>(0.2, 1.4, -2, 1)),
             size: SIMD3<Float>(0.3, 0.42, 0), scaleFactor: 1.08)
         let object = PhoneMarkerSample(
-            tracked: true, timestamp: 9.5, id: UUID(), name: "teapot", kind: .object,
+            isTracked: true, timestamp: 9.5, id: UUID(), name: "teapot", kind: .object,
             transform: matrix_identity_float4x4,
             size: SIMD3<Float>(0.18, 0.12, 0.14), center: SIMD3<Float>(0, 0.06, 0))
         let message = PhoneMessage.markers([picture, object])
@@ -323,7 +323,7 @@ import Darwin
     // MARK: Header validation
 
     @Test func parsesHeader() {
-        let data = PhoneWire.encode(.pose([PhonePoseSample(tracked: true, timestamp: 0, joints: [:])]))
+        let data = PhoneWire.encode(.pose([PhonePoseSample(isTracked: true, timestamp: 0, joints: [:])]))
         let header = PhoneHeader.parse(data)
         #expect(header?.kind == .bodyPose)
         #expect(header?.payloadLength == data.count - PhoneWire.headerByteCount)

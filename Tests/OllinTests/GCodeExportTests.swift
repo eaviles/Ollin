@@ -247,7 +247,7 @@ struct GCodeExportTests {
                                   Vector2(i % 2 == 0 ? 10 : 100, y)], closed: false))
         }
         let ordered = GCode(.plotter(), width: 100).toolpath(paths, in: canvas)
-        let drawnOrder = GCode(.plotter(), width: 100, ordered: false, joinTolerance: 0)
+        let drawnOrder = GCode(.plotter(), width: 100, optimizesTravel: false, joinTolerance: 0)
             .toolpath(paths, in: canvas)
         #expect(ordered.travelLength < drawnOrder.travelLength)
         #expect(ordered.drawnLength == drawnOrder.drawnLength)      // ordering never redraws

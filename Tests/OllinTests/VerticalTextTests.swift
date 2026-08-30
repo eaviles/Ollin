@@ -29,7 +29,7 @@ struct VerticalTextTests {
     }
 
     private func placed(_ string: String, _ direction: TextDirection,
-                        alignH: TextAlignH = .left, alignV: TextAlignV = .baseline,
+                        alignH: HorizontalTextAlign = .left, alignV: VerticalTextAlign = .baseline,
                         at origin: Vector2 = Vector2(0, 0)) -> [Shape] {
         font.glyphShapes(for: string, size: size, alignH: alignH, alignV: alignV,
                          direction: direction, at: origin)
@@ -203,7 +203,7 @@ struct VerticalTextTests {
         drawer.textFont(font)
         drawer.textSize(size)
         drawer.textDirection(.topToBottom)
-        for alignment in [(TextAlignH.left, TextAlignV.top), (.center, .middle), (.right, .bottom)] {
+        for alignment in [(HorizontalTextAlign.left, VerticalTextAlign.top), (.center, .middle), (.right, .bottom)] {
             drawer.textAlign(alignment.0, alignment.1)
             let reported = drawer.textBounds("あいう\nえお", 400, 300)
             let ink = bounds(of: font.glyphShapes(for: "あいう\nえお", size: size,
@@ -253,7 +253,7 @@ struct VerticalTextTests {
     /// it says so and stays horizontal rather than drawing something wrong.
     @Test func aBitmapFontStaysHorizontal() {
         let drawer = Drawer()
-        drawer.textFont(BitmapFont.builtin)
+        drawer.textFont(BitmapFont.builtIn)
         drawer.textSize(size)
         drawer.textDirection(.topToBottom)
         #expect(drawer.runsVertically == false)
@@ -403,7 +403,7 @@ struct VerticalTextTests {
 
 private extension VerticalTextTests {
     func placed(_ string: String, _ direction: TextDirection, at origin: Vector2,
-                alignHV: (TextAlignH, TextAlignV)) -> [Shape] {
+                alignHV: (HorizontalTextAlign, VerticalTextAlign)) -> [Shape] {
         font.glyphShapes(for: string, size: size, alignH: alignHV.0, alignV: alignHV.1,
                          direction: direction, at: origin)
     }

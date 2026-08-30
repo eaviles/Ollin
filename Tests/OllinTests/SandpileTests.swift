@@ -150,7 +150,7 @@ private final class SandpileProbeSketch: Sketch {
     private var field: SimField!
 
     override func setup() {
-        field = simField(.sandpile(pour: 1, topplings: 8), scale: 1)
+        field = makeSimField(.sandpile(pour: 1, topplings: 8), scale: 1)
     }
 
     override func draw() {

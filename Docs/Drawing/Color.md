@@ -127,7 +127,7 @@ let complement = Color(lch)
 ### Mixing
 
 ```swift
-Color.mix(_ a: Color, _ b: Color, t: Double, in: ColorSpace = .oklab) -> Color
+Color.mix(_ a: Color, _ b: Color, Double, in: ColorSpace = .oklab) -> Color
 someColor.mixed(with: other, _ t: Double, in: ColorSpace = .oklab) -> Color
 ```
 
@@ -141,7 +141,7 @@ Interpolates between two colors in a chosen space. The spaces are `.rgb`, `.hsb`
 ```swift
 let warm = Color(hex: 0xFF5500)
 let cool = Color(hex: 0x0066FF)
-fill(Color.mix(warm, cool, t: sin(time) * 0.5 + 0.5))
+fill(Color.mix(warm, cool, sin(time) * 0.5 + 0.5))
 fill(ink.mixed(with: .white, 0.3))        // the instance form, reading as a fade
 ```
 

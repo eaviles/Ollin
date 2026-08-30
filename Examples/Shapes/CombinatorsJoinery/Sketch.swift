@@ -19,9 +19,9 @@ final class CombinatorsJoinery: Sketch {
             // Two bars crossing as a plus: every seam meets at a right angle and no
             // parallel edges sit within the joint radius, the ops' working envelope
             // (grazing or near-parallel surfaces echo the joint pattern past the seam).
-            let a = SDF.rect(width: 280, height: 130).at(x: 0, y: -10)
+            let a = SDF.rect(width: 280, height: 130).at(0, -10)
                 .colored(Color(hex: 0x46c2ff))
-            let b = SDF.rect(width: 130, height: 280).at(x: 10, y: 0)
+            let b = SDF.rect(width: 130, height: 280).at(10, 0)
                 .colored(Color(hex: 0xffb454))
             let joined: SDF
             switch cell.row * 3 + cell.column {

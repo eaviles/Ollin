@@ -40,14 +40,14 @@ public struct SyphonServerInfo {
 ///     let feed = SyphonClient()                  // first available source
 ///     override func draw() {
 ///         background(.black)
-///         if let frame = feed.newFrame() {
+///         if let frame = feed.frame {
 ///             drawImage(frame, 0, 0, width, height)
 ///         }
 ///     }
 /// }
 /// ```
 ///
-/// `newFrame()` returns a texture-backed `Image` that wraps the source's live GPU
+/// `frame` is a texture-backed `Image` that wraps the source's live GPU
 /// texture directly (no copy). It connects on the system's default Metal device,
 /// which matches the sketch's renderer on a single-GPU Mac.
 @MainActor
@@ -70,26 +70,26 @@ public final class SyphonClient {
     /// either unspecified; both `nil` takes the first available source).
     public init(named name: String? = nil, appName: String? = nil) {
         device = MTLCreateSystemDefaultDevice()
-        connect(named: name, appName: appName)
+        open(named: name, appName: appName)
     }
 
     /// Connect to a specific source discovered via ``availableServers()``.
     public init(source: SyphonServerInfo) {
         device = MTLCreateSystemDefaultDevice()
-        connect(to: source.description)
+        open(to: source.description)
     }
 
     /// Whether the client has a live connection to a source. Once `false`, no
-    /// further frames will arrive (the source went away) — call ``reconnect()``.
+    /// further frames will arrive (the source went away); call ``connect()``.
     public var isActive: Bool { client?.isValid ?? false }
 
-    /// Whether a new frame has arrived since the last ``newFrame()`` call.
+    /// Whether a new frame has arrived since the last read of ``frame``.
     public var hasNewFrame: Bool { client?.hasNewFrame ?? false }
 
     /// The latest frame as a texture-backed ``Image``, or `nil` if not connected
-    /// or no frame has arrived yet. Call it each frame in `draw()` and `drawImage`
+    /// or no frame has arrived yet. Read it each frame in `draw()` and `drawImage`
     /// the result; don't hold the returned image across frames.
-    public func newFrame() -> Image? {
+    public var frame: Image? {
         guard let texture = client?.newFrameImage() else { return nil }
         // The surface holds display-ready (sRGB-encoded) bytes, but Syphon hands it
         // over as a non-sRGB texture. Ollin's image pipeline shades in linear and
@@ -103,10 +103,10 @@ public final class SyphonClient {
 
     /// Drop the current connection and look for a source again (e.g. after the
     /// source app restarts, or to switch sources).
-    public func reconnect(named name: String? = nil, appName: String? = nil) {
+    public func connect(named name: String? = nil, appName: String? = nil) {
         client?.stop()
         client = nil
-        connect(named: name, appName: appName)
+        open(named: name, appName: appName)
     }
 
     /// Stop receiving frames and release the connection. Optional — releasing the
@@ -125,15 +125,15 @@ public final class SyphonClient {
 
     // MARK: Private
 
-    private func connect(named name: String?, appName: String?) {
+    private func open(named name: String?, appName: String?) {
         let match = SyphonClient.availableServers().first { info in
             (name == nil || info.name == name) && (appName == nil || info.appName == appName)
         }
         guard let match else { return }
-        connect(to: match.description)
+        open(to: match.description)
     }
 
-    private func connect(to description: [String: Any]) {
+    private func open(to description: [String: Any]) {
         guard let device else { return }
         serverName = description[SyphonServerDescriptionNameKey] as? String
         appName = description[SyphonServerDescriptionAppNameKey] as? String

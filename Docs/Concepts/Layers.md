@@ -7,7 +7,7 @@
 A layer is a picture with a texture of its own, drawn off to the side instead of onto the canvas. You draw into it, then you use it: filter it, combine it with another one, or draw it back with a blend mode.
 
 ```swift
-let glow = renderTarget()          // an off-screen layer, canvas-sized
+let glow = makeRenderTarget()          // an off-screen layer, canvas-sized
 withTarget(glow) {                 // draw into it, scoped like withState
     background(.clear)
     fill(.orange); noStroke()
@@ -15,7 +15,7 @@ withTarget(glow) {                 // draw into it, scoped like withState
 }
 
 blendMode(.add)
-drawImage(glow.filtered(.bloom(intensity: 1.6)).image, 0, 0)
+drawImage(glow.filtered(.bloom(amount: 1.6)).image, 0, 0)
 ```
 
 ### Why a layer exists
@@ -29,7 +29,7 @@ A filter reads a whole picture and writes a new one, so it needs a picture to re
 
 ### What a layer costs
 
-A layer is a texture in memory plus one more pass over its pixels. Effects are fill-rate bound, so the cost follows pixels times passes, not the number of marks. A layer you are going to blur rarely needs full detail, and `renderTarget(scale: 0.5)` is the first dial to reach for. Nothing is copied back to the CPU at any point in the chain.
+A layer is a texture in memory plus one more pass over its pixels. Effects are fill-rate bound, so the cost follows pixels times passes, not the number of marks. A layer you are going to blur rarely needs full detail, and `makeRenderTarget(scale: 0.5)` is the first dial to reach for. Nothing is copied back to the CPU at any point in the chain.
 
 ### The canvas is a layer too
 

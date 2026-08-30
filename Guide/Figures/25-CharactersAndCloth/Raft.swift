@@ -59,7 +59,7 @@ final class Raft: Sketch {
         camera(.perspective(eye: Vector3(1.6, 3.6, 7.8),
                             target: Vector3(-0.3, 0.5, 0), fieldOfView: .pi / 4))
 
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         // The deck, in whatever shape it arrived at.
         if let raft {

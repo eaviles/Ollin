@@ -23,7 +23,7 @@ final class HollowStroke: Sketch {
 
         // One page of marks thicker than the narrow window: a solid disc,
         // a fat ring, and a heavy bar.
-        let page = renderTarget(width: 300, height: 300)
+        let page = makeRenderTarget(width: 300, height: 300)
         withTarget(page) {
             background(.white)
             noStroke()

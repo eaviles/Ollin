@@ -34,7 +34,7 @@ public struct BeatEngine: Sendable, Hashable {
     // MARK: Telling it what happened
 
     /// Says a beat was heard at `time`, in seconds.
-    public mutating func heardBeat(at time: Double) {
+    public mutating func hearBeat(at time: Double) {
         defer { lastOnset = time; heard += 1 }
         guard let lastOnset else {
             anchorTime = time
@@ -139,7 +139,7 @@ public struct BeatEngine: Sendable, Hashable {
     /// The musical positions the onsets landed on, kept for the pattern.
     private var onsetBeats: [Double] = []
 
-    /// Records where an onset fell, called from `heardBeat`.
+    /// Records where an onset fell, called from `hearBeat`.
     private mutating func rememberOnset() {
         onsetBeats.append(anchorBeat)
         if onsetBeats.count > 64 { onsetBeats.removeFirst(onsetBeats.count - 64) }
@@ -205,7 +205,7 @@ public final class BeatFollower {
         // the engine a gap of zero.
         let missed = min(count - lastCount, 2)
         for index in 0..<missed {
-            engine.heardBeat(at: time - Double(missed - 1 - index) * 0.001)
+            engine.hearBeat(at: time - Double(missed - 1 - index) * 0.001)
         }
         lastCount = count
     }

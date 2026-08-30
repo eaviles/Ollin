@@ -19,7 +19,7 @@ extension Drawer {
     func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
         guard radius > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.ellipse(center: Vector2(x, y), rx: radius, ry: radius), fill: fillPaint, stroke: strokePaint)
+            svgRecord(.ellipse(center: Vector2(x, y), radiusX: radius, radiusY: radius), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .ellipse, center: Vector2(x, y),
@@ -30,20 +30,20 @@ extension Drawer {
     /// The same circle, given as a `Circle` value.
     func drawCircle(_ c: Circle) { drawCircle(c.center.x, c.center.y, c.radius) }
 
-    /// An axis-aligned ellipse centered at `(x, y)` with horizontal radius `rx`
-    /// and vertical radius `ry` (points). Like `drawCircle`, the arguments are
+    /// An axis-aligned ellipse centered at `(x, y)` with horizontal radius `radiusX`
+    /// and vertical radius `radiusY` (points). Like `drawCircle`, the arguments are
     /// *radii*, not diameters — `drawEllipse(x, y, r, r)` is a circle.
     ///
     /// Recorded as a single SDF instance (see `drawCircle`); fill and a
     /// uniform-width stroke are derived analytically in the fragment shader.
-    func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
-        guard rx > 0, ry > 0 else { return }
+    func drawEllipse(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double) {
+        guard radiusX > 0, radiusY > 0 else { return }
         if svgRecorder != nil {
-            svgRecord(.ellipse(center: Vector2(x, y), rx: rx, ry: ry), fill: fillPaint, stroke: strokePaint)
+            svgRecord(.ellipse(center: Vector2(x, y), radiusX: radiusX, radiusY: radiusY), fill: fillPaint, stroke: strokePaint)
             return
         }
         appendSDF(shape: .ellipse, center: Vector2(x, y),
-                  size: SIMD2<Float>(Float(rx), Float(ry)),
+                  size: SIMD2<Float>(Float(radiusX), Float(radiusY)),
                   fill: fillPaint, stroke: strokePaint)
     }
 
@@ -59,7 +59,7 @@ extension Drawer {
         if svgRecorder != nil {
             let r = size / 2, c = Vector2(x, y), arm = (size / 2) * 0.28
             switch marker {
-            case .circle:  svgRecord(.ellipse(center: c, rx: r, ry: r), fill: fill, stroke: nil)
+            case .circle:  svgRecord(.ellipse(center: c, radiusX: r, radiusY: r), fill: fill, stroke: nil)
             case .square:  svgRecord(.polygon(svgOffset(SDFOutline.markerSquare(r), c)), fill: fill, stroke: nil)
             case .diamond: svgRecord(.polygon(svgOffset(SDFOutline.markerDiamond(r), c)), fill: fill, stroke: nil)
             case .cross:   svgRecord(.polygon(svgOffset(SDFOutline.markerCross(r, arm), c)), fill: fill, stroke: nil)
@@ -1172,34 +1172,34 @@ extension Drawer {
                 }
             }
         }
-        leaf = leaf.at(x: Double(t.x), y: Double(t.y), z: Double(t.z))
+        leaf = leaf.at(Double(t.x), Double(t.y), Double(t.z))
         frame.append3D(leaf)
     }
 
-    /// An elliptical arc centered at `(x, y)` with radii `rx`/`ry`, sweeping from
+    /// An elliptical arc centered at `(x, y)` with radii `radiusX`/`radiusY`, sweeping from
     /// `start` to `stop` (radians, clockwise). `mode` decides how the ends close:
     /// `.open` leaves the curve open, `.chord` joins them with a straight line,
     /// `.pie` joins them through the center. A fill paints the enclosed region
     /// (segment for open/chord, wedge for pie); a stroke traces the outline.
     ///
-    /// A *circular* arc (`rx == ry`) under less than a full turn is recorded as a
+    /// A *circular* arc (`radiusX == radiusY`) under less than a full turn is recorded as a
     /// single SDF instance — analytic fill + stroke + anti-aliasing, crisp at any
     /// size and effectively free. Elliptical arcs and full sweeps fall back to
     /// CPU tessellation, which renders them exactly; both composite in draw order.
-    func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
+    func drawArc(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double,
                  start: Double, stop: Double, mode: ArcMode) {
-        guard rx > 0, ry > 0 else { return }
+        guard radiusX > 0, radiusY > 0 else { return }
         let sweep = stop - start
         guard abs(sweep) > 1e-9 else { return }
 
         /// The arc as points, which both the vector recorder and the tessellated
         /// path need.
         func sampled() -> [Vector2] {
-            let full = circleSegments(for: max(rx, ry))
+            let full = circleSegments(for: max(radiusX, radiusY))
             let segments = max(2, Int((Double(full) * abs(sweep) / (2.0 * .pi)).rounded(.up)))
             return (0...segments).map { i in
                 let a = start + sweep * (Double(i) / Double(segments))
-                return Vector2(x + cos(a) * rx, y + sin(a) * ry)
+                return Vector2(x + cos(a) * radiusX, y + sin(a) * radiusY)
             }
         }
 
@@ -1210,7 +1210,7 @@ extension Drawer {
         if strokeBrushShape != nil, strokePaint != nil, strokeWidth > 0 {
             let saved = strokePaint
             strokePaint = nil
-            drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)
+            drawArc(x, y, radiusX, radiusY, start: start, stop: stop, mode: mode)
             strokePaint = saved
             let pts = sampled()
             switch mode {
@@ -1237,8 +1237,8 @@ extension Drawer {
             return
         }
 
-        if abs(rx - ry) < 1e-6, abs(sweep) < Double.tau - 1e-4 {
-            appendArcSDF(center: Vector2(x, y), radius: rx, start: start, stop: stop, mode: mode)
+        if abs(radiusX - radiusY) < 1e-6, abs(sweep) < Double.tau - 1e-4 {
+            appendArcSDF(center: Vector2(x, y), radius: radiusX, start: start, stop: stop, mode: mode)
             return
         }
 

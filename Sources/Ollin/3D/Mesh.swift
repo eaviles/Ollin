@@ -182,9 +182,9 @@ public extension Mesh {
         }
         if let emissive {
             m.emissiveTexture = emissive
-            m.emissiveFactor = emissiveColor ?? .white
+            m.emissiveColor = emissiveColor ?? .white
         } else if let emissiveColor {
-            m.emissiveFactor = emissiveColor
+            m.emissiveColor = emissiveColor
         }
         copy.material = m
         return copy
@@ -229,7 +229,7 @@ public extension Mesh {
     /// triangle indices, replacing whatever normals it had. For a mesh built from raw
     /// geometry with no normals (a deforming face mesh, a marching-cubes surface) so it
     /// lights correctly.
-    func withSmoothNormals() -> Mesh {
+    func generatingSmoothNormals() -> Mesh {
         var accum = [Vector3](repeating: .zero, count: positions.count)
         var i = 0
         while i + 2 < indices.count {

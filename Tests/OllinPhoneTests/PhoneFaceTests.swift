@@ -89,7 +89,7 @@ import Ollin
     @Test func aWireSampleCarriesTheEyesOntoTheFace() {
         // The decode-side init must map every new wire field onto the face.
         let sample = PhoneFaceSample(
-            tracked: true, timestamp: 4,
+            isTracked: true, timestamp: 4,
             headOrientation: SIMD4<Float>(0, 0, 0, 1),
             headPosition: SIMD3<Float>(0, 1.6, -0.4),
             blendShapes: [Float](repeating: 0, count: PhoneBlendShape.allCases.count),

@@ -52,7 +52,7 @@ final class AreaLights: Sketch {
         let rectPitch = 0.28    // positive pitch aims the panel down at the set
         let rectDir = panelDirection(yaw: rectYaw, pitch: rectPitch)
         let rectUp = panelUp(yaw: rectYaw, pitch: rectPitch)
-        rectLight(Color(hue: 0.09, saturation: 0.30, brightness: 1.0),
+        rectangleLight(Color(hue: 0.09, saturation: 0.30, brightness: 1.0),
                   at: rectCenter, direction: rectDir, width: 3.2, height: 2.1,
                   up: rectUp, intensity: 8)
 

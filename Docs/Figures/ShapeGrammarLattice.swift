@@ -38,7 +38,7 @@ final class ShapeGrammarLattice: Sketch {
                 } else {
                     let grammar = ShapeGrammar(start: ShapeGrammar.Piece("cell", cell),
                                                rules: [.cut("cell", into: ("cell", "cell"),
-                                                            minimumArea: 2_600)])
+                                                            minArea: 2_600)])
                     for piece in grammar.run(generations: sweeps[index], seed: 5) {
                         drawPolyline(piece.corners, closed: true)
                     }

@@ -37,7 +37,7 @@ drawGlyphMosaic(_ image: Image,
 Draw `image` as a glyph mosaic, sampled `columns` cells across. The image keeps its aspect inside `bounds` (the whole canvas by default). Glyphs draw with the current `fill`, or tinted by the image itself with `colored: true`.
 
 ```swift
-textFont(BitmapFont.builtin)     // the bundled bitmap font covers every mark
+textFont(BitmapFont.builtIn)     // the bundled bitmap font covers every mark
 fill(.white)
 drawGlyphMosaic(picture, columns: 72)
 ```

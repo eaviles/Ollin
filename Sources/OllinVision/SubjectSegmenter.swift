@@ -14,7 +14,7 @@ import os
 /// let camera = Camera()
 /// lazy var subjects = SubjectSegmenter(camera)
 /// override func draw() {
-///     let rect = camera.fittedRect(in: bounds) ?? bounds
+///     let rect = camera.fittedRectangle(in: bounds) ?? bounds
 ///     if let frame = camera.frame { tint(Color(white: 0.25)); drawImage(frame, in: rect); noTint() }
 ///     if let cutout = subjects.cutout { drawImage(cutout, in: rect) }
 /// }

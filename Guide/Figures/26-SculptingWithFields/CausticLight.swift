@@ -12,7 +12,7 @@ final class CausticLight: Sketch {
 
     override func draw() {
         background(Color(hex: 0x101318))
-        environment(.studio.intensity(0.55).backgroundBlur(0.6))
+        environment(.studio.intensified(to: 0.55).backgroundBlurred(0.6))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.2), intensity: 2.2)
         castShadows()
         rayTracedReflections()

@@ -46,7 +46,7 @@ extension Mesh {
     /// Load a model bundled as a resource. Mirrors `Image(resource:extension:in:)`
     /// and the font loaders, `in:` has no default, since a default argument would
     /// resolve to *Ollin's* bundle, not the caller's.
-    public init?(resource name: String, extension ext: String?, in bundle: Bundle) {
+    public init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {
         guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
         self.init(contentsOf: url)
     }

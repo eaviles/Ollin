@@ -166,11 +166,11 @@ struct TableTests {
 
     /// Saying which overrides the guess, in both directions.
     @Test func sayingWhichOverridesTheGuess() throws {
-        let forced = try #require(Table(text: "1,2\n3,4\n", header: true))
+        let forced = try #require(Table(text: "1,2\n3,4\n", hasHeader: true))
         #expect(forced.columns == ["1", "2"])
         #expect(forced.count == 1)
 
-        let refused = try #require(Table(text: "x,y\n1,2\n", header: false))
+        let refused = try #require(Table(text: "x,y\n1,2\n", hasHeader: false))
         #expect(refused.columns.isEmpty)
         #expect(refused.count == 2)
     }
@@ -194,7 +194,7 @@ struct TableTests {
 
     /// The flag spellings a file actually uses, in either case.
     @Test func theFlagSpellings() throws {
-        let table = try #require(Table(text: "v\nTRUE\nNo\n1\n0\nmaybe\n", header: true))
+        let table = try #require(Table(text: "v\nTRUE\nNo\n1\n0\nmaybe\n", hasHeader: true))
         #expect(table.map { $0.bool("v") } == [true, false, true, false, nil])
     }
 
@@ -230,7 +230,7 @@ struct TableTests {
     @Test func nothingToReadYieldsNothing() {
         #expect(Table(text: "") == nil)
         #expect(Table(text: "\n\n\n") == nil)
-        #expect(Table(contentsOf: "/nowhere/at/all.csv") == nil)
+        #expect(Table(contentsOfFile: "/nowhere/at/all.csv") == nil)
     }
 
     /// Bytes that aren't text fail quietly rather than trapping.
@@ -249,7 +249,7 @@ struct TableTests {
         try "a,b\n1,2\n".write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let table = try #require(Table(contentsOf: url.path))
+        let table = try #require(Table(contentsOfFile: url.path))
         #expect(table.columns == ["a", "b"])
         #expect(table[0]["b"] == "2")
     }

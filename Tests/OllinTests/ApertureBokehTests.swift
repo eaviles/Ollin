@@ -184,7 +184,7 @@ private final class SceneProbe: Sketch {
     override func draw() {
         noLoop()
         background(.black)
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(white: 0.02))
             var view = Camera3D(eye: Vector3(0, 1.4, 9), target: Vector3(0, 0, -2),

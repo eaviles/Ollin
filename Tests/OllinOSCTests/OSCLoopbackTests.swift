@@ -59,8 +59,8 @@ struct OSCLoopbackTests {
         #expect(level == 0.5)
         let args = receiver.arguments("/level")
         #expect(args?.count == 3)
-        #expect(args?[1].asInt == 42)
-        #expect(args?[2].asString == "go")
+        #expect(args?[1].int == 42)
+        #expect(args?[2].string == "go")
         #expect(receiver.float("/missing", default: -1) == -1)
     }
 

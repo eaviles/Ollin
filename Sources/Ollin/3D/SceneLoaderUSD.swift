@@ -696,14 +696,14 @@ extension Scene {
         if let t = tap(emissive) {
             out.emissiveTexture = t.image
             if let s = t.scale, s.count == 4 {
-                out.emissiveFactor = encodedColor(s[0], s[1], s[2])
+                out.emissiveColor = encodedColor(s[0], s[1], s[2])
             } else {
-                out.emissiveFactor = .white
+                out.emissiveColor = .white
             }
             any = true
         } else if let c = emissive?.authoredValue?.usdComponents(count: 3),
                   c[0] > 0 || c[1] > 0 || c[2] > 0 {
-            out.emissiveFactor = encodedColor(c[0], c[1], c[2])
+            out.emissiveColor = encodedColor(c[0], c[1], c[2])
             any = true
         }
 

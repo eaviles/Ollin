@@ -30,7 +30,7 @@ final class LightField: Sketch {
 
             // The scene: what light meets. The layer starts empty, and empty is where
             // light travels.
-            let scene = renderTarget(width: Int(tile), height: Int(tile))
+            let scene = makeRenderTarget(width: Int(tile), height: Int(tile))
             withTarget(scene) {
                 noStroke()
                 fill(walls)
@@ -56,7 +56,7 @@ final class LightField: Sketch {
             }
 
             // The lamps: what gives light off.
-            let lamps = renderTarget(width: Int(tile), height: Int(tile))
+            let lamps = makeRenderTarget(width: Int(tile), height: Int(tile))
             withTarget(lamps) {
                 noStroke()
                 fill(.white)

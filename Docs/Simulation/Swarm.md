@@ -27,7 +27,7 @@ var flock: Swarm!
 
 override func setup() {
     background(.black); noClear()
-    flock = swarm(count: 30_000, perceptionRadius: 16)
+    flock = makeSwarm(count: 30_000, perceptionRadius: 16)
     flock.separation = 1.5
     flock.alignment = 1.5
     flock.cohesion = 0.8
@@ -41,7 +41,7 @@ override func draw() {
 }
 ```
 
-`swarm(count:perceptionRadius:colors:size:bounds:seed:)` builds one over the whole canvas by default, seeded from the sketch's `variation`. `count` and `perceptionRadius` are fixed at build; everything else is a live property you can set any frame or bind to a `@Param`.
+`makeSwarm(count:perceptionRadius:colors:size:bounds:seed:)` builds one over the whole canvas by default, seeded from the sketch's `variation`. `count` and `perceptionRadius` are fixed at build; everything else is a live property you can set any frame or bind to a `@Param`.
 
 The world is a **torus**: an agent that leaves one edge comes back at the opposite one, and neighbors are found across the seam too, so there are no edges for a flock to pile up against.
 

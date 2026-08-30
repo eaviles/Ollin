@@ -105,7 +105,7 @@ struct LiveRootView: View {
                         }
                     }
                     .overlay(alignment: .trailing) {
-                        SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 0.5)
+                        SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 0.5)
                     }
             }
             detail
@@ -114,7 +114,7 @@ struct LiveRootView: View {
         // bar (the design's title-bar border-bottom). It reads over the dark
         // sidebar; over a light sketch the canvas edge already separates them.
         .overlay(alignment: .top) {
-            SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(height: 0.5)
+            SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
         }
         .navigationTitle(session.title)
         .background(WindowCustomizer { window in
@@ -124,12 +124,12 @@ struct LiveRootView: View {
             // would double the line.
             window.titlebarSeparatorStyle = .none
         })
-        .background(TitlebarAccessory(attribute: .leading) {
+        .background(TitleBarAccessory(attribute: .leading) {
             HStack(spacing: 10) {
                 // Divider after the traffic lights, in the same separator token
                 // as the window's other hairlines (semantic `.separator` reads
                 // differently against the custom gradient).
-                SwiftUI.Rectangle().fill(OllinInspector.separator(colorScheme)).frame(width: 1, height: 22)
+                SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(width: 1, height: 22)
                 Button { sidebarShown.toggle() } label: {
                     SwiftUI.Image(systemName: "sidebar.left").font(.system(size: 14))
                 }
@@ -141,7 +141,7 @@ struct LiveRootView: View {
             .padding(.leading, 8)
             .frame(maxHeight: .infinity)
         })
-        .background(TitlebarAccessory(attribute: .trailing) {
+        .background(TitleBarAccessory(attribute: .trailing) {
             StatusChip(status: session.inspectorStatus)
                 .padding(.leading, 12)
                 .padding(.trailing, 22)
@@ -156,7 +156,7 @@ struct LiveRootView: View {
             }
             .sharedBackgroundVisibility(.hidden)   // drop the Tahoe glass capsule around the title
         }
-        .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
+        .toolbarBackground(OllinInspector.titleBarGradient(for: colorScheme), for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
         .task { session.start() }
         .onChange(of: session.reloadCount) { _, _ in flashReloadedToast() }
@@ -360,7 +360,7 @@ private struct CompileErrorState: View {
 }
 
 // MARK: - Window chrome
-// (SidebarVibrancy / WindowCustomizer / TitlebarAccessory are shared host
+// (SidebarVibrancy / WindowCustomizer / TitleBarAccessory are shared host
 // chrome from the Ollin core's `WindowChrome.swift`, used here and by the
 // examples gallery.)
 

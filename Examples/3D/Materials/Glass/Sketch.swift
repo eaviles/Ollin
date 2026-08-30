@@ -29,7 +29,7 @@ final class Glass: Sketch {
         cameraShowcase(.sway(amplitude: 0.22, period: .tau / 0.09),
                        target: Vector3(0, 1.35, 0), radius: 11, elevation: 0.18,
                        fieldOfView: .pi / 4, near: 1, far: 40)
-        environment(.studio.intensity(1.1).backgroundBlur(0.5))
+        environment(.studio.intensified(to: 1.1).backgroundBlurred(0.5))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
 
         // Trace the view through the glass against the actual scene (hold space to compare).

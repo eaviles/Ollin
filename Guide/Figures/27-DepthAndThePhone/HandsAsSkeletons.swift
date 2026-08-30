@@ -71,7 +71,7 @@ final class HandsAsSkeletons: Sketch {
             put(.thumbTip, Vector3(-0.073, 0.096, 0.018))
         }
 
-        return PhoneHand(PhoneHandSample(tracked: true, timestamp: 0, chirality: chirality,
+        return PhoneHand(PhoneHandSample(isTracked: true, timestamp: 0, chirality: chirality,
                                          confidence: 0.95, joints: joints))
     }
 
@@ -82,7 +82,7 @@ final class HandsAsSkeletons: Sketch {
         background(Color(hex: 0x0D1017))
         camera(.orbiting(target: Vector3(0, 0.09, 0), radius: 0.55,
                          azimuth: 0.32, elevation: 0.16, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
 
         for hand in [open, pinch] {
             let tone = hand.chirality == .right ? rightColor : leftColor

@@ -42,7 +42,7 @@ final class ChanceInCrowds: Sketch {
             let spanning = grid.spanningClusterIndex
             for k in 0 ..< grid.clusterCount where k != spanning {
                 let t = min(Double(grid.clusterSizes[k]) / 200, 1)
-                fill(Color.mix(Color(hex: 0x24506B), Color(hex: 0x88C7E8), t: t))
+                fill(Color.mix(Color(hex: 0x24506B), Color(hex: 0x88C7E8), t))
                 for cell in grid.cellRects(of: k, in: rect) { drawRect(cell) }
             }
             if let spanning {

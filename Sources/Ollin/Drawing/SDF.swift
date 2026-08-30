@@ -74,9 +74,9 @@ public extension SDF {
         .init(.leaf(shape: .ellipse, size: SIMD2(Float(radius), Float(radius)),
                     p0: .zero, p1: .zero, p2: .zero, extra: 0, color: nil))
     }
-    /// An axis-aligned ellipse with horizontal radius `rx`, vertical radius `ry`.
-    static func ellipse(rx: Double, ry: Double) -> SDF {
-        .init(.leaf(shape: .ellipse, size: SIMD2(Float(rx), Float(ry)),
+    /// An axis-aligned ellipse with horizontal radius `radiusX`, vertical radius `radiusY`.
+    static func ellipse(radiusX: Double, radiusY: Double) -> SDF {
+        .init(.leaf(shape: .ellipse, size: SIMD2(Float(radiusX), Float(radiusY)),
                     p0: .zero, p1: .zero, p2: .zero, extra: 0, color: nil))
     }
     /// A rectangle `width` by `height`, with optional rounded corners.
@@ -136,7 +136,7 @@ public extension SDF {
 
 public extension SDF {
     /// Move the field so its origin lands at `(x, y)`.
-    func at(x: Double, y: Double) -> SDF { translated(SIMD2(Float(x), Float(y))) }
+    func at(_ x: Double, _ y: Double) -> SDF { translated(SIMD2(Float(x), Float(y))) }
     /// Move the field so its origin lands at `p`.
     func at(_ p: Vector2) -> SDF { translated(SIMD2(Float(p.x), Float(p.y))) }
     /// Rotate the field about its origin by `radians` (clockwise in y-down space).

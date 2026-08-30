@@ -50,15 +50,15 @@ final class Imported: Sketch {
     ]
 
     override func setup() {
-        scene = Scene(resource: "yard", extension: "usda", in: Bundle.module)
+        scene = Scene(resource: "yard", withExtension: "usda", in: Bundle.module)
         rebuild()
     }
 
     /// The whole world, in one call. The file's own gravity comes with it.
     func rebuild() {
         world.removeAll()
-        world.bounce = 0.2
-        world.addBodies(from: scene, applyGravity: true)
+        world.restitution = 0.2
+        world.addBodies(from: scene, usesSceneGravity: true)
     }
 
     override func keyPressed() {
@@ -87,7 +87,7 @@ final class Imported: Sketch {
         castShadows()
         perspective(eye: Vector3(5.4, 3.9, 8.2), target: Vector3(-0.5, 1.1, -0.6))
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         for body in world.bodies {
             fill(colors[body.assetName ?? ""] ?? .white)

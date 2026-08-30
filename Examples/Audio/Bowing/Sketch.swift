@@ -102,7 +102,7 @@ final class Bowing: Sketch {
         let start: Double = -Double.pi / 2
         let sweep: Double = synth.drive * Double.tau * 0.999
         let ring = 120 * scale
-        drawArc(center: middle, rx: ring, ry: ring,
+        drawArc(center: middle, radiusX: ring, radiusY: ring,
                 start: start, stop: start + sweep, mode: .open)
 
         // The last few seconds of what came out, so a held note visibly has a

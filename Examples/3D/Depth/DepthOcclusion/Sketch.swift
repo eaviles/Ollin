@@ -50,7 +50,7 @@ final class DepthOcclusion: Sketch {
                               "The first run prepares it for this Mac; after that it starts instantly.")
         }
 
-        guard let rect = camera.fittedRect(in: canvasRectangle) else { return }
+        guard let rect = camera.fittedRectangle(in: canvasRectangle) else { return }
 
         // Reading `map` arms it and returns the latest depth map (white = nearest);
         // until the first one lands, just show the camera.

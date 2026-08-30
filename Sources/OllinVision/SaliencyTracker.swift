@@ -49,7 +49,7 @@ public struct Saliency: @unchecked Sendable {
 /// let camera = Camera()
 /// lazy var saliency = SaliencyTracker(camera)
 /// override func draw() {
-///     let rect = camera.fittedRect(in: bounds) ?? bounds
+///     let rect = camera.fittedRectangle(in: bounds) ?? bounds
 ///     if let frame = camera.frame { drawImage(frame, in: rect) }
 ///     if let heat = saliency.heatMap {
 ///         tint(Color(red: 1, green: 0.6, blue: 0.1, alpha: 0.7))

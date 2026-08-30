@@ -41,14 +41,14 @@ struct PercolationTests {
         var rng = SplitMix64(seed: 8)
         let p = Percolation(columns: 48, rows: 48, probability: 0.58, using: &rng)
         for row in 0 ..< 48 {
-            for col in 0 ..< 48 where p.isOpen(atColumn: col, row: row) {
-                if p.isOpen(atColumn: col + 1, row: row) {
-                    #expect(p.clusterIndex(atColumn: col, row: row)
-                            == p.clusterIndex(atColumn: col + 1, row: row))
+            for col in 0 ..< 48 where p.isOpen(column: col, row: row) {
+                if p.isOpen(column: col + 1, row: row) {
+                    #expect(p.clusterIndex(column: col, row: row)
+                            == p.clusterIndex(column: col + 1, row: row))
                 }
-                if p.isOpen(atColumn: col, row: row + 1) {
-                    #expect(p.clusterIndex(atColumn: col, row: row)
-                            == p.clusterIndex(atColumn: col, row: row + 1))
+                if p.isOpen(column: col, row: row + 1) {
+                    #expect(p.clusterIndex(column: col, row: row)
+                            == p.clusterIndex(column: col, row: row + 1))
                 }
             }
         }

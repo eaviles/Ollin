@@ -244,8 +244,8 @@ private final class LightProbe: Sketch {
 
     override func draw() {
         background(.black)
-        let scene = renderTarget()
-        let lamps = renderTarget()
+        let scene = makeRenderTarget()
+        let lamps = makeRenderTarget()
 
         switch subject {
         case let .lamp(reach, sky):

@@ -15,7 +15,7 @@ import Ollin
 ///   with the same per-glyph / text-on-path surface as every other font kind.
 @main
 final class StrokeText: Sketch {
-    let font = StrokeFont.builtin
+    let font = StrokeFont.builtIn
     let ink = Color(white: 0.12)
 
     override func setup() {

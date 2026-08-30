@@ -17,7 +17,7 @@ final class Lenia_Example: Sketch {
     private var seeded = false
 
     override func setup() {
-        field = simField(.lenia(), scale: 0.5)
+        field = makeSimField(.lenia(), scale: 0.5)
     }
 
     override func draw() {

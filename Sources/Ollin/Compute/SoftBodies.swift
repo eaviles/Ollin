@@ -15,7 +15,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSoftBody, OllinS
 /// ```swift
 /// var blobs: SoftBodies!
 /// override func setup() {
-///     blobs = softBodies(count: 12, radius: 80)
+///     blobs = makeSoftBodies(bodies: 12, radius: 80)
 /// }
 /// override func draw() {
 ///     background(.black)
@@ -74,11 +74,11 @@ public final class SoftBodies {
     private var interactionStrength: Double = 0
     private var interactionRadius: Double = 0
 
-    /// Build `count` blobs of roughly `radius` (each varies 0.72…1.15 of it) inside
+    /// Build `bodies` blobs of roughly `radius` (each varies 0.72…1.15 of it) inside
     /// `bounds`, scattered in the upper half from `seed` so they fall into a pile.
     /// `spacing` is the particle spacing inside a blob (default `radius / 5.5`).
-    public init(count bodyCount: Int, bounds: Rectangle, radius: Double,
-                spacing: Double? = nil, seed: UInt64) {
+    public init(bodies bodyCount: Int, bounds: Rectangle, radius: Double,
+                spacing: Double? = nil, seed: Int) {
         precondition(bodyCount > 0, "SoftBodies needs a positive count")
         precondition(radius > 0, "SoftBodies needs a positive radius")
         let s = max(spacing ?? radius / 5.5, 3)
@@ -89,7 +89,7 @@ public final class SoftBodies {
         self.bounds = bounds
         self.collisionRadius = s * 1.5
 
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
 
         // Scatter body centers in the upper part of the box, then relax the circles
         // apart: a blob that spawns inside another starts with a violent overlap the

@@ -64,7 +64,7 @@ The full typed form is `HyperbolicTiling.tiles(sides:meeting:in:viewpoint:minEdg
 
 ```swift
 for tile in hyperbolicTiling(sides: 7, meeting: 3) {
-    fill(Color.mix(.ivory, .teal, t: min(Double(tile.depth) / 6, 1)))
+    fill(Color.mix(.ivory, .teal, min(Double(tile.depth) / 6, 1)))
     drawShape(tile.shape)
 }
 ```

@@ -14,7 +14,7 @@ final class OceanSurface_Figure: Sketch {
         toneMap(.aces)
 
         // The sky is set low, and the same elevation aims the light, so the
-        // glitter on the water and the sun above it are the same sun.
+        // sparkle on the water and the sun above it are the same sun.
         let elevation = 0.14
         environment(.sky(turbidity: 2.5, sunElevation: elevation))
         light(.directional(Color(hex: 0xFFF1DC),
@@ -24,7 +24,7 @@ final class OceanSurface_Figure: Sketch {
         camera(.perspective(eye: Vector3(0, 4.4, -95), target: Vector3(0, 2.4, 220),
                             fieldOfView: .pi / 3.2))
 
-        let sea = oceanField(Ocean(waveHeight: 2.8, windSpeed: 12, windDirection: 90,
+        let sea = makeOceanField(Ocean(waveHeight: 2.8, windSpeed: 12, windDirection: 90,
                                    choppiness: 1.25, patchSize: 170, smallestWave: 0.6,
                                    seed: 7),
                              resolution: 512)

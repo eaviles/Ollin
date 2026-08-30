@@ -133,7 +133,7 @@ struct ParamWriteTests {
                         ("eye", .vector3(x: 1, y: -0.5, z: 3)))
                     .text.hasSuffix("= Vector3(1, -0.5, 3)"))
         #expect(written("@Param(x: 0...9, y: 0...9, width: 1...9, height: 1...9) var r = Rectangle(x: 1, y: 1, width: 2, height: 2)",
-                        ("r", .rect(x: 3, y: 4, width: 5, height: 6)))
+                        ("r", .rectangle(x: 3, y: 4, width: 5, height: 6)))
                     .text.hasSuffix("= Rectangle(x: 3, y: 4, width: 5, height: 6)"))
         #expect(written("@Param(0...100) var margins = Insets.all(20)",
                         ("margins", .insets(top: 1, right: 2, bottom: 3, left: 4)))

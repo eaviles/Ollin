@@ -50,7 +50,7 @@ func bluetoothReason(
 ///
 /// override func draw() {
 ///     background(.black)
-///     for (row, device) in scan.devices.enumerated() {
+///     for (row, device) in scan.peripherals.enumerated() {
 ///         drawText("\(device.name)  \(device.signal)", 40, 60 + Double(row) * 28)
 ///     }
 /// }
@@ -144,7 +144,7 @@ public final class BluetoothScan: @unchecked Sendable {
     public var isScanning: Bool { state.withLock { $0.running } }
 
     /// Every device heard from lately, the strongest signal first.
-    public var devices: [BluetoothPeripheral] {
+    public var peripherals: [BluetoothPeripheral] {
         let cutoff = Date().addingTimeInterval(-forgetAfter)
         return state.withLock { $0.seen.values }
             .filter { $0.lastSeen > cutoff }

@@ -21,10 +21,10 @@ struct PaletteTests {
         let ramp = Ramp([.red, .blue])
         #expect(close(ramp.color(at: 0), .red))
         #expect(close(ramp.color(at: 1), .blue))
-        #expect(close(ramp.color(at: 0.5), Color.mix(.red, .blue, t: 0.5)))
+        #expect(close(ramp.color(at: 0.5), Color.mix(.red, .blue, 0.5)))
         let three = Ramp([.red, .white, .blue], in: .rgb)
         #expect(close(three.color(at: 0.5), .white))
-        #expect(close(three.color(at: 0.25), Color.mix(.red, .white, t: 0.5, in: .rgb)))
+        #expect(close(three.color(at: 0.25), Color.mix(.red, .white, 0.5, in: .rgb)))
     }
 
     @Test func rampClampsOutsideStops() {
@@ -75,8 +75,8 @@ struct PaletteTests {
 
     @Test func paletteRampBridges() {
         let p = Palette(.red, .blue)
-        #expect(close(p.ramp().color(at: 0.5), Color.mix(.red, .blue, t: 0.5)))
-        #expect(close(p.ramp(in: .rgb).color(at: 0.5), Color.mix(.red, .blue, t: 0.5, in: .rgb)))
+        #expect(close(p.ramp().color(at: 0.5), Color.mix(.red, .blue, 0.5)))
+        #expect(close(p.ramp(in: .rgb).color(at: 0.5), Color.mix(.red, .blue, 0.5, in: .rgb)))
     }
 
     // MARK: Harmonies

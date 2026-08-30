@@ -532,7 +532,7 @@ struct SceneLoaderTests {
         // The rect panel: rotateX(-90) aims it straight down, the height axis
         // (its up hint) landing on -z; width and height span local x and y.
         let panel = scene.lights[4]
-        #expect(panel.kind == .rect)
+        #expect(panel.kind == .rectangle)
         #expect((panel.position - Vector3(0, 3, 4)).length < 1e-5)
         #expect((panel.direction - Vector3(0, -1, 0)).length < 1e-5)
         #expect(abs(panel.width - 4) < 1e-6)
@@ -573,7 +573,7 @@ struct SceneLoaderTests {
         let lights = Scene.resolveUSDLights(try USDStage.load(contentsOf: url))
         #expect(lights.count == 7)
         #expect(lights[1].kind == .spot)
-        #expect(lights[4].kind == .rect)
+        #expect(lights[4].kind == .rectangle)
 
         // The whole scene read agrees: structure, meshes, and lights all
         // resolve from the one package parse.

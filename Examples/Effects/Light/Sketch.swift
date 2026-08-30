@@ -47,7 +47,7 @@ final class Light_Example: Sketch {
 
         // What the light meets. The layer starts empty, and empty is where light
         // travels: only what is drawn here stops a ray.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             noStroke()
             fill(walls)
@@ -76,7 +76,7 @@ final class Light_Example: Sketch {
 
         // What gives light off. One lamp follows the pointer; the other drifts along
         // the top of the room, so the light keeps moving when nobody touches it.
-        let lamps = renderTarget()
+        let lamps = makeRenderTarget()
         withTarget(lamps) {
             noStroke()
             fill(.white)

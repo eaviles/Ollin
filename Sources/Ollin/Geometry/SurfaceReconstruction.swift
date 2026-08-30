@@ -294,7 +294,7 @@ private final class RobustFit {
     /// sample's kernel covers it.
     func value(at p: Vector3, grid: PointGrid3) -> Double? {
         hood.removeAll(keepingCapacity: true)
-        grid.forNeighbors(of: p, within: hMax) { i, d2 in
+        grid.forEachNeighbor(of: p, within: hMax) { i, d2 in
             if d2 < h2[i] { hood.append(Int32(i)) }
         }
         guard !hood.isEmpty else { return nil }

@@ -100,7 +100,7 @@ public func hopfBases(latitudes: Int, perCircle: Int,
 /// Points spread evenly over the whole unit sphere along a spiral, the arrangement that
 /// covers it most uniformly without a preferred direction. Neighbors along the spiral stay
 /// neighbors on the sphere, which is what keeps the fibration readable.
-public func hopfBases(spiral count: Int) -> [Vector3] {
+public func hopfBases(spiralCount count: Int) -> [Vector3] {
     guard count > 0 else { return [] }
     let golden = .pi * (3 - 5.0.squareRoot())
     return (0 ..< count).map { i in

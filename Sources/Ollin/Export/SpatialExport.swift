@@ -160,7 +160,7 @@ final class SpatialRecorder {
             out.occlusionTexture = base.occlusionTexture
             out.occlusionStrength = base.occlusionStrength
             out.emissiveTexture = base.emissiveTexture
-            out.emissiveFactor = base.emissiveFactor
+            out.emissiveColor = base.emissiveColor
         }
 
         if finish.shading == .physicallyBased {

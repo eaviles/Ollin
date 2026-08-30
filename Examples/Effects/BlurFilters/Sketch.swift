@@ -25,7 +25,7 @@ final class BlurFilters_Example: Sketch {
 
         // A scene with both flat color regions and fine high-frequency detail (thin
         // rings, small dots), so a plain blur and an edge-preserving one read apart.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x12202E))
             noStroke()

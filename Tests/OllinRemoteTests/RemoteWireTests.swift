@@ -63,8 +63,8 @@ private final class RemoteProbeSketch: Sketch {
     // MARK: Frames
 
     @Test func aServerFrameRoundTripsThroughTheCodec() throws {
-        var buffer = [UInt8](WSFrameCodec.encodeText("hello"))
-        let frames = try #require(WSFrameCodec.decode(buffer: &buffer))
+        var buffer = [UInt8](WebSocketFraming.encodeText("hello"))
+        let frames = try #require(WebSocketFraming.decode(buffer: &buffer))
         #expect(frames.count == 1)
         #expect(frames[0].fin)
         #expect(frames[0].opcode == .text)
@@ -80,36 +80,36 @@ private final class RemoteProbeSketch: Sketch {
         for (i, byte) in payload.enumerated() { bytes.append(byte ^ mask[i % 4]) }
 
         var buffer = bytes
-        let frames = try #require(WSFrameCodec.decode(buffer: &buffer))
+        let frames = try #require(WebSocketFraming.decode(buffer: &buffer))
         #expect(frames.count == 1)
         #expect(frames[0].payload == payload)
     }
 
     @Test func aFrameSplitAcrossReadsWaitsThenCompletes() throws {
-        let whole = [UInt8](WSFrameCodec.encodeText("split across two reads"))
+        let whole = [UInt8](WebSocketFraming.encodeText("split across two reads"))
         var buffer = [UInt8](whole[..<5])
-        let early = try #require(WSFrameCodec.decode(buffer: &buffer))
+        let early = try #require(WebSocketFraming.decode(buffer: &buffer))
         #expect(early.isEmpty)
         #expect(buffer.count == 5)   // the partial frame stays buffered
 
         buffer.append(contentsOf: whole[5...])
-        let frames = try #require(WSFrameCodec.decode(buffer: &buffer))
+        let frames = try #require(WebSocketFraming.decode(buffer: &buffer))
         #expect(frames.count == 1)
         #expect(String(bytes: frames[0].payload, encoding: .utf8) == "split across two reads")
     }
 
     @Test func aLongPayloadTakesTheTwoByteLengthPath() throws {
         let text = String(repeating: "x", count: 300)
-        let encoded = [UInt8](WSFrameCodec.encodeText(text))
+        let encoded = [UInt8](WebSocketFraming.encodeText(text))
         #expect(encoded[1] == 126)   // the extended-length marker
         var buffer = encoded
-        let frames = try #require(WSFrameCodec.decode(buffer: &buffer))
+        let frames = try #require(WebSocketFraming.decode(buffer: &buffer))
         #expect(frames[0].payload.count == 300)
     }
 
     @Test func anUnknownOpcodeDropsTheConnection() {
         var buffer: [UInt8] = [0x83, 0x00]   // opcode 0x3 is reserved
-        #expect(WSFrameCodec.decode(buffer: &buffer) == nil)
+        #expect(WebSocketFraming.decode(buffer: &buffer) == nil)
     }
 
     // MARK: Descriptors
@@ -120,36 +120,36 @@ private final class RemoteProbeSketch: Sketch {
             sketch.parameters().map { ($0.name, RemoteWire.descriptor(for: $0)) })
 
         let speed = try #require(byName["speed"])
-        #expect(speed.kind == "slider")
+        #expect(speed.kind == .slider)
         #expect(speed.lower == 0.1)
         #expect(speed.upper == 4.0)
         #expect(speed.value == .number(1.4))
 
         let layers = try #require(byName["layers"])
-        #expect(layers.kind == "stepper")
+        #expect(layers.kind == .stepper)
         #expect(layers.value == .number(6))
 
-        #expect(byName["trails"]?.kind == "toggle")
-        #expect(byName["accent"]?.kind == "color")
+        #expect(byName["trails"]?.kind == .toggle)
+        #expect(byName["accent"]?.kind == .color)
 
         let palette = try #require(byName["palette"])
-        #expect(palette.kind == "menu")
+        #expect(palette.kind == .menu)
         #expect(palette.options == ["Dawn", "Dusk", "Noir"])
         #expect(palette.value == .number(1))   // by index on the wire
 
         let focus = try #require(byName["focus"])
-        #expect(focus.kind == "vector")
-        #expect(focus.pad == true)
+        #expect(focus.kind == .vector)
+        #expect(focus.isPad == true)
         #expect(focus.xUpper == 1)
 
         let inks = try #require(byName["inks"])
-        #expect(inks.kind == "swatches")
-        #expect(inks.gradient == nil)          // blocks, not a band
+        #expect(inks.kind == .swatches)
+        #expect(inks.isGradient == nil)          // blocks, not a band
         #expect(inks.lower == 1 && inks.upper == 8)
 
         let fade = try #require(byName["fade"])
-        #expect(fade.kind == "swatches")
-        #expect(fade.gradient == true)
+        #expect(fade.kind == .swatches)
+        #expect(fade.isGradient == true)
     }
 
     @Test func aStripOfColorsTravelsBothWays() throws {

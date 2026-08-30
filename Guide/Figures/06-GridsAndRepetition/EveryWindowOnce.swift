@@ -92,7 +92,7 @@ final class EveryWindowOnce: Sketch {
             let tone = Color(white: 0.82 - Double(symbol) * 0.17)
             stroke(picked ? accent : tone)
             strokeWeight(picked ? 26 : 15)
-            drawArc(center: center, rx: radius, ry: radius,
+            drawArc(center: center, radiusX: radius, radiusY: radius,
                     start: start + step * 0.1, stop: start + step * 0.9)
         }
         noStroke()

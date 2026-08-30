@@ -67,7 +67,7 @@ final class PaintByClass: Sketch {
 
         // The paint: each class's pixels under its own translucent color.
         // Class 0 is the model's background — leave it as the picture.
-        let present = classes.presentClasses.filter {
+        let present = classes.presentClassIndices.filter {
             $0 != 0 && classes.coverage(ofClass: $0) >= coverageFloor
         }
         for index in present {

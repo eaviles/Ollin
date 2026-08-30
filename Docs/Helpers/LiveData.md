@@ -82,8 +82,8 @@ final class Tide: Sketch {
 `updates` counts the answers that differed from the one before. A poll that brings back what the feed already had does not count, which is what a sketch keys an entrance on:
 
 ```swift
-if tide.updates != seen {
-    seen = tide.updates
+if tide.updateCount != seen {
+    seen = tide.updateCount
     startTheTransition()
 }
 ```

@@ -50,7 +50,7 @@ final class LampsAndBytes: Sketch {
         withClip(stage.inset(by: 4)) {
             for (index, par) in pars.enumerated() {
                 let x = stage.x + spacing * Double(index + 1)
-                let color = universe.color(at: par.address)
+                let color = universe.color(par.address)
                 let brightness = max(color.red, max(color.green, color.blue))
                 let lamp = Vector2(x, stage.y + 52)
                 // The thrown light, then the fixture body over it.

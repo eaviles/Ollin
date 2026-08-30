@@ -51,7 +51,7 @@ What makes a hex grid worth the trade is the *hex-native math*, and every cell c
 let focus = hexes.cell(at: Vector2(mouseX, mouseY)) ?? hexes.cell(column: 6, row: 5)
 for cell in hexes.cells {
     let rings = Double(hexes.distance(from: focus, to: cell))
-    fill(Color.mix(.teal, .black, t: min(1, rings / 6)))
+    fill(Color.mix(.teal, .black, min(1, rings / 6)))
     drawPolygon(cell.corners)
 }
 ```
@@ -111,7 +111,7 @@ The typed core is `Subdivision.cells(in:minSize:maxDepth:chance:fraction:style:u
 ```swift
 maze(columns: Int, rows: Int,
      algorithm: Maze.Algorithm = .backtracker) -> Maze
-drawMaze(_ maze: Maze, in rect: Rectangle? = nil)
+drawMaze(_ maze: Maze, in bounds: Rectangle? = nil)
 ```
 
 Carve a *perfect maze* (every cell reachable, no loops, one path between any two cells) and read it as geometry. The algorithm is a texture knob as much as an algorithmic one:
@@ -124,7 +124,7 @@ The geometry reads:
 
 - `walls(in: rect)` is the stroke-ready line-work, with collinear wall segments merged into single long runs (clean for stroking, hatching, and plotter SVG). `drawMaze` strokes it in one call.
 - `solution(fromColumn:fromRow:toColumn:toRow:)` is the unique path between two cells, and `longestPath()` is the maze's diameter, the natural entrance-and-exit pair.
-- `contour(of:in:)` lays a cell path over a rectangle as a polyline through the cell centers, and `isOpen(_:atColumn:row:)` reads a single passage.
+- `contour(of:in:)` lays a cell path over a rectangle as a polyline through the cell centers, and `isOpen(_:column:row:)` reads a single passage.
 
 ```swift
 seed(9)

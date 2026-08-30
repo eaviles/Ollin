@@ -147,14 +147,14 @@ struct ColorSpaceTests {
     func mixEndpointsAndClampT(_ space: ColorSpace) {
         let a = Color(hex: 0x3366FF, alpha: 0.5)
         let b = Color(hex: 0xFFAA00)
-        #expect(close(Color.mix(a, b, t: 0, in: space), a), "t = 0 in \(space)")
-        #expect(close(Color.mix(a, b, t: 1, in: space), b), "t = 1 in \(space)")
-        #expect(close(Color.mix(a, b, t: -3, in: space), a), "t clamps low in \(space)")
-        #expect(close(Color.mix(a, b, t: 7, in: space), b), "t clamps high in \(space)")
+        #expect(close(Color.mix(a, b, 0, in: space), a), "t = 0 in \(space)")
+        #expect(close(Color.mix(a, b, 1, in: space), b), "t = 1 in \(space)")
+        #expect(close(Color.mix(a, b, -3, in: space), a), "t clamps low in \(space)")
+        #expect(close(Color.mix(a, b, 7, in: space), b), "t clamps high in \(space)")
     }
 
     @Test func mixDefaultIsPerceptualMidGray() {
-        let mid = Color.mix(.black, .white, t: 0.5)
+        let mid = Color.mix(.black, .white, 0.5)
         // The published matrices leave grays a ~4e-8 channel residual.
         #expect(close(mid.red, mid.green, 1e-6))
         #expect(close(mid.green, mid.blue, 1e-6))
@@ -162,7 +162,7 @@ struct ColorSpaceTests {
     }
 
     @Test func mixRGBIsComponentLerp() {
-        #expect(close(Color.mix(.red, .blue, t: 0.5, in: .rgb),
+        #expect(close(Color.mix(.red, .blue, 0.5, in: .rgb),
                       Color(red: 0.5, green: 0, blue: 0.5), 1e-12))
     }
 
@@ -170,7 +170,7 @@ struct ColorSpaceTests {
         // Red (h 0) to magenta-violet (h 5/6): the short way passes pink
         // (h 11/12), never green.
         let magenta = Color(hue: 5.0 / 6, saturation: 1, brightness: 1)
-        let mid = Color.mix(.red, magenta, t: 0.5, in: .hsb)
+        let mid = Color.mix(.red, magenta, 0.5, in: .hsb)
         #expect(mid.green < 1e-9)
         #expect(close(mid.red, 1, 1e-9))
         #expect(close(mid.blue, 0.5, 1e-9))
@@ -178,23 +178,23 @@ struct ColorSpaceTests {
 
     @Test func mixAchromaticEndpointAdoptsHue() {
         // Fading red to white shouldn't swing through unrelated hues.
-        let mid = Color.mix(.white, .red, t: 0.5, in: .oklch)
+        let mid = Color.mix(.white, .red, 0.5, in: .oklch)
         #expect(close(OKLCH(mid).h, OKLCH(.red).h, 1e-2))
-        let mid2 = Color.mix(.red, .black, t: 0.5, in: .okhsl)
+        let mid2 = Color.mix(.red, .black, 0.5, in: .okhsl)
         #expect(close(OKHSL(mid2).h, OKHSL(.red).h, 1e-2))
     }
 
     @Test func mixInterpolatesAlpha() {
         let a = Color(red: 1, green: 0, blue: 0, alpha: 0)
         let b = Color(red: 1, green: 0, blue: 0, alpha: 1)
-        #expect(close(Color.mix(a, b, t: 0.25).alpha, 0.25, 1e-12))
+        #expect(close(Color.mix(a, b, 0.25).alpha, 0.25, 1e-12))
     }
 
     @Test(arguments: Array(stride(from: 0.0, to: 1.0, by: 0.125)),
                      Array(stride(from: 0.25, through: 1.0, by: 0.25)))
     func hsbComponentsRoundTrip(_ h: Double, _ s: Double) {
         let c = Color(hue: h, saturation: s, brightness: 0.8)
-        let back = Color.mix(c, c, t: 0.5, in: .hsb)
+        let back = Color.mix(c, c, 0.5, in: .hsb)
         #expect(close(back, c, 1e-9))
     }
 }

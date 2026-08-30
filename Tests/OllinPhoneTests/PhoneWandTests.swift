@@ -18,14 +18,14 @@ import Ollin
                         pressed: Bool = false,
                         pressCount: UInt32 = 0,
                         touch: SIMD2<Float>? = nil,
-                        tracked: Bool = true,
+                        isTracked: Bool = true,
                         scale: Float = 1) -> PhoneWandSample {
         let transform = simd_float4x4(SIMD4<Float>(scale, 0, 0, 0),
                                       SIMD4<Float>(0, scale, 0, 0),
                                       SIMD4<Float>(0, 0, scale, 0),
                                       SIMD4<Float>(origin, 1))
-        return PhoneWandSample(tracked: tracked, timestamp: 7, transform: transform,
-                               quarterTurnsCW: turns, pressed: pressed,
+        return PhoneWandSample(isTracked: isTracked, timestamp: 7, transform: transform,
+                               quarterTurnsCW: turns, isPressed: pressed,
                                pressCount: pressCount, hasTouch: touch != nil,
                                touch: touch ?? .zero)
     }
@@ -151,7 +151,7 @@ import Ollin
         // direction full of NaN, which would take the whole picture with it.
         let broken = simd_float4x4(SIMD4<Float>(0, 0, 0, 0), SIMD4<Float>(0, 0, 0, 0),
                                    SIMD4<Float>(0, 0, 0, 0), SIMD4<Float>(1, 2, 3, 1))
-        let wand = PhoneWand(PhoneWandSample(tracked: false, timestamp: 1, transform: broken))
+        let wand = PhoneWand(PhoneWandSample(isTracked: false, timestamp: 1, transform: broken))
         #expect(wand.pointing == Vector3(0, 0, -1))
         #expect(wand.up == Vector3(0, 1, 0))
         #expect(wand.position == Vector3(1, 2, 3))
@@ -183,7 +183,7 @@ import Ollin
     @Test func anUntrackedWandStillCarriesItsButton() {
         // Tracking comes and goes as the room is recognized; the thumb does not.
         // A sketch can keep taking presses while the pose is worth nothing.
-        let wand = PhoneWand(sample(pressed: true, pressCount: 2, tracked: false))
+        let wand = PhoneWand(sample(pressed: true, pressCount: 2, isTracked: false))
         #expect(!wand.isTracked)
         #expect(wand.isPressed)
         #expect(wand.pressCount == 2)

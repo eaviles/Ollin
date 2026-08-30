@@ -20,7 +20,7 @@ import Foundation
 public struct Hatching: Equatable, Sendable {
     /// Distance between adjacent hatch lines, in canvas points, for a fully-toned
     /// (solid black, opaque) fill. Lighter fills space their lines further apart
-    /// when `toneDensity` is on. Smaller spacing means denser shading.
+    /// when `usesToneDensity` is on. Smaller spacing means denser shading.
     public var spacing: Double
 
     /// Direction of the hatch lines, in radians. `0` runs them horizontally;
@@ -28,13 +28,13 @@ public struct Hatching: Equatable, Sendable {
     public var angle: Double
 
     /// Add a second set of lines perpendicular to the first, for cross-hatching.
-    public var crossHatch: Bool
+    public var crossHatches: Bool
 
     /// Scale the line spacing by the fill's tone when the exporter hatches it: a
     /// dark or opaque fill hatches densely, a light or translucent one sparsely,
     /// and a near-white fill drops out entirely. Off, every fill uses `spacing`.
     /// (Only the export path reads this — `lines(filling:)` always uses `spacing`.)
-    public var toneDensity: Bool
+    public var usesToneDensity: Bool
 
     /// Stroke width of the emitted hatch lines, in canvas points — the plotter's
     /// pen width. Used by the SVG exporter for the hatch and outline strokes.
@@ -42,26 +42,26 @@ public struct Hatching: Equatable, Sendable {
 
     /// Also stroke each hatched shape's outline (in its fill color) so the region
     /// keeps a clean border, not just interior lines. Export-only.
-    public var keepOutline: Bool
+    public var keepsOutline: Bool
 
-    public init(spacing: Double = 4, angle: Double = .pi / 4, crossHatch: Bool = false,
-                toneDensity: Bool = true, penWidth: Double = 1, keepOutline: Bool = true) {
+    public init(spacing: Double = 4, angle: Double = .pi / 4, crossHatches: Bool = false,
+                usesToneDensity: Bool = true, penWidth: Double = 1, keepsOutline: Bool = true) {
         self.spacing = spacing
         self.angle = angle
-        self.crossHatch = crossHatch
-        self.toneDensity = toneDensity
+        self.crossHatches = crossHatches
+        self.usesToneDensity = usesToneDensity
         self.penWidth = penWidth
-        self.keepOutline = keepOutline
+        self.keepsOutline = keepsOutline
     }
 
     /// The hatch lines (open polylines) filling `shape`, in the shape's own
     /// coordinates — ready to `drawPolyline` or feed a plotter. Uses `spacing`,
-    /// `angle`, and `crossHatch`; `shape.winding` decides which regions are
+    /// `angle`, and `crossHatches`; `shape.winding` decides which regions are
     /// interior, so holes and concavities are respected.
     public func lines(filling shape: Shape) -> [[Vector2]] {
         let contours = shape.contours.map(\.points).filter { $0.count >= 3 }
         return hatchLines(contours, winding: shape.winding, spacing: spacing,
-                          angle: angle, crossHatch: crossHatch)
+                          angle: angle, crossHatches: crossHatches)
     }
 
     /// The hatch lines filling a rectangle.
@@ -86,10 +86,10 @@ public struct Hatching: Equatable, Sendable {
 /// into interior spans, which are rotated back into world space. Adding the
 /// perpendicular pass gives cross-hatch.
 func hatchLines(_ contours: [[Vector2]], winding: FillWinding, spacing: Double,
-                angle: Double, crossHatch: Bool) -> [[Vector2]] {
+                angle: Double, crossHatches: Bool) -> [[Vector2]] {
     guard spacing > 0, !contours.isEmpty else { return [] }
     var out = hatchPass(contours, winding: winding, spacing: spacing, angle: angle)
-    if crossHatch {
+    if crossHatches {
         out += hatchPass(contours, winding: winding, spacing: spacing, angle: angle + .pi / 2)
     }
     return out

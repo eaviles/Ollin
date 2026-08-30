@@ -28,8 +28,8 @@ public struct Arpeggio: Sendable, Hashable {
     /// same notes in the same order.
     public let seed: Int
 
-    /// The notes spread over the octaves the arpeggio covers, lowest first.
-    public let notes: [Pitch]
+    /// The pitches spread over the octaves the arpeggio covers, lowest first.
+    public let spreadPitches: [Pitch]
 
     /// One full pass, in playing order.
     ///
@@ -54,10 +54,10 @@ public struct Arpeggio: Sendable, Hashable {
         // arrived; every other one is defined against the ladder, so the ladder
         // is sorted before the octaves are stacked on it.
         let single = pattern == .asPlayed ? pitches : pitches.sorted()
-        self.notes = (0..<max(1, octaves)).flatMap { octave in
+        self.spreadPitches = (0..<max(1, octaves)).flatMap { octave in
             single.map { $0.transposed(by: Double(12 * octave)) }
         }
-        self.order = Arpeggio.order(of: notes, pattern: pattern)
+        self.order = Arpeggio.order(of: spreadPitches, pattern: pattern)
     }
 
     /// An arpeggio over a chord's notes.
@@ -67,11 +67,11 @@ public struct Arpeggio: Sendable, Hashable {
 
     /// The note at a step. The figure repeats, so the step can be any number.
     public subscript(step: Int) -> Pitch {
-        guard !notes.isEmpty else { return Pitch(60) }
+        guard !spreadPitches.isEmpty else { return Pitch(60) }
         if pattern == .random {
-            return notes[Arpeggio.draw(step: step, seed: seed, count: notes.count)]
+            return spreadPitches[Arpeggio.draw(step: step, seed: seed, count: spreadPitches.count)]
         }
-        guard !order.isEmpty else { return notes[0] }
+        guard !order.isEmpty else { return spreadPitches[0] }
         return order[((step % order.count) + order.count) % order.count]
     }
 

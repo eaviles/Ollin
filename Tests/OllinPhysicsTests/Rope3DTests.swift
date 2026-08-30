@@ -22,7 +22,7 @@ struct Rope3DTests {
     }
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// How far the free end of a cantilevered rope has dropped, as a fraction
@@ -248,7 +248,7 @@ struct Rope3DTests {
         guard let flat = world.addRope(through: Rope3DTests.sideways(8), at: Vector3(0, 3, 0),
                                        thickness: 0.02, pinned: { _ in true }),
               let turned = world.addRope(through: Rope3DTests.sideways(8),
-                                         at: Vector3(0, 3, 0), rotation: .pi / 2,
+                                         at: Vector3(0, 3, 0), rotated: .pi / 2,
                                          axis: Vector3(0, 1, 0), thickness: 0.02,
                                          pinned: { _ in true })
         else { return }
@@ -309,7 +309,7 @@ struct Rope3DTests {
             else { return .nan }
             rope.density = density
             run(world, steps: 500)
-            return rope.center.y
+            return rope.position.y
         }
         // A light rope rides the surface. A heavy one sinks, but slowly: a
         // rope's area for its weight is enormous, so the water's drag holds it

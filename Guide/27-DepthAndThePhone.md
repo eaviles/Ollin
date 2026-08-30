@@ -57,10 +57,10 @@ Look at what the new viewpoint reveals. The picture has become geometry you can 
 
 ## Drawing inside the picture
 
-A depth frame isn't only a source of geometry. It's also a *stage you can draw into*. `drawDepthScene(frame)` draws the color image as the backdrop, and writes the depth map into the depth buffer. A camera built from the frame's own lens, `camera(.fromIntrinsics(...))`, puts your 3D drawing in the same metric space. So the scene occludes what you place behind it:
+A depth frame isn't only a source of geometry. It's also a *stage you can draw into*. `drawDepthScene(frame)` draws the color image as the backdrop, and writes the depth map into the depth buffer. A camera built from the frame's own lens, `camera(.intrinsic(...))`, puts your 3D drawing in the same metric space. So the scene occludes what you place behind it:
 
 ```swift
-camera(.fromIntrinsics(frame.intrinsics))
+camera(.intrinsic(frame.intrinsics))
 drawDepthScene(frame)
 
 // A run of marbles marching into the room, in meters.
@@ -148,7 +148,7 @@ let device = PhoneDevice()
 device.start()                  // in setup()
 // …in draw():
 device.latestBody               // a skeleton in meters
-device.latestDepthFrame         // an RGBDFrame from the LiDAR
+device.latestFrame         // an RGBDFrame from the LiDAR
 device.latestPose               // where the phone is, and which way it looks
 ```
 
@@ -482,7 +482,7 @@ The woven texture is the scan lines of nine viewpoints interleaving. The solid p
 
 Then make it yours:
 
-- Point it at reality. With a LiDAR iPhone, swap `StageCamera` for `device.latestDepthFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this piece with the pretend camera removed).
+- Point it at reality. With a LiDAR iPhone, swap `StageCamera` for `device.latestFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this piece with the pretend camera removed).
 - Restage the set. `StageCamera.scene` is a distance field, so everything [Chapter 26](26-SculptingWithFields.md) taught works in it, and you can melt a blob into the room and scan that.
 - Color by height instead of by image, rebuilding the cloud with each point tinted by its `y`, and the scan becomes a contour map.
 - Slow the reveal to one frame every five seconds and export a video, because the assembly is the piece.

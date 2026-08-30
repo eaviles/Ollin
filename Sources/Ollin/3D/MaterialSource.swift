@@ -65,7 +65,7 @@ extension Material {
         scalar("sheenRoughness", \.sheenRoughness)
         scalar("thinFilm", \.thinFilm)
         scalar("thinFilmThickness", \.thinFilmThickness)
-        scalar("thinFilmIor", \.thinFilmIor)
+        scalar("thinFilmIOR", \.thinFilmIOR)
         scalar("specular", \.specular)
         scalar("shininess", \.shininess)
         scalar("iridescence", \.iridescence)

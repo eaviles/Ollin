@@ -25,7 +25,7 @@ Smoothed-particle hydrodynamics runs in three steps (Müller, Charypar & Gross 2
 var fluid: ParticleFluid!
 
 override func setup() {
-    fluid = particleFluid(count: 26_000, radius: 12)
+    fluid = makeParticleFluid(count: 26_000, radius: 12)
 }
 
 override func draw() {
@@ -50,7 +50,7 @@ Three things are fixed at build. `count` is how many particles there are. `radiu
 | `colorSlow` / `colorFast` / `speedForFastColor` | the speed tint ramp | blue → ice, 1 100 pt/s |
 | `restDensity` | target density relative to the seeded packing | 1 |
 
-Particles draw as discs through `drawParticles(fluid)` (additive blending reads as light through water). For a continuous liquid surface, draw them into a layer and threshold a blur (`renderTarget(...)` + `.gaussianBlur(radius:)` + `.threshold(value:softness:)`), the classic metaball trick.
+Particles draw as discs through `drawParticles(fluid)` (additive blending reads as light through water). For a continuous liquid surface, draw them into a layer and threshold a blur (`makeRenderTarget(...)` + `.gaussianBlur(radius:)` + `.threshold(value:softness:)`), the classic metaball trick.
 
 Example: `Examples/Simulation/ParticleFluid`.
 
@@ -63,7 +63,7 @@ Meshless shape matching drives this one (Müller, Heidelberger, Teschner & Gross
 var blobs: SoftBodies!
 
 override func setup() {
-    blobs = softBodies(count: 12, radius: 80)
+    blobs = makeSoftBodies(bodies: 12, radius: 80)
 }
 
 override func draw() {

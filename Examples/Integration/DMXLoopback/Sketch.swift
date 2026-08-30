@@ -52,7 +52,7 @@ final class DMXLoopback: Sketch {
         let spacing = width / Double(pars.count + 1)
         for (index, par) in pars.enumerated() {
             let x = spacing * Double(index + 1)
-            let color = receiver.color(at: par.address)
+            let color = receiver.color(par.address)
             drawPar(at: Vector2(x, hangY), color: color)
         }
 

@@ -57,7 +57,7 @@ final class RayTracedReflections: Sketch {
                        fieldOfView: .pi / 4, near: 1, far: 30)
         // The studio environment lights the metals and is the reflection's miss fallback (a ray
         // that leaves the scene shows the room). Its softly-blurred backdrop fills the frame.
-        environment(.studio.intensity(1.1).backgroundBlur(0.5))
+        environment(.studio.intensified(to: 1.1).backgroundBlurred(0.5))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
         castShadows()
 

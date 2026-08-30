@@ -196,7 +196,7 @@ public enum SceneImport {
         case .directional: kind = .directional
         case .point: kind = .point
         case .spot: kind = .spot
-        case .rect: kind = .rect
+        case .rectangle: kind = .rectangle
         case .disk: kind = .disk
         case .tube: kind = .tube
         }
@@ -216,7 +216,7 @@ public enum SceneImport {
             height: light.height,
             radius: light.radius,
             up: vector(light.up),
-            twoSided: light.twoSided,
+            isTwoSided: light.isTwoSided,
             endA: vector(light.position - half),
             endB: vector(light.position + half))
     }

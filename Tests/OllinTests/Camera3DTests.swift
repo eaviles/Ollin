@@ -132,7 +132,7 @@ struct Camera3DTests {
     /// and the y axis is untouched. The depth (z/w) is unaffected by the fit.
     @Test func intrinsicLetterboxesIntoViewport() {
         let k = CameraIntrinsics(fx: 100, fy: 100, cx: 50, cy: 50, width: 100, height: 100)  // 1:1
-        let cam = Camera3D.fromIntrinsics(k, near: 0.1, far: 10)
+        let cam = Camera3D.intrinsic(k, near: 0.1, far: 10)
         // A camera-space point projecting to the image's right edge at unit depth.
         let edge = k.unproject(col: 100, row: 50, depth: 1)          // base ndc_x = 1
         let wide = cam.projectionMatrix(aspect: 2) * SIMD4<Float>(edge.simd3, 1)
@@ -150,7 +150,7 @@ struct Camera3DTests {
     /// intrinsic projection with the given near/far.
     @Test func fromIntrinsicsPose() {
         let k = CameraIntrinsics(fx: 300, fy: 300, cx: 128, cy: 96, width: 256, height: 192)
-        let cam = Camera3D.fromIntrinsics(k, near: 0.02, far: 80)
+        let cam = Camera3D.intrinsic(k, near: 0.02, far: 80)
         let q = cam.viewMatrix * SIMD4<Float>(1, 2, 3, 1)   // identity view → unchanged
         #expect(close(q.x, 1)); #expect(close(q.y, 2)); #expect(close(q.z, 3))
         #expect(cam.near == 0.02 && cam.far == 80)

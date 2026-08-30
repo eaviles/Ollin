@@ -91,7 +91,7 @@ extension Scene {
         case "RectLight":
             // Width spans local x, height local y; a scaling transform scales
             // the panel with it at resolution.
-            return SceneLightSpec(kind: .rect, color: color, intensity: brightness,
+            return SceneLightSpec(kind: .rectangle, color: color, intensity: brightness,
                                   width: lightScalar(prim, "width") ?? 1,
                                   height: lightScalar(prim, "height") ?? 1)
         case "DiskLight":

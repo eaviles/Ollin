@@ -38,7 +38,7 @@ final class CirclePacking: Sketch {
             let flow = signedNoise(c.x * 0.0016, c.y * 0.0016, time * 0.4)
             let wobble = Vector2(signedNoise(c.y * 0.003, time * 0.6),
                                  signedNoise(c.x * 0.003, time * 0.6 + 19)) * (3 * scale)
-            let tint = Color.mix(ink, accent, t: (flow + 1) * 0.5)
+            let tint = Color.mix(ink, accent, (flow + 1) * 0.5)
             var body = tint
             body.alpha = 0.85
             fill(body)

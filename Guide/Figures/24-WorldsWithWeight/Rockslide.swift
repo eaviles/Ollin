@@ -21,7 +21,7 @@ final class Rockslide: Sketch {
     override func setup() {
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.55, seed: 12)
         land = Heightfield(columns: 129, rows: 129) { u, v in
-            0.7 * pow(1 - u, 1.6) + 0.3 * bumps.value(atU: u, v: v)
+            0.7 * pow(1 - u, 1.6) + 0.3 * bumps.value(u: u, v: v)
         }
         .eroded(.hydraulic(drops: 40_000), seed: 12)
         .eroded(.thermal(talus: 0.012, iterations: 30))
@@ -47,7 +47,7 @@ final class Rockslide: Sketch {
         for (index, drop) in drops.enumerated() {
             let u = 0.06
             let start = Vector3((u - 0.5) * landWidth,
-                                land.value(atU: u, v: drop.1) * landHeight + 1.2 + drop.2,
+                                land.value(u: u, v: drop.1) * landHeight + 1.2 + drop.2,
                                 (drop.1 - 0.5) * landDepth)
             let rock = world.addBody(drop.0, at: start,
                                      rotated: Double(index) * 0.7, axis: .unitY,
@@ -63,7 +63,7 @@ final class Rockslide: Sketch {
         castShadows()
         perspective(eye: Vector3(3.5, 4.6, 13), target: Vector3(-0.8, 1.9, 0))
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         material(.dielectric(roughness: 0.9))
         fill(.white)

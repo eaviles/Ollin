@@ -12,7 +12,7 @@ struct DMXWireTests {
     // MARK: ArtDmx
 
     @Test func artDmxEncodesTheSpecifiedLayout() {
-        let packet = ArtDmxPacket(universe: 0x1234, channels: [1, 2, 3, 4], sequence: 7, physical: 2)
+        let packet = ArtDMXPacket(universe: 0x1234, channels: [1, 2, 3, 4], sequence: 7, physical: 2)
         let bytes = [UInt8](packet.encode())
         #expect(Array(bytes[0..<8]) == [0x41, 0x72, 0x74, 0x2D, 0x4E, 0x65, 0x74, 0x00])
         #expect(Array(bytes[8..<10]) == [0x00, 0x50])   // OpOutput, low byte first
@@ -26,53 +26,53 @@ struct DMXWireTests {
     }
 
     @Test func artDmxPadsOddDataToAnEvenLength() {
-        let bytes = [UInt8](ArtDmxPacket(universe: 1, channels: [9]).encode())
+        let bytes = [UInt8](ArtDMXPacket(universe: 1, channels: [9]).encode())
         #expect(Array(bytes[16..<18]) == [0x00, 0x02])
         #expect(Array(bytes[18...]) == [9, 0])
     }
 
     @Test func artDmxRoundTrips() {
-        let sent = ArtDmxPacket(
+        let sent = ArtDMXPacket(
             universe: 32767, channels: [UInt8](0...255) + [UInt8](0...255),
             sequence: 255, physical: 3
         )
-        let received = ArtDmxPacket(data: sent.encode())
+        let received = ArtDMXPacket(data: sent.encode())
         #expect(received == sent)
     }
 
     @Test func artDmxIgnoresTrailingBytes() {
         // The spec: extra bytes at the end of a valid packet are ignored.
-        var data = ArtDmxPacket(universe: 5, channels: [10, 20]).encode()
+        var data = ArtDMXPacket(universe: 5, channels: [10, 20]).encode()
         data.append(contentsOf: [0xFF, 0xFF, 0xFF])
-        #expect(ArtDmxPacket(data: data)?.channels == [10, 20])
+        #expect(ArtDMXPacket(data: data)?.channels == [10, 20])
     }
 
     @Test func artDmxRejectsMalformedDatagrams() {
-        let good = ArtDmxPacket(universe: 1, channels: [1, 2]).encode()
-        #expect(ArtDmxPacket(data: Data()) == nil)
-        #expect(ArtDmxPacket(data: good.prefix(17)) == nil)          // too short
+        let good = ArtDMXPacket(universe: 1, channels: [1, 2]).encode()
+        #expect(ArtDMXPacket(data: Data()) == nil)
+        #expect(ArtDMXPacket(data: good.prefix(17)) == nil)          // too short
         var badID = good
         badID[0] = 0x42
-        #expect(ArtDmxPacket(data: badID) == nil)                    // not Art-Net
+        #expect(ArtDMXPacket(data: badID) == nil)                    // not Art-Net
         var badOp = good
         badOp[9] = 0x20                                              // ArtPoll, not ArtDmx
-        #expect(ArtDmxPacket(data: badOp) == nil)
+        #expect(ArtDMXPacket(data: badOp) == nil)
         var badLength = good
         badLength[17] = 200                                          // claims more data than sent
-        #expect(ArtDmxPacket(data: badLength) == nil)
+        #expect(ArtDMXPacket(data: badLength) == nil)
         var zeroLength = good
         zeroLength[16] = 0
         zeroLength[17] = 0
-        #expect(ArtDmxPacket(data: zeroLength) == nil)
+        #expect(ArtDMXPacket(data: zeroLength) == nil)
     }
 
     // MARK: sACN
 
     @Test func sacnEncodesTheSpecifiedLayout() {
-        let cid = UUID(uuidString: "0F0E0D0C-0B0A-0908-0706-050403020100")!
+        let componentID = UUID(uuidString: "0F0E0D0C-0B0A-0908-0706-050403020100")!
         let packet = SACNDataPacket(
             universe: 1, channels: [UInt8](repeating: 128, count: 512),
-            sequence: 5, priority: 100, sourceName: "Ollin", cid: cid
+            sequence: 5, priority: 100, sourceName: "Ollin", componentID: componentID
         )
         let bytes = [UInt8](packet.encode())
         #expect(bytes.count == 638)                                  // the full-payload size the spec names
@@ -81,7 +81,7 @@ struct DMXWireTests {
         #expect(Array(bytes[4..<16]) == [0x41, 0x53, 0x43, 0x2D, 0x45, 0x31, 0x2E, 0x31, 0x37, 0x00, 0x00, 0x00])
         #expect(Array(bytes[16..<18]) == [0x72, 0x6E])               // root: 0x7 flags, length 622
         #expect(Array(bytes[18..<22]) == [0x00, 0x00, 0x00, 0x04])   // VECTOR_ROOT_E131_DATA
-        #expect(Array(bytes[22..<38]) == [UInt8](withUnsafeBytes(of: cid.uuid) { Data($0) }))
+        #expect(Array(bytes[22..<38]) == [UInt8](withUnsafeBytes(of: componentID.uuid) { Data($0) }))
         #expect(Array(bytes[38..<40]) == [0x72, 0x58])               // framing: length 600
         #expect(Array(bytes[40..<44]) == [0x00, 0x00, 0x00, 0x02])   // VECTOR_E131_DATA_PACKET
         #expect(Array(bytes[44..<49]) == Array("Ollin".utf8))
@@ -113,7 +113,7 @@ struct DMXWireTests {
     @Test func sacnRoundTrips() {
         let sent = SACNDataPacket(
             universe: 63999, channels: [UInt8](1...200),
-            sequence: 250, priority: 200, sourceName: "Rig ✺", cid: UUID(),
+            sequence: 250, priority: 200, sourceName: "Rig ✺", componentID: UUID(),
             startCode: 0, isPreview: true, isTerminated: true,
             forcesSynchronization: true, synchronizationAddress: 7
         )
@@ -182,7 +182,7 @@ struct DMXWireTests {
         #expect(universe[10] == 255)
         #expect(universe[11] == 128)
         #expect(universe[12] == 0)
-        let back = universe.color(at: 10)
+        let back = universe.color(10)
         #expect(abs(back.red - 1) < 0.01 && abs(back.green - 0.5) < 0.01 && abs(back.blue - 0) < 0.01)
     }
 
@@ -277,7 +277,7 @@ struct DMXWireTests {
 
     @Test func pacerHonorsTheRateCeiling() {
         var pacer = DMXPacer()
-        pacer.maximumRate = 10
+        pacer.maxRate = 10
         let first = pacer.shouldSend([1], now: 0)
         #expect(first)
         let tooSoon = pacer.shouldSend([2], now: 0.05)

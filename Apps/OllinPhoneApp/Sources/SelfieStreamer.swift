@@ -175,7 +175,7 @@ final class SelfieStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         // Orientation 0: the buffers already arrive upright, so the Mac rotates
         // nothing and matte/color alignment is by construction.
         let sample = PhoneSegmentationSample(
-            tracked: someoneInView, timestamp: timestamp,
+            isTracked: someoneInView, timestamp: timestamp,
             matteWidth: mw, matteHeight: mh, orientation: 0,
             matte: matte, colorJPEG: jpeg)
         DispatchQueue.main.async { [weak self] in self?.onSegmentation?(sample) }

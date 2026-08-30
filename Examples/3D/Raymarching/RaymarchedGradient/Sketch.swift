@@ -24,9 +24,9 @@ final class RaymarchedGradient: Sketch {
         fill(.linear(from: Vector2(0, height * 0.18), to: Vector2(0, height * 0.82),
                      [Color(hex: 0xfb923c), Color(hex: 0xec4899), Color(hex: 0x6366f1)]))
         let blob = SDF3D.sphere(radius: 1.05)
-            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: 1.3, y: 0.4, z: 0), k: 0.55)
-            .smoothUnion(SDF3D.sphere(radius: 0.7).at(x: -1.1, y: 0.55, z: 0.3), k: 0.55)
-            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: 0.1, y: -1.15, z: 0), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(1.3, 0.4, 0), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.7).at(-1.1, 0.55, 0.3), k: 0.55)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(0.1, -1.15, 0), k: 0.55)
         withState { rotateY(t * 0.4); drawSDF3D(blob) }
     }
 }

@@ -55,9 +55,10 @@ public struct PhoneFace: Sendable {
     let eyePositions: [Vector3]           // [left, right], face-local meters
 
     /// Wrap a decoded wire sample, mapping the positional blendshape array onto the
-    /// `PhoneBlendShape` cases and the mesh vertices into `Vector3`.
-    init(_ sample: PhoneFaceSample) {
-        isTracked = sample.tracked
+    /// `PhoneBlendShape` cases and the mesh vertices into `Vector3`. Public so a
+    /// face can be staged with no phone.
+    public init(_ sample: PhoneFaceSample) {
+        isTracked = sample.isTracked
         timestamp = sample.timestamp
         headOrientation = sample.headOrientation
         headPosition = PhoneFace.vector(sample.headPosition)
@@ -79,7 +80,7 @@ public struct PhoneFace: Sendable {
     /// Stage a face with no phone: place a head, a mesh, eyes, and a gaze by hand,
     /// so a sketch, a test, or a figure can exercise the whole drawing path. Every
     /// field defaults to a neutral value; supply only what the scene needs.
-    public init(tracked: Bool = true, timestamp: Double = 0,
+    public init(isTracked: Bool = true, timestamp: Double = 0,
                 headOrientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
                 headPosition: Vector3 = .zero,
                 blendShapes: [PhoneBlendShape: Double] = [:],
@@ -90,7 +91,7 @@ public struct PhoneFace: Sendable {
                 rightEyeOrientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
                 rightEyePosition: Vector3 = .zero,
                 lookAtPoint: Vector3 = .zero) {
-        isTracked = tracked
+        self.isTracked = isTracked
         self.timestamp = timestamp
         self.headOrientation = headOrientation
         self.headPosition = headPosition
@@ -144,7 +145,7 @@ public struct PhoneFace: Sendable {
     /// point-cloud-only fallback) if the stream carried no topology.
     public func mesh() -> Mesh {
         Mesh(positions: vertices, indices: indices,
-             uvs: uvs.count == vertices.count ? uvs : []).withSmoothNormals()
+             uvs: uvs.count == vertices.count ? uvs : []).generatingSmoothNormals()
     }
 
     /// The per-vertex texture coordinates, aligned with `meshPoints`. Constant frame

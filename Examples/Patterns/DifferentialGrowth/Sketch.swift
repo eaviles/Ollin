@@ -35,7 +35,7 @@ final class DifferentialGrowthSketch: Sketch {
         for i in nodes.indices {
             let a = nodes[i], b = nodes[(i + 1) % nodes.count]
             let d = a.distance(to: center) / 500
-            stroke(Color.mix(Color(hex: 0x6FD3C7), Color(hex: 0xF2B705), t: min(d, 1)))
+            stroke(Color.mix(Color(hex: 0x6FD3C7), Color(hex: 0xF2B705), min(d, 1)))
             drawLine(a, b)
         }
     }

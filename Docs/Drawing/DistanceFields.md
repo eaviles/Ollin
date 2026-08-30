@@ -39,7 +39,7 @@ about distance, and none of them is easy without one.
 
 ```swift
 override func draw() {
-    let marks = renderTarget()
+    let marks = makeRenderTarget()
     withTarget(marks) {
         noStroke()
         fill(.white)

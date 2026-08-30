@@ -117,8 +117,8 @@ public final class SerialPort: @unchecked Sendable {
     /// contains `matching`, case-insensitively, e.g. `"usbmodem"`. The match
     /// re-runs on every connection attempt, so the board can be plugged in
     /// after `open()` or come back under a different device number.
-    public init(matching: String, baudRate: Int = 9600) {
-        self.target = .match(matching)
+    public init(matching name: String, baudRate: Int = 9600) {
+        self.target = .match(name)
         self.baudRate = baudRate
     }
 

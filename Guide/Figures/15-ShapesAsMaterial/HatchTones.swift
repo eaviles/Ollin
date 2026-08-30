@@ -24,7 +24,7 @@ final class HatchTones: Sketch {
 
         let hatches = [Hatching(spacing: 13, angle: .pi / 4),
                        Hatching(spacing: 6, angle: .pi / 4),
-                       Hatching(spacing: 7, angle: .pi / 4, crossHatch: true)]
+                       Hatching(spacing: 7, angle: .pi / 4, crossHatches: true)]
         let titles = ["spacing 13", "spacing 6", "crosshatch"]
 
         for i in 0 ..< 3 {

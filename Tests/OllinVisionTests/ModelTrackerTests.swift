@@ -68,7 +68,7 @@ import Ollin
     }
 
     @Test func emptyOutputReadsZero() {
-        let output = ModelOutput(labels: [], objects: [], map: nil, outputImage: nil,
+        let output = ModelOutput(labels: [], objects: [], map: nil, image: nil,
                                  classMask: nil, mapBytes: nil)
         let rect = Rectangle(x: 0, y: 0, width: 100, height: 100)
         #expect(output.value(at: Vector2(50, 50), in: rect) == 0)
@@ -104,7 +104,7 @@ import Ollin
                              counts: counts, labels: deepLabStyleLabels)
 
         // Largest first; names follow the vocabulary.
-        #expect(mask.presentClasses == [1, 15, 7])
+        #expect(mask.presentClassIndices == [1, 15, 7])
         #expect(mask.presentLabels == ["aeroplane", "person", "car"])
         #expect(mask.coverage(ofClass: 1) == 0.5)
         #expect(mask.coverage(of: "person") == 3.0 / 8)
@@ -151,7 +151,7 @@ import Ollin
             #expect(mask.width == 3 && mask.height == 2)
             #expect(mask.classIndexNormalized(at: Vector2(0.99, 0.9)) == 2)   // top-right
             #expect(mask.classIndexNormalized(at: Vector2(0.01, 0.1)) == 3)   // bottom-left
-            #expect(mask.presentClasses.count == 6)
+            #expect(mask.presentClassIndices.count == 6)
         }
 
         let floats = MLShapedArray<Float>(scalars: [0.2, 0.8, 14.6, 15.4], shape: [2, 2])
@@ -232,14 +232,14 @@ import Ollin
     }
 
     /// The full-color surface rides the same observation as the gray one: for
-    /// the depth model, `outputImage` is the map at face value, so the two must
+    /// the depth model, `image` is the map at face value, so the two must
     /// agree — the picture's pixel values are what the map holds as alpha.
-    @Test func outputImageMatchesTheMapItWasDecodedFrom() async throws {
+    @Test func imageMatchesTheMapItWasDecodedFrom() async throws {
         guard Self.depthModelIsFetched else { return }
         let tracker = ModelTracker(modelAt: Self.depthModelURL)
         let output = try await tracker.detect(in: gradientScene(width: 320, height: 240))
         let map = try #require(output.map)
-        let picture = try #require(output.outputImage)
+        let picture = try #require(output.image)
         #expect(picture.width == map.width && picture.height == map.height)
         var mismatched = 0
         for y in stride(from: 0, to: map.height, by: 7) {
@@ -292,7 +292,7 @@ import Ollin
         #expect(output.objects.isEmpty)
     }
 
-    /// A Create ML style-transfer model paints in color: `outputImage` comes
+    /// A Create ML style-transfer model paints in color: `image` comes
     /// back at the model's size with the style's hues, not a gray map. Gated on
     /// the locally *trained* model (the StyleMirror example's instructions),
     /// not a fetched one.
@@ -301,7 +301,7 @@ import Ollin
         let frame = try await Self.clipFrame(at: 6)
         let tracker = ModelTracker(modelAt: Self.styleModelURL)
         let output = try await tracker.detect(in: Image(cgImage: frame))
-        let picture = try #require(output.outputImage)
+        let picture = try #require(output.image)
         #expect(picture.width > 0 && picture.height > 0)
         // Styled output is colorful: a healthy share of sampled pixels must
         // have channels that actually differ (a gray decode would have none).
@@ -402,7 +402,7 @@ import Ollin
 
     /// The live path over a hand-fired frame source: frames flow, the model
     /// loads in the background, and the surfaces publish. Reads `map` and
-    /// `outputImage` in the poll loop because each surface's first read arms
+    /// `image` in the poll loop because each surface's first read arms
     /// its own conversion.
     @Test @MainActor func liveWiringPublishes() async throws {
         guard Self.depthModelIsFetched else { return }
@@ -421,7 +421,7 @@ import Ollin
         // The first read of each surface arms its conversion, so the analyzed
         // frame below publishes both.
         #expect(tracker.map == nil)
-        #expect(tracker.outputImage == nil)
+        #expect(tracker.image == nil)
 
         // The still path awaits the same shared model load deterministically;
         // then the deterministic drive runs the live analyze path inline.
@@ -429,7 +429,7 @@ import Ollin
         await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(cgImage))
 
         #expect(tracker.map != nil)
-        #expect(tracker.outputImage != nil)
+        #expect(tracker.image != nil)
         #expect(tracker.isLoaded)
         let rect = Rectangle(x: 0, y: 0, width: 160, height: 120)
         let v = tracker.value(at: Vector2(80, 60), in: rect)

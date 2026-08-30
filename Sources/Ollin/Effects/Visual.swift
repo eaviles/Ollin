@@ -11,7 +11,7 @@ import COllinShaders
 ///     drawVisual(
 ///         .oscillator(frequency: 40, colorShift: 0.15)
 ///             .rotated(0.4)
-///             .kaleidoscope(6)
+///             .kaleidoscope(segments: 6)
 ///             .displaced(by: .noise(scale: 3), amount: 0.08)
 ///     )
 /// }
@@ -207,9 +207,9 @@ public extension Visual {
                   offsetX: Double = 0, offsetY: Double = 0) -> Visual {
         Visual(.warp(.repeatTiles(x: x, y: y, offsetX: offsetX, offsetY: offsetY), self))
     }
-    /// Fold the image into `sides` mirrored wedges about the center.
-    func kaleidoscope(_ sides: Double = 4) -> Visual {
-        Visual(.warp(.kaleid(sides: sides), self))
+    /// Fold the image into `segments` mirrored wedges about the center.
+    func kaleidoscope(segments: Double = 4) -> Visual {
+        Visual(.warp(.kaleid(sides: segments), self))
     }
     /// Slide the image by `x`/`y` (fractions of the field), drifting at
     /// `speedX`/`speedY` per second, wrapping at the edges.
@@ -240,18 +240,18 @@ public extension Visual {
     }
     /// Quantize into `bins` levels per channel; `gamma` biases where the levels
     /// fall (below 1 favors the darks).
-    func posterized(bins: Double = 3, gamma: Double = 0.6) -> Visual {
-        Visual(.adjust(.posterize(bins: bins, gamma: gamma), self))
+    func posterized(levels: Double = 3, gamma: Double = 0.6) -> Visual {
+        Visual(.adjust(.posterize(bins: levels, gamma: gamma), self))
     }
     /// Split to black and white about a luminance `threshold`, with a
-    /// `tolerance`-wide soft edge.
-    func thresholded(_ threshold: Double = 0.5, tolerance: Double = 0.04) -> Visual {
-        Visual(.adjust(.threshold(threshold: threshold, tolerance: tolerance), self))
+    /// `softness`-wide soft edge.
+    func thresholded(_ threshold: Double = 0.5, softness: Double = 0.04) -> Visual {
+        Visual(.adjust(.threshold(threshold: threshold, tolerance: softness), self))
     }
     /// Key by luminance: keep what reads brighter than `threshold` and turn the
-    /// dark side transparent (soft edge `tolerance`).
-    func luma(threshold: Double = 0.5, tolerance: Double = 0.1) -> Visual {
-        Visual(.adjust(.luma(threshold: threshold, tolerance: tolerance), self))
+    /// dark side transparent (soft edge `softness`).
+    func luma(threshold: Double = 0.5, softness: Double = 0.1) -> Visual {
+        Visual(.adjust(.luma(threshold: threshold, tolerance: softness), self))
     }
     /// Rotate the hue by `amount`, a fraction of the color wheel (0.5 lands on
     /// the complementary color).
@@ -325,9 +325,9 @@ public extension Visual {
     }
     /// Kaleidoscope whose fold radius shifts with the driver's red channel
     /// (times `amount`), warping the wedges organically.
-    func kaleidoscope(by driver: Visual, sides: Double = 4,
+    func kaleidoscope(by driver: Visual, segments: Double = 4,
                       amount: Double = 0.1) -> Visual {
-        Visual(.modulate(.kaleid(sides: sides, amount: amount), self, driver))
+        Visual(.modulate(.kaleid(sides: segments, amount: amount), self, driver))
     }
 }
 

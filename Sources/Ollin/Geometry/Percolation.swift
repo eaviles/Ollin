@@ -127,13 +127,13 @@ public struct Percolation: Equatable, Hashable, Sendable {
     public var clusterCount: Int { clusterIndices.count }
 
     /// Whether the cell at `column`, `row` is open (out of range reads closed).
-    public func isOpen(atColumn column: Int, row: Int) -> Bool {
+    public func isOpen(column: Int, row: Int) -> Bool {
         guard column >= 0, column < columns, row >= 0, row < rows else { return false }
         return openCells[row * columns + column]
     }
 
     /// The cluster a cell belongs to, or nil for closed and out-of-range cells.
-    public func clusterIndex(atColumn column: Int, row: Int) -> Int? {
+    public func clusterIndex(column: Int, row: Int) -> Int? {
         guard column >= 0, column < columns, row >= 0, row < rows else { return nil }
         let label = labels[row * columns + column]
         return label >= 0 ? label : nil

@@ -194,7 +194,7 @@ public struct Material: Equatable, Sendable {
     /// The film's index of refraction: `1.3` (the default) is the soap or oxide film
     /// on most real surfaces, and a higher value both brightens the film's own
     /// reflection and shortens the color cycle.
-    public var thinFilmIor: Double
+    public var thinFilmIOR: Double
 
     /// Specular highlight strength: `0` matte, `~0.5` glossy, `1` a bright hotspot.
     public var specular: Double
@@ -289,7 +289,7 @@ public struct Material: Equatable, Sendable {
                 sheen: Double = 0, sheenColor: Color = .white,
                 sheenRoughness: Double = 0.5,
                 thinFilm: Double = 0, thinFilmThickness: Double = 400,
-                thinFilmIor: Double = 1.3,
+                thinFilmIOR: Double = 1.3,
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 iridescenceFlow: Double = 0, iridescencePhase: Double = 0,
@@ -320,7 +320,7 @@ public struct Material: Equatable, Sendable {
         self.sheenRoughness = min(1, max(0, sheenRoughness))
         self.thinFilm = min(1, max(0, thinFilm))
         self.thinFilmThickness = max(0, thinFilmThickness)
-        self.thinFilmIor = min(3, max(1, thinFilmIor))
+        self.thinFilmIOR = min(3, max(1, thinFilmIOR))
         self.specular = max(0, specular)
         self.shininess = max(1, shininess)
         self.iridescence = min(1, max(0, iridescence))
@@ -406,7 +406,7 @@ public struct Material: Equatable, Sendable {
         // thickness of 0 from asking the model for a color it has no basis for.
         m.thinFilm = thinFilmThickness > 0 ? Float(thinFilm) : 0
         m.thinFilmThickness = Float(thinFilmThickness)
-        m.thinFilmIor = Float(thinFilmIor)
+        m.thinFilmIor = Float(thinFilmIOR)
         // The brushing rotation ships as cos/sin so the fragment never evaluates the
         // angle; at strength 0 the shader's gate keeps the whole lobe untouched.
         m.anisotropy = SIMD4<Float>(Float(anisotropy),
@@ -673,6 +673,6 @@ public extension Material {
     static func soapFilm(thickness: Double = 520) -> Material {
         Material(shading: .physicallyBased, metallic: 0, roughness: 0,
                  transmission: 1, ior: 1.33,
-                 thinFilm: 1, thinFilmThickness: thickness, thinFilmIor: 1.33)
+                 thinFilm: 1, thinFilmThickness: thickness, thinFilmIOR: 1.33)
     }
 }

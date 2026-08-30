@@ -2,7 +2,7 @@ import Ollin
 
 /// A high-resolution environment, downloaded on demand.
 ///
-/// The built-in environments ship at 1K, for instant, offline use. `highRes(_:)` fetches a
+/// The built-in environments ship at 1K, for instant, offline use. `highResolution(_:)` fetches a
 /// sharper 2K / 4K / 8K version from Poly Haven on the first run and caches it (the bundled
 /// 1K shows meanwhile, then it swaps in once the download lands). Only the *backdrop* gets
 /// sharper (the lighting and the reflections are the same), so it's purely for a crisp
@@ -26,7 +26,7 @@ final class HighResEnvironment: Sketch {
                     elevation: 0.12, fieldOfView: .pi / 4.2)
 
         // A 4K Venice sunset, downloaded once and cached. The bundled 1K shows until it arrives.
-        environment(.sunset.highRes(.fourK).rotated(time * 0.05))
+        environment(.sunset.highResolution(.fourK).rotated(time * 0.05))
 
         for ball in balls {
             withState {

@@ -51,8 +51,8 @@ for cell in grid.cellRects(of: 0, in: bounds) { drawRect(cell) }
 grid.clusterCount                       // how many clusters
 grid.clusterSizes                       // cell counts, largest first
 grid.cluster(_ index:)                  // one cluster's (column, row) cells
-grid.isOpen(atColumn:row:)              // one cell's state
-grid.clusterIndex(atColumn:row:)        // which cluster a cell belongs to
+grid.isOpen(column:row:)                // one cell's state
+grid.clusterIndex(column:row:)          // which cluster a cell belongs to
 grid.spanningClusterIndex               // the top-to-bottom cluster, if any
 grid.spans                              // whether one exists
 ```

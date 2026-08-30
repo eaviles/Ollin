@@ -414,7 +414,7 @@ open class Sketch {
     /// Called once after this sketch is hot-swapped in by the live-reload host,
     /// right after its `setup()`. Override to do reload-specific work (the
     /// default does nothing). Not called on the first launch — only on reloads.
-    open func onReload() {}
+    open func reloaded() {}
 
     // MARK: Extensions (the extend(...) seam)
 
@@ -525,7 +525,7 @@ open class Sketch {
     /// cells of `radius` (the query radius your kernel uses), for `count` particles.
     /// The primitive under the particle-interaction sims; drive your own with
     /// `neighborStep(_:over:reading:writing:)`. See `SpatialHash`.
-    public func spatialHash(in bounds: Rectangle? = nil, radius: Double, count: Int) -> SpatialHash {
+    public func makeSpatialHash(in bounds: Rectangle? = nil, radius: Double, count: Int) -> SpatialHash {
         SpatialHash(bounds: bounds ?? self.bounds, cellSize: radius, count: count)
     }
 
@@ -549,10 +549,10 @@ open class Sketch {
     /// (the full canvas by default), interacting within `radius`, seeded from `seed`
     /// (this sketch's `variation` by default). Build it in `setup()`, then
     /// `updateParticleLife` + `drawParticles` in `draw()`. See `ParticleLife`.
-    public func particleLife(count: Int, kinds: Int, radius: Double,
-                             bounds: Rectangle? = nil, seed: UInt64? = nil) -> ParticleLife {
+    public func makeParticleLife(count: Int, kinds: Int, radius: Double,
+                             bounds: Rectangle? = nil, seed: Int? = nil) -> ParticleLife {
         ParticleLife(count: count, kinds: kinds, bounds: bounds ?? self.bounds,
-                     radius: radius, seed: seed ?? UInt64(variation))
+                     radius: radius, seed: seed ?? variation)
     }
 
     /// Step a `ParticleLife` system one frame (builds its neighbor hash and runs its
@@ -568,14 +568,14 @@ open class Sketch {
     /// full canvas by default) interacting within `radius`, seeded from `seed` (this
     /// sketch's `variation` by default). `PPS.suggestedCount(for:in:)` estimates a
     /// good density. See `PPS`.
-    public func primordialParticles(count: Int, radius: Double,
-                                    bounds: Rectangle? = nil, seed: UInt64? = nil) -> PPS {
+    public func makePrimordialParticles(count: Int, radius: Double,
+                                    bounds: Rectangle? = nil, seed: Int? = nil) -> PPS {
         PPS(count: count, bounds: bounds ?? self.bounds, radius: radius,
-            seed: seed ?? UInt64(variation))
+            seed: seed ?? variation)
     }
 
     /// Step a `PPS` one frame (builds its neighbor hash and runs its turn/move kernel).
-    public func updatePPS(_ pps: PPS) { pps.recordStep(into: drawer) }
+    public func updatePrimordialParticles(_ pps: PPS) { pps.recordStep(into: drawer) }
 
     /// Draw a `PPS`'s particles as additive discs (colored by local crowd size).
     public func drawParticles(_ pps: PPS) {
@@ -586,13 +586,13 @@ open class Sketch {
     /// trail map, seeded from `seed` (this sketch's `variation` by default). Build it
     /// in `setup()`, then `updatePhysarum` + `drawImage(sim.image, in:)` in `draw()`.
     /// See `Physarum`.
-    public func physarum(agents: Int, resolution: Int, seed: UInt64? = nil) -> Physarum {
-        Physarum(agents: agents, resolution: resolution, seed: seed ?? UInt64(variation))
+    public func makePhysarum(agents: Int, resolution: Int, seed: Int? = nil) -> Physarum {
+        Physarum(agents: agents, resolution: resolution, seed: seed ?? variation)
     }
 
     /// Make a `Physarum` sim on a non-square `width`×`height` trail map.
-    public func physarum(agents: Int, width: Int, height: Int, seed: UInt64? = nil) -> Physarum {
-        Physarum(agents: agents, width: width, height: height, seed: seed ?? UInt64(variation))
+    public func makePhysarum(agents: Int, width: Int, height: Int, seed: Int? = nil) -> Physarum {
+        Physarum(agents: agents, width: width, height: height, seed: seed ?? variation)
     }
 
     /// Step a `Physarum` sim one frame (agents sense/steer/move/deposit, then the trail
@@ -604,12 +604,12 @@ open class Sketch {
     /// `seed` (this sketch's `variation` by default). Every behavior starts at weight
     /// zero, so set the ones you want. Build it in `setup()`, then `updateSwarm` +
     /// `drawParticles` in `draw()`. See `Swarm`.
-    public func swarm(count: Int, perceptionRadius: Double, colors: [Color] = [],
+    public func makeSwarm(count: Int, perceptionRadius: Double, colors: [Color] = [],
                       size: Double = 2.0, bounds: Rectangle? = nil,
-                      seed: UInt64? = nil) -> Swarm {
+                      seed: Int? = nil) -> Swarm {
         Swarm(count: count, bounds: bounds ?? self.bounds,
               perceptionRadius: perceptionRadius, colors: colors, size: size,
-              seed: seed ?? UInt64(variation))
+              seed: seed ?? variation)
     }
 
     /// Step a `Swarm` one frame (builds its neighbor hash, then sums the weighted
@@ -628,10 +628,10 @@ open class Sketch {
     /// (this sketch's `variation` by default). They start packed in a disc at the
     /// middle, which is where the structures grow from. Build it in `setup()`, then
     /// `updateParticleLenia` + `drawParticles` in `draw()`. See `ParticleLenia`.
-    public func particleLenia(count: Int, spacing: Double, bounds: Rectangle? = nil,
-                              seed: UInt64? = nil) -> ParticleLenia {
+    public func makeParticleLenia(count: Int, spacing: Double, bounds: Rectangle? = nil,
+                              seed: Int? = nil) -> ParticleLenia {
         ParticleLenia(count: count, bounds: bounds ?? self.bounds, spacing: spacing,
-                      seed: seed ?? UInt64(variation))
+                      seed: seed ?? variation)
     }
 
     /// Step a `ParticleLenia` one frame (a fresh neighbor sort and a walk downhill on
@@ -652,11 +652,11 @@ open class Sketch {
     /// units all come from how densely `count` particles fill `bounds`, so there is
     /// nothing else to name. Build it in `setup()`, then `updateSwarmChemistry` +
     /// `drawParticles` in `draw()`. See `SwarmChemistry`.
-    public func swarmChemistry(count: Int, kinds: Int = 6, size: Double = 2.6,
+    public func makeSwarmChemistry(count: Int, kinds: Int = 6, size: Double = 2.6,
                                bounds: Rectangle? = nil,
-                               seed: UInt64? = nil) -> SwarmChemistry {
+                               seed: Int? = nil) -> SwarmChemistry {
         SwarmChemistry(count: count, bounds: bounds ?? self.bounds, kinds: kinds,
-                       size: size, seed: seed ?? UInt64(variation))
+                       size: size, seed: seed ?? variation)
     }
 
     /// Step a `SwarmChemistry` one frame (the kinetic rule each particle's own recipe
@@ -674,9 +674,9 @@ open class Sketch {
     /// the attractor's own neighborhood from `seed` (this sketch's `variation` by
     /// default). Build it in `setup()`, then `updateAttractorFlow` + `drawParticles`
     /// in `draw()`. The flow is 3D, so it needs a camera. See `AttractorFlow`.
-    public func attractorFlow(count: Int, _ system: AttractorSystem,
-                              seed: UInt64? = nil) -> AttractorFlow {
-        AttractorFlow(count: count, system: system, seed: seed ?? UInt64(variation))
+    public func makeAttractorFlow(count: Int, _ system: AttractorSystem,
+                              seed: Int? = nil) -> AttractorFlow {
+        AttractorFlow(count: count, system: system, seed: seed ?? variation)
     }
 
     /// Step an `AttractorFlow` one frame (advances every particle along the velocity
@@ -696,10 +696,10 @@ open class Sketch {
     /// came closest. Seeded from `seed` (this sketch's `variation` by default). Build
     /// it in `setup()` (set `obstacles` there too), then `updateEvolution` +
     /// `drawParticles` in `draw()`. See `Evolution`.
-    public func evolution(count: Int, genes: Int, from start: Vector2, to target: Vector2,
-                          seed: UInt64? = nil) -> Evolution {
+    public func makeEvolution(count: Int, genes: Int, from start: Vector2, to target: Vector2,
+                          seed: Int? = nil) -> Evolution {
         Evolution(count: count, genes: genes, start: start, target: target,
-                  seed: seed ?? UInt64(variation))
+                  seed: seed ?? variation)
     }
 
     /// Step an `Evolution` one frame: another step of the current trial, or, when the
@@ -719,10 +719,10 @@ open class Sketch {
     /// by default) from `seed` (this sketch's `variation` by default). Build it in
     /// `setup()`, then `updateParticleFluid` + `drawParticles` in `draw()`. See
     /// `ParticleFluid`.
-    public func particleFluid(count: Int, radius: Double, spacing: Double? = nil,
-                              bounds: Rectangle? = nil, seed: UInt64? = nil) -> ParticleFluid {
+    public func makeParticleFluid(count: Int, radius: Double, spacing: Double? = nil,
+                              bounds: Rectangle? = nil, seed: Int? = nil) -> ParticleFluid {
         ParticleFluid(count: count, bounds: bounds ?? self.bounds, radius: radius,
-                      spacing: spacing, seed: seed ?? UInt64(variation))
+                      spacing: spacing, seed: seed ?? variation)
     }
 
     /// Step a `ParticleFluid` one frame (its fixed substeps: predict, rebuild the
@@ -741,10 +741,10 @@ open class Sketch {
     /// sketch's `variation` by default) so they fall into a pile. Build it in
     /// `setup()`, then `updateSoftBodies` + `drawParticles` in `draw()`. See
     /// `SoftBodies`.
-    public func softBodies(count: Int, radius: Double, spacing: Double? = nil,
-                           bounds: Rectangle? = nil, seed: UInt64? = nil) -> SoftBodies {
-        SoftBodies(count: count, bounds: bounds ?? self.bounds, radius: radius,
-                   spacing: spacing, seed: seed ?? UInt64(variation))
+    public func makeSoftBodies(bodies: Int, radius: Double, spacing: Double? = nil,
+                           bounds: Rectangle? = nil, seed: Int? = nil) -> SoftBodies {
+        SoftBodies(bodies: bodies, bounds: bounds ?? self.bounds, radius: radius,
+                   spacing: spacing, seed: seed ?? variation)
     }
 
     /// Step a `SoftBodies` system one frame (its fixed substeps: build the neighbor
@@ -989,11 +989,11 @@ open class Sketch {
     public func pointLight(_ color: Color, at position: Vector3, intensity: Double = 1,
                            specular: Color? = nil, softness: Double = 0,
                            profile: IESProfile? = nil,
-                           axis: Vector3 = Vector3(0, -1, 0), roll: Double = 0,
+                           direction: Vector3 = Vector3(0, -1, 0), roll: Double = 0,
                            castsShadow: Bool = true) {
         drawer.addLight(.point(color, at: position, intensity: intensity,
                                specular: specular, softness: softness,
-                               profile: profile, axis: axis, roll: roll,
+                               profile: profile, direction: direction, roll: roll,
                                castsShadow: castsShadow))
     }
 
@@ -1004,12 +1004,12 @@ open class Sketch {
     /// shapes the throw inside the cone, a `cookie` projects an image through it
     /// (a gobo, a gel), and `roll` spins both about the beam.
     public func spotLight(_ color: Color, at position: Vector3, direction: Vector3,
-                          angle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1,
+                          coneAngle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1,
                           specular: Color? = nil, softness: Double = 0,
                           profile: IESProfile? = nil, cookie: LightCookie? = nil,
                           roll: Double = 0, castsShadow: Bool = true) {
         drawer.addLight(.spot(color, at: position, direction: direction,
-                              angle: angle, penumbra: penumbra, intensity: intensity,
+                              coneAngle: coneAngle, penumbra: penumbra, intensity: intensity,
                               specular: specular, softness: softness,
                               profile: profile, cookie: cookie, roll: roll,
                               castsShadow: castsShadow))
@@ -1020,25 +1020,25 @@ open class Sketch {
     /// axis oriented by the `up` hint. A panel shades like studio lighting: highlights
     /// stretch into its reflection, shading softens with its size, and brightness falls
     /// off with distance (`color` × `intensity` is the panel's radiance, so a bigger
-    /// panel casts more light). `twoSided` makes both faces emit.
-    public func rectLight(_ color: Color, at position: Vector3, direction: Vector3,
+    /// panel casts more light). `isTwoSided` makes both faces emit.
+    public func rectangleLight(_ color: Color, at position: Vector3, direction: Vector3,
                           width: Double, height: Double, up: Vector3 = .unitY,
-                          twoSided: Bool = false, intensity: Double = 1,
+                          isTwoSided: Bool = false, intensity: Double = 1,
                           specular: Color? = nil, castsShadow: Bool = true) {
-        drawer.addLight(.rect(color, at: position, direction: direction,
+        drawer.addLight(.rectangle(color, at: position, direction: direction,
                               width: width, height: height, up: up,
-                              twoSided: twoSided, intensity: intensity, specular: specular,
+                              isTwoSided: isTwoSided, intensity: intensity, specular: specular,
                               castsShadow: castsShadow))
     }
 
     /// Add a disk area light: a glowing circular panel of `radius` centered at
     /// `position`, facing along `direction` (a ring light's face, a recessed ceiling
-    /// can). Shades and falls off like the rect panel; `twoSided` makes both faces emit.
+    /// can). Shades and falls off like the rectangle panel; `isTwoSided` makes both faces emit.
     public func diskLight(_ color: Color, at position: Vector3, direction: Vector3,
-                          radius: Double, twoSided: Bool = false, intensity: Double = 1,
+                          radius: Double, isTwoSided: Bool = false, intensity: Double = 1,
                           specular: Color? = nil, castsShadow: Bool = true) {
         drawer.addLight(.disk(color, at: position, direction: direction,
-                              radius: radius, twoSided: twoSided,
+                              radius: radius, isTwoSided: isTwoSided,
                               intensity: intensity, specular: specular,
                               castsShadow: castsShadow))
     }
@@ -1067,8 +1067,8 @@ open class Sketch {
     /// `draw()`; move `position` and it slides across the scene.
     ///
     /// ```swift
-    /// decal(sticker, at: Vector3(0, 120, 0), width: 140)          // stamps down onto the floor
-    /// decal(poster, at: wall, direction: Vector3(0, 0, -1), width: 300)
+    /// drawDecal(sticker, at: Vector3(0, 120, 0), width: 140)      // stamps down onto the floor
+    /// drawDecal(poster, at: wall, direction: Vector3(0, 0, -1), width: 300)
     /// ```
     ///
     /// `height` defaults to the picture's own proportions, `depth` to the smaller
@@ -1077,7 +1077,7 @@ open class Sketch {
     /// projection fade the stamp out rather than smearing it. Up to 8 decals per
     /// frame; wireframe and matcap surfaces, point clouds, and raymarched fields
     /// don't receive them.
-    public func decal(_ decal: Decal, at position: Vector3,
+    public func drawDecal(_ decal: Decal, at position: Vector3,
                       direction: Vector3 = Vector3(0, -1, 0),
                       width: Double, height: Double? = nil, depth: Double? = nil,
                       roll: Double = 0, opacity: Double = 1) {
@@ -1401,8 +1401,8 @@ open class Sketch {
 
     /// Flare on the frame's bright lights, naming just the two things most worth
     /// changing: how strong it is, and which lens makes it.
-    public func lensFlare(strength: Double, lens: Lens = .heliar) {
-        drawer.lensFlare(LensFlare(lens: lens, strength: strength))
+    public func lensFlare(amount: Double, lens: Lens = .heliar) {
+        drawer.lensFlare(LensFlare(lens: lens, amount: amount))
     }
 
     /// Stop flaring (the default).
@@ -1467,7 +1467,7 @@ open class Sketch {
     /// floor in a room reflects the sky instead of the room. With it on, the rays spread
     /// by the surface's own roughness and each pixel also borrows the rays its neighbors
     /// sent, which is what turns a handful of rays into a smooth reflection instead of
-    /// glitter. A near-mirror surface looks the same either way.
+    /// sparkle. A near-mirror surface looks the same either way.
     ///
     /// It costs one more full-screen pass, and it reaches surfaces up to about
     /// three-quarters rough; past that the environment is the honest answer and Ollin
@@ -1663,28 +1663,28 @@ open class Sketch {
     /// the result to `drawOcean(_:)`.
     ///
     /// ```swift
-    /// let sea = oceanField(.swell)
+    /// let sea = makeOceanField(.swell)
     /// drawOcean(sea, segments: 220, tiles: 3)
     /// ```
     ///
     /// `resolution` is how many texels the field carries along each side: 256
     /// is the default, 128 is cheaper and coarser, 512 holds finer chop. It is
     /// rounded to a power of two, which is what the transform works on.
-    public func oceanField(_ ocean: Ocean = .breeze, resolution: Int = 256) -> OceanField {
-        drawer.oceanField(ocean, time: time, resolution: resolution)
+    public func makeOceanField(_ ocean: Ocean = .breeze, resolution: Int = 256) -> OceanField {
+        drawer.makeOceanField(ocean, time: time, resolution: resolution)
     }
 
     /// One frame of a sea at an instant you name, rather than at the sketch
     /// clock: for scrubbing, for a still, or for a sea that runs at its own
-    /// speed (`oceanField(.storm, at: time * 0.4)`).
-    public func oceanField(_ ocean: Ocean, at time: Double, resolution: Int = 256) -> OceanField {
-        drawer.oceanField(ocean, time: time, resolution: resolution)
+    /// speed (`makeOceanField(.storm, at: time * 0.4)`).
+    public func makeOceanField(_ ocean: Ocean, at time: Double, resolution: Int = 256) -> OceanField {
+        drawer.makeOceanField(ocean, time: time, resolution: resolution)
     }
 
     /// Draw a wave field as water: a grid the GPU builds inside the draw call,
     /// each corner moved by the field and lit as a water surface (the body color
     /// under it, the sky or the environment reflected off it, the sun's
-    /// glitter, and foam where a crest folds over). The transform stack places
+    /// sparkle, and foam where a crest folds over). The transform stack places
     /// the patch and the camera decides the view; a no-op without a camera.
     ///
     /// `segments` is how finely the grid is cut (more is smoother and dearer),
@@ -1957,7 +1957,7 @@ open class Sketch {
     /// 2D mark placed with `depth(at: Vector3)` at real world coordinates occludes,
     /// and is occluded by, the feed in meters.
     ///
-    /// Set a matching camera first — `camera(.fromIntrinsics(frame.intrinsics))` is
+    /// Set a matching camera first: `camera(.intrinsic(frame.intrinsics))` is
     /// the one that aligns with the feed — or this is a no-op (it needs the camera's
     /// near/far). The feed is **letterboxed** into the canvas by its own aspect (no
     /// stretch, whatever the `canvasSize`), and the metric camera letterboxes to
@@ -2026,7 +2026,7 @@ open class Sketch {
     /// ```
     public func drawText(_ string: String, at position: Vector3,
                          size: Double? = nil, color: Color? = nil,
-                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+                         align horizontal: HorizontalTextAlign? = nil, _ vertical: VerticalTextAlign? = nil) {
         guard let screen = project(position) else { return }
         drawText(string, screen.x, screen.y,
                  size: size, color: color, align: horizontal, vertical)
@@ -2101,7 +2101,7 @@ open class Sketch {
             textures: [reading, writing], params: params.bytes))
     }
 
-    /// Step a `Simulation` one frame — records its `subSteps` kernel dispatches and
+    /// Step a `Simulation` one frame: records its `substeps` kernel dispatches and
     /// swaps its ping-pong textures so `current`/`image` end on the freshly written
     /// field. `custom` passes up to four live floats the step reads as `custom.x…w`.
     public func updateSimulation(_ simulation: Simulation, custom: SIMD4<Float> = .zero) {
@@ -2365,12 +2365,12 @@ open class Sketch {
         markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawPoint(x, y, size)
     }
-    public func drawPoint(_ p: Vector2,
+    public func drawPoint(at p: Vector2,
                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawPoint(p.x, p.y)
     }
-    public func drawPoint(_ p: Vector2, size: Double,
+    public func drawPoint(at p: Vector2, size: Double,
                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawPoint(p.x, p.y, size)
@@ -2392,7 +2392,7 @@ open class Sketch {
     /// subtract, intersect, morph) into one region, filled with the current `fill`
     /// (or each leaf's `.colored`) and stroked along the merged outline. Build the
     /// field with the `SDF` value type, e.g.
-    /// `drawSDF(SDF.circle(radius: 120).smoothUnion(.rect(width: 200, height: 80).at(x: 90, y: 0), k: 40))`.
+    /// `drawSDF(SDF.circle(radius: 120).smoothUnion(.rect(width: 200, height: 80).at(90, 0), k: 40))`.
     public func drawSDF(_ sdf: SDF) {
         drawer.drawSDF(sdf)
     }
@@ -2400,7 +2400,7 @@ open class Sketch {
     /// subtract, intersect, morph) into one sphere-traced surface, lit by the scene's
     /// lights and depth-composited with the meshes. Requires an active camera; build
     /// the field with the `SDF3D` value type, e.g.
-    /// `drawSDF3D(SDF3D.sphere(radius: 1).smoothUnion(.box(size: 1).at(x: 1.2, y: 0, z: 0), k: 0.5))`.
+    /// `drawSDF3D(SDF3D.sphere(radius: 1).smoothUnion(.box(size: 1).at(1.2, 0, 0), k: 0.5))`.
     public func drawSDF3D(_ sdf: SDF3D) {
         drawer.drawSDF3D(sdf)
     }
@@ -2549,15 +2549,15 @@ open class Sketch {
         drawer.beginCombineDomain(.polar(count: n), .polar(axis: unit, count: n))
         body(); drawer.endCombine()
     }
-    public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
+    public func drawEllipse(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double,
                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .xy); defer { clearSite() }
-        drawer.drawEllipse(x, y, rx, ry)
+        drawer.drawEllipse(x, y, radiusX, radiusY)
     }
-    public func drawEllipse(center: Vector2, rx: Double, ry: Double,
+    public func drawEllipse(center: Vector2, radiusX: Double, radiusY: Double,
                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .point); defer { clearSite() }
-        drawer.drawEllipse(center.x, center.y, rx, ry)
+        drawer.drawEllipse(center.x, center.y, radiusX, radiusY)
     }
     public func drawTriangle(_ x: Double, _ y: Double, _ radius: Double,
                              file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
@@ -2837,17 +2837,17 @@ open class Sketch {
         markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawCoolS(center.x, center.y, size)
     }
-    public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
+    public func drawArc(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double,
                         start: Double, stop: Double, mode: ArcMode = .open,
                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .xy); defer { clearSite() }
-        drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)
+        drawer.drawArc(x, y, radiusX, radiusY, start: start, stop: stop, mode: mode)
     }
-    public func drawArc(center: Vector2, rx: Double, ry: Double,
+    public func drawArc(center: Vector2, radiusX: Double, radiusY: Double,
                         start: Double, stop: Double, mode: ArcMode = .open,
                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
         markSite(file, line, column, .point); defer { clearSite() }
-        drawer.drawArc(center.x, center.y, rx, ry, start: start, stop: stop, mode: mode)
+        drawer.drawArc(center.x, center.y, radiusX, radiusY, start: start, stop: stop, mode: mode)
     }
     public func drawPolyline(_ points: [Vector2], closed: Bool = false) {
         drawer.drawPolyline(points, closed: closed)
@@ -2864,12 +2864,12 @@ open class Sketch {
 
     /// Record where the pointer is now into `mark`, timed by this frame.
     ///
-    /// Sugar for `mark.record(Vector2(mouseX, mouseY), dt: deltaTime, pressure: pressure)`:
+    /// Sugar for `mark.record(Vector2(mouseX, mouseY), deltaTime: deltaTime, pressure: pressure)`:
     /// it hands the mark the three things it needs to measure a stroke, and using
     /// `deltaTime` is what makes the mark come out the same at any frame rate.
     /// Call it from `draw()` while the pointer is down.
     public func record(into mark: inout StrokeMark) {
-        mark.record(Vector2(mouseX, mouseY), dt: deltaTime, pressure: pressure)
+        mark.record(Vector2(mouseX, mouseY), deltaTime: deltaTime, pressure: pressure)
     }
     public func drawPolygon(_ points: [Vector2]) { drawer.drawPolygon(points) }
     public func drawShape(_ shape: Shape) { drawer.drawShape(shape) }
@@ -2960,6 +2960,12 @@ open class Sketch {
         drawer.drawImage(image, in: Rectangle(x: x, y: y,
                                               width: Double(image.width), height: Double(image.height)))
     }
+    /// Draw `image` at its native pixel size with its top-left corner at `corner`,
+    /// the `Vector2` twin of ``Sketch/drawImage(_:_:_:)``.
+    public func drawImage(_ image: Image, corner: Vector2) {
+        drawer.drawImage(image, in: Rectangle(x: corner.x, y: corner.y,
+                                              width: Double(image.width), height: Double(image.height)))
+    }
     /// Draw `image` scaled to fill a `width`×`height` box with its top-left at `(x, y)`.
     public func drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double) {
         drawer.drawImage(image, in: Rectangle(x: x, y: y, width: width, height: height))
@@ -2997,14 +3003,14 @@ open class Sketch {
     /// filter (see `RenderTarget`). `scale` is the layer's internal resolution as a
     /// fraction of the canvas (1 = full); drop it for cheap blur/glow layers.
     /// Create it inside `draw()`; it's a per-frame handle.
-    public func renderTarget(scale: Double = 1) -> RenderTarget {
+    public func makeRenderTarget(scale: Double = 1) -> RenderTarget {
         RenderTarget(width: Int(width.rounded()), height: Int(height.rounded()),
                      scale: scale, drawer: drawer)
     }
 
     /// Make an off-screen layer of an explicit pixel size (rather than the canvas
     /// size), for a layer that isn't full-canvas.
-    public func renderTarget(width: Int, height: Int, scale: Double = 1) -> RenderTarget {
+    public func makeRenderTarget(width: Int, height: Int, scale: Double = 1) -> RenderTarget {
         RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
     }
 
@@ -3050,16 +3056,16 @@ open class Sketch {
 
     /// Make a full-canvas feedback layer: a layer that remembers itself across
     /// frames, for trails, tunnels, and video-feedback looks (see `Feedback`).
-    /// Unlike `renderTarget()`, it's **persistent**: create it once in `setup()`
+    /// Unlike `makeRenderTarget()`, it's **persistent**: create it once in `setup()`
     /// and store it; its identity is what carries state from one frame to the next.
     /// `scale` is its internal resolution as a fraction of the canvas (1 = full).
-    public func feedback(scale: Double = 1) -> Feedback {
+    public func makeFeedback(scale: Double = 1) -> Feedback {
         Feedback(width: Int(width.rounded()), height: Int(height.rounded()),
                  scale: scale, drawer: drawer)
     }
 
     /// Make a feedback layer of an explicit pixel size, rather than the canvas size.
-    public func feedback(width: Int, height: Int, scale: Double = 1) -> Feedback {
+    public func makeFeedback(width: Int, height: Int, scale: Double = 1) -> Feedback {
         Feedback(width: width, height: height, scale: scale, drawer: drawer)
     }
 
@@ -3079,16 +3085,16 @@ open class Sketch {
 
     /// Make a full-canvas simulation field that evolves by `sim` each frame (see
     /// `SimField`/`Sim`): reaction-diffusion, Game of Life, and other fields. Like
-    /// `feedback()`, it's **persistent** — create it once in `setup()` and store it.
+    /// `makeFeedback()`, it's **persistent**: create it once in `setup()` and store it.
     /// `scale` is the field's internal resolution as a fraction of the canvas; lower
     /// it for coarser features and chunkier cells.
-    public func simField(_ sim: Sim, scale: Double = 1) -> SimField {
+    public func makeSimField(_ sim: Sim, scale: Double = 1) -> SimField {
         SimField(sim: sim, width: Int(width.rounded()), height: Int(height.rounded()),
                  scale: scale, drawer: drawer)
     }
 
     /// Make a simulation field of an explicit pixel size, rather than the canvas size.
-    public func simField(_ sim: Sim, width: Int, height: Int, scale: Double = 1) -> SimField {
+    public func makeSimField(_ sim: Sim, width: Int, height: Int, scale: Double = 1) -> SimField {
         SimField(sim: sim, width: width, height: height, scale: scale, drawer: drawer)
     }
 
@@ -3118,7 +3124,7 @@ open class Sketch {
     /// Stop tinting images — draw them unchanged again (the default), undoing `tint(_:)`.
     public func noTint() { drawer.noTint() }
     /// Set the active text font for `drawText` to a bitmap (pixel-grid) font —
-    /// `.builtin` (Ollin's bundled Cozette pixel font), a loaded BDF/`.fnt`, or
+    /// `.builtIn` (Ollin's bundled Cozette pixel font), a loaded BDF/`.fnt`, or
     /// a sprite grid.
     public func textFont(_ font: BitmapFont) { drawer.textFont(font) }
     /// Set the active text font for `drawText` to an outline (vector `.ttf`/`.otf`)
@@ -3127,7 +3133,7 @@ open class Sketch {
     /// The default font is `OutlineFont.systemMedium`, so text works with no setup.
     public func textFont(_ font: OutlineFont) { drawer.textFont(font) }
     /// Set the active text font for `drawText` to a stroke (single-line / plotter)
-    /// font — `StrokeFont.builtin` (Hershey Sans) or a loaded `.jhf`. Glyphs are
+    /// font: `StrokeFont.builtIn` (Hershey Sans) or a loaded `.jhf`. Glyphs are
     /// open pen paths drawn with the current `stroke`; `fill` is ignored.
     public func textFont(_ font: StrokeFont) { drawer.textFont(font) }
     /// Set the rendered text height in points — the height one line of glyphs
@@ -3135,8 +3141,8 @@ open class Sketch {
     public func textSize(_ size: Double) { drawer.textSize(size) }
     /// Set how `drawText` anchors text to its position: horizontal
     /// `.left`/`.center`/`.right` and vertical `.top`/`.middle`/`.baseline`/`.bottom`
-    /// (default `.left`, `.baseline`). See `TextAlignH` / `TextAlignV`.
-    public func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
+    /// (default `.left`, `.baseline`). See `HorizontalTextAlign` / `VerticalTextAlign`.
+    public func textAlign(_ horizontal: HorizontalTextAlign, _ vertical: VerticalTextAlign = .baseline) {
         drawer.textAlign(horizontal, vertical)
     }
     /// Set how outline text is rendered: `.outline` (default, per-glyph vector fill
@@ -3220,7 +3226,7 @@ open class Sketch {
     /// the usual way.
     public func drawText(_ string: String, _ x: Double, _ y: Double,
                          size: Double? = nil, color: Color? = nil,
-                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+                         align horizontal: HorizontalTextAlign? = nil, _ vertical: VerticalTextAlign? = nil) {
         drawer.drawText(string, x, y, size: size, color: color,
                         alignH: horizontal, alignV: horizontal == nil ? nil : (vertical ?? .baseline))
     }
@@ -3232,7 +3238,7 @@ open class Sketch {
     /// ```
     public func drawText(_ string: String, at position: Vector2,
                          size: Double? = nil, color: Color? = nil,
-                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+                         align horizontal: HorizontalTextAlign? = nil, _ vertical: VerticalTextAlign? = nil) {
         drawText(string, position.x, position.y,
                  size: size, color: color, align: horizontal, vertical)
     }
@@ -3247,7 +3253,7 @@ open class Sketch {
     /// way to find out before you draw.
     ///
     /// ```swift
-    /// textFont(BitmapFont.builtin)
+    /// textFont(BitmapFont.builtIn)
     /// print(textMissingCharacters("日本語"))     // ["日", "本", "語"]
     /// ```
     public func textMissingCharacters(_ string: String) -> [Character] {
@@ -3294,7 +3300,7 @@ open class Sketch {
     /// back untouched.
     public func drawText(_ string: String, in rect: Rectangle,
                          size: Double? = nil, color: Color? = nil,
-                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+                         align horizontal: HorizontalTextAlign? = nil, _ vertical: VerticalTextAlign? = nil) {
         drawer.withTextStyle(size: size, color: color,
                              alignH: horizontal,
                              alignV: horizontal == nil ? nil : (vertical ?? .baseline)) {
@@ -3923,7 +3929,7 @@ open class Sketch {
     /// Fired by the runner after the render, handing the rendered frame to each
     /// extension that asked for it (via `wantsRenderedFrame`).
     func runFrameRendered(_ image: CGImage) {
-        for e in extensions where e.wantsRenderedFrame { e.frameRendered(self, image) }
+        for e in extensions where e.wantsRenderedFrame { e.frameRendered(self, image: image) }
     }
 
     /// Whether any registered extension currently wants the rendered frame as a

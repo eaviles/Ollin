@@ -22,7 +22,7 @@ struct SSRBenchmarkTests {
     /// through `ssrStepsOverride`. A fixed camera azimuth keeps it deterministic.
     final class BenchScene: Sketch {
         override func draw() {
-            let scene = renderTarget()
+            let scene = makeRenderTarget()
             withTarget(scene) {
                 background(Color(hex: 0x06080d))
                 camera(.orbiting(target: Vector3(0, 0.7, 0), radius: 10,
@@ -50,7 +50,7 @@ struct SSRBenchmarkTests {
                 }
             }
             drawImage(scene.combined(with: scene.depth,
-                                     .screenSpaceReflections(intensity: 0.9, roughness: 0.15,
+                                     .screenSpaceReflections(amount: 0.9, roughness: 0.15,
                                                              fresnel: 0.8)).image, 0, 0)
         }
     }

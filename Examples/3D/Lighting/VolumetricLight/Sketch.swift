@@ -46,14 +46,14 @@ final class VolumetricLight: Sketch {
         // The key: warm, high on the left, throwing the window across the set.
         spotLight(Color(hue: 0.10, saturation: 0.28, brightness: 1.0),
                   at: Vector3(-4.6, 6.0, 2.6), direction: Vector3(0.62, -0.74, -0.28),
-                  angle: .pi / 8, penumbra: 0.22, intensity: 3.2,
+                  coneAngle: .pi / 8, penumbra: 0.22, intensity: 3.2,
                   cookie: windowGobo, roll: 0.18)
 
         // The rim: cool and faint, crossing the set laterally behind the props (a
         // beam reads best crossing the view; one aimed down the lens floods it).
         spotLight(Color(hue: 0.58, saturation: 0.45, brightness: 1.0),
                   at: Vector3(5.6, 2.6, -4.8), direction: Vector3(-0.92, -0.18, 0.36),
-                  angle: .pi / 10, penumbra: 0.5, intensity: 0.7)
+                  coneAngle: .pi / 10, penumbra: 0.5, intensity: 0.7)
 
         castShadows()            // the props carve shafts out of the key's beam
         volumetricLight(0.9, anisotropy: 0.45)

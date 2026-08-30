@@ -18,7 +18,7 @@ There are two scenes to composite against. One is a **3D-camera** scene, such as
 - [Projecting a world point to the canvas](#project) - `project`
 - [Billboards](#billboard) - `withBillboard(at:)`
 - [A depth-map scene](#scene) - `drawDepthScene`, `depth(_:)` (a depth feed)
-- [A metric depth scene](#metric) - `Camera3D.fromIntrinsics`, `drawDepthScene(_:)` (true meters)
+- [A metric depth scene](#metric) - `Camera3D.intrinsic`, `drawDepthScene(_:)` (true meters)
 - [How occlusion reads](#how)
 - [Notes](#notes)
 
@@ -118,7 +118,7 @@ guard let frame = device.latestFrame else { return }       // an RGBDFrame (mete
 
 // A camera from the feed's own lens. A point cloud, the depth scene, and any
 // placed object now live in one space measured in meters.
-camera(.fromIntrinsics(frame.intrinsics))
+camera(.intrinsic(frame.intrinsics))
 
 // The color picture as the backdrop AND the frame's metric depth written into
 // the depth buffer (this overload takes the RGBDFrame, not a gray Image).
@@ -131,9 +131,9 @@ withBillboard(at: Vector3(0, 0.2, -1)) {
 }
 ```
 
-The key difference from the gray-map scene is how depth is placed. Use **`depth(at: worldPoint)`** in real meters, or `withBillboard`, which projects *and* sets the depth, rather than the normalized `depth(_ t:)`. The same metric `Camera3D` drives both the feed's depth and the object's. `Camera3D.fromIntrinsics` sits the camera at the origin looking down −z, exactly where `RGBDFrame.pointCloud(...)` and `unproject` put their points. So a metric `drawDepthScene` and a `drawPointCloud` of the same frame land on top of each other. Move the camera's `eye`/`target` afterward to orbit a drawn cloud, or leave it at the default to keep it aligned with a depth-scene backdrop.
+The key difference from the gray-map scene is how depth is placed. Use **`depth(at: worldPoint)`** in real meters, or `withBillboard`, which projects *and* sets the depth, rather than the normalized `depth(_ t:)`. The same metric `Camera3D` drives both the feed's depth and the object's. `Camera3D.intrinsic` sits the camera at the origin looking down −z, exactly where `RGBDFrame.pointCloud(...)` and `unproject` put their points. So a metric `drawDepthScene` and a `drawPointCloud` of the same frame land on top of each other. Move the camera's `eye`/`target` afterward to orbit a drawn cloud, or leave it at the default to keep it aligned with a depth-scene backdrop.
 
-Two practical notes. The metric overload **needs a camera**, since it reads the near/far that map meters onto the depth buffer, and `fromIntrinsics` is the matching one. Without a camera it's a no-op. It also **letterboxes the feed into the canvas** by the feed's own aspect. The picture is never stretched, whatever the `canvasSize` or the phone's orientation. The metric camera letterboxes to match, so placed geometry stays glued to the picture, with bars where the aspects differ. The [`3D/MetricDepthScene`](../../Examples/3D/Depth/MetricDepthScene/) example floats a grid of markers at a draggable metric plane in a live LiDAR feed. Stepping within that many meters of the camera blocks them.
+Two practical notes. The metric overload **needs a camera**, since it reads the near/far that map meters onto the depth buffer, and `intrinsic` is the matching one. Without a camera it's a no-op. It also **letterboxes the feed into the canvas** by the feed's own aspect. The picture is never stretched, whatever the `canvasSize` or the phone's orientation. The metric camera letterboxes to match, so placed geometry stays glued to the picture, with bars where the aspects differ. The [`3D/MetricDepthScene`](../../Examples/3D/Depth/MetricDepthScene/) example floats a grid of markers at a draggable metric plane in a live LiDAR feed. Stepping within that many meters of the camera blocks them.
 
 <a id="how"></a>
 ### How occlusion reads

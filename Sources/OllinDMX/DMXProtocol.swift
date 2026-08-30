@@ -15,7 +15,7 @@ public enum DMXProtocol: String, Equatable, Sendable {
     /// The UDP port the protocol standardizes on.
     public var defaultPort: Int {
         switch self {
-        case .artNet: return ArtDmxPacket.port
+        case .artNet: return ArtDMXPacket.port
         case .sACN: return SACNDataPacket.port
         }
     }

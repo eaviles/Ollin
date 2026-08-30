@@ -101,11 +101,11 @@ final class PathTraced: Sketch {
         background(Color(hex: 0x0B0C10))
 
         // The studio environment lights the set and fills mirror misses.
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
 
         // A warm softbox from the left: the traced export samples its real surface,
         // so its shadows sharpen at contact and melt with distance.
-        rectLight(Color(hue: 0.08, saturation: 0.35, brightness: 1.0),
+        rectangleLight(Color(hue: 0.08, saturation: 0.35, brightness: 1.0),
                   at: Vector3(-3.4, 2.6, 1.4),
                   direction: Vector3(0.66, -0.6, -0.46),
                   width: 2.6, height: 1.8, intensity: 6)
@@ -194,7 +194,7 @@ final class PathTraced: Sketch {
             translate(4.0, 0.5, 0.6)
             rotateZ(0.5 * .pi)
             var bar = Mesh.box(width: 0.24, height: 2.4, depth: 0.24)
-            bar.material = MeshMaterial(emissiveFactor: Color(red: 1.4, green: 2.3, blue: 2.6))
+            bar.material = MeshMaterial(emissiveColor: Color(red: 1.4, green: 2.3, blue: 2.6))
             drawMesh(bar)
         }
     }

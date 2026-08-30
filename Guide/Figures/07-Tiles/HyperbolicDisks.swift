@@ -39,7 +39,7 @@ final class HyperbolicDisks: Sketch {
         // {7,3}: meeting is odd, so fade by depth out from the middle.
         drawDisk(hyperbolicTiling(sides: 7, meeting: 3, in: panels[1], minEdge: 3),
                  in: panels[1]) { tile in
-            Color.mix(ivory, indigo, t: min(Double(tile.depth) / 4, 1))
+            Color.mix(ivory, indigo, min(Double(tile.depth) / 4, 1))
         }
 
         let titles = ["{5,4}: parity closes a checkerboard", "{7,3}: fading by depth"]

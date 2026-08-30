@@ -21,8 +21,8 @@ final class Verbs: Sketch {
 
         let coral = Color(hex: 0xE4572E)
         let blue = Color(hex: 0x3A6EA5)
-        let a = SDF.circle(radius: 58).colored(coral).at(x: -34, y: -8)
-        let b = SDF.rect(width: 108, height: 68, cornerRadius: 16).colored(blue).at(x: 40, y: 14)
+        let a = SDF.circle(radius: 58).colored(coral).at(-34, -8)
+        let b = SDF.rect(width: 108, height: 68, cornerRadius: 16).colored(blue).at(40, 14)
 
         let tiles: [(String, SDF)] = [
             ("union", a.union(b)),

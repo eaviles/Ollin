@@ -14,7 +14,7 @@ import Ollin
 struct CollisionFilter3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// A world with a static slab at y = 1 and a crate dropped onto it from
@@ -48,10 +48,10 @@ struct CollisionFilter3DTests {
     @Test func aRuleReadsBothWays() {
         let world = World3D()
         world.ignoreCollisions(between: "b", and: "a")
-        #expect(!world.collides("a", with: "b"))
-        #expect(!world.collides("b", with: "a"))
+        #expect(!world.collides(between: "a", and: "b"))
+        #expect(!world.collides(between: "b", and: "a"))
         world.allowCollisions(between: "a", and: "b")
-        #expect(world.collides("b", with: "a"))
+        #expect(world.collides(between: "b", and: "a"))
     }
 
     /// Everything collides until something says otherwise, the diagonal
@@ -84,7 +84,7 @@ struct CollisionFilter3DTests {
                                   at: Vector3(0, 2, 0), group: "cargo")
         run(world, steps: 150)
         #expect(crate.position.y > 0.2, "it landed on the floor like anything else")
-        #expect(world.collides("cargo", with: .default))
+        #expect(world.collides(between: "cargo", and: .default))
     }
 
     /// The groups a world knows, in the order named. This is what makes a typo
@@ -94,7 +94,7 @@ struct CollisionFilter3DTests {
         world.addBody(.sphere(radius: 0.2), at: .zero, group: "sparks")
         world.ignoreCollisions(between: "sparks", and: "playr")   // the typo
         #expect(world.collisionGroups == [.default, "sparks", "playr"])
-        #expect(world.collides("sparks", with: "player"), "the rule missed it")
+        #expect(world.collides(between: "sparks", and: "player"), "the rule missed it")
     }
 
     // MARK: Everywhere it has to reach
@@ -114,7 +114,7 @@ struct CollisionFilter3DTests {
             if filtered { world.ignoreCollisions(between: "cargo", and: "shelf") }
             var began = 0
             for _ in 0 ..< 150 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 began += world.contacts.filter {
                     $0.phase == .began && $0.involves(slab) && $0.involves(crate)
                 }.count
@@ -139,7 +139,7 @@ struct CollisionFilter3DTests {
             if filtered { world.ignoreCollisions(between: "cargo", and: "gate") }
             var seen = false
             for _ in 0 ..< 200 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 if !gate.touching.isEmpty { seen = true }
             }
             return seen
@@ -282,7 +282,7 @@ struct CollisionFilter3DTests {
             right.move(Vector3(-2, 0, 0))
             var closest = Double.infinity
             for _ in 0 ..< 120 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 closest = min(closest, abs(left.position.x - right.position.x))
             }
             return closest
@@ -360,7 +360,7 @@ struct CollisionFilter3DTests {
                 at: Vector3(0, 2, 0), mass: 0.5, group: "drapes"))
             if filtered { world.ignoreCollisions(between: "drapes", and: "props") }
             run(world, steps: 240)
-            return cloth.center.y
+            return cloth.position.y
         }
         #expect(try restingHeight(filtered: false) > 0,
                 "it settles on top of the block")
@@ -446,7 +446,7 @@ struct CollisionFilter3DTests {
             world.ignoreCollisions(between: "cargo", and: "shelf")
             var trace: [Double] = []
             for step in 0 ..< 150 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 if step % 30 == 0 { trace += [a.position.y, b.position.y] }
             }
             return trace

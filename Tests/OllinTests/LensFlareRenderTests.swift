@@ -202,7 +202,7 @@ private final class FlareProbe: Sketch {
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 14)
         if wantsFlare {
             lensFlare(LensFlare(lens: Lens.heliar.multicoated().stopped(to: fStop),
-                                strength: 1, star: star))
+                                amount: 1, star: star))
         }
         if cancels { noLensFlare() }
 

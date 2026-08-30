@@ -44,7 +44,7 @@ final class PointLift: Sketch {
     }
 
     override func mousePressed() {
-        guard let rect = camera.fittedRect(in: bounds) else { return }
+        guard let rect = camera.fittedRectangle(in: bounds) else { return }
         let point = mouse
         if modifiers.contains(.shift) {
             picker.exclude(point, in: rect)
@@ -56,7 +56,7 @@ final class PointLift: Sketch {
 
     override func keyPressed() {
         if key == "c" || key == "C" {
-            picker.clear()
+            picker.reset()
             lastClick = nil
         }
     }

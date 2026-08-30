@@ -59,7 +59,7 @@ public struct TextGlyph {
 
     /// This glyph's normalized position across the run, `0...1` (0 for a lone
     /// glyph), convenient for spreading a gradient or a phase across the word.
-    public var t: Double { count <= 1 ? 0 : Double(index) / Double(count - 1) }
+    public var progress: Double { count <= 1 ? 0 : Double(index) / Double(count - 1) }
 
     /// The center of the glyph's advance box — the natural pivot for rotating or
     /// scaling the glyph in place.

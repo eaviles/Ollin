@@ -35,7 +35,7 @@ final class RaymarchedDomain: Sketch {
         // The value-type form of the same idea: one wedge mirrored across x and z into a
         // four-fold cluster floating above the lattice (four cones from one built leaf).
         let wedge = SDF3D.cone(radius: 0.45, height: 1.0).colored(Color(hex: 0xfacc15))
-            .at(x: 0.85, y: 0, z: 0.85)
-        drawSDF3D(wedge.mirrored(x: true, y: false, z: true).at(x: 0, y: 2.3, z: 0))
+            .at(0.85, 0, 0.85)
+        drawSDF3D(wedge.mirrored(x: true, y: false, z: true).at(0, 2.3, 0))
     }
 }

@@ -19,7 +19,7 @@ internal import CJolt
 /// if isKeyDown(.rightArrow) { heading.x += 1 }
 /// walker.move(heading.normalized * 3)
 /// if isKeyDown(.space) { walker.jump() }
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// withCharacter(walker) { drawCapsule(height: 1.2, radius: 0.3) }
 /// ```
 ///

@@ -27,7 +27,7 @@ let heading = Vector3(moveAxis.x, 0, moveAxis.y)
 walker.move(heading.length > 0 ? heading.normalized * 3 : .zero)
 if isKeyDown(" ") { walker.jump() }
 
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 withCharacter(walker) { drawCapsule(radius: 0.3, height: 1.2) }
 ```
 
@@ -86,7 +86,7 @@ car.throttle = isKeyDown(.upArrow) ? 1 : (isKeyDown(.downArrow) ? -1 : 0)
 car.steering = (isKeyDown(.rightArrow) ? 1 : 0) - (isKeyDown(.leftArrow) ? 1 : 0)
 car.handBrake = isKeyDown(" ") ? 1 : 0
 
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 
 withBody(car.body) { drawBox(width: 1.8, height: 0.7, depth: 4) }
 for wheel in car.wheels {
@@ -115,7 +115,7 @@ The driveable version, a car over the same kind of eroded island the walker got,
 
 ## Turning without steering
 
-There is a third machine, and it is the same call again with `tracked: true`. The wheels stop being wheels and become road wheels, split into a left and a right band by which side of the hull you put them on. There is no list to keep in order and no pairs to declare. A wheel at positive x is on the left track, and that is the whole of it.
+There is a third machine, and it is the same call again with `isTracked: true`. The wheels stop being wheels and become road wheels, split into a left and a right band by which side of the hull you put them on. There is no list to keep in order and no pairs to declare. A wheel at positive x is on the left track, and that is the whole of it.
 
 ```swift
 var wheels: [Wheel3D] = []
@@ -127,7 +127,7 @@ for side in [1.3, -1.3] {
 }
 let crawler = world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
                                at: Vector3(0, 1.2, 0), wheels: wheels,
-                               mass: 4200, topSpeed: 9, tracked: true)!
+                               mass: 4200, topSpeed: 9, isTracked: true)!
 ```
 
 Throttle and brake mean exactly what they did. Steering is the interesting one, because a track has nothing to turn. Instead the number runs the inside band slower: at half lock it stops, and the machine turns about its own stopped track. At full lock it runs *backwards*, one band forward and one back, and the machine spins where it stands.
@@ -170,7 +170,7 @@ Each limb's shape is fitted to the figure's own mesh rather than guessed from bo
 Then the loop, which is one line longer than an animation's:
 
 ```swift
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 figure.apply(ragdoll)     // the pose the solver just found
 drawScene(figure)
 ```
@@ -182,7 +182,7 @@ That figure will lie where it lands forever, which is the thing people mean by "
 ```swift
 target.apply(walk, at: time)             // where the animation wants the limbs
 ragdoll.drive(toward: target, strength: effort)
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 figure.apply(ragdoll)                    // where they actually ended up
 ```
 
@@ -212,7 +212,7 @@ cloth = world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
 Then the loop, which has one new call in it:
 
 ```swift
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 fill(.beige)
 drawSoftBody(cloth)
 ```
@@ -272,7 +272,7 @@ Then one call a frame, after the figure is posed and before the world steps:
 ```swift
 figure.apply(ragdoll)
 cape.follow(figure)
-world.step(dt: deltaTime)
+world.advance(by: deltaTime)
 ```
 
 Nothing was painted in a modeling tool to make that work. **The pose the figure is standing in when you build the cloth is the bind pose.** So you hang the cape where it belongs and name the joints, and everything the figure does from then on is read as the motion since. `carriedBy:` is handed a vertex in the mesh's own coordinates, the same ones `pinned:` gets. It answers with a joint's name, or `nil` for a part that is just cloth.
@@ -358,7 +358,7 @@ world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
               density: 3)     // stone
 ```
 
-The cork bobs, the stone goes to the bottom, and the interesting part is what happens in between. A body of density `0.5` settles with exactly half of itself under the surface. One at `0.8` rides low with a fifth of it dry. **The waterline is not a setting, it is an answer.** A body sinks until the water it has pushed out of the way weighs the same as it does, which is the whole of buoyancy in one sentence.
+The cork bobs, the stone goes to the bottom, and the interesting part is what happens in between. A body of density `0.5` settles with exactly half of itself under the surface. One at `0.8` rides low with a fifth of it dry. **The waterline is not a setting, it is an answer.** A body sinks until the water it has pushed out of the way weighs the same as it does, which is the whole of buoyancyScale in one sentence.
 
 Here are four identical crates that differ in nothing but that number.
 
@@ -509,7 +509,7 @@ final class Yard: Sketch {
         }
 
         // Let the yard settle before anybody looks at it.
-        for _ in 0 ..< 180 { world.step(dt: 1.0 / 60) }
+        for _ in 0 ..< 180 { world.advance(by: 1.0 / 60) }
     }
 
     override func draw() {
@@ -532,7 +532,7 @@ final class Yard: Sketch {
             pacer.move(Vector3(back.x * 0.9, 0, back.z * 0.9 + sin(time * 0.8) * 0.9))
         }
         banner?.applyForce(Vector3(sin(time * 1.3) * wind, 0, wind * 0.4))
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         noStroke()
         for body in world.bodies where body !== truck?.body {
@@ -601,7 +601,7 @@ The cloth and the ropes are the one part with an academic line you can follow. P
 
 ## Go deeper
 
-- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles, ragdolls, soft bodies, ropes and buoyancy, including every knob on the suspension and the cloth solver, and what a snapshot keeps for each.
+- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles, ragdolls, soft bodies, ropes and buoyancyScale, including every knob on the suspension and the cloth solver, and what a snapshot keeps for each.
 - Appendix B draws what the solvers are doing: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure) for the constraint relaxation.
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stroll` and `Crawler` (a character and a tracked machine), `Joyride` (the vehicle with its knobs live), `Ragdoll` and `Cape` (a figure and the cloth on its back), `Drape`, `Raft` and `Rigging` (cloth, cloth on water, and ropes), `Chain` and `Bagatelle` (ropes and degrees of freedom), and `Yard`, which is this piece with a saved world, an animated figure, and rather more going on.
 

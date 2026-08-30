@@ -16,11 +16,11 @@ final class TuringScales: Sketch {
 
     override func setup() {
         // One rung: a plain Turing rule, one activator radius against one inhibitor.
-        single = simField(.multiScaleTuring(scales: [
+        single = makeSimField(.multiScaleTuring(scales: [
             TuringScale(activatorRadius: 4, inhibitorRadius: 8, amount: 0.02)
         ], seed: 12), width: 350, height: 350)
         // Five rungs doubling from 2 to 32, all pushing equally hard.
-        many = simField(.multiScaleTuring(scales: .ladder, seed: 12),
+        many = makeSimField(.multiScaleTuring(scales: .ladder, seed: 12),
                         width: 350, height: 350)
     }
 

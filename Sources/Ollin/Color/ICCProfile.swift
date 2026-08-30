@@ -128,7 +128,7 @@ public struct ICCProfile: Sendable, Hashable {
     /// Load a profile bundled with the sketch. Pass the sketch's own bundle
     /// (`.module` inside a sketch target); a default would resolve to the
     /// framework's bundle instead of yours.
-    public init?(resource name: String, extension ext: String? = "icc", in bundle: Bundle) {
+    public init?(resource name: String, withExtension ext: String? = "icc", in bundle: Bundle) {
         guard let url = bundle.url(forResource: name, withExtension: ext) else { return nil }
         self.init(contentsOf: url)
     }

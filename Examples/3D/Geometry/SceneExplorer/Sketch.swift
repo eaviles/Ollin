@@ -99,7 +99,7 @@ final class SceneExplorer: Sketch {
             ownSceneShown = true
         } else {
             let r = file.resource
-            scene = Scene(resource: r.name, extension: r.ext, in: .module)
+            scene = Scene(resource: r.name, withExtension: r.ext, in: .module)
         }
         loadedFile = file
         parts = []
@@ -227,7 +227,7 @@ final class SceneExplorer: Sketch {
                         drawCapsule(from: Vector3(x, y, plo.z), to: Vector3(x, y, phi.z), radius: edge)
                     } }
                 }
-                postProcess(.bloom(threshold: 1.15, intensity: 0.9, radius: 0.04))
+                postProcess(.bloom(threshold: 1.15, amount: 0.9, radius: 0.04))
             }
             let leaf = p.chain[p.chain.count - 1]
             var notes: [String] = []

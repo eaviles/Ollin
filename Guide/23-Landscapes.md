@@ -40,7 +40,7 @@ let weathered = land
 
 <img src="Images/23-Landscapes/TerrainMesh.jpg" alt="The eroded terrain standing up as a lit 3D mesh in warm low sunlight, green in the valleys and pale on the ridges, with the carved drainage lines visible across it" width="560">
 
-Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` gives you a solid mesh with proper normals. `image()` gives you the grayscale heightmap, which is what the three panels are. And `value(atU:v:)` samples any point for placing trees, routing a path, or driving something else entirely. The picture above wears a texture built by walking each height up a `Ramp` from valley green to snow, which is the whole coloring recipe, and it is one call: `coloredMesh(width:depth:height:_:)` hands back the mesh already wearing the ramp (build it when the field changes, not per frame).
+Once the field is shaped, it reads out three ways. `mesh(width:depth:height:)` gives you a solid mesh with proper normals. `image()` gives you the grayscale heightmap, which is what the three panels are. And `value(u:v:)` samples any point for placing trees, routing a path, or driving something else entirely. The picture above wears a texture built by walking each height up a `Ramp` from valley green to snow, which is the whole coloring recipe, and it is one call: `coloredMesh(width:depth:height:_:)` hands back the mesh already wearing the ramp (build it when the field changes, not per frame).
 
 One practical note carries all of this. Erosion is genuine work, tens of thousands of drops each walking dozens of steps, so it belongs in `setup()`. Grow the field, weather it, keep the mesh, and let `draw()` just draw it.
 
@@ -50,7 +50,7 @@ The rain that carved those valleys knew where to run. You can ask the finished l
 
 ```swift
 let water = land.drainage()
-for river in water.rivers(minimumFlow: 140, in: mapFrame) {
+for river in water.rivers(minFlow: 140, in: mapFrame) {
     strokeWeight(0.7 + Double(river.order) * 0.9)
     drawPolyline(river.points)
 }
@@ -63,7 +63,7 @@ for river in water.rivers(minimumFlow: 140, in: mapFrame) {
 
 Nothing in there decides where a river should go. Water on any cell runs to whichever of its eight neighbors is steepest downhill, and the flow through a cell is the count of every cell that ends up running through it. A cell joins the network once enough ground drains through it. The branching is the ground's, which is why it looks like branching you have seen.
 
-`minimumFlow` is the knob worth putting on a slider, and it means something real: the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
+`minFlow` is the knob worth putting on a slider, and it means something real: the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
 
 One thing has to happen before any of it works. A landscape is full of hollows with no way out, and water arriving in one has nowhere to go, so the network would stop dead there. Every hollow is filled first, up to the level it would brim over at, which is what a real basin does once it has filled. `drainage()` does that for you, and `land.filled()` is the same pass on its own.
 
@@ -85,7 +85,7 @@ The right half is the same field with six hundred thousand particles in it. Each
 var flow: AttractorFlow!
 
 override func setup() {
-    flow = attractorFlow(count: 1_000_000, .lorenz())
+    flow = makeAttractorFlow(count: 1_000_000, .lorenz())
 }
 
 override func draw() {
@@ -128,7 +128,7 @@ override func draw() {
         let h = 0.25 + wave(at: seat) * 2.8          // the animation lives here
         copies.append(MeshInstance(position: Vector3(seat.x, h / 2, seat.z),
                                    scale: Vector3(1, h, 1),
-                                   color: Color.mix(low, high, t: h / 3)))
+                                   color: Color.mix(low, high, h / 3)))
     }
     drawMesh(pillar, instances: copies)              // one call, one draw
 }
@@ -227,7 +227,7 @@ for a given wind. That is a small, smooth description, and one inverse Fourier t
 ([Chapter 16](16-LayersAndEffects.md)) turns the whole of it into the surface in one step.
 
 ```swift
-let sea = oceanField(.breeze)              // the transform runs here
+let sea = makeOceanField(.breeze)              // the transform runs here
 drawOcean(sea, segments: 320, tiles: 5)
 ```
 
@@ -244,7 +244,7 @@ means: the average height of the tallest third of the waves. Ask for 3 and the w
 the spectrum's own arithmetic rather than turned by eye until it looks right.
 
 ```swift
-let sea = oceanField(Ocean(waveHeight: 3, windSpeed: 18, choppiness: 1.3))
+let sea = makeOceanField(Ocean(waveHeight: 3, windSpeed: 18, choppiness: 1.3))
 ```
 
 `windSpeed` then decides *which* waves carry that height, moving the energy between short
@@ -302,7 +302,7 @@ final class Valley: Sketch {
         meadow.heightVariance = 0.5
         meadow.bladeWidth = 0.035
         meadow.lean = 0.36
-        meadow.swayAmount = 0.16
+        meadow.swayAmplitude = 0.16
         meadow.swayFrequency = 1.7
         meadow.lowColor = Color(hue: 0.26, saturation: 0.55, brightness: 0.16)
         meadow.tipColor = Color(hue: 0.17, saturation: 0.62, brightness: 0.74)
@@ -350,7 +350,7 @@ final class Valley: Sketch {
 
     /// The ground height under a world x/z, in world units.
     func ground(atX x: Double, z: Double) -> Double {
-        field.value(atU: x / span + 0.5, v: z / span + 0.5) * relief
+        field.value(u: x / span + 0.5, v: z / span + 0.5) * relief
     }
 
     /// How steeply the land climbs at a point, as rise over run.
@@ -427,13 +427,13 @@ The second part reads the field back, which is the step that turns a landscape i
                 pines.append(MeshInstance(position: Vector3(x, y + 1.6 * s, z),
                                           rotation: Vector3(0, random(.tau), 0),
                                           scale: Vector3(s, s * random(0.85, 1.5), s),
-                                          color: Color.mix(pineDark, pineLight, t: random(1))))
+                                          color: Color.mix(pineDark, pineLight, random(1))))
             } else if slope > 1.0 && random(1) < 0.4 {
                 let s = random(0.4, 1.4)
                 stones.append(MeshInstance(position: Vector3(x, y + 0.25 * s, z),
                                            rotation: Vector3(random(.tau), random(.tau), random(.tau)),
                                            scale: Vector3(s, s * 0.7, s),
-                                           color: Color.mix(stoneGray, Color(white: 0.68), t: random(1))))
+                                           color: Color.mix(stoneGray, Color(white: 0.68), random(1))))
             }
         }
         world.place(pine, at: pines)
@@ -508,7 +508,7 @@ Then make it yours:
 - Change `seed(2_608)` in both places and run it again. You get a different valley, a different clearing, and a different ridge to look at, with no other edit.
 - Raise `floorLevel` to 0.4 for a wetter world. The flats spread, the forest retreats uphill, and the meadow follows the flats out because it is placed from them.
 - Take out the `.eroded(.hydraulic(...))` line. The land keeps its shape and loses its drainage, and the placement rules stop making sense, because there are no longer valleys for the trees to gather in.
-- Set `world.cullingEnabled = false` and watch the inspector's frame time while the picture holds still.
+- Set `world.isCullingEnabled = false` and watch the inspector's frame time while the picture holds still.
 - Swap `Mesh.cone` for a loaded tree model. Nothing else changes: a `MeshInstance` does not care what it is placing.
 
 ## Where this comes from

@@ -64,7 +64,7 @@ final class Flotsam: Sketch {
             // Heavy reads dark, light reads bleached, so the row is a legend
             // for its own waterlines.
             let color = Color.mix(Color(hex: 0xF2E3C6), Color(hex: 0x6B4A2F),
-                                  t: (density - 0.2) / 0.72)
+                                  (density - 0.2) / 0.72)
             crates.append(Crate(body: body, size: size, color: color))
         }
     }
@@ -107,7 +107,7 @@ final class Flotsam: Sketch {
         world.water?.density = brine
 
         if let grip { dragGrab(grip, to: mouse) }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         keepInFrame()
 
         drawSea()

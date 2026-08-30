@@ -11,12 +11,12 @@ struct ThinFilmMaterialTests {
 
     @Test func clampsAndPacks() {
         let m = Material(shading: .physicallyBased, thinFilm: 4, thinFilmThickness: -20,
-                         thinFilmIor: 9)
+                         thinFilmIOR: 9)
         #expect(m.thinFilm == 1)               // 0...1
         #expect(m.thinFilmThickness == 0)      // >= 0
-        #expect(m.thinFilmIor == 3)            // 1...3
+        #expect(m.thinFilmIOR == 3)            // 1...3
         let g = Material(shading: .physicallyBased, thinFilm: 0.5,
-                         thinFilmThickness: 480, thinFilmIor: 1.45).gpuMaterial()
+                         thinFilmThickness: 480, thinFilmIOR: 1.45).gpuMaterial()
         #expect(abs(g.thinFilm - 0.5) < 1e-6)
         #expect(abs(g.thinFilmThickness - 480) < 1e-3)
         #expect(abs(g.thinFilmIor - 1.45) < 1e-6)

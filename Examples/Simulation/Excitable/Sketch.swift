@@ -19,7 +19,7 @@ final class Excitable: Sketch {
     private var field: SimField!
 
     override func setup() {
-        field = simField(.excitable(states: states), scale: 0.25)
+        field = makeSimField(.excitable(states: states), scale: 0.25)
     }
 
     override func draw() {

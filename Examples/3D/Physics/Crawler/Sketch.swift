@@ -67,13 +67,13 @@ final class Crawler: Sketch {
             let lower = smoothstep(0.46, 0.58, v) * 0.2
             let upper = smoothstep(0.66, 0.78, v) * 0.26
             let rim = 1 - smoothstep(0.86, 1.0, Vector2(u - 0.5, v - 0.5).length * 2)
-            let rough = (bumps.value(atU: u, v: v) - 0.5) * (0.04 + (lower + upper))
+            let rough = (bumps.value(u: u, v: v) - 0.5) * (0.04 + (lower + upper))
             return max(0, (floorLevel + lower + upper + rough) * rim)
         }
         .eroded(.hydraulic(drops: 30_000), seed: 7)
         .eroded(.thermal(talus: 0.03, iterations: 16))
         land = Heightfield(columns: 129, rows: 129) { u, v in
-            lerp(floorLevel, weathered.value(atU: u, v: v),
+            lerp(floorLevel, weathered.value(u: u, v: v),
                  smoothstep(0.4, 0.56, v))
         }
         floorY = floorLevel * landHeight
@@ -124,7 +124,7 @@ final class Crawler: Sketch {
         let built = world.addVehicle(.box(width: hull.x, height: hull.y, depth: hull.z),
                                      at: position, wheels: wheels, mass: 4200,
                                      engineTorque: 520, topSpeed: topSpeed,
-                                     friction: 0.9, tracked: true)!
+                                     friction: 0.9, isTracked: true)!
         // A quarry has slopes an unlimited hull would happily lie down on.
         built.maxTilt = .pi / 3
         return built
@@ -137,7 +137,7 @@ final class Crawler: Sketch {
         castShadows()
 
         operate()
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         for (index, side) in [Vehicle3D.TrackSide.left, .right].enumerated() {
             bandPhase[index] += crawler.trackSpeed(side) * deltaTime
         }

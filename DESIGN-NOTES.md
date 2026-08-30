@@ -160,6 +160,37 @@ Deeper use of the Metal core and Apple displays, every item opt-in so the 2D pat
 
 - **Dolby Vision.** The static HDR10 metadata an extended sketch exports describes the whole file; Dolby Vision carries per-scene metadata instead, which a generative piece could drive from what it knows it just drew. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question first and an API question second.
 
+## The naming pass: open calls
+
+The audit that drives the 1.0 naming-and-consistency pass leaves a set of calls that want a decision rather than a mechanical fix. Each is a real drift, but the right winner is not obvious, so they wait here rather than getting a mechanical answer. The rules the pass settled live under *Conventions* in [`CLAUDE.md`](CLAUDE.md).
+
+Still open, with the leaning noted where there is one:
+
+- **`ior` vs `refractiveIndex`.** `ior` won (three sites against one, and it is the word every DCC tool uses); recorded here because the spelled-out form loses only narrowly.
+- **`Visual` chain adjustment names** (`brightness`/`contrast`/`saturation` amid participles like `inverted`). The participle forms read worse (`contrasted`), so the nouns stay; revisit only if the chain grows.
+- **`voronoi`/`cellular`/`worley`** name one family across three surfaces (`Visual.voronoi`, `Generator.cellular`, `Sketch.worley`). Each is its community's own word; a rename may lose more than it gains.
+- **Source liveness**: `isRunning` (Camera) vs `isStreaming` (phone, Record3D) vs `isPublishing` (virtual camera). One word should win across `FrameSource` types.
+- **MIDI lifecycles**: `MIDIInput.start()`/`isRunning` vs `MIDIOutput.open(to:)`/`close()`/`isOpen` over the same Core MIDI resource; senders in other modules have `close()` with no `open`.
+- **Device listing**: `availableDevices()` / `availableServers()` / `devices` / `sources`/`destinations` / `displays()`/`windows()` are five shapes for one job across the integration tier.
+- **Match-by-name label**: `matching:` / `named:` / `open(to:)` differ per module for the same substring match.
+- **Value-accessor families**: Room `number`/`integer`/`text`/`flag`, OSC `float`/`int`/`string`/`bool`, Bluetooth `number`/`int`/`text`/`bool`. One vocabulary should span the tier.
+- **Millisecond-suffixed stats** (`frameTimeMS`, `cpuDrawMS` family): the suffix is cased like an acronym, but the spelled alternative is long and the seconds alternative changes semantics.
+- **`waitFor { }`**: guideline-pure is `wait(for:)`, but the trailing-closure form then reads as bare `wait { }`; the compound name carries its meaning and stays.
+- **`mouseWheel()`** beside past-tense input hooks; the state it reads is `scrollDeltaY`.
+- **`draw<Noun>Field` pattern**: `drawStrands`/`drawOcean` drop the type's `Field` noun, `drawMeshField` keeps it.
+- **Run-to-completion verbs**: `grow()` (dielectric breakdown, space colonization) vs `settle()` (force layout) vs `run(limit:)` (pursuit).
+- **Highlight-exponent word**: `sparkleSharpness` / `rimPower` / `shininess` name the same kind of exponent.
+- **Exporter destinations**: the offline exporters take `String` paths while the live recorder takes `URL`s; a family-wide `URL` adoption is an API change beyond naming.
+- **Audio leftovers**: the `Sampled` type name (a bare adjective), the `VoiceSource` case forms, `rootKey: Int` against the `Pitch`-typed surface, `drive` meaning two different units, the `Sonification` length/loudness vocabulary, `Patch.at(level:)`/`at(ratio:)`, `MarkovChain.start(at:)`.
+- **Vision result-type prefixes**: bare nouns (`Face`, `Hand`) beside `Detected...` beside one `Tracked...`; and `placement` vs `worldTransform` plus the `hasWorld...` family on the phone payloads.
+- **Inspector view suffixes**: `StatusChip` and `SidebarVibrancy` against `...View` peers.
+- **Scoped sculpt blocks**: `mirrored {}`/`repeated {}` are side-effecting scopes spelled like value-returning participles; `withMirroring {}` is the rule-following form and reads worse.
+- **`BarcodeScanner.symbology: String`**: an enum wants a design for unknown future symbologies before it replaces the open string.
+- **`Body3D.setRotation(_:axis:)`**: wants a settable rotation property, which is design work, not a rename.
+- **Physics naming depth**: `Vehicle3D.spin`/`spinRate` vs `rotationAngle`/`angularVelocity`, `Character3D`'s three velocities, `Query3D.body` typed `any Colliding3D`, `RopeSegment` without the `3D` suffix, `entered`/`exited` as past-tense properties, `Particle.velocity` documented as a per-step displacement.
+- **`ForceLayout.pinned`**: an array of flags; `isPinned` fits a scalar, not obviously a collection.
+- **`ContactSheet.sweeping name: String`**: a key-path or `Param` handle is the typed fix; API surgery, not a rename.
+
 ## Authoring and editor tooling
 
 Editing experiences the live-reload core makes possible, and the place Ollin states its line on AI.

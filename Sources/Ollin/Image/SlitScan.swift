@@ -8,10 +8,10 @@ import Foundation
 /// frame's snapshot, or an image you paint each frame.
 ///
 /// ```swift
-/// let history = SlitScan(frames: 48)
+/// let history = SlitScan(capacity: 48)
 ///
 /// // each frame:
-/// history.push(frame)
+/// history.append(frame)
 /// if let warped = history.image(delay: { uv in uv.x }) {
 ///     drawImage(warped, in: canvasRectangle)
 /// }
@@ -32,19 +32,19 @@ public final class SlitScan {
     private var height = 0
     private var noted = Set<String>()
 
-    /// How many frames have been pushed so far, up to `capacity`.
+    /// How many frames have been added so far, up to `capacity`.
     public var count: Int { frames.count }
 
     /// A history `frames` deep. Depth times the source frame rate is the
     /// technique's reach into the past: 48 frames at 60 fps spans 0.8 seconds.
-    public init(frames: Int = 48) {
-        capacity = Swift.max(frames, 1)
+    public init(capacity: Int = 48) {
+        self.capacity = Swift.max(capacity, 1)
     }
 
     /// Add the newest frame. The first push fixes the history's size; a frame
     /// of any other size is skipped (with a one-time note), as is a
     /// texture-backed image, which has no CPU pixels.
-    public func push(_ frame: Image) {
+    public func append(_ frame: Image) {
         guard let pixels = frame.premultipliedPixels() else {
             note("SlitScan.push skipped a texture-backed image; it has no CPU pixels. Read a video frame through its snapshot first.")
             return

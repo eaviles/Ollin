@@ -82,9 +82,9 @@ import Testing
         let midi = 45.0
         let fundamental = 440 * pow(2, (midi - 69) / 12)
 
-        let middle = renderNote(PluckedString(pick: 0.5, hardness: 0.95, decay: 4, damping: 0.1),
+        let middle = renderNote(PluckedString(position: 0.5, hardness: 0.95, decay: 4, damping: 0.1),
                                 midi: midi, seconds: 0.5)
-        let quarter = renderNote(PluckedString(pick: 0.25, hardness: 0.95, decay: 4, damping: 0.1),
+        let quarter = renderNote(PluckedString(position: 0.25, hardness: 0.95, decay: 4, damping: 0.1),
                                  midi: midi, seconds: 0.5)
 
         let middleSecond = magnitude(middle, at: fundamental * 2)
@@ -182,8 +182,8 @@ import Testing
     @Test func theLoopStaysBoundedAtEverySettingAndPitch() {
         for midi in stride(from: 12.0, through: 120.0, by: 6) {
             for spec in [PluckedString.nylon, .steel, .harp, .muted,
-                         PluckedString(pick: 0.99, hardness: 1, decay: 30, damping: 0),
-                         PluckedString(pick: 0.01, hardness: 0, decay: 0.02, damping: 1)] {
+                         PluckedString(position: 0.99, hardness: 1, decay: 30, damping: 0),
+                         PluckedString(position: 0.01, hardness: 0, decay: 0.02, damping: 1)] {
                 let samples = renderNote(spec, midi: midi, seconds: 0.3, velocity: 1)
                 let peak = samples.map { abs($0) }.max() ?? 0
                 #expect(peak.isFinite, "midi \(midi) went to \(peak)")
@@ -216,8 +216,8 @@ import Testing
     }
 
     @Test func settingsAreKeptInsideWhatMakesSense() {
-        let wild = PluckedString(pick: 5, hardness: -3, decay: -1, damping: 9)
-        #expect(wild.pick <= 0.99 && wild.pick >= 0.01)
+        let wild = PluckedString(position: 5, hardness: -3, decay: -1, damping: 9)
+        #expect(wild.position <= 0.99 && wild.position >= 0.01)
         #expect(wild.hardness == 0)
         #expect(wild.decay > 0)
         #expect(wild.damping == 1)

@@ -49,7 +49,7 @@ The grains in the last section never noticed each other. Making a hundred thousa
 **Particle Life** gives you a few *kinds* of particle and one attraction number for every ordered pair of kinds. That's the whole model. Red is drawn to green, green flees blue, and out of that asymmetry come membranes, cells, chasers, and worms that nobody designed:
 
 ```swift
-life = particleLife(count: 24_000, kinds: 6, radius: 46)
+life = makeParticleLife(count: 24_000, kinds: 6, radius: 46)
 
 // each frame:
 updateParticleLife(life)
@@ -63,7 +63,7 @@ The matrix is rolled at build, and `life.randomizeMatrix(seed:)` rolls a fresh o
 **Physarum** models slime mold and needs no neighbor search at all, because its agents talk through the floor instead of to each other. Each one sniffs three points ahead, turns toward the strongest trail, steps forward, and deposits a little trail of its own. The trail map blurs and fades a touch each frame. What emerges is the branching transport network on the right, the same kind of network real slime mold famously uses to solve mazes:
 
 ```swift
-slime = physarum(agents: 220_000, resolution: 1024)
+slime = makePhysarum(agents: 220_000, resolution: 1024)
 
 // each frame:
 updatePhysarum(slime)
@@ -103,7 +103,7 @@ Each particle adds up a ring-shaped kernel over its neighbors to get one number,
 <img src="Images/20-ParticleSimulations/ParticleLenia.jpg" alt="Three dark panels of colored dots. Left, a cell with a fringed pale-green membrane, a warm red interior, and small vesicles inside it. Middle, a looser coral-like labyrinth of green channels with a blue halo of scattered particles. Right, a solid red body inside one clean smooth green membrane" width="680">
 
 ```swift
-lenia = particleLenia(count: 6000, spacing: 9)
+lenia = makeParticleLenia(count: 6000, spacing: 9)
 
 // each frame:
 updateParticleLenia(lenia)
@@ -127,7 +127,7 @@ One thing you never set is the kernel's weight. It is not a free number. It is w
 Every behavior is a number, and a number of zero means that behavior is switched off:
 
 ```swift
-flock = swarm(count: 30_000, perceptionRadius: 16)
+flock = makeSwarm(count: 30_000, perceptionRadius: 16)
 flock.separation = 1.5     // don't crowd
 flock.alignment = 1.5      // go the way your neighbors go
 flock.cohesion = 0.8       // stay with them
@@ -154,7 +154,7 @@ That same neighbor search carries two more systems, and these two behave like ma
 **`ParticleFluid`** is smoothed-particle hydrodynamics, a long name for a simple bargain. Represent a liquid as thousands of particles, have each one measure how crowded it is, and push it away from wherever it's crowded. Density becomes pressure, pressure becomes motion, and a free surface, splashes, and sloshing all come out without anyone modeling them:
 
 ```swift
-fluid = particleFluid(count: 26_000, radius: 12)
+fluid = makeParticleFluid(count: 26_000, radius: 12)
 
 // each frame:
 if mouseIsPressed { fluid.pull(at: Vector2(mouseX, mouseY)) }
@@ -167,7 +167,7 @@ drawParticles(fluid)
 **`SoftBodies`** is the jelly counterpart, and it works by *shape matching*. Each body remembers the shape it was born with. Every step it works out where that shape would be now, its center and its rotation. Then it pulls its particles back toward those remembered positions. `squish` is how firmly it pulls, and that one knob is the difference between a bouncing ball and a slime:
 
 ```swift
-blobs = softBodies(count: 12, radius: 80)
+blobs = makeSoftBodies(bodies: 12, radius: 80)
 
 // each frame:
 updateSoftBodies(blobs)
@@ -185,7 +185,7 @@ Thirty thousand individuals set off from the same spot at the same moment. Each 
 <img src="Images/20-ParticleSimulations/Evolution.jpg" alt="Three dark panels, each with a wall across the middle broken by a narrow gap and a gold ring near the top. Left, generation 1: a violet blob of dots at the bottom and a thin scatter above the wall. Middle, generation 8: a broad blue and green plume rising through the gap and spreading toward the ring. Right, generation 23: one clean arc, violet at the bottom through blue and green to gold, threading the gap and ending in the ring" width="880">
 
 ```swift
-run = evolution(count: 30_000, genes: 28,
+run = makeEvolution(count: 30_000, genes: 28,
                 from: Vector2(540, 990), to: Vector2(540, 110))
 run.obstacles = [Rectangle(x: 0, y: 620, width: 640, height: 34),
                  Rectangle(x: 800, y: 620, width: 280, height: 34)]
@@ -245,7 +245,7 @@ Every particle carries its own copy of the rule it moves by, eight numbers calle
 <img src="Images/20-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
 ```swift
-chem = swarmChemistry(count: 4000, kinds: 6)
+chem = makeSwarmChemistry(count: 4000, kinds: 6)
 
 // each frame:
 updateSwarmChemistry(chem)

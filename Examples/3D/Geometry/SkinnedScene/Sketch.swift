@@ -28,7 +28,7 @@ final class SkinnedScene: Sketch {
            let s = loadScene(path) {
             tidepool = s
         } else {
-            tidepool = Scene(resource: "scene", extension: "gltf", in: Bundle.module)
+            tidepool = Scene(resource: "scene", withExtension: "gltf", in: Bundle.module)
         }
     }
 

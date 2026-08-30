@@ -40,7 +40,7 @@ struct Vehicle3DTests {
     enum Drive { case front, rear, all }
 
     func run(_ world: World3D, steps: Int) {
-        for _ in 0 ..< steps { world.step(dt: 1.0 / 60) }
+        for _ in 0 ..< steps { world.advance(by: 1.0 / 60) }
     }
 
     /// A world with a floor and a settled car on it.
@@ -92,7 +92,7 @@ struct Vehicle3DTests {
         let world = World3D()
         world.ground = 0
         let car = Self.car(in: world, at: Vector3(0, 12, 0))
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
 
         #expect(!car.isOnGround)
         #expect(car.wheels.allSatisfy { !$0.isOnGround })
@@ -409,7 +409,7 @@ struct Vehicle3DTests {
             car.steering = 0.4
             var trace: [Double] = []
             for step in 0 ..< 300 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 if step % 60 == 0 {
                     trace.append(car.body.position.x)
                     trace.append(car.body.position.z)

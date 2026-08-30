@@ -370,14 +370,14 @@ public struct Automation: Codable, Equatable, Sendable {
             return .number(lerp(a, b))
         case (.color(let ar, let ag, let ab, let aa), .color(let br, let bg, let bb, let ba)):
             let mixed = Color.mix(Color(red: ar, green: ag, blue: ab, alpha: aa),
-                                  Color(red: br, green: bg, blue: bb, alpha: ba), t: t)
+                                  Color(red: br, green: bg, blue: bb, alpha: ba), t)
             return .color(red: mixed.red, green: mixed.green, blue: mixed.blue, alpha: mixed.alpha)
         case (.vector(let ax, let ay), .vector(let bx, let by)):
             return .vector(x: lerp(ax, bx), y: lerp(ay, by))
         case (.vector3(let ax, let ay, let az), .vector3(let bx, let by, let bz)):
             return .vector3(x: lerp(ax, bx), y: lerp(ay, by), z: lerp(az, bz))
-        case (.rect(let ax, let ay, let aw, let ah), .rect(let bx, let by, let bw, let bh)):
-            return .rect(x: lerp(ax, bx), y: lerp(ay, by),
+        case (.rectangle(let ax, let ay, let aw, let ah), .rectangle(let bx, let by, let bw, let bh)):
+            return .rectangle(x: lerp(ax, bx), y: lerp(ay, by),
                          width: lerp(aw, bw), height: lerp(ah, bh))
         case (.insets(let at, let ar, let ab, let al), .insets(let bt, let br, let bb, let bl)):
             return .insets(top: lerp(at, bt), right: lerp(ar, br),
@@ -405,7 +405,7 @@ public struct Automation: Codable, Equatable, Sendable {
             return ["x": x, "y": y]
         case .vector3(let x, let y, let z):
             return ["x": x, "y": y, "z": z]
-        case .rect(let x, let y, let width, let height):
+        case .rectangle(let x, let y, let width, let height):
             return ["x": x, "y": y, "width": width, "height": height]
         case .insets(let top, let right, let bottom, let left):
             return ["top": top, "right": right, "bottom": bottom, "left": left]
@@ -436,8 +436,8 @@ public struct Automation: Codable, Equatable, Sendable {
             return .vector(x: number("x", x), y: number("y", y))
         case .vector3(let x, let y, let z):
             return .vector3(x: number("x", x), y: number("y", y), z: number("z", z))
-        case .rect(let x, let y, let width, let height):
-            return .rect(x: number("x", x), y: number("y", y),
+        case .rectangle(let x, let y, let width, let height):
+            return .rectangle(x: number("x", x), y: number("y", y),
                          width: number("width", width), height: number("height", height))
         case .insets(let top, let right, let bottom, let left):
             return .insets(top: number("top", top), right: number("right", right),

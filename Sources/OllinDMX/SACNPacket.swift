@@ -41,7 +41,7 @@ public struct SACNDataPacket: Equatable, Sendable {
     public var sourceName: String
 
     /// The sender's stable component identifier.
-    public var cid: UUID
+    public var componentID: UUID
 
     /// Preview data is for visualizers and must not drive live output.
     public var isPreview: Bool
@@ -63,7 +63,7 @@ public struct SACNDataPacket: Equatable, Sendable {
         sequence: UInt8 = 0,
         priority: UInt8 = 100,
         sourceName: String = "Ollin",
-        cid: UUID = UUID(),
+        componentID: UUID = UUID(),
         startCode: UInt8 = 0,
         isPreview: Bool = false,
         isTerminated: Bool = false,
@@ -75,7 +75,7 @@ public struct SACNDataPacket: Equatable, Sendable {
         self.sequence = sequence
         self.priority = priority
         self.sourceName = sourceName
-        self.cid = cid
+        self.componentID = componentID
         self.startCode = startCode
         self.isPreview = isPreview
         self.isTerminated = isTerminated
@@ -103,7 +103,7 @@ public struct SACNDataPacket: Equatable, Sendable {
         bytes.append(contentsOf: Self.acnIdentifier)
         appendFlagsLength(&bytes, total - 16)
         appendUInt32(&bytes, Self.rootVector)
-        withUnsafeBytes(of: cid.uuid) { bytes.append(contentsOf: $0) }
+        withUnsafeBytes(of: componentID.uuid) { bytes.append(contentsOf: $0) }
 
         // Framing layer.
         appendFlagsLength(&bytes, total - 38)
@@ -149,7 +149,7 @@ public struct SACNDataPacket: Equatable, Sendable {
 
         var uuid = uuid_t(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         withUnsafeMutableBytes(of: &uuid) { $0.copyBytes(from: bytes[22..<38]) }
-        cid = UUID(uuid: uuid)
+        componentID = UUID(uuid: uuid)
         let nameBytes = bytes[44..<108].prefix { $0 != 0 }
         sourceName = String(decoding: nameBytes, as: UTF8.self)
         priority = bytes[108]

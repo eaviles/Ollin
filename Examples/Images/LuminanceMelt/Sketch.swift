@@ -26,7 +26,7 @@ final class LuminanceMelt: Sketch {
 
     override func draw() {
         background(.black)
-        let painting = renderTarget()
+        let painting = makeRenderTarget()
         withTarget(painting) {
             drawImage(source, in: canvasRectangle)
         }
@@ -69,8 +69,8 @@ final class LuminanceMelt: Sketch {
                 }
 
                 tone = clamp(tone + signedFbm(u * 7, v * 7, octaves: 3) * 0.03, 0, 1)
-                let warm = Color.mix(Color(hex: 0x2A3550), Color(hex: 0xF6B36A), t: warmth)
-                source[x, y] = Color.mix(.black, warm, t: tone)
+                let warm = Color.mix(Color(hex: 0x2A3550), Color(hex: 0xF6B36A), warmth)
+                source[x, y] = Color.mix(.black, warm, tone)
             }
         }
     }

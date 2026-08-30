@@ -30,7 +30,7 @@ import Foundation
 ///
 /// The kind is a speed choice and never a correctness one: every query that
 /// answers with an array answers identically, down to the order. The two forms
-/// that hand back one point at a time (``forNeighbors(of:within:_:)`` and
+/// that hand back one point at a time (``forEachNeighbor(of:within:_:)`` and
 /// ``anyNeighbor(of:within:)``) each walk in their own kind's fixed order, which
 /// reproduces from run to run but is not the same between the kinds.
 ///
@@ -137,7 +137,7 @@ public struct SpatialIndex: Sendable {
     /// The boundary counts as inside.
     public func neighbors(of p: Vector2, within radius: Double) -> [Int] {
         var found: [Int] = []
-        forNeighbors(of: p, within: radius) { index, _ in found.append(index) }
+        forEachNeighbor(of: p, within: radius) { index, _ in found.append(index) }
         found.sort()
         return found
     }
@@ -147,7 +147,7 @@ public struct SpatialIndex: Sendable {
     /// and relaxation form, where each point asks about the others.
     public func neighbors(of index: Int, within radius: Double) -> [Int] {
         var found: [Int] = []
-        forNeighbors(of: index, within: radius) { other, _ in found.append(other) }
+        forEachNeighbor(of: index, within: radius) { other, _ in found.append(other) }
         found.sort()
         return found
     }
@@ -158,21 +158,21 @@ public struct SpatialIndex: Sendable {
     /// This is the form to call in a loop that already runs per point per frame:
     /// it allocates nothing, and the squared distance is the number the caller
     /// usually wants anyway.
-    public func forNeighbors(of p: Vector2, within radius: Double,
+    public func forEachNeighbor(of p: Vector2, within radius: Double,
                              _ body: (Int, Double) -> Void) {
         guard !points.isEmpty, radius > 0 else { return }
-        if let tree { tree.forNeighbors(of: p, within: radius, skipping: -1, body) }
-        else { grid.forNeighbors(of: p, within: radius, skipping: -1, body) }
+        if let tree { tree.forEachNeighbor(of: p, within: radius, skipping: -1, body) }
+        else { grid.forEachNeighbor(of: p, within: radius, skipping: -1, body) }
     }
 
     /// Visit every point within `radius` of the point at `index`, leaving out
     /// that point itself.
-    public func forNeighbors(of index: Int, within radius: Double,
+    public func forEachNeighbor(of index: Int, within radius: Double,
                              _ body: (Int, Double) -> Void) {
         guard points.indices.contains(index), radius > 0 else { return }
         let p = points[index]
-        if let tree { tree.forNeighbors(of: p, within: radius, skipping: index, body) }
-        else { grid.forNeighbors(of: p, within: radius, skipping: index, body) }
+        if let tree { tree.forEachNeighbor(of: p, within: radius, skipping: index, body) }
+        else { grid.forEachNeighbor(of: p, within: radius, skipping: index, body) }
     }
 
     /// The first point found within `radius` of `p`, or nil when there is none.
@@ -393,7 +393,7 @@ struct CellGrid {
                 CellGrid.clamped(loJ, ny), CellGrid.clamped(hiJ, ny))
     }
 
-    func forNeighbors(of p: Vector2, within radius: Double, skipping: Int,
+    func forEachNeighbor(of p: Vector2, within radius: Double, skipping: Int,
                       _ body: (Int, Double) -> Void) {
         guard let b = block(p.x, p.y, radius) else { return }
         let px = p.x, py = p.y, r2 = radius * radius

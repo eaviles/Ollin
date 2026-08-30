@@ -59,8 +59,8 @@ public extension OllinApp {
     ///
     /// Returns `nil` if the file could not be written.
     @discardableResult
-    static func writeHEIC(_ image: CGImage, to path: String) -> StillExport? {
-        writeHEIC(image, to: path, recipe: nil)
+    static func exportHEIC(_ image: CGImage, to path: String) -> StillExport? {
+        exportHEIC(image, to: path, recipe: nil)
     }
 }
 
@@ -69,7 +69,7 @@ extension OllinApp {
     /// The write behind the public one, plus the reproduction recipe every
     /// export carries (the `Software` and user-comment fields here, matching
     /// what the PNG puts in its text chunks).
-    static func writeHEIC(_ image: CGImage, to path: String, recipe: String?) -> StillExport? {
+    static func exportHEIC(_ image: CGImage, to path: String, recipe: String?) -> StillExport? {
         let context = GainMap.makeContext()
         // Only a float frame can hold anything above white. An 8-bit one goes
         // into the file as it stands, which is the whole story for an ordinary

@@ -40,7 +40,7 @@ final class SummedArea_Example: Sketch {
     override func draw() {
         background(Color(hex: 0x0E1216))
 
-        let page = renderTarget()
+        let page = makeRenderTarget()
         withTarget(page) { drawPage() }
 
         switch reading {

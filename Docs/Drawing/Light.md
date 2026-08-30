@@ -27,14 +27,14 @@ why they agree with each other the way light does.
 ### Quick start
 
 ```swift
-let room = renderTarget()
+let room = makeRenderTarget()
 withTarget(room) {
     noStroke()
     fill(Color(hex: 0x2E6F5E))
     drawRect(300, 500, 480, 40)
 }
 
-let lamps = renderTarget()
+let lamps = makeRenderTarget()
 withTarget(lamps) {
     noStroke()
     fill(.white)
@@ -136,7 +136,7 @@ the bounce):
 
 A second bounce costs about as much as the first. A shorter `reach` is cheaper, because the
 ladder gets shorter. A smaller layer is much cheaper: half the width and half the height is
-a quarter of the work, so `renderTarget(scale: 0.5)` is the first thing to reach for if a
+a quarter of the work, so `makeRenderTarget(scale: 0.5)` is the first thing to reach for if a
 sketch needs the frame rate back.
 
 <a id="limits"></a>

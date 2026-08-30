@@ -47,7 +47,7 @@ public struct WindowCustomizer: NSViewRepresentable {
 /// window level: one accessory per edge, updated in place. Installation happens
 /// on the view's own `viewDidMoveToWindow` (and on every content update once the
 /// window exists), so there is no window lookup and nothing to poll.
-public struct TitlebarAccessory<Content: View>: NSViewRepresentable {
+public struct TitleBarAccessory<Content: View>: NSViewRepresentable {
     private let attribute: NSLayoutConstraint.Attribute
     private let content: Content
 
@@ -91,11 +91,11 @@ public struct TitlebarAccessory<Content: View>: NSViewRepresentable {
                                 tag: NSUserInterfaceItemIdentifier) {
         let titleBarHeight = max(28, window.frame.height - window.contentLayoutRect.height)
         if let existing = window.titlebarAccessoryViewControllers
-            .compactMap({ $0 as? TitlebarAccessoryVC }).first(where: { $0.tag == tag }) {
+            .compactMap({ $0 as? TitleBarAccessoryVC }).first(where: { $0.tag == tag }) {
             existing.titleBarHeight = titleBarHeight
             existing.update(content)
         } else {
-            let accessory = TitlebarAccessoryVC(attribute: attribute, tag: tag)
+            let accessory = TitleBarAccessoryVC(attribute: attribute, tag: tag)
             accessory.titleBarHeight = titleBarHeight
             accessory.update(content)
             window.addTitlebarAccessoryViewController(accessory)
@@ -107,7 +107,7 @@ public struct TitlebarAccessory<Content: View>: NSViewRepresentable {
 /// `NSHostingView` so any view holding the window can update the content in
 /// place, keeping it a single instance per edge even if SwiftUI re-creates the
 /// representable.
-private final class TitlebarAccessoryVC: NSTitlebarAccessoryViewController {
+private final class TitleBarAccessoryVC: NSTitlebarAccessoryViewController {
     let tag: NSUserInterfaceItemIdentifier
     private let host = NSHostingView(rootView: AnyView(EmptyView()))
 

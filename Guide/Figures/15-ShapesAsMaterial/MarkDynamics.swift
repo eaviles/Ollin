@@ -60,7 +60,7 @@ final class MarkDynamics: Sketch {
             let u = t * t * t * (t * (t * 6 - 15) + 10)      // smootherstep
             mark.record(Vector2(r.corner.x + 28 + u * (r.width - 56),
                                 r.center.y + sin(u * .tau * 0.85 + 0.6) * (r.height * 0.31)),
-                        dt: 1.0 / 240)
+                        deltaTime: 1.0 / 240)
         }
         return mark
     }

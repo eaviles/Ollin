@@ -26,10 +26,10 @@ final class Combinators_Example: Sketch {
             .smoothUnion(
                 SDF.rect(width: 230, height: 130, cornerRadius: 24)
                     .colored(Color(hex: 0x3a86ff))
-                    .at(x: 120, y: 0),
+                    .at(120, 0),
                 k: k)
-            .smoothSubtract(SDF.circle(radius: 50).at(x: -80, y: -10), k: 18)
-            .at(x: width * 0.30, y: height * 0.36)
+            .smoothSubtract(SDF.circle(radius: 50).at(-80, -10), k: 18)
+            .at(width * 0.30, height * 0.36)
         drawSDF(melt)
 
         // 2) Morph: a six-point star into a circle and back, scaled by a breath, spinning.
@@ -39,7 +39,7 @@ final class Combinators_Example: Sketch {
             .morph(SDF.circle(radius: 110).colored(Color(hex: 0x06d6a0)), amount: amount)
             .scaled(0.85 + 0.15 * unipolar(sin(t * 1.3)))
             .rotated(t * 0.5)
-            .at(x: width * 0.70, y: height * 0.36)
+            .at(width * 0.70, height * 0.36)
         drawSDF(morph)
 
         // 3) Scoped block sugar: bare draw calls inside a block merge (the same fields

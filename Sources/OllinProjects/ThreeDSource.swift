@@ -106,9 +106,9 @@ enum ThreeDSource {
             draw.append("drawPointCloud(cloud)")
         case ThreeDOption.field.id:
             draw.append("// Two spheres melting into one another, traced per pixel.")
-            draw.append("let blob = SDF3D.sphere(radius: 0.9).at(x: -0.5, y: 1.2, z: 0)")
+            draw.append("let blob = SDF3D.sphere(radius: 0.9).at(-0.5, 1.2, 0)")
             draw.append("    .smoothUnion(.sphere(radius: 0.7)")
-            draw.append("        .at(x: 0.6, y: 1.2 + sin(time) * 0.4, z: 0), k: 0.55)")
+            draw.append("        .at(0.6, 1.2 + sin(time) * 0.4, 0), k: 0.55)")
             draw.append("drawSDF3D(blob)")
         default:
             break
@@ -130,7 +130,7 @@ enum ThreeDSource {
         if reads.contains(where: has) {
             var wrapped = ["// Everything is drawn into a layer, because the effects below",
                            "// read the scene's own depth.",
-                           "let scene = renderTarget()",
+                           "let scene = makeRenderTarget()",
                            "withTarget(scene) {"]
             wrapped += draw.map { $0.isEmpty ? "" : "    " + $0 }
             wrapped.append("}")
@@ -141,7 +141,7 @@ enum ThreeDSource {
                 current = "grounded"
             }
             if has(.screenSpaceReflections) {
-                wrapped.append("let reflections = Combine.screenSpaceReflections(intensity: 0.8, roughness: 0.25)")
+                wrapped.append("let reflections = Combine.screenSpaceReflections(amount: 0.8, roughness: 0.25)")
                 wrapped.append("let mirrored = \(current).combined(with: scene.depth, reflections)")
                 current = "mirrored"
             }

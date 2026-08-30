@@ -37,7 +37,7 @@ Under the hood a color's curve is a blend of three fixed basis spectra, one per 
 ### Mixing like paint
 
 ```swift
-Color.mix(a, b, t: 0.5, in: .paint)          // pigment-wise, beside .rgb/.oklab/...
+Color.mix(a, b, 0.5, in: .paint)          // pigment-wise, beside .rgb/.oklab/...
 ink.mixed(with: other, 0.3, in: .paint)
 spectrumA.mixedAsPaint(with: spectrumB, 0.5) // the typed form
 Ramp([.yellow, .blue], in: .paint)           // a gradient through green

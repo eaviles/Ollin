@@ -59,7 +59,7 @@ struct SpectrumTests {
     @Test func yellowAndBluePaintMakeGreen() {
         let yellow = Color(red: 1, green: 0.85, blue: 0.05)
         let blue = Color(red: 0.1, green: 0.25, blue: 0.9)
-        let mix = Color.mix(yellow, blue, t: 0.5, in: .paint)
+        let mix = Color.mix(yellow, blue, 0.5, in: .paint)
         #expect(mix.green > mix.red)
         #expect(mix.green > mix.blue)
     }
@@ -69,8 +69,8 @@ struct SpectrumTests {
     @Test func paintMixEndsOnItsEndpoints() {
         let a = Color(red: 0.7, green: 0.2, blue: 0.3)
         let b = Color(red: 0.1, green: 0.5, blue: 0.9)
-        let at0 = Color.mix(a, b, t: 0, in: .paint)
-        let at1 = Color.mix(a, b, t: 1, in: .paint)
+        let at0 = Color.mix(a, b, 0, in: .paint)
+        let at1 = Color.mix(a, b, 1, in: .paint)
         for (x, y) in [(at0, a), (at1, b)] {
             #expect(abs(x.red - y.red) < 1e-6)
             #expect(abs(x.green - y.green) < 1e-6)
@@ -83,8 +83,8 @@ struct SpectrumTests {
     @Test func paintMixIsSymmetric() {
         let a = Color(red: 0.9, green: 0.6, blue: 0.1)
         let b = Color(red: 0.2, green: 0.3, blue: 0.7)
-        let forward = Color.mix(a, b, t: 0.3, in: .paint)
-        let backward = Color.mix(b, a, t: 0.7, in: .paint)
+        let forward = Color.mix(a, b, 0.3, in: .paint)
+        let backward = Color.mix(b, a, 0.7, in: .paint)
         #expect(abs(forward.red - backward.red) < 1e-9)
         #expect(abs(forward.green - backward.green) < 1e-9)
         #expect(abs(forward.blue - backward.blue) < 1e-9)
@@ -95,7 +95,7 @@ struct SpectrumTests {
     @Test func paintMixesNeverExceedTheBrighterPaint() {
         let a = Color(red: 1, green: 0.9, blue: 0.1)
         let b = Color(red: 0.1, green: 0.2, blue: 0.9)
-        let mix = Color.mix(a, b, t: 0.5, in: .paint)
+        let mix = Color.mix(a, b, 0.5, in: .paint)
         let brightest = max(a.red, a.green, a.blue, b.red, b.green, b.blue)
         #expect(max(mix.red, mix.green, mix.blue) <= brightest + 1e-9)
     }

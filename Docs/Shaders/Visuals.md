@@ -72,7 +72,7 @@ These rewrite the color a chain produced, after sampling:
 
 ```swift
 .brightness(0.2)     .contrast(1.6)      .saturation(2)      .inverted()
-.posterized(bins: 4, gamma: 0.6)         // quantized levels
+.posterized(levels: 4, gamma: 0.6)         // quantized levels
 .thresholded(0.5)                        // hard black/white split about a luminance
 .luma(threshold: 0.5, tolerance: 0.1)    // keying: the dark side turns transparent
 .hueShifted(0.3)                         // a fraction of the color wheel
@@ -106,7 +106,7 @@ The signature move: one chain's *color* perturbs another chain's *sampling coord
 .rotated(by: driver, amount: 1, offset: 0)          // per-pixel rotation angle from the driver
 .scaled(by: driver, amount: 0.3, offset: 1)         // per-pixel zoom
 .pixelated(by: driver, amount: 10, offset: 3)       // per-pixel grid density
-.kaleidoscope(by: driver, sides: 4, amount: 0.1)    // the fold radius warps organically
+.kaleidoscope(by: driver, segments: 4, amount: 0.1)    // the fold radius warps organically
 ```
 
 The driver is itself a full chain, so a source displaced by `.layer(feed).channel(.luminance)` melts under a live image you drew into the `feed` layer.
@@ -116,18 +116,18 @@ The driver is itself a full chain, so a source displaced by `.layer(feed).channe
 `.layer(_:)` reads a [`RenderTarget`](../Drawing/Effects.md), anything you drew, generated, or filtered, sampling it wherever the (possibly warped) coordinate lands, wrapping at the edges:
 
 ```swift
-let scene = renderTarget()
+let scene = makeRenderTarget()
 withTarget(scene) { /* draw anything */ }
 drawVisual(.layer(scene).kaleidoscope(8).hueShifted(time * 0.1))
 ```
 
 A chain may read up to **two distinct layers** (extras sample as transparent black); to mix more, flatten a sub-chain with `generate(_:)` and read that.
 
-`.layer(_ feedback:)` reads a [`Feedback`](../Drawing/Effects.md#feedbackscale-and-withfeedback__) layer's **previous frame**, which is the video-feedback loop:
+`.layer(_ feedback:)` reads a [`Feedback`](../Drawing/Effects.md#makefeedbackscale-and-withfeedback__) layer's **previous frame**, which is the video-feedback loop:
 
 ```swift
 var trail: Feedback!
-override func setup() { trail = feedback() }
+override func setup() { trail = makeFeedback() }
 
 override func draw() {
     withFeedback(trail) { _ in

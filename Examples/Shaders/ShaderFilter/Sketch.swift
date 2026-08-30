@@ -18,7 +18,7 @@ final class ShaderFilter_Example: Sketch {
 
     override func draw() {
         // The scene to filter: a grid of bold dots on a dark ground.
-        let layer = renderTarget()
+        let layer = makeRenderTarget()
         withTarget(layer) {
             background(Color(hex: 0x0E1116))
             noStroke()

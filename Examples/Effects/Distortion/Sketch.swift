@@ -33,7 +33,7 @@ final class Distortion_Example: Sketch {
 
         // A bold, legible scene — a few flat shapes and a grid — so each warp's
         // geometry is easy to read.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x0E1B2A))
             noStroke()

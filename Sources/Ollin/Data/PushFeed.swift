@@ -291,7 +291,7 @@ public final class PushFeed: @unchecked Sendable {
     /// How many messages have arrived. Every one counts: where a poll can
     /// bring back what a feed already had, a push is sent because the server
     /// had something to say.
-    public var updates: Int { state.withLock { $0.updates } }
+    public var updateCount: Int { state.withLock { $0.updates } }
 
     /// Seconds since the last message, or `nil` before the first one.
     ///
@@ -315,7 +315,7 @@ public final class PushFeed: @unchecked Sendable {
 
     /// Connections that have failed or dropped in a row. Back to zero once
     /// something arrives.
-    public var failures: Int { state.withLock { $0.failures } }
+    public var failureCount: Int { state.withLock { $0.failures } }
 
     /// Why the connection is down, in a sentence a sketch can draw. `nil`
     /// while it is up.

@@ -22,7 +22,7 @@ final class Stippling: Sketch {
         seed(21)
         let picture = paint()
         let frame = canvasRectangle.inset(by: 80)
-        let points = stipple(picture, count: 5200, in: frame, iterations: 45)
+        let points = stipple(of: picture, count: 5200, in: frame, iterations: 45)
 
         // Sample the darkness back under every dot, for the size pass.
         dots = points.map { p in

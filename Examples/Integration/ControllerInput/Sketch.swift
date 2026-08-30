@@ -101,7 +101,7 @@ final class ControllerInputExample: Sketch {
         // A finger on the touchpad shifts the hue, on a controller that has one.
         var color = ink
         if pad.hasTouchpad && pad.isTouching {
-            color = Color.mix(ink, Color(hex: 0x2A9D8F), t: (pad.touch.x + 1) / 2, in: .oklab)
+            color = Color.mix(ink, Color(hex: 0x2A9D8F), (pad.touch.x + 1) / 2, in: .oklab)
         }
 
         // The left trigger lifts ink back off the page instead of laying it on.
@@ -115,7 +115,7 @@ final class ControllerInputExample: Sketch {
         stroke(color.withAlpha(0.85))
         strokeWeight(weight)
         strokeCap(.round)
-        drawPoint(pen)
+        drawPoint(at: pen)
     }
 
     private func clearPage() {

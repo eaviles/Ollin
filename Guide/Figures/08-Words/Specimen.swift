@@ -57,13 +57,13 @@ final class Specimen: Sketch {
         noFill()
         stroke(ink)
         strokeWeight(1.6)
-        textFont(StrokeFont.builtin)
+        textFont(StrokeFont.builtIn)
         textSize(34)
         drawText("stroke, drawn by a pen", 120, 587)
 
         noStroke()
         fill(ink)
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         textSize(24)
         drawText("bitmap, one pixel at a time", 120, 662)
 

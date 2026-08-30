@@ -18,10 +18,10 @@ final class TextAlignAnchors: Sketch {
     var faint: Color { theme.ink(0.22) }
     var accent: Color { theme.accent }
 
-    let columns: [(Double, TextAlignH, String)] = [
+    let columns: [(Double, HorizontalTextAlign, String)] = [
         (215, .left, ".left"), (460, .center, ".center"), (705, .right, ".right"),
     ]
-    let rows: [(Double, TextAlignV, String)] = [
+    let rows: [(Double, VerticalTextAlign, String)] = [
         (120, .top, ".top"), (235, .middle, ".middle"), (350, .bottom, ".bottom"),
     ]
 

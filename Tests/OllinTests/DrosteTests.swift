@@ -249,10 +249,10 @@ private final class DrosteProbe: Sketch {
             drawImage(source, in: canvasRectangle)
             return
         }
-        let layer = renderTarget()
+        let layer = makeRenderTarget()
         withTarget(layer) { drawImage(source, in: canvasRectangle) }
         drawImage(layer.filtered(.droste(inner: 0.4, twist: twist, zoom: zoom,
-                                         rotation: spin)).image,
+                                         angle: spin)).image,
                   in: canvasRectangle)
     }
 }

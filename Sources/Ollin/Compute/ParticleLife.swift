@@ -18,7 +18,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid
 /// var life: ParticleLife!
 /// override func setup() {
 ///     background(.black); noClear()
-///     life = particleLife(count: 20_000, kinds: 6, radius: 44)
+///     life = makeParticleLife(count: 20_000, kinds: 6, radius: 44)
 /// }
 /// override func draw() {
 ///     background(.black)
@@ -55,14 +55,14 @@ public final class ParticleLife {
     /// Build `count` particles of `kinds` kinds over `bounds`, feeling each other
     /// within `radius`, with a random interaction matrix (roll it again with
     /// `randomizeMatrix`). `seed` makes the initial layout and matrix reproducible.
-    public init(count: Int, kinds: Int, bounds: Rectangle, radius: Double, seed: UInt64) {
+    public init(count: Int, kinds: Int, bounds: Rectangle, radius: Double, seed: Int) {
         precondition(count > 0, "ParticleLife needs a positive count")
         precondition(kinds > 0, "ParticleLife needs at least one kind")
         self.count = count
         self.kinds = kinds
         self.hash = SpatialHash(bounds: bounds, cellSize: radius, count: count)
 
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let origin = hash.origin, world = hash.worldSize
         var seeds: [OllinParticle] = []
         seeds.reserveCapacity(count)
@@ -78,7 +78,7 @@ public final class ParticleLife {
                 size: 2.4, life: 1, seedA: Float(kind), seedB: 0))
         }
         self.pingpong = PingPong(seeds)
-        self.matrix = ParticleLife.makeMatrix(kinds: kinds, seed: seed &+ 0x9E37)
+        self.matrix = ParticleLife.makeMatrix(kinds: kinds, seed: UInt64(bitPattern: Int64(seed)) &+ 0x9E37)
         self.kernel = ParticleLife.makeKernel(kinds: kinds)
     }
 
@@ -88,8 +88,8 @@ public final class ParticleLife {
     /// Replace the interaction matrix with a fresh random one (a new "world" without
     /// re-seeding the particles). Allocates a new buffer, so an in-flight frame keeps
     /// the old rules.
-    public func randomizeMatrix(seed: UInt64) {
-        matrix = ParticleLife.makeMatrix(kinds: kinds, seed: seed)
+    public func randomizeMatrix(seed: Int) {
+        matrix = ParticleLife.makeMatrix(kinds: kinds, seed: UInt64(bitPattern: Int64(seed)))
     }
 
     /// Record one step: build the neighbor hash over the current particles, then the
@@ -110,7 +110,7 @@ public final class ParticleLife {
     /// A random `kinds × kinds` interaction matrix in [-1, 1], row-major (`m[i*kinds+j]`
     /// is how kind i feels about kind j).
     private static func makeMatrix(kinds: Int, seed: UInt64) -> ComputeBuffer<Float> {
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         var values = [Float](repeating: 0, count: kinds * kinds)
         for k in values.indices { values[k] = Float(Double.random(in: -1...1, using: &rng)) }
         return ComputeBuffer(values)

@@ -23,7 +23,7 @@ final class Melt: Sketch {
         let left = Rectangle(x: 110, y: 56, width: 300, height: 300)
         let right = Rectangle(x: 470, y: 56, width: 300, height: 300)
 
-        let scene = renderTarget(scale: 0.5)
+        let scene = makeRenderTarget(scale: 0.5)
         withTarget(scene) { paint() }
 
         drawImage(scene.image, in: left)

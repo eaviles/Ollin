@@ -25,28 +25,28 @@ final class RaymarchedDistort: Sketch {
         let twistRate = sin(t * 0.9) * 1.6
         drawSDF3D(SDF3D.box(width: 0.85, height: 2.6, depth: 0.85)
             .twisted(twistRate)
-            .at(x: -3.2, y: 0.3, z: 0)
+            .at(-3.2, 0.3, 0)
             .colored(Color(hex: 0x46c2ff)))
 
         // A bent bar: a straight slab curling about z as the rate swings.
         let bendRate = 0.25 + sin(t * 0.7) * 0.55
         drawSDF3D(SDF3D.box(width: 2.6, height: 0.5, depth: 0.7)
             .bent(bendRate)
-            .at(x: -1.05, y: 0.3, z: 0)
+            .at(-1.05, 0.3, 0)
             .colored(Color(hex: 0xffb454)))
 
         // A rippled sphere: sine-product displacement, the swell breathing.
         let swell = 0.05 + unipolar(sin(t * 1.3)) * 0.1
         drawSDF3D(SDF3D.sphere(radius: 0.95)
             .displaced(amplitude: swell, frequency: 6.5)
-            .at(x: 1.15, y: 0.15, z: 0)
+            .at(1.15, 0.15, 0)
             .colored(Color(hex: 0xff6f61)))
 
         // A roughened sphere: signed value noise turns the ball to rock.
         drawSDF3D(SDF3D.sphere(radius: 0.95)
             .roughened(amplitude: 0.16, frequency: 3.2)
             .rotatedY(t * 0.4)
-            .at(x: 3.3, y: 0.15, z: 0)
+            .at(3.3, 0.15, 0)
             .colored(Color(hex: 0x9aa7b8)))
 
         // A shared plinth row grounds the four forms.

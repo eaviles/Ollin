@@ -128,7 +128,7 @@ final class Pile: Sketch {
     override func setup() {
         seed(11)
         world.bounds = bounds
-        world.collisions = true
+        world.particlesCollide = true
         for _ in 0 ..< 240 {
             world.addParticle(at: Vector2(random(width), random(height * 0.55)),
                               radius: random(14, 44))
@@ -138,7 +138,7 @@ final class Pile: Sketch {
 
     override func draw() {
         background(Color(hex: 0x101318))
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         for i in world.particles.indices {
             let p = world.particles[i]
@@ -155,7 +155,7 @@ Two hundred forty discs fall, land on each other, shuffle for space, and settle 
 
 The shape of every physics sketch in this chapter is in those few lines. Build the world once in `setup()`. Each frame, `step(dt: deltaTime)` advances it, and you draw from its bodies wherever they happen to be.
 
-The rules you set at the top deserve a word each. `world.bounds = bounds` gives the world walls, and without it bodies are free to leave. `bounds` is the whole canvas as a `Rectangle`, one of the sketch's built-in properties. `collisions = true` makes particles push each other apart as solid disks. It's off by default because plenty of things you'll build, a cloth, a chain, don't want their own points colliding. There's also `world.gravity`, which you'll change in a moment. `world.bounce` is how much speed survives hitting a wall. `world.drag` is the same air resistance you wrote by hand a page ago, now built in.
+The rules you set at the top deserve a word each. `world.bounds = bounds` gives the world walls, and without it bodies are free to leave. `bounds` is the whole canvas as a `Rectangle`, one of the sketch's built-in properties. `particlesCollide = true` makes particles push each other apart as solid disks. It's off by default because plenty of things you'll build, a cloth, a chain, don't want their own points colliding. There's also `world.gravity`, which you'll change in a moment. `world.restitution` is how much speed survives hitting a wall. `world.drag` is the same air resistance you wrote by hand a page ago, now built in.
 
 > **Swift note.** `World` is a class, and so are the bodies in it. Where the values you've used so far are copied on assignment, a class value is a *handle to one live thing*. `world.addParticle(...)` returns a handle to the particle it just added, and the world keeps moving that same particle under you every step. Hold onto the handle and you can read its position each frame, or pin it, or pull it around. That's the point of a simulation object: there is exactly one of it, and it changes.
 
@@ -205,7 +205,7 @@ final class Strand: Sketch {
         if mouseIsPressed {
             beads.last?.place(at: Vector2(mouseX, mouseY))
         }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         stroke(Color(hex: 0x8E99A8))
         strokeWeight(5)
@@ -451,7 +451,7 @@ final class Wrecker: Sketch {
     override func draw() {
         background(Color(hex: 0x12151C))
         held?.target = Vector2(mouseX, mouseY)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         noStroke()
         for i in bricks.indices {

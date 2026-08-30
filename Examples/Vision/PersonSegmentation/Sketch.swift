@@ -31,7 +31,7 @@ final class PersonSegmentation: Sketch {
         // The raw frame never draws here (only its matte and cutout do), so this
         // takes the typed path — `fittedRect` for the rectangle, `drawStatus` for
         // the waiting notice — instead of `drawFrame`.
-        guard let rect = camera.fittedRect(in: bounds) else {
+        guard let rect = camera.fittedRectangle(in: bounds) else {
             return drawStatus(camera.waitingMessage)
         }
 

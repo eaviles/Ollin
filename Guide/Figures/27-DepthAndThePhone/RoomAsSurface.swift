@@ -31,7 +31,7 @@ final class RoomAsSurface: Sketch {
         // spot instead, so the three read side by side rather than receding.
         camera(.orbiting(target: Vector3(0, 0.3, 0), radius: 4.6,
                          azimuth: 0, elevation: 0.32, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.15).lightingOnly())
+        environment(.studio.intensified(to: 1.15).lightingOnly())
         material(.dielectric(roughness: 0.7))
 
         let xs: [Double] = [-2.2, 0, 2.2]

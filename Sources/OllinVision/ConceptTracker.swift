@@ -13,7 +13,7 @@ import os
 /// ```swift
 /// let camera = Camera()
 /// lazy var ideas = ConceptTracker(camera,
-///     imageModelAt: imageURL, textModelAt: textURL, vocabAt: vocabURL,
+///     imageModelAt: imageURL, textModelAt: textURL, vocabularyAt: vocabURL,
 ///     concepts: ["a spooky scene", "a cheerful scene"])
 /// override func draw() {
 ///     let spooky = ideas.confidence(of: "a spooky scene")   // 0…1
@@ -105,7 +105,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
     public var labels: [Classification] { lock.withLockUnchecked { $0.labels } }
 
     /// The single strongest concept, or `nil` while there is none.
-    public var top: Classification? { labels.first }
+    public var topClassification: Classification? { labels.first }
 
     /// One concept's share of the most recent analyzed frame, `0…1`, matched
     /// case-insensitively. A phrase not in `concepts` joins the set (so the
@@ -175,7 +175,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
     @MainActor
     public init(_ source: any FrameSource,
                 imageModelAt imageModel: URL, textModelAt textModel: URL,
-                vocabAt vocab: URL, concepts: [String] = []) {
+                vocabularyAt vocab: URL, concepts: [String] = []) {
         self.imageModelURL = imageModel
         self.textModelURL = textModel
         self.vocabURL = vocab
@@ -189,7 +189,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
     /// A tracker bound to no frame source, for still images only; call
     /// `detect(in:)`.
     public init(imageModelAt imageModel: URL, textModelAt textModel: URL,
-                vocabAt vocab: URL, concepts: [String] = []) {
+                vocabularyAt vocab: URL, concepts: [String] = []) {
         self.imageModelURL = imageModel
         self.textModelURL = textModel
         self.vocabURL = vocab
@@ -387,7 +387,7 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             return
         }
         do {
-            let tokenizer = try PhraseTokenizer(vocabAt: vocabURL)
+            let tokenizer = try PhraseTokenizer(vocabularyAt: vocabURL)
 
             // Off the GPU path on purpose: the GPU graph compiler crashes
             // specializing this model family's attention blocks (a fold-into-

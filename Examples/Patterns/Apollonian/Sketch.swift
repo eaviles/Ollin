@@ -30,7 +30,7 @@ final class ApollonianFoam: Sketch {
             // Age runs with the generation order; the wave loops through it.
             let age = Double(i) / Double(foam.count)
             let wave = pingPong(over: 1, phase: phase - age)
-            fill(Color.mix(Color(hex: 0x1D5C63), Color(hex: 0xF9DC5C), t: wave * wave * wave)
+            fill(Color.mix(Color(hex: 0x1D5C63), Color(hex: 0xF9DC5C), wave * wave * wave)
                 .withAlpha(0.92))
             drawCircle(circle)
         }

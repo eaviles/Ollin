@@ -9,7 +9,7 @@ final class FirstLayer: Sketch {
     override func draw() {
         background(.black)
 
-        let art = renderTarget()
+        let art = makeRenderTarget()
         withTarget(art) {
             background(Color(hex: 0x0E1B33))
             noStroke()

@@ -162,7 +162,7 @@ public final class SessionRecorder: SketchExtension {
 
     public var wantsRenderedFrame: Bool { isRecording }
 
-    public func frameRendered(_ sketch: Sketch, _ image: CGImage) {
+    public func frameRendered(_ sketch: Sketch, image: CGImage) {
         guard isRecording, let writer else { return }
         guard image.width == writer.width, image.height == writer.height else {
             print("Ollin: the canvas changed size, so the recording was finished")
@@ -616,7 +616,7 @@ public extension Sketch {
     /// Stops the recording and finishes the file. Safe to call when nothing
     /// is recording. The completion runs on the main thread with the file's
     /// location, or `nil` when writing failed.
-    func stopRecording(_ completion: (@MainActor (URL?) -> Void)? = nil) {
+    func stopRecording(completion: (@MainActor (URL?) -> Void)? = nil) {
         sessionRecorder?.stop(completion: completion)
     }
 

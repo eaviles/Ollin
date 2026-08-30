@@ -60,7 +60,7 @@ public protocol SketchExtension: AnyObject {
     /// The rendered frame, as a `CGImage`, after it's drawn. Only delivered when
     /// `wantsRenderedFrame` is `true`. Use it to save a snapshot, feed a video
     /// encoder, or compare against a reference.
-    func frameRendered(_ sketch: Sketch, _ image: CGImage)
+    func frameRendered(_ sketch: Sketch, image: CGImage)
 
     /// Whether this extension wants the rendered frame delivered as a Metal
     /// *texture* to `frameRendered(_:texture:)`. The GPU-side companion to
@@ -83,7 +83,7 @@ public extension SketchExtension {
     func afterDraw(_ sketch: Sketch) {}
     func afterFrame(_ sketch: Sketch, _ info: FrameInfo) {}
     var wantsRenderedFrame: Bool { false }
-    func frameRendered(_ sketch: Sketch, _ image: CGImage) {}
+    func frameRendered(_ sketch: Sketch, image: CGImage) {}
     var wantsRenderedTexture: Bool { false }
     func frameRendered(_ sketch: Sketch, texture: MTLTexture) {}
 }

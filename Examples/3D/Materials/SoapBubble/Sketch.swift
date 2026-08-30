@@ -48,7 +48,7 @@ final class SoapBubble: Sketch {
         cameraShowcase(.sway(amplitude: 0.3, period: .tau / 0.07),
                        target: Vector3(0, 1.2, 0), radius: 9, elevation: 0.1,
                        fieldOfView: .pi / 4, near: 1, far: 40)
-        environment(.courtyard.intensity(1.05))
+        environment(.courtyard.intensified(to: 1.05))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.5)
 
         for b in bubbles {

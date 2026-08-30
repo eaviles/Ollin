@@ -54,7 +54,7 @@ points draws as a ball of wool, however correct it is. Two structured sets are s
 
 ```swift
 hopfBases(latitudes: 4, perCircle: 16)   // rings of latitude: nested tori
-hopfBases(spiral: 200)                   // spread evenly over the whole sphere
+hopfBases(spiralCount: 200)                   // spread evenly over the whole sphere
 ```
 
 `hopfBases(latitudes:perCircle:spanning:)` is the arrangement to start with. Each ring of

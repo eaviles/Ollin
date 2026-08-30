@@ -21,8 +21,8 @@ import Ollin
     /// enough to send the moment ARKit merges one surface into another.
     @Test func roundTripsARetirement() throws {
         let id = UUID()
-        let sample = PhonePlaneSample(tracked: true, timestamp: 9.5, id: id, scan: 7,
-                                      removed: true, transform: moveAndTurn)
+        let sample = PhonePlaneSample(isTracked: true, timestamp: 9.5, id: id, scan: 7,
+                                      isRemoved: true, transform: moveAndTurn)
         #expect(roundTrip(.plane(sample)) == .plane(sample))
         guard case .plane(let back)? = roundTrip(.plane(sample)) else {
             Issue.record("the retirement did not come back")
@@ -50,13 +50,13 @@ import Ollin
     @Test func theLabelAndTheFacingSurviveTheWire() throws {
         var sample = square(id: UUID(), transform: matrix_identity_float4x4)
         sample.alignment = .vertical
-        sample.surface = PhoneSurface.window.rawValue
+        sample.surface = .window
         guard case .plane(let back)? = roundTrip(.plane(sample)) else {
             Issue.record("the surface did not come back")
             return
         }
         #expect(back.alignment == .vertical)
-        #expect(PhoneSurface(rawValue: back.surface) == .window)
+        #expect(back.surface == .window)
     }
 
     /// The wire carries the facing as one byte, so the case order is the contract.
@@ -122,8 +122,8 @@ import Ollin
     }
 
     @Test func aRetirementIsNotASurface() {
-        let sample = PhonePlaneSample(tracked: true, timestamp: 0, id: UUID(),
-                                      removed: true, transform: matrix_identity_float4x4)
+        let sample = PhonePlaneSample(isTracked: true, timestamp: 0, id: UUID(),
+                                      isRemoved: true, transform: matrix_identity_float4x4)
         #expect(phonePlane(from: sample) == nil)
     }
 
@@ -156,7 +156,7 @@ import Ollin
     /// and everything downstream has one shape to handle instead of two. The box is
     /// turned by its own angle, which is how a table at an angle measures as a table.
     @Test func aSurfaceWithNoOutlineGetsOneFromItsBox() throws {
-        var sample = PhonePlaneSample(tracked: true, timestamp: 1, id: UUID(),
+        var sample = PhonePlaneSample(isTracked: true, timestamp: 1, id: UUID(),
                                       transform: matrix_identity_float4x4,
                                       center: SIMD3<Float>(1, 0, 2),
                                       width: 2, height: 4,
@@ -173,7 +173,7 @@ import Ollin
     }
 
     @Test func aSurfaceWithNoOutlineAndNoSizeIsRefused() {
-        let sample = PhonePlaneSample(tracked: true, timestamp: 1, id: UUID(),
+        let sample = PhonePlaneSample(isTracked: true, timestamp: 1, id: UUID(),
                                       transform: matrix_identity_float4x4)
         #expect(phonePlane(from: sample) == nil)
     }
@@ -267,7 +267,7 @@ import Ollin
         #expect(room.upright.count == 1)
 
         // Once the phone labels the table top, an explicit floor label still wins.
-        ground.surface = PhoneSurface.floor.rawValue
+        ground.surface = PhoneSurface.floor
         room.apply(try #require(phonePlane(from: ground)))
         #expect(room.floor?.id == ground.id)
         #expect(room.foundSurfaces.contains(.floor))
@@ -276,9 +276,9 @@ import Ollin
     @Test func filteringKeepsOnlyTheLabelsAskedFor() throws {
         var room = PhonePlanes()
         var table = square(id: UUID(), transform: matrix_identity_float4x4)
-        table.surface = PhoneSurface.table.rawValue
+        table.surface = PhoneSurface.table
         var wall = square(id: UUID(), transform: matrix_identity_float4x4)
-        wall.surface = PhoneSurface.wall.rawValue
+        wall.surface = PhoneSurface.wall
         room.apply(try #require(phonePlane(from: table)))
         room.apply(try #require(phonePlane(from: wall)))
 
@@ -385,10 +385,10 @@ import Ollin
 
     /// A one-meter square lying flat, wound the right way for a surface facing up.
     private func square(id: UUID, transform: simd_float4x4) -> PhonePlaneSample {
-        PhonePlaneSample(tracked: true, timestamp: 4.25, id: id, removed: false,
+        PhonePlaneSample(isTracked: true, timestamp: 4.25, id: id, isRemoved: false,
                          transform: transform, center: .zero, width: 1, height: 1,
                          rotationOnYAxis: 0, alignment: .horizontal,
-                         surface: PhoneSurface.unclassified.rawValue,
+                         surface: .unclassified,
                          boundary: [SIMD3<Float>(0, 0, 0), SIMD3<Float>(0, 0, 1),
                                     SIMD3<Float>(1, 0, 1), SIMD3<Float>(1, 0, 0)])
     }

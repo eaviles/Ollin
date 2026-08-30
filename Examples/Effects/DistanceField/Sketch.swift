@@ -36,7 +36,7 @@ final class DistanceField_Example: Sketch {
 
         // The marks. Nothing here knows about the field: it is an ordinary layer, drawn
         // the ordinary way, and the field is measured off it afterward.
-        let marks = renderTarget()
+        let marks = makeRenderTarget()
         withTarget(marks) {
             noStroke()
             for (i, ink) in inks.enumerated() {

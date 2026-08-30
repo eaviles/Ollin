@@ -36,7 +36,7 @@ final class Tumble: Sketch {
 
     override func setup() {
         world.gravity = Vector2(0, 2200)
-        world.bounce = 0.15
+        world.restitution = 0.15
         world.bounds = bounds
         noStroke()
     }
@@ -98,7 +98,7 @@ final class Tumble: Sketch {
         if frameCount % 5 == 0 {
             spawn(at: Vector2(random(width * 0.2, width * 0.8), 50 * scale))
         }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         for body in world.bodies {
             guard let look = body.userData as? Look else { continue }

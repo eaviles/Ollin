@@ -12,7 +12,7 @@ import Ollin
 struct Query3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// A world with a unit box parked in the air at each of the given heights,
@@ -363,7 +363,7 @@ struct Query3DTests {
                 world.addBody(.box(width: 1, height: 1, depth: 1),
                               at: Vector3(Double(index) * 0.15, 2 + Double(index), 0))
             }
-            for _ in 0 ..< 120 { world.step(dt: 1.0 / 60) }
+            for _ in 0 ..< 120 { world.advance(by: 1.0 / 60) }
             return world.raycastAll(from: Vector3(0, 12, 0), to: Vector3(0, -1, 0))
                 .flatMap { [$0.distance, $0.point.x, $0.normal.y] }
         }

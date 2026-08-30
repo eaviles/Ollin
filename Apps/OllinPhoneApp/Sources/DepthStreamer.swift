@@ -74,7 +74,7 @@ final class DepthStreamer: NSObject, ARSessionDelegate, LightReporting {
 
         let normal: Bool = if case .normal = frame.camera.trackingState { true } else { false }
         onDepth?(PhoneDepthSample(
-            tracked: normal,
+            isTracked: normal,
             timestamp: frame.timestamp,
             depthWidth: depthW, depthHeight: depthH,
             fx: k.columns.0.x * sx, fy: k.columns.1.y * sy,

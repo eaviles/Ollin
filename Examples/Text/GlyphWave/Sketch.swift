@@ -27,7 +27,7 @@ final class GlyphWave: Sketch {
 
         drawText(word, at: Vector2(width / 2, height * 0.46)) { g in
             let phase = time * 3 - Double(g.index) * 0.7
-            fill(palette.color(at: g.t * 0.85 + time * 0.05))
+            fill(palette.color(at: g.progress * 0.85 + time * 0.05))
             withState {
                 translate(0, sin(phase) * 60 * scale)   // bob along the wave
                 translate(g.center)                       // tilt about the glyph's

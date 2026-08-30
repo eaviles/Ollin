@@ -12,7 +12,7 @@ import Foundation
 ///
 /// ```swift
 /// var rd: SimField!
-/// override func setup() { rd = simField(.reactionDiffusion(), scale: 0.5) }
+/// override func setup() { rd = makeSimField(.reactionDiffusion(), scale: 0.5) }
 ///
 /// override func draw() {
 ///     withField(rd) {                       // draw to seed: marks inject chemical
@@ -211,7 +211,7 @@ public struct Sim: Sendable {
     ///
     /// ```swift
     /// var warp: SimField!
-    /// override func setup() { warp = simField(.selfWarp()) }
+    /// override func setup() { warp = makeSimField(.selfWarp()) }
     ///
     /// override func draw() {
     ///     withField(warp) {
@@ -238,10 +238,10 @@ public struct Sim: Sendable {
     ///     so still regions hold; a touch below 1 sinks old trails toward black.
     ///   - smoothing: Temporal steadying of the motion field (0...0.98). Higher reads
     ///     calmer and keeps trails coherent; lower answers faster and twitches more.
-    public static func selfWarp(strength: Double = 0.6, refresh: Double = 0.08,
+    public static func selfWarp(amount: Double = 0.6, refresh: Double = 0.08,
                                 decay: Double = 1, smoothing: Double = 0.6) -> Sim {
         Sim(kind: .selfWarp(SelfWarpConfig(
-            strength: Float(min(8, max(-8, strength))),
+            strength: Float(min(8, max(-8, amount))),
             refresh: Float(min(1, max(0, refresh))),
             decay: Float(min(1, max(0, decay))),
             smoothing: Float(min(0.98, max(0, smoothing))))))
@@ -271,7 +271,7 @@ public struct Sim: Sendable {
     ///
     /// ```swift
     /// var turing: SimField!
-    /// override func setup() { turing = simField(.multiScaleTuring(), scale: 0.5) }
+    /// override func setup() { turing = makeSimField(.multiScaleTuring(), scale: 0.5) }
     /// override func draw() { drawImage(turing.filtered(.gradientMap(.magma)).image, 0, 0) }
     /// ```
     ///
@@ -437,22 +437,24 @@ public struct Sim: Sendable {
     /// - Parameters:
     ///   - states: The ill state, the top of the ladder (4...200). The classic runs
     ///     use 100.
-    ///   - k1: Divides the infected-neighbor count in a healthy cell's catch rule
-    ///     (1...9). Higher is harder to catch.
-    ///   - k2: Divides the ill-neighbor count in the same rule (1...9).
-    ///   - g: How much sicker an infected cell gets per step (1...100), the speed of
-    ///     infection and the behavior dial: low g dies out, mid g plateaus, high g
-    ///     locks into the spiral regime.
+    ///   - infectedDivisor: Divides the infected-neighbor count in a healthy cell's
+    ///     catch rule (1...9). Higher is harder to catch.
+    ///   - illDivisor: Divides the ill-neighbor count in the same rule (1...9).
+    ///   - infectionRate: How much sicker an infected cell gets per step (1...100),
+    ///     the speed of infection and the behavior dial: low dies out, mid plateaus,
+    ///     high locks into the spiral regime.
     ///   - neighborhood: `.moore` (the eight-neighbor classic for these spirals) or
     ///     `.vonNeumann` (the original experiment's four).
     ///   - seed: Picks the random start, so the same seed replays the same run.
-    public static func hodgepodge(states: Int = 100, k1: Int = 2, k2: Int = 3,
-                                  g: Int = 25,
+    public static func hodgepodge(states: Int = 100, infectedDivisor: Int = 2,
+                                  illDivisor: Int = 3,
+                                  infectionRate: Int = 25,
                                   neighborhood: CellNeighborhood = .moore,
                                   seed: Double = 1) -> Sim {
         Sim(kind: .hodgepodge(states: max(4, min(200, states)),
-                              k1: max(1, min(9, k1)), k2: max(1, min(9, k2)),
-                              g: max(1, min(100, g)),
+                              k1: max(1, min(9, infectedDivisor)),
+                              k2: max(1, min(9, illDivisor)),
+                              g: max(1, min(100, infectionRate)),
                               neighborhood: neighborhood, seed: seed))
     }
 
@@ -496,7 +498,7 @@ public struct Sim: Sendable {
     /// How many kernel steps run per frame. Reaction-diffusion takes many small steps
     /// for a lively, stable integration; a cellular automaton is one discrete
     /// generation per frame.
-    var subSteps: Int {
+    var substeps: Int {
         switch kind {
         case .reactionDiffusion: return 14
         case .gameOfLife:        return 1

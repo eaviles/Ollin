@@ -31,7 +31,7 @@ final class SpotShadow3D: Sketch {
         let spotPos = Vector3(-3, 9, 5)
         spotLight(Color(hue: 0.09, saturation: 0.18, brightness: 1.0),
                   at: spotPos, direction: (aim - spotPos).normalized,
-                  angle: .pi / 4.2, penumbra: 0.4, intensity: 1.4,
+                  coneAngle: .pi / 4.2, penumbra: 0.4, intensity: 1.4,
                   specular: .white)
         castShadows()
 

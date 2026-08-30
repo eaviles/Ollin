@@ -24,7 +24,7 @@ final class SeamlessClone: Sketch {
 
             // A backdrop whose color changes smoothly across the tile, so there is
             // something for the patch to take on.
-            let backdrop = renderTarget(width: Int(tile), height: Int(tile))
+            let backdrop = makeRenderTarget(width: Int(tile), height: Int(tile))
             withTarget(backdrop) {
                 noStroke()
                 for row in 0 ..< Int(tile) {
@@ -36,7 +36,7 @@ final class SeamlessClone: Sketch {
             }
 
             // The patch: a flat slab of stones, the wrong color for anywhere it lands.
-            let patch = renderTarget(width: Int(tile), height: Int(tile))
+            let patch = makeRenderTarget(width: Int(tile), height: Int(tile))
             withTarget(patch) {
                 background(Color(white: 0, alpha: 0))
                 noStroke()

@@ -36,7 +36,7 @@ final class AerialPerspective: Sketch {
             let ridge = land.mesh(width: 320, depth: 22, height: height)
                 .colored(by: { p, _ in
                     let h = clamp(p.y / height, 0, 1)
-                    return Color.mix(Color(hex: 0x2A2F28), Color(hex: 0x6E6B5E), t: h)
+                    return Color.mix(Color(hex: 0x2A2F28), Color(hex: 0x6E6B5E), h)
                 })
             ridges.append(ridge)
         }

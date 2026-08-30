@@ -97,7 +97,7 @@ public struct ImportedCamera: Sendable {
 /// A light the file authored, already resolved to world space.
 public struct ImportedLight: Sendable {
     public enum Kind: Sendable, Hashable {
-        case directional, point, spot, rect, disk, tube
+        case directional, point, spot, rectangle, disk, tube
     }
 
     public var kind: Kind
@@ -111,10 +111,10 @@ public struct ImportedLight: Sendable {
     public var width: Double
     public var height: Double
     public var radius: Double
-    /// Which way is up for a rect panel, orienting its height axis.
+    /// Which way is up for a rectangle panel, orienting its height axis.
     public var up: ImportedVector
     /// Whether both faces of a panel emit.
-    public var twoSided: Bool
+    public var isTwoSided: Bool
     /// A tube light runs between two points rather than sitting at one, so it
     /// carries the pair its factory asks for.
     public var endA: ImportedVector
@@ -124,7 +124,7 @@ public struct ImportedLight: Sendable {
                 position: ImportedVector = .zero, direction: ImportedVector = ImportedVector(0, -1, 0),
                 coneAngle: Double = 0.5, penumbra: Double = 0.2,
                 width: Double = 1, height: Double = 1, radius: Double = 0.5,
-                up: ImportedVector = ImportedVector(0, 1, 0), twoSided: Bool = false,
+                up: ImportedVector = ImportedVector(0, 1, 0), isTwoSided: Bool = false,
                 endA: ImportedVector = .zero, endB: ImportedVector = .zero) {
         self.kind = kind
         self.colorHex = colorHex
@@ -137,7 +137,7 @@ public struct ImportedLight: Sendable {
         self.height = height
         self.radius = radius
         self.up = up
-        self.twoSided = twoSided
+        self.isTwoSided = isTwoSided
         self.endA = endA
         self.endB = endB
     }

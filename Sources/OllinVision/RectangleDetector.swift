@@ -75,15 +75,15 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
 
     /// The narrowest quad to report, as the ratio of short side to long side
     /// (`1` = square, lower = more elongated allowed).
-    public let minimumAspectRatio: Float
+    public let minAspectRatio: Float
     /// The widest quad to report (`1` = square).
-    public let maximumAspectRatio: Float
+    public let maxAspectRatio: Float
     /// The smallest quad to report, as a fraction of the image.
-    public let minimumSize: Float
+    public let minSize: Float
     /// The confidence a quad must reach to be reported, `0…1`.
-    public let minimumConfidence: Float
+    public let minConfidence: Float
     /// The most quads to report per frame.
-    public let maximumCount: Int
+    public let maxCount: Int
 
     private let lock = OSAllocatedUnfairLock<[DetectedRectangle]>(initialState: [])
     private let status = VisionStatus("rectangle detection")
@@ -102,31 +102,31 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
     /// Detect rectangles in `source`'s frames — the live camera, or a playing video.
     @MainActor
     public init(_ source: any FrameSource,
-                minimumAspectRatio: Float = 0.2,
-                maximumAspectRatio: Float = 1.0,
-                minimumSize: Float = 0.1,
-                minimumConfidence: Float = 0.6,
-                maximumCount: Int = 8) {
-        self.minimumAspectRatio = minimumAspectRatio
-        self.maximumAspectRatio = maximumAspectRatio
-        self.minimumSize = minimumSize
-        self.minimumConfidence = minimumConfidence
-        self.maximumCount = max(1, maximumCount)
+                minAspectRatio: Float = 0.2,
+                maxAspectRatio: Float = 1.0,
+                minSize: Float = 0.1,
+                minConfidence: Float = 0.6,
+                maxCount: Int = 8) {
+        self.minAspectRatio = minAspectRatio
+        self.maxAspectRatio = maxAspectRatio
+        self.minSize = minSize
+        self.minConfidence = minConfidence
+        self.maxCount = max(1, maxCount)
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Detect rectangles in a still image, once.
     public static func detect(in image: Image,
-                              minimumAspectRatio: Float = 0.2,
-                              maximumAspectRatio: Float = 1.0,
-                              minimumSize: Float = 0.1,
-                              minimumConfidence: Float = 0.6,
-                              maximumCount: Int = 8) async throws -> [DetectedRectangle] {
-        let request = makeRequest(minimumAspectRatio: minimumAspectRatio,
-                                  maximumAspectRatio: maximumAspectRatio,
-                                  minimumSize: minimumSize,
-                                  minimumConfidence: minimumConfidence,
-                                  maximumCount: maximumCount)
+                              minAspectRatio: Float = 0.2,
+                              maxAspectRatio: Float = 1.0,
+                              minSize: Float = 0.1,
+                              minConfidence: Float = 0.6,
+                              maxCount: Int = 8) async throws -> [DetectedRectangle] {
+        let request = makeRequest(minAspectRatio: minAspectRatio,
+                                  maxAspectRatio: maxAspectRatio,
+                                  minSize: minSize,
+                                  minConfidence: minConfidence,
+                                  maxCount: maxCount)
         let observations = try await request.perform(on: image.currentCGImage())
         return observations.map(DetectedRectangle.init)
     }
@@ -135,11 +135,11 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
 
     func analyze(_ cgImage: CGImage, size: CGSize) async {
         guard status.isAvailable else { return }
-        let request = RectangleDetector.makeRequest(minimumAspectRatio: minimumAspectRatio,
-                                                    maximumAspectRatio: maximumAspectRatio,
-                                                    minimumSize: minimumSize,
-                                                    minimumConfidence: minimumConfidence,
-                                                    maximumCount: maximumCount)
+        let request = RectangleDetector.makeRequest(minAspectRatio: minAspectRatio,
+                                                    maxAspectRatio: maxAspectRatio,
+                                                    minSize: minSize,
+                                                    minConfidence: minConfidence,
+                                                    maxCount: maxCount)
         do {
             let observations = try await request.perform(on: cgImage)
             status.recordSuccess()
@@ -151,15 +151,15 @@ public final class RectangleDetector: VisionTracking, @unchecked Sendable {
 
     // MARK: Helpers
 
-    private static func makeRequest(minimumAspectRatio: Float, maximumAspectRatio: Float,
-                                    minimumSize: Float, minimumConfidence: Float,
-                                    maximumCount: Int) -> DetectRectanglesRequest {
+    private static func makeRequest(minAspectRatio: Float, maxAspectRatio: Float,
+                                    minSize: Float, minConfidence: Float,
+                                    maxCount: Int) -> DetectRectanglesRequest {
         var request = DetectRectanglesRequest()
-        request.minimumAspectRatio = minimumAspectRatio
-        request.maximumAspectRatio = maximumAspectRatio
-        request.minimumSize = minimumSize
-        request.minimumConfidence = minimumConfidence
-        request.maximumObservations = max(1, maximumCount)
+        request.minimumAspectRatio = minAspectRatio
+        request.maximumAspectRatio = maxAspectRatio
+        request.minimumSize = minSize
+        request.minimumConfidence = minConfidence
+        request.maximumObservations = max(1, maxCount)
         return request
     }
 }

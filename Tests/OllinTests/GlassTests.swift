@@ -240,7 +240,7 @@ private final class GlassProbe: Sketch {
             material(.glass())
             drawSphere(radius: 1.2)
         case .absorbingMesh, .absorbingField, .absorbingFieldFarSlab:
-            environment(.studio.intensity(1.4))
+            environment(.studio.intensified(to: 1.4))
             rayTracedReflections()
             // The white slab the interior ray would otherwise mistake for the body's exit.
             withState {

@@ -15,7 +15,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinSPHParams
 /// ```swift
 /// var fluid: ParticleFluid!
 /// override func setup() {
-///     fluid = particleFluid(count: 24_000, radius: 12)
+///     fluid = makeParticleFluid(count: 24_000, radius: 12)
 /// }
 /// override func draw() {
 ///     background(.black)
@@ -89,7 +89,7 @@ public final class ParticleFluid {
     /// as a jittered block (a dam ready to break) from `seed`. `spacing` defaults
     /// to `radius * 0.45` (about 15 neighbors each at rest).
     public init(count: Int, bounds: Rectangle, radius: Double, spacing: Double? = nil,
-                seed: UInt64) {
+                seed: Int) {
         precondition(count > 0, "ParticleFluid needs a positive count")
         precondition(radius > 0, "ParticleFluid needs a positive radius")
         let s = spacing ?? radius * 0.45
@@ -103,7 +103,7 @@ public final class ParticleFluid {
         // Seed a block: wider than tall, centered, hanging in the upper half so the
         // first frames are a splash. Jitter breaks the lattice so pressure doesn't
         // release along grid lines.
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let cols = max(1, min(Int((Double(count) * 2.2).squareRoot().rounded(.up)),
                               Int(bounds.width * 0.86 / s)))
         let rows = (count + cols - 1) / cols

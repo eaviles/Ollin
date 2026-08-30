@@ -16,7 +16,7 @@ import os
 // backlit screen does. Black comes back lighter, because ink on paper is not
 // as dark as a black pixel: the trip is run without black point compensation
 // on purpose, so a proof shows the real ceiling on contrast rather than
-// hiding it. Paper color is the third, and it is opt-in (`simulatePaper`),
+// hiding it. Paper color is the third, and it is opt-in (`simulatesPaper`),
 // because a proof of cream stock reads as a wrong-looking white until you
 // know that is what you asked for.
 //
@@ -47,20 +47,20 @@ public struct SoftProof: Sendable, Hashable {
     /// Show the paper's own color rather than remapping it to white. Off by
     /// default: it is the honest picture of cream or newsprint stock, and it
     /// looks wrong until you are expecting it.
-    public var simulatePaper: Bool
+    public var simulatesPaper: Bool
 
     public init(_ destination: ICCProfile, from source: ICCProfile = .sRGB,
-                intent: RenderingIntent = .relative, simulatePaper: Bool = false) {
+                intent: RenderingIntent = .relative, simulatesPaper: Bool = false) {
         self.destination = destination
         self.source = source
         self.intent = intent
-        self.simulatePaper = simulatePaper
+        self.simulatesPaper = simulatesPaper
     }
 
     /// The intent the trip back to the screen runs under. Absolute is what
     /// keeps the paper's own color in the picture; relative is what maps it
     /// back to white.
-    var returnIntent: RenderingIntent { simulatePaper ? .absolute : .relative }
+    var returnIntent: RenderingIntent { simulatesPaper ? .absolute : .relative }
 
     /// Whether both ends carry usable profile bytes.
     var isUsable: Bool { source.isUsable && destination.isUsable }

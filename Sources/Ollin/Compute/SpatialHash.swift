@@ -18,7 +18,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid (the shared GPU struct
 /// walks the neighbors with the `OLLIN_FOR_NEIGHBORS` macro:
 ///
 /// ```swift
-/// let hash = spatialHash(in: bounds, radius: 24, count: 20_000)
+/// let hash = makeSpatialHash(in: bounds, radius: 24, count: 20_000)
 /// let pp = PingPong<OllinParticle>(count: 20_000)   // your particle buffers
 /// let step = ComputeKernel(entry: "my_step", """
 /// kernel void my_step(

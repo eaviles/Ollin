@@ -63,7 +63,7 @@ import Ollin
     @Test func colorImageKeepsColorsAndOrientation() throws {
         // 2×2 with a distinct color per corner, decoded at face value: colors
         // pass through untouched and the top-left origin is preserved (no
-        // flip) — the decode behind the model tracker's `outputImage`.
+        // flip): the decode behind the model tracker's `image`.
         var bytes: [UInt8] = []
         bytes.append(contentsOf: [255, 0, 0, 255])      // top-left: red
         bytes.append(contentsOf: [0, 255, 0, 255])      // top-right: green

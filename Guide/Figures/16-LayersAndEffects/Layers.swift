@@ -23,14 +23,14 @@ final class Layers: Sketch {
         textSize(16)
 
         // The two sources, drawn once each into their own layer.
-        let backdrop = renderTarget()
+        let backdrop = makeRenderTarget()
         withTarget(backdrop) {
             background(Color(hex: 0x141B2B))
             noStroke()
             fill(Color(hex: 0x4656C6)); drawCircle(width * 0.36, height * 0.4, 150)
             fill(Color(hex: 0x1F8A70)); drawCircle(width * 0.64, height * 0.62, 130)
         }
-        let marks = renderTarget()
+        let marks = makeRenderTarget()
         withTarget(marks) {
             noStroke()
             fill(Color(hex: 0xFFC94A)); drawCircle(width * 0.42, height * 0.5, 34)
@@ -40,7 +40,7 @@ final class Layers: Sketch {
         }
 
         let blurred = backdrop.filtered(.gaussianBlur(radius: 30))
-        let glowing = marks.filtered(.bloom(threshold: 0.4, intensity: 1.6, radius: 18))
+        let glowing = marks.filtered(.bloom(threshold: 0.4, amount: 1.6, radius: 18))
 
         // Lay the five stages out as a graph.
         let w = 200.0, h = 125.0

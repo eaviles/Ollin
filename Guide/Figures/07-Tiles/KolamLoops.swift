@@ -52,7 +52,7 @@ final class KolamLoops: Sketch {
             strokeWeight(4)
             for (loop, contour) in design.loops.enumerated() {
                 let spread = Double(design.loops.count - 1)
-                stroke(spread == 0 ? chalk : Color.mix(chalk, warm, t: Double(loop) / spread))
+                stroke(spread == 0 ? chalk : Color.mix(chalk, warm, Double(loop) / spread))
                 drawPolyline(contour.smoothed(iterations: 3).points, closed: true)
             }
 

@@ -21,11 +21,11 @@ final class ArtificialLife: Sketch {
     var slime: Physarum!
 
     override func setup() {
-        life = particleLife(count: 9000, kinds: 5, radius: 34, bounds: left, seed: 3)
+        life = makeParticleLife(count: 9000, kinds: 5, radius: 34, bounds: left, seed: 3)
         life.forceFactor = 8
-        pps = primordialParticles(count: PPS.suggestedCount(for: 16, in: middle),
+        pps = makePrimordialParticles(count: PPS.suggestedCount(for: 16, in: middle),
                                   radius: 16, bounds: middle, seed: 5)
-        slime = physarum(agents: 90_000, width: 384, height: 516, seed: 7)
+        slime = makePhysarum(agents: 90_000, width: 384, height: 516, seed: 7)
     }
 
     override func draw() {
@@ -37,7 +37,7 @@ final class ArtificialLife: Sketch {
         blendMode(.add)
         updateParticleLife(life)
         drawParticles(life)
-        updatePPS(pps)
+        updatePrimordialParticles(pps)
         drawParticles(pps)
         blendMode(.normal)
 

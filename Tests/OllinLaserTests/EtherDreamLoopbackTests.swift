@@ -56,7 +56,7 @@ struct EtherDreamLoopbackTests {
         client.connect()
         client.play(litSquare())
         _ = try await waitFor { dac.pointsReceived > 0 ? true : nil }
-        client.setPointRate(12_000)
+        client.pointsPerSecond = 12_000
         _ = try await waitFor { dac.commands.contains(0x74) ? true : nil }
         #expect(dac.pointRate == 12_000)
     }
@@ -215,7 +215,7 @@ struct EtherDreamLoopbackTests {
             return points.count > 30 ? points : nil
         }
         #expect(after.allSatisfy { $0.isBlanked })
-        #expect(laser.isPlaying)
+        #expect(laser.isConnected)
     }
 }
 

@@ -293,10 +293,10 @@ public extension Color {
     /// let c = a.mixed(with: b, t, in: .oklch)
     /// ```
     func mixed(with other: Color, _ t: Double, in space: ColorSpace = .oklab) -> Color {
-        Color.mix(self, other, t: t, in: space)
+        Color.mix(self, other, t, in: space)
     }
 
-    static func mix(_ x: Color, _ y: Color, t: Double, in space: ColorSpace = .oklab) -> Color {
+    static func mix(_ x: Color, _ y: Color, _ t: Double, in space: ColorSpace = .oklab) -> Color {
         let t = min(max(t, 0), 1)
         let alpha = x.alpha + (y.alpha - x.alpha) * t
         func lerp(_ a: Double, _ b: Double) -> Double { a + (b - a) * t }

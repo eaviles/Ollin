@@ -32,7 +32,7 @@ final class MixingSpaces: Sketch {
             let y = 105.0 + Double(row) * 130
             for i in 0..<steps {
                 let t = Double(i) / Double(steps - 1)
-                fill(Color.mix(blue, yellow, t: t, in: space.0))
+                fill(Color.mix(blue, yellow, t, in: space.0))
                 drawRect(70 + Double(i) * 68, y, 62, 74)
             }
             fill(label)

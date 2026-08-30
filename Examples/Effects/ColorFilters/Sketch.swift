@@ -37,7 +37,7 @@ final class ColorFilters_Example: Sketch {
 
         // A vivid scene with a wide brightness range, so every grade has color and
         // tone to bite on.
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x101826))
             noStroke()

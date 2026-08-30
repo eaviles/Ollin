@@ -80,7 +80,7 @@ final class PhoneFace3D: Sketch {
         strokeWeight(1.2)
         for (i, face) in faces.enumerated() {
             let tint = Color.mix(baseColors[i % baseColors.count], warm,
-                                 t: face.blendShape(.jawOpen), in: .oklch)
+                                 face.blendShape(.jawOpen), in: .oklch)
             withState {
                 translate(face.headPosition)
                 stroke(tint)
@@ -106,7 +106,7 @@ final class PhoneFace3D: Sketch {
 
             fill(Color(white: 1, alpha: 0.12))
             drawRect(x, y, barW, barH)
-            fill(Color.mix(Color(hex: 0x4A88FF), Color(hex: 0xFF5C7A), t: v, in: .oklch))
+            fill(Color.mix(Color(hex: 0x4A88FF), Color(hex: 0xFF5C7A), v, in: .oklch))
             drawRect(x, y, barW * v, barH)
 
             fill(Color(white: 0.9))

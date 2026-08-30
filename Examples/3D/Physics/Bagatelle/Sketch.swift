@@ -45,7 +45,7 @@ final class Bagatelle: Sketch {
 
     override func setup() {
         // No floor: a ball that escapes the board should be seen leaving.
-        world.bounce = 0.45
+        world.restitution = 0.45
         buildTable()
         for _ in 0 ..< 14 { drop() }
     }
@@ -167,7 +167,7 @@ final class Bagatelle: Sketch {
 
         if balls.count < 14 && frameCount % 45 == 0 { drop() }
         dragBodies(in: world)
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         drawTable()
         drawBalls()

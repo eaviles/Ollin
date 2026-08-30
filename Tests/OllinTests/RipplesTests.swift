@@ -102,7 +102,7 @@ private final class RipplesProbeSketch: Sketch {
     private var pool: SimField!
 
     override func setup() {
-        pool = simField(.ripples(), scale: 0.5)
+        pool = makeSimField(.ripples(), scale: 0.5)
     }
 
     override func draw() {

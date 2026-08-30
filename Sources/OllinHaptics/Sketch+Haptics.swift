@@ -45,7 +45,7 @@ extension Sketch {
     }
 
     /// Whether anything here can be felt.
-    public var hapticsAvailable: Bool {
+    public var hapticsAreAvailable: Bool {
         HapticHub.shared.hardware != .none
     }
 

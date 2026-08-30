@@ -128,7 +128,7 @@ struct HapticPatternTests {
     }
 
     @Test func speedDividesEveryTime() {
-        let quick = HapticPattern.hum(0.4, fadeIn: 0.2).delayed(by: 0.6).speed(2)
+        let quick = HapticPattern.hum(0.4, fadeIn: 0.2).delayed(by: 0.6).scaled(speed: 2)
         #expect(quick.events[0].time == 0.3)
         #expect(quick.events[0].duration == 0.2)
         #expect(quick.events[0].fadeIn == 0.1)
@@ -136,8 +136,8 @@ struct HapticPatternTests {
 
     @Test func speedIgnoresAFactorItCannotUse() {
         let pattern = HapticPattern.pulses(2, every: 0.1)
-        #expect(pattern.speed(0) == pattern)
-        #expect(pattern.speed(-1) == pattern)
+        #expect(pattern.scaled(speed: 0) == pattern)
+        #expect(pattern.scaled(speed: -1) == pattern)
     }
 
     @Test func reversedPutsTheLastEventFirst() {

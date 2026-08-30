@@ -93,7 +93,7 @@ public final class MeshGrowth {
     /// How much longer than `edgeLength` an edge wants to be where growth is at
     /// its maximum. This is the growth rate: at 0 the surface only relaxes, and
     /// larger values make area faster.
-    public var growthAmount: Double = 0.5
+    public var growthRate: Double = 0.5
 
     /// How hard an edge pulls back toward the length it wants.
     public var springStrength: Double = 0.25
@@ -238,7 +238,7 @@ public final class MeshGrowth {
             indices.append(UInt32(t.b))
             indices.append(UInt32(t.c))
         }
-        let built = Mesh(positions: positions, indices: indices).withSmoothNormals()
+        let built = Mesh(positions: positions, indices: indices).generatingSmoothNormals()
         cachedMesh = built
         return built
     }
@@ -413,7 +413,7 @@ public final class MeshGrowth {
         let d = delta.length
         guard d > 1e-12 else { return }
         let rate = growthField.isEmpty ? 0 : (growthField[i] + growthField[j]) * 0.5
-        let rest = edgeLength * (1 + growthAmount * rate)
+        let rest = edgeLength * (1 + growthRate * rate)
         let pull = (d - rest) * springStrength
         let dir = delta * (1 / d)
         force[i] = force[i] + dir * pull

@@ -301,7 +301,7 @@ public struct OutlineFont: @unchecked Sendable {
     /// behind `drawText`'s fast fill path and `glyphShapes`. Glyphs with neither
     /// contours nor a picture (spaces) are skipped.
     func placedGlyphs(for string: String, size: Double,
-                      alignH: TextAlignH, alignV: TextAlignV,
+                      alignH: HorizontalTextAlign, alignV: VerticalTextAlign,
                       direction: TextDirection,
                       justify: TextJustification? = nil,
                       hangs: Bool = false,
@@ -363,7 +363,7 @@ public struct OutlineFont: @unchecked Sendable {
     /// without building any geometry; the drawer turns each into a quad sampling
     /// the atlas. Spaces are kept (the atlas returns no slot for them).
     func placedAtlasGlyphs(for string: String, size: Double,
-                           alignH: TextAlignH, alignV: TextAlignV,
+                           alignH: HorizontalTextAlign, alignV: VerticalTextAlign,
                            direction: TextDirection,
                            justify: TextJustification? = nil,
                            hangs: Bool = false,
@@ -431,7 +431,7 @@ public struct OutlineFont: @unchecked Sendable {
     /// Every line is anchored by its own extent, so a short column centers on its
     /// own length exactly as a short line does.
     private func lineStarts(extents: [Double], size: Double,
-                            alignH: TextAlignH, alignV: TextAlignV,
+                            alignH: HorizontalTextAlign, alignV: VerticalTextAlign,
                             direction: TextDirection, at origin: Vector2) -> [Vector2] {
         let ascentP = ascent * size
         let descentP = descent * size
@@ -526,7 +526,7 @@ public struct OutlineFont: @unchecked Sendable {
     /// `drawText` itself takes the lighter `placedGlyphs` path. Built by
     /// translating each glyph's cached local contours, so it shares the cache.
     func glyphShapes(for string: String, size: Double,
-                     alignH: TextAlignH, alignV: TextAlignV,
+                     alignH: HorizontalTextAlign, alignV: VerticalTextAlign,
                      direction: TextDirection,
                      justify: TextJustification? = nil,
                      hangs: Bool = false,

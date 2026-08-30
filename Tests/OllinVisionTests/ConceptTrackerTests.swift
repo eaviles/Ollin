@@ -22,7 +22,7 @@ import Ollin
 
     static func tracker(concepts: [String] = []) -> ConceptTracker {
         ConceptTracker(imageModelAt: imageModelURL, textModelAt: textModelURL,
-                       vocabAt: vocabURL, concepts: concepts)
+                       vocabularyAt: vocabURL, concepts: concepts)
     }
 
     // MARK: Always-on
@@ -31,7 +31,7 @@ import Ollin
         let tracker = ConceptTracker(
             imageModelAt: URL(fileURLWithPath: "/nowhere/image.mlpackage"),
             textModelAt: URL(fileURLWithPath: "/nowhere/text.mlpackage"),
-            vocabAt: URL(fileURLWithPath: "/nowhere/vocab.txt"),
+            vocabularyAt: URL(fileURLWithPath: "/nowhere/vocab.txt"),
             concepts: ["anything"])
         let image = Image(width: 32, height: 32, color: .white)
         await #expect(throws: ConceptTracker.Error.self) {
@@ -61,7 +61,7 @@ import Ollin
     /// enough to break into many pieces.
     @Test func tokenizerMatchesTheReference() throws {
         guard Self.vocabIsFetched else { return }
-        let tokenizer = try PhraseTokenizer(vocabAt: Self.vocabURL)
+        let tokenizer = try PhraseTokenizer(vocabularyAt: Self.vocabURL)
         let goldens: [(String, [Int32])] = [
             ("a photo of a cat", [49406, 320, 1125, 539, 320, 2368, 49407]),
             ("a spooky scene", [49406, 320, 15369, 3562, 49407]),
@@ -88,7 +88,7 @@ import Ollin
 
     @Test func tokenizerShapeAndTruncation() throws {
         guard Self.vocabIsFetched else { return }
-        let tokenizer = try PhraseTokenizer(vocabAt: Self.vocabURL)
+        let tokenizer = try PhraseTokenizer(vocabularyAt: Self.vocabURL)
         #expect(tokenizer.vocabularySize == 49408)
         #expect(tokenizer.startToken == 49406)
         #expect(tokenizer.endToken == 49407)
@@ -165,7 +165,7 @@ import Ollin
         let tracker = ConceptTracker(source,
                                      imageModelAt: Self.imageModelURL,
                                      textModelAt: Self.textModelURL,
-                                     vocabAt: Self.vocabURL,
+                                     vocabularyAt: Self.vocabURL,
                                      concepts: ["a plain red picture",
                                                 "a plain blue picture"])
         let red = Image(width: 128, height: 128,
@@ -183,7 +183,7 @@ import Ollin
         _ = try await tracker.detect(in: red)
         await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(cgImage))
         #expect(tracker.labels.count == 2)
-        #expect(tracker.top?.label == "a plain red picture")
+        #expect(tracker.topClassification?.label == "a plain red picture")
         #expect(tracker.confidence(of: "a plain red picture") > 0.5)
         #expect(tracker.similarity(of: "a plain red picture")
                 > tracker.similarity(of: "a plain blue picture"))

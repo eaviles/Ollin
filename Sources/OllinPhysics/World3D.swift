@@ -6,7 +6,7 @@ internal import CJolt
 /// The 3D rigid-body simulation: `Body3D`s that stack, tumble, and swing inside
 /// the 3D scene, joined by `Joint3D`s and stepped each frame. The spatial
 /// sibling of the 2D `World`'s rigid side, sharing its shape: build a world
-/// once, add bodies, call `step(dt:)` each frame, and draw each body from its
+/// once, add bodies, call `advance(by:)` each frame, and draw each body from its
 /// pose (`withBody(_:)` moves the transform stack there).
 ///
 /// ```swift
@@ -15,7 +15,7 @@ internal import CJolt
 /// let box = world.addBody(.box(width: 1, height: 1, depth: 1),
 ///                         at: Vector3(0, 4, 0))
 /// // each frame:
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// withBody(box) { drawBox(width: 1, height: 1, depth: 1) }
 /// ```
 ///
@@ -60,10 +60,10 @@ public final class World3D {
     }
 
     /// Default restitution `0…1` for the ground and for bodies that don't pass
-    /// their own: how much speed survives a bounce. Kept low so stacks settle.
-    public var bounce: Double = 0.2
+    /// their own: how much speed survives a restitution. Kept low so stacks settle.
+    public var restitution: Double = 0.2
 
-    /// The largest timestep a single `step(dt:)` will integrate, in seconds.
+    /// The largest timestep a single `advance(by:)` will integrate, in seconds.
     /// `deltaTime` can spike after a stall or while a window is dragged;
     /// clamping keeps one long frame from launching everything off-screen.
     public var maxTimestep: Double = 1.0 / 30
@@ -91,11 +91,11 @@ public final class World3D {
     public private(set) var joints: [Joint3D] = []
 
     /// Every walking `Character3D` in the world, in the order added. Each one
-    /// is swept forward by `step(dt:)` along with the bodies.
+    /// is swept forward by `advance(by:)` along with the bodies.
     public private(set) var characters: [Character3D] = []
 
     /// Every `Vehicle3D` in the world, in the order added. Each one's controls
-    /// are handed to the solver by `step(dt:)`.
+    /// are handed to the solver by `advance(by:)`.
     public private(set) var vehicles: [Vehicle3D] = []
 
     /// Every `Ragdoll3D` in the world, in the order added. Their limb bodies
@@ -108,13 +108,13 @@ public final class World3D {
     /// (one pose, one velocity, impulses) does not describe them.
     public private(set) var softBodies: [SoftBody3D] = []
 
-    /// Every touch that started or stopped during the most recent `step(dt:)`,
+    /// Every touch that started or stopped during the most recent `advance(by:)`,
     /// including bodies entering and leaving a sensor. Poll it in `draw()` the
     /// way mouse state is polled; the list is replaced by the next step, and
     /// reading it twice reads the same events.
     ///
     /// ```swift
-    /// world.step(dt: deltaTime)
+    /// world.advance(by: deltaTime)
     /// for contact in world.contacts where contact.phase == .began {
     ///     ping(at: contact.point, loudness: contact.speed)
     /// }
@@ -161,16 +161,16 @@ public final class World3D {
 
     /// How far into the swell the water is, in seconds of simulated time, so
     /// the surface a sketch draws and the surface the bodies ride are read at
-    /// the same moment. Advanced by `step(dt:)`, so a fixed timestep replays
+    /// the same moment. Advanced by `advance(by:)`, so a fixed timestep replays
     /// the same waves. Read it to drive a shader's own waves in step with the
     /// ones the bodies are riding.
     public internal(set) var waterPhase: Double = 0
 
     /// Whether the water changed since the last step, which is what tells the
-    /// buoyancy pass to wake bodies that had settled at the old surface.
+    /// buoyancyScale pass to wake bodies that had settled at the old surface.
     var waterMoved = false
 
-    /// Scratch for the buoyancy pass's query, kept between steps so a floating
+    /// Scratch for the buoyancyScale pass's query, kept between steps so a floating
     /// scene allocates nothing per frame.
     var waterBodies: [CJoltBodyID] = []
     var waterCenters: [Float] = []
@@ -207,7 +207,7 @@ public final class World3D {
     ///   - density: relative mass per volume (`1` is the default material);
     ///     heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.
-    ///   - restitution: bounciness `0…1`; defaults to the world's `bounce`.
+    ///   - restitution: bounciness `0…1`; defaults to the world's `restitution`.
     ///   - freedom: which ways it may move. `.all` (the default) leaves it
     ///     free; `.plane()` keeps it flat, `.upright` keeps it from tipping.
     ///   - gravityScale: how hard gravity pulls on this one body, against the
@@ -274,7 +274,7 @@ public final class World3D {
         desc.startAsleep = asleep
         desc.motion = kind.cjolt
         desc.friction = Float(max(0, friction))
-        desc.restitution = Float(restitution ?? bounce)
+        desc.restitution = Float(restitution ?? self.restitution)
         desc.linearDamping = 0.05
         desc.angularDamping = 0.05
         desc.gravityFactor = Float(gravityScale)
@@ -324,10 +324,10 @@ public final class World3D {
     ///
     /// ```swift
     /// let hall = loadScene("hall.usdz")!
-    /// world.addStaticColliders(from: hall)
+    /// world.addStaticBodies(from: hall)
     /// ```
     @discardableResult
-    public func addStaticColliders(from scene: Scene, friction: Double = 0.5,
+    public func addStaticBodies(from scene: Scene, friction: Double = 0.5,
                                    restitution: Double? = nil,
                                    group: CollisionGroup = .default) -> [Body3D] {
         var added: [Body3D] = []
@@ -432,13 +432,13 @@ public final class World3D {
                            friction: Double = 0.5,
                            balances: Bool = false,
                            maxLeanAngle: Double = 45 * .pi / 180,
-                           tracked: Bool = false,
+                           isTracked: Bool = false,
                            group: CollisionGroup = .default) -> Vehicle3D? {
         guard !wheels.isEmpty else {
             noteOnce("a vehicle needs at least one wheel")
             return nil
         }
-        if tracked, balances {
+        if isTracked, balances {
             noteOnce("a tracked machine does not lean; ignoring balances")
         }
         // Weight that hangs at axle height is what stops a vehicle from
@@ -454,12 +454,12 @@ public final class World3D {
                                       engineTorque: engineTorque,
                                       topSpeed: topSpeed,
                                       antiRollStiffness: 1000,
-                                      leans: balances && !tracked,
+                                      leans: balances && !isTracked,
                                       maxLeanAngle: maxLeanAngle,
-                                      tracked: tracked, mass: mass,
+                                      tracked: isTracked, mass: mass,
                                       centerOfMass: hang) else {
             remove(body)
-            noteOnce(tracked
+            noteOnce(isTracked
                      ? "a tracked machine needs road wheels on both sides of "
                         + "the hull; check where its wheels sit"
                      : "the vehicle could not be built; check its wheels")
@@ -544,9 +544,9 @@ public final class World3D {
     ///   - mesh: the rest shape. An open surface is cloth; a closed one can be
     ///     pressurised into a ball.
     ///   - position: where the rest shape is placed in the world.
-    ///   - rotation: how far the rest shape is turned, in radians, about
+    ///   - rotated: how far the rest shape is turned, in radians, about
     ///     `axis`, applied before it is placed.
-    ///   - axis: the axis `rotation` turns about.
+    ///   - axis: the axis `rotated` turns about.
     ///   - mass: the whole body's weight in kilograms, split evenly between its
     ///     particles.
     ///   - stiffness: how hard the surface resists being stretched, `0` slack
@@ -559,11 +559,11 @@ public final class World3D {
     ///     ball. Ignored on an open sheet.
     ///   - damping: how quickly particle motion bleeds away.
     ///   - friction: the surface's friction against what it lands on.
-    ///   - bounce: how much speed survives a bounce; `nil` takes the world's.
+    ///   - restitution: how much speed survives a restitution; `nil` takes the world's.
     ///   - iterations: solver passes per step; more is stiffer and steadier.
     ///   - vertexRadius: how far each particle's body reaches past its
     ///     position, which lifts a draped surface clear of what it lies on.
-    ///   - twoSided: collide with the back of every face as well as the front.
+    ///   - isTwoSided: collide with the back of every face as well as the front.
     ///   - pinned: given a vertex of `mesh` in the mesh's own space, whether it
     ///     is held in place. This is how a flag hangs from its corners. A
     ///     pinned vertex a joint carries is held by the *figure* rather than by
@@ -586,17 +586,17 @@ public final class World3D {
     ///   - group: which collision group the surface is in.
     @discardableResult
     public func addSoftBody(from mesh: Mesh, at position: Vector3 = .zero,
-                            rotation: Double = 0, axis: Vector3 = Vector3(0, 1, 0),
+                            rotated angle: Double = 0, axis: Vector3 = .unitY,
                             mass: Double = 1,
                             stiffness: Double = 1,
                             bend: Double = 0,
                             pressure: Double = 0,
                             damping: Double = 0.1,
                             friction: Double = 0.5,
-                            bounce: Double? = nil,
+                            restitution: Double? = nil,
                             iterations: Int = 5,
                             vertexRadius: Double = 0,
-                            twoSided: Bool = true,
+                            isTwoSided twoSided: Bool = true,
                             pinned: ((Vector3) -> Bool)? = nil,
                             skinnedTo scene: Scene? = nil,
                             carriedBy: ((Vector3) -> String?)? = nil,
@@ -605,7 +605,7 @@ public final class World3D {
                             maxStretch: Double? = nil,
                             group: CollisionGroup = .default) -> SoftBody3D? {
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
-        let turn = simd_quatd(angle: rotation,
+        let turn = simd_quatd(angle: angle,
                               axis: simd_double3(direction.x, direction.y, direction.z))
         if carriedBy != nil && scene == nil {
             noteOnce("carriedBy names joints of a skeleton, so it needs a "
@@ -615,9 +615,9 @@ public final class World3D {
         return makeSoftBody(mesh: mesh, position: position, rotation: turn,
                             mass: mass, stiffness: stiffness, bend: bend,
                             pressure: pressure, damping: damping,
-                            friction: friction, restitution: bounce ?? self.bounce,
+                            friction: friction, restitution: restitution ?? self.restitution,
                             iterations: iterations, vertexRadius: vertexRadius,
-                            twoSided: twoSided, pinned: pinned, group: group,
+                            isTwoSided: twoSided, pinned: pinned, group: group,
                             skeleton: scene?.skeleton() ?? [],
                             carriedBy: carriedBy, sway: sway, backStop: backStop,
                             maxStretch: maxStretch, restoredSkin: nil)
@@ -631,7 +631,7 @@ public final class World3D {
                       mass: Double, stiffness: Double, bend: Double,
                       pressure: Double, damping: Double, friction: Double,
                       restitution: Double, iterations: Int, vertexRadius: Double,
-                      twoSided: Bool, pinned: ((Vector3) -> Bool)?,
+                      isTwoSided twoSided: Bool, pinned: ((Vector3) -> Bool)?,
                       group: CollisionGroup, skeleton: [SceneSkeletonJoint],
                       carriedBy: ((Vector3) -> String?)?,
                       sway: ((Vector3) -> Double)?, backStop: Double?,
@@ -645,7 +645,7 @@ public final class World3D {
                                     restitution: restitution,
                                     iterations: iterations,
                                     vertexRadius: vertexRadius,
-                                    twoSided: twoSided, pinned: pinned,
+                                    isTwoSided: twoSided, pinned: pinned,
                                     group: group, skeleton: skeleton,
                                     carriedBy: carriedBy, sway: sway,
                                     backStop: backStop, maxStretch: maxStretch,
@@ -681,7 +681,7 @@ public final class World3D {
     ///   - points: the rope's rest shape, in its own local space. Two points
     ///     make the shortest usable rope; more make it bend in more places.
     ///   - position: where the rest shape stands in the world.
-    ///   - rotation: how far the rest shape is turned, in radians, about `axis`.
+    ///   - rotated: how far the rest shape is turned, in radians, about `axis`.
     ///   - thickness: the rope's radius, which is both what it draws as and how
     ///     far it stands off whatever it lies on.
     ///   - sides: how many sides the drawn tube has.
@@ -693,7 +693,7 @@ public final class World3D {
     ///     that holds its own shape.
     ///   - damping: how quickly its motion dies away.
     ///   - friction: how much it grips what it slides against.
-    ///   - bounce: how much it rebounds, defaulting to the world's own.
+    ///   - restitution: how much it rebounds, defaulting to the world's own.
     ///   - iterations: solver passes per step. More holds a long rope steadier.
     ///   - pinned: given a point in the rope's own space, whether it is held in
     ///     place. This is how a rope hangs from a hook.
@@ -703,7 +703,7 @@ public final class World3D {
     ///   - group: which collision group the rope is in.
     @discardableResult
     public func addRope(through points: [Vector3], at position: Vector3 = .zero,
-                        rotation: Double = 0, axis: Vector3 = Vector3(0, 1, 0),
+                        rotated angle: Double = 0, axis: Vector3 = .unitY,
                         thickness: Double = 0.05,
                         sides: Int = 8,
                         mass: Double = 1,
@@ -711,18 +711,18 @@ public final class World3D {
                         bend: Double = 0,
                         damping: Double = 0.1,
                         friction: Double = 0.5,
-                        bounce: Double? = nil,
+                        restitution: Double? = nil,
                         iterations: Int = 5,
                         pinned: ((Vector3) -> Bool)? = nil,
                         maxStretch: Double? = nil,
                         group: CollisionGroup = .default) -> Rope3D? {
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
-        let turn = simd_quatd(angle: rotation,
+        let turn = simd_quatd(angle: angle,
                               axis: simd_double3(direction.x, direction.y, direction.z))
         return makeRope(points: points, position: position, rotation: turn,
                         thickness: thickness, sides: sides, mass: mass,
                         stiffness: stiffness, bend: bend, damping: damping,
-                        friction: friction, restitution: bounce ?? self.bounce,
+                        friction: friction, restitution: restitution ?? self.restitution,
                         iterations: iterations, pinned: pinned,
                         maxStretch: maxStretch, group: group)
     }
@@ -1091,7 +1091,7 @@ public final class World3D {
 
     /// Advance the simulation by `dt` seconds (clamped to `maxTimestep`). Call
     /// once per frame with `deltaTime`.
-    public func step(dt: Double) {
+    public func advance(by dt: Double) {
         let clamped = min(max(dt, 0), maxTimestep)
         // A skipped step leaves the last one's contacts standing rather than
         // silently emptying them, so a paused frame reads what a paused world
@@ -1160,7 +1160,7 @@ public final class World3D {
         desc.rotation = (0, 0, 0, 1)
         desc.motion = CJOLT_MOTION_STATIC
         desc.friction = 0.5
-        desc.restitution = Float(bounce)
+        desc.restitution = Float(restitution)
         desc.allowSleep = true
         desc.gravityFactor = 1
         desc.group = groupIndex(groundGroup)

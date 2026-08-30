@@ -26,7 +26,7 @@ public struct PluckedString: Sendable, Hashable, Codable {
     /// there, so a pluck at 1/2 loses every even harmonic and comes out hollow,
     /// while one near the bridge keeps them all and comes out thin and nasal.
     /// A quarter of the way along is roughly where a guitar is played.
-    public var pick: Double
+    public var position: Double
 
     /// How hard the pluck is, `0...1`.
     ///
@@ -53,12 +53,12 @@ public struct PluckedString: Sendable, Hashable, Codable {
     public var damping: Double
 
     public init(
-        pick: Double = 0.26,
+        position: Double = 0.26,
         hardness: Double = 0.55,
         decay: Double = 2.4,
         damping: Double = 0.55
     ) {
-        self.pick = min(max(0.01, pick), 0.99)
+        self.position = min(max(0.01, position), 0.99)
         self.hardness = min(max(0, hardness), 1)
         self.decay = max(0.02, decay)
         self.damping = min(max(0, damping), 1)
@@ -68,24 +68,24 @@ public struct PluckedString: Sendable, Hashable, Codable {
 
     /// Soft and round, and it does not ring for long.
     public static let nylon = PluckedString(
-        pick: 0.28, hardness: 0.35, decay: 1.8, damping: 0.7
+        position: 0.28, hardness: 0.35, decay: 1.8, damping: 0.7
     )
 
     /// Brighter and longer, with more of the pluck left in the front of it.
     public static let steel = PluckedString(
-        pick: 0.16, hardness: 0.8, decay: 3.6, damping: 0.4
+        position: 0.16, hardness: 0.8, decay: 3.6, damping: 0.4
     )
 
     /// Plucked near the middle, so the even harmonics are missing and it comes
     /// out hollow and bell-like.
     public static let harp = PluckedString(
-        pick: 0.45, hardness: 0.4, decay: 5.0, damping: 0.3
+        position: 0.45, hardness: 0.4, decay: 5.0, damping: 0.3
     )
 
     /// Almost no ring at all: the sound of a string stopped by the hand that
     /// plucked it.
     public static let muted = PluckedString(
-        pick: 0.12, hardness: 0.9, decay: 0.24, damping: 0.85
+        position: 0.12, hardness: 0.9, decay: 0.24, damping: 0.85
     )
 }
 

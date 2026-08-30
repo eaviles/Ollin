@@ -93,7 +93,7 @@ final class DisplayWall {
     private func say() {
         let where_ = rehearsing != nil ? "rehearsing" : "on"
         let parts = outputs.map { part -> String in
-            let shows = part.part.projection.shows
+            let shows = part.part.projection.visibleRegion
             return "\(Int(shows.width * 100))x\(Int(shows.height * 100))% at "
                 + "\(Int(shows.x * 100)),\(Int(shows.y * 100))%"
         }
@@ -310,7 +310,7 @@ final class DisplayOutput: CanvasOutput {
         guard let layer = view?.metalLayer else { return nil }
         let size = layer.drawableSize
         guard size.width > 0, size.height > 0 else { return nil }
-        return (size, part.projection.shows)
+        return (size, part.projection.visibleRegion)
     }
 }
 

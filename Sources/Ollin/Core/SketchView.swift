@@ -80,7 +80,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var lastForwardedShaderError: String?
 
     private var didSetup = false
-    private var didReload = false        // call onReload() after the post-reload setup()
+    private var didReload = false        // call reloaded() after the post-reload setup()
     private var pendingSetupRerun = false // re-run setup() in place (e.g. an asset changed)
     private var clockCarry: Double?      // seconds to continue `time` from across a reload
     private var elapsed: Double = 0      // the sketch clock: the sum of the frame steps so far
@@ -700,7 +700,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
         renderer.resetAccumulation()   // a reloaded sketch starts on a clean canvas
         didSetup = false            // re-run setup() next frame
-        didReload = true            // ...then call onReload() once
+        didReload = true            // ...then call reloaded() once
         lastAxisFlag = nil          // re-assert the fresh sketch's axis/grid defaults
         lastGridFlag = nil
         cameraHoldover = false      // any camera-snap holdover belonged to the old sketch
@@ -890,7 +890,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             didSetup = true
             if didReload {            // setup() just ran on a hot-swapped sketch
                 didReload = false
-                sketch.onReload()
+                sketch.reloaded()
             }
         } else if pendingSetupRerun {
             pendingSetupRerun = false
@@ -2341,7 +2341,7 @@ public enum OllinApp {
         let size = "\(cgImage.width)×\(cgImage.height)"
         switch URL(fileURLWithPath: path).pathExtension.lowercased() {
         case "heic", "heif":
-            guard let still = writeHEIC(cgImage, to: path, recipe: recipe) else {
+            guard let still = exportHEIC(cgImage, to: path, recipe: recipe) else {
                 fatalError("Ollin: failed to write \(path)")
             }
             // Say whether the highlights made it, since that is the whole reason
@@ -2931,7 +2931,7 @@ public extension OllinApp {
             } else {
                 var codec = VideoCodec.h264
                 if let name = value("--codec") {
-                    guard let parsed = VideoCodec(rawValue: name) else {
+                    guard let parsed = VideoCodec(flag: name) else {
                         FileHandle.standardError.write(Data(
                             "unknown codec '\(name)': expected one of \(VideoCodec.allCases.map(\.rawValue).joined(separator: ", "))\n".utf8))
                         return true
@@ -2941,14 +2941,14 @@ public extension OllinApp {
                 let bitrate = value("--bitrate").flatMap(Double.init).map { Int($0 * 1_000_000) }
                 let quality = value("--quality").flatMap(Double.init)
                 OllinApp.exportVideo(sketch, to: path, frames: frames, fps: fps,
-                                     codec: codec, bitsPerSecond: bitrate, quality: quality,
+                                     codec: codec, bitsPerSecond: bitrate, encodeQuality: quality,
                                      renderQuality: renderQuality, skipSeconds: skip,
                                      slowMotion: slowMotion)
             }
             return true
         }
         // `--export-video <path> (--frames N | --seconds S) [--fps F] [--skip S]
-        // [--codec h264|hevc|prores422|prores4444] [--bitrate MBPS] [--quality 0..1]`
+        // [--codec h264|hevc|proRes422|proRes4444] [--bitrate MBPS] [--quality 0..1]`
         // encodes a video (.mp4/.mov) and exits.
         if let i = args.firstIndex(of: "--export-video"), i + 1 < args.count {
             func value(_ flag: String) -> String? {
@@ -2966,7 +2966,7 @@ public extension OllinApp {
             let skip = value("--skip").flatMap(Double.init) ?? 0
             var codec = VideoCodec.h264
             if let name = value("--codec") {
-                guard let parsed = VideoCodec(rawValue: name) else {
+                guard let parsed = VideoCodec(flag: name) else {
                     FileHandle.standardError.write(Data(
                         "unknown codec '\(name)': expected one of \(VideoCodec.allCases.map(\.rawValue).joined(separator: ", "))\n".utf8))
                     return true
@@ -2981,7 +2981,7 @@ public extension OllinApp {
                 return true
             }
             OllinApp.exportVideo(make(), to: args[i + 1], frames: frames, fps: fps,
-                                 codec: codec, bitsPerSecond: bitrate, quality: quality,
+                                 codec: codec, bitsPerSecond: bitrate, encodeQuality: quality,
                                  renderQuality: renderQuality, skipSeconds: skip,
                                  slowMotion: slowMotion)
             return true
@@ -3163,7 +3163,7 @@ public extension OllinApp {
                 return true
             }
             OllinApp.exportSeparations(make(), to: args[i + 1], inks: inks, paper: paper,
-                                       frame: frame, registrationMarks: !args.contains("--no-marks"),
+                                       frame: frame, drawsRegistrationMarks: !args.contains("--no-marks"),
                                        quality: renderQuality, screen: screen)
             return true
         }
@@ -3217,8 +3217,8 @@ public extension OllinApp {
                 return true
             }
             OllinApp.exportPlates(make(), to: args[i + 1], profile: profile, intent: intent,
-                                  simulatePaper: args.contains("--paper"), frame: frame,
-                                  registrationMarks: !args.contains("--no-marks"),
+                                  simulatesPaper: args.contains("--paper"), frame: frame,
+                                  drawsRegistrationMarks: !args.contains("--no-marks"),
                                   quality: renderQuality, screen: screen)
             return true
         }
@@ -3252,7 +3252,7 @@ public extension OllinApp {
                 var h = Hatching()
                 if let s = value("--hatch-spacing").flatMap(Double.init) { h.spacing = s }
                 if let a = value("--hatch-angle").flatMap(Double.init) { h.angle = a * .pi / 180 }
-                if args.contains("--cross-hatch") { h.crossHatch = true }
+                if args.contains("--cross-hatch") { h.crossHatches = true }
                 hatching = h
             }
             var handled = false

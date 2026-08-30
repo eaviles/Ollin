@@ -73,9 +73,9 @@ final class PhoneWorldScan: Sketch {
         // Fuse each fresh frame once: place its camera-space cloud into world space
         // with the frame's camera→world pose and merge. A `.low` confidence floor
         // keeps the dimmer/farther LiDAR samples, and the range drops far-wall noise.
-        if let id = device.latestDepthFrameID, id != lastFused,
+        if let id = device.latestFrameVersion, id != lastFused,
            let pose = device.latestPose,
-           let cameraCloud = device.pointCloud(minimumConfidence: .low,
+           let cameraCloud = device.pointCloud(minConfidence: .low,
                                                depthRange: 0.3...5.0, pointSize: 0.013) {
             switch keeping {
             case .asReported:

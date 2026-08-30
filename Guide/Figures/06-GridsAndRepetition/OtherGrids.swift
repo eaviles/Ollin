@@ -32,7 +32,7 @@ final class OtherGrids: Sketch {
         noStroke()
         for cell in hexes.cells {
             let rings = Double(hexes.distance(from: focus, to: cell))
-            fill(Color.mix(accent, ink, t: min(1, rings / 4)))
+            fill(Color.mix(accent, ink, min(1, rings / 4)))
             drawPolygon(cell.corners)
         }
 

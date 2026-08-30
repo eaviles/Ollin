@@ -215,11 +215,11 @@ struct DataFeedTests {
 
         #expect(feed.timeSinceUpdate == nil)      // nothing has arrived yet
         feed.start()
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount == 1 ? true : nil }
         #expect(feed.json["height"].number == 2.5)
         #expect(feed.text == #"{"height": 2.5}"#)
         #expect(feed.problem == nil)
-        #expect(feed.failures == 0)
+        #expect(feed.failureCount == 0)
         #expect((feed.timeSinceUpdate ?? -1) >= 0)
         #expect(StubServer.asks(at: path).count == 1)
     }
@@ -229,11 +229,11 @@ struct DataFeedTests {
         defer { feed.stop() }
 
         feed.start()
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount == 1 ? true : nil }
         feed.refresh()
         try await settle(feed, after: 2, at: path)
 
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
         #expect(feed.json["height"].number == 2.5)
     }
 
@@ -243,17 +243,17 @@ struct DataFeedTests {
         StubServer.answer(StubServer.Answer(body: #"{"height": 2.5}"#, etag: "\"v1\""), at: path)
 
         feed.start()
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount == 1 ? true : nil }
         feed.refresh()
         try await settle(feed, after: 2, at: path)
 
         // The second request carried the tag, the server sent no body, and the
         // feed still holds the first answer.
         #expect(StubServer.asks(at: path)[1].headers["if-none-match"] == "\"v1\"")
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
         #expect(feed.json["height"].number == 2.5)
         #expect(feed.problem == nil)
-        #expect(feed.failures == 0)
+        #expect(feed.failureCount == 0)
     }
 
     @Test func aChangedAnswerReplacesIt() async throws {
@@ -261,10 +261,10 @@ struct DataFeedTests {
         defer { feed.stop() }
 
         feed.start()
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount == 1 ? true : nil }
         StubServer.answer(StubServer.Answer(body: #"{"height": 4}"#), at: path)
         feed.refresh()
-        _ = try await waitFor { feed.updates == 2 ? true : nil }
+        _ = try await waitFor { feed.updateCount == 2 ? true : nil }
 
         #expect(feed.json["height"].number == 4)
     }
@@ -274,16 +274,16 @@ struct DataFeedTests {
         defer { feed.stop() }
 
         feed.start()
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount == 1 ? true : nil }
         StubServer.answer(StubServer.Answer(status: 500, body: "no"), at: path)
         feed.refresh()
         let problem = try await waitFor { feed.problem }
 
         #expect(problem.contains("500"))
-        #expect(feed.failures == 1)
+        #expect(feed.failureCount == 1)
         // Nothing to draw is worse than something slightly old.
         #expect(feed.json["height"].number == 2.5)
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
     }
 
     @Test func aTransportFailureIsReportedTheSameWay() async throws {
@@ -294,7 +294,7 @@ struct DataFeedTests {
         feed.start()
         let problem = try await waitFor { feed.problem }
         #expect(!problem.isEmpty)
-        #expect(feed.failures == 1)
+        #expect(feed.failureCount == 1)
         #expect(feed.json.isNull)
     }
 
@@ -307,10 +307,10 @@ struct DataFeedTests {
         _ = try await waitFor { feed.problem }
         StubServer.answer(StubServer.Answer(body: #"{"height": 1}"#), at: path)
         feed.refresh()
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount == 1 ? true : nil }
 
         #expect(feed.problem == nil)
-        #expect(feed.failures == 0)
+        #expect(feed.failureCount == 0)
     }
 
     @Test func anAddressThatIsNotOneIsAProblemRatherThanACrash() async throws {
@@ -321,7 +321,7 @@ struct DataFeedTests {
         let problem = try await waitFor { feed.problem }
         #expect(problem.contains("not an address"))
         #expect(feed.json.isNull)
-        #expect(feed.updates == 0)
+        #expect(feed.updateCount == 0)
     }
 
     @Test func headersReachTheServer() async throws {
@@ -414,16 +414,16 @@ struct DataFeedTests {
         // test is still waiting for a thread, and an equality question has no
         // answer by the time a late task gets to ask it.
         feed.start()
-        _ = try await waitFor { feed.updates >= 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount >= 1 ? true : nil }
         #expect(feed.json["height"].number == 1)
 
         feed.refresh()
         try await Task.sleep(nanoseconds: 300_000_000)
-        #expect(feed.updates == 1)          // the same bytes are not news
+        #expect(feed.updateCount == 1)          // the same bytes are not news
 
         try Data(#"{"height": 9}"#.utf8).write(to: file)
         feed.refresh()
-        _ = try await waitFor { feed.updates >= 2 ? true : nil }
+        _ = try await waitFor { feed.updateCount >= 2 ? true : nil }
         #expect(feed.json["height"].number == 9)
     }
 }
@@ -461,7 +461,7 @@ struct DataFeedExportTests {
         // The answer is in by the time `start()` returns, with no waiting at
         // the call site: that is what lets `setup()` hand the same numbers to
         // every frame of the export.
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
         #expect(feed.json["height"].number == 4)
         #expect(feed.timeSinceUpdate == 0)
         #expect(StubServer.asks(at: path).count == 1)
@@ -483,11 +483,11 @@ struct DataFeedExportTests {
         // answer arrives later and the clock is a real one.
         let deadline = Date().addingTimeInterval(20)
         while true {
-            if feed.updates >= 1 { break }
+            if feed.updateCount >= 1 { break }
             if Date() >= deadline { break }
             try await Task.sleep(nanoseconds: 5_000_000)
         }
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
         #expect((feed.timeSinceUpdate ?? -1) > 0)
         #expect(StubServer.asks(at: path).count == 1)
     }

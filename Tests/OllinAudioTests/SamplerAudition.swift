@@ -16,7 +16,7 @@ import Testing
     func audition() throws {
         let path = ProcessInfo.processInfo.environment["OLLIN_AUDITION"]!
         let rate = 44100.0
-        let full = try #require(SampledInstrument.builtin)
+        let full = try #require(SampledInstrument.builtIn)
 
         /// A climbing run through one instrument.
         func run(_ instrument: SampledInstrument, from: Int, to: Int,
@@ -62,7 +62,7 @@ import Testing
         samples += [Float](repeating: 0, count: Int(0.5 * rate))
 
         print("  take: five recordings, an octave down")
-        samples += run(full, from: 45, to: 60, spec: Sampled(transpose: -12))
+        samples += run(full, from: 45, to: 60, spec: Sampled(transposition: -12))
 
         let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
         let file = try AVAudioFile(forWriting: URL(fileURLWithPath: path),

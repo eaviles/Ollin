@@ -25,7 +25,7 @@ struct Ragdoll3DTests {
     }
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     func limb(_ ragdoll: Ragdoll3D, _ name: String) throws -> Ragdoll3D.Limb {
@@ -236,7 +236,7 @@ struct Ragdoll3DTests {
             let built = shape(of: ragdoll)
             for _ in 0..<180 {
                 if powered { ragdoll.drive(toward: rest) }
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
             }
             errors.append(shapeError(ragdoll, from: built))
         }
@@ -255,7 +255,7 @@ struct Ragdoll3DTests {
         let built = shape(of: ragdoll)
         for _ in 0..<120 {
             ragdoll.drive(toward: rest)
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
         let held = shapeError(ragdoll, from: built)
         #expect(held < 0.08)
@@ -276,7 +276,7 @@ struct Ragdoll3DTests {
             let built = shape(of: ragdoll)
             for _ in 0..<180 {
                 ragdoll.drive(toward: rest, strength: strength)
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
             }
             errors.append(shapeError(ragdoll, from: built))
         }
@@ -301,7 +301,7 @@ struct Ragdoll3DTests {
                 target.nodes[index].position = Vector3(Double(step) * 0.01, 0.95, 0)
             }
             ragdoll.drive(toward: target)
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
         #expect(ragdoll.position.x > 1.0)
         // And it shoved the crate out of the way on its way through.
@@ -323,7 +323,7 @@ struct Ragdoll3DTests {
                                     at: Vector3(0.55, 0, 0), rotated: .pi / 2,
                                     axis: .unitZ)
             world.connect(post, rod, kind(.zero, .unitX))
-            for _ in 0..<300 { world.step(dt: 1.0 / 60) }
+            for _ in 0..<300 { world.advance(by: 1.0 / 60) }
             return rod.position.y
         }
         let free = drop { at, _ in .ball(at: at) }
@@ -397,7 +397,7 @@ struct Ragdoll3DTests {
 
         var landed: Set<String> = []
         for _ in 0..<180 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             for contact in world.contacts where contact.phase == .began {
                 guard contact.involves(try #require(world.groundBody)) else { continue }
                 let other = contact.other(than: try #require(world.groundBody))
@@ -444,7 +444,7 @@ struct Ragdoll3DTests {
         let lowerIDs = Set(lower.bodies.map(\.id))
         var betweenFigures = 0
         for _ in 0..<200 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             for contact in world.contacts where contact.phase == .began {
                 let ids = [contact.a, contact.b].compactMap(world.identifier(of:))
                 if ids.contains(where: upperIDs.contains),

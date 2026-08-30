@@ -26,7 +26,7 @@ final class Dispersion: Sketch {
 
         // One scene: a pale disc off to one side, a block, and a stack of thin
         // lines. Hard edges for the edge-reading mode, thin marks for the ghosts.
-        let source = renderTarget(width: 520, height: 520)
+        let source = makeRenderTarget(width: 520, height: 520)
         withTarget(source) {
             // The layer is its own 520-square world, so these are its coordinates.
             background(Color(hex: 0x0E1424))

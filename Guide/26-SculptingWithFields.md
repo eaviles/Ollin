@@ -35,9 +35,9 @@ final class Melt: Sketch {
         let blob = SDF.circle(radius: 130).colored(Color(hex: 0xE4572E))
             .smoothUnion(SDF.rect(width: 240, height: 140, cornerRadius: 28)
                 .colored(Color(hex: 0x3A6EA5))
-                .at(x: 130, y: 40), k: k)
+                .at(130, 40), k: k)
 
-        drawSDF(blob.at(x: width / 2, y: height / 2))
+        drawSDF(blob.at(width / 2, height / 2))
     }
 }
 ```
@@ -103,9 +103,9 @@ final class FirstMarch: Sketch {
 
         let blob = SDF3D.sphere(radius: 1).colored(Color(hex: 0x39D0C8))
             .smoothUnion(SDF3D.sphere(radius: 0.72)
-                .at(x: 1.0, y: 0.42, z: 0.1)
+                .at(1.0, 0.42, 0.1)
                 .colored(Color(hex: 0xFF4F97)), k: 0.5)
-            .smoothSubtract(SDF3D.sphere(radius: 0.55).at(x: -0.45, y: 0.75, z: 0.5), k: 0.25)
+            .smoothSubtract(SDF3D.sphere(radius: 0.55).at(-0.45, 0.75, 0.5), k: 0.25)
 
         drawSDF3D(blob)
     }
@@ -210,7 +210,7 @@ The last trick is the strangest one. Instead of copying a shape, you can fold th
 ```swift
 cluster.mirrored(x: true)                             // a facing pair
 cluster.repeated(spacing: Vector2(88, 88), count: 1)  // a 3×3 tiling
-petal.at(x: 82, y: 0).repeatedRadially(count: 9)      // a rosette
+petal.at(82, 0).repeatedRadially(count: 9)      // a rosette
 ```
 
 There is still only one cluster. The domain operator rewrites each query point before the field answers, folding it across the mirror, wrapping it into a cell, or rotating it into a wedge. Copies are free, so a thousand-copy tiling costs what one copy costs. All three work in 3D too, where `repeatedRadially` fans a wedge around an axis and a mirrored melt becomes a symmetric creature. One honest caveat is worth knowing. The radial fold is exact when the repeated content is symmetric within its wedge. An asymmetric cluster can show a faint seam where the wedges meet, which is why the rosette panel uses a symmetric petal.
@@ -406,7 +406,7 @@ The arms fan into color at their tips because a longer wavelength bends further,
 So the call asks for a lens, not for a look:
 
 ```swift
-lensFlare(strength: 0.6, lens: .heliar.stopped(to: 11))
+lensFlare(amount: 0.6, lens: .heliar.stopped(to: 11))
 ```
 
 `Lens.heliar` is a real prescription, a 1950s portrait lens. Its nine surfaces decide how many ghosts there are, where each sits, how big it is, and what color it comes out. `stopped(to:)` closes the iris, and every ghost shrinks together. `multicoated()` coats each surface for a different wavelength, the way a modern lens is made. That is what puts the ghosts in different colors instead of all in one. Type in a different prescription and you get a different camera's flare.
@@ -475,12 +475,12 @@ final class Molten: Sketch {
         // The glass: four lobes melting into one body, breathing.
         let breathe = 0.42 + signedNoise(time * 0.25) * 0.1
         let glass = Color(hex: 0x9FDCD3)
-        let body = SDF3D.sphere(radius: 0.8).at(x: 0, y: 0.85, z: 0)
-            .smoothUnion(SDF3D.ellipsoid(rx: 0.62, ry: 0.4, rz: 0.62)
-                .at(x: 0.72, y: 0.5, z: 0.25), k: breathe)
+        let body = SDF3D.sphere(radius: 0.8).at(0, 0.85, 0)
+            .smoothUnion(SDF3D.ellipsoid(radiusX: 0.62, radiusY: 0.4, radiusZ: 0.62)
+                .at(0.72, 0.5, 0.25), k: breathe)
             .smoothUnion(SDF3D.torus(radius: 0.6, tube: 0.19)
-                .at(x: -0.55, y: 1.25, z: -0.1).rotatedZ(0.5), k: 0.4)
-            .smoothUnion(SDF3D.sphere(radius: 0.4).at(x: -0.2, y: 1.95, z: 0.3), k: 0.5)
+                .at(-0.55, 1.25, -0.1).rotatedZ(0.5), k: 0.4)
+            .smoothUnion(SDF3D.sphere(radius: 0.4).at(-0.2, 1.95, 0.3), k: 0.5)
             .twisted(0.3)
             .colored(glass)
 

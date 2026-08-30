@@ -29,19 +29,19 @@ final class SwarmFigure: Sketch {
         background(Color(hex: 0x0B0D12))
         noClear()
 
-        flocking = swarm(count: 4200, perceptionRadius: 15, colors: palette,
+        flocking = makeSwarm(count: 4200, perceptionRadius: 15, colors: palette,
                          size: 1.4, bounds: left, seed: 3)
         flocking.separation = 1.5
         flocking.alignment = 1.5
         flocking.cohesion = 0.8
         flocking.separationRadius = 5
 
-        flowing = swarm(count: 4200, perceptionRadius: 15, colors: palette,
+        flowing = makeSwarm(count: 4200, perceptionRadius: 15, colors: palette,
                         size: 1.4, bounds: middle, seed: 5)
         flowing.flow = 1.4
         flowing.flowScale = 0.016
 
-        roaming = swarm(count: 900, perceptionRadius: 15, colors: palette,
+        roaming = makeSwarm(count: 900, perceptionRadius: 15, colors: palette,
                         size: 1.4, bounds: right, seed: 7)
         roaming.wander = 1.2
 

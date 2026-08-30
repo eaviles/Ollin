@@ -73,7 +73,7 @@ public final class Meander {
     /// river) trigger a cutoff.
     public var cutoffDistance: Double
     /// How many points at each end are pinned and never migrate.
-    public var fixedEnds: Int
+    public var fixedEndCount: Int
     /// The fraction of its size an oxbow loses per step (toward its center).
     public var oxbowShrink: Double
     /// Record the centerline into `scars` every this many steps (0 = never).
@@ -104,7 +104,7 @@ public final class Meander {
     ///   - spacing: The resample spacing (default `width / 4`).
     ///   - cutoffDistance: The across-land distance that triggers a cutoff
     ///     (default `width * 2`).
-    ///   - fixedEnds: Points pinned at each end (default 3).
+    ///   - fixedEndCount: Points pinned at each end (default 3).
     ///   - oxbowShrink: Fraction of its size an oxbow loses per step.
     ///   - recordEvery: Steps between `scars` records (0 = never).
     ///   - maxScars: The scar-count ceiling.
@@ -115,7 +115,7 @@ public final class Meander {
                 memoryLength: Double? = nil,
                 spacing: Double? = nil,
                 cutoffDistance: Double? = nil,
-                fixedEnds: Int = 3,
+                fixedEndCount: Int = 3,
                 oxbowShrink: Double = 0.008,
                 recordEvery: Int = 0,
                 maxScars: Int = 120) {
@@ -126,7 +126,7 @@ public final class Meander {
         self.memoryLength = memoryLength ?? width * 1.5
         self.spacing = spacing ?? width / 4
         self.cutoffDistance = cutoffDistance ?? width * 2
-        self.fixedEnds = fixedEnds
+        self.fixedEndCount = fixedEndCount
         self.oxbowShrink = oxbowShrink
         self.recordEvery = recordEvery
         self.maxScars = maxScars
@@ -244,7 +244,7 @@ public final class Meander {
         let scale = largest > limit ? limit / largest : 1.0
 
         // Drift perpendicular to the local tangent; pinned ends stay put.
-        let pinned = Swift.max(fixedEnds, 0)
+        let pinned = Swift.max(fixedEndCount, 0)
         guard n - pinned > pinned else { return }
         for i in pinned ..< (n - pinned) {
             let length = (dx[i] * dx[i] + dy[i] * dy[i]).squareRoot()

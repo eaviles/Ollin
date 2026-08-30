@@ -18,7 +18,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid, OllinLeniaParams
 /// var lenia: ParticleLenia!
 /// override func setup() {
 ///     background(.black); noClear()
-///     lenia = particleLenia(count: 6000, spacing: 9)
+///     lenia = makeParticleLenia(count: 6000, spacing: 9)
 /// }
 /// override func draw() {
 ///     background(.black)
@@ -99,7 +99,7 @@ public final class ParticleLenia {
     /// scattered over the whole canvas instead, most of them would begin outside
     /// everyone's kernel with nothing to organize with. `seed` makes that opening
     /// scatter reproducible.
-    public init(count: Int, bounds: Rectangle, spacing: Double, seed: UInt64) {
+    public init(count: Int, bounds: Rectangle, spacing: Double, seed: Int) {
         precondition(count > 0, "ParticleLenia needs a positive count")
         precondition(spacing > 0, "ParticleLenia needs a positive spacing")
         self.count = count
@@ -113,7 +113,7 @@ public final class ParticleLenia {
         self.hash = SpatialHash(bounds: bounds, cellSize: reach, count: count)
 
         let placed = ParticleLenia.seedPositions(count: count, center: bounds.center,
-                                                 spacing: spacing, seed: seed)
+                                                 spacing: spacing, seed: UInt64(bitPattern: Int64(seed)))
         let dot = Float(size)   // a local: the map must not capture a half-built self
         let seeds = placed.map {
             OllinParticle(position: $0, velocity: SIMD2<Float>(0, 0),
@@ -131,7 +131,7 @@ public final class ParticleLenia {
     static func seedPositions(count: Int, center: Vector2, spacing: Double,
                               seed: UInt64) -> [SIMD2<Float>] {
         let discRadius = (Double(count) / .pi).squareRoot() * spacing
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         var out: [SIMD2<Float>] = []
         out.reserveCapacity(count)
         for _ in 0..<count {
@@ -223,7 +223,7 @@ public final class ParticleLenia {
                 let t = Double(i) / 3 * Double(source.count - 1)
                 let a = min(Int(t), source.count - 1)
                 let b = min(a + 1, source.count - 1)
-                return Color.mix(source[a], source[b], t: t - Double(a)).simd4
+                return Color.mix(source[a], source[b], t - Double(a)).simd4
             }
         }
         return stops.map { SIMD4<Float>($0.x, $0.y, $0.z, $0.w * alpha) }

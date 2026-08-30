@@ -13,7 +13,7 @@ import Ollin
 struct Collider3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     // MARK: Compound bodies
@@ -226,7 +226,7 @@ struct Collider3DTests {
         let scene = Scene(nodes: [outer])
 
         let world = World3D()
-        let colliders = world.addStaticColliders(from: scene)
+        let colliders = world.addStaticBodies(from: scene)
         #expect(colliders.count == 1)
 
         // Local surface 0.5, lifted 0.75 twice: the slab sits at y = 2.

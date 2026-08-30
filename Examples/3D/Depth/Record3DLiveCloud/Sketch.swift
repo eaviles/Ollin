@@ -46,7 +46,7 @@ final class Record3DLiveCloud: Sketch {
         // noisy past a meter (a face up close), so clamp tight and demand high
         // confidence; the rear LiDAR reaches across a room, so open the range up.
         let tuning = Tuning.forCamera(frame.camera)
-        let cloud = frame.pointCloud(minimumConfidence: tuning.confidence,
+        let cloud = frame.pointCloud(minConfidence: tuning.confidence,
                                      depthRange: tuning.range, pointSize: tuning.pointSize)
         guard !cloud.isEmpty else { return }
 

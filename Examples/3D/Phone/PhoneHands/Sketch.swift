@@ -63,7 +63,7 @@ final class PhoneHands: Sketch {
         if let c = orbitCenter { orbitCenter = c.lerp(to: center, 0.1) } else { orbitCenter = center }
         cameraShowcase(.turntable(period: .tau / 0.35), target: orbitCenter ?? center,
                        radius: 0.9, elevation: 0.15, fieldOfView: .pi / 3)
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
 
         for hand in hands {
             let tone = color(of: hand)

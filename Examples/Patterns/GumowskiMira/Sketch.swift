@@ -42,7 +42,7 @@ final class GumowskiMira: Sketch {
         let ember = Color(red: 1.0, green: 0.62, blue: 0.30, alpha: 0.045)
         let violet = Color(red: 0.62, green: 0.44, blue: 1.0, alpha: 0.045)
         blendMode(.add)
-        fill(Color.mix(ember, violet, t: random(0, 1)))
+        fill(Color.mix(ember, violet, random(0, 1)))
         pointSize(1.0 * scale)
         drawPoints(points)
     }

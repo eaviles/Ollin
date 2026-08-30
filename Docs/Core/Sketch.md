@@ -22,7 +22,7 @@ final class HelloCircle: Sketch {
 
 ### Contents
 
-- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `onReload`
+- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `reloaded`
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
 - [Canvas](#canvas) - `width`, `height`, `canvasOnScreen`, `screenFrame`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
@@ -105,12 +105,12 @@ override func keyPressed() {
 }
 ```
 
-<a name="onReload"></a>
+<a name="reloaded"></a>
 
-#### onReload
+#### reloaded
 
 ```swift
-onReload()
+reloaded()
 ```
 
 Called once after the live-reload host hot-swaps the sketch, right after its `setup()` (never on first launch). See [live reload](../../README.md#live-reload).

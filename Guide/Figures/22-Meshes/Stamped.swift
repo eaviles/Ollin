@@ -53,7 +53,7 @@ final class Stamped: Sketch {
         background(Color(hex: 0x0B0D12))
         camera(.orbiting(target: Vector3(0, 0.3, 0), radius: 6.6, azimuth: 0.5,
                          elevation: 0.42, fieldOfView: .pi / 4.4))
-        environment(.studio.intensity(0.8).lightingOnly())
+        environment(.studio.intensified(to: 0.8).lightingOnly())
         directionalLight(Color(kelvin: 5600), direction: Vector3(-0.4, -0.8, -0.4))
         ambientLight(Color(white: 0.1))
         fill(Color(white: 0.72))
@@ -65,9 +65,9 @@ final class Stamped: Sketch {
                 drawMesh(Mesh.box(width: w, height: p.y * 2, depth: w * 0.85))
             }
         }
-        decal(roundel, at: Vector3(0.1, 0.4, 0.5), width: 2.4, depth: 2)
-        decal(ring, at: Vector3(-0.8, 0.2, 1.0), width: 1.7, opacity: 0.55)
-        decal(tag, at: Vector3(1.0, 0.6, 0.3), direction: Vector3(0, 0, -1),
+        drawDecal(roundel, at: Vector3(0.1, 0.4, 0.5), width: 2.4, depth: 2)
+        drawDecal(ring, at: Vector3(-0.8, 0.2, 1.0), width: 1.7, opacity: 0.55)
+        drawDecal(tag, at: Vector3(1.0, 0.6, 0.3), direction: Vector3(0, 0, -1),
               width: 1.3, depth: 1.8, roll: 0.18)
     }
 }

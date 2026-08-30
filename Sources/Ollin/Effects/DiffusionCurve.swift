@@ -12,7 +12,7 @@ public extension Sketch {
     /// is decided by where the curves are.
     ///
     /// ```swift
-    /// let marks = renderTarget()
+    /// let marks = makeRenderTarget()
     /// withTarget(marks) {
     ///     drawDiffusionCurve(path, left: Color(hex: 0xE2544C), right: Color(hex: 0x2B6C8C))
     /// }

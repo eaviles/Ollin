@@ -53,10 +53,10 @@ public final class TextRecognizer: VisionTracking, @unchecked Sendable {
 
     /// How hard the recognizer works: `.fast` keeps up with a live feed,
     /// `.accurate` reads more (and slower) — the default for still images.
-    public enum Level: Sendable { case fast, accurate }
+    public enum Quality: Sendable { case fast, accurate }
 
-    /// The recognition level for the live feed.
-    public let level: Level
+    /// The recognition quality for the live feed.
+    public let quality: Quality
 
     private let lock = OSAllocatedUnfairLock<[DetectedText]>(initialState: [])
     private let status = VisionStatus("text recognition")
@@ -77,14 +77,14 @@ public final class TextRecognizer: VisionTracking, @unchecked Sendable {
     /// Recognize text in `source`'s frames — the live camera, or a playing
     /// video. Defaults to `.fast` so it keeps up.
     @MainActor
-    public init(_ source: any FrameSource, level: Level = .fast) {
-        self.level = level
+    public init(_ source: any FrameSource, quality: Quality = .fast) {
+        self.quality = quality
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Recognize text in a still image, once. Defaults to `.accurate`.
-    public static func detect(in image: Image, level: Level = .accurate) async throws -> [DetectedText] {
-        let request = makeRequest(level: level)
+    public static func detect(in image: Image, quality: Quality = .accurate) async throws -> [DetectedText] {
+        let request = makeRequest(quality: quality)
         let observations = try await request.perform(on: image.currentCGImage())
         return observations.map(decode)
     }
@@ -93,7 +93,7 @@ public final class TextRecognizer: VisionTracking, @unchecked Sendable {
 
     func analyze(_ cgImage: CGImage, size: CGSize) async {
         guard status.isAvailable else { return }
-        let request = TextRecognizer.makeRequest(level: level)
+        let request = TextRecognizer.makeRequest(quality: quality)
         do {
             let observations = try await request.perform(on: cgImage)
             status.recordSuccess()
@@ -105,10 +105,10 @@ public final class TextRecognizer: VisionTracking, @unchecked Sendable {
 
     // MARK: Helpers
 
-    private static func makeRequest(level: Level) -> RecognizeTextRequest {
+    private static func makeRequest(quality: Quality) -> RecognizeTextRequest {
         var request = RecognizeTextRequest()
-        request.recognitionLevel = (level == .fast) ? .fast : .accurate
-        request.usesLanguageCorrection = (level == .accurate)
+        request.recognitionLevel = (quality == .fast) ? .fast : .accurate
+        request.usesLanguageCorrection = (quality == .accurate)
         return request
     }
 

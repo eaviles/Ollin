@@ -23,8 +23,8 @@
 #### Building the history
 
 ```swift
-SlitScan(frames: Int = 48)       // how deep the past reaches
-history.push(frame)              // add the newest frame, once per draw()
+SlitScan(capacity: Int = 48)       // how deep the past reaches
+history.append(frame)              // add the newest frame, once per draw()
 history.count                    // frames held so far
 history.clear()                  // drop the history
 ```
@@ -43,7 +43,7 @@ history.image(delay map: Image) -> Image?
 The closure form gets each pixel's normalized position (`0...1` each way, top-left origin). It returns how far into the past to read. `0` is the newest frame, and `1` is the oldest held.
 
 ```swift
-history.push(frame)
+history.append(frame)
 if let warped = history.image(delay: { uv in uv.x }) {         // the classic scan
     drawImage(warped, in: canvasRectangle)
 }

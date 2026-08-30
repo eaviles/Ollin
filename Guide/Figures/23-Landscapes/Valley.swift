@@ -41,7 +41,7 @@ final class Valley: Sketch {
         meadow.heightVariance = 0.5
         meadow.bladeWidth = 0.035
         meadow.lean = 0.36
-        meadow.swayAmount = 0.16
+        meadow.swayAmplitude = 0.16
         meadow.swayFrequency = 1.7
         meadow.lowColor = Color(hue: 0.26, saturation: 0.55, brightness: 0.16)
         meadow.tipColor = Color(hue: 0.17, saturation: 0.62, brightness: 0.74)
@@ -89,7 +89,7 @@ final class Valley: Sketch {
 
     /// The ground height under a world x/z, in world units.
     func ground(atX x: Double, z: Double) -> Double {
-        field.value(atU: x / span + 0.5, v: z / span + 0.5) * relief
+        field.value(u: x / span + 0.5, v: z / span + 0.5) * relief
     }
 
     /// How steeply the land climbs at a point, as rise over run.
@@ -161,13 +161,13 @@ final class Valley: Sketch {
                 pines.append(MeshInstance(position: Vector3(x, y + 1.6 * s, z),
                                           rotation: Vector3(0, random(.tau), 0),
                                           scale: Vector3(s, s * random(0.85, 1.5), s),
-                                          color: Color.mix(pineDark, pineLight, t: random(1))))
+                                          color: Color.mix(pineDark, pineLight, random(1))))
             } else if slope > 1.0 && random(1) < 0.4 {
                 let s = random(0.4, 1.4)
                 stones.append(MeshInstance(position: Vector3(x, y + 0.25 * s, z),
                                            rotation: Vector3(random(.tau), random(.tau), random(.tau)),
                                            scale: Vector3(s, s * 0.7, s),
-                                           color: Color.mix(stoneGray, Color(white: 0.68), t: random(1))))
+                                           color: Color.mix(stoneGray, Color(white: 0.68), random(1))))
             }
         }
         world.place(pine, at: pines)
@@ -221,7 +221,7 @@ final class Valley: Sketch {
                                       rotation: Vector3(gust, seat.phase, gust * 0.6),
                                       scale: Vector3(s, s * 1.2, s),
                                       color: Color.mix(pineDark, pineLight,
-                                                       t: sin(seat.phase * 5) * 0.5 + 0.5)))
+                                                       sin(seat.phase * 5) * 0.5 + 0.5)))
         }
         drawMesh(pine, instances: stand)
     }

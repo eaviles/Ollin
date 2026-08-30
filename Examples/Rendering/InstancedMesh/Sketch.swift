@@ -76,7 +76,7 @@ final class InstancedMesh: Sketch {
                 instances.append(MeshInstance(
                     position: Vector3(seat.position.x, h / 2, seat.position.z),
                     scale: Vector3(1, h, 1),
-                    color: Color.mix(low, high, t: (h - 0.25) / 2.8)))
+                    color: Color.mix(low, high, (h - 0.25) / 2.8)))
             }
             drawMesh(pillar, instances: instances)
         } else {
@@ -85,7 +85,7 @@ final class InstancedMesh: Sketch {
                 withState {
                     translate(seat.position.x, h / 2, seat.position.z)
                     scale(1, h, 1)
-                    fill(Color.mix(low, high, t: (h - 0.25) / 2.8))
+                    fill(Color.mix(low, high, (h - 0.25) / 2.8))
                     drawMesh(pillar)
                 }
             }

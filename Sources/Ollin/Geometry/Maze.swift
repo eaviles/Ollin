@@ -84,25 +84,25 @@ public struct Maze: Equatable, Hashable, Sendable {
 
     /// Whether the passage from the cell at `column`, `row` toward `direction`
     /// is open (carved). Out-of-bounds cells read closed.
-    public func isOpen(_ direction: Direction, atColumn column: Int, row: Int) -> Bool {
+    public func isOpen(_ direction: Direction, column: Int, row: Int) -> Bool {
         guard column >= 0, column < columns, row >= 0, row < rows else { return false }
         return links[row * columns + column] & (1 << UInt8(direction.rawValue)) != 0
     }
 
     /// The center of the cell at `column`, `row` when the maze is laid over
-    /// `rect` (cells split the rectangle evenly).
-    public func center(ofColumn column: Int, row: Int, in rect: Rectangle) -> Vector2 {
-        let w = rect.width / Double(columns), h = rect.height / Double(rows)
-        return Vector2(rect.x + (Double(column) + 0.5) * w,
-                       rect.y + (Double(row) + 0.5) * h)
+    /// `bounds` (cells split the rectangle evenly).
+    public func center(ofColumn column: Int, row: Int, in bounds: Rectangle) -> Vector2 {
+        let w = bounds.width / Double(columns), h = bounds.height / Double(rows)
+        return Vector2(bounds.x + (Double(column) + 0.5) * w,
+                       bounds.y + (Double(row) + 0.5) * h)
     }
 
-    /// The maze's walls laid over `rect`, as open `Contour`s. Collinear wall
+    /// The maze's walls laid over `bounds`, as open `Contour`s. Collinear wall
     /// segments merge into single long runs (each straight stretch of wall is
     /// one two-point contour), so the line-work stays clean for stroking,
     /// hatching, and plotter export. The outer border is included.
-    public func walls(in rect: Rectangle) -> [Contour] {
-        let w = rect.width / Double(columns), h = rect.height / Double(rows)
+    public func walls(in bounds: Rectangle) -> [Contour] {
+        let w = bounds.width / Double(columns), h = bounds.height / Double(rows)
         var out: [Contour] = []
 
         // Horizontal walls: line r sits above row r (r == rows is the bottom
@@ -111,13 +111,13 @@ public struct Maze: Equatable, Hashable, Sendable {
         for r in 0...rows {
             var runStart: Int? = nil
             for c in 0...columns {   // one past the end flushes the last run
-                let wallHere = c < columns && !(r > 0 && isOpen(.south, atColumn: c, row: r - 1))
+                let wallHere = c < columns && !(r > 0 && isOpen(.south, column: c, row: r - 1))
                 if wallHere {
                     if runStart == nil { runStart = c }
                 } else if let start = runStart {
-                    let y = rect.y + Double(r) * h
-                    out.append(Contour([Vector2(rect.x + Double(start) * w, y),
-                                        Vector2(rect.x + Double(c) * w, y)], closed: false))
+                    let y = bounds.y + Double(r) * h
+                    out.append(Contour([Vector2(bounds.x + Double(start) * w, y),
+                                        Vector2(bounds.x + Double(c) * w, y)], closed: false))
                     runStart = nil
                 }
             }
@@ -128,13 +128,13 @@ public struct Maze: Equatable, Hashable, Sendable {
         for c in 0...columns {
             var runStart: Int? = nil
             for r in 0...rows {
-                let wallHere = r < rows && !(c > 0 && isOpen(.east, atColumn: c - 1, row: r))
+                let wallHere = r < rows && !(c > 0 && isOpen(.east, column: c - 1, row: r))
                 if wallHere {
                     if runStart == nil { runStart = r }
                 } else if let start = runStart {
-                    let x = rect.x + Double(c) * w
-                    out.append(Contour([Vector2(x, rect.y + Double(start) * h),
-                                        Vector2(x, rect.y + Double(r) * h)], closed: false))
+                    let x = bounds.x + Double(c) * w
+                    out.append(Contour([Vector2(x, bounds.y + Double(start) * h),
+                                        Vector2(x, bounds.y + Double(r) * h)], closed: false))
                     runStart = nil
                 }
             }
@@ -165,9 +165,9 @@ public struct Maze: Equatable, Hashable, Sendable {
     }
 
     /// A `(column, row)` cell path (a `solution` or `longestPath` result) laid
-    /// over `rect` as an open polyline through the cell centers.
-    public func contour(of path: [(column: Int, row: Int)], in rect: Rectangle) -> Contour {
-        Contour(path.map { center(ofColumn: $0.column, row: $0.row, in: rect) }, closed: false)
+    /// over `bounds` as an open polyline through the cell centers.
+    public func contour(of path: [(column: Int, row: Int)], in bounds: Rectangle) -> Contour {
+        Contour(path.map { center(ofColumn: $0.column, row: $0.row, in: bounds) }, closed: false)
     }
 
     // MARK: - Carving
@@ -299,7 +299,7 @@ public struct Maze: Equatable, Hashable, Sendable {
             var next: [Int] = []
             for cell in frontier {
                 for direction in Direction.allCases {
-                    guard isOpen(direction, atColumn: cell % columns, row: cell / columns),
+                    guard isOpen(direction, column: cell % columns, row: cell / columns),
                           let n = neighbor(of: cell, toward: direction), parent[n] == -1 else { continue }
                     parent[n] = cell
                     next.append(n)
@@ -325,7 +325,7 @@ public struct Maze: Equatable, Hashable, Sendable {
             var next: [Int] = []
             for cell in frontier {
                 for direction in Direction.allCases {
-                    guard isOpen(direction, atColumn: cell % columns, row: cell / columns),
+                    guard isOpen(direction, column: cell % columns, row: cell / columns),
                           let n = neighbor(of: cell, toward: direction), !seen[n] else { continue }
                     seen[n] = true
                     next.append(n)
@@ -358,11 +358,11 @@ public extension Sketch {
         Maze(columns: columns, rows: rows, algorithm: algorithm, using: &rng)
     }
 
-    /// Stroke `maze`'s walls over `rect` (the whole canvas by default) with the
+    /// Stroke `maze`'s walls over `bounds` (the whole canvas by default) with the
     /// current `stroke`. For per-wall color or the solution overlay, read
     /// `maze.walls(in:)` / `maze.contour(of:in:)` and stroke them yourself.
-    func drawMaze(_ maze: Maze, in rect: Rectangle? = nil) {
-        for wall in maze.walls(in: rect ?? bounds) {
+    func drawMaze(_ maze: Maze, in bounds: Rectangle? = nil) {
+        for wall in maze.walls(in: bounds ?? self.bounds) {
             drawPolyline(wall.points, closed: false)
         }
     }

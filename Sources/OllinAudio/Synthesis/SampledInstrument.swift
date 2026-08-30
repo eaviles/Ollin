@@ -15,7 +15,7 @@ import Ollin
 /// synth.play("C4", for: 1.5)
 /// ```
 ///
-/// Ollin bundles one small instrument (``builtin``) so a sketch can hear this
+/// Ollin bundles one small instrument (``builtIn``) so a sketch can hear this
 /// work without downloading anything. For real instruments, see the sources
 /// listed in the [documentation](doc:); the format to look for is **SFZ**,
 /// which is what most freely licensed libraries ship in.
@@ -187,7 +187,7 @@ public final class SampledInstrument: @unchecked Sendable {
     /// It is also a fair thing to sample. A struck bar rings at ratios that are
     /// not harmonics, each partial fading at its own rate, which is expensive
     /// to work out and cheap to play back, and that is what a sampler is for.
-    public static let builtin: SampledInstrument? = {
+    public static let builtIn: SampledInstrument? = {
         guard let url = Bundle.module.url(forResource: "Struck/Struck", withExtension: "sfz")
                 ?? Bundle.module.url(forResource: "Struck", withExtension: "sfz") else {
             audioNoteOnce("the bundled instrument is missing from this build.")
@@ -282,12 +282,12 @@ public struct Sampled: Sendable, Hashable, Codable {
 
     /// Moves every note by this many semitones, for an instrument recorded at
     /// the wrong pitch or one you want an octave down.
-    public var transpose: Double
+    public var transposition: Double
 
     public init(loops: Bool = true, velocitySensitivity: Double = 0.7,
-                transpose: Double = 0) {
+                transposition: Double = 0) {
         self.loops = loops
         self.velocitySensitivity = min(max(0, velocitySensitivity), 1)
-        self.transpose = transpose
+        self.transposition = transposition
     }
 }

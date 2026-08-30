@@ -11,7 +11,7 @@ Ollin throws most of a frame away and starts the next one clean (see [the frame]
 - **The geometry.** Every shape you recorded. The next frame records its own.
 - **The transform.** `translate`, `rotate`, and `scale` start from the identity again, so a rotation applied each frame turns by the same angle rather than winding up.
 - **The camera, the lights, and the 3D settings.** Set them in `draw()` each time, beside the geometry they act on.
-- **Layers.** A `renderTarget()` belongs to the frame that made it.
+- **Layers.** A `makeRenderTarget()` belongs to the frame that made it.
 
 ### Kept between frames
 
@@ -26,7 +26,7 @@ Ollin throws most of a frame away and starts the next one clean (see [the frame]
 
 ### Kept across a live reload
 
-A reload builds a fresh sketch: properties start over and `setup()` runs again. Two things carry across. Every `@Param` value stays, so a knob you tuned stays tuned. The clock carries too when the host is asked for it (`--keep-clock`), so an animation keeps its phase instead of jumping. `onReload()` runs once after the swap, and never on the first launch.
+A reload builds a fresh sketch: properties start over and `setup()` runs again. Two things carry across. Every `@Param` value stays, so a knob you tuned stays tuned. The clock carries too when the host is asked for it (`--keep-clock`), so an animation keeps its phase instead of jumping. `reloaded()` runs once after the swap, and never on the first launch.
 
 ### Kept across runs
 
@@ -37,5 +37,5 @@ A reload builds a fresh sketch: properties start over and `setup()` runs again. 
 - [The frame](./Frame.md) - what a drawing call does, and what happens after `draw()` returns.
 - [`Accumulation`](../Drawing/Accumulation.md) - the canvas kept on purpose.
 - [`Retained batches`](../Drawing/Batches.md) - the full surface, including what a recording refuses to hold.
-- [`Sketch`](../Core/Sketch.md) - the lifecycle, `onReload()`, and the clock.
+- [`Sketch`](../Core/Sketch.md) - the lifecycle, `reloaded()`, and the clock.
 - [`Installation`](../Output/Installation.md) - `@Saved`, checkpoints, and a run measured in days.

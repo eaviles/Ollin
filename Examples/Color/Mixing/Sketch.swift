@@ -43,7 +43,7 @@ final class Mixing: Sketch {
             let band = cell.frame
             for i in 0..<samples {
                 let t = Double(i) / Double(samples - 1)
-                fill(Color.mix(a, b, t: t, in: entry.space))
+                fill(Color.mix(a, b, t, in: entry.space))
                 drawRect(band.x + band.width * Double(i) / Double(samples), band.y,
                          band.width / Double(samples) + 1, band.height)
             }

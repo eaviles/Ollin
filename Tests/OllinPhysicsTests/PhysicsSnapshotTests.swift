@@ -11,7 +11,7 @@ import Ollin
 struct PhysicsSnapshotTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// A heap of boxes dropped into a ring, settled. Deterministic: no
@@ -19,7 +19,7 @@ struct PhysicsSnapshotTests {
     @discardableResult
     func pile(in world: World3D, count: Int = 12, settle: Int = 600) -> World3D {
         world.ground = 0
-        world.bounce = 0.15
+        world.restitution = 0.15
         for i in 0 ..< count {
             let a = Double(i) * 0.7
             world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
@@ -295,7 +295,7 @@ struct PhysicsSnapshotTests {
         world.unitsPerMeter = 4
         world.gravity = Vector3(0.5, -14, -0.25)
         world.ground = 1.5
-        world.bounce = 0.42
+        world.restitution = 0.42
         world.maxTimestep = 1.0 / 45
         world.water = Water(level: 2.5, density: 1.3, linearDrag: 0.7,
                             angularDrag: 0.2, flow: Vector3(0.4, 0, -0.1),
@@ -310,7 +310,7 @@ struct PhysicsSnapshotTests {
         #expect(fresh.unitsPerMeter == 4)
         #expect(fresh.gravity == Vector3(0.5, -14, -0.25))
         #expect(fresh.ground == 1.5)
-        #expect(fresh.bounce == 0.42)
+        #expect(fresh.restitution == 0.42)
         #expect(fresh.maxTimestep == 1.0 / 45)
         #expect(fresh.water == world.water)
         #expect(fresh.waterPhase == phase)
@@ -363,7 +363,7 @@ struct PhysicsSnapshotTests {
     }
 
     /// Every per-body knob comes back, including the ones only the solver knows
-    /// (friction and restitution) and the ones only Ollin does (`buoyancy`).
+    /// (friction and restitution) and the ones only Ollin does (`buoyancyScale`).
     @Test func everyBodyKnobCarries() {
         let world = World3D()
         world.ground = 0
@@ -372,7 +372,7 @@ struct PhysicsSnapshotTests {
                                   friction: 0.85, restitution: 0.33,
                                   freedom: .upright, gravityScale: 0.4,
                                   checksPath: true, group: "cargo")
-        crate.buoyancy = 1.7
+        crate.buoyancyScale = 1.7
         let sensor = world.addBody(.sphere(radius: 1), at: Vector3(3, 1, 0),
                                    isSensor: true)
         let wall = world.addBody(.box(width: 2, height: 2, depth: 0.2),
@@ -389,7 +389,7 @@ struct PhysicsSnapshotTests {
         #expect(abs(restored.gravityScale - 0.4) < 1e-6)
         #expect(restored.checksPath)
         #expect(restored.group == "cargo")
-        #expect(restored.buoyancy == 1.7)
+        #expect(restored.buoyancyScale == 1.7)
         #expect(abs(restored.mass - 2500) < 1, "density still sets the weight")
         #expect(world.bodies[1].isSensor, "the sensor is still a sensor")
         #expect(world.bodies[2].kind == .static, "the wall is still static")
@@ -654,7 +654,7 @@ struct PhysicsSnapshotTests {
 struct SnapshotTierTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     // MARK: Characters
@@ -747,7 +747,7 @@ struct SnapshotTierTests {
                                     .wheel(at: Vector3(-0.9, -0.1, 1.3), steers: !tracked),
                                     .wheel(at: Vector3(0.9, -0.1, -1.3), driven: true),
                                     .wheel(at: Vector3(-0.9, -0.1, -1.3), driven: true),
-                                ], tracked: tracked)
+                                ], isTracked: tracked)
     }
 
     /// A parked machine comes back parked, and stepping it on moves it not at
@@ -1117,7 +1117,7 @@ struct SnapshotTierTests {
 struct SnapshotAssetTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     static let terrain = Heightfield.diamondSquare(size: 65, roughness: 0.6, seed: 3)

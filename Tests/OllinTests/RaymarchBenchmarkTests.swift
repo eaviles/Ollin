@@ -34,9 +34,9 @@ struct RaymarchBenchmarkTests {
             }
             material(.jade)
             let blob = SDF3D.sphere(radius: 1.05).colored(Color(hex: 0x39d0ff))
-                .smoothUnion(SDF3D.sphere(radius: 0.85).at(x: 0.9, y: 0.4, z: 0.7).colored(Color(hex: 0xff4f97)), k: 0.7)
-                .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: -1.1, y: 0.7, z: 0.4).colored(Color(hex: 0xb6ff5a)), k: 0.5)
-                .smoothSubtract(SDF3D.sphere(radius: 0.7).at(x: 0.2, y: 1.15, z: 0), k: 0.25)
+                .smoothUnion(SDF3D.sphere(radius: 0.85).at(0.9, 0.4, 0.7).colored(Color(hex: 0xff4f97)), k: 0.7)
+                .smoothUnion(SDF3D.sphere(radius: 0.6).at(-1.1, 0.7, 0.4).colored(Color(hex: 0xb6ff5a)), k: 0.5)
+                .smoothSubtract(SDF3D.sphere(radius: 0.7).at(0.2, 1.15, 0), k: 0.25)
             drawSDF3D(blob)
         }
     }

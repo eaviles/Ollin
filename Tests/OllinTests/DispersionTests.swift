@@ -285,7 +285,7 @@ private final class DiscProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             noStroke(); fill(.white)
@@ -304,7 +304,7 @@ private final class FlatProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) { background(Color(white: 0.5)) }
         drawImage((filter.map { scene.filtered($0) } ?? scene).image, 0, 0)
     }
@@ -319,7 +319,7 @@ private final class HalfPlaneProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             noStroke(); fill(.white)
@@ -338,7 +338,7 @@ private final class WideBarProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .size(320, 180) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(.black)
             noStroke(); fill(.white)
@@ -358,7 +358,7 @@ private final class SoftEdgeProbe: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
         background(.black)
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             noStroke()
             fill(.radial(center: Vector2(128, 128), radius: 110,
@@ -378,14 +378,14 @@ private final class DrivenProbe: Sketch {
     }
     override var canvasSize: CanvasSize { .square(256) }
     override func draw() {
-        let scene = renderTarget()
+        let scene = makeRenderTarget()
         withTarget(scene) {
             background(Color(hex: 0x101010))
             stroke(.white); strokeWeight(2); noFill()
             for i in 0 ..< 10 { drawLine(0, 20 + Double(i) * 24, 256, 20 + Double(i) * 24) }
         }
         guard driven else { drawImage(scene.image, 0, 0); return }
-        let drive = renderTarget()
+        let drive = makeRenderTarget()
         withTarget(drive) {
             background(.black)
             noStroke(); fill(.white)

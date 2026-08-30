@@ -49,7 +49,7 @@ import Ollin
 
     @Test func fittedRectLetterboxesWideImage() {
         // A 200×100 image fit into a 100×100 box: scale 0.5 → 100×50, centered.
-        let fitted = VisionSpace.fittedRect(imageSize: Vector2(200, 100), in: rect)
+        let fitted = VisionSpace.fittedRectangle(imageSize: Vector2(200, 100), in: rect)
         #expect(fitted.width == 100)
         #expect(fitted.height == 50)
         #expect(fitted.x == 0)

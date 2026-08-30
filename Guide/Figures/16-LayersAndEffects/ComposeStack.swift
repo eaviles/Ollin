@@ -16,7 +16,7 @@ final class ComposeStack: Sketch {
                 fill(Color(hex: 0x6B2C58)); drawCircle(width * 0.45, height * 0.78, 240)
             }
             .post(.gaussianBlur(radius: 60))
-            .scale(0.5)
+            .scaled(0.5)
 
             layer {                                   // on top: lights that glow
                 noStroke()
@@ -28,8 +28,8 @@ final class ComposeStack: Sketch {
                 stroke(Color(hex: 0xFFD98A)); strokeWeight(3); noFill()
                 drawCircle(width / 2, height / 2, 300)
             }
-            .post(.bloom(threshold: 0.4, intensity: 1.8, radius: 26))
-            .blend(.add)
+            .post(.bloom(threshold: 0.4, amount: 1.8, radius: 26))
+            .blended(.add)
         }
     }
 }

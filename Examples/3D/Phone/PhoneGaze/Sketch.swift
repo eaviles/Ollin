@@ -50,7 +50,7 @@ final class PhoneGaze: Sketch {
         cameraShowcase(.turntable(period: .tau / 0.35), target: orbitCenter ?? center,
                        radius: radius, elevation: 0.08, fieldOfView: .pi / 3)
 
-        environment(.studio.intensity(0.85))
+        environment(.studio.intensified(to: 0.85))
 
         for face in faces { drawFace(face) }
 

@@ -21,7 +21,7 @@ import os
 /// Pick a built-in CC0 environment (a daylight sky, a sunset, a studio, a night, …), load
 /// your own equirectangular HDRI (`Environment.hdri(path:)`), or download one from a URL
 /// (`Environment.hdri(downloadURL:)`). The built-ins ship at 1K for instant, offline use;
-/// `highRes(_:)` fetches a sharper 2K/4K/8K version on demand (cached after the first run,
+/// `highResolution(_:)` fetches a sharper 2K/4K/8K version on demand (cached after the first run,
 /// the 1K shown meanwhile). `intensity` scales the brightness; `rotated(_:)` spins it to
 /// move the key light and the reflections. The environment lights the shaded materials in
 /// addition to any `directionalLight`/`pointLight`/`spotLight`; with no lights at all, the
@@ -72,7 +72,7 @@ public struct Environment: Equatable, Hashable, Sendable {
     /// softening; it's reconstructed bicubically either way, so it's never blocky). It
     /// doesn't affect the lighting or the reflections, only the backdrop.
     public var backgroundBlur: Double?
-    /// The Poly Haven slug a built-in came from, so `highRes(_:)` can fetch a sharper
+    /// The Poly Haven slug a built-in came from, so `highResolution(_:)` can fetch a sharper
     /// version; nil for a loaded file or a user URL.
     public var polyHavenSlug: String?
     /// The bundled resource name for a built-in (the 1K placeholder); nil for the
@@ -100,7 +100,7 @@ public struct Environment: Equatable, Hashable, Sendable {
     // MARK: - Adjustments
 
     /// A copy with the brightness scaled.
-    public func intensity(_ value: Double) -> Environment {
+    public func intensified(to value: Double) -> Environment {
         var e = self; e.intensity = max(0, value); return e
     }
 
@@ -117,7 +117,7 @@ public struct Environment: Equatable, Hashable, Sendable {
 
     /// A copy with the backdrop focus set explicitly (`0` sharp … `1` strongly defocused),
     /// overriding the auto default.
-    public func backgroundBlur(_ amount: Double) -> Environment {
+    public func backgroundBlurred(_ amount: Double) -> Environment {
         var e = self; e.backgroundBlur = min(1, max(0, amount)); return e
     }
 
@@ -144,7 +144,7 @@ public struct Environment: Equatable, Hashable, Sendable {
     /// and cached (the bundled 1K is shown meanwhile). Only the backdrop gets sharper; the
     /// lighting is the same. No-op for a loaded file or a user URL (they're already at their
     /// own resolution).
-    public func highRes(_ resolution: Resolution) -> Environment {
+    public func highResolution(_ resolution: Resolution) -> Environment {
         guard let slug = polyHavenSlug else { return self }
         var e = self
         if resolution == .oneK, let bundled = bundledResource {
@@ -218,7 +218,7 @@ public struct Environment: Equatable, Hashable, Sendable {
     // MARK: - Built-ins (CC0)
 
     /// A built-in bundled at 1K (instant, offline). `name` is the bundled resource; `slug`
-    /// is its Poly Haven origin, so `highRes(_:)` can fetch a sharper version.
+    /// is its Poly Haven origin, so `highResolution(_:)` can fetch a sharper version.
     private static func bundled(_ name: String, _ slug: String) -> Environment {
         Environment(source: .resource(name: name, bundleID: nil),
                     polyHavenSlug: slug, bundledResource: name)
@@ -250,7 +250,7 @@ public struct Environment: Equatable, Hashable, Sendable {
     /// A warm Venice sunset over water.
     public static let sunset = bundled("sunset", "venice_sunset")
 
-    // Download-on-demand at 1K (cached after first use), higher res via `highRes(_:)`.
+    // Download-on-demand at 1K (cached after first use), higher res via `highResolution(_:)`.
     /// A clean, large neutral photo studio (soft, near-shadowless).
     public static let photoStudio = remote("brown_photostudio_02")
     /// A bright partly-cloudy midday sky with a strong sun.

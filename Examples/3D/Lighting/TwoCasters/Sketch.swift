@@ -35,7 +35,7 @@ final class TwoCasters: Sketch {
         let spotPos = Vector3(-7.0, 7.0, 2.0)
         spotLight(Color(hue: 0.56, saturation: 0.42, brightness: 1.0),
                   at: spotPos, direction: (aim - spotPos).normalized,
-                  angle: .pi / 4.2, penumbra: 0.35, intensity: 1.7, specular: .white)
+                  coneAngle: .pi / 4.2, penumbra: 0.35, intensity: 1.7, specular: .white)
 
         // The fill, kept out of the shadow work.
         directionalLight(Color(hex: 0xBFD2FF), direction: Vector3(0, -1, 0.55),

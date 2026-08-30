@@ -77,7 +77,7 @@ final class PhoneRoomMesh: Sketch {
         frame(on: scan)
         cameraShowcase(.turntable(period: .tau / 0.16), target: orbitCenter,
                        radius: orbitRadius, elevation: 0.3, fieldOfView: .pi / 3)
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
         material(.dielectric(roughness: 0.85))
         fill(.white)
         drawMesh(room)

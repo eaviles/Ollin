@@ -195,14 +195,14 @@ public final class Turmite {
     }
 
     /// The color under a cell, 0 (unpainted) through `colors - 1`. Coordinates wrap.
-    public func colorIndex(atColumn column: Int, row: Int) -> Int {
+    public func colorIndex(column: Int, row: Int) -> Int {
         let c = ((column % columns) + columns) % columns
         let r = ((row % rows) + rows) % rows
         return Int(grid[r * columns + c])
     }
 
     /// Every non-zero cell, row-major, ready to draw. Rebuilt on each call; for a tight
-    /// per-cell loop, read `colorIndex(atColumn:row:)` instead.
+    /// per-cell loop, read `colorIndex(column:row:)` instead.
     public var paintedCells: [(column: Int, row: Int, color: Int)] {
         var cells: [(column: Int, row: Int, color: Int)] = []
         for r in 0 ..< rows {

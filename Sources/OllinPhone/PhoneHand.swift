@@ -42,7 +42,7 @@ public struct PhoneHand: Sendable {
     /// (a test or a figure builds a `PhoneHandSample` and reads it back through
     /// the same accessors the live stream uses).
     public init(_ sample: PhoneHandSample) {
-        isTracked = sample.tracked
+        isTracked = sample.isTracked
         timestamp = sample.timestamp
         switch sample.chirality {
         case .left: chirality = .left

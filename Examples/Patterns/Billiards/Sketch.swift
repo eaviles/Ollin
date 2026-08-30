@@ -96,7 +96,7 @@ final class BilliardsSketch: Sketch {
             let path = room.path(from: start, heading: heading, bounces: Int(bounces))
             guard path.count > 2 else { continue }
             let tone = count > 1 ? Double(ball) / Double(count - 1) : 0.5
-            stroke(Color.mix(warmer ? warm : cool, chalk, t: tone).withAlpha(0.4))
+            stroke(Color.mix(warmer ? warm : cool, chalk, tone).withAlpha(0.4))
             drawPolyline(path)
         }
 

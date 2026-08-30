@@ -86,7 +86,7 @@ final class Triplanar: Sketch {
         background(Color(hex: 0x10131A))
         cameraShowcase(.sway(amplitude: 0.16, period: 26), target: .zero, radius: 10.6,
                        elevation: 0.16, fieldOfView: .pi / 4)
-        environment(.studio.intensity(0.9))
+        environment(.studio.intensified(to: 0.9))
         directionalLight(Color(kelvin: 5200), direction: Vector3(-0.5, -0.6, -0.55),
                          intensity: 1.05)
         ambientLight(Color(white: 0.05))

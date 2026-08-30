@@ -63,7 +63,7 @@ final class Dithering: Sketch {
                 let v = Double(y) / Double(size - 1)
                 let t = min(1, max(0, v * 0.75 + u * 0.25))
                 image[x, y] = Color.mix(ramp.color(at: t), fieldPaper,
-                                        t: smoothstep(0.35, 1, u) * 0.55)
+                                        smoothstep(0.35, 1, u) * 0.55)
             }
         }
         return image

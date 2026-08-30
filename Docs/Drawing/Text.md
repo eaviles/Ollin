@@ -17,7 +17,7 @@ All three ride the [transform stack](../Drawing/Drawing.md#translate), composite
   <img src="../../Guide/Images/08-Words/TypeSpecimen.jpg" alt="Three rows showing the same word: an outline font filled and stroked, a bitmap font built from visible squares, and a stroke font drawn as a single thin pen line" width="680">
 </picture>
 
-The default font is `OutlineFont.systemMedium`, the system UI face (San Francisco on macOS) at medium weight, a touch sturdier than the regular weight so text holds up over busy canvases, which is why `drawText` works with zero setup. For a pixel look, the bundled `BitmapFont.builtin` is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font covering a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`, and they forward to the `Drawer`.
+The default font is `OutlineFont.systemMedium`, the system UI face (San Francisco on macOS) at medium weight, a touch sturdier than the regular weight so text holds up over busy canvases, which is why `drawText` works with zero setup. For a pixel look, the bundled `BitmapFont.builtIn` is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font covering a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`, and they forward to the `Drawer`.
 
 ### Contents
 
@@ -53,7 +53,7 @@ drawText(_ string: String, _ x: Double, _ y: Double)
 drawText(_ string: String, at position: Vector2)
 drawText(_ string: String, at position: Vector2,
          size: Double? = nil, color: Color? = nil,
-         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil)
+         align horizontal: HorizontalTextAlign? = nil, _ vertical: VerticalTextAlign? = nil)
 ```
 
 Draw `string` at a point, in the current `fill` color, using the active `textFont` / `textSize` / `textAlign`. `\n` starts a new line. Glyphs are geometry (vector shapes for an outline font, SDF squares for a bitmap one), so text rotates and scales with the [transform stack](../Drawing/Drawing.md#translate) like everything else. `noFill()` draws nothing, and characters the font doesn't have advance the pen but draw nothing.
@@ -109,7 +109,7 @@ textFont(_ font: OutlineFont)
 textFont(_ font: StrokeFont)
 ```
 
-Set the active font, either a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or stroke (single-line) face. The default is `OutlineFont.systemMedium`, and `textFont(OutlineFont.systemMedium)` switches back to it (or `textFont(BitmapFont.builtin)` for the bundled Cozette pixel font). Like the other drawing state, the active font is part of the [push/pop stack](../Drawing/Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, or [Stroke fonts](#strokefont) for single-line type.)
+Set the active font, either a bitmap (pixel-grid), outline (`.ttf`/`.otf`), or stroke (single-line) face. The default is `OutlineFont.systemMedium`, and `textFont(OutlineFont.systemMedium)` switches back to it (or `textFont(BitmapFont.builtIn)` for the bundled Cozette pixel font). Like the other drawing state, the active font is part of the [push/pop stack](../Drawing/Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. (See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, or [Stroke fonts](#strokefont) for single-line type.)
 
 <a name="textsize"></a>
 
@@ -126,13 +126,13 @@ Set the rendered text height in points, the height one line of glyphs occupies o
 ### textAlign
 
 ```swift
-textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)
+textAlign(_ horizontal: HorizontalTextAlign, _ vertical: VerticalTextAlign = .baseline)
 ```
 
 Set how text is anchored to the `drawText` position.
 
-- Horizontal (`TextAlignH`): `.left` (default) starts the text at the x, `.center` centers it, `.right` ends it at the x.
-- Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y, `.top` / `.bottom` align the block's top / bottom edge, and `.middle` centers the whole block (`.center` is accepted as an alias, so `textAlign(.center, .center)` compiles).
+- Horizontal (`HorizontalTextAlign`): `.left` (default) starts the text at the x, `.center` centers it, `.right` ends it at the x.
+- Vertical (`VerticalTextAlign`): `.baseline` (default, like p5) sits the first line's baseline on the y, `.top` / `.bottom` align the block's top / bottom edge, and `.middle` centers the whole block (`.center` is accepted as an alias, so `textAlign(.center, .center)` compiles).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/TextAlignAnchors-dark.jpg">
@@ -267,7 +267,7 @@ textFont(_ font: StrokeFont)
 A `StrokeFont` is a **single-line** font, so each glyph is a set of open pen paths with no interior. Where a bitmap font stamps pixels and an outline font fills contours, a stroke font is *stroked*, drawing with the current `stroke` (weight, join, cap) and **ignoring `fill`**, the mirror image of outline text. It's the letterform a pen plotter wants, and it pairs naturally with thin, even line weights.
 
 ```swift
-textFont(StrokeFont.builtin)        // Hershey Sans, bundled
+textFont(StrokeFont.builtIn)        // Hershey Sans, bundled
 textSize(160)
 textAlign(.center, .middle)
 stroke(.white); strokeWeight(2)
@@ -280,7 +280,7 @@ The bundled default is **Hershey Sans**, from the public-domain [Hershey vector 
 **Loading more single-line fonts:** Ollin reads the Hershey `.jhf` format, so you can drop in any of the many Hershey faces (serif, script, gothic, Cyrillic, Greek):
 
 ```swift
-let serif = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtin
+let serif = StrokeFont(resource: "rowmans.jhf", in: .module) ?? .builtIn
 textFont(serif)
 ```
 
@@ -642,7 +642,7 @@ The characters the current font cannot draw, in the order they appear.
 For an **outline** font this asks the whole system. It is empty unless no installed face has the character at all, in which case the character draws as a box rather than vanishing. For a **bitmap** or **stroke** font it is the question that matters. Those have only the glyphs in their own file, and anything else advances the pen and draws nothing.
 
 ```swift
-textFont(BitmapFont.builtin)
+textFont(BitmapFont.builtIn)
 print(textMissingCharacters("日本語"))     // [] - Cozette has the kanji
 print(textMissingCharacters("नमस्ते"))      // the Devanagari, which it does not
 ```
@@ -681,11 +681,11 @@ drawText("AI", width / 2, height / 2)
 Ollin also reads the **Playdate `.fnt`** format, a line-oriented metrics file (per-glyph widths, `tracking`, and kerning pairs) paired with a 1-bit glyph strike, either embedded in the file as base64 or sitting beside it as a `<name>-table-<width>-<height>.png`. It's a common pixel-font format, with a large pool of free community fonts to draw from. Kerning pairs in the file are applied automatically during layout.
 
 ```swift
-let font = BitmapFont(resource: "MyFont.fnt", in: .module) ?? .builtin
+let font = BitmapFont(resource: "MyFont.fnt", in: .module) ?? .builtIn
 textFont(font)
 ```
 
-`BitmapFont(resource:in:)` is the easy path for a font bundled beside your sketch. Pass the filename (the loader picks BDF or `.fnt` from the extension) and the bundle it lives in, `.module` for a `swift run` sketch's own resources or the default `.main` for an app. It returns `nil` if the resource is missing, so the `?? .builtin` falls back to the default font.
+`BitmapFont(resource:in:)` is the easy path for a font bundled beside your sketch. Pass the filename (the loader picks BDF or `.fnt` from the extension) and the bundle it lives in, `.module` for a `swift run` sketch's own resources or the default `.main` for an app. It returns `nil` if the resource is missing, so the `?? .builtIn` falls back to the default font.
 
 Under it, `BitmapFont(fntContentsOf:)` takes a file URL and handles both strike forms, finding the sibling `-table` PNG when the strike is external. If you already have the text (say, fetched over the network), `BitmapFont(fnt:)` parses the self-contained embedded form directly:
 

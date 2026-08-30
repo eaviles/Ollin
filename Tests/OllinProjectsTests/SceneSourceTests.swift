@@ -129,12 +129,12 @@ struct SceneSourceTests {
         }
         #expect(call(.directional).hasPrefix("light(.directional(Color(hex: 0xFF8800), direction:"))
         #expect(call(.point).contains(".point(Color(hex: 0xFF8800), at: Vector3(1, 2, 3)"))
-        #expect(call(.spot).contains("angle:"), "the spot factory's label is angle, not coneAngle")
-        #expect(call(.rect).contains("up:") && call(.rect).contains("twoSided:"))
-        #expect(call(.disk).contains("twoSided:"))
+        #expect(call(.spot).contains("coneAngle:"), "the spot factory's label is coneAngle")
+        #expect(call(.rectangle).contains("up:") && call(.rectangle).contains("isTwoSided:"))
+        #expect(call(.disk).contains("isTwoSided:"))
         #expect(call(.tube).contains("from: Vector3(0, 0, 0), to: Vector3(0, 0, 1)"),
                 "a tube is spelled by its two ends")
-        for kind in [ImportedLight.Kind.directional, .point, .spot, .rect, .disk, .tube] {
+        for kind in [ImportedLight.Kind.directional, .point, .spot, .rectangle, .disk, .tube] {
             #expect(call(kind).contains("intensity: 2"))
         }
     }
@@ -161,7 +161,7 @@ struct SceneSourceTests {
         let source = ImportedSceneSource.body(scene, className: "Yard")
 
         #expect(source.contains("private static let partNames = [\"shed\", \"shed-2\"]"))
-        #expect(source.contains("Scene(resource: \"yard\", extension: \"usdz\", in: .module)"))
+        #expect(source.contains("Scene(resource: \"yard\", withExtension: \"usdz\", in: .module)"))
         #expect(source.contains("loadParts()"))
         #expect(source.contains("private func drawPart(_ name: String)"))
     }

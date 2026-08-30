@@ -13,7 +13,7 @@ import Ollin
 struct Character3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     // MARK: Standing
@@ -109,7 +109,7 @@ struct Character3DTests {
         // not by anything it may walk on.
         var sawSteep = false
         for _ in 0 ..< 60 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             if walker.groundState == .onSteepSlope { sawSteep = true }
         }
         #expect(sawSteep)
@@ -133,7 +133,7 @@ struct Character3DTests {
         walker.move(x: 2, z: 0)
         var peak = settled
         for _ in 0 ..< 240 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             peak = max(peak, walker.position.y)
         }
         return peak - settled
@@ -167,7 +167,7 @@ struct Character3DTests {
             var peak = walker.position.y
             if jumping { walker.jump() }
             for _ in 0 ..< 60 {
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 peak = max(peak, walker.position.y)
             }
             return peak
@@ -185,11 +185,11 @@ struct Character3DTests {
         let walker = world.addCharacter(radius: 0.3, height: 1.8,
                                         at: Vector3(0, 4, 0))
         // Falling, not standing: asking to jump changes nothing.
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
         #expect(!walker.isOnGround)
         let fallingSpeed = walker.velocity.y
         walker.jump()
-        world.step(dt: 1.0 / 60)
+        world.advance(by: 1.0 / 60)
         #expect(walker.velocity.y < fallingSpeed)   // still only accelerating down
         #expect(walker.position.y > 2)              // nowhere near a launch
     }
@@ -302,7 +302,7 @@ struct Character3DTests {
         var entered = false
         var reported = false
         for _ in 0 ..< 120 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             if gate.isTouching(walker.body) { entered = true }
             if world.contacts.contains(where: { $0.involves(walker.body) }) {
                 reported = true
@@ -366,7 +366,7 @@ struct Character3DTests {
             for i in 0 ..< 200 {
                 walker.move(x: 2, z: 0)
                 if i == 60 { walker.jump() }
-                world.step(dt: 1.0 / 60)
+                world.advance(by: 1.0 / 60)
                 poses.append(walker.position)
                 poses.append(crate.position)
             }

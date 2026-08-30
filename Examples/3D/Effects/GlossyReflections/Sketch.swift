@@ -38,7 +38,7 @@ final class GlossyReflections: Sketch {
         // The live window renders at two-thirds size and reconstructs the full
         // canvas; exports and snapshots still render every pixel.
         temporalUpscaling()
-        environment(.studio.intensity(1.0).backgroundBlur(0.6))
+        environment(.studio.intensified(to: 1.0).backgroundBlurred(0.6))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.3), intensity: 0.8)
         castShadows()
 

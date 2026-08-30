@@ -47,7 +47,7 @@ struct VelocityBufferTests {
             }
             guard !skipMover else { return }
             if moverInTarget {
-                let layer = renderTarget()
+                let layer = makeRenderTarget()
                 withTarget(layer) { self.withMotion("boxed") { self.mover() } }
                 drawImage(layer.image, 0, 0)
             } else if useAltSite {

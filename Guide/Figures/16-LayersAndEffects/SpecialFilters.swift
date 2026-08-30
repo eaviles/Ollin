@@ -24,7 +24,7 @@ final class SpecialFilters: Sketch {
         }
 
         // One layer, three treatments.
-        let source = renderTarget(scale: 0.5)
+        let source = makeRenderTarget(scale: 0.5)
         withTarget(source) {
             drawImage(generate(.noise(scale: 3.4, warp: 0.6)).image, 0, 0)
         }

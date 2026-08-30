@@ -161,7 +161,7 @@ struct ConvenienceHelperTests {
     @Test func mixedIsTheInstanceFormOfMix() {
         let a = Color(hex: 0x1F6FEB), b = Color(hex: 0xE4572E)
         for t in stride(from: 0.0, through: 1.0, by: 0.25) {
-            let byStatic = Color.mix(a, b, t: t)
+            let byStatic = Color.mix(a, b, t)
             let byInstance = a.mixed(with: b, t)
             #expect(byStatic.red == byInstance.red)
             #expect(byStatic.green == byInstance.green)

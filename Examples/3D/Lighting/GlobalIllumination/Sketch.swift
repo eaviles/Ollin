@@ -43,7 +43,7 @@ final class GlobalIllumination: Sketch {
         let swing = sin(time * .tau / 12) * 1.8
         spotLight(.white, at: Vector3(swing * 0.4, 3.8, 0.4),
                   direction: Vector3(swing * 0.12, -1, -0.1),
-                  angle: .pi / 3.4, penumbra: 0.5, intensity: 3)
+                  coneAngle: .pi / 3.4, penumbra: 0.5, intensity: 3)
         castShadows()
         globalIlluminationQuality(quality)
         if bounceOn { globalIllumination(intensity: intensity) }

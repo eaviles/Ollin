@@ -30,7 +30,7 @@ final class Seeding: Sketch {
         let tile = 200.0, gutter = 15.0, ox = 12.0, oy = 20.0
         if dishes.isEmpty {
             dishes = ages.map { _ in
-                simField(.reactionDiffusion(feed: 0.046, kill: 0.062), width: Int(tile), height: Int(tile))
+                makeSimField(.reactionDiffusion(feed: 0.046, kill: 0.062), width: Int(tile), height: Int(tile))
             }
         }
         for (i, dish) in dishes.enumerated() {

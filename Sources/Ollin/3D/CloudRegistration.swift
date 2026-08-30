@@ -48,7 +48,7 @@ public struct CloudAlignment: Sendable {
     /// geometry does not pin down, so a low reading here is not a wrong answer: it is a
     /// *partial* one, and the parts it did not measure keep whatever error they had.
     /// That matters most when the answer is being kept as a measurement rather than used
-    /// on the spot, which is what `minimumStability` is for.
+    /// on the spot, which is what `minStability` is for.
     public var stability: Double
 
     /// Whether this frame's fit was accepted. When it is false the cloud still went
@@ -76,14 +76,14 @@ public struct CloudAlignment: Sendable {
         public var range: Double = 0.05
 
         /// The least overlap to trust, 0 to 1. Below it the fit is held back.
-        public var minimumOverlap: Double = 0.3
+        public var minOverlap: Double = 0.3
 
         /// The biggest move to accept, in world units. A fit that asks for more than
         /// this is refused: over one frame it is a mistake, not a drift.
-        public var maximumShift: Double = 0.25
+        public var maxShift: Double = 0.25
 
         /// The biggest turn to accept, in radians.
-        public var maximumTurn: Double = .pi / 12
+        public var maxTurn: Double = .pi / 12
 
         /// The least `stability` to trust, 0 to 1. Below it the fit is held back.
         ///
@@ -92,7 +92,7 @@ public struct CloudAlignment: Sendable {
         /// frame that sees a corner puts the rest right. Raise it when the fit is being
         /// kept as a *measurement* of where two places stand relative to each other,
         /// since there the unmeasured directions are believed forever after.
-        public var minimumStability: Double = 0
+        public var minStability: Double = 0
 
         public init() {}
     }
@@ -171,7 +171,7 @@ extension WorldCloud {
             overlap = Double(matched) / Double(picked.count)
             error = pairs.isEmpty ? 0 : (squared / Double(pairs.count)).squareRoot()
 
-            guard pairs.count >= 6, overlap >= settings.minimumOverlap else {
+            guard pairs.count >= 6, overlap >= settings.minOverlap else {
                 refused = true
                 break
             }
@@ -189,13 +189,13 @@ extension WorldCloud {
         // A fit that asks for a jump is a fit that matched the wrong surfaces. Keep
         // what earlier frames established rather than believe it.
         let asked = current * carried.inverse
-        if asked.shift > settings.maximumShift || asked.turn > settings.maximumTurn {
+        if asked.shift > settings.maxShift || asked.turn > settings.maxTurn {
             refused = true
         }
         // A fit the geometry could not pin down answered only some of the six numbers,
         // and left the rest as they were. That is the right thing to do with it here,
         // but it is the wrong thing to hand on as a measurement.
-        if stability < settings.minimumStability { refused = true }
+        if stability < settings.minStability { refused = true }
 
         guard !refused else {
             return CloudAlignment(pose: carried, correction: correction, overlap: overlap,
@@ -214,7 +214,7 @@ extension WorldCloud {
     /// ```swift
     /// var world = WorldCloud(voxelSize: 0.025)
     /// // each new frame, in draw():
-    /// if let frame = device.latestDepthFrame, let pose = device.latestPose {
+    /// if let frame = device.latestFrame, let pose = device.latestPose {
     ///     world.add(frame.pointCloud(...), correcting: pose)
     /// }
     /// ```

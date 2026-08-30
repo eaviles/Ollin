@@ -39,7 +39,7 @@ final class Rockslide: Sketch {
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.55, seed: seed)
         land = Heightfield(columns: 129, rows: 129) { u, v in
             // Steep near the ridge, easing into the flats where scree piles.
-            0.7 * pow(1 - u, 1.6) + 0.3 * bumps.value(atU: u, v: v)
+            0.7 * pow(1 - u, 1.6) + 0.3 * bumps.value(u: u, v: v)
         }
         .eroded(.hydraulic(drops: 40_000), seed: seed)
         .eroded(.thermal(talus: 0.012, iterations: 30))
@@ -67,7 +67,7 @@ final class Rockslide: Sketch {
         }
         let u = random(0.03, 0.1), v = random(0.15, 0.85)
         let start = Vector3((u - 0.5) * landWidth,
-                            land.value(atU: u, v: v) * landHeight + 1.2
+                            land.value(u: u, v: v) * landHeight + 1.2
                                 + Double(stagger) * 0.55,
                             (v - 0.5) * landDepth)
         let rock = world.addBody(collider, at: start,
@@ -99,7 +99,7 @@ final class Rockslide: Sketch {
         cameraShowcase(.turntable(period: .tau / 0.08), radius: 17,
                        elevation: 0.38, fieldOfView: .pi / 4)
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         for index in (0 ..< rocks.count).reversed() {
             restFrames[index] = rocks[index].velocity.length < 0.05
                 ? restFrames[index] + 1 : 0

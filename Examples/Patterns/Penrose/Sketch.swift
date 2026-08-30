@@ -36,7 +36,7 @@ final class PenroseRhombs: Sketch {
             let wave = pingPong(over: period, phase: distance)
             for (i, arc) in tile.arcs.enumerated() {
                 let base = i == 0 ? Color(hex: 0xF2A65A) : Color(hex: 0x2EC4B6)
-                stroke(Color.mix(base, .white, t: wave * 0.35).withAlpha(0.55 + wave * 0.45))
+                stroke(Color.mix(base, .white, wave * 0.35).withAlpha(0.55 + wave * 0.45))
                 strokeWeight((2.5 + wave * 2) * scale)
                 drawPolyline(arc.points, closed: false)
             }

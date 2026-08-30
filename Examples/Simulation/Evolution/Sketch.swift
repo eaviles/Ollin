@@ -29,7 +29,7 @@ final class Evolution_Example: Sketch {
         // A population, a genome length, and two points. The speed, the length of a
         // trial, and how hard one gene pushes are all worked out from the distance
         // between those points, so none of them is written down here.
-        run = evolution(count: 30_000, genes: 28, from: start, to: goal)
+        run = makeEvolution(count: 30_000, genes: 28, from: start, to: goal)
         run.measuresGenerations = true       // for the caption, once a generation
         applyLayout()
     }
@@ -68,8 +68,8 @@ final class Evolution_Example: Sketch {
 
     /// Breeding carries the population's learning, so starting over means a new one.
     private func restart() {
-        run = evolution(count: 30_000, genes: 28, from: start, to: run.target,
-                        seed: UInt64(variation &+ layout &+ frameCount))
+        run = makeEvolution(count: 30_000, genes: 28, from: start, to: run.target,
+                        seed: variation &+ layout &+ frameCount)
         run.measuresGenerations = true
         run.obstacles = walls
         background(.black)

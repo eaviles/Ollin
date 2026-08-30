@@ -50,7 +50,7 @@ final class SoftVsRigid: Sketch {
 
         // The rigid side: four boxes, one dropped tilted from higher up.
         rigidWorld.gravity = Vector2(0, 1500)
-        rigidWorld.bounce = 0.08
+        rigidWorld.restitution = 0.08
         rigidWorld.bounds = rightPanel
         let floor = rightPanel.y + rightPanel.height
         let mid = rightPanel.x + 175
@@ -65,8 +65,8 @@ final class SoftVsRigid: Sketch {
     override func draw() {
         background(paper)
         textSize(17)
-        softWorld.step(dt: deltaTime)
-        rigidWorld.step(dt: deltaTime)
+        softWorld.advance(by: deltaTime)
+        rigidWorld.advance(by: deltaTime)
 
         frame(leftPanel, title: "soft: particles and springs, it gives")
         noStroke()

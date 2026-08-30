@@ -17,7 +17,7 @@ final class Pile: Sketch {
     override func setup() {
         seed(11)
         world.bounds = bounds
-        world.collisions = true
+        world.particlesCollide = true
         for _ in 0 ..< 240 {
             world.addParticle(at: Vector2(random(width), random(height * 0.55)),
                               radius: random(14, 44))
@@ -27,7 +27,7 @@ final class Pile: Sketch {
 
     override func draw() {
         background(Color(hex: 0x101318))
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         for i in world.particles.indices {
             let p = world.particles[i]

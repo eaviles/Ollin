@@ -86,15 +86,15 @@ final class PixelSampling: Sketch {
                     let d = ((u - sunX) * (u - sunX) + (v - sunY) * (v - sunY)).squareRoot()
                     let disk = 1 - smoothstep(0.075, 0.095, d)
                     let glow = (1 - smoothstep(0.04, 0.4, d)) * 0.5
-                    color = Color.mix(color, Color(hex: 0xFFF3D6), t: min(1, disk + glow))
+                    color = Color.mix(color, Color(hex: 0xFFF3D6), min(1, disk + glow))
                 } else {
                     let w = (v - horizon) / (1 - horizon)
                     let reflected = sky.color(at: max(0, 0.92 - w * 0.9))
-                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), t: 0.45 + w * 0.4)
+                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), 0.45 + w * 0.4)
                     let streak = noise(u * 5, v * 120)
                     let path = 1 - smoothstep(0.02, 0.16 + w * 0.3, abs(u - sunX))
                     color = Color.mix(dark, Color(hex: 0xFFD98A),
-                                      t: min(1, path * (0.2 + streak * 0.8)))
+                                      min(1, path * (0.2 + streak * 0.8)))
                 }
                 image[px, py] = color
             }

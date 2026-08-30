@@ -95,7 +95,7 @@ final class Listening: Sketch {
         drawText(speech.caption, in: box)
 
         // What the classifier thinks it is hearing right now, under the words.
-        if let top = ears.top, top.confidence > 0.25 {
+        if let top = ears.topClassification, top.confidence > 0.25 {
             fill(ink.withAlpha(0.4))
             textSize(17 * scale)
             drawText("sounds like \(top.label.replacingOccurrences(of: "_", with: " "))",

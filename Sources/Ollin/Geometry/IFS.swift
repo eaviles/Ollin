@@ -35,8 +35,8 @@ public struct IFS: Sendable {
             self.weight = max(0, weight)
         }
 
-        public func apply(_ p: Vector2) -> Vector2 {
-            Vector2(a * p.x + b * p.y + e, c * p.x + d * p.y + f)
+        public func applied(to point: Vector2) -> Vector2 {
+            Vector2(a * point.x + b * point.y + e, c * point.x + d * point.y + f)
         }
     }
 
@@ -85,14 +85,14 @@ public struct IFS: Sendable {
     ///
     /// - Parameters:
     ///   - count: How many points to return.
-    ///   - burnIn: Steps discarded up front (20 is plenty; the contraction is
+    ///   - settle: Steps discarded up front (20 is plenty; the contraction is
     ///     geometric).
     ///   - rng: The random source; seed it for a reproducible cloud.
     /// - Returns: `count` points on the attractor, in visit order, in the
     ///   system's own coordinates.
     public func points<R: RandomNumberGenerator>(
         count: Int,
-        burnIn: Int = 20,
+        settle: Int = 20,
         using rng: inout R
     ) -> [Vector2] {
         guard !maps.isEmpty, count > 0 else { return [] }
@@ -102,15 +102,15 @@ public struct IFS: Sendable {
         var points: [Vector2] = []
         points.reserveCapacity(count)
         var point = Vector2(0, 0)
-        for step in 0 ..< count + burnIn {
+        for step in 0 ..< count + settle {
             var pick = Double.random(in: 0 ..< total, using: &rng)
             var chosen = maps[maps.count - 1]
             for map in maps {
                 if pick < map.weight { chosen = map; break }
                 pick -= map.weight
             }
-            point = chosen.apply(point)
-            if step >= burnIn { points.append(point) }
+            point = chosen.applied(to: point)
+            if step >= settle { points.append(point) }
         }
         return points
     }
@@ -120,8 +120,8 @@ public struct IFS: Sendable {
 
 public extension Sketch {
     /// The chaos game over `system`, driven by the seeded `random`, so
-    /// `seed(_:)` reproduces the cloud. See `IFS.points(count:burnIn:using:)`.
-    func ifsPoints(_ system: IFS, count: Int, burnIn: Int = 20) -> [Vector2] {
-        system.points(count: count, burnIn: burnIn, using: &rng)
+    /// `seed(_:)` reproduces the cloud. See `IFS.points(count:settle:using:)`.
+    func ifsPoints(_ system: IFS, count: Int, settle: Int = 20) -> [Vector2] {
+        system.points(count: count, settle: settle, using: &rng)
     }
 }

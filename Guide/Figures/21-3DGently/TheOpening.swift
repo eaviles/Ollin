@@ -24,9 +24,9 @@ final class TheOpening: Sketch {
         // another shape would squash every highlight into an ellipse and say the
         // opposite of what this figure is for.
         let side = 262
-        let lights = renderTarget(width: side, height: side)
+        let lights = makeRenderTarget(width: side, height: side)
         withTarget(lights) { lamps(Double(side)) }
-        let far = renderTarget(width: side, height: side)
+        let far = makeRenderTarget(width: side, height: side)
         withTarget(far) { background(.white) }          // every light sits far away
 
         let panels = (0 ..< 3).map {

@@ -35,13 +35,13 @@ final class WhereWaterGoes: Sketch {
         strokeWeight(1)
         for level in 1 ... 9 {
             for line in isolines(at: Double(level) / 10, in: first, resolution: 120,
-                                 field: { land.value(atU: first.uv(of: $0).x, v: first.uv(of: $0).y) }) {
+                                 field: { land.value(u: first.uv(of: $0).x, v: first.uv(of: $0).y) }) {
                 drawPolyline(line.points, closed: line.isClosed)
             }
         }
         strokeCap(.round)
         strokeJoin(.round)
-        for reach in water.rivers(minimumFlow: 70, in: first) where reach.points.count >= 2 {
+        for reach in water.rivers(minFlow: 70, in: first) where reach.points.count >= 2 {
             stroke(river.withAlpha(0.45 + 0.12 * Double(min(reach.order, 4))))
             strokeWeight(0.5 + Double(reach.order) * 0.8)
             drawPolyline(reach.points)
@@ -66,7 +66,7 @@ final class WhereWaterGoes: Sketch {
         for y in 0 ..< flow.rows {
             for x in 0 ..< flow.columns {
                 let carried = log(1 + flow[x, y]) / log(1 + loudest)
-                fill(Color.mix(paper, accent, t: carried))
+                fill(Color.mix(paper, accent, carried))
                 drawRect(corner: water.point(x, y, in: third), width: cell + 0.7, height: cell + 0.7)
             }
         }

@@ -24,9 +24,9 @@ final class SpectreField: Sketch {
             let along = (tile.points[0].x + tile.points[0].y) / diagonal
             let tide = pingPong(over: period, phase: along)
             if tile.isOdd {
-                fill(Color.mix(Color(hex: 0xF6511D), Color(hex: 0xFCA311), t: tide))
+                fill(Color.mix(Color(hex: 0xF6511D), Color(hex: 0xFCA311), tide))
             } else {
-                fill(Color.mix(Color(hex: 0x1C2B2D), Color(hex: 0x2EC4B6), t: tide * 0.45))
+                fill(Color.mix(Color(hex: 0x1C2B2D), Color(hex: 0x2EC4B6), tide * 0.45))
             }
             stroke(Color(hex: 0x0F1214))
             strokeWeight(1.5 * scale)

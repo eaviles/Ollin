@@ -19,7 +19,7 @@ public extension Installation {
     ///
     /// ```swift
     /// override var installation: Installation {
-    ///     Installation(projection: .init(shows: Rectangle(x: 0, y: 0, width: 0.55, height: 1),
+    ///     Installation(projection: .init(visibleRegion: Rectangle(x: 0, y: 0, width: 0.55, height: 1),
     ///                                    blend: Insets(right: 0.1)))
     /// }
     /// ```
@@ -44,7 +44,7 @@ public extension Installation {
 
         /// Which part of the canvas this machine puts on the wall, in fractions
         /// of the canvas. The whole of it by default.
-        public var shows: Rectangle
+        public var visibleRegion: Rectangle
 
         /// Where that part lands on the output, in fractions of the display.
         /// ``Corners/fit`` keeps its proportions and centers it, which is what
@@ -54,7 +54,7 @@ public extension Installation {
         /// How wide the band is where this machine's picture fades out, on each
         /// edge, in fractions of the canvas. Zero on an edge nothing overlaps.
         ///
-        /// The same units as ``shows`` on purpose: both machines sharing a band
+        /// The same units as ``visibleRegion`` on purpose: both machines sharing a band
         /// are then told the same number, so their two fades are the same
         /// function of the same wall, and add to exactly one coat.
         public var blend: Insets
@@ -74,12 +74,12 @@ public extension Installation {
         /// answers its own way, and this says which way.
         public var gamma: Double
 
-        public init(shows: Rectangle = Projection.wholeCanvas,
+        public init(visibleRegion: Rectangle = Projection.wholeCanvas,
                     corners: Corners = .fit,
                     blend: Insets = Insets(),
                     blendCurve: Double = 2,
                     gamma: Double = Projection.standardGamma) {
-            self.shows = shows
+            self.visibleRegion = visibleRegion
             self.corners = corners
             self.blend = blend
             self.blendCurve = blendCurve
@@ -190,7 +190,7 @@ struct ProjectionPlacement: Equatable {
     /// declared part of the canvas has no area. A run then presents as it
     /// always did rather than showing nothing.
     init?(_ projection: Installation.Projection, canvas: Vector2, output: Vector2) {
-        let shows = projection.shows
+        let shows = projection.visibleRegion
         guard shows.width > 0, shows.height > 0, canvas.x > 0, canvas.y > 0,
               output.x > 0, output.y > 0 else { return nil }
 

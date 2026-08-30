@@ -70,11 +70,11 @@ final class Describing: Sketch {
     // MARK: - The picture
 
     private func drawScene(daylight: Double, horizon: Double, sun: Rectangle, boat: Rectangle) {
-        background(Color.mix(Color(hex: 0x121A2B), Color(hex: 0x9EC6E8), t: daylight))
+        background(Color.mix(Color(hex: 0x121A2B), Color(hex: 0x9EC6E8), daylight))
         noStroke()
 
         // The sun, with a soft glow that fades as it drops.
-        let disc = Color.mix(Color(hex: 0xE8DCC8), Color(hex: 0xFFE9A8), t: daylight)
+        let disc = Color.mix(Color(hex: 0xE8DCC8), Color(hex: 0xFFE9A8), daylight)
         for ring in stride(from: 5.0, through: 1.0, by: -1.0) {
             fill(disc.withAlpha(0.055 * daylight))
             drawCircle(center: sun.center, radius: sun.width / 2 * ring)
@@ -83,7 +83,7 @@ final class Describing: Sketch {
         drawCircle(center: sun.center, radius: sun.width / 2)
 
         // The water, and a few shimmer bands lying on it.
-        let water = Color.mix(Color(hex: 0x0B1220), Color(hex: 0x3E7CA6), t: daylight)
+        let water = Color.mix(Color(hex: 0x0B1220), Color(hex: 0x3E7CA6), daylight)
         fill(water)
         drawRect(0, horizon, width, height - horizon)
         for i in 0 ..< 9 {

@@ -60,7 +60,7 @@ public enum TextureWrap: String, Sendable, Hashable, CaseIterable {
 /// the factors below, so `material(.physicallyBased(metallic: 1, roughness: 1))`
 /// shows a model's maps as authored), an `occlusionTexture` dims the ambient
 /// and environment light in crevices, and an `emissiveTexture` /
-/// `emissiveFactor` make the surface add light of its own. All map through the
+/// `emissiveColor` make the surface add light of its own. All map through the
 /// mesh's `uvs`. A detail pair (`detailTexture` / `detailNormalTexture`)
 /// tiles a much finer second texture across the base one, so a surface keeps
 /// texture when the camera gets close; see
@@ -116,7 +116,7 @@ public struct MeshMaterial: @unchecked Sendable {
     /// down to 0 for none. The sampled value becomes `1 + strength·(ao − 1)`.
     public var occlusionStrength: Double
     /// An emissive map: color the surface adds as its own light, multiplied by
-    /// `emissiveFactor`. Sampled as color (sRGB). `nil` means the factor alone
+    /// `emissiveColor`. Sampled as color (sRGB). `nil` means the factor alone
     /// emits (and a black factor, the default, emits nothing).
     public var emissiveTexture: Image?
     /// A height map (its red channel, sampled as raw data): white is the
@@ -142,7 +142,7 @@ public struct MeshMaterial: @unchecked Sendable {
     /// The emissive tint and strength: black (the default) emits nothing;
     /// with an `emissiveTexture` it scales the map, without one it emits as a
     /// constant color.
-    public var emissiveFactor: Color
+    public var emissiveColor: Color
     /// A detail color map: a second, much finer texture tiled `detailScale`
     /// times across each base tile, multiplying the base color so a surface
     /// keeps texture when the camera gets close. Sampled as raw data with
@@ -188,7 +188,7 @@ public struct MeshMaterial: @unchecked Sendable {
                 normalTexture: Image? = nil, normalScale: Double = 1,
                 metallicRoughnessTexture: Image? = nil,
                 occlusionTexture: Image? = nil, occlusionStrength: Double = 1,
-                emissiveTexture: Image? = nil, emissiveFactor: Color = .black,
+                emissiveTexture: Image? = nil, emissiveColor: Color = .black,
                 heightTexture: Image? = nil, heightScale: Double = 0.05,
                 triplanarScale: Double = 0,
                 detailTexture: Image? = nil, detailNormalTexture: Image? = nil,
@@ -204,7 +204,7 @@ public struct MeshMaterial: @unchecked Sendable {
         self.occlusionTexture = occlusionTexture
         self.occlusionStrength = occlusionStrength
         self.emissiveTexture = emissiveTexture
-        self.emissiveFactor = emissiveFactor
+        self.emissiveColor = emissiveColor
         self.heightTexture = heightTexture
         self.heightScale = heightScale
         self.triplanarScale = triplanarScale

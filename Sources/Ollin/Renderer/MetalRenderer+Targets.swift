@@ -1233,7 +1233,7 @@ extension MetalRenderer {
         // Area lights, mirroring the main encode's LTC resolve, so a field marched at
         // half resolution takes the same panel light as the full-res inline march.
         if lighting.enabled != 0,
-           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+           drawer.lights.contains(where: { $0.kind == .rectangle || $0.kind == .disk || $0.kind == .tube }) {
             lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
         }
         // Light shaping, same mirroring (the profile/cookie lists were rebuilt by this
@@ -2036,7 +2036,7 @@ extension MetalRenderer {
         // area-light diffuse gates on `ltcEnabled`, so without this a panel-lit surface
         // would go dark in its deferred reflection while staying lit inline.
         if lighting.ltcEnabled == 0,
-           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+           drawer.lights.contains(where: { $0.kind == .rectangle || $0.kind == .disk || $0.kind == .tube }) {
             lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
         }
         // Light shaping, the same mirroring: without it a profiled or cookied spot
@@ -2770,7 +2770,7 @@ extension MetalRenderer {
             lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
         }
         if lighting.ltcEnabled == 0,
-           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+           drawer.lights.contains(where: { $0.kind == .rectangle || $0.kind == .disk || $0.kind == .tube }) {
             lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
         }
         if lighting.iesEnabled == 0, !drawer.usedIESProfiles.isEmpty {

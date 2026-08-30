@@ -29,7 +29,7 @@ final class Sandpile: Sketch {
                                       (1.00, .white)])
 
     override func setup() {
-        pile = simField(.sandpile(pour: 1024), scale: 0.5)
+        pile = makeSimField(.sandpile(pour: 1024), scale: 0.5)
     }
 
     override func draw() {

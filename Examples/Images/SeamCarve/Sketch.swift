@@ -114,7 +114,7 @@ final class SeamCarve: Sketch {
                 } else {
                     let cloud = signedFbm(u * 3.2, v * 2.4, octaves: 3) * 0.05
                     let t = clamp(v * 1.5 + cloud, 0, 1)
-                    color = Color.mix(Color(hex: 0x2A3358), Color(hex: 0xE8A25C), t: t)
+                    color = Color.mix(Color(hex: 0x2A3358), Color(hex: 0xE8A25C), t)
                 }
 
                 for tower in towers where x >= tower.left && x < tower.right && y >= tower.top {
@@ -122,7 +122,7 @@ final class SeamCarve: Sketch {
                     let lit = (x - tower.left) % 9 < 4 && (y - tower.top) % 12 < 6
                         && y < horizon + 22
                     color = lit
-                        ? Color.mix(Color(hex: 0xF6D9A0), Color(white: tower.tone), t: 0.25)
+                        ? Color.mix(Color(hex: 0xF6D9A0), Color(white: tower.tone), 0.25)
                         : Color(white: clamp(tower.tone + grain, 0, 1))
                 }
 

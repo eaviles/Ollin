@@ -16,12 +16,12 @@ final class PrimordialParticles_Example: Sketch {
     override func setup() {
         let radius = 22.0
         let count = PPS.suggestedCount(for: radius, in: bounds)
-        pps = primordialParticles(count: count, radius: radius)
+        pps = makePrimordialParticles(count: count, radius: radius)
     }
 
     override func draw() {
         background(Color(white: 0.06))
-        updatePPS(pps)
+        updatePrimordialParticles(pps)
         drawParticles(pps)
 
         drawCaption("Primordial Particle System · \(pps.count) particles, one turning rule")

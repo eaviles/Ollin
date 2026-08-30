@@ -27,21 +27,21 @@ final class RaymarchedShapes: Sketch {
             SDF3D.cylinder(radius: 0.5, height: 1.4).colored(Color(hex: 0xffd166)),
             SDF3D.cone(radius: 0.7, height: 1.5).colored(Color(hex: 0x06d6a0)),
             SDF3D.octahedron(radius: 0.78).colored(Color(hex: 0x4ea8ff)),
-            SDF3D.ellipsoid(rx: 0.45, ry: 0.8, rz: 0.45).colored(Color(hex: 0xc77dff)),
+            SDF3D.ellipsoid(radiusX: 0.45, radiusY: 0.8, radiusZ: 0.45).colored(Color(hex: 0xc77dff)),
         ]
         let span = Double(row.count - 1)
         for (i, shape) in row.enumerated() {
             let x = (Double(i) - span / 2) * 1.5
             // Spin in place, then place: rotate before translate (the reverse orbits the origin).
-            drawSDF3D(shape.rotatedY(t * 0.6 + Double(i)).at(x: x, y: -0.4, z: 0))
+            drawSDF3D(shape.rotatedY(t * 0.6 + Double(i)).at(x, -0.4, 0))
         }
 
         // Above and behind: a cone smooth-melted into an ellipsoid, with a cylinder bored
         // out, so the new shapes carry through the combine ops too.
-        let melt = SDF3D.ellipsoid(rx: 1.0, ry: 0.65, rz: 0.85).colored(Color(hex: 0x4ea8ff))
-            .smoothUnion(SDF3D.cone(radius: 0.55, height: 1.7).at(x: 0, y: 0.85, z: 0)
+        let melt = SDF3D.ellipsoid(radiusX: 1.0, radiusY: 0.65, radiusZ: 0.85).colored(Color(hex: 0x4ea8ff))
+            .smoothUnion(SDF3D.cone(radius: 0.55, height: 1.7).at(0, 0.85, 0)
                 .colored(Color(hex: 0xff6b6b)), k: 0.45)
             .smoothSubtract(SDF3D.cylinder(radius: 0.3, height: 3.0).rotatedX(.pi / 2), k: 0.12)
-        drawSDF3D(melt.rotatedY(t * 0.4).at(x: 0, y: 1.5, z: -1.4))
+        drawSDF3D(melt.rotatedY(t * 0.4).at(0, 1.5, -1.4))
     }
 }

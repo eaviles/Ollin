@@ -130,6 +130,6 @@ import Ollin
 /// The vertical-center alias: `.center` is `.middle`.
 @Suite struct TextAlignTests {
     @Test func centerAliasesMiddle() {
-        #expect(TextAlignV.center == .middle)
+        #expect(VerticalTextAlign.center == .middle)
     }
 }

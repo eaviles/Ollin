@@ -52,7 +52,7 @@ public enum OSCArgument: Sendable, Equatable {
     /// The value as a `Float`, converting across the numeric tags (an `int`,
     /// `double`, or `int64` is coerced; a `bool` reads as 0/1). `nil` for the
     /// non-numeric tags.
-    public var asFloat: Float? {
+    public var float: Float? {
         switch self {
         case .float(let value): return value
         case .int(let value): return Float(value)
@@ -66,7 +66,7 @@ public enum OSCArgument: Sendable, Equatable {
     /// The value as an `Int`, converting across the numeric tags (a fractional
     /// `float`/`double` is rounded toward zero; a `bool` reads as 0/1). `nil` for
     /// the non-numeric tags.
-    public var asInt: Int? {
+    public var int: Int? {
         switch self {
         case .int(let value): return Int(value)
         case .int64(let value): return Int(value)
@@ -78,14 +78,14 @@ public enum OSCArgument: Sendable, Equatable {
     }
 
     /// The value as a `String` — the payload of a `string`, or `nil` otherwise.
-    public var asString: String? {
+    public var string: String? {
         if case .string(let value) = self { return value }
         return nil
     }
 
     /// The value as a `Bool`: a `bool` directly, `impulse` as `true`, or a numeric
     /// tag as "non-zero". `nil` for the rest.
-    public var asBool: Bool? {
+    public var bool: Bool? {
         switch self {
         case .bool(let value): return value
         case .impulse: return true

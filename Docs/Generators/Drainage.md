@@ -11,7 +11,7 @@ let land = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: 7)
     .eroded(.hydraulic())
 let water = land.drainage()
 
-for river in water.rivers(minimumFlow: 140, in: mapFrame) {
+for river in water.rivers(minFlow: 140, in: mapFrame) {
     strokeWeight(0.7 + Double(river.order) * 0.9)
     drawPolyline(river.points)
 }
@@ -55,7 +55,7 @@ Two details of that pass are worth knowing, because both show up in the picture.
 
 **A wide hollow can brim over at more than one place.** The flood fills it from whichever low place on its rim it reaches first, so a rim with several equally low places is entered at several of them, and the lake leaves by each. A symmetric bowl is the worst case for this and real ground rarely is one.
 
-`minimumDrop` is the hair of slope a filled cell keeps over the one that flooded it. Leave it alone unless you have a reason.
+`minDrop` is the hair of slope a filled cell keeps over the one that flooded it. Leave it alone unless you have a reason.
 
 <a name="flow"></a>
 
@@ -78,13 +78,13 @@ A diagonal step is measured over its own longer distance rather than treated as 
 #### The network
 
 ```swift
-let rivers = water.rivers(minimumFlow: 140, in: frame)   // [River]
+let rivers = water.rivers(minFlow: 140, in: frame)   // [River]
 river.points     // the run itself, in that frame
 river.order      // Strahler's order for the reach
 river.flow       // the flow at its lowest end, in cells
 ```
 
-`minimumFlow` has a real meaning: it is the smallest catchment you are willing to call a river, in cells. It is the whole difference between a few great trunks and a fine tracery of creeks, and it is worth putting on a knob.
+`minFlow` has a real meaning: it is the smallest catchment you are willing to call a river, in cells. It is the whole difference between a few great trunks and a fine tracery of creeks, and it is worth putting on a knob.
 
 Each reach is traced once. A run starts at a source, or just below a meeting, and stops at the next meeting, sharing that cell with the reach below it so the lines join. One odd case exists and is kept rather than dropped: a single-cell reach, where a cell over the threshold leaves the field at once, fed only by ground too small to count.
 
@@ -104,7 +104,7 @@ Strahler's order counts how much of the branching upstream is behind a reach, ra
 A headwater is 1. Two reaches of equal order meeting make the next one up, and an unequal pair keeps the larger of the two. Stroking by it draws a network that thickens downstream the way a map does, and it is cheaper to read than flow, which spans four orders of magnitude.
 
 ```swift
-let order = water.strahlerOrders(minimumFlow: 140)   // per cell, 0 outside the network
+let order = water.strahlerOrders(minFlow: 140)   // per cell, 0 outside the network
 ```
 
 <a name="basins"></a>
@@ -114,7 +114,7 @@ let order = water.strahlerOrders(minimumFlow: 140)   // per cell, 0 outside the 
 ```swift
 water.basin(x, y)     // which outlet this cell's water reaches
 water.outlets         // the cells the water leaves by, in basin order
-water.outlet(of: x, y)
+water.outlet(x, y)
 ```
 
 A basin is everybody who leaves by the same door, so a cell and the cell below it are always in the same one. Drawing each in its own tone shows the divides, which are the ridges, without ever computing a ridge.

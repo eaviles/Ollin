@@ -12,7 +12,7 @@ import Ollin
 struct JointMotor3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// A bar hinged at its own center of mass, so gravity exerts no torque
@@ -93,8 +93,8 @@ struct JointMotor3DTests {
         var limitedMin = 0.0
         var freeMin = 0.0
         for _ in 0 ..< 300 {
-            limited.step(dt: 1.0 / 60)
-            free.step(dt: 1.0 / 60)
+            limited.advance(by: 1.0 / 60)
+            free.advance(by: 1.0 / 60)
             limitedMin = min(limitedMin, joint.angle)
             freeMin = min(freeMin, unlimited.angle)
         }
@@ -168,8 +168,8 @@ struct JointMotor3DTests {
         var hardMin = 0.0
         var softMin = 0.0
         for _ in 0 ..< 600 {
-            hard.step(dt: 1.0 / 60)
-            soft.step(dt: 1.0 / 60)
+            hard.advance(by: 1.0 / 60)
+            soft.advance(by: 1.0 / 60)
             hardMin = min(hardMin, hardJoint.angle)
             softMin = min(softMin, softJoint.angle)
         }

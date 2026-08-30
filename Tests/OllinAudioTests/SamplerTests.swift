@@ -121,7 +121,7 @@ import Testing
     // MARK: - The bundled instrument
 
     @Test func thebundledInstrumentLoads() throws {
-        let instrument = try #require(SampledInstrument.builtin)
+        let instrument = try #require(SampledInstrument.builtIn)
         #expect(!instrument.isEmpty)
         #expect(instrument.recordingCount == 5)
         #expect(instrument.name == "Struck")
@@ -131,7 +131,7 @@ import Testing
     /// a recording a long way is what makes a sampler sound wrong and it is the
     /// one thing choosing well can avoid.
     @Test func thenearestRecordingIsChosen() throws {
-        let instrument = try #require(SampledInstrument.builtin)
+        let instrument = try #require(SampledInstrument.builtIn)
         for key in 40...80 {
             let index = try #require(instrument.zone(for: key, velocity: 0.8))
             let chosen = instrument.zones[index].rootKey
@@ -146,7 +146,7 @@ import Testing
     /// rather than played as silence, which is what a small instrument should
     /// do rather than simply stopping.
     @Test func anoteOutsideTheRangeIsStretchedRatherThanSilent() throws {
-        let instrument = try #require(SampledInstrument.builtin)
+        let instrument = try #require(SampledInstrument.builtIn)
         let sound = Self.render(instrument, pitch: 96, seconds: 0.6)
         #expect(sound.contains { abs($0) > 0.005 })
     }
@@ -157,7 +157,7 @@ import Testing
     /// from a recording made at a different pitch has to come out at the pitch
     /// asked for, and the recording's own partials have to move with it.
     @Test func anoteComesOutAtThePitchAskedFor() throws {
-        let instrument = try #require(SampledInstrument.builtin)
+        let instrument = try #require(SampledInstrument.builtIn)
         for note in [48.0, 55.0, 60.0, 67.0, 72.0] {
             let sound = Self.render(instrument, pitch: note)
             let window = sound[Int(0.05 * Self.rate)..<Int(0.45 * Self.rate)]
@@ -183,10 +183,10 @@ import Testing
     /// Transposing moves every note, which is how an instrument recorded at the
     /// wrong pitch is corrected.
     @Test func transposingMovesTheWholeInstrument() throws {
-        let instrument = try #require(SampledInstrument.builtin)
+        let instrument = try #require(SampledInstrument.builtIn)
         let plain = Self.render(instrument, pitch: 60)
         let octaveDown = Self.render(instrument, pitch: 60,
-                                     spec: Sampled(transpose: -12))
+                                     spec: Sampled(transposition: -12))
         func peakFrequency(_ s: [Double]) -> Double {
             let window = s[Int(0.05 * Self.rate)..<Int(0.45 * Self.rate)]
             var best = 0.0, bestHz = 0.0
@@ -204,7 +204,7 @@ import Testing
     /// Velocity sensitivity is a setting because some instruments record their
     /// own dynamics and should not be scaled again.
     @Test func velocitySensitivityDecidesWhetherVelocityIsHeard() throws {
-        let instrument = try #require(SampledInstrument.builtin)
+        let instrument = try #require(SampledInstrument.builtIn)
         func peak(_ velocity: Double, sensitivity: Double) -> Double {
             Self.render(instrument, pitch: 60,
                         spec: Sampled(velocitySensitivity: sensitivity),
@@ -253,7 +253,7 @@ import Testing
     }
 
     @Test func thesameNotePlaysTheSameWayTwice() throws {
-        let instrument = try #require(SampledInstrument.builtin)
+        let instrument = try #require(SampledInstrument.builtIn)
         #expect(Self.render(instrument, pitch: 62, seconds: 0.5)
                 == Self.render(instrument, pitch: 62, seconds: 0.5))
     }

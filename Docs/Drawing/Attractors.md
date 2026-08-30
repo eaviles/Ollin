@@ -171,7 +171,7 @@ let mine = ChaoticMap(start: .zero) { p in
 var flow: AttractorFlow!
 
 override func setup() {
-    flow = attractorFlow(count: 1_000_000, .lorenz())
+    flow = makeAttractorFlow(count: 1_000_000, .lorenz())
 }
 
 override func draw() {

@@ -47,7 +47,7 @@ final class SeamlessClone_Example: Sketch {
         // darker than itself has its shadows pushed below black and clips. That is
         // the technique being honest rather than failing, and a backdrop that
         // varies mostly in *color* shows the effect without running into it.
-        let backdrop = renderTarget()
+        let backdrop = makeRenderTarget()
         withTarget(backdrop) {
             noStroke()
             for i in 0 ..< 5 {
@@ -85,9 +85,9 @@ final class SeamlessClone_Example: Sketch {
         let leftAt = Vector2(width * 0.27, height * 0.45 + drift * height * 0.20)
         let rightAt = Vector2(width * 0.73, height * 0.45 + drift * height * 0.20)
 
-        let plain = renderTarget()
+        let plain = makeRenderTarget()
         withTarget(plain) { pebbles(at: leftAt) }
-        let clone = renderTarget()
+        let clone = makeRenderTarget()
         withTarget(clone) { pebbles(at: rightAt) }
 
         // The left slab is pasted with the seam left in, the right one cloned.

@@ -258,7 +258,7 @@ private final class FlowProbe: Sketch {
     private(set) var flow: AttractorFlow!
 
     override func setup() {
-        flow = attractorFlow(count: particles, system, seed: 4242)
+        flow = makeAttractorFlow(count: particles, system, seed: 4242)
         if let speed { flow.speed = speed }
         if let colors { flow.colors = colors }
     }

@@ -14,7 +14,7 @@ import CJolt
 struct RigidBody3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// Low-level certification that the vendored Jolt library builds, links,
@@ -135,7 +135,7 @@ struct RigidBody3DTests {
         let target = Vector3(2, 3, 1)
         for _ in 0 ..< 420 {
             joint.target = target
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
         }
 
         // The grip reached the target and the box dangles from it: its center

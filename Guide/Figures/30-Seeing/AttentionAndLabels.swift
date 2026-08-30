@@ -60,7 +60,7 @@ final class AttentionAndLabels: Sketch {
         // wait on a thread that is already waiting.
         let floor = AttentionAndLabels.openFloor
         let found = (try? waitFor(image) {
-            try await ImageClassifier.detect(in: $0, minimumConfidence: floor)
+            try await ImageClassifier.detect(in: $0, minConfidence: floor)
         }) ?? []
         labels = found.prefix(8).map { ($0.name, $0.confidence) }
     }
@@ -130,7 +130,7 @@ final class AttentionAndLabels: Sketch {
             drawText("\(Int((label.confidence * 100).rounded()))%", barLeft + barWidth + 10, y)
         }
 
-        // Where the default `minimumConfidence` would have cut the list.
+        // Where the default `minConfidence` would have cut the list.
         let floorX = barLeft + barWidth * (AttentionAndLabels.defaultFloor
                                            / AttentionAndLabels.fullScale)
         stroke(ink.withAlpha(0.5))

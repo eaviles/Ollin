@@ -67,7 +67,7 @@ final class ImportedShader: Sketch {
         let lines = glsl.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         let longest = lines.max { textWidth($0) < textWidth($1) } ?? ""
 
-        textFont(BitmapFont.builtin)
+        textFont(BitmapFont.builtIn)
         var size = 18.0
         textSize(size)
         while size > 8, textWidth(longest) > codeBox.width {

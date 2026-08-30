@@ -54,7 +54,7 @@ final class HueWheels: Sketch {
             let a0 = Double(i) / Double(wedges) * .tau
             let a1 = Double(i + 1) / Double(wedges) * .tau + 0.004
             fill(Color(hue: Double(i) / Double(wedges), saturation: 0.85, brightness: 0.95))
-            drawArc(center: center, rx: 130, ry: 130, start: a0, stop: a1, mode: .pie)
+            drawArc(center: center, radiusX: 130, radiusY: 130, start: a0, stop: a1, mode: .pie)
         }
         fill(paper)
         drawCircle(center: center, radius: 58)

@@ -37,7 +37,7 @@ Type, then press **⌘↩ (Sketch ▸ Evaluate)**. The buffer compiles in the ba
 
 - **The clock carries.** `time` and `frameCount` continue across the swap, so a phase-driven animation does not snap. Use **⌘⇧↩ (Evaluate Fresh)** to reset the clock instead, when you want the piece to start over.
 - **Tuned knobs carry.** A `@Param` value you dragged in the inspector (or bound over MIDI/OSC) is re-applied to the fresh sketch before it draws. Untouched params take whatever default the code now declares, so editing a default in source still works.
-- **Instance state resets.** It's a fresh instance: `setup()` runs again, stored properties re-initialize, and the accumulation surface clears. `onReload()` fires after the post-swap `setup()` if you need a hook.
+- **Instance state resets.** It's a fresh instance: `setup()` runs again, stored properties re-initialize, and the accumulation surface clears. `reloaded()` fires after the post-swap `setup()` if you need a hook.
 - A compile takes a second or two, because Swift compiles rather than evals. The amber chip in the corner shows a compile in flight. A green "Evaluated" toast confirms the swap, with the build time.
 
 Evaluation compiles the buffer exactly as it is on screen, unsaved changes included.

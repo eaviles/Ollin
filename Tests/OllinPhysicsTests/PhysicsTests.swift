@@ -12,7 +12,7 @@ struct PhysicsTests {
     /// Step a world `count` times at a fixed `dt` (so the time-corrected Verlet
     /// ratio stays 1 and the maths is the textbook case).
     func run(_ world: World, steps: Int, dt: Double) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     @Test func freeBodyFallsHalfGTSquared() {
@@ -45,8 +45,8 @@ struct PhysicsTests {
         world.gravity = Vector2(0, 1000)
         let p = world.addParticle(at: .zero)
 
-        world.step(dt: 0)
-        world.step(dt: -1)
+        world.advance(by: 0)
+        world.advance(by: -1)
         #expect(p.position == .zero)
     }
 
@@ -81,7 +81,7 @@ struct PhysicsTests {
     @Test func collidingDisksSeparate() {
         let world = World()
         world.gravity = .zero
-        world.collisions = true
+        world.particlesCollide = true
         let a = world.addParticle(at: Vector2(0, 0), radius: 10)
         let b = world.addParticle(at: Vector2(8, 0), radius: 10)   // overlapping by 12
 
@@ -96,7 +96,7 @@ struct PhysicsTests {
     @Test func pointsWithoutRadiusDoNotCollide() {
         let world = World()
         world.gravity = .zero
-        world.collisions = true
+        world.particlesCollide = true
         let a = world.addParticle(at: Vector2(0, 0))     // radius 0
         let b = world.addParticle(at: Vector2(1, 0))     // radius 0, right on top
 
@@ -107,7 +107,7 @@ struct PhysicsTests {
     @Test func wallBounceReversesVelocity() {
         let world = World()
         world.gravity = .zero
-        world.bounce = 1.0
+        world.restitution = 1.0
         world.bounds = Rectangle(x: 0, y: 0, width: 200, height: 200)
         let p = world.addParticle(at: Vector2(100, 100), radius: 5)
         p.push(Vector2(6, 0))             // heading right, per-step displacement
@@ -115,7 +115,7 @@ struct PhysicsTests {
         // Step until it has crossed the right wall and reflected.
         var bounced = false
         for _ in 0 ..< 200 {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             if p.velocity.x < 0 { bounced = true; break }
         }
         #expect(bounced)
@@ -130,7 +130,7 @@ struct PhysicsTests {
         p.push(Vector2(10, 0))
 
         let firstStepSpeed: Double = {
-            world.step(dt: 1.0 / 60)
+            world.advance(by: 1.0 / 60)
             return p.velocity.length
         }()
         run(world, steps: 30, dt: 1.0 / 60)
@@ -141,7 +141,7 @@ struct PhysicsTests {
         // A heavy disk barely moves when a light one shoves it.
         let world = World()
         world.gravity = .zero
-        world.collisions = true
+        world.particlesCollide = true
         let heavy = world.addParticle(at: Vector2(0, 0), radius: 10, mass: 100)
         let light = world.addParticle(at: Vector2(8, 0), radius: 10, mass: 1)
 

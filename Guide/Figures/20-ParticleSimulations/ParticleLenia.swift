@@ -36,7 +36,7 @@ final class ParticleLeniaFigure: Sketch {
         noClear()
         for (i, panel) in [left, middle, right].enumerated() {
             let run = ParticleLenia(count: 1700, bounds: panel, spacing: 3.4,
-                                    seed: UInt64(21 + i))
+                                    seed: 21 + i)
             run.muG = settings[i].muG
             run.sigmaG = settings[i].sigmaG
             // One published step a frame, which is the unit the model's behavior is

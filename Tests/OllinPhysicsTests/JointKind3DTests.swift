@@ -15,7 +15,7 @@ import Ollin
 struct JointKind3DTests {
 
     func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
-        for _ in 0 ..< steps { world.step(dt: dt) }
+        for _ in 0 ..< steps { world.advance(by: dt) }
     }
 
     /// A ring of points on a circle of `radius`, which is the shape most of

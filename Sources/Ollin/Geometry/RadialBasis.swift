@@ -203,14 +203,14 @@ public struct RadialBasis<Point: RadialBasisPoint, Value: RadialBasisValue>: Sen
         self.spacing = spacing
     }
 
-    /// The field's value at `place`.
+    /// The field's value at `point`.
     ///
     /// Exact at each fitted point (unless `smoothing` was raised), smooth everywhere
     /// between, and defined outside the points too, where the polynomial tail carries it.
-    public func value(at place: Point) -> Value {
+    public func value(at point: Point) -> Value {
         var parts = [Double](repeating: 0, count: Value.channelCount)
-        for (i, point) in points.enumerated() {
-            let bump = fitted(place.distance(to: point) / spacing)
+        for (i, fittedPoint) in points.enumerated() {
+            let bump = fitted(fittedPoint.distance(to: point) / spacing)
             for c in 0 ..< parts.count { parts[c] += weights[c][i] * bump }
         }
         let n = points.count
@@ -218,25 +218,25 @@ public struct RadialBasis<Point: RadialBasisPoint, Value: RadialBasisValue>: Sen
             parts[c] += weights[c][n]
             for axis in 0 ..< Point.axisCount {
                 parts[c] += weights[c][n + 1 + axis]
-                    * (place.component(axis) - middle[axis]) / spacing
+                    * (point.component(axis) - middle[axis]) / spacing
             }
         }
         return Value(channels: parts)
     }
 
-    /// `field(place)`, the same as ``value(at:)``.
-    public func callAsFunction(_ place: Point) -> Value { value(at: place) }
+    /// `field(point)`, the same as ``value(at:)``.
+    public func callAsFunction(_ point: Point) -> Value { value(at: point) }
 }
 
 // MARK: - What can be a point, and what can be a value
 
-/// A place a `RadialBasis` can be fitted at: `Vector2` or `Vector3`.
+/// A point a `RadialBasis` can be fitted at: `Vector2` or `Vector3`.
 public protocol RadialBasisPoint: Sendable {
-    /// How many numbers a place is made of.
+    /// How many numbers a point is made of.
     static var axisCount: Int { get }
-    /// The place's coordinate along one axis.
+    /// The point's coordinate along one axis.
     func component(_ axis: Int) -> Double
-    /// How far this place is from another.
+    /// How far this point is from another.
     func distance(to other: Self) -> Double
 }
 

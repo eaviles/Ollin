@@ -113,13 +113,13 @@ import Testing
 
     @Test func anEqualizerIsBoundedAndItsPresetsDoWhatTheySay() {
         // A gain far past anything useful is brought back rather than trusted.
-        #expect(Equalizer(low: 500).low == 24)
-        #expect(Equalizer(low: -500).low == -24)
+        #expect(Equalizer(lowGain: 500).lowGain == 24)
+        #expect(Equalizer(lowGain: -500).lowGain == -24)
         #expect(Equalizer(midWidth: 0).midWidth == 0.05)
 
-        #expect(Equalizer.warm.low > 0 && Equalizer.warm.high < 0)
-        #expect(Equalizer.bright.low < 0 && Equalizer.bright.high > 0)
-        #expect(Equalizer.scooped.mid < 0)
+        #expect(Equalizer.warm.lowGain > 0 && Equalizer.warm.highGain < 0)
+        #expect(Equalizer.bright.lowGain < 0 && Equalizer.bright.highGain > 0)
+        #expect(Equalizer.scooped.midGain < 0)
         #expect(Equalizer.lowCut(below: 300).lowEdge == 300)
     }
 

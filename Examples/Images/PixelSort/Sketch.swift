@@ -56,7 +56,7 @@ final class PixelSort: Sketch {
                 // Sky: a deep zenith warming toward the horizon, with clouds.
                 let cloud = signedFbm(u * 5, v * 4, octaves: 4) * 0.14
                 let t = clamp((1 - v) * (1 - v) + cloud, 0, 1)
-                var color = Color.mix(Color(hex: 0xF2B24A), Color(hex: 0x1B1F3A), t: t)
+                var color = Color.mix(Color(hex: 0xF2B24A), Color(hex: 0x1B1F3A), t)
 
                 // The sun, low and slightly off-center.
                 let d = dist(u, v, 0.38, 0.62)

@@ -69,7 +69,7 @@ struct SwarmChemistryTests {
         #expect(Set(sim.openingRecipes.map(\.values.description)).count == 6,
                 "the opening recipes must actually differ from each other")
         // Shared out evenly, so each line starts with a real share to defend.
-        #expect(sim.lineageCounts() == [Int](repeating: 150, count: 6))
+        #expect(sim.snapshotLineageCounts() == [Int](repeating: 150, count: 6))
     }
 
     // MARK: On the GPU
@@ -162,7 +162,7 @@ struct SwarmChemistryTests {
         probe.configure = configure
         _ = OllinApp.image(of: probe, frame: probe.steps)
         let sim = try #require(probe.chem)
-        return Outcome(tally: sim.lineageCounts(), recipes: sim.snapshotRecipes(),
+        return Outcome(tally: sim.snapshotLineageCounts(), recipes: sim.snapshotRecipes(),
                        opening: sim.openingRecipes)
     }
 }

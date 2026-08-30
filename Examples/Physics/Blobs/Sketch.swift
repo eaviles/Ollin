@@ -49,8 +49,8 @@ final class Blobs: Sketch {
     override func setup() {
         world.gravity = .zero              // weightless — they float and drift
         world.drag = 0                     // keep drifting forever
-        world.bounce = 0.85
-        world.collisions = true
+        world.restitution = 0.85
+        world.particlesCollide = true
         world.iterations = 12              // soft bodies want a few passes to hold
         world.bounds = bounds
 
@@ -88,7 +88,7 @@ final class Blobs: Sketch {
     override func draw() {
         background(Color(white: 0.1))
         repelFromCursor()
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         strokeWeight(2 * scale)
         for blob in blobs {

@@ -15,7 +15,7 @@ import simd
 /// ```swift
 /// var world = WorldCloud(voxelSize: 0.02)        // fuse at 2 cm
 /// // each new frame, in draw():
-/// if let frame = device.latestDepthFrame, let pose = device.latestPose {
+/// if let frame = device.latestFrame, let pose = device.latestPose {
 ///     world.add(frame.pointCloud(...), transformedBy: pose)
 /// }
 /// drawPointCloud(world.cloud)                     // the accumulated room

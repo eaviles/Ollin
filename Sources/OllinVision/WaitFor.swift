@@ -10,7 +10,7 @@ import Ollin
 ///
 /// Built for the places a sketch is synchronous by design: `setup()`, or a
 /// deterministic export that must hold a result before its first frame
-/// renders. Pass the image (or pair, for `FlowTracker.flow(from:to:)`) as an
+/// renders. Pass the image (or pair, for `FlowTracker.detect(from:to:)`) as an
 /// argument rather than capturing it: `Image` isn't `Sendable`, and the
 /// argument form is what carries it safely into the analysis task while the
 /// caller waits.
@@ -34,7 +34,7 @@ public func waitFor<T: Sendable>(
 }
 
 /// The two-image form, for the calls that measure between a pair of stills
-/// (`FlowTracker.flow(from: $0, to: $1)`). See `waitFor(_:_:)`.
+/// (`FlowTracker.detect(from: $0, to: $1)`). See `waitFor(_:_:)`.
 public func waitFor<T: Sendable>(
     _ first: Image, _ second: Image,
     _ work: @escaping @Sendable (Image, Image) async throws -> T
@@ -44,7 +44,7 @@ public func waitFor<T: Sendable>(
 
 /// The image-sequence form, for the calls that run across ordered frames
 /// (`ObjectTracker.track(seed, across: $0)`, `TrajectoryTracker.detect(across: $0)`,
-/// `FlowTracker.flow(across: $0)`). See `waitFor(_:_:)`.
+/// `FlowTracker.detect(across: $0)`). See `waitFor(_:_:)`.
 public func waitFor<T: Sendable>(
     _ images: [Image],
     _ work: @escaping @Sendable ([Image]) async throws -> T

@@ -376,7 +376,7 @@ struct PushFeedTests {
         transport.deliver(.message(Data(#"{"n": 4}"#.utf8), isText: true, event: nil, id: nil))
         #expect(feed.json["n"].number == 4)
         #expect(feed.text == #"{"n": 4}"#)
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
         #expect((feed.timeSinceUpdate ?? -1) >= 0)
     }
 
@@ -392,7 +392,7 @@ struct PushFeedTests {
         transport.deliver(.opened)
         transport.deliver(.message(Data("same".utf8), isText: true, event: nil, id: nil))
         transport.deliver(.message(Data("same".utf8), isText: true, event: nil, id: nil))
-        #expect(feed.updates == 2)
+        #expect(feed.updateCount == 2)
     }
 
     @Test func messagesDrainsOldestFirst() async {
@@ -426,7 +426,7 @@ struct PushFeedTests {
         #expect(kept.count == PushFeed.pendingLimit)
         #expect(kept.first?.text == "44")   // the oldest went
         #expect(kept.last?.text == "299")
-        #expect(feed.updates == 300)        // dropped is not uncounted
+        #expect(feed.updateCount == 300)        // dropped is not uncounted
     }
 
     @Test func bytesThatAreNotTextStillArrive() async {
@@ -459,7 +459,7 @@ struct PushFeedTests {
 
         first.deliver(.closed("the connection closed"))
         #expect(!feed.isConnected)
-        #expect(feed.failures == 1)
+        #expect(feed.failureCount == 1)
         #expect(feed.problem == "the connection closed")
         #expect(feed.text == "a")           // a drop never clears what arrived
 
@@ -469,7 +469,7 @@ struct PushFeedTests {
         second.deliver(.opened)
         #expect(second.sent == [#"{"op": "subscribe"}"#])
         second.deliver(.message(Data("b".utf8), isText: true, event: nil, id: nil))
-        #expect(feed.failures == 0)
+        #expect(feed.failureCount == 0)
         #expect(feed.problem == nil)
     }
 
@@ -487,7 +487,7 @@ struct PushFeedTests {
         first.deliver(.opened)
         first.deliver(.closed("the connection closed"))
         first.deliver(.closed("the connection closed"))
-        #expect(feed.failures == 1)
+        #expect(feed.failureCount == 1)
 
         _ = await carrier.dial(1)
         try await Task.sleep(nanoseconds: 1_500_000_000)
@@ -510,7 +510,7 @@ struct PushFeedTests {
         transport.deliver(.closed("the connection closed"))
         try await Task.sleep(nanoseconds: 1_500_000_000)
         #expect(carrier.transports.count == 1)
-        #expect(feed.failures == 0)
+        #expect(feed.failureCount == 0)
     }
 
     @Test func reconnectRedialsNow() async {
@@ -572,7 +572,7 @@ struct PushFeedTests {
         let problem = try await waitFor { feed.problem }
         #expect(problem.contains("not an address"))
         #expect(carrier.transports.isEmpty)
-        #expect(feed.updates == 0)
+        #expect(feed.updateCount == 0)
     }
 
     // MARK: A stream of server-sent events, end to end
@@ -595,7 +595,7 @@ struct PushFeedTests {
         defer { feed.stop() }
 
         feed.start()
-        _ = try await waitFor { feed.updates >= 2 ? true : nil }
+        _ = try await waitFor { feed.updateCount >= 2 ? true : nil }
 
         let messages = feed.messages()
         #expect(messages[0].event == "quake")
@@ -620,7 +620,7 @@ struct PushFeedTests {
         defer { feed.stop() }
 
         feed.start()
-        _ = try await waitFor { feed.updates >= 2 ? true : nil }
+        _ = try await waitFor { feed.updateCount >= 2 ? true : nil }
 
         // The redial told the server where it was, so the blink loses nothing
         // the server still holds.
@@ -628,7 +628,7 @@ struct PushFeedTests {
         #expect(asks[0].headers["last-event-id"] == nil)
         #expect(asks[1].headers["last-event-id"] == "42")
         #expect(feed.text == "after it")
-        #expect(feed.failures == 0)
+        #expect(feed.failureCount == 0)
     }
 
     @Test func aKeepaliveCommentResetsTheFailures() async throws {
@@ -645,8 +645,8 @@ struct PushFeedTests {
         // reset it; the count on a drop is asserted synchronously in the
         // scripted tests above.
         _ = try await waitFor { StreamStub.asks(at: path).count >= 2 ? true : nil }
-        _ = try await waitFor { feed.isConnected && feed.failures == 0 ? true : nil }
-        #expect(feed.updates == 0)   // a keepalive is a sign of life, not a message
+        _ = try await waitFor { feed.isConnected && feed.failureCount == 0 ? true : nil }
+        #expect(feed.updateCount == 0)   // a keepalive is a sign of life, not a message
     }
 
     @Test func aNoContentAnswerEndsTheFeed() async throws {
@@ -673,7 +673,7 @@ struct PushFeedTests {
         // `problem` is cleared the instant the redial connects. What a server
         // error says is checked next door, on a feed that stays down.
         _ = try await waitFor { StreamStub.asks(at: path).count >= 2 ? true : nil }
-        _ = try await waitFor { feed.updates >= 1 ? true : nil }
+        _ = try await waitFor { feed.updateCount >= 1 ? true : nil }
         #expect(feed.text == "back")
         #expect(StreamStub.asks(at: path).count >= 2)
     }
@@ -708,7 +708,7 @@ struct PushFeedTests {
         feed.start()
         // At least two, not exactly two: the file ends, so the feed redials and
         // reads it again. The last message is `n: 2` on every pass.
-        _ = try await waitFor { feed.updates >= 2 ? true : nil }
+        _ = try await waitFor { feed.updateCount >= 2 ? true : nil }
         #expect(feed.json["n"].number == 2)
         feed.stop()   // the file ends, and a redial would only read it again
     }
@@ -762,7 +762,7 @@ struct PushFeedExportTests {
 
         // One message, the connection let go, and no clock: an export that
         // listened per frame would render something different every run.
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
         #expect(feed.json["n"].number == 1)
         #expect(!feed.isConnected)
         #expect(feed.timeSinceUpdate == 0)
@@ -787,7 +787,7 @@ struct PushFeedExportTests {
         defer { OllinApp.isRenderingHeadless = false }
         await Task.detached { feed.start() }.value
 
-        #expect(feed.updates == 1)
+        #expect(feed.updateCount == 1)
         #expect(feed.isConnected)                                  // still up
         #expect((feed.timeSinceUpdate ?? -1) >= 0)                 // a real clock
         #expect(made.withLock { $0.first?.wasClosed } == false)

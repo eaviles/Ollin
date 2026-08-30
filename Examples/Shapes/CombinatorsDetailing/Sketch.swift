@@ -19,25 +19,25 @@ final class CombinatorsDetailing: Sketch {
                       "engrave", "groove", "tongue", "tongue + groove"]
         for cell in cells {
             let a = SDF.rect(width: 200, height: 96).colored(Color(hex: 0x46c2ff))
-            let b = SDF.rect(width: 96, height: 200).at(x: 8, y: 0).colored(Color(hex: 0xffb454))
+            let b = SDF.rect(width: 96, height: 200).at(8, 0).colored(Color(hex: 0xffb454))
             let joined: SDF
             switch cell.row * 4 + cell.column {
             case 0: joined = a.columnsUnion(b, radius: 30, count: count)
             case 1: joined = a.columnsSubtract(b, radius: 30, count: count)
             case 2: joined = a.columnsIntersect(b, radius: 30, count: count)
             case 3: joined = a.pipe(b, radius: 16)
-            case 4: joined = a.engrave(.circle(radius: 70).at(x: 8, y: 0), depth: 10)
-            case 5: joined = a.groove(.circle(radius: 70).at(x: 8, y: 0), depth: 12, width: 10)
-            case 6: joined = a.tongue(.circle(radius: 70).at(x: 8, y: 0), height: 12, width: 10)
+            case 4: joined = a.engrave(.circle(radius: 70).at(8, 0), depth: 10)
+            case 5: joined = a.groove(.circle(radius: 70).at(8, 0), depth: 12, width: 10)
+            case 6: joined = a.tongue(.circle(radius: 70).at(8, 0), height: 12, width: 10)
             default:
                 // The carpentry pair: a plank with a groove, and the ridged plank that
                 // mates into it, parted so the fit reads.
                 let seam = SDF.rect(width: 4, height: 220)
-                let grooved = SDF.rect(width: 92, height: 190).at(x: -52, y: 0)
-                    .groove(seam.at(x: -52 + 46, y: 0), depth: 16, width: 12)
+                let grooved = SDF.rect(width: 92, height: 190).at(-52, 0)
+                    .groove(seam.at(-52 + 46, 0), depth: 16, width: 12)
                     .colored(Color(hex: 0x46c2ff))
-                let tongued = SDF.rect(width: 92, height: 190).at(x: 56, y: 0)
-                    .tongue(seam.at(x: 56 - 46, y: 0), height: 14, width: 10)
+                let tongued = SDF.rect(width: 92, height: 190).at(56, 0)
+                    .tongue(seam.at(56 - 46, 0), height: 14, width: 10)
                     .colored(Color(hex: 0xffb454))
                 joined = grooved.union(tongued)
             }

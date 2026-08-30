@@ -31,7 +31,7 @@ struct PopulationTests {
         #expect(Genome([0.5]).value(0, in: 0 ... 10) == 5)
         #expect(low.value(0, among: ["a", "b", "c"]) == "a")
         #expect(high.value(0, among: ["a", "b", "c"]) == "c")
-        #expect(low.flag(0) && !high.flag(0))
+        #expect(low.isSet(0) && !high.isSet(0))
     }
 
     @Test func everyWholeNumberInARangeIsReachable() {

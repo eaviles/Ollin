@@ -101,7 +101,7 @@ The catalog runs well past p5's. It holds stars, rings, hearts, n-gons, and a fe
 | `stroke(…)` / `strokeWeight(5)` | same names | |
 | `strokeCap(ROUND)` / `strokeJoin(MITER)` | `strokeCap(.round)` / `strokeJoin(.miter)` | enums instead of constants |
 | `colorMode(HSB, 360, 100, 100)` | `Color(hue: h, saturation: s, brightness: b)` | no mode state; everything `0...1`, hue wraps |
-| `lerpColor(a, b, 0.3)` | `Color.mix(a, b, t: 0.3)` | mixes in a perceptual space by default, so midpoints don't go muddy ([Chapter 2](02-Color.md)) |
+| `lerpColor(a, b, 0.3)` | `Color.mix(a, b, 0.3)` | mixes in a perceptual space by default, so midpoints don't go muddy ([Chapter 2](02-Color.md)) |
 | `blendMode(ADD)` | `blendMode(.add)` | |
 
 ### Transforms and state
@@ -174,7 +174,7 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 | `tint(…)` / `noTint()` | `tint(_:)` / `noTint()` | |
 | `img.get(x, y)` / `img.set(x, y, c)` | `img[x, y]` | one subscript reads and writes |
 | `createImage(w, h)` | `Image(width:height:)` | |
-| `createGraphics(w, h)` | `renderTarget()` + `withTarget(layer) { }` | off-screen layers ([Chapter 16](16-LayersAndEffects.md)) |
+| `createGraphics(w, h)` | `makeRenderTarget()` + `withTarget(layer) { }` | off-screen layers ([Chapter 16](16-LayersAndEffects.md)) |
 
 ### Mouse and keyboard
 

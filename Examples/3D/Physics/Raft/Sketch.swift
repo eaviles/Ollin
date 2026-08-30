@@ -141,7 +141,7 @@ final class Raft: Sketch {
 
         if let grip { dragSoftGrab(grip, to: mouse) }
         if let crateGrip { dragGrab(crateGrip, to: mouse) }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
         markLandings()
 
         drawSea()

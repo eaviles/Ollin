@@ -62,7 +62,7 @@ final class Sightlines: Sketch {
         castShadows()
         perspective(eye: Vector3(1.0, 6.6, 12.4), target: Vector3(-0.7, 2.1, 0.2))
 
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         // A ray per crate: it is visible when the crate itself is what the ray
         // found first.

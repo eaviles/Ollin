@@ -59,7 +59,7 @@ final class Soundsuit: Sketch {
         if let c = orbitCenter { orbitCenter = c.lerp(to: center, 0.1) } else { orbitCenter = center }
         cameraShowcase(.turntable(period: .tau / 0.25), target: orbitCenter ?? center, radius: 3.0,
                        elevation: 0.12, fieldOfView: .pi / 3)
-        environment(.studio.intensity(1.0).lightingOnly())
+        environment(.studio.intensified(to: 1.0).lightingOnly())
 
         drawFloor(under: body)
         drawUnderSuit(body, dye: dye)
@@ -120,7 +120,7 @@ final class Soundsuit: Sketch {
         let s = body.scaleFactor
         withState {
             material(.matte)
-            fill(Color.mix(dye, .black, t: 0.6))
+            fill(Color.mix(dye, .black, 0.6))
             for (a, b) in PhoneBody.skeleton {
                 guard let pa = body.worldPosition(a), let pb = body.worldPosition(b) else { continue }
                 drawCapsule(from: pa, to: pb, radius: 0.05 * s, segments: 10, rings: 3)
@@ -140,7 +140,7 @@ final class Soundsuit: Sketch {
         let s = body.scaleFactor
         for (boneIndex, bone) in PhoneBody.skeleton.enumerated() {
             guard let a = body.worldPosition(bone.0), let b = body.worldPosition(bone.1),
-                  let pose = body.worldTransform(of: bone.0) else { continue }
+                  let pose = body.worldTransform(ofJoint: bone.0) else { continue }
             let axis = (b - a).normalized
             guard axis.lengthSquared > 0 else { continue }
             let localX = Vector3(Double(pose.columns.0.x), Double(pose.columns.0.y),
@@ -195,7 +195,7 @@ final class Soundsuit: Sketch {
     private func addStrand(to cloud: inout PointCloud, from base: Vector3, radial: Vector3,
                            swing: Vector3, length: Double, dye: Color, jitter: Double,
                            scale: Double) {
-        let tone = Color.mix(dye, jitter > 0.55 ? .white : .black, t: abs(jitter - 0.5) * 0.5)
+        let tone = Color.mix(dye, jitter > 0.55 ? .white : .black, abs(jitter - 0.5) * 0.5)
         var p = base
         var dir = radial
         let segments = 6
@@ -252,7 +252,7 @@ final class Soundsuit: Sketch {
         var anchor = simd_float4x4(simd_quatf(angle: Float(t * 0.5), axis: SIMD3<Float>(0, 1, 0)))
         anchor.columns.3 = SIMD4<Float>(sway, 0.95 + bounce, 0, 1)
         return PhoneBody(PhonePoseSample(
-            tracked: true, timestamp: t, anchor: anchor, scaleFactor: 1,
+            isTracked: true, timestamp: t, anchor: anchor, scaleFactor: 1,
             joints: [
                 .root: j(0, 0, 0), .hips: j(0, 0.02, 0),
                 .spine: j(sway * 0.5, 0.25, 0), .chest: j(sway, 0.42, 0),

@@ -38,7 +38,7 @@ final class Lattice: Sketch {
         let frame = Rectangle(center: center, width: 880, height: 880)
         let grammar = ShapeGrammar(start: ShapeGrammar.Piece("cell", frame),
                                    rules: [.cut("cell", into: ("cell", "cell"),
-                                                minimumArea: 7_000)])
+                                                minArea: 7_000)])
         noFill(); stroke(.white); strokeWeight(2)
         for piece in grammar.run(generations: 9, seed: 7) {
             drawPolyline(piece.corners, closed: true)
@@ -55,12 +55,12 @@ final class Lattice: Sketch {
 
 | Rule | What it does |
 |---|---|
-| `.cut(_:into:balance:sides:avoidingCorners:tries:minimumArea:weight:)` | one straight line between two edges, leaving two parts of about equal area |
-| `.split(_:along:at:into:minimumArea:weight:)` | straight cuts across the piece, at fractions of its upright box |
-| `.inset(_:by:into:border:minimumArea:weight:)` | pulls the outline inward by the same distance all the way round |
-| `.nested(_:scale:turn:into:keeping:minimumArea:weight:)` | puts a smaller, turned copy of the piece inside itself |
+| `.cut(_:into:balance:sides:avoidingCorners:tries:minArea:weight:)` | one straight line between two edges, leaving two parts of about equal area |
+| `.split(_:along:at:into:minArea:weight:)` | straight cuts across the piece, at fractions of its upright box |
+| `.inset(_:by:into:border:minArea:weight:)` | pulls the outline inward by the same distance all the way round |
+| `.nested(_:scale:turn:into:keeping:minArea:weight:)` | puts a smaller, turned copy of the piece inside itself |
 | `.stop(_:into:weight:)` | renames the piece and leaves its outline alone |
-| `.custom(_:weight:minimumArea:_:)` | anything else, written as a closure |
+| `.custom(_:weight:minArea:_:)` | anything else, written as a closure |
 
 `cut` is the move behind the ice-ray lattices, the window frames whose bars look like cracks in river ice. Three of its knobs decide the character of a design:
 
@@ -88,7 +88,7 @@ let facade = ShapeGrammar(
 
 A sweep offers every piece to the rules that name its label. Three things decide what happens:
 
-- **`minimumArea`.** A piece smaller than this is left alone by that rule. It is what brings a run to a stop, and it is how the classic grammars say "until the pieces are the size you wanted".
+- **`minArea`.** A piece smaller than this is left alone by that rule. It is what brings a run to a stop, and it is how the classic grammars say "until the pieces are the size you wanted".
 - **`weight`.** Among the rules that share a label, one is drawn in proportion to weight. A rule of weight 3 is picked three times as often as one of weight 1.
 - **Refusal.** A rule may hand back nothing, which passes the piece to the other rules on its label. `inset` refuses a piece with no room for the bar, and `cut` refuses a piece it cannot cut inside the rules it was given.
 
@@ -121,13 +121,13 @@ Nobody writes those rules down. They are what is left once the corner range is n
 
 **Cutting, splitting, and insetting keep the whole area.** They partition the piece, so the parts add back up to it exactly. A whole lattice still covers its frame, which is what lets you fill the frame once and then knock the panes out of it.
 
-The size limit gives a third fact worth having: since a piece is only cut while it is at least `minimumArea`, and the smaller part keeps at least `(1 - balance) / 2` of that, **no piece a run leaves is smaller than `minimumArea * (1 - balance) / 2`**.
+The size limit gives a third fact worth having: since a piece is only cut while it is at least `minArea`, and the smaller part keeps at least `(1 - balance) / 2` of that, **no piece a run leaves is smaller than `minArea * (1 - balance) / 2`**.
 
 <a name="step"></a>
 
 #### Growing it a sweep at a time
 
-`run(generations:)` does the sweeps for you. Hold the pieces and the source yourself to watch a design build.
+`run(generations:)` does the sweeps for you. Hold the pieces and the rng yourself to watch a design build.
 
 ```swift
 private var cells: [ShapeGrammar.Piece] = []
@@ -136,7 +136,7 @@ private var source = SplitMix64(seed: 4)
 override func setup() { cells = grammar.start }
 
 override func draw() {
-    if frameCount % 6 == 0 { cells = grammar.step(cells, source: &source) }
+    if frameCount % 6 == 0 { cells = grammar.step(cells, using: &source) }
     // ... draw cells
 }
 ```
@@ -163,8 +163,8 @@ The built-in rules expect a convex piece and hand back convex pieces, so a run t
 
 | | |
 |---|---|
-| `ShapeGrammar.iceRay(in:minimumArea:balance:sides:avoidingCorners:)` | the lattice grammar: cut a frame in two again and again until the cells are the size you asked for |
-| `ShapeGrammar.nestedSquares(in:minimumArea:scale:turn:)` | a square holding a smaller turned square, for as long as there is room. The default scale of `1 / sqrt(2)` and eighth turn land every corner of a copy on the middle of an edge of the square that holds it |
+| `ShapeGrammar.iceRay(in:minArea:balance:sides:avoidingCorners:)` | the lattice grammar: cut a frame in two again and again until the cells are the size you asked for |
+| `ShapeGrammar.nestedSquares(in:minArea:scale:turn:)` | a square holding a smaller turned square, for as long as there is room. The default scale of `1 / sqrt(2)` and eighth turn land every corner of a copy on the middle of an edge of the square that holds it |
 
 ### See also
 

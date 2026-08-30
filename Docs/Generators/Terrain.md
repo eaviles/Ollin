@@ -39,7 +39,7 @@ Heightfield(columns: w, rows: h, values: rowMajorHeights) // explicit data
 
 The closure form samples any per-point field at normalized coordinates, so the whole [noise family](Noise.md) is a terrain generator. `fbm` rolls classic hills, `ridgedFbm` creases into mountain ridges, and `warpedFbm` melts them.
 
-Heights are plain `Double`s in a row-major `values` array, `0…1` by convention. The generators emit that range and the erosion defaults assume it. After hand edits, `normalized()` restores it. `field[x, y]` reads and writes samples, and `value(atU:v:)` samples anywhere bilinearly.
+Heights are plain `Double`s in a row-major `values` array, `0…1` by convention. The generators emit that range and the erosion defaults assume it. After hand edits, `normalized()` restores it. `field[x, y]` reads and writes samples, and `value(u:v:)` samples anywhere bilinearly.
 
 <a name="diamond-square"></a>
 
@@ -106,7 +106,7 @@ let sheet = Rectangle(x: 90, y: 90, width: 900, height: 900)
 let levels = stride(from: 0.1, through: 0.9, by: 0.1).map { $0 }
 let contours = isolines(at: levels, in: sheet, resolution: 220) { p in
     let uv = sheet.uv(of: p)
-    return land.value(atU: uv.x, v: uv.y)
+    return land.value(u: uv.x, v: uv.y)
 }
 ```
 

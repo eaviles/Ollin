@@ -33,7 +33,7 @@ final class Stack: Sketch {
 
     override func setup() {
         world.gravity = Vector2(0, 2600)   // points/s² — a firm, visible pull
-        world.bounce = 0.05                // a low-restitution floor so it settles
+        world.restitution = 0.05                // a low-restitution floor so it settles
         world.bounds = bounds
         buildStack()
         noStroke()
@@ -82,7 +82,7 @@ final class Stack: Sketch {
 
     override func draw() {
         background(Color(white: 0.12))
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         for body in world.bodies {
             guard let look = body.userData as? Look else { continue }

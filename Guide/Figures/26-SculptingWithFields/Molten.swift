@@ -26,12 +26,12 @@ final class Molten: Sketch {
         // The glass: four lobes melting into one body, breathing.
         let breathe = 0.42 + signedNoise(time * 0.25) * 0.1
         let glass = Color(hex: 0x9FDCD3)
-        let body = SDF3D.sphere(radius: 0.8).at(x: 0, y: 0.85, z: 0)
-            .smoothUnion(SDF3D.ellipsoid(rx: 0.62, ry: 0.4, rz: 0.62)
-                .at(x: 0.72, y: 0.5, z: 0.25), k: breathe)
+        let body = SDF3D.sphere(radius: 0.8).at(0, 0.85, 0)
+            .smoothUnion(SDF3D.ellipsoid(radiusX: 0.62, radiusY: 0.4, radiusZ: 0.62)
+                .at(0.72, 0.5, 0.25), k: breathe)
             .smoothUnion(SDF3D.torus(radius: 0.6, tube: 0.19)
-                .at(x: -0.55, y: 1.25, z: -0.1).rotatedZ(0.5), k: 0.4)
-            .smoothUnion(SDF3D.sphere(radius: 0.4).at(x: -0.2, y: 1.95, z: 0.3), k: 0.5)
+                .at(-0.55, 1.25, -0.1).rotatedZ(0.5), k: 0.4)
+            .smoothUnion(SDF3D.sphere(radius: 0.4).at(-0.2, 1.95, 0.3), k: 0.5)
             .twisted(0.3)
             .colored(glass)
 

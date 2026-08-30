@@ -95,11 +95,11 @@ public final class Record3DDevice: FrameSource, VideoFeed {
 
     /// Unproject the latest frame into a `PointCloud` (see `RGBDFrame.pointCloud`
     /// for the parameters). `nil` until the first frame arrives.
-    public func pointCloud(minimumConfidence: DepthConfidence = .medium,
+    public func pointCloud(minConfidence: DepthConfidence = .medium,
                            depthRange: ClosedRange<Double>? = nil,
                            step: Int = 1,
                            pointSize: Double = 0.006) -> PointCloud? {
-        latestFrame?.pointCloud(minimumConfidence: minimumConfidence, depthRange: depthRange,
+        latestFrame?.pointCloud(minConfidence: minConfidence, depthRange: depthRange,
                                 step: step, pointSize: pointSize)
     }
 

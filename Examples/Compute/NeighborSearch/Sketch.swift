@@ -84,7 +84,7 @@ final class NeighborSearch_Example: Sketch {
     """)
 
     override func setup() {
-        hash = spatialHash(radius: radius, count: particleCount)
+        hash = makeSpatialHash(radius: radius, count: particleCount)
         particles = PingPong<OllinParticle>(count: particleCount)
     }
 

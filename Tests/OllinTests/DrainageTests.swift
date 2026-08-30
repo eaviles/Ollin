@@ -181,7 +181,7 @@ struct DrainageTests {
     /// flood front showing through the picture.
     @Test func aFilledHollowFollowsTheWayTheWaterCameIn() {
         let land = bowl()
-        let flood = land.flooded(minimumDrop: 1e-7)
+        let flood = land.flooded(minDrop: 1e-7)
         let water = land.drainage()
 
         var raised = 0
@@ -243,7 +243,7 @@ struct DrainageTests {
         let frame = Rectangle(x: 0, y: 0, width: 100, height: 100)
         let water = Heightfield.diamondSquare(size: 33, seed: 6).drainage()
         let threshold = 25.0
-        let rivers = water.rivers(minimumFlow: threshold, in: frame)
+        let rivers = water.rivers(minFlow: threshold, in: frame)
         #expect(rivers.count > 4)
 
         // Everything drawn is a cell over the threshold, and the reaches cover
@@ -269,7 +269,7 @@ struct DrainageTests {
     @Test func orderFollowsStrahlersRule() {
         let water = Heightfield.diamondSquare(size: 33, seed: 6).drainage()
         let threshold = 25.0
-        let order = water.strahlerOrders(minimumFlow: threshold)
+        let order = water.strahlerOrders(minFlow: threshold)
 
         var feeders = [[Int]](repeating: [], count: water.columns * water.rows)
         for cell in 0 ..< water.columns * water.rows where water.flow[cell] >= threshold {
@@ -312,7 +312,7 @@ struct DrainageTests {
             let cells = water.flow.filter { $0 >= threshold }.count
             #expect(cells <= previous)
             previous = cells
-            let rivers = water.rivers(minimumFlow: threshold, in: frame)
+            let rivers = water.rivers(minFlow: threshold, in: frame)
             for river in rivers { #expect(river.flow >= threshold) }
         }
     }
@@ -327,10 +327,10 @@ struct DrainageTests {
         #expect(water.outlets.count == 4)
         // Asked for every cell, it answers with four one-cell reaches, since
         // each corner leaves the field on its own with nothing above it.
-        let all = water.rivers(minimumFlow: 1, in: Rectangle(x: 0, y: 0, width: 1, height: 1))
+        let all = water.rivers(minFlow: 1, in: Rectangle(x: 0, y: 0, width: 1, height: 1))
         #expect(all.count == 4)
         #expect(all.allSatisfy { $0.points.count == 1 })
-        #expect(water.rivers(minimumFlow: 2, in: Rectangle(x: 0, y: 0, width: 1, height: 1)).isEmpty)
+        #expect(water.rivers(minFlow: 2, in: Rectangle(x: 0, y: 0, width: 1, height: 1)).isEmpty)
         #expect(tiny.filled().values == tiny.values)
 
         // A flat field has no downhill anywhere, so every cell keeps its own

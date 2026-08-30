@@ -189,7 +189,7 @@ private final class GlossyProbe: Sketch {
         camera(.orbiting(target: Vector3(0, 0.6, 0), radius: 7.2,
                          azimuth: 0.2, elevation: 0.22,
                          fieldOfView: .pi / 4, near: 1, far: 30))
-        environment(.studio.intensity(1.0))
+        environment(.studio.intensified(to: 1.0))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.3), intensity: 0.8)
         rayTracedReflections()
         if gloss { glossyReflections() }

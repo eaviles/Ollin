@@ -105,7 +105,7 @@ public final class Boids {
             var centerSum = Vector2.zero
             var separationCount = 0, neighborCount = 0
 
-            index.forNeighbors(of: i, within: cell) { j, d2 in
+            index.forEachNeighbor(of: i, within: cell) { j, d2 in
                 if d2 < perc2 {
                     headingSum = headingSum + velocities[j]
                     centerSum = centerSum + positions[j]

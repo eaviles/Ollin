@@ -210,7 +210,7 @@ struct PDFExportTests {
 
     @Test func hatchingTurnsFillsIntoLines() {
         let plain = rasterize(OllinApp.pdf(of: Disk()), width: 100, height: 100)
-        let hatched = rasterize(OllinApp.pdf(of: Disk(), hatching: Hatching(spacing: 8, keepOutline: false)),
+        let hatched = rasterize(OllinApp.pdf(of: Disk(), hatching: Hatching(spacing: 8, keepsOutline: false)),
                                 width: 100, height: 100)
         // Down the disk's vertical diameter: the plain fill is solid ink, the
         // hatched one alternates pen lines with paper gaps.

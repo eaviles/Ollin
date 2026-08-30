@@ -46,7 +46,7 @@ final class ScreenCaptureExample: Sketch {
         screen.scale = detail
 
         guard let frame = screen.frame,
-              let rect = screen.fittedRect(in: bounds) else {
+              let rect = screen.fittedRectangle(in: bounds) else {
             drawStatus(screen.waitingMessage, style: ScreenCapture.isAvailable ? .info : .warning)
             return
         }
@@ -56,7 +56,7 @@ final class ScreenCaptureExample: Sketch {
         } else {
             // The capture is an ordinary image, so it goes through the effect
             // graph like anything else the sketch draws.
-            let layer = renderTarget()
+            let layer = makeRenderTarget()
             withTarget(layer) {
                 background(.black)
                 drawImage(frame, in: bounds)
@@ -71,9 +71,9 @@ final class ScreenCaptureExample: Sketch {
     private var filter: Filter {
         switch look {
         case .plain:     return .exposure(stops: 0)
-        case .bloom:     return .bloom(threshold: 0.55, intensity: 0.7, radius: 12)
+        case .bloom:     return .bloom(threshold: 0.55, amount: 0.7, radius: 12)
         case .posterize: return .posterize(levels: 5)
-        case .edges:     return .edges(intensity: 2.2)
+        case .edges:     return .edges(amount: 2.2)
         }
     }
 

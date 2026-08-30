@@ -219,7 +219,7 @@ private final class SumProbe: Sketch {
 
     override func draw() {
         background(.black)
-        let layer = renderTarget()
+        let layer = makeRenderTarget()
         withTarget(layer) { paint() }
 
         switch subject {

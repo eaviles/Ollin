@@ -10,7 +10,7 @@ import simd
 /// fluid, and any field that evolves by reading its neighbors each step:
 ///
 /// ```swift
-/// lazy var gray = Simulation(width: 512, height: 512, subSteps: 12, step: """
+/// lazy var gray = Simulation(width: 512, height: 512, substeps: 12, step: """
 ///     // Gray-Scott reaction-diffusion: A in .r, B in .g.
 ///     float2 lap = -value.xy
 ///         + 0.2  * (tap(-1,0).xy + tap(1,0).xy + tap(0,-1).xy + tap(0,1).xy)
@@ -49,17 +49,17 @@ public final class Simulation {
     public let height: Int
     /// How many kernel steps run per `updateSimulation` call (a sim that needs many
     /// small iterations per frame for stability runs them in one command buffer).
-    public let subSteps: Int
+    public let substeps: Int
     private let kernel: ComputeKernel
     private let pingpong: PingPongTexture
 
     /// Build a `width`×`height` simulation whose per-cell update is the MSL `step`
-    /// body (see the type doc for the locals in scope). `subSteps` kernel iterations
+    /// body (see the type doc for the locals in scope). `substeps` kernel iterations
     /// run per `updateSimulation` call (default 1); `format` is the texel layout
     /// (default `.rgba16Float`).
-    public convenience init(width: Int, height: Int, subSteps: Int = 1,
+    public convenience init(width: Int, height: Int, substeps: Int = 1,
                             format: ComputeTextureFormat = .rgba16Float, step: String) {
-        self.init(width: width, height: height, subSteps: subSteps, format: format,
+        self.init(width: width, height: height, substeps: substeps, format: format,
                   kernel: Simulation.wrap(step))
     }
 
@@ -68,13 +68,13 @@ public final class Simulation {
     /// access::write> [[texture(1)]], constant OllinComputeUniforms& [[buffer(10)]],
     /// constant float4& [[buffer(11)]], uint2 gid [[thread_position_in_grid]])` and
     /// write texture 1 from texture 0 — the layout `init(…step:)` generates.
-    public init(width: Int, height: Int, subSteps: Int = 1,
+    public init(width: Int, height: Int, substeps: Int = 1,
                 format: ComputeTextureFormat = .rgba16Float, kernel: ComputeKernel) {
         precondition(width > 0 && height > 0, "Simulation needs a positive size")
-        precondition(subSteps > 0, "Simulation needs at least one sub-step")
+        precondition(substeps > 0, "Simulation needs at least one sub-step")
         self.width = width
         self.height = height
-        self.subSteps = subSteps
+        self.substeps = substeps
         self.kernel = kernel
         self.pingpong = PingPongTexture(width: width, height: height, format: format)
     }
@@ -87,13 +87,13 @@ public final class Simulation {
     /// contents, resolved at draw time).
     public var image: Image { pingpong.read.image }
 
-    /// Record `subSteps` simulation steps into `drawer`, swapping the ping-pong after
+    /// Record `substeps` simulation steps into `drawer`, swapping the ping-pong after
     /// each so `current` ends on the freshly written field. Called by
     /// `Sketch.updateSimulation`. `custom` is bound (always 16 bytes) at index 11.
     func recordUpdate(into drawer: Drawer, custom: SIMD4<Float>) {
         var bytes: [UInt8] = []
         withUnsafeBytes(of: custom) { bytes.append(contentsOf: $0) }
-        for _ in 0..<subSteps {
+        for _ in 0..<substeps {
             let read = pingpong.read, write = pingpong.write
             drawer.recordDispatch(RecordedDispatch(
                 kernel: kernel, gridWidth: width, gridHeight: height,

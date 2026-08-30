@@ -76,7 +76,7 @@ The example `3D/Effects/AerialPerspective` is a file of ridgelines stepping away
 
 ```swift
 spotLight(.white, at: Vector3(-4, 6, 3), direction: Vector3(0.6, -0.7, -0.3),
-          angle: .pi / 8, cookie: gobo)
+          coneAngle: .pi / 8, cookie: gobo)
 castShadows()
 volumetricLight()                     // the beams appear
 volumetricLight(0.7, anisotropy: 0.8) // dimmer, flaring hard toward the light

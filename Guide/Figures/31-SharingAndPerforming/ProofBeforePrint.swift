@@ -56,9 +56,9 @@ final class ProofBeforePrint: Sketch {
             for x in 0 ..< size {
                 let u = Double(x) / Double(size - 1)
                 var c = Color.mix(Color(hex: 0x2B1B6B), Color(hex: 0xFF2D55),
-                                  t: smoothstep(0.05, 0.62, v))
+                                  smoothstep(0.05, 0.62, v))
                 c = Color.mix(c, Color(hex: 0xFFD400),
-                              t: 1 - smoothstep(0.145, 0.152, dist(u, v, 0.62, 0.30)))
+                              1 - smoothstep(0.145, 0.152, dist(u, v, 0.62, 0.30)))
                 if v > 0.62 { c = Color(hex: 0x00E5FF) }
                 if v > 0.74 + 0.08 * sin(u * 3.4 + 2.1) { c = Color(hex: 0x00FF66) }
                 if v > 0.88 { c = Color(white: 0.12 + (u * 8).rounded(.down) / 7 * 0.8) }

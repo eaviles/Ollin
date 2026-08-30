@@ -86,7 +86,7 @@ public enum VisionSpace {
     /// `container` — the letterboxed box to draw a frame into (and map results
     /// into) when you don't want it stretched. Returns `container` unchanged for a
     /// degenerate size.
-    public static func fittedRect(imageSize: Vector2, in container: Rectangle) -> Rectangle {
+    public static func fittedRectangle(imageSize: Vector2, in container: Rectangle) -> Rectangle {
         Rectangle(fitting: imageSize, in: container)
     }
 }

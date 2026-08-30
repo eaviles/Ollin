@@ -37,9 +37,9 @@ final class TuringMirror: Sketch {
         // The map's black end is the spot regime, its white end the worm maze; both
         // are living regimes, so the background stays patterned while your
         // silhouette wears a different texture.
-        rd = simField(.reactionDiffusion(feed: 0.046, kill: 0.065,
+        rd = makeSimField(.reactionDiffusion(feed: 0.046, kill: 0.065,
                                          toFeed: 0.055, toKill: 0.062))
-        mask = renderTarget()
+        mask = makeRenderTarget()
         rd.modulation = mask
     }
 

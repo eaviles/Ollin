@@ -99,7 +99,7 @@ Reading one:
 |---|---|
 | `rhythm[step]` | whether that step is struck. Wraps in both directions |
 | `length` | how many steps before it comes round |
-| `pulseCount` | how many are struck |
+| `onsetCount` | how many are struck |
 | `onsets` | the struck step numbers |
 | `intervals` | the gaps between strikes, counting the wrap |
 | `rotated(by:)` | the same cycle starting later |
@@ -138,7 +138,7 @@ synth.play(scale.snap(Pitch(40 + mouseY / 12)))
 ```swift
 scale.chord(on: 0)          // a triad on the root
 scale.chord(on: 1)          // a triad on the second degree
-scale.chord(on: 0, notes: 4)   // four notes, so a seventh
+scale.chord(on: 0, noteCount: 4) // four notes, so a seventh
 ```
 
 On a major scale the first of those is major and the second is minor, from the same call. That is the point of building a chord out of a key. The quality is a consequence of where you started rather than something you chose, so it follows the key when the key changes.

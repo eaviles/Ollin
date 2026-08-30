@@ -73,7 +73,7 @@ final class Yard: Sketch {
         }
 
         // Let the yard settle before anybody looks at it.
-        for _ in 0 ..< 180 { world.step(dt: 1.0 / 60) }
+        for _ in 0 ..< 180 { world.advance(by: 1.0 / 60) }
     }
 
     override func draw() {
@@ -96,7 +96,7 @@ final class Yard: Sketch {
             pacer.move(Vector3(back.x * 0.9, 0, back.z * 0.9 + sin(time * 0.8) * 0.9))
         }
         banner?.applyForce(Vector3(sin(time * 1.3) * wind, 0, wind * 0.4))
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         noStroke()
         for body in world.bodies where body !== truck?.body {

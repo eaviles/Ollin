@@ -20,7 +20,7 @@ final class MatcapGallery: Sketch {
         ("chrome",     .chrome),
         ("bronze",     .bronze),
         ("carpaint",   .carpaint),
-        ("hardSurfaceGrey", .hardSurfaceGrey),
+        ("hardSurfaceGray", .hardSurfaceGray),
         ("clay",       .clay),
         ("terracotta", .terracotta),
         ("sage",       .sage),

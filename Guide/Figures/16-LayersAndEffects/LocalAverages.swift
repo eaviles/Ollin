@@ -27,7 +27,7 @@ final class LocalAverages: Sketch {
             let x = left + Double(index) * (tile + gap)
             let frame = Rectangle(x: x, y: 20, width: tile, height: tile)
 
-            let page = renderTarget(width: Int(tile), height: Int(tile))
+            let page = makeRenderTarget(width: Int(tile), height: Int(tile))
             withTarget(page) { paint(tile) }
 
             switch index {

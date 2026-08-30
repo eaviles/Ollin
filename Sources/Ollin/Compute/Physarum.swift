@@ -17,7 +17,7 @@ import COllinShaders   // OllinParticle
 ///
 /// ```swift
 /// var slime: Physarum!
-/// override func setup() { slime = physarum(agents: 200_000, resolution: 1024) }
+/// override func setup() { slime = makePhysarum(agents: 200_000, resolution: 1024) }
 /// override func draw() {
 ///     updatePhysarum(slime)
 ///     drawImage(slime.image, in: Rectangle(x: 0, y: 0, width: width, height: height))
@@ -67,19 +67,19 @@ public final class Physarum {
     /// Build `agents` agents on a `resolution`×`resolution` trail map, positions and
     /// headings randomized from `seed`. Use `init(agents:width:height:seed:)` for a
     /// non-square map.
-    public convenience init(agents: Int, resolution: Int, seed: UInt64) {
+    public convenience init(agents: Int, resolution: Int, seed: Int) {
         self.init(agents: agents, width: resolution, height: resolution, seed: seed)
     }
 
     /// Build `agents` agents on a `width`×`height` trail map.
-    public init(agents: Int, width: Int, height: Int, seed: UInt64) {
+    public init(agents: Int, width: Int, height: Int, seed: Int) {
         precondition(agents > 0, "Physarum needs a positive agent count")
         precondition(width > 0 && height > 0, "Physarum needs a positive resolution")
         self.agents = agents
         self.width = width
         self.height = height
 
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         var seeds: [OllinParticle] = []
         seeds.reserveCapacity(agents)
         // Start the agents in a central disc facing outward, the classic seeding that

@@ -41,7 +41,7 @@ public final class Record3DRecording {
     private let captureIntrinsics: CameraIntrinsics
 
     /// The clip's frame rate, frames per second (`0` if the recording didn't state one).
-    public let fps: Double
+    public let frameRate: Double
 
     /// Per-frame camera-to-world poses (one per captured frame, in capture
     /// order), in the capture session's gravity-aligned world space: y up, the
@@ -90,7 +90,7 @@ public final class Record3DRecording {
         guard let metadata = archive.data(named: "metadata") else {
             throw Record3DError.missingEntry("metadata")
         }
-        (captureIntrinsics, fps, poses) = try Self.parseMetadata(metadata)
+        (captureIntrinsics, frameRate, poses) = try Self.parseMetadata(metadata)
     }
 
     /// The camera-to-world pose of frame `index`, or nil when the recording has
@@ -160,11 +160,11 @@ public final class Record3DRecording {
     /// Decode frame `index` and unproject it into a `PointCloud` (see
     /// `RGBDFrame.pointCloud(...)` for the parameters).
     public func pointCloud(at index: Int,
-                           minimumConfidence: DepthConfidence = .high,
+                           minConfidence: DepthConfidence = .high,
                            depthRange: ClosedRange<Double>? = nil,
                            step: Int = 1,
                            pointSize: Double = 0.012) throws -> PointCloud {
-        try frame(at: index).pointCloud(minimumConfidence: minimumConfidence,
+        try frame(at: index).pointCloud(minConfidence: minConfidence,
                                         depthRange: depthRange, step: step, pointSize: pointSize)
     }
 

@@ -52,7 +52,7 @@ public enum ParamStored: Equatable, Sendable, Codable {
     /// A `Vector3` parameter's value.
     case vector3(x: Double, y: Double, z: Double)
     /// A `Rectangle` parameter's value.
-    case rect(x: Double, y: Double, width: Double, height: Double)
+    case rectangle(x: Double, y: Double, width: Double, height: Double)
     /// An `Insets` parameter's value.
     case insets(top: Double, right: Double, bottom: Double, left: Double)
     /// A `ClosedRange<Double>` parameter's value.
@@ -64,6 +64,14 @@ public enum ParamStored: Equatable, Sendable, Codable {
     /// through (`nil` for a palette, whose colors are evenly spread and never
     /// blended).
     case colors(stops: [ParamColorStop], space: String?)
+
+    /// The stored spelling of every case. `rectangle` travels as `"rect"`,
+    /// the key takes, checkpoints, and the room's messages carry on the wire.
+    enum CodingKeys: String, CodingKey {
+        case number, boolean, option, color, vector, vector3
+        case rectangle = "rect"
+        case insets, range, text, colors
+    }
 }
 
 /// One color of a stored palette or ramp: where it sits in `0...1`, and its
@@ -115,7 +123,7 @@ public enum ParamControl {
     case menu(Menu)
     case colorWell(ColorWell)
     case vector(Vector)
-    case vector3(VectorXYZ)
+    case vector3(Vector3Fields)
     case rectangle(RectangleFields)
     case insets(InsetsFields)
     case range(RangeFields)
@@ -128,13 +136,13 @@ public enum ParamControl {
         public let range: ClosedRange<Double>
         public let step: Double?
         public let style: ParamNumericStyle
-        public let get: @Sendable () -> Double
-        public let set: @Sendable (Double) -> Void
+        public let read: @Sendable () -> Double
+        public let write: @Sendable (Double) -> Void
         public init(range: ClosedRange<Double>, step: Double?,
                     style: ParamNumericStyle = .slider,
-                    get: @escaping @Sendable () -> Double,
-                    set: @escaping @Sendable (Double) -> Void) {
-            self.range = range; self.step = step; self.style = style; self.get = get; self.set = set
+                    read: @escaping @Sendable () -> Double,
+                    write: @escaping @Sendable (Double) -> Void) {
+            self.range = range; self.step = step; self.style = style; self.read = read; self.write = write
         }
     }
 
@@ -142,22 +150,22 @@ public enum ParamControl {
     public struct Stepper: Sendable {
         public let range: ClosedRange<Int>
         public let step: Int
-        public let get: @Sendable () -> Int
-        public let set: @Sendable (Int) -> Void
+        public let read: @Sendable () -> Int
+        public let write: @Sendable (Int) -> Void
         public init(range: ClosedRange<Int>, step: Int,
-                    get: @escaping @Sendable () -> Int,
-                    set: @escaping @Sendable (Int) -> Void) {
-            self.range = range; self.step = step; self.get = get; self.set = set
+                    read: @escaping @Sendable () -> Int,
+                    write: @escaping @Sendable (Int) -> Void) {
+            self.range = range; self.step = step; self.read = read; self.write = write
         }
     }
 
     /// A `Bool` knob: an on/off switch.
     public struct Toggle: Sendable {
-        public let get: @Sendable () -> Bool
-        public let set: @Sendable (Bool) -> Void
-        public init(get: @escaping @Sendable () -> Bool,
-                    set: @escaping @Sendable (Bool) -> Void) {
-            self.get = get; self.set = set
+        public let read: @Sendable () -> Bool
+        public let write: @Sendable (Bool) -> Void
+        public init(read: @escaping @Sendable () -> Bool,
+                    write: @escaping @Sendable (Bool) -> Void) {
+            self.read = read; self.write = write
         }
     }
 
@@ -166,22 +174,22 @@ public enum ParamControl {
     public struct Menu: Sendable {
         public let options: [String]
         public let style: ParamMenuStyle
-        public let get: @Sendable () -> Int
-        public let set: @Sendable (Int) -> Void
+        public let read: @Sendable () -> Int
+        public let write: @Sendable (Int) -> Void
         public init(options: [String], style: ParamMenuStyle = .menu,
-                    get: @escaping @Sendable () -> Int,
-                    set: @escaping @Sendable (Int) -> Void) {
-            self.options = options; self.style = style; self.get = get; self.set = set
+                    read: @escaping @Sendable () -> Int,
+                    write: @escaping @Sendable (Int) -> Void) {
+            self.options = options; self.style = style; self.read = read; self.write = write
         }
     }
 
     /// A `Color` knob: a color well.
     public struct ColorWell: Sendable {
-        public let get: @Sendable () -> Color
-        public let set: @Sendable (Color) -> Void
-        public init(get: @escaping @Sendable () -> Color,
-                    set: @escaping @Sendable (Color) -> Void) {
-            self.get = get; self.set = set
+        public let read: @Sendable () -> Color
+        public let write: @Sendable (Color) -> Void
+        public init(read: @escaping @Sendable () -> Color,
+                    write: @escaping @Sendable (Color) -> Void) {
+            self.read = read; self.write = write
         }
     }
 
@@ -191,30 +199,30 @@ public enum ParamControl {
         public let xRange: ClosedRange<Double>
         public let yRange: ClosedRange<Double>
         public let style: ParamVectorStyle
-        public let get: @Sendable () -> Vector2
-        public let set: @Sendable (Vector2) -> Void
+        public let read: @Sendable () -> Vector2
+        public let write: @Sendable (Vector2) -> Void
         public init(xRange: ClosedRange<Double>, yRange: ClosedRange<Double>,
                     style: ParamVectorStyle = .fields,
-                    get: @escaping @Sendable () -> Vector2,
-                    set: @escaping @Sendable (Vector2) -> Void) {
+                    read: @escaping @Sendable () -> Vector2,
+                    write: @escaping @Sendable (Vector2) -> Void) {
             self.xRange = xRange; self.yRange = yRange; self.style = style
-            self.get = get; self.set = set
+            self.read = read; self.write = write
         }
     }
 
     /// A `Vector3` knob: x/y/z value fields, each over its own range.
-    public struct VectorXYZ: Sendable {
+    public struct Vector3Fields: Sendable {
         public let xRange: ClosedRange<Double>
         public let yRange: ClosedRange<Double>
         public let zRange: ClosedRange<Double>
-        public let get: @Sendable () -> Vector3
-        public let set: @Sendable (Vector3) -> Void
+        public let read: @Sendable () -> Vector3
+        public let write: @Sendable (Vector3) -> Void
         public init(xRange: ClosedRange<Double>, yRange: ClosedRange<Double>,
                     zRange: ClosedRange<Double>,
-                    get: @escaping @Sendable () -> Vector3,
-                    set: @escaping @Sendable (Vector3) -> Void) {
+                    read: @escaping @Sendable () -> Vector3,
+                    write: @escaping @Sendable (Vector3) -> Void) {
             self.xRange = xRange; self.yRange = yRange; self.zRange = zRange
-            self.get = get; self.set = set
+            self.read = read; self.write = write
         }
     }
 
@@ -224,27 +232,27 @@ public enum ParamControl {
         public let yRange: ClosedRange<Double>
         public let widthRange: ClosedRange<Double>
         public let heightRange: ClosedRange<Double>
-        public let get: @Sendable () -> Rectangle
-        public let set: @Sendable (Rectangle) -> Void
+        public let read: @Sendable () -> Rectangle
+        public let write: @Sendable (Rectangle) -> Void
         public init(xRange: ClosedRange<Double>, yRange: ClosedRange<Double>,
                     widthRange: ClosedRange<Double>, heightRange: ClosedRange<Double>,
-                    get: @escaping @Sendable () -> Rectangle,
-                    set: @escaping @Sendable (Rectangle) -> Void) {
+                    read: @escaping @Sendable () -> Rectangle,
+                    write: @escaping @Sendable (Rectangle) -> Void) {
             self.xRange = xRange; self.yRange = yRange
             self.widthRange = widthRange; self.heightRange = heightRange
-            self.get = get; self.set = set
+            self.read = read; self.write = write
         }
     }
 
     /// An `Insets` knob: t/r/b/l value fields sharing one per-edge range.
     public struct InsetsFields: Sendable {
         public let edgeRange: ClosedRange<Double>
-        public let get: @Sendable () -> Insets
-        public let set: @Sendable (Insets) -> Void
+        public let read: @Sendable () -> Insets
+        public let write: @Sendable (Insets) -> Void
         public init(edgeRange: ClosedRange<Double>,
-                    get: @escaping @Sendable () -> Insets,
-                    set: @escaping @Sendable (Insets) -> Void) {
-            self.edgeRange = edgeRange; self.get = get; self.set = set
+                    read: @escaping @Sendable () -> Insets,
+                    write: @escaping @Sendable (Insets) -> Void) {
+            self.edgeRange = edgeRange; self.read = read; self.write = write
         }
     }
 
@@ -253,23 +261,23 @@ public enum ParamControl {
     public struct RangeFields: Sendable {
         public let outer: ClosedRange<Double>
         public let style: ParamNumericStyle
-        public let get: @Sendable () -> ClosedRange<Double>
-        public let set: @Sendable (ClosedRange<Double>) -> Void
+        public let read: @Sendable () -> ClosedRange<Double>
+        public let write: @Sendable (ClosedRange<Double>) -> Void
         public init(outer: ClosedRange<Double>,
                     style: ParamNumericStyle = .slider,
-                    get: @escaping @Sendable () -> ClosedRange<Double>,
-                    set: @escaping @Sendable (ClosedRange<Double>) -> Void) {
-            self.outer = outer; self.style = style; self.get = get; self.set = set
+                    read: @escaping @Sendable () -> ClosedRange<Double>,
+                    write: @escaping @Sendable (ClosedRange<Double>) -> Void) {
+            self.outer = outer; self.style = style; self.read = read; self.write = write
         }
     }
 
     /// A `String` knob: a free text field.
     public struct TextBox: Sendable {
-        public let get: @Sendable () -> String
-        public let set: @Sendable (String) -> Void
-        public init(get: @escaping @Sendable () -> String,
-                    set: @escaping @Sendable (String) -> Void) {
-            self.get = get; self.set = set
+        public let read: @Sendable () -> String
+        public let write: @Sendable (String) -> Void
+        public init(read: @escaping @Sendable () -> String,
+                    write: @escaping @Sendable (String) -> Void) {
+            self.read = read; self.write = write
         }
     }
 
@@ -297,15 +305,15 @@ public enum ParamControl {
         /// rather than a plain gradient between the stops, since a ramp blends
         /// through a space of its own choosing.
         public let sample: @Sendable (Double) -> Color
-        public let get: @Sendable () -> [Stop]
-        public let set: @Sendable ([Stop]) -> Void
+        public let read: @Sendable () -> [Stop]
+        public let write: @Sendable ([Stop]) -> Void
 
         public init(style: ParamSwatchStyle, count: ClosedRange<Int>,
                     sample: @escaping @Sendable (Double) -> Color,
-                    get: @escaping @Sendable () -> [Stop],
-                    set: @escaping @Sendable ([Stop]) -> Void) {
+                    read: @escaping @Sendable () -> [Stop],
+                    write: @escaping @Sendable ([Stop]) -> Void) {
             self.style = style; self.count = count; self.sample = sample
-            self.get = get; self.set = set
+            self.read = read; self.write = write
         }
     }
 }
@@ -409,7 +417,7 @@ extension Double: ParamValue {
     public static func control(for param: Param<Double>) -> ParamControl {
         .slider(.init(range: param.constraints.range, step: param.constraints.step,
                       style: param.constraints.style,
-                      get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+                      read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -435,7 +443,7 @@ extension Int: ParamValue {
 
     public static func control(for param: Param<Int>) -> ParamControl {
         .stepper(.init(range: param.constraints.range, step: param.constraints.step ?? 1,
-                       get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+                       read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -448,7 +456,7 @@ extension Bool: ParamValue {
         return v
     }
     public static func control(for param: Param<Bool>) -> ParamControl {
-        .toggle(.init(get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+        .toggle(.init(read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -463,7 +471,7 @@ extension Color: ParamValue {
         return Color(red: r, green: g, blue: b, alpha: a)
     }
     public static func control(for param: Param<Color>) -> ParamControl {
-        .colorWell(.init(get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+        .colorWell(.init(read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -513,7 +521,7 @@ extension Vector3: ParamValue {
     public static func control(for param: Param<Vector3>) -> ParamControl {
         .vector3(.init(xRange: param.constraints.x, yRange: param.constraints.y,
                        zRange: param.constraints.z,
-                       get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+                       read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -535,12 +543,12 @@ extension Vector2: ParamValue {
     public static func control(for param: Param<Vector2>) -> ParamControl {
         .vector(.init(xRange: param.constraints.x, yRange: param.constraints.y,
                       style: param.constraints.style,
-                      get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+                      read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
 /// The per-field constraint payload of a `Rectangle` parameter.
-public struct ParamRectConstraints: Sendable {
+public struct ParamRectangleConstraints: Sendable {
     public var x: ClosedRange<Double>
     public var y: ClosedRange<Double>
     public var width: ClosedRange<Double>
@@ -555,7 +563,7 @@ public struct ParamRectConstraints: Sendable {
 }
 
 extension Rectangle: ParamValue {
-    public typealias Constraints = ParamRectConstraints
+    public typealias Constraints = ParamRectangleConstraints
 
     public static func clamped(_ value: Rectangle, by constraints: Constraints) -> Rectangle {
         func clamp(_ v: Double, _ range: ClosedRange<Double>) -> Double {
@@ -567,18 +575,18 @@ extension Rectangle: ParamValue {
     }
 
     public static func stored(_ value: Rectangle) -> ParamStored {
-        .rect(x: value.x, y: value.y, width: value.width, height: value.height)
+        .rectangle(x: value.x, y: value.y, width: value.width, height: value.height)
     }
 
     public static func restored(_ stored: ParamStored) -> Rectangle? {
-        guard case .rect(let x, let y, let w, let h) = stored else { return nil }
+        guard case .rectangle(let x, let y, let w, let h) = stored else { return nil }
         return Rectangle(x: x, y: y, width: w, height: h)
     }
 
     public static func control(for param: Param<Rectangle>) -> ParamControl {
         .rectangle(.init(xRange: param.constraints.x, yRange: param.constraints.y,
                          widthRange: param.constraints.width, heightRange: param.constraints.height,
-                         get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+                         read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -604,7 +612,7 @@ extension Insets: ParamValue {
 
     public static func control(for param: Param<Insets>) -> ParamControl {
         .insets(.init(edgeRange: param.constraints,
-                      get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+                      read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -642,7 +650,7 @@ extension ClosedRange: ParamValue where Bound == Double {
 
     public static func control(for param: Param<ClosedRange<Double>>) -> ParamControl {
         .range(.init(outer: param.constraints.outer, style: param.constraints.style,
-                     get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+                     read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -655,7 +663,7 @@ extension String: ParamValue {
         return value
     }
     public static func control(for param: Param<String>) -> ParamControl {
-        .text(.init(get: { param.wrappedValue }, set: { param.wrappedValue = $0 }))
+        .text(.init(read: { param.wrappedValue }, write: { param.wrappedValue = $0 }))
     }
 }
 
@@ -686,12 +694,12 @@ extension Palette: ParamValue {
         .swatches(.init(
             style: .blocks, count: param.constraints.count,
             sample: { param.wrappedValue.color(at: $0) },
-            get: {
+            read: {
                 let palette = param.wrappedValue
                 return zip(evenPositions(palette.count), palette.colors)
                     .map { ParamControl.Swatches.Stop(position: $0, color: $1) }
             },
-            set: { param.wrappedValue = Palette($0.map(\.color)) }))
+            write: { param.wrappedValue = Palette($0.map(\.color)) }))
     }
 }
 
@@ -724,12 +732,12 @@ extension Ramp: ParamValue {
         .swatches(.init(
             style: .gradient, count: param.constraints.count,
             sample: { param.wrappedValue.color(at: $0) },
-            get: {
+            read: {
                 param.wrappedValue.stops.map {
                     ParamControl.Swatches.Stop(position: $0.position, color: $0.color)
                 }
             },
-            set: { stops in
+            write: { stops in
                 param.wrappedValue = Ramp(stops: stops.map { (position: $0.position, color: $0.color) },
                                           in: param.wrappedValue.space)
             }))
@@ -795,8 +803,8 @@ public extension ParamOption {
     static func control(for param: Param<Self>) -> ParamControl {
         let cases = Array(allCases)
         return .menu(.init(options: cases.map { $0.optionLabel }, style: param.constraints,
-                           get: { cases.firstIndex(of: param.wrappedValue) ?? 0 },
-                           set: { index in
+                           read: { cases.firstIndex(of: param.wrappedValue) ?? 0 },
+                           write: { index in
                                guard cases.indices.contains(index) else { return }
                                param.wrappedValue = cases[index]
                            }))
@@ -834,11 +842,11 @@ public extension ParamChoices {
         let choices = paramChoices
         return .menu(.init(options: choices.map { ParamHandle.humanize($0.name) },
                            style: param.constraints,
-                           get: {
+                           read: {
                                let current = param.wrappedValue
                                return choices.firstIndex { $0.value == current } ?? 0
                            },
-                           set: { index in
+                           write: { index in
                                guard choices.indices.contains(index) else { return }
                                param.wrappedValue = choices[index].value
                            }))
@@ -981,7 +989,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         var filter: OneEuroFilter<Double>?
         if case .smoothed(let minCutoff, let beta) = smoothing {
             var f = OneEuroFilter<Double>(minCutoff: minCutoff, beta: beta)
-            f.reset(to: (v as? Double) ?? 0)
+            f.set((v as? Double) ?? 0)
             filter = f
         }
         self.storage = OSAllocatedUnfairLock(initialState: Storage(
@@ -1000,7 +1008,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
             state.target = v
             state.easeStart = (v as? Double) ?? 0
             state.easeElapsed = .greatestFiniteMagnitude   // at rest
-            state.filter?.reset(to: (v as? Double) ?? 0)
+            state.filter?.set((v as? Double) ?? 0)
         }
     }
 
@@ -1071,7 +1079,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
                 if let v = value as? Value { state.current = v }
             case .smoothed:
                 if var filter = state.filter {
-                    let value = filter.filter(target, dt: dt)
+                    let value = filter.filter(target, deltaTime: dt)
                     state.filter = filter
                     if let v = value as? Value { state.current = v }
                 }

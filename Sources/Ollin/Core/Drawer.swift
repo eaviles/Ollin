@@ -276,8 +276,8 @@ final class Drawer {
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
     var currentFont: ActiveFont = .outline(.systemMedium)   // active text font (see textFont / drawText)
     var textPixelSize: Double = 24               // rendered glyph height in points (see textSize)
-    var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
-    var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
+    var textAlignH: HorizontalTextAlign = .left           // horizontal text anchor (see textAlign)
+    var textAlignV: VerticalTextAlign = .baseline       // vertical text anchor (see textAlign)
     var textRenderMode: TextMode = .outline      // outline vs SDF-atlas text (see textMode)
     var textWritingDirection: TextDirection = .automatic   // base line direction (see textDirection)
     var textJustifies: Bool = false              // stretch wrapped lines to the box (see textJustify)
@@ -1498,7 +1498,7 @@ final class Drawer {
         case .fourier, .inverseFourier:
             let w = input.pixelWidth, h = input.pixelHeight
             if w != h || w < 2 || w & (w - 1) != 0 {
-                noteOnce("a Fourier transform needs a square layer whose side is a power of two; \(w)x\(h) is left untouched. Try renderTarget(width: 512, height: 512).")
+                noteOnce("a Fourier transform needs a square layer whose side is a power of two; \(w)x\(h) is left untouched. Try makeRenderTarget(width: 512, height: 512).")
             }
         default: break
         }
@@ -1747,8 +1747,8 @@ final class Drawer {
         var currentMatcap: Image?
         var currentFont: ActiveFont
         var textPixelSize: Double
-        var textAlignH: TextAlignH
-        var textAlignV: TextAlignV
+        var textAlignH: HorizontalTextAlign
+        var textAlignV: VerticalTextAlign
         var textRenderMode: TextMode
         var textWritingDirection: TextDirection
         var textJustifies: Bool
@@ -1979,7 +1979,7 @@ final class Drawer {
     }
 
     /// Set the active text font to a bitmap (pixel-grid) font. Defaults to
-    /// `.builtin`.
+    /// `.builtIn`.
     func textFont(_ font: BitmapFont) { currentFont = .bitmap(font) }
 
     /// Set the active text font to an outline (vector `.ttf`/`.otf`) font.
@@ -1992,10 +1992,10 @@ final class Drawer {
     /// occupies on screen (`drawText`). Defaults to 24.
     func textSize(_ size: Double) { textPixelSize = max(0, size) }
 
-    /// Set the text anchor relative to the `drawText` position (see `TextAlignH` /
-    /// `TextAlignV`): horizontal `.left`/`.center`/`.right`, vertical
+    /// Set the text anchor relative to the `drawText` position (see `HorizontalTextAlign` /
+    /// `VerticalTextAlign`): horizontal `.left`/`.center`/`.right`, vertical
     /// `.top`/`.middle`/`.baseline`/`.bottom`.
-    func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline) {
+    func textAlign(_ horizontal: HorizontalTextAlign, _ vertical: VerticalTextAlign = .baseline) {
         textAlignH = horizontal
         textAlignV = vertical
     }
@@ -2705,7 +2705,7 @@ final class Drawer {
                     c.depthB = dist * 0.06 * Float(shadowSoftnessAmount)
                     // `samples` (rays/pixel) is resolved by the renderer from the GPU's
                     // capability + the sketch's quality tier; left 0 here (it has no device).
-                case .rect, .disk:
+                case .rectangle, .disk:
                     // Rect/disk area caster: a spot-style perspective map rendered from the
                     // panel's center, aimed at the scene (the camera target, the same framing
                     // proxy the directional box uses; a panel lights its whole front
@@ -2764,7 +2764,7 @@ final class Drawer {
             if let primary = eligible.first(where: { activeLights[$0].kind == .directional })
                 ?? eligible.first(where: { activeLights[$0].kind == .spot })
                 ?? eligible.first(where: { activeLights[$0].kind == .point })
-                ?? eligible.first(where: { activeLights[$0].kind == .rect || activeLights[$0].kind == .disk }) {
+                ?? eligible.first(where: { activeLights[$0].kind == .rectangle || activeLights[$0].kind == .disk }) {
                 slots.append(primary)
             }
             // A point light casts from any slot, beside a directional key or a spot: the
@@ -2861,12 +2861,12 @@ final class Drawer {
             // Penumbra narrows the full-bright inner cone toward the center.
             let inner = half * (1 - max(0, min(1, light.penumbra)))
             l.cosInner = Float(cos(inner))
-        case .rect, .disk:
+        case .rectangle, .disk:
             // A flat panel: center + unit normal (the way it faces, like a spot's axis)
             // + an orthonormal tangent frame with the half-extents riding the w slots.
             // The frame is right-handed (tangent × bitangent = the facing normal), which
             // the shader's corner winding depends on for its one-sided front test.
-            l.kind = light.kind == .rect ? 3 : 4
+            l.kind = light.kind == .rectangle ? 3 : 4
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
                                       Float(light.position.z), 0)
             let n = simd_normalize(light.direction.normalized.simd3)
@@ -2880,9 +2880,9 @@ final class Drawer {
             }
             let t = simd_normalize(simd_cross(up, n))
             let b = simd_cross(n, t)
-            let halfW = Float(light.kind == .rect ? light.width / 2 : light.radius)
-            let halfH = Float(light.kind == .rect ? light.height / 2 : light.radius)
-            l.direction = SIMD4<Float>(n.x, n.y, n.z, light.twoSided ? 1 : 0)
+            let halfW = Float(light.kind == .rectangle ? light.width / 2 : light.radius)
+            let halfH = Float(light.kind == .rectangle ? light.height / 2 : light.radius)
+            l.direction = SIMD4<Float>(n.x, n.y, n.z, light.isTwoSided ? 1 : 0)
             l.axisA = SIMD4<Float>(t.x, t.y, t.z, halfW)
             l.axisB = SIMD4<Float>(b.x, b.y, b.z, halfH)
         case .tube:
@@ -3101,8 +3101,8 @@ final class Drawer {
         var mrMapped = false, occlusionMapped = false, emissiveMapped = false
         var emissiveOn = false
         if !wireframe, matcap == nil, let mat = material {
-            emissiveOn = mat.emissiveFactor.red > 0 || mat.emissiveFactor.green > 0
-                || mat.emissiveFactor.blue > 0
+            emissiveOn = mat.emissiveColor.red > 0 || mat.emissiveColor.green > 0
+                || mat.emissiveColor.blue > 0
             if triplanar {
                 // The sampled surface maps stay uv-mapped (the cut noted above);
                 // a constant emissive factor needs no sampling and still adds.
@@ -3169,7 +3169,7 @@ final class Drawer {
                                                       detailNormalMapped ? 1 : 0, 0, 0)
                 }
                 if emissiveOn {
-                    let f = mat.emissiveFactor
+                    let f = mat.emissiveColor
                     finish.emissive = SIMD4<Float>(Float(Color.srgbToLinear(f.red)),
                                                    Float(Color.srgbToLinear(f.green)),
                                                    Float(Color.srgbToLinear(f.blue)),
@@ -3538,7 +3538,7 @@ final class Drawer {
     /// like a generator's single pass. The amplitude is worked out here, on the
     /// CPU, because it is a closed form of the sea state and the shader would
     /// otherwise have to be tuned by eye.
-    func oceanField(_ ocean: Ocean, time: Double, resolution: Int) -> OceanField {
+    func makeOceanField(_ ocean: Ocean, time: Double, resolution: Int) -> OceanField {
         let n = Ocean.roundedResolution(resolution)
         if n != resolution {
             noteOnce("an ocean field is transformed as a power of two, so \(resolution) became \(n).")
@@ -3561,7 +3561,7 @@ final class Drawer {
     /// Draw a wave field as water: a grid with no geometry buffers, each corner
     /// working out where it sits from its own vertex index and reading the field
     /// for where the waves have moved it. The surface shades through its own
-    /// water fragment (body color, reflection, sun glitter, foam) rather than
+    /// water fragment (body color, reflection, sun sparkle, foam) rather than
     /// the lit mesh path, so `material(_:)` does not apply to it; the 3D CTM
     /// moves the patch, and the current camera decides the view.
     ///

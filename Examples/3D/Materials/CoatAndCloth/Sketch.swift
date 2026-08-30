@@ -27,7 +27,7 @@ final class CoatAndCloth: Sketch {
 
         cameraShowcase(.sway(amplitude: 0.22, period: .tau / 0.1), target: .zero, radius: 15,
                        elevation: 0.22, fieldOfView: .pi / 4)
-        environment(.studio.intensity(1.05).backgroundBlur(0.55))
+        environment(.studio.intensified(to: 1.05).backgroundBlurred(0.55))
 
         // A warm key sweeping with time so the coat's hotspot and the sheen's rim both
         // travel; the environment supplies the reflections and the fill light.

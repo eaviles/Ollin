@@ -75,7 +75,7 @@ final class Drape: Sketch {
         // pegged edge to land on it.
         banner = world.addSoftBody(from: .plane(width: 3.2, depth: 2.2, segments: 20),
                                    at: Vector3(-1.0, lineY - 1.1, -1.4),
-                                   rotation: -.pi / 2, axis: Vector3(1, 0, 0),
+                                   rotated: -.pi / 2, axis: Vector3(1, 0, 0),
                                    mass: 0.4, stiffness: 0.9, bend: 0.06,
                                    damping: 0.25, friction: 0.4, vertexRadius: 0.01,
                                    pinned: { $0.z > 1.0 })
@@ -91,7 +91,7 @@ final class Drape: Sketch {
         ball = world.addSoftBody(from: .icosphere(radius: 0.55, subdivisions: 3),
                                  at: Vector3(-1.7, 2.2, 1.9),
                                  mass: 0.5, bend: 0.4, pressure: air,
-                                 damping: 0.05, friction: 0.4, bounce: 0.3,
+                                 damping: 0.05, friction: 0.4, restitution: 0.3,
                                  vertexRadius: 0.01)
     }
 
@@ -126,7 +126,7 @@ final class Drape: Sketch {
         ball?.pressure = air
         blow()
         if let grip { dragSoftGrab(grip, to: mouse) }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         drawStage()
         drawCloth()
@@ -177,7 +177,7 @@ final class Drape: Sketch {
         }
         if let ball {
             // A deflating ball reads duller as well as flatter.
-            fill(Color.mix(ballColor, Color(hex: 0x9AA6A4), t: 1 - min(1, air / 3)))
+            fill(Color.mix(ballColor, Color(hex: 0x9AA6A4), 1 - min(1, air / 3)))
             material(.dielectric(roughness: 0.35))
             drawSoftBody(ball)
         }

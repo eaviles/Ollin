@@ -83,7 +83,7 @@ final class Parallax: Sketch {
         background(Color(hex: 0x0E1116))
         cameraShowcase(.sway(amplitude: 0.2, period: 24), target: .zero, radius: 8.6,
                        elevation: 0.12, fieldOfView: .pi / 4)
-        environment(.studio.intensity(1.05))
+        environment(.studio.intensified(to: 1.05))
         directionalLight(Color(white: 0.9), direction: Vector3(-0.5, -0.6, -0.6))
 
         var carved = parallaxSphere

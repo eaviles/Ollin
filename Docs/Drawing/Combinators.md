@@ -52,9 +52,9 @@ override func draw() {
         .smoothUnion(
             SDF.rect(width: 260, height: 150, cornerRadius: 30)
                 .colored(.init(hex: 0x3a86ff))
-                .at(x: 120, y: 0),
+                .at(120, 0),
             k: k)
-        .at(x: width * 0.5, y: height * 0.5)
+        .at(width * 0.5, height * 0.5)
 
     drawSDF(blob)
 }
@@ -101,7 +101,7 @@ they **blend the two operands' colors** across that blend so a melt reads as one
 
 ```swift
 let a = SDF.circle(radius: 100).colored(.red)
-let b = SDF.circle(radius: 100).colored(.blue).at(x: 120, y: 0)
+let b = SDF.circle(radius: 100).colored(.blue).at(120, 0)
 
 a.union(b)              // hard union: the area covered by either
 a.smoothUnion(b, k: 40) // melt them together (colors blend at the seam)
@@ -178,7 +178,7 @@ melted blob or a morphed star.
 ### Placing and coloring
 
 ```swift
-field.at(x: 540, y: 540)   // move the field's origin to a point
+field.at(540, 540)   // move the field's origin to a point
 field.at(somePoint)        // ... given a Vector2
 field.rotated(.pi / 6)     // rotate about the origin
 field.scaled(1.5)          // uniformly scale about the origin
@@ -200,7 +200,7 @@ leaves' own colors would instead meet and melt:
 
 ```swift
 fill(.linear(from: Vector2(-160, -140), to: Vector2(200, 160), warmRamp))
-drawSDF(SDF.circle(radius: 120).smoothUnion(SDF.rect(width: 210, height: 120).at(x: 135, y: 0), k: 60))
+drawSDF(SDF.circle(radius: 120).smoothUnion(SDF.rect(width: 210, height: 120).at(135, 0), k: 60))
 ```
 
 A gradient `stroke` traces the merged outline the same way. The gradient is sampled in the
@@ -236,7 +236,7 @@ Domain operators transform the *space* the field lives in, so one shape becomes 
 field.mirrored(x: true)                       // reflect across the y axis (kaleidoscope)
 field.mirrored(x: true, y: true)              // reflect across both axes
 field.repeated(spacing: Vector2(160, 0), count: 3)   // tile: 3 copies each side, on a 160 grid
-field.at(x: 120, y: 0).repeatedRadially(count: 8)   // fold a wedge into a ring of 8 (a mandala)
+field.at(120, 0).repeatedRadially(count: 8)   // fold a wedge into a ring of 8 (a mandala)
 ```
 
 `repeated`'s `count` is the number of copies to each side of the origin on each axis; a
@@ -347,9 +347,9 @@ override func draw() {
 
     let blob = SDF3D.sphere(radius: 1).colored(.init(hex: 0x39d0ff))
         .smoothUnion(SDF3D.sphere(radius: 0.8)
-            .at(x: cos(time) * 1.2, y: 0, z: sin(time) * 1.2)
+            .at(cos(time) * 1.2, 0, sin(time) * 1.2)
             .colored(.init(hex: 0xff4f97)), k: 0.6)
-        .smoothSubtract(SDF3D.sphere(radius: 0.7).at(x: 0, y: 1, z: 0), k: 0.2)
+        .smoothSubtract(SDF3D.sphere(radius: 0.7).at(0, 1, 0), k: 0.2)
 
     drawSDF3D(blob)
 }
@@ -402,7 +402,7 @@ sphere-traced surface (no per-copy draw cost), and method-chain order stays exac
 `a.at(p).repeated(…)` tiles the moved field, `a.repeated(…).at(p)` shifts the tiling.
 `repeated` is finite (`count` copies to each side), so the field stays bounded;
 `repeatedRadially` folds a wedge into a ring of `count` copies around `axis` (default the
-y-axis), so offset the wedge off the axis first (`.at(x: r, …)`) for the copies to fan out.
+y-axis), so offset the wedge off the axis first (`.at(r, 0)`) for the copies to fan out.
 
 Three dimensions also add the **sculpting distortions**, each a point-space scope like the
 domain operators (the whole distorted form stays one traced surface):

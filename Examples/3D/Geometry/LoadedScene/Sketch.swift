@@ -32,7 +32,7 @@ final class LoadedScene: Sketch {
            let s = loadScene(path) {
             stage = s
         } else {
-            stage = Scene(resource: "scene", extension: "gltf", in: Bundle.module)
+            stage = Scene(resource: "scene", withExtension: "gltf", in: Bundle.module)
         }
     }
 

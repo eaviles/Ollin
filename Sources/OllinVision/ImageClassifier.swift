@@ -37,23 +37,23 @@ public final class ImageClassifier: VisionTracking, @unchecked Sendable {
 
     /// Labels below this confidence stay out of `labels` (the full scored
     /// vocabulary is still readable through `confidence(of:)`).
-    public let minimumConfidence: Double
+    public let minConfidence: Double
 
     private let lock = OSAllocatedUnfairLock<[Classification]>(initialState: [])
     private let status = VisionStatus("image classification")
 
     /// What the most recent analyzed frame shows: every label at or above
-    /// `minimumConfidence`, strongest first.
+    /// `minConfidence`, strongest first.
     public var labels: [Classification] {
-        let floor = minimumConfidence
+        let floor = minConfidence
         return lock.withLock { Array($0.prefix { $0.confidence >= floor }) }
     }
 
     /// The single strongest label, or `nil` while nothing clears the floor.
-    public var top: Classification? { labels.first }
+    public var topClassification: Classification? { labels.first }
 
     /// The confidence for one label by name, `0…1` — `0` when it wasn't scored.
-    /// Unfiltered, so a concept below `minimumConfidence` still reads its true
+    /// Unfiltered, so a concept below `minConfidence` still reads its true
     /// (small) value; spaces work in place of underscores (`"blue sky"`).
     public func confidence(of label: String) -> Double {
         let wanted = label.lowercased().replacingOccurrences(of: " ", with: "_")
@@ -68,16 +68,16 @@ public final class ImageClassifier: VisionTracking, @unchecked Sendable {
 
     /// Classify `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ source: any FrameSource, minimumConfidence: Double = 0.1) {
-        self.minimumConfidence = minimumConfidence
+    public init(_ source: any FrameSource, minConfidence: Double = 0.1) {
+        self.minConfidence = minConfidence
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Classify a still image, once.
     public static func detect(in image: Image,
-                              minimumConfidence: Double = 0.1) async throws -> [Classification] {
+                              minConfidence: Double = 0.1) async throws -> [Classification] {
         let observations = try await ClassifyImageRequest().perform(on: image.currentCGImage())
-        return Array(decode(observations).prefix { $0.confidence >= minimumConfidence })
+        return Array(decode(observations).prefix { $0.confidence >= minConfidence })
     }
 
     /// Every label the classifier knows — the full vocabulary `labels` and

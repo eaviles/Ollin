@@ -48,7 +48,7 @@ final class HopfFibration_Example: Sketch {
         let bases = arrangement == .rings
             ? hopfBases(latitudes: latitudes, perCircle: perCircle, spanning: span ... 0.92)
                 + [Vector3(0, -1, 0)]
-            : hopfBases(spiral: spiralCount)
+            : hopfBases(spiralCount: spiralCount)
 
         for fiber in hopfFibers(over: bases, segments: 200, reach: 6) {
             fill(color(for: fiber.base))

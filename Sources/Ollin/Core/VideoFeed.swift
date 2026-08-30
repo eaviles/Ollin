@@ -28,7 +28,7 @@ extension VideoFeed {
     /// without stretching — draw the frame into it and map any analysis results
     /// into the *same* rectangle so overlays line up with the picture. `nil`
     /// until the frame size is known.
-    public func fittedRect(in container: Rectangle) -> Rectangle? {
+    public func fittedRectangle(in container: Rectangle) -> Rectangle? {
         frameSize.map { Rectangle(fitting: $0, in: container) }
     }
 }
@@ -46,7 +46,7 @@ extension Sketch {
     /// ```
     ///
     /// To draw your own waiting state (or the frame in a non-fitted rectangle),
-    /// use the typed surface directly: `feed.frame` and `feed.fittedRect(in:)`.
+    /// use the typed surface directly: `feed.frame` and `feed.fittedRectangle(in:)`.
     @discardableResult
     public func drawFrame(_ feed: some VideoFeed, in container: Rectangle? = nil,
                           waiting: String? = nil) -> Rectangle? {
@@ -55,7 +55,7 @@ extension Sketch {
             drawStatus(waiting ?? feed.waitingMessage, in: box)
             return nil
         }
-        let rect = feed.fittedRect(in: box) ?? box
+        let rect = feed.fittedRectangle(in: box) ?? box
         drawImage(frame, in: rect)
         return rect
     }

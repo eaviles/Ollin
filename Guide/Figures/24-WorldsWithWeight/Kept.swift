@@ -33,7 +33,7 @@ final class Kept: Sketch {
     func build(nudge: Double) -> World3D {
         let world = World3D()
         world.ground = 0
-        world.bounce = 0
+        world.restitution = 0
         var top = 0.0
         for i in 0 ..< 12 {
             let turn = Double(i) * 2.399           // the golden angle: no lanes
@@ -46,10 +46,10 @@ final class Kept: Sketch {
                                       sin(turn) * 0.16),
                           rotated: Double(i) * 0.53, axis: .unitY,
                           density: 2.4, friction: 1, restitution: 0)
-            for _ in 0 ..< 75 { world.step(dt: 1.0 / 60) }
+            for _ in 0 ..< 75 { world.advance(by: 1.0 / 60) }
             top = world.bodies.map(\.position.y).max() ?? 0
         }
-        for _ in 0 ..< 400 { world.step(dt: 1.0 / 60) }
+        for _ in 0 ..< 400 { world.advance(by: 1.0 / 60) }
         return world
     }
 

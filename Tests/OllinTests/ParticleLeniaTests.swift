@@ -170,7 +170,7 @@ private final class LeniaProbe: Sketch {
     static let population = 800
     var lenia: ParticleLenia!
     var steps = 300
-    var seed: UInt64 = 11
+    var seed: Int = 11
     var configure: (ParticleLenia) -> Void = { _ in }
     /// Read one frame behind the last step, since a frame's dispatches run at render
     /// time rather than when `draw()` records them.

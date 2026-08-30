@@ -45,7 +45,7 @@ field.bladeHeight = 0.8        // world units, before variance
 field.heightVariance = 0.4     // 0 uniform ... 1 wild
 field.bladeWidth = 0.05        // at the root; blades taper toward the tip
 field.lean = 0.3               // how far a tip leans from vertical
-field.swayAmount = 0.12        // how far the wind carries a tip
+field.swayAmplitude = 0.12        // how far the wind carries a tip
 field.swayFrequency = 1.6      // radians per second on the sketch clock
 field.lowColor = ...           // root color; tipColor at the tip
 field.seed = 3                 // a different lawn
@@ -58,8 +58,8 @@ field.seed = 3                 // a different lawn
 
 The camera runs the economy, per tile of the patch:
 
-- **Tiles outside the view are skipped whole.** `field.cullingEnabled = false` draws them anyway; the picture must not change (a skipped tile was invisible), and the test suite pins that.
-- **Distant tiles grow simpler blades.** Between `detailNear` and `detailFar` (world units from the eye) the per-blade segment count falls from 4 to 1. `field.levelOfDetailEnabled = false` gives every blade full detail everywhere, the honest way to measure what the grading saves.
+- **Tiles outside the view are skipped whole.** `field.isCullingEnabled = false` draws them anyway; the picture must not change (a skipped tile was invisible), and the test suite pins that.
+- **Distant tiles grow simpler blades.** Between `detailNear` and `detailFar` (world units from the eye) the per-blade segment count falls from 4 to 1. `field.isLevelOfDetailEnabled = false` gives every blade full detail everywhere, the honest way to measure what the grading saves.
 
 <a id="notes"></a>
 ### Notes

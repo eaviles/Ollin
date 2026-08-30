@@ -257,7 +257,7 @@ private final class BeamProbe: Sketch {
         camera(Camera3D(eye: Vector3(0, 1, 9), target: Vector3(0, 1, 0)))
         // A steep beam dropping across the view, well inside the frame.
         spotLight(Color(white: 1.0), at: Vector3(0, 7, 0), direction: Vector3(0, -1, 0),
-                  angle: .pi / 10, penumbra: 0.2, intensity: 3)
+                  coneAngle: .pi / 10, penumbra: 0.2, intensity: 3)
         castShadows()
         volumetricLight(1.0, anisotropy: 0.2)
         // A floor in both variants: a frame with no geometry at all encodes no
@@ -282,7 +282,7 @@ private final class BeamsOnlyProbe: Sketch {
         // light would legitimately haze the whole frame in beams-only mode.)
         ambientLight(Color(white: 0.45))
         spotLight(Color(white: 1.0), at: Vector3(3, 6, 0), direction: Vector3(0, -1, 0),
-                  angle: .pi / 12, penumbra: 0.2, intensity: 2)
+                  coneAngle: .pi / 12, penumbra: 0.2, intensity: 2)
         if volumetric { volumetricLight(1.0, anisotropy: 0.4) }
         fill(Color(white: 0.5))
         withState { translate(0, -0.25, 0); drawBox(width: 18, height: 0.5, depth: 18) }

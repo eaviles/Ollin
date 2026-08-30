@@ -16,7 +16,7 @@ final class GrayScott: Sketch {
 
     override func setup() {
         // Logical size is the canvas; a half-resolution field gives broad, lively coral.
-        rd = simField(.reactionDiffusion(), scale: 0.5)
+        rd = makeSimField(.reactionDiffusion(), scale: 0.5)
     }
 
     override func draw() {

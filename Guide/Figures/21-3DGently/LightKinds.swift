@@ -23,7 +23,7 @@ final class LightKinds: Sketch {
         pointLight(Color(hex: 0x39D8E8), at: Vector3(2.7, 1.7, 1.9), intensity: 0.9,
                    castsShadow: false)
         spotLight(Color(hex: 0xE85FD0), at: Vector3(-3.4, 4.6, 2.6),
-                  direction: Vector3(0, -1, 0), angle: .pi / 5, penumbra: 0.4,
+                  direction: Vector3(0, -1, 0), coneAngle: .pi / 5, penumbra: 0.4,
                   intensity: 1.2)
         castShadows()
 

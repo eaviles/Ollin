@@ -198,7 +198,7 @@ struct PointGrid3 {
     /// Visit every point within `radius` of `p`, in fixed (cell, index) order.
     /// The callback runs once per point actually inside the radius; the
     /// candidate rejection happens on the flat coordinates first.
-    func forNeighbors(of p: Vector3, within radius: Double, _ body: (Int, Double) -> Void) {
+    func forEachNeighbor(of p: Vector3, within radius: Double, _ body: (Int, Double) -> Void) {
         guard !points.isEmpty, radius > 0 else { return }
         let px = p.x, py = p.y, pz = p.z
         let c = home(px, py, pz)

@@ -103,7 +103,7 @@ The `Preset` catalog collects known characters, each a distinct personality:
 | `.frame` | textured growth inside an expanding frame |
 | `.fibonacci` | counts its way outward in a Fibonacci-like spiral, growing very slowly |
 
-`paintedCells` is every non-zero cell. It is rebuilt per call, so use `colorIndex(atColumn:row:)` for tight loops. `antPositions` marks the walkers, and `stepCount` is how far the machine has run. Everything is deterministic, with no randomness anywhere, so a fixed step count always paints the same picture. Multiple ants are one array away with `Turmite(.langton, columns: 270, rows: 270, ants: [(60, 60), (210, 210)])`. Within a step they move in array order.
+`paintedCells` is every non-zero cell. It is rebuilt per call, so use `colorIndex(column:row:)` for tight loops. `antPositions` marks the walkers, and `stepCount` is how far the machine has run. Everything is deterministic, with no randomness anywhere, so a fixed step count always paints the same picture. Multiple ants are one array away with `Turmite(.langton, columns: 270, rows: 270, ants: [(60, 60), (210, 210)])`. Within a step they move in array order.
 
 <a name="turmite-rules"></a>
 

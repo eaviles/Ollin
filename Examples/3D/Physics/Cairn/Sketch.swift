@@ -45,7 +45,7 @@ final class Cairn: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0
+        world.restitution = 0
 
         if world.load(contentsOf: file) {
             settled = try? PhysicsSnapshot(contentsOf: file)
@@ -89,11 +89,11 @@ final class Cairn: Sketch {
                           // laid flat, which is how a heap holds together.
                           rotated: random(0, .pi), axis: .unitY,
                           density: 2.4, friction: 1, restitution: 0)
-            for _ in 0 ..< 75 { world.step(dt: 1.0 / 60) }
+            for _ in 0 ..< 75 { world.advance(by: 1.0 / 60) }
         }
 
         // Then long enough for the whole heap to rock itself quiet.
-        for _ in 0 ..< 400 { world.step(dt: 1.0 / 60) }
+        for _ in 0 ..< 400 { world.advance(by: 1.0 / 60) }
         settled = world.snapshot()
         say("a fresh heap of \(world.bodies.count - 2) stones")
     }
@@ -171,7 +171,7 @@ final class Cairn: Sketch {
         perspective(eye: Vector3(3.0, 2.2, 5.3), target: Vector3(0.5, 1.0, 0))
 
         if let grabbed { dragGrab(grabbed, to: mouse) }
-        world.step(dt: deltaTime)
+        world.advance(by: deltaTime)
 
         drawGround()
 

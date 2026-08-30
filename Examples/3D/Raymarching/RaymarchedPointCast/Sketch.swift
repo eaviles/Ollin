@@ -29,8 +29,8 @@ final class RaymarchedPointCast: Sketch {
         // The raymarched SDF blob: it drops a soft shadow onto the floor through the mesh
         // fragments' inline field march (the point-light cast path).
         let blob = SDF3D.sphere(radius: 0.8)
-            .smoothUnion(SDF3D.sphere(radius: 0.6).at(x: 0.9, y: 0.3, z: 0.2), k: 0.5)
-            .smoothUnion(SDF3D.sphere(radius: 0.55).at(x: -0.3, y: 0.5, z: -0.4), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.6).at(0.9, 0.3, 0.2), k: 0.5)
+            .smoothUnion(SDF3D.sphere(radius: 0.55).at(-0.3, 0.5, -0.4), k: 0.5)
             .colored(Color(hex: 0x38bdf8))
         withState { translate(-2.0, 1.5, 0); rotateY(t * 0.4); drawSDF3D(blob) }
 

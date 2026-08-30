@@ -84,7 +84,7 @@ struct LightingTests {
         let d = freshDrawer()
         // Full angle π/3 → half-angle π/6. Penumbra 0 → inner == outer (hard edge).
         d.addLight(.spot(.white, at: .zero, direction: Vector3(0, -1, 0),
-                         angle: .pi / 3, penumbra: 0))
+                         coneAngle: .pi / 3, penumbra: 0))
         let l = d.makeLighting().lights.0
         #expect(l.kind == 2)
         #expect(close(l.cosOuter, Float(cos(Double.pi / 6))))
@@ -95,7 +95,7 @@ struct LightingTests {
         let d = freshDrawer()
         // Penumbra 0.5 narrows the full-bright inner cone to half the half-angle.
         d.addLight(.spot(.white, at: .zero, direction: Vector3(0, -1, 0),
-                         angle: .pi / 3, penumbra: 0.5))
+                         coneAngle: .pi / 3, penumbra: 0.5))
         let l = d.makeLighting().lights.0
         #expect(close(l.cosInner, Float(cos(Double.pi / 6 * 0.5))))
         #expect(l.cosInner > l.cosOuter)   // inner cone is tighter than the outer
@@ -112,7 +112,7 @@ struct LightingTests {
 
     @Test func rectPacksAnOrthonormalFrame() {
         let d = freshDrawer()
-        d.addLight(.rect(.white, at: Vector3(1, 2, 3), direction: Vector3(0, 0, 1),
+        d.addLight(.rectangle(.white, at: Vector3(1, 2, 3), direction: Vector3(0, 0, 1),
                          width: 4, height: 2))
         let l = d.makeLighting().lights.0
         #expect(l.kind == 3)
@@ -132,9 +132,9 @@ struct LightingTests {
 
     @Test func rectTwoSidedRidesDirectionW() {
         let d = freshDrawer()
-        d.addLight(.rect(.white, at: .zero, direction: Vector3(0, 0, 1),
-                         width: 1, height: 1, twoSided: true))
-        d.addLight(.rect(.white, at: .zero, direction: Vector3(0, 0, 1),
+        d.addLight(.rectangle(.white, at: .zero, direction: Vector3(0, 0, 1),
+                         width: 1, height: 1, isTwoSided: true))
+        d.addLight(.rectangle(.white, at: .zero, direction: Vector3(0, 0, 1),
                          width: 1, height: 1))
         let u = d.makeLighting()
         #expect(close(u.lights.0.direction.w, 1))
@@ -145,7 +145,7 @@ struct LightingTests {
         // A panel facing straight down is parallel to the default up hint; the
         // packer falls back to a stable axis instead of a NaN frame.
         let d = freshDrawer()
-        d.addLight(.rect(.white, at: .zero, direction: Vector3(0, -1, 0),
+        d.addLight(.rectangle(.white, at: .zero, direction: Vector3(0, -1, 0),
                          width: 2, height: 2))
         let l = d.makeLighting().lights.0
         let t = SIMD3<Float>(l.axisA.x, l.axisA.y, l.axisA.z)
@@ -180,7 +180,7 @@ struct LightingTests {
         // panel's extent (shadowDepthA > 0 at the default softness) and the
         // perspective linearization term negative (the spot-path flag).
         let d = freshDrawer()
-        d.addLight(.rect(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
+        d.addLight(.rectangle(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
                          width: 2, height: 2))
         d.castShadows()
         let u = d.makeLighting()
@@ -222,7 +222,7 @@ struct LightingTests {
         // small panels, clear of the 40-texel kernel cap).
         func penumbra(_ side: Double) -> Float {
             let d = freshDrawer()
-            d.addLight(.rect(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
+            d.addLight(.rectangle(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
                              width: side, height: side))
             d.castShadows()
             return d.makeLighting().shadowDepthA
@@ -248,7 +248,7 @@ struct LightingTests {
         // The caster search appends the area kinds after the punctual ones, so a
         // scene holding both casts from its point light, not the panel.
         let d = freshDrawer()
-        d.addLight(.rect(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
+        d.addLight(.rectangle(.white, at: Vector3(0, 3, 0), direction: Vector3(0, -1, 0),
                          width: 2, height: 2))
         d.addLight(.point(.white, at: Vector3(0, 3, 0)))
         d.castShadows()
@@ -655,16 +655,16 @@ private final class AreaLightProbe: Sketch {
         camera(.orbiting(radius: 3))
         switch mode {
         case .front:
-            rectLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, -1),
+            rectangleLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, -1),
                       width: 2, height: 2, intensity: 2)
         case .facingAway:
-            rectLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, 1),
+            rectangleLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, 1),
                       width: 2, height: 2, intensity: 2)
         case .facingAwayTwoSided:
-            rectLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, 1),
-                      width: 2, height: 2, twoSided: true, intensity: 2)
+            rectangleLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, 1),
+                      width: 2, height: 2, isTwoSided: true, intensity: 2)
         case .far:
-            rectLight(.white, at: Vector3(0, 0, 6), direction: Vector3(0, 0, -1),
+            rectangleLight(.white, at: Vector3(0, 0, 6), direction: Vector3(0, 0, -1),
                       width: 2, height: 2, intensity: 2)
         }
         fill(.white)
@@ -754,7 +754,7 @@ private final class AreaShadowProbe: Sketch {
     override func draw() {
         background(.black)
         camera(.orbiting(radius: 8, elevation: 0.9))
-        rectLight(.white, at: Vector3(0, 5, 0), direction: Vector3(0, -1, 0),
+        rectangleLight(.white, at: Vector3(0, 5, 0), direction: Vector3(0, -1, 0),
                   width: panelSide, height: panelSide,
                   intensity: 6 / (panelSide * panelSide))
         if casts { castShadows() }
@@ -824,7 +824,7 @@ private final class AreaReflectionProbe: Sketch {
         environment(.night)
         rayTracedReflections()
         if panelOn {
-            rectLight(Color(hue: 0.09, saturation: 0.3, brightness: 1.0),
+            rectangleLight(Color(hue: 0.09, saturation: 0.3, brightness: 1.0),
                       at: Vector3(0, 2.2, -1.0), direction: Vector3(0, -0.35, -1),
                       width: 3.0, height: 0.8, intensity: 10)
         }
@@ -1061,16 +1061,16 @@ private final class LightShapingProbe: Sketch {
         switch mode {
         case .plainPoint:
             pointLight(.white, at: Vector3(0, 0, 1.5), intensity: 1.2,
-                       axis: Vector3(0, 0, -1))
+                       direction: Vector3(0, 0, -1))
         case .ringProfile:
             let profile = IESProfile(string: LightShapingProbe.ringIES)!
             pointLight(.white, at: Vector3(0, 0, 1.5), intensity: 1.2,
-                       profile: profile, axis: Vector3(0, 0, -1))
+                       profile: profile, direction: Vector3(0, 0, -1))
         case .halfCookie, .halfCookieRolled:
             var gobo = Image(width: 8, height: 8, color: .black)
             for y in 0..<8 { for x in 4..<8 { gobo[x, y] = .white } }
             spotLight(.white, at: Vector3(0, 0, 2), direction: Vector3(0, 0, -1),
-                      angle: 1.9, penumbra: 0.1, intensity: 1.2,
+                      coneAngle: 1.9, penumbra: 0.1, intensity: 1.2,
                       cookie: LightCookie(gobo),
                       roll: mode == .halfCookieRolled ? .pi : 0)
         }
@@ -1199,7 +1199,7 @@ private final class ContactShadowProbe: Sketch {
         case .spot:
             spotLight(.white, at: Vector3(4, 4, 2),
                       direction: Vector3(-4, -4, -2).normalized,
-                      angle: .pi / 2.5, intensity: 1.0)
+                      coneAngle: .pi / 2.5, intensity: 1.0)
         }
         if casts { castShadows() }
         shadowSoftness(0.8)
@@ -1332,7 +1332,7 @@ private final class TwoCasterProbe: Sketch {
                 .castingShadow(keyCasts))
         if fillIsSpot {
             light(Light.spot(.white, at: Vector3(3.4, 4, 0), direction: Vector3(-0.7, -1, 0),
-                             angle: 1.1, intensity: 2.2)
+                             coneAngle: 1.1, intensity: 2.2)
                     .castingShadow(fillCasts))
         } else {
             light(Light.directional(.white, direction: Vector3(-1, -1.1, 0), intensity: 0.9)

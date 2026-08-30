@@ -27,7 +27,7 @@ final class Glitter_Example: Sketch {
                 drawStar(width * 0.72, height * 0.33, 250, 125, points: 5)
             }
             .post(.glitter(density: 110, amount: 1.3, phase: time * 2.4),
-                  .bloom(threshold: 0.8, intensity: 1.1, radius: 9))
+                  .bloom(threshold: 0.8, amount: 1.1, radius: 9))
 
             // An opal ring, both at once: an iridescent wash under colored sparkle.
             layer {
@@ -38,7 +38,7 @@ final class Glitter_Example: Sketch {
             .post(.iridescence(amount: 0.7, scale: 3.2, bands: 3, shift: 0.6 + time * 0.15),
                   .glitter(density: 150, amount: 0.9, size: 0.8, saturation: 0.8,
                            phase: 1.7 + time * 1.8),
-                  .bloom(threshold: 0.85, intensity: 0.9, radius: 7))
+                  .bloom(threshold: 0.85, amount: 0.9, radius: 7))
         }
     }
 }

@@ -14,7 +14,7 @@ final class Ripples: Sketch {
     @Param(0.9 ... 1, icon: "water.waves") var damping = 0.996
 
     override func setup() {
-        pool = simField(.ripples(damping: damping))
+        pool = makeSimField(.ripples(damping: damping))
     }
 
     override func draw() {

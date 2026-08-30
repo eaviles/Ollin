@@ -31,7 +31,7 @@ All six are deterministic. The point emitters run off a seedable generator, and 
 
 ```swift
 IFS(maps: [IFS.Map])                                   // x' = a·x + b·y + e, y' = c·x + d·y + f
-system.points(count: Int, burnIn: Int = 20,
+system.points(count: Int, settle: Int = 20,
               using rng: inout some RandomNumberGenerator) -> [Vector2]
 ifsPoints(_ system: IFS, count: Int) -> [Vector2]      // the sketch form, seeded by `variation`
 ```
@@ -118,7 +118,7 @@ A plate this deep is meant to be watched, and the `Renderer` is the live form. `
 
 ```swift
 inverted(_ point: Vector2, in circle: Circle) -> Vector2
-inversionLimitSet(of circles: [Circle], count: Int, burnIn: Int = 16,
+inversionLimitSet(of circles: [Circle], count: Int, settle: Int = 16,
                   using rng: inout some RandomNumberGenerator) -> [Vector2]
 inversionLimitSet(of circles: [Circle], count: Int) -> [Vector2]   // seeded by `variation`
 ```

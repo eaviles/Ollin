@@ -2,7 +2,7 @@ import Ollin
 
 /// Projected decals: pictures stamped onto the scene.
 ///
-/// A `Decal` wraps an image once; `decal(_:at:...)` then places it each frame
+/// A `Decal` wraps an image once; `drawDecal(_:at:...)` then places it each frame
 /// as a projection box, and every mesh surface inside the box receives the
 /// picture, composited over its base color before lighting, so it shades as
 /// paint on the surface. One box can span several meshes at once: the sliding
@@ -67,7 +67,7 @@ final class Decals: Sketch {
         background(Color(hex: 0x10131A))
         cameraShowcase(.sway(amplitude: 0.14, period: 24), target: Vector3(0, 0.4, 0),
                        radius: 9.4, elevation: 0.5, fieldOfView: .pi / 4)
-        environment(.studio.intensity(0.8))
+        environment(.studio.intensified(to: 0.8))
         directionalLight(Color(kelvin: 5600), direction: Vector3(-0.4, -0.8, -0.4),
                          intensity: 1.05)
         ambientLight(Color(white: 0.06))
@@ -86,12 +86,12 @@ final class Decals: Sketch {
         // per loop; its box is deep enough to reach both.
         let t = loopProgress(over: period) * .tau
         let slide = Vector3(2.6 * sin(t), 0.5, 1.4 * sin(2 * t))
-        decal(roundel, at: slide, width: size, depth: 2.4)
+        drawDecal(roundel, at: slide, width: size, depth: 2.4)
         // A half-transparent ring parked where the roundel passes: when they
         // overlap, the later ring composites over the sliding stamp.
-        decal(ring, at: Vector3(0, 0.2, 1.2), width: 1.6, opacity: ringOpacity)
+        drawDecal(ring, at: Vector3(0, 0.2, 1.2), width: 1.6, opacity: ringOpacity)
         // The tag, stamped sideways onto the front crate face.
-        decal(tag, at: Vector3(1.0, 0.6, 0.2), direction: Vector3(0, 0, -1),
+        drawDecal(tag, at: Vector3(1.0, 0.6, 0.2), direction: Vector3(0, 0, -1),
               width: 1.3, depth: 1.8, roll: roll)
     }
 }

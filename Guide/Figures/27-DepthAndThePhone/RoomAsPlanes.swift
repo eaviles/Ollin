@@ -36,7 +36,7 @@ final class RoomAsPlanes: Sketch {
         // and leaves the bottom for the light strip.
         camera(.orbiting(target: Vector3(0, -0.75, 0), radius: 4.2,
                          azimuth: 0, elevation: 0.4, fieldOfView: .pi / 4))
-        environment(.studio.intensity(1.1).lightingOnly())
+        environment(.studio.intensified(to: 1.1).lightingOnly())
 
         let xs: [Double] = [-1.35, 1.35]
         for (i, x) in xs.enumerated() {

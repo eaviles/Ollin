@@ -16,7 +16,7 @@ internal import CJolt
 ///                               at: Vector3(0, 3, 0),
 ///                               pinned: { $0.z < -1.4 })   // hung from one edge
 /// // each frame:
-/// world.step(dt: deltaTime)
+/// world.advance(by: deltaTime)
 /// drawSoftBody(cloth)
 /// ```
 ///
@@ -114,7 +114,7 @@ public class SoftBody3D {
     }
 
     /// Scratch for the water pass: how far each particle is above the fluid's
-    /// surface, in meters. Kept here so the per-step buoyancy allocates
+    /// surface, in meters. Kept here so the per-step buoyancyScale allocates
     /// nothing.
     var surfaceHeights: [Float] = []
 
@@ -165,7 +165,7 @@ public class SoftBody3D {
     init?(world: World3D, mesh: Mesh, position: Vector3, rotation: simd_quatd,
           mass: Double, stiffness: Double, bend: Double, pressure: Double,
           damping: Double, friction: Double, restitution: Double,
-          iterations: Int, vertexRadius: Double, twoSided: Bool,
+          iterations: Int, vertexRadius: Double, isTwoSided twoSided: Bool,
           pinned: ((Vector3) -> Bool)?, group: CollisionGroup,
           skeleton: [SceneSkeletonJoint] = [],
           carriedBy: ((Vector3) -> String?)? = nil,
@@ -568,7 +568,7 @@ public class SoftBody3D {
     }
 
     /// The average of the particle positions: where the body has drifted to.
-    public var center: Vector3 {
+    public var position: Vector3 {
         guard !isDestroyed else { return .zero }
         var out = (Float(0), Float(0), Float(0))
         withUnsafeMutableBytes(of: &out) { bytes in
@@ -651,7 +651,7 @@ public class SoftBody3D {
     /// How heavy the surface is compared with the water it may be dropped in,
     /// exactly the way a collider's `density` is: `0.3` is a cork raft riding
     /// high, `1` floats awash, and anything above sinks. It changes nothing but
-    /// buoyancy, so the body keeps the `mass` it was built with.
+    /// buoyancyScale, so the body keeps the `mass` it was built with.
     ///
     /// A closed surface starts with the density its own mass and volume work
     /// out to, so a beach ball just floats. A sheet encloses nothing to work
@@ -764,12 +764,12 @@ public class SoftBody3D {
     /// Pose the skin from a scene's skeleton, ready for the next `step`.
     ///
     /// Call it once a frame, after the scene has been posed (by an animation,
-    /// or by `scene.apply(ragdoll)`) and before `world.step(dt:)`:
+    /// or by `scene.apply(ragdoll)`) and before `world.advance(by:)`:
     ///
     /// ```swift
     /// figure.apply(ragdoll)
     /// cape.follow(figure)
-    /// world.step(dt: deltaTime)
+    /// world.advance(by: deltaTime)
     /// ```
     ///
     /// The joints are read in the scene's own space, which is the space the

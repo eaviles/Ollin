@@ -55,7 +55,7 @@ final class ClaimingSpace: Sketch {
             fill(accent.withAlpha(0.55))
             drawCircles(growth.attractors, radius: 2.5)
 
-            let widths = growth.thicknesses(leafWidth: 0.9, exponent: 2.2)
+            let widths = growth.thicknesses(tipWidth: 0.9, exponent: 2.2)
             stroke(ink)
             strokeCap(.round)
             for (n, node) in growth.nodes.enumerated() {

@@ -51,7 +51,7 @@ final class Quakes: Sketch {
         background(Color(hex: 0x0B0E13))
         drawGraticule()
 
-        if feed.updates != built { rebuild() }
+        if feed.updateCount != built { rebuild() }
 
         guard !quakes.isEmpty else {
             if let problem = feed.problem { return drawStatus(problem, style: .warning) }
@@ -65,7 +65,7 @@ final class Quakes: Sketch {
     // MARK: Reading the answer
 
     private func rebuild() {
-        built = feed.updates
+        built = feed.updateCount
         builtAt = time
         quakes = feed.json["features"].array.compactMap { feature in
             let place = feature["geometry"]["coordinates"]
@@ -93,7 +93,7 @@ final class Quakes: Sketch {
         let deep = map(quake.depth, 0, 300, 0, 1, clamp: true)
         // Shallow reads warm and deep reads cool, mixed through a perceptual
         // space so the middle of the run does not swing off into green.
-        let tint = Color.mix(Color(hex: 0xF2A03C), Color(hex: 0x4C7FE0), t: deep)
+        let tint = Color.mix(Color(hex: 0xF2A03C), Color(hex: 0x4C7FE0), deep)
 
         // A ring that keeps widening reads as something still settling.
         let ripple = (time * 0.4 + quake.at.x * 0.002).truncatingRemainder(dividingBy: 1)

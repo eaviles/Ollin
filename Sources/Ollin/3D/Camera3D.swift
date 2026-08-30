@@ -30,7 +30,7 @@ public struct Camera3D: Equatable, Sendable {
         /// lets a drawn point cloud and a depth scene share one *metric* space — a
         /// point made by `CameraIntrinsics.unproject` reprojects to its own pixel.
         /// The intrinsics carry the image size and aspect, so the viewport aspect is
-        /// ignored for this case. Build it with `Camera3D.fromIntrinsics(_:)`.
+        /// ignored for this case. Build it with `Camera3D.intrinsic(_:)`.
         case intrinsic(CameraIntrinsics)
     }
 
@@ -115,7 +115,7 @@ public extension Camera3D {
     /// (the defaults, 1 cm … 100 m, cover an indoor LiDAR feed). Move `eye`/`target`
     /// afterward to orbit a *drawn* cloud; the default pose is the one that aligns
     /// with a depth-scene backdrop.
-    static func fromIntrinsics(_ intrinsics: CameraIntrinsics,
+    static func intrinsic(_ intrinsics: CameraIntrinsics,
                                near: Double = 0.01, far: Double = 100) -> Camera3D {
         Camera3D(eye: .zero, target: Vector3(0, 0, -1), up: .unitY,
                  near: near, far: far, projection: .intrinsic(intrinsics))

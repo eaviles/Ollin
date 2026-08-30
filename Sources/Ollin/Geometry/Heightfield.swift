@@ -75,7 +75,7 @@ public struct Heightfield: Sendable {
 
     /// The height at normalized coordinates (`u`, `v` in `0…1`, clamped),
     /// bilinearly interpolated between the surrounding samples.
-    public func value(atU u: Double, v: Double) -> Double {
+    public func value(u: Double, v: Double) -> Double {
         let fx = min(max(u, 0), 1) * Double(columns - 1)
         let fy = min(max(v, 0), 1) * Double(rows - 1)
         let x0 = min(Int(fx), columns - 2), y0 = min(Int(fy), rows - 2)

@@ -16,7 +16,7 @@ final class DesignFilters: Sketch {
 
         // The silhouette the top row reads: nothing but a shape and its alpha.
         func heart() -> RenderTarget {
-            let layer = renderTarget(width: 268, height: 268)
+            let layer = makeRenderTarget(width: 268, height: 268)
             withTarget(layer) {
                 noStroke()
                 fill(.white)

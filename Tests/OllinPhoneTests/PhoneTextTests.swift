@@ -15,7 +15,7 @@ import Ollin
     /// (toward +z). Corners ride in perimeter order: tl, tr, br, bl.
     private var wallSign: PhoneText {
         PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 3, text: "OLLIN", confidence: 0.9,
+            isTracked: true, timestamp: 3, text: "OLLIN", confidence: 0.9,
             corners: [SIMD2<Float>(0.3, 0.7), SIMD2<Float>(0.7, 0.7),
                       SIMD2<Float>(0.7, 0.6), SIMD2<Float>(0.3, 0.6)],
             hasWorldCorners: true,
@@ -27,7 +27,7 @@ import Ollin
         // Normalized (0.25, 0.75), lower-left origin, into a 100x200 rectangle at
         // (10, 20): x = 10 + 25, and y flips to 20 + (1 - 0.75) * 200 = 70.
         let line = PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: "A",
+            isTracked: true, timestamp: 0, text: "A",
             corners: [SIMD2<Float>(0.25, 0.75), SIMD2<Float>(0.5, 0.75),
                       SIMD2<Float>(0.5, 0.5), SIMD2<Float>(0.25, 0.5)]))
         let rect = Rectangle(x: 10, y: 20, width: 100, height: 200)
@@ -43,7 +43,7 @@ import Ollin
     @Test func boundsIsTheBoxAroundTheCorners() {
         // A tilted quad: the box must hug the extremes, not any one edge.
         let line = PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: "tilt",
+            isTracked: true, timestamp: 0, text: "tilt",
             corners: [SIMD2<Float>(0.2, 0.9), SIMD2<Float>(0.8, 0.8),
                       SIMD2<Float>(0.7, 0.6), SIMD2<Float>(0.1, 0.7)]))
         let b = line.bounds(in: Rectangle(x: 0, y: 0, width: 100, height: 100))
@@ -56,7 +56,7 @@ import Ollin
     @Test func aFlatLineHasNoWorldPlacement() {
         // A 2D-only line (no LiDAR to lift through): the world side stays honest.
         let line = PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: "flat",
+            isTracked: true, timestamp: 0, text: "flat",
             corners: [SIMD2<Float>(0.1, 0.2), SIMD2<Float>(0.3, 0.2),
                       SIMD2<Float>(0.3, 0.1), SIMD2<Float>(0.1, 0.1)]))
         #expect(!line.hasWorldPlacement)
@@ -93,7 +93,7 @@ import Ollin
         // A quad read at an angle never comes back perfectly square, so the
         // frame must orthonormalize what it is given rather than trust it.
         let line = PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: "skew",
+            isTracked: true, timestamp: 0, text: "skew",
             corners: [SIMD2<Float>(0.2, 0.7), SIMD2<Float>(0.6, 0.72),
                       SIMD2<Float>(0.6, 0.62), SIMD2<Float>(0.2, 0.6)],
             hasWorldCorners: true,
@@ -115,7 +115,7 @@ import Ollin
         // Four corners on one point can't say which way the line runs.
         let point = SIMD3<Float>(0.5, 1, -1)
         let line = PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: "dot",
+            isTracked: true, timestamp: 0, text: "dot",
             corners: [SIMD2<Float>(0.5, 0.5), SIMD2<Float>(0.5, 0.5),
                       SIMD2<Float>(0.5, 0.5), SIMD2<Float>(0.5, 0.5)],
             hasWorldCorners: true,
@@ -127,12 +127,12 @@ import Ollin
         // The shoelace area of the normalized quad: a 0.4 x 0.1 line covers 0.04
         // of the picture, and a malformed record (short corner list) covers none.
         let big = PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: "big",
+            isTracked: true, timestamp: 0, text: "big",
             corners: [SIMD2<Float>(0.3, 0.7), SIMD2<Float>(0.7, 0.7),
                       SIMD2<Float>(0.7, 0.6), SIMD2<Float>(0.3, 0.6)]))
         #expect(abs(big.imageArea - 0.04) < 1e-6)
         let malformed = PhoneText(PhoneTextSample(
-            tracked: true, timestamp: 0, text: "short",
+            isTracked: true, timestamp: 0, text: "short",
             corners: [SIMD2<Float>(0.5, 0.5)]))
         #expect(malformed.imageArea == 0)
     }

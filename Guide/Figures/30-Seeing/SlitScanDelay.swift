@@ -22,9 +22,9 @@ final class SlitScanDelay: Sketch {
     var scanned: Image?
 
     override func setup() {
-        let history = Ollin.SlitScan(frames: 48)
+        let history = Ollin.SlitScan(capacity: 48)
         for step in 0 ..< 48 {
-            history.push(clipFrame(at: Double(step) / 47))
+            history.append(clipFrame(at: Double(step) / 47))
         }
         newest = clipFrame(at: 1)
         scanned = history.image(delay: { uv in uv.x })
@@ -61,9 +61,9 @@ final class SlitScanDelay: Sketch {
                 let v = Double(y) / Double(size - 1)
                 let stripe = sin((v + t * 0.55) * 30) * 0.5 + 0.5
                 var color = Color.mix(Color(hex: 0x16202E), Color(hex: 0x2C4260),
-                                      t: stripe)
+                                      stripe)
                 let band = 1 - smoothstep(0.015, 0.045, abs(v - bandY))
-                color = Color.mix(color, Color(hex: 0xF2C14E), t: band)
+                color = Color.mix(color, Color(hex: 0xF2C14E), band)
                 image[x, y] = color
             }
         }
