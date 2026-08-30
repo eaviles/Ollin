@@ -266,7 +266,7 @@ The same trade rules out a browser version, because the web has no Metal, so a w
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The next milestone is version 1.0.0, the first public release; the roadmap's [Toward 1.0](ROADMAP.md#toward-10) section tracks what it waits on. The short version of what's further ahead: more of the iPhone sensor array and the 3D mode (cloth that meets itself), generative geometry and a growing catalog of creative-coding technique helpers, more of the sound layer, new input and output surfaces (haptics, a desktop widget), editor tooling, learning materials and a third-party extension ecosystem, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The next milestone is version 1.0.0, the first public release; the roadmap's [Toward 1.0](ROADMAP.md#toward-10) section tracks what it waits on. The short version of what's further ahead: more of the iPhone sensor array and the 3D mode (cloth that meets itself), generative geometry and a growing catalog of creative-coding technique helpers, more of the sound layer, new input and output surfaces (haptics, a desktop widget), editor tooling, learning materials and a third-party extension ecosystem, a sketch on the phone and in Swift Playgrounds, and eventually visionOS and AR.
 
 ## Built with AI
 

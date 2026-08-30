@@ -44,7 +44,7 @@ See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 ## Expressive brushes and strokes
 
-The hand-drawn, mark-making axis, built on the variable-width stroke renderer (a width per vertex, shaped by a `strokeProfile`), the recorded marks that drive it from the hand, and the brushes that stamp a shape along a path. What's ahead: Apple Pencil tilt and azimuth as further drivers, which wait on the iOS leg under [new input sources](#new-input-sources). Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
+The hand-drawn, mark-making axis, built on the variable-width stroke renderer (a width per vertex, shaped by a `strokeProfile`), the recorded marks that drive it from the hand, and the brushes that stamp a shape along a path. What's ahead: Apple Pencil tilt and azimuth as further drivers, which need a Pencil and a tablet, under [new input sources](#new-input-sources). Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
 
 ## iPhone as a sensor array
 
@@ -87,7 +87,7 @@ All of it is the interop posture: play in someone's existing rig, not replace it
 
 More of the platform's live signals, each a `FrameSource` or a simple value read in `draw()`:
 
-- **Apple Pencil.** Tilt, azimuth, and hover on the iOS leg, with its force joining the pressure a sketch already reads.
+- **Apple Pencil.** Tilt, azimuth, and hover on the tablet, with its force joining the pressure a sketch already reads.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).
@@ -100,6 +100,17 @@ Ways a sketch leaves the window:
 - **A desktop widget.** Wrap a sketch as a widget, so the output lives in the system rather than a window. The timeline refresh there is measured in minutes, so what a `draw()` means under that constraint is the design question.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
+
+## The sketch on a phone, and Swift Playgrounds
+
+A sketch renders through one view on either window system, and `Apps/OllinSketchApp` is the reference project for wrapping one as an iOS app. What's ahead is the life around that: the Swift Playgrounds on-ramp, the edit loop against a device, and the smaller device affordances.
+
+- **Swift Playgrounds App Projects.** The Swift Playgrounds app's App Projects (`.swiftpm`) are the closest Swift gets to the p5.js "open the editor and type, watch it move" onboarding, and the same package shape embeds a sketch in any SwiftUI app. An App Project is a Swift package, so the [project generator](Docs/Tools/ProjectGenerator.md) can write one as a kind of its own, the one app-shaped kind that needs no Xcode project and no signing team. Two questions gate it, in order: whether the Playgrounds app's own bundled toolchain builds the framework's platform floor at all, and how the package dependency arrives, which is by git URL there, so the tablet waits on the repository being public while the Mac app is the place to verify against a local checkout first. [Design notes.](DESIGN-NOTES.md#swift-playgrounds-and-ios)
+- **The tethered edit loop.** The knobs and the shaders can both be instant against a phone (the remote inspector serves `@Param` over the usbmux tunnel, and Metal compiles shader source on the device); a Swift edit cannot be, since a device loads no pushed dylib, so its loop is a build and an install through `devicectl` with the inspector open beside it. Measure that loop before designing around it. [Design notes.](DESIGN-NOTES.md#swift-playgrounds-and-ios)
+- **The keyboard on a tablet.** A hardware keyboard feeding the same key path a desk sketch reads, through the UIKit press events, so a keyboard-driven sketch is portable too.
+- **The generator's app kind.** `ollin new --kind ios-app` emitting the xcodegen shape the reference project uses; the signing team is the one question it has to ask that no other kind does.
+
+See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 
 ## Rendering and color frontier
 
@@ -144,7 +155,7 @@ See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
 ## Further out / exploratory
 
-Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (iOS, visionOS, AR), not uncertainty.
+Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (visionOS, AR), not uncertainty.
 
 - **Text-to-image as a material.** On-device diffusion a sketch could invoke as an optional, labeled material. The one to weigh hardest against the AI boundary, since it sits closest to the contested use, so it lives here rather than in the planned [authoring tier](#authoring-and-editor-tooling); see the AI stance stated there.
 - **SharePlay co-creation.** Two people tuning one sketch together over a FaceTime call (GroupActivities). The most speculative of the [collaboration](#collaboration-and-multi-device) ideas.
@@ -153,8 +164,7 @@ Lower-confidence ideas kept on record but deliberately not near-term: each is pl
 
 Larger, later directions. 2D on macOS stays the focus; these don't change that.
 
-- **Swift Playgrounds and iOS.** Swift Playgrounds App Projects are the closest Swift gets to the p5.js "open the editor and type, watch it move" experience, and the same work unlocks iPad sketching and embedding in any SwiftUI app. The view layer is already SwiftUI-embeddable; the main blocker is declaring an iOS target and making the view conditional across AppKit and UIKit. The Metal renderer is already portable. [Design notes.](DESIGN-NOTES.md#swift-playgrounds-and-ios)
-- **visionOS.** Immersive rendering uses a different render loop (CompositorServices rather than `MTKView`), so the per-frame loop stays behind a seam that either a normal view or a visionOS layer renderer can drive. It builds on the [3D mode](#3d-mode) and the iOS target. [Design notes.](DESIGN-NOTES.md#3d-mode)
-- **AR mode and templates.** AR sketches on Apple platforms, with ready-made templates for face, world, and image tracking, so an AR sketch becomes "fill in the `draw()`, the tracking is handed to you". It's layered on the iOS and 3D work rather than a separate engine, and aims at the gap left by discontinued template-driven AR tools. [Design notes.](DESIGN-NOTES.md#ar-mode-and-templates-the-meta-spark-gap)
+- **visionOS.** Immersive rendering uses a different render loop (CompositorServices rather than `MTKView`), so the per-frame loop stays behind a seam that either a normal view or a visionOS layer renderer can drive. It builds on the [3D mode](#3d-mode). [Design notes.](DESIGN-NOTES.md#3d-mode)
+- **AR mode and templates.** AR sketches on Apple platforms, with ready-made templates for face, world, and image tracking, so an AR sketch becomes "fill in the `draw()`, the tracking is handed to you". It's layered on the [phone](#the-sketch-on-a-phone-and-swift-playgrounds) and [3D](#3d-mode) work rather than a separate engine, and aims at the gap left by discontinued template-driven AR tools. [Design notes.](DESIGN-NOTES.md#ar-mode-and-templates-the-meta-spark-gap)
 
-These three can't be verified in every environment; iOS, visionOS, and AR need the right SDKs, a simulator, or a device.
+Neither can be verified at the desk alone; both need the right SDKs and a device.
