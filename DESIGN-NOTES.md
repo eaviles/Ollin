@@ -66,12 +66,6 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 - **The Spark lesson is templates.** Spark's reach came from ready-made effect templates (face filters, world effects, plane and image tracking) people could start from. The Ollin version: AR-example sketches plus starter templates wired to ARKit anchors (face, world, image tracking), so an AR sketch is "fill in the `draw()`, the tracking is handed to you", the same template-as-on-ramp idea as the examples and `.swiftpm` starters.
 - **Caveat:** AR needs ARKit on a device to verify (the simulator has no AR camera).
 
-## Model examples and ModelTracker surfaces
-
-`ModelTracker` runs any converted Core ML model, so new perception examples are mostly a matter of picking models worth showing, plus, for some, one small new output surface on the tracker. The standing delivery rule for all of them: **weights are never committed**. `Scripts/fetch-models.sh` downloads into the gitignored `Models/`, the example shows the run-the-script notice until they exist, provenance goes in `THIRD-PARTY-NOTICES.md`, and the real-model tests soft-skip where the weights aren't fetched.
-
-Skip the plain ImageNet classifiers (FastViT, MobileNetV2, ResNet), redundant with the built-in `ImageClassifier`'s ~1,300-label vocabulary. And the modern Ultralytics YOLOs (v8/26) are AGPL-3.0: never bundled, never scripted, same tier as p5.js's LGPL.
-
 ## iPhone as a sensor array
 
 A Mac has no depth camera, no inertial sensors, and no spare Neural Engine for live perception. A tethered iPhone has all three, so the idea is to let it act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac. The phone captures and perceives, streams the results over the wire, and the sketch reads them in `draw()` as typed values. The Mac keeps the Metal rendering ceiling; the phone fills the input gap desktop hardware leaves.
