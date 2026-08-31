@@ -356,7 +356,7 @@ drawArrow(from: center, to: mouse)
 drawArrow(from: p, to: p + force, headLength: 12)
 ```
 
-The shaft stops at the head's base, so translucent arrows lay one even coat of ink.
+The shaft stops at the head's base, so translucent arrows lay one even coat of ink. See the [`Shapes/Arrows`](../../Examples/Shapes/Arrows/Sketch.swift) example, whose translucent ring is that property drawn.
 
 <a name="circle"></a>
 

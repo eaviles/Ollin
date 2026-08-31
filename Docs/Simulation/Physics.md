@@ -255,15 +255,17 @@ func applyImpulse(_ impulse: Vector2) // instant kick (a hit, a launch)
 func applyTorque(_ torque: Double)    // spin it
 ```
 
+See the `Forces` example for all three in one windy yard, next to a `.kinematic` sweeper that nothing can stop and a pinned cloth tinted by `Spring.strain`.
+
 **Shared rules and units**
 
 The rigid side reads the same `gravity`, `bounds` (as walls), `bounce` (wall and default contact restitution), and `drag` (as body damping) you already set, and rides the same `advance(by:)`. One knob is its own:
 
 ```swift
-var pointsPerMeter: Double = 100
+var pixelsPerMeter: Double = 100
 ```
 
-Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pointsPerMeter` bridges that to sketch points, and the default of 100 puts a 100-point shape at 1 m, right in its sweet spot, so you keep thinking in points. (The Verlet particle side works in points directly and ignores this.)
+Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pixelsPerMeter` bridges that to sketch points, and the default of 100 puts a 100-point shape at 1 m, right in its sweet spot, so you keep thinking in points. (The Verlet particle side works in points directly and ignores this.)
 
 **Joints**
 
@@ -294,7 +296,7 @@ held.target = Vector2(mouseX, mouseY)
 held.remove()
 ```
 
-See the `RigidBodies` and `Chain` examples for the whole thing: a toppling pyramid knocked into a pile of mixed shapes, and grabbable swinging chains.
+See the `RigidBodies` and `Chain` examples for the whole thing: a toppling pyramid knocked into a pile of mixed shapes, and grabbable swinging chains. The `Joints` example is the four cases side by side, one small rig each, every one hung from a `.static` anchor and grabbable with the cursor.
 
 <a name="body"></a>
 <a name="collider"></a>

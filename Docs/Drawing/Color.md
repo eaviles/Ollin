@@ -66,7 +66,7 @@ if let c = Color(hex: userString) { fill(c) }
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rainbow
 ```
 
-The same three read back from any color as `hue`, `saturation`, and `brightness` properties, so a held color can be varied instead of rebuilt from numbers:
+The same three read back from any color as `hue`, `saturation`, and `brightness` properties, so a held color can be varied instead of rebuilt from numbers. The `Mixing` example labels every band's midpoint that way:
 
 ```swift
 let shifted = Color(hue: fract(base.hue + 0.1), saturation: base.saturation,

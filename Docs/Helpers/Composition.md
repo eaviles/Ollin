@@ -229,6 +229,8 @@ The one genuinely ambiguous thing about the notation is a trailing number. The 7
 
 Degrees survive a change of key and symbols do not, which is the trade between the two forms.
 
+`Examples/Audio/ChordSymbols` is this half drawn, beside `Examples/Audio/Changes` for the degrees. A chart goes into a text knob, one card per token, and the sounding chord is spelled out.
+
 ---
 
 ---
@@ -316,6 +318,8 @@ The reason to reach for it is that equal temperament is a compromise. It makes e
 
 **Bohlen-Pierce has no octave in it at all.** Doubling a frequency is so familiar that a tuning without it sounds wrong before it sounds strange. Then it stops sounding wrong. It works because odd harmonics still line up, so it suits sounds that have only odd harmonics. The [blown tube](./Synthesis.md#physical-models) is the obvious one.
 
+`Examples/Audio/Tunings` holds one triad through all seven. A ladder places every degree by its `cents` against the equal-tempered grid, so what moved is visible as well as audible.
+
 ---
 
 ### BeatFollower
@@ -352,6 +356,8 @@ Three things are worth knowing:
 - **It hears arrivals, not the beat a drummer would tap.** A steady loop is followed well and rubato is followed badly. `steadiness` is how much to trust it.
 
 `BeatEngine` is the same thing with nothing listening: onset times in, musical time out. That is what makes it testable, and it is there if a sketch has its own idea of when a beat happened.
+
+`Examples/Audio/PlayAlong` is one of these on the microphone, playing a note on every beat it believes in once `isFollowing` comes on. A generated pulse stands in until the microphone is allowed, so the whole mechanism is visible before any permission is granted.
 
 ---
 

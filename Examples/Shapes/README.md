@@ -8,6 +8,7 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 
 | Example | What it shows |
 |---|---|
+| [Arrows](Arrows/Sketch.swift) | a field of `drawArrow` marks leaning toward the cursor, and a turning ring sweeping `headLength`/`headWidth`; the ring is translucent because each arrow lays one even coat, the shaft stopping at the head's base |
 | [Booleans](Booleans/Sketch.swift) | the four `Shape` set operations over the same two moving shapes (a turning star and an orbiting disc), each filled result real geometry that strokes and exports like anything drawn by hand (`union`/`intersection`/`subtracting`/`symmetricDifference`) |
 | [Clipping](Clipping/Sketch.swift) | clipping as drawing state: `withClip(shape) { }` confines fills, strokes, images, and text to the shape's filled region, and nested clips intersect |
 | [Combinators](Combinators/Sketch.swift) | SDF combinators: compose signed-distance fields so 2D shapes *merge* instead of stack (`drawSDF`, `smoothUnion { }`) |

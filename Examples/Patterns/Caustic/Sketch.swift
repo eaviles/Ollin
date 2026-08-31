@@ -16,6 +16,13 @@ import Ollin
 /// Only the stretch of wall the light actually reaches is used, since the far side
 /// of a circle is lit and the near side is not, and their two families of bounces
 /// lean on different curves. Hold the mouse to put the source under the pointer.
+///
+/// The curve comes at two levels. `caustic(off:from:closed:)` builds it straight
+/// from the wall and the source in one call, the bright stretch inside the cup;
+/// the rays themselves are still built by hand with `reflectedRays`, since the
+/// glow of individual bounces is the one layer the curve sugar cannot draw, and
+/// `drawEnvelope` traces from those same rays, faintly, the whole mathematical
+/// curve, which keeps running past the rim.
 @main
 final class Caustic_Example: Sketch {
     override var loopDuration: Double? { 14 }
@@ -55,11 +62,17 @@ final class Caustic_Example: Sketch {
             }
         }
 
-        // The curve they all lean on.
+        // The whole curve the rays in hand lean on, faint, wherever it runs.
+        stroke(Color(hex: 0xFF7B54, alpha: 0.14))
+        strokeWeight(1.5)
+        drawEnvelope(of: rays, closed: whole)
+
+        // The same curve in one call from the wall and the source, bright where
+        // it crosses the cup.
         stroke(Color(hex: 0xFF7B54))
         strokeWeight(3)
         var drawn = 0
-        for run in envelope(of: rays, closed: whole) {
+        for run in caustic(off: wall, from: source, closed: whole) {
             let inside = run.points.filter { $0.distance(to: middle) <= radius * 1.02 }
             guard inside.count >= 2 else { continue }
             drawPolyline(inside)

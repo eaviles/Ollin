@@ -319,7 +319,7 @@ Vectors are the physics notation the 1880s settled on, mostly at the hands of Jo
 - [Math helpers](../Docs/Helpers/Math.md): `map`, `dist`, and the scalar kit the vector calls sit beside.
 - [Values and bare calls](../Docs/Concepts/Values.md): one screen on why every call takes both bare numbers and a typed value, and what the value gives you that the numbers cannot.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
-- Worked examples, in [`Examples/Motion/`](../Examples/Motion/): `Orbits` (the angle-and-radius reading), `Easing` (dots racing to a click), and `Smoothing` (a chased value with a filter instead of physics).
+- Worked examples, in [`Examples/Motion/`](../Examples/Motion/): `Orbits` (the angle-and-radius reading), `Easing` (dots racing to a click), and `Smoothing` (a chased value with a filter instead of physics); plus [`Examples/Shapes/Arrows`](../Examples/Shapes/Arrows/Sketch.swift), a field of `drawArrow` marks leaning toward the cursor with the head geometry swept around a ring.
 - A look ahead: [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) runs this chapter's correction three ways at once, and [Chapter 12](12-FlocksAndSwarms.md) takes it apart.
 
 ---

@@ -11,7 +11,8 @@ import Ollin
 ///
 /// Everything here is one `drawText` call per line. What the sketch chooses is
 /// the base direction of the mixed line, which is the one thing the text cannot
-/// say for itself.
+/// say for itself. One line carries a character no installed face has, which
+/// `textMissingCharacters` reports before it draws.
 @main
 final class Scripts: Sketch {
     override var canvasSize: CanvasSize { .size(1080, 1080) }
@@ -60,6 +61,7 @@ final class Scripts: Sketch {
 
         drawMixedLine(at: 620)
         drawWavingWord(at: 740)
+        drawMissingCharacter(at: Vector2(590, 668))
         drawWrappedParagraph(in: Rectangle(x: 80, y: 810, width: 440, height: 180))
         drawFacesUsed(at: Vector2(590, 812))
     }
@@ -104,6 +106,23 @@ final class Scripts: Sketch {
         textSize(18)
         fill(accent)
         drawText("WRAPPED WITH NO SPACES TO BREAK AT", box.x, box.y + 132)
+    }
+
+    /// A character nothing can draw. Borrowed faces make a missing glyph rare,
+    /// but a code point from the last private use plane defeats every one of
+    /// them, so it comes out as the placeholder box. `textMissingCharacters`
+    /// names exactly those characters before anything is drawn.
+    private func drawMissingCharacter(at position: Vector2) {
+        let sample = "Ollin \u{10FFFD}"
+        let missing = textMissingCharacters(sample)
+        textSize(44)
+        textAlign(.left, .baseline)
+        fill(ink)
+        drawText(sample, position.x, position.y)
+        textSize(18)
+        fill(accent)
+        drawText("textMissingCharacters FINDS \(missing.count) OF \(sample.count)",
+                 position.x, position.y + 28)
     }
 
     /// Which faces the machine actually lent one mixed line. Nothing was installed

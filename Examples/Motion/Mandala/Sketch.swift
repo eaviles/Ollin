@@ -34,7 +34,7 @@ final class Mandala: Sketch {
             let angle = dir * time * (0.12 + t * 0.45)
 
             hollow(band)
-            fill(Colormap.turbo.color(at: (t + time * 0.04).truncatingRemainder(dividingBy: 1)))
+            fill(Colormap.turbo.color(cycling: t + time * 0.04))
 
             withState {
                 translate(cx, cy)

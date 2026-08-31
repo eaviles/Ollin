@@ -158,4 +158,4 @@ let layer = generate(chain)           // realize as a RenderTarget instead
 - Colors are straight (non-premultiplied) sRGB inside a chain, like a user [`Shader`](./Shaders.md)'s, and composite back into Ollin's linear-light pipeline when drawn.
 - The ops are plain shader-library functions (the `visual` module of the [shader library](./ShaderLibrary.md)), so a hand-written `Shader` can call them too.
 
-Example: `swift run --package-path Examples Example-Shaders-VisualSynth`.
+Examples: `swift run --package-path Examples Example-Shaders-VisualSynth` (one deep chain, played), and `Example-Shaders-VisualCatalog` (every family on a switchable contact sheet, each tile labeled with the calls it makes).

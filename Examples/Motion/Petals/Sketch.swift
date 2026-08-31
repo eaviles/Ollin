@@ -3,8 +3,8 @@ import Ollin
 
 /// A bloom of pointed lenses over a linkage of bars: the two oriented SDF
 /// primitives in one figure. An inner ring and an outer ring of points
-/// counter-rotate, and `drawOrientedVesica` spans a lens between point `i` of
-/// each, so each petal's length and angle shift every frame as both tips
+/// counter-rotate, and `drawOrientedVesica` spans a lens between matching
+/// points of each, so each petal's length and angle shift every frame as both tips
 /// drift. Interleaved half a step behind them, `drawOrientedBox` spans a
 /// thick bar between two rings of its own, turning at different speeds. That
 /// two-endpoints placement is what the oriented forms add over `drawVesica`
@@ -30,25 +30,22 @@ final class Petals: Sketch {
         // pair of counter-rotating rings, offset half a step from the petals.
         let barInner = 130.0 * scale
         let barOuter = 380.0 * scale
-        for i in 0..<petals {
-            let t = Double(i) / Double(petals)
-            let base = (t + 0.5 / Double(petals)) * .tau
-            let a = center + Vector2(angle: base + time * 0.9) * barInner
-            let b = center + Vector2(angle: base - time * 0.5) * barOuter
+        let halfStep = Double.tau / Double(petals) / 2
+        for (t, base) in zip(fractions(petals), angles(petals, from: halfStep)) {
+            let a = polar(base + time * 0.9, barInner, around: center)
+            let b = polar(base - time * 0.5, barOuter, around: center)
 
             let thickness = (22 + 14 * sin(time * 1.3 + base)) * scale
             fill(Colormap.turbo.color(at: t))
             drawOrientedBox(a, b, thickness: thickness)
         }
 
-        // The petals, one lens between point `i` of the two rings.
+        // The petals, one lens between matching points of the two rings.
         let inner = 90.0 * scale
         let outer = 430.0 * scale
-        for i in 0..<petals {
-            let t = Double(i) / Double(petals)
-            let base = t * .tau
-            let a = center + Vector2(angle: base + time * 0.4) * inner
-            let b = center + Vector2(angle: base - time * 0.25) * outer
+        for (t, base) in zip(fractions(petals), angles(petals)) {
+            let a = polar(base + time * 0.4, inner, around: center)
+            let b = polar(base - time * 0.25, outer, around: center)
 
             let waist = (30 + 26 * sin(time * 1.1 + base * 2)) * scale
             fill(Colormap.magma.color(at: 0.2 + 0.7 * t))

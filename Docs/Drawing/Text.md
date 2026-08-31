@@ -374,6 +374,8 @@ Measuring and wrapping happen every frame, so the text reflows live if the box (
 
 Where a line may break comes from the system's own rules, not from the spaces in the string. So a Japanese paragraph breaks between characters and a Thai one between words, both of which are written with no spaces at all. See [Every script](#scripts).
 
+Example: `Examples/Text/TextBox`, whose box breathes while a grid of rules spaced by `textLeading()` holds still under the rewrapping lines.
+
 <a name="texttoshapes"></a>
 
 ### textToShapes
@@ -646,6 +648,8 @@ textFont(BitmapFont.builtIn)
 print(textMissingCharacters("日本語"))     // [] - Cozette has the kanji
 print(textMissingCharacters("नमस्ते"))      // the Devanagari, which it does not
 ```
+
+Example: `Examples/Text/Scripts`, which carries a private-use code point no installed face has and names it before drawing the line.
 
 <a name="bitmapfont"></a>
 

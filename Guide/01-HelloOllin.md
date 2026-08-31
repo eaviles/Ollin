@@ -421,7 +421,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards (with an advanced group folded behind a disclosure row), icons, smoothing, saving a tuned set back into the code, and driving knobs from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language met properly, every construct these sketches lean on taught in order. [The Swift quick reference](../Docs/Swift.md) is its terse sibling, for whenever a single construct felt mysterious.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping).
-- Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift), the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift), and a page of shapes to drag around, [`Examples/Live/DragToEdit`](../Examples/Live/DragToEdit/Sketch.swift).
+- Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift), the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift), a page of shapes to drag around, [`Examples/Live/DragToEdit`](../Examples/Live/DragToEdit/Sketch.swift), and the whole press-drag-release surface as a toy, [`Examples/Input/Drag`](../Examples/Input/Drag/Sketch.swift).
 
 ---
 

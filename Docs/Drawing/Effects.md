@@ -323,7 +323,7 @@ withTarget(mask) { fill(.white); drawCircle(mouseX, mouseY, 200) }   // white = 
 drawImage(scene.combined(with: mask.filtered(.gaussianBlur(radius: 12)), .mask()).image, 0, 0)
 ```
 
-The base and aux can render at different `scale`s, since the aux is sampled by normalized coordinates. In a `compose { }` block, the same ops read as `aside` modifiers ([below](#aside)). The `Effects/Aside` example shows a displacement map and a spotlight mask in one scene.
+The base and aux can render at different `scale`s, since the aux is sampled by normalized coordinates. In a `compose { }` block, the same ops read as `aside` modifiers ([below](#aside)). The `Effects/Aside` example shows a displacement map and a spotlight mask in one scene. `Effects/PigmentMix` runs `.paintMix` and `.mix` over one yellow-over-blue pair at once, one half by hand and the other through `compose { }`.
 
 <a id="depth"></a>
 ### depth: a 3D scene's depth as a layer

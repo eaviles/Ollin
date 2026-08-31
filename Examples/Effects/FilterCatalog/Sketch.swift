@@ -10,9 +10,9 @@ import Ollin
 /// brightness), so what each filter keeps and what it throws away reads at a
 /// glance. The design family's alpha readers (`liquidMetal`, `heatmap`,
 /// `gemSmoke`) instead read the *shape* drawn into a transparent layer (draw a
-/// shape, filter it), so their tiles get a plain heart. The retro glitch rides
-/// its `seed`, and the distortion family animates its warp parameters, so those
-/// sheets move.
+/// shape, filter it), so their tiles get a plain heart. The retro glitch and
+/// grain ride their `seed`s, and the distortion family animates its warp
+/// parameters, so those sheets move.
 ///
 /// Three catalog entries with a dedicated study of their own are left to it:
 /// `.relight` (`Effects/Relight`), `.chromaticAberration` (`Effects/Dispersion`),
@@ -83,6 +83,7 @@ final class FilterCatalog_Example: Sketch {
                 ("scanlines", .scanlines(count: 120, amount: 0.45)),
                 ("glitch", .glitch(amount: 0.32, seed: t * 8)),
                 ("crt", .crt(curvature: 0.18, scanline: 0.35)),
+                ("grain", .grain(amount: 0.25, seed: t)),
             ]
         case .distortion:
             return [

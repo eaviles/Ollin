@@ -17,4 +17,5 @@ the [shader library reference](../../Docs/Shaders/ShaderLibrary.md), and
 | [ShaderFilter](ShaderFilter/Sketch.swift) | a shader as a one-input filter: draw a scene into a layer, re-sample it with a wave and posterize (`sample(info, uv)`) |
 | [ShaderBlend](ShaderBlend/Sketch.swift) | a shader as a two-input combine: an animated diagonal wipe whose seam ripples (`sample` + `sampleAux`) |
 | [VisualSynth](VisualSynth/Sketch.swift) | the fluent `Visual` chain surface: source, warps, color moves, and modulations compiling into one GPU pass, every number animatable without a recompile |
+| [VisualCatalog](VisualCatalog/Sketch.swift) | the `Visual` chain catalog on one switchable contact sheet: sources, warps, color adjustments, two-chain combines, and per-pixel modulations on a family knob, every tile labeled with the calls it chains |
 | [DomainWarp](DomainWarp/Sketch.swift) | runtime shader parameters: `Shader(_, params:)` floats read back in MSL as `param(info, n)`, animating a hand-written domain-warp marble with no recompile |

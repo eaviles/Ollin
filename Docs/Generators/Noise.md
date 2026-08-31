@@ -179,6 +179,8 @@ Same seed (`noiseSeed`), separate field: `noise` and `simplexNoise` at the same 
   <img src="../../Guide/Images/05-Noise/NoiseFlavors.jpg" alt="Six gray field panels from one seed: classic noise, simplex noise, warped fbm, cellular worley, ridged fbm, and turbulence" width="680">
 </picture>
 
+See the `Randomness/NoiseKinds` example for four of these read off one set of coordinates under one `noiseSeed`: `simplexNoise`, `signedSimplexNoise` split at zero, `worley` with its `feature` and `jitter` on knobs, and `turbulence`.
+
 <a name="worley"></a>
 
 #### worley

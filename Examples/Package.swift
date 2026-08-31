@@ -62,6 +62,7 @@ func example(
     _ folder: String,
     _ satellites: [Satellite] = [],
     resources: [Resource]? = nil,
+    exclude: [String] = [],
     dependencies extra: [Target.Dependency] = []
 ) -> Target {
     .executableTarget(
@@ -69,6 +70,7 @@ func example(
         dependencies: [.product(name: "Ollin", package: "Ollin")]
             + satellites.map(\.dependency) + extra,
         path: folder,
+        exclude: exclude,
         resources: resources
     )
 }
@@ -147,10 +149,16 @@ let package = Package(
         example("Effects/SummedArea"),
         example("Effects/GeneratorCatalog"),
         example("Effects/Cellular"),
+        // Two washes combined twice: linear light beside pigment mixing, where
+        // yellow over blue goes green rather than gray.
+        example("Effects/PigmentMix"),
         example("Shaders/HelloShader", resources: [.copy("ripple.metal")]),
         example("Shaders/ShaderFilter"),
         example("Shaders/ShaderBlend"),
         example("Shaders/VisualSynth"),
+        // The Visual chain's catalog: sources, warps, color, combines, and
+        // modulations, a family at a time.
+        example("Shaders/VisualCatalog"),
         example("Shaders/DomainWarp"),
         example("Rendering/ToneMapping"),
         example("Rendering/ColorOutput"),
@@ -399,9 +407,14 @@ let package = Package(
         example("Patterns/Phyllotaxis"),
         example("Input/RepelGrid"),
         example("Input/Keys"),
+        // Press, drag, release: the per-frame delta on screen, and a fling
+        // carrying the speed of the last few frames.
+        example("Input/Drag"),
         example("Input/PanAndZoom"),
         example("Patterns/WarpGrid"),
         example("Randomness/NoiseField"),
+        // The CPU noise family side by side over one set of coordinates.
+        example("Randomness/NoiseKinds"),
         example("Randomness/TilingNoise"),
         example("Randomness/RandomBand"),
         example("Randomness/NoiseWave"),
@@ -410,6 +423,9 @@ let package = Package(
         example("Shapes/Superellipse"),
         example("Shapes/Supershape"),
         example("Shapes/Primitives"),
+        // Arrows: a field of them, plus the translucent overlap that shows the
+        // shaft stopping at the head.
+        example("Shapes/Arrows"),
         example("Shapes/Booleans"),
         example("Shapes/Clipping"),
         example("Shapes/InkRibbon"),
@@ -425,6 +441,9 @@ let package = Package(
         example("Patterns/ContourMap"),
         example("Patterns/RidgeLines"),
         example("Patterns/Voronoi"),
+        // The triangulation half of the same tessellation: Delaunay triangles,
+        // with one site's neighbors lit.
+        example("Patterns/Delaunay"),
         example("Patterns/BlueNoise"),
         example("Patterns/LowDiscrepancy"),
         example("Patterns/Stippling"),
@@ -541,6 +560,17 @@ let package = Package(
         example("Audio/Shaping", [.audio]),
         example("Audio/Sampler", [.audio]),
         example("Audio/Spectrum", [.audio]),
+        // Plays along with the room: mic onsets give a tempo, and the sketch
+        // joins in once it is following steadily.
+        example("Audio/PlayAlong", [.audio]),
+        // One melody through several tunings, each sounding pitch labeled with
+        // its cents away from equal temperament.
+        example("Audio/Tunings", [.audio]),
+        // A progression written as chord names rather than scale degrees.
+        example("Audio/ChordSymbols", [.audio]),
+        // An instrument of our own: a hand-written .sfz over three recordings
+        // the folder's own script generates.
+        example("Audio/OwnSampler", [.audio], resources: [.copy("Hum.sfz"), .copy("hum-c3.wav"), .copy("hum-c4.wav"), .copy("hum-g4.wav")], exclude: ["make-samples.py"]),
         example("Audio/Listening", [.audio]),
         example("Audio/ChladniResonance", [.audio]),
         // The bundled clip the sketch loads via Bundle.module (a launch path
@@ -629,6 +659,11 @@ let package = Package(
         example("Physics/Packing", [.physics]),
         example("Physics/Blobs", [.physics]),
         example("Physics/RigidBodies", [.physics]),
+        // All four joint kinds side by side, each a small rig you can poke.
+        example("Physics/Joints", [.physics]),
+        // Force, impulse, and torque made visible, with a kinematic sweeper
+        // and a pinned spring lattice reading its own strain.
+        example("Physics/Forces", [.physics]),
         example("Physics/Chain", [.physics]),
         // Video — plays a bundled clip (or a path passed on launch) as a live
         // image. The clip is the example's own asset (CC BY-SA, provenance in

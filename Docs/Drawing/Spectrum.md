@@ -87,6 +87,6 @@ drawImage(field.combined(with: wash, .paintMix(amount: 0.5)).image, 0, 0)
 drawImage(scene.filtered(.thinFilm(thickness: 430, shift: time * 0.25)).image, 0, 0)
 ```
 
-The `Effects/SoapFilm` example runs the film and the grating live, and the `Color/Mixing` example draws `.paint` beside the other mixing spaces, band by band.
+The `Effects/SoapFilm` example runs the film and the grating live, and the `Color/Mixing` example draws `.paint` beside the other mixing spaces, band by band. The `Effects/PigmentMix` example lays one yellow wash over one blue field, combined both ways at once.
 
 Related: [Color](Color.md) for the mixing spaces, ramps, and palettes this page extends; [Layered effects](Effects.md) for the full filter and combine catalog; [Influences & attribution](../../ATTRIBUTION.md#color) for the techniques and the bundled data behind the curves.

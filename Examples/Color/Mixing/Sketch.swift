@@ -6,7 +6,9 @@ import Ollin
 /// two as scattering pigments (so complementary pairs meet in a real mixed
 /// hue, and every mix darkens the way paint does). The endpoints drift around
 /// the hue wheel over time, picked in OKHSL so their perceived lightness holds
-/// still while they travel.
+/// still while they travel. A readout at each band's right edge reports its
+/// midpoint through the `hue` / `saturation` / `brightness` read-backs, so the
+/// dips and detours have numbers.
 @main
 final class Mixing: Sketch {
     let spaces: [(label: String, space: ColorSpace)] = [
@@ -49,6 +51,13 @@ final class Mixing: Sketch {
             }
             fill(Color(hex: 0x9AA3AD))
             drawText(entry.label, band.x, band.y - 14)
+            // Each band's midpoint, read back through `hue`/`saturation`/
+            // `brightness`, the inverse of `init(hue:saturation:brightness:)`:
+            // RGB's dip through gray shows as the lowest S of the column, and
+            // paint's darkening as the lowest B.
+            let mid = Color.mix(a, b, 0.5, in: entry.space)
+            drawText("H \(Int((mid.hue * 360).rounded()))°  S \(Int((mid.saturation * 100).rounded()))  B \(Int((mid.brightness * 100).rounded()))",
+                     band.x + band.width, band.y - 14, size: 20, align: .right)
         }
     }
 }

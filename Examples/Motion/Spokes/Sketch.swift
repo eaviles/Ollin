@@ -15,15 +15,15 @@ final class Spokes: Sketch {
         let c = center
         let maxLen = shortSide * 0.42
         let inner = maxLen * 0.18
-        for i in 0..<count {
-            let a = Double(i) / Double(count) * .tau + time * 0.1
-            let pulse = unipolar(sin(time * 1.5 + Double(i) * 0.3))
-            let dir = Vector2(angle: a)
+        for (i, t) in fractions(count).enumerated() {
+            let a = t * .tau + time * 0.1
+            // A 0...1 pulse per spoke, phase-offset around the ring.
+            let pulse = wave(1.5, amplitude: 0.5, around: 0.5, phase: Double(i) * 0.3)
             let outer = inner + maxLen * map(pulse, 0, 1, 0.25, 1)
 
             strokeWeight(map(pulse, 0, 1, 6, 26))
-            stroke(palette.color(at: Double(i) / Double(count) + time * 0.05))
-            drawLine(c + dir * inner, c + dir * outer)
+            stroke(palette.color(at: t + time * 0.05))
+            drawLine(polar(a, inner, around: c), polar(a, outer, around: c))
         }
     }
 }

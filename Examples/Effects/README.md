@@ -29,6 +29,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [Droste](Droste/Sketch.swift) | a ring of lit windows falling into itself without end, the copies wound into one spiral, unwound to plain rings on mouse hold (`.droste(inner:twist:zoom:)`) |
 | [DomainColoring](DomainColoring/Sketch.swift) | a complex function painted over the plane it acts on, its zeros and poles read off the color wheels |
 | [SeamlessClone](SeamlessClone/Sketch.swift) | one layer dropped into another so the join disappears: the patch keeps its marks and takes the surroundings' color |
+| [PigmentMix](PigmentMix/Sketch.swift) | the same yellow wash over the same blue field, combined as light and as paint side by side: the linear dissolve meets in gray, the pigment mix meets in green and leaves the unpainted ground alone (`.mix` / `.paintMix`) |
 | [SummedArea](SummedArea/Sketch.swift) | one table that turns the average of any square into four lookups, so a 400-pixel blur costs what a 4-pixel one does, and each pixel can be cut against its own neighborhood instead of one number for the page (`.boxBlur`, `.adaptiveThreshold`) |
 
 Run one with `swift run Example-Effects-<Name>`, e.g. `swift run Example-Effects-Layers`.

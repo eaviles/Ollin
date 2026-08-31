@@ -440,6 +440,8 @@ The opcodes read are the ones that decide which file plays and at what pitch. Th
 
 **An unknown opcode is skipped rather than refused**, so a library that uses them loads and plays, without the parts this does not model. A region whose audio file is missing costs that part of the range rather than the whole instrument.
 
+`Examples/Audio/OwnSampler` is an instrument made rather than downloaded: three recordings generated beside the sketch and a three-region map, read with `SampledInstrument(sfz:in:)`. Each recording is drawn with its loop region shaded. `Examples/Audio/Sampler` plays the bundled one.
+
 #### Where to find instruments
 
 The licenses matter here, so they are worth stating alongside the links.
