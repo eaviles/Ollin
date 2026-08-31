@@ -3,6 +3,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
+import VideoToolbox
 
 /// The codec a video export encodes with.
 ///
