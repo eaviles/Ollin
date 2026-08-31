@@ -35,6 +35,7 @@ enum Satellite: String, CaseIterable {
     case dmx = "OllinDMX"
     case laser = "OllinLaser"
     case midi = "OllinMIDI"
+    case link = "OllinLink"
     case serial = "OllinSerial"
     case remote = "OllinRemote"
     case room = "OllinRoom"
@@ -622,6 +623,10 @@ let package = Package(
         // TempoClock locks the visuals to it; point real gear at the Mac and the
         // same sketch follows that instead.
         example("Integration/TempoSync", [.midi]),
+        // Joins the local network's shared tempo-and-phase session and locks
+        // the visuals to the room's beat; alone it free-runs at its own tempo,
+        // so it moves the same with nothing to join.
+        example("Integration/LinkTempo", [.link]),
         // Self-contained: a fake device on the manager side of a pty pair prints
         // a sensor value and a SerialPort reads the other side, so the classic
         // physical-computing loop runs with no hardware (like OSCLoopback);

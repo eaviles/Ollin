@@ -23,6 +23,7 @@ enum Satellite: String, CaseIterable {
     case dmx = "OllinDMX"
     case laser = "OllinLaser"
     case midi = "OllinMIDI"
+    case link = "OllinLink"
     case serial = "OllinSerial"
     case remote = "OllinRemote"
     case room = "OllinRoom"
@@ -75,6 +76,14 @@ let package = Package(
         // to MIDI gear (control surfaces, keyboards, sequencers) over Core MIDI.
         // Kept out of `Ollin` so the drawing core stays free of Core MIDI.
         .library(name: "OllinMIDI", targets: ["OllinMIDI"]),
+        // Tempo sync over the network as a satellite library: `import OllinLink`
+        // to join the local network's shared tempo-and-phase session (the Link
+        // protocol most music apps speak), so a sketch moves on the same beat as
+        // the whole rig with no cabling or setup. The wire protocol and the
+        // clock-sync math are implemented independently from published protocol
+        // documentation (no vendored SDK). Kept out of `Ollin` so the drawing
+        // core stays free of networking.
+        .library(name: "OllinLink", targets: ["OllinLink"]),
         // Haptics as a satellite library: `import OllinHaptics` to send a felt
         // pattern out beside the frame, on a trackpad that knocks or on a full
         // haptic engine. Kept out of `Ollin` so the drawing core stays free of
@@ -538,6 +547,19 @@ let package = Package(
             name: "OllinMIDI",
             dependencies: ["Ollin"]
         ),
+        // Link: join the local network's shared tempo-and-phase session, the
+        // de-facto standard most music apps speak, so a sketch and the rig move
+        // on one beat. Peer discovery (UDP multicast), the ping/pong clock-offset
+        // measurement, and the session timeline consensus are all implemented
+        // independently from published protocol documentation (no vendored SDK),
+        // over BSD sockets because the protocol needs precise per-interface
+        // multicast control (a shared well-known port, per-interface membership
+        // and loopback). A satellite (like OllinOSC) so the drawing core stays
+        // free of networking; sketches opt in with `import OllinLink`. Depends
+        // on nothing beyond Foundation.
+        .target(
+            name: "OllinLink"
+        ),
         // Haptics: a designed pattern of taps and hums played beside the frame,
         // so touch joins pixels and sound as an output. Two back ends behind one
         // seam: the window system's trackpad performer (three feelings, one
@@ -811,6 +833,16 @@ let package = Package(
         .testTarget(
             name: "OllinMIDITests",
             dependencies: ["OllinMIDI"]
+        ),
+        // Link correctness: wire round-trips pinned against a real captured
+        // packet, the pure timing math (phase encoding, timeline continuity),
+        // the session state machine (timeline priority, transport last-writer,
+        // arbitration, continuity reset) driven with synthetic clocks, and a
+        // two-instance loopback convergence test over real UDP multicast.
+        // GPU-independent, so it runs in CI too.
+        .testTarget(
+            name: "OllinLinkTests",
+            dependencies: ["OllinLink"]
         ),
         // Haptics correctness, hardware-free on purpose: the pattern algebra
         // (composing, moving, scaling, reversing), the trackpad plan as a pure

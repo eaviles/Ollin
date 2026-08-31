@@ -124,13 +124,6 @@ The fringe expander carries a half-width per path vertex, `StrokeProfile` shapes
 - **The render-thread rule holds.** Anything the audio callback touches is built non-isolated and allocated before the first note, and parameters reach it through the lock-free event ring rather than a lock. A new voice type inherits that constraint; it is not a per-feature decision.
 - **Keep the renderer pure.** The samples are made by a renderer that knows nothing about the audio engine: events in, buffer out, no clock. That is what makes the sound testable at all (a test renders and measures) and what a sound-carrying export would be built on, so a feature that reaches for the engine from inside the renderer is going the wrong way.
 
-## Tempo sync
-
-Locking a sketch's clock to external musical time, for live performance and installation. The wire tier is `OllinMIDI`'s `TempoClock` (MIDI clock in, beat/phase/BPM out); the tier ahead is the network:
-
-- **Ableton Link.** Link is the de-facto standard for tempo-and-phase sync across apps and machines on a local network (Ableton Live and most modern music apps speak it). It would let an Ollin sketch share a session's tempo and downbeat with a whole rig with no manual setup. The catch is licensing: Ableton's Link SDK is GPLv2 (or a paid commercial license), incompatible with Ollin shipping as MIT, so it stays the inspiration-only tier alongside Hydra's AGPL: the protocol is documented, so reimplement the wire and clock-sync from the spec rather than vendoring the SDK, exactly the clean-room stance the Record3D and OSC work already take. It's real work (a networked clock-consensus protocol), not a quick pickup. The read surface should land on the `TempoClock` shape (`tempo` / `beats` / `phase` / `progress(over:)`), so a sketch written against the wire tier moves to a Link session unchanged.
-- **Why it fits.** Ollin's audience includes VJs and live performers (the Syphon, OSC, MIDI, and virtual-camera work is all for them), and motion-by-default is the whole premise, so making that motion lock to a beat is squarely on-brand. It complements the [audio synthesis](#sound-synthesis-and-spatial-audio) work on the output side: a sketch can both make sound and move in time with the room.
-
 ## Live rigs: physical computing, lighting, and network video
 
 The hardware-and-network interop tier, extending the app-to-app integrations (Syphon, OSC, MIDI, the virtual camera) to the physical rig around the machine. Same posture throughout: play in the existing rig, implement published protocols from the spec, vendor nothing incompatible.

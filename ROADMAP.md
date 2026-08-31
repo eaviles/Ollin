@@ -71,10 +71,6 @@ The audio layer both listens (FFT, bands, beat detection) and plays: a polyphoni
 
 See the [design notes](DESIGN-NOTES.md#sound-synthesis-and-spatial-audio).
 
-## Tempo sync
-
-Beat, phase, and BPM from MIDI clock are the `TempoClock` in `OllinMIDI` (see [`Docs/Integration/MIDI.md`](Docs/Integration/MIDI.md)); the network tier is **Ableton Link**, the cross-app, cross-machine standard for shared tempo and beat phase across apps and devices on a local network. Joining a Link session would let a sketch share a whole rig's tempo and downbeat with no cabling or manual setup, the way most modern music apps do. Its SDK is GPLv2 or a paid license, so it stays the inspiration-only tier (reimplement the documented protocol from spec, never vendor it, the same posture as Hydra's AGPL), and it's a networked clock-consensus protocol, so it's substantial work rather than a quick pickup. See the [design notes](DESIGN-NOTES.md#tempo-sync).
-
 ## Live rigs: physical computing, lighting, and network video
 
 The integration tier reaches other software (Syphon, OSC, MIDI, the virtual camera); this tier reaches the hardware and the network around the machine, the physical-computing heritage of the lineage Ollin comes from:

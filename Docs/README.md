@@ -185,6 +185,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 - [`OSC`](./Integration/OSC.md) - `import OllinOSC` to send and receive OSC messages over UDP (to and from TouchOSC, Max/MSP, TouchDesigner, …), read in `draw()` or bound to a `@Param`
 - [`MIDI`](./Integration/MIDI.md) - `import OllinMIDI` to read from and send to MIDI controllers and keyboards over Core MIDI, read in `draw()` or bound to a `@Param`
+- [`Link`](./Integration/Link.md) - `import OllinLink` to join the local network's shared tempo-and-phase session (the Link protocol most music apps speak), so a sketch moves on the same beat and lands the same downbeat as the whole rig, with no cabling or setup
 - [`Serial`](./Integration/Serial.md) - `import OllinSerial` to read a USB microcontroller's sensor lines in `draw()` (or bound to a `@Param`) and write lines back to drive servos and LEDs: IOKit discovery, automatic reconnection, the classic physical-computing loop
 - [`Bluetooth`](./Integration/Bluetooth.md) - `import OllinBluetooth` to read a Bluetooth Low Energy sensor in `draw()` (or bound to a `@Param`) and write back to it: the room in range, connection that waits and returns by itself, the standard's own values already named, and the permission the first run has to get past
 - [`Remote`](./Integration/Remote.md) - `import OllinRemote` to serve the sketch's `@Param` knobs to a phone or a second machine on the local network: a touch surface in any browser, live both ways, for tuning an installation from in front of it

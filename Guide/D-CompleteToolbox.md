@@ -308,6 +308,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 28](28-SoundAndControl.md), [Ch 30](30-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 28](28-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
+| Link | The network's shared tempo session: one beat and one downbeat for every app in the room | [Ch 28](28-SoundAndControl.md) | [Link](../Docs/Integration/Link.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 28](28-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
 | Serial | A USB microcontroller's sensor lines read in `draw()` or bound to a knob, lines written back to drive the hardware, and a port that waits through unplugs and reopens itself | [Ch 28](28-SoundAndControl.md) | [Serial](../Docs/Integration/Serial.md) |
 | Bluetooth | A Bluetooth Low Energy sensor read in `draw()` or bound to a knob, the room of devices in range, the formats that turn bytes into values, and a connection that waits and returns by itself | [Ch 28](28-SoundAndControl.md) | [Bluetooth](../Docs/Integration/Bluetooth.md) |
