@@ -1,0 +1,44 @@
+name: Bug report
+description: Something crashes, renders wrong, or fails to build
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: sketch
+    attributes:
+      label: Smallest sketch that shows it
+      description: A minimal sketch, or the steps, that reproduces the problem.
+      render: swift
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.1"
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: Mac and GPU
+      description: The machine and its GPU. Rendering differs across GPU families, so this is most of the triage.
+      placeholder: "MacBook Pro (M4 Pro)"
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Ollin commit
+      description: Run `git rev-parse --short HEAD` in your checkout.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, exports, or a crash log.
