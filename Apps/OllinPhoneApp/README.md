@@ -2,12 +2,13 @@
 
 Ollin's own iPhone capture app: the phone runs **ARKit body tracking**, **face
 tracking**, **rear-LiDAR scene depth**, **person segmentation**, and **scene
-reconstruction** on its Neural Engine, plus **hand pose** and **text reading**
+reconstruction** on its Neural Engine, plus **hand pose**, **text reading**, and an
+**attention map** of where the picture draws the eye
 (Vision over the ARKit frames, lifted to 3D through the LiDAR depth), a
 **front-camera selfie matte** (Vision over a plain capture session), and
 **CoreMotion** device motion, and streams them to a tethered Mac over USB. An Ollin
-sketch on the Mac reads the live skeleton, face, hands, text, depth cloud, person
-matte, room mesh, or motion in `draw()` through the
+sketch on the Mac reads the live skeleton, face, hands, text, attention map, depth
+cloud, person matte, room mesh, or motion in `draw()` through the
 [`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
 
 This is the own-app successor to borrowing the Record3D app's RGBD feed
@@ -22,10 +23,12 @@ Each body joint carries a position, an orientation, and a camera-observed flag; 
 body also carries its world anchor and the person's estimated scale.
 The chain is Ollin's end to end.
 
-Body, World, Segment, Room, Hands, Text, Markers, and Wand use the rear camera; Face
+Body, World, Segment, Room, Hands, Text, Markers, Wand, and Attention use the rear
+camera; Face
 (ARKit, TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera.
 Only one camera session runs at a time. The app has a **Body / Face / World /
-Segment / Selfie / Room / Hands / Text / Markers / Wand** toggle and runs one mode at a
+Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention** toggle and runs
+one mode at a
 time. Device motion
 streams in all of them; the room's light in every mode except Selfie, which has no
 ARKit session to measure it.
@@ -78,7 +81,7 @@ Requirements:
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
    then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room /
-   Hands / Text / Markers / Wand** toggle and live status.
+   Hands / Text / Markers / Wand / Attention** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -109,7 +112,10 @@ Requirements:
    rear camera at the print: a city of columns rises off it. On **Wand**:
    `swift run --package-path Examples Example-3D-Phone-PhonePointer`, then point the
    back of the phone at the balls on the Mac's screen and press the pad to pick one
-   up, sliding the thumb to push it away. Before tracking begins, the
+   up, sliding the thumb to push it away. On **Attention**:
+   `swift run --package-path Examples Example-3D-Phone-PhoneAttention`, then point
+   the rear camera at anything and the heat map glows over the live frame where the
+   picture draws the eye, a bead trailing the strongest region. Before tracking begins, the
    gravity readout proves the USB wire is alive (tilt the phone and it moves), and
    the light row reads the room's brightness and color in every ARKit mode.
 
@@ -148,6 +154,14 @@ Requirements:
   arithmetic. A line lifts all four corners or none. It reads at the accurate
   recognition level, so a few finished readings arrive per second. Without LiDAR
   the lines stay 2D.
+- The attention stream (`SaliencyStreamer`) follows the same pattern over Vision's
+  attention model: its own queue, the drop-if-busy gate, and the upright
+  orientation handed to the request, so the heat map and the region boxes come
+  back upright and go onto the wire that way. Each region's *center* is lifted
+  through the shared depth arithmetic (a box's corners land on the background, so
+  only the center is worth standing in the room). The color frame rides beside the
+  heat camera-native, with the turn count that stands it up on the Mac. Without
+  LiDAR the mode still runs and the regions stay 2D.
 - The marker stream (`MarkerStreamer`) hands ARKit a library of reference pictures
   and scanned objects and reads back the anchors it finds. The library is the app's
   own Documents folder (`UIFileSharingEnabled`, so it appears in Finder and Files),

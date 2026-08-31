@@ -117,6 +117,13 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// Plain world tracking carries it, so it needs no LiDAR, and the payload is
     /// small enough to send every frame.
     case wand = 12
+    /// Where the rear camera's picture draws the eye, computed on the phone: a
+    /// coarse heat map of visual attention, the bounding regions it peaks in, and
+    /// the matching color frame. On a LiDAR phone each region's center also
+    /// carries a metric 3D position in ARKit world space, lifted through the
+    /// depth map and the camera pose, so the thing being looked at keeps a place
+    /// in the room. Streams in Attention mode (rear camera).
+    case saliency = 13
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -593,7 +600,7 @@ public struct PhoneHandSample: Sendable, Equatable {
 /// On a LiDAR phone `hasWorldCorners` turns on and `worldCorners` carries the
 /// same four corners in meters, ARKit world space (y up, the origin where the
 /// session started), lifted through the depth map and the camera pose: all four
-/// or none, since three corners are not a quad. `tracked` reports the ARKit
+/// or none, since three corners are not a quad. `isTracked` reports the ARKit
 /// session's own tracking state, which is what says whether the world corners
 /// stand in a steady world.
 public struct PhoneTextSample: Sendable, Equatable {
@@ -839,6 +846,73 @@ public extension PhoneWire {
     }
 }
 
+/// One region the attention model picked out: the bounding box of something that
+/// draws the eye, as an upright normalized rectangle (`0…1`, lower-left origin,
+/// y up, already turned for how the phone was held), with the model's confidence.
+///
+/// On a LiDAR phone `hasWorldCenter` turns on and `worldCenter` carries the middle
+/// of the region in meters, ARKit world space (y up, the origin where the session
+/// started), lifted through the depth map and the camera pose, so the thing being
+/// looked at keeps a place in the room.
+public struct PhoneSalientRegionSample: Sendable, Equatable {
+    /// The region's lower-left corner, upright normalized (`0…1`).
+    public var x: Float
+    public var y: Float
+    /// The region's size, upright normalized (`0…1`).
+    public var width: Float
+    public var height: Float
+    /// The model's confidence in the region, `0…1`.
+    public var confidence: Float
+    public var hasWorldCenter: Bool
+    /// The region's center in ARKit world space (meters), or zero when not lifted.
+    public var worldCenter: SIMD3<Float>
+
+    public init(x: Float, y: Float, width: Float, height: Float,
+                confidence: Float = 1, hasWorldCenter: Bool = false,
+                worldCenter: SIMD3<Float> = .zero) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.confidence = confidence
+        self.hasWorldCenter = hasWorldCenter
+        self.worldCenter = worldCenter
+    }
+}
+
+/// One reading of where the picture draws the eye: a coarse heat map of visual
+/// attention (`heatWidth × heatHeight`, row-major from the top-left of the
+/// upright picture, 0 = passed over … 255 = what the eye goes to first), the
+/// regions the heat peaks in, and the matching JPEG color frame (decoded on the
+/// Mac side so this file stays free of ImageIO).
+///
+/// The heat map and the regions are already upright for how the phone was held;
+/// `orientation` is the number of 90-degree **clockwise** turns the Mac applies
+/// to the color frame alone to stand it beside them (0…3).
+public struct PhoneSaliencySample: Sendable, Equatable {
+    public var isTracked: Bool
+    public var timestamp: Double
+    public var heatWidth: Int
+    public var heatHeight: Int
+    public var orientation: UInt8
+    public var heat: [UInt8]
+    public var colorJPEG: Data
+    public var regions: [PhoneSalientRegionSample]
+
+    public init(isTracked: Bool, timestamp: Double, heatWidth: Int, heatHeight: Int,
+                orientation: UInt8 = 0, heat: [UInt8], colorJPEG: Data = Data(),
+                regions: [PhoneSalientRegionSample] = []) {
+        self.isTracked = isTracked
+        self.timestamp = timestamp
+        self.heatWidth = heatWidth
+        self.heatHeight = heatHeight
+        self.orientation = orientation
+        self.heat = heat
+        self.colorJPEG = colorJPEG
+        self.regions = regions
+    }
+}
+
 public extension PhoneWire {
     /// Map an upright normalized point (lower-left origin, y up: the convention
     /// every 2D hand joint is carried in) back onto the camera-native buffer's
@@ -897,6 +971,9 @@ public enum PhoneMessage: Sendable, Equatable {
     /// frame. Unlike every other kind, this one carries the person rather than
     /// the room.
     case wand(PhoneWandSample)
+    /// Where the rear camera's picture draws the eye: the heat map, the regions
+    /// it peaks in, and the matching color frame, one reading per analyzed frame.
+    case saliency(PhoneSaliencySample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -912,6 +989,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .texts: return .recognizedText
         case .markers: return .marker
         case .wand: return .wand
+        case .saliency: return .saliency
         }
     }
 }
@@ -965,6 +1043,7 @@ public extension PhoneWire {
         case .texts(let texts): payload = encodeTextsPayload(texts)
         case .markers(let markers): payload = encodeMarkersPayload(markers)
         case .wand(let w): payload = encodeWandPayload(w)
+        case .saliency(let s): payload = encodeSaliencyPayload(s)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1276,6 +1355,44 @@ public extension PhoneWire {
         return p
     }
 
+    private static func encodeSaliencyPayload(_ s: PhoneSaliencySample) -> Data {
+        var p = Data()
+        p.append(s.isTracked ? 1 : 0)
+        appendF64(&p, s.timestamp)
+        appendU32(&p, UInt32(max(0, s.heatWidth)))
+        appendU32(&p, UInt32(max(0, s.heatHeight)))
+        p.append(s.orientation)
+        // Color: a JPEG byte count, then the JPEG bytes (decoded on the Mac side).
+        appendU32(&p, UInt32(s.colorJPEG.count))
+        p.append(s.colorJPEG)
+        // Heat: a sample count, then the raw grayscale bytes (one per pixel).
+        appendU32(&p, UInt32(s.heat.count))
+        p.append(contentsOf: s.heat)
+        // Regions: a count, then that many self-contained records (capped
+        // defensively; the model reports a handful at most).
+        p.append(UInt8(min(s.regions.count, 255)))
+        for region in s.regions.prefix(255) { appendSalientRegionRecord(&p, region) }
+        return p
+    }
+
+    /// One salient-region record: the upright normalized box, the confidence, and
+    /// (when lifted) the world center. Self-contained so the decoder reads records
+    /// back to back.
+    private static func appendSalientRegionRecord(_ p: inout Data, _ r: PhoneSalientRegionSample) {
+        appendF32(&p, r.x); appendF32(&p, r.y)
+        appendF32(&p, r.width); appendF32(&p, r.height)
+        appendF32(&p, r.confidence)
+        // The world center is there or it is not (a non-LiDAR phone, or a center
+        // over a hole in the depth map).
+        if r.hasWorldCenter {
+            p.append(1)
+            appendF32(&p, r.worldCenter.x); appendF32(&p, r.worldCenter.y)
+            appendF32(&p, r.worldCenter.z)
+        } else {
+            p.append(0)
+        }
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -1306,6 +1423,7 @@ public extension PhoneWire {
         case .recognizedText: return decodeTexts(payload).map(PhoneMessage.texts)
         case .marker: return decodeMarkers(payload).map(PhoneMessage.markers)
         case .wand: return decodeWand(payload).map(PhoneMessage.wand)
+        case .saliency: return decodeSaliency(payload).map(PhoneMessage.saliency)
         }
     }
 
@@ -1772,6 +1890,60 @@ public extension PhoneWire {
         return PhoneWandSample(isTracked: tracked, timestamp: timestamp, transform: transform,
                                quarterTurnsCW: turns, isPressed: pressed, pressCount: pressCount,
                                hasTouch: hasTouch, touch: touch)
+    }
+
+    private static func decodeSaliency(_ data: Data) -> PhoneSaliencySample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + dims(8) + orientation(1) + jpegLen(4).
+        let prefix = 1 + 8 + 8 + 1 + 4
+        guard data.count >= prefix else { return nil }
+        let s = data.startIndex
+        let tracked = data[s] != 0
+        var o = 1
+        func u32() -> Int { defer { o += 4 }; return Int(readU32(data, s + o)) }
+        let timestamp = readF64(data, s + o); o += 8
+        let heatWidth = u32()
+        let heatHeight = u32()
+        let orientation = data[s + o]; o += 1
+
+        let jpegLen = u32()
+        guard jpegLen >= 0, data.count >= o + jpegLen + 4 else { return nil }
+        let colorJPEG = Data(data[(s + o)..<(s + o + jpegLen)]); o += jpegLen
+
+        let heatCount = u32()
+        guard heatCount >= 0, data.count >= o + heatCount + 1 else { return nil }
+        let heat = [UInt8](data[(s + o)..<(s + o + heatCount)]); o += heatCount
+
+        let regionCount = Int(data[s + o]); o += 1
+        var regions = [PhoneSalientRegionSample](); regions.reserveCapacity(regionCount)
+        for _ in 0..<regionCount {
+            guard let region = readSalientRegionRecord(data, &o) else { return nil }
+            regions.append(region)
+        }
+        return PhoneSaliencySample(isTracked: tracked, timestamp: timestamp,
+                                   heatWidth: heatWidth, heatHeight: heatHeight,
+                                   orientation: orientation, heat: heat,
+                                   colorJPEG: colorJPEG, regions: regions)
+    }
+
+    /// Read one salient-region record starting at offset `o` (advanced past the
+    /// record on success), or `nil` if the buffer is short.
+    private static func readSalientRegionRecord(_ data: Data, _ o: inout Int) -> PhoneSalientRegionSample? {
+        // Five floats, then hasWorld(1).
+        guard data.count >= o + 20 + 1 else { return nil }
+        let s = data.startIndex
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let x = f32(), y = f32()
+        let width = f32(), height = f32()
+        let confidence = f32()
+        let hasWorld = data[s + o] != 0; o += 1
+        var worldCenter = SIMD3<Float>.zero
+        if hasWorld {
+            guard data.count >= o + 12 else { return nil }
+            worldCenter = SIMD3<Float>(f32(), f32(), f32())
+        }
+        return PhoneSalientRegionSample(x: x, y: y, width: width, height: height,
+                                        confidence: confidence,
+                                        hasWorldCenter: hasWorld, worldCenter: worldCenter)
     }
 }
 

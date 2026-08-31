@@ -5,8 +5,9 @@ import simd
 /// **Ollin Capture**, Ollin's own iPhone sensor app. The phone runs ARKit (body
 /// pose, face, rear-LiDAR scene depth, person segmentation, the reconstructed room
 /// surface with the flat planes in it, and the room's own light) on its Neural
-/// Engine, plus the 21-joint hand skeletons and the readable text in view (Vision
-/// over the ARKit frames, lifted to 3D through the LiDAR depth), a front-camera
+/// Engine, plus the 21-joint hand skeletons, the readable text in view, and a map
+/// of where the picture draws the eye (Vision over the ARKit frames, lifted to 3D
+/// through the LiDAR depth), a front-camera
 /// selfie matte (Vision, no ARKit), and CoreMotion device motion, and streams them
 /// to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin
 /// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
@@ -35,6 +36,11 @@ struct OllinCaptureApp: App {
 /// own place and heading, with the thumb on the screen beside it, so a sketch on
 /// the Mac can be pointed at and pressed.
 ///
+/// Attention maps where the rear camera's picture draws the eye (Vision's
+/// attention model over the ARKit frames): a coarse heat map, the regions it
+/// peaks in, and the matching color frame, with each region's center lifted to
+/// 3D through the LiDAR depth where the device has it.
+///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
 enum CaptureMode: String, CaseIterable, Identifiable {
@@ -48,6 +54,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case text = "Text"
     case markers = "Markers"
     case wand = "Wand"
+    case attention = "Attention"
     var id: String { rawValue }
 }
 
@@ -80,6 +87,8 @@ final class SensorStreamer {
     var markerInfo = ""
     var wandTracked = false
     var wandInfo = ""
+    var attentionLive = false
+    var attentionInfo = ""
     /// What the phone is looking for, and what it could not use, for the screen.
     var markerReferences: [MarkerReference] = []
     var markerNotes: [String] = []
@@ -97,6 +106,7 @@ final class SensorStreamer {
     let meshSupported = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
     let handsLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
     let textLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+    let attentionLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
 
     private var server: SensorServer?
     private let ar = ARStreamer()
@@ -111,6 +121,7 @@ final class SensorStreamer {
     /// The one streamer the screen writes into rather than only reading: the pad
     /// under the thumb is part of this sensor, so the view reaches it directly.
     let wand = WandStreamer()
+    private let attention = SaliencyStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
@@ -260,6 +271,16 @@ final class SensorStreamer {
             self.wandInfo = parts.joined(separator: " · ")
         }
 
+        attention.onSaliency = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.saliency(sample)))
+            self.attentionLive = true
+            let lifted = sample.regions.contains(where: \.hasWorldCenter)
+            self.attentionInfo = sample.regions.isEmpty
+                ? "nothing stands out yet"
+                : "\(sample.regions.count) \(sample.regions.count == 1 ? "region" : "regions") · \(lifted ? "3D" : "2D")"
+        }
+
         markers.onLibrary = { [weak self] library in
             guard let self else { return }
             self.markerReferences = library.references
@@ -269,7 +290,8 @@ final class SensorStreamer {
         // Every ARKit session estimates the light, so they all report to the same
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
-        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text, markers, wand]
+        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text,
+                                               markers, wand, attention]
         for reporter in reporters {
             reporter.lightSampler.onLight = { [weak self] sample in
                 guard let self else { return }
@@ -338,6 +360,13 @@ final class SensorStreamer {
             wandInfo = ""
             wand.start()
             status = "Point the back of the phone at the sketch, and press the pad below"
+        case .attention:
+            attentionLive = false
+            attentionInfo = ""
+            attention.start()
+            status = attentionLift
+                ? "Streaming where the picture draws the eye, regions lifted to 3D through the LiDAR depth"
+                : "Streaming where the picture draws the eye (this device has no LiDAR to lift the regions)"
         case .room:
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
@@ -366,6 +395,7 @@ final class SensorStreamer {
     private func stopAllSessions() {
         ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
         room.stop(); hands.stop(); text.stop(); markers.stop(); wand.stop()
+        attention.stop()
     }
 
     /// Name the strongest-firing blendshape, for the status readout.
@@ -418,14 +448,14 @@ struct ContentView: View {
                 }
 
                 // Capture mode: one camera session at a time (rear: body/world/
-                // segment/room/hands/text/markers/wand, front: face/selfie), so the
-                // modes are mutually exclusive. Ten modes outgrew the segmented
-                // control, so they wrap as four rows of chips.
+                // segment/room/hands/text/markers/wand/attention, front:
+                // face/selfie), so the modes are mutually exclusive. Eleven modes
+                // outgrew the segmented control, so they wrap as four rows of chips.
                 VStack(spacing: 8) {
                     modeRow([.body, .face, .world])
                     modeRow([.segment, .selfie, .room])
                     modeRow([.hands, .text, .markers])
-                    modeRow([.wand], padTo: 3)
+                    modeRow([.wand, .attention], padTo: 3)
                 }
                 .padding(.horizontal, 28)
 
@@ -479,6 +509,11 @@ struct ContentView: View {
                             ? "looking around the room…"
                             : streamer.wandInfo,
                             ok: streamer.wandTracked)
+                    case .attention:
+                        row("Attention", streamer.attentionInfo.isEmpty
+                            ? "mapping the picture…"
+                            : "streaming · \(streamer.attentionInfo)",
+                            ok: streamer.attentionLive)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")

@@ -268,6 +268,32 @@ import Darwin
         #expect(roundTrip(message) == message)
     }
 
+    @Test func roundTripsSaliency() {
+        // A small heat map (3×2), an upright-rotation count for the color, and
+        // two regions: one lifted to a world center, one flat.
+        let heat: [UInt8] = [0, 64, 128, 192, 255, 32]
+        let regions = [
+            PhoneSalientRegionSample(x: 0.25, y: 0.5, width: 0.2, height: 0.3,
+                                     confidence: 0.9, hasWorldCenter: true,
+                                     worldCenter: SIMD3<Float>(0.4, 1.2, -0.8)),
+            PhoneSalientRegionSample(x: 0.6, y: 0.1, width: 0.1, height: 0.15,
+                                     confidence: 0.4),
+        ]
+        let message = PhoneMessage.saliency(PhoneSaliencySample(
+            isTracked: true, timestamp: 9.5, heatWidth: 3, heatHeight: 2, orientation: 1,
+            heat: heat, colorJPEG: Data([0xFF, 0xD8, 0xFF, 0xE0]), regions: regions))
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsSaliencyBare() {
+        // No regions and no color frame: the degenerate reading the codec must
+        // survive (a heat map alone still stands).
+        let message = PhoneMessage.saliency(PhoneSaliencySample(
+            isTracked: false, timestamp: 0, heatWidth: 2, heatHeight: 1,
+            heat: [10, 250]))
+        #expect(roundTrip(message) == message)
+    }
+
     @Test func roundTripsMarkers() {
         // Two finds in one frame: a picture being followed (its name leaves ASCII,
         // and ARKit has an opinion about its printed size), and a scanned object,

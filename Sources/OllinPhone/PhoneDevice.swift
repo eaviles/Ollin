@@ -50,6 +50,11 @@ import Darwin
 /// doing on the screen, so a sketch can be pointed at and pressed. It runs on plain
 /// world tracking, so it needs no LiDAR.
 ///
+/// In **Attention** mode the phone maps where its picture draws the eye:
+/// `latestSaliency` carries a coarse heat map and the regions it peaks in,
+/// `latestSaliencyHeatMap` the tintable glow, and `latestSaliencyFrame` the
+/// camera frame they were read from.
+///
 /// `latestLight` says how bright and how warm the room is. It arrives in every mode,
 /// so a sketch can match the light it is standing in.
 ///
@@ -79,6 +84,13 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     private var cachedSegMatte: Image?
     private var cachedSegCutoutSequence: Int?
     private var cachedSegCutout: Image?
+
+    // The attention heat map and its color frame, cached the same way: a sketch
+    // reading only the regions or the salience query never builds either image.
+    private var cachedSaliencyHeatSequence: Int?
+    private var cachedSaliencyHeat: Image?
+    private var cachedSaliencyFrameSequence: Int?
+    private var cachedSaliencyFrame: Image?
 
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
@@ -265,6 +277,54 @@ public final class PhoneDevice: FrameSource, VideoFeed {
         return cutout
     }
 
+    // MARK: - Attention mode (where the picture draws the eye)
+
+    /// The latest reading of where the phone's picture draws the eye, or `nil`
+    /// before one arrives. Populated in **Attention** mode (rear camera): the
+    /// phone runs the attention model on its own Neural Engine and streams the
+    /// coarse heat map plus the regions it peaks in. `salience(at:in:)` reads the
+    /// value under any canvas point; on a LiDAR phone each region's center also
+    /// stands in ARKit world space.
+    public var latestSaliency: PhoneSaliency? {
+        reader.latestSaliency.map { PhoneSaliency($0.sample) }
+    }
+
+    /// The latest attention heat map as a tintable white-alpha `Image`, or `nil`
+    /// before an Attention-mode reading arrives. Drawn as-is it is a white glow
+    /// where the eye goes; `tint(_:)` recolors it into a spotlight, a fog, a
+    /// warm haze. Draw it into the same rectangle as `latestSaliencyFrame` and
+    /// it lines up. Coarse on purpose (the model's own resolution): stretching
+    /// it over the frame is how it is meant to be used.
+    public var latestSaliencyHeatMap: Image? {
+        guard let box = reader.latestSaliency else { return nil }
+        if cachedSaliencyHeatSequence == box.sequence, let cachedSaliencyHeat {
+            return cachedSaliencyHeat
+        }
+        let sample = box.sample
+        guard let gray = SegmentationImages.grayCGImage(fromPlane: sample.heat,
+                                                        width: sample.heatWidth,
+                                                        height: sample.heatHeight),
+              let heat = SegmentationImages.matteImage(from: gray) else { return nil }
+        cachedSaliencyHeatSequence = box.sequence
+        cachedSaliencyHeat = heat
+        return heat
+    }
+
+    /// The camera frame the latest attention reading was made from, upright for
+    /// how the phone was held, or `nil` before one arrives. The backdrop to draw
+    /// the heat map and the region boxes over; built only when read.
+    public var latestSaliencyFrame: Image? {
+        guard let box = reader.latestSaliency, let color = box.color else { return nil }
+        if cachedSaliencyFrameSequence == box.sequence, let cachedSaliencyFrame {
+            return cachedSaliencyFrame
+        }
+        let upright = rotatedCGImage(color, quarterTurnsCW: Int(box.sample.orientation)) ?? color
+        let frame = Image(cgImage: upright)
+        cachedSaliencyFrameSequence = box.sequence
+        cachedSaliencyFrame = frame
+        return frame
+    }
+
     // MARK: - Room mode (the reconstructed room surface)
 
     /// The room the phone has reconstructed so far, as a growing set of triangle
@@ -356,6 +416,8 @@ final class PhoneStreamReader: @unchecked Sendable {
         var depthSequence = 0
         var latestSegmentation: PhoneSegmentationBox?
         var segSequence = 0
+        var latestSaliency: PhoneSaliencyBox?
+        var saliencySequence = 0
         var sceneMesh = PhoneSceneMesh()
         var sceneMeshVersion: Int?
         var sceneMeshScan: UInt32?
@@ -386,6 +448,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
+    var latestSaliency: PhoneSaliencyBox? { lock.withLock { $0.latestSaliency } }
     var latestPose3D: simd_float4x4? { lock.withLock { $0.latestDepth?.transform } }
     var sceneMesh: PhoneSceneMesh { lock.withLock { $0.sceneMesh } }
     var sceneMeshVersion: Int? { lock.withLock { $0.sceneMeshVersion } }
@@ -473,6 +536,14 @@ final class PhoneStreamReader: @unchecked Sendable {
                     if let box = decodePhoneSegmentation(sample, sequence: seq) {
                         lock.withLock { $0.latestSegmentation = box }
                     }
+                case .message(.saliency(let sample)):
+                    // JPEG-decode the color on this thread (off the main actor), then
+                    // store the boxed reading; the heat-map and frame images are built
+                    // lazily on the main actor when the sketch reads them.
+                    let seq = lock.withLock { state -> Int in state.saliencySequence += 1; return state.saliencySequence }
+                    if let box = decodePhoneSaliency(sample, sequence: seq) {
+                        lock.withLock { $0.latestSaliency = box }
+                    }
                 case .message(.sceneMesh(let sample)):
                     // Place the block into world space on this thread, off the main
                     // actor and outside the lock (a block carries thousands of
@@ -524,7 +595,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .markers(let m): state.latestMarkers = m
                         case .wand(let w): state.latestWand = w
                         case .light(let l): state.latestLight = l
-                        case .depth, .segmentation, .sceneMesh, .plane: break   // handled above
+                        case .depth, .segmentation, .saliency, .sceneMesh, .plane: break   // handled above
                         }
                     }
                 case .skip:

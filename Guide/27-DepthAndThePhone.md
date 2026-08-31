@@ -381,6 +381,26 @@ for line in device.latestTexts {
 
 The upright word stands on a wall and the flat one lies on a table, and neither needed different code. Each panel is the line's own quad, and the type inside it is `textToShapes` run through `drawTube`, scaled by `worldWidth`. The frame does the placing. A line lifts all four corners or none, so `worldTransform` is either a real place or `nil`. The flat fallback draws the same lines over the canvas with `corners(in:)`. Underline a read word, replace it, translate it, or move it off its wall. The `3D/Phone/PhoneWorldText` example is this section live: aim the phone at anything readable and the words stand in the room.
 
+### What draws the eye
+
+The phone can also say where a picture pulls the gaze. In **Attention** mode it runs the on-device attention model over the rear camera, a model trained on where people actually look. Each reading arrives as a `PhoneSaliency`: a coarse heat map of visual attention, and the regions it peaks in. The heat comes ready to draw as a tintable glow, and `salience(at:in:)` reads the pull under any canvas point:
+
+```swift
+if let attention = device.latestSaliency,
+   let heat = device.latestSaliencyHeatMap {
+    tint(Color(red: 1, green: 0.72, blue: 0.3, alpha: 0.75))
+    drawImage(heat, in: rect)          // attention as a warm glow over the frame
+    noTint()
+    for region in attention.regions {
+        drawRect(region.bounds(in: rect), cornerRadius: 10)   // what stood out
+    }
+}
+```
+
+<img src="Images/27-DepthAndThePhone/AttentionAsHeat.jpg" alt="A staged attention reading on a dark panel: two peaks of warm dots, one strong over a bright lamp shape with a white bead at its center, one weaker over a dim poster shape, each wearing a rounded teal frame whose weight follows the model's confidence" width="680">
+
+The dots are `salience(at:in:)` sampled on a grid, one query per cell. That is the other way to read the map: not a picture but a field. Big values pull, small values leave alone, so the same surface drives stippling, particle drift, or where a brush is allowed to land. The frames are the model's regions, their line weight following its confidence. On a LiDAR phone each region's center also stands in ARKit world space. The thing being looked at keeps a place beside the room, the hands, and the words. The `3D/Phone/PhoneAttention` example is this section live: point the phone at anything, and a bead wanders the frame to wherever the picture draws the eye.
+
 ### A picture it knows
 
 Reading is one way to recognize something. Knowing it by sight is the other. Give the capture app a picture and it will find that picture in the room. Drop the file into the app's own folder over the cable, in Finder, under Files, then Ollin Capture. Say how wide you printed it in the file's name, `poster@30cm.png`. ARKit places a print by its real width, and no image file carries one. Tap **Markers** and the phone starts looking.

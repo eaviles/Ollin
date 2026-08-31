@@ -369,6 +369,10 @@ let package = Package(
         // a press picks it up, the thumb pushes it away. The one mode that carries
         // the person rather than the room.
         example("3D/Phone/PhonePointer", [.phone]),
+        // Where the phone's picture draws the eye: the attention heat map as a warm
+        // glow over the live frame, a frame around each region the model picked out,
+        // and an eased bead trailing where the attention has been.
+        example("3D/Phone/PhoneAttention", [.phone]),
         example("Motion/Breathing"),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
