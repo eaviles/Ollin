@@ -32,7 +32,7 @@ import CoreImage
 /// touched only on the capture queue.
 final class SelfieStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
 
-    /// Fired (on the main thread) for each frame with its matte. `tracked` means
+    /// Fired (on the main thread) for each frame with its matte. `isTracked` means
     /// someone is actually in view (the matte has ink), since a capture session has
     /// no tracking state to report.
     var onSegmentation: ((PhoneSegmentationSample) -> Void)?

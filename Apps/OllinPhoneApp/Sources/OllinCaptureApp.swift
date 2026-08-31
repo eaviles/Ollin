@@ -168,14 +168,14 @@ final class SensorStreamer {
         depth.onDepth = { [weak self] sample in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.depth(sample)))
-            self.depthTracked = sample.tracked
+            self.depthTracked = sample.isTracked
             self.depthInfo = "\(sample.depthWidth)×\(sample.depthHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
         seg.onSegmentation = { [weak self] sample in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.segmentation(sample)))
-            self.segTracked = sample.tracked
+            self.segTracked = sample.isTracked
             self.segInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
@@ -184,7 +184,7 @@ final class SensorStreamer {
         selfie.onSegmentation = { [weak self] sample in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.segmentation(sample)))
-            self.selfiePresent = sample.tracked
+            self.selfiePresent = sample.isTracked
             self.selfieInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
@@ -192,7 +192,7 @@ final class SensorStreamer {
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.sceneMesh(sample)))
             self.meshBlocksSent += 1
-            self.meshTracked = sample.tracked
+            self.meshTracked = sample.isTracked
             self.meshInfo = "\(self.meshBlocksSent) blocks"
             if self.meshBlocksSkipped > 0 {
                 self.meshInfo += " · \(self.meshBlocksSkipped) too big"
@@ -207,7 +207,7 @@ final class SensorStreamer {
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.plane(sample)))
             self.planesSent += 1
-            if sample.removed { self.livePlanes.remove(sample.id) } else { self.livePlanes.insert(sample.id) }
+            if sample.isRemoved { self.livePlanes.remove(sample.id) } else { self.livePlanes.insert(sample.id) }
             self.planeInfo = "\(self.livePlanes.count) found"
         }
 
@@ -238,7 +238,7 @@ final class SensorStreamer {
         markers.onMarkers = { [weak self] samples in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.markers(samples)))
-            let following = samples.filter(\.tracked)
+            let following = samples.filter(\.isTracked)
             self.markersFound = !following.isEmpty
             if following.isEmpty {
                 self.markerInfo = self.markerReferences.isEmpty
@@ -253,9 +253,9 @@ final class SensorStreamer {
         wand.onWand = { [weak self] sample in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.wand(sample)))
-            self.wandTracked = sample.tracked
-            var parts = [sample.tracked ? "tracking" : "finding its place…"]
-            if sample.pressed { parts.append("pressed") }
+            self.wandTracked = sample.isTracked
+            var parts = [sample.isTracked ? "tracking" : "finding its place…"]
+            if sample.isPressed { parts.append("pressed") }
             parts.append("\(sample.pressCount) presses")
             self.wandInfo = parts.joined(separator: " · ")
         }

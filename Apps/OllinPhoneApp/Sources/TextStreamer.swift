@@ -87,7 +87,7 @@ final class TextStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
         queue.async { [weak self] in
             guard let self else { return }
             let texts = self.readTexts(in: pixelBuffer, timestamp: timestamp,
-                                       isTracked: tracked, turns: turns, lift: lift)
+                                       isTracked: isTracked, turns: turns, lift: lift)
             DispatchQueue.main.async {
                 self.busy = false
                 if let texts { self.onTexts?(texts) }
@@ -120,7 +120,7 @@ final class TextStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
             let corners = [observation.topLeft, observation.topRight,
                            observation.bottomRight, observation.bottomLeft]
                 .map { SIMD2<Float>(Float($0.x), Float($0.y)) }
-            var sample = PhoneTextSample(isTracked: tracked, timestamp: timestamp,
+            var sample = PhoneTextSample(isTracked: isTracked, timestamp: timestamp,
                                          text: candidate.string,
                                          confidence: Float(candidate.confidence),
                                          corners: corners)

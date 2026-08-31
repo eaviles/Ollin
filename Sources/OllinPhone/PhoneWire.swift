@@ -684,7 +684,7 @@ public struct PhoneMarkerSample: Sendable, Equatable {
 /// `PhoneWire.wandFrame(fromCamera:quarterTurnsCW:)` does it, so the correction is
 /// arithmetic a Mac test can pin rather than something buried in the app.
 ///
-/// The press is carried two ways on purpose. `pressed` says whether a finger is
+/// The press is carried two ways on purpose. `isPressed` says whether a finger is
 /// down at this instant, which is what a held drag reads; `pressCount` rises by
 /// one each time a finger lands and never falls, so a sketch reading at its own
 /// rate still sees a quick tap it was not looking at the moment it happened.
