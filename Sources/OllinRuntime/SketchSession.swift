@@ -57,6 +57,12 @@ public final class SketchSession {
     /// Whether evaluations carry `time`/`frameCount` across the swap by
     /// default; `evaluate`'s `keepClock` argument overrides per call.
     public var keepClock: Bool
+    /// The automation the host carries: the launch file's tracks, then
+    /// whatever the timeline panel authored. Re-installed on each freshly
+    /// loaded sketch before its `setup()` runs, so the tracks survive a swap;
+    /// `setup()`'s own `automate(...)` calls then win per knob, the same
+    /// precedence a file has everywhere else.
+    public var automation: Automation?
 
     /// The in-flight compile, kept so a newer evaluation can cancel it. (The
     /// detached `swiftc` still runs to completion; its result is refused.)
@@ -179,6 +185,9 @@ public final class SketchSession {
         // Carry a navigated variation across the swap. Before setup(), so a
         // sketch that pins its own seed there still wins, same as anywhere.
         if let navigatedSeed { sketch.seed(navigatedSeed) }
+        // Carry the timeline's tracks the same way: installed before setup()
+        // runs, so a track the sketch writes there still wins its own knob.
+        if let automation { sketch.automation = automation }
         let handles = sketch.parameters()
         for handle in handles {
             guard let stored = paramValues[handle.name] else { continue }

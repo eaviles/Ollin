@@ -232,6 +232,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Bringing a scene over`](./Tools/SceneImport.md) - `ollin new --from-scene`: a glTF or USD scene written out as the camera, lights and placement calls that draw it
 - [`Writing an extension`](./Tools/Extensions.md) - `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on
 - [`Dragging a shape`](./Tools/DragToEdit.md) - Command-drag a shape in the live window and the numbers that place it change in your own file, with your spacing and comments untouched
+- [`The parameter timeline`](./Tools/Timeline.md) - OllinLive's timeline panel: a lane per automated knob, keys placed from the inspector's diamonds and dragged by hand, a playhead over the sketch clock, round-tripping to the automation file
 - [`The reference offline`](./Tools/Reference.md) - `ollin docs` and `ollin examples`: these pages and every example sketch read in the terminal, out of the checkout you build against, with a search across the whole reference
 - [`Profiling`](./Tools/Profiling.md) - the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode
 

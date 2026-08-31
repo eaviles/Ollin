@@ -62,6 +62,10 @@ struct LiveRootView: View {
     /// collapse. `@AppStorage` so the choice persists across launches and the
     /// View ▸ Show Inspector command drives the same state.
     @AppStorage(Self.sidebarShownKey) private var sidebarShown = true
+    /// Whether the parameter-timeline panel is up. Shared with the View menu's
+    /// Show Timeline (⌘T) and persisted, like the sidebar toggle.
+    @AppStorage(OllinHUD.showTimelineKey) private var showTimeline = false
+    @State private var timelinePanel = TimelinePanelController()
     @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     /// The sketch's on-screen size (or the default before one loads). The sidebar
@@ -93,6 +97,7 @@ struct LiveRootView: View {
         HStack(spacing: 0) {
             if sidebarShown {
                 InspectorPanel(session: session)
+                    .environment(\.automationTimeline, session.timeline)
                     .frame(width: Self.sidebarWidth, height: sketchDisplaySize.height)
                     .background {
                         // Vibrancy keeps the translucent feel, but a scrim toward
@@ -142,10 +147,30 @@ struct LiveRootView: View {
             .frame(maxHeight: .infinity)
         })
         .background(TitleBarAccessory(attribute: .trailing) {
-            StatusChip(status: session.inspectorStatus)
-                .padding(.leading, 12)
-                .padding(.trailing, 22)
-                .frame(maxHeight: .infinity)
+            HStack(spacing: 10) {
+                // The Timeline chip: accent-tinted while the panel is up, the
+                // same state the View menu's ⌘T drives.
+                Button { showTimeline.toggle() } label: {
+                    HStack(spacing: 6) {
+                        SwiftUI.Image(systemName: "timeline.selection")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Timeline").font(.system(size: 12, weight: .medium))
+                    }
+                    .fixedSize()          // the accessory must not truncate the label
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)
+                    .background(showTimeline ? OllinInspector.accent.opacity(0.22) : .clear,
+                                in: RoundedRectangle(cornerRadius: 6))
+                    .contentShape(SwiftUI.Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(showTimeline ? OllinInspector.accent : .secondary)
+                .help(showTimeline ? "Hide Timeline" : "Show Timeline")
+                StatusChip(status: session.inspectorStatus)
+            }
+            .padding(.leading, 12)
+            .padding(.trailing, 22)
+            .frame(maxHeight: .infinity)
         })
         // The centered title is the unified toolbar's principal item; the gradient
         // is the toolbar background. (The taller bar comes from the unified toolbar
@@ -160,6 +185,13 @@ struct LiveRootView: View {
         .toolbarBackground(.visible, for: .windowToolbar)
         .task { session.start() }
         .onChange(of: session.reloadCount) { _, _ in flashReloadedToast() }
+        .onAppear { syncTimelinePanel() }
+        .onChange(of: showTimeline) { _, _ in syncTimelinePanel() }
+        .onDisappear { timelinePanel.close() }
+    }
+
+    private func syncTimelinePanel() {
+        timelinePanel.sync(visible: showTimeline, model: session.timeline)
     }
 
     // Lightweight until the first compile lands: a plain SwiftUI placeholder, not

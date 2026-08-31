@@ -158,7 +158,7 @@ public enum OllinInspector {
 }
 
 /// A thin 0.5pt rule in the card's separator color.
-private struct Hairline: View {
+struct Hairline: View {
     let palette: OllinInspector.Palette
     var axis: Axis = .horizontal
     var body: some View {
@@ -1122,6 +1122,64 @@ private struct ParamRowLabel: View {
     }
 }
 
+/// The timeline a host carries, when it carries one. Injected by the live
+/// host so every knob row grows its keyframe diamond; everywhere else it is
+/// `nil` and the rows show nothing (the gallery is a showcase, and hosts
+/// without a transport have no playhead to key against).
+private struct AutomationTimelineKey: EnvironmentKey {
+    static let defaultValue: TimelineModel? = nil
+}
+
+extension EnvironmentValues {
+    package var automationTimeline: TimelineModel? {
+        get { self[AutomationTimelineKey.self] }
+        set { self[AutomationTimelineKey.self] = newValue }
+    }
+}
+
+/// The per-knob keyframe affordance: hollow when nothing drives the knob, the
+/// accent diamond when a track does. A click places a key at the playhead
+/// with the value the knob holds (on a key already there, it takes the key
+/// away), so the loop is: scrub, turn the knob, click the diamond. Hidden
+/// wherever no timeline is injected.
+struct KeyframeDiamond: View {
+    let handle: ParamHandle
+    let palette: OllinInspector.Palette
+
+    @SwiftUI.Environment(\.automationTimeline) private var timeline
+
+    var body: some View {
+        if let timeline {
+            // The playhead and edit counter are what re-render this on a
+            // scrub or an edit; the automation itself is not observable.
+            let _ = timeline.editCount
+            let _ = timeline.playhead
+            let hasTrack = timeline.hasTrack(named: handle.name)
+            let onKey = timeline.hasKeyAtPlayhead(named: handle.name)
+            Button {
+                timeline.toggleKey(param: handle.name)
+            } label: {
+                SwiftUI.Image(systemName: hasTrack ? "diamond.fill" : "diamond")
+                    .font(.system(size: 8.5, weight: .semibold))
+                    .foregroundStyle(hasTrack ? OllinInspector.accent : palette.textTertiary)
+                    .frame(width: 17, height: 17)
+                    .background(onKey ? OllinInspector.accent.opacity(0.18) : .clear,
+                                in: RoundedRectangle(cornerRadius: 4))
+                    .contentShape(SwiftUI.Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(hasTrack
+                  ? "A key at the playhead: click to add or remove one"
+                  : "Start a track with a key at the playhead")
+            .contextMenu {
+                if hasTrack {
+                    Button("Remove Track") { timeline.removeTrack(named: handle.name) }
+                }
+            }
+        }
+    }
+}
+
 /// An editable mono value pill that also *scrubs*: drag horizontally across it
 /// to change the value (hold Option for a fine adjust, Shift for a coarse one),
 /// or click once to type. The pill shows the resize cursor so the drag invites
@@ -1456,6 +1514,7 @@ private struct SliderParamRow: View {
                 HStack {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                     Spacer()
+                    KeyframeDiamond(handle: handle, palette: palette)
                     valueField
                 }
                 slider
@@ -1503,6 +1562,7 @@ private struct ControlRow<Control: View>: View {
             ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
             // A floor on the gap so a wide control never crowds the label.
             Spacer(minLength: 16)
+            KeyframeDiamond(handle: handle, palette: palette)
             control()
         }
         .padding(.horizontal, 12)
@@ -1690,10 +1750,15 @@ private struct MenuParamRow: View {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                         .fixedSize()
                     Spacer(minLength: 16)
+                    KeyframeDiamond(handle: handle, palette: palette)
                     basePicker.pickerStyle(.segmented).fixedSize()
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                    HStack {
+                        ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                        Spacer(minLength: 8)
+                        KeyframeDiamond(handle: handle, palette: palette)
+                    }
                     basePicker.pickerStyle(.segmented)
                         .frame(maxWidth: .infinity)
                 }
@@ -1828,6 +1893,7 @@ private struct VectorParamRow: View {
                 HStack(spacing: 6) {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                     Spacer(minLength: 16)
+                    KeyframeDiamond(handle: handle, palette: palette)
                     fields
                 }
                 ParamXYPad(x: $x, y: $y, xRange: control.xRange, yRange: control.yRange,
@@ -1910,6 +1976,7 @@ private struct Vector3ParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 16)
+                KeyframeDiamond(handle: handle, palette: palette)
                 ScrubbableField(
                     value: $x, fractionDigits: paramFieldDigits(for: control.xRange),
                     perPoint: (control.xRange.upperBound - control.xRange.lowerBound) / 250,
@@ -2004,6 +2071,7 @@ private struct RectangleParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 16)
+                KeyframeDiamond(handle: handle, palette: palette)
                 field($x, range: control.xRange, editing: 0, prefix: "x")
                 field($y, range: control.yRange, editing: 1, prefix: "y")
             }
@@ -2099,6 +2167,7 @@ private struct InsetsParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 16)
+                KeyframeDiamond(handle: handle, palette: palette)
                 field($top, editing: 0, prefix: "t")
                 field($right, editing: 1, prefix: "r")
             }
@@ -2218,6 +2287,7 @@ private struct RangeParamRow: View {
                 HStack(spacing: 6) {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                     Spacer(minLength: 16)
+                    KeyframeDiamond(handle: handle, palette: palette)
                     fields
                 }
                 ParamRangeSlider(lower: $lower, upper: $upper, outer: control.outer,
@@ -2355,6 +2425,7 @@ private struct SwatchesParamRow: View {
             HStack(spacing: 6) {
                 ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                 Spacer(minLength: 12)
+                KeyframeDiamond(handle: handle, palette: palette)
                 if stops.indices.contains(selected) {
                     ColorPicker("", selection: selectedColor, supportsOpacity: true)
                         .labelsHidden()

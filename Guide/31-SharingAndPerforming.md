@@ -692,6 +692,22 @@ swift run --package-path Examples Example-Motion-Automation --export-video direc
 
 An automation is plain data as well, which means a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, playhead and all. And `--automation file.json` drives the same knobs from a file instead of from code. The full surface is in [Automation](../Docs/Core/Automation.md).
 
+### Directing by hand: the timeline panel
+
+You do not have to write keys as code. In OllinLive, the timeline panel places them for you, at the moment you are looking at.
+
+Click **Timeline** in the title bar, or press **⌘T**, and a floating panel opens with a ruler, a transport, and one lane per track. Try it on the Automation example:
+
+```sh
+swift run OllinLive Examples/Motion/Automation/Sketch.swift
+```
+
+The loop has three moves. Scrub the ruler, or step a frame at a time, and the picture follows the playhead. Turn a knob in the inspector until the frame looks right. Then click the small diamond in that knob's row, and a key lands at the playhead holding that value. A hollow diamond starts a track; a filled one already has one; clicking on a key takes it away.
+
+The lanes draw what will happen. A number lane plots its curve, a color lane shows the blend as a band, and a switch steps. Drag a key to move it in time. Click one to pick the curve that leaves it, and a Bezier grows two handles you shape by eye. The loop button repeats a stretch while you work on it, and that region never touches the piece itself.
+
+Everything you place lands in `Sketch.automation.json` beside the sketch, the same file `--automation` and every export read. The live host reads it back on launch and across every reload, so the direction survives the edit loop. One rule to hold: a track your `setup()` writes for the same knob wins that knob, because the code is the artifact. The full tour is in [The parameter timeline](../Docs/Tools/Timeline.md).
+
 ## Writing the knob as a rule
 
 Keys say where a knob is at a few moments. Sometimes you do not want moments. You want to say what the knob *is*, and have it be that at every moment:

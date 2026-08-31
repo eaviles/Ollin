@@ -43,6 +43,11 @@ final class LiveSession {
     /// trigger and the OllinLive presentation on top.
     @ObservationIgnored let core: SketchSession
 
+    /// The parameter timeline behind the Timeline panel and the knob rows'
+    /// diamonds. Its edits land on the running sketch and are held by the
+    /// engine, so the tracks survive every reload swap.
+    @ObservationIgnored let timeline = TimelineModel()
+
     private(set) var title = "OllinLive"
 
     /// The sketch to host, from the engine. `nil` until the first compile
@@ -129,7 +134,8 @@ final class LiveSession {
 
     init(loader: SketchLoader, sketchPath: String, displayName: String, keepClock: Bool,
          recordOnLaunch: Bool = false, takeRecordOnLaunch: URL? = nil,
-         replayOnLaunch: Take? = nil) {
+         replayOnLaunch: Take? = nil,
+         automation: Automation? = nil, automationURL: URL? = nil) {
         self.loader = loader
         self.sketchPath = sketchPath
         self.displayName = displayName
@@ -143,6 +149,16 @@ final class LiveSession {
         var isDir: ObjCBool = false
         let exists = FileManager.default.fileExists(atPath: dir, isDirectory: &isDir) && isDir.boolValue
         self.shaderDir = exists ? dir : nil
+
+        // The launch automation (the flag's file, or the sketch's own sibling
+        // `.automation.json`) rides the engine so every swap re-installs it;
+        // the panel's edits replace it through the same seam and write back
+        // to the same file.
+        core.automation = automation
+        timeline.setFile(automationURL)
+        timeline.automationChanged = { [weak self] automation in
+            self?.core.automation = automation
+        }
     }
 
     /// Called once from the root view's `.task`, after the window has appeared;
@@ -162,6 +178,7 @@ final class LiveSession {
     /// the shared instance); the engine wires the user-shader error channel.
     func attach(_ runner: SketchRunner) {
         core.attach(runner)
+        timeline.runner = runner
         // `--record` starts the take the moment the run is on screen. The
         // recording then rides the runner across reloads, so saves mid-take
         // keep filming; closing the window finishes the file.

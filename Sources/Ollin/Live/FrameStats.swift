@@ -25,6 +25,12 @@ public enum OllinHUD {
     /// delegate can tell it apart from the sketch window (and not quit when only
     /// the panel is closed).
     public static let statsPanelID = "ollin.stats.panel"
+    /// `@AppStorage` key the "Show Timeline" command and the parameter-timeline
+    /// panel both bind to, so the menu and the panel stay in sync and the
+    /// choice persists.
+    public static let showTimelineKey = "ollin.hud.showTimeline"
+    /// Window identifier for the floating timeline panel.
+    public static let timelinePanelID = "ollin.timeline.panel"
 }
 
 /// A live snapshot of how the running sketch is performing: frame rate, the CPU

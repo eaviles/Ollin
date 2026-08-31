@@ -351,6 +351,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// on a growing autosave cadence and at `finishTake()`.
     public func beginTake(writingTo url: URL? = nil) {
         sketch.takePlayer = nil
+        isClockPaused = false      // a recording wants the live clock
         takeRecordURL = url
         restart(variation: sketch.variation)
         attachTakeRecorder()
@@ -392,6 +393,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// End go to the ends, and space at the end starts over).
     public func replay(_ take: Take) {
         finishTake()
+        isClockPaused = false      // a replay owns the whole transport
         take.install(on: sketch)
         replayPaused = false
         pendingScrubTarget = nil
@@ -556,6 +558,75 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                   : replayPaused ? "paused" : "playing"
         window.title = "\(sketch.title) - replay \(pct)% | \(state)"
         #endif
+    }
+
+    // MARK: The clock transport (the parameter timeline's play, pause, and scrub)
+
+    /// Whether the timeline transport is holding the clock still. Distinct from
+    /// `noLoop()` (the sketch's own stillness, which the sketch may lift) and
+    /// from a replay's pause (a take owns the whole transport while it plays).
+    package private(set) var isClockPaused = false
+    /// While the clock runs, wrap it inside this span of seconds when it passes
+    /// the top end. The region lives on the transport, not in the automation
+    /// file, so looping a stretch changes nothing about what the file holds.
+    package var clockLoopRegion: ClosedRange<Double>?
+    /// One deliberate pass under a held clock: the clock moves by this much and
+    /// the frame advances with that step (never negative; a backward nudge
+    /// places the clock and hands the frame a zero step).
+    private var pendingClockNudge: Double?
+    /// The frame length a transport step moves by. The exports' default cadence,
+    /// so sixty steps walk one second whatever the display refreshes at.
+    package static let clockStepRate: Double = 60
+
+    /// The sketch clock as the transport reads it: where the next frame draws.
+    package var clockTime: Double { elapsed }
+
+    /// Hold the clock still, or let it run again. While held, the display link
+    /// stops (no frames are drawn and thrown away, and an accumulating canvas
+    /// keeps its ink); a scrub or a step wakes it for exactly one pass. Quiet
+    /// during a replay, which owns the transport.
+    package func setClockPaused(_ paused: Bool) {
+        guard sketch.takePlayer == nil, paused != isClockPaused else { return }
+        isClockPaused = paused
+        if paused {
+            view?.isPaused = true
+        } else {
+            // Resume from now: the held stretch must not arrive as one step.
+            lastTime = CACurrentMediaTime()
+            if sketch.isLooping { view?.isPaused = false }
+        }
+    }
+
+    /// Place the clock at `target` seconds. Under a held clock this draws one
+    /// frame there (a zero step, so nothing integrates across the jump); while
+    /// playing, the next refresh simply reads the placed clock.
+    package func scrubClock(to target: Double) {
+        guard sketch.takePlayer == nil else { return }
+        elapsed = max(0, target)
+        if isClockPaused || !sketch.isLooping { runClockPass(nudge: 0) }
+    }
+
+    /// Step the clock by whole frames at ``clockStepRate``, holding it first
+    /// the way a video editor's frame step does. A backward step places the
+    /// clock and hands the frame a zero step.
+    package func stepClock(byFrames frames: Int) {
+        guard sketch.takePlayer == nil, frames != 0 else { return }
+        if !isClockPaused { setClockPaused(true) }
+        runClockPass(nudge: Double(frames) / SketchRunner.clockStepRate)
+    }
+
+    /// Draw one frame at the held clock, so an edit made while paused shows.
+    package func refreshClockFrame() {
+        guard sketch.takePlayer == nil, isClockPaused else { return }
+        runClockPass(nudge: 0)
+    }
+
+    private func runClockPass(nudge: Double) {
+        pendingClockNudge = nudge
+        // A frame the interpolator held belongs to the run before the hold;
+        // presenting it would eat this deliberate pass and show a stale frame.
+        renderer.dropHeldFrame()
+        view?.isPaused = false     // wake the loop for the one pass
     }
 
     /// The Camera menu's projection override starts every launch in perspective.
@@ -862,6 +933,15 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             // step just landed on.
             view.isPaused = true
             return
+        } else if isClockPaused, sketch.takePlayer == nil, didSetup,
+                  pendingClockNudge == nil, !pendingSetupRerun, pendingCameraView == nil {
+            // The timeline transport's hold, enforced the same way: a queued
+            // tick must not advance a clock the panel just placed, and an
+            // accumulating canvas must not composite the held frame twice.
+            // A reload's first frame, a setup rerun, and a camera snap still
+            // pass (each runs one pass under a zero step and holds again).
+            view.isPaused = true
+            return
         }
 
         let now = CACurrentMediaTime()
@@ -936,24 +1016,52 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // frame it drew (and a replay consumes one per refresh), a still sketch
         // may never be asked to draw again, and every display of a wall wants
         // the same frame rather than one made picture each.
-        renderer.hostAllowsInterpolation = !carryingATake && sketch.isLooping && otherDisplays.isEmpty
+        renderer.hostAllowsInterpolation = !carryingATake && sketch.isLooping
+            && otherDisplays.isEmpty && !isClockPaused
 
-        guard renderer.canStartFrame || carryingATake else { return }
+        // A transport pass is the other exception beside a take: it is one
+        // deliberate frame (a scrub, a step), so it waits for the ring rather
+        // than dropping, or the frame the panel just asked for never lands.
+        guard renderer.canStartFrame || carryingATake || pendingClockNudge != nil else { return }
 
         // The clock is the sum of its own steps, each one capped (see
         // `longestFrameStep`), so a gap in the frames is a pause rather than a
         // jump: the piece resumes where it stopped.
         let step = max(0, now - lastTime)
         lastTime = now
-        let dt = SketchRunner.clockStep(measuring: step)
-        elapsed += dt
+        let measured = SketchRunner.clockStep(measuring: step)
+        let dt: Double
+        if let nudge = pendingClockNudge {
+            // A transport scrub or step: the clock moves by exactly the nudge
+            // (a scrub placed it already and nudges zero), and the frame
+            // advances with that step, never a negative one.
+            pendingClockNudge = nil
+            elapsed = max(0, elapsed + nudge)
+            dt = max(0, nudge)
+        } else if isClockPaused, sketch.takePlayer == nil {
+            // A pass allowed through under a held clock (a reload's first
+            // frame, a setup rerun, a camera snap): time stands still.
+            dt = 0
+        } else {
+            dt = measured
+            elapsed += dt
+            // The transport's loop region: past the top end, the clock comes
+            // around to the bottom. Only a real span wraps, and only forward
+            // play does; a scrub goes where it was sent.
+            if let region = clockLoopRegion, region.upperBound > region.lowerBound,
+               elapsed > region.upperBound {
+                let span = region.upperBound - region.lowerBound
+                elapsed = region.lowerBound
+                    + (elapsed - region.lowerBound).truncatingRemainder(dividingBy: span)
+            }
+        }
 
         // Exponentially smoothed FPS so the number doesn't jitter frame to frame.
         // A capped step is a stall rather than a frame rate, so it never feeds
         // the readout: one overnight gap would otherwise pull the average to
         // zero and take a minute of frames to climb back.
         if step <= SketchRunner.longestFrameStep {
-            let instantaneous = dt > 0 ? 1.0 / dt : 0
+            let instantaneous = measured > 0 ? 1.0 / measured : 0
             if smoothedFrameRate == 0 {
                 smoothedFrameRate = instantaneous
             } else {

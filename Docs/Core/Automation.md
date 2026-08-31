@@ -165,7 +165,7 @@ swift run Example-Motion-Automation --automation slow.json --export-video out.mp
 
 A file arrives before `setup()`, so a sketch that also writes a track for the same knob wins. A file written for a *newer* format than this Ollin reads is refused rather than guessed at; an older one still reads, because each layout so far has only added to the one before it.
 
-The flag is read by standalone runs and by every export path. In the live-reload host, write the tracks in `setup()` instead: they survive each swap because the sketch carries them.
+The flag is read by standalone runs, by every export path, and by OllinLive, which also looks for the sketch's sibling file (`Sketch.automation.json` beside `Sketch.swift`) when no flag names one. The live host re-installs the file's tracks across every reload, and its [timeline panel](../Tools/Timeline.md) edits them by hand and writes back to the same file.
 
 ### How it sits beside the rest
 

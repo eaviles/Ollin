@@ -46,13 +46,45 @@ struct OllinLiveApp: App {
             exit(2)
         }
 
+        func value(after flag: String) -> String? {
+            guard let i = arguments.firstIndex(of: flag), i + 1 < arguments.count else { return nil }
+            return arguments[i + 1]
+        }
+
+        // The timeline's file: `--automation <file>`, or the sketch's own
+        // sibling (`Sketch.automation.json` beside `Sketch.swift`). One that
+        // exists installs its tracks on the windowed run and on this host's
+        // export path alike; one that does not yet is simply where the
+        // panel's edits will land. A file that exists but cannot be read
+        // fails here, before anything runs, like a bad take.
+        let automationURL = value(after: "--automation").map(URL.init(fileURLWithPath:))
+            ?? URL(fileURLWithPath: sketchPath).deletingPathExtension()
+                .appendingPathExtension("automation.json")
+        var automation: Automation?
+        if FileManager.default.fileExists(atPath: automationURL.path) {
+            do {
+                automation = try Automation.load(from: automationURL)
+                let tracks = automation?.tracks.count ?? 0
+                print("OllinLive: automation from \(automationURL.lastPathComponent)"
+                      + " (\(tracks) track\(tracks == 1 ? "" : "s"))")
+            } catch {
+                FileHandle.standardError.write(
+                    Data("OllinLive: could not read the automation: \(error)\n".utf8))
+                exit(1)
+            }
+        }
+
         // `swift run OllinLive Sketch.swift --export-gif loop.gif --seconds 4`
         // runs the same headless export surface a standalone `@main` sketch
         // gets, on a loose watched file: the shared handler recognizes the
         // flag and only then pays for the compile. Exits without a window.
+        // The sibling automation rides along, so an export renders the piece
+        // as the timeline panel played it; the `--automation` flag still wins
+        // (the shared handler applies it after this).
         let handled = OllinApp.handleCommandLine(arguments, makeSketch: {
             switch SketchLoader(sketchPath: sketchPath).load() {
             case .success(let sketch):
+                if let automation { sketch.automation = automation }
                 return sketch
             case .failure(let error):
                 FileHandle.standardError.write(Data("OllinLive: \(error)\n".utf8))
@@ -83,10 +115,6 @@ struct OllinLiveApp: App {
         // The take flags (`--record-take <file>` writes the run's inputs and
         // knobs down; `--replay <file>` plays a recorded run back). A bad take
         // file fails here, before a window opens.
-        func value(after flag: String) -> String? {
-            guard let i = arguments.firstIndex(of: flag), i + 1 < arguments.count else { return nil }
-            return arguments[i + 1]
-        }
         let replayTake: Take? = value(after: "--replay").map { path in
             do {
                 return try Take.load(from: URL(fileURLWithPath: path))
@@ -103,7 +131,8 @@ struct OllinLiveApp: App {
         let session = LiveSession(
             loader: SketchLoader(sketchPath: sketchPath), sketchPath: sketchPath,
             displayName: pathArg, keepClock: keepClock, recordOnLaunch: record,
-            takeRecordOnLaunch: takeRecordURL, replayOnLaunch: replayTake)
+            takeRecordOnLaunch: takeRecordURL, replayOnLaunch: replayTake,
+            automation: automation, automationURL: automationURL)
         _session = State(initialValue: session)
         ActiveLiveSession.session = session
     }
@@ -131,6 +160,7 @@ struct OllinLiveApp: App {
         // the sidebar is the live host's stats display.
         .commands {
             LiveSidebarCommands()
+            LiveTimelineCommands()
             LiveRecordCommands()
             OllinCameraCommands()
         }
@@ -168,6 +198,20 @@ private struct LiveSidebarCommands: Commands {
         CommandGroup(after: .sidebar) {
             Toggle("Show Inspector", isOn: $sidebarShown)
                 .keyboardShortcut("/", modifiers: .command)
+        }
+    }
+}
+
+/// View ▸ Show Timeline (⌘T): the parameter-timeline panel, bound to the same
+/// `@AppStorage` key as the title-bar chip, so the menu, the chip, and the
+/// persisted choice are one state.
+private struct LiveTimelineCommands: Commands {
+    @AppStorage(OllinHUD.showTimelineKey) private var showTimeline = false
+
+    var body: some Commands {
+        CommandGroup(after: .sidebar) {
+            Toggle("Show Timeline", isOn: $showTimeline)
+                .keyboardShortcut("t", modifiers: .command)
         }
     }
 }
