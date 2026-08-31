@@ -215,6 +215,10 @@ struct OllinPTHit {
                            // the raster's own detail-vs-position split
     bool copied;           // a copy of an instanced draw, so it is outside the
                            // mesh-light table and its glow takes full weight
+    float3 energyComp;     // multiple-scattering energy compensation for the
+                           // specular lobe (`ollin_pbr_energy_comp`), priced once
+                           // per hit since the view side is fixed there; 1 for a
+                           // legacy finish, so it multiplies as a no-op
 };
 
 // Next-event visibility with glass in the scene: walk the shadow segment hit by
@@ -448,7 +452,7 @@ static inline float3 ollin_pt_bsdf(OllinPTHit h, float3 wo, float3 wi) {
         F = ollin_pbr_film_F(F, F0, NoV, h.mat.thinFilm,
                              h.mat.thinFilmThickness, h.mat.thinFilmIor);
     }
-    float3 spec = D * Vis * F;
+    float3 spec = D * Vis * F * h.energyComp;
     float3 diff = (float3(1.0) - F) * (1.0 - h.s.metal) * h.s.albedo * (1.0 / 3.14159265);
     return diff + spec;
 }
@@ -668,7 +672,11 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                            texture2d_array<float> iesProfiles [[texture(3)]],
                            texture2d_array<float> cookies [[texture(4)]],
                            texture2d<float, access::read_write> guideColor [[texture(5)]],
-                           texture2d<float, access::read_write> guideSurface [[texture(6)]]) {
+                           texture2d<float, access::read_write> guideSurface [[texture(6)]],
+                           // The split-sum BRDF LUT, for the specular lobe's
+                           // multiple-scattering energy compensation (`ollin_pbr_ess`);
+                           // baked before the first dispatch, never a stand-in.
+                           texture2d<float> brdfLUT [[texture(7)]]) {
     if (gid.x >= pt.window.x || gid.y >= pt.window.y) return;
     float eps = pt.cameraPosition.w;
     uint maxDepth = max(pt.counts.y, 1u);
@@ -838,6 +846,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             h.mat = geoMats[lookup.mat];
             h.copied = lookup.copied;
             h.physical = h.mat.shadingModel == 3;
+            h.energyComp = float3(1.0);
             h.Ng = h.s.N;
             float hitDist = q.get_committed_distance();
             if (depth == 0) { covered = true; primaryDist = hitDist; }
@@ -857,6 +866,20 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             OllinPTMapped mapped = ollin_pt_apply_maps(h, q, verts, geoOffsets,
                                                        geoTextures, rd, backface,
                                                        pt.cone.x + pt.cone.y * pathDist);
+
+            // Multiple-scattering energy compensation for the specular lobe, priced
+            // once per hit from the same LUT the raster shading reads: the view side
+            // of the lobe is fixed here (wo = -rd), so next-event light, mesh-light
+            // light, and the continuation weight all carry the one factor through
+            // `ollin_pt_bsdf`, and an offline frame recovers the same bounced energy
+            // the live frame does. After the maps, whose channels finish the rough
+            // and metal this hit shades with.
+            if (h.physical) {
+                float3 F0ms = mix(float3(h.mat.f0), h.s.albedo, h.s.metal);
+                float NoVms = max(dot(h.s.N, -rd), 1e-4);
+                h.energyComp = ollin_pbr_energy_comp(
+                    F0ms, ollin_pbr_ess(brdfLUT, NoVms, h.s.rough));
+            }
 
             if (depth == 0 && wantsGuides) {
                 // What the denoiser separates the light from: the surface's own

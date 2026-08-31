@@ -2132,6 +2132,32 @@ static inline float ollin_pbr_V_SmithGGX(float NoV, float NoL, float roughness) 
     return 0.5 / max(GGXV + GGXL, 1e-5);         // includes /(4·NoL·NoV)
 }
 
+// The specular lobe's single-scatter directional albedo at normal-incidence
+// reflectance 1 (the split-sum LUT's scale + bias row), read back from the baked
+// LUT itself so every shading path prices its energy against the same integral the
+// image-based ambient composites with. The LUT is environment-independent and is
+// baked for any frame that carries a physically-based finish (`ensureBRDFLUT`), so
+// a physically-based read never lands on a stand-in texture.
+static inline float ollin_pbr_ess(texture2d<float> brdfLUT, float NoV, float rough) {
+    constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
+    float2 ab = brdfLUT.sample(lutSamp, float2(NoV, rough)).rg;
+    return saturate(ab.x + ab.y);
+}
+
+// Multiple-scattering energy compensation for the microfacet specular lobe (written
+// from the published technique; see the README Techniques list). A single-scatter
+// lobe drops the light that bounces across more than one microfacet, so rough metal
+// darkens: a white-furnace probe of this renderer kept 36% at roughness 1. Scaling
+// the lobe by 1 + F0 * (1/E - 1), with E its single-scatter directional albedo, puts
+// the dropped bounces back: exact in the furnace, tinted by F0 because every extra
+// bounce reflects off the metal again (a colored metal saturates as it brightens).
+// The factor is 1 at E = 1 (smooth surfaces keep their look) and within a hair of 1
+// for dielectrics (F0 near 0.04), so plastics are untouched to the eye. The floor on
+// E only bounds a degenerate LUT texel; real values stay well above it.
+static inline float3 ollin_pbr_energy_comp(float3 F0, float ess) {
+    return 1.0 + F0 * (1.0 / max(ess, 0.1) - 1.0);
+}
+
 // The Smith masking term for one direction (GGX), the half the height-correlated
 // visibility above does not expose. The glossy reflection lobe's sampling density needs
 // it on its own: a direction drawn from the distribution of *visible* normals has
@@ -2755,7 +2781,11 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   texture2d_array<float> cookies,
                                   // The sheen directional-albedo LUT (fragment texture 12),
                                   // read only by a physically-based material with sheen.
-                                  texture2d<float> sheenLUT
+                                  texture2d<float> sheenLUT,
+                                  // The split-sum BRDF LUT (fragment texture 6), read only
+                                  // by a physically-based material to price the energy its
+                                  // single-scatter specular lobe drops (`ollin_pbr_ess`).
+                                  texture2d<float> iblBRDF
 #if OLLIN_RT_SHADOWS
                                   , float4 rtShadow
 #endif
@@ -2953,7 +2983,8 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                     F0 = ollin_pbr_film_f0(F0, filmNoV, interference,
                                            mat.thinFilmThickness, mat.thinFilmIor);
                 }
-                float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
+                float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI
+                            * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
                 float3 diff = base * ((1.0 - mat.metallic) * diffI * diffKeep);
                 float3 term = diff + spec;
                 // Sheen under a panel: the lobe is broad, so its response is its
@@ -3149,7 +3180,8 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                     F = ollin_pbr_film_F(F, F0, filmNoV, interference,
                                          mat.thinFilmThickness, mat.thinFilmIor);
                 }
-                float3 spec = D * Vis * F;
+                float3 spec = D * Vis * F
+                            * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
                 float3 kD   = (float3(1.0) - F) * (1.0 - mat.metallic);
                 float3 diff = kD * base * (diffKeep / 3.14159265);
                 float3 term = diff + spec;
@@ -3310,7 +3342,11 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                                   texture2d_array<float> cookies,
                                   // The sheen directional-albedo LUT (fragment texture 12),
                                   // read only by a physically-based material with sheen.
-                                  texture2d<float> sheenLUT
+                                  texture2d<float> sheenLUT,
+                                  // The split-sum BRDF LUT (fragment texture 6), read only
+                                  // by a physically-based material to price the energy its
+                                  // single-scatter specular lobe drops (`ollin_pbr_ess`).
+                                  texture2d<float> iblBRDF
 #if OLLIN_RT_SHADOWS
                                   , float4 rtShadow
 #endif
@@ -3505,7 +3541,8 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                     F0 = ollin_pbr_film_f0(F0, filmNoV, interference,
                                            mat.thinFilmThickness, mat.thinFilmIor);
                 }
-                float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
+                float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI
+                            * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
                 float3 diff = base * ((1.0 - pxMetal) * diffI * diffKeep);
                 float3 term = diff + spec;
                 // Sheen under a panel: the lobe is broad, so its response is its
@@ -3700,7 +3737,8 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                     F = ollin_pbr_film_F(F, F0, filmNoV, interference,
                                          mat.thinFilmThickness, mat.thinFilmIor);
                 }
-                float3 spec = D * Vis * F;
+                float3 spec = D * Vis * F
+                            * ollin_pbr_energy_comp(F0, ollin_pbr_ess(iblBRDF, NoV, rough));
                 float3 kD   = (float3(1.0) - F) * (1.0 - pxMetal);
                 float3 diff = kD * base * (diffKeep / 3.14159265);
                 float3 term = diff + spec;
@@ -4504,7 +4542,21 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     }
 #endif
     float2 brdf = brdfTex.sample(lutSamp, float2(NoV, rough)).rg;
-    float3 specular = prefiltered * (F0 * brdf.x + brdf.y);
+    // Multiple scattering: the split-sum product is the single-scatter lobe alone,
+    // which drops the light that bounces across more than one microfacet, so rough
+    // metal darkens (a white-furnace probe kept 36% at roughness 1). The dropped
+    // share Ems comes back through the cosine-weighted irradiance rather than the
+    // mirror gather: light that has struck several microfacets leaves in a wide
+    // lobe, not along R. Favg is the Fresnel averaged across those bounces, so a
+    // colored metal saturates as it recovers. Exact in a uniform surround
+    // (FssEss + FmsEms = 1 at F0 = 1), vanishing for smooth surfaces, and within a
+    // hair of nothing for dielectrics. Written from the published technique
+    // (README Techniques list).
+    float3 FssEss = F0 * brdf.x + brdf.y;
+    float Ems = 1.0 - saturate(brdf.x + brdf.y);
+    float3 Favg = F0 + (float3(1.0) - F0) * (1.0 / 21.0);
+    float3 FmsEms = Ems * FssEss * Favg / (float3(1.0) - Favg * Ems);
+    float3 specular = prefiltered * FssEss + FmsEms * irradiance;
     float3 diffusePart = kD * diffuse;
     // Transmission swaps the diffuse body for the view through it: the refracted
     // environment (or the traced scene), tinted by the albedo and weighted by the
@@ -4528,7 +4580,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         // wherever the lookup leaves the frame. A zero alpha (the feature off, or the
         // exit point off screen) leaves the environment exactly as it was.
         if (!traced && sceneBehind.a > 0.0) Ft = mix(Ft, sceneBehind.rgb, sceneBehind.a);
-        float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
+        float3 E = FssEss + FmsEms;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
     float3 color = diffusePart + specular;
@@ -4720,7 +4772,21 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     }
 #endif
     float2 brdf = brdfTex.sample(lutSamp, float2(NoV, rough)).rg;
-    float3 specular = prefiltered * (F0 * brdf.x + brdf.y);
+    // Multiple scattering: the split-sum product is the single-scatter lobe alone,
+    // which drops the light that bounces across more than one microfacet, so rough
+    // metal darkens (a white-furnace probe kept 36% at roughness 1). The dropped
+    // share Ems comes back through the cosine-weighted irradiance rather than the
+    // mirror gather: light that has struck several microfacets leaves in a wide
+    // lobe, not along R. Favg is the Fresnel averaged across those bounces, so a
+    // colored metal saturates as it recovers. Exact in a uniform surround
+    // (FssEss + FmsEms = 1 at F0 = 1), vanishing for smooth surfaces, and within a
+    // hair of nothing for dielectrics. Written from the published technique
+    // (README Techniques list).
+    float3 FssEss = F0 * brdf.x + brdf.y;
+    float Ems = 1.0 - saturate(brdf.x + brdf.y);
+    float3 Favg = F0 + (float3(1.0) - F0) * (1.0 / 21.0);
+    float3 FmsEms = Ems * FssEss * Favg / (float3(1.0) - Favg * Ems);
+    float3 specular = prefiltered * FssEss + FmsEms * irradiance;
     float3 diffusePart = kD * diffuse;
     // Transmission swaps the diffuse body for the view through it: the refracted
     // environment (or the traced scene), tinted by the albedo and weighted by the
@@ -4744,7 +4810,7 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
         // wherever the lookup leaves the frame. A zero alpha (the feature off, or the
         // exit point off screen) leaves the environment exactly as it was.
         if (!traced && sceneBehind.a > 0.0) Ft = mix(Ft, sceneBehind.rgb, sceneBehind.a);
-        float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
+        float3 E = FssEss + FmsEms;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
     float3 color = diffusePart + specular;
@@ -4960,14 +5026,14 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
-                            iesProfiles, cookies, sheenLUT,
+                            iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness,
                             float4(0.0), roughKernel);   // no per-vertex tangent here
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
-                            iesProfiles, cookies, sheenLUT,
+                            iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), float4(0.0),
                             roughKernel);
 #endif
@@ -5322,13 +5388,13 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     }
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness,
                             float4(0.0), roughKernel);   // no per-vertex tangent here
 #else
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), float4(0.0),
                             roughKernel);
 #endif
@@ -5524,13 +5590,13 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     }
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent,
                             roughKernel);
 #else
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), in.tangent, roughKernel);
 #endif
 #if OLLIN_RT_SHADOWS
@@ -6000,13 +6066,13 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     }
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent,
                             roughKernel);
 #else
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), in.tangent, roughKernel);
 #endif
 #if OLLIN_RT_SHADOWS

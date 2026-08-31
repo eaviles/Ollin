@@ -96,11 +96,18 @@ static inline float3 ollin_ibl_importance_ggx(float2 xi, float3 n, float rough) 
 // already α, so it must not be squared again (k = roughness⁴/2 under-shadows,
 // running the environment specular ~15-20% hot at mid roughness).
 static inline float ollin_ibl_geometry(float ndv, float ndl, float rough) {
+    // Height-correlated Smith, the same masking the analytic lobes shade with
+    // (`ollin_pbr_V_SmithGGX` times the 4·N·L·N·V it folds in). One geometry term
+    // for the LUT and the lobes is load-bearing: the multiple-scattering energy
+    // compensation divides by this table's directional albedo, and a bake with the
+    // split-form k = α/2 approximation prices the lobe low, so the compensation
+    // over-fills it (measured 104.5% in the path-traced white furnace at roughness
+    // 1, against a level read with the matched term).
     float a = rough * rough;
-    float k = a * 0.5;
-    float gv = ndv / (ndv * (1.0 - k) + k);
-    float gl = ndl / (ndl * (1.0 - k) + k);
-    return gv * gl;
+    float a2 = a * a;
+    float gv = ndl * sqrt(ndv * ndv * (1.0 - a2) + a2);
+    float gl = ndv * sqrt(ndl * ndl * (1.0 - a2) + a2);
+    return (2.0 * ndl * ndv) / max(gv + gl, 1e-5);
 }
 
 constexpr sampler ollin_ibl_equirect_samp(filter::linear, mip_filter::nearest,

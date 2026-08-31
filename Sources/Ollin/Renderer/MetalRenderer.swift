@@ -1792,6 +1792,7 @@ final class MetalRenderer {
         // mesh fragments can sample them. A no-op when no environment is set.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer)
         ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
+        ensureBRDFLUT(for: drawer, commandBuffer: commandBuffer)
         // Shadow depth pass from the casting light, ahead of the geometry pass in the
         // same command buffer (a no-op returning nil when this frame casts no shadow).
         // It shares the mesh vertex buffer the geometry pass uses.
@@ -2432,6 +2433,7 @@ final class MetalRenderer {
         // Export blocks on a remote-environment download so the exported frame is full-res.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer, blocking: true)
         ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
+        ensureBRDFLUT(for: drawer, commandBuffer: commandBuffer)
         // Shadow depth pass (nil when this frame casts no shadow), sharing the export
         // mesh buffer; so the headless/snapshot path shadows exactly like the window.
         let meshBuf = exportMeshBuffer(for: tracedMeshVertexCount(drawer))
@@ -2769,6 +2771,7 @@ final class MetalRenderer {
                                    viewport: SIMD2<Float>(Float(width), Float(height)))
             _ = resolveIBL(for: drawer.environment, commandBuffer: cb)   // bake IBL once
             ensureSheenLUT(for: drawer, commandBuffer: cb)
+            ensureBRDFLUT(for: drawer, commandBuffer: cb)
             let renderedShadow = encodeShadowPass(
                 drawer, into: cb, meshBuffer: meshBuf,
                 instancedMeshBuffer: buffers.instancedMesh,

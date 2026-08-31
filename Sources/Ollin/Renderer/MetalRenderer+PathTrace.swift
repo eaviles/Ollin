@@ -159,6 +159,14 @@ extension MetalRenderer {
         // The sample loop: one command buffer per chunk, waited, so a long render
         // reports progress and no single buffer runs long enough to trip the GPU
         // watchdog. The chunk size adapts toward roughly a second of GPU work.
+        // The BRDF LUT feeds the kernel's multiple-scattering energy compensation,
+        // so it must be real before the first dispatch. The queue runs command
+        // buffers in commit order, so a bake committed here is visible to every
+        // trace chunk below without a wait.
+        if iblBRDFLUT == nil, let lutCB = commandQueue.makeCommandBuffer() {
+            ensureBRDFLUT(commandBuffer: lutCB)
+            lutCB.commit()
+        }
         var done = 0
         var chunk = 2
         while done < total {
@@ -187,6 +195,7 @@ extension MetalRenderer {
             enc.setTexture(cookieArrayTexture ?? shapingArray, index: 4)
             enc.setTexture(guideColor, index: 5)
             enc.setTexture(guideSurface, index: 6)
+            enc.setTexture(iblBRDFLUT, index: 7)
             enc.dispatchThreads(MTLSize(width: width, height: height, depth: 1),
                                 threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
             enc.endEncoding()

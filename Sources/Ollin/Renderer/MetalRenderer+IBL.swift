@@ -817,7 +817,7 @@ extension MetalRenderer {
     }
 
     /// Bake the environment-independent BRDF integration LUT once (the split-sum scale/bias).
-    private func ensureBRDFLUT(commandBuffer cb: MTLCommandBuffer) {
+    func ensureBRDFLUT(commandBuffer cb: MTLCommandBuffer) {
         guard iblBRDFLUT == nil else { return }
         let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rg16Float,
                                                             width: Self.iblBRDFSize,
@@ -835,6 +835,18 @@ extension MetalRenderer {
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
         iblBRDFLUT = lut
+    }
+
+    /// Bake the BRDF LUT the first frame whose batches carry a physically-based finish,
+    /// environment or not: the microfacet shading reads it for its multiple-scattering
+    /// energy compensation (`ollin_pbr_ess`) under plain and area lights too, so a
+    /// physically-based fragment must never sample the stand-in strip bound at texture 6.
+    /// Same trigger shape as `ensureSheenLUT`; a frame with no such finish (or one
+    /// already baked) is a no-op, so 2D frames stay untouched.
+    func ensureBRDFLUT(for drawer: Drawer, commandBuffer cb: MTLCommandBuffer) {
+        guard iblBRDFLUT == nil,
+              drawer.batches.contains(where: { $0.finish.shadingModel == 3 }) else { return }
+        ensureBRDFLUT(commandBuffer: cb)
     }
 
     /// Bake the sheen directional-albedo LUT once, the first frame whose batches carry a

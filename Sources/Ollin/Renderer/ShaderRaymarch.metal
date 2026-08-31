@@ -775,7 +775,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // slot 0 >= 0) stand in for the map sampling there; pass lit (1.0) ray-traced factors.
     float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
-                              ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT
+                              ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF
 #if OLLIN_RT_SHADOWS
                               , float4(1.0)
 #endif

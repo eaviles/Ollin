@@ -16,7 +16,7 @@ struct PathTraceTests {
 
     /// A minimal traced scene: one sphere, one material, one light setup.
     final class Probe: Sketch {
-        enum Kind { case furnaceMatte, furnacePBR, parityDirectional }
+        enum Kind { case furnaceMatte, furnacePBR, furnaceMetal, parityDirectional }
         var kind: Kind = .furnaceMatte
 
         override var canvasSize: CanvasSize { .square(256) }
@@ -41,6 +41,13 @@ struct PathTraceTests {
                 ambientLight(Color(white: 0.5))
                 fill(.white)
                 material(.dielectric(roughness: 1.0))
+            case .furnaceMetal:
+                // The hard case for a microfacet lobe: at roughness 1 the
+                // single-scatter model alone keeps ~40% of the field, and the
+                // multiple-scattering energy compensation must put the rest back.
+                ambientLight(Color(white: 0.5))
+                fill(.white)
+                material(.metal(roughness: 1.0))
             case .parityDirectional:
                 ambientLight(Color(white: 0.1))
                 directionalLight(Color(white: 0.8), direction: Vector3(-1, -1, -1))
@@ -105,6 +112,17 @@ struct PathTraceTests {
         let image = try #require(pathTraced(.furnacePBR))
         let m = centerMean(image)
         #expect(m > 112.0 && m < 130.0, "PBR furnace mean \(m), expected a little under 127.5")
+    }
+
+    /// The metal furnace: a rough white metal in a uniform field. The single-scatter
+    /// lobe alone keeps ~40% of the field here, so this pin is what holds the
+    /// multiple-scattering energy compensation in place: the compensated lobe must
+    /// hand the field back level, the same 8-bit target the matte furnace pins.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theMetalFurnaceKeepsItsEnergy() throws {
+        let image = try #require(pathTraced(.furnaceMetal))
+        let m = centerMean(image)
+        #expect(abs(m - 127.5) < 4.0, "metal furnace mean \(m), expected ~127.5")
     }
 
     /// Raster parity: a directional-lit matte sphere is the simplest scene both
