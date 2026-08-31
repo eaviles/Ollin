@@ -66,8 +66,8 @@ platforms: [
     .macOS("26.0")
 ],
 dependencies: [
-    // Tracks main: no tagged releases until 1.0, and the API still moves.
-    .package(url: "https://github.com/eaviles/Ollin.git", branch: "main")
+    // Pre-1.0: a breaking change bumps the minor, so stay on one minor.
+    .package(url: "https://github.com/eaviles/Ollin.git", .upToNextMinor(from: "0.1.0"))
 ],
 targets: [
     .executableTarget(
@@ -305,7 +305,7 @@ The full record lives in [`ATTRIBUTION.md`](ATTRIBUTION.md): the framework influ
 Ollin is **alpha and pre-1.0**, developed in the open. That means two different things:
 
 - **The output is production-grade.** Linear-light rendering, real anti-aliasing, OKLab color, deterministic and reproducible export, snapshot-tested rendering. Work made with Ollin is meant to be finished and shown.
-- **The API is not.** Names, signatures, and structure can shift between commits, and there's no tagged release or SemVer guarantee until 1.0.
+- **The API is not.** Names, signatures, and structure still change. Releases follow semantic versioning at major zero: a breaking change or a new feature bumps the minor, a fix bumps the patch. Pin `.upToNextMinor` and read the release notes when you move up; deprecation shims and a settled surface arrive at 1.0.
 
 Beyond that:
 

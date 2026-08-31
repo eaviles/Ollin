@@ -134,7 +134,7 @@ enum OllinNewCommand {
         if let frameworkPath {
             framework = .localPath(URL(fileURLWithPath: frameworkPath))
         } else if wantsRemote {
-            framework = .remote(url: remoteURL, branch: "main")
+            framework = .remote(url: remoteURL, version: FrameworkSource.latestRelease)
         } else if let root = frameworkRoot() {
             framework = .localPath(root)
         } else {

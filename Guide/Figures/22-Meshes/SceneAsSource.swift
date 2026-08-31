@@ -58,7 +58,7 @@ final class SceneAsSource: Sketch {
     private func generatedSource() -> String {
         guard let described else { return "" }
         let request = ProjectRequest(name: "Yard", importedScene: described,
-                                     destination: sceneURL, framework: .remote(url: "", branch: ""))
+                                     destination: sceneURL, framework: .remote(url: "", version: ""))
         return ProjectGenerator.sketchSource(request)
     }
 

@@ -169,7 +169,7 @@ ollin new MyPiece --remote                      # point at the published framewo
 ollin new MyPiece --framework-path ~/dev/Ollin  # point at a particular copy
 ```
 
-The path form is the right default while the framework is unpublished. Switch to `--remote` for a project you mean to hand to someone who does not have that folder.
+The path form is the right default on a machine that has the framework, since the project builds with nothing to fetch. Switch to `--remote` for a project you mean to hand to someone who does not have that folder: the manifest then pins the newest tagged release and stays on that minor, because a pre-1.0 minor can break.
 
 ## Every option
 

@@ -543,7 +543,7 @@ public enum ProjectGenerator {
 
         ```swift
         dependencies: [
-            .package(url: "https://example.com/\(package)", from: "0.1.0"),
+            .package(url: "https://example.com/\(package)", .upToNextMinor(from: "0.1.0")),
         ]
         ```
 

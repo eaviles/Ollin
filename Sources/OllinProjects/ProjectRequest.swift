@@ -123,21 +123,25 @@ public struct ProjectRequest: Sendable {
 
 /// Where a generated manifest points for the framework.
 ///
-/// The path form is the honest default while the framework is unpublished: the
+/// The path form is the honest default on a machine that has the framework: the
 /// generator knows the repository it is running out of, so it writes that in and
 /// the project builds straight away. The remote form is for a project meant to
-/// be shared with someone who does not have that folder.
+/// be shared with someone who does not have that folder; it pins the newest
+/// tagged release and stays on that minor, because a pre-1.0 minor can break.
 public enum FrameworkSource: Sendable, Hashable {
     case localPath(URL)
-    case remote(url: String, branch: String)
+    case remote(url: String, version: String)
+
+    /// The newest tagged release. Bump when a new minor is tagged.
+    public static let latestRelease = "0.1.0"
 
     /// The `dependencies:` entry this source becomes.
     public var manifestEntry: String {
         switch self {
         case .localPath(let url):
             return ".package(path: \"\(url.path)\")"
-        case .remote(let url, let branch):
-            return ".package(url: \"\(url)\", branch: \"\(branch)\")"
+        case .remote(let url, let version):
+            return ".package(url: \"\(url)\", .upToNextMinor(from: \"\(version)\"))"
         }
     }
 }

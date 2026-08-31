@@ -187,9 +187,9 @@ struct ProjectGeneratorTests {
         var manifest = try manifestOf(wanted)
         #expect(manifest.contains(".package(path: \"/somewhere/Ollin\")"))
 
-        wanted.framework = .remote(url: "https://example.com/Ollin.git", branch: "main")
+        wanted.framework = .remote(url: "https://example.com/Ollin.git", version: "0.1.0")
         manifest = try manifestOf(wanted)
-        #expect(manifest.contains(".package(url: \"https://example.com/Ollin.git\", branch: \"main\")"))
+        #expect(manifest.contains(".package(url: \"https://example.com/Ollin.git\", .upToNextMinor(from: \"0.1.0\"))"))
     }
 
     // MARK: - Writing
