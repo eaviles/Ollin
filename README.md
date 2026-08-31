@@ -6,7 +6,7 @@
 
 [Guide](Guide/README.md) · [Docs](Docs/README.md) · [Examples](Examples/) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md) · [Attribution](ATTRIBUTION.md) · [Contributing](CONTRIBUTING.md)
 
-Ollin is for generative art, live visuals, and installations. There's no package ecosystem to assemble first: the techniques you reach for are already in it, from Voronoi and L-systems to raymarched signed-distance fields, GPU fluids, and on-device computer vision. The renderer sits directly on Metal and composites in linear light. The tooling around it (live reload, a typed parameter inspector, deterministic headless export) is made for finishing work rather than demoing it.
+Ollin is for generative art, live visuals, and installations. The techniques are built in: Voronoi and L-systems, raymarched signed-distance fields, GPU fluids, on-device computer vision. The renderer sits directly on Metal and composites in linear light. The tooling covers the work up to a finished piece: live reload while you edit, a typed parameter inspector for tuning, deterministic headless export for the final render.
 
 The API borrows the friendly `setup()`/`draw()` feel of [p5.js](https://p5js.org), the typed core of [OPENRNDR](https://openrndr.org), and the simple structure of [openFrameworks](https://openframeworks.cc), reimplemented in Swift idioms rather than ported (see [Influences & attribution](#influences--attribution)). *Ollin* (OH-leen) is the Aztec glyph for movement, the seventeenth day sign of the calendar.
 
