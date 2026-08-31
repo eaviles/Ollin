@@ -23,7 +23,7 @@ You need macOS 26+ with a Metal-capable GPU and a Swift 6 toolchain.
 
 ## Examples and attribution
 
-Only port a sketch whose license permits redistribution under MIT, and name its source, author, URL, and license in the file header. The header template and the full rules live in [`Examples/README.md`](Examples/README.md) and the README's [Influences & attribution](README.md#influences--attribution) section. When you're unsure of a sketch's origin or license, ask in the issue first.
+Only port a sketch whose license permits redistribution under MIT, and name its source, author, URL, and license in the file header. The header template and the full rules live in [`Examples/README.md`](Examples/README.md) and the README's [Influences & attribution](README.md#influences--attribution) section. When you're unsure of a sketch's origin or license, open an issue and ask first.
 
 ## Conduct and license
 
