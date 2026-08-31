@@ -13,9 +13,8 @@ the [shader library reference](../../Docs/Shaders/ShaderLibrary.md), and
 
 | Example | What it shows |
 |---|---|
-| [HelloShader](HelloShader/Sketch.swift) | the smallest user shader: a trigonometric plasma as a `generate(.shader(...))` source, colored by the library's cosine `palette` |
+| [HelloShader](HelloShader/Sketch.swift) | the smallest user shader, both ways in: an inline `Shader("...")` plasma beside the same contract loaded from a `.metal` file (`Shader(resource:in:)`), which hot-reloads on save under OllinLive, no swiftc pass |
 | [ShaderFilter](ShaderFilter/Sketch.swift) | a shader as a one-input filter: draw a scene into a layer, re-sample it with a wave and posterize (`sample(info, uv)`) |
 | [ShaderBlend](ShaderBlend/Sketch.swift) | a shader as a two-input combine: an animated diagonal wipe whose seam ripples (`sample` + `sampleAux`) |
-| [ShaderFile](ShaderFile/Sketch.swift) | a shader loaded from a `.metal` file beside the sketch (`Shader(resource:in:)`); under OllinLive it hot-reloads on save, no swiftc pass |
 | [VisualSynth](VisualSynth/Sketch.swift) | the fluent `Visual` chain surface: source, warps, color moves, and modulations compiling into one GPU pass, every number animatable without a recompile |
-| [DomainWarp](DomainWarp/Sketch.swift) | domain warping opened up: the fbm field displaces its own coordinates twice (the shader library's `warpedFbm`, written out by hand), the intermediate displacements tinting the marble |
+| [DomainWarp](DomainWarp/Sketch.swift) | runtime shader parameters: `Shader(_, params:)` floats read back in MSL as `param(info, n)`, animating a hand-written domain-warp marble with no recompile |

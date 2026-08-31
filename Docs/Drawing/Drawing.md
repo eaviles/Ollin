@@ -274,7 +274,7 @@ The modes: `.add` (sum as light, lightens), `.screen` (also lightens, softer), `
 
 One known limit: under `.darkest`, the analytic shapes (`drawCircle`, `drawRect`, and the rest of the SDF catalog) darken their whole covering rectangle, not just the shape, because the GPU's min blend can't ignore a quad's empty pixels. Until that's fixed, draw `.darkest` shapes on the triangle path (`drawPolygon` with a many-sided outline) or through a layer mask.
 
-Because the canvas blends in linear light (the gamma-correct pipeline), `.add` sums physically, so two half-bright lights make a full-bright one. Set against a dark background it reads as glowing accumulation. See `Examples/Rendering/Blending`.
+Because the canvas blends in linear light (the gamma-correct pipeline), `.add` sums physically, so two half-bright lights make a full-bright one. Set against a dark background it reads as glowing accumulation. See `Examples/Rendering/ToneMapping` (its flat `.normal` mode is the control case).
 
 ### Basic shapes
 

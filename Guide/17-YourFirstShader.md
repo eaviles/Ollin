@@ -385,7 +385,7 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 19](19-GridSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
-- Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/ShaderFile`](../Examples/Shaders/ShaderFile/Sketch.swift) (hot-reloading `.metal`), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), and [`Examples/Effects/PatternFields`](../Examples/Effects/PatternFields/Sketch.swift).
+- Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift) (inline and hot-reloading `.metal`-file forms), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), and [`Examples/Effects/GeneratorCatalog`](../Examples/Effects/GeneratorCatalog/Sketch.swift).
 
 ---
 

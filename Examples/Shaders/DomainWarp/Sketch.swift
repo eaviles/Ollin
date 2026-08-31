@@ -1,15 +1,20 @@
 import Ollin
 
-/// Domain warping, opened up: the fbm field displaces its own sampling
-/// coordinates, twice over, and the marble emerges. The shader runs the
-/// classic recipe by hand instead of calling the one-line `warpedFbm(p, k)`
-/// helper, because the intermediate displacements are worth keeping: `q` (the
-/// first warp) and `r` (the second) each tint the color, which is what gives
-/// the churn its veins and weather fronts. `param(info, 0)` drifts the field
-/// slowly sideways forever; the `warp` knob runs it from plain clouds to
-/// full churn.
+/// A shader with runtime parameters: `Shader(_, params:)` hands the GPU a
+/// small array of floats, and the MSL body reads them back as
+/// `param(info, n)`. Here `param(info, 0)` is a slow drift fed `time` and
+/// `param(info, 1)` is the `warp` knob, so the field slides and churns with no
+/// recompile; the `Shader` is rebuilt each frame, but compilation is cached by
+/// the source text, so only the two floats change. That is the pattern for
+/// animating any hand-written shader from Swift: knobs and clocks go in
+/// `params`, math stays in the string.
 ///
-/// The same look, one line, no shader: `generate(.noise(scale: 3, warp: 1))`.
+/// The vehicle is the classic domain-warp recipe, written out by hand instead
+/// of calling the one-line `warpedFbm(p, k)` helper because the intermediate
+/// displacements are worth keeping: `q` (the first warp) and `r` (the second)
+/// each tint the color. The same picture with no shader at all is
+/// `generate(.noise(scale: 3, warp: 1))`; the shader's reason to exist here is
+/// the parameter plumbing.
 @main
 final class DomainWarp_Example: Sketch {
     @Param(0 ... 2, icon: "tornado") var warp = 1.0

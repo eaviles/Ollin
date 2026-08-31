@@ -24,6 +24,20 @@ import Ollin
 /// light is pink, which is the rule behind all three: a glowing thing has to
 /// out-bright every reflection of itself, or the pool it casts reads as the
 /// brighter object and the picture inverts.
+///
+/// `castShadows()` reaches the area lights too: with no punctual light present, the
+/// first rect or disk panel is the caster, and its penumbra comes from the panel's
+/// *real extent* rather than a knob. The softbox key breathes between a narrow
+/// strip and a broad panel; watch the shadows harden and soften with it, staying
+/// crisp where a shape meets the floor and spreading as they fall away (the
+/// contact-hardening a real softbox gives). The panel's radiance scales down as it
+/// grows, so the pour of light stays steady while only the shadows change. A tube
+/// never casts: it glows in every direction, so there is no side to render a
+/// shadow from. **Hold the space bar** to lift the shadows and compare. (Under the
+/// hood, on a ray-tracing GPU each lit pixel traces visibility rays to points
+/// spread over the panel's actual surface, so a wide panel even throws a lopsided
+/// penumbra along its long axis; on other GPUs the panel renders a spot-style
+/// shadow map from its center whose soft edge is sized from the same extent.)
 @main
 final class AreaLights: Sketch {
 
@@ -46,15 +60,23 @@ final class AreaLights: Sketch {
         // --- The three area sources (per-frame, like every light) ---
 
         // The rect panel: standing at the back-left, aimed at the set. Its yaw/pitch
-        // also orient the glowing prop below, so the two can't drift apart.
+        // also orient the glowing prop below, so the two can't drift apart. Its side
+        // breathes between a narrow strip and a broad square; the radiance divides by
+        // the area, so the light poured on the set holds steady while the shadow
+        // edges do all the talking.
         let rectCenter = Vector3(-3.6, 1.0, -2.4)
+        let rectSide = 1.0 + pingPong(over: 12) * 3.0
         let rectYaw = 0.65 + sin(time * 0.3) * 0.12     // a slow sway, like a hand-held bounce
         let rectPitch = 0.28    // positive pitch aims the panel down at the set
         let rectDir = panelDirection(yaw: rectYaw, pitch: rectPitch)
         let rectUp = panelUp(yaw: rectYaw, pitch: rectPitch)
         rectangleLight(Color(hue: 0.09, saturation: 0.30, brightness: 1.0),
-                  at: rectCenter, direction: rectDir, width: 3.2, height: 2.1,
-                  up: rectUp, intensity: 8)
+                  at: rectCenter, direction: rectDir, width: rectSide, height: rectSide,
+                  up: rectUp, intensity: 54 / (rectSide * rectSide))
+
+        // The panel is the caster (the first rect or disk, with no punctual light in
+        // the frame). Hold the space bar to lift the shadows and compare.
+        if !isKeyDown(" ") { castShadows() }
 
         // The disk: a cool round fill from the right.
         let diskCenter = Vector3(3.8, 1.3, -1.2)
@@ -114,7 +136,7 @@ final class AreaLights: Sketch {
             rotateX(rectPitch)
             fill(.white)
             matcap(rectGlow)
-            drawBox(width: 3.2, height: 2.1, depth: 0.06)
+            drawBox(width: rectSide, height: rectSide, depth: 0.06)
         }
         withState {
             translate(diskCenter.x, diskCenter.y, diskCenter.z)

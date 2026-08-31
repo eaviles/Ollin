@@ -4,7 +4,7 @@ import OllinVision
 
 /// Click a thing and it lifts out of the live feed: a `PointSegmenter` segments
 /// whatever sits under the click, any thing, and hands back its matte and
-/// cutout. Where `SubjectLift` lets the model decide what stands out, this one
+/// cutout. Where `Lift` (its subject mode) lets the model decide what stands out, this one
 /// takes direction: click the mug, not the person holding it. Shift-click a
 /// stray region the mask caught and it retreats; press C to let the pick go.
 /// The weights aren't in the repo: run `Scripts/fetch-models.sh` once and

@@ -2,25 +2,39 @@ import Foundation
 import simd
 import Ollin
 
-/// A room walked all the way around and back to the door, scanned twice: once lining
-/// each frame up against what has already been fused, and once also recognizing the
-/// place it started from.
+/// A room walked all the way around and back to the door, scanned two ways at
+/// once and shown side by side. The left half always lines each frame up
+/// against what has already been fused; **C** cycles what the right half does:
+/// trusting the camera's reported pose, lining frames up the same way, or also
+/// recognizing the place it started from.
 ///
-/// Lining every frame up against the scan takes the newest error out, and that is the
-/// left half. What it cannot do is reach back. Each frame agreed with the frame before
-/// it, so the chain is smooth, and it still leans: by the far side of the walk the wall
-/// is a good way from where it really is, and nothing in the sweep knows.
+/// A depth camera that reports its own pose reports it with a small error. The
+/// error is far too small to see in one frame, and it never goes away, so it
+/// piles up. After a minute of sweeping, a wall seen at the start and again at
+/// the end lands in two places and the scan turns to fog. That is drift, and
+/// the right half's first mode (`add(_:transformedBy:)`, which just trusts the
+/// pose) is what it does.
 ///
-/// The right half keeps a **keyframe** every so often, and when a new one lands where an
-/// old one stood it matches the two directly. That match is a measurement between a late
-/// pose and an early one, so the chain becomes a loop that does not quite close, and the
-/// gap can be shared out over every pose between them. Watch the right half at the moment
-/// the walk comes home: the whole room snaps.
+/// Lining every frame up against the scan (`add(_:correcting:)`) slides and
+/// turns each frame until it sits on the surfaces already fused, keeps the
+/// fix, and reuses it on the next frame. The walls stay one wall thick, and
+/// that is the left half. What it cannot do is reach back: each frame agreed
+/// with the frame before it, so the chain is smooth, and it still leans. By
+/// the far side of the walk the wall is a good way from where it really is,
+/// and nothing in the sweep knows.
 ///
-/// Look straight down, because from overhead each wall is a line and a scan that leaned
-/// draws that line twice. Nothing is plugged in: the room, the walk and the drift are all
-/// made up, so both halves get exactly the same frames. Sweep a real room with
-/// `PhoneWorldScan`, which calls the same method. Press **R** to walk it again.
+/// The last mode (`ScanGraph`) keeps a **keyframe** every so often, and when a
+/// new one lands where an old one stood it matches the two directly. That
+/// match is a measurement between a late pose and an early one, so the chain
+/// becomes a loop that does not quite close, and the gap can be shared out
+/// over every pose between them. Watch the right half at the moment the walk
+/// comes home: the whole room snaps.
+///
+/// Look straight down, because from overhead each wall is a line and a scan
+/// that leaned draws that line twice. Nothing is plugged in: the room, the
+/// walk and the drift are all made up, so every mode gets exactly the same
+/// frames. Sweep a real room with `PhoneWorldScan`, which calls the same
+/// methods. Press **R** to walk it again.
 @main
 final class ClosedLoopScan: Sketch {
 
@@ -31,9 +45,18 @@ final class ClosedLoopScan: Sketch {
     // the far side, which is what leaves the walk a lean to find when it comes home.
     let hallWidth = 10.0, hallDepth = 8.0, hallHeight = 2.6
 
+    /// What the right half shows; **C** cycles it. All three scans run on every
+    /// frame of the walk, so switching is instant, mid-walk or after.
+    enum Mode: Int, CaseIterable {
+        case reported, lined, closed
+    }
+    var mode = Mode.closed
+
+    /// The pose-trusting scan: each frame fused where the camera said it stood.
+    var loose = WorldCloud(voxelSize: 0.05)
     /// The left scan: each frame lined up against what is already fused.
     var lined = WorldCloud(voxelSize: 0.05)
-    /// The right scan: the same, and it recognizes where it has been.
+    /// The loop-closing scan: the same, and it recognizes where it has been.
     var closed = ScanGraph(voxelSize: 0.05)
 
     var room: [PointCloud.Point] = []
@@ -44,13 +67,18 @@ final class ClosedLoopScan: Sketch {
     /// from where it really stands.
     var drift = matrix_identity_float4x4
     var lostItsPlaceBy = 0.0
-    /// Where the left scan put the camera, kept so both walks can be drawn. The right
-    /// scan keeps its own in `closed.keyframes`, and rewrites them when it straightens.
+    /// What the lining-up fit had left over on the latest frame.
+    var leftOver = 0.0
+    /// Where the pose-trusting scan put the camera, and where the left scan put it, kept
+    /// so each walk can be drawn. The loop-closing scan keeps its own in
+    /// `closed.keyframes`, and rewrites them when it straightens.
+    var reportedWalk: [simd_float4x4] = []
     var linedWalk: [simd_float4x4] = []
-    /// Where the camera really was at each of those, so each half can be scored against
+    /// Where the camera really was at each of those, so each scan can be scored against
     /// the truth. A real scan never has this, which is the whole difficulty.
     var trueWalk: [simd_float4x4] = []
-    /// The last place the right half recognized, and how far the room moved when it did.
+    /// The last place the loop-closing scan recognized, and how far the room moved when
+    /// it did.
     var recognized: ScanGraph.Loop?
     var recognizedAt = -100.0
     /// The largest the room has moved on being recognized, over the whole walk.
@@ -73,9 +101,12 @@ final class ClosedLoopScan: Sketch {
             let seen = whatTheCameraSees(from: truth)
             let reported = drift * truth
 
+            loose.add(seen, transformedBy: reported)
             let alone = lined.add(seen, correcting: reported)
             let update = closed.add(seen, correcting: reported)
+            leftOver = alone.error
             if update.keyframe != nil {
+                reportedWalk.append(reported)
                 linedWalk.append(alone.pose)
                 trueWalk.append(truth)
             }
@@ -96,9 +127,18 @@ final class ClosedLoopScan: Sketch {
         let apart = hallWidth * 0.58
         camera(.orthographic(eye: Vector3(0, 26, 0.001), target: .zero, height: hallDepth + 5.5))
         drawPointCloud(lined.cloud.transformed(by: sideways(-apart)))
-        drawPointCloud(closed.cloud.transformed(by: sideways(apart)))
         drawWalk(linedWalk, shiftedBy: -apart)
-        drawWalk(closed.keyframes.map(\.pose), shiftedBy: apart)
+        switch mode {
+        case .reported:
+            drawPointCloud(loose.cloud.transformed(by: sideways(apart)))
+            drawWalk(reportedWalk, shiftedBy: apart)
+        case .lined:
+            drawPointCloud(lined.cloud.transformed(by: sideways(apart)))
+            drawWalk(linedWalk, shiftedBy: apart)
+        case .closed:
+            drawPointCloud(closed.cloud.transformed(by: sideways(apart)))
+            drawWalk(closed.keyframes.map(\.pose), shiftedBy: apart)
+        }
         drawTrueWalls(shiftedBy: -apart)
         drawTrueWalls(shiftedBy: apart)
 
@@ -107,15 +147,21 @@ final class ClosedLoopScan: Sketch {
 
     override func keyPressed() {
         if key == "r" || key == "R" {
+            loose.reset()
             lined.reset()
             closed.reset()
+            reportedWalk.removeAll()
             linedWalk.removeAll()
             trueWalk.removeAll()
             drift = matrix_identity_float4x4
             walked = 0
+            leftOver = 0
             recognized = nil
             recognizedAt = -100
             biggestSnap = 0
+        }
+        if key == "c" || key == "C" {
+            mode = Mode(rawValue: (mode.rawValue + 1) % Mode.allCases.count) ?? .closed
         }
     }
 
@@ -223,8 +269,8 @@ final class ClosedLoopScan: Sketch {
 
     // MARK: - Drawing
 
-    /// The path the right half thinks the camera took, as a line of small marks. A walk
-    /// that leaned closes as a spiral; a straightened one closes as a ring.
+    /// The path a scan thinks the camera took, as a line of small marks. A walk that
+    /// leaned closes as a spiral; a straightened one closes as a ring.
     private func drawWalk(_ poses: [simd_float4x4], shiftedBy shift: Double) {
         guard poses.count > 1 else { return }
         var trail = PointCloud()
@@ -290,26 +336,51 @@ final class ClosedLoopScan: Sketch {
         return m
     }
 
+    // MARK: - Saying which is which
+
+    private var rightTitle: String {
+        switch mode {
+        case .reported: return "as the camera reported it"
+        case .lined:    return "lined up against the scan"
+        case .closed:   return "and knows where it has been"
+        }
+    }
+
+    private var rightStats: String {
+        switch mode {
+        case .reported:
+            let score = strayed(reportedWalk)
+            return String(format: "%d points, %.0f cm out, %.0f cm at the end",
+                          loose.count, score.typical * 100, score.home * 100)
+        case .lined:
+            let score = strayed(linedWalk)
+            return String(format: "%d points, %.0f cm out, %.0f cm at the end",
+                          lined.count, score.typical * 100, score.home * 100)
+        case .closed:
+            let score = strayed(closed.keyframes.map(\.pose))
+            return String(format: "%d points, %d kept, %.0f cm out, %.0f cm at the end",
+                          closed.count, closed.keyframes.count,
+                          score.typical * 100, score.home * 100)
+        }
+    }
+
     private func drawLabels() {
         textSize(30)
         textAlign(.center)
         fill(Color(red: 0.95, green: 0.62, blue: 0.55))
         drawText("lined up frame by frame", width * 0.25, 74)
         fill(Color(red: 0.60, green: 0.88, blue: 0.72))
-        drawText("and knows where it has been", width * 0.75, 74)
+        drawText(rightTitle, width * 0.75, 74)
 
         textSize(19)
         fill(Color(white: 0.72))
         let alone = strayed(linedWalk)
-        let together = strayed(closed.keyframes.map(\.pose))
         drawText(String(format: "%d points, %.0f cm out, %.0f cm at the end",
                         lined.count, alone.typical * 100, alone.home * 100), width * 0.25, 110)
-        drawText(String(format: "%d points, %d kept, %.0f cm out, %.0f cm at the end",
-                        closed.count, closed.keyframes.count,
-                        together.typical * 100, together.home * 100), width * 0.75, 110)
+        drawText(rightStats, width * 0.75, 110)
 
         // Say so, loudly and briefly, at the moment the walk comes home.
-        if let loop = recognized, time - recognizedAt < 2.6 {
+        if mode == .closed, let loop = recognized, time - recognizedAt < 2.6 {
             textSize(26)
             fill(Color(red: 1.0, green: 0.86, blue: 0.30)
                 .withAlpha(1 - (time - recognizedAt) / 2.6))
@@ -318,13 +389,15 @@ final class ClosedLoopScan: Sketch {
         }
 
         let closedCount = closed.loops.count
-        drawCaption(String(
-            format: walked < walkFrames
-                ? "walking %d of %d: the camera has lost its place by %.0f cm, "
-                    + "and the right half has recognized %d place%@"
-                : "walked %2$d frames, lost its place by %3$.0f cm, "
-                    + "recognized %4$d place%5$@. R to walk it again",
-            walked, walkFrames, lostItsPlaceBy * 100, closedCount,
-            closedCount == 1 ? "" : "s"))
+        let plural = closedCount == 1 ? "" : "s"
+        if walked < walkFrames {
+            drawCaption(String(format: "walking %d of %d: the camera has lost its place by %.0f cm, "
+                    + "the fit has %.0f mm left over, and %d place%@ recognized. C picks the right half",
+                walked, walkFrames, lostItsPlaceBy * 100, leftOver * 1000, closedCount, plural))
+        } else {
+            drawCaption(String(format: "walked %d frames, lost its place by %.0f cm, recognized %d place%@. "
+                    + "R walks it again, C picks the right half",
+                walkFrames, lostItsPlaceBy * 100, closedCount, plural))
+        }
     }
 }

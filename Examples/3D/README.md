@@ -40,13 +40,10 @@ Meshes, point clouds, and the 3D transform stack.
 | [SubdivisionSurfaces](Geometry/SubdivisionSurfaces/) | A chunky low-poly cage refined into a smooth solid (`mesh.subdivided(_:levels:)`). |
 | [SurfaceFromPoints](Geometry/SurfaceFromPoints/) | From points back to a surface, two ways: a knot sampled into a bare cloud and reconstructed from it. |
 | [HopfFibration](Geometry/HopfFibration/) | A sphere's worth of circles, no two of which meet and every two of which are linked exactly once. |
-| [LoadedScene](Geometry/LoadedScene/) | A whole authored scene drawn in place, opening on its own camera and lights. |
+| [LoadedScene](Geometry/LoadedScene/) | A whole authored scene drawn in place, opening on its own camera and lights; F swaps the glTF stage for its USD twin, a UsdLux-lit sculpture court, through the same loadScene call. |
 | [SceneExplorer](Geometry/SceneExplorer/) | A read-only lens on a scene file: point it at a glTF or USD scene and look around it, part by part. |
-| [AnimatedScene](Geometry/AnimatedScene/) | A scene file's authored animation played back: keyframe tracks posing named nodes. |
-| [SkinnedScene](Geometry/SkinnedScene/) | A scene file's deforming animation: skins that bend meshes and morph targets that blend them. |
-| [USDScene](Geometry/USDScene/) | A USD scene loaded with its structure kept, drawn under its own authored camera and lights. |
-| [USDAnimatedScene](Geometry/USDAnimatedScene/) | A USD file's authored transform animation played on the sketch clock. |
-| [USDSkinnedScene](Geometry/USDSkinnedScene/) | A USD file's skeletal animation and blend shapes, read by Ollin's own parser. |
+| [AnimatedScene](Geometry/AnimatedScene/) | A scene file's authored animation played back: keyframe tracks posing named nodes. F swaps the glTF orrery for a USD kinetic mobile whose timeSamples play the same way. |
+| [SkinnedScene](Geometry/SkinnedScene/) | A scene file's deforming animation: skins that bend meshes and morph targets that blend them. F swaps the glTF tidepool for a USD pond, its UsdSkel rig read by Ollin's own parser. |
 | [Fabrication](Geometry/Fabrication/) | A generated shape written out as something a 3D printer can build, with a report on whether it can be. |
 | [SpatialExport](Geometry/SpatialExport/) | A sketch that leaves as a model instead of a picture: ordinary 3D written out as USDZ. |
 | [SpatialVideo](Geometry/SpatialVideo/) | A sketch that leaves as something you can look into: a scene built for depth rather than for a flat frame. |
@@ -78,9 +75,8 @@ See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 | [Sieve](Physics/Sieve/) | Beads of three colors sorted down one ramp: each window in the ramp is told to ignore one color, so that color falls through it and the rest roll over. Space withdraws the rules and everything rides to the end. `group:`, `ignoreCollisions(between:and:)`, `raycast(as:)`. |
 | [Bagatelle](Physics/Bagatelle/) | A pin table in a 3D world talked out of its third dimension: every ball is held to the board's plane, so the machine works however hard the pins knock it about. Turn that off and the balls wander out of the board. Space fires a shot quick enough to leave through a thin rail unless its path is checked. `freedom:`, `gravityScale`, `checksPath`. |
 | [Contraption](Physics/Contraption/) | A workshop of machines, each one a joint a hinge cannot make: a gear pair driving a rack through the same shaft, a rope over two hooks trading a tray for a counterweight, a platter allowed only to rise and spin, and a cart threaded onto a track. Space loads the tray. `.gear`, `.rackAndPinion`, `.pulley`, `.allowing`, `.path`. |
-| [Cairn](Physics/Cairn/) | A heap of stones laid one at a time, kept. R puts back the arrangement it settled into, exactly; S writes it to a file and L reads it back, so quitting and running again finds the same cairn standing. Drag a stone to wreck it first. `snapshot()`, `restore(_:)`, `save(to:)`, `load(contentsOf:)`. |
 | [Imported](Physics/Imported/) | A scene whose physics was written down somewhere else: `yard.usda` says which prims fall, what shape they collide as, how heavy they are, and where the hinges go, and one call makes the lot. A seesaw, a stack, a hammer that is one body wearing two shapes, and a sign hinged to the world. `world.addBodies(from:)`. |
-| [Yard](Physics/Yard/) | A yard kept whole: a truck you drive with the arrows, a figure pacing across it, a second figure lying where it fell, and a banner strung up over it. S writes the lot to a file and L reads it back, so a restore comes back mid-drive and mid-stride. The terrain floor and the cloth are named rather than held, and the figure's skin stays the sketch's own asset. `snapshot()`, `assetName`, `restore(_:resolving:)`, `world.vehicles`, `world.characters`, `world.ragdolls`, `world.softBodies`. |
+| [Yard](Physics/Yard/) | A yard kept whole: a truck you drive with the arrows, a figure pacing across it, a second figure lying where it fell, and a banner strung up over it. S writes the lot to a file and L reads it back, so a restore comes back mid-drive and mid-stride. The terrain floor and the cloth are named rather than held, and the figure's skin stays the sketch's own asset. R also puts back the exact arrangement the yard settled into, before anything is saved. `snapshot()`, `assetName`, `restore(_:resolving:)`, `world.vehicles`, `world.characters`, `world.ragdolls`, `world.softBodies`. |
 
 ### Camera
 
@@ -109,12 +105,11 @@ What surfaces are made of, from stylized finishes to physically-based metal.
 | [Triplanar](Materials/Triplanar/) | Texture for meshes that have no uvs at all, projected from three directions. |
 | [Decals](Materials/Decals/) | Pictures stamped onto the scene, projected rather than mapped. |
 | [Glass](Materials/Glass/) | Physically-based transmission and refraction. |
-| [SoapBubble](Materials/SoapBubble/) | Thin glass with a living, swirling film. |
 | [SeeThrough](Materials/SeeThrough/) | The scene showing through glass, with no ray tracing. |
 | [CoatAndCloth](Materials/CoatAndCloth/) | Clearcoat and sheen, the two layered finishes on the physically-based material. |
 | [Subsurface](Materials/Subsurface/) | Light that travels under the surface before it comes back out. |
 | [BrushedMetal](Materials/BrushedMetal/) | Anisotropic specular: brushed, turned, and satin finishes whose highlight is a streak instead of a dot. |
-| [ThinFilm](Materials/ThinFilm/) | Thin-film interference: color made by a film's thickness rather than by pigment. |
+| [ThinFilm](Materials/ThinFilm/) | Thin-film interference both ways: the nm-thickness series on a physically based surface, and living soap bubbles on thin glass. |
 
 ### Lighting
 
@@ -127,10 +122,8 @@ Light kinds, curated rigs, and cast shadows.
 | [Shadows](Lighting/Shadows/) | Directional cast shadows: solids drop shadows onto a floor and onto one another via `castShadows()`. |
 | [SpotShadow](Lighting/SpotShadow/) | A spot light as the shadow caster: a perspective shadow map fit to its cone, so the solids inside the beam drop crisp shadows. |
 | [PointShadow](Lighting/PointShadow/) | An omnidirectional point-light caster: a bulb at the center throws shadows in every direction (ray-traced on an RT GPU, a depth cube elsewhere). |
-| [TwoCasters](Lighting/TwoCasters/) | A warm key and a cool spot, each throwing its own shadow. |
-| [PointCasters](Lighting/PointCasters/) | A key light and two lamps in the room, all three throwing shadows. |
-| [AreaLights](Lighting/AreaLights/) | Rect, disk, and tube sources shading a small studio set. |
-| [AreaShadows](Lighting/AreaShadows/) | A softbox panel casting shadows whose softness is its size. |
+| [ManyCasters](Lighting/ManyCasters/) | Several casters at once: a warm key plus a swinging spot or two circling point lamps, each throwing its own shadow. |
+| [AreaLights](Lighting/AreaLights/) | Rect, disk, and tube sources shading a small studio set; the breathing softbox casts shadows whose softness is its size. |
 | [LightShaping](Lighting/LightShaping/) | Photometric profiles and a projected cookie, the two ways a real fixture shapes its beam. |
 | [VolumetricLight](Lighting/VolumetricLight/) | Beams, gobos, and shafts you can see in the air. |
 | [Caustics](Lighting/Caustics/) | The light a glass or a polished metal focuses onto what is around it. |
@@ -144,8 +137,7 @@ Image-based lighting: HDRIs bundled, downloaded, loaded from a URL, or synthesiz
 | --- | --- |
 | [ImageBasedLighting](Environments/ImageBasedLighting/) | `environment(_:)` lights the scene from an HDRI, so physically-based metals fill in with real reflections instead of reading near-black; the environment also doubles as the skybox backdrop. |
 | [EnvironmentGallery](Environments/EnvironmentGallery/) | The eight bundled CC0 HDRI environments (studio, courtyard, forest, interior, city, sunrise, sunset, night) stepped through over one PBR still life, auto-advancing (or arrow keys to step). |
-| [HighResEnvironment](Environments/HighResEnvironment/) | `highResolution(_:)` fetches a sharper 2K/4K/8K backdrop for a bundled environment on first run (the 1K shows meanwhile), lighting unchanged. |
-| [EnvironmentURL](Environments/EnvironmentURL/) | An environment loaded from any equirectangular HDRI URL (`Environment.hdri(downloadURL:)`), downloaded once and cached. |
+| [RemoteEnvironment](Environments/RemoteEnvironment/) | Environments fetched from the web: a sharper 2K/4K/8K backdrop for a bundled environment (`highResolution(_:)`), or any equirectangular HDRI URL (`Environment.hdri(downloadURL:)`), downloaded once and cached; any key switches. |
 | [ProceduralSky](Environments/ProceduralSky/) | A zero-asset daylight dome: `environment(.sky(...))` synthesizes a physically-based sky at runtime and sweeps its sun through a full day. |
 | [Cloudscape](Environments/Cloudscape/) | A raymarched cloudscape over the procedural sky. |
 | [LiveEnvironment](Environments/LiveEnvironment/) | A live camera environment: the room the sketch is in lights the scene. |
@@ -159,12 +151,9 @@ Scene-wide realism passes over the 3D frame.
 | [SceneDefocus](Effects/SceneDefocus/) | Depth of field on a 3D scene defocused by its *own* depth buffer: a row of orbs drawn into a render target, then `scene.combined(with: scene.depth, .defocus(...))` racks focus through them. Drag to rack by hand. |
 | [AmbientOcclusion](Effects/AmbientOcclusion/) | Screen-space ambient occlusion from the scene's own depth and normals: the soft darkening in crevices and contact gaps that grounds a brightly lit scene. |
 | [ScreenSpaceReflections](Effects/ScreenSpaceReflections/) | Surfaces reflecting the scene around them: SSR traced over the frame, on a ring of reflective spheres in different metal finishes. |
-| [RayTracedReflections](Effects/RayTracedReflections/) | Metals mirroring the *actual* scene (off-screen geometry included, none of SSR's streaks) by tracing reflection rays into the image-based lighting. Needs a ray-tracing GPU and an environment. |
+| [RayTracedReflections](Effects/RayTracedReflections/) | Metals mirroring the *actual* scene (off-screen geometry included, none of SSR's streaks), with glossy roughness-spread rays and a `reflectionBounces` knob. Needs a ray-tracing GPU and an environment. |
 | [ContactShadows](Effects/ContactShadows/) | The fine dark seam that seats an object on the surface it stands on. |
-| [GlossyReflections](Effects/GlossyReflections/) | A satin surface shows the room rather than the sky. |
-| [MirrorTunnel](Effects/MirrorTunnel/) | How far a reflection is allowed to travel (`reflectionBounces`). |
-| [Fog](Effects/Fog/) | Distance and height atmosphere over a colonnade. |
-| [AerialPerspective](Effects/AerialPerspective/) | The depth cue that sells scale outdoors: air itself, between you and the far hill. |
+| [Atmosphere](Effects/Atmosphere/) | Fog's distance-and-height cue and physical aerial perspective, over one colonnade (hold space to switch). |
 | [MotionBlur](Effects/MotionBlur/) | The streak a real camera's open shutter leaves on something moving. |
 | [TemporalAA](Effects/TemporalAA/) | Edges refined past MSAA by accumulating jittered frames. |
 | [SpecularAntialias](Effects/SpecularAntialias/) | Highlights too small for their pixel, held still instead of crawling. |
@@ -189,10 +178,8 @@ The 3D SDF combinators: fields that merge, sphere-traced beside the meshes.
 | [RaymarchedGradient](Raymarching/RaymarchedGradient/) | Gradient paint on a merged field: a gradient `fill` paints the whole sphere-traced surface, sampled by each hit's projected screen position. |
 | [RaymarchedEnvironment](Raymarching/RaymarchedEnvironment/) | Raymarched fields lit by an environment: the same image-based lighting (and traced reflections) the meshes get. |
 | [RaymarchedShadow](Raymarching/RaymarchedShadow/) | Field self-shadowing under `castShadows()`: a soft penumbra march toward the light, evaluated as part of the surface shading. |
-| [RaymarchedCastShadow](Raymarching/RaymarchedCastShadow/) | A field casting onto meshes: the field renders into the directional/spot shadow map, so meshes receive its shadow like any other caster's. |
-| [RaymarchedReceiveShadow](Raymarching/RaymarchedReceiveShadow/) | A field *receiving* a mesh's cast shadow: the traced surface samples the shadow map where the mesh's shadow lands. |
-| [RaymarchedPointCast](Raymarching/RaymarchedPointCast/) | Field→mesh shadows under a *point* light: with no 2D map to render into, the lit mesh fragments march the field inline toward the light. |
-| [RaymarchedPointReceive](Raymarching/RaymarchedPointReceive/) | Mesh→field shadows under a *point* light: the field samples the shadow cube (or, on an RT GPU, the acceleration structure) at its hit. |
+| [RaymarchedCastShadow](Raymarching/RaymarchedCastShadow/) | A field casting onto meshes under a directional or point light (any key switches): the field renders into the 2D shadow map, or the lit mesh fragments march the field inline toward the light. |
+| [RaymarchedReceiveShadow](Raymarching/RaymarchedReceiveShadow/) | A field *receiving* a mesh's cast shadow under a directional or point light (any key switches): the traced surface samples the 2D map, the shadow cube, or the acceleration structure at its hit. |
 | [RaymarchedClay](Raymarching/RaymarchedClay/) | The sculpt block: combine mode and melt amount held as state, so a form reads top to bottom like working clay. |
 | [RaymarchedJoinery](Raymarching/RaymarchedJoinery/) | Machined joints and hardware: chamfered and stepped unions, a hanging chain, a capped-torus hook. |
 | [RaymarchedDetailing](Raymarching/RaymarchedDetailing/) | The detailing ops: fluted seams, engraved rings, grooved bands, beading, and a pipe bead left hanging where two bodies crossed. |
@@ -205,14 +192,11 @@ Depth feeds and depth-aware compositing: cameras, recordings, and metric space.
 | Sketch | What it shows |
 | --- | --- |
 | [DepthCloud](Depth/DepthCloud/) | A live 3D point cloud from one webcam: a neural depth model lifts each pixel into space, colored by the camera image, orbiting. Needs `Scripts/fetch-models.sh`. |
-| [Record3DCloud](Depth/Record3DCloud/) | An iPhone RGBD recording orbited as a point cloud: a `.r3d` clip from the Record3D app, unprojected with its true camera intrinsics. Drop a recording in `~/Downloads`. Needs `import OllinRecord3D`. |
-| [Record3DLiveCloud](Depth/Record3DLiveCloud/) | A **live** RGBD cloud streamed from a tethered iPhone: open Record3D, turn on USB streaming, and the phone's depth camera becomes a real-time point cloud on the Mac. Needs `import OllinRecord3D`. |
+| [Record3DCloud](Depth/Record3DCloud/) | An iPhone RGBD point cloud orbited in 3D: the newest `.r3d` clip in `~/Downloads` by default, and the live USB stream the moment a tethered phone offers one, unprojected with true camera intrinsics either way. Needs `import OllinRecord3D`. |
 | [DepthCompositing](Depth/DepthCompositing/) | Depth-aware compositing, a 2D card standing between two point-cloud orbs: the near orb draws over the card, the far one is hidden behind it, with per-orb billboard pins. |
-| [DepthOcclusion](Depth/DepthOcclusion/) | 2D discs hung at a draggable depth plane over a live webcam depth feed (a neural model), occluded by whoever stands nearer. Needs `import OllinVision` + `Scripts/fetch-models.sh`. |
-| [MetricDepthScene](Depth/MetricDepthScene/) | 2D markers floating at **true metric depths** (meters) inside a live LiDAR feed: a `Camera3D.fromIntrinsics` makes the feed metric, so a marker at a real distance is blocked when you step closer than it. Needs `import OllinRecord3D`. |
+| [DepthOcclusion](Depth/DepthOcclusion/) | 2D hung at a depth plane and occluded by whoever stands nearer: a webcam depth model at a normalized 0...1 plane, and **M** for real meters from a tethered LiDAR iPhone (`camera(.intrinsic(...))`). Needs `import OllinVision`/`OllinRecord3D` + `Scripts/fetch-models.sh`. |
 | [DepthLiftedPose](Depth/DepthLiftedPose/) | A 2D body pose lifted into metric 3D through a depth frame: the tethered phone's depth back-projects each tracked joint, and the skeleton is drawn in space over the person's own cloud. Needs `import OllinVision`/`OllinRecord3D`. |
-| [DriftCorrectedScan](Depth/DriftCorrectedScan/) | The same made-up room swept twice side by side: once trusting the reported camera pose, once lining each frame up against the scan with `add(_:correcting:)`. Nothing to plug in; **R** runs the sweep again. |
-| [ClosedLoopScan](Depth/ClosedLoopScan/) | A made-up hall walked all the way around and back, scanned twice side by side: lining each frame up on the left, and `ScanGraph` also recognizing the place it started on the right. The true walls are drawn over both. Nothing to plug in; **R** walks it again. |
+| [ClosedLoopScan](Depth/ClosedLoopScan/) | A made-up hall walked all the way around and back, scanned twice side by side: lining each frame up on the left, and `ScanGraph` also recognizing the place it started on the right. The true walls are drawn over both. Nothing to plug in; **R** walks it again. **C** cycles the right half: the reported pose, lined-up frames, or the closed loop. |
 
 ### Phone
 

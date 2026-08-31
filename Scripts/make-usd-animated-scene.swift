@@ -3,7 +3,7 @@ import Foundation
 
 // Generates an Ollin-original *animated* USD scene as a self-contained text
 // file: a hanging kinetic mobile whose xformOps carry timeSamples, the bundled
-// demo asset for the 3D/USDAnimatedScene example. Everything is authored here,
+// demo asset for the 3D/AnimatedScene example. Everything is authored here,
 // so the asset carries no third-party license.
 //
 // The rig exercises every authored form the animation bake handles, one per
@@ -24,10 +24,10 @@ import Foundation
 // platform reader takes them as-is), light colors are linear per UsdLux.
 // Re-run to regenerate:
 //
-//     swift Scripts/make-usd-animated-scene.swift Examples/3D/Geometry/USDAnimatedScene/stage.usda
+//     swift Scripts/make-usd-animated-scene.swift Examples/3D/Geometry/AnimatedScene/stage.usda
 
 let outPath = CommandLine.arguments.count > 1
-    ? CommandLine.arguments[1] : "Examples/3D/Geometry/USDAnimatedScene/stage.usda"
+    ? CommandLine.arguments[1] : "Examples/3D/Geometry/AnimatedScene/stage.usda"
 
 // MARK: Small vector helpers.
 

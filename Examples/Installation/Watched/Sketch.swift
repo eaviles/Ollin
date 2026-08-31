@@ -1,7 +1,7 @@
 import Ollin
 
-/// A piece that gets itself back up, and keeps the record of every time it had
-/// to.
+/// A piece that remembers how far it got, gets itself back up, and keeps the
+/// record of every time it had to.
 ///
 /// A run on a wall ends in ways a run at a desk does not: a crash at three in
 /// the morning, or a frame that never finishes and leaves the screen frozen
@@ -13,15 +13,25 @@ import Ollin
 /// as that run lasted. So the picture is a record of the piece's own life: a
 /// short arc is a run that ended badly, and the ring still growing is this one.
 ///
-/// Try it. Press **c** to crash it and **h** to hang it, and watch the piece
-/// come back on its own with the last ring stopped where it stopped. The
-/// checkpoint beside it is what makes the older rings survive; without one the
-/// piece would come back at the beginning every time. Quitting with Command-Q
-/// is an ordinary end, so nothing starts it again.
+/// That record is something the clock alone cannot rebuild: the same run at
+/// the same second could not tell you how the earlier ones ended. So the runs
+/// are marked `@Saved`, and the checkpoint writes them down every five seconds.
+/// It covers both kinds of end. Quit with Command-Q, an ordinary end that
+/// nothing restarts, then run it again: the rings are where you left them.
+/// Crash it, and the watch brings it back with the older rings intact. Run it
+/// with `--fresh` to start over, and the saved record is left alone for next
+/// time. The file is JSON you can open, in
+/// `~/Library/Application Support/Ollin/`.
 ///
-/// Ten seconds without answering is a demonstration setting; half a minute is
-/// the default and suits a real piece. Run it with `--no-installation` to work
-/// on it in an ordinary window, where a crash stays crashed. See
+/// Try it. Press **c** to crash it and **h** to hang it, and watch the piece
+/// come back on its own with the last ring stopped where it stopped. Without
+/// the checkpoint beside `restarts` the piece would come back at the beginning
+/// every time.
+///
+/// Five seconds between checkpoints and ten without answering are
+/// demonstration settings; a minute, and the half-minute stall default, suit a
+/// piece that is actually going up somewhere. Run it with `--no-installation`
+/// to work on it in an ordinary window, where a crash stays crashed. See
 /// `Docs/Output/Installation.md`.
 @main
 final class Watched: Sketch {

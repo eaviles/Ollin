@@ -120,7 +120,7 @@ Each glyph comes back as a `Shape`, a set of closed outlines (a letter with a ho
 
 Here's one warning from experience. Keep warps bounded and smooth. `signedNoise` never leaves `-1...1`, so scaling it gives you a hard ceiling on how far any point moves. An unbounded push can fold an outline over itself, which the fill renders as a spike.
 
-There's a related fact worth knowing when you want marks *along* the letters rather than a warp. The outline points come back unevenly spaced (dense on curves, sparse on straights), so dots placed one-per-point clump. Respace a glyph first, `shape.resampled(spacing: 8)`, and every point lands a steady 8 apart along the outline, ready for beads, dashes, or particles. The [`PointShimmer` example](../Examples/Text/PointShimmer/Sketch.swift) builds shimmering dotted type from exactly those two calls.
+There's a related fact worth knowing when you want marks *along* the letters rather than a warp. The outline points come back unevenly spaced (dense on curves, sparse on straights), so dots placed one-per-point clump. Respace a glyph first, `shape.resampled(spacing: 8)`, and every point lands a steady 8 apart along the outline, ready for beads, dashes, or particles. The [`GlyphContours` example](../Examples/Text/GlyphContours/Sketch.swift) builds shimmering dotted type in its bottom row from exactly those two calls.
 
 > **Swift note.** `.map { }` builds a new list by transforming every element of an old one: `c.points.map { p in ... }` reads "a new list of points, each computed from `p`". It's the loop from [Chapter 1](01-HelloOllin.md) wearing a shorter coat, and you'll see it wherever a whole list changes at once.
 
@@ -342,7 +342,7 @@ Type on a computer screen owes its shape to a long argument about what a letter 
 
 - [Text](../Docs/Drawing/Text.md): the full reference, including text on a path, box wrapping, metrics (`textWidth`, `textBounds`), variable-font axes, [every script](../Docs/Drawing/Text.md#scripts) with `textDirection` and `textMissingCharacters`, and loading bitmap, outline, and stroke faces of your own.
 - Appendix B draws the geometry behind the glyphs: [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions), and [Shaping a value](B-JustEnoughMath.md#shaping-a-value) for the warp.
-- Worked examples, in [`Examples/Text/`](../Examples/Text/): `GlyphWave` and `JitterType` (per-glyph motion), `TextOnPath`, `TextBox`, `VariableFont`, `OutlineText` (the warp, live), `StrokeText` and `PlaydateFont` (the other two font kinds in action), `TextVolume` (the atlas mode at paragraph scale), `PointShimmer` (respaced outlines as shimmering dots), and `Scripts` (five scripts on one sheet, with the base direction as a live knob).
+- Worked examples, in [`Examples/Text/`](../Examples/Text/): `GlyphWave` (per-glyph motion), `TextOnPath`, `TextBox`, `VariableFont`, `TypeAsGeometry` (the warp live, plus the seeded per-frame jitter), `StrokeText` and `PlaydateFont` (the other two font kinds in action), `TextVolume` (the atlas mode at paragraph scale), `GlyphContours` (respaced outlines as curve, polygon, and shimmering dots), and `Scripts` (five scripts on one sheet, with the base direction as a live knob).
 - Next door: [Chapter 9](09-Pictures.md) brings in the other kind of outside material, pictures and numbers, and ends by painting one with the type you just learned to set.
 
 ---

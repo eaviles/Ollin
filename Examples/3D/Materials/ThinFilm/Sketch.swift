@@ -19,10 +19,48 @@ import Ollin
 /// Every body is a plain sphere. The rings you see on each one are the film itself:
 /// the light's path through it grows as the surface turns, so one thickness makes many
 /// colors across one body.
+///
+/// Rising behind the rows are a few **soap bubbles**, the *other* way to wear a film.
+/// Each is a thin wall of glass (`Material.glass()`, thickness `0`), so the world
+/// passes through it almost straight, composed with the iridescence finish in
+/// soap-film mode, whose thickness drains and swirls while you watch:
+///
+/// ```swift
+/// var film = Material.glass()          // a thin see-through shell
+/// film.iridescence = 0.8               // the interference sheen
+/// film.iridescenceFlow = 1.0           // film-thickness swirl (the bubble look)
+/// film.iridescencePhase = time * 0.35  // you drive the clock, so exports reproduce
+/// material(film)
+/// ```
+///
+/// Those are the two forms of one physics: `thinFilm` on a `physicallyBased` surface
+/// is the film lying still on a body, and `iridescenceFlow` on thin glass is the film
+/// *as* the body, alive and draining. (Overlapping bubbles stay clear: the
+/// see-through pass never reads one piece of glass through another, easing back to
+/// the environment instead, and for a free-floating bubble the environment is nearly
+/// the whole story anyway, since a thin film passes light through almost straight.)
 @main
 final class ThinFilm: Sketch {
 
     let spacing = 2.4
+
+    struct Bubble {
+        var x, z, y0: Double     // column position + vertical seed
+        var radius: Double
+        var speed: Double        // rise, world units per second
+        var wobble: Double       // wobble phase offset
+        var film: Double         // film-swirl phase offset
+    }
+    var bubbles: [Bubble] = []
+
+    override func setup() {
+        for _ in 0..<5 {
+            bubbles.append(Bubble(x: random(-3.4, 3.4), z: random(-3.2, -1.6),
+                                  y0: random(0, 6), radius: random(0.3, 0.6),
+                                  speed: random(0.25, 0.5), wobble: random(0, .tau),
+                                  film: random(0, 40)))
+        }
+    }
 
     override func draw() {
         background(Color(hex: 0x07080D))
@@ -72,6 +110,29 @@ final class ThinFilm: Sketch {
                 material(.soapFilm(thickness: drain))
             }
             drawSphere(radius: 0.92)
+        }
+
+        // The bubbles: thin glass wearing the flowing film, rising behind the rows.
+        for b in bubbles {
+            // Rise and wrap: a popped bubble is reborn at the bottom of the column.
+            let span = 6.0
+            let y = (b.y0 + time * b.speed).truncatingRemainder(dividingBy: span) - 3.0
+            // A gentle volume-preserving wobble, the slow breathing of a free bubble.
+            let w = sin(time * 2.1 + b.wobble) * 0.05
+
+            var film = Material.glass()
+            film.iridescence = 0.8
+            film.iridescenceScale = 1.3
+            film.iridescenceFlow = 1.0
+            film.iridescencePhase = time * 0.35 + b.film
+            film.iridescenceFlowSize = 0.45  // fine wisps on small, distant bubbles
+            withState {
+                material(film)
+                fill(.white)
+                translate(b.x + sin(time * 0.6 + b.wobble) * 0.15, y, b.z)
+                scale(1 + w, 1 - w, 1 + w * 0.4)
+                drawSphere(radius: b.radius)
+            }
         }
 
         drawCaption("thin film: color made by interference, not by pigment")

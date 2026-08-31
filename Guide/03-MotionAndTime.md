@@ -377,7 +377,7 @@ The named easing curves are Robert Penner's easing equations, published with the
 - [Accessibility](../Docs/Helpers/Accessibility.md): `prefersReducedMotion`, and the color half beside it.
 - [Export](../Docs/Output/Export.md): stills, sequences, video, GIF sizing, and render quality.
 - Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
-- Worked examples, all in [`Examples/Motion/`](../Examples/Motion/): `Breathing` (map on a pulse), `Easing` (four dots racing to a click), `EasingGallery` (all thirty curves), `Springs` (`@Sprung` against a moving target), `Timeline` (a scripted tour of a square, one easing per side), `Smoothing` (the filter chasing a shaky target), `SineSweep`, and `Orbits`.
+- Worked examples, all in [`Examples/Motion/`](../Examples/Motion/): `Easing` (four dots racing to a click), `EasingGallery` (all thirty curves), `Springs` (`@Sprung` against a moving target), `Timeline` (a scripted tour of a square, one easing per side), `Smoothing` (the filter chasing a shaky target), `SineSweep`, and `Orbits`.
 
 ---
 

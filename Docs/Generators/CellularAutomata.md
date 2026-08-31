@@ -121,4 +121,4 @@ Every state must handle the same number of colors, and that count is the machine
 
 ---
 
-Examples: [`Patterns/ElementaryCA`](../../Examples/Patterns/ElementaryCA/Sketch.swift), [`Patterns/Turmites`](../../Examples/Patterns/Turmites/Sketch.swift), and [`Simulation/Lenia`](../../Examples/Simulation/Lenia/Sketch.swift) for the GPU sibling.
+Examples: [`Patterns/ElementaryCA`](../../Examples/Patterns/ElementaryCA/Sketch.swift), [`Patterns/Turmites`](../../Examples/Patterns/Turmites/Sketch.swift), and [`Simulation/Automata`](../../Examples/Simulation/Automata/Sketch.swift) for the GPU sibling.

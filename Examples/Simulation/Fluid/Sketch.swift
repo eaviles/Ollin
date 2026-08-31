@@ -9,7 +9,7 @@ import Ollin
 ///
 /// A single brush wanders on its own so the fluid is always moving; press and drag to
 /// stir it yourself. The dye color cycles over time, and a bloom gives the swirls glow.
-/// See `Simulation/GrayScott` and `Simulation/GameOfLife` for the single-field stateful sims.
+/// See `Simulation/GrayScott` and `Simulation/Automata` for the single-field stateful sims.
 @main
 final class Fluid_Example: Sketch {
     private var fluid: SimField!

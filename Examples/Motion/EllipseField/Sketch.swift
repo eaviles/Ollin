@@ -2,16 +2,19 @@
 
 import Ollin
 
-/// Stacked rows of white ellipse outlines in two drifting columns. Each ring's
-/// horizontal position, size, and vertical squash are read from a `signedNoise`
-/// field sampled against its row `y` and `time`, so the whole field breathes and
-/// wanders without ever repeating. The fill matches the background, so each
-/// ellipse's disk hides the rings behind it — overlapping outlines occlude
-/// front-to-back instead of all showing through.
+/// Stacked rows of white outlines in two drifting columns: whole ellipses on
+/// the left, chord-closed elliptical arcs on the right. Each row's horizontal
+/// position, size, and vertical squash are read from a `signedNoise` field
+/// sampled against its row `y` and `time`, so the whole field breathes and
+/// wanders without ever repeating. The arc column samples two more slices of
+/// the field for where each arc begins and how far it sweeps, so those rings
+/// open and close into crescents as the field drifts. The fill matches the
+/// background, so each shape's disk hides the ones behind it: overlapping
+/// outlines occlude front-to-back instead of all showing through.
 @main
 final class EllipseField: Sketch {
     override func setup() {
-        fill(.black)   // opaque centers, so each ellipse occludes the ones behind it
+        fill(.black)   // opaque centers, so each shape occludes the ones behind it
         stroke(.white)
     }
 
@@ -20,7 +23,7 @@ final class EllipseField: Sketch {
         let dim = shortSide / 100
         strokeWeight(dim * 0.25)
 
-        // Rows run from just above the top to just below the bottom, so ellipses
+        // Rows run from just above the top to just below the bottom, so shapes
         // enter and leave the frame instead of clipping at the edges.
         let margin = 0.125
         let minY = -height * margin
@@ -30,15 +33,16 @@ final class EllipseField: Sketch {
 
         var y = minY
         while y <= maxY {
-            ring(seed: 1000, offset: -width / 6, y: y)   // left column
-            ring(seed: 2000, offset:  width / 6, y: y)   // right column
+            ring(seed: 1000, offset: -width / 6, y: y, arcs: false)   // left column: ellipses
+            ring(seed: 2000, offset:  width / 6, y: y, arcs: true)    // right column: arcs
             y += jump
         }
     }
 
-    /// One ellipse for a row. `seed` decorrelates the two columns by sampling
-    /// different cells of the noise field; `offset` shifts the column sideways.
-    private func ring(seed: Int, offset: Double, y: Double) {
+    /// One shape for a row. `seed` decorrelates the two columns by sampling
+    /// different cells of the noise field; `offset` shifts the column
+    /// sideways; `arcs` swaps the whole ellipse for a chord-closed arc.
+    private func ring(seed: Int, offset: Double, y: Double, arcs: Bool) {
         let t = time * 0.12
 
         // Horizontal position: a slow wander across the middle band, plus a
@@ -54,6 +58,16 @@ final class EllipseField: Sketch {
         n = signedNoise(Double(seed + 4), t, y * 0.004)
         let squash = map(n, -1, 1, 0.4, 1.0)
 
-        drawEllipse(x, y, rx, rx * squash)
+        if arcs {
+            // Arc span, from two more slices: where it begins and how far it
+            // sweeps.
+            n = signedNoise(Double(seed + 2), -t, y * 0.0014)
+            let begin = map(n, -1, 1, 0, .tau)
+            n = signedNoise(Double(seed + 3), -t, -y * 0.002)
+            let sweep = map(n, -1, 1, .pi * 0.25, .tau * 0.85)
+            drawArc(x, y, rx, rx * squash, start: begin, stop: begin + sweep, mode: .chord)
+        } else {
+            drawEllipse(x, y, rx, rx * squash)
+        }
     }
 }

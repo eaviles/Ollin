@@ -1324,7 +1324,7 @@ Three things are worth knowing:
 - **A soft body needs a name to be saved at all**, since there is nothing else to it. An unnamed one is left out with a note.
 - **A name that now resolves to *different* geometry is still restored, and said out loud.** The saved poses are the best answer there is, but a pose saved against one shape rarely fits another. What notices is a fingerprint of the geometry stored beside the name, so a re-exported mesh or a terrain regrown from another seed is caught.
 
-The worked examples are [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/) and [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/). Cairn is a heap of stones laid one at a time, restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same cairn standing. Yard does the same for a yard holding a truck you drive, a figure pacing across it, a second figure lying where it fell, and a heightfield floor and a cloth banner that the file names rather than holds.
+The worked example is [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/): a yard holding a truck you drive, a figure pacing across it, a second figure lying where it fell, and a heightfield floor and a cloth banner that the file names rather than holds. The arrangement is restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same yard standing.
 
 <a name="importing"></a>
 
@@ -1438,4 +1438,4 @@ Worked examples:
 - [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) - a skinned figure that stands and waves, or collapses, depending on whether its joints are powered.
 - [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) - a banner in the wind, a sheet over a crate, and a beach ball you can deflate.
 - [`3D/Physics/Sightlines`](../../Examples/3D/Physics/Sightlines/) - a lamp that lights only the crates it can see, a drone holding its clearance by sweep, and a pulse that shoves whatever a sphere overlaps.
-- [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/) - a heap of stones saved to a file and put back exactly.
+- [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/) - a whole yard saved to a file and put back exactly.

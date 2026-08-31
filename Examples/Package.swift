@@ -92,56 +92,38 @@ let package = Package(
         example("Export/Hatching"),
         example("Export/Toolpath"),
         example("Installation/Unattended"),
-        example("Installation/Resuming"),
         example("Installation/Watched"),
         example("Installation/Hours"),
         example("Installation/Fitted"),
         example("Installation/ManyWindows"),
         example("Installation/ManyDisplays"),
-        example("Rendering/Blending"),
-        example("Effects/Bloom"),
+        example("Effects/Layers"),
         example("Shapes/Combinators"),
         example("Shapes/CombinatorsGradient"),
         example("Shapes/CombinatorsStretch"),
         example("Shapes/CombinatorsJoinery"),
         example("Shapes/CombinatorsDetailing"),
         example("3D/Raymarching/RaymarchedReceiveShadow"),
-        example("3D/Raymarching/RaymarchedPointCast"),
-        example("3D/Raymarching/RaymarchedPointReceive"),
         example("3D/Raymarching/RaymarchedStretch"),
         example("3D/Raymarching/RaymarchedEnvironment"),
         example("Effects/Feedback"),
         example("Effects/Fourier"),
-        example("Effects/Compose"),
         example("Effects/Aside"),
         example("Effects/Defocus"),
-        example("Effects/Bokeh"),
         example("Rendering/Accumulation"),
-        example("Effects/ColorFilters"),
-        example("Effects/BlurFilters"),
-        example("Effects/StylizeFilters"),
+        example("Effects/FilterCatalog"),
         example("Effects/Antialias"),
-        example("Effects/RetroFilters"),
         example("Effects/Relight"),
         example("Effects/Glitter"),
         example("Effects/SoapFilm"),
         example("Effects/MeshGradient"),
-        example("Effects/DesignPatterns"),
-        example("Effects/PatternFields"),
-        example("Effects/DesignFilters"),
-        example("Effects/Distortion"),
         example("Effects/DistanceField"),
         example("Effects/Light"),
         example("Effects/Dispersion"),
         example("Simulation/GrayScott"),
-        example("Simulation/GameOfLife"),
-        example("Simulation/BriansBrain"),
-        example("Simulation/CyclicAutomaton"),
-        example("Simulation/Excitable"),
-        example("Simulation/Hodgepodge"),
-        example("Simulation/Lenia"),
+        example("Simulation/Automata"),
+        example("Simulation/LifeQuilt"),
         example("Simulation/MultiScaleTuring"),
-        example("Simulation/Sandpile"),
         example("Simulation/Fluid"),
         example("Simulation/SelfWarp"),
         example("Simulation/Ripples"),
@@ -157,19 +139,17 @@ let package = Package(
         example("Simulation/Physarum"),
         example("Simulation/ParticleFluid"),
         example("Simulation/SoftBodies"),
-        example("Effects/Fractals"),
-        example("Effects/OrbitTraps"),
+        example("Effects/EscapeTime"),
         example("Effects/Droste"),
         example("Effects/DomainColoring"),
         example("Effects/DiffusionCurves"),
         example("Effects/SeamlessClone"),
         example("Effects/SummedArea"),
-        example("Effects/Patterns"),
+        example("Effects/GeneratorCatalog"),
         example("Effects/Cellular"),
-        example("Shaders/HelloShader"),
+        example("Shaders/HelloShader", resources: [.copy("ripple.metal")]),
         example("Shaders/ShaderFilter"),
         example("Shaders/ShaderBlend"),
-        example("Shaders/ShaderFile", resources: [.copy("ripple.metal")]),
         example("Shaders/VisualSynth"),
         example("Shaders/DomainWarp"),
         example("Rendering/ToneMapping"),
@@ -220,7 +200,6 @@ let package = Package(
         example("3D/Physics/Sieve", [.physics]),
         example("3D/Physics/Bagatelle", [.physics]),
         example("3D/Physics/Contraption", [.physics]),
-        example("3D/Physics/Cairn", [.physics]),
         example("3D/Physics/Yard", [.physics], resources: [.copy("figure.gltf")]),
         example("3D/Physics/Imported", [.physics], resources: [.copy("yard.usda")]),
         example("3D/Raymarching/RaymarchedSDF"),
@@ -239,8 +218,7 @@ let package = Package(
         example("3D/Effects/SceneDefocus"),
         example("3D/Effects/AmbientOcclusion"),
         example("3D/Effects/ScreenSpaceReflections"),
-        example("3D/Effects/Fog"),
-        example("3D/Effects/AerialPerspective"),
+        example("3D/Effects/Atmosphere"),
         example("3D/Effects/ContactShadows"),
         example("3D/Effects/MotionBlur"),
         example("3D/Effects/LensFlare"),
@@ -249,19 +227,14 @@ let package = Package(
         example("3D/Effects/Upscaling"),
         example("3D/Effects/FrameInterpolation"),
         example("3D/Effects/RayTracedReflections"),
-        example("3D/Effects/MirrorTunnel"),
-        example("3D/Effects/GlossyReflections"),
         example("3D/Effects/PathTraced"),
         example("3D/Geometry/TexturedMesh"),
         example("3D/Geometry/Wireframe"),
         example("3D/Geometry/LoadedMesh", resources: [.copy("model.gltf"), .copy("model.obj")]),
-        example("3D/Geometry/LoadedScene", resources: [.copy("scene.gltf")]),
+        example("3D/Geometry/LoadedScene", resources: [.copy("scene.gltf"), .copy("stage.usda")]),
         example("3D/Geometry/SceneExplorer", resources: [.copy("scene.gltf"), .copy("stage.usda")]),
-        example("3D/Geometry/AnimatedScene", resources: [.copy("scene.gltf")]),
-        example("3D/Geometry/SkinnedScene", resources: [.copy("scene.gltf")]),
-        example("3D/Geometry/USDScene", resources: [.copy("stage.usda")]),
-        example("3D/Geometry/USDAnimatedScene", resources: [.copy("stage.usda")]),
-        example("3D/Geometry/USDSkinnedScene", resources: [.copy("stage.usda")]),
+        example("3D/Geometry/AnimatedScene", resources: [.copy("scene.gltf"), .copy("stage.usda")]),
+        example("3D/Geometry/SkinnedScene", resources: [.copy("scene.gltf"), .copy("stage.usda")]),
         example("3D/Geometry/ShapeFactory"),
         example("3D/Geometry/Terrain"),
         example("3D/Geometry/Metaballs"),
@@ -279,7 +252,6 @@ let package = Package(
         example("3D/Lighting/Lighting"),
         example("3D/Lighting/AreaLights"),
         example("3D/Lighting/GlobalIllumination"),
-        example("3D/Lighting/AreaShadows"),
         example("3D/Lighting/Caustics"),
         example("3D/Lighting/LightShaping",
                 resources: [.copy("downlight.ies"), .copy("batwing.ies"), .copy("wallwash.ies")]),
@@ -298,37 +270,30 @@ let package = Package(
         example("3D/Materials/BrushedMetal"),
         example("3D/Materials/Glass"),
         example("3D/Materials/SeeThrough"),
-        example("3D/Materials/SoapBubble"),
         example("3D/Materials/ThinFilm"),
         example("3D/Materials/Subsurface"),
         example("3D/Environments/ImageBasedLighting"),
         example("3D/Environments/EnvironmentGallery"),
         example("3D/Environments/ProceduralSky"),
         example("3D/Environments/Cloudscape"),
-        example("3D/Environments/HighResEnvironment"),
-        example("3D/Environments/EnvironmentURL"),
+        example("3D/Environments/RemoteEnvironment"),
         example("3D/Environments/LiveEnvironment", [.vision]),
         example("3D/Materials/Matcap"),
         example("3D/Lighting/Shadows"),
         example("3D/Lighting/SpotShadow"),
-        example("3D/Lighting/TwoCasters"),
+        example("3D/Lighting/ManyCasters"),
         example("3D/Lighting/PointShadow"),
-        example("3D/Lighting/PointCasters"),
         example("3D/Depth/DepthCompositing"),
         example("3D/Depth/DepthCloud", [.vision]),
-        example("3D/Depth/DepthOcclusion", [.vision]),
+        example("3D/Depth/DepthOcclusion", [.vision, .record3D]),
         example("3D/Depth/Record3DCloud", [.record3D]),
-        example("3D/Depth/Record3DLiveCloud", [.record3D]),
-        // 2D markers floating at true metric depths inside a live RGBD feed — the
-        // metric (meters) sibling of DepthOcclusion, via a Camera3D.fromIntrinsics.
-        example("3D/Depth/MetricDepthScene", [.record3D]),
         example("3D/Depth/DepthLiftedPose", [.vision, .record3D]),
-        // The same made-up room swept twice side by side, once trusting the reported
-        // camera pose and once lining each frame up against what is already fused.
+        // A made-up hall walked all the way around, scanned side by side; C cycles
+        // the right half between the reported pose, lined-up frames, and the
+        // closed loop.
         example("3D/Depth/ClosedLoopScan"),
-        example("3D/Depth/DriftCorrectedScan"),
         // The Ollin iPhone capture app's live body pose drawn as an orbiting 3D
-        // stick figure — the own-app sibling of Record3DLiveCloud.
+        // stick figure, the own-app sibling of Record3DCloud's live stream.
         example("3D/Phone/PhoneBodyPose", [.phone]),
         // A solid mannequin posed by the stream's richer half: the world anchor
         // stands it where the person stands, joint orientations turn its parts.
@@ -374,14 +339,12 @@ let package = Package(
         // glow over the live frame, a frame around each region the model picked out,
         // and an eased bead trailing where the attention has been.
         example("3D/Phone/PhoneAttention", [.phone]),
-        example("Motion/Breathing"),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),
         example("Motion/Smoothing"),
         example("Motion/Timeline"),
         example("Motion/Orbits"),
-        example("Motion/Linkage"),
         example("Motion/Petals"),
         example("Live/DragToEdit"),
         example("Live/Parameters"),
@@ -407,7 +370,6 @@ let package = Package(
         example("Color/Gradients"),
         example("Color/Harmonies"),
         example("Color/Swatchbook"),
-        example("Color/Palettes"),
         example("Color/PaletteFile", resources: [.copy("palettes.csv"), .copy("sunset.hex")]),
         example("Color/PaletteFromImage"),
         example("Color/Dithering"),
@@ -418,11 +380,9 @@ let package = Package(
         example("Motion/EllipseField"),
         example("Motion/Attractor"),
         example("Motion/Myriad"),
-        example("Motion/RectField"),
         example("Motion/Spokes"),
-        example("Motion/Star"),
-        example("Motion/Polygons"),
-        example("Motion/ArcField"),
+        example("Shapes/Star"),
+        example("Shapes/Polygons"),
         example("Motion/ArcModes"),
         example("Motion/Automation"),
         example("Motion/Formula"),
@@ -433,33 +393,26 @@ let package = Package(
         example("Randomness/Ring"),
         example("Randomness/Walk"),
         example("Randomness/Variations"),
-        example("Patterns/CliffordAttractor"),
-        example("Patterns/GumowskiMira"),
+        example("Patterns/ChaoticMaps"),
         example("Patterns/Bifurcation"),
-        example("Patterns/DotGrid"),
         example("Patterns/Grid"),
         example("Patterns/Phyllotaxis"),
         example("Input/RepelGrid"),
         example("Input/Keys"),
         example("Input/PanAndZoom"),
         example("Patterns/WarpGrid"),
-        example("Patterns/EnergyGrid"),
         example("Randomness/NoiseField"),
         example("Randomness/TilingNoise"),
         example("Randomness/RandomBand"),
         example("Randomness/NoiseWave"),
-        example("Motion/Triangles"),
-        example("Patterns/LifeQuilt"),
+        example("Shapes/Triangles"),
         example("Shapes/Markers"),
-        example("Shapes/NamedPolygons"),
         example("Shapes/Superellipse"),
         example("Shapes/Supershape"),
-        example("Shapes/ShapeMenagerie"),
         example("Shapes/Primitives"),
         example("Shapes/Booleans"),
         example("Shapes/Clipping"),
         example("Shapes/InkRibbon"),
-        example("Shapes/RubberBand"),
         example("Shapes/Hulls"),
         example("Shapes/MedialAxis"),
         example("Shapes/Neighbors"),
@@ -550,7 +503,7 @@ let package = Package(
         // The font lives beside the sketch (the per-example asset convention)
         // and loads at runtime through the Playdate `.fnt` loader.
         example("Text/PlaydateFont", resources: [.copy("MarbleMadness.fnt")]),
-        example("Text/OutlineText"),
+        example("Text/TypeAsGeometry"),
         example("Text/GlyphWave"),
         example("Text/TextOnPath"),
         example("Text/TextBox"),
@@ -558,8 +511,6 @@ let package = Package(
         example("Text/StrokeText"),
         example("Text/TextMetrics"),
         example("Text/GlyphContours"),
-        example("Text/PointShimmer"),
-        example("Text/JitterType"),
         example("Text/Scripts"),
         example("Text/Columns"),
         example("Text/MongolianColumns"),
@@ -590,7 +541,6 @@ let package = Package(
         example("Audio/Shaping", [.audio]),
         example("Audio/Sampler", [.audio]),
         example("Audio/Spectrum", [.audio]),
-        example("Audio/Microphone", [.audio]),
         example("Audio/Listening", [.audio]),
         example("Audio/ChladniResonance", [.audio]),
         // The bundled clip the sketch loads via Bundle.module (a launch path
@@ -619,14 +569,11 @@ let package = Package(
         // Listens to every MIDI source and prints/draws what arrives — connect a
         // controller and discover what each knob/pad sends just by touching it.
         example("Integration/MIDIMonitor", [.midi]),
-        // Self-contained: an internal timer sends MIDI clock to itself and a
-        // TempoClock locks the visuals to it; point real gear at the Mac and the
-        // same sketch follows that instead.
-        example("Integration/TempoSync", [.midi]),
-        // Joins the local network's shared tempo-and-phase session and locks
-        // the visuals to the room's beat; alone it free-runs at its own tempo,
-        // so it moves the same with nothing to join.
-        example("Integration/LinkTempo", [.link]),
+        // Visuals locked to a beat from either source, switched by a knob:
+        // a self-contained MIDI clock (an internal timer sends clock to itself;
+        // real gear pointed at the Mac drives the same sketch) or the local
+        // network's shared tempo session (alone it free-runs at its own tempo).
+        example("Integration/Tempo", [.midi, .link]),
         // Self-contained: a fake device on the manager side of a pty pair prints
         // a sensor value and a SerialPort reads the other side, so the classic
         // physical-computing loop runs with no hardware (like OSCLoopback);
@@ -681,8 +628,7 @@ let package = Package(
         // colliding discs; Blobs are spring-built soft bodies that squish.
         example("Physics/Packing", [.physics]),
         example("Physics/Blobs", [.physics]),
-        example("Physics/Stack", [.physics]),
-        example("Physics/Tumble", [.physics]),
+        example("Physics/RigidBodies", [.physics]),
         example("Physics/Chain", [.physics]),
         // Video — plays a bundled clip (or a path passed on launch) as a live
         // image. The clip is the example's own asset (CC BY-SA, provenance in
@@ -702,9 +648,10 @@ let package = Package(
         // The camera transformed so the face stays locked level and centered —
         // the room moves, not the head.
         example("Vision/FaceAlign", [.vision]),
-        // Traces the camera's edges into vector contours (Shapes); self-contained,
-        // falling back to a generated pattern when there's no camera.
-        example("Vision/ContourTrace", [.vision]),
+        // Traces the feed's edges into vector contours (Shapes): the camera by
+        // default, or a clip path passed on launch through a VideoPlayer (the
+        // frame-source seam).
+        example("Vision/ContourTrace", [.vision, .video]),
         // Hand skeletons (21 joints, up to two hands) drawn over the live feed.
         example("Vision/HandTracking", [.vision]),
         // A person's 2D pose drawn as a stick figure over the live feed.
@@ -712,15 +659,13 @@ let package = Package(
         // The 3D pose: the skeleton in meters, overlaid on the feed and re-drawn
         // from the side — a view no camera is at.
         example("Vision/BodyPose3D", [.vision]),
-        // People lifted off the background and composited over a drawn gradient
-        // (background replacement; the matte doubles as the drop shadow).
-        example("Vision/PersonSegmentation", [.vision]),
+        // Lifted off the background, two ways (a knob switches): people over a
+        // drawn gradient with the matte as drop shadow, or the salient subject
+        // in a spotlight over the dimmed feed.
+        example("Vision/Lift", [.vision]),
         // The person matte as a reaction-diffusion regime map: maze chemistry on
         // your silhouette, spots everywhere else, one continuous field.
         example("Vision/TuringMirror", [.vision]),
-        // The salient subject lifted into a spotlight: dimmed frame, full-color
-        // cutout, matte halo.
-        example("Vision/SubjectLift", [.vision]),
         // Click a thing and it lifts out: point-prompted segmentation over the
         // feed, shift-click trims, C clears (fetched model).
         example("Vision/PointLift", [.vision]),
@@ -767,11 +712,6 @@ let package = Package(
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         example("Vision/TrajectoryTracking", [.vision]),
-        // Vision over recorded footage — contours traced from a playing video
-        // (the frame-source seam: a tracker attached to a VideoPlayer the way
-        // it attaches to a Camera). Bundles the same CC BY-SA clip as
-        // VideoPlayback; provenance in THIRD-PARTY-NOTICES.md.
-        example("Vision/VideoTrace", [.vision, .video], resources: [.copy("voladores.mp4")]),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         example("Recreations/VeraMolnar/Interruptions"),

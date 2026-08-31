@@ -8,7 +8,7 @@ import Ollin
 /// so it's recoloured through the same `Filter` catalog as everything else.
 ///
 /// Drag to inject more chemical and watch the reaction chase your cursor. See
-/// `Simulation/GameOfLife` for the cellular-automaton sibling.
+/// `Simulation/Automata` for the cellular-automaton siblings.
 @main
 final class GrayScott: Sketch {
     private var rd: SimField!

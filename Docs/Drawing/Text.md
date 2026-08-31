@@ -400,11 +400,11 @@ for shape in textToShapes("ollin", width / 2, height / 2) {
 ```
 
 > [!WARNING]
-> Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (for example `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded. See the `OutlineText` example.
+> Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (for example `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded. See the `TypeAsGeometry` example.
 
 An emoji has no geometry to hand back, since the font stores it as a bitmap. It is left out, with a note printed once. `drawText` still draws it. See [Every script](#scripts).
 
-One more thing to know about the returned geometry is that the outline points come back **unevenly spaced**, the raw layout vertices, dense on curves and sparse on straights. That's fine for warping and filling, but marks placed one-per-point (dots, dashes, particles) would clump. Respace a glyph first with [`resampled(spacing:)`](Geometry.md#contour), as `shape.resampled(spacing: 8)` or per contour, and the marks spread evenly. The `PointShimmer` and `GlyphContours` examples do exactly this.
+One more thing to know about the returned geometry is that the outline points come back **unevenly spaced**, the raw layout vertices, dense on curves and sparse on straights. That's fine for warping and filling, but marks placed one-per-point (dots, dashes, particles) would clump. Respace a glyph first with [`resampled(spacing:)`](Geometry.md#contour), as `shape.resampled(spacing: 8)` or per contour, and the marks spread evenly. The `GlyphContours` and `TypeAsGeometry` examples do exactly this.
 
 <a name="solid"></a>
 

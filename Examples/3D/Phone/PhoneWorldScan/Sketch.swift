@@ -24,7 +24,7 @@ import OllinPhone
 /// places. Press **C** to cycle what the sweep does about that: the pose as reported,
 /// each frame lined up against the scan, or that plus recognizing a place already
 /// scanned and straightening the whole room when it comes back to one. See
-/// `DriftCorrectedScan` and `ClosedLoopScan` for the same three side by side, with no
+/// `ClosedLoopScan` for the same three side by side, with no
 /// phone needed.
 @main
 final class PhoneWorldScan: Sketch {

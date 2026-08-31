@@ -2,19 +2,26 @@ import Ollin
 
 // Inspired by Toby Howard (@tobyhoward), "x=cos(x)*cos(y), y=sin(x)*sin(y)"
 //   https://x.com/tobyhoward/status/1529004242891153410 (24 May 2022)
-// A per-pixel trigonometric field mapped to a rainbow palette. This is an
-// original Ollin interpretation built from the formula in the post, not a port
-// of any source; credited here as a homage to the idea.
+// The inline plasma is a per-pixel trigonometric field mapped to a rainbow
+// palette: an original Ollin interpretation built from the formula in the post,
+// not a port of any source; credited here as a homage to the idea.
 
-/// The smallest user-supplied shader: a `shade(uv, info)` function run as a
-/// fullscreen `generate(.shader(...))` source layer. The body evaluates a trig
-/// field per pixel and colors it through `palette`, one of Ollin's built-in
-/// shader-library helpers. `info.time` drifts it, so it moves on its own.
+/// The smallest user-supplied shader, both ways in: a `shade(uv, info)`
+/// function as an inline string (`Shader("...")`) on the left, and the same
+/// contract loaded from a `.metal` file beside the sketch
+/// (`Shader(resource:in:)`) on the right, the form for a shader too big to keep
+/// in the Swift source. Each runs as a `generate(...)` source layer, colored
+/// through `palette`, one of Ollin's built-in shader-library helpers, and
+/// `info.time` drifts both, so they move on their own.
 ///
-/// Edit the shader string under OllinLive and it hot-reloads with the sketch; a
-/// typo is reported at this file's own line numbers, clickable in an IDE.
+/// Under OllinLive both hot-reload: editing the string recompiles the sketch (a
+/// typo is reported at this file's own line numbers), while saving
+/// `ripple.metal` re-reads and recompiles just the shader, no swiftc pass, the
+/// window never closing.
 @main
 final class HelloShader_Example: Sketch {
+    private let labelFont = OutlineFont.system
+
     private let plasma = Shader("""
     float4 shade(float2 uv, ShaderInfo info) {
         // Center and scale the coordinates, then evaluate the field. Keeping the two
@@ -32,7 +39,22 @@ final class HelloShader_Example: Sketch {
     }
     """)
 
+    private let ripple = Shader(resource: "ripple", in: .module)
+
     override func draw() {
-        drawImage(generate(plasma).image, 0, 0)
+        background(Color(white: 0.06))
+
+        // Two labeled tiles, each generated at its cell's own size.
+        let space = width * 0.01
+        let w = Int((width - space * 3) / 2), h = Int(height - space * 2)
+        let tiles: [(String, RenderTarget)] = [
+            ("inline: Shader(\"...\")", generate(plasma, width: w, height: h)),
+            ("file: Shader(resource: \"ripple\")", generate(ripple, width: w, height: h)),
+        ]
+
+        textFont(labelFont)
+        drawSheet(tiles, columns: 2) { layer, cell in
+            drawImage(layer.image, in: cell)
+        }
     }
 }

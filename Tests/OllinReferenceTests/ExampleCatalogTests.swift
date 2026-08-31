@@ -34,8 +34,8 @@ struct ExampleCatalogTests {
 
         #expect(entries.count > 100, "found \(entries.count) examples")
 
-        let named = try #require(entries.first { $0.path == "Motion/Breathing" })
-        #expect(named.target == "Example-Motion-Breathing")
+        let named = try #require(entries.first { $0.path == "Motion/SineSweep" })
+        #expect(named.target == "Example-Motion-SineSweep")
         #expect(named.group == "Motion")
         #expect(!named.summary.isEmpty, "its category listing says nothing about it")
         #expect(FileManager.default.fileExists(atPath: named.sketch.path))

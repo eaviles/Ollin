@@ -8,9 +8,8 @@ How the frame composites. Every frame is built in a linear floating-point canvas
 
 | Example | What it shows |
 |---|---|
-| [Blending](Blending/Sketch.swift) | additive blending: faint disks summing as light (`blendMode(.add)`) |
-| [Accumulation](Accumulation/Sketch.swift) | a persistent canvas that builds up over frames (`noClear()`) |
-| [ToneMapping](ToneMapping/Sketch.swift) | HDR light summed in float, rolled onto the screen instead of clipping (`toneMap(_:)`) |
+| [Accumulation](Accumulation/Sketch.swift) | a persistent canvas that builds up over frames: slow pens and a soft mouse spray piling faint light on an uncleared surface (`noClear()`) |
+| [ToneMapping](ToneMapping/Sketch.swift) | lamps summing as HDR light in float, rolled onto the screen instead of clipping, with a flat `.normal` control for comparison (`toneMap(_:)`, `blendMode(.add)`) |
 | [ColorOutput](ColorOutput/Sketch.swift) | colors outside sRGB and highlights brighter than white (`colorOutput`, `Color(displayP3:)`) |
 | [DepthOfField](DepthOfField/Sketch.swift) | sandpainting depth of field: bokeh earned by scattering accumulated samples (drag to rack focus) |
 | [RetainedBatch](RetainedBatch/Sketch.swift) | 150k stars recorded once into a `Batch` and replayed for free, plus a rosette stamped at many placements (`makeBatch`/`drawBatch`; flip the knob to feel the per-frame cost) |
@@ -19,4 +18,4 @@ How the frame composites. Every frame is built in a linear floating-point canvas
 | [Grassland](Grassland/Sketch.swift) | 500,000 blades of grass grown inside the draw call, swaying, shadow-receiving (`StrandField`/`drawStrands`; flip the knob to feel distance grading) |
 | [ViewBoxes](ViewBoxes/Sketch.swift) | one piece under six seeds on one canvas: each `withViewBox` clips and remaps a cell so the block inside is written as though it owned the window, with its own `background` and its own mouse |
 
-Run one with `swift run Example-Rendering-<Name>`, e.g. `swift run Example-Rendering-Blending`.
+Run one with `swift run Example-Rendering-<Name>`, e.g. `swift run Example-Rendering-ToneMapping`.

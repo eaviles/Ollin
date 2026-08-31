@@ -518,7 +518,7 @@ The three ready-made systems each have a paper behind them. The default IK solve
 - [Articulated and chaotic motion](../Docs/Simulation/Motion.md): the full `IKChain`, `DoublePendulum`, and `NBody` reference, including both IK solvers, `maxBend`, the pendulum's `energy` check, and the n-body factories.
 - [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's knobs, and the pin-and-drag idiom.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
-- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `Stack` (a pyramid to knock down), `Tumble` (mixed shapes in a drum), and `Chain` (hanging chains to grab and fling).
+- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), and `Chain` (hanging chains to grab and fling).
 - The ready-made systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK knobs live), `DoublePendulum` (a fan of twenty-four pendulums pulling apart), and `NBody` (two galaxies on a grazing orbit).
 - A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. [Chapter 12](12-FlocksAndSwarms.md) builds it.
 

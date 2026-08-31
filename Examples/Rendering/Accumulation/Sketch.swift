@@ -1,85 +1,81 @@
 import Ollin
 
-/// Accumulation — the canvas isn't cleared each frame, so faint marks pile up on
-/// a persistent surface and the image is *built up over time* rather than redrawn.
-/// `noClear()` turns it on; `blendMode(.add)` makes the marks sum as light. The
-/// two together are the basis of "sandpainting" depth-of-field rendering: a form
-/// is drawn as a haze of dim accumulated samples, and the blur is *earned* by
-/// scattering each sample by how far it sits from the focal plane — not faked with
-/// a post-process blur.
+/// Accumulation: the canvas isn't cleared each frame, so faint marks pile up on
+/// a persistent surface and the image is *built up over time* rather than
+/// redrawn. `noClear()` turns it on; `blendMode(.add)` makes the marks sum as
+/// light. Each frame draws only a handful of nearly invisible dots, and the
+/// picture is the pile: minutes of them, none ever erased.
 ///
-/// Here a slowly turning shell of points is sampled a few thousand times a frame.
-/// Each sample is jittered within a disc whose radius grows with the point's
-/// distance from a sweeping focal plane, so in-focus points stay crisp while
-/// out-of-focus ones spread into soft bokeh as the accumulation fills them in. The
-/// shell keeps turning so light flows across the canvas instead of saturating to
-/// white, and the focus racks slowly back and forth so every depth has its moment.
+/// Three slow pens swing on breathing circles, each leaving a short faint trace
+/// per frame, so their figures emerge from nothing and keep deepening where the
+/// paths recross. Drag to scribble a soft spray of your own; press any key to
+/// wipe the surface and start the exposure again (while accumulating,
+/// `background(_:)` is the reset).
 ///
-/// Try commenting out `noClear()`: you'll see a single frame's sparse, jittered
-/// scatter — proof that the soft, dense picture is entirely the accumulation at
-/// work.
+/// The same piling-up earns real depth of field in `Rendering/DepthOfField`,
+/// where every accumulated sample is jittered by its distance from a focal
+/// plane and the blur emerges from the statistics of where the light fell.
 @main
 final class Accumulation_Example: Sketch {
-    private struct Point3 {
-        var x, y, z: Double      // position on the unit shell
-        var tone: Double         // 0…1 color key (by height)
+    /// A pen on a breathing circle: a fast revolution whose radius swells and
+    /// shrinks on a much slower one, so the trace never quite repeats.
+    private struct Pen {
+        var tone: Double        // 0…1 color key
+        var reach: Double       // orbit radius, as a fraction of the short side
+        var breathe: Double     // how fast the radius swells (revolutions/sec)
+        var turn: Double        // how fast the pen goes round (revolutions/sec)
+        var p1, p2: Double      // phases for each
     }
-    private var points: [Point3] = []
+    private var pens: [Pen] = []
+    private var wipeRequested = false
+    private let base = Color(red: 0.02, green: 0.015, blue: 0.03)
 
     override func setup() {
         seed(11)
-        background(Color(red: 0.02, green: 0.015, blue: 0.03))   // the one base wipe
-        noClear()                                                // then accumulate forever
-
-        // A wobbly spherical shell of points (a noise-displaced sphere). Uniform
-        // directions via the z-uniform method, displaced by 3D noise so the form
-        // has a little surface relief as it turns.
-        for _ in 0 ..< 4000 {
-            let height = random(-1, 1)               // uniform over the sphere
-            let phi = random(.tau)
-            let band = (1 - height * height).squareRoot()
-            var dx = band * cos(phi)
-            var dy = height
-            var dz = band * sin(phi)
-            let wobble = 1 + 0.16 * noise(dx * 1.4 + 3, dy * 1.4 + 7, dz * 1.4 + 1)
-            dx *= wobble; dy *= wobble; dz *= wobble
-            points.append(Point3(x: dx, y: dy, z: dz, tone: (height + 1) / 2))
+        background(base)     // the one base wipe
+        noClear()            // then accumulate forever
+        for i in 0 ..< 3 {
+            pens.append(Pen(tone: Double(i) / 3 + random(0.1),
+                            reach: random(0.18, 0.30),
+                            breathe: random(0.05, 0.16),
+                            turn: random(0.6, 1.4),
+                            p1: random(.tau), p2: random(.tau)))
         }
     }
 
+    override func keyPressed() {
+        wipeRequested = true
+    }
+
     override func draw() {
-        blendMode(.add)          // every sample adds light to the pile
+        if wipeRequested {   // reset the exposure on the frame after the key
+            background(base)
+            wipeRequested = false
+        }
+        blendMode(.add)      // every mark adds a little light to the pile
         noStroke()
 
         let cx = width / 2, cy = height / 2
-        let radius = shortSide * 0.34
-        let angle = time * 0.25                      // a slow turn around the vertical axis
-        let cosA = cos(angle), sinA = sin(angle)
+        for pen in pens {
+            // One dot is nearly invisible; the figure is the accumulation.
+            let ink = Colormap.magma.color(at: 0.25 + pen.tone * 0.6)
+            fill(Color(red: ink.red, green: ink.green, blue: ink.blue, alpha: 0.05))
+            for k in 0 ..< 40 {
+                // Sample a short arc of the pen's path, anchored to the clock,
+                // so the trace stays continuous at any frame rate.
+                let t = time + Double(k) * 0.0009
+                let r = shortSide * pen.reach * (1 + 0.35 * sin(t * pen.breathe * .tau + pen.p1))
+                let a = t * pen.turn * .tau + pen.p2
+                drawCircle(cx + cos(a) * r, cy + sin(a) * r, 1.4 * scale)
+            }
+        }
 
-        let focus = sin(time * 0.35) * 0.9           // the focal plane sweeps the depth range
-        let blurStrength = radius * 0.22             // bokeh spread per unit of defocus
-        let samplesPerPoint = 2
-
-        for p in points {
-            // Rotate (x, z) around the vertical axis, then orthographic-project.
-            let rx = p.x * cosA + p.z * sinA
-            let rz = -p.x * sinA + p.z * cosA
-            let screenX = cx + rx * radius
-            let screenY = cy - p.y * radius
-
-            let defocus = abs(rz - focus)            // distance from the focal plane
-            let blur = defocus * blurStrength
-            // Sharp points are small and bright; defocused ones dim as their light
-            // spreads over a wider disc (energy roughly conserved).
-            let dotSize = (0.8 + defocus * 1.0) * scale
-            let alpha = 0.11 / (1 + defocus * 6)
-
-            let base = Colormap.magma.color(at: 0.25 + p.tone * 0.6)
-            fill(Color(red: base.red, green: base.green, blue: base.blue, alpha: alpha))
-
-            for _ in 0 ..< samplesPerPoint {
-                let j = ring(innerRadius: 0, outerRadius: blur)
-                drawCircle(screenX + j.x, screenY + j.y, dotSize)
+        // The instrument: drag to scribble a soft spray of the same faint ink.
+        if mouseIsPressed {
+            fill(Color(white: 1, alpha: 0.05))
+            for _ in 0 ..< 60 {
+                let j = ring(innerRadius: 0, outerRadius: 18 * scale)
+                drawCircle(mouseX + j.x, mouseY + j.y, 1.2 * scale)
             }
         }
     }

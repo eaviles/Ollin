@@ -268,7 +268,7 @@ The listing divides the panel's glow by its area as it grows. The light poured o
 
 Shadows work the way the last section said, with the panel's size standing in for a light's position. A rect or disk panel is picked as the caster when no punctual light claims the job, and its penumbra comes from the panel's real extent, nothing to set. `shadowSoftness(_:)` scales that extent rather than some separate size, so `0` is hard, the `0.5` default is the panel's true size, and `1` is twice as soft. A tube never casts. It glows in every direction, so there is no side to draw a shadow from. One practical note comes from the figure's own listing. Lights are invisible, so the glowing slab you see is a drawn prop, placed a step *behind* the emitting plane. A casting panel treats any geometry in front of that plane, its own prop included, as an occluder.
 
-The `3D/Lighting/AreaLights` example stages all three shapes over a glossy floor. Put it beside `3D/Lighting/Lighting` and the difference between a bulb and a panel is the whole studio-photography look. `3D/Lighting/AreaShadows` is the breathing softbox.
+The `3D/Lighting/AreaLights` example stages all three shapes over a glossy floor, its softbox breathing so the shadows harden and soften with it. Put it beside `3D/Lighting/Lighting` and the difference between a bulb and a panel is the whole studio-photography look.
 
 ## The shape of the throw
 
@@ -303,7 +303,7 @@ Everything so far shows a light only where it lands. Real air shows the light on
 fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
 ```
 
-`fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness. The `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing, since the fade is an exact formula rather than a blur pass, so animating the density is just a number moving. The `3D/Effects/Fog` example is a colonnade standing in exactly this mist.
+`fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness. The `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing, since the fade is an exact formula rather than a blur pass, so animating the density is just a number moving. The fog half of the `3D/Effects/Atmosphere` example is a colonnade standing in exactly this mist.
 
 Fog paints every distance toward one color, which is right for a room. Outdoor air is choosier. It takes the blue out of a far ridge's own light, and it adds sunlight scattered into the path, blue from the side, brighter and whiter toward the sun. That is aerial perspective, the cue that makes mountains read as mountains, and it needs to know where the sun sits. So first give the scene a sky. `environment(.sky)` wraps the world in a computed one, with `turbidity` for how dusty the air is and `sunElevation` for how high the sun rides. An environment can light a whole scene, which is the next chapter's territory. Here its job is handing the haze its sun, and with the sky in place the perspective itself is one call:
 
@@ -314,7 +314,7 @@ aerialPerspective()
 
 <img src="Images/21-3DGently/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
 
-With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and bare it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, the last call wins, and the beams below ride it exactly as they ride fog. The `3D/Effects/AerialPerspective` example puts all of it on knobs.
+With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans, and bare it sizes itself to the camera framing. `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, the last call wins, and the beams below ride it exactly as they ride fog. The `3D/Effects/Atmosphere` example puts all of it on knobs (hold space to switch over from fog).
 
 ```swift
 castShadows()

@@ -46,7 +46,7 @@ one is a target prefixed `Example-`:
 ```sh
 cd Examples
 swift run Example-Basic-HelloCircle
-swift run Example-Motion-Breathing
+swift run Example-Motion-SineSweep
 ```
 
 (Run `swift run` with no argument to list every runnable target.) From the repo

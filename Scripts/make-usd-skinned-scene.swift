@@ -4,7 +4,7 @@ import Foundation
 // Generates an Ollin-original *deforming* USD scene as a self-contained text
 // file: a pond where a sea serpent sways on a five-joint UsdSkel chain and a
 // lotus breathes on blend shapes, the bundled demo asset for the
-// 3D/USDSkinnedScene example. Everything is authored here, so the asset
+// 3D/SkinnedScene example. Everything is authored here, so the asset
 // carries no third-party license.
 //
 // The rig exercises the whole UsdSkel envelope the loader reads, and the
@@ -28,10 +28,10 @@ import Foundation
 // complete the stage; diffuse colors are authored as display values, light
 // colors are linear per UsdLux. Re-run to regenerate:
 //
-//     swift Scripts/make-usd-skinned-scene.swift Examples/3D/Geometry/USDSkinnedScene/stage.usda
+//     swift Scripts/make-usd-skinned-scene.swift Examples/3D/Geometry/SkinnedScene/stage.usda
 
 let outPath = CommandLine.arguments.count > 1
-    ? CommandLine.arguments[1] : "Examples/3D/Geometry/USDSkinnedScene/stage.usda"
+    ? CommandLine.arguments[1] : "Examples/3D/Geometry/SkinnedScene/stage.usda"
 
 // MARK: Small helpers.
 

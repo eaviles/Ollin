@@ -2,8 +2,8 @@
 #
 # Scripts/OllinLive — run a sketch with live reload, release by default.
 #
-#   Scripts/OllinLive Examples/Motion/ArcField/Sketch.swift
-#   Scripts/OllinLive --debug Examples/Motion/ArcField/Sketch.swift
+#   Scripts/OllinLive Examples/Motion/EllipseField/Sketch.swift
+#   Scripts/OllinLive --debug Examples/Motion/EllipseField/Sketch.swift
 #
 # Opens the sketch in a window, then recompiles and hot-swaps it on every save
 # (and live-reloads Shaders.metal when run from the repo). Defaults to a release

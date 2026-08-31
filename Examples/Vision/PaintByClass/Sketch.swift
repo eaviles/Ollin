@@ -3,7 +3,7 @@ import Ollin
 import OllinVision
 
 /// Every pixel named and painted — a `ModelTracker` running a semantic-
-/// segmentation model (DeepLabV3) over the live feed. Where `PersonSegmentation`
+/// segmentation model (DeepLabV3) over the live feed. Where `Lift`
 /// lifts *the people* and `ObjectDetection` draws *boxes*, this paints the
 /// pixels themselves, one steady color per class: you in one color, the chair
 /// in another, the sofa, the dog, the bottle each in theirs. A legend counts

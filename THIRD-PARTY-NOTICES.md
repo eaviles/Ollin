@@ -271,8 +271,8 @@ redistributed inside this repository.
 
 ## Voladores de Papantla (example video)
 
-- **Used for:** the `VideoPlayback`, `VideoTrace`, and `SoundReactive` example sketches only: a sample video clip, to demonstrate `VideoPlayer` drawing a file as a live image, a vision tracker analyzing it as it plays, and a soundtrack analyzer reacting to it. Not part of the Ollin framework; Ollin (and `OllinVideo`) bundle no video themselves.
-- **Location in this repo:** [`Examples/Video/VideoPlayback/voladores.mp4`](Examples/Video/VideoPlayback/voladores.mp4) and an identical copy at [`Examples/Vision/VideoTrace/voladores.mp4`](Examples/Vision/VideoTrace/voladores.mp4) (each example bundles its own assets); [`Examples/Video/SoundReactive/voladores-fandanguito.mp4`](Examples/Video/SoundReactive/voladores-fandanguito.mp4) is a further-trimmed excerpt paired with the *El Fandanguito* recording below as its soundtrack (the source video's own audio track is silent)
+- **Used for:** the `VideoPlayback` and `SoundReactive` example sketches only: a sample video clip, to demonstrate `VideoPlayer` drawing a file as a live image and a soundtrack analyzer reacting to it. Not part of the Ollin framework; Ollin (and `OllinVideo`) bundle no video themselves.
+- **Location in this repo:** [`Examples/Video/VideoPlayback/voladores.mp4`](Examples/Video/VideoPlayback/voladores.mp4); [`Examples/Video/SoundReactive/voladores-fandanguito.mp4`](Examples/Video/SoundReactive/voladores-fandanguito.mp4) is a further-trimmed excerpt paired with the *El Fandanguito* recording below as its soundtrack (the source video's own audio track is silent)
 - **Work:** *Voladores de Papantla México* — a recording of the *Danza de los Voladores*, the Totonac pole-flying ritual dance from Papantla, Veracruz (performed at an exhibition in Mexico City, 2018). Filmed by José Millán (Wikimedia Commons user Jmillan325).
 - **Upstream:** https://commons.wikimedia.org/wiki/File:Voladores_de_Papantla_M%C3%A9xico.webm
 - **License:** CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0

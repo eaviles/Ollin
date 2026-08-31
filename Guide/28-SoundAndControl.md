@@ -201,7 +201,7 @@ The readers in the figure cover most of what you'll want. `beats` is the running
 
 `clock.beat` is the same ready-made pulse the analyzer's `beat` gave you earlier in this chapter. A beat-reactive sketch can swap between hearing the room and reading the wire. That is worth knowing when the room is loud and the wire is honest.
 
-Two behaviors to expect from real gear. Pressing play on the master arms the clock, and it starts on the *next* tick rather than immediately. That is the MIDI convention, and it keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock. `TempoClock` then starts following from the first tick it hears. The `Integration/TempoSync` example rehearses all of this with no hardware, by having the sketch send clock to itself. [The MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
+Two behaviors to expect from real gear. Pressing play on the master arms the clock, and it starts on the *next* tick rather than immediately. That is the MIDI convention, and it keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock. `TempoClock` then starts following from the first tick it hears. The `Integration/Tempo` example (in its MIDI mode) rehearses all of this with no hardware, by having the sketch send clock to itself. [The MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
 
 **OSC** is the networked cousin, the protocol of TouchOSC, Max/MSP, TouchDesigner, and most of the performance world. Messages are named by slash-paths and travel over the network, which means the fader can be a phone on the same Wi-Fi:
 
@@ -245,7 +245,7 @@ First, every machine counts its own beats. Your `beats` might read 6.62 while th
 
 Second, the beat never stops. A Link session has no transport freeze: `beats` always advances, and `isPlaying` is a shared flag that apps with a play button honor. Setting it starts or stops everyone who listens to it. `tempo` is writable too. Setting it proposes a new tempo to the whole session, and the latest proposal wins, whoever makes it.
 
-Alone, the clock free-runs at its own tempo, so the sketch behaves the same on a train as on stage. `peerCount` says which is happening. The `Integration/LinkTempo` example puts all of this on screen; run two copies and they pulse together. [The Link reference](../Docs/Integration/Link.md) has the full surface, and how the session works underneath.
+Alone, the clock free-runs at its own tempo, so the sketch behaves the same on a train as on stage. `peerCount` says which is happening. The `Integration/Tempo` example, switched to its Link mode, puts all of this on screen; run two copies and they pulse together. [The Link reference](../Docs/Integration/Link.md) has the full surface, and how the session works underneath.
 
 ## One knob, three hands
 
@@ -527,7 +527,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 - [Bluetooth](../Docs/Integration/Bluetooth.md): the room in range, the three ways to name a device, the formats that turn bytes into values, and the permission the first run has to get past.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.
 - Appendix B draws this chapter's math, one picture per idea: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples: [`Examples/Audio/Listening`](../Examples/Audio/Listening/Sketch.swift), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), and the MIDI, OSC, serial, and controller examples in [`Examples/Integration/`](../Examples/Integration/).
+- Worked examples: [`Examples/Audio/Listening`](../Examples/Audio/Listening/Sketch.swift), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift), and the MIDI, OSC, serial, and controller examples in [`Examples/Integration/`](../Examples/Integration/).
 
 ---
 

@@ -3,7 +3,7 @@ import Ollin
 import OllinPhone
 
 /// Background replacement, live from a tethered iPhone — the on-device sibling of
-/// `Vision/PersonSegmentation`. The phone segments the people in its camera; this
+/// `Vision/Lift`. The phone segments the people in its camera; this
 /// lifts them onto a drifting gradient backdrop, with the tinted matte doubling as
 /// a soft drop shadow.
 ///

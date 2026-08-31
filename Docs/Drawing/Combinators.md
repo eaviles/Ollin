@@ -453,14 +453,14 @@ shadows onto itself: a penumbra march toward the casting light, contact-hardenin
 where shapes meet, softer as the shadow falls away). It's the same opt-in as mesh shadows, so a
 field without `castShadows()` shades unshadowed (and stays byte-identical). A field also **casts
 onto rasterized meshes** under every light: a directional or spot caster has the field render into
-the 2D shadow map the meshes sample (a mesh floor catches a floating field's shadow, see
-`Examples/3D/Raymarching/RaymarchedCastShadow`), and a point or ray-traced caster (which has no such map)
-has the lit mesh fragments march the field inline toward the light instead (see
-`Examples/3D/Raymarching/RaymarchedPointCast`). A field also **receives a mesh's shadow** in return, under every
+the 2D shadow map the meshes sample (a mesh floor catches a floating field's shadow), and a point
+or ray-traced caster (which has no such map) has the lit mesh fragments march the field inline
+toward the light instead (see `Examples/3D/Raymarching/RaymarchedCastShadow`, whose key swaps the
+caster kind). A field also **receives a mesh's shadow** in return, under every
 light type: it samples whichever shadow the caster wrote (the 2D map for a directional or spot light,
 the omnidirectional cube or the traced mesh structure for a point light), so a floating mesh drops
-its shadow onto the field just as onto another mesh (see `Examples/3D/Raymarching/RaymarchedReceiveShadow` for a
-directional caster, `Examples/3D/Raymarching/RaymarchedPointReceive` for a point caster).
+its shadow onto the field just as onto another mesh (see `Examples/3D/Raymarching/RaymarchedReceiveShadow`,
+whose key swaps the caster kind).
 
 **Materials and environment light.** A field shades through the same material and lighting
 model as the meshes: the active [`material(_:)`](../3D/3D.md#materials) applies per
@@ -543,10 +543,8 @@ primitive catalog), `Examples/3D/Raymarching/RaymarchedSculpt` (the scoped block
 `Examples/3D/Raymarching/RaymarchedRadial` (the radial/polar repeat operator),
 `Examples/3D/Raymarching/RaymarchedPlane` (the infinite plane grounding shapes with self-shadows),
 `Examples/3D/Raymarching/RaymarchedShadow` (self-shadowing under `castShadows()`),
-`Examples/3D/Raymarching/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh),
-`Examples/3D/Raymarching/RaymarchedReceiveShadow` (a field receiving a mesh's shadow),
-`Examples/3D/Raymarching/RaymarchedPointCast` (a field casting onto a mesh under a point light),
-`Examples/3D/Raymarching/RaymarchedPointReceive` (a field receiving a mesh's shadow under a point light),
+`Examples/3D/Raymarching/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh, under a directional or point caster),
+`Examples/3D/Raymarching/RaymarchedReceiveShadow` (a field receiving a mesh's shadow, under a directional or point caster),
 `Examples/3D/Raymarching/RaymarchedStretch` (per-axis stretch and non-uniform scale),
 `Examples/3D/Raymarching/RaymarchedGradient` (a screen-space gradient painting the merged surface), and
 `Examples/3D/Raymarching/RaymarchedEnvironment` (fields lit by an environment beside mesh parity spheres).

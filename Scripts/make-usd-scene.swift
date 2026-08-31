@@ -10,7 +10,7 @@ import Foundation
 // gem is two-tone: a material-binding GeomSubset gives its lower (pavilion)
 // facets a garnet material while the crown keeps the mesh's own amber binding,
 // so the asset exercises per-material submeshes and the subset-remainder
-// inheritance. The bundled demo asset for the 3D/USDScene example; everything
+// inheritance. The bundled demo asset for the 3D/LoadedScene example; everything
 // is authored here, so the asset carries no third-party license.
 //
 // One deliberate choice, bounded by what the platform importer exposes: diffuse
@@ -20,10 +20,10 @@ import Foundation
 // intensity 1, the rig's visual balance rides the authored colors.
 // Re-run to regenerate:
 //
-//     swift Scripts/make-usd-scene.swift Examples/3D/Geometry/USDScene/stage.usda
+//     swift Scripts/make-usd-scene.swift Examples/3D/Geometry/LoadedScene/stage.usda
 
 let outPath = CommandLine.arguments.count > 1
-    ? CommandLine.arguments[1] : "Examples/3D/Geometry/USDScene/stage.usda"
+    ? CommandLine.arguments[1] : "Examples/3D/Geometry/LoadedScene/stage.usda"
 
 // MARK: Small vector helpers.
 

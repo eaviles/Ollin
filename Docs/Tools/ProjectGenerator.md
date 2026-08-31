@@ -5,7 +5,7 @@ Starting a sketch should not begin with copying boilerplate out of somewhere els
 ```sh
 ollin new MyPiece                                  # a folder that builds and runs
 ollin new MyPiece --template shader --with audio   # wired for a shader and the microphone
-ollin new MyPiece --from Motion/Breathing          # start from an example, material and all
+ollin new MyPiece --from Basic/HelloCircle          # start from an example, material and all
 ollin new Dots.swift                               # one loose file, nothing around it
 ollin new                                          # one loose file, named by the next serial
 ollin new --list                                   # every kind, template, and extra

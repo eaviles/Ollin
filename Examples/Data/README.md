@@ -4,7 +4,7 @@
 
 ## Data
 
-Drawing from data. The first two sketches read a file once in `setup()` and let it decide what the picture looks like: the scale, the colors, and the labels all come out of the file rather than being typed into the sketch. The third keeps asking an address, so the picture is of something happening now.
+Drawing from data. The first two sketches read a file once in `setup()` and let it decide what the picture looks like: the scale, the colors, and the labels all come out of the file rather than being typed into the sketch. The third keeps asking an address, so the picture is of something happening now, and the fourth holds one connection open so every event lands the moment it happens.
 
 | Example | What it shows |
 |---|---|

@@ -1,6 +1,6 @@
-//  Ported from the p5.js sketch week-3/type-4 (MIT) in
-//  https://github.com/eaviles/rtp-sfpc-f21-p5 — itself a p5 port of Zach
-//  Lieberman's openFrameworks sample for the RTP class at SFPC, Fall 2021
+//  Ported from the p5.js sketches week-3/type-4 and week-3/type-5 (MIT) in
+//  https://github.com/eaviles/rtp-sfpc-f21-p5, themselves p5 ports of Zach
+//  Lieberman's openFrameworks samples for the RTP class at SFPC, Fall 2021
 //  (https://github.com/ofZach/RTP_SFPC_F21). Reworked for Ollin's API.
 
 import Foundation
@@ -14,7 +14,9 @@ import Ollin
 /// stacked so you can compare the three modes on identical points. The spacing
 /// breathes coarse↔fine with time (the original sketch drove this the same way);
 /// coarse is where the rounded curve and the faceted polygon visibly diverge.
-/// Uses the bold system font.
+/// The dot row alone adds a gentle sideways push, each point nudged by a sine
+/// of its own height, so it wobbles like type seen through heat haze while the
+/// rows above hold still. Uses the bold system font.
 @main
 final class GlyphContours: Sketch {
     // A face whose counters are *separate* contours, so each strokes cleanly. SF
@@ -63,12 +65,22 @@ final class GlyphContours: Sketch {
             for contour in contours where contour.count >= 3 { drawPolygon(contour) }
         }
 
-        // 3) The bare points (markers take `fill`, so paint the dots with it).
+        // 3) The bare points (markers take `fill`, so paint the dots with it),
+        //    shimmering: each point pushed sideways by a sine of its own height,
+        //    the wave traveling with time and its amplitude breathing. Kept
+        //    small so the small inner contours (the e's aperture, the o's ring)
+        //    stay intact instead of scattering.
+        let amp = map(sin(time * 0.7), -1, 1, 2, 7) * scale
         withState {
             translate(width / 2, height * 0.76)
             noStroke()
             fill(.white)
-            for contour in contours { drawPoints(contour, size: 8 * scale) }
+            for contour in contours {
+                let shimmered = contour.map { p in
+                    Vector2(p.x + amp * sin(p.y * 0.04 + time * 2), p.y)
+                }
+                drawPoints(shimmered, size: 8 * scale)
+            }
         }
     }
 }

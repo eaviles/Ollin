@@ -1,12 +1,16 @@
 import Ollin
 
-/// Every drawing primitive Ollin ships, one per cell — a living reference sheet
+/// Every drawing primitive Ollin ships, one per cell: a living reference sheet
 /// for the whole `draw*` vocabulary. Each shape is filled from a perceptual
 /// colormap and turns slowly in place, so the sheet doubles as a check that every
 /// primitive composites and anti-aliases under the transform stack. Most are
 /// single instanced SDF quads; `drawLine`/`drawBezier`/`drawPolyline` are stroked,
 /// and `drawPolygon`/`drawShape` go through the tessellated triangle path (the
 /// last one a square with a circular hole, via the concave/holed `Shape`).
+///
+/// The rhombus, cross, vesica, and moon cells breathe their `cornerRadius:`
+/// with time, so you can watch sharp corners fillet to round and back; the
+/// ring (a full annulus has no corners) breathes its thickness instead.
 @main
 final class Primitives: Sketch {
     let columns = 5
@@ -62,6 +66,9 @@ final class Primitives: Sketch {
     /// was already translated there). State set here — point size, the stroke the
     /// line/path cells need — is scoped by the caller's `withState`, so it reverts.
     private func drawCell(_ index: Int, s: Double, color: Color) {
+        // 0…1 corner rounding for the roundable shapes, offset per cell so
+        // the sheet ripples rather than breathing in lockstep.
+        let round = 0.5 - 0.5 * cos(time * 1.6 + Double(index) * 0.5)
         switch index {
         case 0:
             pointSize(s * 1.5)
@@ -84,17 +91,17 @@ final class Primitives: Sketch {
         case 8:
             drawStar(0, 0, s, s * 0.45, points: 5)
         case 9:
-            drawRhombus(0, 0, s * 1.3, s * 1.9)
+            drawRhombus(0, 0, s * 1.3, s * 1.9, cornerRadius: round * s * 0.65)
         case 10:
             drawTrapezoid(0, 0, s * 0.9, s * 1.7, s * 1.4)
         case 11:
             drawParallelogram(0, 0, s * 1.6, s * 1.2, s * 0.5)
         case 12:
-            drawCross(0, 0, s * 1.9, s * 0.6, cornerRadius: s * 0.12)
+            drawCross(0, 0, s * 1.9, s * 0.6, cornerRadius: round * s * 0.3)
         case 13:
-            drawVesica(0, 0, s * 0.95, s * 1.8)
+            drawVesica(0, 0, s * 0.95, s * 1.8, cornerRadius: round * s * 0.475)
         case 14:
-            drawMoon(0, 0, s, s * 0.92, s * 0.62)
+            drawMoon(0, 0, s, s * 0.92, s * 0.62, cornerRadius: round * s * 0.4)
         case 15:
             drawEgg(0, 0, s * 0.85, s * 0.42)
         case 16:
@@ -102,7 +109,7 @@ final class Primitives: Sketch {
         case 17:
             drawCutDisk(0, 0, s, -s * 0.15)
         case 18:
-            drawRing(0, 0, s * 0.55, s)
+            drawRing(0, 0, s * (0.25 + 0.5 * round), s)
         case 19:
             drawUnevenCapsule(Vector2(-s * 0.7, s * 0.7), Vector2(s * 0.7, -s * 0.7), s * 0.5, s * 0.18)
         case 20:

@@ -129,7 +129,7 @@ Nothing here ever stops a piece from starting, because a gallery piece that will
 ### Starting over, and saving by hand
 
 ```sh
-swift run --package-path Examples Example-Installation-Resuming --fresh
+swift run --package-path Examples Example-Installation-Watched --fresh
 ```
 
 `--fresh` ignores the saved state without deleting it, so one clean run does not cost you the file. To throw it away for good, call `forgetCheckpoint()`. To write one at a moment of your choosing, on a key press or at the end of a phase, call `saveCheckpoint()`.
@@ -139,11 +139,8 @@ The file is JSON, sorted and indented, in `~/Library/Application Support/Ollin/C
 ```json
 {
   "frameCount" : 4098,
-  "sketch" : "Resuming",
-  "state" : {
-    "nextLanding" : 68,
-    "tiles" : [ { "cell" : 106, "shade" : 0.354, "turn" : 0.303 } ]
-  },
+  "sketch" : "Watched",
+  "state" : { "runs" : [ 42.1, 3.6, 67.9 ] },
   "time" : 67.98
 }
 ```
@@ -414,6 +411,6 @@ Keeping separate programs in step is the harder half. The cheapest answer needs 
 - [`Export`](./Export.md) for writing frames, video, and vectors out of a piece.
 - [`Sketch`](../Core/Sketch.md) for `loopDuration` and the rest of the declared configuration.
 - [`Canvas`](../Core/Canvas.md) for how the canvas and the window relate, which is what lets a 1080 square fill a wide screen without distorting.
-- The [Unattended example](../../Examples/Installation/Unattended/Sketch.swift), and the [Resuming example](../../Examples/Installation/Resuming/Sketch.swift), a wall that fills in and remembers how far it got.
+- The [Unattended example](../../Examples/Installation/Unattended/Sketch.swift), and the [Watched example](../../Examples/Installation/Watched/Sketch.swift), which remembers its runs through `@Saved` and comes back from a crash.
 - The [Fitted example](../../Examples/Installation/Fitted/Sketch.swift), a piece with the marks on it that you line the corners up against.
 - The [ManyWindows example](../../Examples/Installation/ManyWindows/Sketch.swift), one world seen through as many windows as you care to open.

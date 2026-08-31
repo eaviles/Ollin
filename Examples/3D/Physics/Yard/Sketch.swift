@@ -18,6 +18,12 @@ import OllinPhysics
 ///   one is found, so quitting and running again finds the yard as you left it.
 /// - **N** clears it out and lays a fresh one.
 ///
+/// **R** works before anything is saved, too: the yard keeps a snapshot of the
+/// moment it first settled, so a wrecked yard comes back exactly, down to
+/// which crate leans on which. Settling again would not do that. The solver
+/// runs in floating point, and a toppling stack turns a last-bit difference
+/// into a different arrangement; a snapshot has nothing left to compute.
+///
 /// The one thing the file does not hold is the figure's skin. That is the
 /// sketch's own asset, loaded from the sketch's own bundle, and the snapshot
 /// holds only what the solver was built from: a capsule per joint, the tree

@@ -1,49 +1,52 @@
 import Ollin
 
-/// Blue-noise stippling: an even-but-organic scatter with no clumps and no
-/// gaps. `poissonDisk(radius:)` lays down points no two closer than the radius
-/// (Bridson's dart-throwing), the distribution that reads as *natural* coverage:
-/// plain random scatter clusters and leaves holes, blue noise never does.
+/// Blue noise handed to the tessellator. `poissonDisk(radius:)` lays down
+/// points no two closer than the radius (Bridson's dart-throwing), the
+/// distribution that reads as *natural* coverage: plain random scatter
+/// clusters and leaves holes, blue noise never does. The points are ordinary
+/// `[Vector2]`, so they feed anything, and here they feed `voronoi(_:)`, which
+/// carves the canvas into one convex cell per site.
 ///
-/// The layout is computed once and held (it's a pure function of the seed, so
-/// the same seed always lays the dots down the same way); what moves is a slow
-/// flow field that swells each dot's size and shifts its ink, so the field
-/// breathes without the points jumping around.
+/// The strikingly even cell sizes are the demonstration: random sites make a
+/// diagram of slivers and sprawls, blue-noise sites make a calm foam with no
+/// Lloyd relaxation needed. Each site is overlaid as a bright dot on its own
+/// cell, so the spacing itself still reads.
 ///
-/// The points are ordinary `[Vector2]`, so they feed anything: here they're
-/// stippled as dots, but the same set drops straight into the tessellators for
-/// strikingly even cells, with no Lloyd relaxation needed:
-///
-/// ```swift
-/// let sites = poissonDisk(radius: 30)
-/// for cell in voronoi(sites).cells { drawShape(cell) }
-/// ```
+/// The layout is computed once and held (it is a pure function of the seed,
+/// so the same seed always lays the dots down the same way); the cells are
+/// ordinary `Shape`s, ready for fill, stroke, the booleans, and SVG export.
 @main
 final class BlueNoise: Sketch {
-    private var points: [Vector2] = []
+    private var sites: [Vector2] = []
+    private var cells: [Shape] = []
 
     override func draw() {
-        if points.isEmpty {
+        if sites.isEmpty {
             seed(9)
-            points = poissonDisk(radius: 22 * scale)
+            sites = poissonDisk(radius: 36 * scale)
+            cells = voronoi(sites).cells
         }
 
         background(Color(hex: 0x11141C))
 
-        let ink = Color(hex: 0xE8ECF4)
-        let accent = Color(hex: 0x5AA9E6)
-        noStroke()
+        // The cells: a quiet per-cell tint, seamed by background-colored
+        // strokes so the near-equal areas read as a foam.
+        let shallow = Color(hex: 0x1D2B3F)
+        let deep = Color(hex: 0x33557E)
+        stroke(Color(hex: 0x11141C))
+        strokeWeight(2 * scale)
+        for (site, cell) in zip(sites, cells) {
+            let t = (signedNoise(site.x * 0.0018, site.y * 0.0018) + 1) * 0.5
+            fill(Color.mix(shallow, deep, t))
+            drawShape(cell)
+        }
 
-        for p in points {
-            // A flow field drives each dot's size and ink so neighbors swell and
-            // fade together; a second, faster field nudges each dot a few pixels,
-            // so the whole stipple shimmers while the coverage stays even.
-            let flow = signedNoise(p.x * 0.0018, p.y * 0.0018, time * 0.5)
-            let wobble = Vector2(signedNoise(p.y * 0.004, time * 0.8),
-                                 signedNoise(p.x * 0.004, time * 0.8 + 42)) * (5 * scale)
-            let size = (2.0 + (flow + 1) * 2.8) * scale
-            fill(Color.mix(ink, accent, (flow + 1) * 0.5))
-            drawCircle(center: p + wobble, radius: size)
+        // The sites themselves, one dot per cell: the even scatter beside the
+        // even cells it produced.
+        noStroke()
+        fill(Color(hex: 0xE8ECF4))
+        for site in sites {
+            drawCircle(center: site, radius: 3 * scale)
         }
     }
 }

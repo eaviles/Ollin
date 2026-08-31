@@ -294,7 +294,7 @@ held.target = Vector2(mouseX, mouseY)
 held.remove()
 ```
 
-See the `Stack`, `Tumble`, and `Chain` examples for the whole thing: a toppling pyramid, a pile of mixed shapes, and grabbable swinging chains.
+See the `RigidBodies` and `Chain` examples for the whole thing: a toppling pyramid knocked into a pile of mixed shapes, and grabbable swinging chains.
 
 <a name="body"></a>
 <a name="collider"></a>

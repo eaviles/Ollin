@@ -8,7 +8,7 @@ Palettes, colormaps, and driving color from a value or from time.
 
 | Example | What it shows |
 |---|---|
-| [Colormaps](Colormaps/Sketch.swift) | the eight perceptual `Colormap` ramps as horizontal bands (value → color) |
+| [Colormaps](Colormaps/Sketch.swift) | the eight perceptual `Colormap` ramps as horizontal bands (value → color), with the seven cosine-gradient `CosinePalette` presets scrolling in a labeled section below |
 | [ColorVision](ColorVision/Sketch.swift) | two palettes seen four ways, with a bar marking every pair that merges, and `Filter.colorVision` over the whole canvas on a knob |
 | [ColorWaves](ColorWaves/Sketch.swift) | a row of sin-colored circles flowing with `time` |
 | [Dithering](Dithering/Sketch.swift) | one painted gradient reduced to four extracted colors six ways: plain nearest-color, ordered Bayer, blue noise, and three error-diffusion kernels |
@@ -18,9 +18,8 @@ Palettes, colormaps, and driving color from a value or from time.
 | [Mixing](Mixing/Sketch.swift) | the same two colors mixed in RGB, HSB, OKLab, OKLCH, OKHSL, and paint (Kubelka-Munk over spectra), band by band |
 | [PaletteFile](PaletteFile/Sketch.swift) | palettes read off disk: a CSV of six, and a hex-per-line file of one, with no format declared |
 | [PaletteFromImage](PaletteFromImage/Sketch.swift) | a palette clustered out of an image's pixels, recovering the five colors the picture was painted with |
-| [Palettes](Palettes/Sketch.swift) | seven cosine-gradient `CosinePalette` presets, each swept across the canvas and scrolled |
 | [PrintSeparation](PrintSeparation/Sketch.swift) | a sunrise poster split into three spot-ink printing masters, with a halftoned overprint preview and a view knob to flip between them |
 | [SoftProof](SoftProof/Sketch.swift) | a poster carried into a press profile and back before it is printed, so what the ink cannot hold comes home changed on screen, beside the gamut check and the process plates |
 | [Swatchbook](Swatchbook/Sketch.swift) | the built-in qualitative `Palette` sets as labeled swatch rows, with a wrapping-index highlight |
 
-Run one with `swift run Example-Color-<Name>`, e.g. `swift run Example-Color-Palettes`.
+Run one with `swift run Example-Color-<Name>`, e.g. `swift run Example-Color-Colormaps`.

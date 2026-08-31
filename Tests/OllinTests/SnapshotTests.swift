@@ -995,7 +995,7 @@ private final class AnimatedSceneScene: Sketch {
     }
 }
 
-/// The committed USDScene example asset, loaded from the repo and drawn through
+/// The committed LoadedScene USD stage asset, loaded from the repo and drawn through
 /// its authored camera and its authored UsdLux lighting rig (read by Ollin's
 /// own parser). Static, no shadows, no time.
 private final class USDSceneScene: Sketch {
@@ -1007,7 +1007,7 @@ private final class USDSceneScene: Sketch {
             .deletingLastPathComponent()   // OllinTests
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
-            .appendingPathComponent("Examples/3D/Geometry/USDScene/stage.usda")
+            .appendingPathComponent("Examples/3D/Geometry/LoadedScene/stage.usda")
         court = Ollin.Scene(contentsOf: url)
     }
 
@@ -1021,7 +1021,7 @@ private final class USDSceneScene: Sketch {
     }
 }
 
-/// The committed USDAnimatedScene example asset, its authored timeSamples
+/// The committed AnimatedScene USD stage asset, its authored timeSamples
 /// animation applied at a fixed time, drawn through its own camera and UsdLux
 /// lights (no shadows: a point-light caster would resolve differently on RT
 /// and non-RT GPUs).
@@ -1034,7 +1034,7 @@ private final class USDAnimatedSceneScene: Sketch {
             .deletingLastPathComponent()   // OllinTests
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
-            .appendingPathComponent("Examples/3D/Geometry/USDAnimatedScene/stage.usda")
+            .appendingPathComponent("Examples/3D/Geometry/AnimatedScene/stage.usda")
         mobile = Ollin.Scene(contentsOf: url)
     }
 
@@ -1051,7 +1051,7 @@ private final class USDAnimatedSceneScene: Sketch {
     }
 }
 
-/// The committed USDSkinnedScene pond asset, its UsdSkel deformation applied
+/// The committed SkinnedScene USD pond asset, its UsdSkel deformation applied
 /// at a fixed time: the serpent bent by its five-joint skinned chain, the
 /// lotus mid-breath on its two blend-shape weights (no shadows: the asset
 /// carries a sphere light, whose point caster would resolve differently on RT
@@ -1065,7 +1065,7 @@ private final class USDSkinnedSceneScene: Sketch {
             .deletingLastPathComponent()   // OllinTests
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
-            .appendingPathComponent("Examples/3D/Geometry/USDSkinnedScene/stage.usda")
+            .appendingPathComponent("Examples/3D/Geometry/SkinnedScene/stage.usda")
         pond = Ollin.Scene(contentsOf: url)
     }
 

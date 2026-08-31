@@ -8,30 +8,20 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 
 | Example | What it shows |
 |---|---|
-| [Bloom](Bloom/Sketch.swift) | a glow earned by extracting the bright parts, blurring, and adding them back (`filtered(.bloom())`) |
-| [BlurFilters](BlurFilters/Sketch.swift) | the blur family: Gaussian, edge-preserving bilateral, and directional motion/radial blur |
-| [ColorFilters](ColorFilters/Sketch.swift) | the color & tone family as a contact sheet: grade, invert, posterize, duotone, gradient map, … |
-| [StylizeFilters](StylizeFilters/Sketch.swift) | the stylize & optical family: edges, sharpen, emboss, halftone, dither, oil paint, crosshatch, … |
+| [Layers](Layers/Sketch.swift) | layered effects written both ways: the imperative `makeRenderTarget` + `filtered` + `drawImage` path and the `compose { }` DSL producing the same frame, flipped by a knob |
+| [FilterCatalog](FilterCatalog/Sketch.swift) | the whole `Filter` catalog on one switchable contact sheet: the blur, color & tone, stylize & optical, retro, distortion, and design families on a segmented knob |
 | [Antialias](Antialias/Sketch.swift) | the stair-steps in a shader-written layer smoothed from the image alone, split-screen against the raw layer (`.antialias`) |
-| [RetroFilters](RetroFilters/Sketch.swift) | the retro / optical family: scanlines, glitch, CRT |
 | [Relight](Relight/Sketch.swift) | a layer read as a height map and lit as embossed physical matter: matte, metal, glass, sand, liquid (`.relight`) |
 | [Glitter](Glitter/Sketch.swift) | iridescent and glittering shapes: the thin-film `.iridescence` sheen and the sparkle-fleck `.glitter` filter, per shape via `compose { }` |
 | [SoapFilm](SoapFilm/Sketch.swift) | the measured spectral pair: `.thinFilm` interference draining through the real film color order, over `.diffraction` grating streaks |
-| [Distortion](Distortion/Sketch.swift) | uv-warp filters that re-sample the image: kaleidoscope, swirl, bulge, wave, ripple, polar, … |
-| [Patterns](Patterns/Sketch.swift) | procedural pattern `Generator`s (`generate(_:)`) and a composed mix |
+| [GeneratorCatalog](GeneratorCatalog/Sketch.swift) | the procedural `Generator` catalog: the basic patterns, the animated design set, the closed-form fields, and chains where a generated layer flows on into filters and blends |
 | [Cellular](Cellular/Sketch.swift) | the Worley cellular generator's three styles (cells, borders, mosaic), the feature points wandering on phase-periodic orbits so the field loops seamlessly (`.cellular`) |
-| [PatternFields](PatternFields/Sketch.swift) | the pattern fields: quasicrystal, moiré, gyroid slice, phyllotaxis, hex pulses |
-| [Fractals](Fractals/Sketch.swift) | escape-time fractals: the Mandelbrot set and a morphing Julia set (`.mandelbrot` / `.julia`) |
-| [OrbitTraps](OrbitTraps/Sketch.swift) | orbit traps: the same iteration colored by the orbit's closest pass to a point, cross, circle, or square, two of them sweeping (`.orbitTrap`) |
+| [EscapeTime](EscapeTime/Sketch.swift) | one escape-time iteration, six readings: the Mandelbrot set and a morphing Julia set colored by escape, and four orbit traps colored by the orbit's closest pass to a shape (`.mandelbrot` / `.julia` / `.orbitTrap`) |
 | [Feedback](Feedback/Sketch.swift) | a layer that remembers itself across frames: a spiralling feedback tunnel (`withFeedback`) |
 | [Fourier](Fourier/Sketch.swift) | a picture, what it is made of, and the way back: filtering by scale with a shape drawn over the spectrum (`.fourier`, `.spectrum`, `.inverseFourier`) |
-| [Bokeh](Bokeh/Sketch.swift) | the shape of the opening a highlight came through: an iris with `blades`, and the barrel that lays a highlight down into a lemon toward the corners (`catsEye`) |
-| [Compose](Compose/Sketch.swift) | the `compose { }` DSL: a blurred backdrop, a bloomed ring, a screened lattice |
 | [Aside](Aside/Sketch.swift) | multi-input effects: a displacement map and a spotlight mask fed into layers (`aside { }`) |
-| [Defocus](Defocus/Sketch.swift) | depth of field via the two-input combine: a layer defocused by a hand-drawn depth map (`combined(with:.defocus)`) |
+| [Defocus](Defocus/Sketch.swift) | depth of field via the two-input combine: a layer defocused by a hand-drawn depth map, the highlights shaped by an iris with `blades` and the `catsEye` barrel (`combined(with:.defocus)`) |
 | [Dispersion](Dispersion/Sketch.swift) | chromatic aberration as a family: the five ways to pull the channels apart, the spectral tap budget, and the layer-driven split (`.chromaticAberration(mode:)` / `.disperse`) |
-| [DesignFilters](DesignFilters/Sketch.swift) | the design filters: liquid chrome, thermal heatmap, and gem smoke read a layer's alpha shape; fluted glass, water, and paper texture transform the picture |
-| [DesignPatterns](DesignPatterns/Sketch.swift) | nine animated design-pattern generators, each one `generate` call: filaments, a smoke ring, revolving panes, a spiral, wavy stripes, … |
 | [MeshGradient](MeshGradient/Sketch.swift) | the mesh-gradient generator: color blobs drifting on their own orbits over a domain-warped field |
 | [DiffusionCurves](DiffusionCurves/Sketch.swift) | a few marks held as color sources and the color let out between them until it settles (`.diffuse`) |
 | [DistanceField](DistanceField/Sketch.swift) | a layer asked how far the nearest edge is, and which way, at every pixel |
@@ -41,4 +31,4 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [SeamlessClone](SeamlessClone/Sketch.swift) | one layer dropped into another so the join disappears: the patch keeps its marks and takes the surroundings' color |
 | [SummedArea](SummedArea/Sketch.swift) | one table that turns the average of any square into four lookups, so a 400-pixel blur costs what a 4-pixel one does, and each pixel can be cut against its own neighborhood instead of one number for the page (`.boxBlur`, `.adaptiveThreshold`) |
 
-Run one with `swift run Example-Effects-<Name>`, e.g. `swift run Example-Effects-Bloom`.
+Run one with `swift run Example-Effects-<Name>`, e.g. `swift run Example-Effects-Layers`.

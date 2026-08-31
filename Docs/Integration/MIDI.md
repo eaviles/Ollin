@@ -208,7 +208,7 @@ override func draw() {
 }
 ```
 
-The **TempoSync** example (`Examples/Integration/TempoSync`) is the hardware-free proof. An internal timer sends clock through a virtual source and the visuals lock to it. Point real gear at the Mac and the same sketch follows that instead.
+The **Tempo** example (`Examples/Integration/Tempo`) is the hardware-free proof. An internal timer sends clock through a virtual source and the visuals lock to it. Point real gear at the Mac and the same sketch follows that instead.
 
 <a name="midioutput"></a>
 
@@ -246,4 +246,4 @@ To bring in real gear, connect a controller and run the **MIDIMonitor** example 
 
 ---
 
-See the **MIDILoopback** example for a sketch that sends and receives with no hardware. Use **MIDIMonitor** to inspect messages from a real controller, and **TempoSync** for visuals locked to MIDI clock.
+See the **MIDILoopback** example for a sketch that sends and receives with no hardware. Use **MIDIMonitor** to inspect messages from a real controller, and **Tempo** for visuals locked to MIDI clock.

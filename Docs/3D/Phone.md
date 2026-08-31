@@ -415,7 +415,7 @@ Apply `world.correction` to anything else the phone reports in the same space, s
 let whereTheCameraReallyIs = Vector3.zero.transformed(by: world.correction * pose)
 ```
 
-To see the difference without a phone, `swift run --package-path Examples Example-3D-Depth-DriftCorrectedScan` sweeps a made-up room twice, side by side, with the correction on and off.
+To see the difference without a phone, `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan` sweeps a made-up room twice, side by side, with C cycling the correction.
 
 <a name="loops"></a>
 ### Recognizing a place already scanned

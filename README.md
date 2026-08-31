@@ -1,12 +1,12 @@
 # Ollin
 
-**A comprehensive creative-coding framework for Swift on the Mac, rendered with Metal.**
+**A Metal-rendered creative-coding framework for Swift on Apple platforms.**
 
 ![Platform: macOS 26+](https://img.shields.io/badge/platform-macOS_26%2B-blue) ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [Guide](Guide/README.md) · [Docs](Docs/README.md) · [Examples](Examples/) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md) · [Attribution](ATTRIBUTION.md) · [Contributing](CONTRIBUTING.md)
 
-Ollin is the whole creative-coding toolkit as one typed Swift API for the Mac, built for generative art, live visuals, and installations. The techniques you reach for are already in it, from Voronoi and L-systems to raymarched signed-distance fields, GPU fluids, and on-device computer vision. The renderer sits directly on Metal and composites in linear light. The tooling around it (live reload, a typed parameter inspector, deterministic headless export) is built for finishing work rather than demoing it.
+Ollin is for generative art, live visuals, and installations. There's no package ecosystem to assemble first: the techniques you reach for are already in it, from Voronoi and L-systems to raymarched signed-distance fields, GPU fluids, and on-device computer vision. The renderer sits directly on Metal and composites in linear light. The tooling around it (live reload, a typed parameter inspector, deterministic headless export) is made for finishing work rather than demoing it.
 
 The API borrows the friendly `setup()`/`draw()` feel of [p5.js](https://p5js.org), the typed core of [OPENRNDR](https://openrndr.org), and the simple structure of [openFrameworks](https://openframeworks.cc), reimplemented in Swift idioms rather than ported (see [Influences & attribution](#influences--attribution)). *Ollin* (OH-leen) is the Aztec glyph for movement, the seventeenth day sign of the calendar.
 
@@ -52,7 +52,7 @@ cd Ollin
 swift run --package-path Examples Example-Basic-HelloCircle
 ```
 
-That builds the package and opens a window with a breathing circle like the one above (the shipped file is the same sketch, drawn a little larger and with its sizes riding the built-in `scale` factor so they hold at any canvas size). The first build compiles the whole framework from source, so give it a few minutes; every build after that is incremental and quick. More than five hundred runnable sketches live in [`Examples/`](Examples/), grouped by topic; `swift run` inside `Examples/` with no argument lists every example target, and from the repo root `swift run OllinExamples` opens a gallery with all of them in a sidebar.
+That builds the package and opens a window with a breathing circle like the one above (the shipped file is the same sketch, drawn a little larger and with its sizes riding the built-in `scale` factor so they hold at any canvas size). The first build compiles the whole framework from source, so give it a few minutes; every build after that is incremental and quick. Nearly five hundred runnable sketches live in [`Examples/`](Examples/), grouped by topic; `swift run` inside `Examples/` with no argument lists every example target, and from the repo root `swift run OllinExamples` opens a gallery with all of them in a sidebar.
 
 The canvas is 1080×1080 by default, previewed fit to your screen. `canvasSize` sets the resolution a sketch renders and exports at, and `windowMode` sizes the preview window. The [Canvas](Docs/Core/Canvas.md) page covers the presets and how to write resolution-independent sketches. Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR; [Where a point is](Docs/Concepts/Coordinates.md) covers units and other frames.
 
@@ -209,7 +209,7 @@ The same command starts a library other people's sketches import, laid out the s
 ollin new Halftone --kind extension --seam filter
 ```
 
-There are other ways to iterate. Tweak and re-run an example (`swift run --package-path Examples Example-Motion-Breathing`, where incremental builds keep it snappy), or open the examples package in Xcode (`open Examples/Package.swift`) for ⌘R (Command-R), breakpoints, and the debugger.
+There are other ways to iterate. Tweak and re-run an example (`swift run --package-path Examples Example-Basic-HelloCircle`, where incremental builds keep it snappy), or open the examples package in Xcode (`open Examples/Package.swift`) for ⌘R (Command-R), breakpoints, and the debugger.
 
 ## Export
 
@@ -217,9 +217,9 @@ Any sketch renders headlessly, no window needed. Stills, deterministic PNG seque
 
 ```sh
 swift run --package-path Examples Example-Basic-HelloCircle --export frame.png --frame 120
-swift run --package-path Examples Example-Motion-Breathing --export-sequence frames/ --seconds 20 --fps 60
-swift run --package-path Examples Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
-swift run --package-path Examples Example-Motion-Breathing --export-gif breathing.gif --seconds 4
+swift run --package-path Examples Example-Basic-HelloCircle --export-sequence frames/ --seconds 20 --fps 60
+swift run --package-path Examples Example-Basic-HelloCircle --export-video breathing.mp4 --seconds 6
+swift run --package-path Examples Example-Basic-HelloCircle --export-gif breathing.gif --seconds 4
 swift run --package-path Examples Example-Basic-HelloCircle --export-svg still.svg   # vector, for pen plotters
 swift run --package-path Examples Example-Basic-HelloCircle --export-pdf still.pdf   # vector, for print (paper-size presets)
 swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # a loose file, same flags

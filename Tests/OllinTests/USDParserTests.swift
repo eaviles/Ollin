@@ -23,7 +23,7 @@ struct USDParserTests {
     }
 
     private var exampleStageURL: URL {
-        repoRoot.appendingPathComponent("Examples/3D/Geometry/USDScene/stage.usda")
+        repoRoot.appendingPathComponent("Examples/3D/Geometry/LoadedScene/stage.usda")
     }
 
     private static let shaderballURL = URL(fileURLWithPath:

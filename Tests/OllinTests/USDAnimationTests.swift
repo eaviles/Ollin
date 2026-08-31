@@ -250,7 +250,7 @@ struct USDAnimationTests {
             .deletingLastPathComponent()   // OllinTests
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
-            .appendingPathComponent("Examples/3D/Geometry/USDScene/stage.usda")
+            .appendingPathComponent("Examples/3D/Geometry/LoadedScene/stage.usda")
         let s = try USDStage.load(contentsOf: url)
         #expect(Scene.resolveUSDAnimation(s) == nil)
     }
@@ -452,7 +452,7 @@ private final class USDMobileWrapProbe: Sketch {
             .deletingLastPathComponent()   // OllinTests
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
-            .appendingPathComponent("Examples/3D/Geometry/USDAnimatedScene/stage.usda")
+            .appendingPathComponent("Examples/3D/Geometry/AnimatedScene/stage.usda")
         mobile = Ollin.Scene(contentsOf: url)
     }
 

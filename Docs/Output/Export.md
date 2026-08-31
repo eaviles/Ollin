@@ -62,7 +62,7 @@ swift run --package-path Examples Example-Basic-HelloCircle --export /tmp/frame.
 Write a deterministic, fixed-timestep PNG sequence (ready for `ffmpeg`):
 
 ```sh
-swift run --package-path Examples Example-Motion-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
+swift run --package-path Examples Example-Basic-HelloCircle --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 
 Both render through Metal off-screen, with MSAA and then a resolve, so the pixels match the live window. The same capability is available as `OllinApp.image(of:frame:)`, `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. The first returns a `CGImage`. For a *reproducible* sequence, seed the sketch with `seed(…)` in `setup()`. Sources that follow the export clock stay reproducible too. A [`VideoPlayer`](../Video/Video.md) decodes by the sketch clock, so frame `k` shows the clip at `k / fps`. An [`AudioPlayer`](../Helpers/Audio.md#audioplayer) feeds its analyzer the same slice of its file each frame. An audio-reactive piece therefore exports with its beats in the same places every run.
@@ -106,8 +106,8 @@ It takes `performance`, `default`, or `detail` (aliases: `fast` / `balanced` / `
 `--render-scale N` draws each exported frame N times across the canvas and averages every block of N by N samples back into one pixel. The picture keeps its canvas size. What changes is how finely it was sampled:
 
 ```sh
-swift run --package-path Examples Example-Text-OutlineText --export poster.png --render-scale 2
-swift run --package-path Examples Example-Shapes-NamedPolygons --export poster.png --render-scale 4
+swift run --package-path Examples Example-Text-TypeAsGeometry --export poster.png --render-scale 2
+swift run --package-path Examples Example-Shapes-Polygons --export poster.png --render-scale 4
 ```
 
 <picture>
@@ -133,7 +133,7 @@ OllinApp.export(sketch, to: "poster.png")
 Encode an animated sketch straight to a `.mp4` or `.mov`, one command from a sketch to a file you can post, with no external tool:
 
 ```sh
-swift run --package-path Examples Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
+swift run --package-path Examples Example-Basic-HelloCircle --export-video breathing.mp4 --seconds 6
 swift run --package-path Examples Example-Motion-Orbits --export-video orbits.mov --seconds 10 --codec hevc --bitrate 8
 ```
 
@@ -174,7 +174,7 @@ GIF has no way to hold sound. The details, and what stays out, are on the [Synth
 Write a short, infinitely looping GIF:
 
 ```sh
-swift run --package-path Examples Example-Motion-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540
+swift run --package-path Examples Example-Basic-HelloCircle --export-gif breathing.gif --seconds 4 --gif-width 540
 ```
 
 In code it's `OllinApp.exportGIF(_:to:frames:fps:width:skipSeconds:)`. GIF is palette-limited (256 colors a frame) and heavy per second next to video, so the format wants **short loops at modest sizes**. `--gif-width` downscales the output (height follows the canvas aspect), which is usually the difference between a few hundred kilobytes and many megabytes. For anything long or subtle, `--export-video` is the better tool.
@@ -209,7 +209,7 @@ There's no separate code entry point. In Swift, derive the count yourself and ca
 An export writes the frames a sketch drew, at the rate it drew them, so a video plays at the speed you watched. `--slow-motion` is the one place those two rates come apart:
 
 ```sh
-swift run --package-path Examples Example-Motion-Breathing --export-video slow.mp4 --seconds 4 --slow-motion 4
+swift run --package-path Examples Example-Basic-HelloCircle --export-video slow.mp4 --seconds 4 --slow-motion 4
 ```
 
 That renders four seconds of the sketch's own time and writes sixteen seconds of video. The file keeps its `--fps`, and the run is covered by four times as many frames, so the motion takes four times as long to play. It works on `--export-sequence`, `--export-video`, `--export-gif`, and `--export-loop` (one lap still closes; it just takes longer to watch).

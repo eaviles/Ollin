@@ -29,8 +29,30 @@ import Ollin
 /// ray-traced reflections and compare: the metals fall back to reflecting only the studio
 /// *environment*, so the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing)
 /// GPU; on other GPUs the environment reflection is all you get.
+///
+/// A traced ray is the *mirror* ray, so on its own a satin or brushed surface answers
+/// roughness by fading that one ray into the blurred environment, and a satin floor in a
+/// red room reflects a gray sky. `glossyReflections()` spreads each ray by the surface's
+/// own roughness instead, and every pixel also borrows the rays its neighbors sent, which
+/// is what turns a handful of rays into a smooth reflection rather than glitter. The row
+/// of satin spheres standing out among the pebbles carries the point: mirror on the left
+/// to nearly matte on the right, each showing the room softened by exactly as much as it
+/// is rough. **Hold G** to drop back to the mirror ray and watch the room drain out of
+/// them, the mirror ball staying where it is because a mirror was never the problem.
+///
+/// `reflectionBounces(_:)` sets how far a reflection is allowed to travel. The default
+/// pair (the ray finds a surface, and that surface's own reflection is the environment)
+/// keeps a polished corner honest; mirrors facing mirrors are the case that needs more,
+/// or their tunnel of images stops early and shows the sky in the last door. Each step
+/// costs one more traced ray for every reflected pixel, and each mirror passes on only
+/// the fraction it reflects, so the images dim fast: three or four is usually the end of
+/// what reads. The **Bounces** stepper drives it here; watch the chrome spheres' images
+/// of the monolith and of each other deepen a step at a time.
 @main
 final class RayTracedReflections: Sketch {
+
+    @Param(2 ... 8, icon: "arrow.triangle.2.circlepath", group: "Reflection")
+    var bounces = 4
 
     /// The pebble drift, built once and held: a field places its copies on the GPU
     /// and still stands in the traced scene, up to its `tracedCopyBudget`.
@@ -55,14 +77,22 @@ final class RayTracedReflections: Sketch {
         cameraShowcase(.autoOrbit(period: .tau / 0.12),
                        target: Vector3(0, 0.8, 0), radius: 8.5, elevation: 0.34,
                        fieldOfView: .pi / 4, near: 1, far: 30)
+        // The live window renders at two-thirds size and reconstructs the full
+        // canvas; exports and snapshots still render every pixel.
+        temporalUpscaling()
         // The studio environment lights the metals and is the reflection's miss fallback (a ray
         // that leaves the scene shows the room). Its softly-blurred backdrop fills the frame.
         environment(.studio.intensified(to: 1.1).backgroundBlurred(0.5))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
         castShadows()
 
-        // Ray-trace reflections off every metal in the scene (hold the space bar to compare).
-        if !isKeyDown(" ") { rayTracedReflections() }
+        // Ray-trace reflections off every metal in the scene (hold the space bar to compare),
+        // spreading each ray by its surface's roughness (hold G for the bare mirror ray).
+        if !isKeyDown(" ") {
+            rayTracedReflections()
+            if !isKeyDown("g") { glossyReflections() }
+        }
+        reflectionBounces(bounces)
 
         // A near-mirror metal floor, the broad flat reflector RT reflections handle cleanly.
         withState {
@@ -145,8 +175,23 @@ final class RayTracedReflections: Sketch {
             drawMeshField(pebbles)
         }
 
+        // The satin row, standing out among the pebbles: one finish per ball, mirror on
+        // the left to nearly matte on the right. The ends make the glossy rule visible.
+        // The left ball looks the same with or without the spread, because its lobe is a
+        // single direction already; the right one is so wide that the environment is the
+        // honest answer and Ollin hands back to it.
+        let roughness = [0.02, 0.14, 0.28, 0.44, 0.62]
+        for (i, r) in roughness.enumerated() {
+            withState {
+                material(.metal(roughness: r))
+                fill(Color(hex: 0xcfd4dc))
+                translate(-3.6 + Double(i) * 1.8, 0.85, 7.4)
+                drawSphere(radius: 0.85)
+            }
+        }
+
         drawCaption(isKeyDown(" ")
             ? "Ray-traced reflections: OFF (release space to compare)"
-            : "Ray-traced reflections: ON (hold space to compare)")
+            : "Ray-traced reflections: ON (space: off, G: mirror-ray only)")
     }
 }

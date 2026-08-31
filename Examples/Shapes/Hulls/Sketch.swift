@@ -2,7 +2,8 @@ import Ollin
 
 /// Three answers to "what shape are these points?". One scatter (a ring of
 /// dots plus an offshore island), three outlines: the convex hull bridges
-/// everything into one taut band; the concave hull (`concaveHull`) breathes
+/// everything into one taut band, its working corners lit (the band touches
+/// only those points); the concave hull (`concaveHull`) breathes
 /// between that band and a tight wrap that dips into the gulf, always one
 /// simple polygon; and the alpha shape (`alphaShape`) underneath resolves
 /// what neither hull can say, two islands and a hole in the ring.
@@ -50,11 +51,13 @@ final class Hulls_Example: Sketch {
             drawShape(islandShape)
         }
 
-        // The convex hull: the loosest answer, faint.
+        // The convex hull: the loosest answer, faint. Its corners are marked
+        // below, once the scatter is down.
+        let hull = convexHull(of: scatter)
         noFill()
         stroke(Color(hex: 0x3A4458))
         strokeWeight(1.5 * scale)
-        drawPolygon(convexHull(of: scatter))
+        drawPolygon(hull)
 
         // The concave hull: one simple polygon breathing from loose to tight.
         // Capped short of 1, where the chi-shape goes full labyrinth and the
@@ -64,10 +67,13 @@ final class Hulls_Example: Sketch {
         strokeWeight(3 * scale)
         drawPolygon(concaveHull(of: scatter, concavity: concavity))
 
-        // The scatter itself.
+        // The scatter itself, with the convex hull's corners lit: the taut
+        // band touches only those points, so they are the ones doing the work.
         noStroke()
         fill(Color(hex: 0x8B97AB))
         drawCircles(scatter, radius: 3.2 * scale)
+        fill(.white)
+        drawCircles(hull, radius: 6 * scale)
 
         drawCaption("convex, concave, and alpha: three outlines of one scatter")
     }

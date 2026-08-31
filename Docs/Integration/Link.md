@@ -125,7 +125,7 @@ Three mechanisms, all automatic:
 Run the example twice, in two terminals:
 
 ```sh
-swift run Example-Integration-LinkTempo
+swift run Example-Integration-Tempo
 ```
 
 The two windows find each other over loopback, settle on one tempo, and light the same bar dot at the same moment. Turn one window's BPM knob and both follow. Quit one and the other keeps the beat without a hiccup. Anything else that speaks Link joins the same way, on this machine or on the same network.

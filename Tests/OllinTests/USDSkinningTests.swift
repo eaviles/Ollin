@@ -436,7 +436,7 @@ private final class USDPondWrapProbe: Sketch {
             .deletingLastPathComponent()   // OllinTests
             .deletingLastPathComponent()   // Tests
             .deletingLastPathComponent()   // repo root
-            .appendingPathComponent("Examples/3D/Geometry/USDSkinnedScene/stage.usda")
+            .appendingPathComponent("Examples/3D/Geometry/SkinnedScene/stage.usda")
         pond = Ollin.Scene(contentsOf: url)
     }
 

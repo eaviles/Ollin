@@ -378,7 +378,7 @@ func resampled(spacing: Double) -> Contour   // points respaced evenly along the
 
 The walk helpers measure *along* the contour, so they land mid-stroke even when the points are spaced unevenly (a `textToShapes` glyph, a two-point diagonal). `midpoint` is the handy anchor for styling per contour, so you can color each strand of a [Truchet tiling](./Truchet.md) by a noise field sampled at its middle, or hang a label off a path's center.
 
-`resampled(spacing:)` rebuilds the contour with its points an even arc-length `spacing` apart, keeping `isClosed`. It's the step before dot, dash, and jitter effects, because contours that arrive with uneven vertices (a glyph outline is dense on curves and sparse on straights) come back marching at a steady interval, so marks placed one-per-point spread evenly. `Shape.resampled(spacing:)` applies it to every contour, keeping the shape's `winding`. See the `PointShimmer`, `JitterType`, and `GlyphContours` examples.
+`resampled(spacing:)` rebuilds the contour with its points an even arc-length `spacing` apart, keeping `isClosed`. It's the step before dot, dash, and jitter effects, because contours that arrive with uneven vertices (a glyph outline is dense on curves and sparse on straights) come back marching at a steady interval, so marks placed one-per-point spread evenly. `Shape.resampled(spacing:)` applies it to every contour, keeping the shape's `winding`. See the `TypeAsGeometry` and `GlyphContours` examples.
 
 <a name="shape"></a>
 
@@ -493,7 +493,7 @@ The smallest convex polygon containing a point set, like a rubber band snapped a
 func convexHull(of points: [Vector2]) -> [Vector2]
 ```
 
-Returns the hull's corners in order around the boundary (collinear points along an edge are dropped, and fewer than three distinct points return what there is). The result is an ordinary point list, so `drawPolygon` it, wrap it in a `Contour` to stroke or offset it, or use it as a coarse "footprint" for a scatter of marks. The `Examples/Shapes/RubberBand` sketch recomputes the hull of a drifting herd every frame.
+Returns the hull's corners in order around the boundary (collinear points along an edge are dropped, and fewer than three distinct points return what there is). The result is an ordinary point list, so `drawPolygon` it, wrap it in a `Contour` to stroke or offset it, or use it as a coarse "footprint" for a scatter of marks. The `Examples/Shapes/Hulls` sketch recomputes the hull of a scatter every frame and lights the corners doing the work.
 
 When the rubber band bridges too much, the tighter wraps live on the [`Hulls`](../Generators/Hulls.md) page: `concaveHull` (one simple polygon that dips into the gulfs) and `alphaShape` (the scatter's true footprint, islands and holes included).
 

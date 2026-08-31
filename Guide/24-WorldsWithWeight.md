@@ -390,7 +390,7 @@ world.addBodies(from: scene)
 
 Bodies, colliders, joints, masses, materials, gravity. Reading it is lossy, and that is exactly why it works. A file's description of a body is a description, and anything it leaves out has a sensible answer waiting. Writing the same format would not be, which is why the two jobs use two formats. Import to pick up an arrangement, and snapshot to keep one.
 
-The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, then press R and it is back exactly. Press S, quit, and run it again, and the same cairn is standing there. [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) does the same for a yard with a truck in it, a figure pacing across, and another lying where it fell. Its terrain floor and its banner are named by the file rather than held in it. And [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) goes the other way. Its `yard.usda` is hand-written, and the sketch is a camera and a drawing loop.
+The [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) example keeps a whole yard, with a truck in it, a figure pacing across, and another lying where it fell. Wreck it by dragging, then press R and it is back exactly. Press S, quit, and run it again, and the same yard is standing there. Its terrain floor and its banner are named by the file rather than held in it. And [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) goes the other way. Its `yard.usda` is hand-written, and the sketch is a camera and a drawing loop.
 
 ## Putting it together: the contraption
 

@@ -20,6 +20,8 @@ import simd
 ///     film-like curve rolls those highlights into a glow instead of clipping.
 /// At this sample count the ribbons converge almost instantly, where the CPU version
 /// needed many frames of accumulation to fill in — that's the point of compute.
+/// See `Compute/CurlField` for the kernel-authoring half: both sketches write
+/// their whole behavior as an inline `Particles(count:step:)` kernel.
 ///
 /// A mild perspective makes near samples larger, so out-of-focus foreground curves
 /// bloom into big soft discs while distant ones stay small — the look of a fast lens.
