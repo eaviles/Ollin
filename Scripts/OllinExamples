@@ -1,0 +1,25 @@
+#!/bin/zsh
+#
+# Scripts/OllinExamples: run the examples gallery, release by default.
+#
+#   Scripts/OllinExamples
+#   Scripts/OllinExamples --debug
+#
+# The gallery compiles each selected sketch on demand and runs it in-process,
+# so the framework's own build configuration is what the sketches run on. A
+# debug host makes a heavy example's setup stall the whole app for seconds
+# (the worst of a 40-example sweep measured ~2.6s debug against ~0.2s release;
+# most of the cost is debug-build framework code, and a few asset-decoding
+# examples keep about a second either way). The release host also shows every
+# sketch at its real speed. Pass --debug for a debug host (faster first build,
+# slower examples).
+#
+# Run from the repo root so the Examples/ scan and swift run find the package.
+
+config="release"
+if [[ "$1" == "--debug" ]]; then
+    config="debug"
+    shift
+fi
+
+exec swift run -c "$config" OllinExamples "$@"

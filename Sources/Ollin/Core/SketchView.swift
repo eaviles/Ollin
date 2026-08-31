@@ -558,7 +558,18 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         #endif
     }
 
+    /// The Camera menu's projection override starts every launch in perspective.
+    /// Left persisted (the plain `@AppStorage` behavior), a stale orthographic
+    /// toggle from an earlier session reads as broken rendering rather than a
+    /// mode: parallel view rays flatten the environment backdrop to a single
+    /// color and reroute every reflection, and nothing on the canvas names the
+    /// menu that did it. Cleared once per process, before any frame applies it;
+    /// within the session the toggle works normally.
+    private static let orthographicOverrideCleared: Void =
+        UserDefaults.standard.removeObject(forKey: OllinHUD.orthographicKey)
+
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
+        _ = Self.orthographicOverrideCleared
         self.sketch = sketch
         do {
             // The drawable is single-sample (the final present target); MSAA happens

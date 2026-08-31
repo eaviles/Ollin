@@ -179,13 +179,21 @@ struct GalleryView: View {
                 // panel stays off; the example list keeps the keyboard until the
                 // viewer clicks the canvas, with the hint shown only for
                 // sketches that actually read keys.
+                //
+                // Aspect-fit into the fixed stage: a non-square canvas
+                // letterboxes on a black surround instead of spilling over the
+                // sidebars (SwiftUI doesn't clip an oversized frame, and the
+                // spilled canvas also swallows the sidebar's clicks, each one
+                // taking the keyboard with it).
+                let fitted = fittedSize(for: sketch)
                 SketchView(sketch, stats: stats,
                            showsInspectorPanel: false,
                            keyboardFocus: .onClick,
                            showsKeyboardHint: example.usesKeyboard)
                     .id(example.id)   // .id recreates (and tears down) on switch
-                    .frame(width: OllinApp.windowSize(for: sketch).width,
-                           height: OllinApp.windowSize(for: sketch).height)
+                    .frame(width: fitted.width, height: fitted.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SwiftUI.Color.black)
             case .failed(let message):
                 ScrollView {
                     Text(message)
@@ -197,6 +205,15 @@ struct GalleryView: View {
             }
         }
         .frame(width: stageSize.width, height: stageSize.height)
+    }
+
+    /// The size the loaded sketch shows at: its natural window size, scaled
+    /// down (never up) to fit the fixed stage. The canvas view maps the mouse
+    /// by its bounds, so a scaled frame keeps pointer coordinates exact.
+    private func fittedSize(for sketch: Sketch) -> CGSize {
+        let natural = OllinApp.windowSize(for: sketch)
+        let scale = min(1, stageSize.width / natural.width, stageSize.height / natural.height)
+        return CGSize(width: natural.width * scale, height: natural.height * scale)
     }
 
     /// What the inspector shows: the loaded example (card + knobs) or nothing.
@@ -454,6 +471,12 @@ private struct ExamplesSidebar: View {
     let restartRunning: () -> Void
 
     @FocusState private var filterFocused: Bool
+    /// Held by the list so arrow keys keep working across example switches: a
+    /// switch tears the outgoing canvas view down, and a canvas that held the
+    /// keys hands them to nobody (its teardown can only clear the first
+    /// responder). Every path that puts an example on the stage, or toggles a
+    /// folder through its row button, plants focus back here explicitly.
+    @FocusState private var listFocused: Bool
 
     /// One visible sidebar line, carrying everything navigation needs: what it
     /// shows, its parent row (the left-arrow target), and its depth.
@@ -586,8 +609,14 @@ private struct ExamplesSidebar: View {
                 .environment(\.defaultMinListRowHeight, 25)
                 // The identity purple marks selection, as in the sibling hosts.
                 .tint(OllinInspector.accent)
+                .focused($listFocused)
                 .onMoveCommand(perform: move)
                 .onKeyPress(.return) { activateSelection() }
+                .onAppear { listFocused = true }
+                // A fresh example on the stage came from a list interaction, so
+                // the list keeps the keys through the view swap; a later click
+                // on the canvas still hands them to the sketch as designed.
+                .onChange(of: running) { _, _ in listFocused = true }
                 // A selection set by keyboard fold-navigation (jump to parent,
                 // step inside) can sit off screen; keep it visible. Deferred a
                 // turn: scrolling inside the selection change re-enters the
@@ -663,6 +692,7 @@ private struct ExamplesSidebar: View {
         else { return }
         selection = first.id
         filterFocused = false
+        listFocused = true
     }
 
     private func toggle(_ row: Row, select: Bool) {
@@ -674,7 +704,12 @@ private struct ExamplesSidebar: View {
                 expandedNodes.insert(node)
             }
         }
-        if select { selection = row.id }
+        if select {
+            selection = row.id
+            // The row button consumed the click, so the list never became the
+            // key view on its own; give it the keys so arrows work from here.
+            listFocused = true
+        }
     }
 
     // MARK: Rows
