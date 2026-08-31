@@ -22,6 +22,18 @@ body:
       placeholder: "26.1"
     validations:
       required: true
+  - type: textarea
+    id: toolchain
+    attributes:
+      label: Toolchain
+      description: Paste the output of the three commands below. A build that fails with missing symbols or type-check timeouts almost always traces to the selected toolchain, so this is the first thing checked.
+      render: shell
+      placeholder: |
+        swift --version
+        xcode-select -p
+        xcrun --show-sdk-version
+    validations:
+      required: true
   - type: input
     id: gpu
     attributes:
