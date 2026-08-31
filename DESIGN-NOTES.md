@@ -207,7 +207,7 @@ Editing experiences the live-reload core makes possible, and the place Ollin sta
 
 Apple-native, low-ceremony ways several machines share one piece.
 
-- **SharePlay co-creation.** GroupActivities so two people tune one sketch together over a FaceTime call. The most speculative, listed for the direction, and Apple-unique.
+- **SharePlay co-creation.** Not a feature but a transport: the room's session logic (membership, the shared clock, last-writer-wins knobs) is transport-independent behind `RoomTransport`, so the whole idea is a GroupActivities-backed transport plus the app entitlement. The constraints that shape it: the `com.apple.developer.group-session` entitlement applies to apps only (macOS 12+), so it reaches a sketch bundled as an app and never a terminal-launched one; the session context is system-owned (two Apple IDs on a live FaceTime call) and both Macs need the same app installed, so knob, seed, and clock sync work while co-editing the code cannot (an edit is a rebuild and a redistribution); `GroupSessionMessenger` is a small-payload channel (reliable and best-effort modes), which fits the room's wire and nothing heavier; and a proof needs two Macs, two Apple IDs, and a real call, so no CI holds it. One check to run before any code: whether the entitlement rides Developer ID signing outside the App Store. Gated on a public repository, a verified real-signing run for the app kind, and demand.
 
 ## Learning: the Guide
 

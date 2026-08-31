@@ -136,7 +136,7 @@ See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 
 ## Collaboration and multi-device
 
-Apple-native, low-ceremony ways several machines share one piece. A more speculative **SharePlay** co-creation idea sits under [Further out / exploratory](#further-out--exploratory). See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
+Apple-native, low-ceremony ways several machines share one piece. A **SharePlay** co-creation idea, settled in shape but gated, sits under [Further out / exploratory](#further-out--exploratory). See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
 
 ## Learning: the Guide
 
@@ -158,7 +158,7 @@ See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (visionOS, AR), not uncertainty.
 
 - **Text-to-image as a material.** On-device diffusion a sketch could invoke as an optional, labeled material. The one to weigh hardest against the AI boundary, since it sits closest to the contested use, so it lives here rather than in the planned [authoring tier](#authoring-and-editor-tooling); see the AI stance stated there.
-- **SharePlay co-creation.** Two people tuning one sketch together over a FaceTime call (GroupActivities). The most speculative of the [collaboration](#collaboration-and-multi-device) ideas.
+- **SharePlay co-creation.** Two people tuning one sketch together over a FaceTime call. The shape is settled: a GroupActivities transport behind the room's transport seam, carrying the wire it already speaks (knobs, seed, the shared clock), for a sketch bundled as an app and installed on both Macs, since the `com.apple.developer.group-session` entitlement applies to apps only. Tuning is the whole reach: an edit to the sketch is a rebuild on both ends, so co-editing code never rides the call. It waits on three gates, in order: a public repository (the other person must be able to get the app), a verified real-signing run for the app kind, and demand. See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
 
 ## On the horizon
 
