@@ -251,10 +251,18 @@ Assignment retargets (and glides, when smoothed), while `set(_:)` lands immediat
 A knob is also sweepable offline. `--export-sweep` renders a proof sheet along one parameter's range, one tile per value. Every tile is pinned to the same seed, so the knob is the only thing that changes across the sheet. Seeds stay what they are on the [Variations](../Core/Variations.md) page, a sketch's identity. A sweep is a tuning tool, the inspector's drag laid out as a sheet:
 
 ```sh
-swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360
+swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --sweep-param radius --from 40 --to 360
 ```
 
 The full flag list is on the [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space) page, and `OllinApp.contactSheet(of:sweeping:values:seed:)` is the code form.
+
+A knob can also be set from the command line, on any export path and on a standalone window:
+
+```sh
+swift run --package-path Examples Example-Live-Parameters --export keeper.png --param radius=40 --param paper=#101018
+```
+
+`--param name=value` repeats, reads the value against the knob's own kind (a color, a vector, a menu choice and a swatch strip all arrive as readily as a number), and lands after `setup()` through the same `restore` path below. Every export writes its knob values into the file's recipe, so this is how a frame re-renders from the recipe it carries. The kinds and their spellings are on the [Export](../Output/Export.md#setting-a-knob-for-the-run) page.
 
 For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`. Each handle carries a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI (kind, ranges, options, and live get/set closures). `stored` and `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
 

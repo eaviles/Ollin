@@ -29,7 +29,6 @@ Ollin is pre-1.0, and the public API still changes freely. Semantic version tags
 Near-term, fairly self-contained pieces, each small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
-- **Knob values on the command line.** Every export writes its `@Param` values into its recipe, so a rendered frame says what it was rendered with, and nothing reads those values back. A repeatable `--param name=value` on the export flag surface answers that, applied between `setup()` and the first frame through the same restore path the hosts and the remote surface already use, so a color or a vector arrives as readily as a number. The collision to clear first is `--export-sweep`'s own `--param`, which names the knob to sweep. See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 - **The live camera as a surface.** A camera frame is an `Image` and a mesh material takes one, so a webcam can texture a mesh with no new API, and the same feed can light a scene. What that leaves is the example showing it and the line in the camera page saying so. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 
 ## Generative geometry

@@ -380,7 +380,7 @@ Finally, the file records how far apart the eyes that shot it really were, so a 
 
 ## Reproducibility is part of the piece
 
-A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, [Chapter 4](04-Randomness.md)), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. And share the `.swift` file alongside the render when you can. In Ollin the sketch is the artifact. A reader holding the source holds the whole piece, seeds, knobs, and all.
+A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, [Chapter 4](04-Randomness.md)), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. A value you want for one render only can ride the command line instead, which is the next section. And share the `.swift` file alongside the render when you can. In Ollin the sketch is the artifact. A reader holding the source holds the whole piece, seeds, knobs, and all.
 
 The exports meet you halfway. Every PNG, SVG, PDF, and video Ollin writes carries a small **recipe** in its metadata. It holds the seeds the run used, the value of every `@Param`, and the git commit the code was at. The commit is marked dirty if you had uncommitted edits. It also records which frame at which rate produced it.
 
@@ -407,6 +407,22 @@ git show 93ae989:Sketch.swift
 ```
 
 See [the details](../Docs/Output/Export.md#reproducibility-metadata) for every field the recipe holds, and [captures that know their source](../Docs/Output/Export.md#captures-that-know-their-source) for the rest of that flag.
+
+### Passing the knobs back in
+
+Reading a recipe is half of it. The other half is handing those values back to a run.
+
+`--param name=value` sets one declared knob for this run. It repeats, so a run carries as many knobs as you need.
+
+```sh
+swift run --package-path Examples Example-Live-Parameters --export keeper.png --param radius=40 --param paper=#101018
+```
+
+Each value is read against its own knob. A number stays a number. A color is a hex string. A vector is two numbers with a comma between them. A menu choice is its name, spelled loosely: `easeOut`, `ease-out` and `"Ease Out"` all find the same one. The [Export page](../Docs/Output/Export.md#setting-a-knob-for-the-run) lists every kind.
+
+The value lands after `setup()` and before the first frame. So it wins over a value the sketch sets for itself, and the new file's recipe names it. A frame can be rendered again from its own recipe, with the sketch on disk untouched.
+
+Ask for a knob the sketch does not have, or a value its kind cannot read, and the run stops and says so. It never renders something you did not ask for.
 
 ## Saying what it shows: describable output
 

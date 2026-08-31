@@ -43,6 +43,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Reproducibility metadata](#reproducibility-metadata) - the regeneration recipe every export carries
 - [Captures that know their source](#captures-that-know-their-source) - `--capture-source`, keeping the exact code a file came from
 - [Rendering a chosen variation](#rendering-a-chosen-variation) - `--seed`, on every export path
+- [Setting a knob for the run](#setting-a-knob-for-the-run) - `--param name=value`, a declared `@Param` set from the command line
 - [Driving the knobs from a file](#driving-the-knobs-from-a-file) - `--automation`, keyframed parameters on every export path
 - [Contact sheets](#contact-sheets-proofing-a-variation-space) - `--export-grid` (seeds) and `--export-sweep` (a `@Param`), `OllinApp.contactSheet` / `exportContactSheet`
 - [Print separations](PrintSeparations.md) - `--export-separations`, per-ink masters for risograph and screen printing (its own page)
@@ -446,6 +447,36 @@ The same seed always renders the same pixels. A sketch that pins its own seed in
 
 ---
 
+### Setting a knob for the run
+
+`--param <name>=<value>` sets one declared [`@Param`](../Helpers/Parameters.md) for this run, on **every** export path above. It works on a standalone window too, where it is a launch value: the inspector keeps whatever you turn it to afterwards. The flag repeats, so a run carries as many knobs as it needs:
+
+```sh
+swift run --package-path Examples Example-Live-Parameters --export keeper.png --param radius=40 --param rings=2
+swift run --package-path Examples Example-Live-Parameters --export dark.png --param paper=#101018 --param style=dots
+```
+
+This closes the loop the [recipe](#reproducibility-metadata) opens. Every export writes the knob values it rendered with into the file. This is the way back in: a frame re-renders from its own recipe, with the sketch untouched.
+
+The value is read against the knob's own kind:
+
+| Kind | Written as |
+|---|---|
+| `Double`, `Int` | `radius=40`, `rings=2` |
+| `Bool` | `breathe=true` (`yes`, `no`, `on`, `off`, `1` and `0` read too) |
+| a menu choice | `style=dots`, matched loosely, so `easeOut`, `ease-out` and `"Ease Out"` all land on the same one |
+| `Color` | `paper=#101018` (`#RGB`, `#RGBA`, `#RRGGBB` and `#RRGGBBAA`), or `paper=0,0.5,1` in numbers from 0 to 1 |
+| `Vector2`, `Vector3` | `anchor=100,900`, `pull=1,-2,3` |
+| `Rectangle` | `plate=10,20,30,40`, as x, y, width, height |
+| `Insets` | `margin=12` for every edge, or `margin=12,8,12,8` as top, right, bottom, left |
+| `ClosedRange<Double>` | `band=0.25...0.75`, or `band=0.25,0.75` |
+| `String` | `"caption=a longer line"`, quoted for the shell when it holds a space |
+| `Palette`, `Ramp` | `inks=#000,#FFF,#F06`, spread evenly, or `#000@0,#F06@0.75` to place a stop |
+
+The value lands after `setup()` and before the first frame. It goes through the same restore path the live hosts use across a reload. So it clamps to the declared range the way dragging the row does. It also wins over a value the sketch set for itself in `setup()`, and the recipe then names what the frame was really drawn with. Beside a `--replay`, it wins over the take's recorded knobs, the way `--seed` wins over its seed: the same gestures land on a different setting. A knob named twice ends on the last value given. A name the sketch does not have, or a value its kind cannot read, stops the run: it says what it expected rather than rendering something nobody asked for.
+
+---
+
 ### Driving the knobs from a file
 
 `--automation <file>` attaches [keyframed parameters](../Core/Automation.md) to the run, on **every** export path above and on a standalone window as well:
@@ -491,20 +522,20 @@ Pick a tile you like, then render it big with `--export … --seed N`. The whole
 `--export-sweep` is the same sheet as a tuning tool. Instead of walking the sketch's chance, it walks one of its [`@Param`](../Helpers/Parameters.md) knobs. Name the parameter and a range, or explicit values. Every tile renders at the same seed with only that parameter changing, which is what makes the sheet a fair comparison. Seeds remain the identity a piece reproduces from. A sweep is for choosing the knob's value before you commit to it:
 
 ```sh
-swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360 --steps 9
-swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --param rings --values "2,3,5,8" --seed 7
+swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --sweep-param radius --from 40 --to 360 --steps 9
+swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --sweep-param rings --values "2,3,5,8" --seed 7
 ```
 
 | Flag | Meaning |
 |---|---|
 | `--export-sweep <path.png>` | the sheet to write |
-| `--param <name>` | the `@Param` property to sweep, by its Swift name (`radius`, not `Radius`) |
+| `--sweep-param <name>` | the `@Param` property to sweep, by its Swift name (`radius`, not `Radius`) |
 | `--from A --to B` | the range, spread evenly over `--steps` (default 9) |
 | `--values "a,b,c"` | explicit values instead of a range |
 | `--seed N` | the seed every tile is pinned to (one is rolled and recorded if omitted) |
 | `--columns`, `--tile`, `--frame`, `--fps` | as on `--export-grid` |
 
-Values apply through the same restore path the live hosts use to carry knobs across reloads. A tile matches what dragging the knob there would show. Numeric parameters (`Double`, `Int`) sweep; an unknown name fails with the sketch's actual parameter list. The sheet's PNG records the knob, its values, and the pinned seed.
+The swept knob is named with `--sweep-param` because `--param` sets a value on every tile alike, which is how the rest of the sketch is held still while one knob moves; naming the same knob both ways stops the run. Values apply through the same restore path the live hosts use to carry knobs across reloads. A tile matches what dragging the knob there would show. Numeric parameters (`Double`, `Int`) sweep; an unknown name fails with the sketch's actual parameter list. The sheet's PNG records the knob, its values, and the pinned seed.
 
 From code:
 

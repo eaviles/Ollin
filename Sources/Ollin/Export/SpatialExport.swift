@@ -212,7 +212,7 @@ extension OllinApp {
         defer { isRenderingHeadless = false }
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.setup()
+        sketch.runSetup()
         let recorder = SpatialRecorder()
         for k in 0...max(0, frame) {                 // advance so frame N is correct
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)

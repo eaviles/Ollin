@@ -323,7 +323,7 @@ extension OllinApp {
         let aspect = height > 0 ? Double(width) / Double(height) : 1
         let viewport = SIMD2<Float>(Float(width), Float(height))
         sketch.setCanvasSize(width: Double(width), height: Double(height))
-        sketch.setup()
+        sketch.runSetup()
 
         // Each eye measures its own motion against where that same eye was last
         // frame. Measured against the other one, the gap between the eyes would

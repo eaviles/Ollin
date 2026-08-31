@@ -45,7 +45,7 @@ Learn more:
 
   ```sh
   swift run Example-Recreations-ManfredMohr-DiagonalPath \
-    --export-sweep dimensions.png --param dimensions --values "3,4,5"
+    --export-sweep dimensions.png --sweep-param dimensions --values "3,4,5"
   ```
 
 These are homages after Manfred Mohr, made for learning. They are not reproductions of specific works, they are not affiliated with or endorsed by the artist, and no source of his was used: his programs ran on a mainframe and are not published.

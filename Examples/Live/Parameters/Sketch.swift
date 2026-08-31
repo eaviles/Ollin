@@ -21,6 +21,11 @@ import Ollin
 // Under the live host, the button below the knobs writes the ones you turned
 // into the @Param lines here, so a set you like survives the run. Copy the
 // file somewhere of your own first if you would rather not edit this one.
+//
+// A knob can also be set from the command line, on any export path and on the
+// window, so one render can differ without editing the file:
+//
+//   swift run Example-Live-Parameters --export keeper.png --param radius=40 --param paper=#101018
 
 enum RingStyle: String, CaseIterable, ParamOption { case rings, dots, beads }
 

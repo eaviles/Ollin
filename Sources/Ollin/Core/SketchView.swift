@@ -153,6 +153,18 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// back in.
     private var didRestoreCheckpoint = false
     private var didLogFirstSave = false
+    /// Whether this run's `--param` values have been applied. They are a launch
+    /// instruction, not a standing one: they land once, on the first `setup()`,
+    /// and a reload afterwards keeps whatever the inspector has since turned
+    /// (which the host carries across the swap anyway).
+    private var didApplyLaunchParams = false
+
+    /// Apply the knob values this run was started with, the first time only.
+    private func applyLaunchParams() {
+        guard !didApplyLaunchParams else { return }
+        didApplyLaunchParams = true
+        sketch.applyCommandLineParams()
+    }
 
     /// Start the parts of an installation the runner owns. Called by the host
     /// that opened the window, once, before the first frame.
@@ -507,6 +519,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private func stepReplayFrame() {
         if !didSetup {
             sketch.setup()
+            applyLaunchParams()
             didSetup = true
         }
         sketch.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
@@ -977,6 +990,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             #endif
             sketch.setup()
             restored?.applyAfterSetup(to: sketch)
+            applyLaunchParams()
             nextCheckpoint = elapsed + (checkpointInterval ?? .infinity)
             didSetup = true
             if didReload {            // setup() just ran on a hot-swapped sketch
@@ -2408,7 +2422,7 @@ public enum OllinApp {
                             renderer: MetalRenderer) -> CGImage? {
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.setup()
+        sketch.runSetup()
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
         let width = size.width, height = size.height
         // In accumulation mode (`noClear`) each frame piles onto the persistent
@@ -2602,7 +2616,7 @@ public enum OllinApp {
         let width = size.width, height = size.height
         let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.setup()
+        sketch.runSetup()
 
         // Slow motion parts the two rates an export usually shares. The file
         // still plays at `fps`; the sketch's own clock runs at `clock`. The
@@ -2713,7 +2727,7 @@ public enum OllinApp {
         let n = max(1, frames)
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-        sketch.setup()
+        sketch.runSetup()
         // One warm-up frame so first-time buffer growth doesn't skew the average.
         sketch.advance(time: 0, deltaTime: 1 / fps, frameRate: fps)
         sketch.performDraw()
@@ -2830,6 +2844,8 @@ public extension OllinApp {
     /// `--export-gcode`,
     /// `--export-usdz`, `--export-grid`, `--export-sweep`,
     /// `--export-separations` with their options, `--seed` on any of them,
+    /// `--param name=value` to set a declared knob on any of them (and on the
+    /// windowed path, which reaches here first),
     /// `--replay` to drive any of them from a recorded take, plus `--bench`)
     /// against a sketch supplied on demand.
     ///
@@ -2868,6 +2884,10 @@ public extension OllinApp {
                     "Ollin: --capture-source needs a git repository; the files keep their given names.\n".utf8))
             }
         }
+        // `--param <name>=<value>` sets a declared knob for this run, repeatable.
+        // Read here rather than inside an export branch, so the windowed path
+        // picks it up too (`handleCommandLine` runs before any window opens).
+        readParamOverrides(args)
         // `--render-quality <performance|default|detail>` sets the render-quality fallback for
         // the export paths, applied to any feature the sketch left at `.default` (an explicit
         // sketch dial still wins). Defaults to `.detail`: exported art is full quality unless
@@ -3195,19 +3215,29 @@ public extension OllinApp {
                                         tileWidth: tile, quality: renderQuality)
             return true
         }
-        // `--export-sweep <path.png> --param <name> (--values "a,b,c" | --from A
+        // `--export-sweep <path.png> --sweep-param <name> (--values "a,b,c" | --from A
         // --to B [--steps N]) [--columns C] [--tile PX] [--frame N] [--fps F]`
         // renders a contact sheet sweeping one `@Param` across a range, one
         // labeled tile per value, every tile pinned to the same seed (`--seed`,
-        // or one rolled and recorded in the sheet's recipe), and exits.
+        // or one rolled and recorded in the sheet's recipe), and exits. The
+        // swept knob is named with `--sweep-param` because `--param` sets a
+        // value on every tile alike (`--param name=value`), which is how the
+        // rest of the sheet is held still while one knob moves.
         if let i = args.firstIndex(of: "--export-sweep"), i + 1 < args.count {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            let usage = "usage: --export-sweep <path.png> --param <name> (--values \"a,b,c\" | --from A --to B [--steps N]) [--columns C] [--tile PX] [--frame N] [--fps F] [--seed N]\n"
-            guard let name = value("--param") else {
+            let usage = "usage: --export-sweep <path.png> --sweep-param <name> (--values \"a,b,c\" | --from A --to B [--steps N]) [--columns C] [--tile PX] [--frame N] [--fps F] [--seed N]\n"
+            guard let name = value("--sweep-param") else {
                 FileHandle.standardError.write(Data(usage.utf8))
+                return true
+            }
+            // Setting the swept knob as well would flatten the sheet: the value
+            // would land after every tile's own, on every tile alike.
+            if paramOverrides.contains(where: { $0.name == name }) {
+                FileHandle.standardError.write(Data(
+                    "Ollin: --param \(name)=… sets the knob --sweep-param \(name) sweeps; drop one of them\n".utf8))
                 return true
             }
             var values: [Double] = []
