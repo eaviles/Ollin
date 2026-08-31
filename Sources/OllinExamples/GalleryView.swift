@@ -194,6 +194,21 @@ struct GalleryView: View {
                     .frame(width: fitted.width, height: fitted.height)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(SwiftUI.Color.black)
+                    // Until the instance's first frame renders, cover the stage:
+                    // `setup()` runs on the main thread inside the first canvas
+                    // draw, so a heavy one would otherwise sit black for seconds
+                    // with no word on whether anything is happening. This commits
+                    // before that draw starts, so the label is what stalls on
+                    // screen rather than a blank.
+                    .overlay {
+                        if model.awaitingFirstFrame {
+                            ZStack {
+                                SwiftUI.Color.black
+                                ProgressView("Starting \(example.name)…")
+                                    .environment(\.colorScheme, .dark)
+                            }
+                        }
+                    }
             case .failed(let message):
                 ScrollView {
                     Text(message)
@@ -277,6 +292,14 @@ final class GalleryModel {
     /// factory call (instant); the compile stays the only slow step.
     private var compiledDylibs: [Example.ID: String] = [:]
     private(set) var detail: DetailState = .empty
+    /// True from the moment a fresh instance goes on the stage until its first
+    /// frame has rendered. `setup()` runs on the main thread inside the first
+    /// canvas draw, so a heavy one leaves the stage black for seconds; the view
+    /// keeps a "Starting…" cover up while this is set, so a wait never reads
+    /// as a hang (or a silent failure). Cleared by the instance's own
+    /// first-frame signal, so a stale frame from the outgoing sketch can't
+    /// drop the cover early.
+    private(set) var awaitingFirstFrame = false
 
     enum DetailState {
         case empty
@@ -329,6 +352,7 @@ final class GalleryModel {
     func loadSelected() async {
         guard let id = running, let example = examples.first(where: { $0.id == id }) else {
             CrashReporter.setCurrentExample(nil)
+            awaitingFirstFrame = false
             detail = .empty
             return
         }
@@ -351,6 +375,7 @@ final class GalleryModel {
             compiledDylibs[id] = dylibPath
             instantiate(example, from: dylibPath)
         case .failure(let error):
+            awaitingFirstFrame = false
             detail = .failed(String(describing: error))
         }
     }
@@ -360,8 +385,16 @@ final class GalleryModel {
     private func instantiate(_ example: Example, from dylibPath: String) {
         switch SketchLoader(sketchPath: example.sketchPath).instantiate(dylibPath: dylibPath) {
         case .success(let sketch):
+            awaitingFirstFrame = true
+            // The closure captures the model, never the sketch, so it can't pin
+            // the outgoing instance (the cycletest gate). The signal rides the
+            // instance itself, so only *this* sketch's first frame clears it.
+            sketch.extend(FirstFrameSignal { [weak self] in
+                self?.awaitingFirstFrame = false
+            })
             detail = .loaded(example, sketch)
         case .failure(let error):
+            awaitingFirstFrame = false
             detail = .failed(String(describing: error))
         }
     }
@@ -440,6 +473,23 @@ final class GalleryModel {
             try? await Task.sleep(for: .milliseconds(100))
         }
         return false
+    }
+}
+
+/// Reports the first rendered frame of a fresh instance, once. `afterFrame`
+/// runs inline in the canvas draw, so the callback hops to the next main-loop
+/// turn before touching observed state (the same rule as `StatsExtension`:
+/// mutating an observable inside the display cycle re-enters layout).
+private final class FirstFrameSignal: SketchExtension {
+    private let onFirstFrame: () -> Void
+    private var fired = false
+
+    init(onFirstFrame: @escaping () -> Void) { self.onFirstFrame = onFirstFrame }
+
+    func afterFrame(_ sketch: Sketch, _ info: FrameInfo) {
+        guard !fired else { return }
+        fired = true
+        DispatchQueue.main.async(execute: onFirstFrame)
     }
 }
 
@@ -610,7 +660,13 @@ private struct ExamplesSidebar: View {
                 // The identity purple marks selection, as in the sibling hosts.
                 .tint(OllinInspector.accent)
                 .focused($listFocused)
-                .onMoveCommand(perform: move)
+                // The fold arrows ride `onKeyPress`, never `onMoveCommand`: with
+                // the list focused, its table view consumes the arrow keys, so a
+                // move command never fires (verified with synthetic keystrokes
+                // both ways). Key presses land here first, and `.ignored` still
+                // lets up/down through to the list.
+                .onKeyPress(.leftArrow) { fold(.close) }
+                .onKeyPress(.rightArrow) { fold(.open) }
                 .onKeyPress(.return) { activateSelection() }
                 .onAppear { listFocused = true }
                 // A fresh example on the stage came from a list interaction, so
@@ -641,30 +697,35 @@ private struct ExamplesSidebar: View {
 
     // MARK: Keyboard
 
+    private enum Fold { case close, open }
+
     /// Left and right drive the fold, the way every outline does it: right opens
     /// a folder and then steps into it; left closes one, or jumps to the parent.
-    /// Up and down stay with the List, which now traverses every row.
-    private func move(_ direction: MoveCommandDirection) {
+    /// Up and down stay with the List, which traverses every row.
+    private func fold(_ direction: Fold) -> KeyPress.Result {
         guard !isFiltering,
               let id = selection,
-              let row = rows.first(where: { $0.id == id }) else { return }
+              let row = rows.first(where: { $0.id == id }) else { return .ignored }
         switch direction {
-        case .left:
+        case .close:
             if row.isFolder && row.isExpanded {
                 toggle(row, select: false)
             } else if let parent = row.parent {
                 selection = parent
+            } else {
+                return .ignored
             }
-        case .right:
-            guard row.isFolder else { return }
+        case .open:
+            guard row.isFolder else { return .ignored }
             if !row.isExpanded {
                 toggle(row, select: false)
             } else if let child = rows.first(where: { $0.parent == row.id }) {
                 selection = child.id
+            } else {
+                return .ignored
             }
-        default:
-            break
         }
+        return .handled
     }
 
     /// Return: toggle a folder, relaunch the running example.
@@ -794,7 +855,10 @@ private struct ExamplesSidebar: View {
                     PlayingGlyph(color: isSelected ? .white : OllinInspector.accent)
                 }
             }
-            .padding(.leading, showsContext ? 0 : (row.depth == 2 ? 44 : 26))
+            // Leaf text nests by depth, per the sidebar design: a direct example
+            // aligns with its category's title (chevron 12 + 6 + icon 18 + 6 =
+            // 42), a grouped example steps 14 past its group's title (38 + 14).
+            .padding(.leading, showsContext ? 0 : (row.depth == 2 ? 52 : 42))
             .accessibilityLabel(isRunning ? "\(example.name), running" : example.name)
         }
     }
