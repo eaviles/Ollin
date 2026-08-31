@@ -133,6 +133,17 @@ Every form takes an optional `icon:` and `group:`:
 
 `group:` names an inspector section, so each group renders as its own titled card, in the order groups first appear in the sketch. Knobs without a group lead the list under the default "Parameters" header. `icon:` is an SF Symbol name shown leading the row, and rows without one stay aligned when the card mixes both.
 
+#### Folded groups
+
+A sketch with many knobs usually has a few worth having but not worth a first glance. Declare their group `.folded` and it becomes a disclosure section that starts closed, so the everyday knobs stay one look:
+
+```swift
+@Param(0...30, group: .folded("Advanced")) var jitter = 0.0
+@Param(-2...2, group: .folded("Advanced")) var orbit = 0.0
+```
+
+One `.folded` member folds the whole group, so the other members can keep the plain spelling. Click the header to open or close it. The hosts remember the state per sketch, so a group you opened is open the next time that sketch runs. The default (unnamed) group cannot fold, and folding is display only: a knob behind a closed header holds, persists, and restores its value, and OSC or MIDI keep driving it, exactly as a hidden row does.
+
 <a name="show-rules"></a>
 
 ### Show-rules: knobs that come and go

@@ -13,8 +13,10 @@ import Ollin
 // Bool → toggle, a ParamOption enum → menu, Color → color well, Palette → a
 // strip of swatches, Ramp → a band with a handle per stop, Easing → a menu of
 // the named curves. `group:` names an inspector section, `icon:` gives the row
-// an SF Symbol. Numeric value boxes scrub: drag across one to change it
-// (Option = fine, Shift = coarse), or click to type.
+// an SF Symbol, and `group: .folded("Advanced")` makes a section that starts
+// closed behind a disclosure row (open it and it stays open for this sketch).
+// Numeric value boxes scrub: drag across one to change it (Option = fine,
+// Shift = coarse), or click to type.
 //
 // Under the live host, the button below the knobs writes the ones you turned
 // into the @Param lines here, so a set you like survives the run. Copy the
@@ -47,6 +49,12 @@ final class Parameters: Sketch {
     @Param(0.5...12, step: 0.5, icon: "lineweight", group: "Look") var weight = 2.5
     @Param(icon: "character.cursor.ibeam", group: "Look") var caption = "rings"
 
+    // Knobs worth having but not worth a first glance: a `.folded` group
+    // starts closed behind its header, and opening it is remembered for this
+    // sketch, so it stays how you left it.
+    @Param(0...30, icon: "waveform.path", group: .folded("Advanced")) var jitter = 0.0
+    @Param(-2...2, step: 0.25, icon: "arrow.clockwise", group: .folded("Advanced")) var orbit = 0.0
+
     override func draw() {
         background(paper)
         strokeWeight(weight * scale)
@@ -55,7 +63,8 @@ final class Parameters: Sketch {
             let t = Double(i) / Double(max(rings - 1, 1))
             let phase: Double = time * speed + t * .tau
             let swell: Double = breathe ? sin(phase) * 30 : 0
-            let r: Double = (radius * (0.25 + spacing(t)) + swell) * scale
+            let wobble: Double = jitter > 0 ? (noise(t * 4, time * 0.4) * 2 - 1) * jitter : 0
+            let r: Double = (radius * (0.25 + spacing(t)) + swell + wobble) * scale
 
             switch style {
             case .rings:
@@ -68,7 +77,7 @@ final class Parameters: Sketch {
                 fill(fade.color(at: t))
                 noStroke()
                 for j in 0..<count {
-                    let a = Double(j) / Double(count) * .tau + time * speed * 0.2
+                    let a = Double(j) / Double(count) * .tau + time * (speed * 0.2 + orbit)
                     drawCircle(anchor.x * scale + cos(a) * r, anchor.y * scale + sin(a) * r, dot)
                 }
             }

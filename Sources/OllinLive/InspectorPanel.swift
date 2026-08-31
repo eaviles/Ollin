@@ -21,6 +21,7 @@ struct InspectorPanel: View {
                         session.recordSeed(seed)
                     }
                     ParametersListView(parameters: session.params,
+                                       sketchName: session.fileName,
                                        onChange: { name, value in
                                            session.recordParam(name, value)
                                        },

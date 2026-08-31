@@ -158,6 +158,7 @@ struct LiveCodingRootView: View {
                         session.core.recordSeed(seed)
                     }
                     ParametersListView(parameters: session.core.params,
+                                       sketchName: session.displayName,
                                        onChange: { name, value in
                                            session.core.recordParam(name, value)
                                        },

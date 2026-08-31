@@ -879,7 +879,7 @@ private struct InspectorSidebar: View {
                                     ?? example.category),
                             stats: stats)
                         VariationCardView(stats: stats)
-                        ParametersListView(parameters: sketch.parameters())
+                        ParametersListView(parameters: sketch.parameters(), sketchName: example.name)
                     }
                 }
                 .padding(14)

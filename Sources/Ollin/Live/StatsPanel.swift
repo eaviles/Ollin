@@ -57,7 +57,7 @@ struct DetachedInspectorContent: View {
         VStack(spacing: 16) {
             MonitorCardView(identity: identity, stats: stats)
             VariationCardView(stats: stats)
-            ParametersListView(parameters: params)
+            ParametersListView(parameters: params, sketchName: identity.name)
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)      // tight under the title bar (safe area already insets the rest)

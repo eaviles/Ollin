@@ -263,7 +263,6 @@ A standing track, not a one-time task: keep mining Swift idioms to make the API 
 
 - **Keep the presets pattern growing.** The orientation-flip trick (`.portrait` / `.landscape` as computed properties on a value type) generalizes: look for other places a bare tuple or magic number could become a named, dot-completable value with helpers.
 - **More idiom candidates.** Trailing-closure scoping beyond `withState { }` (already the model, as is the `drawShape { p in … }` path builder); `ExpressibleByArrayLiteral` / `ExpressibleByIntegerLiteral` conformances where they read naturally (a color from a literal, say); `@dynamicMemberLookup` only where it genuinely clarifies. The bar: an idiom earns its place when it makes the call clearer, not just shorter, and never at the cost of the bare-call feel or the typed-core split.
-- **`@Param` disclosure groups.** The inspector's parameter group cards are flat; a sketch with many knobs wants an advanced tier folded behind a disclosure row (collapsed by default, remembered per sketch), so the everyday knobs stay one glance. Rides the existing group metadata; a per-knob keyframe affordance in the row belongs to the parameter-timeline direction instead.
 
 ## Project-generator kinds that are gated
 

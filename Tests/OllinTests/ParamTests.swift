@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Ollin
 
@@ -536,5 +537,68 @@ struct ParamTests {
             of: handles, hiding: ParametersListView.hiddenIDs(in: handles))
         #expect(all.map(\.title) == ["Parameters", "Glass", "Glow"])
         #expect(all[1].handles.map(\.id) == ["b", "c"])
+    }
+
+    // MARK: Folded groups
+
+    @Test func aStringLiteralGroupStaysOpenAndFoldedSaysSo() {
+        let plain = Param(wrappedValue: 1.0, 0...10, group: "Rings")
+        #expect(plain.group == "Rings")
+        #expect(!plain.groupIsFolded)
+
+        let folded = Param(wrappedValue: 2.0, 0...10, group: .folded("Advanced"))
+        #expect(folded.group == "Advanced")
+        #expect(folded.groupIsFolded)
+
+        let handle = ParamHandle(name: "folded", param: folded)
+        #expect(handle.groupIsFolded)
+    }
+
+    @Test func oneFoldedMemberFoldsTheWholeGroupAndTheDefaultNeverFolds() {
+        let loose = Param(wrappedValue: 1.0, 0...10)                             // default group
+        let a = Param(wrappedValue: 2.0, 0...10, group: "Advanced")              // plain spelling
+        let b = Param(wrappedValue: 3.0, 0...10, group: .folded("Advanced"))     // folds the group
+        let c = Param(wrappedValue: 4.0, 0...10, group: "Rings")
+        let handles = [ParamHandle(name: "loose", param: loose),
+                       ParamHandle(name: "a", param: a),
+                       ParamHandle(name: "b", param: b),
+                       ParamHandle(name: "c", param: c)]
+
+        let sections = ParametersListView.visibleSections(of: handles, hiding: [])
+        #expect(sections.map(\.title) == ["Parameters", "Advanced", "Rings"])
+        #expect(sections.map(\.isFolded) == [false, true, false])
+        // The two spellings of "Advanced" land in one section, in order.
+        #expect(sections[1].handles.map(\.id) == ["a", "b"])
+    }
+
+    @Test func foldMemoryRemembersPerSketchAndForgetsWithNoName() {
+        let defaults = UserDefaults(suiteName: "OllinParamFoldTests")!
+        defaults.removePersistentDomain(forName: "OllinParamFoldTests")
+        defer { defaults.removePersistentDomain(forName: "OllinParamFoldTests") }
+
+        let knob = Param(wrappedValue: 1.0, 0...10, group: .folded("Advanced"))
+        let handles = [ParamHandle(name: "knob", param: knob)]
+
+        // Untouched: closed (nothing remembered), whoever asks.
+        #expect(ParamFoldMemory.isOpen(sketch: "Pulse", group: "Advanced", defaults: defaults) == nil)
+        #expect(ParametersListView.rememberedOpenGroups(in: handles, sketch: "Pulse",
+                                                        defaults: defaults).isEmpty)
+
+        // Opened: remembered for that sketch, and only that sketch.
+        ParamFoldMemory.setOpen(true, sketch: "Pulse", group: "Advanced", defaults: defaults)
+        #expect(ParametersListView.rememberedOpenGroups(in: handles, sketch: "Pulse",
+                                                        defaults: defaults) == ["Advanced"])
+        #expect(ParametersListView.rememberedOpenGroups(in: handles, sketch: "Other",
+                                                        defaults: defaults).isEmpty)
+
+        // Closed again: back to the declared start.
+        ParamFoldMemory.setOpen(false, sketch: "Pulse", group: "Advanced", defaults: defaults)
+        #expect(ParametersListView.rememberedOpenGroups(in: handles, sketch: "Pulse",
+                                                        defaults: defaults).isEmpty)
+
+        // No sketch identity: nothing is remembered at all.
+        ParamFoldMemory.setOpen(true, sketch: "Pulse", group: "Advanced", defaults: defaults)
+        #expect(ParametersListView.rememberedOpenGroups(in: handles, sketch: nil,
+                                                        defaults: defaults).isEmpty)
     }
 }

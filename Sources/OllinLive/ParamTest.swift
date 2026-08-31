@@ -30,6 +30,7 @@ enum ParamTest {
         @Param var curve: Easing = .easeInOut
         @Param(count: 1...6) var inks = Palette(.red, .white, .black)
         @Param var fade = Ramp([.black, .white])
+        @Param(0...8, group: .folded("Advanced")) var jitter = 2.0
     }
 
     @MainActor
@@ -37,20 +38,24 @@ enum ParamTest {
         let subject = Subject()
         let params = subject.parameters()
 
-        check(params.count == 19, "expected 19 params, got \(params.count)")
+        check(params.count == 20, "expected 20 params, got \(params.count)")
         check(params.map(\.name) == ["radius", "noiseScale", "speed", "quantized",
                                      "rings", "visible", "tint", "style", "anchor",
                                      "eye", "iterations", "region", "margins",
-                                     "sizes", "caption", "mood", "curve", "inks", "fade"],
+                                     "sizes", "caption", "mood", "curve", "inks", "fade",
+                                     "jitter"],
               "names/order wrong: \(params.map(\.name))")
         check(params.map(\.label) == ["Radius", "Noise Scale", "Tempo", "Quantized",
                                       "Rings", "Visible", "Tint", "Style", "Anchor",
                                       "Eye", "Iterations", "Region", "Margins",
-                                      "Sizes", "Caption", "Mood", "Curve", "Inks", "Fade"],
+                                      "Sizes", "Caption", "Mood", "Curve", "Inks", "Fade",
+                                      "Jitter"],
               "labels wrong: \(params.map(\.label))")
         check(params[4].icon == "circle.grid.2x2", "icon metadata lost")
         check(params[4].group == "Layout" && params[5].group == "Layout" && params[0].group == nil,
               "group metadata wrong")
+        check(params[19].group == "Advanced" && params[19].groupIsFolded && !params[4].groupIsFolded,
+              "folded-group metadata wrong")
 
         // Clamping: out-of-range writes are clamped to the range.
         subject.radius = 999
@@ -171,7 +176,7 @@ enum ParamTest {
         fresh.parameters()[0].param.restore(.boolean(true))
         check(fresh.radius == 0, "mismatched restore should be ignored")
 
-        print("ParamTest: PASS. \(params.count) params discovered; labels, groups, "
+        print("ParamTest: PASS. \(params.count) params discovered; labels, groups (folded too), "
             + "clamping, steps, typed controls, show-rules, and stored round-trips correct.")
         exit(0)
     }

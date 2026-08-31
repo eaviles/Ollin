@@ -904,6 +904,46 @@ extension Easing: ParamChoices {
 
 // MARK: - The wrapper
 
+/// The inspector section a knob belongs to. A plain string literal names an
+/// always-open section, so `group: "Rings"` reads as it always has; `.folded`
+/// names one that starts closed behind a disclosure row, for the knobs worth
+/// having but not worth a first glance:
+///
+/// ```swift
+/// @Param(0...1, group: "Rings") var wobble = 0.4              // open card
+/// @Param(0...8, group: .folded("Advanced")) var jitter = 2.0  // starts closed
+/// ```
+///
+/// One `.folded` member folds the whole group. Opening or closing it in the
+/// inspector is remembered per sketch, so it stays how you left it. The
+/// default (unnamed) group cannot fold.
+public struct ParamGroup: Equatable, Sendable, ExpressibleByStringLiteral {
+    /// The section name shown as the card's header.
+    public let name: String
+    /// Whether the section starts closed behind a disclosure row.
+    public let isFolded: Bool
+
+    /// An always-open section named `name`.
+    public init(_ name: String) {
+        self.name = name
+        self.isFolded = false
+    }
+
+    public init(stringLiteral value: String) {
+        self.init(value)
+    }
+
+    /// A section that starts closed behind a disclosure row.
+    public static func folded(_ name: String) -> ParamGroup {
+        ParamGroup(name: name, isFolded: true)
+    }
+
+    private init(name: String, isFolded: Bool) {
+        self.name = name
+        self.isFolded = isFolded
+    }
+}
+
 /// A tunable parameter the live host surfaces as an inspector control. Declare
 /// it on a sketch and read it like a normal property; the live host discovers
 /// it, shows the control that matches its type, and persists its value across
@@ -924,10 +964,12 @@ extension Easing: ParamChoices {
 ///
 /// Every form takes an optional `icon:` (an SF Symbol name shown leading the
 /// row) and `group:` (a section name; the inspector renders each group as its
-/// own titled card, in declaration order):
+/// own titled card, in declaration order). `group: .folded("Advanced")` makes
+/// a section that starts closed behind a disclosure row (see `ParamGroup`):
 ///
 /// ```swift
 /// @Param(0...1, icon: "circle.dashed", group: "Shape") var wobble = 0.4
+/// @Param(0...8, group: .folded("Advanced")) var jitter = 2.0
 /// ```
 ///
 /// A numeric value is always clamped to its range (and snapped to `step:` when
@@ -964,6 +1006,9 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     public let icon: String?
     /// The inspector section this knob belongs to, or `nil` for the default group.
     public let group: String?
+    /// Whether this knob's group starts closed behind a disclosure row
+    /// (`group: .folded("…")`). One folded member folds the whole group.
+    public let groupIsFolded: Bool
     /// How the value eases into changes, or `nil` for an immediate snap.
     /// Only the `Double` initializers offer smoothing.
     public let smoothing: ParamSmoothing?
@@ -979,11 +1024,12 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     public var projectedValue: Param<Value> { self }
 
     init(_ value: Value, label: String?, constraints: Value.Constraints,
-         smoothing: ParamSmoothing?, icon: String?, group: String?) {
+         smoothing: ParamSmoothing?, icon: String?, group: ParamGroup?) {
         self.constraints = constraints
         self.label = label
         self.icon = icon
-        self.group = group
+        self.group = group?.name
+        self.groupIsFolded = group?.isFolded ?? false
         self.smoothing = smoothing
         let v = Value.clamped(value, by: constraints)
         var filter: OneEuroFilter<Double>?
@@ -1095,7 +1141,7 @@ public extension Param where Value == Double {
     /// presentation is a slider; `style: .field` keeps just the value field.
     convenience init(wrappedValue: Double, _ range: ClosedRange<Double>, step: Double? = nil,
                      style: ParamNumericStyle = .slider, smoothing: ParamSmoothing? = nil,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: .init(range: range, step: step, style: style),
                   smoothing: smoothing, icon: icon, group: group)
     }
@@ -1103,7 +1149,7 @@ public extension Param where Value == Double {
     convenience init(wrappedValue: Double, _ label: String, _ range: ClosedRange<Double>,
                      step: Double? = nil, style: ParamNumericStyle = .slider,
                      smoothing: ParamSmoothing? = nil,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(range: range, step: step, style: style),
                   smoothing: smoothing, icon: icon, group: group)
     }
@@ -1116,13 +1162,13 @@ public extension Param where Value == Double {
 public extension Param where Value == Int {
     /// An `Int` stepper over `range`, stepping by `step` (default 1).
     convenience init(wrappedValue: Int, _ range: ClosedRange<Int>, step: Int? = nil,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: .init(range: range, step: step),
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Int, _ label: String, _ range: ClosedRange<Int>,
-                     step: Int? = nil, icon: String? = nil, group: String? = nil) {
+                     step: Int? = nil, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(range: range, step: step),
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1133,22 +1179,22 @@ public extension Param where Value == Int {
 
 public extension Param where Value == Bool {
     /// A `Bool` toggle.
-    convenience init(wrappedValue: Bool, icon: String? = nil, group: String? = nil) {
+    convenience init(wrappedValue: Bool, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 
-    convenience init(wrappedValue: Bool, _ label: String, icon: String? = nil, group: String? = nil) {
+    convenience init(wrappedValue: Bool, _ label: String, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 }
 
 public extension Param where Value == Color {
     /// A `Color` well.
-    convenience init(wrappedValue: Color, icon: String? = nil, group: String? = nil) {
+    convenience init(wrappedValue: Color, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 
-    convenience init(wrappedValue: Color, _ label: String, icon: String? = nil, group: String? = nil) {
+    convenience init(wrappedValue: Color, _ label: String, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 }
@@ -1158,7 +1204,7 @@ public extension Param where Value == Vector2 {
     /// `style: .pad` adds a draggable XY pad under the fields.
     convenience init(wrappedValue: Vector2, x: ClosedRange<Double>, y: ClosedRange<Double>,
                      style: ParamVectorStyle = .fields,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: .init(x: x, y: y, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1166,7 +1212,7 @@ public extension Param where Value == Vector2 {
     convenience init(wrappedValue: Vector2, _ label: String,
                      x: ClosedRange<Double>, y: ClosedRange<Double>,
                      style: ParamVectorStyle = .fields,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(x: x, y: y, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1175,14 +1221,14 @@ public extension Param where Value == Vector2 {
 public extension Param where Value == Vector3 {
     /// A `Vector3` point: x/y/z fields, each clamped to its own range.
     convenience init(wrappedValue: Vector3, x: ClosedRange<Double>, y: ClosedRange<Double>,
-                     z: ClosedRange<Double>, icon: String? = nil, group: String? = nil) {
+                     z: ClosedRange<Double>, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: .init(x: x, y: y, z: z),
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Vector3, _ label: String,
                      x: ClosedRange<Double>, y: ClosedRange<Double>, z: ClosedRange<Double>,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(x: x, y: y, z: z),
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1192,12 +1238,12 @@ public extension Param where Value: ParamOption {
     /// An enum menu over the type's cases; `style: .segmented` shows every
     /// case at once (best for two to four short names).
     convenience init(wrappedValue: Value, style: ParamMenuStyle = .menu,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Value, _ label: String, style: ParamMenuStyle = .menu,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 }
@@ -1206,12 +1252,12 @@ public extension Param where Value: ParamChoices {
     /// A menu over the type's named choices; `style: .segmented` shows every
     /// choice at once (best for two to four short names).
     convenience init(wrappedValue: Value, style: ParamMenuStyle = .menu,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Value, _ label: String, style: ParamMenuStyle = .menu,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: style, smoothing: nil, icon: icon, group: group)
     }
 }
@@ -1220,7 +1266,7 @@ public extension Param where Value == Rectangle {
     /// A `Rectangle` region: x/y/w/h fields, each clamped to its own range.
     convenience init(wrappedValue: Rectangle, x: ClosedRange<Double>, y: ClosedRange<Double>,
                      width: ClosedRange<Double>, height: ClosedRange<Double>,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil,
                   constraints: .init(x: x, y: y, width: width, height: height),
                   smoothing: nil, icon: icon, group: group)
@@ -1229,7 +1275,7 @@ public extension Param where Value == Rectangle {
     convenience init(wrappedValue: Rectangle, _ label: String,
                      x: ClosedRange<Double>, y: ClosedRange<Double>,
                      width: ClosedRange<Double>, height: ClosedRange<Double>,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label,
                   constraints: .init(x: x, y: y, width: width, height: height),
                   smoothing: nil, icon: icon, group: group)
@@ -1239,13 +1285,13 @@ public extension Param where Value == Rectangle {
 public extension Param where Value == Insets {
     /// Per-edge insets: t/r/b/l fields, each clamped to the one shared range.
     convenience init(wrappedValue: Insets, _ range: ClosedRange<Double>,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: range,
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Insets, _ label: String, _ range: ClosedRange<Double>,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: range,
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1256,14 +1302,14 @@ public extension Param where Value == ClosedRange<Double> {
     /// two-thumb slider (`style: .field` keeps just the paired fields).
     convenience init(wrappedValue: ClosedRange<Double>, in outer: ClosedRange<Double>,
                      style: ParamNumericStyle = .slider,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: .init(outer: outer, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: ClosedRange<Double>, _ label: String,
                      in outer: ClosedRange<Double>, style: ParamNumericStyle = .slider,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(outer: outer, style: style),
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1274,13 +1320,13 @@ public extension Param where Value == Palette {
     /// well. `count:` bounds how many the strip holds, which is where the
     /// row's add and remove buttons stop.
     convenience init(wrappedValue: Palette, count: ClosedRange<Int> = 1...12,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: .init(count: count, style: .blocks),
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Palette, _ label: String, count: ClosedRange<Int> = 1...12,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(count: count, style: .blocks),
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1291,13 +1337,13 @@ public extension Param where Value == Ramp {
     /// own color well and dragged along the band. The ramp keeps the space it
     /// blends through; only its stops are edited here.
     convenience init(wrappedValue: Ramp, count: ClosedRange<Int> = 2...8,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: .init(count: count, style: .gradient),
                   smoothing: nil, icon: icon, group: group)
     }
 
     convenience init(wrappedValue: Ramp, _ label: String, count: ClosedRange<Int> = 2...8,
-                     icon: String? = nil, group: String? = nil) {
+                     icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(count: count, style: .gradient),
                   smoothing: nil, icon: icon, group: group)
     }
@@ -1305,11 +1351,11 @@ public extension Param where Value == Ramp {
 
 public extension Param where Value == String {
     /// A free text field.
-    convenience init(wrappedValue: String, icon: String? = nil, group: String? = nil) {
+    convenience init(wrappedValue: String, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 
-    convenience init(wrappedValue: String, _ label: String, icon: String? = nil, group: String? = nil) {
+    convenience init(wrappedValue: String, _ label: String, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 }
@@ -1326,6 +1372,8 @@ public protocol AnyParam: AnyObject, Sendable {
     var icon: String? { get }
     /// The inspector section this knob belongs to, or `nil` for the default group.
     var group: String? { get }
+    /// Whether this knob's group starts closed behind a disclosure row.
+    var groupIsFolded: Bool { get }
     /// The inspector control that edits this parameter (metadata + live get/set).
     var control: ParamControl { get }
     /// Whether the inspector should show this parameter's row right now: `true`
@@ -1358,6 +1406,8 @@ public struct ParamHandle: Identifiable {
     public var label: String { param.label ?? ParamHandle.humanize(name) }
     public var icon: String? { param.icon }
     public var group: String? { param.group }
+    /// Whether this knob's group starts closed behind a disclosure row.
+    public var groupIsFolded: Bool { param.groupIsFolded }
     public var control: ParamControl { param.control }
     /// Whether the row belongs in the inspector right now (see `Param.show(when:_:)`).
     public var isShown: Bool { param.isShown }

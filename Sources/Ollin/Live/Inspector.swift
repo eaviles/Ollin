@@ -718,35 +718,67 @@ public struct ParamSaveAction {
     }
 }
 
+/// What a folded group remembers: whether a sketch's disclosure section was
+/// left open. Only a group the user has toggled writes a key, so an untouched
+/// one keeps its declared start (closed). Package-visible so tests can drive
+/// it with their own defaults suite instead of the standard one.
+package enum ParamFoldMemory {
+    package nonisolated static func key(sketch: String, group: String) -> String {
+        "OllinInspector.foldedGroup.\(sketch).\(group)"
+    }
+
+    /// What the sketch remembers for `group`, or `nil` while it was never toggled.
+    package nonisolated static func isOpen(sketch: String, group: String,
+                                           defaults: UserDefaults = .standard) -> Bool? {
+        defaults.object(forKey: key(sketch: sketch, group: group)) as? Bool
+    }
+
+    package nonisolated static func setOpen(_ open: Bool, sketch: String, group: String,
+                                            defaults: UserDefaults = .standard) {
+        defaults.set(open, forKey: key(sketch: sketch, group: group))
+    }
+}
+
 /// The parameter groups: for each group a header over a card of control rows,
 /// or an empty state when the sketch declares no `@Param` knobs. The control in
 /// each row follows the parameter's type (slider, stepper, toggle, menu, color
 /// well); `@Param(group:)` names a section, and knobs without one lead under
-/// the default "Parameters" header. `onChange` reports edits (as the param's
-/// persistable `ParamStored`) so a host can carry them across reloads; the row
-/// writes the value into the live `Param` regardless, so a standalone panel
-/// can leave it a no-op and still tune live.
+/// the default "Parameters" header. A group declared `.folded` renders as a
+/// disclosure section that starts closed; opening it is remembered under
+/// `sketchName`, so it stays how it was left. `onChange` reports edits (as the
+/// param's persistable `ParamStored`) so a host can carry them across reloads;
+/// the row writes the value into the live `Param` regardless, so a standalone
+/// panel can leave it a no-op and still tune live.
 public struct ParametersListView: View {
     let parameters: [ParamHandle]
     let onChange: (String, ParamStored) -> Void
     let save: ParamSaveAction?
+    /// The identity folded-group state is remembered under (the name the host's
+    /// monitor card shows), or `nil` to remember nothing between runs.
+    let sketchName: String?
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
 
     /// The rows whose show-rule currently fails, seeded at init and re-polled by
     /// the body's task, so a rule flipping mid-run moves the list.
     @State private var hiddenIDs: Set<String>
+    /// The folded groups currently open. Seeded from what the sketch remembers,
+    /// and re-seeded when a reload or a host switch hands the view new knobs.
+    @State private var openFoldedGroups: Set<String>
     /// What the last save said, kept until the next one: a refusal names the
     /// knob it could not write, which is worth reading twice.
     @State private var saveMessage: String?
 
     public init(parameters: [ParamHandle],
+                sketchName: String? = nil,
                 onChange: @escaping (String, ParamStored) -> Void = { _, _ in },
                 save: ParamSaveAction? = nil) {
         self.parameters = parameters
+        self.sketchName = sketchName
         self.onChange = onChange
         self.save = save
         _hiddenIDs = State(initialValue: Self.hiddenIDs(in: parameters))
+        _openFoldedGroups = State(initialValue: Self.rememberedOpenGroups(in: parameters, sketch: sketchName))
     }
 
     private var palette: OllinInspector.Palette { .resolve(scheme) }
@@ -759,9 +791,11 @@ public struct ParametersListView: View {
     /// The handles split into sections with the hidden rows left out: the
     /// ungrouped knobs first (under the default header), then each named group
     /// in order of first declaration. A group whose rows are all hidden drops
-    /// its whole card. Package-visible so tests can drive the split without a view.
+    /// its whole card. A section is folded when any of its rows declares
+    /// `group: .folded(…)`; the default group never folds. Package-visible so
+    /// tests can drive the split without a view.
     package nonisolated static func visibleSections(of parameters: [ParamHandle], hiding hidden: Set<String>)
-        -> [(title: String, handles: [ParamHandle])] {
+        -> [(title: String, handles: [ParamHandle], isFolded: Bool)] {
         var order: [String?] = []
         var byGroup: [String?: [ParamHandle]] = [:]
         for handle in parameters where !hidden.contains(handle.id) {
@@ -772,10 +806,30 @@ public struct ParametersListView: View {
             order.remove(at: i)
             order.insert(nil, at: 0)
         }
-        return order.map { ($0 ?? "Parameters", byGroup[$0]!) }
+        return order.map { key in
+            let handles = byGroup[key]!
+            let isFolded = key != nil && handles.contains { $0.groupIsFolded }
+            return (key ?? "Parameters", handles, isFolded)
+        }
     }
 
-    private var sections: [(title: String, handles: [ParamHandle])] {
+    /// The folded groups this sketch remembers leaving open. An untouched group
+    /// keeps its declared start (closed); with no `sketch` nothing is remembered.
+    /// Package-visible so tests can drive it with their own defaults suite.
+    package nonisolated static func rememberedOpenGroups(in parameters: [ParamHandle], sketch: String?,
+                                                         defaults: UserDefaults = .standard) -> Set<String> {
+        guard let sketch else { return [] }
+        var open: Set<String> = []
+        for handle in parameters where handle.groupIsFolded {
+            guard let group = handle.group, !open.contains(group) else { continue }
+            if ParamFoldMemory.isOpen(sketch: sketch, group: group, defaults: defaults) == true {
+                open.insert(group)
+            }
+        }
+        return open
+    }
+
+    private var sections: [(title: String, handles: [ParamHandle], isFolded: Bool)] {
         Self.visibleSections(of: parameters, hiding: hiddenIDs)
     }
 
@@ -785,7 +839,11 @@ public struct ParametersListView: View {
         } else {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(sections, id: \.title) { group in
-                    section(title: group.title) { card(for: group.handles) }
+                    if group.isFolded {
+                        foldedSection(title: group.title) { card(for: group.handles) }
+                    } else {
+                        section(title: group.title) { card(for: group.handles) }
+                    }
                 }
                 if let save { saveRow(save) }
             }
@@ -793,6 +851,10 @@ public struct ParametersListView: View {
             // Keyed on the handle identities so a reload's fresh params restart
             // it (the old task would keep reading the swapped-out sketch's knobs).
             .task(id: parameters.map { ObjectIdentifier($0.param) }) {
+                // Fresh knobs mean a fresh sketch (a reload, or a host switching
+                // sketches in place), so the folded state re-reads what that
+                // sketch remembers rather than carrying the old one's over.
+                openFoldedGroups = Self.rememberedOpenGroups(in: parameters, sketch: sketchName)
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(100))
                     let hidden = Self.hiddenIDs(in: parameters)
@@ -815,6 +877,53 @@ public struct ParametersListView: View {
             content()
                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+    }
+
+    /// A folded group's section: the same header as a button with a chevron,
+    /// the card under it only while open. Toggling remembers per sketch.
+    private func foldedSection(title: String, @ViewBuilder content: () -> some View) -> some View {
+        let isOpen = openFoldedGroups.contains(title)
+        return VStack(alignment: .leading, spacing: 0) {
+            Button {
+                toggleFoldedGroup(title)
+            } label: {
+                HStack(spacing: 5) {
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold))
+                        .tracking(0.4)
+                        .textCase(.uppercase)
+                    SwiftUI.Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .rotationEffect(.degrees(isOpen ? 90 : 0))
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(palette.textTertiary)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 4)
+            .padding(.bottom, isOpen ? 7 : 0)
+
+            if isOpen {
+                content()
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+        }
+    }
+
+    private func toggleFoldedGroup(_ title: String) {
+        let opensNow = !openFoldedGroups.contains(title)
+        withAnimation(.easeOut(duration: 0.15)) {
+            if opensNow {
+                openFoldedGroups.insert(title)
+            } else {
+                openFoldedGroups.remove(title)
+            }
+        }
+        if let sketchName {
+            ParamFoldMemory.setOpen(opensNow, sketch: sketchName, group: title)
         }
     }
 
