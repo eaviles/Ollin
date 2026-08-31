@@ -40,7 +40,7 @@ final class HelloCircle: Sketch {
 }
 ```
 
-That's the whole program: a black circle outline, breathing on a white canvas. `@main` boots the window for you, and the draw loop is already running, so there's no call to start the animation, and `time` (seconds since start) is ready to use. Delete `+ sin(time) * 40` and you have a still circle. Or change `width / 2, height / 2` to `mouseX, mouseY` and the circle rides the pointer: `mouseX`, `mouseY`, `mouseIsPressed`, and a `keyPressed()` override are [already on the sketch](Docs/Helpers/Input.md).
+That's the whole program: a black circle outline, breathing on a white canvas. `@main` boots the window for you, and the draw loop is already running, so there's no call to start the animation, and `time` (seconds since start) is ready to use. Delete `+ sin(time) * 40` and you have a still circle. Or change `width / 2, height / 2` to `mouseX, mouseY` and the circle follows the pointer: `mouseX`, `mouseY`, `mouseIsPressed`, and a `keyPressed()` override are [already on the sketch](Docs/Helpers/Input.md).
 
 ## Run it
 
@@ -118,23 +118,23 @@ You can also skip the package entirely: a single loose `.swift` file runs on its
 
 ## What's in it
 
-Coverage is the point: one typed API, the same conventions throughout, and most of what you reach for already in it.
+All of it is one API with the same conventions throughout.
 
-- **Built to finish work.** Every frame composites in linear light with HDR tone-mapping, dithered output, analytic anti-aliasing, and up to 8× MSAA. Color is OKLab with real gamut mapping, not HSB approximations. Exports are deterministic and carry a reproducibility recipe: the seed, the parameter values, the commit. Rendering is snapshot-tested against committed reference images.
+- **The output is production-grade.** Every frame composites in linear light with HDR tone-mapping, dithered output, analytic anti-aliasing, and up to 8× MSAA. Color is OKLab with real gamut mapping, not HSB approximations. Exports are deterministic and carry a reproducibility recipe: the seed, the parameter values, the commit. Rendering is snapshot-tested against committed reference images.
 
 - **The edit-to-see loop is instant.** `swift run OllinLive Sketch.swift` watches the file and hot-swaps each save into the running window, and a typo never closes it. `@Param` properties become typed inspector controls (sliders, steppers, toggles, menus, color wells, palette and gradient strips) in grouped cards, and they keep their values across reloads. It also reads out [what the frame cost](Docs/Tools/Profiling.md): CPU against GPU, draws, and passes. And a shape placed by plain numbers can be [dragged with the pointer](Docs/Tools/DragToEdit.md): hold Command, move it, and those numbers change in your own file.
 
 - **Live coding on stage.** `swift run OllinLiveCoding` is a performance instrument: the sketch fills the window, the code rides over it as translucent text, and ⌘↩ (Command-Return) recompiles the buffer mid-motion, with the clock and tuned knobs carrying across the swap. A typo shows as a strip at the bottom while the last good sketch keeps playing.
 
-- **A Metal core with no ceiling.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, frames composite through an [HDR float pipeline](Docs/Drawing/HDR.md), and when you outgrow the built-ins you write your own fragment shader or compute kernel without leaving the framework.
+- **A Metal core you can extend.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, frames composite through an [HDR float pipeline](Docs/Drawing/HDR.md), and when you outgrow the built-ins you write your own fragment shader or compute kernel without leaving the framework.
 
-- **Motion is the default, and it's handled.** `draw()` runs at the display's refresh rate from the first line, so `120 + sin(time) * 40` is already an animation. Underneath that sits a real motion layer: frame-rate-independent easing and springs, keyframe timelines, [knobs on their own curves](Docs/Core/Automation.md), input smoothing, noise that closes exactly over a lap, perfect-loop export, and motion locked to MIDI clock.
+- **Motion is the default.** `draw()` runs at the display's refresh rate from the first line, so `120 + sin(time) * 40` is already an animation. Under that is a motion layer: frame-rate-independent easing and springs, keyframe timelines, [knobs on their own curves](Docs/Core/Automation.md), input smoothing, noise that closes exactly over a lap, perfect-loop export, and motion locked to MIDI clock.
 
 - **Output that leaves the screen.** Headless PNG stills and deterministic sequences, MP4 and GIF straight from the CLI, vector SVG and PDF with optional hatched fills for pen plotters, [G-code programs](Docs/Output/GCode.md) that a pen plotter, laser cutter, or CNC router runs directly, [print separations](Docs/Output/PrintSeparations.md) with a real ink model for riso and screen printing, [print color management](Docs/Output/PrintColor.md) that proofs the canvas against a press profile and splits it into process plates, [fabrication files](Docs/Output/Fabrication.md) (STL, OBJ, 3MF) so a generated mesh can be 3D-printed at a real size, and [spatial output](Docs/Output/Spatial.md): USDZ so a 3D piece opens in Quick Look, sends in a message, and stands on a real table through AR, or spatial video so its motion plays in depth on a headset.
 
-- **Or living in the system.** `ollin new --kind mac-app` wraps a finished piece as a signed, double-clickable [Mac app](Docs/Output/App.md) that runs where the toolchain never was, wearing a frame of itself as its icon; `--kind screen-saver` wraps it as the machine's [screen saver](Docs/Output/ScreenSaver.md), so the work runs when nobody is at the desk; `--kind wallpaper` runs it as the [desktop wallpaper](Docs/Output/Wallpaper.md), behind the icons on every display; and `--kind menu-bar` puts a small live strip of it [in the menu bar](Docs/Output/MenuBar.md), beside the clock all day. One script builds, signs, and installs any of them; the sketch itself stays an ordinary sketch.
+- **Or running in the system.** `ollin new --kind mac-app` wraps a finished piece as a signed, double-clickable [Mac app](Docs/Output/App.md) that runs where the toolchain never was, with a frame of itself as its icon; `--kind screen-saver` wraps it as the machine's [screen saver](Docs/Output/ScreenSaver.md), so the work runs when nobody is at the desk; `--kind wallpaper` runs it as the [desktop wallpaper](Docs/Output/Wallpaper.md), behind the icons on every display; and `--kind menu-bar` puts a small live strip of it [in the menu bar](Docs/Output/MenuBar.md), beside the clock all day. One script builds, signs, and installs any of them; the sketch itself stays an ordinary sketch.
 
-- **Made to be left running.** A piece on a wall declares [installation mode](Docs/Output/Installation.md) in one line. The screen fills, the pointer goes, and the display stays awake with the screen saver held off. The clock survives a night of display sleep and a week of running, which is where a long run usually breaks. Mark the state `@Saved` and a relaunch picks the piece up where it was. A watch starts it again after a crash. A schedule gives it the building's hours. Command-K lines the picture up with the wall it is thrown onto, and two projectors can share one wall without a bright bar down the join. One machine can drive both of them, or spread one canvas over every display it has.
+- **Made to be left running.** A piece on a wall declares [installation mode](Docs/Output/Installation.md) in one line. The screen fills, the pointer is hidden, and the display stays awake with the screen saver held off. The clock survives a night of display sleep and a week of running, which is where a long run usually breaks. Mark the state `@Saved` and a relaunch picks the piece up where it was. A watch starts it again after a crash. A schedule gives it the building's hours. Command-K lines the picture up with the wall it is thrown onto, and two projectors can share one wall without a bright bar down the join. One machine can drive both of them, or spread one canvas over every display it has.
 
 ### The catalog
 
@@ -193,7 +193,7 @@ ollin generate                                     # the same, in a window
 
 `ollin generate` shows each starting point by *running* it, so you pick a template by watching it rather than by reading its name.
 
-The same `ollin` command also reads the documentation and the examples out of your own checkout, so looking something up costs a command rather than a browser:
+The same `ollin` command also reads the documentation and the examples out of your own checkout, so looking something up doesn't need a browser:
 
 ```sh
 ollin docs color            # the page, in the terminal
@@ -280,7 +280,7 @@ The same trade rules out a browser version, because the web has no Metal, so a w
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The next milestone is version 1.0.0, the first tagged release; the roadmap's [Toward 1.0](ROADMAP.md#toward-10) section tracks what it waits on. The short version of what's further ahead: more of the iPhone sensor array and the 3D mode (cloth that meets itself), generative geometry and a growing catalog of creative-coding technique helpers, more of the sound layer, new input and output surfaces (Apple Pencil, controller rumble, a desktop widget), editor tooling, learning materials and a third-party extension ecosystem, a sketch on the phone and in Swift Playgrounds, and eventually visionOS and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The next milestone is version 1.0.0, the first tagged release; the roadmap's [Toward 1.0](ROADMAP.md#toward-10) section tracks what it waits on. The short version of what's further ahead: more of the iPhone sensor array and the 3D mode (cloth that collides with itself), generative geometry and a growing catalog of creative-coding technique helpers, more of the sound layer, new input and output surfaces (Apple Pencil, controller rumble, a desktop widget), editor tooling, learning materials and a third-party extension ecosystem, a sketch on the phone and in Swift Playgrounds, and eventually visionOS and AR.
 
 ## Built with AI
 

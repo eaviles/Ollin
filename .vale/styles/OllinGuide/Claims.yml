@@ -1,0 +1,31 @@
+# The self-assessment adjective (Guide/AUTHORING.md, "don't claim what the
+# page proves"). Each of these asks the reader to believe something they
+# cannot check, and the evidence is usually in the next sentence anyway. Cut
+# the word and let the list, the count, or the table make the case.
+#
+# Deliberately a short list of words with no technical sense in this
+# repository. Not listed, because here they are facts rather than praise:
+# "seamless" (seamless loops, seamless clone), "robust" (the `.robust`
+# fitting case), "wide range" (a font's actual coverage), and "cheap" or
+# "free" (cost claims, usually measured).
+extends: existence
+message: "'%s' claims what the page should prove: cut it, or show the evidence (Guide/AUTHORING.md)."
+level: warning
+ignorecase: true
+tokens:
+  - 'comprehensive(ly)?'
+  - 'powerful(ly)?'
+  - 'full-featured'
+  - 'state-of-the-art'
+  - 'best-in-class'
+  - 'cutting-edge'
+  - 'world-class'
+  - 'industry-leading'
+  - 'unparalleled'
+  - 'unmatched'
+  - 'blazing(ly)? fast'
+  - 'lightning[- ]fast'
+  - 'batteries included'
+  # The metaphor forms of the same claim.
+  - 'no ceiling'
+  - 'the sky is the limit'
