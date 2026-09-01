@@ -120,6 +120,13 @@ jobs:
       # memFullErr ("failed to analyze motion flow"). An environment limit,
       # not a code signal, so it runs locally like the snapshots.
       #
+      # measuresAPairInline goes with them, and is named separately because it
+      # is the one call to that same optical flow living outside the suite named
+      # after it. Vision reports no compute device on the runner at all
+      # ("No available compute device for VNComputeStageMain"), so it fails the
+      # same way for the same reason. Its suite's other test uses contours,
+      # which do run here, so only the one test is named rather than the suite.
+      #
       # The step timeout is the hang guard. The whole suite finishes in well
       # under a minute when healthy; the only way past ten minutes is a wedged
       # runner (see the job-level note), and cutting it here fails fast while
@@ -130,7 +137,7 @@ jobs:
       # dropped 46 pure-CPU determinism tests from every run here for weeks.
       - name: Test (excluding GPU snapshots)
         timeout-minutes: 10
-        run: swift test --skip 'OllinTests.SnapshotTests|FlowTrackerTests'
+        run: swift test --skip 'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline'
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the

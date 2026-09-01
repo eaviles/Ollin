@@ -38,10 +38,19 @@ struct LinkLoopbackTests {
 
         // The beat grid runs with no session and no network: at 120 BPM the
         // position advances two beats per second.
+        //
+        // Measured against the sleep that happened rather than the one that was
+        // asked for. A loaded machine can oversleep by a wide margin, and the
+        // grid keeps running while it does, so half a second of sleep is a
+        // reading rather than a given: on CI this asked for 500ms inside a test
+        // that took 520 seconds, and a fixed window called that a broken clock.
         let start = clock.beats
+        let began = Date()
         try await Task.sleep(nanoseconds: 500_000_000)
+        let slept = Date().timeIntervalSince(began)
         let advanced = clock.beats - start
-        #expect(advanced > 0.8 && advanced < 1.2, "expected about 1 beat, got \(advanced)")
+        #expect(abs(advanced - slept * 2) < 0.2,
+                "expected about \(slept * 2) beats in \(slept)s, got \(advanced)")
 
         // The derived reads agree with each other.
         let beats = clock.beats
