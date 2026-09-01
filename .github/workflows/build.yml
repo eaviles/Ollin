@@ -210,11 +210,33 @@ jobs:
       # takes an unanchored regex over the full test ID: a bare `SnapshotTests`
       # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
       # dropped 46 pure-CPU determinism tests from every run here for weeks.
+      #
+      # Two commands rather than one `swift test`, for the reason in the note
+      # above: OllinTests is main-actor bound, so a single process gives that
+      # target one thread whatever the machine has. Scripts/shard-tests.sh runs
+      # it as four processes against the already-built bundle, then the second
+      # command sweeps every other target. It is the same split
+      # Scripts/test.sh's own shard mode makes, minus its phase 1, whose suites
+      # this runner has no devices for and skips outright.
+      #
+      # The skip list is written once and used by both, since a pattern that
+      # reached only one of them would silently run the tests it names. The
+      # shard script takes it as an ordinary `--skip` regex (OLLIN_SHARD_SKIP),
+      # which is why it can name one test and not just a suite: the
+      # frame-interpolation gate wants a camera while the rest of its suite runs
+      # here perfectly well.
+      #
+      # Both run before either verdict is read, so one failing shard cannot hide
+      # what the other targets would have said.
       - name: Test (excluding GPU snapshots)
         timeout-minutes: 35
-        run: >-
-          swift test --skip
-          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
+        env:
+          SKIP: 'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
+        run: |
+          failed=0
+          OLLIN_SHARD_SKIP="$SKIP" Scripts/shard-tests.sh || failed=1
+          swift test --skip "$SKIP|^OllinTests\." || failed=1
+          exit $failed
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the

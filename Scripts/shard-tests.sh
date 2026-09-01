@@ -49,9 +49,15 @@ shards=${1:-4}
 # DataFeedTests and SpatialVideoTests want the machine to themselves and run in
 # test.sh's phase 1, so they are not part of this.
 apart='OllinTests.DataFeedTests|OllinTests.SpatialVideoTests'
+# An extra exclusion, in `swift test --skip` form: an unanchored regex over the
+# whole test ID, so it can name a single test and not just a suite. CI sets it,
+# because a runner without the devices has to drop tests that a desk does not,
+# and one of them (the frame-interpolation gate, which wants a camera) is a
+# single test inside a suite that otherwise runs here perfectly well.
+skip=${OLLIN_SHARD_SKIP:-}
 single() {
     echo "shard-tests: $1; running OllinTests in one process instead"
-    exec swift test --filter '^OllinTests\.' --skip "$apart"
+    exec swift test --filter '^OllinTests\.' --skip "$apart${skip:+|$skip}"
 }
 
 # Nothing may need building once the shards start: they do not go through
@@ -74,7 +80,11 @@ trap 'rm -rf "$work"' EXIT
 
 "$helper" --test-bundle-path "$bundle" --list-tests --testing-library swift-testing "$bundle" \
     > "$work/ids.txt" 2>/dev/null || single "the bundle would not list its tests"
-expected=$(grep -cvE "^($apart)/" "$work/ids.txt") || true
+if [[ -n "$skip" ]]; then
+    expected=$(grep -vE "^($apart)/" "$work/ids.txt" | grep -cvE "$skip") || true
+else
+    expected=$(grep -cvE "^($apart)/" "$work/ids.txt") || true
+fi
 [[ $expected -gt 0 ]] || single "the bundle listed no tests"
 
 python3 - "$work" "$shards" "$apart" <<'PY'
@@ -91,9 +101,16 @@ PY
 
 echo "shard-tests: $expected tests over $shards shards"
 started=$SECONDS
+# An array, because zsh does not word-split a parameter expansion: written
+# inline as ${skip:+--skip "$skip"} the flag and its pattern arrive as one
+# argument, the helper ignores it, and every shard quietly runs the tests the
+# skip was meant to drop. The count check below is what caught that.
+typeset -a skipArgs=()
+[[ -n "$skip" ]] && skipArgs=(--skip "$skip")
 for i in {0..$((shards - 1))}; do
     "$helper" --test-bundle-path "$bundle" --testing-library swift-testing "$bundle" \
-        --filter "$(<$work/shard$i.filter)" > "$work/shard$i.log" 2>&1 &
+        --filter "$(<$work/shard$i.filter)" $skipArgs \
+        > "$work/shard$i.log" 2>&1 &
 done
 wait
 elapsed=$((SECONDS - started))
