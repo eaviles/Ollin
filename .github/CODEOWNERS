@@ -1,0 +1,7 @@
+# Every path in this repository is owned by @eaviles.
+#
+# The "main" ruleset asks for a Code Owner review on pull requests, and this
+# file is what names one. Without it that rule matches nobody and passes
+# silently.
+
+*       @eaviles
