@@ -68,8 +68,9 @@ jobs:
     # The runner's paravirtualized GPU once failed at test startup and left
     # `swift test` hung for 4.5 hours; at the 10x macOS billing multiplier
     # that single run consumed most of a month's Actions minutes. A full
-    # build plus the tests fits far under this cap (the build alone measured
-    # about ninety seconds), and the test step carries its own tighter one.
+    # build plus the tests fits under this cap (the build measured 527 s and
+    # 732 s across two green runs on 2026-09-01, the test step about 22
+    # minutes), and the test step carries its own tighter one.
     timeout-minutes: 50
     steps:
       - name: Checkout
