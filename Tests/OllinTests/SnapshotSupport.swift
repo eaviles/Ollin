@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import Metal
-import Ollin
+@testable import Ollin
 import UniformTypeIdentifiers
 
 /// Render-correctness snapshot testing: render a sketch off-screen (the same
@@ -63,6 +63,17 @@ enum Snapshot {
         guard ProcessInfo.processInfo.environment["OLLIN_NO_RAY_TRACING"] != "1" else { return false }
         guard let device = MTLCreateSystemDefaultDevice() else { return false }
         return device.supportsRaytracing && device.supportsRaytracingFromRender
+    }
+
+    /// Whether the default device can be driven through a mesh pipeline, the gate
+    /// for anything that draws a strand field. A paravirtualized GPU builds the
+    /// pipeline and then has no object-stage binding to call, which throws an
+    /// Objective-C exception rather than failing, so a test that renders one there
+    /// does not fail: it kills the whole process and every other test with it.
+    /// `OLLIN_NO_MESH_SHADERS=1` answers false here too.
+    static var hasMeshShaders: Bool {
+        guard let device = MTLCreateSystemDefaultDevice() else { return false }
+        return MetalRenderer.meshShadersAvailable(on: device)
     }
 
     enum Failure: Error, CustomStringConvertible {

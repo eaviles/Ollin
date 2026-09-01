@@ -55,7 +55,10 @@ struct StrandFieldRenderTests {
         _ = try renderer.pipeline(.strands(.normal, depth: .depth32Float))
     }
 
-    @Test(.enabled(if: Snapshot.hasMetal))
+    // The two below draw, so they want a GPU that can be driven through a mesh
+    // pipeline, not merely one that builds the pipeline. `strandPipelineBuilds`
+    // keeps the plain Metal gate because building is all it asks for.
+    @Test(.enabled(if: Snapshot.hasMeshShaders))
     func aFieldRendersDeterministically() throws {
         let first = try #require(OllinApp.image(of: StrandABSketch(culling: true)))
         let second = try #require(OllinApp.image(of: StrandABSketch(culling: true)))
@@ -63,7 +66,7 @@ struct StrandFieldRenderTests {
         #expect(diff.max == 0, "same field, same frame, different pixels (max \(diff.max))")
     }
 
-    @Test(.enabled(if: Snapshot.hasMetal))
+    @Test(.enabled(if: Snapshot.hasMeshShaders))
     func tileCullingChangesNothingInThePicture() throws {
         let culled = try #require(OllinApp.image(of: StrandABSketch(culling: true)))
         let unculled = try #require(OllinApp.image(of: StrandABSketch(culling: false)))

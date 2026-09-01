@@ -3640,6 +3640,15 @@ extension MetalRenderer {
                 // solid path's MeshOut, so the full lit binding set applies.
                 guard depthFormat != nil, drawer.camera3D != nil,
                       let strandField = batch.strandField else { continue }
+                // The pipeline above built even where the stages cannot be fed
+                // (a paravirtualized GPU says yes to all of it and then has no
+                // object-stage binding to call), and that call throws rather
+                // than fails, taking the process with it. So the field is left
+                // undrawn on a device that cannot be driven this way.
+                guard hasMeshShaders else {
+                    drawer.noteOnce("drawStrands grows its blades in a mesh pipeline, which this GPU cannot be driven through (a virtual machine's display usually cannot); the field was left undrawn.")
+                    continue
+                }
                 let tiling = strandField.tiling
                 encoder.setRenderPipelineState(state)
                 var strandParams = makeStrandParams(strandField, batch: batch,

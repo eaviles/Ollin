@@ -160,6 +160,23 @@ jobs:
       # through, and on this runner it simply stopped: the log ran normally and
       # then said nothing at all for twenty minutes. It is a milestone check,
       # not a per-commit one.
+      # Nothing below is the place to put the next one. This list grew by
+      # discovery, one runner failure at a time, and every entry is knowledge
+      # about a device that lives here instead of next to the test that needs
+      # it. A test that wants hardware belongs behind an `.enabled(if:)` guard
+      # on a probe of that hardware, the way the 592 already here do: it then
+      # refuses itself wherever the device is absent, this runner included, and
+      # at a desk with the screen locked, with no list to keep in sync.
+      #
+      # The strand-field render tests are the worked example. They did not fail
+      # here, they killed the process: the runner's paravirtualized GPU builds a
+      # mesh pipeline and then has no object-stage binding to call, and an
+      # unrecognized selector is an uncaught Objective-C exception, so one test
+      # took the other four thousand with it. What holds it back is a probe of
+      # the encoder (`MetalRenderer.meshShadersAvailable(on:)`) that the renderer
+      # consults before drawing and `Snapshot.hasMeshShaders` gates the tests on,
+      # rather than a thirteenth entry below.
+      #
       # The snapshot pattern is anchored with its module name because `--skip`
       # takes an unanchored regex over the full test ID: a bare `SnapshotTests`
       # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
