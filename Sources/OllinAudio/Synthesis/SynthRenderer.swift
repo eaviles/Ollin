@@ -123,32 +123,39 @@ final class SynthRenderer: @unchecked Sendable {
         let memory = stringMemory
         let driven = drivenMemory
         // Each voice gets its own noise stream so a render replays exactly.
-        self.voices = (0..<count).map { index in
-            RenderVoice(
-                oscillator: Oscillator(seed: seed &+ UInt64(index) &* 0x9E37_79B9),
-                second: Oscillator(seed: seed &+ UInt64(index) &* 0x85EB_CA6B &+ 1),
+        // The closure says what it takes and returns, and the index appears once
+        // as a number rather than ten times as a conversion, because working all
+        // of that out from a single expression this size is more than an older
+        // compiler will finish.
+        self.voices = (0..<count).map { (index: Int) -> RenderVoice in
+            let step = UInt64(index)
+            let first = 2 * index
+            let second = 2 * index + 1
+            return RenderVoice(
+                oscillator: Oscillator(seed: seed &+ step &* 0x9E37_79B9),
+                second: Oscillator(seed: seed &+ step &* 0x85EB_CA6B &+ 1),
                 string: StringVoice(
-                    buffer: memory + perString * (2 * index), capacity: capacity,
-                    seed: seed &+ UInt64(index) &* 0xC2B2_AE35
+                    buffer: memory + perString * first, capacity: capacity,
+                    seed: seed &+ step &* 0xC2B2_AE35
                 ),
                 secondString: StringVoice(
-                    buffer: memory + perString * (2 * index + 1), capacity: capacity,
-                    seed: seed &+ UInt64(index) &* 0x27D4_EB2F &+ 1
+                    buffer: memory + perString * second, capacity: capacity,
+                    seed: seed &+ step &* 0x27D4_EB2F &+ 1
                 ),
-                bow: BowVoice(buffer: driven + perDriven * (2 * index), capacity: capacity),
+                bow: BowVoice(buffer: driven + perDriven * first, capacity: capacity),
                 secondBow: BowVoice(
-                    buffer: driven + perDriven * (2 * index + 1), capacity: capacity
+                    buffer: driven + perDriven * second, capacity: capacity
                 ),
                 tube: TubeVoice(
-                    buffer: driven + perDriven * (2 * index) + perBow, capacity: capacity,
-                    seed: seed &+ UInt64(index) &* 0x165667B1
+                    buffer: driven + perDriven * first + perBow, capacity: capacity,
+                    seed: seed &+ step &* 0x165667B1
                 ),
                 secondTube: TubeVoice(
-                    buffer: driven + perDriven * (2 * index + 1) + perBow, capacity: capacity,
-                    seed: seed &+ UInt64(index) &* 0xD3A2646C &+ 1
+                    buffer: driven + perDriven * second + perBow, capacity: capacity,
+                    seed: seed &+ step &* 0xD3A2646C &+ 1
                 ),
-                patch: PatchVoice(seed: seed &+ UInt64(index) &* 0x2545F491),
-                secondPatch: PatchVoice(seed: seed &+ UInt64(index) &* 0x94D049BB &+ 1)
+                patch: PatchVoice(seed: seed &+ step &* 0x2545F491),
+                secondPatch: PatchVoice(seed: seed &+ step &* 0x94D049BB &+ 1)
             )
         }
     }

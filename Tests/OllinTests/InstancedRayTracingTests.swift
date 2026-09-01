@@ -258,7 +258,8 @@ struct ReflectionResolutionTierTests {
         let half = try profile(.performance)
         // The joint is where the profile climbs fastest, and both tiers draw the box in
         // the same place, so the full-size picture locates it for the pair.
-        let joint = (1..<(full.count - 1)).max(by: { full[$0 + 1] - full[$0] < full[$1 + 1] - full[$1] }) ?? 0
+        func climb(_ column: Int) -> Double { full[column + 1] - full[column] }
+        let joint = (1..<(full.count - 1)).max(by: { climb($0) < climb($1) }) ?? 0
         let left = joint - 2
         #expect(full[left] < -100, "the control: the left face reflects the red panel, \(full[left])")
         #expect(full[joint + 3] > 50, "the control: the right face reflects the blue one, \(full[joint + 3])")
