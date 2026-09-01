@@ -21,7 +21,16 @@ jobs:
     # did not cause and cannot fix. Reviewing a fork's changes needs a trigger
     # that runs in this repository's context, which is a separate decision with
     # its own risks, so it is not made here.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    #
+    # Dependabot is skipped for the same reason wearing a different hat. Its
+    # pull requests read from a separate Dependabot secrets store, so the token
+    # is empty there too, but the job does not fail: it reported success in
+    # sixteen seconds having reviewed nothing at all. A green check that means
+    # nothing is worse than no check, and a version bump is a diff to read
+    # rather than something to hand to a reviewer.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
 
     runs-on: ubuntu-latest
     permissions:
