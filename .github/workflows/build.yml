@@ -150,6 +150,16 @@ jobs:
       # does not exist here, and the frame interpolation gate wants a camera.
       # Named individually where one test in a suite needs a device and the
       # rest do not.
+      #
+      # GeneratedProjectBuildTests goes too, which is what Scripts/test.sh
+      # already does for its quick pass. That suite builds whole generated
+      # packages by running swift build inside a test, is declared serialized
+      # with a fifteen minute limit of its own, and takes OllinProjectsTests
+      # from 155 seconds to 725. Fifteen serialized minutes does not fit inside
+      # a twenty-two minute step that has four thousand other tests to get
+      # through, and on this runner it simply stopped: the log ran normally and
+      # then said nothing at all for twenty minutes. It is a milestone check,
+      # not a per-commit one.
       # The snapshot pattern is anchored with its module name because `--skip`
       # takes an unanchored regex over the full test ID: a bare `SnapshotTests`
       # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
@@ -158,7 +168,7 @@ jobs:
         timeout-minutes: 22
         run: >-
           swift test --skip
-          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh'
+          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the
