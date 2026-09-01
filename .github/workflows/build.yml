@@ -169,13 +169,20 @@ jobs:
       # at a desk with the screen locked, with no list to keep in sync.
       #
       # The strand-field render tests are the worked example. They did not fail
-      # here, they killed the process: the runner's paravirtualized GPU builds a
-      # mesh pipeline and then has no object-stage binding to call, and an
-      # unrecognized selector is an uncaught Objective-C exception, so one test
-      # took the other four thousand with it. What holds it back is a probe of
-      # the encoder (`MetalRenderer.meshShadersAvailable(on:)`) that the renderer
-      # consults before drawing and `Snapshot.hasMeshShaders` gates the tests on,
-      # rather than a thirteenth entry below.
+      # here, they killed the process: this runner's paravirtualized GPU builds a
+      # mesh pipeline it cannot encode, and the unrecognized selector that
+      # follows is an uncaught Objective-C exception, so one test took the other
+      # four thousand with it. What holds it back is a capability check
+      # (`MetalRenderer.meshShadersAvailable(on:)`, which the renderer consults
+      # before drawing and `Snapshot.hasMeshShaders` gates the tests on), not a
+      # thirteenth entry below.
+      #
+      # Worth knowing before writing the next one: only the GPU family tells the
+      # truth here. The runner reports `Apple Paravirtual device` with `metal3`
+      # false, and yet the mesh pipeline builds and the encoder answers
+      # `respondsToSelector:` with true for every call it will then refuse. A
+      # capability probe that asks anything nearer the failure than the family
+      # gets a yes and crashes anyway, which is how the second run was lost.
       #
       # The snapshot pattern is anchored with its module name because `--skip`
       # takes an unanchored regex over the full test ID: a bare `SnapshotTests`

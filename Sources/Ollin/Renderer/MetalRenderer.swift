@@ -822,52 +822,25 @@ final class MetalRenderer {
     /// strand fields' gate, and the only thing standing between a virtual machine
     /// and a killed process.
     ///
-    /// The question deliberately is not what the device claims. A paravirtualized
-    /// GPU (the kind a virtual machine hands through, and the kind a hosted runner
-    /// has) reports the family, compiles the `[[object]]`/`[[mesh]]` stages, and
-    /// builds an `MTLMeshRenderPipelineDescriptor` without a word of complaint. It
-    /// fails one call later instead: its command encoder does not implement the
-    /// object stage's binding at all, and an unrecognized selector is an
-    /// Objective-C exception, not an error Swift can catch. The process dies where
-    /// a missing feature should merely have drawn nothing.
+    /// `metal3` is the family the mesh stages require, and it is the only signal
+    /// here that tells the truth. A paravirtualized GPU (what a virtual machine
+    /// hands through, and what a hosted runner has) reports it false and then
+    /// accepts everything built on it anyway: it compiles the `[[object]]` and
+    /// `[[mesh]]` stages, builds an `MTLMeshRenderPipelineDescriptor` without
+    /// complaint, and its encoder answers `respondsToSelector:` with true for
+    /// every one of the calls below. The first one made then raises
+    /// `unrecognized selector`, which is an Objective-C exception rather than an
+    /// error Swift can catch, so the process dies where a missing feature should
+    /// merely have drawn nothing.
     ///
-    /// So the probe asks the encoder, which is the thing that breaks, whether it
-    /// answers to the three calls the strand arm makes. Once per device: the
-    /// answer belongs to the encoder's class, so it cannot change under us.
+    /// Measured on the hosted runner, 2026-09-01: `Apple Paravirtual device`,
+    /// `apple5` and `mac2` true, `apple6` through `apple9` and `metal3` false,
+    /// the pipeline built, all four selectors answered true, and
+    /// `setObjectBytes` exited 134. So neither building the pipeline nor asking
+    /// the encoder can stand in for the family, and both were tried.
     nonisolated static func meshShadersAvailable(on device: MTLDevice) -> Bool {
         if ProcessInfo.processInfo.environment["OLLIN_NO_MESH_SHADERS"] == "1" { return false }
-        return meshShaderSupport.withLock { known in
-            if let answer = known[device.registryID] { return answer }
-            let answer = probeMeshEncoder(on: device)
-            known[device.registryID] = answer
-            return answer
-        }
-    }
-    private nonisolated static let meshShaderSupport =
-        OSAllocatedUnfairLock(initialState: [UInt64: Bool]())
-    /// The calls the `.strands` arm makes, spelled as the selectors they compile
-    /// to. A device that answers to all three can be driven; one that misses any
-    /// of them would throw on that call, so the field is left undrawn instead.
-    private nonisolated static func probeMeshEncoder(on device: MTLDevice) -> Bool {
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false)
-        descriptor.usage = .renderTarget
-        descriptor.storageMode = .private
-        guard let target = device.makeTexture(descriptor: descriptor),
-              let queue = device.makeCommandQueue(),
-              let buffer = queue.makeCommandBuffer() else { return false }
-        let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = target
-        pass.colorAttachments[0].loadAction = .dontCare
-        pass.colorAttachments[0].storeAction = .dontCare
-        guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return false }
-        let answers = ["setObjectBytes:length:atIndex:",
-                       "setMeshBytes:length:atIndex:",
-                       "drawMeshThreadgroups:threadsPerObjectThreadgroup:threadsPerMeshThreadgroup:"]
-            .allSatisfy { encoder.responds(to: NSSelectorFromString($0)) }
-        encoder.endEncoding()
-        // Never committed: the probe wants the encoder's class, not a frame.
-        return answers
+        return device.supportsFamily(.metal3)
     }
     /// Whether the strand fields' mesh pipeline can be driven on this device
     /// (`meshShadersAvailable(on:)`, resolved once at init).
