@@ -44,13 +44,25 @@ struct LinkLoopbackTests {
         // grid keeps running while it does, so half a second of sleep is a
         // reading rather than a given: on CI this asked for 500ms inside a test
         // that took 520 seconds, and a fixed window called that a broken clock.
+        // Each read of the grid is bracketed by a read of the wall clock, so
+        // what the test knows is a window rather than an instant: the beats can
+        // have advanced by as little as the inner gap and as much as the outer
+        // one. Reading the two as though they happened together is what failed
+        // here before, twice. This machine put 150ms between two adjacent
+        // statements and 477 seconds into a test that sleeps for half of one,
+        // and a window widens under that while a fixed tolerance cannot.
+        let beforeStart = Date()
         let start = clock.beats
-        let began = Date()
+        let afterStart = Date()
         try await Task.sleep(nanoseconds: 500_000_000)
-        let slept = Date().timeIntervalSince(began)
+        let beforeEnd = Date()
         let advanced = clock.beats - start
-        #expect(abs(advanced - slept * 2) < 0.2,
-                "expected about \(slept * 2) beats in \(slept)s, got \(advanced)")
+        let afterEnd = Date()
+
+        let least = beforeEnd.timeIntervalSince(afterStart) * 2
+        let most = afterEnd.timeIntervalSince(beforeStart) * 2
+        #expect(advanced >= least - 0.01 && advanced <= most + 0.01,
+                "expected \(least) to \(most) beats, got \(advanced)")
 
         // The derived reads agree with each other.
         let beats = clock.beats
