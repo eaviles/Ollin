@@ -141,6 +141,15 @@ jobs:
       # figure was set against a much smaller suite. Over four thousand tests
       # start here now, so ten minutes was cutting off a healthy run rather than
       # catching a wedged one. The job cap above is still the outer bound.
+      #
+      # Three more join them for the same reason, found the same way. Screen
+      # capture is permitted here and still delivers nothing: the guard those
+      # tests already carry asks whether capture is permitted, which the runner
+      # answers yes to before handing over a display that never produces a
+      # frame. The segmenter's live wiring wants the Vision compute device that
+      # does not exist here, and the frame interpolation gate wants a camera.
+      # Named individually where one test in a suite needs a device and the
+      # rest do not.
       # The snapshot pattern is anchored with its module name because `--skip`
       # takes an unanchored regex over the full test ID: a bare `SnapshotTests`
       # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
@@ -149,7 +158,7 @@ jobs:
         timeout-minutes: 22
         run: >-
           swift test --skip
-          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests'
+          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh'
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the
