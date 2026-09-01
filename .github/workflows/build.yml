@@ -65,7 +65,7 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # The macos-26 image matches the development toolchain (Xcode 26 / the
       # macOS 26 SDK), so what builds locally builds here — including macOS 26
@@ -135,7 +135,7 @@ jobs:
     timeout-minutes: 35
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Swift version
         run: swift --version
