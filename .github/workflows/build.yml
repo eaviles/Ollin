@@ -70,7 +70,7 @@ jobs:
     # that single run consumed most of a month's Actions minutes. A full
     # build plus the tests fits far under this cap (the build alone measured
     # about ninety seconds), and the test step carries its own tighter one.
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -137,10 +137,32 @@ jobs:
       # the middle of a color round trip, and trivial string tests reported
       # durations of 444 seconds each because they all unblocked at once.
       #
-      # The step timeout is the hang guard, raised from ten minutes because that
-      # figure was set against a much smaller suite. Over four thousand tests
-      # start here now, so ten minutes was cutting off a healthy run rather than
-      # catching a wedged one. The job cap above is still the outer bound.
+      # The step timeout is the hang guard, and it has twice been set too low
+      # rather than too high: ten minutes was a figure from a much smaller
+      # suite, and twenty-two was guessed while a crash was still ending every
+      # run before the question could be asked.
+      #
+      # What is actually known, and it is less than it looks. This step has
+      # never once run to completion. The two runs that got furthest each
+      # reported about 4,500 tests, at 16 and at 21 minutes, and both were cut
+      # short by the crash rather than finishing. A third reached the
+      # twenty-two minute cap while still healthy, and its count means nothing:
+      # an uncaught exception flushes stdio on the way out, a killed process
+      # does not, so a timed-out run always looks like it did less work than a
+      # crashed one. So thirty-five is headroom chosen against an unmeasured
+      # total, not a measurement, and the next green run is the first real
+      # number this project will have. The job cap above is still the outer
+      # bound.
+      #
+      # The reason it is slow is known, though, and it is not the machine.
+      # OllinTests draws through `Sketch`, which is main-actor isolated, so
+      # every render probe queues on one thread and the target uses a fraction
+      # of the cores. Those long silences in the log are that queue draining.
+      # Scripts/shard-tests.sh is the standing answer (409 s to 189 s in four
+      # processes, measured locally), and pointing this step at it would cut
+      # both the wall clock and the bill. It is not done here only because the
+      # script excludes a hardcoded pair of suites and this step excludes
+      # twelve, so the two skip sets have to be reconciled first.
       #
       # Three more join them for the same reason, found the same way. Screen
       # capture is permitted here and still delivers nothing: the guard those
@@ -189,7 +211,7 @@ jobs:
       # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
       # dropped 46 pure-CPU determinism tests from every run here for weeks.
       - name: Test (excluding GPU snapshots)
-        timeout-minutes: 22
+        timeout-minutes: 35
         run: >-
           swift test --skip
           'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
