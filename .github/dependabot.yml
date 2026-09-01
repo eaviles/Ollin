@@ -1,0 +1,22 @@
+# Keep the pinned action SHAs current.
+#
+# The workflows pin their actions to commit SHAs so a moved tag cannot change
+# what CI runs. A pin is only safe while something updates it, and that is this
+# file's whole job: Dependabot opens a pull request when an action publishes a
+# new release, moving the SHA and the version comment beside it together.
+#
+# github-actions is the only ecosystem listed because it is the only one there
+# is. The framework has no external package dependencies: everything
+# third-party is vendored under External/ as source, and the examples package
+# reaches this one by path.
+#
+# Security updates are a separate system that needs no configuration here. They
+# are switched on in the repository settings and driven by GitHub's advisory
+# database, so nothing in this file turns them on or off.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
