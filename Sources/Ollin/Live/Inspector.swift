@@ -1145,6 +1145,12 @@ extension EnvironmentValues {
 struct KeyframeDiamond: View {
     let handle: ParamHandle
     let palette: OllinInspector.Palette
+    /// Cancel the click target's own trailing padding, so the row's spacing is
+    /// the whole gap the eye sees and the value sits beside the *mark* rather
+    /// than beside its target. A row that ends on the diamond passes `false`
+    /// and keeps the target's full width, or the mark would hang past the edge
+    /// every other row lines up on.
+    var tightensFollowingControl = true
 
     @SwiftUI.Environment(\.automationTimeline) private var timeline
 
@@ -1162,12 +1168,16 @@ struct KeyframeDiamond: View {
                 SwiftUI.Image(systemName: hasTrack ? "diamond.fill" : "diamond")
                     .font(.system(size: 8.5, weight: .semibold))
                     .foregroundStyle(hasTrack ? OllinInspector.accent : palette.textTertiary)
-                    .frame(width: 17, height: 17)
+                    .frame(width: 22, height: 22)
                     .background(onKey ? OllinInspector.accent.opacity(0.18) : .clear,
-                                in: RoundedRectangle(cornerRadius: 4))
+                                in: RoundedRectangle(cornerRadius: 5))
                     .contentShape(SwiftUI.Rectangle())
             }
             .buttonStyle(.plain)
+            // The 22pt target carries ~7pt of padding around the 8.5pt glyph;
+            // taking it back on the trailing side leaves the row's own spacing
+            // as the gap. Tied to the frame above: change one, change both.
+            .padding(.trailing, tightensFollowingControl ? -7 : 0)
             .help(hasTrack
                   ? "A key at the playhead: click to add or remove one"
                   : "Start a track with a key at the playhead")
@@ -1757,7 +1767,11 @@ private struct MenuParamRow: View {
                     HStack {
                         ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                         Spacer(minLength: 8)
-                        KeyframeDiamond(handle: handle, palette: palette)
+                        // Nothing follows on this line: the picker is below, so
+                        // the diamond keeps its full width and stays on the
+                        // trailing edge every other row's diamond sits on.
+                        KeyframeDiamond(handle: handle, palette: palette,
+                                        tightensFollowingControl: false)
                     }
                     basePicker.pickerStyle(.segmented)
                         .frame(maxWidth: .infinity)
