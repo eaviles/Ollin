@@ -330,9 +330,24 @@ final class ClosureAudioUnit: AUAudioUnit {
     /// Instantiating an in-process unit completes inline, but nothing promises
     /// that, so the wait has a way out: if the unit cannot be made, the chain
     /// gets a link that passes sound through untouched, and says so.
+    /// Carries the unit back from the callback that made it.
+    ///
+    /// `AVAudioUnit` is only declared `Sendable` by the newer SDKs, and the
+    /// state an `OSAllocatedUnfairLock` holds has to be, so on an older one the
+    /// lock will not accept it and this file stops building. A lock of its own
+    /// does the same work, and the box is what takes responsibility for it.
+    private final class InstantiatedUnit: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: AVAudioUnit?
+        var unit: AVAudioUnit? {
+            get { lock.lock(); defer { lock.unlock() }; return stored }
+            set { lock.lock(); defer { lock.unlock() }; stored = newValue }
+        }
+    }
+
     static func makeUnit() -> AVAudioUnit {
         _ = registered
-        let made = OSAllocatedUnfairLock<AVAudioUnit?>(initialState: nil)
+        let made = InstantiatedUnit()
         let done = DispatchSemaphore(value: 0)
         // A unit is asked to load in this process, which is the only way it can
         // load on a phone or a tablet, and there the option is not offered.
@@ -342,11 +357,11 @@ final class ClosureAudioUnit: AUAudioUnit {
         let options: AudioComponentInstantiationOptions = []
         #endif
         AVAudioUnit.instantiate(with: componentDescription, options: options) { unit, _ in
-            made.withLock { $0 = unit }
+            made.unit = unit
             done.signal()
         }
         _ = done.wait(timeout: .now() + 2)
-        if let unit = made.withLock({ $0 }) { return unit }
+        if let unit = made.unit { return unit }
         audioNoteOnce("a custom effect could not be created; that link in the chain passes sound through.")
         let passthrough = AVAudioUnitDelay()
         passthrough.wetDryMix = 0
