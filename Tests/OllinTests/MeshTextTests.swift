@@ -209,11 +209,27 @@ struct MeshTextTests {
 
     /// Building the word once is the advice, so the convenience form has to stay
     /// affordable when a sketch calls it every frame.
+    ///
+    /// Counted as this thread's own CPU time, never the wall clock. A budget read
+    /// off the wall reports what else the machine was doing as though it were the
+    /// cost of the work: under a sharded run this failed at eleven milliseconds
+    /// for a build that takes a fraction of one, because the thread was
+    /// descheduled partway through. CPU time does not move while the scheduler is
+    /// looking elsewhere, so the number means the same thing on an idle desk and
+    /// in the middle of a full parallel run.
     @Test func buildingAWordIsAffordable() {
         _ = Mesh.text("Ollin", font: font, size: 2, depth: 0.4)   // warm the glyph cache
-        let start = Date()
+        let start = threadCPUSeconds()
         for _ in 0..<10 { _ = Mesh.text("Ollin", font: font, size: 2, depth: 0.4) }
-        let each = Date().timeIntervalSince(start) / 10
-        #expect(each < 0.005, "a five-letter word costs \(each * 1000) ms to build")
+        let each = (threadCPUSeconds() - start) / 10
+        #expect(each < 0.005, "a five-letter word costs \(each * 1000) ms of CPU to build")
     }
+}
+
+/// The CPU time this thread has used, in seconds. Unlike a wall clock it counts
+/// only work actually done here, which is what a cost budget is asking about.
+private func threadCPUSeconds() -> Double {
+    var now = timespec()
+    guard clock_gettime(CLOCK_THREAD_CPUTIME_ID, &now) == 0 else { return 0 }
+    return Double(now.tv_sec) + Double(now.tv_nsec) / 1_000_000_000
 }
