@@ -29,12 +29,14 @@ import Testing
         // A run across the whole range. Every note is tuned by the loop rather
         // than rounded to a whole number of samples, which is what an octave at
         // the top is a test of: rounding puts it most of a semitone out.
-        samples += render(sampleRate: sampleRate, voice: Voice(string: .steel, gain: 0.8)) {
-            (0..<25).map { step in
+        // Named and annotated, rather than inferred through a map inside a
+        // trailing closure, which Swift 6.3 will not finish working out.
+        let sweep: [(at: Double, pitch: Double, velocity: Double, hold: Double)] =
+            (0..<25).map { (step: Int) in
                 (at: Double(step) * 0.13, pitch: 36 + Double(step) * 3,
                  velocity: 0.85, hold: 0.5)
             }
-        }
+        samples += render(sampleRate: sampleRate, voice: Voice(string: .steel, gain: 0.8)) { sweep }
 
         // The same note plucked in different places. Halfway along is hollow,
         // because every harmonic with a node in the middle is missing; near the
