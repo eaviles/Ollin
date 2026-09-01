@@ -18,7 +18,8 @@ import UniformTypeIdentifiers
 /// flat regions to hold the edge fraction down).
 ///
 /// A passing snapshot also reports how close it came: a reference above
-/// `driftWarningFraction` of the tolerance prints a line naming itself, so a
+/// `driftWarningFraction` of the tolerance prints a line naming itself and
+/// writes the same actual / reference / diff triple a failure does, so a
 /// change that moves the render a little is visible in the run that makes it
 /// rather than years later, when something unrelated finally tips it past the
 /// bar. See `warnIfDrifting`.
@@ -127,9 +128,13 @@ enum Snapshot {
         for i in a.bytes.indices { total += abs(Int(a.bytes[i]) - Int(r.bytes[i])) }
         let mean = Double(total) / Double(a.bytes.count)
 
-        // On a real divergence, drop the actual frame, the reference it missed,
-        // and an amplified difference image somewhere inspectable together.
-        if mean >= tolerance { try? writeFailureArtifacts(actual: a, reference: r, named: name) }
+        // A divergence, or a drift worth a look, drops the actual frame, the
+        // reference it missed, and an amplified difference image somewhere
+        // inspectable together. The drift warning says "find the cause", and
+        // the triple is where finding it starts.
+        if mean >= tolerance * driftWarningFraction {
+            try? writeComparisonArtifacts(actual: a, reference: r, named: name)
+        }
         warnIfDrifting(mean, named: name)
         return mean
     }
@@ -210,13 +215,13 @@ enum Snapshot {
         try writePNG(image, to: referencesDirectory.appendingPathComponent("\(name).png"))
     }
 
-    /// Write the failing triple: `<name>.png` (the actual frame),
+    /// Write the comparison triple: `<name>.png` (the actual frame),
     /// `<name>.reference.png`, and `<name>.diff.png`, where the diff holds the
     /// per-channel absolute difference amplified 8x so a near-tolerance
     /// divergence is visible at a glance instead of reading as black.
-    private static func writeFailureArtifacts(actual a: (bytes: [UInt8], width: Int, height: Int),
-                                              reference r: (bytes: [UInt8], width: Int, height: Int),
-                                              named name: String) throws {
+    private static func writeComparisonArtifacts(actual a: (bytes: [UInt8], width: Int, height: Int),
+                                                 reference r: (bytes: [UInt8], width: Int, height: Int),
+                                                 named name: String) throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ollin-snapshot-failures")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
@@ -231,7 +236,7 @@ enum Snapshot {
                      to: dir.appendingPathComponent("\(name).reference.png"))
         try writePNG(image(from: diff, width: a.width, height: a.height),
                      to: dir.appendingPathComponent("\(name).diff.png"))
-        print("Ollin: snapshot '\(name)' diverged; wrote actual, reference, and 8x diff to \(dir.path)/")
+        print("Ollin: wrote snapshot '\(name)' actual, reference, and 8x diff to \(dir.path)/")
     }
 
     /// Wrap a tightly-packed RGBA8 buffer back into a `CGImage` for writing.
