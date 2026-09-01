@@ -68,7 +68,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # The macos-26 image matches the development toolchain (Xcode 26 / the
-      # macOS 26 SDK), so what builds locally builds here — including macOS 26
+      # macOS 26 SDK), so what builds locally builds here, including macOS 26
       # SDK symbols the older macos-15 image (Xcode 16 / Swift 6.1.2) couldn't
       # even reference. We don't pin an Xcode path (the exact Xcode_26.x.app name
       # drifts as the image updates); just log the toolchain so a future
