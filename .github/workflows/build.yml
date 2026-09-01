@@ -35,13 +35,21 @@ name: Build
 # once the repo is public, from a contributor. Public is also when this stops
 # costing anything: standard runners, macOS among them, are free there.
 #
-# Docs-only changes still skip: there is nothing to compile.
+# Every pull request, with no path filter, because both jobs are required
+# checks on main and a required check that never runs is a merge that can never
+# happen. A docs-only change used to skip this workflow, which meant it also
+# never reported, and the "main" ruleset would then wait forever for an answer
+# nothing was going to give. A filter cannot fix that from this side either: a
+# pull request touching a Markdown file and a Swift file matches both a
+# paths-ignore and its complement, so a second workflow standing in for the
+# skipped one double-reports under the same name.
+#
+# The cost this trades away is the one the note above already retired. Standard
+# runners are free on a public repository, so compiling once for a typo fix
+# spends nothing but the contributor's patience.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "**.md"
-      - "Docs/**"
   workflow_dispatch:
 
 # A newer push to the same branch/PR supersedes an in-flight run.
