@@ -81,7 +81,7 @@ final class FieldWorld_Figure: Sketch {
             drawPlane(width: 580, depth: 580)
         }
         specular(0.12)
-        shininess(24)
+        specularSharpness(24)
         drawMeshField(field)
     }
 }

@@ -117,7 +117,7 @@ Light kinds, curated rigs, and cast shadows.
 
 | Sketch | What it shows |
 | --- | --- |
-| [Lighting](Lighting/Lighting/) | The three light kinds shading solids by hand (a fixed directional key, an orbiting point bulb, a sweeping spot), with a rising-shininess sphere row. |
+| [Lighting](Lighting/Lighting/) | The three light kinds shading solids by hand (a fixed directional key, an orbiting point bulb, a sweeping spot), with a rising-specularSharpness sphere row. |
 | [LightingPresets](Lighting/LightingPresets/) | One call relights the whole scene: the curated `LightingPreset`s (`.standard`/`.threePoint`/`.goldenHour`/`.noir`/`.studio`/`.moonlight`) cycling over one still life, plus a sketch-built custom rig. Click or press a key to step. |
 | [Shadows](Lighting/Shadows/) | Directional cast shadows: solids drop shadows onto a floor and onto one another via `castShadows()`. |
 | [SpotShadow](Lighting/SpotShadow/) | A spot light as the shadow caster: a perspective shadow map fit to its cone, so the solids inside the beam drop crisp shadows. |

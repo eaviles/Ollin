@@ -10,7 +10,7 @@ import os
 ///
 /// ```swift
 /// let out = MIDIOutput()
-/// override func setup() { try? out.open(to: "Grid") }   // first destination matching "Grid"
+/// override func setup() { try? out.open(matching: "Grid") }   // first destination matching "Grid"
 /// override func draw() { out.controlChange(7, value: Int(level * 127)) }
 /// ```
 ///
@@ -54,7 +54,7 @@ public final class MIDIOutput: @unchecked Sendable {
     /// Opens an output to a hardware destination: the first one whose name
     /// contains `match` (case-insensitive), or the first available when `match` is
     /// `nil`. Throws if Core MIDI can't be opened.
-    public func open(to match: String? = nil) throws {
+    public func open(matching match: String? = nil) throws {
         guard !isOpen else { return }
         let client = try createClient()
         var port = MIDIPortRef()

@@ -541,7 +541,7 @@ override func draw() {
 }
 ```
 
-A `DetectedBarcode` carries a `payload`, a `symbology`, a `confidence`, and `corners(in:)` / `center(in:)` for where it is. The `payload` is the decoded text or URL, or `nil`. The `symbology` is a name like `"QR"` or `"EAN13"`.
+A `DetectedBarcode` carries a `payload`, a `symbology`, a `confidence`, and `corners(in:)` / `center(in:)` for where it is. The `payload` is the decoded text or URL, or `nil`. The `symbology` is a typed value: compare it against `.qr`, `.ean13`, `.code128`, and the rest. A kind Ollin does not name still arrives, under the name the system gives it.
 
 <a name="textrecognizer"></a>
 
@@ -891,7 +891,7 @@ ModelTracker(modelAt: URL)                                // bound to no source;
 var labels: [Classification] { get }                      // classifier outputs, strongest first
 var topClassification: Classification? { get }
 func confidence(of: String) -> Double
-var objects: [DetectedObject] { get }                     // object-detector outputs
+var objects: [Detection] { get }                     // object-detector outputs
 var map: Image? { get }                                   // image-typed output, white-alpha
 var image: Image? { get }                           // image-typed output, full color
 var classMask: ClassMask? { get }                         // semantic-segmenter output
@@ -939,7 +939,7 @@ The `StyleMirror` example's model isn't fetched at all. You train it yourself fr
 ```swift
 struct ModelOutput {
     var labels: [Classification]     // classifier outputs, strongest first
-    var objects: [DetectedObject]    // detector outputs
+    var objects: [Detection]    // detector outputs
     var map: Image?                  // image-typed output, white-alpha
     var image: Image?          // image-typed output, full color
     var classMask: ClassMask?        // semantic-segmenter output
@@ -947,7 +947,7 @@ struct ModelOutput {
     func valueNormalized(at: Vector2) -> Double
 }
 
-struct DetectedObject {
+struct Detection {
     var label: String                // what the model says it is
     var confidence: Double           // 0…1
     func bounds(in: Rectangle, mirrored: Bool = false) -> Rectangle
@@ -955,7 +955,7 @@ struct DetectedObject {
 }
 ```
 
-What the still-image `detect(in:)` returns, the same surfaces the live tracker publishes as one value. `DetectedObject` is one thing an object-detection model found. It carries a label, a confidence, and a box, mapped onto the canvas by the usual `in:` helpers.
+What the still-image `detect(in:)` returns, the same surfaces the live tracker publishes as one value. `Detection` is one thing an object-detection model found. It carries a label, a confidence, and a box, mapped onto the canvas by the usual `in:` helpers.
 
 <a name="classmask"></a>
 

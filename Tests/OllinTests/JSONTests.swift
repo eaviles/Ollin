@@ -17,12 +17,12 @@ struct JSONTests {
         let json = try #require(JSON(text: """
             {"text": "hi", "n": 2.5, "flag": true, "nothing": null}
             """))
-        #expect(json["text"].string == "hi")
+        #expect(json["text"].text == "hi")
         #expect(json["n"].number == 2.5)
         #expect(json["flag"].bool == true)
         #expect(json["nothing"].isNull)
         #expect(json["text"].number == nil)
-        #expect(json["n"].string == nil)
+        #expect(json["n"].text == nil)
     }
 
     /// A JSON true arrives from the system reader as a number holding 1, so
@@ -83,7 +83,7 @@ struct JSONTests {
     /// The dotted form reads the same value as the keyed one.
     @Test func theDottedFormReadsTheSameValue() throws {
         let json = try #require(JSON(text: #"{"city": {"name": "Oslo"}}"#))
-        #expect(json.city.name.string == "Oslo")
+        #expect(json.city.name.text == "Oslo")
         #expect(json.city.name == json["city"]["name"])
         #expect(json.nowhere.isNull)
     }
@@ -122,7 +122,7 @@ struct JSONTests {
     /// So may a bare value.
     @Test func aBareValueCanBeTheWholeDocument() throws {
         #expect(JSON(text: "42")?.number == 42)
-        #expect(JSON(text: #""hello""#)?.string == "hello")
+        #expect(JSON(text: #""hello""#)?.text == "hello")
         #expect(JSON(text: "true")?.bool == true)
     }
 

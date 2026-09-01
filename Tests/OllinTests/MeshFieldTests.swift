@@ -272,7 +272,7 @@ private final class FieldABSketch: Sketch {
             drawPlane(width: 24, depth: 24)
         }
         specular(0.3)
-        shininess(32)
+        specularSharpness(32)
         switch mode {
         case .field, .fieldUnculled:
             drawMeshField(field)

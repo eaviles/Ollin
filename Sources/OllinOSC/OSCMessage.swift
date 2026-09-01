@@ -13,7 +13,7 @@ import Foundation
 /// the common "one value per address" case stays terse:
 ///
 /// ```swift
-/// if let level = receiver.message("/level")?.float { ... }
+/// if let level = receiver.message("/level")?.number { ... }
 /// ```
 public struct OSCMessage: Sendable, Equatable {
     /// The OSC address pattern, e.g. `/synth/1/freq`.
@@ -35,12 +35,12 @@ public struct OSCMessage: Sendable, Equatable {
 
     // MARK: First-argument convenience (coerced)
 
-    /// The first argument as a `Float` (coercing across numeric tags).
-    public var float: Float? { arguments.first?.float }
+    /// The first argument as a `Double` (coercing across numeric tags).
+    public var number: Double? { arguments.first?.number }
     /// The first argument as an `Int` (coercing across numeric tags).
     public var int: Int? { arguments.first?.int }
     /// The first argument as a `String`.
-    public var string: String? { arguments.first?.string }
+    public var text: String? { arguments.first?.text }
     /// The first argument as a `Bool`.
     public var bool: Bool? { arguments.first?.bool }
 }

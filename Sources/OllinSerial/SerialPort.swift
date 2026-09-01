@@ -13,7 +13,7 @@ import os
 /// override func setup() { serial.open() }
 /// override func draw() {
 ///     // 1. Continuous control: read the latest value each frame.
-///     let level = serial.float(default: 0)
+///     let level = serial.number(default: 0)
 ///
 ///     // 2. Discrete events: drain every line since the last frame.
 ///     for line in serial.lines() where line == "pressed" { trigger() }
@@ -161,9 +161,11 @@ public final class SerialPort: @unchecked Sendable {
         state.withLock { $0.latest }
     }
 
-    /// The latest line as a `Float`, for the classic one-number-per-line
+    /// The latest line as a number, for the classic one-number-per-line
     /// sensor stream, or `nil` when nothing numeric has arrived.
-    public func float() -> Float? { number().map(Float.init) }
+    public func number() -> Double? {
+        latestLine.flatMap(SerialPort.number(in:))
+    }
     /// The latest line as an `Int`.
     public func int() -> Int? {
         guard let value = number() else { return nil }
@@ -178,16 +180,12 @@ public final class SerialPort: @unchecked Sendable {
         }
     }
 
-    /// The latest `Float`, or `fallback` if nothing numeric has arrived.
-    public func float(default fallback: Float) -> Float { float() ?? fallback }
+    /// The latest number, or `fallback` if nothing numeric has arrived.
+    public func number(default fallback: Double) -> Double { number() ?? fallback }
     /// The latest `Int`, or `fallback` if nothing numeric has arrived.
     public func int(default fallback: Int) -> Int { int() ?? fallback }
     /// The latest `Bool`, or `fallback` if nothing boolean has arrived.
     public func bool(default fallback: Bool) -> Bool { bool() ?? fallback }
-
-    private func number() -> Double? {
-        latestLine.flatMap(SerialPort.number(in:))
-    }
 
     // MARK: Reading, event drain
 

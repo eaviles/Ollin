@@ -128,7 +128,7 @@ fragment float4 ollin_point_fragment(PointOut in [[stage_in]]) {
 // surface flat in its color (the unlit look — set a light to shade the form); with
 // lights it shades that color through a Blinn-Phong material — ambient + per-light
 // diffuse + specular, directional/point/spot. The material's specular strength +
-// shininess ride the vertices' spare w slots. Opacity is the baked color's alpha.
+// specularSharpness ride the vertices' spare w slots. Opacity is the baked color's alpha.
 // Straight-alpha out into the linear target.
 
 struct MeshOut {
@@ -1354,7 +1354,7 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
     int model = (int)f.model.x;              // 0 standard / physically-based, 1 toon, 2 Gooch
     float bands = max(f.model.y, 1.0);
     float specStrength = f.model.z;
-    float shininess = max(f.model.w, 1.0);
+    float specularSharpness = max(f.model.w, 1.0);
     bool wantsSSS = f.sss.w > 0.0;
     float3 sssAccum = float3(0.0);
     float3 keyToLight = float3(0.0);
@@ -1388,14 +1388,14 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
             float ndl = max(dot(s.N, toLight), 0.0);
             float d = ceil(ndl * bands) / bands;
             float3 h = normalize(toLight + viewDir);
-            float specRaw = (ndl > 0.0) ? pow(max(dot(s.N, h), 0.0), shininess) : 0.0;
+            float specRaw = (ndl > 0.0) ? pow(max(dot(s.N, h), 0.0), specularSharpness) : 0.0;
             float spec = (specRaw > 0.5) ? specStrength : 0.0;
             direct += atten * (s.albedo * L.color.rgb * d + L.specular.rgb * spec);
         } else if (model == 2) {
             // Gooch: the tone is set after the loop; each light still adds a highlight.
             float ndl = max(dot(s.N, toLight), 0.0);
             float3 h = normalize(toLight + viewDir);
-            float specRaw = (ndl > 0.0) ? pow(max(dot(s.N, h), 0.0), shininess) : 0.0;
+            float specRaw = (ndl > 0.0) ? pow(max(dot(s.N, h), 0.0), specularSharpness) : 0.0;
             direct += atten * L.specular.rgb * (specRaw * specStrength);
         } else {
             direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten);
@@ -2822,7 +2822,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     }
     float3 viewDir = normalize(light.cameraPosition.xyz - worldPos);
     float specStrength = mat.specular;
-    float shininess = max(mat.shininess, 1.0);
+    float specularSharpness = max(mat.specularSharpness, 1.0);
     int model = mat.shadingModel;            // 0 standard, 1 toon, 2 Gooch
     float bands = max(mat.toonBands, 1.0);
     bool wantsSSS = mat.subsurfaceColor.a > 0.0;
@@ -2943,11 +2943,11 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
 
             // The LUT texel for this surface: the physically-based model brings its own
             // perceptual roughness; the Blinn-Phong models map their exponent onto the
-            // equivalent GGX lobe width (alpha = sqrt(2/(shininess + 2)), so perceptual
+            // equivalent GGX lobe width (alpha = sqrt(2/(specularSharpness + 2)), so perceptual
             // roughness is its square root).
             float rough = (model == 3)
                         ? ollin_ndf_filtered(clamp((float)mat.roughness, 0.045, 1.0), roughKernel)
-                        : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
+                        : clamp(sqrt(sqrt(2.0 / (specularSharpness + 2.0))), 0.045, 1.0);
             float NoV = saturate(dot(n, viewDir));
             float2 ltcUV = ollin_ltc_uv(rough, NoV);
             float4 lt1 = ltcMat.sample(ollinLTCSampler, ltcUV);
@@ -3133,7 +3133,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         float raw = dot(n, toLight);
         float ndl = max((raw + L.softness) / (1.0 + L.softness), 0.0);
         float3 h = normalize(toLight + viewDir);
-        float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) : 0.0;
+        float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), specularSharpness) : 0.0;
         // The highlight takes the light's own specular tint (defaults to its diffuse
         // color, so a single-color light is unchanged).
         float3 specCol = L.specular.rgb * (specRaw * specStrength);
@@ -3307,7 +3307,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
 
     // Rim (Fresnel edge) glow: a bright halo at grazing angles in the rim color.
     if (mat.rimColor.a > 0.0) {
-        float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), mat.rimPower);
+        float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), mat.rimSharpness);
         lit += mat.rimColor.a * rim * mat.rimColor.rgb;
     }
 
@@ -3383,7 +3383,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
     }
     float3 viewDir = normalize(light.cameraPosition.xyz - worldPos);
     float specStrength = mat.specular;
-    float shininess = max(mat.shininess, 1.0);
+    float specularSharpness = max(mat.specularSharpness, 1.0);
     int model = mat.shadingModel;            // 0 standard, 1 toon, 2 Gooch
     float bands = max(mat.toonBands, 1.0);
     bool wantsSSS = mat.subsurfaceColor.a > 0.0;
@@ -3501,11 +3501,11 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
 
             // The LUT texel for this surface: the physically-based model brings its own
             // perceptual roughness; the Blinn-Phong models map their exponent onto the
-            // equivalent GGX lobe width (alpha = sqrt(2/(shininess + 2)), so perceptual
+            // equivalent GGX lobe width (alpha = sqrt(2/(specularSharpness + 2)), so perceptual
             // roughness is its square root).
             float rough = (model == 3)
                         ? ollin_ndf_filtered(clamp(pxRough, 0.045, 1.0), roughKernel)
-                        : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
+                        : clamp(sqrt(sqrt(2.0 / (specularSharpness + 2.0))), 0.045, 1.0);
             float NoV = saturate(dot(n, viewDir));
             float2 ltcUV = ollin_ltc_uv(rough, NoV);
             float4 lt1 = ltcMat.sample(ollinLTCSampler, ltcUV);
@@ -3691,7 +3691,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         float raw = dot(n, toLight);
         float ndl = max((raw + L.softness) / (1.0 + L.softness), 0.0);
         float3 h = normalize(toLight + viewDir);
-        float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) : 0.0;
+        float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), specularSharpness) : 0.0;
         // The highlight takes the light's own specular tint (defaults to its diffuse
         // color, so a single-color light is unchanged).
         float3 specCol = L.specular.rgb * (specRaw * specStrength);
@@ -3864,7 +3864,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
 
     // Rim (Fresnel edge) glow: a bright halo at grazing angles in the rim color.
     if (mat.rimColor.a > 0.0) {
-        float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), mat.rimPower);
+        float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), mat.rimSharpness);
         lit += mat.rimColor.a * rim * mat.rimColor.rgb;
     }
 

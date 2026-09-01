@@ -59,7 +59,7 @@ final class Grassland: Sketch {
         // A few boulders in the meadow: plain meshes, so they cast the shadows
         // the blades then receive.
         specular(0.1)
-        shininess(20)
+        specularSharpness(20)
         for i in 0 ..< 7 {
             withState {
                 let a = Double(i) / 7 * .tau + 0.4

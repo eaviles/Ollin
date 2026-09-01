@@ -202,17 +202,17 @@ import Testing
     /// A string is a `Voice` like any other, so everything around it is
     /// unchanged: the presets read back, and swapping the source swaps it back.
     @Test func aStringIsAnOrdinaryVoice() {
-        #expect(Voice.nylon.string == .nylon)
+        #expect(Voice.nylon.plucked == .nylon)
         #expect(Voice.nylon.waveform == .sine)      // it is not a wave at all
-        #expect(Voice.pluck.string == nil)
+        #expect(Voice.pluck.plucked == nil)
 
         var voice = Voice.steel
         voice.waveform = .square
-        #expect(voice.string == nil)
+        #expect(voice.plucked == nil)
         #expect(voice.source == .wave(.square))
 
-        voice.string = .harp
-        #expect(voice.source == .string(.harp))
+        voice.plucked = .harp
+        #expect(voice.source == .plucked(.harp))
     }
 
     @Test func settingsAreKeptInsideWhatMakesSense() {
@@ -232,7 +232,7 @@ import Testing
         let events = EventRing()
         // A flat envelope, so what is measured is the string and not the shape
         // laid over it.
-        let voice = Voice(string: spec, envelope: Envelope(attack: 0.0002, decay: 0.001,
+        let voice = Voice(plucked: spec, envelope: Envelope(attack: 0.0002, decay: 0.001,
                                                            sustain: 1, release: 0.1), gain: 1)
         let renderer = SynthRenderer(
             voice: voice, polyphony: 4, sampleRate: Self.sampleRate, events: events, seed: 99

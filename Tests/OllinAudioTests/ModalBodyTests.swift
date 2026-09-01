@@ -160,15 +160,15 @@ import Testing
     }
 
     @Test func aBodyIsAnOrdinaryVoice() {
-        #expect(Voice.chime.body == .bell)
-        #expect(Voice.chime.string == nil)
-        #expect(Voice.nylon.body == nil)
+        #expect(Voice.chime.struck == .bell)
+        #expect(Voice.chime.plucked == nil)
+        #expect(Voice.nylon.struck == nil)
 
         var voice = Voice.drum
         voice.waveform = .square
-        #expect(voice.body == nil)
-        voice.body = .glass
-        #expect(voice.source == .body(.glass))
+        #expect(voice.struck == nil)
+        voice.struck = .glass
+        #expect(voice.source == .struck(.glass))
     }
 
     // MARK: - What it sounds like
@@ -308,7 +308,7 @@ import Testing
         _ body: ModalBody, midi: Double, seconds: Double, velocity: Double = 0.9
     ) -> [Float] {
         let events = EventRing()
-        let voice = Voice(body: body, envelope: Envelope(attack: 0.0002, decay: 0.001,
+        let voice = Voice(struck: body, envelope: Envelope(attack: 0.0002, decay: 0.001,
                                                          sustain: 1, release: 0.1), gain: 1)
         let renderer = SynthRenderer(
             voice: voice, polyphony: 4, sampleRate: Self.sampleRate, events: events, seed: 7

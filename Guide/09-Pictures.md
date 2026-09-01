@@ -346,7 +346,7 @@ for point in doc?["points"].array ?? [] {
 }
 ```
 
-Reach in by name or index, then ask for the kind you want at the end: `.string`, `.number`, `.int`, `.bool`, `.color`, `.array`. A key that isn't there answers null rather than stopping, so a whole path is safe to write in one line, and a loop over a key that isn't there runs zero times. That is why the `tint` above needs no check: a point that doesn't carry one lands on the fallback.
+Reach in by name or index, then ask for the kind you want at the end: `.text`, `.number`, `.int`, `.bool`, `.color`, `.array`. A key that isn't there answers null rather than stopping, so a whole path is safe to write in one line, and a loop over a key that isn't there runs zero times. That is why the `tint` above needs no check: a point that doesn't carry one lands on the fallback.
 
 Both loaders belong in `setup()`. Reading a file is slow next to drawing one frame, and a network URL blocks until it arrives.
 
@@ -418,7 +418,7 @@ final class Edits: Sketch {
     override func draw() {
         background(.black)
         for message in edits.messages() {
-            splash(message.json["title"].string ?? "")
+            splash(message.json["title"].text ?? "")
         }
     }
 }

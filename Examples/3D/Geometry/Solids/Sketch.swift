@@ -61,7 +61,7 @@ final class Solids3D: Sketch {
                     rotateX(sin(time * 0.35 + Double(i)) * 0.3)
                     fill(Color(hue: hue, saturation: 0.6, brightness: 0.95))
                     specular(0.4)
-                    shininess(48)
+                    specularSharpness(48)
                     drawMesh(shape.mesh)
                 }
                 withBillboard(at: Vector3(0, 1.35, 0)) {

@@ -529,11 +529,11 @@ struct LightingTests {
     @Test func materialRidesTheBatchUniform() {
         let d = freshDrawer()
         d.specular(0.6)
-        d.shininess(50)
+        d.specularSharpness(50)
         d.drawMesh(.box(size: 1))
         let finish = d.batches.last!.finish
         #expect(close(finish.specular, 0.6))   // bound per batch as a uniform
-        #expect(close(finish.shininess, 50))
+        #expect(close(finish.specularSharpness, 50))
         // The Blinn-Phong material rides the batch uniform, not the vertices. The w slots
         // carry only the ray-traced-reflection finish: a non-PBR mesh bakes metalness 0
         // (normal.w) and roughness 1 (position.w), so a reflection treats it as diffuse.
@@ -543,13 +543,13 @@ struct LightingTests {
 
     @Test func materialIsSavedByState() {
         let d = freshDrawer()
-        d.specular(0.6); d.shininess(50)
+        d.specular(0.6); d.specularSharpness(50)
         d.pushState()
-        d.specular(0.1); d.shininess(8)
+        d.specular(0.1); d.specularSharpness(8)
         d.popState()
         d.drawMesh(.box(size: 1))
         let finish = d.batches.last!.finish
-        #expect(close(finish.specular, 0.6) && close(finish.shininess, 50))
+        #expect(close(finish.specular, 0.6) && close(finish.specularSharpness, 50))
     }
 
     @Test func materialChangeBreaksTheSolidBatch() {

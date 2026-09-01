@@ -32,17 +32,17 @@ final class LightKinds: Sketch {
 
         withState {
             translate(-2.4, 0.85, 0.2)
-            fill(Color(white: 0.9)); specular(0.5); shininess(80)
+            fill(Color(white: 0.9)); specular(0.5); specularSharpness(80)
             drawSphere(radius: 0.85)
         }
         withState {
             translate(0.2, 0.75, -0.4); rotateY(0.5)
-            fill(Color(white: 0.85)); specular(0.3); shininess(40)
+            fill(Color(white: 0.85)); specular(0.3); specularSharpness(40)
             drawBox(size: 1.5)
         }
         withState {
             translate(2.5, 0.7, 0.6); rotateX(1.1); rotateY(0.4)
-            fill(Color(white: 0.9)); specular(0.5); shininess(80)
+            fill(Color(white: 0.9)); specular(0.5); specularSharpness(80)
             drawTorus(radius: 0.62, tube: 0.26)
         }
 

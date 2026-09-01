@@ -8,7 +8,7 @@ import os
 /// One thing an object-detection model found: what it is, how sure the model
 /// is, and where — a labeled box, in normalized coordinates until the `in:`
 /// helpers map it onto the canvas.
-public struct DetectedObject: Sendable {
+public struct Detection: Sendable {
 
     /// What the model says the object is — one of *that model's* labels (a
     /// COCO-trained detector says `"person"`, `"dog"`, `"bicycle"`, …).
@@ -77,7 +77,7 @@ public struct ModelOutput: @unchecked Sendable {
 
     /// What an object-detection model found — empty unless the model reports
     /// labeled boxes.
-    public let objects: [DetectedObject]
+    public let objects: [Detection]
 
     /// An image-typed output as a drawable `Image` — white, with alpha = the
     /// output value (`0…1`) — or `nil` when the model has none. At the model's
@@ -178,7 +178,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         /// A pre-loaded model handed to `init(_:model:)`, consumed by the load.
         var pendingModel: MLModel?
         var labels: [Classification] = []
-        var objects: [DetectedObject] = []
+        var objects: [Detection] = []
         var map: Image?
         var image: Image?
         var mapBytes: MapBytes?
@@ -216,7 +216,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
 
     /// What the most recent analyzed frame's object detection found — empty
     /// unless the model reports labeled boxes.
-    public var objects: [DetectedObject] { lock.withLockUnchecked { $0.objects } }
+    public var objects: [Detection] { lock.withLockUnchecked { $0.objects } }
 
     /// The model's image-typed output from the most recent analyzed frame —
     /// white, alpha = the output value — or `nil` before the first result (or
@@ -528,7 +528,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
 
     private struct Decoded {
         var labels: [Classification] = []
-        var objects: [DetectedObject] = []
+        var objects: [Detection] = []
         var observation: PixelBufferObservation?
         var featureValue: MLSendableFeatureValue?
     }
@@ -551,7 +551,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
             case let object as RecognizedObjectObservation:
                 let box = object.boundingBox.cgRect
                 let top = object.labels.first
-                decoded.objects.append(DetectedObject(
+                decoded.objects.append(Detection(
                     label: top?.identifier ?? "object",
                     confidence: Double(top?.confidence ?? object.confidence),
                     boundsN: Rectangle(x: box.origin.x, y: box.origin.y,

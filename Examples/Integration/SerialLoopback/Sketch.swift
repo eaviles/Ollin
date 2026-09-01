@@ -39,7 +39,7 @@ final class SerialLoopback: Sketch {
         if trace.count > 240 { trace.removeFirst(trace.count - 240) }
 
         // The polling cache: the latest value, read whenever this frame lands.
-        let value = Double(port.float(default: 512))
+        let value = port.number(default: 512)
 
         // The trace, pinned to the right edge and growing in leftward.
         let points = trace.enumerated().map { index, sample in

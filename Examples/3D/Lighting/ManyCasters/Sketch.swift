@@ -76,7 +76,7 @@ final class ManyCasters: Sketch {
         }
 
         specular(0.28)
-        shininess(42)
+        specularSharpness(42)
 
         withState {
             translate(-1.0, 1.1, 2.4)

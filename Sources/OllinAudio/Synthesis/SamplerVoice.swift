@@ -34,7 +34,7 @@ struct SamplerVoice {
 
     /// Sets up a note.
     mutating func start(instrument: SampledInstrument, pitch: Double, velocity: Double,
-                        spec: Sampled, sampleRate: Double) {
+                        spec: Sampler, sampleRate: Double) {
         reset()
         let played = pitch + spec.transposition
         let key = Int(played.rounded())

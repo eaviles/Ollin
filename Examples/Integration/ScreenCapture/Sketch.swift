@@ -85,7 +85,7 @@ final class ScreenCaptureExample: Sketch {
         // the sketch keeps drawing in the meantime.
         Task { @MainActor in
             var lines: [String] = ["Displays"]
-            for display in await ScreenCapture.displays() {
+            for display in await ScreenCapture.availableDisplays() {
                 lines.append("  .display(\(display.id))   \(display.label)")
             }
             lines.append("Apps")
@@ -93,7 +93,7 @@ final class ScreenCaptureExample: Sketch {
                 lines.append("  .app(\"\(app.name)\")")
             }
             lines.append("Windows")
-            for window in await ScreenCapture.windows().prefix(12) {
+            for window in await ScreenCapture.availableWindows().prefix(12) {
                 guard let title = window.title, !title.isEmpty else { continue }
                 lines.append("  .window(title: \"\(title)\")")
             }

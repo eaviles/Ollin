@@ -515,7 +515,7 @@ typedef struct {
 // 2 Gooch warm–cool, 3 physically-based metallic-roughness) with layered **finishes**
 // evaluated in the shared `meshLitColor` tail — Blinn-Phong specular, a Fresnel **rim**
 // glow, fake **subsurface** scattering, and a Fresnel-driven **iridescent** sheen. Each
-// finish is inert at its zero value, so the default material (specular 0, shininess 32,
+// finish is inert at its zero value, so the default material (specular 0, specularSharpness 32,
 // everything else 0, shading model 0) shades byte-identically to the plain Lambert path.
 // Shading model 3 swaps the diffuse+Blinn-Phong term for a Cook-Torrance microfacet BRDF
 // driven by `metallic`/`roughness` (the surface color stays the baked vertex color =
@@ -536,10 +536,10 @@ typedef struct {
     simd_float4 goochCool;        // rgb linear Gooch cool tone (shadow side); a unused
     simd_float4 sparkleColor;     // rgb linear flake tint; a = sparkle strength (0 = none)
     float specular;               // Blinn-Phong specular strength (0 = matte)
-    float shininess;              // Blinn-Phong shininess exponent (>= 1)
+    float specularSharpness;      // Blinn-Phong specular exponent (>= 1)
     float iridescence;            // iridescent sheen strength (0 = none)
     float iridescenceScale;       // iridescence band count, head-on -> grazing
-    float rimPower;               // Fresnel exponent for the rim falloff
+    float rimSharpness;           // Fresnel exponent for the rim falloff
     float toonBands;              // number of cel bands (toon shading)
     int   shadingModel;           // 0 standard (Lambert), 1 toon (cel), 2 Gooch (warm-cool), 3 physically-based
     float metallic;               // PBR (shading model 3): 0 dielectric … 1 metal; ignored otherwise
@@ -1073,7 +1073,7 @@ typedef struct {
 typedef struct {
     simd_float4 model;   // x = shading model: 0 standard/physically-based, 1 toon, 2 Gooch
                          // y = cel bands (toon), z = Blinn-Phong specular strength,
-                         // w = shininess. The last two are read by the stylized models
+                         // w = specularSharpness. The last two are read by the stylized models
                          // only: the standard model's highlight is not traced, the
                          // envelope that keeps every existing reflective frame unmoved.
     simd_float4 warm;    // rgb = Gooch warm tone (lit side); w = the rim's Fresnel exponent

@@ -43,7 +43,7 @@ struct TakeTests {
         override func mouseReleased() { releases += 1 }
         override func keyPressed() { keyDowns += 1 }
         override func keyReleased() { keyUps += 1 }
-        override func mouseWheel() { wheels += 1 }
+        override func mouseScrolled() { wheels += 1 }
     }
 
     /// Drive a run the way the live window does: an irregular clock, input

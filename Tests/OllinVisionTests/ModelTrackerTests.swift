@@ -51,7 +51,7 @@ import Ollin
         // A normalized box in the picture's upper-left quarter (lower-left
         // origin: x 0…0.5, y 0.5…1) lands in the canvas rect's top-left
         // quarter, y flipped.
-        let object = DetectedObject(label: "cat", confidence: 0.9,
+        let object = Detection(label: "cat", confidence: 0.9,
                                     boundsN: Rectangle(x: 0, y: 0.5, width: 0.5, height: 0.5))
         let rect = Rectangle(x: 100, y: 100, width: 200, height: 100)
         let bounds = object.bounds(in: rect)

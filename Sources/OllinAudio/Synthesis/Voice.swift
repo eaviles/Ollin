@@ -31,20 +31,20 @@ public struct Voice: Sendable, Hashable, Codable {
         set { source = .wave(newValue) }
     }
     /// The struck body this voice rings as, or nil if it is not one.
-    public var body: ModalBody? {
+    public var struck: ModalBody? {
         get {
-            if case .body(let body) = source { return body }
+            if case .struck(let body) = source { return body }
             return nil
         }
-        set { if let newValue { source = .body(newValue) } }
+        set { if let newValue { source = .struck(newValue) } }
     }
     /// The string this voice is worked out on, or nil if it is a wave.
-    public var string: PluckedString? {
+    public var plucked: PluckedString? {
         get {
-            if case .string(let string) = source { return string }
+            if case .plucked(let string) = source { return string }
             return nil
         }
-        set { if let newValue { source = .string(newValue) } }
+        set { if let newValue { source = .plucked(newValue) } }
     }
     /// The patch this voice is built from, or nil if it is not one.
     public var patch: Patch? {
@@ -84,13 +84,13 @@ public struct Voice: Sendable, Hashable, Codable {
     /// let it ring rather than to shape it. `.plucked` is that envelope, and
     /// the presets use it.
     public init(
-        string: PluckedString,
+        plucked: PluckedString,
         envelope: Envelope = .plucked,
         filter: Filter? = nil,
         detune: Double = 0,
         gain: Double = 0.8
     ) {
-        self.init(source: .string(string), envelope: envelope, filter: filter,
+        self.init(source: .plucked(plucked), envelope: envelope, filter: filter,
                   detune: detune, gain: gain)
     }
 
@@ -99,13 +99,13 @@ public struct Voice: Sendable, Hashable, Codable {
     /// The body decides how the note fades, so the envelope's job here is to
     /// let it ring rather than to shape it.
     public init(
-        body: ModalBody,
+        struck: ModalBody,
         envelope: Envelope = .plucked,
         filter: Filter? = nil,
         detune: Double = 0,
         gain: Double = 0.8
     ) {
-        self.init(source: .body(body), envelope: envelope, filter: filter,
+        self.init(source: .struck(struck), envelope: envelope, filter: filter,
                   detune: detune, gain: gain)
     }
 
@@ -163,7 +163,7 @@ public struct Voice: Sendable, Hashable, Codable {
     /// are far too large to travel inside a note. This says only how they are
     /// played.
     public init(
-        sampled: Sampled,
+        sampled: Sampler,
         envelope: Envelope = .plucked,
         filter: Filter? = nil,
         detune: Double = 0,
@@ -316,17 +316,17 @@ extension Voice {
     )
 
     /// A nylon string: soft, round, and gone fairly soon.
-    public static let nylon = Voice(string: .nylon, gain: 0.85)
+    public static let nylon = Voice(plucked: .nylon, gain: 0.85)
 
     /// A steel string: brighter at the front and longer behind it.
-    public static let steel = Voice(string: .steel, gain: 0.8)
+    public static let steel = Voice(plucked: .steel, gain: 0.8)
 
     /// Plucked near the middle, so the even harmonics are missing and what is
     /// left rings hollow for a long time.
-    public static let harp = Voice(string: .harp, gain: 0.75)
+    public static let harp = Voice(plucked: .harp, gain: 0.75)
 
     /// A string stopped by the hand that plucked it.
-    public static let muted = Voice(string: .muted, gain: 0.9)
+    public static let muted = Voice(plucked: .muted, gain: 0.9)
 
     /// A bowed string close to the bridge: bright, and it keeps going.
     public static let violin = Voice(bowed: .violin, gain: 0.7)
@@ -358,17 +358,17 @@ extension Voice {
     public static let fmBuzz = Voice(patch: .buzz, gain: 0.5)
 
     /// A round drumhead, struck off center.
-    public static let drum = Voice(body: .drum, gain: 0.9)
+    public static let drum = Voice(struck: .drum, gain: 0.9)
 
     /// A bar free at both ends, which is what a xylophone key is.
-    public static let bar = Voice(body: .bar, gain: 0.85)
+    public static let bar = Voice(struck: .bar, gain: 0.85)
 
     /// A bell, with the minor third that makes one sound like a bell.
-    public static let chime = Voice(body: .bell, gain: 0.7)
+    public static let chime = Voice(struck: .bell, gain: 0.7)
 
     /// A glass rung rather than struck: almost nothing at the front and a long
     /// pure tone behind it.
-    public static let glass = Voice(body: .glass, gain: 0.7)
+    public static let glass = Voice(struck: .glass, gain: 0.7)
 
     /// Air rather than pitch: noise through a band the note moves.
     public static let breath = Voice(

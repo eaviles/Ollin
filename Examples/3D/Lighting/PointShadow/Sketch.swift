@@ -48,7 +48,7 @@ final class PointShadow3D: Sketch {
                 translate(cos(a) * radius, 1.1, sin(a) * radius)
                 rotateY(a + time * 0.2)
                 fill(Color(hue: Double(i) / Double(count), saturation: 0.55, brightness: 0.95))
-                specular(0.3); shininess(40)
+                specular(0.3); specularSharpness(40)
                 drawBox(width: 1.0, height: 2.2, depth: 1.0)
             }
         }
@@ -56,12 +56,12 @@ final class PointShadow3D: Sketch {
         // A couple of solids closer in, casting their own outward shadows.
         withState {
             translate(1.5, 0.9, 0.4); rotateY(time * 0.5)
-            fill(Color(hue: 0.55, saturation: 0.5, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.55, saturation: 0.5, brightness: 0.95)); specular(0.3); specularSharpness(40)
             drawSphere(radius: 0.9)
         }
         withState {
             translate(-1.4, 0.7, -1.1); rotateY(-time * 0.4); rotateX(time * 0.2)
-            fill(Color(hue: 0.0, saturation: 0.6, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.0, saturation: 0.6, brightness: 0.95)); specular(0.3); specularSharpness(40)
             drawBox(size: 1.3)
         }
 

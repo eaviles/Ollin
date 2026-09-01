@@ -66,13 +66,13 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 
 ## Reading the stream
 
-`PhoneDevice` mirrors `Record3DDevice`'s shape, with `start()` / `stop()`, a `waitingMessage` for the pre-connection notice, and `isStreaming`:
+`PhoneDevice` mirrors `Record3DDevice`'s shape, with `start()` / `stop()`, a `waitingMessage` for the pre-connection notice, and `isRunning`:
 
 ```swift
 let device = PhoneDevice()
 device.start()                       // begins connecting; safe to call once
 
-device.isStreaming                   // Bool, frames currently arriving
+device.isRunning                   // Bool, frames currently arriving
 device.waitingMessage                // a notice reflecting the live connection state
 device.latestBody                    // PhoneBody?, the tracked skeleton (Body mode)
 device.latestBodies                  // [PhoneBody], every tracked body (= one today)

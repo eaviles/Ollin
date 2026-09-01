@@ -34,7 +34,7 @@ import Testing
             var elapsed = 0.0
             var released = false
             while elapsed < seconds {
-                renderer.drive = shape(elapsed / seconds)
+                renderer.pressure = shape(elapsed / seconds)
                 if !released, elapsed > seconds - 0.5 {
                     events.push(SynthEvent(kind: .noteOff, pitch: pitch))
                     released = true

@@ -34,7 +34,7 @@ final class Bowing: Sketch {
     override func setup() {
         synth.gain = 0.7
         synth.reverb = Reverb(.hall, mix: 0.24)
-        synth.drive = 0
+        synth.pressure = 0
         rebuild()
     }
 
@@ -61,7 +61,7 @@ final class Bowing: Sketch {
         // Up the window is a faster bow or a harder breath. This is read every
         // frame while the note sounds, which is the thing an envelope cannot do.
         let wanted = mouseIsPressed ? map(mouseY, height, 0, 0, 1) : 0
-        synth.drive = clamp(wanted, 0, 1)
+        synth.pressure = clamp(wanted, 0, 1)
 
         if mouseIsPressed {
             let degree = Int(map(mouseX, 0, width, 0, 12))
@@ -100,7 +100,7 @@ final class Bowing: Sketch {
         stroke(Color(hex: 0xE8A33D, alpha: 0.8))
         strokeWeight(6 * scale)
         let start: Double = -Double.pi / 2
-        let sweep: Double = synth.drive * Double.tau * 0.999
+        let sweep: Double = synth.pressure * Double.tau * 0.999
         let ring = 120 * scale
         drawArc(center: middle, radiusX: ring, radiusY: ring,
                 start: start, stop: start + sweep, mode: .open)

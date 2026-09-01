@@ -241,7 +241,7 @@ private final class InstancedBenchScene: Sketch {
             drawPlane(width: 26, depth: 26)
         }
         specular(0.25)
-        shininess(36)
+        specularSharpness(36)
         fill(Color(white: 0.8))
         let pillar = Mesh.box(width: 0.11, height: 1, depth: 0.11)
         func height(_ s: (x: Double, z: Double, r: Double, a: Double)) -> Double {
@@ -300,7 +300,7 @@ private final class InstancedABSketch: Sketch {
         }
 
         specular(0.3)
-        shininess(32)
+        specularSharpness(32)
         fill(Color(hex: 0xB8C4E8))
 
         let pillar = Mesh.box(width: 0.5, height: 1, depth: 0.5)

@@ -11,7 +11,7 @@ internal import CJolt
 /// guessed at from the neighbors. A rod is a Cosserat rod: it holds a frame of
 /// its own, which turns with the rope and twists along it, so a link, a leaf, or
 /// a bead placed by `rotation` sits on the rope the way it would in the world.
-public struct RopeSegment: Sendable {
+public struct RopeSegment3D: Sendable {
 
     /// Where the segment sits in the rope, counting from the first point.
     public let index: Int
@@ -125,12 +125,12 @@ public final class Rope3D: SoftBody3D {
 
     /// Every segment of the rope as it stands now, in order from the first
     /// point to the last.
-    public var segments: [RopeSegment] {
+    public var segments: [RopeSegment3D] {
         let particles = particlePositions
         let orientations = rodOrientations()
         guard particles.count >= 2, orientations.count == rodCount else { return [] }
         return (0 ..< rodCount).map { index in
-            RopeSegment(index: index, start: particles[index], end: particles[index + 1],
+            RopeSegment3D(index: index, start: particles[index], end: particles[index + 1],
                         rotation: orientations[index] * Rope3D.alongY)
         }
     }

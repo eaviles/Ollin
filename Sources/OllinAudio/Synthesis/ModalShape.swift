@@ -12,7 +12,7 @@ import Ollin
 /// let bell = StruckShape(outline)              // once, in setup()
 ///
 /// override func mousePressed() {
-///     synth.voice = Voice(body: bell!.body(struckAt: Vector2(mouseX, mouseY)))
+///     synth.voice = Voice(struck: bell!.body(struckAt: Vector2(mouseX, mouseY)))
 ///     synth.play("C4")
 /// }
 /// ```
@@ -108,7 +108,7 @@ public extension ModalBody {
     /// ```swift
     /// let outline = textToShapes("O").first!
     /// let body = ModalBody(shape: outline)
-    /// synth.voice = Voice(body: body)
+    /// synth.voice = Voice(struck: body)
     /// ```
     ///
     /// A flat shape held at its edge rings at frequencies decided entirely by

@@ -82,11 +82,11 @@ final class SynthRenderer: @unchecked Sendable {
     /// that can change. It travels as one atomic word for the same reason
     /// `gain` does: a torn read on the render thread would be audible.
     /// Ignored entirely by the sources that are set going once.
-    var drive: Double {
-        get { Double(bitPattern: driveBits.load(ordering: .relaxed)) }
-        set { driveBits.store(min(max(0, newValue), 1).bitPattern, ordering: .relaxed) }
+    var pressure: Double {
+        get { Double(bitPattern: pressureBits.load(ordering: .relaxed)) }
+        set { pressureBits.store(min(max(0, newValue), 1).bitPattern, ordering: .relaxed) }
     }
-    private let driveBits = Atomic<UInt64>((1.0 as Double).bitPattern)
+    private let pressureBits = Atomic<UInt64>((1.0 as Double).bitPattern)
 
     /// How many voices are sounding, published for the sketch to read.
     ///
@@ -177,12 +177,12 @@ final class SynthRenderer: @unchecked Sendable {
         let level = gain
         // Read once for the block rather than once a sample: it is a control,
         // not a signal, and a block is a few milliseconds.
-        let driving = drive
+        let driving = pressure
 
         for frame in 0..<frameCount {
             var mix = 0.0
             for index in voices.indices where voices[index].isSounding {
-                mix += nextSample(&voices[index], drive: driving)
+                mix += nextSample(&voices[index], pressure: driving)
             }
             output[frame] = Float(softClip(mix * level))
             clock += 1
@@ -192,7 +192,7 @@ final class SynthRenderer: @unchecked Sendable {
     }
 
     /// One sample from one voice.
-    private func nextSample(_ voice: inout RenderVoice, drive: Double) -> Double {
+    private func nextSample(_ voice: inout RenderVoice, pressure: Double) -> Double {
         // A note given a length releases itself when it runs out.
         if let remaining = voice.remaining {
             if remaining <= 0 {
@@ -216,14 +216,14 @@ final class SynthRenderer: @unchecked Sendable {
                 let detuned = frequency(of: voice.pitch + voice.spec.detune) / sampleRate
                 sample = 0.5 * (sample + voice.second.next(waveform, increment: detuned))
             }
-        case .string:
+        case .plucked:
             // The string was set going when the note started; here it only
             // carries on losing what it loses.
             sample = voice.string.next()
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondString.next())
             }
-        case .body:
+        case .struck:
             sample = voice.body.next()
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondBody.next())
@@ -240,7 +240,7 @@ final class SynthRenderer: @unchecked Sendable {
             // over-bowing sounds like. Force widens the sticking band, so a
             // light bow can be over-driven and a heavy one stays solid, which is
             // the same bargain a player makes.
-            let speed = drive * (0.06 + 0.22 * min(max(0, spec.force), 1))
+            let speed = pressure * (0.06 + 0.22 * min(max(0, spec.force), 1))
             sample = voice.bow.next(bowVelocity: speed)
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondBow.next(bowVelocity: speed))
@@ -257,7 +257,7 @@ final class SynthRenderer: @unchecked Sendable {
                 sample = 0.5 * (sample + voice.secondPatch.next())
             }
         case .blown(let spec):
-            let breath = drive * 1.1
+            let breath = pressure * 1.1
             sample = voice.tube.next(breath: breath, breathiness: spec.breathiness)
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample
@@ -317,7 +317,7 @@ final class SynthRenderer: @unchecked Sendable {
         voice.second.reset()
         voice.body.reset()
         voice.secondBody.reset()
-        if case .body(let spec) = currentVoice.source {
+        if case .struck(let spec) = currentVoice.source {
             // A struck body carries its whole note in its tones, so the note is
             // made here, once, rather than a sample at a time.
             voice.body.strike(
@@ -378,7 +378,7 @@ final class SynthRenderer: @unchecked Sendable {
                 )
             }
         }
-        if case .string(let spec) = currentVoice.source {
+        if case .plucked(let spec) = currentVoice.source {
             // A string carries its whole note in the line, so the note is made
             // here, once, rather than a sample at a time.
             let played = max(SynthRenderer.lowestStringFrequency, frequency(of: event.pitch))

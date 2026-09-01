@@ -45,7 +45,7 @@ final class SpotShadow3D: Sketch {
         // A cluster of turning solids inside the beam, so the cast shadows shift and
         // overlap as the spot sweeps over them.
         specular(0.3)
-        shininess(48)
+        specularSharpness(48)
 
         withState {
             translate(-1.9, 1.0, 0.4)

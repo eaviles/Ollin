@@ -20,7 +20,7 @@ import Testing
 
         /// A climbing run through one instrument.
         func run(_ instrument: SampledInstrument, from: Int, to: Int,
-                 spec: Sampled = Sampled()) -> [Float] {
+                 spec: Sampler = Sampler()) -> [Float] {
             let events = EventRing(capacity: 1024)
             let renderer = SynthRenderer(voice: Voice(sampled: spec, envelope: .plucked, gain: 0.8),
                                          polyphony: 12, sampleRate: rate, events: events)
@@ -62,7 +62,7 @@ import Testing
         samples += [Float](repeating: 0, count: Int(0.5 * rate))
 
         print("  take: five recordings, an octave down")
-        samples += run(full, from: 45, to: 60, spec: Sampled(transposition: -12))
+        samples += run(full, from: 45, to: 60, spec: Sampler(transposition: -12))
 
         let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
         let file = try AVAudioFile(forWriting: URL(fileURLWithPath: path),

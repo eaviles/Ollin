@@ -11,7 +11,7 @@ import Testing
     static let rate = 44100.0
 
     static func render(_ instrument: SampledInstrument, pitch: Double,
-                       spec: Sampled = Sampled(), seconds: Double = 1.2,
+                       spec: Sampler = Sampler(), seconds: Double = 1.2,
                        velocity: Double = 0.9) -> [Double] {
         let events = EventRing()
         let renderer = SynthRenderer(voice: Voice(sampled: spec, envelope: .plucked),
@@ -186,7 +186,7 @@ import Testing
         let instrument = try #require(SampledInstrument.builtIn)
         let plain = Self.render(instrument, pitch: 60)
         let octaveDown = Self.render(instrument, pitch: 60,
-                                     spec: Sampled(transposition: -12))
+                                     spec: Sampler(transposition: -12))
         func peakFrequency(_ s: [Double]) -> Double {
             let window = s[Int(0.05 * Self.rate)..<Int(0.45 * Self.rate)]
             var best = 0.0, bestHz = 0.0
@@ -207,7 +207,7 @@ import Testing
         let instrument = try #require(SampledInstrument.builtIn)
         func peak(_ velocity: Double, sensitivity: Double) -> Double {
             Self.render(instrument, pitch: 60,
-                        spec: Sampled(velocitySensitivity: sensitivity),
+                        spec: Sampler(velocitySensitivity: sensitivity),
                         seconds: 0.5, velocity: velocity).map(abs).max() ?? 0
         }
         // Sensitive: a soft note is much quieter than a hard one.
@@ -220,7 +220,7 @@ import Testing
     /// back to something else and quietly not being a sampler.
     @Test func asampledVoiceWithNoInstrumentIsSilent() {
         let events = EventRing()
-        let renderer = SynthRenderer(voice: Voice(sampled: Sampled(), envelope: .plucked),
+        let renderer = SynthRenderer(voice: Voice(sampled: Sampler(), envelope: .plucked),
                                      polyphony: 4, sampleRate: Self.rate, events: events)
         renderer.gain = 1
         events.push(SynthEvent(kind: .noteOn, pitch: 60, velocity: 0.9,
@@ -233,7 +233,7 @@ import Testing
     /// The constraint the whole design is shaped by: recordings are far too
     /// large to travel inside a note, so what travels is only the settings.
     @Test func onlyTheSettingsRideTheRing() {
-        #expect(_isPOD(Sampled.self))
+        #expect(_isPOD(Sampler.self))
         #expect(_isPOD(VoiceSource.self))
         #expect(_isPOD(Voice.self))
         #expect(_isPOD(SynthEvent.self))

@@ -138,7 +138,7 @@ Everything in this chapter so far is worked out as it goes. The other way round 
 
 ```swift
 synth.instrument = SampledInstrument.builtIn
-synth.voice = Voice(sampled: Sampled(), envelope: .plucked)
+synth.voice = Voice(sampled: Sampler(), envelope: .plucked)
 synth.play("C4", for: 1.5)
 ```
 
@@ -186,7 +186,7 @@ What makes this worth the trouble is what you get without asking. The note attac
 ```swift
 var string = PluckedString.steel
 string.position = 0.5          // halfway along
-synth.voice = Voice(string: string)
+synth.voice = Voice(plucked: string)
 ```
 
 The lower half of the picture is why. A string held at a point cannot move there, so every mode with a node under your finger gets nothing. Pluck halfway along and every even mode is missing, which is the hollow tone in the top row's gaps. Pluck near the end and they are all there, thinly, which is the nasal sound of a guitar played by the bridge. The shape on the left and the bars on the right are the same fact drawn twice.
@@ -215,7 +215,7 @@ let outline = textToShapes("O").first!
 let bell = StruckShape(outline)                 // once, in setup()
 
 override func mousePressed() {
-    synth.voice = Voice(body: bell!.body(struckAt: Vector2(mouseX, mouseY)))
+    synth.voice = Voice(struck: bell!.body(struckAt: Vector2(mouseX, mouseY)))
     synth.play("C4", for: 3)
 }
 ```
@@ -246,7 +246,7 @@ let synth = Synth(.cello)
 synth.noteOn("G2")
 
 override func draw() {
-    synth.drive = 0.3 + 0.5 * abs(sin(time * 2))   // still playing it
+    synth.pressure = 0.3 + 0.5 * abs(sin(time * 2))   // still playing it
 }
 ```
 

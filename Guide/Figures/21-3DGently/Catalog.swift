@@ -49,7 +49,7 @@ final class Catalog: Sketch {
                     rotateX(0.32)
                     fill(Color(hue: Double(i) / Double(shapes.count),
                                saturation: 0.55, brightness: 0.95))
-                    specular(0.4); shininess(48)
+                    specular(0.4); specularSharpness(48)
                     drawMesh(shape.mesh)
                 }
                 withBillboard(at: Vector3(0, 1.3, 0)) {

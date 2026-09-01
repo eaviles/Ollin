@@ -70,7 +70,7 @@ public struct Sonification: Sendable, Equatable {
     public var values: [Double]
     /// Which values land at the bottom and top of the pitch range. Values
     /// outside it are held at the ends rather than running off.
-    public var domain: ClosedRange<Double>
+    public var valueDomain: ClosedRange<Double>
     /// The span of pitch the data is spread over.
     public var pitches: ClosedRange<Pitch>
     /// The notes the reading is allowed to land on, or nil to use every
@@ -79,7 +79,7 @@ public struct Sonification: Sendable, Equatable {
     /// Which way round the reading goes.
     public var polarity: Polarity
     /// How long each note lasts, in beats.
-    public var length: Double
+    public var noteLength: Double
 
     /// A second series read out as loudness, or nil to play everything at full
     /// level. See ``amplified(by:)``.
@@ -102,21 +102,21 @@ public struct Sonification: Sendable, Equatable {
     ///     of it is shrill.
     ///   - bounds: how the two ends of the data are decided.
     ///   - polarity: which way round the reading goes.
-    ///   - length: how long each note lasts, in beats.
+    ///   - noteLength: how long each note lasts, in beats.
     public init(
         _ values: [Double],
         in scale: Scale? = nil,
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        length: Double = 0.25
+        noteLength: Double = 0.25
     ) {
         self.values = values
         self.scale = scale
         self.pitches = pitches
         self.polarity = polarity
-        self.length = max(0.001, length)
-        self.domain = Sonification.domain(of: values, by: bounds)
+        self.noteLength = max(0.001, noteLength)
+        self.valueDomain = Sonification.domain(of: values, by: bounds)
         self.loudness = nil
         self.loudnessDomain = 0...1
         self.levels = -18...0
@@ -133,10 +133,10 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        length: Double = 0.25
+        noteLength: Double = 0.25
     ) {
         self.init(table.numbers(column), in: scale, pitches: pitches,
-                  bounds: bounds, polarity: polarity, length: length)
+                  bounds: bounds, polarity: polarity, noteLength: noteLength)
     }
 
     /// Reads one row of a terrain, left to right.
@@ -149,12 +149,12 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        length: Double = 0.25
+        noteLength: Double = 0.25
     ) {
         let y = min(max(row, 0), field.rows - 1)
         let values = (0 ..< field.columns).map { field[$0, y] }
         self.init(values, in: scale, pitches: pitches,
-                  bounds: bounds, polarity: polarity, length: length)
+                  bounds: bounds, polarity: polarity, noteLength: noteLength)
     }
 
     /// Reads one column of a terrain, top to bottom.
@@ -164,12 +164,12 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        length: Double = 0.25
+        noteLength: Double = 0.25
     ) {
         let x = min(max(column, 0), field.columns - 1)
         let values = (0 ..< field.rows).map { field[x, $0] }
         self.init(values, in: scale, pitches: pitches,
-                  bounds: bounds, polarity: polarity, length: length)
+                  bounds: bounds, polarity: polarity, noteLength: noteLength)
     }
 
     /// Reads a straight line across a terrain, in normalized coordinates.
@@ -182,7 +182,7 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        length: Double = 0.25
+        noteLength: Double = 0.25
     ) {
         let steps = max(2, count)
         let values = (0 ..< steps).map { index -> Double in
@@ -191,7 +191,7 @@ public struct Sonification: Sendable, Equatable {
             return field.value(u: point.x, v: point.y)
         }
         self.init(values, in: scale, pitches: pitches,
-                  bounds: bounds, polarity: polarity, length: length)
+                  bounds: bounds, polarity: polarity, noteLength: noteLength)
     }
 
     /// Reads one row of a picture, left to right, as brightness.
@@ -208,12 +208,12 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        length: Double = 0.25
+        noteLength: Double = 0.25
     ) {
         let y = min(max(row, 0), max(0, image.height - 1))
         let values = (0 ..< image.width).map { image[$0, y].luminance }
         self.init(values, in: scale, pitches: pitches,
-                  bounds: bounds, polarity: polarity, length: length)
+                  bounds: bounds, polarity: polarity, noteLength: noteLength)
     }
 
     /// Reads one column of a picture, top to bottom, as brightness.
@@ -223,12 +223,12 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        length: Double = 0.25
+        noteLength: Double = 0.25
     ) {
         let x = min(max(column, 0), max(0, image.width - 1))
         let values = (0 ..< image.height).map { image[x, $0].luminance }
         self.init(values, in: scale, pitches: pitches,
-                  bounds: bounds, polarity: polarity, length: length)
+                  bounds: bounds, polarity: polarity, noteLength: noteLength)
     }
 
     // MARK: Reading it
@@ -247,7 +247,7 @@ public struct Sonification: Sendable, Equatable {
         guard step >= 0, step < values.count else { return nil }
         return Note(pitch(for: values[step]),
                     velocity: velocity(at: step),
-                    length: length)
+                    length: noteLength)
     }
 
     /// The whole reading at once, for a phrase a sketch holds on to.
@@ -260,8 +260,8 @@ public struct Sonification: Sendable, Equatable {
     /// The way to sound anything on the same footing as the reading: a
     /// threshold, an average, the value under the mouse.
     public func pitch(for value: Double) -> Pitch {
-        let span = domain.upperBound - domain.lowerBound
-        var t = span > 1e-12 ? (value - domain.lowerBound) / span : 0.5
+        let span = valueDomain.upperBound - valueDomain.lowerBound
+        var t = span > 1e-12 ? (value - valueDomain.lowerBound) / span : 0.5
         t = min(max(t, 0), 1)
         if polarity == .negative { t = 1 - t }
 
@@ -291,7 +291,7 @@ public struct Sonification: Sendable, Equatable {
     /// is the whole difference between a sound and a measurement. It is the
     /// grid line of an ordinary chart.
     public func reference(at value: Double, velocity: Double = 0.5) -> Note {
-        Note(pitch(for: value), velocity: velocity, length: length)
+        Note(pitch(for: value), velocity: velocity, length: noteLength)
     }
 
     // MARK: Changing it

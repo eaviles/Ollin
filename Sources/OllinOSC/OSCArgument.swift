@@ -49,15 +49,15 @@ public enum OSCArgument: Sendable, Equatable {
 
     // MARK: Coercing accessors
 
-    /// The value as a `Float`, converting across the numeric tags (an `int`,
-    /// `double`, or `int64` is coerced; a `bool` reads as 0/1). `nil` for the
+    /// The value as a `Double`, converting across the numeric tags (a `float`,
+    /// `int`, or `int64` is coerced; a `bool` reads as 0/1). `nil` for the
     /// non-numeric tags.
-    public var float: Float? {
+    public var number: Double? {
         switch self {
-        case .float(let value): return value
-        case .int(let value): return Float(value)
-        case .int64(let value): return Float(value)
-        case .double(let value): return Float(value)
+        case .float(let value): return Double(value)
+        case .int(let value): return Double(value)
+        case .int64(let value): return Double(value)
+        case .double(let value): return value
         case .bool(let value): return value ? 1 : 0
         default: return nil
         }
@@ -78,7 +78,7 @@ public enum OSCArgument: Sendable, Equatable {
     }
 
     /// The value as a `String` — the payload of a `string`, or `nil` otherwise.
-    public var string: String? {
+    public var text: String? {
         if case .string(let value) = self { return value }
         return nil
     }

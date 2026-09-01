@@ -61,19 +61,19 @@ final class CameraMoves3D: Sketch {
 
         withState {
             translate(-2.3, -0.4, 0.4)
-            fill(Color(white: 0.85)); specular(0.7); shininess(120)
+            fill(Color(white: 0.85)); specular(0.7); specularSharpness(120)
             drawSphere(radius: 1.0)
         }
         withState {
             translate(0.4, -0.2, -0.3)
             rotateY(time * 0.35); rotateX(0.3)
-            fill(Color(hue: 0.04, saturation: 0.5, brightness: 0.9)); specular(0.4); shininess(48)
+            fill(Color(hue: 0.04, saturation: 0.5, brightness: 0.9)); specular(0.4); specularSharpness(48)
             drawBox(size: 1.5)
         }
         withState {
             translate(2.6, -0.5, 0.6)
             rotateX(0.9); rotateY(time * 0.5)
-            fill(Color(hue: 0.58, saturation: 0.45, brightness: 0.9)); specular(0.5); shininess(64)
+            fill(Color(hue: 0.58, saturation: 0.45, brightness: 0.9)); specular(0.5); specularSharpness(64)
             drawTorus(radius: 0.75, tube: 0.3)
         }
 

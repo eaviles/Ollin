@@ -181,11 +181,11 @@ import Ollin
 
     @Test(.enabled(if: ScreenCaptureTests.isPermitted))
     func theScreenIsListedAndCapturable() async {
-        let displays = await ScreenCapture.displays()
+        let displays = await ScreenCapture.availableDisplays()
         #expect(!displays.isEmpty)
         #expect(displays.contains { $0.isMain })
         // Listings are ordered, so reading them twice reads the same.
-        let again = await ScreenCapture.displays()
+        let again = await ScreenCapture.availableDisplays()
         #expect(displays == again)
     }
 
@@ -198,8 +198,8 @@ import Ollin
     /// property of the machine rather than of the code under test.
     @Test(.enabled(if: ScreenCaptureTests.isPermitted))
     func windowsAndAppsAreListedInAStableOrder() async {
-        let windows = await ScreenCapture.windows()
-        let windowsAgain = await ScreenCapture.windows()
+        let windows = await ScreenCapture.availableWindows()
+        let windowsAgain = await ScreenCapture.availableWindows()
         #expect(sharedOrder(windows, windowsAgain, by: \.id)
             == sharedOrder(windowsAgain, windows, by: \.id))
         #expect(windows.sorted { $0.id < $1.id } == windows)

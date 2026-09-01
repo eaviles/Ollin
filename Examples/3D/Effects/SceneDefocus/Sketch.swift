@@ -49,7 +49,7 @@ final class SceneDefocus: Sketch {
                     rotateY(time * 0.4 + Double(i))
                     fill(Color(hue: t * 0.8, saturation: 0.62, brightness: 1.0))
                     specular(0.5)
-                    shininess(64)
+                    specularSharpness(64)
                     drawSphere(radius: 1.7)
                 }
             }

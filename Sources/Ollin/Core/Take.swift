@@ -41,7 +41,7 @@ public struct Take: Codable, Equatable, Sendable {
         case rightButton(pressed: Bool)
         /// How hard the pointer is pressed, and whether the device can vary it.
         case pressure(amount: Double, canVary: Bool)
-        /// One scroll-wheel event's movement; the `mouseWheel()` hook fires.
+        /// One scroll-wheel event's movement; the `mouseScrolled()` hook fires.
         case scroll(deltaY: Double)
         /// The held modifier keys changed.
         case modifiers(ModifierKeys)

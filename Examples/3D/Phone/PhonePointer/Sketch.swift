@@ -180,7 +180,7 @@ final class PhonePointer: Sketch {
     // MARK: Words
 
     private func drawWaiting() {
-        let text = device.isStreaming
+        let text = device.isRunning
             ? "Connected. Choose Wand on the phone.\n\n" +
               "Point the back of the phone at the balls,\n" +
               "press the pad to pick one up."

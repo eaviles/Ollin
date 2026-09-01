@@ -227,9 +227,9 @@ private final class RoomProbeSketch: Sketch {
         a.send("raw", Data([1, 2, 3]))
 
         #expect(b.number("number") == 2.5)
-        #expect(b.integer("count") == 7)
+        #expect(b.int("count") == 7)
         #expect(b.text("word") == "hola")
-        #expect(b.flag("on") == true)
+        #expect(b.bool("on") == true)
         #expect(b.point("at") == Vector2(3, 4))
         #expect(b.color("ink") == Color.red)
         #expect(b.bytes("raw") == Data([1, 2, 3]))
@@ -237,8 +237,8 @@ private final class RoomProbeSketch: Sketch {
         // Nothing arrived under this key, so the fallback stands.
         #expect(b.number("missing", default: 9) == 9)
         #expect(b.text("missing", default: "none") == "none")
-        #expect(b.flag("missing", default: true) == true)
-        #expect(b.integer("missing", default: 3) == 3)
+        #expect(b.bool("missing", default: true) == true)
+        #expect(b.int("missing", default: 3) == 3)
         #expect(b.point("missing", default: Vector2(1, 1)) == Vector2(1, 1))
         #expect(b.color("missing", default: .black) == .black)
     }

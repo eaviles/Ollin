@@ -8,7 +8,7 @@ import OllinPhysics
 /// **space** drops another.
 ///
 /// The contact showcase for `World3D`. Three surfaces, all polled in `draw()`:
-/// `hoop.entered` counts the balls crossing the ring, `tray.touching` reads
+/// `hoop.arrivals` counts the balls crossing the ring, `tray.touching` reads
 /// what is resting in the tray (they fall asleep in there, and the sensor keeps
 /// reporting them), and `world.contacts` carries every knock in the scene with
 /// the speed it landed at.
@@ -142,13 +142,13 @@ final class Trigger: Sketch {
                     + "\(tray?.touching.count ?? 0)")
     }
 
-    /// The whole contact surface, read once a step. `entered` is the pair of
+    /// The whole contact surface, read once a step. `arrivals` is the pair of
     /// transitions the hoop saw this step, `touching` is standing occupancy,
     /// and `world.contacts` is every knock in the scene.
     func readTheTriggers() {
         if let hoop {
-            score += hoop.entered.count
-            if !hoop.entered.isEmpty { scoreGlow = 1 }
+            score += hoop.arrivals.count
+            if !hoop.arrivals.isEmpty { scoreGlow = 1 }
         }
         scoreGlow = max(0, scoreGlow - deltaTime * 1.6)
 

@@ -188,12 +188,12 @@ Nothing is decoded into a type first, so the shape of the document is the shape 
 Reach in by name or by index, then ask for the kind you want at the end:
 
 ```swift
-json["points"][0]["name"].string
-json.survey.title.string          // the same, written as properties
+json["points"][0]["name"].text
+json.survey.title.text          // the same, written as properties
 ```
 
 ```swift
-.string     // String?
+.text       // String?
 .number     // Double?, and a quoted number like "42" reads as one
 .int        // Int?, rounding a decimal
 .bool       // Bool?, and a number reads as a flag: zero false, anything else true

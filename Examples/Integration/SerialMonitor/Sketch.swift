@@ -67,8 +67,8 @@ final class SerialMonitor: Sketch {
         }
 
         // A numeric line also reads as a value; the bar is the latest one.
-        if let value = port.float() {
-            let level = min(max(Double(value), 0), 1023) / 1023
+        if let value = port.number() {
+            let level = min(max(value, 0), 1023) / 1023
             let barY = height - 70 * scale
             let barWidth = width - margin * 2
             fill(Color(white: 0.18))

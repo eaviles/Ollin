@@ -3220,13 +3220,13 @@ extension MetalRenderer {
             var r = OllinRTFinish()
             if f.shadingModel == 1 || f.shadingModel == 2 {
                 r.model = SIMD4(Float(f.shadingModel), max(f.toonBands, 1),
-                                f.specular, max(f.shininess, 1))
+                                f.specular, max(f.specularSharpness, 1))
                 r.warm = SIMD4(f.goochWarm.x, f.goochWarm.y, f.goochWarm.z, 0)
                 r.cool = SIMD4(f.goochCool.x, f.goochCool.y, f.goochCool.z, 0)
             }
             if f.rimColor.w > 0 {
                 r.rim = f.rimColor
-                r.warm.w = f.rimPower
+                r.warm.w = f.rimSharpness
             }
             if f.subsurfaceColor.w > 0 { r.sss = f.subsurfaceColor }
             // The two layered lobes are physically-based only, the gate the primary shade

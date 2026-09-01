@@ -98,7 +98,7 @@ let pointer = room.point("at", default: Vector2(0, 0))
 
 ```swift
 for message in room.messages() {
-    if message.key == "note" { play(message.integer ?? 0) }
+    if message.key == "note" { play(message.int ?? 0) }
 }
 ```
 

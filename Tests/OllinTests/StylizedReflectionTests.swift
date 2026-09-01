@@ -173,7 +173,7 @@ struct StylizedReflectionTests {
 private final class StylizedReflectionProbe: Sketch {
     /// Each stylized case is paired with the same material minus the stylized part, so
     /// a reading attributes to the finish rather than to the roughness a batch bakes
-    /// from its shininess, which every non-physically-based material also carries.
+    /// from its specularSharpness, which every non-physically-based material also carries.
     enum Finish {
         case standard, nothing
         case toon, toonControl
@@ -223,16 +223,16 @@ private final class StylizedReflectionProbe: Sketch {
             switch finish {
             case .standard: material(.matte)
             case .toon: material(.toon)
-            case .toonControl: material(Material(specular: 0.4, shininess: 64))
+            case .toonControl: material(Material(specular: 0.4, specularSharpness: 64))
             case .gooch: material(.gooch)
-            case .goochControl: material(Material(specular: 0.25, shininess: 48))
-            case .rim: material(Material(specular: 0.08, shininess: 20, rim: 1.0,
-                                         rimPower: 2.2,
+            case .goochControl: material(Material(specular: 0.25, specularSharpness: 48))
+            case .rim: material(Material(specular: 0.08, specularSharpness: 20, rim: 1.0,
+                                         rimSharpness: 2.2,
                                          rimColor: Color(red: 0.1, green: 1.0, blue: 0.1)))
-            case .rimControl: material(Material(specular: 0.08, shininess: 20))
-            case .glow: material(Material(specular: 0.2, shininess: 24, subsurface: 1.0,
+            case .rimControl: material(Material(specular: 0.08, specularSharpness: 20))
+            case .glow: material(Material(specular: 0.2, specularSharpness: 24, subsurface: 1.0,
                                           subsurfaceColor: Color(red: 0.1, green: 0.3, blue: 1.0)))
-            case .glowControl: material(Material(specular: 0.2, shininess: 24))
+            case .glowControl: material(Material(specular: 0.2, specularSharpness: 24))
             case .coat: material(Material(shading: .physicallyBased, metallic: 0,
                                           roughness: 0.55, clearcoat: 1,
                                           clearcoatRoughness: 0.03))

@@ -18,7 +18,7 @@ extension Material {
     /// range. Paste it wherever a `Material` goes:
     ///
     /// ```swift
-    /// material(Material(specular: 0.9, shininess: 160))
+    /// material(Material(specular: 0.9, specularSharpness: 160))
     /// let finish: Material = .glossy
     /// ```
     public var swiftSource: String {
@@ -67,7 +67,7 @@ extension Material {
         scalar("thinFilmThickness", \.thinFilmThickness)
         scalar("thinFilmIOR", \.thinFilmIOR)
         scalar("specular", \.specular)
-        scalar("shininess", \.shininess)
+        scalar("specularSharpness", \.specularSharpness)
         scalar("iridescence", \.iridescence)
         scalar("iridescenceScale", \.iridescenceScale)
         scalar("iridescenceFlow", \.iridescenceFlow)
@@ -78,7 +78,7 @@ extension Material {
         scalar("sparkleSharpness", \.sparkleSharpness)
         color("sparkleColor", \.sparkleColor)
         scalar("rim", \.rim)
-        scalar("rimPower", \.rimPower)
+        scalar("rimSharpness", \.rimSharpness)
         color("rimColor", \.rimColor)
         scalar("subsurface", \.subsurface)
         color("subsurfaceColor", \.subsurfaceColor)

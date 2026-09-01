@@ -21,7 +21,7 @@ Each is a single call you make in `draw()`, like `camera(...)`. A sketch that ca
 
 - [Showcase camera](#showcase) - `cameraShowcase(_:)`, the usual default
 - [Interactive control](#control) - `cameraControl()`
-- [The input surface it reads](#input) - `scrollDeltaY`, `modifiers`, `mouseWheel()`, `rightMouseIsPressed`
+- [The input surface it reads](#input) - `scrollDeltaY`, `modifiers`, `mouseScrolled()`, `rightMouseIsPressed`
 - [Cinematic moves](#moves) - `cameraMove(_:)`
 - [The move catalog](#catalog) - `CameraMove`
 - [Opening on an authored camera](#from-authored) - the `from:` forms, seeding the rig from any `Camera3D`
@@ -88,7 +88,7 @@ The `target` / `radius` / `azimuth` / `elevation` / `fieldOfView` arguments fram
 - `scrollDeltaY` - how far the scroll wheel or a trackpad two-finger scroll moved this frame, summed since the last frame, `0` when nothing scrolled. It is a per-frame value, so read it in `draw()`. Positive is a scroll up.
 - `modifiers` - the modifier keys held, a `ModifierKeys` option set (`.shift`, `.option`, `.command`, `.control`): `if modifiers.contains(.shift) { … }`.
 - `rightMouseIsPressed` - whether the secondary mouse button is held, the companion to `mouseIsPressed`.
-- `mouseWheel()` - an override hook called once per scroll event, for a one-shot discrete step. For continuous response poll `scrollDeltaY` instead.
+- `mouseScrolled()` - an override hook called once per scroll event, for a one-shot discrete step. For continuous response poll `scrollDeltaY` instead.
 
 So a sketch can drive its own zoom or modified gesture without the camera rig at all.
 

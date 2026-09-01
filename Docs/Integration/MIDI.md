@@ -226,11 +226,11 @@ func controlChange(_ controller: Int, value: Int, channel: Int = 1)
 func close()
 ```
 
-`open(to:)` points at a hardware destination. It takes the first one whose name contains the text you pass, or the first available when you pass nothing. Then send from `draw()`:
+`open(matching:)` points at a hardware destination. It takes the first one whose name contains the text you pass, or the first available when you pass nothing. Then send from `draw()`:
 
 ```swift
 let out = MIDIOutput()
-override func setup() { try? out.open(to: "Grid") }      // first destination matching "Grid"
+override func setup() { try? out.open(matching: "Grid") }      // first destination matching "Grid"
 override func draw() { out.controlChange(7, value: Int(level * 127)) }
 ```
 

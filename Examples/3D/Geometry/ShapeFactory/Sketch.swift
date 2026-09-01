@@ -70,7 +70,7 @@ final class ShapeFactory: Sketch {
                     rotateX(sin(time * 0.3 + Double(i)) * 0.25)
                     fill(Color(hue: hue, saturation: 0.58, brightness: 0.95))
                     specular(0.4)
-                    shininess(48)
+                    specularSharpness(48)
                     drawMesh(cell.mesh)
                 }
                 withBillboard(at: Vector3(0, 1.5, 0)) {

@@ -15,7 +15,7 @@ struct MaterialTests {
         // finishes, standard shading.
         let m = Material()
         #expect(m.specular == 0)
-        #expect(m.shininess == 32)
+        #expect(m.specularSharpness == 32)
         #expect(m.iridescence == 0 && m.rim == 0 && m.subsurface == 0)
         #expect(m.shading == .standard)
         let g = m.gpuMaterial()
@@ -24,16 +24,16 @@ struct MaterialTests {
     }
 
     @Test func clampsOutOfRange() {
-        let m = Material(toonBands: 0, specular: -1, shininess: 0,
+        let m = Material(toonBands: 0, specular: -1, specularSharpness: 0,
                          iridescence: 2, iridescenceScale: -1,
-                         rim: 5, rimPower: 0, subsurface: -0.5)
+                         rim: 5, rimSharpness: 0, subsurface: -0.5)
         #expect(m.toonBands == 1)            // >= 1
         #expect(m.specular == 0)             // >= 0
-        #expect(m.shininess == 1)            // >= 1
+        #expect(m.specularSharpness == 1)            // >= 1
         #expect(m.iridescence == 1)          // 0...1
         #expect(m.iridescenceScale == 0)     // >= 0
         #expect(m.rim == 1)                  // 0...1
-        #expect(m.rimPower >= 0.1)           // >= 0.1
+        #expect(m.rimSharpness >= 0.1)           // >= 0.1
         #expect(m.subsurface == 0)           // 0...1
     }
 
@@ -55,16 +55,16 @@ struct MaterialTests {
         // Rim/subsurface strengths ride the alpha of their color slots; the model and
         // scalar knobs map across; colors come out linearized (an sRGB 0.5 gray is < 0.5).
         let m = Material(shading: .toon, toonBands: 5,
-                         specular: 0.4, shininess: 64,
+                         specular: 0.4, specularSharpness: 64,
                          iridescence: 0.7, iridescenceScale: 2.0,
-                         rim: 0.8, rimPower: 3, rimColor: Color(white: 0.5),
+                         rim: 0.8, rimSharpness: 3, rimColor: Color(white: 0.5),
                          subsurface: 0.6, subsurfaceColor: Color(white: 1.0))
         let g = m.gpuMaterial()
         #expect(g.shadingModel == 1)
         #expect(close(g.toonBands, 5))
-        #expect(close(g.specular, 0.4) && close(g.shininess, 64))
+        #expect(close(g.specular, 0.4) && close(g.specularSharpness, 64))
         #expect(close(g.iridescence, 0.7) && close(g.iridescenceScale, 2))
-        #expect(close(g.rimPower, 3))
+        #expect(close(g.rimSharpness, 3))
         #expect(close(g.rimColor.w, 0.8))         // rim strength in the alpha slot
         #expect(close(g.subsurfaceColor.w, 0.6))  // subsurface strength in the alpha slot
         // sRGB 0.5 linearizes to ~0.214 — strictly less than 0.5, never the raw value.

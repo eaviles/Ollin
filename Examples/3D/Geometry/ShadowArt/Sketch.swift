@@ -58,7 +58,7 @@ final class ShadowArt_Example: Sketch {
 
         fill(Color(hex: 0xE8C36A))
         specular(0.35)
-        shininess(40)
+        specularSharpness(40)
         drawMesh(three ? withAboveMesh : solid)
 
         // What was asked for, and what is really thrown.

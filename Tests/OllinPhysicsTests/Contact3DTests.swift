@@ -295,8 +295,8 @@ struct Contact3DTests {
         var exited = 0
         for _ in 0 ..< 240 {
             world.advance(by: 1.0 / 60)
-            entered += zone.entered.count
-            exited += zone.exited.count
+            entered += zone.arrivals.count
+            exited += zone.departures.count
             // Occupancy and the transitions agree at every single step.
             #expect(zone.touching.contains { $0 === ball } == (entered > exited))
         }
@@ -449,7 +449,7 @@ struct Contact3DTests {
             var seen = 0
             for _ in 0 ..< 120 {
                 world.advance(by: 1.0 / 60)
-                seen += plate.entered.count
+                seen += plate.arrivals.count
             }
             return seen
         }

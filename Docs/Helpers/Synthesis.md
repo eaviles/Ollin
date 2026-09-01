@@ -141,7 +141,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 | Property | What it does |
 |---|---|
-| `source` | what the note is built from: `.wave(Waveform)`, `.string(PluckedString)`, `.body(ModalBody)`, `.bowed(BowedString)`, `.blown(BlownTube)`, `.patch(Patch)`, or `.sampled(Sampled)`. See [Physical models](#physical-models), [Patch](#patch) and [Sampled instruments](#sampled-instruments) |
+| `source` | what the note is built from: `.wave(Waveform)`, `.plucked(PluckedString)`, `.struck(ModalBody)`, `.bowed(BowedString)`, `.blown(BlownTube)`, `.patch(Patch)`, or `.sampled(Sampler)`. See [Physical models](#physical-models), [Patch](#patch) and [Sampled instruments](#sampled-instruments) |
 | `waveform` | `.sine`, `.triangle`, `.sawtooth`, `.square`, `.noise`, brightest last |
 | `envelope` | how the note's loudness moves. See [Envelope](#envelope) |
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
@@ -160,7 +160,7 @@ The geometric waves are corrected as they are drawn. A sawtooth therefore still 
 
 A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialed in.
 
-There are four, and they split into two kinds. A plucked string and a struck body are **set going once** and then left to fade, so the whole note is decided at its start. A bowed string and a blown tube are **kept going**. The note lasts as long as you keep driving it, and it can change while it sounds. `Synth.drive` is that driving, and it is the difference this section is really about.
+There are four, and they split into two kinds. A plucked string and a struck body are **set going once** and then left to fade, so the whole note is decided at its start. A bowed string and a blown tube are **kept going**. The note lasts as long as you keep driving it, and it can change while it sounds. `Synth.pressure` is that driving, and it is the difference this section is really about.
 
 #### A plucked string
 
@@ -186,7 +186,7 @@ A string is a disturbance running up and down a length of something under tensio
 ```swift
 var string = PluckedString.steel
 string.position = 0.5          // halfway along
-synth.voice = Voice(string: string)
+synth.voice = Voice(plucked: string)
 ```
 
 | Property | What it does |
@@ -240,7 +240,7 @@ let outline = textToShapes("O").first!
 let bell = StruckShape(outline)                  // once, in setup()
 
 override func mousePressed() {
-    synth.voice = Voice(body: bell!.body(struckAt: Vector2(mouseX, mouseY)))
+    synth.voice = Voice(struck: bell!.body(struckAt: Vector2(mouseX, mouseY)))
     synth.play("C4", for: 3)
 }
 ```
@@ -278,7 +278,7 @@ A body carries up to sixteen tones, which is what lets it reach the audio thread
 ```swift
 let synth = Synth(.cello)
 synth.noteOn("G2")
-synth.drive = 0.7          // and keep moving it while the note sounds
+synth.pressure = 0.7          // and keep moving it while the note sounds
 ```
 
 | Preset | What it sounds like |
@@ -309,7 +309,7 @@ Two things fall out of the model rather than being settings, and both are worth 
 ```swift
 let synth = Synth(.clarinet)
 synth.noteOn("D4")
-synth.drive = 0.8
+synth.pressure = 0.8
 ```
 
 | Preset | What it sounds like |
@@ -332,7 +332,7 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 #### Driving them
 
 ```swift
-synth.drive = 0.3 + 0.5 * abs(sin(time * 2))
+synth.pressure = 0.3 + 0.5 * abs(sin(time * 2))
 ```
 
 `drive` is `0...1`, read every sample, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is being done. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked.
@@ -368,7 +368,7 @@ An operator's `level` means one of two things depending on where it sits. On an 
 | `.modulated(by:index:)` | the other patch stops being heard and starts being felt |
 | `.mixed(with:)` | both sounding at once, additively |
 | `.fedBack(_:)` | its output operators pushing themselves |
-| `.at(level:)` / `.at(ratio:)` | balancing one against another |
+| `.level(_:)` / `.ratio(_:)` | balancing one against another |
 | `operators` / `count` | reading a patch back |
 
 | Named | What it sounds like |
@@ -407,7 +407,7 @@ Everything else a `Synth` plays is worked out as it goes. This is the other way.
 
 ```swift
 synth.instrument = SampledInstrument.builtIn
-synth.voice = Voice(sampled: Sampled(), envelope: .plucked)
+synth.voice = Voice(sampled: Sampler(), envelope: .plucked)
 synth.play("C4", for: 1.5)
 ```
 
@@ -421,9 +421,9 @@ A `Voice` travels to the audio thread inside a note and has to be copyable a wor
 |---|---|
 | `Synth.instrument` | which recordings. Set it before the notes that need it |
 | `Voice(sampled:)` | how they are played |
-| `Sampled.loops` | whether a note holds by repeating the looped part, where the recording says where that is |
-| `Sampled.velocitySensitivity` | `0` plays every note as loud as it was recorded, which suits an instrument whose recordings are already its dynamics. `1` makes velocity the whole of it |
-| `Sampled.transposition` | moves every note, for an instrument recorded at the wrong pitch |
+| `Sampler.loops` | whether a note holds by repeating the looped part, where the recording says where that is |
+| `Sampler.velocitySensitivity` | `0` plays every note as loud as it was recorded, which suits an instrument whose recordings are already its dynamics. `1` makes velocity the whole of it |
+| `Sampler.transposition` | moves every note, for an instrument recorded at the wrong pitch |
 
 The read head moves through a recording at whatever rate the pitch asks for. That moves its pitch and its length together, exactly as a tape does. That is also the limitation. Move a recording far enough and the instrument audibly changes size. A real library therefore ships many recordings rather than one, and the nearest is always chosen.
 

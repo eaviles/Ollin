@@ -20,7 +20,7 @@ final class Dial: Sketch {
     override func draw() {
         background(.white)
         // the board prints analogRead's 0...1023, one number per line
-        let level = Double(serial.float(default: 0)) / 1023
+        let level = serial.number(default: 0) / 1023
         fill(.black)
         drawCircle(width / 2, height / 2, (40 + level * 400) * scale)
     }
@@ -77,10 +77,10 @@ The port holds the device exclusively, since two readers on one port each get ha
 ```swift
 // 1. Latest value (continuous controls)
 var latestLine: String?
-func float() -> Float?          // the latest line, parsed as a number
+func number() -> Double?        // the latest line, parsed as a number
 func int() -> Int?
 func bool() -> Bool?            // "1"/"0", "true"/"false", "on"/"off"
-func float(default: Float) -> Float    // and int/bool variants
+func number(default: Double) -> Double // and int/bool variants
 
 // 2. Everything since the last call, in order (discrete events)
 func lines() -> [String]
@@ -92,7 +92,7 @@ Bytes arrive on a background queue while the sketch reads on the main thread. Ev
 **The latest value**, for a continuous sensor. Firmware that prints one number per line (`Serial.println(analogRead(A0))` and friends) reads directly:
 
 ```swift
-let level = Double(serial.float(default: 0)) / 1023
+let level = serial.number(default: 0) / 1023
 ```
 
 **The event queue**, for discrete things. `lines()` hands you every complete line received since the last call, in arrival order, and clears the queue. Call it once per frame:

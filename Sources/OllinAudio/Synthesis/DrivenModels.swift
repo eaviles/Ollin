@@ -9,7 +9,7 @@ import Foundation
 ///
 /// ```swift
 /// let synth = Synth(.cello)
-/// synth.drive = 0.7            // how hard it is being bowed
+/// synth.pressure = 0.7         // how hard it is being bowed
 /// synth.noteOn("G2")
 /// ```
 ///
@@ -99,13 +99,13 @@ public struct BowedString: Sendable, Hashable, Codable {
 ///
 /// ```swift
 /// let synth = Synth(.clarinet)
-/// synth.drive = 0.8            // how hard it is being blown
+/// synth.pressure = 0.8         // how hard it is being blown
 /// synth.noteOn("D4")
 /// ```
 ///
 /// Like the bow, it is driven rather than struck: the breath goes on for as
 /// long as the note does. Stop driving it and the tone stops, which is why
-/// `drive` is the expressive control here rather than the envelope.
+/// `pressure` is the expressive control here rather than the envelope.
 public struct BlownTube: Sendable, Hashable, Codable {
 
     /// How hard the lips are pressed, `0...1`.

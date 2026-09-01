@@ -12,7 +12,7 @@ import Ollin
 /// - **spot** — a magenta cone sweeping left-to-right from above, lighting only
 ///   what falls inside it, with a soft penumbra edge.
 ///
-/// The front row of spheres shares one fill but climbs in `shininess` left→right, so
+/// The front row of spheres shares one fill but climbs in `specularSharpness` left→right, so
 /// the specular highlight tightens from a broad sheen to a sharp glint. Lighting is
 /// per-frame (one setup shades every mesh this frame), so the lights are placed once
 /// at the top of `draw()`. Small balls mark the moving lights' positions.
@@ -45,14 +45,14 @@ final class Lighting3D: Sketch {
             drawPlane(width: 14, depth: 14)
         }
 
-        // Front row: one fill, rising shininess — the highlight tightens left→right.
-        let shininesses = [4.0, 16, 48, 128, 320]
-        for (i, s) in shininesses.enumerated() {
+        // Front row: one fill, rising specularSharpness, so the highlight tightens left to right.
+        let sharpnesses = [4.0, 16, 48, 128, 320]
+        for (i, s) in sharpnesses.enumerated() {
             withState {
                 translate(-4 + Double(i) * 2, -0.4, 1.5)
                 fill(Color(hue: 0.05, saturation: 0.55, brightness: 0.9))
                 specular(0.7)
-                shininess(s)
+                specularSharpness(s)
                 drawSphere(radius: 0.8)
             }
         }
@@ -67,7 +67,7 @@ final class Lighting3D: Sketch {
                 rotateX(0.3)
                 fill(Color(hue: 0.55 + Double(i) * 0.12, saturation: 0.5, brightness: 0.9))
                 specular(0.35)
-                shininess(40)
+                specularSharpness(40)
                 drawMesh(mesh)
             }
         }
@@ -77,7 +77,7 @@ final class Lighting3D: Sketch {
         markLight(at: pointPos, color: Color(hue: 0.5, saturation: 0.8, brightness: 1.0))
         markLight(at: spotPos, color: Color(hue: 0.85, saturation: 0.7, brightness: 1.0))
 
-        drawCaption("Lights & materials — directional + orbiting point + sweeping spot; shininess rises left→right")
+        drawCaption("Lights & materials: directional + orbiting point + sweeping spot; specularSharpness rises left to right")
     }
 
     private func markLight(at position: Vector3, color: Color) {

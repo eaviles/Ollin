@@ -116,8 +116,8 @@ screen.source = .app("Music")
 To discover what a machine can currently capture, ask. All three need the permission and return an empty array without it, and all three are ordered so a listing reads the same way twice:
 
 ```swift
-await ScreenCapture.displays()   // [ScreenDisplay]  id, size, isMain, label
-await ScreenCapture.windows()    // [ScreenWindow]   id, title, appName, bundleIdentifier, frame, label
+await ScreenCapture.availableDisplays()   // [ScreenDisplay]  id, size, isMain, label
+await ScreenCapture.availableWindows()    // [ScreenWindow]   id, title, appName, bundleIdentifier, frame, label
 await ScreenCapture.apps()       // [ScreenApp]      id (pid), name, bundleIdentifier, label
 ```
 
@@ -126,7 +126,7 @@ They are asynchronous, so a sketch reads them in a `Task` and keeps drawing mean
 ```swift
 override func setup() {
     Task { @MainActor in
-        for window in await ScreenCapture.windows() {
+        for window in await ScreenCapture.availableWindows() {
             print(".window(title: \"\(window.title ?? "")\")   // \(window.label)")
         }
     }
@@ -194,7 +194,7 @@ The CPU copy a tracker needs is made only while a tap is installed, so a capture
 
 **System audio.** ScreenCaptureKit can record what the machine is playing, and this does not. It is a capture of pictures only. The audio side belongs with the [audio](../Helpers/Audio.md) analyzer surface rather than bolted to a video frame source, and it has not been built yet.
 
-**The system picker.** macOS offers a Control Center panel for choosing what to share. It is built around an application singleton with an observer protocol. That suits an app with a bundle identity and a settings window, rather than a sketch. A choice made through a panel would also make the picture depend on a click nobody recorded. Naming the source in code is the reproducible path, and `windows()` gives you the same discovery with no UI in the way.
+**The system picker.** macOS offers a Control Center panel for choosing what to share. It is built around an application singleton with an observer protocol. That suits an app with a bundle identity and a settings window, rather than a sketch. A choice made through a panel would also make the picture depend on a click nobody recorded. Naming the source in code is the reproducible path, and `availableWindows()` gives you the same discovery with no UI in the way.
 
 **Capturing while the screen is locked or asleep**, which the system does not allow, and a capture reports as stopped.
 

@@ -208,7 +208,7 @@ final class Planet_Example: Sketch {
             // shell below.
             var surface = Material.physicallyBased(metallic: 1, roughness: 1)
             surface.rim = 0.16 * haze
-            surface.rimPower = 5.0
+            surface.rimSharpness = 5.0
             surface.rimColor = Color(hex: 0x8FC0FF)
             material(surface)
             withState { rotateY(turn); drawMesh(globe) }
@@ -237,7 +237,7 @@ final class Planet_Example: Sketch {
             fill(.white)
             var shell = Material()
             shell.rim = 0.42 * haze
-            shell.rimPower = 4.0
+            shell.rimSharpness = 4.0
             shell.rimColor = Color(hex: 0x6EA8FF)
             material(shell)
             drawMesh(air)

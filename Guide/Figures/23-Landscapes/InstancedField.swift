@@ -44,7 +44,7 @@ final class InstancedField_Figure: Sketch {
         }
 
         specular(0.25)
-        shininess(36)
+        specularSharpness(36)
 
         let low = Color(hex: 0x27435F)
         let high = Color(hex: 0xF2B75C)

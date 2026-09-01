@@ -49,9 +49,9 @@ public enum RoomMessageKind: UInt8, Sendable, CaseIterable {
 /// A value a sketch sends to the room.
 public enum RoomValue: Sendable, Equatable {
     case number(Double)
-    case integer(Int)
+    case int(Int)
     case text(String)
-    case flag(Bool)
+    case bool(Bool)
     case point(Vector2)
     case color(Color)
     case bytes(Data)
@@ -60,9 +60,9 @@ public enum RoomValue: Sendable, Equatable {
     var tag: UInt8 {
         switch self {
         case .number: 1
-        case .integer: 2
+        case .int: 2
         case .text: 3
-        case .flag: 4
+        case .bool: 4
         case .point: 5
         case .color: 6
         case .bytes: 7
@@ -76,18 +76,18 @@ public extension RoomValue {
     var number: Double? {
         switch self {
         case .number(let value): value
-        case .integer(let value): Double(value)
-        case .flag(let value): value ? 1 : 0
+        case .int(let value): Double(value)
+        case .bool(let value): value ? 1 : 0
         default: nil
         }
     }
 
     /// The value as an `Int`, rounding a number toward zero.
-    var integer: Int? {
+    var int: Int? {
         switch self {
-        case .integer(let value): value
+        case .int(let value): value
         case .number(let value): value.isFinite ? Int(value) : nil
-        case .flag(let value): value ? 1 : 0
+        case .bool(let value): value ? 1 : 0
         default: nil
         }
     }
@@ -99,11 +99,11 @@ public extension RoomValue {
     }
 
     /// The value as a flag. A number is true when it is not zero.
-    var flag: Bool? {
+    var bool: Bool? {
         switch self {
-        case .flag(let value): value
+        case .bool(let value): value
         case .number(let value): value != 0
-        case .integer(let value): value != 0
+        case .int(let value): value != 0
         default: nil
         }
     }
@@ -145,11 +145,11 @@ public struct RoomMessage: Sendable, Equatable {
     /// The value as a number, if it reads as one.
     public var number: Double? { value.number }
     /// The value as a whole number, if it reads as one.
-    public var integer: Int? { value.integer }
+    public var int: Int? { value.int }
     /// The value as text, if it is text.
     public var text: String? { value.text }
     /// The value as a flag, if it reads as one.
-    public var flag: Bool? { value.flag }
+    public var bool: Bool? { value.bool }
     /// The value as a point, if it is a point.
     public var point: Vector2? { value.point }
     /// The value as a color, if it is a color.
@@ -208,11 +208,11 @@ public extension RoomWire {
         switch value {
         case .number(let number):
             appendDouble(number, to: &payload)
-        case .integer(let integer):
-            appendLittleEndian(UInt64(bitPattern: Int64(integer)), to: &payload)
+        case .int(let int):
+            appendLittleEndian(UInt64(bitPattern: Int64(int)), to: &payload)
         case .text(let text):
             appendString(text, to: &payload)
-        case .flag(let flag):
+        case .bool(let flag):
             payload.append(flag ? 1 : 0)
         case .point(let point):
             appendDouble(point.x, to: &payload)
@@ -239,13 +239,13 @@ public extension RoomWire {
             return (key, .number(number))
         case 2:
             guard let raw = reader.unsigned64() else { return nil }
-            return (key, .integer(Int(Int64(bitPattern: raw))))
+            return (key, .int(Int(Int64(bitPattern: raw))))
         case 3:
             guard let text = reader.string() else { return nil }
             return (key, .text(text))
         case 4:
             guard let flag = reader.byte() else { return nil }
-            return (key, .flag(flag != 0))
+            return (key, .bool(flag != 0))
         case 5:
             guard let x = reader.double(), let y = reader.double() else { return nil }
             return (key, .point(Vector2(x, y)))

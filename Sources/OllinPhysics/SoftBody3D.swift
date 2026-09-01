@@ -637,12 +637,12 @@ public class SoftBody3D {
     }
 
     /// What the surface landed on during the last `step`.
-    public var entered: [any Colliding3D] {
+    public var arrivals: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .began ? $0.other(than: self) : nil }
     }
 
     /// What the surface came off during the last `step`.
-    public var exited: [any Colliding3D] {
+    public var departures: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
     }
 

@@ -40,7 +40,7 @@ struct MaterialSourceTests {
         // field stays out of the expression.
         var m = Material()
         m.roughness = 0.5 + 1e-9
-        m.shininess = 32.00002
+        m.specularSharpness = 32.00002
         #expect(m.swiftSourceExpression == "Material()")
     }
 
@@ -66,12 +66,12 @@ struct MaterialSourceTests {
         thickness: 1.5, attenuationColor: Color(red: 0.9, green: 0.5, blue: 0.2),
         attenuationDistance: 2.5, clearcoat: 0.6, clearcoatRoughness: 0.15,
         sheen: 0.7, sheenColor: Color(red: 0.1, green: 0.2, blue: 0.9),
-        sheenRoughness: 0.35, specular: 1.2, shininess: 96,
+        sheenRoughness: 0.35, specular: 1.2, specularSharpness: 96,
         iridescence: 0.5, iridescenceScale: 1.8, iridescenceFlow: 0.4,
         iridescencePhase: 0.9, iridescenceFlowSize: 2.5,
         sparkle: 0.65, sparkleSize: 3, sparkleSharpness: 24,
         sparkleColor: Color(white: 0.85),
-        rim: 0.45, rimPower: 3.5, rimColor: Color(red: 0.3, green: 0.8, blue: 0.5),
+        rim: 0.45, rimSharpness: 3.5, rimColor: Color(red: 0.3, green: 0.8, blue: 0.5),
         subsurface: 0.55, subsurfaceColor: Color(red: 1, green: 0.8, blue: 0.7),
         scattering: 0.75, scatteringRadius: 1.2, scatteringColor: Color(white: 0.4),
         goochWarm: Color(red: 0.8, green: 0.6, blue: 0.2),
@@ -85,12 +85,12 @@ struct MaterialSourceTests {
             + "attenuationColor: Color(red: 0.9, green: 0.5, blue: 0.2), "
             + "attenuationDistance: 2.5, clearcoat: 0.6, clearcoatRoughness: 0.15, "
             + "sheen: 0.7, sheenColor: Color(red: 0.1, green: 0.2, blue: 0.9), "
-            + "sheenRoughness: 0.35, specular: 1.2, shininess: 96, "
+            + "sheenRoughness: 0.35, specular: 1.2, specularSharpness: 96, "
             + "iridescence: 0.5, iridescenceScale: 1.8, iridescenceFlow: 0.4, "
             + "iridescencePhase: 0.9, iridescenceFlowSize: 2.5, "
             + "sparkle: 0.65, sparkleSize: 3, sparkleSharpness: 24, "
             + "sparkleColor: Color(white: 0.85), "
-            + "rim: 0.45, rimPower: 3.5, rimColor: Color(red: 0.3, green: 0.8, blue: 0.5), "
+            + "rim: 0.45, rimSharpness: 3.5, rimColor: Color(red: 0.3, green: 0.8, blue: 0.5), "
             + "subsurface: 0.55, subsurfaceColor: Color(red: 1, green: 0.8, blue: 0.7), "
             + "scattering: 0.75, scatteringRadius: 1.2, scatteringColor: Color(white: 0.4), "
             + "goochWarm: Color(red: 0.8, green: 0.6, blue: 0.2), "

@@ -5,7 +5,7 @@ import Ollin
 /// `loadJSON` reads the file once in `setup()` and hands back a value you reach
 /// through by name and by index. Nothing is decoded into a type first, so the
 /// shape of the document is the shape of the code: `point["at"]["x"]` walks the
-/// nesting, `paths.array` loops the pairs, and `.number` / `.string` / `.color`
+/// nesting, `paths.array` loops the pairs, and `.number` / `.text` / `.color`
 /// ask for the kind you want at the end of the walk.
 ///
 /// A key that isn't there answers null rather than stopping, which is what makes
@@ -80,7 +80,7 @@ final class Places: Sketch {
         textFont(OutlineFont.systemMedium)
         textSize(15 * scale)
         textAlign(.center, .top)
-        drawText(point["name"].string ?? "", at.x, at.y + radius + 14)
+        drawText(point["name"].text ?? "", at.x, at.y + radius + 14)
     }
 
     private func drawTitle(_ survey: JSON) {
@@ -89,12 +89,12 @@ final class Places: Sketch {
         textFont(OutlineFont.system)
         textSize(30 * scale)
         textAlign(.left, .top)
-        drawText(survey.title.string ?? "", 96, 88)
+        drawText(survey.title.text ?? "", 96, 88)
 
         fill(Color(white: 0.45))
         textFont(OutlineFont.systemMedium)
         textSize(14 * scale)
-        drawText(survey.subtitle.string ?? "", 96, 134)
+        drawText(survey.subtitle.text ?? "", 96, 134)
     }
 
     // MARK: Mapping

@@ -66,7 +66,7 @@ public final class Record3DDevice: FrameSource, VideoFeed {
     public func stop() { reader.stop() }
 
     /// Whether frames are currently arriving from the phone.
-    public var isStreaming: Bool { reader.isConnected }
+    public var isRunning: Bool { reader.isConnected }
 
     /// The latest decoded RGBD frame, or `nil` before the first one arrives. A
     /// fresh frame each time the phone sends one — read it within the current `draw()`.

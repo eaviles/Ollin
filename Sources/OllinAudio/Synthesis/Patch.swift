@@ -145,7 +145,7 @@ public struct Patch: Sendable, Hashable, Codable {
     }
 
     /// This patch at a different level, for balancing one against another.
-    public func at(level: Double) -> Patch {
+    public func level(_ level: Double) -> Patch {
         var patch = self
         for lane in 0..<Int(operatorCount) where reachesOutput(lane) {
             patch.levels[lane] = max(0, level)
@@ -154,7 +154,7 @@ public struct Patch: Sendable, Hashable, Codable {
     }
 
     /// This patch moved to a different frequency ratio.
-    public func at(ratio: Double) -> Patch {
+    public func ratio(_ ratio: Double) -> Patch {
         var patch = self
         for lane in 0..<Int(operatorCount) where reachesOutput(lane) {
             patch.ratios[lane] = max(0, ratio)

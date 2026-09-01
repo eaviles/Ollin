@@ -90,7 +90,7 @@ struct SerialLoopbackTests {
 
         // The cache holds the latest line; the drain holds both, in order.
         #expect(port.int(default: 0) == 512)
-        #expect(port.float(default: 0) == 512)
+        #expect(port.number(default: 0) == 512)
         #expect(port.lines() == ["42", "512"])
         #expect(port.lines().isEmpty)
 

@@ -35,7 +35,7 @@ import Foundation
         let codes = try await BarcodeScanner.detect(in: image)
         #expect(codes.contains { $0.payload == payload })
         if let qr = codes.first(where: { $0.payload == payload }) {
-            #expect(qr.symbology.lowercased().contains("qr"))
+            #expect(qr.symbology == .qr)
             #expect(qr.corners(in: Rectangle(x: 0, y: 0, width: 100, height: 100)).count == 4)
         }
     }

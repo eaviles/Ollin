@@ -36,7 +36,7 @@ struct OSCLoopbackTests {
         // Resend a warmup until one lands, so the UDP flow is established.
         _ = try await waitFor {
             sender.send("/warmup", 1)
-            return receiver.float("/warmup")
+            return receiver.number("/warmup")
         }
         // Then drain repeatedly until quiet, flushing any resent warmups still in
         // flight, so drain tests start from a clean inbox.
@@ -53,15 +53,15 @@ struct OSCLoopbackTests {
 
         let level = try await waitFor {
             sender.send("/level", 0.5, 42, "go")
-            return receiver.float("/level")
+            return receiver.number("/level")
         }
         // The typed getters read the *first* argument; the rest come off the array.
         #expect(level == 0.5)
         let args = receiver.arguments("/level")
         #expect(args?.count == 3)
         #expect(args?[1].int == 42)
-        #expect(args?[2].string == "go")
-        #expect(receiver.float("/missing", default: -1) == -1)
+        #expect(args?[2].text == "go")
+        #expect(receiver.number("/missing", default: -1) == -1)
     }
 
     @Test func drainsMessageQueueInOrder() async throws {
@@ -108,8 +108,8 @@ struct OSCLoopbackTests {
             OSCMessage("/bundle/x", 0.1),
             OSCMessage("/bundle/y", 0.9),
         ]))
-        _ = try await waitFor { receiver.float("/bundle/y") }
-        #expect(receiver.float("/bundle/x") == 0.1)
-        #expect(receiver.float("/bundle/y") == 0.9)
+        _ = try await waitFor { receiver.number("/bundle/y") }
+        #expect(receiver.number("/bundle/x") == Double(Float(0.1)))
+        #expect(receiver.number("/bundle/y") == Double(Float(0.9)))
     }
 }

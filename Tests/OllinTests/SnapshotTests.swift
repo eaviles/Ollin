@@ -378,7 +378,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "The scattering transmittance (shadow-map translucency): a thin skin slab beside a deep twin and a sphere, backlit by a directional caster with castShadows() on, so the visible faces are the bodies' dark sides. Pins the 2D-map thickness read (the shrink along the normal, the bilinear linearized depth, the orthographic shadowLinearize constants), the slab-integral transmittance profile (the thin face floods deep red, the deep face keeps only its short-crossing rim, the sphere a warm crescent), and the reversed-normal wrap irradiance. Fixed camera + light, no time.",
                  make: { SubsurfaceTransmittanceScene() }),
     SnapshotCase("area-lights",
-                 note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong shininess-to-roughness mapping on the standard-material box. Fixed camera, no time.",
+                 note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong specularSharpness-to-roughness mapping on the standard-material box. Fixed camera, no time.",
                  make: { AreaLightsScene() }),
     SnapshotCase("light-shaping",
                  note: "Light shaping: a ring-profiled IES point light, a rolled asymmetric profile, and a window-gobo cookie spot over a floor + wall. Pins the LM-63 parse, the theta/phi bake + texture-array sampling, the projector-convention cookie mapping, the roll, and the iesEnabled/cookieEnabled gates. Fixed camera, no time.",
@@ -1455,11 +1455,11 @@ private final class MeshLightingScene: Sketch {
         spotLight(Color(hue: 0.85, saturation: 0.7, brightness: 1), at: Vector3(-2, 4, 1),
                   direction: Vector3(0.4, -1, -0.2), coneAngle: .pi / 4, penumbra: 0.5, intensity: 1.6)
         withState {
-            fill(Color(white: 0.85)); specular(0.7); shininess(80)
+            fill(Color(white: 0.85)); specular(0.7); specularSharpness(80)
             translate(-1.6, 0, 0); drawSphere(radius: 1.0)
         }
         withState {
-            fill(Color(hue: 0.05, saturation: 0.5, brightness: 0.9)); specular(0.4); shininess(40)
+            fill(Color(hue: 0.05, saturation: 0.5, brightness: 0.9)); specular(0.4); specularSharpness(40)
             translate(1.6, 0, 0); rotateY(0.5); rotateX(0.3); drawBox(size: 1.5)
         }
         withState { fill(Color(white: 0.4)); translate(0, -1.4, 0); drawPlane(width: 6, depth: 6) }
@@ -1552,11 +1552,11 @@ private final class MeshShadowsScene: Sketch {
         castShadows()
         withState { fill(Color(white: 0.8)); specular(0.05); drawPlane(width: 10, depth: 10) }
         withState {
-            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); specularSharpness(40)
             translate(-1.1, 1.0, 0); rotateY(0.5); drawBox(size: 1.6)
         }
         withState {
-            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); specularSharpness(40)
             translate(1.3, 1.3, 0.3); drawSphere(radius: 1.1)
         }
     }
@@ -1611,11 +1611,11 @@ private final class AreaShadowsScene: Sketch {
         castShadows()
         withState { fill(Color(white: 0.8)); specular(0.05); drawPlane(width: 10, depth: 10) }
         withState {
-            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); specularSharpness(40)
             translate(-1.1, 1.0, 0); rotateY(0.5); drawBox(size: 1.6)
         }
         withState {
-            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); specularSharpness(40)
             translate(1.3, 1.3, 0.3); drawSphere(radius: 1.1)
         }
     }
@@ -1641,11 +1641,11 @@ private final class SpotShadowsScene: Sketch {
         castShadows()
         withState { fill(Color(white: 0.82)); specular(0.05); drawPlane(width: 10, depth: 10) }
         withState {
-            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.03, saturation: 0.6, brightness: 0.95)); specular(0.3); specularSharpness(40)
             translate(-1.1, 1.0, 0); rotateY(0.5); drawBox(size: 1.6)
         }
         withState {
-            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); shininess(40)
+            fill(Color(hue: 0.55, saturation: 0.55, brightness: 0.95)); specular(0.3); specularSharpness(40)
             translate(1.3, 1.1, 0.3); drawSphere(radius: 1.1)
         }
     }
@@ -1672,7 +1672,7 @@ private final class PointShadowsScene: Sketch {
             withState {
                 translate(cos(a) * 2.6, 0.9, sin(a) * 2.6)
                 fill(Color(hue: Double(i) / 4, saturation: 0.55, brightness: 0.95))
-                specular(0.3); shininess(40)
+                specular(0.3); specularSharpness(40)
                 drawBox(width: 0.9, height: 1.8, depth: 0.9)
             }
         }
@@ -1694,11 +1694,11 @@ private final class LightingPresetScene: Sketch {
         lightingPreset(.goldenHour)
         withState { translate(0, -1.2, 0); fill(Color(white: 0.55)); specular(0.05); drawPlane(width: 12, depth: 12) }
         withState {
-            fill(Color(white: 0.85)); specular(0.6); shininess(100)
+            fill(Color(white: 0.85)); specular(0.6); specularSharpness(100)
             translate(-1.6, -0.3, 0); drawSphere(radius: 1.0)
         }
         withState {
-            fill(Color(hue: 0.04, saturation: 0.5, brightness: 0.9)); specular(0.4); shininess(48)
+            fill(Color(hue: 0.04, saturation: 0.5, brightness: 0.9)); specular(0.4); specularSharpness(48)
             translate(1.4, -0.1, -0.2); rotateY(0.5); rotateX(0.3); drawBox(size: 1.4)
         }
     }
@@ -1834,7 +1834,7 @@ private final class PBRMaterialsScene: Sketch {
 /// The three area-light kinds over a glossy floor: a warm rect panel from the left,
 /// a cool disk from the right, and a bright thin tube along the front, on
 /// physically-based spheres (roughness row) plus one standard-material box (the
-/// Blinn-Phong shininess-to-roughness LUT mapping). Fixed camera, no `time`.
+/// Blinn-Phong specularSharpness-to-roughness LUT mapping). Fixed camera, no `time`.
 private final class AreaLightsScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -1868,13 +1868,13 @@ private final class AreaLightsScene: Sketch {
             }
         }
         // The one non-PBR solid: the standard material's area response (the
-        // shininess-to-roughness mapping plus the norm-channel specular).
+        // specularSharpness-to-roughness mapping plus the norm-channel specular).
         withState {
             translate(0, -0.65, -1.8)
             rotateY(0.5)
             fill(Color(hue: 0.6, saturation: 0.35, brightness: 0.8))
             specular(0.6)
-            shininess(64)
+            specularSharpness(64)
             drawBox(size: 1.1)
         }
     }
@@ -8552,7 +8552,7 @@ private final class PlanetScene: Sketch {
             fill(.white)
             var surface = Material.physicallyBased(metallic: 1, roughness: 1)
             surface.rim = 0.16
-            surface.rimPower = 5.0
+            surface.rimSharpness = 5.0
             surface.rimColor = Color(hex: 0x8FC0FF)
             material(surface)
             drawMesh(globe)
@@ -8572,7 +8572,7 @@ private final class PlanetScene: Sketch {
             fill(.white)
             var shell = Material()
             shell.rim = 0.42
-            shell.rimPower = 4.0
+            shell.rimSharpness = 4.0
             shell.rimColor = Color(hex: 0x6EA8FF)
             material(shell)
             drawMesh(air)
@@ -8673,7 +8673,7 @@ private final class MeshFieldScene: Sketch {
             drawPlane(width: 24, depth: 24)
         }
         specular(0.3)
-        shininess(32)
+        specularSharpness(32)
         drawMeshField(field)
     }
 }
@@ -8697,7 +8697,7 @@ private final class InstancedMeshScene: Sketch {
         }
 
         specular(0.3)
-        shininess(32)
+        specularSharpness(32)
         fill(Color(hex: 0xB8C4E8))
 
         let pillar = Mesh.box(width: 0.5, height: 1, depth: 0.5)

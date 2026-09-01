@@ -39,7 +39,7 @@ final class TwoShadowsOneSolid: Sketch {
                        fieldOfView: .pi / 3.6)
         fill(Color(hex: 0xC9C2B6))
         specular(0.35)
-        shininess(44)
+        specularSharpness(44)
         withClip(stage) {
             drawMesh(art.mesh)
         }

@@ -56,7 +56,7 @@ public extension JSON {
 
 public extension JSON {
     /// The text, when this is a string.
-    var string: String? {
+    var text: String? {
         guard case .string(let value) = self else { return nil }
         return value
     }
@@ -91,7 +91,7 @@ public extension JSON {
 
     /// A hex color (`#ff8800`, `f80`), when this is a string holding one.
     var color: Color? {
-        guard let text = string?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
+        guard let text = text?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
         return Color(hex: text)
     }
 

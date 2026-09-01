@@ -107,15 +107,15 @@ public final class Synth: AudioSource {
     /// ```swift
     /// synth.noteOn("G3")
     /// // in draw(), for as long as the note is held:
-    /// synth.drive = 0.3 + 0.5 * abs(sin(time * 2))
+    /// synth.pressure = 0.3 + 0.5 * abs(sin(time * 2))
     /// ```
     ///
     /// Every voice shares it, which is right: one bow and one breath. The
     /// sources that are set going once and then fade (a wave, a plucked string,
     /// a struck body) ignore it entirely.
-    public var drive: Double {
-        get { renderer.drive }
-        set { renderer.drive = newValue }
+    public var pressure: Double {
+        get { renderer.pressure }
+        set { renderer.pressure = newValue }
     }
 
     /// The recordings a sampled voice plays.
@@ -127,7 +127,7 @@ public final class Synth: AudioSource {
     ///
     /// ```swift
     /// synth.instrument = SampledInstrument.builtIn
-    /// synth.voice = Voice(sampled: Sampled())
+    /// synth.voice = Voice(sampled: Sampler())
     /// ```
     ///
     /// Set it before the notes that need it. Notes already sounding keep the

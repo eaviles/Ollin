@@ -86,20 +86,20 @@ import Testing
 
     @Test func everythingThatArrivedDrainsInOrderAndOnlyOnce() {
         let (_, a, b) = pair()
-        for step in 1...5 { a.send("step", .integer(step), reliable: true, to: []) }
-        #expect(b.messages().compactMap(\.integer) == [1, 2, 3, 4, 5])
+        for step in 1...5 { a.send("step", .int(step), reliable: true, to: []) }
+        #expect(b.messages().compactMap(\.int) == [1, 2, 3, 4, 5])
         #expect(b.messages().isEmpty)
         // The latest is still there after the drain.
-        #expect(b.message("step")?.integer == 5)
+        #expect(b.message("step")?.int == 5)
     }
 
     @Test func aSketchThatNeverDrainsDoesNotGrowWithoutBound() {
         let (_, a, b) = pair()
-        for step in 0..<4200 { a.send("flood", .integer(step), reliable: false, to: []) }
+        for step in 0..<4200 { a.send("flood", .int(step), reliable: false, to: []) }
         let drained = b.messages()
         #expect(drained.count == 4096)
         // The oldest went, the newest stayed.
-        #expect(drained.last?.integer == 4199)
+        #expect(drained.last?.int == 4199)
     }
 
     @Test func aMessageThatIsNotOneOfOursIsIgnored() {

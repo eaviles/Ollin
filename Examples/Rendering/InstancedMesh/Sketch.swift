@@ -56,7 +56,7 @@ final class InstancedMesh: Sketch {
         }
 
         specular(0.25)
-        shininess(36)
+        specularSharpness(36)
 
         // One traveling wave over the polar field: each pillar's height follows
         // a crest moving outward, and its tint follows its height.

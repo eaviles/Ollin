@@ -2156,9 +2156,9 @@ final class Drawer {
     /// Drawing state, saved by `withState`; bound per mesh batch as they're drawn.
     func specular(_ strength: Double) { currentMaterial.specular = max(0, strength) }
 
-    /// Set the material's Blinn-Phong shininess exponent (higher = tighter, sharper
+    /// Set the material's Blinn-Phong specular exponent (higher = tighter, sharper
     /// highlight). Drawing state, saved by `withState`.
-    func shininess(_ exponent: Double) { currentMaterial.shininess = max(1, exponent) }
+    func specularSharpness(_ exponent: Double) { currentMaterial.specularSharpness = max(1, exponent) }
 
     /// Apply a whole `Material` finish at once — its shading model and every finish
     /// (specular, rim, subsurface, iridescence). The surface color stays the current

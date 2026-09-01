@@ -42,7 +42,7 @@ final class GrassMeadow_Figure: Sketch {
             drawPlane(width: 200, depth: 200)
         }
         specular(0.1)
-        shininess(20)
+        specularSharpness(20)
         for i in 0 ..< 7 {
             withState {
                 let a = Double(i) / 7 * .tau + 0.4

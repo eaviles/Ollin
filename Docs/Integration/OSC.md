@@ -27,7 +27,7 @@ final class Knob: Sketch {
 
     override func draw() {
         // read a fader coming in, send the cursor out
-        let level = in_.float("/fader1", default: 0)
+        let level = in_.number("/fader1", default: 0)
         out.send("/cursor", .float(Float(mouseX / width)))
         drawCircle(width / 2, height / 2, (40 + Double(level) * 300) * scale)
     }
@@ -54,7 +54,7 @@ OSCMessage("/x", .float(value), .int(count))     // a variable is wrapped by its
 
 An `OSCMessage` is an `address` and an array of `arguments`. Literals turn into arguments on their own, so the common case stays terse. `0.8` is a float, `1` an int, `"on"` a string, and `true` a bool. A value held in a variable is wrapped by its case, as `.float(x)`, `.int(n)`, or `.string(s)`. Swift does not convert a `Float` to an argument on its own.
 
-`OSCArgument` covers the OSC 1.0 types. Those are `.int` at 32 bits, `.float`, `.string`, and `.blob` for raw bytes, plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` as a bare trigger. Reading back, the coercing accessors save a `switch`, so `.float`, `.int`, `.string`, and `.bool` convert across the numeric types where it makes sense.
+`OSCArgument` covers the OSC 1.0 types. Those are `.int` at 32 bits, `.float`, `.string`, and `.blob` for raw bytes, plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` as a bare trigger. Reading back, the coercing accessors save a `switch`, so `.number`, `.int`, `.text`, and `.bool` convert across the numeric types where it makes sense.
 
 <a name="oscsender"></a>
 
@@ -88,11 +88,11 @@ func start() throws
 func stop()
 
 // 1. Latest value per address (continuous controls)
-func float(_ address: String) -> Float?
+func number(_ address: String) -> Double?
 func int(_ address: String) -> Int?
-func string(_ address: String) -> String?
+func text(_ address: String) -> String?
 func bool(_ address: String) -> Bool?
-func float(_ address: String, default: Float) -> Float    // and int/bool variants
+func number(_ address: String, default: Double) -> Double  // and int/bool variants
 func message(_ address: String) -> OSCMessage?            // the whole message
 func arguments(_ address: String) -> [OSCArgument]?
 
@@ -105,7 +105,7 @@ Listen on a port, then read what arrives. There are two main ways to read, depen
 **The latest value**, for a continuous control like a fader. Read it fresh each frame:
 
 ```swift
-let radius = Double(osc.float("/fader1", default: 0)) * 300
+let radius = osc.number("/fader1", default: 0) * 300
 ```
 
 The typed getters read the *first* argument, coerced (so `int("/fader1")` on a float message rounds it). For a message with several arguments, reach into `arguments(_:)`.
@@ -121,7 +121,7 @@ for note in osc.messages() where note.address == "/note" {
 ```text
    network queue                main thread (draw)
    ┌────────────┐  latest[]     ┌──────────────────┐
-   │ datagram → │ ───────────→  │ osc.float("/x")  │   continuous
+   │ datagram → │ ───────────→  │ osc.number("/x") │   continuous
    │  decode +  │  inbox[]      │ osc.messages()   │   discrete
    │  stash     │ ───────────→  │                  │
    └────────────┘               └──────────────────┘

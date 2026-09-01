@@ -100,7 +100,7 @@ final class MeshFieldSketch: Sketch {
         }
 
         specular(0.12)
-        shininess(24)
+        specularSharpness(24)
         drawMeshField(field)
 
         drawCaption("MeshField: 240,000 solids, one call, GPU-culled")

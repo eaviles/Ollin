@@ -104,7 +104,7 @@ final class ObjectDetection: Sketch {
     }
 
     /// "2× person, cup" — what's in frame, grouped and counted.
-    private func summary(of objects: [DetectedObject]) -> String {
+    private func summary(of objects: [Detection]) -> String {
         var counts: [String: Int] = [:]
         for object in objects { counts[object.label, default: 0] += 1 }
         return counts.sorted { $0.value > $1.value }

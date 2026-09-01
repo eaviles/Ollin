@@ -34,7 +34,7 @@ final class Orbit: Sketch {
         // The subject being looked at, on the ground at the target.
         withState {
             translate(0, 0.55, 0); rotateY(0.7)
-            fill(Color(hex: 0x555555)); specular(0.2); shininess(30)
+            fill(Color(hex: 0x555555)); specular(0.2); specularSharpness(30)
             drawTorusKnot(radius: 0.42, tube: 0.15, segments: 200, sides: 12)
         }
 
@@ -55,7 +55,7 @@ final class Orbit: Sketch {
         let look = (target - eye).normalized
         withState {
             translate(eye.x, eye.y, eye.z)
-            fill(accent); specular(0.25); shininess(40)
+            fill(accent); specular(0.25); specularSharpness(40)
             let axis = Vector3.unitY.cross(look)
             let tilt = acos(max(-1, min(1, Vector3.unitY.dot(look))))
             if axis.length > 1e-6 { rotate(tilt, axis: axis.normalized) }

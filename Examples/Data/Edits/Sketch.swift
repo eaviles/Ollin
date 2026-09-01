@@ -60,14 +60,14 @@ final class Edits: Sketch {
 
     private func add(_ message: PushFeed.Message) {
         let change = message.json
-        let kind = change["type"].string ?? ""
+        let kind = change["type"].text ?? ""
         guard kind == "edit" || kind == "new" else { return }
         seen += 1
 
         let bytes = (change["length"]["new"].number ?? 0)
                   - (change["length"]["old"].number ?? 0)
         let drop = Drop(
-            x: column(for: change["title"].string ?? ""),
+            x: column(for: change["title"].text ?? ""),
             born: time,
             // A one-letter fix and a pasted chapter are worlds apart in bytes,
             // so the size runs on a log scale to keep both readable.

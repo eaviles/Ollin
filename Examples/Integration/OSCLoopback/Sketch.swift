@@ -39,9 +39,9 @@ final class OSCLoopback: Sketch {
 
         // Read back whatever has arrived (the previous frame's send, after its
         // trip through the kernel's loopback). Defaults cover the first frame.
-        let x = Double(receiver.float("/ollin/x", default: 0.5)) * width
-        let y = Double(receiver.float("/ollin/y", default: 0.5)) * height
-        let lvl = Double(receiver.float("/ollin/level", default: 0))
+        let x = receiver.number("/ollin/x", default: 0.5) * width
+        let y = receiver.number("/ollin/y", default: 0.5) * height
+        let lvl = receiver.number("/ollin/level", default: 0)
 
         let center = Vector2(x, y)
         let radius = (40 + lvl * 160) * scale

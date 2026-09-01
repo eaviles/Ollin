@@ -18,7 +18,7 @@ import ScreenCaptureKit
 /// ignoring case. Where several windows match, the lowest window id wins, so a
 /// run is repeatable rather than depending on stacking order. The exact forms,
 /// ``display(_:)`` and ``windowID(_:)``, take the ids that
-/// ``ScreenCapture/displays()`` and ``ScreenCapture/windows()`` report, for when
+/// ``ScreenCapture/availableDisplays()`` and ``ScreenCapture/availableWindows()`` report, for when
 /// a sketch resolves its own target and wants no ambiguity at all.
 ///
 /// A source that names something not on screen yet is not an error: the capture
@@ -28,7 +28,7 @@ public enum ScreenSource: Sendable, Equatable {
     /// The display the menu bar is on.
     case mainDisplay
 
-    /// A display by its system id, as reported by ``ScreenCapture/displays()``.
+    /// A display by its system id, as reported by ``ScreenCapture/availableDisplays()``.
     case display(CGDirectDisplayID)
 
     /// Every on-screen window belonging to one application, matched by its name
@@ -42,7 +42,7 @@ public enum ScreenSource: Sendable, Equatable {
     /// with nothing in front of it, even when another window covers it on screen.
     case window(title: String, app: String?)
 
-    /// One window by its id, as reported by ``ScreenCapture/windows()``.
+    /// One window by its id, as reported by ``ScreenCapture/availableWindows()``.
     case windowID(CGWindowID)
 
     /// A window matched by title alone, in whichever application owns it.
@@ -65,7 +65,7 @@ public enum ScreenSource: Sendable, Equatable {
 
 // MARK: What is on screen
 
-/// A display that can be captured, one entry from ``ScreenCapture/displays()``.
+/// A display that can be captured, one entry from ``ScreenCapture/availableDisplays()``.
 public struct ScreenDisplay: Sendable, Identifiable, Equatable {
     /// The system display id. Pass it to ``ScreenSource/display(_:)``.
     public let id: CGDirectDisplayID
@@ -81,7 +81,7 @@ public struct ScreenDisplay: Sendable, Identifiable, Equatable {
     }
 }
 
-/// A window that can be captured, one entry from ``ScreenCapture/windows()``.
+/// A window that can be captured, one entry from ``ScreenCapture/availableWindows()``.
 public struct ScreenWindow: Sendable, Identifiable, Equatable {
     /// The window id. Pass it to ``ScreenSource/windowID(_:)``.
     public let id: CGWindowID

@@ -135,7 +135,7 @@ override func draw() {
 ```swift
 device.start()                 // begin connecting (retries until the phone is serving)
 device.stop()                  // close the connection
-var isStreaming: Bool          // frames currently arriving
+var isRunning: Bool          // frames currently arriving
 var latestFrame: RGBDFrame?    // the most recent decoded frame (same type as the file path)
 var latestPose: Record3DPose?  // the frame's ARKit camera pose (see below)
 var camera: Record3DCamera?    // .trueDepth (front), .lidar (rear), or .unknown (nil before the first frame)

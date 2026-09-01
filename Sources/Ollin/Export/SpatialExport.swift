@@ -131,7 +131,7 @@ final class SpatialRecorder {
     /// A physically-based finish maps across directly, since both describe a
     /// surface the same way. Every other shading model is a *look* rather than
     /// a description of a material, so what carries is its color and how shiny
-    /// it is: the shininess exponent converts to perceptual roughness through
+    /// it is: the specular exponent converts to perceptual roughness through
     /// the same curve the renderer's own area lights use, which keeps a
     /// polished surface polished and a matte one matte. What has no slot at all
     /// says so.
@@ -185,7 +185,7 @@ final class SpatialRecorder {
                 note("a sheen stayed behind: the format's surface has no cloth lobe.")
             }
         } else {
-            out.roughness = pow(2 / (max(finish.shininess, 0) + 2), 0.25)
+            out.roughness = pow(2 / (max(finish.specularSharpness, 0) + 2), 0.25)
             if finish.shading != .standard {
                 note("a stylized finish exported as a plain surface: toon, gooch, and the rest are ways of shading, not materials a file can name.")
             }

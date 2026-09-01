@@ -137,11 +137,11 @@ struct OSCCodingTests {
     // MARK: Coercion accessors
 
     @Test func numericCoercion() {
-        #expect(OSCMessage("/x", .int(3)).float == 3)
+        #expect(OSCMessage("/x", .int(3)).number == 3)
         #expect(OSCMessage("/x", .float(2.9)).int == 2)
-        #expect(OSCMessage("/x", .bool(true)).float == 1)
+        #expect(OSCMessage("/x", .bool(true)).number == 1)
         #expect(OSCMessage("/x", .impulse).bool == true)
-        #expect(OSCMessage("/x", .string("hi")).string == "hi")
-        #expect(OSCMessage("/x", .string("hi")).float == nil)
+        #expect(OSCMessage("/x", .string("hi")).text == "hi")
+        #expect(OSCMessage("/x", .string("hi")).number == nil)
     }
 }

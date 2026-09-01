@@ -19,7 +19,7 @@ import COllinShaders
 ///
 /// - **shading** — how the diffuse term is shaded: `.standard` (smooth Lambert),
 ///   `.toon` (hard cel bands), or `.gooch` (warm→cool, the technical-illustration look).
-/// - **specular** / **shininess** — the Blinn-Phong highlight.
+/// - **specular** / **specularSharpness**: the Blinn-Phong highlight.
 /// - **rim** — a Fresnel edge glow (velvet, backlit fuzz, a ghostly halo).
 /// - **subsurface** — fake light bleeding through thin geometry (jade, wax, skin).
 /// - **iridescence** — a Fresnel-driven rainbow sheen that shifts with view angle
@@ -87,7 +87,7 @@ public struct Material: Equatable, Sendable {
         /// driven by `metallic` and `roughness`, the way modern real-time 3D gets its
         /// photographic look. The surface color stays the current `fill`; a metal tints
         /// its highlight by that color, a dielectric keeps a neutral one. The Blinn-Phong
-        /// finish fields (`specular`/`shininess`) are ignored in this mode. Reflections of
+        /// finish fields (`specular`/`specularSharpness`) are ignored in this mode. Reflections of
         /// the surroundings layer on once an environment is set (image-based lighting).
         case physicallyBased = 3
     }
@@ -198,8 +198,8 @@ public struct Material: Equatable, Sendable {
 
     /// Specular highlight strength: `0` matte, `~0.5` glossy, `1` a bright hotspot.
     public var specular: Double
-    /// Blinn-Phong shininess exponent: higher is a tighter, sharper highlight.
-    public var shininess: Double
+    /// Blinn-Phong specular exponent: higher is a tighter, sharper highlight.
+    public var specularSharpness: Double
 
     /// Iridescence strength, `0…1`: a view-angle rainbow sheen on top of the shading.
     public var iridescence: Double
@@ -244,7 +244,7 @@ public struct Material: Equatable, Sendable {
     /// angles. `0` is off.
     public var rim: Double
     /// Rim falloff exponent: higher pulls the glow into a thinner edge.
-    public var rimPower: Double
+    public var rimSharpness: Double
     /// The rim glow color.
     public var rimColor: Color
 
@@ -290,13 +290,13 @@ public struct Material: Equatable, Sendable {
                 sheenRoughness: Double = 0.5,
                 thinFilm: Double = 0, thinFilmThickness: Double = 400,
                 thinFilmIOR: Double = 1.3,
-                specular: Double = 0, shininess: Double = 32,
+                specular: Double = 0, specularSharpness: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 iridescenceFlow: Double = 0, iridescencePhase: Double = 0,
                 iridescenceFlowSize: Double = 1,
                 sparkle: Double = 0, sparkleSize: Double = 1,
                 sparkleSharpness: Double = 48, sparkleColor: Color = .white,
-                rim: Double = 0, rimPower: Double = 2, rimColor: Color = .white,
+                rim: Double = 0, rimSharpness: Double = 2, rimColor: Color = .white,
                 subsurface: Double = 0, subsurfaceColor: Color = .white,
                 scattering: Double = 0, scatteringRadius: Double = 0,
                 scatteringColor: Color = Color(red: 1.0, green: 0.37, blue: 0.3),
@@ -322,7 +322,7 @@ public struct Material: Equatable, Sendable {
         self.thinFilmThickness = max(0, thinFilmThickness)
         self.thinFilmIOR = min(3, max(1, thinFilmIOR))
         self.specular = max(0, specular)
-        self.shininess = max(1, shininess)
+        self.specularSharpness = max(1, specularSharpness)
         self.iridescence = min(1, max(0, iridescence))
         self.iridescenceScale = max(0, iridescenceScale)
         self.iridescenceFlow = max(0, iridescenceFlow)
@@ -333,7 +333,7 @@ public struct Material: Equatable, Sendable {
         self.sparkleSharpness = max(1, sparkleSharpness)
         self.sparkleColor = sparkleColor
         self.rim = min(1, max(0, rim))
-        self.rimPower = max(0.1, rimPower)
+        self.rimSharpness = max(0.1, rimSharpness)
         self.rimColor = rimColor
         self.subsurface = min(1, max(0, subsurface))
         self.subsurfaceColor = subsurfaceColor
@@ -361,10 +361,10 @@ public struct Material: Equatable, Sendable {
         m.goochCool = Material.linear(goochCool, alpha: 0)
         m.sparkleColor = Material.linear(sparkleColor, alpha: sparkle)
         m.specular = Float(specular)
-        m.shininess = Float(shininess)
+        m.specularSharpness = Float(specularSharpness)
         m.iridescence = Float(iridescence)
         m.iridescenceScale = Float(iridescenceScale)
-        m.rimPower = Float(rimPower)
+        m.rimSharpness = Float(rimSharpness)
         m.toonBands = Float(toonBands)
         m.shadingModel = Int32(shading.rawValue)
         m.metallic = Float(metallic)
@@ -429,51 +429,51 @@ public extension Material {
 
     /// Flat and chalky: no specular highlight, so the surface reads purely by its
     /// diffuse shading. The plainest finish.
-    static let matte = Material(specular: 0, shininess: 8)
+    static let matte = Material(specular: 0, specularSharpness: 8)
 
     /// Unfired-clay earthenware: a faint, very broad sheen over a matte surface,
     /// the soft light-catch of a smoothed slip.
-    static let clay = Material(specular: 0.14, shininess: 4)
+    static let clay = Material(specular: 0.14, specularSharpness: 4)
 
     /// Soft rubber or matte vinyl: a wide, soft highlight, clearly present but
     /// never sharp, the sheen of an eraser or a tire sidewall.
-    static let rubber = Material(specular: 0.38, shininess: 20)
+    static let rubber = Material(specular: 0.38, specularSharpness: 20)
 
     /// Molded plastic: a clear, medium highlight. The everyday "shiny but not a
     /// mirror" finish.
-    static let plastic = Material(specular: 0.5, shininess: 48)
+    static let plastic = Material(specular: 0.5, specularSharpness: 48)
 
     /// Glazed ceramic / porcelain: a bright, fairly tight highlight over a smooth
     /// surface.
-    static let ceramic = Material(specular: 0.75, shininess: 96)
+    static let ceramic = Material(specular: 0.75, specularSharpness: 96)
 
     /// High-gloss lacquer: a strong, sharp highlight — wet-looking and reflective
     /// without being a mirror.
-    static let glossy = Material(specular: 0.9, shininess: 160)
+    static let glossy = Material(specular: 0.9, specularSharpness: 160)
 
     /// Polished, near-mirror finish: the brightest, tightest hotspot this model
     /// reaches — the closest approximation to metal or chrome short of the
     /// physically-based / environment-lighting tier.
-    static let polished = Material(specular: 1.0, shininess: 256)
+    static let polished = Material(specular: 1.0, specularSharpness: 256)
 
     // Iridescent family — a Fresnel rainbow sheen over a glossy base.
 
     /// A general pearlescent finish: a broad rainbow sheen riding a glossy rim.
-    static let iridescent = Material(specular: 0.6, shininess: 80,
+    static let iridescent = Material(specular: 0.6, specularSharpness: 80,
                                      iridescence: 0.85, iridescenceScale: 1.0)
 
     /// Soap-bubble film: bright, tightly-banded iridescence over a very glossy
     /// surface. Pair with a translucent `fill` for the see-through bubble look.
-    static let soapBubble = Material(specular: 0.85, shininess: 140,
+    static let soapBubble = Material(specular: 0.85, specularSharpness: 140,
                                      iridescence: 1.0, iridescenceScale: 1.6)
 
     /// Oil slick on water: many fine rainbow bands over a darker, less glossy base.
-    static let oilSlick = Material(specular: 0.45, shininess: 60,
+    static let oilSlick = Material(specular: 0.45, specularSharpness: 60,
                                    iridescence: 0.95, iridescenceScale: 2.6)
 
     /// Beetle shell / butterfly wing: a few broad iridescent bands over a hard
     /// glossy shell, a deep structural shimmer rather than a busy rainbow.
-    static let beetle = Material(specular: 0.85, shininess: 140,
+    static let beetle = Material(specular: 0.85, specularSharpness: 140,
                                  iridescence: 1.0, iridescenceScale: 0.8)
 
     // Sparkle (metallic-flake) family: mirror flakes that flash as the view moves.
@@ -481,30 +481,30 @@ public extension Material {
     /// Glitter: a dense dust of tiny mirror flakes over a satin body. Craft glitter,
     /// or metallic car paint (the body color is the `fill`; tint the flakes gold or
     /// copper via `sparkleColor`).
-    static let glitter = Material(specular: 0.35, shininess: 60, sparkle: 0.9)
+    static let glitter = Material(specular: 0.35, specularSharpness: 60, sparkle: 0.9)
 
     /// Sequins / disco: chunky mirror paillettes that flash whole as the view sweeps,
     /// over a glossy body.
-    static let sequin = Material(specular: 0.5, shininess: 90,
+    static let sequin = Material(specular: 0.5, specularSharpness: 90,
                                  sparkle: 1.0, sparkleSize: 9, sparkleSharpness: 60)
 
     // Rim / Fresnel glow.
 
     /// Velvet / backlit fuzz: a soft Fresnel glow rimming the silhouette over a
     /// near-matte body, the way light catches the edge of fabric or moss.
-    static let velvet = Material(specular: 0.08, shininess: 20,
-                                 rim: 0.8, rimPower: 2.2)
+    static let velvet = Material(specular: 0.08, specularSharpness: 20,
+                                 rim: 0.8, rimSharpness: 2.2)
 
     // Subsurface scattering.
 
     /// Jade / polished stone: light glowing through the thin edges in a cool green,
     /// over a glossy body.
-    static let jade = Material(specular: 0.55, shininess: 70,
+    static let jade = Material(specular: 0.55, specularSharpness: 70,
                                subsurface: 0.9,
                                subsurfaceColor: Color(red: 0.35, green: 0.85, blue: 0.55))
 
     /// Wax / candle: a soft warm glow bleeding through the surface, low gloss.
-    static let wax = Material(specular: 0.2, shininess: 24,
+    static let wax = Material(specular: 0.2, specularSharpness: 24,
                               subsurface: 0.85,
                               subsurfaceColor: Color(red: 1.0, green: 0.75, blue: 0.45))
 
@@ -534,11 +534,11 @@ public extension Material {
     /// Toon / cel shading: the diffuse term steps through hard bands, the cartoon
     /// look, with a small crisp highlight.
     static let toon = Material(shading: .toon, toonBands: 4,
-                               specular: 0.4, shininess: 64)
+                               specular: 0.4, specularSharpness: 64)
 
     /// Gooch warm–cool shading: the technical-illustration / blueprint aesthetic,
     /// warm where lit and cool in shadow, with a faint highlight.
-    static let gooch = Material(shading: .gooch, specular: 0.25, shininess: 48)
+    static let gooch = Material(shading: .gooch, specular: 0.25, specularSharpness: 48)
 
     // Physically-based (metallic-roughness) family, the energy-conserving tier. The
     // surface *color* is still the current `fill`; these set the `metallic`/`roughness`

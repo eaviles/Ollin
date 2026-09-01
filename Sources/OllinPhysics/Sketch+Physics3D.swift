@@ -107,7 +107,7 @@ extension Sketch {
     ///
     /// The turn is the rod's own, not one worked out from the neighboring
     /// points, so it carries the rope's twist as well as its bend.
-    public func withSegment(_ segment: RopeSegment, _ draw: () -> Void) {
+    public func withSegment(_ segment: RopeSegment3D, _ draw: () -> Void) {
         let q = segment.rotation.normalized
         let w = max(-1, min(1, q.real))
         let angle = 2 * acos(w)

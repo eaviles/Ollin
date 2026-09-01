@@ -62,7 +62,7 @@ final class OwnSampler: Sketch {
 
     private func rebuild() {
         synth.instrument = instrument
-        synth.voice = Voice(sampled: Sampled(loops: loops,
+        synth.voice = Voice(sampled: Sampler(loops: loops,
                                              velocitySensitivity: velocityFeel),
                             envelope: .sustained, gain: 0.8)
         built = recipe

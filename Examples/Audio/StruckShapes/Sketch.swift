@@ -97,7 +97,7 @@ final class StruckShapes: Sketch {
         let body = measured.body(struckAt: local, decay: ring,
                                  damping: damping, hardness: hardness)
 
-        synth.voice = Voice(body: body, gain: 0.9)
+        synth.voice = Voice(struck: body, gain: 0.9)
         synth.play(pieces[index].pitch, velocity: 0.9, for: ring)
 
         pieces[index].hit = (at: local, start: time)

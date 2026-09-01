@@ -446,8 +446,8 @@ Each body can be asked directly, out of the same list:
 
 ```swift
 ball.contacts                   // this step's events involving this ball
-ball.entered                    // bodies that started touching it this step
-ball.exited                     // bodies that stopped
+ball.arrivals                 // bodies that started touching it this step
+ball.departures               // bodies that stopped
 ball.touching                   // everything it is in contact with right now
 ball.isTouching(floor)
 ```
@@ -471,7 +471,7 @@ let goal = world.addBody(.cylinder(height: 0.5, radius: 1), at: hoopCenter,
                          isSensor: true)
 
 // in draw(), after step:
-score += goal.entered.count           // balls that crossed this step
+score += goal.arrivals.count           // balls that crossed this step
 let inside = !goal.touching.isEmpty   // one is crossing right now
 ```
 
@@ -1024,7 +1024,7 @@ if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 
 **A soft body is part of the world**, not a thing draped over it, so the rest of this page applies to one:
 
-- **It turns up in `world.contacts`.** A cloth landing on a crate reports a `began` with a point and an approach speed, and an `ended` when it comes off, exactly like anything else. `cloth.touching`, `.contacts`, `.entered`, and `.exited` read the same lists a body's do, and a sensor sees a cloth sail into it. Two details are its own. A soft body has no one velocity at the moment its first particle lands, so `speed` is the speed the whole surface arrived at. And where a settled *pile of crates* drops its touches when it falls asleep, a settled cloth **keeps** its list. The solver stops asking a sleeping soft body who it is against, which is not the same as it having let go.
+- **It turns up in `world.contacts`.** A cloth landing on a crate reports a `began` with a point and an approach speed, and an `ended` when it comes off, exactly like anything else. `cloth.touching`, `.contacts`, `.arrivals`, and `.departures` read the same lists a body's do, and a sensor sees a cloth sail into it. Two details are its own. A soft body has no one velocity at the moment its first particle lands, so `speed` is the speed the whole surface arrived at. And where a settled *pile of crates* drops its touches when it falls asleep, a settled cloth **keeps** its list. The solver stops asking a sleeping soft body who it is against, which is not the same as it having let go.
 - **It floats.** [Water](#water) pushes each of its particles up on its own, and each particle rides the surface directly above it. A raft therefore follows the shape of a swell rather than one plane through its middle. What decides how high it rides is `density`, relative to the water's the same way a collider's is. A *closed* surface works its own out from the mass and the volume it holds, so a beach ball just floats. A sheet holds no volume to work one out from, so it starts as heavy as water, lying awash, and one line makes it a raft:
 
   ```swift
@@ -1083,7 +1083,7 @@ let chain = world.addRope(through: links, at: Vector3(0, 3, 0),
 
 #### Riding a rope
 
-`rope.segments` is the rope read as rods rather than points. Each `RopeSegment` carries its `start` and `end`, its `center`, `direction`, and `length`. It also carries a `rotation`, held by the rod itself, which turns as the rope bends *and twists*. A chain of springs could never give you that.
+`rope.segments` is the rope read as rods rather than points. Each `RopeSegment3D` carries its `start` and `end`, its `center`, `direction`, and `length`. It also carries a `rotation`, held by the rod itself, which turns as the rope bends *and twists*. A chain of springs could never give you that.
 
 `withSegment(_:)` stands the transform stack in the middle of a segment with **+y running along the rope**. That is the axis Ollin's cylinders, capsules, and cones stand on. A primitive drawn inside the block lies along the rope with no turning of its own. It is `withBody(_:)`'s twin:
 

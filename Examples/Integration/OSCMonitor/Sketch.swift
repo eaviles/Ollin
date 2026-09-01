@@ -39,7 +39,7 @@ final class OSCMonitor: Sketch {
             print(line)
             log.append(line)
             if log.count > 22 { log.removeFirst(log.count - 22) }
-            if let value = message.float { lastValue = Double(value) }
+            if let value = message.number { lastValue = value }
             lastSeenFrame = frameCount
         }
 

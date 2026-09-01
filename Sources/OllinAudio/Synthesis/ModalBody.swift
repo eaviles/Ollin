@@ -11,7 +11,7 @@ import Ollin
 ///
 /// ```swift
 /// let bell = ModalBody(shape: outline)
-/// let synth = Synth(Voice(body: bell))
+/// let synth = Synth(Voice(struck: bell))
 /// synth.play("C4")
 /// ```
 ///

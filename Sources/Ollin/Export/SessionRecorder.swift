@@ -61,7 +61,11 @@ public final class SessionRecorder: SketchExtension {
     /// The recorder has to know its sketch first: reach it through
     /// `startRecording()` on the sketch, or `extend(_:)` it and start after
     /// `setup()` has run.
-    public func start(to destination: URL? = nil) {
+    public func start(to path: String? = nil) {
+        start(to: path.map { URL(fileURLWithPath: $0) })
+    }
+
+    func start(to destination: URL?) {
         guard !isRecording else { return }
         guard !OllinApp.isRenderingHeadless else {
             print("Ollin: a live recording needs the live window; use --export-video for an offline render")
@@ -600,7 +604,7 @@ public extension Sketch {
     ///
     /// The offline exporters (`--export-video`) are the way to a reproducible,
     /// fixed-clock render; this is the way to keep an improvised one.
-    func startRecording(to url: URL? = nil, audio: SessionRecorder.Audio = .sketch) {
+    func startRecording(to path: String? = nil, audio: SessionRecorder.Audio = .sketch) {
         if sessionRecorder == nil {
             let recorder = SessionRecorder(audio: audio)
             extend(recorder)
@@ -610,7 +614,7 @@ public extension Sketch {
         }
         guard let recorder = sessionRecorder, !recorder.isRecording else { return }
         recorder.audio = audio
-        recorder.start(to: url)
+        recorder.start(to: path)
     }
 
     /// Stops the recording and finishes the file. Safe to call when nothing

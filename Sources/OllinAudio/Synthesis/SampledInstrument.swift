@@ -11,7 +11,7 @@ import Ollin
 /// ```swift
 /// let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)
 /// synth.instrument = piano
-/// synth.voice = Voice(sampled: Sampled(), envelope: .plucked)
+/// synth.voice = Voice(sampled: Sampler(), envelope: .plucked)
 /// synth.play("C4", for: 1.5)
 /// ```
 ///
@@ -266,7 +266,7 @@ public final class SampledInstrument: @unchecked Sendable {
 /// Small and made only of numbers, because this is the part that travels to
 /// the audio thread inside a note. The recordings themselves stay on the
 /// ``Synth``.
-public struct Sampled: Sendable, Hashable, Codable {
+public struct Sampler: Sendable, Hashable, Codable {
     /// Whether a note holds by repeating the looped part of its recording.
     ///
     /// Only does anything for a recording that says where its loop is. Without

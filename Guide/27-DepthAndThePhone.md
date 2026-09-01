@@ -68,7 +68,7 @@ for i in 0 ..< 6 {
     withState {
         translate(-1.3 + Double(i) * 0.44, -0.32, -1.85 - Double(i) * 0.34)
         fill(Color(hue: 0.09 + Double(i) * 0.035, saturation: 0.75, brightness: 1))
-        specular(0.5); shininess(60)
+        specular(0.5); specularSharpness(60)
         drawSphere(radius: 0.12)
     }
 }

@@ -1,7 +1,7 @@
 // figure: frame=308
 //
 // Guide listing (Chapter 24): contact events and sensor bodies. The hoop is a
-// solid rim of beads with a sensor disc filling the ring, so `hoop.entered`
+// solid rim of beads with a sensor disc filling the ring, so `hoop.arrivals`
 // counts the balls that drop clean through and the ring lights while one is
 // crossing; the tray is a sensor too, lit by `touching.count`, which keeps
 // counting balls that have settled and gone to sleep in it; and every knock in
@@ -87,8 +87,8 @@ final class Trigger: Sketch {
         world.advance(by: deltaTime)
 
         if let hoop {
-            score += hoop.entered.count
-            if !hoop.entered.isEmpty { scoreGlow = 1 }
+            score += hoop.arrivals.count
+            if !hoop.arrivals.isEmpty { scoreGlow = 1 }
         }
         scoreGlow = max(0, scoreGlow - deltaTime * 1.6)
         for contact in world.contacts where contact.phase == .began {

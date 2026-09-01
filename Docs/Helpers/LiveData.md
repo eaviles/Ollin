@@ -164,7 +164,7 @@ final class Edits: Sketch {
     override func draw() {
         background(.black)
         for message in edits.messages() {
-            splash(message.json["title"].string ?? "")
+            splash(message.json["title"].text ?? "")
         }
     }
 }
@@ -187,7 +187,7 @@ More than one message can arrive between two frames, and the latest-message read
 
 ```swift
 for message in edits.messages() {
-    ripples.append(Ripple(title: message.json["title"].string ?? ""))
+    ripples.append(Ripple(title: message.json["title"].text ?? ""))
 }
 ```
 

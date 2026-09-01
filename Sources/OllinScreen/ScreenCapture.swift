@@ -414,7 +414,7 @@ public final class ScreenCapture: FrameSource, VideoFeed {
 
     /// Every display that can be captured. Needs the screen-recording permission;
     /// returns an empty array without it.
-    public nonisolated static func displays() async -> [ScreenDisplay] {
+    public nonisolated static func availableDisplays() async -> [ScreenDisplay] {
         guard let content = try? await SCShareableContent
             .excludingDesktopWindows(false, onScreenWindowsOnly: true) else { return [] }
         let main = CGMainDisplayID()
@@ -430,7 +430,7 @@ public final class ScreenCapture: FrameSource, VideoFeed {
     /// Every on-screen window that can be captured, ordered by window id so a
     /// listing reads the same way twice. Needs the screen-recording permission;
     /// returns an empty array without it.
-    public nonisolated static func windows() async -> [ScreenWindow] {
+    public nonisolated static func availableWindows() async -> [ScreenWindow] {
         guard let content = try? await SCShareableContent
             .excludingDesktopWindows(true, onScreenWindowsOnly: true) else { return [] }
         return content.windows

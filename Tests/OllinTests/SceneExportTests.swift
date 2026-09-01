@@ -525,7 +525,7 @@ struct SceneExportTests {
         var toonNotes: [String] = []
         var toon = Material()
         toon.shading = .toon
-        toon.shininess = 64
+        toon.specularSharpness = 64
         let mapped = SpatialRecorder.previewSurface(toon, surface: .white, base: nil,
                                                     notes: &toonNotes)
         #expect(near(mapped.roughness, pow(2 / 66.0, 0.25), 1e-6))

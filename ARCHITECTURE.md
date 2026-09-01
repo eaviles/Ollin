@@ -2060,7 +2060,7 @@ Diffuse always evaluates with the identity transform (an untransformed clamped
 cosine is exact Lambert), so only the specular half reads table 1. In
 `meshLitColor`'s loop the area branch `continue`s past the whole punctual path:
 the PBR model blends table 2's norm and Fresnel channels by F0; the standard
-model maps `shininess` onto the equivalent GGX width (`alpha = sqrt(2/(s+2))`,
+model maps `specularSharpness` onto the equivalent GGX width (`alpha = sqrt(2/(s+2))`,
 so perceptual roughness is its fourth root) and scales the norm channel by
 `mat.specular` (inert at zero, the finish rule); toon quantizes the soft
 diffuse into its cel bands (the highlight stays smooth; a soft light has no
@@ -6105,7 +6105,7 @@ The handle therefore records, per rod the caller handed over, where it ended up
 and whether it was turned around; the read-back walks that map and multiplies a
 reversed rod's rotation by a half turn about its own x axis, which sends its +z
 back the way the caller asked for and leaves a right-handed frame. So `segments`
-speaks in the caller's own order and direction, and the `RopeSegment.rotation` a
+speaks in the caller's own order and direction, and the `RopeSegment3D.rotation` a
 sketch reads is the same convention `withSegment(_:)` applies (local +y along
 the rope, matching the axis Ollin's cylinders and capsules stand on; local +x
 carries the twist).
@@ -8539,7 +8539,7 @@ The input surface feeding it is platform-neutral and plumbed once through
 `scrollDeltaY` is the per-frame scroll total, **double-buffered** in
 `advance()` so a wheel event landing between frames is never lost; `modifiers`
 is a `ModifierKeys` option set mapped from `NSEvent.ModifierFlags` behind the
-AppKit seam (like `KeyCode`); plus `rightMouseIsPressed` and the `mouseWheel()`
+AppKit seam (like `KeyCode`); plus `rightMouseIsPressed` and the `mouseScrolled()`
 hook.
 
 ### Trackpad pressure delivery

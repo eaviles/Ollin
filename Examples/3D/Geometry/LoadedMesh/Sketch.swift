@@ -59,7 +59,7 @@ final class LoadedMesh: Sketch {
                 } else {
                     fill(Color(hex: 0xF5C542)) // rubber-duck yellow for a material-less model
                     specular(0.5)
-                    shininess(40)
+                    specularSharpness(40)
                 }
                 drawMesh(mesh)
             }

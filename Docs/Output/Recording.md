@@ -21,7 +21,7 @@ override func keyPressed() {
 }
 ```
 
-`startRecording()` begins a take and `stopRecording()` finishes the file. With no destination the movie lands in `~/Movies/Ollin/`, named after the sketch and the moment, like `Orbit 2026-08-17 at 21.14.05.mov`. Pass a destination to choose: `startRecording(to: URL(fileURLWithPath: "take.mov"))`. The path's extension picks the container, `.mov` unless you ask for `.mp4`.
+`startRecording()` begins a take and `stopRecording()` finishes the file. With no destination the movie lands in `~/Movies/Ollin/`, named after the sketch and the moment, like `Orbit 2026-08-17 at 21.14.05.mov`. Pass a destination to choose: `startRecording(to: "take.mov")`. The path's extension picks the container, `.mov` unless you ask for `.mp4`.
 
 Frames are stamped with the wall clock, so a frame that took longer simply lasts longer in the file instead of stretching time. The working example is [`Examples/Export/Record`](../../Examples/Export/Record/Sketch.swift).
 

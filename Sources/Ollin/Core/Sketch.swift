@@ -169,7 +169,7 @@ open class Sketch {
     /// How far the scroll wheel (or a trackpad two-finger scroll) moved this frame,
     /// summed since the last frame; `0` when nothing scrolled. Positive is a scroll
     /// up. Read it in `draw()` (it is a per-frame value, like `mouseX`); the
-    /// `cameraControl()` rig reads it to dolly. The `mouseWheel()` hook fires per
+    /// `cameraControl()` rig reads it to dolly. The `mouseScrolled()` hook fires per
     /// event for one-shot response.
     public internal(set) var scrollDeltaY: Double = 0
 
@@ -403,7 +403,7 @@ open class Sketch {
     /// Called once each time the scroll wheel moves; `scrollDeltaY` holds this
     /// event's movement. Override for one-shot response (a discrete zoom step, a
     /// page); for continuous response poll `scrollDeltaY` in `draw()` instead.
-    open func mouseWheel() {}
+    open func mouseScrolled() {}
     /// Called once each time a key is pressed (auto-repeat doesn't re-fire it).
     /// Override to respond to keys; `key`/`keyCode` hold the key. For movement
     /// while a key is held, poll `isKeyDown(_:)` in `draw()` instead.
@@ -1122,12 +1122,12 @@ open class Sketch {
     /// `~0.5` glossy). Drawing state, saved by `withState`.
     public func specular(_ strength: Double) { drawer.specular(strength) }
 
-    /// Set the material's Blinn-Phong shininess exponent — higher is a tighter,
+    /// Set the material's Blinn-Phong specular exponent. Higher is a tighter,
     /// sharper highlight (default `32`). Drawing state, saved by `withState`.
-    public func shininess(_ exponent: Double) { drawer.shininess(exponent) }
+    public func specularSharpness(_ exponent: Double) { drawer.specularSharpness(exponent) }
 
     /// Give subsequent meshes a whole `Material` finish at once — its specular,
-    /// shininess, and any iridescence — instead of setting those knobs one by one.
+    /// specularSharpness, and any iridescence, instead of setting those knobs one by one.
     /// The surface *color* stays the current `fill`. Reach for a built-in
     /// (`.clay`, `.plastic`, `.glossy`, `.soapBubble`, …) or build/tweak your own.
     /// Drawing state, saved by `withState`.
@@ -3748,7 +3748,7 @@ open class Sketch {
     fileprivate func ingestScroll(deltaY: Double) {
         pendingScroll += deltaY
         scrollDeltaY = deltaY
-        mouseWheel()
+        mouseScrolled()
     }
 
     /// Record the held modifier keys from the view.

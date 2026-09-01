@@ -103,7 +103,7 @@ final class MaterialExplorer: Sketch {
     @Param(1...100, group: "Shimmer") var sparkleSharpness = 48.0
 
     @Param(0...1, group: "Glow") var rim = 0.0
-    @Param(0.1...6, group: "Glow") var rimPower = 2.0
+    @Param(0.1...6, group: "Glow") var rimSharpness = 2.0
     @Param(0...1, group: "Glow") var subsurface = 0.0
     @Param(group: "Glow") var subsurfaceColor: Color = .white
 
@@ -134,7 +134,7 @@ final class MaterialExplorer: Sketch {
         $iridescenceScale.show(when: $iridescence) { $0 > 0 }
         $sparkleSize.show(when: $sparkle) { $0 > 0 }
         $sparkleSharpness.show(when: $sparkle) { $0 > 0 }
-        $rimPower.show(when: $rim) { $0 > 0 }
+        $rimSharpness.show(when: $rim) { $0 > 0 }
         $subsurfaceColor.show(when: $subsurface) { $0 > 0 }
     }
 
@@ -163,7 +163,7 @@ final class MaterialExplorer: Sketch {
         shading = ShadingChoice(m.shading)
         toonBands = m.toonBands
         specularLevel = m.specular
-        shininessLevel = m.shininess
+        shininessLevel = m.specularSharpness
         metallic = m.metallic
         roughness = m.roughness
         anisotropy = m.anisotropy
@@ -181,7 +181,7 @@ final class MaterialExplorer: Sketch {
         sparkleSize = m.sparkleSize
         sparkleSharpness = m.sparkleSharpness
         rim = m.rim
-        rimPower = m.rimPower
+        rimSharpness = m.rimSharpness
         subsurface = m.subsurface
         subsurfaceColor = m.subsurfaceColor
     }
@@ -192,7 +192,7 @@ final class MaterialExplorer: Sketch {
         m.shading = shading.model
         m.toonBands = toonBands
         m.specular = specularLevel
-        m.shininess = shininessLevel
+        m.specularSharpness = shininessLevel
         m.metallic = metallic
         m.roughness = roughness
         m.anisotropy = anisotropy
@@ -210,7 +210,7 @@ final class MaterialExplorer: Sketch {
         m.sparkleSize = sparkleSize
         m.sparkleSharpness = sparkleSharpness
         m.rim = rim
-        m.rimPower = rimPower
+        m.rimSharpness = rimSharpness
         m.subsurface = subsurface
         m.subsurfaceColor = subsurfaceColor
         return m

@@ -14,9 +14,9 @@ import Testing
     @Test func everyKindOfValueSurvivesTheTrip() throws {
         let values: [RoomValue] = [
             .number(1.5),
-            .integer(-42),
+            .int(-42),
             .text("hola"),
-            .flag(true),
+            .bool(true),
             .point(Vector2(3, -4)),
             .color(Color(red: 0.2, green: 0.4, blue: 0.6, alpha: 0.8)),
             .bytes(Data([0, 1, 2, 255]))
@@ -48,10 +48,10 @@ import Testing
     }
 
     @Test func numbersReadAcrossTheirKinds() {
-        #expect(RoomValue.integer(3).number == 3)
-        #expect(RoomValue.flag(true).number == 1)
-        #expect(RoomValue.number(2.7).integer == 2)
-        #expect(RoomValue.number(0).flag == false)
+        #expect(RoomValue.int(3).number == 3)
+        #expect(RoomValue.bool(true).number == 1)
+        #expect(RoomValue.number(2.7).int == 2)
+        #expect(RoomValue.number(0).bool == false)
         // Text is text, and reads as nothing else.
         #expect(RoomValue.text("3").number == nil)
         #expect(RoomValue.point(Vector2(1, 2)).number == nil)

@@ -73,7 +73,7 @@ Nothing is dropped quietly. Anything the format cannot hold prints one note nami
 
 - **2D drawing.** Text, shapes, and overlays are not geometry in a scene. A labeled diagram exports as the solids without the labels.
 - **Point clouds, GPU particles, and raymarched fields.** These are not surfaces. `isosurface(at:in:_:)` and `particleSurface(of:)` turn a field or a cloud into a mesh, which does travel.
-- **Stylized finishes.** Toon, gooch, matcap, iridescence, sparkle, rim, sheen, and subsurface are ways of shading rather than descriptions of a material. The surface exports with its color and how shiny it is. A stylized finish's `shininess` converts to roughness through the same curve the renderer's own area lights use. So a polished surface stays polished.
+- **Stylized finishes.** Toon, gooch, matcap, iridescence, sparkle, rim, sheen, and subsurface are ways of shading rather than descriptions of a material. The surface exports with its color and how shiny it is. A stylized finish's `specularSharpness` converts to roughness through the same curve the renderer's own area lights use. So a polished surface stays polished.
 - **Animation and skinning.** One pose is written, the one the scene is holding. Export several frames if you want several poses.
 - **The environment.** An [image-based lighting](../3D/3D.md#environment-lighting) environment is not written. That is usually what you want. A viewer lights a model with its own surroundings. In AR those surroundings are the actual room the model is standing in.
 

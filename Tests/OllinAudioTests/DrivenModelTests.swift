@@ -22,7 +22,7 @@ import Testing
         let events = EventRing()
         let renderer = SynthRenderer(voice: voice, polyphony: 4, sampleRate: rate, events: events)
         renderer.gain = 1
-        renderer.drive = drive
+        renderer.pressure = drive
         events.push(SynthEvent(kind: .noteOn, pitch: pitch, velocity: 0.9,
                                durationSamples: hold ? 0 : Int(seconds * rate)))
         var out = [Double]()
@@ -30,8 +30,8 @@ import Testing
         let block = 512
         while out.count < Int(seconds * rate) {
             if let changeTo, Double(out.count) / rate >= changeTo.at,
-               renderer.drive != changeTo.drive {
-                renderer.drive = changeTo.drive
+               renderer.pressure != changeTo.drive {
+                renderer.pressure = changeTo.drive
             }
             var chunk = [Float](repeating: 0, count: block)
             chunk.withUnsafeMutableBufferPointer { renderer.render(into: $0, frameCount: block) }

@@ -11,10 +11,49 @@ public struct DetectedBarcode: Sendable {
     /// The decoded contents (the text or URL behind a QR code, the digits of a
     /// product barcode), or `nil` if it couldn't be decoded.
     public let payload: String?
-    /// The barcode kind (e.g. "QR", "EAN13"), as Vision names it.
-    public let symbology: String
+    /// The barcode kind: `.qr`, `.ean13`, `.code128`, and the rest.
+    public let symbology: Symbology
     /// Detection confidence, `0…1`.
     public let confidence: Double
+
+    /// A kind of barcode. The named ones are the kinds a sketch usually asks
+    /// about; a code the system learns to read later still arrives, under its
+    /// own `rawValue`, so this stays open rather than closed like an enum.
+    public struct Symbology: RawRepresentable, Hashable, Sendable,
+                             CustomStringConvertible {
+        public let rawValue: String
+        public init(rawValue: String) { self.rawValue = rawValue }
+        public var description: String { rawValue }
+
+        /// A QR code, the square one that usually carries text or a URL.
+        public static let qr = Symbology(rawValue: "qr")
+        /// A Micro QR code, the small-payload version.
+        public static let microQR = Symbology(rawValue: "microQR")
+        /// Aztec, the square code with a bullseye in the middle.
+        public static let aztec = Symbology(rawValue: "aztec")
+        /// Data Matrix, the small square code on components and labels.
+        public static let dataMatrix = Symbology(rawValue: "dataMatrix")
+        /// PDF417, the wide code on boarding passes and driving licenses.
+        public static let pdf417 = Symbology(rawValue: "pdf417")
+        /// EAN-13, the retail barcode used outside North America.
+        public static let ean13 = Symbology(rawValue: "ean13")
+        /// EAN-8, the short retail barcode for small packages.
+        public static let ean8 = Symbology(rawValue: "ean8")
+        /// UPC-E, the compressed North American retail barcode.
+        public static let upce = Symbology(rawValue: "upce")
+        /// Code 39, the older alphanumeric industrial barcode.
+        public static let code39 = Symbology(rawValue: "code39")
+        /// Code 93, Code 39's denser successor.
+        public static let code93 = Symbology(rawValue: "code93")
+        /// Code 128, the dense barcode on parcels and shipping labels.
+        public static let code128 = Symbology(rawValue: "code128")
+        /// ITF-14, the carton code printed on shipping boxes.
+        public static let itf14 = Symbology(rawValue: "itf14")
+        /// Codabar, still used by libraries and blood banks.
+        public static let codabar = Symbology(rawValue: "codabar")
+        /// GS1 DataBar, the small retail code on fresh produce.
+        public static let dataBar = Symbology(rawValue: "gs1DataBar")
+    }
 
     // Normalized corners (lower-left origin), image order.
     let topLeftN: Vector2
@@ -100,7 +139,7 @@ public final class BarcodeScanner: VisionTracking, @unchecked Sendable {
         func vec(_ p: NormalizedPoint) -> Vector2 { Vector2(Double(p.x), Double(p.y)) }
         return DetectedBarcode(
             payload: observation.payloadString,
-            symbology: symbologyName(observation.symbology),
+            symbology: DetectedBarcode.Symbology(rawValue: symbologyName(observation.symbology)),
             confidence: Double(observation.confidence),
             topLeftN: vec(observation.topLeft),
             topRightN: vec(observation.topRight),
@@ -109,12 +148,9 @@ public final class BarcodeScanner: VisionTracking, @unchecked Sendable {
         )
     }
 
-    /// A short, readable name for a symbology (strips Vision's verbose prefix).
+    /// The kind as Ollin names it. A kind with no name here keeps the one
+    /// the system gives it, so a new code still reads.
     private static func symbologyName(_ symbology: BarcodeSymbology) -> String {
-        let raw = String(describing: symbology)
-        if let dot = raw.lastIndex(of: ".") {
-            return String(raw[raw.index(after: dot)...])
-        }
-        return raw
+        String(describing: symbology)
     }
 }

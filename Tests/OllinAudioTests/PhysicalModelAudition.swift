@@ -36,14 +36,14 @@ import Testing
                 (at: Double(step) * 0.13, pitch: 36 + Double(step) * 3,
                  velocity: 0.85, hold: 0.5)
             }
-        samples += render(sampleRate: sampleRate, voice: Voice(string: .steel, gain: 0.8)) { sweep }
+        samples += render(sampleRate: sampleRate, voice: Voice(plucked: .steel, gain: 0.8)) { sweep }
 
         // The same note plucked in different places. Halfway along is hollow,
         // because every harmonic with a node in the middle is missing; near the
         // end keeps them all and comes out thin.
         for pick in [0.5, 0.38, 0.26, 0.16, 0.08, 0.04] {
             let string = PluckedString(position: pick, hardness: 0.75, decay: 2.4, damping: 0.35)
-            samples += render(sampleRate: sampleRate, voice: Voice(string: string, gain: 0.85)) {
+            samples += render(sampleRate: sampleRate, voice: Voice(plucked: string, gain: 0.85)) {
                 [(at: 0, pitch: 52, velocity: 0.9, hold: 1.0)]
             }
         }
@@ -51,7 +51,7 @@ import Testing
         // How hard the pluck is: what part of the string it sets moving.
         for hardness in [0.0, 0.3, 0.6, 1.0] {
             let string = PluckedString(position: 0.2, hardness: hardness, decay: 2.2, damping: 0.4)
-            samples += render(sampleRate: sampleRate, voice: Voice(string: string, gain: 0.85)) {
+            samples += render(sampleRate: sampleRate, voice: Voice(plucked: string, gain: 0.85)) {
                 [(at: 0, pitch: 45, velocity: 0.9, hold: 1.0)]
             }
         }
@@ -60,14 +60,14 @@ import Testing
         // held note darken as it rings.
         for damping in [0.0, 0.35, 0.7, 1.0] {
             let string = PluckedString(position: 0.22, hardness: 0.9, decay: 3.5, damping: damping)
-            samples += render(sampleRate: sampleRate, voice: Voice(string: string, gain: 0.85)) {
+            samples += render(sampleRate: sampleRate, voice: Voice(plucked: string, gain: 0.85)) {
                 [(at: 0, pitch: 40, velocity: 0.95, hold: 1.6)]
             }
         }
 
         // Each preset, played as a chord.
         for string in [PluckedString.nylon, .steel, .harp, .muted] {
-            samples += render(sampleRate: sampleRate, voice: Voice(string: string, gain: 0.7)) {
+            samples += render(sampleRate: sampleRate, voice: Voice(plucked: string, gain: 0.7)) {
                 let chord = Chord("A3", .minorSeventh).pitches
                 return chord.enumerated().map { index, pitch in
                     (at: Double(index) * 0.07, pitch: pitch.midi, velocity: 0.85, hold: 2.4)
@@ -76,7 +76,7 @@ import Testing
         }
 
         // And a figure, so it is heard as an instrument rather than as a sweep.
-        samples += render(sampleRate: sampleRate, voice: Voice(string: .nylon, gain: 0.7)) {
+        samples += render(sampleRate: sampleRate, voice: Voice(plucked: .nylon, gain: 0.7)) {
             let key = Scale(.minorPentatonic, root: "A3")
             let rhythm = Rhythm(7, in: 16)
             let arp = Arpeggio(Chord(key[0], .minorSeventh), .upDown, octaves: 2)
@@ -89,7 +89,7 @@ import Testing
 
         // The struck bodies. Each preset first, so the family is audible.
         for body in [ModalBody.drum, .plate, .bar, .bell, .wood, .glass] {
-            samples += render(sampleRate: sampleRate, voice: Voice(body: body, gain: 0.8)) {
+            samples += render(sampleRate: sampleRate, voice: Voice(struck: body, gain: 0.8)) {
                 [(at: 0, pitch: 60, velocity: 0.9, hold: max(1.0, body.decay))]
             }
         }
@@ -108,7 +108,7 @@ import Testing
             print("audition: \(name) rings at "
                   + measured.ratios.map { String(format: "%.2f", $0) }.joined(separator: " "))
             let body = measured.body(decay: 2.6, damping: 0.9, hardness: 0.75)
-            samples += render(sampleRate: sampleRate, voice: Voice(body: body, gain: 0.8)) {
+            samples += render(sampleRate: sampleRate, voice: Voice(struck: body, gain: 0.8)) {
                 [(at: 0, pitch: 55, velocity: 0.9, hold: 2.6)]
             }
         }
@@ -119,7 +119,7 @@ import Testing
             for away in [0.0, 0.25, 0.5, 0.75, 0.95] {
                 let body = measured.body(struckAt: Vector2(away * 100, 0),
                                          decay: 2.4, damping: 0.9, hardness: 0.8)
-                samples += render(sampleRate: sampleRate, voice: Voice(body: body, gain: 0.8)) {
+                samples += render(sampleRate: sampleRate, voice: Voice(struck: body, gain: 0.8)) {
                     [(at: 0, pitch: 57, velocity: 0.9, hold: 2.0)]
                 }
             }

@@ -32,13 +32,13 @@ import Testing
 
         let scale = Scale(.minorPentatonic, root: "A2")
         let takes: [(String, Sonification, Bool)] = [
-            ("every semitone", Sonification(row, pitches: "A2"..."A5", length: 0.5), false),
+            ("every semitone", Sonification(row, pitches: "A2"..."A5", noteLength: 0.5), false),
             ("snapped to a scale",
-             Sonification(row, in: scale, pitches: "A2"..."A5", length: 0.5), false),
+             Sonification(row, in: scale, pitches: "A2"..."A5", noteLength: 0.5), false),
             ("turned over",
-             Sonification(row, in: scale, pitches: "A2"..."A5", length: 0.5).inverted(), false),
+             Sonification(row, in: scale, pitches: "A2"..."A5", noteLength: 0.5).inverted(), false),
             ("with a reference",
-             Sonification(row, in: scale, pitches: "A2"..."A5", length: 0.5), true),
+             Sonification(row, in: scale, pitches: "A2"..."A5", noteLength: 0.5), true),
         ]
 
         var samples = [Float]()
@@ -49,7 +49,7 @@ import Testing
             renderer.gain = 0.6
 
             let reference = reading.reference(
-                at: (reading.domain.lowerBound + reading.domain.upperBound) / 2,
+                at: (reading.valueDomain.lowerBound + reading.valueDomain.upperBound) / 2,
                 velocity: 0.35)
             let stepSeconds = reading[0]?.seconds(at: tempo) ?? 0.3
             let span = Double(reading.count) * stepSeconds + 1.5

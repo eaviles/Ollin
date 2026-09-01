@@ -64,10 +64,10 @@ final class Sonify: Sketch {
         switch source {
         case .terrain:
             reading = Sonification(land, row: 32, in: scale,
-                                   pitches: "A2"..."A5", length: 0.5)
+                                   pitches: "A2"..."A5", noteLength: 0.5)
         case .picture:
             reading = Sonification(picture, row: 32, in: scale,
-                                   pitches: "A2"..."A5", length: 0.5)
+                                   pitches: "A2"..."A5", noteLength: 0.5)
         }
         if !moreIsHigher { reading = reading.inverted() }
         lit = [Double](repeating: 0, count: reading.count)
@@ -103,7 +103,7 @@ final class Sonify: Sketch {
     /// The value the reference note sounds: the middle of the reading's range,
     /// which is the sea level of this landscape.
     private var referenceValue: Double {
-        (reading.domain.lowerBound + reading.domain.upperBound) / 2
+        (reading.valueDomain.lowerBound + reading.valueDomain.upperBound) / 2
     }
 
     /// What the current reading was built from, so a knob turn rebuilds it and
@@ -122,7 +122,7 @@ final class Sonify: Sketch {
         let right = frame.x + frame.width, bottom = frame.y + frame.height
 
         // The profile itself, as a filled area under the line.
-        let low = reading.domain.lowerBound, high = reading.domain.upperBound
+        let low = reading.valueDomain.lowerBound, high = reading.valueDomain.upperBound
         let span = max(1e-9, high - low)
         func point(_ index: Int) -> Vector2 {
             let t = Double(index) / Double(max(1, reading.count - 1))

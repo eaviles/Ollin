@@ -257,7 +257,7 @@ import Testing
     /// Length is in beats, because nothing in this tier knows how fast the
     /// music is going.
     @Test func lengthIsInBeatsAndTheTempoJoinsLater() {
-        let reading = Sonification([1, 2], length: 0.5)
+        let reading = Sonification([1, 2], noteLength: 0.5)
         let note = reading[0]!
         #expect(note.length == 0.5)
         #expect(abs(note.seconds(at: 120) - 0.25) < 1e-9)

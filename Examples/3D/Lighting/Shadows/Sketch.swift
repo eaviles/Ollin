@@ -46,7 +46,7 @@ final class Shadows3D: Sketch {
         // A few solids above the floor — two resting on it, one floating and bobbing
         // — all turning, so the cast shadows shift and overlap.
         specular(0.3)
-        shininess(40)
+        specularSharpness(40)
 
         withState {
             translate(-3.2, 1.4, -1.0)

@@ -57,7 +57,7 @@ final class SamplerSketch: Sketch {
         } else {
             synth.instrument = SampledInstrument.builtIn
         }
-        synth.voice = Voice(sampled: Sampled(velocitySensitivity: velocityFeel,
+        synth.voice = Voice(sampled: Sampler(velocitySensitivity: velocityFeel,
                                              transposition: transpose),
                             envelope: .plucked, gain: 0.8)
         roots = synth.instrument?.recordingRoots ?? []

@@ -56,7 +56,7 @@ Sonification(numbers,
              pitches: "C3"..."C6",             // the span it is spread over
              bounds: .robust(ignoring: 0.05),  // how the ends are decided
              polarity: .positive,              // which way round
-             length: 0.25)                     // beats per note
+             noteLength: 0.25)                     // beats per note
 ```
 
 | Setting | What it does |
@@ -65,7 +65,7 @@ Sonification(numbers,
 | `pitches:` | the span the data is spread over. Three octaves by default: wide enough to hear a shape in, not so wide the top is shrill |
 | `bounds:` | which values land at the ends. See below |
 | `polarity:` | `.positive` is more-is-higher, which is what a listener expects of a quantity. `.negative` is the right way round for a size, since a small thing is the one that rings high |
-| `length:` | how long each note lasts, **in beats**. The tempo joins when it is played |
+| `noteLength:` | how long each note lasts, **in beats**. The tempo joins when it is played |
 
 ### Where the ends go
 
@@ -90,7 +90,7 @@ Values outside the range are held at the ends rather than running off into an in
 | `note(at:)` | the same, spelled out |
 | `notes()` | the whole reading at once, for a phrase to hold on to |
 | `pitch(for: value)` | where any one value lands, whether or not it is in the data |
-| `values` / `domain` | the numbers as read, and the two that land at the ends |
+| `values` / `valueDomain` | the numbers as read, and the two that land at the ends |
 
 `pitch(for:)` is what puts something else on the same footing as the reading: a threshold, an average, the value under the mouse.
 

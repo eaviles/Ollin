@@ -105,7 +105,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     public func stop() { reader.stop() }
 
     /// Whether sensor frames are currently arriving from the phone.
-    public var isStreaming: Bool { reader.isConnected }
+    public var isRunning: Bool { reader.isConnected }
 
     /// Every body the phone is tracking, newest set each frame, empty before any
     /// arrive or when nobody is in view. ARKit follows one body today; the list

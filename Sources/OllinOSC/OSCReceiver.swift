@@ -19,7 +19,7 @@ public enum OSCError: Error, Sendable {
 /// override func setup() { try? osc.start() }
 /// override func draw() {
 ///     // 1. Continuous control — read the latest value each frame:
-///     let level = osc.float("/level", default: 0)
+///     let level = osc.number("/level", default: 0)
 ///
 ///     // 2. Discrete events — drain everything since the last frame:
 ///     for note in osc.messages() where note.address == "/note" { trigger(note.int ?? 0) }
@@ -134,17 +134,17 @@ public final class OSCReceiver: @unchecked Sendable {
     /// The arguments of the most recent message at `address`.
     public func arguments(_ address: String) -> [OSCArgument]? { message(address)?.arguments }
 
-    /// The first argument at `address` as a `Float` (coerced across numeric tags).
-    public func float(_ address: String) -> Float? { message(address)?.float }
+    /// The first argument at `address` as a `Double` (coerced across numeric tags).
+    public func number(_ address: String) -> Double? { message(address)?.number }
     /// The first argument at `address` as an `Int`.
     public func int(_ address: String) -> Int? { message(address)?.int }
     /// The first argument at `address` as a `String`.
-    public func string(_ address: String) -> String? { message(address)?.string }
+    public func text(_ address: String) -> String? { message(address)?.text }
     /// The first argument at `address` as a `Bool`.
     public func bool(_ address: String) -> Bool? { message(address)?.bool }
 
-    /// The latest `Float` at `address`, or `fallback` if nothing has arrived.
-    public func float(_ address: String, default fallback: Float) -> Float { float(address) ?? fallback }
+    /// The latest `Double` at `address`, or `fallback` if nothing has arrived.
+    public func number(_ address: String, default fallback: Double) -> Double { number(address) ?? fallback }
     /// The latest `Int` at `address`, or `fallback` if nothing has arrived.
     public func int(_ address: String, default fallback: Int) -> Int { int(address) ?? fallback }
     /// The latest `Bool` at `address`, or `fallback` if nothing has arrived.
@@ -218,8 +218,8 @@ public final class OSCReceiver: @unchecked Sendable {
             }
             return state.bindings[message.address]
         }
-        if let binding, let raw = message.float {
-            binding.param.wrappedValue = OSCReceiver.map(Double(raw), from: binding.input, to: binding.param.range)
+        if let binding, let raw = message.number {
+            binding.param.wrappedValue = OSCReceiver.map(raw, from: binding.input, to: binding.param.range)
         }
     }
 

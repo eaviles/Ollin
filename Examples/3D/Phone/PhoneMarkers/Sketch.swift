@@ -149,7 +149,7 @@ final class PhoneMarkers: Sketch {
     private func drawWaiting() {
         // While the stream is alive the empty set means the phone is looking and
         // has found nothing, which is a different thing to say than "connecting".
-        var text = device.isStreaming
+        var text = device.isRunning
             ? "Connected. Nothing it knows is in view.\n\n" +
               "Choose Markers on the phone, drop a picture into its folder,\n" +
               "and point the rear camera at the print."

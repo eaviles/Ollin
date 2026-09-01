@@ -183,7 +183,7 @@ public final class Room: SketchExtension {
 
     /// Sends a whole number to every machine in the room.
     public func send(_ key: String, _ value: Int, reliable: Bool = true) {
-        session.send(key, .integer(value), reliable: reliable, to: [])
+        session.send(key, .int(value), reliable: reliable, to: [])
     }
 
     /// Sends text to every machine in the room.
@@ -193,7 +193,7 @@ public final class Room: SketchExtension {
 
     /// Sends a flag to every machine in the room.
     public func send(_ key: String, _ value: Bool, reliable: Bool = true) {
-        session.send(key, .flag(value), reliable: reliable, to: [])
+        session.send(key, .bool(value), reliable: reliable, to: [])
     }
 
     /// Sends a point to every machine in the room.
@@ -223,9 +223,9 @@ public final class Room: SketchExtension {
     public func number(_ key: String, default fallback: Double) -> Double { number(key) ?? fallback }
 
     /// The latest whole number under this key.
-    public func integer(_ key: String) -> Int? { session.message(key)?.integer }
+    public func int(_ key: String) -> Int? { session.message(key)?.int }
     /// The latest whole number under this key, or `fallback` when none has arrived.
-    public func integer(_ key: String, default fallback: Int) -> Int { integer(key) ?? fallback }
+    public func int(_ key: String, default fallback: Int) -> Int { int(key) ?? fallback }
 
     /// The latest text under this key.
     public func text(_ key: String) -> String? { session.message(key)?.text }
@@ -233,9 +233,9 @@ public final class Room: SketchExtension {
     public func text(_ key: String, default fallback: String) -> String { text(key) ?? fallback }
 
     /// The latest flag under this key.
-    public func flag(_ key: String) -> Bool? { session.message(key)?.flag }
+    public func bool(_ key: String) -> Bool? { session.message(key)?.bool }
     /// The latest flag under this key, or `fallback` when none has arrived.
-    public func flag(_ key: String, default fallback: Bool) -> Bool { flag(key) ?? fallback }
+    public func bool(_ key: String, default fallback: Bool) -> Bool { bool(key) ?? fallback }
 
     /// The latest point under this key.
     public func point(_ key: String) -> Vector2? { session.message(key)?.point }

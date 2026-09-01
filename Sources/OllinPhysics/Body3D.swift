@@ -321,15 +321,15 @@ public final class Body3D {
     /// For a sensor, what just came in.
     ///
     /// ```swift
-    /// score += goal.entered.count
+    /// score += goal.arrivals.count
     /// ```
-    public var entered: [any Colliding3D] {
+    public var arrivals: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .began ? $0.other(than: self) : nil }
     }
 
     /// What stopped touching this body during the last `step`: the departures.
     /// For a sensor, what just left.
-    public var exited: [any Colliding3D] {
+    public var departures: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
     }
 

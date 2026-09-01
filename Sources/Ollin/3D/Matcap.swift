@@ -143,7 +143,7 @@ public struct Matcap {
                               ambient: Double = 0.12) -> Matcap {
         let n = max(8, size)
         let rough = min(1, max(0, roughness))
-        let shininess = 2 + (1 - rough) * (1 - rough) * 220   // 2 (matte) … 222 (mirror)
+        let specularSharpness = 2 + (1 - rough) * (1 - rough) * 220   // 2 (matte) … 222 (mirror)
         let specStrength = 0.04 + (1 - rough) * 0.96
         let amb = min(1, max(0, ambient))
         let base = (Color.srgbToLinear(baseColor.red),
@@ -180,7 +180,7 @@ public struct Matcap {
                 let dKey = max(0, nx * key.0 + ny * key.1 + nz * key.2)
                 let dFill = max(0, nx * fill.0 + ny * fill.1 + nz * fill.2) * 0.35
                 let diffuse = dKey + dFill
-                let spec = pow(max(0, nx * half.0 + ny * half.1 + nz * half.2), shininess) * specStrength
+                let spec = pow(max(0, nx * half.0 + ny * half.1 + nz * half.2), specularSharpness) * specStrength
                 let fres = pow(1 - max(0, nz), 4)
 
                 let r, g, b: Double

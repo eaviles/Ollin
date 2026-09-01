@@ -211,7 +211,7 @@ import OllinOSC
 let osc = OSCReceiver(port: 8000)
 override func setup() { try? osc.start() }
 override func draw() {
-    let level = osc.float("/fader1", default: 0)          // usually 0...1
+    let level = osc.number("/fader1", default: 0)          // usually 0...1
 }
 ```
 
@@ -336,7 +336,7 @@ let serial = SerialPort(matching: "usbmodem", baudRate: 9600)
 
 override func setup() { serial.open() }
 override func draw() {
-    let level = Double(serial.float(default: 0)) / 1023      // the latest reading
+    let level = serial.number(default: 0) / 1023      // the latest reading
     for line in serial.lines() where line == "pressed" {     // each event, once
         flash()
     }
@@ -348,7 +348,7 @@ override func draw() {
   <img src="Images/28-SoundAndControl/SerialLoop.jpg" alt="A diagram of two boxes joined by two arrows: a microcontroller printing one number per line over USB to a SerialPort, a writeLine command returning, the port's three reads listed below, and a note that an unplugged port waits and reopens by itself" width="680">
 </picture>
 
-The two reads are the level-and-moment split this chapter has now made three times. `float(default:)` is the latest value, read fresh each frame, for a continuous sensor. `lines()` hands you every line since the last frame, once each, for discrete events. And the third read you can guess by now: `serial.bind(to: $radius)` wires the stream onto a `@Param`, mapped in from the `0...1023` an analog pin classically reads. A potentiometer on a breadboard drives the same knob the inspector slider does.
+The two reads are the level-and-moment split this chapter has now made three times. `number(default:)` is the latest value, read fresh each frame, for a continuous sensor. `lines()` hands you every line since the last frame, once each, for discrete events. And the third read you can guess by now: `serial.bind(to: $radius)` wires the stream onto a `@Param`, mapped in from the `0...1023` an analog pin classically reads. A potentiometer on a breadboard drives the same knob the inspector slider does.
 
 `matching:` is worth a word. Serial devices live at paths like `/dev/cu.usbmodem101`, and the number changes between plugs. The match re-runs on every connection attempt, so the port finds the board wherever it lands. It even works when the board is plugged in after the sketch launches. The connection is patient by design too: `open()` doesn't fail, it waits. Unplug the board mid-performance and `isOpen` goes false while the port quietly retries; plug it back in and the values resume. A firmware re-flash mid-session heals the same way.
 

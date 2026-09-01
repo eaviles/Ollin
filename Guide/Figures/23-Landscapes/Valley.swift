@@ -206,7 +206,7 @@ final class Valley: Sketch {
         }
 
         specular(0.08)
-        shininess(18)
+        specularSharpness(18)
         drawMeshField(world)
 
         // The near stand, rebuilt every frame: the wind lives in the placements.
