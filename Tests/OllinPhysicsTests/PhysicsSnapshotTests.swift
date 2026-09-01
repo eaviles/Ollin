@@ -1063,8 +1063,8 @@ struct SnapshotTierTests {
     /// The tiers survive a file the way the rigid tier does.
     @Test func theTiersSurviveAFileRoundTrip() throws {
         let world = World3D()
-        let machine = try #require(machine(in: world))
-        machine.throttle = 1
+        let car = try #require(machine(in: world))
+        car.throttle = 1
         world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(-6, 2, 0))
             .move(Vector3(0, 0, 1))
         run(world, steps: 120)
@@ -1079,7 +1079,7 @@ struct SnapshotTierTests {
         #expect(fresh.vehicles.count == 1)
         #expect(fresh.characters.count == 1)
         let back = try #require(fresh.vehicles.first)
-        #expect((back.body.position - machine.body.position).length == 0)
+        #expect((back.body.position - car.body.position).length == 0)
     }
 
     /// A world of every tier, restored and captured again, gives the same
