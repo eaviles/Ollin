@@ -28,6 +28,27 @@ struct SourceEditTests {
         return try SourceEdit.moving(text, line: at.line, column: at.column, move: move, by: delta)
     }
 
+    private func resized(_ text: String, call: String, move: SourceMove,
+                         by factor: Vector2) throws -> String {
+        let at = site(of: call, in: text)
+        return try SourceEdit.resizing(text, line: at.line, column: at.column,
+                                       move: move, by: factor)
+    }
+
+    private func turned(_ text: String, call: String, move: SourceMove,
+                        by angle: Double) throws -> String {
+        let at = site(of: call, in: text)
+        return try SourceEdit.turning(text, line: at.line, column: at.column,
+                                      move: move, by: angle)
+    }
+
+    private func planned(_ text: String, call: String, move: SourceMove,
+                         by delta: Vector2) throws -> SourceEdit.MovePlan {
+        let at = site(of: call, in: text)
+        return try SourceEdit.planningMove(text, line: at.line, column: at.column,
+                                           move: move, by: delta)
+    }
+
     // MARK: The everyday case
 
     @Test func aWholeNumberStaysWhole() throws {
@@ -208,5 +229,136 @@ struct SourceEditTests {
         #expect(out.contains("drawCircle(200, 200, 60)"))
         #expect(out.contains("drawCircle(400, 320, 60)"))
         #expect(out.contains("drawRect(100, 400, 300, 80)"))
+    }
+
+    // MARK: Making it bigger
+
+    @Test func aCornerScalesTheRadiusAndNothingElse() throws {
+        let out = try resized("drawCircle(200, 300, 40)", call: "drawCircle",
+                              move: .xy(radius: 2), by: Vector2(1.5, 1.5))
+        #expect(out == "drawCircle(200, 300, 60)")
+    }
+
+    /// The position numbers stay as they are, so the shape grows from where the
+    /// call says it stands. A corner radius is a detail, not a size.
+    @Test func aResizeLeavesThePositionAndTheCornerRadius() throws {
+        let out = try resized("drawRect(10, 20, 300, 120, cornerRadius: 8)", call: "drawRect",
+                              move: .xy(width: 2, height: 3).fromCorner, by: Vector2(2, 0.5))
+        #expect(out == "drawRect(10, 20, 600, 60, cornerRadius: 8)")
+    }
+
+    @Test func sizesThatScaleTogetherTakeOneFactor() throws {
+        let out = try resized("drawStar(300, 300, 80, 40, points: 5)", call: "drawStar",
+                              move: .xy(radii: [2, 3]), by: Vector2(0.5, 0.5))
+        #expect(out == "drawStar(300, 300, 40, 20, points: 5)")
+    }
+
+    @Test func twoWidthsBothFollowTheSideTheyAreOn() throws {
+        let out = try resized("drawTrapezoid(100, 100, 60, 120, 80)", call: "drawTrapezoid",
+                              move: .xy(widths: [2, 3], height: 4), by: Vector2(2, 1))
+        #expect(out == "drawTrapezoid(100, 100, 120, 240, 80)")
+    }
+
+    @Test func aResizedSizeKeepsTheDigitsItWasWrittenWith() throws {
+        let out = try resized("drawCircle(200, 300, 40.5)", call: "drawCircle",
+                              move: .xy(radius: 2), by: Vector2(2, 2))
+        #expect(out == "drawCircle(200, 300, 81.0)")
+    }
+
+    @Test func aComputedSizeIsRefusedByName() throws {
+        #expect(throws: SourceEdit.Failure.computed(argument: "radius * 2")) {
+            try resized("drawCircle(200, 300, radius * 2)", call: "drawCircle",
+                        move: .xy(radius: 2), by: Vector2(1.5, 1.5))
+        }
+    }
+
+    @Test func aShapeWithNoSizeOnItsLineCannotBeResized() throws {
+        #expect(throws: SourceEdit.Failure.nothingToSize) {
+            try resized("drawLine(0, 0, 100, 50)", call: "drawLine",
+                        move: .scalars([0, 1, 2, 3]), by: Vector2(2, 2))
+        }
+    }
+
+    // MARK: Turning it
+
+    /// A line swings about its own middle rather than travelling: both ends
+    /// move, and the middle stays where it was.
+    @Test func bothEndsSwingAboutTheMiddle() throws {
+        let out = try turned("drawLine(0, 0, 100, 0)", call: "drawLine",
+                             move: .scalars([0, 1, 2, 3]), by: .pi / 2)
+        #expect(out == "drawLine(50, -50, 50, 50)")
+    }
+
+    @Test func aPointFormTurnsTheSameWay() throws {
+        let out = try turned("drawLine(Vector2(0, 0), Vector2(100, 0))", call: "drawLine",
+                             move: .points([0, 1]), by: .pi / 2)
+        #expect(out == "drawLine(Vector2(50, -50), Vector2(50, 50))")
+    }
+
+    /// A half turn leaves a coordinate a hair under zero. Rounding that would
+    /// write `-0`, which nobody types.
+    @Test func aTurnNeverWritesNegativeZero() throws {
+        let out = try turned("drawLine(0, 0, 100, 0)", call: "drawLine",
+                             move: .scalars([0, 1, 2, 3]), by: .pi)
+        #expect(out == "drawLine(100, 0, 0, 0)")
+    }
+
+    /// An arc carries its own angles, so turning it moves those instead of the
+    /// point that places it. Three decimals at least: a whole radian is most of
+    /// a quarter turn.
+    @Test func anArcTurnsByItsOwnAngles() throws {
+        let out = try turned("drawArc(300, 300, 100, 100, start: 0, stop: 1.5)", call: "drawArc",
+                             move: .xy(width: 2, height: 3).turning(4, 5), by: 0.5)
+        #expect(out == "drawArc(300, 300, 100, 100, start: 0.500, stop: 2.000)")
+    }
+
+    @Test func aShapeThatSaysNothingAboutItsAngleCannotTurn() throws {
+        #expect(throws: SourceEdit.Failure.nothingToTurn) {
+            try turned("drawCircle(200, 300, 40)", call: "drawCircle",
+                       move: .xy(radius: 2), by: 0.4)
+        }
+    }
+
+    @Test func aTurnRefusesAComputedEndByName() throws {
+        #expect(throws: SourceEdit.Failure.computed(argument: "width - 20")) {
+            try turned("drawLine(0, 0, width - 20, 50)", call: "drawLine",
+                       move: .scalars([0, 1, 2, 3]), by: 0.4)
+        }
+    }
+
+    // MARK: A coordinate that is a name
+
+    /// The plan is what lets a host turn a knob where there is no number to
+    /// write. The name is reported; whether it is a knob is the host's question.
+    @Test func aBareNameIsReportedRatherThanRefused() throws {
+        let plan = try planned("drawCircle(cx, 300, 40)", call: "drawCircle",
+                               move: .xy(radius: 2), by: Vector2(10, 5))
+        #expect(plan.refused == nil)
+        #expect(plan.names == [.init(name: "cx", delta: 10, isAcross: true)])
+        // The coordinate that is a number is written; the one that is a name is not.
+        #expect(plan.text == "drawCircle(cx, 305, 40)")
+    }
+
+    @Test func bothCoordinatesCanBeNames() throws {
+        let plan = try planned("drawCircle(center: Vector2(cx, cy), radius: 40)",
+                               call: "drawCircle", move: .point(radius: 1), by: Vector2(3, 4))
+        #expect(plan.names == [.init(name: "cx", delta: 3, isAcross: true),
+                               .init(name: "cy", delta: 4, isAcross: false)])
+        #expect(plan.text == "drawCircle(center: Vector2(cx, cy), radius: 40)")
+    }
+
+    /// A calculation is not a name, and neither is a member of something: both
+    /// stop the plan, and nothing is written.
+    @Test func aCalculationStopsThePlan() throws {
+        let plan = try planned("drawCircle(width / 2, 300, 40)", call: "drawCircle",
+                               move: .xy(radius: 2), by: Vector2(10, 5))
+        #expect(plan.refused == "width / 2")
+        #expect(plan.text == "drawCircle(width / 2, 300, 40)")
+    }
+
+    @Test func aMemberIsNotABareName() throws {
+        let plan = try planned("drawCircle(p.x, 300, 40)", call: "drawCircle",
+                               move: .xy(radius: 2), by: Vector2(10, 5))
+        #expect(plan.refused == "p.x")
     }
 }

@@ -48,7 +48,7 @@ struct SourcePickTests {
         // Left of the rectangle's edge, so only the circle is there.
         let pick = sketch.sourcePick(at: Vector2(145, 200))
         #expect(pick?.site.line == sketch.circleLine)
-        #expect(pick?.site.move == .xy)
+        #expect(pick?.site.move == .xy(radius: 2))
         #expect(pick?.site.fileName == "SourcePickTests.swift")
     }
 
@@ -117,7 +117,7 @@ struct SourcePickTests {
             }
         }
         let sketch = run(Labeled())
-        #expect(sketch.sourcePick(at: Vector2(100, 100))?.site.move == .point)
+        #expect(sketch.sourcePick(at: Vector2(100, 100))?.site.move == .point(radius: 1))
     }
 
     /// A line is a thin thing to hit, so its region is a few points wider than
@@ -133,5 +133,118 @@ struct SourcePickTests {
         let sketch = run(OneLine())
         #expect(sketch.sourcePick(at: Vector2(200, 102))?.site.move == .scalars([0, 1, 2, 3]))
         #expect(sketch.sourcePick(at: Vector2(200, 130)) == nil)
+    }
+
+    // MARK: What can be taken hold of
+
+    /// A circle is placed by its middle and sized by one number, so every
+    /// corner can scale it, and nothing on the line says which way it faces.
+    @Test func aCircleOffersFourCornersAndNoTurnKnob() throws {
+        let sketch = run(TwoShapes())
+        let pick = try #require(sketch.sourcePick(at: Vector2(145, 200)))
+        #expect(pick.handles.filter { $0.kind == .resize }.count == 4)
+        #expect(pick.handles.contains { $0.kind == .turn } == false)
+        // The corners are the outline's own corners, on the canvas.
+        let corners = Set(pick.handles.map { Vector2(round($0.position.x), round($0.position.y)) })
+        #expect(corners == Set([Vector2(140, 140), Vector2(260, 140),
+                                Vector2(260, 260), Vector2(140, 260)]))
+    }
+
+    /// A rectangle placed by its top-left corner holds that corner still, so
+    /// the handle standing on it has nothing to scale and is not offered.
+    @Test func aCornerPlacedRectangleOffersThreeCorners() throws {
+        let sketch = run(TwoShapes())
+        let pick = try #require(sketch.sourcePick(at: Vector2(200, 200)))
+        #expect(pick.site.line == sketch.rectLine)
+        #expect(pick.handles.count == 3)
+        #expect(pick.handles.contains { $0.position == Vector2(150, 150) } == false)
+        #expect(pick.placedAt == Vector2(150, 150))
+    }
+
+    /// A line is sized by where its ends are, so it has no corner; it does have
+    /// a middle to swing about, so it has the knob.
+    @Test func aLineOffersATurnKnobAndNoCorners() throws {
+        final class OneLine: Sketch {
+            var line = 0
+            override func draw() {
+                stroke(.black)
+                strokeWeight(4)
+                drawLine(100, 100, 300, 100); line = #line
+            }
+        }
+        let sketch = run(OneLine())
+        let pick = try #require(sketch.sourcePick(at: Vector2(200, 100)))
+        #expect(pick.handles.count == 1)
+        #expect(pick.handles.first?.kind == .turn)
+        // It stands clear above the shape rather than on it.
+        #expect(pick.handles.first!.position.y < pick.outline.map(\.y).min()!)
+        #expect(pick.placedAt == nil)
+    }
+
+    /// An arc carries its own two angles, so it has both: corners for its radii
+    /// and a knob for where it points.
+    @Test func anArcOffersCornersAndAKnob() throws {
+        final class OneArc: Sketch {
+            override func draw() {
+                noFill()
+                stroke(.black)
+                strokeWeight(6)
+                drawArc(300, 300, 100, 100, start: 0.6, stop: 2.5)
+            }
+        }
+        let sketch = run(OneArc())
+        let pick = try #require(sketch.sourcePick(at: Vector2(300, 300)))
+        #expect(pick.site.move.angles == [4, 5])
+        #expect(pick.handles.filter { $0.kind == .resize }.count == 4)
+        #expect(pick.handles.contains { $0.kind == .turn })
+    }
+
+    /// A resize is a ratio, so the same drag on the same picture gives the same
+    /// answer whatever scale the numbers are written at.
+    @Test func theSizeFactorIsTheSameAtAnyScale() throws {
+        let plain = run(TwoShapes())
+        let circle = try #require(plain.sourcePick(at: Vector2(145, 200)))
+        let corner = try #require(circle.handle(at: Vector2(260, 260), within: 2))
+        let one = try #require(circle.sizeFactor(for: corner, canvasDelta: Vector2(60, 60)))
+
+        let scaled = run(UnderATransform())
+        let small = try #require(scaled.sourcePick(at: Vector2(400, 100)))
+        let far = try #require(small.handle(at: Vector2(460, 160), within: 2))
+        let two = try #require(small.sizeFactor(for: far, canvasDelta: Vector2(60, 60)))
+
+        #expect(abs(one.x - 2) < 1e-6)
+        #expect(abs(one.x - two.x) < 1e-6)
+    }
+
+    /// One drag cannot take a shape below a twentieth of what it was, so a
+    /// corner pulled through the middle leaves something to grab again.
+    @Test func aResizeStopsBeforeTheShapeDisappears() throws {
+        let sketch = run(TwoShapes())
+        let pick = try #require(sketch.sourcePick(at: Vector2(145, 200)))
+        let corner = try #require(pick.handle(at: Vector2(260, 260), within: 2))
+        let factor = try #require(pick.sizeFactor(for: corner, canvasDelta: Vector2(-400, -400)))
+        #expect(factor.x > 0)
+        #expect(abs(factor.x - 0.05) < 1e-9)
+    }
+
+    /// The angle is measured in the frame the call drew in, so a shape inside a
+    /// turned frame reads the turn the pointer made, not one shifted by the frame.
+    @Test func aTurnIsMeasuredInTheCallsOwnFrame() throws {
+        final class InsideATurnedFrame: Sketch {
+            override func draw() {
+                stroke(.black)
+                strokeWeight(4)
+                withState {
+                    translate(300, 300)
+                    rotate(.pi / 2)
+                    drawLine(-50, 0, 50, 0)
+                }
+            }
+        }
+        let sketch = run(InsideATurnedFrame())
+        let pick = try #require(sketch.sourcePick(at: Vector2(300, 300)))
+        // A quarter turn of the pointer about the middle of the shape.
+        let angle = pick.turnAngle(from: Vector2(300, 250), to: Vector2(350, 300))
+        #expect(abs(angle - .pi / 2) < 1e-5)
     }
 }

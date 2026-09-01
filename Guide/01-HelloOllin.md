@@ -193,7 +193,28 @@ While the sketch is running under `swift run OllinLive`, you can skip that. Hold
 
 Your editor will offer to reload the file, and the running window has already reloaded itself. Nothing else on the line moves: the radius, your spacing, and the comment you left at the end are all where you put them.
 
-Two things are worth knowing before you rely on it. A number written whole stays whole: a shape placed at `300` lands on `286`, never `285.7`, and a nudge under half a point changes nothing. And only a plain number can be dragged. If you wrote `drawCircle(width / 2, 300, 40)`, that first slot holds no number to change. The host says so rather than moving anything: *places this shape with `width / 2`, so there is no number to move.*
+The shape itself is only the first of three things to take hold of. Small squares sit on its corners, and a small circle stands clear above it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/DragHandles-dark.jpg">
+  <img src="Images/01-HelloOllin/DragHandles.jpg" alt="Three panels: a circle being dragged to a new place, the same circle grown by pulling its bottom-right corner, and a line with a round knob above it sweeping round" width="680">
+</picture>
+
+A corner changes the numbers that *size* the shape and leaves the ones that place it alone. So a circle grows from its middle. A rectangle written `drawRect(x, y, width, height)` grows from its top-left corner, which is where those first two numbers put it. That is also why such a rectangle offers three corners and not four. The fourth sits on the corner that places it, and has nothing to scale.
+
+The knob turns the shape, and it only appears when the line can say which way the shape faces. A line has two ends, so both swing about the middle. An arc carries its own two angles, so those move instead. A circle has neither, so it shows no knob at all. What turns a circle is a `rotate` further up the file, which this does not touch.
+
+Two things are worth knowing before you rely on any of it. A number written whole stays whole: a shape placed at `300` lands on `286`, never `285.7`, and a nudge under half a point changes nothing. And only a plain number can be dragged. If you wrote `drawCircle(width / 2, 300, 40)`, that first slot holds no number to change. The host says so rather than moving anything: *places this shape with `width / 2`, so there is no number to move.*
+
+There is one exception, and you will meet the knobs it needs in a moment. A coordinate written as the name of a `@Param` has no number on the line either, but it does have somewhere to put the value:
+
+```swift
+@Param(60 ... 660) var sunX = 120.0
+
+drawCircle(sunX, 120, 40)     // dragging this turns sunX
+```
+
+The drag turns that knob instead of writing the file. Nothing recompiles, so it is the quickest of the three. The value stays put across the next reload, the way any knob you turn by hand does.
 
 That limit is the honest shape of the feature. The file is the sketch, and dragging edits the file. So anything the file works out for itself is changed the way it was written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends.
 
