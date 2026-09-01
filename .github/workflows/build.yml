@@ -127,17 +127,29 @@ jobs:
       # same way for the same reason. Its suite's other test uses contours,
       # which do run here, so only the one test is named rather than the suite.
       #
-      # The step timeout is the hang guard. The whole suite finishes in well
-      # under a minute when healthy; the only way past ten minutes is a wedged
-      # runner (see the job-level note), and cutting it here fails fast while
-      # the job cap stays generous enough for a cold build.
+      # The suites Scripts/test.sh runs in a phase of their own are skipped
+      # outright here, and that list is copied from it deliberately: they are
+      # the ones that want a device to themselves, and this runner has none of
+      # the devices. No camera, no speech stack, no hardware decoder, and Vision
+      # reports no compute device at all. Left in, they do not merely fail. They
+      # park the cooperative pool, which is one thread per core, and everything
+      # else waits behind them: a run measured here spent five minutes silent in
+      # the middle of a color round trip, and trivial string tests reported
+      # durations of 444 seconds each because they all unblocked at once.
+      #
+      # The step timeout is the hang guard, raised from ten minutes because that
+      # figure was set against a much smaller suite. Over four thousand tests
+      # start here now, so ten minutes was cutting off a healthy run rather than
+      # catching a wedged one. The job cap above is still the outer bound.
       # The snapshot pattern is anchored with its module name because `--skip`
       # takes an unanchored regex over the full test ID: a bare `SnapshotTests`
       # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
       # dropped 46 pure-CPU determinism tests from every run here for weeks.
       - name: Test (excluding GPU snapshots)
-        timeout-minutes: 10
-        run: swift test --skip 'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline'
+        timeout-minutes: 22
+        run: >-
+          swift test --skip
+          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests'
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the
