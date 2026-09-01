@@ -9,7 +9,7 @@ import PackageDescription
 #error("Building Ollin needs Swift 6.3 or newer (Xcode 26); running a sketch needs macOS 26 or newer. Select a newer toolchain and build again.")
 #endif
 
-// Ollin — a motion-first creative coding framework for Swift + Metal.
+// Ollin: a motion-first creative coding framework for Swift + Metal.
 //
 // One product: the `Ollin` library you `import Ollin` in your sketches.
 // Runnable sketches are a package of their own, in `Examples/`. Run one with
@@ -120,27 +120,27 @@ let package = Package(
         // free of MultipeerConnectivity.
         .library(name: "OllinRoom", targets: ["OllinRoom"]),
         // Physics as a satellite library: `import OllinPhysics` for a small
-        // Verlet world — particles, springs, and disk collisions — that a sketch
+        // Verlet world (particles, springs, and disk collisions) that a sketch
         // steps each frame so motion comes from simulation, not hand-tuned values.
         // A satellite (like the others) to keep it opt-in; it needs no framework
         // beyond Ollin's own geometry types.
         .library(name: "OllinPhysics", targets: ["OllinPhysics"]),
         // Computer vision as a satellite library: `import OllinVision` for the
         // Mac's camera (built-in, Continuity, or external) plus Apple Vision /
-        // Core ML perception — face/hand/body tracking, segmentation, contours,
-        // and more — surfaced as typed values a sketch reads in `draw()`. Kept out
+        // Core ML perception (face/hand/body tracking, segmentation, contours,
+        // and more) surfaced as typed values a sketch reads in `draw()`. Kept out
         // of `Ollin` so the drawing core stays free of AVFoundation / Vision.
         .library(name: "OllinVision", targets: ["OllinVision"]),
         // Video playback as a satellite library: `import OllinVideo` to play a
-        // video file into a sketch as a live image — each decoded frame arrives
+        // video file into a sketch as a live image: each decoded frame arrives
         // as a GPU texture drawn through `drawImage`. Kept out of `Ollin` so the
         // drawing core stays free of AVFoundation playback (the input-side
         // companion to the core's offline video export).
         .library(name: "OllinVideo", targets: ["OllinVideo"]),
         // Syphon as a satellite library: `import OllinSyphon` to share live
-        // visuals with the other apps on a Mac (openFrameworks via ofxSyphon,
-        // Resolume, MadMapper, VDMX, …) — publish the sketch's rendered frames as
-        // a Syphon source and consume an external Syphon texture as an input.
+        // visuals with the other Syphon-capable apps on a Mac: publish the
+        // sketch's rendered frames as a Syphon source and consume an external
+        // Syphon texture as an input.
         // Built on the vendored Syphon Framework (Metal subset, BSD 2-Clause);
         // kept out of `Ollin` so the drawing core stays free of that dependency.
         .library(name: "OllinSyphon", targets: ["OllinSyphon"]),
@@ -204,7 +204,7 @@ let package = Package(
             dependencies: ["Ollin"]
         ),
         // The live-reload host. `swift run OllinLive <path/to/Sketch.swift>`
-        // opens a window, then recompiles + hot-swaps that sketch on save —
+        // opens a window, then recompiles + hot-swaps that sketch on save:
         // edit, save, see it update in place, without the window closing.
         .executableTarget(
             name: "OllinLive",
@@ -343,7 +343,7 @@ let package = Package(
         ),
         // Vendored libtess2 (GLU-tessellator lineage), the polygon triangulator
         // behind concave/holed `Shape` fills. Bundled third-party C source under
-        // its own SGI-B license — see Sources/CLibtess2/README.md and the
+        // its own SGI-B license; see Sources/CLibtess2/README.md and the
         // repo-root THIRD-PARTY-NOTICES.md. Wrapped behind Ollin's own API; the
         // C symbols are not part of Ollin's public surface. The upstream
         // Source/ + Include/ split is preserved so its relative includes resolve;
@@ -401,7 +401,7 @@ let package = Package(
         // Vendored Clipper2 (Angus Johnson's polygon clipping + offsetting
         // library, C++), the engine behind `Shape`'s booleans (union/
         // intersection/subtracting/symmetricDifference) and `offset(by:join:)`.
-        // Bundled third-party C++ source under its own Boost Software License —
+        // Bundled third-party C++ source under its own Boost Software License;
         // see External/CClipper2/README.md and the repo-root
         // THIRD-PARTY-NOTICES.md. Wrapped behind Ollin's own API; Swift imports
         // only the thin C shim in include/ (no C++ interop), so the
@@ -420,9 +420,9 @@ let package = Package(
                 .linkedLibrary("c++")
             ]
         ),
-        // Vendored Box2D (Erin Catto's 2D rigid-body engine, v3 — pure C),
+        // Vendored Box2D (Erin Catto's 2D rigid-body engine, v3, pure C),
         // the solver behind OllinPhysics' rigid-body `World`/`Body`. Bundled
-        // third-party C source under its own MIT license — see
+        // third-party C source under its own MIT license; see
         // External/CBox2D/README.md and the repo-root THIRD-PARTY-NOTICES.md.
         // Wrapped behind Ollin's own API; the `b2*` symbols are not part of
         // Ollin's public surface. The upstream src/ + include/ split is
@@ -468,9 +468,9 @@ let package = Package(
                 .linkedLibrary("c++")
             ]
         ),
-        // Vendored Syphon Framework (Metal subset) — the IOSurface-backed GPU
+        // Vendored Syphon Framework (Metal subset): the IOSurface-backed GPU
         // frame-sharing engine behind `OllinSyphon`. Bundled third-party
-        // Objective-C source under its own BSD 2-Clause license — see
+        // Objective-C source under its own BSD 2-Clause license; see
         // External/CSyphon/README.md and the repo-root THIRD-PARTY-NOTICES.md.
         // Wrapped behind Ollin's own API; the `Syphon*` symbols are not part of
         // Ollin's public surface. `include/` holds a curated umbrella +
@@ -608,8 +608,8 @@ let package = Package(
             name: "OllinRoom",
             dependencies: ["Ollin"]
         ),
-        // Physics: a small Verlet world — particles, springs, and disk collisions
-        // — stepped each frame so motion can come from simulation. A satellite
+        // Physics: a small Verlet world (particles, springs, and disk collisions)
+        // stepped each frame so motion can come from simulation. A satellite
         // library (like OllinAudio) so it stays opt-in; it depends on Ollin only
         // for the `Vector2`/`Rectangle` geometry types, no other framework.
         .target(
@@ -665,7 +665,7 @@ let package = Package(
         // Shared usbmuxd transport: the publicly-documented protocol that tunnels a
         // TCP connection to a USB-tethered iPhone (the plumbing Xcode and
         // libimobiledevice use). Extracted from OllinRecord3D so OllinPhone shares
-        // it; `package`-level surface, no library product — it's transport plumbing,
+        // it; `package`-level surface, no library product: it's transport plumbing,
         // not public API. No dependencies (pure Foundation/Darwin).
         .target(
             name: "OllinUSBMux"
@@ -674,7 +674,7 @@ let package = Package(
         // on-device ARKit sensor stream (body pose, device motion) over the usbmuxd
         // tunnel. A satellite (like OllinRecord3D) so the drawing core stays lean.
         // PhoneWire.swift is shared verbatim with the iOS app (Apps/OllinPhoneApp),
-        // so it imports only Foundation/simd — never Ollin.
+        // so it imports only Foundation/simd, never Ollin.
         .target(
             name: "OllinPhone",
             dependencies: ["Ollin", "OllinUSBMux"]
@@ -730,7 +730,7 @@ let package = Package(
             // `.copy` so the *raw source* ships: on current toolchains `.process`
             // instead precompiles a single `default.metallib`, which can't carry
             // the device-conditional `OLLIN_RT_SHADOWS` define (ray-traced point
-            // shadows on a capable GPU) — runtime compilation is what makes that
+            // shadows on a capable GPU). Runtime compilation is what makes that
             // variant, the hot-reload seam, and user shaders possible.
             //
             // `OllinShaderTypes.h` ships beside them: the runtime shader compiler
@@ -757,12 +757,12 @@ let package = Package(
                 .copy("Renderer/ShaderIBL.metal"),
                 .copy("Renderer/ShaderPathTrace.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
-                // Cozette (MIT) — the bundled default bitmap font, loaded at
+                // Cozette (MIT): the bundled default bitmap font, loaded at
                 // runtime by BitmapFont.builtin via the BDF parser. License kept
                 // beside it; see THIRD-PARTY-NOTICES.md.
                 .copy("Resources/cozette.bdf"),
                 .copy("Resources/Cozette-LICENSE.txt"),
-                // Hershey Sans (futural) — the bundled default stroke font, loaded
+                // Hershey Sans (futural): the bundled default stroke font, loaded
                 // at runtime by StrokeFont.builtin via the .jhf parser. Public
                 // domain; provenance recorded beside it and in THIRD-PARTY-NOTICES.
                 .copy("Resources/futural.jhf"),
@@ -835,7 +835,7 @@ let package = Package(
             dependencies: ["Ollin", "OllinLaser"]
         ),
         // MIDI correctness: MIDI 1.0 / UMP parse+encode round-trips (every message
-        // kind, malformed/non-1.0 words rejected without trapping) — Core MIDI-free,
+        // kind, malformed/non-1.0 words rejected without trapping); Core MIDI-free,
         // so it runs in CI. The loopback self-test needs the Core MIDI server and
         // skips when it's unavailable.
         .testTarget(
@@ -996,7 +996,7 @@ let package = Package(
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety
-    // is enforced as errors everywhere — framework, hosts, and example sketches.
+    // is enforced as errors everywhere: framework, hosts, and example sketches.
     swiftLanguageModes: [.v6],
     // Vendored Clipper2 (External/CClipper2) is C++17; this only affects how
     // C++ sources compile, nothing about the Swift side.
