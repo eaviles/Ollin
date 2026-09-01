@@ -216,20 +216,24 @@ struct USDSceneWriter {
         let occlusion = material.occlusionTexture.map { ordinal(of: $0) }
         let emissive = material.emissiveTexture.map { ordinal(of: $0) }
         let heightMap = material.heightTexture.map { ordinal(of: $0) }
-        let key = [num(material.baseColor.red), num(material.baseColor.green),
-                   num(material.baseColor.blue), num(material.baseColor.alpha),
-                   num(material.metallic), num(material.roughness), num(material.opacity),
-                   num(material.ior), num(material.clearcoat), num(material.clearcoatRoughness),
-                   perVertexColor ? "vc" : "-",
-                   texture.map(String.init) ?? "-",
-                   normal.map(String.init) ?? "-", num(material.normalScale),
-                   mr.map(String.init) ?? "-",
-                   occlusion.map(String.init) ?? "-", num(material.occlusionStrength),
-                   emissive.map(String.init) ?? "-",
-                   num(material.emissiveColor.red), num(material.emissiveColor.green),
-                   num(material.emissiveColor.blue),
-                   heightMap.map(String.init) ?? "-", num(material.heightScale)]
-            .joined(separator: "/")
+        // Annotated, and built before it is joined, because the type checker has
+        // to be told what this is. Twenty-three elements inferred from scratch,
+        // six of them handing it the whole `String.init` overload set, is enough
+        // to make Swift 6.3 give up on the expression entirely.
+        let parts: [String] = [num(material.baseColor.red), num(material.baseColor.green),
+                               num(material.baseColor.blue), num(material.baseColor.alpha),
+                               num(material.metallic), num(material.roughness), num(material.opacity),
+                               num(material.ior), num(material.clearcoat), num(material.clearcoatRoughness),
+                               perVertexColor ? "vc" : "-",
+                               tag(texture),
+                               tag(normal), num(material.normalScale),
+                               tag(mr),
+                               tag(occlusion), num(material.occlusionStrength),
+                               tag(emissive),
+                               num(material.emissiveColor.red), num(material.emissiveColor.green),
+                               num(material.emissiveColor.blue),
+                               tag(heightMap), num(material.heightScale)]
+        let key = parts.joined(separator: "/")
         if let found = materials.first(where: { $0.key == key }) { return found.path }
 
         let name = "material\(materials.count)"
@@ -607,6 +611,16 @@ struct USDSceneWriter {
         guard value.isFinite else { return "0" }
         if value == value.rounded(), abs(value) < 1e9 { return String(Int(value)) }
         return String(Float(value))
+    }
+
+    /// A texture's ordinal for the material key, or a dash where there is no
+    /// texture. Written as a call rather than `map(String.init)` at each of the
+    /// six sites: an unapplied `String.init` offers the type checker every
+    /// initializer String has, and six of those in one literal is what made the
+    /// key too expensive to infer.
+    private func tag(_ ordinal: Int?) -> String {
+        guard let ordinal else { return "-" }
+        return String(ordinal)
     }
 
     // MARK: - Names
