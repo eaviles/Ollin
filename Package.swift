@@ -1,6 +1,14 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
+// The build floor, stated where it fails fast. An older compiler gets one line
+// naming the requirement instead of building the vendored C targets for
+// minutes and then failing with misleading type-checker errors deep in the
+// framework.
+#if compiler(<6.3)
+#error("Building Ollin needs Swift 6.3 or newer (Xcode 26); running a sketch needs macOS 26 or newer. Select a newer toolchain and build again.")
+#endif
+
 // Ollin — a motion-first creative coding framework for Swift + Metal.
 //
 // One product: the `Ollin` library you `import Ollin` in your sketches.
