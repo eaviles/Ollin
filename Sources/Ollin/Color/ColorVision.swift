@@ -81,8 +81,15 @@ public struct ColorVision: Equatable, Hashable, Sendable {
         if low == high || mix == 0 {
             return Array(table[(low * 9)..<(low * 9 + 9)])
         }
-        return (0..<9).map { i in
-            table[low * 9 + i] * (1 - mix) + table[high * 9 + i] * mix
+        // The bases and the complement are lifted out, and the closure says what
+        // it takes and returns, because inferring all of that nine times over
+        // from one line is more than an older compiler will finish: Swift 6.2
+        // gives up on this expression and the whole framework stops building.
+        let lowBase = low * 9
+        let highBase = high * 9
+        let fromLow = 1 - mix
+        return (0..<9).map { (i: Int) -> Double in
+            table[lowBase + i] * fromLow + table[highBase + i] * mix
         }
     }
 
