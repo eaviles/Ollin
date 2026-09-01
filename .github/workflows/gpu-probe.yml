@@ -1,0 +1,117 @@
+name: GPU probe
+
+# Temporary. Answers one question the runner is the only place that can answer:
+# what its paravirtualized GPU actually reports, and which of the mesh-pipeline
+# calls it will accept. A selector probe says yes here and the call still raises
+# `unrecognized selector`, so the driver implements the method as a stub, and
+# guessing at a replacement gate costs a full test run per guess. This costs a
+# couple of runner minutes instead.
+#
+# Delete once the answer is recorded.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: GPU probe (macOS)
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - name: What this GPU is and what it will take
+        run: |
+          cat > /tmp/probe.swift <<'SWIFT'
+          import Foundation
+          import Metal
+          import ObjectiveC
+
+          guard let device = MTLCreateSystemDefaultDevice() else {
+              print("PROBE: no Metal device"); exit(0)
+          }
+          print("PROBE name: \(device.name)")
+          print("PROBE registryID: \(device.registryID)")
+          print("PROBE headless: \(device.isHeadless), lowPower: \(device.isLowPower)")
+
+          let families: [(String, MTLGPUFamily)] = [
+              ("common1", .common1), ("common2", .common2), ("common3", .common3),
+              ("apple1", .apple1), ("apple2", .apple2), ("apple3", .apple3),
+              ("apple4", .apple4), ("apple5", .apple5), ("apple6", .apple6),
+              ("apple7", .apple7), ("apple8", .apple8), ("apple9", .apple9),
+              ("mac2", .mac2), ("metal3", .metal3),
+          ]
+          for (label, family) in families {
+              print("PROBE family \(label): \(device.supportsFamily(family))")
+          }
+          print("PROBE supportsRaytracing: \(device.supportsRaytracing)")
+
+          let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
+              pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false)
+          textureDescriptor.usage = .renderTarget
+          textureDescriptor.storageMode = .private
+          guard let target = device.makeTexture(descriptor: textureDescriptor),
+                let queue = device.makeCommandQueue(),
+                let buffer = queue.makeCommandBuffer() else {
+              print("PROBE: could not make an encoder"); exit(0)
+          }
+          let pass = MTLRenderPassDescriptor()
+          pass.colorAttachments[0].texture = target
+          pass.colorAttachments[0].loadAction = .dontCare
+          pass.colorAttachments[0].storeAction = .dontCare
+          guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else {
+              print("PROBE: no render encoder"); exit(0)
+          }
+          print("PROBE encoder class: \(String(cString: class_getName(object_getClass(encoder)!)))")
+          for selector in ["setObjectBytes:length:atIndex:",
+                           "setMeshBytes:length:atIndex:",
+                           "setObjectBuffer:offset:atIndex:",
+                           "drawMeshThreadgroups:threadsPerObjectThreadgroup:threadsPerMeshThreadgroup:"] {
+              print("PROBE responds \(selector): \(encoder.responds(to: NSSelectorFromString(selector)))")
+          }
+
+          // Can a mesh pipeline even be built here? The claim under test is that
+          // it can, and that only the encoding fails.
+          let source = """
+          #include <metal_stdlib>
+          #include <metal_mesh>
+          using namespace metal;
+          struct V { float4 position [[position]]; };
+          struct P { float pad; };
+          using M = mesh<V, void, 3, 1, topology::triangle>;
+          [[object, max_total_threadgroups_per_mesh_grid(1)]]
+          void ollin_probe_object(object_data P& payload [[payload]],
+                                  mesh_grid_properties grid) {
+              payload.pad = 0; grid.set_threadgroups_per_grid(uint3(1, 1, 1));
+          }
+          [[mesh]] void ollin_probe_mesh(M out, const object_data P& payload [[payload]]) {
+              out.set_primitive_count(0);
+          }
+          fragment float4 ollin_probe_fragment() { return float4(1); }
+          """
+          do {
+              let library = try device.makeLibrary(source: source, options: nil)
+              let descriptor = MTLMeshRenderPipelineDescriptor()
+              descriptor.objectFunction = library.makeFunction(name: "ollin_probe_object")
+              descriptor.meshFunction = library.makeFunction(name: "ollin_probe_mesh")
+              descriptor.fragmentFunction = library.makeFunction(name: "ollin_probe_fragment")
+              descriptor.colorAttachments[0]!.pixelFormat = .rgba8Unorm
+              _ = try device.makeRenderPipelineState(descriptor: descriptor, options: [])
+              print("PROBE mesh pipeline: built")
+          } catch {
+              print("PROBE mesh pipeline: FAILED \(error)")
+          }
+
+          // Last, because it is expected to kill the process: actually make the
+          // call. Anything printed after this line means it was survivable.
+          fflush(stdout)
+          var bytes = SIMD4<Float>(0, 0, 0, 0)
+          encoder.setObjectBytes(&bytes, length: 16, index: 0)
+          print("PROBE setObjectBytes: returned normally")
+          encoder.endEncoding()
+          SWIFT
+          swiftc -O /tmp/probe.swift -o /tmp/probe
+          set +e
+          /tmp/probe
+          echo "PROBE exit code: $?"
