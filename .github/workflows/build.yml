@@ -84,12 +84,19 @@ jobs:
       - name: Swift version
         run: swift --version
 
-      # There is deliberately no build cache here, on measurement rather than
-      # principle. Since the examples moved to their own package this tree is
-      # about 1.7 GB, which would fit the 10 GB per-repository cache limit, but a
-      # cold build of it is only about ninety seconds, so storing and restoring
-      # a tree that size buys little. The Examples job's tree is about 12 GB and
-      # does not fit at all.
+      # There is deliberately no build cache here, and the measurement it rests
+      # on has gone stale. The claim was that a cold build of this tree costs
+      # about ninety seconds, so caching 1.7 GB to save it buys little. Two
+      # green runs on 2026-09-01 measured 527 s and 732 s, five to eight times
+      # that, and the spread between two builds of the same code is itself 39%.
+      # The Examples job's `swift build` measured 1132 s against a note calling
+      # it "over six minutes", and its tree is about 12 GB, which does not fit
+      # the 10 GB per-repository cache limit anyway.
+      #
+      # So the no-cache decision is now resting on a number nobody has
+      # re-measured, and it is worth re-deciding rather than inheriting. Not
+      # done here: it wants its own measurement, and a cache only ever lands on
+      # a green run, which is a thing this job has only just started producing.
       #
       # One earlier failure is worth recording, because it is invisible until
       # looked for: the combined cache action skips its save step when the job
@@ -154,15 +161,18 @@ jobs:
       # number this project will have. The job cap above is still the outer
       # bound.
       #
-      # The reason it is slow is known, though, and it is not the machine.
-      # OllinTests draws through `Sketch`, which is main-actor isolated, so
-      # every render probe queues on one thread and the target uses a fraction
-      # of the cores. Those long silences in the log are that queue draining.
-      # Scripts/shard-tests.sh is the standing answer (409 s to 189 s in four
-      # processes, measured locally), and pointing this step at it would cut
-      # both the wall clock and the bill. It is not done here only because the
-      # script excludes a hardcoded pair of suites and this step excludes
-      # twelve, so the two skip sets have to be reconciled first.
+      # Measured since: 1316 s green. Four seconds under the twenty-two minute
+      # cap that had been cutting it off, which is why one run finished and the
+      # next did not. Two runs of the same commit came in 1.6% apart, so the
+      # step itself is steady even though the build step above varied 39%
+      # between the same two runs.
+      #
+      # Why it is slow is known, and it is not the machine. OllinTests draws
+      # through `Sketch`, which is main-actor isolated, so every render probe
+      # queues on one thread and the target uses a fraction of the cores. Those
+      # long silences in the log are that queue draining. Sharding is the
+      # standing answer and does not work here yet; the note on the test step
+      # below says what stopped it.
       #
       # Three more join them for the same reason, found the same way. Screen
       # capture is permitted here and still delivers nothing: the guard those
@@ -211,32 +221,30 @@ jobs:
       # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
       # dropped 46 pure-CPU determinism tests from every run here for weeks.
       #
-      # Two commands rather than one `swift test`, for the reason in the note
-      # above: OllinTests is main-actor bound, so a single process gives that
-      # target one thread whatever the machine has. Scripts/shard-tests.sh runs
-      # it as four processes against the already-built bundle, then the second
-      # command sweeps every other target. It is the same split
-      # Scripts/test.sh's own shard mode makes, minus its phase 1, whose suites
-      # this runner has no devices for and skips outright.
+      # Sharding was tried here and is not in place, which is worth writing down
+      # because the attempt looked like it worked. Scripts/shard-tests.sh runs
+      # OllinTests as four processes locally (409 s to 189 s) and takes this
+      # step's skip list through OLLIN_SHARD_SKIP, so the wiring was easy. What
+      # it cannot do is find the bundle: it invokes swiftpm-testing-helper
+      # directly against `.build/debug/OllinTests.xctest`, and the toolchain on
+      # this image emits one merged `OllinPackageTests.xctest` instead of a
+      # bundle per target. Its guard then fires, it says so in one line among
+      # ten thousand, and it runs OllinTests in a single process exactly as
+      # before. The measured 1337 s that came back was not a sharded run beating
+      # nothing; it was an unsharded run, 1.6% off the unsharded run before it.
       #
-      # The skip list is written once and used by both, since a pattern that
-      # reached only one of them would silently run the tests it names. The
-      # shard script takes it as an ordinary `--skip` regex (OLLIN_SHARD_SKIP),
-      # which is why it can name one test and not just a suite: the
-      # frame-interpolation gate wants a camera while the rest of its suite runs
-      # here perfectly well.
-      #
-      # Both run before either verdict is read, so one failing shard cannot hide
-      # what the other targets would have said.
+      # So a future attempt needs bundle discovery that handles both layouts,
+      # and it cannot be written blind: this desk is on Swift 6.4 and produces
+      # per-target bundles, the runner is on 6.3.3 and produces the merged one,
+      # and there is no flag to make either behave like the other. That makes it
+      # work to do when a run costs nothing, which is the moment the repository
+      # goes public, rather than against a billed runner now. The step fits in
+      # its cap unsharded: 1316 s measured green.
       - name: Test (excluding GPU snapshots)
         timeout-minutes: 35
-        env:
-          SKIP: 'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
-        run: |
-          failed=0
-          OLLIN_SHARD_SKIP="$SKIP" Scripts/shard-tests.sh || failed=1
-          swift test --skip "$SKIP|^OllinTests\." || failed=1
-          exit $failed
+        run: >-
+          swift test --skip
+          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the

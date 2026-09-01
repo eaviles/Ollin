@@ -50,13 +50,19 @@ shards=${1:-4}
 # test.sh's phase 1, so they are not part of this.
 apart='OllinTests.DataFeedTests|OllinTests.SpatialVideoTests'
 # An extra exclusion, in `swift test --skip` form: an unanchored regex over the
-# whole test ID, so it can name a single test and not just a suite. CI sets it,
-# because a runner without the devices has to drop tests that a desk does not,
-# and one of them (the frame-interpolation gate, which wants a camera) is a
-# single test inside a suite that otherwise runs here perfectly well.
+# whole test ID, so it can name a single test and not just a suite, which the
+# suite-level `apart` above cannot. Written for a machine that has to drop tests
+# a desk does not (a runner with no camera, no speech stack, no hardware
+# decoder), and useful by hand for a scoped shard run.
 skip=${OLLIN_SHARD_SKIP:-}
 single() {
-    echo "shard-tests: $1; running OllinTests in one process instead"
+    # Loudly, because this is a silent no-op otherwise: the run still passes,
+    # still says what it ran, and takes exactly as long as it would have without
+    # any of this. A CI job wired to shard fell back here for a whole run and
+    # the one line it printed went unread among ten thousand.
+    print -r -- "shard-tests: ====== NOT SHARDING ======" >&2
+    print -r -- "shard-tests: $1" >&2
+    print -r -- "shard-tests: running OllinTests in ONE process; expect no speedup" >&2
     exec swift test --filter '^OllinTests\.' --skip "$apart${skip:+|$skip}"
 }
 
@@ -69,8 +75,16 @@ fi
 
 platform=$(xcrun --sdk macosx --show-sdk-platform-path 2>/dev/null)
 helper="$(dirname "$(xcrun --find swift)")/../libexec/swift/pm/swiftpm-testing-helper"
+# A bundle per target is one of two layouts SwiftPM produces, and the only one
+# this handles. The other is a single merged `OllinPackageTests.xctest` holding
+# every target at once, which is what the macos-26 runner's Swift 6.3.3 emits
+# where this desk's 6.4 emits the per-target form. There is no flag to make
+# either produce the other, so supporting the merged layout means listing every
+# target's tests and cutting the set back to OllinTests before dealing it, and
+# it cannot be written or checked from a machine that never produces one.
 bundle=".build/debug/OllinTests.xctest/Contents/MacOS/OllinTests"
-[[ -n "$platform" && -x "$helper" && -f "$bundle" ]] || single "no direct invocation on this toolchain"
+[[ -n "$platform" && -x "$helper" ]] || single "no swiftpm-testing-helper on this toolchain"
+[[ -f "$bundle" ]] || single "no $bundle (a merged PackageTests bundle is not handled)"
 
 export DYLD_FRAMEWORK_PATH="$platform/Developer/Library/Frameworks"
 export DYLD_LIBRARY_PATH="$platform/Developer/usr/lib"
