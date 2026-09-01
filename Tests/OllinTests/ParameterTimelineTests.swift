@@ -138,14 +138,21 @@ struct ParameterTimelineTests {
         let probe = ClockProbe()
         let (runner, view) = try makeRunner(probe)
         runner.draw(in: view)
-        runner.clockLoopRegion = 1.0...1.01
-        runner.scrubClock(to: 1.009)
+        // Two constraints on these numbers. The span must not divide
+        // `SketchRunner.longestFrameStep` (0.25): a frame longer than the cap
+        // steps by exactly the cap, so a span that divides it wraps back onto
+        // the value it started from every frame, and the clock stands still
+        // rather than coming around, which is what a loaded machine sees. And
+        // the top end sits close to the scrub, because a full frame ring drops
+        // most passes and little clock accumulates.
+        runner.clockLoopRegion = 1.0...1.013
+        runner.scrubClock(to: 1.0125)
         var wrapped = false
         for _ in 0..<2000 {
             runner.draw(in: view)
             guard let last = probe.times.last else { continue }
-            #expect(last <= 1.0101, "the clock never plays past the region's top end")
-            if last < 1.009 && last >= 1.0 { wrapped = true; break }
+            #expect(last <= 1.0131, "the clock never plays past the region's top end")
+            if last < 1.0125 && last >= 1.0 { wrapped = true; break }
         }
         #expect(wrapped, "the running clock comes around to the region's bottom end")
     }
