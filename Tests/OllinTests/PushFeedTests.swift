@@ -774,7 +774,7 @@ struct PushFeedExportTests {
     /// because the render it can see belongs to somebody else. This is what
     /// keeps a test process from handing its own renders to every feed under
     /// test, and it is the whole reason `start()` needs no main actor.
-    @Test func aStartOffTheMainThreadIsNotPartOfTheExport() async {
+    @Test func aStartOffTheMainThreadIsNotPartOfTheExport() {
         let made = OSAllocatedUnfairLock(initialState: [EagerTransport]())
         let feed = PushFeed("wss://feed.test/x", retryEvery: 1) { _, deliver in
             let transport = EagerTransport(deliver: deliver)
@@ -783,9 +783,14 @@ struct PushFeedExportTests {
         }
         defer { feed.stop() }
 
+        // The flag is process-global, so it is set and cleared without ever
+        // yielding the main actor. Awaiting the off-thread start instead would
+        // hand it to whatever main-actor test is scheduled during the
+        // suspension, and a live recorder starting there reads somebody else's
+        // export and refuses to run.
         OllinApp.isRenderingHeadless = true
-        defer { OllinApp.isRenderingHeadless = false }
-        await Task.detached { feed.start() }.value
+        startOffTheMainThread { feed.start() }
+        OllinApp.isRenderingHeadless = false
 
         #expect(feed.updateCount == 1)
         #expect(feed.isConnected)                                  // still up

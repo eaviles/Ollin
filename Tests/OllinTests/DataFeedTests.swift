@@ -475,9 +475,15 @@ struct DataFeedExportTests {
         let (path, feed) = makeFeed(#"{"height": 4}"#, every: 100_000)
         defer { feed.stop() }
 
+        // Set and cleared without ever yielding the main actor: the flag is
+        // process-global, and holding it across the await and the poll below
+        // would hand it to every main-actor test scheduled in that window, which
+        // here runs to twenty seconds. `start()` reads it once and keeps its
+        // answer, so clearing it before the poll changes nothing the rest of the
+        // test asks about.
         OllinApp.isRenderingHeadless = true
-        defer { OllinApp.isRenderingHeadless = false }
-        await Task.detached { feed.start() }.value
+        startOffTheMainThread { feed.start() }
+        OllinApp.isRenderingHeadless = false
 
         // Nothing is read synchronously here: the request is scheduled, so the
         // answer arrives later and the clock is a real one.

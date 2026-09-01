@@ -119,7 +119,17 @@ fi
 # 2026-08-26: one helper froze a 2902-test run at 2% CPU for minutes at a time,
 # and the tests that failed were whichever ones held a stopwatch. Costs
 # milliseconds, so it runs every time rather than on a diff match.
-parked=$(grep -rn 'DispatchSemaphore\|\.wait(' Tests/ 2>/dev/null)
+#
+# One file is exempt, on the rule's own reasoning. The hazard is parking a
+# cooperative worker; HeadlessFlagSupport.swift blocks the *main* thread while a
+# detached real thread runs, which parks no worker at all. Blocking there is
+# also the point rather than a cost: while the main thread waits, no other
+# main-actor test can run, so the process-global that helper guards is invisible
+# to every reader that could be fooled by it. Suspending instead of blocking is
+# exactly what let PushFeedTests hand its export to SessionRecorderTests and
+# fail it on CI (2026-09-01).
+parked=$(grep -rn 'DispatchSemaphore\|\.wait(' Tests/ 2>/dev/null \
+    | grep -v '^Tests/OllinTests/HeadlessFlagSupport.swift:')
 if [[ -n "$parked" ]]; then
     echo "preflight: a test parks a thread; hop with 'await MainActor.run' instead:" >&2
     echo "$parked" >&2
