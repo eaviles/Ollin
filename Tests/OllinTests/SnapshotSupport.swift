@@ -30,7 +30,8 @@ import UniformTypeIdentifiers
 /// than `0`/`1`, matched as a case-insensitive substring) to record only the
 /// snapshots whose name matches while every other case still compares: adding
 /// one snapshot rewrites nothing else, so there is nothing to `git restore`
-/// afterwards. `0` or an empty value means compare mode, so a
+/// afterwards. Several names separated by commas record each of them in one
+/// run. `0` or an empty value means compare mode, so a
 /// stale exported variable can't record by accident. Record on a known-good
 /// build, since the references are the source of truth thereafter, and only
 /// once the reason they moved is understood: the metric is a mean, so it hides
@@ -96,12 +97,16 @@ enum Snapshot {
 
     /// What `OLLIN_RECORD_SNAPSHOTS` asks of the case named `name`: `1` records
     /// everything, `0`/empty/unset records nothing, and any other value records
-    /// only the names it matches as a case-insensitive substring.
+    /// only the names it matches as a case-insensitive substring, with commas
+    /// separating several such names.
     private static func shouldRecord(_ name: String) -> Bool {
         guard let value = ProcessInfo.processInfo.environment["OLLIN_RECORD_SNAPSHOTS"],
               !value.isEmpty, value != "0" else { return false }
         if value == "1" { return true }
-        return name.localizedCaseInsensitiveContains(value)
+        return value.split(separator: ",").contains { pattern in
+            let trimmed = pattern.trimmingCharacters(in: .whitespaces)
+            return !trimmed.isEmpty && name.localizedCaseInsensitiveContains(trimmed)
+        }
     }
 
     /// Render `sketch` at `frame` and return its mean per-channel difference
