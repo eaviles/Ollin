@@ -52,6 +52,19 @@ struct USDSceneWriter {
     // whether two surfaces are the same material.
     private var textureOrdinals: [ObjectIdentifier: Int] = [:]
 
+    /// Written out rather than left to the compiler. The bookkeeping above is
+    /// private, which makes the memberwise initializer private with it, so
+    /// whether this type can be built from another file at all comes down to
+    /// how a given compiler treats private stored properties that already hold
+    /// a value. Swift 6.4 hands back one that omits them; 6.3 leaves only the
+    /// argument-less default, and the single caller in SceneExport stops
+    /// compiling. Naming the two settings a caller actually sets costs four
+    /// lines and depends on none of that.
+    init(metersPerUnit: Double = 1, carriesTextures: Bool = false) {
+        self.metersPerUnit = metersPerUnit
+        self.carriesTextures = carriesTextures
+    }
+
     // MARK: - The layer
 
     /// `scene` as a complete `.usda` layer.
