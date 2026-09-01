@@ -12,11 +12,31 @@ on:
 
 jobs:
   claude:
+    # Two things have to be true, not one: the text names @claude, and the
+    # person who wrote it has write access here.
+    #
+    # These events run in this repository's context with its secrets in scope,
+    # CLAUDE_CODE_OAUTH_TOKEN among them. That is unlike a pull request from a
+    # fork, which is handed no secrets at all. Once the repository is public
+    # anyone can open an issue or comment on one, so the trigger text alone
+    # decides nothing. The action runs its own permission check on the actor,
+    # which makes this the second lock rather than the only one.
+    #
+    # Each branch reads the association from its own event payload, since a
+    # review carries it somewhere different from a comment.
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' &&
+        (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association))
     runs-on: ubuntu-latest
     permissions:
       contents: read

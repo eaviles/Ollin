@@ -12,11 +12,16 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Branches in this repository only.
+    #
+    # A pull request opened from a fork is handed none of this repository's
+    # secrets, so CLAUDE_CODE_OAUTH_TOKEN arrives empty and the step fails.
+    # Skipping those is not a restriction on who may contribute; it stops a
+    # first-time contributor's pull request from opening with a red check they
+    # did not cause and cannot fix. Reviewing a fork's changes needs a trigger
+    # that runs in this repository's context, which is a separate decision with
+    # its own risks, so it is not made here.
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:
