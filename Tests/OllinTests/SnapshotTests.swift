@@ -242,6 +242,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("sandpile", frame: 120,
                  note: "An Abelian sandpile on the classic protocol: a mountain dropped once on frame 1 (a fixed dot, no rng), caught mid-collapse at frame 120 so the picture holds both regimes at once, settled counts as lacework at the rim and cells still mid-topple at the hot core. Pins the parallel multiple-toppling gather (fract(q) plus floored neighbor quarters), the open boundary, the add-whole-grains inject with its rounding, the quarters state encoding whose flat levels the gradient map reads, and the render-every-frame headless warmup the collapse depends on. SandpileTests pins the rule itself against a sequential CPU reference (the abelian schedule-independence), which a whole-frame mean diff cannot.",
                  make: { SandpileScene() }),
+    SnapshotCase("falling-sand", frame: 120,
+                 note: "A falling-sand SimField run by a fixed script: two wall shelves laid on frame 1, a pool of water in the right basin, sand poured in a steady stream onto the upper shelf for 60 frames and dripped into the pool for 40, caught at frame 120 with the heap slumped off its shelf and the pool's sand settled through the water, recolored one tone per material. Pins the block-neighborhood step end to end: the pass alternating its block tiling, the fall-then-roll-then-spread order, sand sinking through water, the closed box, the coin against friction 0.3 seeded by the slot's age (so a run replays exactly), and the inject that snaps a drawn mark's gray to a material in sRGB terms. FallingSandTests pins the rule itself cell-for-cell against a CPU reference, which a whole-frame mean diff cannot.",
+                 make: { FallingSandScene() }),
     SnapshotCase("cyclic-automaton", frame: 300,
                  note: "A cyclic cellular automaton (the classic 14-state, threshold-1, von Neumann rule) from its seeded random start, run to frame 300 and recoloured by a closed hue wheel. Pins the state-automata family end to end: the seeded random state fill a fresh field starts from (a uniform field is a fixed point), the s/(levels-1) state encoding and rint decode, the eat-the-next-color advance, and the toroidal neighbor taps. StateAutomataTests pins the rule itself cell-for-cell against a sequential CPU reference, which a whole-frame mean diff cannot.",
                  make: { CyclicScene() }),
@@ -266,6 +269,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-combine",
                  note: "Four tiles, each a two-input combine over the same scene: a luminance mask, a displacement by a blurred bump, a cross-dissolve toward a checker generator, and an inverted alpha mask. Pins the multi-input path (the .combine origin resolved after both inputs, the two-texture bind, and the mask/displace/mix fragments).",
                  make: { EffectsCombine() }),
+    SnapshotCase("line-integral-convolution",
+                 note: "Three tiles of line integral convolution over one grainy scene, with the plain scene as the fourth: a swirl from a noise layer read as an angle, the same scene brushed along the contours of a radial gradient (the streaks circle the center), and a blurred bump read as a vector field through .normalMap. Pins the streamline walk both ways from each pixel (the Euler step, the box average over the samples reached, the stop at a still field and at the edge) and the three field readings.",
+                 make: { LineIntegralConvolutionScene() }),
     SnapshotCase("effects-compose-aside",
                  note: "A compose layer masked by an aside (a blurred disc, drawn only to feed the mask). Pins that the aside sugar resolves to the substrate it stands for: the aside rendered to its own layer, run through its post, fed to the combine, and never composited on its own.",
                  make: { EffectsComposeAside() }),
@@ -8007,6 +8013,59 @@ private final class EffectsCompose: Sketch {
 /// fixed scene with an aux layer. Deterministic (no time/random), so it pins the
 /// two-input path and each combine shader (mask by luminance, displace by a bump,
 /// mix toward a generator, mask by alpha inverted).
+/// One grainy scene streaked three ways: along a noise layer read as an angle,
+/// along the contours of a radial gradient, and along a blurred bump's normals.
+private final class LineIntegralConvolutionScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private func scene() -> RenderTarget {
+        let t = makeRenderTarget()
+        withTarget(t) {
+            background(Color(white: 0.45))
+            noStroke()
+            fill(Color(red: 1, green: 0.3, blue: 0.2)); drawCircle(width * 0.38, height * 0.42, 60)
+            fill(Color(red: 0.2, green: 0.8, blue: 1)); drawCircle(width * 0.62, height * 0.58, 60)
+            fill(.white); drawCircle(width * 0.5, height * 0.3, 22)
+        }
+        return t.filtered(.grain(amount: 1))
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        func tile(_ col: Double, _ row: Double) -> Rectangle {
+            Rectangle(x: col * 128, y: row * 128, width: 128, height: 128)
+        }
+
+        // angle: a noise layer read as two turns of direction, the flow-field look.
+        let flow = generate(.noise(scale: 3))
+        drawImage(scene().combined(with: flow,
+                                   .lineIntegralConvolution(length: 0.12, field: .angle(turns: 2))).image,
+                  in: tile(0, 0))
+
+        // contour: streaks circle the center of a radial gradient.
+        let radial = makeRenderTarget()
+        withTarget(radial) {
+            noStroke()
+            fill(.radial(center: Vector2(width * 0.5, height * 0.5), radius: width * 0.6, [.white, .black]))
+            drawRect(0, 0, width, height)
+        }
+        drawImage(scene().combined(with: radial,
+                                   .lineIntegralConvolution(length: 0.12, field: .contour)).image,
+                  in: tile(1, 0))
+
+        // vector: a blurred bump's normal map, the same reading displace makes.
+        let bump = makeRenderTarget()
+        withTarget(bump) { background(.black); noStroke(); fill(.white); drawCircle(width * 0.5, height * 0.5, 70) }
+        let normals = bump.filtered(.gaussianBlur(radius: 24)).filtered(.normalMap(amount: 4))
+        drawImage(scene().combined(with: normals,
+                                   .lineIntegralConvolution(length: 0.12, field: .vector)).image,
+                  in: tile(0, 1))
+
+        // the scene itself, unstreaked, for the eye to compare against.
+        drawImage(scene().image, in: tile(1, 1))
+    }
+}
+
 private final class EffectsCombine: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
@@ -9008,6 +9067,38 @@ private final class SandpileScene: Sketch {
                                   (0.75, Color(hex: 0xF2E9DC)),
                                   (1.00, .white)])
         drawImage(pile.filtered(.gradientMap(counts)).image, 0, 0)
+    }
+}
+
+/// A falling-sand `SimField` driven by a fixed script (walls, a pool, two sand
+/// pours on fixed frames), recolored one tone per material. Deterministic: the
+/// only chance in the rule is the friction coin, and it is seeded by the frame.
+private final class FallingSandScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var box: SimField!
+
+    override func setup() { box = makeSimField(.fallingSand(passes: 16, friction: 0.3), scale: 1) }
+
+    override func draw() {
+        background(.black)
+        withField(box) {
+            noStroke()
+            if frameCount == 1 {
+                fill(SandMaterial.wall.color)
+                drawRect(30, 120, 90, 4)
+                drawRect(90, 180, 70, 4)
+                fill(SandMaterial.water.color)
+                drawRect(150, 200, 106, 56)
+            }
+            fill(SandMaterial.sand.color)
+            if frameCount <= 60 { drawRect(72, 8, 4, 2) }
+            if frameCount <= 40 { drawRect(200, 8, 2, 2) }
+        }
+        let tones = Ramp(stops: [(0.000, Color(hex: 0x14161C)),
+                                 (1 / 3, Color(hex: 0x2E7BC4)),
+                                 (2 / 3, Color(hex: 0xD9B36C)),
+                                 (1.000, Color(hex: 0x6B6B70))])
+        drawImage(box.filtered(.gradientMap(tones)).image, 0, 0)
     }
 }
 

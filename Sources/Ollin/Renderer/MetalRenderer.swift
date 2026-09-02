@@ -1069,6 +1069,11 @@ final class MetalRenderer {
         let a: MTLTexture, b: MTLTexture
         let w: Int, h: Int
         var flipped = false
+        /// Frames this slot has been stepped, handed to the step passes as a seed
+        /// so a per-pass hash (the falling sand's friction coin) is fresh each
+        /// frame rather than fixed to a place. The renderer's own frame index
+        /// cycles with the in-flight ring, so it cannot serve.
+        var age = 0
         weak var owner: AnyObject?
         init(a: MTLTexture, b: MTLTexture, w: Int, h: Int, owner: AnyObject) {
             self.a = a; self.b = b; self.w = w; self.h = h; self.owner = owner

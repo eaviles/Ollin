@@ -49,6 +49,72 @@ fragment float4 ollin_fx_displace(PresentOut in [[stage_in]],
     return base.sample(samp, clamp(in.uv + off, 0.0, 1.0));
 }
 
+// The unit direction of a line-integral-convolution field at `uv`, or zero where
+// the field is still, by the encoding in `mode`: 0 reads red/green as a vector
+// around mid-gray (the displace reading), 1 reads brightness as an angle of
+// `turns` turns, 2 runs along the contour, across the brightness gradient by
+// central differences. Directions are in texel space, so a step along one is
+// scaled by the texel size per axis. The level is named because the walk that
+// calls this breaks per pixel.
+static inline float2 ollin_lic_direction(texture2d<float> map, sampler samp, float2 uv,
+                                         float2 t, float mode, float turns) {
+    if (mode < 0.5) {
+        float2 v = (ollin_unpremul(map.sample(samp, uv, level(0.0))).rg - 0.5) * 2.0;
+        float len = length(v);
+        return len > 0.01 ? v / len : float2(0.0);
+    }
+    if (mode < 1.5) {
+        float l = ollin_luma(ollin_unpremul(map.sample(samp, uv, level(0.0))));
+        float a = l * turns * 6.283185307;
+        return float2(cos(a), sin(a));
+    }
+    float gx = ollin_luma(ollin_unpremul(map.sample(samp, uv + float2(t.x, 0.0), level(0.0))))
+             - ollin_luma(ollin_unpremul(map.sample(samp, uv - float2(t.x, 0.0), level(0.0))));
+    float gy = ollin_luma(ollin_unpremul(map.sample(samp, uv + float2(0.0, t.y), level(0.0))))
+             - ollin_luma(ollin_unpremul(map.sample(samp, uv - float2(0.0, t.y), level(0.0))));
+    float2 g = float2(gx, gy);
+    float len = length(g);
+    return len > 1e-5 ? float2(-g.y, g.x) / len : float2(0.0);
+}
+
+// Line integral convolution: each pixel becomes the box average of the base along
+// the streamline through it, walked forward and back from the pixel by Euler
+// steps of params[0].w texels, params[0].z steps each way (params[0].xy is the
+// texel size; params[1] is the field encoding and its turns, see
+// ollin_lic_direction). A walk stops where the field is zero or at the layer's
+// edge, and the average is over the samples it reached, so a still field returns
+// the base unchanged and the edge is not smeared with the clamp texel. Where the
+// field turns back on itself between two steps (the contour reading of a line
+// field has no fixed sign) the walk keeps its heading, the usual fix for an
+// unoriented field.
+fragment float4 ollin_fx_lic(PresentOut in [[stage_in]],
+                             texture2d<float> base [[texture(0)]],
+                             texture2d<float> map [[texture(1)]],
+                             sampler samp [[sampler(0)]],
+                             constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    int steps = int(params[0].z);
+    float2 stepUV = params[0].w * t;
+    float mode = params[1].x, turns = params[1].y;
+    float4 sum = base.sample(samp, in.uv, level(0.0));
+    float count = 1.0;
+    for (int way = -1; way <= 1; way += 2) {
+        float2 p = in.uv;
+        float2 heading = float2(0.0);
+        for (int i = 0; i < steps; i += 1) {
+            float2 d = ollin_lic_direction(map, samp, p, t, mode, turns);
+            if (dot(d, d) == 0.0) { break; }
+            if (dot(d, heading) < 0.0) { d = -d; }
+            p += d * stepUV * float(way);
+            if (any(p < 0.0) || any(p > 1.0)) { break; }
+            sum += base.sample(samp, p, level(0.0));
+            count += 1.0;
+            heading = d;
+        }
+    }
+    return sum / count;
+}
+
 // mix: cross-dissolve the base toward the aux by params[0].x. A premultiplied lerp
 // is a valid cross-dissolve (both rgb and a interpolate), the transition workhorse.
 fragment float4 ollin_fx_mix(PresentOut in [[stage_in]],

@@ -251,6 +251,102 @@ fragment float4 ollin_sim_sandpile(PresentOut in [[stage_in]],
     return float4(nq, nq, nq, 1.0);
 }
 
+// Falling sand: a four-material block automaton (empty 0, water 1, sand 2,
+// wall 3, stored as thirds in .r). The seed's brightness picks the material,
+// snapped to the nearest of the four levels in sRGB terms, so the gray a sketch
+// names (`Color(white: 1.0 / 3.0)` is water) is the gray that lands, although
+// the layer itself holds linear light. A hard alpha gate keeps the mark's soft
+// edge from laying down a rim of the wrong material, and black erases.
+fragment float4 ollin_sim_inject_grains(PresentOut in [[stage_in]],
+                                        texture2d<float> state [[texture(0)]],
+                                        texture2d<float> seed [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float4 s = state.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    float luma = dot(linearToSrgb(ollin_unpremul(d)), float3(0.2126, 0.7152, 0.0722));
+    float snapped = rint(luma * 3.0) / 3.0;
+    float v = mix(s.r, snapped, step(0.5, d.a));
+    return float4(float3(v), 1.0);
+}
+
+// One falling-sand cell, decoded. A cell outside the field is a wall: the box is
+// closed, so nothing leaves and a heap can rest against the edge. The level is
+// named because the guard returns before the sample on the edge lanes (see
+// ollin_sandpile_gives).
+static inline float ollin_grain_at(texture2d<float> src, sampler samp,
+                                   float2 cell, float2 size, float2 t) {
+    if (cell.x < 0.0 || cell.y < 0.0 || cell.x >= size.x || cell.y >= size.y) { return 3.0; }
+    return rint(src.sample(samp, (cell + 0.5) * t, level(0.0)).r * 3.0);
+}
+
+// Whether the material on top drops into the one below it: heavier over lighter
+// (sand into water or empty, water into empty) and neither a wall.
+static inline bool ollin_grain_sinks(float top, float below) {
+    return top < 2.5 && below < 2.5 && top > below;
+}
+
+// The falling-sand step, one pass over a 2x2 block tiling. Every cell settles
+// its whole block from the same four reads and writes back only its own corner,
+// so the update is conflict-free with no ordering: a grain moves at most once
+// per pass, and only within its block. The tiling's origin walks the four
+// corners of a block with the pass index (params[0].z): x flips every pass and
+// y every second pass, so over four passes every cell takes every corner. That
+// is what lets a grain cross a block boundary, and it decides the pacing: a
+// cell is in the top row every other pass (one straight fall per two passes),
+// in each column of the top row once per four (each diagonal roll once per
+// four; with only the two diagonal tilings a cell would own a single diagonal
+// and half the grains on a heap's edge could never roll off it), and beside a
+// fresh neighbor every pass (water spreads one cell per pass). The pass count
+// is a multiple of four, so a frame runs every tiling the same number of
+// times. The block rule, top row a b over bottom row c d: first the straight
+// falls (a into c, b into d, where the top is heavier); then, in a block where
+// nothing fell, one diagonal roll (a into d or b into c) taken with probability
+// 1 - friction, decided by one hash per block per pass (params[0].w is the
+// field's frame age, so the coin is fresh each frame rather than fixed to a
+// place); then water spreads into an empty cell beside it in either row. The
+// two diagonal rolls can never both apply: each needs the other's target
+// heavier than its own source, which contradicts neither top cell having
+// fallen. Walls never move; the rule is left-right symmetric, so no mirror bit
+// is needed.
+fragment float4 ollin_sim_falling_sand(PresentOut in [[stage_in]],
+                                       texture2d<float> src [[texture(0)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float2 size = rint(1.0 / t);
+    float pass = params[0].z;
+    float age = params[0].w;
+    float friction = params[1].x;
+    float2 o = float2(fmod(pass, 2.0), fmod(floor(pass * 0.5), 2.0));
+    float2 cell = floor(in.uv * size);
+    float2 origin = floor((cell - o) * 0.5) * 2.0 + o;
+    float a = ollin_grain_at(src, samp, origin, size, t);
+    float b = ollin_grain_at(src, samp, origin + float2(1.0, 0.0), size, t);
+    float c = ollin_grain_at(src, samp, origin + float2(0.0, 1.0), size, t);
+    float d = ollin_grain_at(src, samp, origin + float2(1.0, 1.0), size, t);
+    float tmp;
+#define SWAP(P, Q) { tmp = P; P = Q; Q = tmp; }
+    bool fellLeft = ollin_grain_sinks(a, c);
+    bool fellRight = ollin_grain_sinks(b, d);
+    if (fellLeft) SWAP(a, c)
+    if (fellRight) SWAP(b, d)
+    if (!fellLeft && !fellRight) {
+        float coin = hash13(float3(origin, age * 64.0 + pass));
+        if (coin >= friction) {
+            if (ollin_grain_sinks(a, d)) SWAP(a, d)
+            else if (ollin_grain_sinks(b, c)) SWAP(b, c)
+        }
+    }
+    if ((a == 1.0 && b == 0.0) || (a == 0.0 && b == 1.0)) SWAP(a, b)
+    if ((c == 1.0 && d == 0.0) || (c == 0.0 && d == 1.0)) SWAP(c, d)
+#undef SWAP
+    float2 corner = cell - origin;
+    float m = (corner.y < 0.5) ? ((corner.x < 0.5) ? a : b)
+                               : ((corner.x < 0.5) ? c : d);
+    return float4(float3(m / 3.0), 1.0);
+}
+
 // MARK: - The state automata (cyclic, excitable, Brian's Brain, hodgepodge)
 //
 // A shared encoding: a cell's integer state s (of N levels) is stored as

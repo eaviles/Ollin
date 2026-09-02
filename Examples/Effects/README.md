@@ -20,6 +20,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [Feedback](Feedback/Sketch.swift) | a layer that remembers itself across frames: a spiralling feedback tunnel (`withFeedback`) |
 | [Fourier](Fourier/Sketch.swift) | a picture, what it is made of, and the way back: filtering by scale with a shape drawn over the spectrum (`.fourier`, `.spectrum`, `.inverseFourier`) |
 | [Aside](Aside/Sketch.swift) | multi-input effects: a displacement map and a spotlight mask fed into layers (`aside { }`) |
+| [FlowStreaks](FlowStreaks/Sketch.swift) | a grainy picture brushed along a direction field: a noise layer read as an angle, drifting blobs read along their contours, and their normal map read as vectors (`.streaked(along:)` / `combined(with:.lineIntegralConvolution)`) |
 | [Defocus](Defocus/Sketch.swift) | depth of field via the two-input combine: a layer defocused by a hand-drawn depth map, the highlights shaped by an iris with `blades` and the `catsEye` barrel (`combined(with:.defocus)`) |
 | [Dispersion](Dispersion/Sketch.swift) | chromatic aberration as a family: the five ways to pull the channels apart, the spectral tap budget, and the layer-driven split (`.chromaticAberration(mode:)` / `.disperse`) |
 | [MeshGradient](MeshGradient/Sketch.swift) | the mesh-gradient generator: color blobs drifting on their own orbits over a domain-warped field |

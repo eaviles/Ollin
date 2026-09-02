@@ -38,6 +38,7 @@ public struct Sim: Sendable {
         case fluid(FluidConfig)
         case multiScaleTuring(scales: [TuringScale], seed: Double)
         case sandpile(pour: Int, topplings: Int)
+        case fallingSand(passes: Int, friction: Double)
         case watercolor(WatercolorConfig)
         case cyclic(states: Int, threshold: Int, range: Int,
                     neighborhood: CellNeighborhood, seed: Double)
@@ -320,6 +321,41 @@ public struct Sim: Sendable {
                             topplings: max(1, min(128, topplings))))
     }
 
+    /// **Falling sand**: the block automaton behind the falling-sand toys, where
+    /// every cell is empty, water, sand, or wall, and gravity is a local rule.
+    /// Each pass tiles the field into 2x2 blocks and settles every block on its
+    /// own: a grain of sand above an empty cell drops into it, a grain above water
+    /// sinks through it and lifts the water into its place, a grain that cannot
+    /// drop straight down rolls into the empty diagonal below (so sand piles up
+    /// into heaps), and water spreads into an empty cell beside it (so water
+    /// levels out and fills a basin). Walls never move, and the field's edge is a
+    /// closed box. The tiling's origin walks the four corners of a block over four
+    /// passes, which is what lets a grain cross from block to block and reach
+    /// both diagonals, and is why `passes` is kept a multiple of four: a frame
+    /// always runs every tiling the same number of times.
+    ///
+    /// `friction` is the chance, 0 to 1, that a grain stays put instead of rolling
+    /// diagonally. At 0 every heap slumps to the flattest slope the rule allows;
+    /// raising it lets heaps stand steeper, and near 1 sand stacks into towers.
+    ///
+    /// The field starts empty, so **draw to fill it**. A mark's brightness picks
+    /// the material it lays down: black erases, dark gray (a third) is water,
+    /// light gray (two thirds) is sand, and white is wall; `SandMaterial` names
+    /// those levels so a sketch writes `fill(SandMaterial.sand.color)`. A mark
+    /// held down is a tap that keeps pouring. The raw `image` reads back the same
+    /// four levels, made for `.filtered(.gradientMap(...))` with one color per
+    /// material. One texel is one cell, a grain falls one cell every two passes,
+    /// and water spreads one cell per pass, so `passes` is the pacing dial: the
+    /// default moves a grain eight cells a frame.
+    public static func fallingSand(passes: Int = 16, friction: Double = 0) -> Sim {
+        // A multiple of four, so a frame runs each of the four block tilings the
+        // same number of times: a frame that ended on a partial cycle would fall
+        // and roll unevenly, and a tiling run twice in a row slides water back
+        // and forth in place.
+        let rounded = max(4, min(64, (passes + 3) / 4 * 4))
+        return Sim(kind: .fallingSand(passes: rounded, friction: max(0, min(1, friction))))
+    }
+
     /// Griffeath's **cyclic cellular automaton**: every cell holds one of `states`
     /// colors arranged in a circle, and a cell advances to the next color the moment
     /// at least `threshold` of its neighbors already wear it, so each color eats
@@ -513,6 +549,9 @@ public struct Sim: Sendable {
         case let .sandpile(_, topplings):
             return topplings                // the pacing dial: an avalanche front
                                             // moves one texel per pass
+        case let .fallingSand(passes, _):
+            return passes                   // a multiple of four by construction: all
+                                            // four block tilings run the same number of times
         case .watercolor:        return 1   // unused: watercolor runs its own pipeline
         case .cyclic:            return 1   // one generation per frame, like Life
         case .excitable:         return 1
@@ -537,6 +576,7 @@ public struct Sim: Sendable {
                                                             // fixed point of the rule), so the slot
                                                             // fills it with a seeded hash instead
         case .sandpile:          return SIMD4(0, 0, 0, 1)   // an empty table
+        case .fallingSand:       return SIMD4(0, 0, 0, 1)   // an empty box
         case .watercolor:        return SIMD4(0, 0, 0, 0)   // unused: runWatercolor clears its own fields
         case .cyclic:            return SIMD4(0, 0, 0, 1)   // unused: starts as seeded
                                                             // random states (stateSeedFill)
@@ -559,6 +599,7 @@ public struct Sim: Sendable {
         case .fluid:             return ""   // unused: the fluid dispatches its own fragments
         case .multiScaleTuring:  return ""   // unused: Turing dispatches its own fragments
         case .sandpile:          return "ollin_sim_sandpile"
+        case .fallingSand:       return "ollin_sim_falling_sand"
         case .watercolor:        return ""   // unused: watercolor dispatches its own fragments
         case .cyclic:            return "ollin_sim_cyclic"
         case .excitable:         return "ollin_sim_excitable"
@@ -591,6 +632,7 @@ public struct Sim: Sendable {
         case .ripples:          return "ollin_sim_inject_height"
         case .multiScaleTuring: return "ollin_sim_inject_luma"
         case .sandpile:         return "ollin_sim_inject_sand"
+        case .fallingSand:      return "ollin_sim_inject_grains"
         case .watercolor:       return ""   // unused: watercolor runs its own two injects
         case .excitable:        return "ollin_sim_inject_excite"
         case .briansBrain:      return "ollin_sim_inject_brain"
@@ -623,6 +665,8 @@ public struct Sim: Sendable {
             return []   // unused: Turing binds per-pass parameters itself
         case let .sandpile(pour, _):
             return [SIMD4(Float(pour), 0, 0, 0)]   // read by the inject, not the step
+        case let .fallingSand(_, friction):
+            return [SIMD4(Float(friction), 0, 0, 0)]
         case .watercolor:
             return []   // unused: watercolor binds per-pass parameters itself
         case let .cyclic(states, threshold, range, neighborhood, _):
@@ -652,6 +696,27 @@ public enum CellNeighborhood: Sendable, Equatable {
     case vonNeumann
     /// The edge sharers plus the corners: eight at range 1, a full block further out.
     case moore
+}
+
+/// What a cell of a `Sim.fallingSand` field holds, and the gray level that lays
+/// it down. The field stores one material per texel as a quarter-step gray, so a
+/// mark's brightness picks the material: `fill(SandMaterial.sand.color)` before a
+/// `drawCircle` drops a disc of sand, and the raw `image` reads back the same
+/// levels (empty black, water a third gray, sand two thirds, wall white).
+public enum SandMaterial: Int, Sendable, CaseIterable {
+    /// Nothing; sand and water fall or flow into it. Drawn as black, it erases.
+    case empty = 0
+    /// A fluid: it falls, spreads sideways to level out, and lets sand sink through it.
+    case water = 1
+    /// A grain: it falls, sinks through water, and rolls off a slope into a heap.
+    case sand = 2
+    /// Fixed: it never moves and nothing passes through it.
+    case wall = 3
+
+    /// The gray a mark uses to lay this material down (the level the field stores).
+    public var color: Color {
+        Color(white: Double(rawValue) / Double(SandMaterial.allCases.count - 1))
+    }
 }
 
 /// One magnification in a `Sim.multiScaleTuring` field: a pair of averaging radii

@@ -113,6 +113,19 @@ public struct ComposeLayer {
         return copy
     }
 
+    /// Streak this layer along a direction field drawn as an `aside` layer: line
+    /// integral convolution, each pixel averaged along the streamline through it,
+    /// `length` of the layer end to end. `field` says how the aside encodes a
+    /// direction (see `Combine.FieldEncoding`); the aside is drawn only to steer the
+    /// streaks, not composited. Over grain it draws the field as brushed strokes.
+    public func streaked(along aside: ComposeLayer, length: Double = 0.04,
+                         field: Combine.FieldEncoding = .vector) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside,
+                                   op: .lineIntegralConvolution(length: length, field: field)))
+        return copy
+    }
+
     /// Pull this layer's colors apart where an `aside` layer is bright: chromatic
     /// aberration whose amount is scaled per pixel by the aside's luminance, so the
     /// fringe sits on one thing rather than on the whole frame. The aside is drawn

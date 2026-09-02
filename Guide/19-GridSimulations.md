@@ -155,6 +155,48 @@ Everything in that figure came out of the rule. Nobody drew the circle, the four
 
 `topplings` is the pacing dial. An avalanche front moves one cell per pass, so `.sandpile(topplings: 1)` lets you watch each wave roll across the pile, and 128 hurries a collapse. And a mark you *hold* is a torrent rather than a drop. Its middle stays molten for as long as you keep pouring, with cells at four grains and above churning at the top of the ramp. It crystallizes into lacework when you stop. The `Simulation/Automata` example's sandpile rule is exactly that piece, a mountain collapsing in front of you, and a torrent wherever you hold the mouse.
 
+## Sand that falls
+
+The sandpile counts grains. The other sand automaton moves them. Every cell holds one material: empty, water, sand, or wall. Each pass, the grid is cut into 2x2 blocks, and every block settles on its own. A grain over an empty cell falls into it. A grain over water swaps with it, so it sinks and the water rises. A grain that cannot fall straight down rolls into an empty cell diagonally below it. Water swaps with the empty cell beside it, so a pool spreads until it lies flat. A wall never moves. Then the blocks shift by one cell and the next pass runs, so what one block could not see, the next one settles. That is the whole rule, and it makes heaps, slopes, and pools:
+
+```swift
+var sand: SimField!
+let materials = Ramp(stops: [(0.000, Color(hex: 0x14161C)),
+                             (1 / 3, Color(hex: 0x2E7BC4)),
+                             (2 / 3, Color(hex: 0xD9B36C)),
+                             (1.000, Color(hex: 0x6B6B70))])
+
+override func setup() {
+    sand = makeSimField(.fallingSand(passes: 16, friction: 0.3), scale: 0.5)
+}
+
+override func draw() {
+    background(.black)
+    withField(sand) {
+        noStroke()
+        if frameCount == 1 {                    // a shelf, and a pool below it
+            fill(SandMaterial.wall.color)
+            drawRect(width * 0.41, height * 0.4, width * 0.18, 8)
+            fill(SandMaterial.water.color)
+            drawRect(0, height * 0.74, width, height * 0.26)
+        }
+        if frameCount <= 480 {                  // one tap, open for a while
+            fill(SandMaterial.sand.color)
+            drawCircle(width / 2 + sin(Double(frameCount) * 0.7) * 9, 10, 2)
+        }
+    }
+    drawImage(sand.filtered(.gradientMap(materials)).image, 0, 0)
+}
+```
+
+Drawing pours a material. The field stores the four materials at four gray levels, and `SandMaterial` names them, so `fill(SandMaterial.water.color)` before a mark fills the mark with water. A black mark empties the cells under it. This sketch draws the walls and the pool once, then holds a tap open over the shelf:
+
+<img src="Images/19-GridSimulations/FallingSand.jpg" alt="On cream paper, an ochre cone of sand sits on a short slate shelf, and below it a blue pool covers the floor with two more ochre heaps sunk to its bottom, the water's top edge slightly rough where the displaced water rose" width="560">
+
+The cone on the shelf is not drawn. Grains land, roll down the slope, and stop where the slope is as steep as it can stand. Once the heap is wider than the shelf, grains slump off both ends and fall into the pool. They sink through it, heap up on the floor, and the water they push aside rises to the top. `friction` sets how steep a heap can stand. At 0 every grain that can roll does, and the heaps slump flat. At 1 no grain ever rolls, so the stream stacks straight up into a tower.
+
+`passes` is the pacing dial, in passes per frame. A grain falls one cell every two passes, so the default moves it eight cells a frame. Drop it to slow the fall down and watch a single grain find its way. The `Simulation/Automata` example's sand rule is this piece with a brush. Pour sand, water, or wall with the mouse and see what the rule does with it.
+
 ## Two chemicals: reaction-diffusion
 
 Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished piece. The idea comes from Alan Turing. Two chemicals spread through a surface and react, one feeding the pattern and one killing it. In the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
@@ -404,7 +446,7 @@ The Game of Life is John Horton Conway's, from 1970, and reached the world throu
 
 The multi-scale patterns are Jonathan McCabe's, from his 2010 Bridges paper "Cyclic Symmetric Multi-Scale Turing Patterns". It takes Turing's idea in a different direction from Gray-Scott. There is one substance rather than two, and several scales competing to act rather than one. He has been making artwork from the method for years, and it is his images, not the algorithm, that made it well known.
 
-The newer arrivals have their own names attached. The 256 elementary rules were cataloged and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life". Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults.
+The newer arrivals have their own names attached. The 256 elementary rules were cataloged and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life". Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults. The falling sand is a block automaton of the kind Tommaso Toffoli and Norman Margolus laid out in their 1987 book *Cellular Automata Machines*. Every 2x2 block settles on its own, and the blocks shift between passes. Its roll and friction follow the pass-parallel rule Jonathan Devlin and Micah Schuster described in 2020. The materials are the ones every falling-sand game has shipped since the early 2000s.
 
 
 The two waves in this chapter are older than any of it. The ripple pool integrates the 2D wave equation, which Jean le Rond d'Alembert wrote down for a vibrating string in 1747. The interactive-water form of it circulated widely as demoscene and graphics-tutorial code through the 1990s. The closed form Ollin evaluates comes from the standard treatment of a square plate driven at its center. The self-warp's motion measurement is Bruce Lucas and Takeo Kanade's 1981 least-squares optical flow, run coarse to fine, and its history carry is the same semi-Lagrangian step the fluid uses. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
@@ -414,7 +456,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 - [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every knob, seeding semantics, and field scale.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
+- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (eight rules on a picker, the falling sand among them), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 
 ---
 

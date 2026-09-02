@@ -1,6 +1,6 @@
 import Ollin
 
-/// Seven classic **cellular automata** on one `SimField`, behind a rule picker.
+/// Eight classic **cellular automata** on one `SimField`, behind a rule picker.
 /// Each rule is one entry in a table: its sim and parameters, its ramp, its
 /// seeding recipe, and its knobs. Switching rules starts a fresh field with that
 /// rule's classic opening. One shared brush works everywhere: drag to paint the
@@ -27,13 +27,30 @@ import Ollin
 ///   • **lenia**: Lenia, the continuous Game of Life; a mass field convolved
 ///     with a soft ring kernel, blobs that pulse, split, and swim, the growth
 ///     rule tunable live.
+///   • **sand**: the falling-sand automaton; grains fall, roll off each other
+///     into heaps, sink through water that spreads flat, and stop at walls; the
+///     brush pours whichever material the knob names, `friction` sets how steep
+///     a heap can stand.
 ///
 /// See `Simulation/GrayScott` for the reaction-diffusion sibling.
 @main
 final class Automata: Sketch {
 
     enum Rule: String, CaseIterable, ParamOption {
-        case life, brain, cyclic, excitable, hodgepodge, sandpile, lenia
+        case life, brain, cyclic, excitable, hodgepodge, sandpile, lenia, sand
+    }
+
+    /// What the brush pours in the falling-sand rule.
+    enum Grain: String, CaseIterable, ParamOption {
+        case sand, water, wall
+
+        var material: SandMaterial {
+            switch self {
+            case .sand: return .sand
+            case .water: return .water
+            case .wall: return .wall
+            }
+        }
     }
 
     @Param(icon: "square.grid.3x3", group: "Rule") var rule: Rule = .life
@@ -55,6 +72,10 @@ final class Automata: Sketch {
     @Param("Pace", 1 ... 128, icon: "speedometer", group: "Sandpile") var pace = 64.0
     @Param("Growth center", 0.05 ... 0.3, icon: "target", group: "Lenia") var growthCenter = 0.15
     @Param("Growth width", 0.005 ... 0.05, icon: "slider.horizontal.below.rectangle", group: "Lenia") var growthWidth = 0.015
+    @Param("Pour", icon: "paintbrush.pointed", group: "Sand") var grain: Grain = .sand
+    /// How often a grain that could roll off a slope stays put: 0 slumps flat,
+    /// 1 stacks straight up.
+    @Param("Friction", 0 ... 1, icon: "triangle", group: "Sand") var friction = 0.2
 
     private var field: SimField!
     private var active: Rule?
@@ -84,6 +105,13 @@ final class Automata: Sketch {
                                       (0.50, Color(hex: 0xE3A857)),
                                       (0.75, Color(hex: 0xF2E9DC)),
                                       (1.00, .white)])
+
+    /// Falling sand: one tone per material, at the thirds the field stores them
+    /// on (empty, water, sand, wall).
+    private let materials = Ramp(stops: [(0.000, Color(hex: 0x14161C)),
+                                         (1 / 3, Color(hex: 0x2E7BC4)),
+                                         (2 / 3, Color(hex: 0xD9B36C)),
+                                         (1.000, Color(hex: 0x6B6B70))])
 
     override func setup() {
         restart(with: rule)
@@ -124,6 +152,7 @@ final class Automata: Sketch {
         case .hodgepodge: return .hodgepodge(infectionRate: speed, seed: Double(variation))
         case .sandpile: return .sandpile(pour: 1024, topplings: Int(pace))
         case .lenia: return .lenia(growthCenter: growthCenter, growthWidth: growthWidth)
+        case .sand: return .fallingSand(passes: 16, friction: friction)
         }
     }
 
@@ -134,7 +163,7 @@ final class Automata: Sketch {
         case .life: return Double(cells) / width
         case .brain: return 0.15
         case .cyclic, .excitable, .hodgepodge: return 0.25
-        case .sandpile, .lenia: return 0.5
+        case .sandpile, .lenia, .sand: return 0.5
         }
     }
 
@@ -177,6 +206,18 @@ final class Automata: Sketch {
                 fill(Color(white: 1, alpha: random(0.2, 0.8)))
                 drawCircle(random(width), random(height), random(15, 70))
             }
+        case .sand where fieldAge == 1:
+            // Two shelves and a pool: the stream piles on the upper shelf,
+            // slumps off it, and what reaches the pool sinks to its floor.
+            fill(SandMaterial.wall.color)
+            drawRect(width * 0.12, height * 0.45, width * 0.36, 8)
+            drawRect(width * 0.36, height * 0.68, width * 0.28, 8)
+            fill(SandMaterial.water.color)
+            drawRect(width * 0.55, height * 0.8, width * 0.45, height * 0.2)
+        case .sand where fieldAge <= 300:
+            // A stream of loose grains from one tap for the first seconds.
+            fill(SandMaterial.sand.color)
+            drawCircle(width * 0.27 + random(-12, 12), 10, 2)
         default:
             break
         }
@@ -222,6 +263,11 @@ final class Automata: Sketch {
         case .lenia:
             fill(keyIsPressed ? .black : Color(white: 1, alpha: 0.85))
             drawCircle(mouseX, mouseY, 42)
+        case .sand:
+            // The brush pours the chosen material; a held key clears a hole
+            // (an empty mark is a material too, so it also cuts through walls).
+            fill(keyIsPressed ? SandMaterial.empty.color : grain.material.color)
+            drawCircle(mouseX, mouseY, grain == .wall ? 12 : 24)
         }
     }
 
@@ -247,6 +293,7 @@ final class Automata: Sketch {
         case .hodgepodge: return field.filtered(.gradientMap(.turbo)).image
         case .sandpile: return field.filtered(.gradientMap(counts)).image
         case .lenia: return field.filtered(.gradientMap(.magma)).image
+        case .sand: return field.filtered(.gradientMap(materials)).image
         }
     }
 
@@ -266,6 +313,8 @@ final class Automata: Sketch {
             return "Abelian sandpile · four grains at a time · hold to pour another mountain"
         case .lenia:
             return "Lenia · a continuous automaton · drag to add mass, hold a key to erase"
+        case .sand:
+            return "falling sand · grains fall, roll, and sink through water · drag to pour, hold a key to erase"
         }
     }
 }

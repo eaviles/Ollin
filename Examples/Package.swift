@@ -111,6 +111,7 @@ let package = Package(
         example("Effects/Feedback"),
         example("Effects/Fourier"),
         example("Effects/Aside"),
+        example("Effects/FlowStreaks"),
         example("Effects/Defocus"),
         example("Rendering/Accumulation"),
         example("Effects/FilterCatalog"),

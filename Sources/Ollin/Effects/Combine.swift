@@ -36,6 +36,32 @@ public struct Combine: Sendable {
         var rawIndex: Float { self == .luminance ? 0 : 1 }
     }
 
+    /// How `lineIntegralConvolution` reads a direction out of the aux layer.
+    public enum FieldEncoding: Sendable, Equatable {
+        /// Red and green as a vector, recentered from mid-gray (the same reading
+        /// `displace` makes): a layer of `.normalMap`, or one you drew with the
+        /// field's x and y in its colors.
+        case vector
+        /// Brightness as an angle: black is a stroke to the right, white a full
+        /// `turns` turns around from it. A gray noise layer through this is the
+        /// quickest flow field. Keep it smooth: at a hard edge between two tones
+        /// the half-covered texel reads as the angle between them, a line along
+        /// the edge that a streak follows instead of crossing.
+        case angle(turns: Double = 1)
+        /// Across the brightness gradient, so streaks follow the contour lines of
+        /// any grayscale picture (a height map, a blurred photo, a distance field).
+        case contour
+
+        /// The shader's mode index and its turns (kept in step with `ollin_fx_lic`).
+        var row: SIMD4<Float> {
+            switch self {
+            case .vector: return SIMD4(0, 0, 0, 0)
+            case let .angle(turns): return SIMD4(1, Float(turns), 0, 0)
+            case .contour: return SIMD4(2, 0, 0, 0)
+            }
+        }
+    }
+
     /// The concrete operations the renderer knows how to run. Internal: a sketch
     /// builds a `Combine` through the static factories below, never this directly.
     enum Kind: Sendable {
@@ -48,6 +74,10 @@ public struct Combine: Sendable {
         /// Push the base's pixels around: offset each sample by the aux's red/green
         /// recentred to `±amount` (a fraction of the layer), the classic displacement map.
         case displace(amount: Double)
+        /// Smear the base along the aux read as a direction field: each pixel is the
+        /// average of the base along the streamline through it, `length` of the
+        /// layer end to end, read out of the aux by `field`.
+        case lineIntegralConvolution(length: Double, field: FieldEncoding)
         /// Chromatic aberration whose split is scaled per pixel by the aux layer's
         /// luminance, so dispersion sits only where something is.
         case disperse(amount: Double, mode: Filter.Dispersion, spectral: Bool,
@@ -119,6 +149,39 @@ public struct Combine: Sendable {
     /// a noise or gradient layer for ripples, smearing, and refraction looks.
     public static func displace(amount: Double = 0.05) -> Combine {
         Combine(kind: .displace(amount: amount))
+    }
+
+    /// Line integral convolution: smear the base along a direction field so its
+    /// texture turns into streaks that trace the flow. Each pixel becomes the
+    /// average of the base along the streamline through it, followed one texel at
+    /// a time both ways for `length` of the layer end to end (0.04 is a short
+    /// brushy stroke, 0.2 a long comb), so a picture of noise becomes a picture
+    /// of the field itself, the classic way to see a flow: fill the base with
+    /// mid-gray through `.grain(amount: 1)` and streak it along the field. Over a
+    /// photograph the same call reads as a wind, or as hair combed the way the
+    /// field runs.
+    ///
+    /// The aux is the field, read by `field`: `.vector` takes red and green as x
+    /// and y around mid-gray (what `displace` reads, and what `.normalMap` writes),
+    /// `.angle(turns:)` takes brightness as a direction (so any gray noise layer
+    /// is a flow field), and `.contour` runs across the brightness gradient, so
+    /// streaks follow the contour lines of whatever the aux pictures. A streamline
+    /// stops where the field is zero and at the layer's edge, and a pixel is only
+    /// ever averaged over the samples it reached, so a still field leaves the
+    /// base as it was.
+    ///
+    /// ```swift
+    /// let paper = makeRenderTarget()
+    /// withTarget(paper) { background(.gray) }
+    /// let flow = generate(.noise(scale: 3))
+    /// drawImage(paper.filtered(.grain(amount: 1))
+    ///                .combined(with: flow, .lineIntegralConvolution(length: 0.06,
+    ///                                                                field: .angle(turns: 2)))
+    ///                .image, 0, 0)
+    /// ```
+    public static func lineIntegralConvolution(length: Double = 0.04,
+                                               field: FieldEncoding = .vector) -> Combine {
+        Combine(kind: .lineIntegralConvolution(length: max(0, min(1, length)), field: field))
     }
 
     /// Disperse: chromatic aberration over the base layer, its `amount` scaled per

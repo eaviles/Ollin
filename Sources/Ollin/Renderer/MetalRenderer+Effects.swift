@@ -321,8 +321,9 @@ extension MetalRenderer {
                         drawer.renderTargets.contains(where: { $0 === map }) ? map.texture : nil
                     }
                     runSimulation(sf.sim, state: front, seed: seed, output: back,
-                                  modulation: modulation,
+                                  modulation: modulation, age: slot.age,
                                   width: pw, height: ph, into: cb, pooled: pooled)
+                    slot.age += 1
                 }
                 target.texture = back
                 feedbackUsedThisFrame.insert(ObjectIdentifier(sf))
@@ -1321,6 +1322,16 @@ extension MetalRenderer {
             return pass("ollin_fx_mask", [SIMD4(channel.rawIndex, invert ? 1 : 0, 0, 0)])
         case let .displace(amount):
             return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .lineIntegralConvolution(length, field):
+            // Half the streak each way, in texels of the base, walked one texel a
+            // step up to a fixed cap; past the cap the step grows so a long streak
+            // still spans its length at the same cost.
+            let half = Float(length) * 0.5 * Float(max(width, height))
+            let steps = min(128, max(0, Int(half.rounded())))
+            let stepTexels = steps == 0 ? 0 : half / Float(steps)
+            return pass("ollin_fx_lic", [SIMD4(1 / Float(width), 1 / Float(height),
+                                               Float(steps), stepTexels),
+                                         field.row])
         case let .disperse(amount, mode, spectral, quality):
             let taps = spectral ? Float(resolveDispersionTaps(quality)) : 3
             let aspect = Float(width) / Float(max(1, height))
@@ -1492,7 +1503,7 @@ extension MetalRenderer {
     /// two scratch textures and landing the last step in `output` (the back buffer).
     /// All fragment passes on the effect pipeline, reading/writing the float field.
     private func runSimulation(_ sim: Sim, state: MTLTexture, seed: MTLTexture, output: MTLTexture,
-                               modulation: MTLTexture? = nil,
+                               modulation: MTLTexture? = nil, age: Int = 0,
                                width: Int, height: Int, into cb: MTLCommandBuffer, pooled: Bool) {
         guard let s0 = acquireFilterTexture(width: width, height: height, pooled: pooled),
               let s1 = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return }
@@ -1518,8 +1529,12 @@ extension MetalRenderer {
         let steps = max(1, sim.substeps)
         for i in 0..<steps {
             let write = (i == steps - 1) ? output : (read === s0 ? s1 : s0)
+            // The texel row's z and w carry the pass index and the field's frame
+            // age for a step that alternates or hashes by pass (the falling sand's
+            // block tiling and friction coin). Every other step reads only xy.
+            let row = SIMD4<Float>(texel.x, texel.y, Float(i), Float(age))
             encodeEffectFragment(step.name, inputs: [read] + step.extra, output: write,
-                                 params: [texel] + sim.params, into: cb)
+                                 params: [row] + sim.params, into: cb)
             read = write
         }
     }
