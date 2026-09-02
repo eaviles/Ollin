@@ -279,6 +279,7 @@ let package = Package(
         example("3D/Materials/BrushedMetal"),
         example("3D/Materials/Glass"),
         example("3D/Materials/SeeThrough"),
+        example("3D/Materials/LiveSurface", [.vision]),
         example("3D/Materials/ThinFilm"),
         example("3D/Materials/Subsurface"),
         example("3D/Environments/ImageBasedLighting"),

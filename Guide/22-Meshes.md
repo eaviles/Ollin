@@ -470,6 +470,19 @@ Walk past the camera and the reflections move with you. Hold up something red an
 
 That figure fakes the webcam with one authored picture, so the guide reproduces; everything after the frame is the real path. The picture behind the spheres is also the light on them, which is the whole point: show the feed yourself with `drawFrame`, and the picture and the lighting stay one world. The feed deliberately never draws as its own backdrop the way an HDRI does, because the wrap is made for lighting, not for looking at. Any `VideoFeed` works the same way (a playing video, a screen capture, the phone's camera), and until the first frame arrives a neutral sky stands in. The `3D/Environments/LiveEnvironment` example is this section, live.
 
+The frame can be the *surface* too. A camera frame is an `Image`, and you already know where an image goes on a mesh: `textured(_:)`. So the room you are sitting in can be wrapped around a globe, and lit by itself, in two lines:
+
+```swift
+environment(.feed(camera))                  // the room as the light
+if let frame = camera.frame {
+    drawMesh(globe.textured(frame))         // the room as the surface
+}
+```
+
+<img src="Images/22-Meshes/LiveSurface.jpg" alt="A large sphere wearing the same authored room picture as the figure above, its warm wall and cool window wrapped around the globe, beside a small chrome ball reflecting that room. Both are lit by the picture they show" width="680">
+
+Set the material every frame, because each capture arrives as a fresh image, and a fresh image uploads to the GPU the first time it is drawn. That is one upload per new frame, nothing while the frame holds, cheap for one surface and worth counting across many. So wear the feed on the thing that matters and let the same feed light the rest. The `3D/Materials/LiveSurface` example does exactly that, with the webcam.
+
 ### Glass
 
 There has been a way to make a surface see-through since [Chapter 21](21-3DGently.md): give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:

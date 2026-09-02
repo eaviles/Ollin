@@ -114,6 +114,17 @@ let camera = Camera(.continuity)   // use a Continuity Camera iPhone
 
 A fresh `Image` is produced each new frame, so draw `camera.frame` directly in `draw()` rather than holding onto it across frames.
 
+A frame is an `Image`, so it goes wherever an image goes, not only onto the canvas. A [mesh wears it](../3D/3D.md#textures) through `textured(_:)`, and the scene is [lit by it](../3D/3D.md#live-environment) through `environment(.feed(camera))`, so the camera is a surface and a light as well as a picture:
+
+```swift
+environment(.feed(camera))                  // the room as the light
+if let frame = camera.frame {
+    drawMesh(globe.textured(frame))         // the room as the surface
+}
+```
+
+Set the material every frame, since each capture is a fresh `Image`. A fresh `Image` builds its texture the first time it is drawn, so a feed on a surface costs one upload per new frame and nothing while the frame holds, which is cheap for one surface and adds up across many. See [`Examples/3D/Materials/LiveSurface`](../../Examples/3D/Materials/LiveSurface).
+
 <a name="frame-sources"></a>
 
 ### Frame sources

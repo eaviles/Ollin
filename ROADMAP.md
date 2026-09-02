@@ -29,7 +29,6 @@ Ollin is pre-1.0, and the public API still changes freely. Semantic version tags
 Near-term, fairly self-contained pieces, each small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
-- **The live camera as a surface.** A camera frame is an `Image` and a mesh material takes one, so a webcam can texture a mesh with no new API, and the same feed can light a scene. What that leaves is the example showing it and the line in the camera page saying so. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 
 ## Generative geometry
 

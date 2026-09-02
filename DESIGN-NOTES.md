@@ -137,7 +137,6 @@ Each conforms to the core `FrameSource` (so the vision trackers and effect graph
 
 - **Apple Pencil.** Tilt, azimuth, force, and hover, on the iOS leg where a Pencil exists. Force joins the `pressure` `Sketch` already reads rather than arriving as a second thing, so a sketch written against trackpad pressure carries over unchanged and tilt, azimuth, and hover are the additions; each reads as a plain value in `draw()` beside the mouse and keyboard.
 - **Body and world data.** HealthKit (heart rate from a paired Apple Watch) for biofeedback, WeatherKit and Core Location for slow ambient input. Each needs its entitlement and consent prompt, the same "keep the easy things easy, make the prompt explicit" concern as screen capture. Niche but distinctive (native Apple-sensor-sourced live data) and impossible in a browser.
-- **The camera as a surface, not only a picture.** `Camera.frame` hands back an `Image`, a mesh material takes an `Image`, and `Environment.feed` lights a scene from any `VideoFeed`, so a live picture on a mesh asks for no new API. Two facts shape the example instead of the framework. The material has to be set every frame, since each capture arrives as a new `Image`, and each new `Image` builds its own texture the first time it is drawn, so a feed pays one upload per frame and a held frame holds a texture with it. That upload is the reason to keep the example to one surface and say what it costs, rather than to add a caching layer nothing else needs.
 
 ## New output surfaces
 
