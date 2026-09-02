@@ -74,6 +74,7 @@ final class Faces: Sketch {
 - [ModelOutput](#modeloutput) - its decoded surfaces: labels, objects, map
 - [ClassMask](#classmask) - a semantic segmenter's output: every pixel named
 - [DepthTracker](#depthtracker) - depth that holds still, from a video depth model
+- [DepthClip](#depthclip) - the whole clip's depth, read ahead of time and answered by clip time
 - [Coordinate mapping](#coordinate-mapping) - placing normalized results on the canvas
 - [Still images](#still-images) - running a tracker on a loaded image
 - [Availability](#availability) - when a model can't run on a Mac
@@ -1041,6 +1042,50 @@ Two things are particular to it. The depth is *relative*: nearer and farther, no
 The model runs on the GPU, at about 70 ms a frame on an M2. A sketch gets some fourteen depth readings a second, while the picture keeps its own frame rate. Frames are read squashed to the model's landscape input, so a portrait source is reasoned about a little stretched. There is no still-image mode; a video model has nothing to say about one picture, and `ModelTracker` covers that.
 
 The model is not downloaded but **built**. Nobody publishes a Core ML version of it, so `Scripts/fetch-models.sh` makes one on your Mac from the published checkpoint. That is a one-time step of a few minutes. It needs a Python from 3.10 to 3.13 (`brew install python@3.13`). The converter, `Scripts/convert-video-depth.py`, checks its work against the upstream code before writing the package. The small checkpoint is Apache-2.0. The larger ones are licensed for non-commercial use only, so the script never fetches them. The converter accepts them by hand, for work of your own under those terms. Loading and availability behave like `ModelTracker`'s, and the model needs Apple silicon. `Examples/Vision/DepthContours` draws the depth as contour lines. A parameter swaps in the single-image model, so you can watch the lines crawl and then hold still.
+
+### DepthClip
+
+```swift
+DepthClip(_ playback: any ClipPlayback, modelAt: URL)   // bound to a VideoPlayer
+DepthClip(url: URL, modelAt: URL)                        // a file, read by time
+var isReady: Bool { get }
+var progress: Double { get }                              // 0…1 while the pass runs
+var map: Image? { get }                                   // the frame under the playhead
+func map(at seconds: Double) -> Image?
+func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
+func value(at: Vector2, in: Rectangle, time: Double, mirrored: Bool = false) -> Double
+var range: ClosedRange<Double>? { get }                   // the model values read as 0 and 1
+var frameCount: Int { get }
+var isAvailable: Bool { get }
+var unavailableReason: String? { get }
+```
+
+The whole clip's depth, read ahead of time. `DepthTracker` reads a feed as it plays. A recording can be read whole instead. `DepthClip` runs the video depth model the way it was trained to be read, in windows of 32 frames. Each window is fitted to the one before it on the frames they share, and the overlap between them is blended. That is the model's published inference, and it is the model at its best. The result is kept on disk and answered by clip time.
+
+Bind it to a `VideoPlayer` and `map` and `value(at:in:)` answer for the frame under the playhead. They match `DepthTracker`'s, so a sketch swaps one for the other in a line. `map(at:)` and `value(at:in:time:)` answer for any second of the clip.
+
+```swift
+let player: VideoPlayer
+var depth: DepthClip?
+
+override func setup() {
+    player.play()
+    depth = DepthClip(player, modelAt: URL(fileURLWithPath:
+        "Models/VideoDepthAnythingSmallClipF16.mlpackage"))
+}
+
+override func draw() {
+    guard let rect = drawFrame(player), let depth else { return }
+    if !depth.isReady { return drawStatus("Reading the clip's depth… \(Int(depth.progress * 100))%") }
+    if let map = depth.map { drawImage(map, in: rect) }
+}
+```
+
+The pass runs once, in the background, at a second or two a window on an M2. A 30-second clip takes about a minute. `progress` counts it up, and `isReady` flips when every frame is there. The result is cached under `~/Library/Caches/Ollin/DepthClips`, keyed on the clip and the model, so the next run opens at once.
+
+Two things are particular to it. The first is the export. A tracker attached to a player analyzes nothing during a headless export, because its frames pump on the live clock. `DepthClip` reads the file instead. Under `--export-video` the pass runs before the first frame renders, and frame `k` always carries the map of the clip frame it shows. Create it by the end of `setup()`, as a stored property, so the export finds it. The second is the scale. The depth is relative, nearer and farther, on one scale for the whole clip. `range` names the model values that read as `0` and `1`, the first and ninety-ninth percentiles over every frame. It never moves, so nothing re-scales as the clip plays.
+
+The pass is checked against the published inference. The converter writes the upstream pass over a fixed clip beside the package, and the tests compare the Swift pass to it. Frames are read squashed to the model's landscape input, as `DepthTracker` reads them. The package is built by `Scripts/fetch-models.sh` beside the streaming one, in the same one-time Python step, and the model needs Apple silicon. `Examples/Vision/FootageDepth` draws a clip's depth as contour lines, with the pass counting up the first time.
 
 <a name="coordinate-mapping"></a>
 

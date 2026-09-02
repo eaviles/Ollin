@@ -84,7 +84,7 @@ More of the platform's live signals, each a `FrameSource` or a simple value read
 
 - **Apple Pencil.** Tilt, azimuth, and hover on the tablet, with its force joining the pressure a sketch already reads.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
-- **Depth from video, deeper.** The metric checkpoint of the video depth model, so a webcam's depth comes in meters and lifts into an `RGBDFrame` and a point cloud, once its license is settled; the encoder on the Neural Engine with only the temporal head on the GPU, for twice the readings a second; and an offline pass over a whole clip for exports at the model's full accuracy.
+- **Depth from video, deeper.** The metric checkpoint of the video depth model, so a webcam's depth comes in meters and lifts into an `RGBDFrame` and a point cloud, once its license is settled; and the encoder on the Neural Engine with only the temporal head on the GPU, for twice the readings a second.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 

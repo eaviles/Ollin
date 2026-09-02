@@ -27,12 +27,15 @@
 #     segmentation model, Apache-2.0. Meta's Segment Anything 2.1 (small),
 #     in Apple's official Core ML conversion.
 #     https://huggingface.co/apple/coreml-sam2.1-small
-#   VideoDepthAnythingSmallF16: temporally consistent video depth, Apache-2.0.
-#     Video Depth Anything (small), Sili Chen et al., CVPR 2025,
-#     https://github.com/DepthAnything/Video-Depth-Anything. Nobody publishes
-#     a Core ML build of it, so this one is made on this machine by
-#     Scripts/convert-video-depth.sh (a one-time Python step of a few
-#     minutes, checked against the upstream code), not downloaded.
+#   VideoDepthAnythingSmallF16 + VideoDepthAnythingSmallClipF16: temporally
+#     consistent video depth, Apache-2.0, one frame at a time (DepthTracker)
+#     and a 32-frame window at a time (DepthClip, a whole clip ahead of time),
+#     plus VideoDepthClipReference.bin, the upstream clip inference the tests
+#     check the pass against. Video Depth Anything (small), Sili Chen et al.,
+#     CVPR 2025, https://github.com/DepthAnything/Video-Depth-Anything.
+#     Nobody publishes a Core ML build of it, so these are made on this
+#     machine by Scripts/convert-video-depth.sh (a one-time Python step of a
+#     few minutes, each checked against the upstream code), not downloaded.
 #   bpe_simple_vocab_16e6.txt: the byte-pair-encoding vocabulary the text
 #     encoder was trained with, from OpenAI's CLIP repository (MIT),
 #     https://github.com/openai/CLIP; gunzipped at download.

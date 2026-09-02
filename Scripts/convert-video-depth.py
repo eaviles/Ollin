@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Convert Video Depth Anything to a stateful Core ML package, one frame at a time.
+"""Convert Video Depth Anything to Core ML: a streaming step and a clip window.
 
 Video Depth Anything (Sili Chen et al., CVPR 2025, Apache-2.0 code; the Small
 checkpoint is Apache-2.0, the Base and Large checkpoints CC-BY-NC-4.0) predicts
 temporally consistent relative depth. Its published inference reads clips of 32
 frames; the repository also ships an experimental *streaming* mode that keeps a
 cache of temporal-attention inputs and runs one frame at a time. This script
-exports that streaming step as a single Core ML model with the cache held in
+exports both forms from one checkpoint:
+
+The streaming step (`--out`) is a single stateful model with the cache held in
 Core ML state, so a caller feeds one image per call and reads one depth map:
 
     inputs   image  (RGB, W x H, 0..255)     reset  (1,) float, 1 on the first frame
@@ -22,20 +24,39 @@ step against the upstream head's own cached forward pass over a synthetic clip,
 then checks the converted package against the traced step, and refuses to write
 a package that disagrees.
 
+The clip window (`--clip-out`) is the published inference's unit, the whole
+32-frame window read at once, for a pass over a recorded clip ahead of time:
+
+    inputs   frame_0 .. frame_31  (RGB, W x H, 0..255)
+    outputs  depth  (32, H, W) float32       one map per input frame
+
+It is the upstream model's own forward pass over 32 frames, checked against it.
+A caller schedules the windows the way the upstream `infer_video_depth` does
+(22 new frames a window, the first 10 slots refilled from the last window's
+keyframes, each window's scale and shift fitted to the last on two shared
+frames, the 8 overlapping frames blended); `--reference-out` writes that
+upstream pass's result on a deterministic clip, sampled on a grid, so the
+scheduler on the Swift side can be checked against the published code.
+
 Usage (from a clone of https://github.com/DepthAnything/Video-Depth-Anything):
 
     python3 convert-video-depth.py --repo path/to/Video-Depth-Anything \
-        --checkpoint checkpoints/video_depth_anything_vits.pth \
-        --encoder vits --out VideoDepthAnythingSmallF16.mlpackage
+        --checkpoint checkpoints/video_depth_anything_vits.pth --encoder vits \
+        --out VideoDepthAnythingSmallF16.mlpackage \
+        --clip-out VideoDepthAnythingSmallClipF16.mlpackage \
+        --reference-out VideoDepthClipReference.bin
 
 The input shape is fixed at conversion (the encoder's position embedding is
 resolved for it); `--width` and `--height` take multiples of 14 and default to
 518 x 392, the landscape shape the sibling single-image conversion uses.
-Requirements: torch, coremltools, numpy, pillow, einops, easydict.
+Requirements: torch, coremltools, numpy, pillow, einops, easydict; the
+reference pass also needs torchvision, opencv-python-headless and tqdm, which
+the upstream inference code imports.
 """
 
 import argparse
 import os
+import struct
 import sys
 import time
 
@@ -61,6 +82,12 @@ SLOTS = 42
 WINDOW = INFER_LEN - 1
 MEAN = [0.485, 0.456, 0.406]
 STD = [0.229, 0.224, 0.225]
+
+# The reference clip for the scheduler check: this many frames, sampled on
+# this grid. Whole-number arithmetic only, so the Swift side draws the same
+# bytes without a shared random generator.
+REFERENCE_FRAMES = 60
+REFERENCE_GRID = (32, 24)
 
 
 def load_upstream(repo):
@@ -98,6 +125,16 @@ def normalize(image):
     mean = torch.tensor(MEAN).view(1, 3, 1, 1)
     std = torch.tensor(STD).view(1, 3, 1, 1)
     return (image - mean) / std
+
+
+def fixed_position_embedding(pretrained, height, width):
+    """The encoder's position embedding is a function of the input shape only;
+    resolved once, the traced graph carries a constant instead of a resize."""
+    embed = pretrained.embed_dim
+    tokens = 1 + (height // 14) * (width // 14)
+    with torch.no_grad():
+        return pretrained.interpolate_pos_encoding(
+            torch.zeros(1, tokens, embed), height, width).clone()
 
 
 def reference_stream(ref, frames, height, width):
@@ -138,15 +175,8 @@ class StreamingStep(nn.Module):
         self.height, self.width = height, width
         self.register_buffer("mean", torch.tensor(MEAN).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor(STD).view(1, 3, 1, 1))
-
-        # The position embedding is a function of the input shape only; resolve
-        # it once so the traced graph carries a constant instead of a resize.
-        embed = self.pretrained.embed_dim
-        tokens = 1 + (height // 14) * (width // 14)
-        with torch.no_grad():
-            pos = self.pretrained.interpolate_pos_encoding(
-                torch.zeros(1, tokens, embed), height, width).clone()
-        self.register_buffer("pos_embed_fixed", pos)
+        self.register_buffer("pos_embed_fixed",
+                             fixed_position_embedding(self.pretrained, height, width))
         self.pretrained.interpolate_pos_encoding = lambda x, w, h: self.pos_embed_fixed
 
         # One cache per temporal-attention block, shaped by a dry run of the
@@ -253,6 +283,33 @@ class StreamingStep(nn.Module):
         return out
 
 
+class ClipWindow(nn.Module):
+    """The published inference's unit: one whole window of 32 frames through
+    the upstream model's own forward pass (the encoder over the batch, the
+    temporal head attending across all 32), each frame its own image input so
+    a caller hands over pictures and Core ML does the resizing."""
+
+    def __init__(self, ref, height, width):
+        super().__init__()
+        self.pretrained = ref.pretrained
+        self.head = ref.head
+        self.layers = LAYERS[ref.encoder]
+        self.height, self.width = height, width
+        self.register_buffer("mean", torch.tensor(MEAN).view(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor(STD).view(1, 3, 1, 1))
+        self.register_buffer("pos_embed_fixed",
+                             fixed_position_embedding(self.pretrained, height, width))
+        self.pretrained.interpolate_pos_encoding = lambda x, w, h: self.pos_embed_fixed
+
+    def forward(self, *frames):
+        x = (torch.cat(frames, dim=0) - self.mean) / self.std       # (32, 3, H, W)
+        feats = self.pretrained.get_intermediate_layers(x, self.layers, return_class_token=True)
+        depth, _ = self.head(feats, self.height // 14, self.width // 14, INFER_LEN)
+        depth = F.interpolate(depth, size=(self.height, self.width),
+                              mode="bilinear", align_corners=True)
+        return F.relu(depth).reshape(INFER_LEN, self.height, self.width)
+
+
 def synthetic_clip(count, height, width, seed=7):
     """A deterministic clip with structure at several scales and motion: a
     gradient, drifting soft blobs, and a moving hard-edged bar."""
@@ -278,6 +335,30 @@ def synthetic_clip(count, height, width, seed=7):
     return frames
 
 
+def reference_clip(count, height, width):
+    """The clip the scheduler check runs on, in whole numbers only so the
+    Swift test draws the same bytes: two gradients, a drifting stripe field,
+    two moving discs, and a bright bar that wraps. Frames are (H, W, 3) uint8,
+    the layout the upstream reader hands its inference."""
+    ys, xs = np.mgrid[0:height, 0:width].astype(np.int64)
+    frames = []
+    for t in range(count):
+        r = (xs * 255) // (width - 1)
+        g = (ys * 255) // (height - 1)
+        b = ((xs + ys + 3 * t) * 7) % 256
+        image = np.stack([r, g, b], axis=-1)
+        cx, cy = 100 + 5 * t, 200
+        disc = (xs - cx) ** 2 + (ys - cy) ** 2 < 60 ** 2
+        image[disc] = [30, 60, 200]
+        cx, cy = 400 - 3 * t, 120 + t
+        disc = (xs - cx) ** 2 + (ys - cy) ** 2 < 45 ** 2
+        image[disc] = [220, 200, 40]
+        bar = (width * (t % 20)) // 20
+        image[:, bar:bar + width // 10] = [240, 240, 240]
+        frames.append(image.astype(np.uint8))
+    return frames
+
+
 def report(label, reference, candidate):
     """Max and mean absolute difference, relative to the reference's spread."""
     worst, total, count = 0.0, 0.0, 0
@@ -292,32 +373,47 @@ def report(label, reference, candidate):
     return worst / spread
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--repo", required=True, help="a clone of the upstream repository")
-    parser.add_argument("--checkpoint", required=True, help="the .pth checkpoint")
-    parser.add_argument("--encoder", default="vits", choices=list(CONFIGS))
-    parser.add_argument("--out", required=True, help="the .mlpackage to write")
-    parser.add_argument("--width", type=int, default=518)
-    parser.add_argument("--height", type=int, default=392)
-    parser.add_argument("--frames", type=int, default=48, help="check clip length")
-    parser.add_argument("--source-commit", default="", help="upstream commit, recorded as metadata")
-    args = parser.parse_args()
-    if args.width % 14 or args.height % 14:
-        sys.exit("error: --width and --height must be multiples of 14")
+def describe(model, encoder, args, width, height, kind):
+    """The metadata both packages carry."""
+    size = NAMES[encoder]
+    model.author = "Sili Chen, Hengkai Guo, Shengnan Zhu, Feihu Zhang, Zilong Huang, " \
+                   "Jiashi Feng, Bingyi Kang (Video Depth Anything, ByteDance)"
+    model.license = LICENSES[encoder]
+    model.version = "1.0"
+    if kind == "streaming":
+        model.short_description = (
+            f"Video Depth Anything ({size}), streaming: temporally consistent relative "
+            f"depth from one frame at a time, with the temporal-attention cache held in "
+            f"model state. Feed frames in order; set reset to 1 on the first frame of a "
+            f"session. Depth is relative inverse depth: larger is nearer.")
+        model.input_description["image"] = f"One RGB frame, {width} x {height}."
+        model.input_description["reset"] = "1 on the first frame of a session (the frame then " \
+                                           "anchors the session's depth scale), else 0."
+        model.output_description["depth"] = "Relative inverse depth, (1, 1, height, width); " \
+                                            "larger is nearer, scale consistent across frames."
+    else:
+        model.short_description = (
+            f"Video Depth Anything ({size}), one window: temporally consistent relative "
+            f"depth for 32 frames read together, the published inference's unit. Feed "
+            f"consecutive frames; schedule windows 22 frames apart, the first 10 slots "
+            f"refilled from the previous window's keyframes, and fit each window's scale "
+            f"and shift to the last. Depth is relative inverse depth: larger is nearer.")
+        for i in range(INFER_LEN):
+            model.input_description[f"frame_{i}"] = f"Frame {i} of the window, RGB, {width} x {height}."
+        model.output_description["depth"] = "Relative inverse depth, (32, height, width), one " \
+                                            "map per input frame; larger is nearer."
+    meta = model.user_defined_metadata
+    meta["source"] = "https://github.com/DepthAnything/Video-Depth-Anything"
+    meta["paper"] = "https://arxiv.org/abs/2501.12375"
+    meta["checkpoint"] = os.path.basename(args.checkpoint)
+    if args.source_commit:
+        meta["source_commit"] = args.source_commit
+    meta["converter"] = "Scripts/convert-video-depth.py (Ollin)"
+    meta["input_size"] = f"{width}x{height}"
+    meta["computeUnits"] = "cpuAndGPU"
 
-    import coremltools as ct
-    from PIL import Image
 
-    DINOv2, DPTHeadTemporal = load_upstream(os.path.abspath(args.repo))
-    torch.manual_seed(0)
-    ref = Reference(args.encoder, DINOv2, DPTHeadTemporal)
-    state = torch.load(args.checkpoint, map_location="cpu")
-    ref.load_state_dict(state, strict=True)
-    ref.eval()
-    height, width = args.height, args.width
-    print(f"Loaded {args.encoder} from {args.checkpoint}; input {width} x {height}")
-
+def convert_streaming(ct, Image, ref, args, height, width):
     clip = synthetic_clip(args.frames, height, width)
     tensors = [torch.from_numpy(f).float().unsqueeze(0) / 255.0 for f in clip]
 
@@ -359,31 +455,7 @@ def main():
         minimum_deployment_target=ct.target.macOS15,
         compute_precision=ct.precision.FLOAT16,
     )
-
-    size = NAMES[args.encoder]
-    model.author = "Sili Chen, Hengkai Guo, Shengnan Zhu, Feihu Zhang, Zilong Huang, " \
-                   "Jiashi Feng, Bingyi Kang (Video Depth Anything, ByteDance)"
-    model.license = LICENSES[args.encoder]
-    model.version = "1.0"
-    model.short_description = (
-        f"Video Depth Anything ({size}), streaming: temporally consistent relative "
-        f"depth from one frame at a time, with the temporal-attention cache held in "
-        f"model state. Feed frames in order; set reset to 1 on the first frame of a "
-        f"session. Depth is relative inverse depth: larger is nearer.")
-    model.input_description["image"] = f"One RGB frame, {width} x {height}."
-    model.input_description["reset"] = "1 on the first frame of a session (the frame then " \
-                                       "anchors the session's depth scale), else 0."
-    model.output_description["depth"] = "Relative inverse depth, (1, 1, height, width); " \
-                                        "larger is nearer, scale consistent across frames."
-    meta = model.user_defined_metadata
-    meta["source"] = "https://github.com/DepthAnything/Video-Depth-Anything"
-    meta["paper"] = "https://arxiv.org/abs/2501.12375"
-    meta["checkpoint"] = os.path.basename(args.checkpoint)
-    if args.source_commit:
-        meta["source_commit"] = args.source_commit
-    meta["converter"] = "Scripts/convert-video-depth.py (Ollin)"
-    meta["input_size"] = f"{width}x{height}"
-    meta["computeUnits"] = "cpuAndGPU"
+    describe(model, args.encoder, args, width, height, "streaming")
 
     # A stateful model only opens its state once loaded by the framework from
     # disk, so the package is written first and checked from there; a package
@@ -419,6 +491,145 @@ def main():
         shutil.rmtree(args.out)
         sys.exit("error: the converted package disagrees with the traced step; removed it")
     print(f"Done: {args.out}")
+
+
+def load_upstream_model(repo, encoder, checkpoint):
+    """The upstream inference class itself (video_depth.py), weights loaded:
+    the published `forward` over a window and `infer_video_depth` over a clip.
+    Imported here because its module pulls in the video-reading dependencies
+    the rest of the conversion does without."""
+    from video_depth_anything.video_depth import VideoDepthAnything
+    model = VideoDepthAnything(encoder=encoder, **CONFIGS[encoder])
+    model.load_state_dict(torch.load(checkpoint, map_location="cpu"), strict=True)
+    return model.eval()
+
+
+def convert_clip(ct, Image, ref, upstream, args, height, width):
+    frames = [torch.from_numpy(f).float().permute(2, 0, 1).unsqueeze(0) / 255.0
+              for f in reference_clip(INFER_LEN, height, width)]
+
+    print("Running the upstream forward pass over one window as the reference...")
+    started = time.time()
+    with torch.no_grad():
+        batch = torch.cat([normalize(f) for f in frames], dim=0).unsqueeze(0)   # (1, 32, 3, H, W)
+        reference = upstream(batch)[0].numpy()                                 # (32, H, W)
+    print(f"  {INFER_LEN} frames in {time.time() - started:.1f} s")
+
+    window = ClipWindow(ref, height, width).eval()
+    print("Running the clip window in PyTorch...")
+    with torch.no_grad():
+        windowed = window(*frames).numpy()
+    worst = report("clip window vs upstream", list(reference), list(windowed))
+    if worst > 1e-3:
+        sys.exit("error: the clip window does not reproduce the upstream forward pass")
+
+    print("Tracing...")
+    with torch.no_grad():
+        traced = torch.jit.trace(window, tuple(frames), check_trace=False)
+
+    print("Converting...")
+    model = ct.convert(
+        traced,
+        convert_to="mlprogram",
+        inputs=[ct.ImageType(name=f"frame_{i}", shape=(1, 3, height, width),
+                             scale=1 / 255.0, color_layout=ct.colorlayout.RGB)
+                for i in range(INFER_LEN)],
+        outputs=[ct.TensorType(name="depth", dtype=np.float32)],
+        minimum_deployment_target=ct.target.macOS15,
+        compute_precision=ct.precision.FLOAT16,
+    )
+    describe(model, args.encoder, args, width, height, "clip")
+
+    import shutil
+    if os.path.exists(args.clip_out):
+        shutil.rmtree(args.clip_out)
+    model.save(args.clip_out)
+    print(f"Wrote {args.clip_out}; checking it on this machine...")
+    loaded = ct.models.MLModel(args.clip_out, compute_units=ct.ComputeUnit.CPU_AND_GPU)
+    if loaded._framework_error is not None:
+        shutil.rmtree(args.clip_out)
+        sys.exit(f"error: the package would not load: {loaded._framework_error}")
+    pictures = {f"frame_{i}": Image.fromarray(f)
+                for i, f in enumerate(reference_clip(INFER_LEN, height, width))}
+    loaded.predict(pictures)                       # the first run specializes the model
+    started = time.time()
+    predicted = loaded.predict(pictures)["depth"]
+    print(f"  {(time.time() - started) * 1000:.0f} ms per window of {INFER_LEN} frames "
+          f"(Python overhead included)")
+    worst = report("Core ML vs clip window", list(windowed), list(predicted))
+    if worst > 0.05:
+        shutil.rmtree(args.clip_out)
+        sys.exit("error: the converted package disagrees with the traced window; removed it")
+    print(f"Done: {args.clip_out}")
+
+
+def write_reference(upstream, args, height, width):
+    """The upstream `infer_video_depth` over the reference clip, sampled on
+    the grid and written as a small binary file for the Swift scheduler test:
+    the header (magic, version, frames, columns, rows, width, height as
+    little-endian 32-bit words) then float32 samples, frame by frame, row by
+    row. The grid point (c, r) reads the pixel at
+    ((2c + 1) * width / (2 * columns), (2r + 1) * height / (2 * rows)),
+    whole-number division."""
+    frames = np.stack(reference_clip(REFERENCE_FRAMES, height, width), axis=0)
+    print(f"Running the upstream clip inference over {REFERENCE_FRAMES} reference frames...")
+    started = time.time()
+    # `input_size` is the short side the upstream transform scales to; at the
+    # frame's own height the transform is the identity, so the pass runs at the
+    # package's shape. fp32 on the CPU, the exact published arithmetic.
+    depths, _ = upstream.infer_video_depth(frames, 30, input_size=height, device="cpu", fp32=True)
+    print(f"  {len(depths)} maps in {time.time() - started:.1f} s")
+    columns, rows = REFERENCE_GRID
+    xs = [((2 * c + 1) * width) // (2 * columns) for c in range(columns)]
+    ys = [((2 * r + 1) * height) // (2 * rows) for r in range(rows)]
+    samples = np.asarray(depths, dtype=np.float32)[:, ys][:, :, xs]     # (frames, rows, columns)
+    with open(args.reference_out, "wb") as f:
+        f.write(struct.pack("<4sIIIIII", b"OLDC", 1, REFERENCE_FRAMES, columns, rows, width, height))
+        f.write(samples.astype("<f4").tobytes())
+    print(f"Wrote {args.reference_out} ({samples.shape[0]} frames on a "
+          f"{columns} x {rows} grid; depth spread {float(samples.max() - samples.min()):.2f})")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--repo", required=True, help="a clone of the upstream repository")
+    parser.add_argument("--checkpoint", required=True, help="the .pth checkpoint")
+    parser.add_argument("--encoder", default="vits", choices=list(CONFIGS))
+    parser.add_argument("--out", help="the streaming .mlpackage to write")
+    parser.add_argument("--clip-out", help="the clip-window .mlpackage to write")
+    parser.add_argument("--reference-out", help="the upstream clip pass on the reference clip, sampled")
+    parser.add_argument("--width", type=int, default=518)
+    parser.add_argument("--height", type=int, default=392)
+    parser.add_argument("--frames", type=int, default=48, help="streaming check clip length")
+    parser.add_argument("--source-commit", default="", help="upstream commit, recorded as metadata")
+    args = parser.parse_args()
+    if args.width % 14 or args.height % 14:
+        sys.exit("error: --width and --height must be multiples of 14")
+    if not (args.out or args.clip_out or args.reference_out):
+        sys.exit("error: nothing to write (pass --out, --clip-out, or --reference-out)")
+
+    import coremltools as ct
+    from PIL import Image
+
+    repo = os.path.abspath(args.repo)
+    DINOv2, DPTHeadTemporal = load_upstream(repo)
+    torch.manual_seed(0)
+    ref = Reference(args.encoder, DINOv2, DPTHeadTemporal)
+    state = torch.load(args.checkpoint, map_location="cpu")
+    ref.load_state_dict(state, strict=True)
+    ref.eval()
+    height, width = args.height, args.width
+    print(f"Loaded {args.encoder} from {args.checkpoint}; input {width} x {height}")
+
+    if args.out:
+        convert_streaming(ct, Image, ref, args, height, width)
+    upstream = None
+    if args.clip_out or args.reference_out:
+        upstream = load_upstream_model(repo, args.encoder, args.checkpoint)
+    if args.clip_out:
+        convert_clip(ct, Image, ref, upstream, args, height, width)
+    if args.reference_out:
+        write_reference(upstream, args, height, width)
 
 
 if __name__ == "__main__":

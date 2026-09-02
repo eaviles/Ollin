@@ -731,6 +731,7 @@ let package = Package(
         // single-image model one toggle away for comparison. Both models come
         // from Scripts/fetch-models.sh (never committed).
         example("Vision/DepthContours", [.vision]),
+        example("Vision/FootageDepth", [.vision, .video], resources: [.copy("voladores.mp4")]),
         // Object detection (YOLOv3-tiny) — labeled boxes over the live feed.
         // The model weights download via Scripts/fetch-models.sh (never
         // committed).

@@ -29,10 +29,16 @@ final class VideoPlayback: Sketch {
 
     /// A readable file path passed on launch overrides the bundled clip.
     private func makePlayer() -> VideoPlayer? {
-        if let path = CommandLine.arguments.dropFirst().first(where: {
-            !$0.hasPrefix("-") && FileManager.default.fileExists(atPath: $0)
-        }) {
-            return try? VideoPlayer(path: path)
+        // A flag's own value (an export path, say) is not a clip: skip each
+        // flag and the argument that follows it.
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        var isDirectory: ObjCBool = false
+        for (i, argument) in arguments.enumerated() where !argument.hasPrefix("-") {
+            if i > 0, arguments[i - 1].hasPrefix("-") { continue }
+            if FileManager.default.fileExists(atPath: argument, isDirectory: &isDirectory),
+               !isDirectory.boolValue {
+                return try? VideoPlayer(path: argument)
+            }
         }
         return try? VideoPlayer(resource: "voladores", withExtension: "mp4", in: .module)
     }

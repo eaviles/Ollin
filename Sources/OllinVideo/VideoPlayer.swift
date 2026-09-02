@@ -28,7 +28,7 @@ import os
 /// the player is a `FrameSource`: attach a vision tracker to it exactly the way
 /// you'd attach one to a camera, and it runs over the footage as it plays.
 @MainActor
-public final class VideoPlayer: FrameSource, VideoFeed {
+public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
 
     /// Whether playback should restart from the top when it reaches the end.
     public var loops = false
@@ -76,7 +76,9 @@ public final class VideoPlayer: FrameSource, VideoFeed {
         return t.isValid ? t.seconds : 0
     }
 
-    private let url: URL
+    /// The file being played (the `ClipPlayback` seam an analysis over the
+    /// whole file, like the vision satellite's `DepthClip`, reads).
+    public let url: URL
     private let player: AVPlayer
     private let output: AVPlayerItemVideoOutput
     // Written once in init, read again only in deinit (which is nonisolated in

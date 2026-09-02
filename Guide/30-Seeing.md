@@ -329,6 +329,26 @@ The surface is the one `ModelTracker` gives a depth model, `map` and `value(at:i
 
 The model is not downloaded but built. Nobody publishes a Core ML version, so `Scripts/fetch-models.sh` makes one on your Mac from the published checkpoint. That is a one-time step of a few minutes, and it needs Python. It runs on the GPU, about fourteen readings a second on an M2. `Examples/Vision/DepthContours` draws the depth as contour lines. A parameter swaps in the single-image model, so you can watch the lines crawl and then hold still.
 
+A recording can be read whole instead of as it plays. **`DepthClip`** takes a `VideoPlayer` and runs its file through the model once. It reads in windows of 32 frames, the way the model was trained to be read. Each window is fitted to the one before it on the frames they share, so the whole clip sits on one scale. The pass takes a second or two a window and is kept on disk, so the next run opens at once. Then `map` and `value(at:in:)` answer for the frame under the playhead, the same calls as the tracker's. Here `player` is a `VideoPlayer`, the kind *Footage as material* below sets up.
+
+```swift
+var depth: DepthClip?
+
+override func setup() {
+    player.play()
+    depth = DepthClip(player, modelAt: URL(fileURLWithPath:
+        "Models/VideoDepthAnythingSmallClipF16.mlpackage"))
+}
+
+override func draw() {
+    guard let rect = drawFrame(player), let depth else { return }
+    if !depth.isReady { return drawStatus("Reading the clip's depth… \(Int(depth.progress * 100))%") }
+    if let map = depth.map { drawImage(map, in: rect) }
+}
+```
+
+The reason to want it is the export. A tracker over a playing clip reads nothing under `--export-video`, since its frames arrive on the live clock. `DepthClip` reads the file, so the pass runs before the first exported frame. Frame `k` then carries the map of the clip frame it shows, every time. Make it in `setup()`, not lazily, so the export finds it. `Examples/Vision/FootageDepth` draws a clip's depth as contour lines that follow the flyers down the pole.
+
 ### Words as parameters
 
 The classifier's `confidence(of: "plant")` only answers for the 1,300 words it was trained on. **`ConceptTracker`** answers for any phrase you can type. Give it a few phrases in plain language and it scores each one against the picture, every frame. The vocabulary is any phrase you can say.

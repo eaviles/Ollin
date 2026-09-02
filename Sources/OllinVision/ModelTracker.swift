@@ -513,7 +513,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
     /// A deterministic fingerprint of the model file (path, modification time,
     /// size) for the compile cache — FNV-1a, stable across launches (unlike
     /// `Hasher`, which is seeded per process).
-    private static func stamp(for url: URL) -> String {
+    static func stamp(for url: URL) -> String {
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
         let modified = (attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
         let size = (attributes?[.size] as? Int) ?? 0
