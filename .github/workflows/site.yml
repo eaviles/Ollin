@@ -73,9 +73,10 @@ jobs:
       # The Pages upload helper reaches for an unpinned upload action
       # underneath, which this repository's Actions policy refuses, so the
       # same two steps are spelled out here: one tar of the folder, uploaded
-      # under the name the deploy step looks for.
+      # under the name the deploy step looks for. The flags are the ones
+      # both tars accept, since this runner's tar is bsdtar.
       - name: Pack
-        run: tar --dereference --hard-dereference --directory _site -cf "$RUNNER_TEMP/artifact.tar" .
+        run: tar -L -C _site -cf "$RUNNER_TEMP/artifact.tar" .
 
       - name: Upload
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
