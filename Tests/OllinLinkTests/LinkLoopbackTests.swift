@@ -51,16 +51,23 @@ struct LinkLoopbackTests {
         // here before, twice. This machine put 150ms between two adjacent
         // statements and 477 seconds into a test that sleeps for half of one,
         // and a window widens under that while a fixed tolerance cannot.
-        let beforeStart = Date()
+        //
+        // The bracket reads the grid's own clock, never the wall clock. The
+        // two run at different rates on a virtual machine (120 parts per
+        // million on CI, 69 ms across a 575-second wait), and against the
+        // wall clock the grid advances less than even the inner gap allows.
+        // A window covers a late wake-up; only one shared time base covers a
+        // rate difference.
+        let beforeStart = LinkHostClock.nowMicros
         let start = clock.beats
-        let afterStart = Date()
+        let afterStart = LinkHostClock.nowMicros
         try await Task.sleep(nanoseconds: 500_000_000)
-        let beforeEnd = Date()
+        let beforeEnd = LinkHostClock.nowMicros
         let advanced = clock.beats - start
-        let afterEnd = Date()
+        let afterEnd = LinkHostClock.nowMicros
 
-        let least = beforeEnd.timeIntervalSince(afterStart) * 2
-        let most = afterEnd.timeIntervalSince(beforeStart) * 2
+        let least = Double(beforeEnd - afterStart) / 1e6 * 2
+        let most = Double(afterEnd - beforeStart) / 1e6 * 2
         #expect(advanced >= least - 0.01 && advanced <= most + 0.01,
                 "expected \(least) to \(most) beats, got \(advanced)")
 
