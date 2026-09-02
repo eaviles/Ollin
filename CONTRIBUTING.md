@@ -20,6 +20,7 @@ You need macOS 26+ with a Metal-capable GPU and a Swift 6 toolchain.
 - Run the tests for the area you touched: `Scripts/test.sh <Suite>`. `Scripts/test.sh quick` is the sub-minute pass; the full suite takes many minutes.
 - Run `Scripts/preflight.sh` before every commit. It reads your diff, runs exactly the gates that apply (tests, link checks, prose lint), and says what it skipped and why.
 - A new capability ships with an example, a test, and a `Docs/` page; `CLAUDE.md` carries the full ship checklist.
+- A change a user would notice gets a line under *Unreleased* in [`CHANGELOG.md`](CHANGELOG.md), and a rename names the old and new spelling there.
 
 ## Examples and attribution
 
