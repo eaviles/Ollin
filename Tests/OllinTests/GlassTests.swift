@@ -457,6 +457,74 @@ struct SceneThroughGlassProbes {
         #expect(inside < 20, "the post printed inside the sphere: \(inside)")
     }
 
+    /// The bytes of a region, for the pixels a change must leave alone.
+    private func bytes(_ img: CGImage, x: ClosedRange<Double>, y: ClosedRange<Double>) -> [UInt8] {
+        let d = pixels(of: img)
+        var out: [UInt8] = []
+        for py in Int(Double(img.height) * y.lowerBound)..<Int(Double(img.height) * y.upperBound) {
+            for px in Int(Double(img.width) * x.lowerBound)..<Int(Double(img.width) * x.upperBound) {
+                out.append(contentsOf: d[((py * img.width + px) * 4)..<((py * img.width + px) * 4 + 3)])
+            }
+        }
+        return out
+    }
+
+    /// How differently red and blue moved between two frames, per pixel over a
+    /// region: the mean of |(r1 - r0) - (b1 - b0)|. A change that moves every channel
+    /// together (exposure, a tint) reads zero here; only a split between the channels
+    /// counts, which is what dispersion is and the only thing it should add.
+    private func channelSplit(_ a: CGImage, _ b: CGImage,
+                              x: ClosedRange<Double>, y: ClosedRange<Double>) -> Double {
+        let da = pixels(of: a), db = pixels(of: b)
+        var sum = 0.0, count = 0
+        for py in Int(Double(a.height) * y.lowerBound)..<Int(Double(a.height) * y.upperBound) {
+            for px in Int(Double(a.width) * x.lowerBound)..<Int(Double(a.width) * x.upperBound) {
+                let i = (py * a.width + px) * 4
+                let dr = Double(db[i]) - Double(da[i])
+                let dbl = Double(db[i + 2]) - Double(da[i + 2])
+                sum += abs(dr - dbl); count += 1
+            }
+        }
+        return sum / Double(max(count, 1))
+    }
+
+    /// A dispersive solid ball in front of a white bar on a dark wall: the bar's lens
+    /// image is a different size in the red read than in the blue one, so between the
+    /// clear render and the dispersive one the two channels move apart inside the
+    /// ball (red bands where only the widest image reaches, yellow where blue's has
+    /// not yet). Outside the ball nothing transmits, so every pixel there stays
+    /// byte-identical. One check per path the material promises: the screen-space
+    /// read, the refracted environment, and the traced walk. With the split gone
+    /// (every channel at the material's own index) the two renders are the same
+    /// frame and the split reads zero: verified red by sabotage.
+    private func expectFringe(clear: CGImage, prism: CGImage, path: String, atLeast bar: Double = 4) {
+        let inside = 0.32...0.68
+        let split = channelSplit(clear, prism, x: inside, y: inside)
+        #expect(split > bar, "\(path): expected red and blue to part inside the prism: \(split)")
+        #expect(bytes(clear, x: 0.0...0.16, y: 0.0...1.0) == bytes(prism, x: 0.0...0.16, y: 0.0...1.0),
+                "\(path): a pixel nothing transmits moved")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func dispersionFringesTheSceneReadAndNothingElse() throws {
+        expectFringe(clear: try render(.prismClear), prism: try render(.prismDispersive),
+                     path: "scene read")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func dispersionFringesTheRefractedEnvironment() throws {
+        // The studio is soft, so its fringes are fainter than a bar's: the split
+        // reads about 3.6 here against exactly 0 with the split gone.
+        expectFringe(clear: try render(.envPrismClear), prism: try render(.envPrismDispersive),
+                     path: "environment", atLeast: 2)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func dispersionFringesTheTracedWalk() throws {
+        expectFringe(clear: try render(.tracedPrismClear), prism: try render(.tracedPrismDispersive),
+                     path: "traced walk")
+    }
+
     @Test
     func theLightingConstantsStillFitAFragmentPush() {
         // `OllinLighting` travels through `setFragmentBytes`, which tops out at 4 KB on
@@ -479,6 +547,9 @@ private final class SceneThroughGlassProbe: Sketch {
         case tracedAndShown, tracedOnly
         case lensSolid, lensThin
         case frontPost, frontNone
+        case prismClear, prismDispersive
+        case envPrismClear, envPrismDispersive
+        case tracedPrismClear, tracedPrismDispersive
     }
     var kind: Kind = .wallShown
 
@@ -607,6 +678,29 @@ private final class SceneThroughGlassProbe: Sketch {
             }
             fill(.white)
             material(kind == .lensThin ? .glass() : .glass(thickness: 2.4))
+            drawSphere(radius: 1.2)
+
+        case .prismClear, .prismDispersive, .envPrismClear, .envPrismDispersive,
+             .tracedPrismClear, .tracedPrismDispersive:
+            // A white bar on a dark wall behind a solid ball, seen through whichever
+            // path the case names. The environment cases read the studio alone (the
+            // bar is drawn, but never shows through), the traced cases walk to it.
+            switch kind {
+            case .prismClear, .prismDispersive: sceneThroughGlass()
+            case .tracedPrismClear, .tracedPrismDispersive: rayTracedReflections()
+            default: break
+            }
+            drawWall(Color(white: 0.12), z: -3.4)
+            withState {
+                fill(.white)
+                material(.dielectric(roughness: 0.8))
+                translate(0, 0, -3.0)
+                drawBox(width: 0.9, height: 8, depth: 0.1)
+            }
+            fill(.white)
+            let prism = kind == .prismDispersive || kind == .envPrismDispersive
+                || kind == .tracedPrismDispersive
+            material(.glass(ior: 1.8, thickness: 2.4, dispersion: prism ? 1 : 0))
             drawSphere(radius: 1.2)
         }
     }

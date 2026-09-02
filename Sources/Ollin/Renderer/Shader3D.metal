@@ -1886,15 +1886,20 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
                                          // Zero means "find the exit by tracing", the mesh
                                          // path, which is byte-identical to before.
                                          float4 bodyExit = float4(0.0),
-                                         float3 bodyExitNormal = float3(0.0)) {
+                                         float3 bodyExitNormal = float3(0.0),
+                                         // The index to refract at; 0 takes the
+                                         // material's own. A dispersive body walks
+                                         // once per channel, each at its own.
+                                         float ior = 0.0) {
     float eps = max(light.rtReflectionBias, 1e-4);
     float rough = clamp((float)mat.roughness, 0.045, 1.0);
+    float index = ior > 0.0 ? ior : mat.ior;
     float3 col = envTransmitted;
     float3 absorb = float3(1.0);
 
     if (mat.thickness > 0.0) {
         // Solid: into the body along the refracted direction.
-        float3 rr = refract(-viewDir, n, 1.0 / mat.ior);
+        float3 rr = refract(-viewDir, n, 1.0 / index);
         ray r;
         r.origin = worldPos + rr * eps;   // the refracted ray points into the surface's
         r.direction = rr;                 // back half-space, so it can't re-hit the entry plane
@@ -1940,7 +1945,7 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
         } else if (haveExit) {
             // The body's exit: refract back out (the exit normal faces the interior ray,
             // exactly the side refract() wants) and trace the scene.
-            float3 exitDir = refract(rr, exitN, mat.ior);
+            float3 exitDir = refract(rr, exitN, index);
             if (length_squared(exitDir) < 1e-6) exitDir = rr;   // TIR: carry on
             ray r2;
             r2.origin = exitP + exitDir * eps;
@@ -4068,12 +4073,12 @@ vertex MeshCubeShadowOut ollin_mesh_instanced_point_shadow_vertex(uint vid [[ver
 // absorbs along the interior span by Beer-Lambert (`mat.attenuation`: what white
 // becomes after w units of travel). Written from the published technique (README
 // Techniques list).
-static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
-                                          constant OllinMaterial &mat,
-                                          constant OllinLighting &light,
-                                          texturecube<float> prefilterTex,
-                                          sampler cubeSamp, float3x3 rot) {
-    float etaIR = 1.0 / mat.ior;
+static inline float3 ollin_env_refraction_at(float3 n, float3 viewDir,
+                                             constant OllinMaterial &mat, float ior,
+                                             constant OllinLighting &light,
+                                             texturecube<float> prefilterTex,
+                                             sampler cubeSamp, float3x3 rot) {
+    float etaIR = 1.0 / ior;
     float rough = clamp((float)mat.roughness, 0.0, 1.0);
     rough = mix(rough, 0.0, saturate(etaIR * 3.0 - 2.0));
     float3 dir;
@@ -4083,7 +4088,7 @@ static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
         float NoR = dot(n, rr);                        // negative heading in
         span = mat.thickness * -NoR;                   // the analytic interior span
         float3 n1 = normalize(NoR * rr - n * 0.5);     // curvature-blended exit normal
-        dir = refract(rr, n1, mat.ior);
+        dir = refract(rr, n1, ior);
         if (length_squared(dir) < 1e-6) dir = rr;      // total internal reflection: carry on
     } else {
         dir = -viewDir;                                // thin wall: exit parallel to the view
@@ -4092,6 +4097,30 @@ static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
     if (span > 0.0 && mat.attenuation.w > 0.0)
         t *= pow(mat.attenuation.rgb, span / mat.attenuation.w);
     return t;
+}
+
+// Dispersion (`Material.dispersion`, 0…1): the index each channel refracts at. Glass
+// bends blue more than red, so the red read takes a lower index and the blue a
+// higher one, spread by 3% of the index either way at full strength: the caustics
+// pass's own model, which is what makes a body's fringe and the light it throws
+// agree. All three equal at 0, and every transmission path below tests that before
+// it does anything, so a dispersion-free frame is byte-identical.
+static inline float3 ollin_channel_iors(constant OllinMaterial &mat) {
+    return mat.ior * (1.0 + 0.03 * mat.dispersion * float3(-1.0, 0.0, 1.0));
+}
+
+static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
+                                          constant OllinMaterial &mat,
+                                          constant OllinLighting &light,
+                                          texturecube<float> prefilterTex,
+                                          sampler cubeSamp, float3x3 rot) {
+    if (mat.dispersion <= 0.0)
+        return ollin_env_refraction_at(n, viewDir, mat, mat.ior, light, prefilterTex, cubeSamp, rot);
+    // A prism: one read per channel, each along its own exit ray.
+    float3 iors = ollin_channel_iors(mat);
+    return float3(ollin_env_refraction_at(n, viewDir, mat, iors.r, light, prefilterTex, cubeSamp, rot).r,
+                  ollin_env_refraction_at(n, viewDir, mat, iors.g, light, prefilterTex, cubeSamp, rot).g,
+                  ollin_env_refraction_at(n, viewDir, mat, iors.b, light, prefilterTex, cubeSamp, rot).b);
 }
 
 // The *scene* seen through a transmissive surface on a GPU that cannot trace it
@@ -4217,14 +4246,14 @@ static inline float4 ollin_scene_march(float2 uv0, float zExit, float4 vanishCli
     return float4(lastFront, 0.0, 1.0);
 }
 
-static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 viewDir,
-                                            constant OllinMaterial &mat,
-                                            constant OllinLighting &light,
-                                            texture2d<float> sceneTex,
-                                            depth2d<float> sceneDepthTex) {
+static inline float4 ollin_scene_refraction_at(float3 worldPos, float3 n, float3 viewDir,
+                                               constant OllinMaterial &mat, float ior,
+                                               constant OllinLighting &light,
+                                               texture2d<float> sceneTex,
+                                               depth2d<float> sceneDepthTex) {
     constexpr sampler sceneSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler depthSamp(filter::nearest, address::clamp_to_edge);
-    float etaIR = 1.0 / mat.ior;
+    float etaIR = 1.0 / ior;
     float rough = clamp((float)mat.roughness, 0.0, 1.0);
     rough = mix(rough, 0.0, saturate(etaIR * 3.0 - 2.0));
     float3 exitPos = worldPos;
@@ -4236,7 +4265,7 @@ static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 vi
         span = mat.thickness * -NoR;                   // the analytic interior span
         exitPos = worldPos + rr * span;                // where that walk leaves the body
         float3 n1 = normalize(NoR * rr - n * 0.5);     // curvature-blended exit normal
-        dir = refract(rr, n1, mat.ior);                // the second bend, on the way out
+        dir = refract(rr, n1, ior);                    // the second bend, on the way out
         if (length_squared(dir) < 1e-6) dir = rr;      // total internal reflection: carry on
     }
     float4 clip = light.sceneViewProjection * float4(exitPos, 1.0);
@@ -4266,6 +4295,29 @@ static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 vi
     if (span > 0.0 && mat.attenuation.w > 0.0)
         t *= pow(mat.attenuation.rgb, span / mat.attenuation.w);
     return float4(t, coverage);
+}
+
+static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 viewDir,
+                                            constant OllinMaterial &mat,
+                                            constant OllinLighting &light,
+                                            texture2d<float> sceneTex,
+                                            depth2d<float> sceneDepthTex) {
+    if (mat.dispersion <= 0.0)
+        return ollin_scene_refraction_at(worldPos, n, viewDir, mat, mat.ior, light,
+                                         sceneTex, sceneDepthTex);
+    // A prism: one march per channel, each along its own exit ray. The middle of the
+    // spectrum decides whether the read stands at all (its coverage is the pixel's),
+    // and a side channel whose own ray was refused reads where the green one did,
+    // so a fringe never punches a hole in the body.
+    float3 iors = ollin_channel_iors(mat);
+    float4 g = ollin_scene_refraction_at(worldPos, n, viewDir, mat, iors.g, light,
+                                         sceneTex, sceneDepthTex);
+    if (g.w <= 0.0) return float4(0.0);
+    float4 r = ollin_scene_refraction_at(worldPos, n, viewDir, mat, iors.r, light,
+                                         sceneTex, sceneDepthTex);
+    float4 b = ollin_scene_refraction_at(worldPos, n, viewDir, mat, iors.b, light,
+                                         sceneTex, sceneDepthTex);
+    return float4(r.w > 0.0 ? r.r : g.r, g.g, b.w > 0.0 ? b.b : g.b, g.w);
 }
 
 // MARK: - Global illumination probes
@@ -4692,11 +4744,32 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         bool traced = false;
 #if OLLIN_RT_SHADOWS
         if (light.rtReflections != 0) {
-            Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
-                                     meshGeoOffsets, light, irradianceTex, prefilterTex,
-                                     cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
-                                     giIrradianceTex, giDepthTex, giOffsetsTex,
-                                     bodyExit, bodyExitNormal);
+            if (mat.dispersion > 0.0) {
+                // A prism: one traced walk per channel, each at its own index.
+                float3 iors = ollin_channel_iors(mat);
+                float3 Fr = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                                meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                                cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                                giIrradianceTex, giDepthTex, giOffsetsTex,
+                                                bodyExit, bodyExitNormal, iors.r);
+                float3 Fg = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                                meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                                cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                                giIrradianceTex, giDepthTex, giOffsetsTex,
+                                                bodyExit, bodyExitNormal, iors.g);
+                float3 Fb = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                                meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                                cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                                giIrradianceTex, giDepthTex, giOffsetsTex,
+                                                bodyExit, bodyExitNormal, iors.b);
+                Ft = float3(Fr.r, Fg.g, Fb.b);
+            } else {
+                Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                         meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                         cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                         giIrradianceTex, giDepthTex, giOffsetsTex,
+                                         bodyExit, bodyExitNormal);
+            }
             traced = true;
         }
 #endif
@@ -4922,11 +4995,32 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
         bool traced = false;
 #if OLLIN_RT_SHADOWS
         if (light.rtReflections != 0) {
-            Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
-                                     meshGeoOffsets, light, irradianceTex, prefilterTex,
-                                     cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
-                                     giIrradianceTex, giDepthTex, giOffsetsTex,
-                                     bodyExit, bodyExitNormal);
+            if (mat.dispersion > 0.0) {
+                // A prism: one traced walk per channel, each at its own index.
+                float3 iors = ollin_channel_iors(mat);
+                float3 Fr = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                                meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                                cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                                giIrradianceTex, giDepthTex, giOffsetsTex,
+                                                bodyExit, bodyExitNormal, iors.r);
+                float3 Fg = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                                meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                                cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                                giIrradianceTex, giDepthTex, giOffsetsTex,
+                                                bodyExit, bodyExitNormal, iors.g);
+                float3 Fb = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                                meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                                cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                                giIrradianceTex, giDepthTex, giOffsetsTex,
+                                                bodyExit, bodyExitNormal, iors.b);
+                Ft = float3(Fr.r, Fg.g, Fb.b);
+            } else {
+                Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                         meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                         cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
+                                         giIrradianceTex, giDepthTex, giOffsetsTex,
+                                         bodyExit, bodyExitNormal);
+            }
             traced = true;
         }
 #endif

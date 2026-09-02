@@ -148,6 +148,19 @@ public struct Material: Equatable, Sendable {
     /// The travel distance (world units) at which white light has faded to
     /// `attenuationColor`. `0` (the default) turns absorption off.
     public var attenuationDistance: Double
+    /// How much the body bends each color differently, `0…1`: the prism effect. Glass
+    /// refracts blue a little more than red, so the view through a solid body fringes
+    /// red on one side and blue on the other, and a sharp edge seen through it fans
+    /// into a small rainbow. `0` (the default) bends every color the same. Real glass
+    /// sits near `0.1` (crown) to `0.2` (flint, diamond); `1` is the full prism
+    /// rainbow, the same scale as `caustics(dispersion:)`, so a body's fringe and the
+    /// light it throws agree. Read by every transmission path (the refracted
+    /// environment, `sceneThroughGlass()`, the traced walk, and the path-traced
+    /// export); it costs one extra transmitted read per channel where it is on, and
+    /// nothing at `0`. Shows only on a solid body (`thickness > 0`): a thin wall
+    /// leaves every color parallel to the view. Ignored unless `shading ==
+    /// .physicallyBased`.
+    public var dispersion: Double
 
     /// Physically-based shading: a thin transparent lacquer layer over the base surface,
     /// `0…1` (car paint, piano lacquer, varnished wood). The coat adds its own polished
@@ -284,7 +297,7 @@ public struct Material: Equatable, Sendable {
                 anisotropy: Double = 0, anisotropyRotation: Double = 0,
                 transmission: Double = 0, ior: Double = 1.5,
                 thickness: Double = 0, attenuationColor: Color = .white,
-                attenuationDistance: Double = 0,
+                attenuationDistance: Double = 0, dispersion: Double = 0,
                 clearcoat: Double = 0, clearcoatRoughness: Double = 0,
                 sheen: Double = 0, sheenColor: Color = .white,
                 sheenRoughness: Double = 0.5,
@@ -313,6 +326,7 @@ public struct Material: Equatable, Sendable {
         self.thickness = max(0, thickness)
         self.attenuationColor = attenuationColor
         self.attenuationDistance = max(0, attenuationDistance)
+        self.dispersion = min(1, max(0, dispersion))
         self.clearcoat = min(1, max(0, clearcoat))
         self.clearcoatRoughness = min(1, max(0, clearcoatRoughness))
         self.sheen = min(1, max(0, sheen))
@@ -382,6 +396,7 @@ public struct Material: Equatable, Sendable {
         // still reads as "absorbs (almost) everything".
         let att = Material.linear(attenuationColor, alpha: attenuationDistance)
         m.attenuation = SIMD4<Float>(max(att.x, 1e-4), max(att.y, 1e-4), max(att.z, 1e-4), att.w)
+        m.dispersion = Float(dispersion)
         // Normal-incidence Fresnel from the IOR. The shader used to hard-code 0.04; pack
         // that exact literal at the default 1.5 so pre-glass frames stay bit-identical
         // (the computed ((0.5)/(2.5))^2 rounds to a different float than 0.04).
@@ -589,14 +604,17 @@ public extension Material {
     /// `thickness` `0` is a thin wall (a pane, a bubble); a positive thickness makes the
     /// body solid, bending the view and, with an `attenuationColor` short of white,
     /// absorbing light along the interior path (`attenuationDistance` sets how fast).
+    /// `dispersion` above `0` bends each color differently, so a solid body fringes
+    /// what shows through it red and blue (`0.1` reads as real glass, `1` as a prism).
     /// The surface tint stays the current `fill`.
     static func glass(roughness: Double = 0, ior: Double = 1.5, thickness: Double = 0,
                       attenuationColor: Color = .white,
-                      attenuationDistance: Double = 0) -> Material {
+                      attenuationDistance: Double = 0,
+                      dispersion: Double = 0) -> Material {
         Material(shading: .physicallyBased, metallic: 0, roughness: roughness,
                  transmission: 1, ior: ior, thickness: thickness,
                  attenuationColor: attenuationColor,
-                 attenuationDistance: attenuationDistance)
+                 attenuationDistance: attenuationDistance, dispersion: dispersion)
     }
 
     /// Frosted glass: fully transmissive, but rough enough that what shows through

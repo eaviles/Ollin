@@ -802,6 +802,8 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
         float3 firstNormal = float3(0.0);   // the direction it faces (the guides)
         float4 medium = float4(0.0);   // inside a solid glass body: its attenuation
                                        // color (rgb) + distance (w); w = 0 outside
+        float pathDi = -2.0;           // the path's wavelength under dispersion, -1 (red)
+                                       // … 1 (blue); -2 = not drawn yet
 
         for (uint depth = 0; depth < maxDepth; depth++) {
             ray r;
@@ -950,7 +952,24 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 float3 hT = ollin_pt_sample_vndf(woT, a, u.xy);
                 float3 hW = normalize(t * hT.x + b * hT.y + h.s.N * hT.z);
                 bool thin = h.mat.thickness <= 0.0;
-                float eta = (backface && !thin) ? h.mat.ior : 1.0 / h.mat.ior;
+                // Dispersion: a path is one wavelength, drawn at its first dispersive
+                // solid vertex and kept for the rest of its life (the caustics pass's
+                // photon model: the index shifts by up to 3% across the spectrum, and
+                // the throughput takes that wavelength's tint, red through green to
+                // blue, so the ensemble still sums to white). Dispersion-free glass
+                // draws no random of its own, so its stream, and its frame, are untouched.
+                float ior = h.mat.ior;
+                if (h.mat.dispersion > 0.0 && !thin) {
+                    if (pathDi < -1.5) {
+                        float4 uw = ollin_pt_rand4(gid, sampleIndex, dim++);
+                        pathDi = 2.0 * uw.x - 1.0;
+                        float3 cf = 4.0 * float3(saturate(-pathDi), 0.5 * (1.0 - fabs(pathDi)),
+                                                 saturate(pathDi));
+                        throughput *= mix(float3(1.0), cf, h.mat.dispersion);
+                    }
+                    ior *= 1.0 + 0.03 * h.mat.dispersion * pathDi;
+                }
+                float eta = (backface && !thin) ? ior : 1.0 / ior;
                 float F = ollin_pt_fresnel_dielectric(max(dot(wo, hW), 1e-4), eta);
                 float3 wi;
                 bool crossed = false;

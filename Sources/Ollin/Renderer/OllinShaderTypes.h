@@ -639,6 +639,12 @@ typedef struct {
                                   // so a mesh whose uvs stay in range is untouched either way.
                                   // The fragment picks a `constexpr sampler` by this rather than
                                   // the bound one, which is why no sampler state rides a batch.
+    float dispersion;             // how far the transmitted read splits by wavelength, 0…1
+                                  // (`Material.dispersion`): the red and blue channels refract
+                                  // at ior * (1 ∓ 0.03 * dispersion) around the green one, the
+                                  // caustics pass's own index spread, so a body's fringe and
+                                  // its caustic agree. 0 = one read for all three channels
+                                  // (the gate; every dispersion-free frame is untouched).
                                   // (Both sides round the struct up to its 16-byte alignment, so
                                   // the trailing float needs no hand-written padding.)
 } OllinMaterial;

@@ -110,6 +110,21 @@ struct MaterialTests {
         #expect(m.attenuationDistance == 0)  // >= 0
     }
 
+    @Test func dispersionDefaultsOffClampsAndPacks() {
+        // Off by default (the GPU gate every transmission path tests first), held to
+        // 0…1, carried by the glass helper, packed as-is, and printed back as source.
+        #expect(Material().dispersion == 0)
+        #expect(Material.glass().dispersion == 0)
+        #expect(close(Material().gpuMaterial().dispersion, 0))
+        #expect(Material(dispersion: 4).dispersion == 1)
+        #expect(Material(dispersion: -1).dispersion == 0)
+        let prism = Material.glass(thickness: 2, dispersion: 0.25)
+        #expect(prism.dispersion == 0.25)
+        #expect(close(prism.gpuMaterial().dispersion, 0.25))
+        #expect(prism.swiftSource.contains("dispersion: 0.25"))
+        #expect(!Material.glass(thickness: 2).swiftSource.contains("dispersion"))
+    }
+
     @Test func f0PacksExactlyAtTheDefaultIor() {
         // The shader used to hard-code 0.04; the packed f0 must be that exact float at
         // ior 1.5 (the computed ((0.5)/(2.5))^2 rounds to a *different* float), so

@@ -58,6 +58,7 @@ extension Material {
         scalar("thickness", \.thickness)
         color("attenuationColor", \.attenuationColor)
         scalar("attenuationDistance", \.attenuationDistance)
+        scalar("dispersion", \.dispersion)
         scalar("clearcoat", \.clearcoat)
         scalar("clearcoatRoughness", \.clearcoatRoughness)
         scalar("sheen", \.sheen)

@@ -70,7 +70,7 @@ Caustics pair naturally with `castShadows()`. The glass's shadow goes dark, the 
 <a id="dispersion"></a>
 ### Dispersion
 
-White light is every wavelength at once, and glass bends each one slightly differently. `dispersion:` gives each photon its own wavelength. Its refraction index shifts a few percent across the visible range, and its energy is tinted so the ensemble still sums to white. At `0` there is no split. At `1` a prism edge fans into a full rainbow, and even a plain sphere's spot picks up red and blue fringes.
+White light is every wavelength at once, and glass bends each one slightly differently. `dispersion:` gives each photon its own wavelength. Its refraction index shifts a few percent across the visible range, and its energy is tinted so the ensemble still sums to white. At `0` there is no split. At `1` a prism edge fans into a full rainbow, and even a plain sphere's spot picks up red and blue fringes. It is the same scale as a material's own [`dispersion`](3D.md#glass), which fringes the *view* through a solid body, so a prism that throws its light at `caustics(dispersion: 0.3)` fringes what shows through it at `.glass(thickness: 2, dispersion: 0.3)`.
 
 ```swift
 caustics(dispersion: 1)

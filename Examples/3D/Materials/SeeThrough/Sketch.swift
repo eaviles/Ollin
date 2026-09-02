@@ -29,7 +29,7 @@ final class SeeThrough: Sketch {
     override func draw() {
         background(Color(hex: 0x14171d))
         cameraShowcase(.sway(amplitude: 0.2, period: .tau / 0.09),
-                       target: Vector3(0, 1.2, 0), radius: 10, elevation: 0.16,
+                       target: Vector3(0, 1.2, 0), radius: 12.5, elevation: 0.16,
                        fieldOfView: .pi / 4, near: 1, far: 40)
         environment(.studio.intensified(to: 1.1).backgroundBlurred(0.5))
         directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
@@ -55,11 +55,13 @@ final class SeeThrough: Sketch {
             }
         }
 
-        // Four bodies, left to right: a thin pane (what stands behind it, undistorted),
+        // Five bodies, left to right: a thin pane (what stands behind it, undistorted),
         // a solid sphere (a lens: the blocks past its focus come through turned over), a frosted solid
-        // (the same scene, softened by the mip the roughness picks), and a tinted solid
-        // (bottle green deepening with the distance light travels inside).
-        let r = 0.9
+        // (the same scene, softened by the mip the roughness picks), a tinted solid
+        // (bottle green deepening with the distance light travels inside), and a
+        // dispersive solid (a prism: each color bends its own way, so the blocks'
+        // edges fringe red and blue inside it).
+        let r = 0.85
         let bodies: [(fill: Color, mat: Material)] = [
             (Color(hex: 0xcfe4ff), .glass()),
             (.white, .glass(thickness: r * 2)),
@@ -67,12 +69,13 @@ final class SeeThrough: Sketch {
             (.white, .glass(thickness: r * 2,
                             attenuationColor: Color(hex: 0x2e8f5b),
                             attenuationDistance: 2.6)),
+            (.white, .glass(ior: 1.7, thickness: r * 2, dispersion: 0.6)),
         ]
         for (i, b) in bodies.enumerated() {
             withState {
                 material(b.mat)
                 fill(b.fill)
-                translate((Double(i) - 1.5) * 2.0, 0.9, 0.8)
+                translate((Double(i) - 2) * 1.8, 0.9, 0.8)
                 drawSphere(radius: r)
             }
         }

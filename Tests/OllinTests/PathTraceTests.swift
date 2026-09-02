@@ -16,7 +16,8 @@ struct PathTraceTests {
 
     /// A minimal traced scene: one sphere, one material, one light setup.
     final class Probe: Sketch {
-        enum Kind { case furnaceMatte, furnacePBR, furnaceMetal, parityDirectional }
+        enum Kind { case furnaceMatte, furnacePBR, furnaceMetal, parityDirectional,
+                         prismClear, prismDispersive }
         var kind: Kind = .furnaceMatte
 
         override var canvasSize: CanvasSize { .square(256) }
@@ -53,6 +54,19 @@ struct PathTraceTests {
                 directionalLight(Color(white: 0.8), direction: Vector3(-1, -1, -1))
                 fill(Color(white: 0.9))
                 material(Material())
+            case .prismClear, .prismDispersive:
+                // A black bar in the furnace field behind a solid glass ball: the
+                // ball's lens image of the bar is the only structure in the frame.
+                ambientLight(Color(white: 0.5))
+                withState {
+                    fill(.black)
+                    material(Material())
+                    translate(0, 0, -3)
+                    drawBox(width: 0.9, height: 8, depth: 0.1)
+                }
+                fill(.white)
+                material(.glass(ior: 1.8, thickness: 2.4,
+                                dispersion: kind == .prismDispersive ? 1 : 0))
             }
             drawSphere(radius: 1.2)
         }
@@ -96,6 +110,27 @@ struct PathTraceTests {
     /// 8-bit value (`Color(white: 0.5)` is sRGB, the field is its linearized 0.214,
     /// and a perfect surface returns exactly that: sRGB 127.5). A sampling or energy
     /// error of even a few percent moves the mean well past the tolerance.
+    /// Mean red minus mean blue over the sphere's central region: zero through clear
+    /// glass in a gray scene, and the fringe's signature through a prism.
+    private func centerRedness(_ image: CGImage) -> Double {
+        centerMean(image, channel: 0) - centerMean(image, channel: 2)
+    }
+
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func dispersionSplitsATracedPathByWavelength() throws {
+        // Every path through clear glass in a gray scene carries a gray throughput,
+        // so red and blue agree to the byte. A dispersive body hands each path one
+        // wavelength (its own index and tint), and the lens image of the bar is a
+        // different size in red than in blue, so the two channels part inside the
+        // ball. The tint model sums to white, so a uniform backdrop alone would not
+        // move this: the bar's edges are what the probe reads.
+        let clear = try #require(pathTraced(.prismClear))
+        let prism = try #require(pathTraced(.prismDispersive))
+        let c = abs(centerRedness(clear)), p = abs(centerRedness(prism))
+        #expect(c < 1.5, "clear glass should read gray: \(c)")
+        #expect(p - c > 3, "expected the fringe through the prism: clear \(c), prism \(p)")
+    }
+
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theMatteFurnaceHoldsItsEnergy() throws {
         let image = try #require(pathTraced(.furnaceMatte))
