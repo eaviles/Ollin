@@ -204,6 +204,8 @@ A corner changes the numbers that *size* the shape and leaves the ones that plac
 
 The knob turns the shape, and it only appears when the line can say which way the shape faces. A line has two ends, so both swing about the middle. An arc carries its own two angles, so those move instead. A circle has neither, so it shows no knob at all. What turns a circle is a `rotate` further up the file, which this does not touch.
 
+One more thing is worth having under your hand, because it is the one a number cannot express. A shape drawn later lands on top. With a shape outlined, press `⌘]` to bring it forward or `⌘[` to send it back, and its line moves past its neighbor's in the file. The `fill` it was drawn with goes along and is said again where it lands, and the ink the shapes after it had is put back, so the only thing that changes is which shape is in front. Shift takes it all the way to the front or the back.
+
 Two things are worth knowing before you rely on any of it. A number written whole stays whole: a shape placed at `300` lands on `286`, never `285.7`, and a nudge under half a point changes nothing. And only a plain number can be dragged. If you wrote `drawCircle(width / 2, 300, 40)`, that first slot holds no number to change. The host says so rather than moving anything: *places this shape with `width / 2`, so there is no number to move.*
 
 There is one exception, and you will meet the parameters it needs in a moment. A coordinate written as the name of a `@Param` has no number on the line either, but it does have somewhere to put the value:
@@ -216,7 +218,7 @@ drawCircle(sunX, 120, 40)     // dragging this turns sunX
 
 The drag sets that parameter instead of writing the file. Nothing recompiles, so it is the quickest of the three. The value stays put across the next reload, the way any parameter you change by hand does.
 
-That limit is the honest shape of the feature. The file is the sketch, and dragging edits the file. So anything the file works out for itself is changed the way it was written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends.
+That limit is the honest shape of the feature. The file is the sketch, and dragging edits the file. So anything the file works out for itself is changed the way it was written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points, lines with two ends, and what stops a shape from moving past a line that is not ink.
 
 ## It moves on its own
 

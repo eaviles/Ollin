@@ -13,6 +13,8 @@ import Ollin
 //   drag the shape          the two numbers that place it become where you left it
 //   drag a corner           the numbers that size it grow or shrink
 //   drag the knob above it  the shape turns, if the line says which way it faces
+//   press ⌘] or ⌘[         the shape's line moves past its neighbor's, so it
+//                           draws in front or behind; Shift takes it all the way
 //
 // Let go and the file is written. The watcher sees the save, the sketch
 // recompiles, and the shape is where you left it. The file is the only thing
@@ -35,7 +37,9 @@ final class DragToEdit: Sketch {
         background(Color(hex: 0xF4F1EA))
         noStroke()
 
-        // A face, laid out by hand. Drag any of it, or a corner of it.
+        // A face, laid out by hand. Drag any of it, or a corner of it. With
+        // the face outlined, ⌘] brings it forward over the eyes, its fill
+        // going along and the eyes' fill put back after it; ⌘[ undoes that.
         fill(Color(hex: 0xE4572E))
         drawCircle(360, 300, 150)
 

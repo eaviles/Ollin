@@ -6,7 +6,7 @@
 
 Placing something by eye through numbers is slow. You type `drawCircle(200, 300, 40)`, look, change 300 to 280, look again. The picture is right in front of you, and the only way to touch it is to guess a number.
 
-Under [OllinLive](../../README.md#live-reload), you can move it with the pointer instead. Hold Command over the window: the shape under the pointer is outlined, and the line that drew it is named above the outline. Drag it where you want it and let go. The two numbers in that line become the numbers you dragged to, in your own file. The watcher sees the save and reloads the sketch, so the shape is already where you left it.
+Under [OllinLive](../../README.md#live-reload), you can move it with the pointer instead. Hold Command over the window: the shape under the pointer is outlined, and the line that drew it is named above the outline. Drag it where you want it and let go. The two numbers in that line become the numbers you dragged to, in your own file. The watcher sees the save and reloads the sketch, so the shape is already where you left it. Press `⌘]` or `⌘[` instead, and the shape's line moves past its neighbor's, so it draws in front or behind.
 
 ```sh
 swift run OllinLive Examples/Live/DragToEdit/Sketch.swift
@@ -23,8 +23,9 @@ Holding Command outlines the shape and puts its handles on it. Which handles app
 | the shape | the numbers that place it | any shape placed by plain numbers |
 | a corner | the numbers that size it | any shape whose call carries a size |
 | the knob above it | which way it faces | a shape with two ends, or one with its own angles |
+| `⌘]` and `⌘[` | which shape is on top | any shape, while it is outlined |
 
-A corner is a small square on the outline. The parameter is a small circle standing clear above the top edge, so the two never read as the same thing.
+A corner is a small square on the outline. The knob is a small circle standing clear above the top edge, so the two never read as the same thing.
 
 ```swift
 drawCircle(200, 300, 40)     // the shape moves, four corners resize, no knob
@@ -77,7 +78,7 @@ Two things are deliberately left alone: a corner radius, and a count such as `si
 
 ## Turning it
 
-The parameter swings the shape about its own middle. What it writes depends on what the line says about the shape's direction:
+The knob swings the shape about its own middle. What it writes depends on what the line says about the shape's direction:
 
 ```swift
 drawLine(0, 0, 100, 0)          // before
@@ -87,7 +88,41 @@ drawArc(300, 300, 100, 100, start: 0, stop: 1.5)          // before
 drawArc(300, 300, 100, 100, start: 0.500, stop: 2.000)    // after half a radian
 ```
 
-A shape with two ends turns by moving those ends. A shape that carries its own angles turns by moving those. A circle offers no parameter at all. Nothing on its line says which way it faces: its direction lives in a `rotate` further up, which this does not touch.
+A shape with two ends turns by moving those ends. A shape that carries its own angles turns by moving those. A circle offers no knob at all. Nothing on its line says which way it faces: its direction lives in a `rotate` further up, which this does not touch.
+
+## Putting it in front, or behind
+
+A shape drawn later lands on top, so which shape covers which is the order of the calls in the file. With a shape outlined, `⌘]` brings it one shape forward and `⌘[` sends it one shape back; with Shift held, `⌘⇧]` and `⌘⇧[` take it all the way to the front or the back of its block. Nothing on the line changes. The line changes place.
+
+```swift
+fill(.black)
+drawCircle(200, 300, 80)      // under
+fill(.red)
+drawCircle(260, 300, 80)      // over
+drawRect(500, 500, 40, 40)
+```
+
+Bring the black circle forward and the file becomes:
+
+```swift
+fill(.red)
+drawCircle(260, 300, 80)      // over
+fill(.black)
+drawCircle(200, 300, 80)      // under
+fill(.red)
+drawRect(500, 500, 40, 40)
+```
+
+The ink went with it. A `fill`, `stroke`, or `strokeWeight` set for the shape is said again where the shape lands, the ink the shapes after it were drawn with is put back after it, and an ink line left with nothing to color is removed. So the picture changes only in which shape is in front. Send it back and the file is exactly what it was. A comment on the shape's own line, or directly above it, travels with it.
+
+A shape that was drawn with the ink the sketch starts with, having set none, has that written out where it lands (`fill(.white)`, `stroke(.black)`, `strokeWeight(1)`), which is the same picture said explicitly.
+
+Two things stop a move, and each says so:
+
+- **Anything between the two shapes that is not ink.** A `translate`, a `let`, a `withState { }`, a call the scanner does not know: moving past it could change more than the order, so the move is refused and names it. *`Sketch.swift:9` cannot move past `translate(10, 10)`, which is not ink.* A move all the way to the front stops at the first such line and says how far it got.
+- **Ink nobody can read off the block.** A `strokeCap` set between the two shapes, with nothing above saying what the moved shape's cap was, has no value the move can write, so it refuses rather than guess.
+
+A shape moves among the shapes in its own block. One inside a `withState { }` moves among the calls in that block, and never out of it.
 
 ## A coordinate that is a parameter
 
@@ -135,7 +170,7 @@ The shape follows the pointer either way. What changes is the arithmetic behind 
 
 ## What it does not do
 
-Moving, resizing, and turning, on one shape at a time. Shapes cannot yet be reordered by hand, several cannot be picked at once, and the performance host has none of this. See the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
+Moving, resizing, turning, and reordering, on one shape at a time. Several cannot be picked at once, and the performance host has none of this. See the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
 
 A parameter set in the inspector goes back into the file by the same scanner, from a button rather than a drag. See [saving what you changed](../Helpers/Parameters.md#saving).
 

@@ -1653,6 +1653,31 @@ final class OllinMTKView: MTKView {
         dispatchKey(event, pressed: true)
     }
 
+    /// `⌘]` and `⌘[` move the outlined shape among its neighbors, and with
+    /// Shift all the way to the front or the back. Taken here, before the
+    /// menus see the key, and only while a host that edits the source is
+    /// installed and has a shape outlined; otherwise the key is left alone.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if let dragger = shapeDragging, !event.isARepeat,
+           event.modifierFlags.contains(Self.shapeDragModifier),
+           let step = Self.reorderStep(for: event) {
+            if dragger.reorderHovered(step) { return true }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    /// The reorder a bracket key asks for, or nil for any other key.
+    static func reorderStep(for event: NSEvent) -> SourceReorderStep? {
+        let shift = event.modifierFlags.contains(.shift)
+        switch event.charactersIgnoringModifiers {
+        case "]": return shift ? .toFront : .forward
+        case "[": return shift ? .toBack : .backward
+        case "}": return .toFront
+        case "{": return .toBack
+        default: return nil
+        }
+    }
+
     override func keyUp(with event: NSEvent) {
         dispatchKey(event, pressed: false)
     }

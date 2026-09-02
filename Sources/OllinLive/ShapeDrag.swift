@@ -35,7 +35,9 @@ extension LiveSession: ShapeDragHost {}
 
 /// The live host's shape dragger: hold Command to see what the pointer is
 /// over, drag the shape to move it, a corner to resize it, or the knob above it
-/// to turn it, and the numbers in the `.swift` file change.
+/// to turn it, and the numbers in the `.swift` file change. With the shape
+/// outlined, `⌘]` and `⌘[` move its line past the neighboring shape's, and
+/// with Shift held all the way to the front or the back.
 @MainActor
 @Observable
 final class ShapeDragController: ShapeDragging {
@@ -178,6 +180,29 @@ final class ShapeDragController: ShapeDragging {
         }
     }
 
+    func reorderHovered(_ step: SourceReorderStep) -> Bool {
+        guard let hovered, !isDragging else { return false }
+        guard let source = read(hovered) else { return true }
+        do {
+            let moved = try SourceEdit.reordering(source.text, line: hovered.site.line,
+                                                  column: hovered.site.column, by: step)
+            try moved.text.write(toFile: source.path, atomically: true, encoding: .utf8)
+            let way = (step == .forward || step == .toFront) ? "forward" : "back"
+            let count = moved.steps == 1 ? "one shape" : "\(moved.steps) shapes"
+            print("OllinLive: moved the shape at \(source.name):\(hovered.site.line) \(way) past \(count) ✓")
+            if let stopped = moved.stoppedBy {
+                say("Moved \(way) past \(count), then stopped at \(stopped).")
+            }
+            // The line the outline names has moved; the reload will re-pick.
+            label = "\(source.name):\(moved.line)"
+        } catch let failure as SourceEdit.Failure {
+            say(Self.sentence(for: failure, at: hovered.site.line, in: source.name))
+        } catch {
+            say("Could not write \(source.name): \(error.localizedDescription)")
+        }
+        return true
+    }
+
     // MARK: Writing it down
 
     /// Put the new text in the file, and say whether anything changed. The
@@ -292,6 +317,14 @@ final class ShapeDragController: ShapeDragging {
             return "\(file):\(line) does not say how big this shape is."
         case .nothingToTurn:
             return "\(file):\(line) does not say which way this shape faces."
+        case .alreadyAtTheEdge:
+            return "\(file):\(line) is already at that end of its block; nothing to move it past."
+        case .blockedBy(let statement):
+            return "\(file):\(line) cannot move past \(statement), which is not ink."
+        case .inkUnknown(let statement):
+            return "\(file):\(line) would cross \(statement), and nothing above says what this shape was drawn with."
+        case .notAlone(let text):
+            return "\(file):\(line) shares its line with more than the shape: \(text)"
         }
     }
 

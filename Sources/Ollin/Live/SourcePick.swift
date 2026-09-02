@@ -285,6 +285,15 @@ package struct SourceHandle: Sendable, Equatable {
     let corner: Vector2
 }
 
+/// Which way a shape moves among the shapes drawn beside it: one step, or all
+/// the way. Forward is later in the file, which draws on top.
+package enum SourceReorderStep: Sendable, Equatable {
+    case forward
+    case backward
+    case toFront
+    case toBack
+}
+
 /// A shape the pointer is over, handed to a host so it can outline the shape
 /// and turn a drag into an edit of the file the sketch was written in.
 package struct SourcePick: Sendable {
@@ -450,6 +459,9 @@ package protocol ShapeDragging: AnyObject {
     func dragBegan(at canvasPoint: Vector2) -> Bool
     func dragMoved(to canvasPoint: Vector2)
     func dragEnded()
+    /// A key asked to move the outlined shape among its neighbors. Return
+    /// `true` to take the key, or `false` when nothing is outlined.
+    func reorderHovered(_ step: SourceReorderStep) -> Bool
 }
 
 extension Sketch {

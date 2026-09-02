@@ -38,6 +38,20 @@ package enum SourceEdit {
         case nothingToSize
         /// Nothing on the line says which way the shape faces.
         case nothingToTurn
+        /// The shape is already the first or the last one drawn in its block,
+        /// so there is nothing to move it past.
+        case alreadyAtTheEdge
+        /// A statement standing between the two shapes that is not ink, so
+        /// moving past it could change more than the order. `statement` is
+        /// the line as the file writes it.
+        case blockedBy(statement: String)
+        /// The move would need to say what ink the shape was drawn with, and
+        /// nothing in the block says. `statement` is the ink line between the
+        /// two shapes that the move has to get past.
+        case inkUnknown(statement: String)
+        /// The call shares its line with something else, so the line cannot
+        /// move as the shape's own. `line` is the text.
+        case notAlone(line: String)
     }
 
     /// One coordinate as the file writes it.
@@ -291,7 +305,7 @@ package enum SourceEdit {
     /// The byte index of the call's `(`. Takes the reported column when it
     /// lands on one, and otherwise looks along the line: a formatter that
     /// reflowed the file leaves the call on its line but not at its column.
-    private static func openParen(in bytes: [UInt8], line: Int, column: Int) -> Int? {
+    static func openParen(in bytes: [UInt8], line: Int, column: Int) -> Int? {
         guard line >= 1, column >= 1 else { return nil }
         var index = 0, current = 1
         while current < line, index < bytes.count {

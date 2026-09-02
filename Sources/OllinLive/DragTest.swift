@@ -9,7 +9,7 @@ import OllinRuntime
 /// then compiles and draws again and finds the shape at its new place. That is
 /// the part no unit test can prove on its own: the site a running sketch
 /// reports has to match the numbers standing in the file it was built from.
-/// The same loop then resizes a shape by a corner, turns a line by its parameter,
+/// The same loop then resizes a shape by a corner, turns a line by its knob,
 /// and drags one placed by a parameter's name, which sets the parameter instead.
 ///
 /// No window and no render: a frame is recorded, not drawn to a screen.
@@ -256,9 +256,67 @@ enum DragTest {
         }
         check(abs(slider.read() - 360) < 1e-6, "cx should now hold 360, not \(slider.read())")
 
+        // Two overlapping circles, and the key that swaps which one is on top.
+        // This is the one proof no text check can make: after the file
+        // changes and the sketch recompiles, the pick at the overlap answers
+        // the other shape.
+        print("OllinLive dragtest: bring a covered shape forward with the bracket key …")
+        let overlapping = """
+        import Ollin
+
+        final class ReorderTestSketch: Sketch {
+            override var canvasSize: CanvasSize { .square(600) }
+            override func draw() {
+                background(.white)
+                fill(.black)
+                drawCircle(200, 300, 80)      // under
+                fill(.red)
+                drawCircle(260, 300, 80)      // over
+                drawRect(500, 500, 40, 40)
+            }
+        }
+        """
+        let underLine = 8, overLine = 10
+        try! overlapping.write(toFile: file, atomically: true, encoding: .utf8)
+        let stacked = drawOnce()
+        guard let onTop = stacked.sourcePick(at: Vector2(240, 300)) else {
+            fail("nothing was found where the two circles overlap")
+        }
+        check(onTop.site.line == overLine, "the later circle should be on top, not line \(onTop.site.line)")
+        host.currentSketch = stacked
+        controller.modifierChanged(held: true, at: Vector2(140, 300))
+        check(controller.label == "\(name):\(underLine)",
+              "the pointer on the uncovered edge should outline the under circle, not \(controller.label ?? "nothing")")
+        let noteBefore = controller.note   // an earlier refusal's note lingers a few seconds
+        check(controller.reorderHovered(.forward), "the key should be taken while a shape is outlined")
+        let reordered = text()
+        check(reordered.contains("drawCircle(260, 300, 80)      // over\n        fill(.black)\n        drawCircle(200, 300, 80)      // under\n        fill(.red)\n        drawRect"),
+              "the under circle should now follow the over one, carrying its fill and putting the red back:\n\(reordered)")
+        check(controller.note == noteBefore, "a move that worked should say nothing new, not \(controller.note ?? "")")
+        let swapped = drawOnce()
+        guard let nowOnTop = swapped.sourcePick(at: Vector2(240, 300)) else {
+            fail("nothing was found at the overlap after the reorder")
+        }
+        check(nowOnTop.site.line == underLine + 2,
+              "after the move the once-covered circle should be on top, at line \(underLine + 2), not \(nowOnTop.site.line)")
+        // The rect kept its red: the fill put back after the moved line.
+        guard let rect = swapped.sourcePick(at: Vector2(520, 520)) else { fail("the rect vanished") }
+        check(rect.site.line == 12, "the rect should have moved down two lines, not to \(rect.site.line)")
+        // And back, which leaves the file as it was written.
+        host.currentSketch = swapped
+        controller.modifierChanged(held: true, at: Vector2(240, 300))
+        check(controller.label == "\(name):\(underLine + 2)",
+              "the overlap should now outline the moved circle, not \(controller.label ?? "nothing")")
+        check(controller.reorderHovered(.backward), "the key should be taken")
+        check(text() == overlapping, "moving back should leave the file exactly as written:\n\(text())")
+        // A shape with nothing outlined leaves the key alone.
+        controller.modifierChanged(held: false, at: nil)
+        check(!controller.reorderHovered(.forward), "with nothing outlined the key is not the host's")
+
         print("OllinLive dragtest: PASS: the shape was found, moved by editing the file, "
             + "found again where the drag left it, resized by a corner, turned about its "
-            + "middle, and a parameter's name set the parameter instead of the text.")
+            + "middle, a parameter's name set the parameter instead of the text, and a "
+            + "covered shape came forward by its line moving past its neighbor's.")
         exit(0)
     }
 
