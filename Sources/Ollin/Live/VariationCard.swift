@@ -80,7 +80,9 @@ public struct VariationCardView: View {
                 .onChange(of: editing) { _, isEditing in
                     if !isEditing { commitDraft() }
                 }
-                .onExitCommand { editing = false }
+                #if os(macOS)
+                .onExitCommand { editing = false }   // Escape leaves the box; a phone has no Escape key
+                #endif
                 .help("Jump to a seed")
 
             stepButton("chevron.right", help: "Next seed") { step(+1) }

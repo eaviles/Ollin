@@ -17,6 +17,10 @@
 # What runs when:
 #   Sources/, External/, Package.*, or figure sketches changed
 #       -> Scripts/guide-figures.sh (the probe decides how much renders)
+#   Sources/, External/, or Package.* changed
+#       -> xcodebuild for generic iOS (nothing else compiles the framework
+#          for the phone, and a macOS-only call in a core file broke it
+#          silently within a day of the last hand check; about 30 s warm)
 #   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #   Guide/ or Docs/ prose changed
@@ -96,6 +100,15 @@ elif [[ $milestone -eq 1 ]]; then
     run "prose-lint" Scripts/prose-lint.sh
 else
     skip "prose-lint" "no Guide/ or Docs/ prose change"
+fi
+
+# The iOS build: nothing else compiles the framework for the phone, so a
+# macOS-only SwiftUI call in a core file breaks it without a word (2026-09-02:
+# a seed-box `onExitCommand`). Warm, this is about 30 s.
+if [[ -n "$framework" || $milestone -eq 1 ]]; then
+    run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
+else
+    skip "iOS build" "no framework change"
 fi
 
 # The em-dash and invisible-character net over added lines, for text written
