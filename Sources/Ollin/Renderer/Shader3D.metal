@@ -4097,40 +4097,165 @@ static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
 // The *scene* seen through a transmissive surface on a GPU that cannot trace it
 // (`sceneThroughGlass()`): the renderer draws the frame once more with every
 // transmissive surface taken out, and this reads that layer where the refracted view
-// ray leaves the body. The walk is the environment one above, step for step (the same
-// entry refraction, the same interior span, the same roughness fade as the IOR nears
-// 1), so a body reads the same shape whichever backdrop it ends up sampling; only the
-// last step differs. Instead of sampling a direction in a cube, it projects the exit
-// *point* into the frame and reads the pixel there. Returns the linear radiance in rgb
-// and how much of it to trust in a: 1 well inside the frame, easing to 0 across
-// `light.sceneBehind.z` of the border and at once behind the camera, because a
-// screen-space read only knows what the camera drew. Roughness rides the layer's own
-// mip chain, so frosting blurs the scene the way the prefiltered cube blurs the
-// environment. Written from the published screen-space transmission technique (README
-// Techniques list).
+// ray meets the scene. The walk is the environment one above, step for step (the same
+// entry refraction, the same interior span, the same exit refraction through the
+// far side, the same roughness fade as the IOR nears 1), so a body reads the same
+// shape whichever backdrop it ends up sampling; only the last step differs. Instead
+// of sampling a direction in a cube, it follows the exiting ray to the scene the
+// layer's own depth describes and reads the pixel there. Returns the linear radiance
+// in rgb and how much of it to trust in a: 1 well inside the frame, easing to 0 across
+// `light.sceneBehind.z` of the border, at once behind the camera, and at once where
+// the read lands on something standing in *front* of the surface (the one thing a
+// screen-space read can get wrong, so it hands that pixel back to the environment
+// rather than printing the foreground inside the glass). Roughness rides the layer's
+// own mip chain, so frosting blurs the scene the way the prefiltered cube blurs the
+// environment. Written from the published screen-space transmission technique and
+// the image-space refraction of nearby geometry (README Techniques list).
+//
+// The lens: a solid body (thickness > 0) leaves through its far side, and the ray
+// keeps bending there, so where it meets the scene is not the exit point's own pixel.
+// `ollin_scene_march` below finds it: the exiting ray is marched across the layer's
+// depth, pixel by pixel toward its vanishing point, until it meets what the frame
+// drew. Past the body's focus the rays have crossed, so the picture inside it turns
+// over, the way a ball lens turns a room over. A thin wall (thickness 0) leaves
+// parallel to the view, so its exit point is the fragment's own and every point
+// along its ray projects to that same pixel: it shows what stands behind it,
+// undistorted, which is what a pane of window glass does, and it never reads the
+// depth.
+/// The view depth of a scene-behind layer texel: its stored depth unprojected
+/// through the layer's own inverse view projection and read back as w. A depth that
+/// unprojects to nothing finite (an infinite far plane) reads as very far.
+static inline float ollin_layer_view_depth(float2 uv, float depth, constant OllinLighting &light) {
+    float4 hit = light.sceneInverseViewProjection
+        * float4(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, depth, 1.0);
+    float d = (light.sceneViewProjection * float4(hit.xyz / hit.w, 1.0)).w;
+    return isfinite(d) ? d : 1e30;
+}
+
+/// Walks a solid body's exiting ray through the scene-behind layer to the first
+/// point where it meets what the frame drew, in the layer's own pixels: the screen
+/// path runs from the exit point's pixel toward the vanishing point of the ray's
+/// direction, and 1/depth is linear along it, so each sample is perspective-exact.
+/// At least 24 samples span that path however short it is on screen (a ray heading
+/// straight away from the camera moves a few pixels and many units of depth), and
+/// a long path is sampled every 1/40 of the frame. The first crossing (the ray
+/// deeper than the layer there) is bisected to the pixel and accepted when the ray
+/// sits on the layer there and the layer is continuous across the crossing; a jump
+/// in the layer's depth is a silhouette the ray passed *behind*, so the march
+/// carries on past it (without bisecting again while it rides behind). The far
+/// plane is a surface like any other, so a ray that reaches it reads the frame's
+/// own backdrop, the way a thin wall does. A ray that goes behind something and
+/// never comes out again ends hidden from the camera, so it reads the last pixel it
+/// was still in front of, the nearest thing the frame knows, at that texel's center
+/// (a sub-pixel point on the silhouette would blend the occluder in by a fraction
+/// that follows the sample phase, and neighboring rays then stripe). Two refusals,
+/// returned as w = 0 (the environment shows instead): a read
+/// that lands on something nearer than the glass fragment itself, which the ray
+/// cannot have reached, and a ray that leaves the frame with nothing met.
+/// Something between the surface and the exit (a figure inside a snow globe) is
+/// accepted at the exit pixel, where the exit point already saw it. Returns
+/// (uv, 0, 1) on a read.
+static inline float4 ollin_scene_march(float2 uv0, float zExit, float4 vanishClip, float3 worldPos,
+                                       constant OllinLighting &light,
+                                       depth2d<float> sceneDepthTex, sampler depthSamp) {
+    float zFront = (light.sceneViewProjection * float4(worldPos, 1.0)).w;
+    float2 uvV = float2(vanishClip.x / vanishClip.w * 0.5 + 0.5,
+                        0.5 - vanishClip.y / vanishClip.w * 0.5);
+    float2 path = uvV - uv0;
+    float span = max(length(path), 1e-6);
+    float stride = min(span / 24.0, 1.0 / 40.0);
+    float2 stepUV = path / span * stride;
+    float invZ0 = 1.0 / zExit;
+    float dInvZ = -invZ0 * stride / span;
+    float2 p = uv0, prevP = uv0, lastFront = uv0;
+    float invZ = invZ0, prevInvZ = invZ0;
+    bool behind = false;                                     // riding behind something it passed
+    // A hidden ray reads the visible texel at its center (see above).
+    float2 texel = 1.0 / float2(sceneDepthTex.get_width(), sceneDepthTex.get_height());
+    for (int i = 0; i < 64; ++i) {
+        float2 dd = min(p, 1.0 - p);
+        if (min(dd.x, dd.y) < 0.0) return float4(0.0);      // left the frame with nothing met
+        float d = ollin_layer_view_depth(p, sceneDepthTex.sample(depthSamp, p), light);
+        if (d < zFront) return float4(0.0);                  // in front of the glass: unknown
+        if (i == 0) {
+            if (d < zExit) return float4(p, 0.0, 1.0);        // inside the body: the exit's own read
+        } else {
+            float z = invZ > 0.0 ? 1.0 / invZ : 1e30;
+            if (z <= d) {
+                lastFront = p;
+                behind = false;
+            } else if (!behind) {
+                // Crossed between the previous sample and this one: bisect to the pixel,
+                // keeping the layer depth on both sides of the final bracket.
+                float2 a = prevP, b = p;
+                float ia = prevInvZ, ib = invZ;
+                float dza = ollin_layer_view_depth(a, sceneDepthTex.sample(depthSamp, a), light);
+                float dzb = d;
+                for (int k = 0; k < 6; ++k) {
+                    float2 m = (a + b) * 0.5;
+                    float im = (ia + ib) * 0.5;
+                    float dzm = ollin_layer_view_depth(m, sceneDepthTex.sample(depthSamp, m), light);
+                    float zm = im > 0.0 ? 1.0 / im : 1e30;
+                    if (zm > dzm) { b = m; ib = im; dzb = dzm; } else { a = m; ia = im; dza = dzm; }
+                }
+                if (dzb < zFront) return float4(0.0);
+                float zb = ib > 0.0 ? 1.0 / ib : 1e30;
+                float tol = 0.02 * dzb;
+                // A surface met: the ray sits on it, and the layer is continuous across
+                // the crossing. A jump there is a silhouette the ray passed behind.
+                if (zb - dzb < tol && abs(dza - dzb) < tol) return float4(b, 0.0, 1.0);
+                lastFront = (floor(a / texel) + 0.5) * texel;   // the visible side's texel
+                behind = true;
+            }
+        }
+        if (invZ <= 0.0) return float4(lastFront, 0.0, 1.0);   // at the vanishing point, hidden
+        prevP = p; prevInvZ = invZ;
+        p += stepUV;
+        invZ += dInvZ;
+        if (invZ < 0.0) { p = uvV; invZ = 0.0; }             // the last sample sits at infinity
+    }
+    return float4(lastFront, 0.0, 1.0);
+}
+
 static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 viewDir,
                                             constant OllinMaterial &mat,
                                             constant OllinLighting &light,
-                                            texture2d<float> sceneTex) {
+                                            texture2d<float> sceneTex,
+                                            depth2d<float> sceneDepthTex) {
     constexpr sampler sceneSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    constexpr sampler depthSamp(filter::nearest, address::clamp_to_edge);
     float etaIR = 1.0 / mat.ior;
     float rough = clamp((float)mat.roughness, 0.0, 1.0);
     rough = mix(rough, 0.0, saturate(etaIR * 3.0 - 2.0));
     float3 exitPos = worldPos;
+    float3 dir = -viewDir;                             // thin wall: exit parallel to the view
     float span = 0.0;
     if (mat.thickness > 0.0) {
         float3 rr = refract(-viewDir, n, etaIR);
         float NoR = dot(n, rr);                        // negative heading in
         span = mat.thickness * -NoR;                   // the analytic interior span
         exitPos = worldPos + rr * span;                // where that walk leaves the body
+        float3 n1 = normalize(NoR * rr - n * 0.5);     // curvature-blended exit normal
+        dir = refract(rr, n1, mat.ior);                // the second bend, on the way out
+        if (length_squared(dir) < 1e-6) dir = rr;      // total internal reflection: carry on
     }
-    // A thin wall (thickness 0) exits parallel to the view, so its exit point is the
-    // fragment's own: it shows what stands behind it, undistorted, which is what a pane
-    // of window glass does. Only the tint and the frosting are its own.
     float4 clip = light.sceneViewProjection * float4(exitPos, 1.0);
     if (clip.w <= 0.0) return float4(0.0);             // behind the camera: nothing to read
-    float2 ndc = clip.xy / clip.w;
-    float2 uv = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    float2 uv = float2(clip.x / clip.w * 0.5 + 0.5, 0.5 - clip.y / clip.w * 0.5);
+    if (mat.thickness > 0.0) {
+        // `clip.w` is the view depth under a perspective projection, and the same
+        // product on a direction is that direction's rate of view depth per unit
+        // traveled. A ray running across the view (or an orthographic camera, whose
+        // w is 1 everywhere) has no rate to divide by and keeps the exit point's read.
+        float zExit = clip.w;
+        float4 vc = light.sceneViewProjection * float4(dir, 0.0);
+        float rate = vc.w;
+        if (rate > 1e-4) {
+            float4 r = ollin_scene_march(uv, zExit, vc, worldPos, light, sceneDepthTex, depthSamp);
+            if (r.w <= 0.0) return float4(0.0);
+            uv = r.xy;
+        }
+    }
     // How much of the frame the read is inside: full in the middle, easing away across
     // the border band, zero outside. `smoothstep` on the distance to the nearest edge.
     float edge = max(light.sceneBehind.z, 1e-4);
@@ -4965,7 +5090,10 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     // (`sceneThroughGlass()`, tex 27), read along a
                                     // transmissive surface's own refracted direction; a
                                     // never-sampled stand-in when off (`sceneBehind.x` gates).
-                                    texture2d<float> sceneBehindTex [[texture(27)]]
+                                    texture2d<float> sceneBehindTex [[texture(27)]],
+                                    // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
+                                    // rule.
+                                    depth2d<float> sceneBehindDepthTex [[texture(28)]]
 #if OLLIN_RT_SHADOWS
                                     , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
@@ -5070,7 +5198,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         float4 sceneBehind = float4(0.0);
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, normalize(in.normal), viewDir,
-                                                 mat, light, sceneBehindTex);
+                                                 mat, light, sceneBehindTex, sceneBehindDepthTex);
         }
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
@@ -5344,7 +5472,10 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              // (`sceneThroughGlass()`, tex 27), read along a
                                              // transmissive surface's own refracted direction; a
                                              // never-sampled stand-in when off (`sceneBehind.x` gates).
-                                             texture2d<float> sceneBehindTex [[texture(27)]]
+                                             texture2d<float> sceneBehindTex [[texture(27)]],
+                                             // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
+                                             // rule.
+                                             depth2d<float> sceneBehindDepthTex [[texture(28)]]
 #if OLLIN_RT_SHADOWS
                                              , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -5425,7 +5556,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
         float4 sceneBehind = float4(0.0);
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, normalize(in.normal), viewDir,
-                                                 mat, light, sceneBehindTex);
+                                                 mat, light, sceneBehindTex, sceneBehindDepthTex);
         }
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
@@ -5539,6 +5670,9 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        // transmissive surface's own refracted direction; a
                                        // never-sampled stand-in when off (`sceneBehind.x` gates).
                                        texture2d<float> sceneBehindTex [[texture(27)]],
+                                       // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
+                                       // rule.
+                                       depth2d<float> sceneBehindDepthTex [[texture(28)]],
                                        texture2d<float> normalMapTex [[texture(17)]]
 #if OLLIN_RT_SHADOWS
                                        , instance_acceleration_structure shadowAccel [[buffer(3)]]
@@ -5624,7 +5758,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
         float4 sceneBehind = float4(0.0);
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, N, viewDir,
-                                                 mat, light, sceneBehindTex);
+                                                 mat, light, sceneBehindTex, sceneBehindDepthTex);
         }
         c.rgb += ollin_pbr_ibl_ambient(base, N, viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
@@ -5873,6 +6007,9 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          // transmissive surface's own refracted direction; a
                                          // never-sampled stand-in when off (`sceneBehind.x` gates).
                                          texture2d<float> sceneBehindTex [[texture(27)]],
+                                         // Its resolved depth (tex 28), the lens walk's ground; the same stand-in
+                                         // rule.
+                                         depth2d<float> sceneBehindDepthTex [[texture(28)]],
                                          texture2d<float> normalMapTex [[texture(17)]],
                                          texture2d<float> mrTex [[texture(18)]],
                                          texture2d<float> occlusionTex [[texture(19)]],
@@ -6102,7 +6239,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         float4 sceneBehind = float4(0.0);
         if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
             sceneBehind = ollin_scene_refraction(in.worldPos, N, viewDir,
-                                                 mat, light, sceneBehindTex);
+                                                 mat, light, sceneBehindTex, sceneBehindDepthTex);
         }
         c.rgb += pxAO * ollin_pbr_ibl_ambient_mapped(base, N, viewDir, pxMetal, pxRough, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT

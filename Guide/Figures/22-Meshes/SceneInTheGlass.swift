@@ -1,4 +1,4 @@
-// figure: gif duration=4 fps=8 width=560
+// figure: gif duration=4 fps=8 width=560 probe
 //
 // Guide figure (Chapter 22): the scene through the glass, on any Mac. The same
 // still scene alternates every two seconds between `sceneThroughGlass()` off

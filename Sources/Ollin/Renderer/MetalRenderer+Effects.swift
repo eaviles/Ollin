@@ -2694,7 +2694,9 @@ extension MetalRenderer {
                         gi: GIResolved? = nil,
                         caustics: MTLTexture? = nil,
                         pathTraced: (color: MTLTexture, depth: MTLTexture, invSamples: Float)? = nil,
-                        sceneBehind: (texture: MTLTexture, viewProjection: simd_float4x4)? = nil,
+                        sceneBehind: (texture: MTLTexture, depth: MTLTexture,
+                                      viewProjection: simd_float4x4,
+                                      inverseViewProjection: simd_float4x4)? = nil,
                         skippingTransmissive: Bool = false,
                         target passTarget: RenderTarget? = nil,
                         taaJitter: SIMD2<Float> = .zero) {
@@ -2923,11 +2925,13 @@ extension MetalRenderer {
         // every carrier's branch untaken, byte-identical. The view projection is the one
         // the layer was actually drawn with, so an exit point lands on the texel it
         // holds; the layer's top mip drives the roughness blur, and the fade band is a
-        // fixed fraction of the frame.
+        // fixed fraction of the frame. The inverse turns the layer's depth back into
+        // scene points, the ground a solid body's exiting ray walks to.
         if let sceneBehind {
             lighting.sceneBehind = SIMD4(1, Float(sceneBehind.texture.mipmapLevelCount - 1),
                                          Float(sceneBehindEdgeFade), 0)
             lighting.sceneViewProjection = sceneBehind.viewProjection
+            lighting.sceneInverseViewProjection = sceneBehind.inverseViewProjection
         }
         if caustics != nil {
             lighting.causticsEnabled = 1
@@ -3095,6 +3099,9 @@ extension MetalRenderer {
             // own refracted direction when `lighting.sceneBehind.x` is set; a
             // never-sampled stand-in otherwise.
             encoder.setFragmentTexture(sceneBehind?.texture ?? strip, index: 27)
+            // Its resolved depth (tex 28), the ground the lens walk reads; the slot
+            // is a `depth2d`, so the stand-in is a depth texture too.
+            encoder.setFragmentTexture(sceneBehind?.depth ?? ensureDummyDepth(), index: 28)
             // The pre-traced reflection layer (tex 7) when the deferred path is on;
             // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
             // read). Only part of the RT-compiled fragment signature.

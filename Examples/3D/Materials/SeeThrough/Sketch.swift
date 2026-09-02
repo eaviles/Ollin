@@ -6,8 +6,8 @@ import Ollin
 /// standing in front of a scene comes out empty: the wall behind it, the floor, the
 /// other objects, none of them appear in it. `sceneThroughGlass()` fills that in. The
 /// renderer draws the frame a second time with every transmissive surface taken out, and
-/// each piece of glass reads that picture where its own refracted view ray leaves the
-/// body:
+/// each piece of glass reads that picture along its own refracted view ray, a solid body
+/// following it out through its far side to where it meets the scene, so a ball is a lens:
 ///
 /// ```swift
 /// environment(.studio)                     // something to transmit
@@ -56,7 +56,7 @@ final class SeeThrough: Sketch {
         }
 
         // Four bodies, left to right: a thin pane (what stands behind it, undistorted),
-        // a solid sphere (the blocks slide as the body bends the view), a frosted solid
+        // a solid sphere (a lens: the blocks past its focus come through turned over), a frosted solid
         // (the same scene, softened by the mip the roughness picks), and a tinted solid
         // (bottle green deepening with the distance light travels inside).
         let r = 0.9

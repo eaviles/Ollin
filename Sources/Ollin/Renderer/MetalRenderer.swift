@@ -787,6 +787,7 @@ final class MetalRenderer {
     static let shadowMapResolution = 2048
     var shadowMap: MTLTexture?
     var dummyShadowMap: MTLTexture?
+    var dummyDepth: MTLTexture?
     /// The omnidirectional (point) shadow maps: a **cube array** rendered by the layered
     /// six-face pass and sampled by direction, one cube per point caster in the frame (a
     /// point light casts from any slot). Per-face resolution; allocated lazily on the
@@ -1017,6 +1018,7 @@ final class MetalRenderer {
     /// feature is on. `.private`, so nothing round-trips to the CPU.
     var sceneBehindMSAATex: MTLTexture?
     var sceneBehindDepthTex: MTLTexture?
+    var sceneBehindDepthResolveTex: MTLTexture?
     var sceneBehindResolveTex: MTLTexture?
     var sceneBehindSize = (width: 0, height: 0)
 

@@ -1001,12 +1001,22 @@ typedef struct {
                                   // screen-edge fade width in uv (a lookup that leaves the frame
                                   // dissolves back into the environment instead of smearing the
                                   // border pixel, which is the honest edge of a screen-space
-                                  // read), w unused.
+                                  // read), w unused. A solid body (thickness > 0) reads the
+                                  // layer's depth too: it refracts out through its far side and
+                                  // walks that exiting ray to the scene, so the picture inside it
+                                  // is a lens's (inverted past the focus), not a shifted copy.
     simd_float4x4 sceneViewProjection;
                                   // world -> clip of the frame being rendered, carrying the same
                                   // temporal-AA jitter the geometry does, so a refracted exit
                                   // point projects onto the texel the layer actually holds. Read
                                   // only under `sceneBehind.x`.
+    simd_float4x4 sceneInverseViewProjection;
+                                  // clip -> world of the same frame, the inverse of the matrix
+                                  // above: turns a depth the layer holds (its resolved depth,
+                                  // bound at fragment texture 28) back into the scene point that
+                                  // stands there, which is how a solid body's exiting ray finds
+                                  // where it actually meets the scene rather than reading the
+                                  // exit point's own pixel. Read only under `sceneBehind.x`.
     int   causticsEnabled;        // 1 = the resolved caustics layer is bound at fragment texture
                                   // 25 (main canvas, `caustics()` on a ray-tracing device) and the
                                   // lit mesh fragments add it by screen position; 0 leaves every

@@ -145,6 +145,26 @@ extension MetalRenderer {
     /// shadows are off, so its declared `depth2d_array` argument is always satisfied (the
     /// fragment only samples it when a caster names it). Cleared once on creation so it's
     /// never read uninitialized.
+    /// A 1x1 single-sample depth texture to bind where a fragment declares a
+    /// `depth2d` it never samples (the scene-behind-glass layer's depth, tex 28,
+    /// gated by `sceneBehind.x`): the slot wants a depth-format texture, and a color
+    /// stand-in there would fail validation. Cleared once so its contents are defined.
+    func ensureDummyDepth() -> MTLTexture? {
+        if let d = dummyDepth { return d }
+        guard let texture = makeDepthResolve(width: 1, height: 1) else { return nil }
+        if let cb = commandQueue.makeCommandBuffer() {
+            let pass = MTLRenderPassDescriptor()
+            pass.depthAttachment.texture = texture
+            pass.depthAttachment.loadAction = .clear
+            pass.depthAttachment.clearDepth = 1.0
+            pass.depthAttachment.storeAction = .store
+            if let enc = cb.makeRenderCommandEncoder(descriptor: pass) { enc.endEncoding() }
+            cb.commit()
+        }
+        dummyDepth = texture
+        return texture
+    }
+
     func ensureDummyShadowMap() -> MTLTexture? {
         if let m = dummyShadowMap { return m }
         let desc = MTLTextureDescriptor()
@@ -2951,6 +2971,12 @@ extension MetalRenderer {
     /// the average absorbs), and returns the matrix it was drawn with so the projection
     /// into it cannot disagree with it.
     ///
+    /// Its depth resolves too (nearest sample, the main pass's rule), returned beside
+    /// the color with the inverse of the matrix: a solid body refracts out through its
+    /// far side and walks that exiting ray against this depth to the point where it
+    /// meets the scene, which is what makes the picture inside it a lens's rather
+    /// than a shifted copy of the exit point's pixel.
+    ///
     /// Returns nil, leaving `sceneBehind.x` 0 and every carrier's branch untaken, when
     /// the sketch did not ask for it, when there is no camera or environment (transmission
     /// needs one either way), when nothing in the frame transmits, or when ray-traced
@@ -2972,7 +2998,8 @@ extension MetalRenderer {
                                caustics: MTLTexture? = nil,
                                pathTraced: (color: MTLTexture, depth: MTLTexture,
                                             invSamples: Float)? = nil)
-        -> (texture: MTLTexture, viewProjection: simd_float4x4)? {
+        -> (texture: MTLTexture, depth: MTLTexture,
+            viewProjection: simd_float4x4, inverseViewProjection: simd_float4x4)? {
         guard drawer.sceneThroughGlassEnabled else { return nil }
         guard let camera = drawer.camera3D else {
             drawer.noteOnce("sceneThroughGlass() shows the scene through 3D glass; without a camera there is none.")
@@ -2991,14 +3018,17 @@ extension MetalRenderer {
         if sceneBehindSize != (width, height) || sceneBehindResolveTex == nil {
             guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
                   let depth = makeDepthMSAA(width: width, height: height),
+                  let depthResolve = makeDepthResolve(width: width, height: height),
                   let resolve = makeFloatResolveMipped(width: width, height: height)
             else { return nil }
             sceneBehindMSAATex = msaa
             sceneBehindDepthTex = depth
+            sceneBehindDepthResolveTex = depthResolve
             sceneBehindResolveTex = resolve
             sceneBehindSize = (width, height)
         }
         guard let msaa = sceneBehindMSAATex, let depth = sceneBehindDepthTex,
+              let depthResolve = sceneBehindDepthResolveTex,
               let resolve = sceneBehindResolveTex else { return nil }
 
         let pass = MTLRenderPassDescriptor()
@@ -3010,7 +3040,9 @@ extension MetalRenderer {
         pass.depthAttachment.texture = depth
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
-        pass.depthAttachment.storeAction = .dontCare
+        pass.depthAttachment.resolveTexture = depthResolve
+        pass.depthAttachment.storeAction = .multisampleResolve
+        pass.depthAttachment.depthResolveFilter = .min
         let hasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                            width: width, height: height)
         guard let enc = countedEncoder(cb, pass, caller: "scene behind glass") else { return nil }
@@ -3042,7 +3074,8 @@ extension MetalRenderer {
             blit.endEncoding()
         }
         let u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport)
-        return (resolve, u3.projection * u3.view)
+        let viewProjection = u3.projection * u3.view
+        return (resolve, depthResolve, viewProjection, simd_inverse(viewProjection))
     }
 
     /// Contact shadows (`contactShadows()`): march a short screen-space ray from each

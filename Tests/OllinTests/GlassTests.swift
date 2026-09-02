@@ -397,6 +397,66 @@ struct SceneThroughGlassProbes {
         #expect(pixels(of: both) == pixels(of: tracedOnly))
     }
 
+    /// How blue a region reads against its own red: the post's signature.
+    private func blueness(_ img: CGImage, x: ClosedRange<Double>, y: ClosedRange<Double>) -> Double {
+        -redness(img, x: x, y: y)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSolidBodyIsALens() throws {
+        // Far behind a solid sphere stand a red bar above the center and a blue post
+        // left of it, past the distance where the bundle of rays through the ball
+        // crosses. A ball lens turns that picture over: the bar has to show in the
+        // lower half of the sphere and the post on its right. A thin wall reads the
+        // layer at its own pixel and shows both where they stand, so the same regions
+        // read the other way round. Measured as the difference between the two halves,
+        // which the exposure and the tint cannot move.
+        let solid = try render(.lensSolid)
+        let thin = try render(.lensThin)
+        func barBelow(_ img: CGImage) -> Double {
+            redness(img, x: 0.42...0.58, y: 0.55...0.68) - redness(img, x: 0.42...0.58, y: 0.32...0.45)
+        }
+        func postRight(_ img: CGImage) -> Double {
+            blueness(img, x: 0.55...0.68, y: 0.44...0.56) - blueness(img, x: 0.32...0.45, y: 0.44...0.56)
+        }
+        let sb = barBelow(solid), tb = barBelow(thin)
+        #expect(sb > 15, "expected the red bar in the lower half of the lens: \(sb)")
+        #expect(tb < -5, "expected the thin wall to show the bar upright: \(tb)")
+        let sp = postRight(solid), tp = postRight(thin)
+        #expect(sp > 15, "expected the blue post on the right of the lens: \(sp)")
+        #expect(tp < -5, "expected the thin wall to show the post on the left: \(tp)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func whatStandsInFrontOfTheGlassNeverPrintsInsideIt() throws {
+        // A yellow post stands between the camera and the sphere, just right of the
+        // center on screen, where the exit points of the sphere's right rim project.
+        // Every read of the layer lands on the post's pixels for those fragments, but
+        // the post is nearer than the glass, so the ray cannot have reached it: the
+        // read is refused and the environment shows there instead. The rim beside the
+        // post must therefore carry none of its yellow (with the refusal gone, it
+        // prints the post: verified red). The post is checked to be visible first, or
+        // the two frames would agree trivially.
+        let withPost = try render(.frontPost)
+        let bare = try render(.frontNone)
+        func yellowness(_ img: CGImage, x: ClosedRange<Double>, y: ClosedRange<Double>) -> Double {
+            let d = pixels(of: img)
+            let r = mean(d, width: img.width, height: img.height, channel: 0, x: x, y: y)
+            let g = mean(d, width: img.width, height: img.height, channel: 1, x: x, y: y)
+            let b = mean(d, width: img.width, height: img.height, channel: 2, x: x, y: y)
+            return (r + g) / 2 - b
+        }
+        let postSeen = yellowness(withPost, x: 0.565...0.595, y: 0.05...0.15)
+        let postAbsent = yellowness(bare, x: 0.565...0.595, y: 0.05...0.15)
+        #expect(postSeen - postAbsent > 40,
+                "the post should be visible in front: with \(postSeen), without \(postAbsent)")
+        // Absolute, not against the bare frame: without the post that rim holds the
+        // blue post's lens image, and with it the neutral environment, so the two
+        // differ either way. Printed, the post reads above 80 here.
+        let inside = yellowness(withPost, x: 0.64...0.72, y: 0.44...0.56)
+        #expect(inside < 20, "the post printed inside the sphere: \(inside)")
+    }
+
     @Test
     func theLightingConstantsStillFitAFragmentPush() {
         // `OllinLighting` travels through `setFragmentBytes`, which tops out at 4 KB on
@@ -417,6 +477,8 @@ private final class SceneThroughGlassProbe: Sketch {
         case barsSolid, barsThin
         case stripesClear, stripesFrosted
         case tracedAndShown, tracedOnly
+        case lensSolid, lensThin
+        case frontPost, frontNone
     }
     var kind: Kind = .wallShown
 
@@ -515,6 +577,36 @@ private final class SceneThroughGlassProbe: Sketch {
             drawWall(Color(hex: 0xd94430))
             fill(.white)
             material(.glass())
+            drawSphere(radius: 1.2)
+
+        case .lensSolid, .lensThin, .frontPost, .frontNone:
+            // A ball of radius 1.2 at index 1.5 focuses 1.8 past its center, and the
+            // bundle from a camera 5 away crosses 2.8 past it; the wall stands well
+            // beyond that, where the lens's picture is the turned-over one.
+            sceneThroughGlass()
+            drawWall(Color(white: 0.12), z: -6.2)
+            withState {
+                fill(Color(hex: 0xd94430))
+                material(.dielectric(roughness: 0.8))
+                translate(0, 0.9, -5.9)
+                drawBox(width: 8, height: 0.5, depth: 0.1)
+            }
+            withState {
+                fill(Color(hex: 0x2a4fd6))
+                material(.dielectric(roughness: 0.8))
+                translate(-0.9, 0, -5.9)
+                drawBox(width: 0.4, height: 8, depth: 0.1)
+            }
+            if kind == .frontPost {
+                withState {
+                    fill(Color(hex: 0xe8c23a))
+                    material(.dielectric(roughness: 0.8))
+                    translate(0.2, 0, 2.0)
+                    drawBox(width: 0.25, height: 8, depth: 0.1)
+                }
+            }
+            fill(.white)
+            material(kind == .lensThin ? .glass() : .glass(thickness: 2.4))
             drawSphere(radius: 1.2)
         }
     }
