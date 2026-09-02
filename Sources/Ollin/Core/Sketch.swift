@@ -3442,6 +3442,11 @@ open class Sketch {
     public func rotateZ(_ radians: Double) { drawer.rotateZ(radians) }
     /// Rotate subsequent 3D geometry by `radians` about an arbitrary `axis`.
     public func rotate(_ radians: Double, axis: Vector3) { drawer.rotate(radians, axis: axis) }
+    /// Rotate subsequent 3D geometry by a whole turn: a body's `rotation`, or
+    /// one composed from several.
+    public func rotate(_ rotation: Rotation3D) {
+        drawer.rotate(rotation.angle, axis: rotation.axis)
+    }
     /// Scale subsequent 3D geometry per axis by `(x, y, z)`.
     public func scale(_ x: Double, _ y: Double, _ z: Double) { drawer.scale(x, y, z) }
     /// Scale subsequent 3D geometry by per-axis `factors`. Uniform scale is

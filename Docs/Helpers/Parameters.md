@@ -254,7 +254,7 @@ A parameter is also sweepable offline. `--export-sweep` renders a proof sheet al
 swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --sweep-param radius --from 40 --to 360
 ```
 
-The full flag list is on the [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space) page, and `OllinApp.contactSheet(of:sweeping:values:seed:)` is the code form.
+The full flag list is on the [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space) page, and `OllinApp.contactSheet(of:sweeping:values:seed:)` is the code form. There the parameter can be named by its handle, `sweeping: \.$radius`, which the compiler checks.
 
 A parameter can also be set from the command line, on any export path and on a standalone window:
 

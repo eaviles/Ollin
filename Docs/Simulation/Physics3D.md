@@ -111,9 +111,11 @@ A body's pose is where you read it and drive it:
 
 ```swift
 body.position                 // Vector3, get/set
+body.rotation                 // Rotation3D, get/set: one value for the whole turn
+body.rotation = .aboutY(0.1) * body.rotation   // composed a tenth further round
+body.setRotation(.pi / 4, axis: .unitZ)        // the same as rotation = Rotation3D(angle:axis:)
 body.rotationAngle            // radians about…
-body.rotationAxis             // …this unit axis (read them together)
-body.setRotation(.pi / 4, axis: .unitZ)
+body.rotationAxis             // …this unit axis (the same pose, read as a pair)
 
 body.velocity                 // units per second, get/set
 body.angularVelocity          // radians per second about each axis

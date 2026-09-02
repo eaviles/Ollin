@@ -4,7 +4,7 @@
 
 ## Geometry
 
-`Vector2`, `Vector3`, `Ray3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Canvas coordinates use a top-left origin with y increasing downward.
+`Vector2`, `Vector3`, `Rotation3D`, `Ray3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Canvas coordinates use a top-left origin with y increasing downward.
 
 ### Contents
 
@@ -16,6 +16,7 @@
   - [Producing new vectors](#v2-producing)
   - [Putting it together](#v2-together)
 - [Vector3](#vector3)
+- [Rotation3D](#rotation3d)
 - [Ray3](#ray3)
 - [Rectangle](#rectangle)
 - [Grid](#grid)
@@ -181,7 +182,7 @@ Vector3(x: Double, y: Double, z: Double)
 - **Constants:** `.zero`, `.one`, `.unitX`, `.unitY`, `.unitZ`.
 - **Same surface as `Vector2`** where it generalizes: `length` / `lengthSquared` / `normalized`, the `+ - * /` operators and their in-place forms, `dot`, `distance(to:)` / `distanceSquared(to:)`, `lerp(to:_:)`, `limited(to:)`, `projected(onto:)`, and `with(x:)` / `with(y:)` / `with(z:)`.
 - **3D-specific:** `cross(_:)` returns the perpendicular `Vector3` (in 2D it's a scalar), and `xy` drops the depth, the projection back onto the canvas plane.
-- **Not here:** the angle and rotation helpers, because a 3D rotation needs an axis, which lives in the [3D transform stack](../3D/3D.md#transforms), not a lone vector.
+- **Turning one:** `rotated(by:)` takes a [`Rotation3D`](#rotation3d), since a turn in space needs an axis as well as an angle. The lone-angle helpers `Vector2` has stay 2D.
 
 Axis meaning (which way is up, where the origin sits) belongs to whatever produced the value, so a producer like [`Body3D`](../Vision/Vision.md#body3d) documents its own spaces.
 
@@ -189,6 +190,32 @@ Axis meaning (which way is up, where the origin sits) belongs to whatever produc
 let joint = Vector3(0.2, 1.4, -0.3)          // meters, say
 drawCircle(center + joint.xy * 200, 6)        // front view: drop the z
 drawCircle(center + Vector2(joint.z, -joint.y) * 200, 6)   // side view: look along x
+```
+
+<a name="rotation3d"></a>
+
+### `Rotation3D`
+
+A turn in space as one value: how far, about which axis. It is what a 3D body faces by ([`Body3D.rotation`](../Simulation/Physics3D.md#body3d)), what a wheel is posed with, and what `rotate(_:)` draws with. Underneath it is a unit quaternion, which is what lets two turns compose without the trouble three separate angles run into, but it reads as an angle and an axis.
+
+```swift
+Rotation3D(angle: Double, axis: Vector3)      // right-handed, like rotate(_:axis:)
+Rotation3D(from: Vector3, to: Vector3)        // the shortest turn taking one direction to the other
+Rotation3D.aboutX(_:) / .aboutY(_:) / .aboutZ(_:)
+Rotation3D.identity                           // no turn
+Rotation3D(x:y:z:w:)                          // from quaternion parts, for a value that arrives that way
+```
+
+- **Reading it:** `angle` (radians, `0...π`) and `axis` (unit length; `unitY` when there is no turn, which has no axis of its own).
+- **Composing:** `a * b` turns by `b` first and then by `a`, the way matrices multiply, so a chain reads right to left. `inverse` undoes a turn. `interpolated(to:_:)` is the turn part of the way toward another, along the shortest arc and at a steady rate.
+- **Applying it:** `vector.rotated(by:)` turns a `Vector3`; `rotate(_:)` on the sketch composes it onto the [3D transform stack](../3D/3D.md#transforms); `matrix` is the same turn as the 4×4 `transform(_:)` takes.
+- **One form per turn.** A quaternion and its negation are the same turn, so the value keeps `w` non-negative. Two equal turns compare equal however they were built.
+
+```swift
+let tilt = Rotation3D(angle: .pi / 6, axis: .unitZ)
+crate.rotation = .aboutY(time) * tilt          // spin about y, then tilt
+let up = Vector3.unitY.rotated(by: crate.rotation)
+let aim = Rotation3D(from: .unitZ, to: target - eye)   // point the z-axis at something
 ```
 
 <a name="ray3"></a>

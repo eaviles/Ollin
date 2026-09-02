@@ -192,6 +192,32 @@ struct RigidBody3DTests {
         #expect((box.rotationAxis - .unitY).length < 1e-4)
     }
 
+    @Test func orientationIsOneValueThatSetsReadsAndComposes() {
+        let world = World3D()
+        let box = world.addBody(.box(width: 1, height: 1, depth: 1),
+                                at: Vector3(0, 2, 0))
+        #expect(box.rotation == .identity)
+
+        let tilt = Rotation3D(angle: 0.7, axis: .unitZ)
+        box.rotation = tilt
+        #expect(abs(box.rotation.angle - 0.7) < 1e-4)
+        #expect((box.rotation.axis - .unitZ).length < 1e-4)
+        // The angle/axis pair reads the same pose.
+        #expect(abs(box.rotationAngle - 0.7) < 1e-4)
+
+        // A turn composed onto the pose lands where the value says: a
+        // quarter turn about y after the tilt takes the body's own x-axis
+        // where the composed value takes it.
+        box.rotation = .aboutY(.pi / 2) * tilt
+        let expected = Vector3.unitX.rotated(by: .aboutY(.pi / 2) * tilt)
+        #expect((Vector3.unitX.rotated(by: box.rotation) - expected).length < 1e-4)
+
+        // The setter pair is sugar over the value.
+        box.setRotation(1.2, axis: .unitY)
+        #expect(box.rotation == Rotation3D(angle: 1.2, axis: .unitY)
+                || (box.rotation.inverse * Rotation3D(angle: 1.2, axis: .unitY)).angle < 1e-4)
+    }
+
     @Test func identicalWorldsStepIdentically() {
         func build() -> (World3D, [Body3D]) {
             let world = World3D()

@@ -542,4 +542,9 @@ From code:
 ```swift
 OllinApp.exportContactSheet({ MySketch() }, to: "sweep.png",
                             sweeping: "radius", values: [40, 120, 360], seed: 7)
+// Or name the parameter by its own handle, which the compiler checks:
+OllinApp.exportContactSheet({ MySketch() }, to: "sweep.png",
+                            sweeping: \.$radius, values: [40, 120, 360], seed: 7)
 ```
+
+`\.$radius` is the key path to the parameter itself (the projected value of a `@Param`), so a typo is a build error rather than an empty sheet. An `Int` parameter takes whole values the same way.

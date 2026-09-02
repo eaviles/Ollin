@@ -179,7 +179,7 @@ final class Joyride: Sketch {
     /// Put the car back on the apron, upright and still.
     func reset() {
         car.body.position = start
-        car.body.setRotation(0, axis: .unitY)
+        car.body.rotation = .identity
         car.body.velocity = .zero
         car.body.angularVelocity = .zero
         car.coast()

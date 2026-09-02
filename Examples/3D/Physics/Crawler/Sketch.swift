@@ -185,7 +185,7 @@ final class Crawler: Sketch {
 
     func reset() {
         crawler.body.position = start
-        crawler.body.setRotation(0, axis: .unitY)
+        crawler.body.rotation = .identity
         crawler.body.velocity = .zero
         crawler.body.angularVelocity = .zero
         crawler.coast()

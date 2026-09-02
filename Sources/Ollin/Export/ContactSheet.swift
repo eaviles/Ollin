@@ -77,6 +77,53 @@ extension OllinApp {
                            tileWidth: tileWidth, quality: quality)
     }
 
+    /// The same sweep, naming the parameter by its own handle rather than a
+    /// string: `sweeping: \.$radius`, which the compiler checks.
+    ///
+    /// The projected value of a `@Param` is the parameter itself, so the key
+    /// path to it names exactly one property, and a typo is a build error
+    /// rather than an empty sheet. Everything else is as
+    /// `contactSheet(of:sweeping:values:seed:)`.
+    public static func contactSheet<S: Sketch>(of make: () -> S,
+                                               sweeping parameter: KeyPath<S, Param<Double>>,
+                                               values: [Double], seed: Int? = nil,
+                                               frame: Int = 0, fps: Double = 60,
+                                               columns: Int? = nil, tileWidth: Int = 320,
+                                               quality: RenderQuality = .detail) -> CGImage? {
+        guard let name = parameterName(of: make, at: parameter) else { return nil }
+        return contactSheet(of: { make() }, sweeping: name, values: values, seed: seed,
+                            frame: frame, fps: fps, columns: columns,
+                            tileWidth: tileWidth, quality: quality)
+    }
+
+    /// The same sweep over an `Int` parameter, its values whole.
+    public static func contactSheet<S: Sketch>(of make: () -> S,
+                                               sweeping parameter: KeyPath<S, Param<Int>>,
+                                               values: [Int], seed: Int? = nil,
+                                               frame: Int = 0, fps: Double = 60,
+                                               columns: Int? = nil, tileWidth: Int = 320,
+                                               quality: RenderQuality = .detail) -> CGImage? {
+        guard let name = parameterName(of: make, at: parameter) else { return nil }
+        return contactSheet(of: { make() }, sweeping: name, values: values.map(Double.init),
+                            seed: seed, frame: frame, fps: fps, columns: columns,
+                            tileWidth: tileWidth, quality: quality)
+    }
+
+    /// The property name a parameter handle was declared under, found by
+    /// identity among the sketch's own parameters: a `Param` is a reference,
+    /// so the box the key path reaches is the box the registry lists.
+    static func parameterName<S: Sketch, V: ParamValue>(of make: () -> S,
+                                                        at parameter: KeyPath<S, Param<V>>) -> String? {
+        let probe = make()
+        let box = probe[keyPath: parameter]
+        guard let handle = probe.parameters().first(where: { ($0.param as AnyObject) === box }) else {
+            FileHandle.standardError.write(Data(
+                "Ollin: that parameter is not one this sketch declares with @Param\n".utf8))
+            return nil
+        }
+        return handle.name
+    }
+
     /// The shared tiling core: one fresh sketch per tile, prepared by its
     /// tile's closure before the headless drive runs `setup()`, rendered
     /// through one reused renderer, and labeled.
@@ -197,6 +244,37 @@ extension OllinApp {
             fatalError("Ollin: failed to write \(path)")
         }
         print("Ollin: exported sweep of '\(name)' over \(values.count) values → \(path) (\(sheet.width)×\(sheet.height))")
+    }
+
+    /// The sweep export, naming the parameter by its handle (`sweeping: \.$radius`)
+    /// rather than a string; see `contactSheet(of:sweeping:values:seed:)`.
+    public static func exportContactSheet<S: Sketch>(_ make: () -> S, to path: String,
+                                                     sweeping parameter: KeyPath<S, Param<Double>>,
+                                                     values: [Double], seed: Int? = nil,
+                                                     frame: Int = 0, fps: Double = 60,
+                                                     columns: Int? = nil, tileWidth: Int = 320,
+                                                     quality: RenderQuality = .detail) {
+        guard let name = parameterName(of: make, at: parameter) else {
+            fatalError("Ollin: failed to render the sweep (the parameter is not one the sketch declares)")
+        }
+        exportContactSheet({ make() }, to: path, sweeping: name, values: values, seed: seed,
+                           frame: frame, fps: fps, columns: columns, tileWidth: tileWidth,
+                           quality: quality)
+    }
+
+    /// The same export over an `Int` parameter, its values whole.
+    public static func exportContactSheet<S: Sketch>(_ make: () -> S, to path: String,
+                                                     sweeping parameter: KeyPath<S, Param<Int>>,
+                                                     values: [Int], seed: Int? = nil,
+                                                     frame: Int = 0, fps: Double = 60,
+                                                     columns: Int? = nil, tileWidth: Int = 320,
+                                                     quality: RenderQuality = .detail) {
+        guard let name = parameterName(of: make, at: parameter) else {
+            fatalError("Ollin: failed to render the sweep (the parameter is not one the sketch declares)")
+        }
+        exportContactSheet({ make() }, to: path, sweeping: name, values: values.map(Double.init),
+                           seed: seed, frame: frame, fps: fps, columns: columns,
+                           tileWidth: tileWidth, quality: quality)
     }
 
     /// A number formatted the way a tile label wants it: `0.25`, not

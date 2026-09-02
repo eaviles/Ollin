@@ -37,6 +37,8 @@ override func draw() {
 
 The one new move is `withBody`. In [Chapter 11](11-ForcesAndPhysics.md) you drew a body by translating to its `position` and rotating by its `angle`. A 3D body's orientation is a full spatial rotation, not one number, so `withBody(body) { }` moves the whole transform stack to the body's pose and lets the block draw in body-local space. Whatever you draw there rides the body, whether that's a box matched to the collider, a loaded mesh, or a whole small assembly. It stays ordinary drawing, so materials, shadows, and export all apply untouched.
 
+That orientation is one value, a `Rotation3D`, and you can read it, set it, or build on it. `body.rotation = Rotation3D(angle: .pi / 4, axis: .unitZ)` leans a crate before it drops, and `body.rotation = .aboutY(0.1) * body.rotation` turns it a tenth further round from wherever it is. The same value goes straight into `rotate(body.rotation)` when you pose something by hand rather than through `withBody`. The turn between two directions, and the turn part of the way toward another, are on the [geometry page](../Docs/Drawing/Geometry.md#rotation3d).
+
 <img src="Images/24-WorldsWithWeight/CrateFall.jpg" alt="A pyramid of colored crates caught mid-collapse on a dark floor, crates tumbling and skidding away to the right, the topmost purple crate still in the air" width="560">
 
 The figure is the whole idea in one frame. A crate pyramid is built in `setup()`, each crate one `addBody` with a `.box` collider. A dense steel ball is thrown at it with an opening `velocity`, and this is frame 92 of the collapse. Nothing in it is animated by hand, and nothing in it is random either. The solver is deterministic, so this exact wreck replays every run.

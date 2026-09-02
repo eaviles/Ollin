@@ -757,21 +757,20 @@ public final class Wheel3D {
     /// It grows through a corner and spikes when the vehicle lets go.
     public var slipAngle: Double { abs(Double(readState().lateralSlip)) }
 
-    /// The wheel's orientation as an angle (radians) about `rotationAxis`,
-    /// posing a cylinder modeled along +y onto the wheel (steering and spin
-    /// included). `withWheel(_:)` is the sugar over the pair.
-    public var rotationAngle: Double {
+    /// Which way the wheel faces, as one value: the turn that poses a cylinder
+    /// modeled along +y onto the wheel, steering and spin included.
+    /// `withWheel(_:)` is the sugar over it.
+    public var rotation: Rotation3D {
         let q = readState().rotation
-        return 2 * acos(max(-1, min(1, Double(q.3))))
+        return Rotation3D(x: Double(q.0), y: Double(q.1), z: Double(q.2), w: Double(q.3))
     }
 
+    /// The wheel's orientation as an angle (radians) about `rotationAxis`. The
+    /// pair reads the same pose as `rotation`; use them together.
+    public var rotationAngle: Double { rotation.angle }
+
     /// The axis of the wheel's current orientation (unit length).
-    public var rotationAxis: Vector3 {
-        let q = readState().rotation
-        let s = (1 - Double(q.3) * Double(q.3)).squareRoot()
-        guard s > 1e-6 else { return .unitY }
-        return Vector3(Double(q.0) / s, Double(q.1) / s, Double(q.2) / s)
-    }
+    public var rotationAxis: Vector3 { rotation.axis }
 
     // MARK: Internals
 

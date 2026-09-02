@@ -133,6 +133,39 @@ struct VariationTests {
         #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
     }
 
+    /// A sketch with a whole-number parameter beside the real one.
+    final class Ringed: Sketch {
+        override var canvasSize: CanvasSize { .square(64) }
+        @Param(1...9) var rings = 3
+        nonisolated(unsafe) static var seen: [Int] = []
+        override func draw() {
+            background(.white)
+            Ringed.seen.append(rings)
+        }
+    }
+
+    /// The parameter named by its own handle rather than a string: the key
+    /// path reaches the same box the registry lists, so the sweep lands on the
+    /// same tiles the named form renders.
+    @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
+    func sweepingByKeyPathIsTheNamedSweep() throws {
+        Parameterized.seen = []
+        let byPath = try #require(OllinApp.contactSheet(of: { Parameterized() },
+                                                        sweeping: \.$radius, values: [40, 120, 360],
+                                                        seed: 55, tileWidth: 64))
+        #expect(Parameterized.seen.map(\.radius) == [40, 120, 360])
+        #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
+        let byName = try #require(OllinApp.contactSheet(of: { Parameterized() },
+                                                        sweeping: "radius", values: [40, 120, 360],
+                                                        seed: 55, tileWidth: 64))
+        #expect(byPath.width == byName.width && byPath.height == byName.height)
+
+        Ringed.seen = []
+        #expect(OllinApp.contactSheet(of: { Ringed() }, sweeping: \.$rings, values: [2, 5, 8],
+                                      seed: 7, tileWidth: 64) != nil)
+        #expect(Ringed.seen == [2, 5, 8])
+    }
+
     /// An unknown parameter name returns nil rather than rendering a sheet of
     /// defaults that silently ignores the ask.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))

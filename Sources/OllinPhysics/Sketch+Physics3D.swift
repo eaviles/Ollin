@@ -16,16 +16,10 @@ extension Sketch {
     /// ```
     public func withBody(_ body: Body3D, _ draw: () -> Void) {
         let position = body.position
-        let q = body.quaternion
-        let w = max(-1, min(1, Double(q.3)))
-        let angle = 2 * acos(w)
-        let s = (1 - w * w).squareRoot()
+        let rotation = body.rotation
         withState {
             translate(position)
-            if s > 1e-6 {
-                rotate(angle, axis: Vector3(Double(q.0) / s, Double(q.1) / s,
-                                            Double(q.2) / s))
-            }
+            if rotation != .identity { rotate(rotation) }
             draw()
         }
     }
@@ -60,8 +54,8 @@ extension Sketch {
     public func withWheel(_ wheel: Wheel3D, _ draw: () -> Void) {
         withState {
             translate(wheel.center)
-            let angle = wheel.rotationAngle
-            if abs(angle) > 1e-6 { rotate(angle, axis: wheel.rotationAxis) }
+            let rotation = wheel.rotation
+            if rotation != .identity { rotate(rotation) }
             draw()
         }
     }

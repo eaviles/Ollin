@@ -103,31 +103,41 @@ public final class Body3D {
         }
     }
 
-    /// The body's orientation as an angle (radians) about `rotationAxis`.
-    /// The two properties read the same pose; use them together.
-    public var rotationAngle: Double {
-        let q = quaternion
-        return 2 * acos(max(-1, min(1, Double(q.3))))
+    /// Which way the body faces, as one value: read it, set it, or compose it
+    /// with another turn.
+    ///
+    /// ```swift
+    /// crate.rotation = Rotation3D(angle: .pi / 4, axis: .unitZ)
+    /// crate.rotation = .aboutY(0.1) * crate.rotation     // nudged a tenth further
+    /// rotate(crate.rotation)                             // the same pose while drawing
+    /// ```
+    public var rotation: Rotation3D {
+        get {
+            let q = quaternion
+            return Rotation3D(x: Double(q.0), y: Double(q.1), z: Double(q.2), w: Double(q.3))
+        }
+        set {
+            withFloats4((Float(newValue.x), Float(newValue.y), Float(newValue.z),
+                         Float(newValue.w))) {
+                cjolt_body_set_rotation(world.handle, id, $0, true)
+            }
+        }
     }
+
+    /// The body's orientation as an angle (radians) about `rotationAxis`.
+    /// The two properties read the same pose; use them together, or read
+    /// `rotation`, which is both in one.
+    public var rotationAngle: Double { rotation.angle }
 
     /// The axis of the body's current rotation (unit length; `unitY` when the
     /// body is unrotated).
-    public var rotationAxis: Vector3 {
-        let q = quaternion
-        let s = (1 - Double(q.3) * Double(q.3)).squareRoot()
-        guard s > 1e-6 else { return .unitY }
-        return Vector3(Double(q.0) / s, Double(q.1) / s, Double(q.2) / s)
-    }
+    public var rotationAxis: Vector3 { rotation.axis }
 
-    /// Set the body's orientation to a rotation of `angle` radians about `axis`.
+    /// Set the body's orientation to a rotation of `angle` radians about `axis`:
+    /// `rotation = Rotation3D(angle:axis:)`, for the call that reads better as
+    /// a sentence.
     public func setRotation(_ angle: Double, axis: Vector3) {
-        let unit = axis.normalized
-        let half = angle / 2
-        let s = sin(half)
-        withFloats4((Float(unit.x * s), Float(unit.y * s), Float(unit.z * s),
-                     Float(cos(half)))) {
-            cjolt_body_set_rotation(world.handle, id, $0, true)
-        }
+        rotation = Rotation3D(angle: angle, axis: axis)
     }
 
     /// Linear velocity, in world units per second.

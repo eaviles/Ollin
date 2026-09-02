@@ -76,7 +76,7 @@ final class Imported: Sketch {
         weight.position = Vector3(-4.1, 1.5, -2)
         weight.velocity = .zero
         weight.angularVelocity = .zero
-        weight.setRotation(0, axis: .unitY)
+        weight.rotation = .identity
         weight.wake()
     }
 
