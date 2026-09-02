@@ -234,7 +234,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Writing an extension`](./Tools/Extensions.md) - `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on
 - [`Dragging a shape`](./Tools/DragToEdit.md) - Command-drag a shape in the live window to move it, a corner to resize it, or the knob above it to turn it, and the numbers in your own file change, with your spacing and comments untouched
 - [`The parameter timeline`](./Tools/Timeline.md) - OllinLive's timeline panel: a lane per automated parameter, keys placed from the inspector's diamonds and dragged by hand, a playhead over the sketch clock, round-tripping to the automation file
-- [`The reference offline`](./Tools/Reference.md) - `ollin docs` and `ollin examples`: these pages and every example sketch read in the terminal, out of the checkout you build against, with a search across the whole reference
+- [`The reference offline`](./Tools/Reference.md) - `ollin docs`, `ollin examples`, and `ollin site`: these pages and every example sketch read in the terminal, or written out as a website, out of the checkout you build against, with a search across the whole reference
 - [`Profiling`](./Tools/Profiling.md) - the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR. [Where a point is](./Concepts/Coordinates.md) covers that in one screen, units included.

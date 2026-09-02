@@ -11,7 +11,7 @@ ollin docs color
 ollin examples flocking
 ```
 
-It reads the checkout you are running, which means the answer is the version you build against rather than whatever is published somewhere. On a plane, on a train, or on a machine with no network, it is the whole reference.
+It reads the checkout you are running, which means the answer is the version you build against rather than whatever is published somewhere. On a plane, on a train, or on a machine with no network, it is the whole reference. `ollin site` writes the same pages out as a website, for when a browser is the better place to read.
 
 ## Reading a page
 
@@ -113,9 +113,24 @@ ollin docs color --plain > color.txt
 
 A page longer than the screen opens in your pager (`$PAGER`, or `less`), which `--no-pager` turns off. `--width` sets the column width, `--plain` drops the color, and `--color` keeps it through a pipe.
 
+## In a browser
+
+The same pages can be written out as a website:
+
+```sh
+ollin site                 # writes the site into .build/site
+ollin site ~/Desktop/ollin # or into a folder you name
+```
+
+Open the folder's `index.html`. The README is the front page. The Guide has its chapter list beside it, and the reference is grouped the way its index groups it. Every example has a page of its own with its source. Every picture the pages show is copied in. A figure with a dark variant follows your system setting, and so does the site.
+
+The site is a lens on the same files, not a second copy. A page's prose arrives exactly as the file spells it, and its links point at the same neighbors they do on GitHub. A link at something the site does not render, such as a source file or a folder of figures, points at that file on GitHub instead. Paths mirror the repository in lower case, so `Docs/Drawing/Color.md` is `docs/drawing/color.html`.
+
+`--domain ollin.art` writes the `CNAME` file for a custom domain and makes every page's canonical address absolute. The repository's own workflow (`.github/workflows/site.yml`) runs the same command and publishes the result to GitHub Pages.
+
 ## What it is not
 
-This prints pages for a person to read, and nothing else. There is no machine-readable output, and no index for another program to consume. That is a decision rather than a gap: [where the line falls](../../ROADMAP.md#a-third-party-extension-ecosystem) for anything that points a tool at the reference is still an open question here, and printing a page somebody asked for takes no position on it.
+This prints pages for a person to read, and nothing else. The website is the same pages for a browser, and it carries no search index either. There is no machine-readable output, and no index for another program to consume. That is a decision rather than a gap: [where the line falls](../../ROADMAP.md#a-third-party-extension-ecosystem) for anything that points a tool at the reference is still an open question here, and printing a page somebody asked for takes no position on it.
 
 ---
 

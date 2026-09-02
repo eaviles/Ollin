@@ -346,7 +346,7 @@ The examples answer the other half of the question. `ollin examples` with no fil
 ollin examples ocean --source
 ```
 
-None of this needs a network. [The reference offline](../Docs/Tools/Reference.md) covers the rest, including how it behaves in a pipe.
+None of this needs a network. [The reference offline](../Docs/Tools/Reference.md) covers the rest, including how it behaves in a pipe and how `ollin site` writes all of it out as a website.
 
 ## Putting it together: a breathing ring
 

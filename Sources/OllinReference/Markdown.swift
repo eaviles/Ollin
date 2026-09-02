@@ -316,16 +316,14 @@ public enum Markdown {
                     continue
                 }
             case "*":
-                if rest.hasPrefix("**"), let close = rest.dropFirst(2).range(of: "**") {
-                    let body = String(rest[rest.index(rest.startIndex, offsetBy: 2) ..< close.lowerBound])
+                if let (body, after) = emphasis(in: rest, marker: "**") {
                     out += style.bold(inline(body, style: style, quoting: quoting))
-                    rest = rest[close.upperBound...]
+                    rest = after
                     continue
                 }
-                if let close = rest.dropFirst().firstIndex(of: "*") {
-                    let body = String(rest[rest.index(after: rest.startIndex) ..< close])
+                if let (body, after) = emphasis(in: rest, marker: "*") {
                     out += style.italic(inline(body, style: style, quoting: quoting))
-                    rest = rest[rest.index(after: close)...]
+                    rest = after
                     continue
                 }
             default:
@@ -335,6 +333,28 @@ public enum Markdown {
             rest = rest.dropFirst()
         }
         return out
+    }
+
+    /// An emphasized run opened by `marker` at the start of the text: its
+    /// body and what follows it.
+    ///
+    /// A marker followed by a space opens nothing, and one preceded by a
+    /// space closes nothing, which is the rule that keeps `1 + F0 * (1/E - 1)`
+    /// a multiplication rather than the start of an italic that swallows the
+    /// rest of the line. A marker with no close is text.
+    static func emphasis(in text: Substring, marker: String) -> (body: String, rest: Substring)? {
+        guard text.hasPrefix(marker) else { return nil }
+        let opened = text.dropFirst(marker.count)
+        guard let first = opened.first, !first.isWhitespace else { return nil }
+        var search = opened.startIndex
+        while let close = opened[search...].range(of: marker) {
+            let before = close.lowerBound > opened.startIndex ? opened[opened.index(before: close.lowerBound)] : " "
+            if !before.isWhitespace {
+                return (String(opened[opened.startIndex ..< close.lowerBound]), opened[close.upperBound...])
+            }
+            search = close.upperBound
+        }
+        return nil
     }
 
     /// A markdown link, or an image when it carries the leading mark.

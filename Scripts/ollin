@@ -60,6 +60,8 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               whole reference for a word
        ollin examples [filter]                the examples set: what each one shows,
                                               how to run it, --source to read it
+       ollin site [folder]                    the same pages as a website, written
+                                              into a folder (.build/site by default)
        ollin install [dir]                    symlink ollin onto your PATH
        ollin help                             show this help
 
@@ -123,6 +125,27 @@ cmd_reference() {
     exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs "${kept[@]}"
 }
 
+# ollin site [folder]: the reference, the Guide, and the examples as a website,
+# written into a folder. Same binary as docs, no pager: it writes files and
+# reports what it wrote. A relative folder is taken from where you typed it.
+cmd_site() {
+    local -a args=("$@")
+    local -a kept
+    local a
+    local value=0
+    for a in "${args[@]}"; do
+        if [[ $value == 1 || "$a" == "site" || "$a" == --* || "$a" == /* ]]; then
+            kept+=("$a")
+            value=0
+        else
+            kept+=("${a:A}")
+        fi
+        # A flag's own value is a name, not a folder.
+        if [[ "$a" == "--domain" || "$a" == "--repository" || "$a" == "--branch" ]]; then value=1; fi
+    done
+    exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs "${kept[@]}"
+}
+
 # ollin install [dir]: symlink this script (symlink-resolved) onto the PATH.
 cmd_install() {
     local dir="${1:-}"
@@ -163,6 +186,8 @@ case "${1:-}" in
         shift; cmd_check "$@" ;;
     docs|examples)
         cmd_reference "$@" ;;
+    site)
+        cmd_site "$@" ;;
     install)
         shift; cmd_install "$@" ;;
     help|--help|-h)

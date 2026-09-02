@@ -4,7 +4,9 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **The website.** `ollin site` writes the README, the Guide, the reference, and every example with its source out as a static website, the pages rendered from the same files `ollin docs` reads, with a workflow that publishes it to GitHub Pages. [The reference offline](Docs/Tools/Reference.md#in-a-browser).
 
 ## [0.1.0] - 2026-09-02
 

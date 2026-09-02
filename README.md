@@ -230,7 +230,7 @@ ollin docs --search "long exposure"   # every place the reference says it
 ollin examples ocean        # what it shows, and how to run it
 ```
 
-See [The reference offline](Docs/Tools/Reference.md) for sections, filters, and reading an example's source.
+See [The reference offline](Docs/Tools/Reference.md) for sections, filters, and reading an example's source. `ollin site` writes the same pages out as a website.
 
 The same command starts a library other people's sketches import, laid out the shared way. See [Writing an extension](Docs/Tools/Extensions.md) for the `ollinx-` naming convention and the seams a third party can build on.
 

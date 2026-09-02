@@ -1,0 +1,89 @@
+name: Site
+
+# Build the website out of the repository's own pages (`ollin site`) and
+# publish it to GitHub Pages.
+#
+# The site is the README, the Guide, the reference, and the examples with
+# their source, rendered by the same text targets `ollin docs` uses, so this
+# job compiles three small targets and no framework: a cold run is a couple of
+# minutes on a macOS runner (the package is Apple-only, so a Linux runner
+# cannot even load the manifest).
+#
+# It runs on a push to main that touches a page, and by hand. While the
+# repository is private the push trigger is skipped rather than paid for: a
+# macOS runner bills every minute at 10x, Pages on a private repository needs
+# a paid plan anyway, and the build workflow already retired running on push
+# for that reason. The moment the repository is public, standard runners are
+# free and every push to a page publishes it. A manual run always goes ahead,
+# which is how the site is checked before that day.
+#
+# Publishing needs Pages switched on for the repository, set to deploy from
+# GitHub Actions (Settings > Pages > Source). The custom domain comes from a
+# repository variable, `SITE_DOMAIN`, so the CNAME is only written once the
+# DNS points here; with none set the site serves from the github.io address.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "*.md"
+      - "Guide/**"
+      - "Docs/**"
+      - "Examples/**/README.md"
+      - "Examples/**/Sketch.swift"
+      - "Sources/OllinReference/**"
+      - "Sources/OllinDocs/**"
+      - "Sources/OllinProjects/**"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: site
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: macos-26
+    if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Swift version
+        run: swift --version
+
+      # The three text targets only: nothing here links the framework.
+      - name: Write the site
+        env:
+          SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+        run: |
+          if [ -n "$SITE_DOMAIN" ]; then
+            swift run -c release OllinDocs site _site --domain "$SITE_DOMAIN"
+          else
+            swift run -c release OllinDocs site _site
+          fi
+
+      - name: Upload
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: _site
+
+  deploy:
+    name: Publish to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

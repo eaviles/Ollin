@@ -36,8 +36,53 @@ struct OllinDocsCommand {
         switch command {
         case "docs": docs(arguments, options: options)
         case "examples": examples(arguments, options: options)
+        case "site": site(arguments)
         case "help", "--help", "-h": printUsage()
-        default: fail("unknown command \"\(command)\". Try docs or examples.")
+        default: fail("unknown command \"\(command)\". Try docs, examples, or site.")
+        }
+    }
+
+    // MARK: - The site
+
+    /// `ollin site [folder]`: the same pages as a website, written into a
+    /// folder. The front page, the Guide, the reference, the examples with
+    /// their source, and every picture they show, under one set of chrome.
+    static func site(_ arguments: [String]) {
+        let root = checkout()
+        var output = root.appendingPathComponent(".build/site")
+        var domain: String?
+        var repository = "https://github.com/eaviles/Ollin"
+        var branch = "main"
+        var index = 0
+        while index < arguments.count {
+            switch arguments[index] {
+            case "--domain":
+                index += 1
+                if index < arguments.count { domain = arguments[index] }
+            case "--repository":
+                index += 1
+                if index < arguments.count { repository = arguments[index] }
+            case "--branch":
+                index += 1
+                if index < arguments.count { branch = arguments[index] }
+            default:
+                output = URL(fileURLWithPath: arguments[index], relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)).standardized
+            }
+            index += 1
+        }
+
+        let builder = SiteBuilder(root: root, repository: repository, branch: branch, domain: domain)
+        do {
+            let report = try builder.build(into: output)
+            print("\(report.pages) pages, \(report.examples) examples, \(report.images) pictures written to \(output.path)")
+            if !report.missing.isEmpty {
+                print("")
+                print("\(report.missing.count) targets point at nothing in this checkout (left as written):")
+                for line in report.missing { print("  " + line) }
+            }
+            if let domain { print("CNAME: \(domain)") }
+        } catch {
+            fail("could not write the site: \(error.localizedDescription)")
         }
     }
 
@@ -384,6 +429,10 @@ struct OllinDocsCommand {
                ollin examples <filter>         the ones matching a name, folder, or description
                ollin examples <name> --source  print the sketch itself
                ollin examples --list           one path per line
+
+               ollin site [folder]             the same pages as a website, written into
+                                               a folder (default: .build/site);
+                                               --domain <name> writes the CNAME for it
 
         options:
           --width <n>   wrap to this many columns (default: the window, at most 100)
