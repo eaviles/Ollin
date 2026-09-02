@@ -70,10 +70,20 @@ jobs:
             swift run -c release OllinDocs site _site
           fi
 
+      # The Pages upload helper reaches for an unpinned upload action
+      # underneath, which this repository's Actions policy refuses, so the
+      # same two steps are spelled out here: one tar of the folder, uploaded
+      # under the name the deploy step looks for.
+      - name: Pack
+        run: tar --dereference --hard-dereference --directory _site -cf "$RUNNER_TEMP/artifact.tar" .
+
       - name: Upload
-        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          path: _site
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          retention-days: 1
+          if-no-files-found: error
 
   deploy:
     name: Publish to Pages
