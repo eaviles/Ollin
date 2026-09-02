@@ -705,7 +705,7 @@ private struct MonitorCostRow: View {
 /// detached panel, the examples gallery) simply shows no button.
 public struct ParamSaveAction {
     /// What the button reads, naming where the values land
-    /// ("Save to Sketch.swift").
+    /// ("Save parameters to Sketch.swift").
     public let title: String
     /// Write them, and hand back the one line to show underneath (what landed,
     /// and the first knob that could not), or `nil` to say nothing. It runs on
@@ -943,38 +943,34 @@ public struct ParametersListView: View {
 
     /// The one action under the cards: put the values you turned into the
     /// sketch that declared them. What it says afterwards stays until the next
-    /// press, since a refusal names the knob it could not write.
+    /// press, since a refusal names the parameter it could not write. It is
+    /// a footer at the end of the list: a rule sets it apart from the
+    /// parameters above (it acts on all of them and is not one), the system's
+    /// own push button sits centered under it, and it scrolls with the list
+    /// rather than pinning, so a sketch with one parameter does not pay for
+    /// it. A full-width accent box read louder than the rows it serves, plain
+    /// text did not read as a button at all, and a tinted band behind the
+    /// button read as one more card.
     private func saveRow(_ save: ParamSaveAction) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button {
+        VStack(spacing: 5) {
+            Button(save.title) {
                 saveMessage = save.perform()
-            } label: {
-                HStack(spacing: 6) {
-                    SwiftUI.Image(systemName: "square.and.arrow.down")
-                        .font(.system(size: 10.5, weight: .semibold))
-                    Text(save.title)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
-                .foregroundStyle(OllinInspector.accent)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
-                .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
             }
-            .buttonStyle(.plain)
-            .help("Write the knobs you turned into the @Param lines they were declared on.")
+            .buttonStyle(.bordered)
+            .help("Write the parameters you changed into the @Param lines they were declared on.")
 
             if let saveMessage {
                 Text(saveMessage)
                     .font(.system(size: 10.5))
                     .foregroundStyle(palette.textTertiary)
+                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 2)
             }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
+        .padding(.horizontal, 12)
+        .overlay(alignment: .top) { Hairline(palette: palette) }
     }
 
     private var emptyState: some View {
@@ -1118,6 +1114,9 @@ private struct ParamRowLabel: View {
             Text(handle.label)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
+                // A long label can still be trimmed beside a control that
+                // cannot give way; hovering it then shows the whole name.
+                .help(handle.label.count > 12 ? handle.label : "")
         }
     }
 }
@@ -1565,11 +1564,17 @@ private struct ControlRow<Control: View>: View {
     let handle: ParamHandle
     let palette: OllinInspector.Palette
     let iconGutter: Bool
+    /// Whether the label is laid out before the control, so a control that
+    /// can shrink (a menu) gives way rather than trimming the label to "Spa…".
+    /// Off for controls of a fixed width, which could not give way and would
+    /// be pushed out of the row instead.
+    var labelWins = false
     @ViewBuilder let control: () -> Control
 
     var body: some View {
         HStack {
             ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                .layoutPriority(labelWins ? 1 : 0)
             // A floor on the gap so a wide control never crowds the label.
             Spacer(minLength: 16)
             KeyframeDiamond(handle: handle, palette: palette)
@@ -1784,8 +1789,14 @@ private struct MenuParamRow: View {
             .padding(.vertical, 8)
             .frame(minHeight: 38)
         } else {
-            ControlRow(handle: handle, palette: palette, iconGutter: iconGutter) {
-                basePicker.pickerStyle(.menu).fixedSize()
+            // The menu sizes itself to its widest option, which on a long
+            // list crowded the label out of its own row. It shrinks instead:
+            // the label lays out first, and the menu takes what is left
+            // between a floor and a cap, trimming its title if it must (the
+            // menu still opens to the full names).
+            ControlRow(handle: handle, palette: palette, iconGutter: iconGutter, labelWins: true) {
+                basePicker.pickerStyle(.menu)
+                    .frame(minWidth: 84, maxWidth: 170, alignment: .trailing)
             }
         }
     }
@@ -2536,7 +2547,9 @@ private struct SwatchesParamRow: View {
 
     /// A stop drags along the band but never past its neighbors, so the order
     /// the strip shows is the order the ramp holds and the dragged index stays
-    /// the dragged index.
+    /// the dragged index. It also stops a whole handle short of each neighbor:
+    /// two stops on the same spot draw as one, and the one underneath can
+    /// neither be seen nor grabbed back.
     private func dragGesture(index: Int, width: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named("swatchStrip"))
             .onChanged { drag in
@@ -2545,9 +2558,16 @@ private struct SwatchesParamRow: View {
                 guard stops.indices.contains(index) else { return }
                 let travel = Swift.max(width - Self.handleInset * 2, 1)
                 let raw = Double((drag.location.x - Self.handleInset) / travel)
-                let low = index > 0 ? stops[index - 1].position : 0
-                let high = index < stops.count - 1 ? stops[index + 1].position : 1
-                let moved = Swift.min(Swift.max(raw, low), high)
+                let previous = index > 0 ? stops[index - 1].position : 0
+                let next = index < stops.count - 1 ? stops[index + 1].position : 1
+                let gap = Double(Self.handleSize / travel)
+                let low = index > 0 ? previous + gap : 0
+                let high = index < stops.count - 1 ? next - gap : 1
+                // Stops already packed tighter than a handle (from a file, or a
+                // very narrow strip) keep the plain neighbor clamp.
+                let moved = low <= high
+                    ? Swift.min(Swift.max(raw, low), high)
+                    : Swift.min(Swift.max(raw, previous), next)
                 guard moved != stops[index].position else { return }
                 stops[index].position = moved
                 push()

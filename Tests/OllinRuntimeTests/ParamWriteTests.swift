@@ -25,6 +25,20 @@ struct ParamWriteTests {
         #expect(result.refused.isEmpty)
     }
 
+    /// A dragged slider lands on a value with sixteen digits, and the line
+    /// should still read as one a person typed: four significant figures,
+    /// which no display resolves past, and never fewer than the value needs.
+    @Test func aDraggedValueIsWrittenRounded() {
+        let result = written("@Param(0...4) var speed = 1.0", ("speed", .number(2.4027931415929205)))
+        #expect(result.text == "@Param(0...4) var speed = 2.403")
+        let stop = written("@Param(0...1) var at = 0.5", ("at", .number(0.1757983826754386)))
+        #expect(stop.text == "@Param(0...1) var at = 0.1758")
+        let small = written("@Param(0...0.01) var eps = 0.005", ("eps", .number(0.00034567891)))
+        #expect(small.text == "@Param(0...0.01) var eps = 0.0003457")
+        let exact = written("@Param(0...4) var speed = 1.0", ("speed", .number(0.25)))
+        #expect(exact.text == "@Param(0...4) var speed = 0.25")
+    }
+
     /// The declaration's own text is not the value's: the range, the label, the
     /// group, and anything after the value stay exactly as they were.
     @Test func everythingAroundTheValueSurvives() {

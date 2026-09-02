@@ -224,7 +224,7 @@ final class LiveSession {
     /// watched file. Built fresh on each read so the button always names the
     /// file this session watches.
     var saveAction: ParamSaveAction {
-        ParamSaveAction(title: "Save to \(fileName)") { [weak self] in
+        ParamSaveAction(title: "Save parameters to \(fileName)") { [weak self] in
             self?.saveParams()
         }
     }
@@ -237,7 +237,7 @@ final class LiveSession {
     private func saveParams() -> String {
         let values = core.tunedParams
         guard !values.isEmpty else {
-            return "No knob has moved yet, so \(fileName) already says what the sketch draws."
+            return "No parameter has changed yet, so \(fileName) already says what the sketch draws."
         }
         guard let text = try? String(contentsOfFile: sketchPath, encoding: .utf8) else {
             return "Could not read \(fileName)."

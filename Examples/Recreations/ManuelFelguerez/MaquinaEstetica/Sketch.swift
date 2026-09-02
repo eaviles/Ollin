@@ -32,8 +32,9 @@ import Ollin
 /// the ink of every element, and finds the center of that weight. If the center
 /// sits far from the middle of the field, the sheet goes in the bin and it
 /// rolls another one. What you watch is the survivor, and a new one arrives
-/// every `seconds`. The machine took eleven seconds per drawing, which is the
-/// default here.
+/// every `seconds`. The machine took eleven seconds per drawing; on a screen
+/// that wait reads as a slideshow, so the default runs at five, and `seconds`
+/// at 11 gives the machine's own pace.
 ///
 /// The plotter made drawings, not pictures. Felguerez then painted the ones he
 /// kept. `penOnly` shows the two ends of that process: on, you get the drawing
@@ -48,7 +49,7 @@ import Ollin
 final class MaquinaEstetica: Sketch {
     @Param(4 ... 12, icon: "square.on.circle") var elements = 7.0
     @Param(0.15 ... 1.5, icon: "scalemass") var tolerance = 0.5
-    @Param(2 ... 20, icon: "clock") var seconds = 11.0
+    @Param(2 ... 20, icon: "clock") var seconds = 5.0
     @Param(icon: "pencil") var penOnly = false
     @Param(icon: "ruler") var showRule = false
 

@@ -117,7 +117,7 @@ package enum ParamWrite {
         case .notDeclared:
             return "\(file) does not declare \(refusal.name)."
         case .ambiguous:
-            return "Two knobs are named \(refusal.name) in \(file), so this cannot tell them apart."
+            return "Two parameters are named \(refusal.name) in \(file), so this cannot tell them apart."
         case .noDefault:
             return "\(refusal.name) has no value written after its ="
         case .computed(let text):
@@ -396,12 +396,15 @@ package enum ParamWrite {
     }
 
     /// A `Double` written so it stays a `Double`: always a decimal point, and
-    /// no more digits than the value needs.
+    /// no more digits than the value needs. A dragged slider lands on a value
+    /// like 2.4027931415929205, and written whole that reads as machine
+    /// output; four significant figures is closer than any display shows,
+    /// so the line reads as typed and the picture does not move.
     private static func number(_ value: Double) -> String {
         guard value.isFinite else { return "0.0" }
-        for digits in 1...6 {
+        for digits in 1...9 {
             let text = String(format: "%.\(digits)f", value)
-            if let read = Double(text), abs(read - value) <= max(1e-12, abs(value) * 1e-12) {
+            if let read = Double(text), abs(read - value) <= max(1e-9, abs(value) * 1e-4) {
                 return text
             }
         }

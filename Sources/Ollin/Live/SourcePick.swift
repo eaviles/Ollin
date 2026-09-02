@@ -385,6 +385,22 @@ package struct SourcePick: Sendable {
         return best?.handle
     }
 
+    /// Whether `canvasPoint` is still within reach of this pick's outline and
+    /// handles: the box around both, grown by `slack`. A handle stands outside
+    /// the shape it belongs to, so between the two the pointer is over nothing;
+    /// a host that dropped the outline there could never reach a handle.
+    package func keepsHover(at canvasPoint: Vector2, slack: Double) -> Bool {
+        let points = outline + handles.map(\.position)
+        guard let first = points.first else { return false }
+        var low = first, high = first
+        for point in points.dropFirst() {
+            low = Vector2(min(low.x, point.x), min(low.y, point.y))
+            high = Vector2(max(high.x, point.x), max(high.y, point.y))
+        }
+        return canvasPoint.x >= low.x - slack && canvasPoint.x <= high.x + slack
+            && canvasPoint.y >= low.y - slack && canvasPoint.y <= high.y + slack
+    }
+
     /// The outline as a resize by `factor` would leave it, in canvas points,
     /// for a host showing where a drag is going before it writes anything.
     package func resized(by factor: Vector2) -> [Vector2] {

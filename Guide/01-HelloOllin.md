@@ -405,11 +405,11 @@ Before moving on, make the piece yours. Some directions worth trying:
 
 There is one thing the panel cannot do on its own, and it is the obvious one: remember. A tuned value lives in the running program, so quitting drops it. That is why tuning used to end by hand. You copied each knob position back into the code, one at a time, and hoped you read the right one.
 
-The button under the knobs does that for you. Press **Save to Sketch.swift**, and every value you turned goes into the `@Param` line that declared it.
+The button under the rows does that for you. Press **Save parameters to Sketch.swift**, and every value you turned goes into the `@Param` line that declared it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/KnobsToSource-dark.jpg">
-  <img src="Images/01-HelloOllin/KnobsToSource.jpg" alt="Two panels: a Radius slider at 120 above a waiting Save to Sketch.swift button, and the same slider turned down to 86.5 with the button pressed, with the @Param line under each panel showing the number it now carries" width="680">
+  <img src="Images/01-HelloOllin/KnobsToSource.jpg" alt="Two panels: a Radius slider at 120 above a waiting Save parameters to Sketch.swift button, and the same slider turned down to 86.5 with the button pressed, with the @Param line under each panel showing the number it now carries" width="680">
 </picture>
 
 Only the knobs you actually moved are written, and only the value on the line changes. Your label, your range, your spacing, and the comment you left at the end are all where you put them. The host then reloads the sketch from the file, the same way it does after any save of your own.

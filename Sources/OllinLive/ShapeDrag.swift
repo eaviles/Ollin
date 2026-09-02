@@ -103,7 +103,14 @@ final class ShapeDragController: ShapeDragging {
             return
         }
         handleUnderPointer = nil
-        show(sketch.sourcePick(at: canvasPoint))
+        let found = sketch.sourcePick(at: canvasPoint)
+        // Between the shape and its handles the pointer is over nothing at
+        // all. Keep the outline there, or a corner could never be reached;
+        // another shape under the pointer still takes over.
+        if found == nil, let hovered, hovered.keepsHover(at: canvasPoint, slack: Self.grabRadius) {
+            return
+        }
+        show(found)
     }
 
     func dragBegan(at canvasPoint: Vector2) -> Bool {

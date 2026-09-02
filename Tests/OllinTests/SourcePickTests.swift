@@ -137,6 +137,22 @@ struct SourcePickTests {
 
     // MARK: What can be taken hold of
 
+    /// A corner handle stands outside the circle it belongs to, so on the way
+    /// from the edge to the corner the pointer is over nothing. The pick keeps
+    /// its hover across that gap, and drops it once the pointer is clear of
+    /// the handles.
+    @Test func theHoverSurvivesTheGapBetweenTheEdgeAndACorner() throws {
+        let sketch = run(TwoShapes())
+        let pick = try #require(sketch.sourcePick(at: Vector2(145, 200)))
+        // Outside the circle (73 from its center, radius 60), inside its box.
+        #expect(sketch.sourcePick(at: Vector2(148, 148)) == nil)
+        #expect(pick.keepsHover(at: Vector2(148, 148), slack: 11))
+        // Just past a corner, within the slack a handle is grabbed by.
+        #expect(pick.keepsHover(at: Vector2(268, 268), slack: 11))
+        // Clear of every handle.
+        #expect(pick.keepsHover(at: Vector2(300, 300), slack: 11) == false)
+    }
+
     /// A circle is placed by its middle and sized by one number, so every
     /// corner can scale it, and nothing on the line says which way it faces.
     @Test func aCircleOffersFourCornersAndNoTurnKnob() throws {

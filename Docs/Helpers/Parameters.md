@@ -175,7 +175,7 @@ Headless export never opens an inspector, so a render uses the defaults written 
 
 ### Saving what you turned
 
-A tuned value lives in the running process, and quitting drops it. The **Save to Sketch.swift** button under the knobs writes it down instead. Each value you turned goes into the `@Param` line that declared it:
+A tuned value lives in the running process, and quitting drops it. The **Save parameters to Sketch.swift** button under the rows writes it down instead. Each value you turned goes into the `@Param` line that declared it:
 
 ```swift
 @Param(0...200) var radius = 120.0            // before, and after the save:

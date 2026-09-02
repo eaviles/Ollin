@@ -149,7 +149,7 @@ There are two kinds of hardware, and the difference is worth knowing because it 
 | A hum | felt as one sustained buzz | felt as a fast run of knocks |
 | A fade | rides the system envelope, so it arrives about right, not to the millisecond | thins the run of knocks |
 
-A Mac today is the `.trackpad` case. Its Force Touch trackpad is reached through the window system, which offers three fixed feelings and one strength. Asking the haptic engine about a Mac's hardware answers that it supports none. `.engine` is the phone and pad case, and the code for it is here and checked, waiting on those platforms.
+A Mac today is the `.trackpad` case. Its Force Touch trackpad is reached through the window system, which offers three fixed feelings and one strength. Asking the haptic engine about a Mac's hardware answers that it supports none. The trackpad also actuates only while the button is held: a knock asked for during a plain pointer move is accepted and felt by nobody, so ask for touch inside a drag, the way the ridges example does. `.engine` is the phone and pad case, and the code for it is here and checked, waiting on those platforms.
 
 Read `hapticHardware` when a piece wants to say something different to each. A piece built on strength alone reads flat on a trackpad, and may want fewer, crisper marks there instead.
 

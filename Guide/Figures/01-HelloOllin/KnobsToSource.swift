@@ -71,7 +71,7 @@ final class KnobsToSource: Sketch {
             strokeWeight(1.5)
             drawRect(button, cornerRadius: 8)
         }
-        drawText("Save to Sketch.swift", button.x + button.width / 2, button.y + 20,
+        drawText("Save parameters to Sketch.swift", button.x + button.width / 2, button.y + 20,
                  size: 17, color: pressed ? theme.accent : theme.ink(0.6),
                  align: .center, .middle)
         if pressed {

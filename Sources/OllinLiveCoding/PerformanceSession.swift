@@ -218,7 +218,7 @@ final class PerformanceSession {
     /// the buffer is what the audience is reading and what ⌘↩ evaluates, and ⌘S
     /// stays the only thing that touches the disk.
     var saveAction: ParamSaveAction {
-        ParamSaveAction(title: "Save to the code") { [weak self] in
+        ParamSaveAction(title: "Save parameters to the code") { [weak self] in
             self?.saveParamsIntoBuffer()
         }
     }
@@ -230,7 +230,7 @@ final class PerformanceSession {
     private func saveParamsIntoBuffer() -> String {
         let values = core.tunedParams
         guard !values.isEmpty else {
-            return "No knob has moved yet, so the code already says what the sketch draws."
+            return "No parameter has changed yet, so the code already says what the sketch draws."
         }
         let text = editor.text()
         let result = ParamWrite.writing(text, values: values)

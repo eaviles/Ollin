@@ -10,10 +10,14 @@ import OllinHaptics
 /// side by side and can be compared in one drag. How fast you drag decides how
 /// hard each knock lands.
 ///
-/// Press and hold anywhere for a hum instead of knocks. Move left and right
+/// Hold the space bar for a hum instead of knocks. Move left and right
 /// while you hold it: the hum gets stronger toward the right, and on a
 /// trackpad you feel that as a faster train of knocks rather than a harder
 /// one, because a trackpad has one strength and many rates.
+///
+/// Drag with the button held. A trackpad actuates only while a finger is
+/// pressing it, so a knock asked for during a plain pointer move is delivered
+/// to nobody; the plan along the bottom still shows it was asked for.
 ///
 /// The strip along the bottom draws what was last asked of the hardware, so
 /// the eye can check what the hand felt. On a machine that cannot be felt at
@@ -71,9 +75,9 @@ final class HapticRidgesExample: Sketch {
     // MARK: What the hand does
 
     private func respondToTheHand() {
-        // Holding the button runs one long hum instead of the ridges, so the
-        // two ways of asking for touch are next to each other.
-        if mouseIsPressed {
+        // Holding the space bar runs one long hum instead of the ridges, so
+        // the two ways of asking for touch are next to each other.
+        if isKeyDown(" ") {
             if !humming { startHum() }
             return
         }
@@ -202,7 +206,7 @@ final class HapticRidgesExample: Sketch {
         drawText(heading, 16, 44)
         fill(Color(white: 0.5))
         textSize(17)
-        drawText("Drag sideways through a strip. Hold the button for a hum.", 16, 72)
+        drawText("Drag sideways through a strip with the button held. Hold the space bar for a hum.", 16, 72)
     }
 
     /// The knocks the hardware was last asked for, laid out in time.
