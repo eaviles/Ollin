@@ -28,7 +28,7 @@ public enum RoomWire {
     public static let headerByteCount = 12
 
     /// Upper bound on one payload, so a bad header cannot steer a huge read.
-    /// A knob or a value is a few dozen bytes; the room is not a file transfer.
+    /// A parameter or a value is a few dozen bytes; the room is not a file transfer.
     public static let maxPayloadBytes = 1 << 20
 }
 
@@ -38,8 +38,8 @@ public enum RoomMessageKind: UInt8, Sendable, CaseIterable {
     case hello = 1
     /// One keyed value a sketch sent, the ordinary traffic of a room.
     case value = 2
-    /// One shared `@Param` knob, as the payload the hosts persist.
-    case knob = 3
+    /// One shared `@Param` parameter, as the payload the hosts persist.
+    case parameter = 3
     /// A clock question, sent by a follower to the peer that owns the clock.
     case clockPing = 4
     /// The clock owner's answer: the same question number, and its room time.
@@ -277,25 +277,25 @@ public extension RoomWire {
         return (seat < 0 ? nil : Int(seat), name)
     }
 
-    /// One shared knob: its property name, when it was turned by the room's own
+    /// One shared parameter: its property name, when it was turned by the room's own
     /// clock, and the payload the hosts persist.
     ///
-    /// The time is what settles an argument. Two people turning the same knob on
+    /// The time is what settles an argument. Two people turning the same parameter on
     /// two machines in the same second would otherwise end up looking at
     /// different values forever, each having taken the other's and stopped. With
     /// the time on it, the later turn wins on every machine.
-    static func encodeKnob(name: String, stored: ParamStored, turnedAt: Double) -> Data? {
+    static func encodeParameter(name: String, stored: ParamStored, turnedAt: Double) -> Data? {
         guard let encoded = try? JSONEncoder().encode(stored) else { return nil }
         var payload: [UInt8] = []
         appendString(name, to: &payload)
         appendDouble(turnedAt, to: &payload)
         appendLittleEndian(UInt32(encoded.count), to: &payload)
         payload.append(contentsOf: [UInt8](encoded))
-        return frame(.knob, payload)
+        return frame(.parameter, payload)
     }
 
-    /// The knob name, when it was turned, and its value inside a `.knob` payload.
-    static func decodeKnob(_ payload: [UInt8]) -> (name: String, turnedAt: Double, stored: ParamStored)? {
+    /// The parameter name, when it was turned, and its value inside a `.parameter` payload.
+    static func decodeParameter(_ payload: [UInt8]) -> (name: String, turnedAt: Double, stored: ParamStored)? {
         var reader = ByteReader(payload)
         guard let name = reader.string(), let turnedAt = reader.double(), let count = reader.unsigned32(),
               let bytes = reader.take(Int(count)),

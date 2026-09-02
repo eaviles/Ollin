@@ -1,12 +1,12 @@
 // figure: frame=0 themed
 //
-// Guide diagram: where a turned knob ends up. The inspector holds the value
-// while the sketch runs, and the one button under the knobs writes it into the
+// Guide diagram: where a changed parameter ends up. The inspector holds the value
+// while the sketch runs, and the one button under the rows writes it into the
 // @Param line that declared it, so the file says what you tuned.
 import Ollin
 import OllinDiagram
 
-final class KnobsToSource: Sketch {
+final class ParametersToSource: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
     @Param var darkTheme = false
@@ -21,10 +21,10 @@ final class KnobsToSource: Sketch {
         diagramFrame(panel, title: "what the file says", theme: theme)
         diagramFrame(second, title: "turn it, then save", theme: theme)
 
-        // The thumb stands where the value does, so the knob reads as turned
+        // The thumb stands where the value does, so the parameter reads as changed
         // down rather than merely moved: 120 and 86.5 of a 0...200 range.
-        knob(in: panel, at: 120 / 200, value: "120.0")
-        knob(in: second, at: 86.5 / 200, value: "86.5")
+        thumb(in: panel, at: 120 / 200, value: "120.0")
+        thumb(in: second, at: 86.5 / 200, value: "86.5")
         saveButton(in: panel, pressed: false)
         saveButton(in: second, pressed: true)
 
@@ -36,8 +36,8 @@ final class KnobsToSource: Sketch {
     }
 
     /// One inspector row: the label over a track with its thumb, and the value
-    /// box beside it. The second panel's thumb stands where the knob was left.
-    private func knob(in panel: Rectangle, at fraction: Double, value: String) {
+    /// box beside it. The second panel's thumb stands where the parameter was left.
+    private func thumb(in panel: Rectangle, at fraction: Double, value: String) {
         let card = Rectangle(x: panel.x + 26, y: panel.y + 34, width: panel.width - 52, height: 78)
         withState {
             fill(theme.card)

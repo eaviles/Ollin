@@ -8,7 +8,7 @@
 import Ollin
 import OllinDiagram
 
-final class KnobAsARule: Sketch {
+final class ParameterAsARule: Sketch {
     override var canvasSize: CanvasSize { .size(880, 430) }
 
     @Param var darkTheme = false
@@ -20,7 +20,7 @@ final class KnobAsARule: Sketch {
     var faint: Color { theme.ink(0.22) }
     var mark: Color { theme.accent }
 
-    /// One pass, in seconds, and the range the knob covers.
+    /// One pass, in seconds, and the range the parameter covers.
     let span = 6.0
     let low = 92.0
     let high = 288.0

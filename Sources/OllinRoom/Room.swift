@@ -29,8 +29,8 @@ import Ollin
 /// - **Values a sketch sends.** `room.send("beat", 1.0)` on one machine, and
 ///   `room.number("beat")` reads it on the others. Read the latest value each
 ///   frame, or drain everything that arrived with `room.messages()`.
-/// - **Knobs.** `room.share("speed")` makes this machine's `@Param` drive the
-///   same knob on every other machine, so one person tunes the whole room.
+/// - **Parameters.** `room.share("speed")` makes this machine's `@Param` drive the
+///   same parameter on every other machine, so one person tunes the whole room.
 /// - **The time.** `room.time` is the same number on every machine, within a
 ///   millisecond or two on a quiet network, so an animation runs in step
 ///   instead of each machine keeping its own clock from its own start.
@@ -53,10 +53,10 @@ public final class Room: SketchExtension {
     private var sharedNames: Set<String> = []
     private var sharesEverything = false
     private var lastShared: [String: ParamStored] = [:]
-    /// When each shared knob was last turned, and by whom, in room time. What
-    /// settles an argument when two people turn one knob at once.
+    /// When each shared parameter was last turned, and by whom, in room time. What
+    /// settles an argument when two people turn one parameter at once.
     private var lastTurn: [String: (at: Double, by: String)] = [:]
-    /// How many machines had joined when the shared knobs last went out.
+    /// How many machines had joined when the shared parameters last went out.
     private var lastArrival = 0
     private var sketchName = ""
 
@@ -256,7 +256,7 @@ public final class Room: SketchExtension {
     /// frame for events (a note, a trigger, a click) where every one counts.
     public func messages() -> [RoomMessage] { session.messages() }
 
-    // MARK: Knobs
+    // MARK: Parameters
 
     /// Drives a `@Param` from a key another machine sends, the same way an
     /// external fader does.
@@ -269,8 +269,8 @@ public final class Room: SketchExtension {
         session.unbind(key)
     }
 
-    /// Makes these knobs travel: while the sketch runs, their values go out to
-    /// every machine in the room, and a machine that has a knob of the same name
+    /// Makes these parameters travel: while the sketch runs, their values go out to
+    /// every machine in the room, and a machine that has a parameter of the same name
     /// follows along. Name them by their property names.
     ///
     /// ```swift
@@ -280,9 +280,9 @@ public final class Room: SketchExtension {
     /// }
     /// ```
     ///
-    /// A machine that calls this both sends and follows, so the knob can be
+    /// A machine that calls this both sends and follows, so the parameter can be
     /// turned wherever the person happens to be standing. When two people turn
-    /// the same knob at the same moment, the later turn wins everywhere, by the
+    /// the same parameter at the same moment, the later turn wins everywhere, by the
     /// room's own clock.
     public func share(_ names: String...) {
         sharedNames.formUnion(names)
@@ -301,8 +301,8 @@ public final class Room: SketchExtension {
         start()
     }
 
-    /// The half of `setup` that touches no network: knob discovery. Split out so
-    /// the tests drive the knob path with no transport running.
+    /// The half of `setup` that touches no network: parameter discovery. Split out so
+    /// the tests drive the parameter path with no transport running.
     func discover(_ sketch: Sketch) {
         sketchName = String(describing: type(of: sketch))
         handles = [:]
@@ -310,41 +310,41 @@ public final class Room: SketchExtension {
     }
 
     public func beforeDraw(_ sketch: Sketch) {
-        applyIncomingKnobs()
-        pushSharedKnobs()
+        applyIncomingParameters()
+        pushSharedParameters()
     }
 
-    /// Applies knobs that arrived from another machine. They land here, between
+    /// Applies parameters that arrived from another machine. They land here, between
     /// frames on the main thread, which is where the inspector's own edits land,
     /// rather than on the network thread in the middle of a frame.
-    func applyIncomingKnobs() {
-        for knob in session.drainIncomingKnobs() {
-            guard let handle = handles[knob.name] else { continue }
-            guard isNewer(knob) else { continue }
-            handle.param.restore(knob.stored)
+    func applyIncomingParameters() {
+        for parameter in session.drainIncomingParameters() {
+            guard let handle = handles[parameter.name] else { continue }
+            guard isNewer(parameter) else { continue }
+            handle.param.restore(parameter.stored)
             // Remembered as if this machine had turned it, so a machine that both
-            // shares and follows a knob does not send back what it just took.
-            lastShared[knob.name] = knob.stored
-            lastTurn[knob.name] = (knob.turnedAt, knob.sender)
+            // shares and follows a parameter does not send back what it just took.
+            lastShared[parameter.name] = parameter.stored
+            lastTurn[parameter.name] = (parameter.turnedAt, parameter.sender)
         }
     }
 
-    /// Whether an arriving knob is later than the turn this machine already
+    /// Whether an arriving parameter is later than the turn this machine already
     /// knows about. Two turns at the very same moment are settled by the
     /// machines' names, so every machine in the room picks the same winner.
-    private func isNewer(_ knob: IncomingKnob) -> Bool {
-        guard let known = lastTurn[knob.name] else { return true }
-        if knob.turnedAt != known.at { return knob.turnedAt > known.at }
-        return knob.sender > known.by
+    private func isNewer(_ parameter: IncomingParameter) -> Bool {
+        guard let known = lastTurn[parameter.name] else { return true }
+        if parameter.turnedAt != known.at { return parameter.turnedAt > known.at }
+        return parameter.sender > known.by
     }
 
-    /// Sends the shared knobs whose values changed since the last frame.
+    /// Sends the shared parameters whose values changed since the last frame.
     ///
     /// A machine that just joined knows none of them, so an arrival forgets what
-    /// was last sent and every shared knob goes out again. Without that, a
+    /// was last sent and every shared parameter goes out again. Without that, a
     /// machine switched on later shows its own defaults until somebody happens
-    /// to touch a knob.
-    func pushSharedKnobs() {
+    /// to touch a parameter.
+    func pushSharedParameters() {
         guard sharesEverything || !sharedNames.isEmpty else { return }
         if session.everJoined != lastArrival {
             lastArrival = session.everJoined
@@ -357,7 +357,7 @@ public final class Room: SketchExtension {
             let turnedAt = session.time
             lastShared[name] = stored
             lastTurn[name] = (turnedAt, self.name)
-            session.send(knob: name, stored, turnedAt: turnedAt)
+            session.send(parameter: name, stored, turnedAt: turnedAt)
         }
     }
 }

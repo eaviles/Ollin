@@ -1,14 +1,14 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 31): one knob that holds four numbers, two of them
+// Guide diagram (Chapter 31): one parameter that holds four numbers, two of them
 // under a rule and two left alone. The three outlines are the same rectangle
-// knob at three moments, all drawn from the corner the rules never touch. The
+// parameter at three moments, all drawn from the corner the rules never touch. The
 // shapes come from the shipped track, so the picture is the real answer rather
 // than a drawing of it.
 import Ollin
 import OllinDiagram
 
-final class KnobParts: Sketch {
+final class ParameterParts: Sketch {
     override var canvasSize: CanvasSize { .size(880, 430) }
 
     @Param var darkTheme = false
@@ -40,7 +40,7 @@ final class KnobParts: Sketch {
         fill(ink)
         textSize(24)
         textAlign(.left, .top)
-        drawText("one knob, four parts", 62, 52)
+        drawText("one parameter, four parts", 62, 52)
 
         for (index, at) in moments.enumerated() {
             guard case .rectangle(let x, let y, let w, let h) =
@@ -78,7 +78,7 @@ final class KnobParts: Sketch {
                  62, 376)
     }
 
-    /// The four parts of the knob, each with its rule or a dash.
+    /// The four parts of the parameter, each with its rule or a dash.
     func listing() {
         let rows = [("x", ""), ("y", ""), ("width", wide), ("height", tall)]
         var top = 108.0

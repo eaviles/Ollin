@@ -10,9 +10,9 @@ import Foundation
 import Ollin
 import os
 
-/// One shared knob that arrived from another machine, waiting for the frame
+/// One shared parameter that arrived from another machine, waiting for the frame
 /// boundary where it is applied.
-struct IncomingKnob: Sendable {
+struct IncomingParameter: Sendable {
     let name: String
     let stored: ParamStored
     /// When the other machine turned it, by the room's own clock.
@@ -48,12 +48,12 @@ final class RoomSession: @unchecked Sendable {
         var left: [String] = []
         /// How many machines have ever arrived. Read rather than drained, so the
         /// sketch's own `arrivals()` keeps working while the room notices a
-        /// newcomer and sends it the shared knobs as they stand.
+        /// newcomer and sends it the shared parameters as they stand.
         var everJoined = 0
         var latest: [String: RoomMessage] = [:]
         var inbox: [RoomMessage] = []
         var bindings: [String: Binding] = [:]
-        var incomingKnobs: [IncomingKnob] = []
+        var incomingParameters: [IncomingParameter] = []
         var clock = RoomClock()
         var pings: [UInt32: Double] = [:]
         var nextPingID: UInt32 = 1
@@ -300,9 +300,9 @@ final class RoomSession: @unchecked Sendable {
         transport.send(RoomWire.encodeValue(key: key, value: value), reliable: reliable, to: peers)
     }
 
-    func send(knob name: String, _ stored: ParamStored, turnedAt: Double) {
+    func send(parameter name: String, _ stored: ParamStored, turnedAt: Double) {
         guard isRunning,
-              let frame = RoomWire.encodeKnob(name: name, stored: stored, turnedAt: turnedAt) else { return }
+              let frame = RoomWire.encodeParameter(name: name, stored: stored, turnedAt: turnedAt) else { return }
         transport.send(frame, reliable: true, to: [])
     }
 
@@ -326,10 +326,10 @@ final class RoomSession: @unchecked Sendable {
         state.withLock { $0.bindings[key] = nil }
     }
 
-    func drainIncomingKnobs() -> [IncomingKnob] {
+    func drainIncomingParameters() -> [IncomingParameter] {
         state.withLock { state in
-            let drained = state.incomingKnobs
-            state.incomingKnobs.removeAll(keepingCapacity: true)
+            let drained = state.incomingParameters
+            state.incomingParameters.removeAll(keepingCapacity: true)
             return drained
         }
     }
@@ -347,11 +347,11 @@ final class RoomSession: @unchecked Sendable {
         case .value:
             guard let decoded = RoomWire.decodeValue(payload) else { return }
             ingest(RoomMessage(key: decoded.key, value: decoded.value, sender: peer))
-        case .knob:
-            guard let knob = RoomWire.decodeKnob(payload) else { return }
+        case .parameter:
+            guard let parameter = RoomWire.decodeParameter(payload) else { return }
             state.withLock {
-                $0.incomingKnobs.append(IncomingKnob(
-                    name: knob.name, stored: knob.stored, turnedAt: knob.turnedAt, sender: peer
+                $0.incomingParameters.append(IncomingParameter(
+                    name: parameter.name, stored: parameter.stored, turnedAt: parameter.turnedAt, sender: peer
                 ))
             }
         case .clockPing:

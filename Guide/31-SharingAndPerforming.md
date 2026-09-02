@@ -690,8 +690,8 @@ That is the whole idea. Every frame, before your `draw()` runs, the knob is set 
 Each key carries the curve that *leaves* it, so the last key's curve is never read. Five of them are named, and one is drawn:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/KnobOnACurve-dark.jpg">
-  <img src="Images/31-SharingAndPerforming/KnobOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the knob holds there" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ParameterOnACurve-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the knob holds there" width="680">
 </picture>
 
 `.linear` is the straight line. `.easeIn`, `.easeOut`, and `.easeInOut` are the eases from [Chapter 3](03-MotionAndTime.md). `.hold` sits still and then jumps. `.bezier(x1:y1:x2:y2:)` is the one you shape by hand. Its two handles bend the clock as well as the value, the way a curve dragged in an editor does.
@@ -735,8 +735,8 @@ override func setup() {
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/KnobAsARule-dark.jpg">
-  <img src="Images/31-SharingAndPerforming/KnobAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ParameterAsARule-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/ParameterAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
 </picture>
 
 That is a *formula*, and the thing to notice is the quotation marks. The rule is text, not Swift source. Text can arrive at runtime. It can be typed into a field, read out of a file, or changed while the piece is playing. None of that needs a recompile. That is the whole reason this exists beside the curves.
@@ -768,8 +768,8 @@ drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/KnobParts-dark.jpg">
-  <img src="Images/31-SharingAndPerforming/KnobParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the knob's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ParameterParts-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the knob's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
 </picture>
 
 The part you leave out is the part you keep. That rectangle changes size while its `x` and `y` stay wherever you dragged them, and you can go on dragging them while the size plays. That is the reason to write a rule for one part rather than for a whole knob.

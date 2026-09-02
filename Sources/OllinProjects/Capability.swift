@@ -86,7 +86,7 @@ extension Capability {
     public static let params = Capability(
         id: "params",
         title: "Parameters",
-        summary: "Knobs you can drag while the sketch runs, typed to the property.",
+        summary: "Parameters you can drag while the sketch runs, typed to the property.",
         starterHint: "@Param(0...1) var amount = 0.5"
     )
 

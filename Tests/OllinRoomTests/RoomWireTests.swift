@@ -150,15 +150,15 @@ import Testing
         #expect(hello.seat == nil)
     }
 
-    @Test func aKnobTravelsAsThePayloadTheHostsPersist() throws {
+    @Test func aParameterTravelsAsThePayloadTheHostsPersist() throws {
         let stored = ParamStored.color(red: 0.1, green: 0.2, blue: 0.3, alpha: 1)
-        let frame = try #require(RoomWire.encodeKnob(name: "accent", stored: stored, turnedAt: 61.25))
+        let frame = try #require(RoomWire.encodeParameter(name: "accent", stored: stored, turnedAt: 61.25))
         let read = try #require(RoomWire.unframe(frame))
-        #expect(read.kind == .knob)
-        let knob = try #require(RoomWire.decodeKnob(read.payload))
-        #expect(knob.name == "accent")
-        #expect(knob.stored == stored)
-        #expect(knob.turnedAt == 61.25)
+        #expect(read.kind == .parameter)
+        let parameter = try #require(RoomWire.decodeParameter(read.payload))
+        #expect(parameter.name == "accent")
+        #expect(parameter.stored == stored)
+        #expect(parameter.turnedAt == 61.25)
     }
 
     @Test func aClockQuestionAndItsAnswerCarryTheirNumbers() throws {

@@ -3,11 +3,11 @@
 // Guide diagram (Chapter 31): the same two keys read by four curves. Each
 // panel builds a real Automation.Track and samples it, so the shapes are the
 // shipped curves rather than a drawing of them; the dot marks one moment, and
-// the circle above each panel is the value the knob holds there.
+// the circle above each panel is the value the parameter holds there.
 import Ollin
 import OllinDiagram
 
-final class KnobOnACurve: Sketch {
+final class ParameterOnACurve: Sketch {
     override var canvasSize: CanvasSize { .size(880, 470) }
 
     @Param var darkTheme = false
@@ -47,7 +47,7 @@ final class KnobOnACurve: Sketch {
             .init(at: span, .number(100)),
         ])
 
-        // The value the knob holds at the moment, drawn as the knob's own circle.
+        // The value the parameter holds at the moment, drawn as its own circle.
         var value = 20.0
         if case .number(let held)? = track.value(at: moment) { value = held }
         noStroke()

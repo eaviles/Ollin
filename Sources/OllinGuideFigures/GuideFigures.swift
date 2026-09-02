@@ -511,14 +511,14 @@ enum GuideFigures {
                     if ok, directive.themed {
                         if directive.gif {
                             warn("\(relative): themed is still-only; ignoring it for a GIF")
-                        } else if let knob = sketch.parameters()
+                        } else if let parameter = sketch.parameters()
                             .first(where: { $0.name == "darkTheme" }) {
                             let darkName = ((stem as NSString).lastPathComponent)
                                 + "-dark" + directive.stillExtension
                             let darkWrite = verifying || probing
                                 ? directory + "/." + (probing ? "probe-" : "verify-") + darkName
                                 : directory + "/.new-" + darkName
-                            knob.param.restore(.boolean(true))
+                            parameter.param.restore(.boolean(true))
                             if directive.png {
                                 OllinApp.export(sketch, to: darkWrite, frame: directive.frame)
                             } else {
@@ -539,7 +539,7 @@ enum GuideFigures {
                         } else {
                             ok = false
                             log = "themed, but the figure declares no"
-                                + " `@Param var darkTheme = false` knob to flip"
+                                + " `@Param var darkTheme = false` parameter to flip"
                         }
                     }
                     if probing { probeHash = pixelHash(writePath) }
@@ -957,7 +957,7 @@ enum GuideFigures {
         image cannot say whether it needs redoing.
 
         A figure carrying `// figure: themed` renders twice, flipping its own
-        `@Param var darkTheme = false` knob for a `<Name>-dark` sibling image,
+        `@Param var darkTheme = false` parameter for a `<Name>-dark` sibling image,
         which pages serve to dark-mode readers through a <picture> tag.
 
         Most framework edits move no pixels: a new function, a comment, a type

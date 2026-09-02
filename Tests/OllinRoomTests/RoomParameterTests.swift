@@ -3,11 +3,11 @@ import Ollin
 import Testing
 @testable import OllinRoom
 
-// The knob half of a room: one machine's `@Param` driving the same knob
-// everywhere else, and a key from another machine driving one knob. Both run
+// The parameter half of a room: one machine's `@Param` driving the same parameter
+// everywhere else, and a key from another machine driving one parameter. Both run
 // over the in-memory transport, so no socket is opened here either.
 
-/// A sketch wearing a few knobs of different kinds.
+/// A sketch wearing a few parameters of different kinds.
 private final class RoomProbeSketch: Sketch {
     enum Look: String, CaseIterable, ParamOption { case dawn, dusk, noir }
 
@@ -18,7 +18,7 @@ private final class RoomProbeSketch: Sketch {
     @Param var accent = Color.purple
 }
 
-@MainActor @Suite struct RoomKnobTests {
+@MainActor @Suite struct RoomParameterTests {
 
     private func pair(on bus: MemoryRoomBus = MemoryRoomBus()) -> (a: Room, b: Room, sketchA: Sketch, sketchB: Sketch) {
         let a = Room(transport: MemoryRoomTransport(name: "a-mac", bus: bus))
@@ -30,9 +30,9 @@ private final class RoomProbeSketch: Sketch {
         return (a, b, sketchA, sketchB)
     }
 
-    // MARK: Shared knobs
+    // MARK: Shared parameters
 
-    @Test func aSharedKnobDrivesTheSameKnobOnTheOtherMachine() throws {
+    @Test func aSharedParameterDrivesTheSameParameterOnTheOtherMachine() throws {
         let (a, b, sketchA, sketchB) = pair()
         let left = try #require(sketchA as? RoomProbeSketch)
         let right = try #require(sketchB as? RoomProbeSketch)
@@ -44,7 +44,7 @@ private final class RoomProbeSketch: Sketch {
         #expect(right.speed == 3.0)
     }
 
-    @Test func everyKindOfKnobTravels() throws {
+    @Test func everyKindOfParameterTravels() throws {
         let (a, b, sketchA, sketchB) = pair()
         let left = try #require(sketchA as? RoomProbeSketch)
         let right = try #require(sketchB as? RoomProbeSketch)
@@ -65,7 +65,7 @@ private final class RoomProbeSketch: Sketch {
         #expect(right.accent.green == 0.9)
     }
 
-    @Test func aKnobNobodySharesStaysHome() throws {
+    @Test func aParameterNobodySharesStaysHome() throws {
         let (a, b, sketchA, sketchB) = pair()
         let left = try #require(sketchA as? RoomProbeSketch)
         let right = try #require(sketchB as? RoomProbeSketch)
@@ -79,7 +79,7 @@ private final class RoomProbeSketch: Sketch {
         #expect(right.layers == 6)
     }
 
-    @Test func aKnobThatDidNotMoveIsNotSentAgain() throws {
+    @Test func aParameterThatDidNotMoveIsNotSentAgain() throws {
         let (a, b, sketchA, sketchB) = pair()
         let left = try #require(sketchA as? RoomProbeSketch)
         let right = try #require(sketchB as? RoomProbeSketch)
@@ -91,7 +91,7 @@ private final class RoomProbeSketch: Sketch {
         #expect(right.speed == 2.0)
 
         // The follower turns its own copy. Nothing new goes out from A, so the
-        // follower's value stands until A's own knob moves again.
+        // follower's value stands until A's own parameter moves again.
         right.speed = 0.5
         a.beforeDraw(sketchA)
         b.beforeDraw(sketchB)
@@ -103,8 +103,8 @@ private final class RoomProbeSketch: Sketch {
         #expect(right.speed == 1.0)
     }
 
-    @Test func twoMachinesSharingOneKnobDoNotSendItBackAndForth() throws {
-        // Both machines share the same knob, which is allowed: whoever is
+    @Test func twoMachinesSharingOneParameterDoNotSendItBackAndForth() throws {
+        // Both machines share the same parameter, which is allowed: whoever is
         // standing next to a machine can turn it. What arrives is remembered as
         // if this machine had turned it, so nothing is echoed back.
         let (a, b, sketchA, sketchB) = pair()
@@ -127,8 +127,8 @@ private final class RoomProbeSketch: Sketch {
         #expect(right.speed == 2.0)
     }
 
-    @Test func twoPeopleTurningOneKnobAtOnceEndUpLookingAtTheSameValue() throws {
-        // The hard case: both machines turn the knob before either has heard the
+    @Test func twoPeopleTurningOneParameterAtOnceEndUpLookingAtTheSameValue() throws {
+        // The hard case: both machines turn the parameter before either has heard the
         // other, so both send. Without a time on the message each would take the
         // other's value and stop, leaving the two machines showing different
         // numbers for good. The later turn has to win on both.
@@ -160,7 +160,7 @@ private final class RoomProbeSketch: Sketch {
         #expect(left.speed == right.speed)
     }
 
-    @Test func aMachineThatJoinsLateIsGivenTheKnobsAsTheyStand() throws {
+    @Test func aMachineThatJoinsLateIsGivenTheParametersAsTheyStand() throws {
         let bus = MemoryRoomBus()
         let first = Room(transport: MemoryRoomTransport(name: "a-mac", bus: bus))
         let sketchA = RoomProbeSketch()
@@ -176,19 +176,19 @@ private final class RoomProbeSketch: Sketch {
         late.setup(sketchB)
         #expect(sketchB.speed == 1.4)  // its own default, for now
 
-        first.beforeDraw(sketchA)      // the arrival sends the knobs again
+        first.beforeDraw(sketchA)      // the arrival sends the parameters again
         late.beforeDraw(sketchB)
         #expect(sketchB.speed == 3.5)
     }
 
     // MARK: Bound keys
 
-    @Test func aBoundKnobFollowsWhatAnotherMachineSends() throws {
+    @Test func aBoundParameterFollowsWhatAnotherMachineSends() throws {
         let (a, b, sketchA, sketchB) = pair()
         let right = try #require(sketchB as? RoomProbeSketch)
         _ = sketchA
 
-        b.bind("dial", to: right.$speed)        // 0...1 into the knob's own range
+        b.bind("dial", to: right.$speed)        // 0...1 into the parameter's own range
         a.send("dial", 0.5)
         #expect(abs(right.speed - (0.1 + 0.5 * 3.9)) < 1e-9)
 
