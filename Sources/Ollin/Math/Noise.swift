@@ -300,7 +300,7 @@ public extension Sketch {
     /// absolute value, squared), and an octave only contributes where the one
     /// below it was strong, so detail gathers on the ridge lines instead of
     /// filling the valleys (the multifractal feedback that makes terrain read
-    /// as terrain). Same knobs as `fbm`; bright values are the ridges.
+    /// as terrain). Same parameters as `fbm`; bright values are the ridges.
     func ridgedFbm(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
         ridgedSum(octaves, gain, lacunarity) { f in perlin.signedValue(x * f, 0, 0) }
     }
@@ -325,7 +325,7 @@ public extension Sketch {
     /// 1D turbulence in `0...1`: fbm over the folded field (each octave takes
     /// the absolute value of the signed noise), so instead of rolling hills the
     /// layers pile into billows with creased seams, the classic basis for
-    /// clouds, smoke, and marble. Same knobs as `fbm`.
+    /// clouds, smoke, and marble. Same parameters as `fbm`.
     func turbulence(_ x: Double, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
         fbmSum(octaves, gain, lacunarity) { f in Swift.abs(perlin.signedValue(x * f, 0, 0)) }
     }
@@ -353,7 +353,7 @@ public extension Sketch {
     /// its own coordinates, then warps them again, which smears the layers into
     /// the flowing marble-and-cloud look no amount of plain layering produces.
     /// `warp` scales the displacement: 0 is exactly `fbm(x, y)`, 1 the classic
-    /// strength, and beyond 1 the field tears into churn. The other knobs pass
+    /// strength, and beyond 1 the field tears into churn. The other parameters pass
     /// through to the underlying `fbm`.
     func warpedFbm(_ x: Double, _ y: Double, warp: Double = 1,
                    octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
@@ -454,7 +454,7 @@ public extension Sketch {
 public extension Sketch {
     /// This sketch's noise field, as a plain function of three coordinates,
     /// answering `-1...1`. It is how something that reads noise outside
-    /// `draw()` (a ``Formula`` driving a knob, for one) sees the same field the
+    /// `draw()` (a ``Formula`` driving a parameter, for one) sees the same field the
     /// sketch does, so `noiseSeed()` reaches it as well.
     func noiseField() -> Formula.NoiseField {
         let field = perlin

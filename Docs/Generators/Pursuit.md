@@ -107,7 +107,7 @@ From a square-on start the pursuer covers `gap / (1 - k * k)` and the quarry cov
 
 #### Tuning the chase
 
-| Knob | What it does |
+| Parameter | What it does |
 |---|---|
 | `stepSize` | how far a runner of speed 1 covers per step. Smaller steps draw a finer curve, take more steps, and land closer to the law |
 | `catchDistance` | how close counts as arrived. Two strides by default. A runner's own stride is a floor under it, so it never runs past its target |

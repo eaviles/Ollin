@@ -9,7 +9,7 @@ import Ollin
 /// canvas is carried into the printer's profile and back out again, and what
 /// comes home changed is exactly what the press is going to change.
 ///
-/// The `view` knob shows the four ways to look at it. **Sweep** wipes the proof
+/// The `view` parameter shows the four ways to look at it. **Sweep** wipes the proof
 /// across the poster so the two versions meet at a moving edge, which is the
 /// quickest way to see what a press takes away. **Proof** is the whole canvas
 /// under the printing condition. **Gamut** leaves the colors alone and flags
@@ -18,7 +18,7 @@ import Ollin
 /// plate per ink, black where that ink lands.
 ///
 /// The proof itself runs on the GPU (`Filter.softProof`), so the intent and
-/// paper knobs answer immediately. The plates are CPU work through the same
+/// paper parameters answer immediately. The plates are CPU work through the same
 /// profile, done once and again whenever the intent changes. Write the print
 /// files with:
 ///

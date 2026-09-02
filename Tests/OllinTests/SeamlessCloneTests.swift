@@ -83,7 +83,7 @@ struct SeamlessCloneTests {
         #expect(worst > 60, "a plain paste differed from a seamless one by only \(worst)/255")
     }
 
-    @Test func theKnobsAreHeldToTheirRange() {
+    @Test func theParametersAreHeldToTheirRange() {
         guard case let .seamlessClone(amount, threshold) =
                 Combine.seamlessClone(amount: 4, threshold: -1).kind else {
             Issue.record("expected a seamlessClone"); return

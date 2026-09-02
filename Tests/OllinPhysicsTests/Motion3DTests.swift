@@ -3,7 +3,7 @@ import Testing
 import Ollin
 @testable import OllinPhysics
 
-/// Correctness for the per-body motion knobs: which ways a body is allowed to
+/// Correctness for the per-body motion parameters: which ways a body is allowed to
 /// move, how hard gravity pulls on it, and whether the solver checks its whole
 /// path. Behavioral (the no-pixel-snapshot policy for physics), each answer
 /// pinned against a counterfactual twin: the same scene run twice with one
@@ -207,7 +207,7 @@ struct Motion3DTests {
 
     /// The headline: a pellet quick enough to clear a thin wall in one step
     /// goes straight through it, and the same pellet told to check its path
-    /// bounces off. Same wall, same speed, one knob.
+    /// bounces off. Same wall, same speed, one parameter.
     @Test func aSweptBodyCannotPassThroughAThinWall() {
         func fire(checksPath: Bool) -> Double {
             let world = World3D()
@@ -296,8 +296,8 @@ struct Motion3DTests {
     // MARK: Determinism
 
     /// The suite's standing rule: the same scene stepped twice in one binary
-    /// lands on exactly the same numbers, knobs and all.
-    @Test func aWorldWithMotionKnobsReplaysIdentically() {
+    /// lands on exactly the same numbers, parameters and all.
+    @Test func aWorldWithMotionParametersReplaysIdentically() {
         func replay() -> [Vector3] {
             let world = World3D()
             world.ground = 0

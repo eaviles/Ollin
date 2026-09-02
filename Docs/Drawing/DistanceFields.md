@@ -177,7 +177,7 @@ marks.filtered(.distanceField(maxDistance: 64))
 Past that distance the field reads flat, with a zero direction, which says "nothing within
 reach" rather than pointing somewhere untrue.
 
-It is also the speed knob. The measurement costs one pass per doubling of the distance it has
+It is also the speed parameter. The measurement costs one pass per doubling of the distance it has
 to carry, so a short answer is a genuinely shorter piece of work. On an M2 at 1080 square, a
 field measured over the whole canvas costs about 4.9 ms of GPU time, and one capped at 64
 pixels about 2.9 ms.

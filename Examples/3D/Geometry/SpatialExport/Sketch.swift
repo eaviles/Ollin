@@ -15,7 +15,7 @@ import Ollin
 /// cloud, which is not a surface at all, so it stays behind and says so once.
 /// Turn `dust` off and the model is the same; the frame is not.
 ///
-/// The size knob is the real one. A model file records how big one scene unit
+/// The size parameter is the real one. A model file records how big one scene unit
 /// is, and nothing here is scaled: at 1 the ring is meters across and fills a
 /// room, at 0.05 it sits on a desk.
 @main

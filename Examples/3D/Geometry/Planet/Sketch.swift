@@ -6,7 +6,7 @@ import Ollin
 /// planet wears, into textures the sketch keeps: the elevation, and then, read off
 /// it, the surface color, the relief, the finish that decides where the sun glints,
 /// the lights of the cities, and the weather. They are made once. They are made
-/// again only when a knob that shapes them moves, which is what `world` and
+/// again only when a parameter that shapes them moves, which is what `world` and
 /// `cloudCover` do.
 ///
 /// After that the frame is ordinary 3D. A sphere wears the maps, a second sphere a
@@ -47,7 +47,7 @@ private func kernel(_ entry: String) -> ComputeKernel? {
 @main
 final class Planet_Example: Sketch {
 
-    // MARK: Knobs
+    // MARK: Parameters
 
     /// Which world. Every map is a function of this number, so changing it bakes
     /// a different planet.

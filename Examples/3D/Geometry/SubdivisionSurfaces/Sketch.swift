@@ -30,7 +30,7 @@ final class SubdivisionSurfaces: Sketch {
         (.dodecahedron(radius: 1.0), Color(hex: 0xFF7AB0)),
     ]
 
-    /// Refined copies, rebuilt only when a knob changes; subdivision is cheap
+    /// Refined copies, rebuilt only when a parameter changes; subdivision is cheap
     /// here, but there's no reason to redo it every frame.
     private var smoothed: [Mesh] = []
     private var builtFor: (levels: Int, scheme: Rules)? = nil

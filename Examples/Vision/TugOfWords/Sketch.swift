@@ -2,7 +2,7 @@ import Foundation
 import Ollin
 import OllinVision
 
-/// Typed phrases as live knobs: two phrases pull on one rope. A
+/// Typed phrases as live parameters: two phrases pull on one rope. A
 /// `ConceptTracker` embeds the camera frame and both phrases in one shared
 /// space, and each phrase's share of the picture pulls the knot its way.
 /// Point the camera at what one phrase describes and watch it win; rewrite

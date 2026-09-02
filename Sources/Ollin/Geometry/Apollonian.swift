@@ -23,7 +23,7 @@ import Foundation
 /// - Parameters:
 ///   - circle: The enclosing circle to fill.
 ///   - minRadius: Stop filling a gap once its circle would be smaller than
-///     this (the detail knob; smaller = more, tinier circles).
+///     this (the detail parameter; smaller = more, tinier circles).
 ///   - rotation: Spins the three seed circles around the center, in radians.
 ///     0 puts one seed straight up.
 ///   - maxCount: A safety cap on how many circles to emit.

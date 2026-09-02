@@ -50,7 +50,7 @@ Distances are the 3D scene's world units, y-up, matching the camera. The solver 
 
 - [World3D](#world3d) - the simulation, its ground, and the per-frame `step`
 - [Body3D](#body3d) - a rigid body: pose, velocity, forces
-- [Motion knobs](#motion) - which ways a body may move, its own gravity, checking its path
+- [Motion parameters](#motion) - which ways a body may move, its own gravity, checking its path
 - [Collider3D](#collider3d) - the shape catalog
 - [Compound bodies](#compound) - several shapes fused into one body
 - [Terrain and scenery](#terrain) - heightfield ground and `Scene` colliders
@@ -132,7 +132,7 @@ body.applyTorque(Vector3(0, 5, 0))      // spin about each axis
 
 <a name="motion"></a>
 
-### Motion knobs
+### Motion parameters
 
 Three things a body can be told about its own motion, each available when it is added and settable live afterward.
 
@@ -311,7 +311,7 @@ door.drive(to: 0, frequency: 1.2, strength: 60)
 
 Driving is stateful. Set it once and the motor keeps pulling every step until `stopMotor()` or a new `drive`. Where the joint sits right now reads back as `door.angle` in radians, or `drawer.offset` in world units. Both are 0 at the connect pose.
 
-Two passive knobs finish the set:
+Two passive parameters finish the set:
 
 ```swift
 hinge.friction = 80                          // drag torque/force when unpowered
@@ -377,7 +377,7 @@ world.connect(post, platter,
               .allowing([.moveY, .turnY], at: top, travel: 0...1.4))
 ```
 
-The freedoms are the same `Freedom3D` set a body's own [motion knobs](#motion) use, in world axes at the moment of connecting. `travel` bounds every direction it may move in, and `rotation` every axis it may turn about. Both are measured from the connect pose, and leaving either out runs it unbounded. `.allowing([])` is a weld, and `.allowing([.turnX, .turnY, .turnZ])` is a `.ball`. A single turn with a range is a hinge, which is a good way to see what the named kinds are made of.
+The freedoms are the same `Freedom3D` set a body's own [motion parameters](#motion) use, in world axes at the moment of connecting. `travel` bounds every direction it may move in, and `rotation` every axis it may turn about. Both are measured from the connect pose, and leaving either out runs it unbounded. `.allowing([])` is a weld, and `.allowing([.turnX, .turnY, .turnZ])` is a `.ball`. A single turn with a range is a hinge, which is a good way to see what the named kinds are made of.
 
 <a name="links"></a>
 
@@ -803,7 +803,7 @@ Both can be changed while driving. The gearbox shifts itself. `gear` reads which
 
 `withWheel(_:)` moves the 3D transform stack to a wheel's pose, steering and spin included, the way `withBody(_:)` does for a body. A tire modeled as a cylinder along +y lands right.
 
-Two more knobs sit on the vehicle. `maxTilt` caps how far the chassis may lean from upright. It is `nil` by default, so the chassis rolls over like anything else, and around `.pi / 3` keeps a car on its wheels over rough ground. `wheelContact` picks how the wheels find the ground.
+Two more parameters sit on the vehicle. `maxTilt` caps how far the chassis may lean from upright. It is `nil` by default, so the chassis rolls over like anything else, and around `.pi / 3` keeps a car on its wheels over rough ground. `wheelContact` picks how the wheels find the ground.
 
 - `.cylinder`, the default, sweeps the tire's real footprint and is the steadiest over terrain.
 - `.sphere` rounds off edges.
@@ -923,7 +923,7 @@ figure.apply(ragdoll)                 // where they actually ended up
 
 Keep the target scene and the drawn scene apart. A `Scene` is a value type, so a second copy is one assignment. A figure driven toward the scene it was just posed from has nowhere to pull. The pose it is chasing has to be re-established each frame.
 
-`strength` is the most torque a joint may use, in newton-meters, and it is the expressive knob. High, and the figure will not be moved. Low, and heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. `goLimp()` cuts the power. `pose(from:)` puts every limb back where a scene has it, which is how a figure is stood up again.
+`strength` is the most torque a joint may use, in newton-meters, and it is the expressive parameter. High, and the figure will not be moved. Low, and heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. `goLimp()` cuts the power. `pose(from:)` puts every limb back where a scene has it, which is how a figure is stood up again.
 
 Nothing drives the root, so a powered figure still falls as a whole. The motors hold its *shape*, not its place. To keep one on its feet, make the root limb kinematic with `ragdoll.limbs[0].body.kind = .kinematic`, and it hangs from its hips like a puppet. Setting `ragdoll.kind = .kinematic` instead makes the whole figure follow the driven pose exactly, shoving whatever is in its way.
 
@@ -983,7 +983,7 @@ cloth.move(index, to: point)   // carry it to a world point over this frame
 
 `move(_:to:)` pins the particle if it was free and drives it there by velocity, so the sheet hanging off it is dragged along rather than snapped. `nearestVertex(to:)` finds the one nearest a world point.
 
-**The knobs.** All of them are scale-free: the same number means the same thing on a handkerchief and on a marquee.
+**The parameters.** All of them are scale-free: the same number means the same thing on a handkerchief and on a marquee.
 
 | | |
 |---|---|
@@ -1061,7 +1061,7 @@ drawSoftBody(rope)                                        // a tube along the ro
 
 The points are the particles one for one, so `pin(_:)`, `move(_:to:)`, `positions`, and `nearestVertex(to:)` all speak in indices into the polyline you handed over. `drawSoftBody(_:)` sweeps a tube of `thickness` along it, which is also how far the rope stands off whatever it lies on.
 
-**Two knobs shape it**, both scale-free. One setting means the same thing on a twig and on a mooring line.
+**Two parameters shape it**, both scale-free. One setting means the same thing on a twig and on a mooring line.
 
 - **`stiffness`** is how much it resists being *stretched*. `1` is a steel cable, measured on a rope hung under its own weight at about 1% longer than its rest length. `0.5` lets it stretch by nearly a third, and by `0.2` it has doubled, which is a bungee.
 - **`bend`** is how much it resists being *bent and twisted*, and it is the one that decides what the rope is. `0` is limp rope. Around `0.5` a cantilevered length droops about a third of its own length, which reads as heavy cable. Near `1` it holds itself out like a stem or a branch.
@@ -1116,7 +1116,7 @@ The tube `drawSoftBody(_:)` sweeps uses a twist-free frame of its own, so a rope
 
 **What it cannot do.** A rope does not collide with itself, so a coil passes through its own turns. It does not collide with another rope or cloth either, the same envelope as the rest of the tier. More particular to a rope, the shape a query asks about is built from a body's *faces*, and a rope has none. So `raycast`, `sweep`, and `bodiesOverlapping` all look straight through one. `grabSoftBody(at:in:)` still finds it, by taking the nearest particle to the line of sight. And a rope is one strand. There is no branching form, so a plant with several stems is several ropes.
 
-**Hair and fur are ropes.** There is no separate hair simulation, and a rope is what to reach for instead. It is the same Cosserat rod maths a hair solver uses, and its knobs reach hair scale. A cantilever of 8 points spaced 25 mm apart droops about a quarter of its span at `bend: 0.5`, and about four fifths of it at `bend: 0.05`. Below roughly 10 mm of spacing `bend` stops making much difference, which is the practical floor. The cost to plan around is the count. Each rope is its own body, and `World3D(maxBodies:)` defaults to 4,096, so a few thousand strands is the working range. Measured on an M2, 2,000 strands of 8 points step in about 3.3 ms, and 4,000 in about 8.6 ms. Past that, simulate a sparse set of strands and draw several interpolated around each one, which is how hair is usually drawn anyway.
+**Hair and fur are ropes.** There is no separate hair simulation, and a rope is what to reach for instead. It is the same Cosserat rod maths a hair solver uses, and its parameters reach hair scale. A cantilever of 8 points spaced 25 mm apart droops about a quarter of its span at `bend: 0.5`, and about four fifths of it at `bend: 0.05`. Below roughly 10 mm of spacing `bend` stops making much difference, which is the practical floor. The cost to plan around is the count. Each rope is its own body, and `World3D(maxBodies:)` defaults to 4,096, so a few thousand strands is the working range. Measured on an M2, 2,000 strands of 8 points step in about 3.3 ms, and 4,000 in about 8.6 ms. Past that, simulate a sparse set of strands and draw several interpolated around each one, which is how hair is usually drawn anyway.
 
 <a name="carriedcloth"></a>
 
@@ -1148,7 +1148,7 @@ Three more numbers shape what the rest of it may do, and all three are **lengths
 - **`backStop:`** is how far *behind* the carried surface a particle may be pushed before it is held back out. It keeps a cape out of the back it hangs on without waiting for a collision. `0.04` is a few centimetres of clearance.
 - **`maxStretch:`** caps how far any particle may get from what holds it, as a multiple of the distance measured *along the cloth*. `1` is inextensible, `1.05` allows 5%, and `nil`, the default, leaves the springs to it. This one is worth knowing about even for cloth no skeleton carries. A heavy sheet hung from one edge stretches under its own weight however stiff you make it, and a cap fixes it for almost nothing. Measured on a 2-unit sheet weighing 8 kg, the springs alone let it hang 6% long. `maxStretch: 1` hangs it at exactly its own length.
 
-Two knobs work while it runs. **`swayScale`** multiplies every leash at once, so one slider lets a whole cape out. **`followsSkin`** turns the leashes off entirely, leaving only the parts held exactly on the skin still following. That is the way to let a cape go loose without rebuilding it.
+Two parameters work while it runs. **`swayScale`** multiplies every leash at once, so one slider lets a whole cape out. **`followsSkin`** turns the leashes off entirely, leaving only the parts held exactly on the skin still following. That is the way to let a cape go loose without rebuilding it.
 
 **`follow(_:)` before `advance(by:)`, once a frame.** The solver eases the cloth from the previous pose to this one across the step. A second call in the same frame loses that, and a call after the step leaves the cloth a frame behind. **`snap(to:)`** is the other one. It puts every carried particle exactly where the skeleton says and stops it dead. That is what a figure that was *stood* somewhere rather than *moved* there needs, so the cloth arrives with it instead of being dragged across the room.
 
@@ -1179,7 +1179,7 @@ The waterline is not something you tune. A body of density `d` settles with frac
 
 <img src="../../Guide/Images/25-CharactersAndCloth/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
 
-**The knobs.**
+**The parameters.**
 
 | | |
 |---|---|
@@ -1260,14 +1260,14 @@ The snapshot's own `bodyCount` and `jointCount` say what is in it before anythin
 
 **What comes back.**
 
-- Every rigid `Body3D` with its collider, pose, velocity, and every knob `addBody` takes: kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, and buoyancyScale.
+- Every rigid `Body3D` with its collider, pose, velocity, and every parameter `addBody` takes: kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, and buoyancyScale.
 - Every `Joint3D` between them, gears and racks included.
 - The collision-group table with its rules.
 - The world's `gravity`, `ground`, `bounce`, `maxTimestep`, `unitsPerMeter`, and `water`.
 
 The tiers above a loose body come back too, since none of them holds anything heavier than the shapes a body already writes down:
 
-- **Characters** come back mid-stride, with the capsule, every knob `addCharacter` takes, where the figure stands, which way it faces, and the velocity it was moving at.
+- **Characters** come back mid-stride, with the capsule, every parameter `addCharacter` takes, where the figure stands, which way it faces, and the velocity it was moving at.
 - **Vehicles** come back drivable, and under power. That is the chassis and its collider, every wheel with everything it was tuned to, the gearing, and the live drivetrain. The engine is turning at the speed it was turning, in the gear the box had picked, with the wheels already spinning. Without that last part a restored machine has to pull away from rest, which a moving one notices.
 - **Ragdolls** come back as the fitting they were built from, a shape per limb, the tree they hang in, how far each joint may bend, and where every limb had got to. The skinned `Scene` is *not* in the file, and does not need to be. It is the sketch's own asset, still loaded, and `scene.apply(ragdoll)` writes the restored pose onto it exactly as before. So a figure comes back even in a run that has not read the file it was fitted from.
 

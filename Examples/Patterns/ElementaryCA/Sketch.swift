@@ -3,7 +3,7 @@ import Ollin
 /// One-dimensional cellular automata drawn the classic way: each generation is a row,
 /// time runs down the canvas. The **elementary** family (`elementaryCA`) is the 256
 /// two-color rules; the **totalistic** family (`totalisticCA`) reads the neighborhood
-/// *sum* over three colors, where richer textures live. Step the rule knob and watch
+/// *sum* over three colors, where richer textures live. Step the rule parameter and watch
 /// one number flip the picture between order, fractals, and chaos: 30 boils, 90 is the
 /// Sierpinski triangle, 110 grows machinery.
 ///

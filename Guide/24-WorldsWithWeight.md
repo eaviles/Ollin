@@ -61,7 +61,7 @@ let cross = world.addBody(.compound(parts), at: hubCenter)
 
 That's a windmill's blade cross, five shapes in one body. A part's own `density` weighs it against the rest, which is how a hammer gets a head that leads its swing. `withBody` still draws the whole thing, so translate to each part's pose inside the block and draw its shape.
 
-Hinges and sliders can also be *powered*. Give one `limits` when you connect it, measured from the pose it was built in, so 0 means "as built". The returned joint carries a small motor. `drive(at: 2.5)` turns it at a steady rate, `drive(to: 0)` is a spring servo that seeks a pose and holds it, `stopMotor()` cuts the power, and `friction` is the drag that winds a freewheeling hinge down. The servo's `strength` is a torque cap, and a weak one is a *character* knob rather than a compromise. It's what makes a door closer something a thrown ball can still barge through.
+Hinges and sliders can also be *powered*. Give one `limits` when you connect it, measured from the pose it was built in, so 0 means "as built". The returned joint carries a small motor. `drive(at: 2.5)` turns it at a steady rate, `drive(to: 0)` is a spring servo that seeks a pose and holds it, `stopMotor()` cuts the power, and `friction` is the drag that winds a freewheeling hinge down. The servo's `strength` is a torque cap, and a weak one is a *character* parameter rather than a compromise. It's what makes a door closer something a thrown ball can still barge through.
 
 <img src="Images/24-WorldsWithWeight/Windmill.jpg" alt="A four-bladed windmill mid-turn on a dark ground, colored balls scattered across the floor, and two low swing gates on either side both pushed open by balls rolling through them" width="560">
 
@@ -76,7 +76,7 @@ world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
 
 <img src="Images/24-WorldsWithWeight/Rockslide.jpg" alt="Brightly colored rocks, spheres, boxes, and cones, spread mid-slide down a pale eroded mountainside, a gold box caught mid-tumble, green scrub at the foot of the slope" width="560">
 
-The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice knob that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
+The rocks are spheres, boxes, and cones dropped along the ridge, and the ravines the rain carved are the same ravines that funnel them down. For scenery that arrives as a file instead of a field, `world.addStaticBodies(from: scene)` walks a loaded `Scene`. It turns every mesh into a static collider at its authored place, so a ball can roll through the hall you imported. The interactive slide, with its perpetual rock feed and a dice parameter that regrows the mountain, is the [`3D/Physics/Rockslide`](../Examples/3D/Physics/Rockslide/) example.
 
 ## Asking what hit what
 
@@ -232,7 +232,7 @@ There are names for the combinations worth wanting, and you can spell out anythi
 
 `.upright` is the other one you'll reach for. It suits a fridge on a dolly, a chess piece, or anything that should slide and turn without ever falling over. The one thing you cannot ask for is a tilted plane. What the solver takes away is whole world axes, so `.plane(normal:)` rounds its normal to the nearest one.
 
-Two smaller knobs live next to it. **`gravityScale`** is how hard the world pulls on one body against the `1` everything else feels, which is a balloon and a feather in the same world:
+Two smaller parameters live next to it. **`gravityScale`** is how hard the world pulls on one body against the `1` everything else feels, which is a balloon and a feather in the same world:
 
 ```swift
 balloon.gravityScale = -0.3      // rises
@@ -248,7 +248,7 @@ pellet.velocity = Vector3(0, 0, 120)
 
 It is off by default because it is not free, though it is close. The check only runs once a body is actually moving fast for its size, so an ordinary throw lands in exactly the same spot either way. Turn it on for bullets, pellets, and anything you fire, and leave it alone for everything else.
 
-All three can be set when you add a body and changed while it runs. The [`3D/Physics/Bagatelle`](../Examples/3D/Physics/Bagatelle/) example is a pin table with all three on a knob. Flatten the balls or free them, make them heavy or weightless, and fire a shot quick enough to leave through a thin rail the moment you stop checking its path.
+All three can be set when you add a body and changed while it runs. The [`3D/Physics/Bagatelle`](../Examples/3D/Physics/Bagatelle/) example is a pin table with all three on a parameter. Flatten the balls or free them, make them heavy or weightless, and fire a shot quick enough to leave through a thin rail the moment you stop checking its path.
 
 ## Machines out of joints
 
@@ -352,7 +352,7 @@ Three heaps, all from the same code. The first was simulated and captured. The s
 
 That is not a bug, it is what falling stones are. It does mean the same code can give you a slightly different heap on a machine whose floating point rounds one bit differently. That is exactly the situation a committed figure, or a piece you want to keep, is in. **Simulating it again gives you *a* heap; only saving gives you *that* heap.**
 
-A snapshot holds every body with its collider and all its knobs, every joint between them, gears and racks, and the collision groups and their rules. It holds the world's gravity, ground, bounce, and water. It also holds the things you built on top of those. A character comes back mid-stride. A vehicle comes back drivable and still under power, with its engine turning at the speed it was turning and its wheels already spinning. A truck restored at speed carries on rather than pulling away from rest. A ragdoll comes back where it fell.
+A snapshot holds every body with its collider and all its parameters, every joint between them, gears and racks, and the collision groups and their rules. It holds the world's gravity, ground, bounce, and water. It also holds the things you built on top of those. A character comes back mid-stride. A vehicle comes back drivable and still under power, with its engine turning at the speed it was turning and its wheels already spinning. A truck restored at speed carries on rather than pulling away from rest. A ragdoll comes back where it fell.
 
 That last one is worth a moment, because it is the one that looks impossible. A ragdoll was built from a skinned figure loaded off disk, and a file of physics has no business carrying a mesh. It doesn't. What the solver actually holds is a shape per limb, the tree they hang in, and how far each joint may bend. *That* is small enough to write down. The skin stays where it always was, your asset, in your sketch, loaded the ordinary way. So the snapshot and the sketch each keep the half they are good at, and `figure.apply(ragdoll)` puts them back together:
 

@@ -37,7 +37,7 @@ public class SimField {
     public let scale: Double
 
     /// The simulation this field runs every frame. Settable live: the renderer reads
-    /// it each frame, so retuning a sim's parameters (a growth knob under a `@Param`)
+    /// it each frame, so retuning a sim's parameters (a growth parameter under a `@Param`)
     /// takes effect immediately while the field's evolved state carries on.
     public var sim: Sim
 

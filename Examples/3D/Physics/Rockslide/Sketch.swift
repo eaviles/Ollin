@@ -7,7 +7,7 @@ import OllinPhysics
 /// lands on exactly the surface the mesh draws. A steady feed of rocks
 /// (spheres, slabs, cones) drops onto the ridge, tumbles down the gullies,
 /// and piles into scree at the foot; rocks that ride off the edge fall into
-/// the void and return to the top. The dice knob regrows the whole slope.
+/// the void and return to the top. The dice parameter regrows the whole slope.
 @main
 final class Rockslide: Sketch {
     let world = World3D()

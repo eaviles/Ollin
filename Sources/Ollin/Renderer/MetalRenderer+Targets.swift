@@ -1,6 +1,6 @@
 // MetalRenderer, the render-target factory half: the linear-float MSAA color and
 // depth targets, the shadow and reflection pre-pass encoders, the quality-tier
-// resolution (whose override knobs are stored properties on the type in
+// resolution (whose override parameters are stored properties on the type in
 // MetalRenderer.swift), and the gradient LUT strips.
 
 import Foundation
@@ -911,7 +911,7 @@ extension MetalRenderer {
     }
 
     /// The contact-shadow march's step budget, by the automatic quality tier (the
-    /// TAA/motion-blur rule: no per-feature knob, `.default` resolves per context and
+    /// TAA/motion-blur rule: no per-feature parameter, `.default` resolves per context and
     /// export lifts it to `.detail`). Hardware-independent: a step is one depth-texture
     /// tap plus a few multiplies, cheap on any GPU (the `resolveShadowTaps2D` shape).
     /// More steps turn the start-jitter dither finer over the same ray length.
@@ -945,7 +945,7 @@ extension MetalRenderer {
 
     /// Resolve a `.screenSpaceReflections` quality tier to a coarse-march step count. The DDA
     /// covers the *whole* reflection ray in this many steps (the stride scales with the ray's
-    /// pixel span), so the reach is resolution-independent and this is purely a precision knob:
+    /// pixel span), so the reach is resolution-independent and this is purely a precision parameter:
     /// fewer coarse steps trade hit precision (before the binary refinement) for frame rate.
     /// GPU-independent, like the raymarch resolution. Tune later via `Scripts/benchmark.sh ssr`.
     func resolveSSRSteps(_ quality: RenderQuality) -> Int {
@@ -962,7 +962,7 @@ extension MetalRenderer {
     /// reflection resolution for frame rate; export resolves to full (1.0) so exported art and
     /// snapshots are never downscaled. Mirrors `resolveRaymarchScale`.
     /// How far apart the probes of the first rung of a light ladder sit, in pixels
-    /// (`Combine.light`). It is the one knob that decides the whole cost: the ladder's
+    /// (`Combine.light`). It is the one parameter that decides the whole cost: the ladder's
     /// texture is two probes across per probe of that first rung, every rung is the
     /// same size, and halving the spacing quadruples all of them at once.
     ///
@@ -1079,7 +1079,7 @@ extension MetalRenderer {
     /// Resolve a raymarch quality setting to the camera-march and self-shadow step budgets.
     /// The `.default` tier returns the pre-dial constants (128 / 48) **exactly**, so a sketch
     /// that sets no quality renders byte-identically to before. The step budget is a fidelity
-    /// (surface-resolution) knob, not a hardware-RT one, so the tiers are GPU-independent; the
+    /// (surface-resolution) parameter, not a hardware-RT one, so the tiers are GPU-independent; the
     /// `.performance` *render-scale* drop (`resolveRaymarchScale`) is the bigger lever.
     private func resolveRaymarchSteps(_ setting: RaymarchQualitySetting) -> (march: Int32, shadow: Int32) {
         func pair(_ march: Int) -> (Int32, Int32) {
@@ -1801,7 +1801,7 @@ extension MetalRenderer {
 
     /// Reconstruction taps per pixel along the dominant velocity, resolved from
     /// the frame-wide automatic quality (the temporal-AA sample rule: no
-    /// per-feature knob; export's automatic `.detail` lifts it). Odd, so the
+    /// per-feature parameter; export's automatic `.detail` lifts it). Odd, so the
     /// tap comb is symmetric about the center pixel.
     func resolveMotionBlurSamples() -> Int {
         switch effectiveQuality(.default) {
@@ -2284,7 +2284,7 @@ extension MetalRenderer {
     }
 
     /// EMA history weight for the deferred reflection's temporal accumulation, resolved
-    /// through the automatic quality (no per-feature knob yet): the SSR temporal's tiers.
+    /// through the automatic quality (no per-feature parameter yet): the SSR temporal's tiers.
     private func resolveRTReflectionAlpha() -> Double {
         switch effectiveQuality(.default) {
         case .detail:      return 0.92
@@ -3153,7 +3153,7 @@ extension MetalRenderer {
         // Stage 2: the march. One fullscreen pass; the config rides params row 0
         // (w is the camera-ward ray-start lift as a fraction of the eye distance,
         // the no-normals self-occlusion guard; the acceptance band derives in the
-        // shader from the ray's own projected span, so the one knob stays one),
+        // shader from the ray's own projected span, so the one parameter stays one),
         // the caster comes from the packed lighting, the matrices from Uniforms3D.
         let marchPass = MTLRenderPassDescriptor()
         marchPass.colorAttachments[0].texture = mask

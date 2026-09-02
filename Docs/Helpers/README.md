@@ -6,7 +6,7 @@
 
 - [`Math`](./Math.md) - `map`, `dist`, `lerp`, and `Double.tau`
 - [`Animation`](./Animation.md) - the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), and `@Sprung` (spring toward a target with momentum)
-- [`Parameters`](./Parameters.md) - `@Param` tunable knobs: live sliders in the inspector, optional smoothing, and binding from OSC or MIDI
+- [`Parameters`](./Parameters.md) - `@Param` tunable parameters: live sliders in the inspector, optional smoothing, and binding from OSC or MIDI
 - [`Input`](./Input.md) - mouse and keyboard
 - [`Accessibility`](./Accessibility.md) - color vision simulation, a palette check, the published safe set, and the reduce-motion setting
 - [`Data`](./Data.md) - `loadTable` for CSV and TSV files, and `loadJSON` for documents you reach through by name and index

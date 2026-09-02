@@ -195,7 +195,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "The domain-coloring generator tiled 2x2 at a fixed phase (no time, no random): a rational function with two placed zeros and two poles, z cubed and tan z under the conformal ruling, and log z with its branch cut. Pins the complex evaluation of every mode, the wrapping palette wheel (the last stop blending back into the first), the plane written with the imaginary axis up, and the modulus and direction rulings.",
                  make: { DomainColoringScene() }),
     SnapshotCase("noise-toolkit",
-                 note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp knob on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
+                 note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp parameter on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
                  make: { NoiseToolkitScene() }),
     SnapshotCase("chladni",
                  note: "The Chladni generator tiled 2x2 at fixed phases (no time, no random): the sand style at the default mode, at a higher mode with full grain, and at a fractional (morphing) mode, plus the wave style mid-swing. Pins the standing-wave field, the Gaussian sand gather + speckle threshold and its phase re-throw, the wave color swing, and each tile generating at its own size.",
@@ -540,7 +540,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "The Hopf fibration at a fixed camera (no time, no random): four rings of latitude lifted to nested tori of interlocking circles, colored by where on the sphere each came from, with the bottom pole's fiber standing through the middle as the straight axis. Pins the lift, the stereographic projection, the quarter-turn into the world's y-up convention (a coordinate swap instead would mirror it and reverse the linking), the interleaving twist between rings, and the straight fiber being drawn rather than dropped.",
                  make: { HopfFibrationScene() }),
     SnapshotCase("seamless-clone",
-                 note: "One textured patch dropped on a two-tone backdrop three ways: pasted with the seam left in, cloned at half, and cloned in full. Pins the whole path (the rim read as boundary values, the convolution pyramid that settles between them, the composite that adds it back under the patch's own coverage) and the amount knob between them. No time, no random.",
+                 note: "One textured patch dropped on a two-tone backdrop three ways: pasted with the seam left in, cloned at half, and cloned in full. Pins the whole path (the rim read as boundary values, the convolution pyramid that settles between them, the composite that adds it back under the patch's own coverage) and the amount parameter between them. No time, no random.",
                  make: { SeamlessCloneScene() }),
     SnapshotCase("pursuit",
                  note: "Three finished pursuit chases: a triangle, a hexagon, and eight runners each chasing the third one along. Pins the simultaneous step (a ring that stays regular is the only way the spirals stay even), the equal-angle spiral each runner leaves, the kept chase lines, and the arrival that stops a runner on its target. No rng and no time, so it is deterministic.",
@@ -7526,7 +7526,7 @@ private final class ClothoidScene: Sketch {
 }
 
 /// The noise-toolkit generators at a fixed phase (no time/random): the warp
-/// knob on `.noise` plus the cellular generator's three styles, each tile at
+/// parameter on `.noise` plus the cellular generator's three styles, each tile at
 /// its own size.
 private final class NoiseToolkitScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }

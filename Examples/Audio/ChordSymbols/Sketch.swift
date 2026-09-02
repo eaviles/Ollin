@@ -10,7 +10,7 @@ import OllinAudio
 /// carry their own qualities, which is the form for chords that do not all
 /// come from one key. This sketch is the symbol path.
 ///
-/// The chart is a text knob: type any symbols into it and they play. Each card
+/// The chart is a text parameter: type any symbols into it and they play. Each card
 /// is one token, the lit card is the chord sounding, and the stack below it is
 /// that chord spelled out as the pitches `Chord` actually hands back, lowest
 /// first. A slash chord shows its work: the named bass turns the stack until
@@ -87,7 +87,7 @@ final class ChordSymbols: Sketch {
         drawStack()
         drawCaption("A chart as text: every card is one symbol, and the lit one is sounding.",
                     edge: .top)
-        drawCaption("Type your own chart into the knob; keys 1 to 4 load ones worth hearing.")
+        drawCaption("Type your own chart into the chart parameter; keys 1 to 4 load ones worth hearing.")
     }
 
     private func drawChart() {

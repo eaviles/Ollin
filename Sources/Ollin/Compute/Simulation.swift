@@ -35,7 +35,7 @@ import simd
 ///   **toroidal wrap** (the edges join), for neighbor stencils.
 /// - `gid` (`uint2`) — this cell's coordinate; `size` (`uint2`) — the field size.
 /// - `u` (`OllinComputeUniforms` — `u.time`/`u.dt`/`u.frameCount`/…) and `custom`
-///   (`float4`, the live knobs from `updateSimulation(_:custom:)`), both read-only.
+///   (`float4`, the live parameters from `updateSimulation(_:custom:)`), both read-only.
 /// - the shader-library helpers (`hash12`, `valueNoise`, `srgbToLinear`, …).
 ///
 /// Fresh textures start zeroed; seed a sim's initial state with a one-shot

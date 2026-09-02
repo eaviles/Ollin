@@ -4,12 +4,12 @@ import Ollin
 /// The material explorer: every finish in the hand.
 ///
 /// The whole curated `Material` library on one Preset menu, every finish scalar on
-/// its own knob, and the stage around the surface (lighting preset, environment,
+/// its own parameter, and the stage around the surface (lighting preset, environment,
 /// fog, shadows, the solid it's judged on) switchable while you look. Picking a
-/// preset snaps the knobs to its values; drag any knob to tweak from there, and the
+/// preset snaps the parameters to its values; drag any parameter to tweak from there, and the
 /// caption notes when the finish has left its preset. Press a key to step through
 /// the presets; the mouse stays free for the camera (drag to orbit, scroll to
-/// dolly). Press C to copy the knobs as the `Material(...)` expression that
+/// dolly). Press C to copy the parameters as the `Material(...)` expression that
 /// rebuilds them (`swiftSource`), ready to paste into a sketch.
 ///
 /// Things worth trying: `polishedMetal` under the `city` backdrop (a mirror needs
@@ -76,7 +76,7 @@ final class MaterialExplorer: Sketch {
     @Param(group: "Stage") var shadows = true
     @Param(group: "Stage") var haze = false
 
-    // The finish, knob by knob. Defaults spell out `.glossy`, the opening preset.
+    // The finish, parameter by parameter. Defaults spell out `.glossy`, the opening preset.
     @Param(group: "Finish") var shading: ShadingChoice = .standard
     @Param(1...12, group: "Finish") var toonBands = 4.0
     @Param("Specular", 0...1, group: "Finish") var specularLevel = 0.9
@@ -110,10 +110,10 @@ final class MaterialExplorer: Sketch {
     private var lastPreset: Material?
     private var copiedUntil = -1.0
 
-    /// Knobs hide while the shader ignores them, so the panel only offers what
+    /// Parameters hide while the shader ignores them, so the panel only offers what
     /// can change the picture: the physically-based set acts under that shading
     /// model alone, the specular pair only outside it, and each dependent scalar
-    /// waits for the knob that turns its term on. IOR stays with the
+    /// waits for the parameter that turns its term on. IOR stays with the
     /// physically-based set (not behind transmission) because it also shapes the
     /// normal-incidence reflectance of an opaque surface.
     override func setup() {
@@ -148,17 +148,17 @@ final class MaterialExplorer: Sketch {
         preset = roster[(index + 1) % roster.count].value
     }
 
-    /// Put the knobs on the clipboard as the expression that rebuilds them,
+    /// Put the parameters on the clipboard as the expression that rebuilds them,
     /// and print it, so a terminal run shows what was copied.
     private func copyFinish() {
-        let source = knobMaterial.swiftSource
+        let source = tunedMaterial.swiftSource
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(source, forType: .string)
         print(source)
         copiedUntil = time + 2.5
     }
 
-    /// Copy a preset's values onto the knobs, so tweaking starts from it.
+    /// Copy a preset's values onto the parameters, so tweaking starts from it.
     private func snap(to m: Material) {
         shading = ShadingChoice(m.shading)
         toonBands = m.toonBands
@@ -186,8 +186,8 @@ final class MaterialExplorer: Sketch {
         subsurfaceColor = m.subsurfaceColor
     }
 
-    /// The material the knobs currently spell.
-    private var knobMaterial: Material {
+    /// The material the parameters currently spell.
+    private var tunedMaterial: Material {
         var m = Material()
         m.shading = shading.model
         m.toonBands = toonBands
@@ -217,7 +217,7 @@ final class MaterialExplorer: Sketch {
     }
 
     override func draw() {
-        // Snap the knobs when the Preset menu changes while running. The first
+        // Snap the parameters when the Preset menu changes while running. The first
         // frame only records the selection, so values restored across a reload
         // (or tuned before a save) aren't clobbered.
         if lastPreset == nil {
@@ -245,7 +245,7 @@ final class MaterialExplorer: Sketch {
         }
 
         // The surface under judgment.
-        let m = knobMaterial
+        let m = tunedMaterial
         withState {
             fill(surfaceColor)
             material(m)

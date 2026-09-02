@@ -235,7 +235,7 @@ A word like `@Param` before a property attaches machinery to it. The property st
 The guide uses three, all from Ollin:
 
 ```swift
-@Param("Size", 8...80) var size = 38.0                        // an inspector knob
+@Param("Size", 8...80) var size = 38.0                        // a parameter in the inspector
 @Eased(duration: 0.9, curve: .easeOutElastic) var x = 540.0   // glides toward what you assign
 @Smoothed var level = 0.0                                     // calms a jittery incoming value
 ```

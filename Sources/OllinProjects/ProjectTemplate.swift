@@ -97,7 +97,7 @@ extension ProjectTemplate {
         summary: "A ring of dots orbiting, their radius wandering on noise.",
         source: """
         /// Motion by default: nothing here is animated by hand, it is all read
-        /// off `time`. The two knobs are draggable while it runs.
+        /// off `time`. The two parameters are draggable while it runs.
         final class {{CLASS}}: Sketch {
             @Param(6 ... 120, icon: "circle.grid.hex") var count = 36
             @Param(0 ... 2, icon: "speedometer") var speed = 0.6

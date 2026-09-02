@@ -17,7 +17,7 @@ why they agree with each other the way light does.
 - [Quick start](#quick-start)
 - [The two layers](#the-two-layers)
 - [What you get without asking](#what-you-get)
-- [The knobs](#the-knobs)
+- [The parameters](#the-parameters)
 - [In a compose block](#compose)
 - [What it costs](#cost)
 - [What it will not do](#limits)
@@ -62,7 +62,7 @@ A lamp is a thing in the world, so it stops light as well as making it. Two lamp
 wall between them do not light each other through it.
 
 **The result is the light**, not the scene with light added. Draw it as the frame. A surface
-appears in it because light lands on it and it gives some back, which is the `bounces` knob;
+appears in it because light lands on it and it gives some back, which is the `bounces` parameter;
 with no bounce every surface stays black and only the lamps are seen.
 
 <a id="what-you-get"></a>
@@ -82,8 +82,8 @@ with no bounce every surface stays black and only the lamps are seen.
   and so do ten shapes and ten thousand. What costs is the size of the layer and how far
   light is allowed to travel.
 
-<a id="the-knobs"></a>
-### The knobs
+<a id="the-parameters"></a>
+### The parameters
 
 ```swift
 scene.combined(with: lamps, .light(reach: 600, brightness: 4, bounces: 1,
@@ -91,7 +91,7 @@ scene.combined(with: lamps, .light(reach: 600, brightness: 4, bounces: 1,
 ```
 
 - **`reach`** how far light travels, in pixels. `nil`, the default, reaches across the whole
-  layer. This is the speed knob, because it takes rungs off the ladder the answer is built
+  layer. This is the speed parameter, because it takes rungs off the ladder the answer is built
   on, and it also reads as a smaller room: past it the light stops.
 - **`brightness`** scales the lamps before anything is traced. Raise it for a small lamp that
   has to fill a large space. Values above 1 are ordinary here, since the frame is
@@ -158,7 +158,7 @@ sketch needs the frame rate back.
 ### How it works
 
 The technique is **radiance cascades**, and the shape of it is worth knowing because the
-knobs follow from it.
+parameters follow from it.
 
 To know the light at a point you need many probes close to a lamp and few far from it. You
 also need few directions close to it and many far from it. So the answer is built as a

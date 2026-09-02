@@ -3,10 +3,10 @@ import Ollin
 /// A shader with runtime parameters: `Shader(_, params:)` hands the GPU a
 /// small array of floats, and the MSL body reads them back as
 /// `param(info, n)`. Here `param(info, 0)` is a slow drift fed `time` and
-/// `param(info, 1)` is the `warp` knob, so the field slides and churns with no
+/// `param(info, 1)` is the `warp` parameter, so the field slides and churns with no
 /// recompile; the `Shader` is rebuilt each frame, but compilation is cached by
 /// the source text, so only the two floats change. That is the pattern for
-/// animating any hand-written shader from Swift: knobs and clocks go in
+/// animating any hand-written shader from Swift: parameters and clocks go in
 /// `params`, math stays in the string.
 ///
 /// The vehicle is the classic domain-warp recipe, written out by hand instead

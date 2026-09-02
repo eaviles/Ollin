@@ -26,7 +26,7 @@ public enum OSCError: Error, Sendable {
 /// }
 /// ```
 ///
-/// Or bind an address straight onto a `@Param` knob (the third way), so an
+/// Or bind an address straight onto a `@Param` parameter (the third way), so an
 /// external fader drives the same parameter a live-inspector slider does:
 ///
 /// ```swift

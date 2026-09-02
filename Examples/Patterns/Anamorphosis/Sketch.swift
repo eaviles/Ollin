@@ -79,7 +79,7 @@ final class AnamorphosisSketch: Sketch {
     }
 
     /// The plate is static for a given setup, and the way back is a search, so
-    /// both are worked out only when a knob moves.
+    /// both are worked out only when a parameter moves.
     private func rebuildIfNeeded() {
         let key = "\(eyeDistance)|\(eyeHeight)|\(mirrorRadius)|\(lift)|\(width)"
         guard key != cacheKey else { return }

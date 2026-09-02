@@ -16,7 +16,7 @@ import Ollin
 ///   back. Every pixel takes the color of the mark nearest it, which is a Voronoi
 ///   diagram of the shapes themselves rather than of a set of points.
 ///
-/// Try it: drag the `grow` knob through zero in the `grown` reading and watch the blobs
+/// Try it: drag the `grow` parameter through zero in the `grown` reading and watch the blobs
 /// meet, or slow `spacing` down until the rings crowd.
 @main
 final class DistanceField_Example: Sketch {

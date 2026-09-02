@@ -39,9 +39,9 @@ The dot floats up and down like something breathing underwater. There's no rhyth
 
 One habit carries over from [Chapter 4](04-Randomness.md). The landscape itself is rolled from entropy at launch, so every run strolls different hills. `noiseSeed(6)` pins the landscape (and `seed(6)`, which you met in [Chapter 4](04-Randomness.md), pins `noise` and `random` together). Same seed, same hills, same piece.
 
-## The zoom knob
+## The zoom multiplier
 
-That `* 0.4` deserves its own section, because it's the knob you will turn most. The input to `noise` is a position, so the multiplier decides **how far apart your questions land** on the landscape:
+That `* 0.4` deserves its own section, because it's the parameter you will adjust most. The input to `noise` is a position, so the multiplier decides **how far apart your questions land** on the landscape:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseZoom-dark.jpg">
@@ -88,7 +88,7 @@ final class Clouds: Sketch {
 }
 ```
 
-Clouds, in about twenty lines. Each cell asks the field at its own position (times the zoom knob) and paints the answer as a gray, since `Color(white:)` runs from 0, black, to 1, white. Neighboring cells ask neighboring places, so the shades drift instead of flickering, and cloudy continents appear. The right panel of the figure is the same field with its answers drawn as dot *sizes* instead, and the pointillist look is one changed line. This move, compute a value per position and let it drive any visual property you like, is most of what noise is *for*.
+Clouds, in about twenty lines. Each cell asks the field at its own position (times the zoom multiplier) and paints the answer as a gray, since `Color(white:)` runs from 0, black, to 1, white. Neighboring cells ask neighboring places, so the shades drift instead of flickering, and cloudy continents appear. The right panel of the figure is the same field with its answers drawn as dot *sizes* instead, and the pointillist look is one changed line. This move, compute a value per position and let it drive any visual property you like, is most of what noise is *for*.
 
 ## The third dimension is time
 
@@ -102,7 +102,7 @@ In `Clouds`, change one line:
 let n = noise(x * 0.006, y * 0.006, time * 0.15)
 ```
 
-The clouds become weather. Nothing scrolls, since sliding `x` instead of `z` is what does that. The field boils in place, the way clouds actually do. The `0.15` is the zoom knob again, pointed at time, so smaller drifts slower.
+The clouds become weather. Nothing scrolls, since sliding `x` instead of `z` is what does that. The field boils in place, the way clouds actually do. The `0.15` is the zoom parameter again, pointed at time, so smaller drifts slower.
 
 There's one caveat, and [Chapter 3](03-MotionAndTime.md) taught you to care about it. A `z` that grows with `time` never returns to where it started, so this drift can't close a perfect GIF loop on its own. You could fold time with [Chapter 3](03-MotionAndTime.md)'s `pingPong`, and out-and-back does loop, but then the weather spends half of every lap running in reverse. Noise has a better answer built in. Walk a *circle* through the field instead of a straight line and you end exactly where you began, facing the way you started, with no reversal and no seam. That's the `loop:` parameter:
 
@@ -139,11 +139,11 @@ let n = noise(x * 0.004) * 0.7 + noise(x * 0.03) * 0.3
 
 The big-scale sample carries most of the weight and decides the composition; the small-scale sample gets the rest and supplies the grain. The weights should sum to about 1 so `n` stays in `0...1`. Graphics people call these layers *octaves* and stack four or five of them, each layer half the size and half the weight of the last. The technique has a grand name, fractal noise, but as you can see it's two lines of arithmetic and you now own it.
 
-Because you'll reach for it constantly, Ollin also packages the stack as one call: `fbm(x * 0.004)` layers four octaves (each half the size and half the weight of the one before) and still fills `0...1`. Its knobs are `octaves:`, `gain:` (how fast the weights shrink), and `lacunarity:` (how fast the features shrink), and `fbm(x, octaves: 1)` is plain `noise` again, so nothing new to unlearn. It comes in the same shapes as `noise` does: `fbm(x, y)`, `signedFbm`, even `fbm(x, y, loop:)` for layered weather that comes home each lap.
+Because you'll reach for it constantly, Ollin also packages the stack as one call: `fbm(x * 0.004)` layers four octaves (each half the size and half the weight of the one before) and still fills `0...1`. Its parameters are `octaves:`, `gain:` (how fast the weights shrink), and `lacunarity:` (how fast the features shrink), and `fbm(x, octaves: 1)` is plain `noise` again, so nothing new to unlearn. It comes in the same shapes as `noise` does: `fbm(x, y)`, `signedFbm`, even `fbm(x, y, loop:)` for layered weather that comes home each lap.
 
 ## A family of fields
 
-Once you think of noise as a landscape you can ask, a door opens. There are other landscapes, laid out by other rules. Ollin ships a small family of them. They all answer in roughly `0...1`, take the same zoom knob, and are pinned by the same `noiseSeed`, so everything this chapter taught carries over unchanged.
+Once you think of noise as a landscape you can ask, a door opens. There are other landscapes, laid out by other rules. Ollin ships a small family of them. They all answer in roughly `0...1`, take the same zoom parameter, and are pinned by the same `noiseSeed`, so everything this chapter taught carries over unchanged.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseFlavors-dark.jpg">
@@ -167,7 +167,7 @@ let foam = worley(x * 0.02, y * 0.02, time * 0.3)           // cells that reform
 
 The `feature:` argument picks the reading. `.border` asks how much farther the *second*-nearest point is, an answer that is exactly zero on the wall between two cells, so small values trace the walls. Threshold it and you have cracks and veins for free. A `jitter:` of 0 pins every point to its cell center for a regular grid, while the default of 1 scatters them fully. And the third coordinate works like it does everywhere else in this chapter, so drift it with time and the cells bubble and reform in place.
 
-**`ridgedFbm` and `turbulence` fold the field.** Both start from the signed field and flip every dip upward, and wherever the field crossed zero the fold leaves a sharp crease. `turbulence` layers those folded octaves the way `fbm` does, and the result is billows with creased seams, the classic basis for clouds, smoke, and marble. `ridgedFbm` pushes further. It makes the creases the *bright* lines and lets each octave add detail only where the one below was strong, so the fine grain gathers on the crests instead of filling the valleys. A row of `ridgedFbm` samples reads as a mountain skyline, which is exactly what the `RidgeLines` example stacks into a landscape. Both take `fbm`'s knobs, and both have the `loop:` form.
+**`ridgedFbm` and `turbulence` fold the field.** Both start from the signed field and flip every dip upward, and wherever the field crossed zero the fold leaves a sharp crease. `turbulence` layers those folded octaves the way `fbm` does, and the result is billows with creased seams, the classic basis for clouds, smoke, and marble. `ridgedFbm` pushes further. It makes the creases the *bright* lines and lets each octave add detail only where the one below was strong, so the fine grain gathers on the crests instead of filling the valleys. A row of `ridgedFbm` samples reads as a mountain skyline, which is exactly what the `RidgeLines` example stacks into a landscape. Both take `fbm`'s parameters, and both have the `loop:` form.
 
 **`warpedFbm` asks the field where to ask.** Instead of sampling `fbm` at your position, it first asks the field to nudge that position, then asks again, and only then reads the answer. The layers smear into flowing marble, a look no amount of plain layering produces. `warp:` scales the nudging: `0` is exactly `fbm`, `1` is the classic strength, and past `1` the field tears into churn.
 
@@ -175,7 +175,7 @@ The `feature:` argument picks the reading. `.border` asks how much farther the *
 let marble = warpedFbm(x * 0.004, y * 0.004)
 ```
 
-That's the whole tour. You won't need most of these most days, since `noise` and `fbm` do the daily work. But when a sketch wants stone instead of clouds, or a skyline instead of hills, the right field is one call away, and every habit transfers: zoom knob, seeding, far-apart rows, `loop:`.
+That's the whole tour. You won't need most of these most days, since `noise` and `fbm` do the daily work. But when a sketch wants stone instead of clouds, or a skyline instead of hills, the right field is one call away, and every habit transfers: zoom parameter, seeding, far-apart rows, `loop:`.
 
 ## Putting it together: a meadow in the wind
 

@@ -36,7 +36,7 @@ let y = 400 + random(-100, 100)        // jitter around 400
 if random() < 0.2 { /* runs about a fifth of the time */ }
 ```
 
-One gotcha for seeded sketches: a zero-width range short-circuits, so `random(a, a)` returns `a` *without consuming a roll*. If a knob or an animated value scales a jitter amount that can reach exactly zero, write the jitter as a scaled unit roll, `random(-1, 1) * amount`, not `random(-amount, amount)`: the first always draws, so the seeded sequence (and the piece's whole pattern of later rolls) stays stable as `amount` crosses zero.
+One gotcha for seeded sketches: a zero-width range short-circuits, so `random(a, a)` returns `a` *without consuming a roll*. If a parameter or an animated value scales a jitter amount that can reach exactly zero, write the jitter as a scaled unit roll, `random(-1, 1) * amount`, not `random(-amount, amount)`: the first always draws, so the seeded sequence (and the piece's whole pattern of later rolls) stays stable as `amount` crosses zero.
 
 <a name="randomGaussian"></a>
 

@@ -108,7 +108,7 @@ public final class SwarmChemistry {
     }
 
     /// Which of two particles in contact becomes the source of the copy. The published
-    /// model varies this to keep the evolution from settling, and it is the one knob
+    /// model varies this to keep the evolution from settling, and it is the one parameter
     /// that decides what "doing well" even means here.
     public enum Competition: Int, Sendable, CaseIterable {
         /// The faster particle's recipe wins, which rewards recipes that keep moving.

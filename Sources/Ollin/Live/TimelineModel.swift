@@ -90,7 +90,7 @@ public final class TimelineModel {
         keyIndex(near: playhead, in: automation.track(named: name)) != nil
     }
 
-    /// The knobs no track drives yet, in declaration order.
+    /// The parameters no track drives yet, in declaration order.
     public func addableParameters() -> [ParamHandle] {
         (sketch?.parameters() ?? []).filter { automation.track(named: $0.name) == nil }
     }
@@ -196,9 +196,9 @@ public final class TimelineModel {
 
     // MARK: Edits
 
-    /// Put a key on `name`'s track at the playhead, holding the knob's
+    /// Put a key on `name`'s track at the playhead, holding the parameter's
     /// current value; on a key already there, take that key away instead.
-    /// The knob-row diamond calls this. A track worked out from a formula
+    /// The parameter-row diamond calls this. A track worked out from a formula
     /// has no keys to place, so it is left alone.
     public func toggleKey(param name: String) {
         guard let sketch else { return }

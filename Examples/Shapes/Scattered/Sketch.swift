@@ -4,7 +4,7 @@ import Ollin
 ///
 /// `RadialBasis` goes outward. You know a value at a few scattered places and want one
 /// everywhere, so every known point contributes a bump and the bumps are weighted to pass
-/// exactly through the values you gave. `Fit.minimize` goes inward: you have a few knobs
+/// exactly through the values you gave. `Fit.minimize` goes inward: you have a few parameters
 /// and a way of saying how wrong a setting is, and it walks them downhill.
 ///
 /// - **field**: a color at six drifting points, read back over the whole canvas. Nothing
@@ -123,7 +123,7 @@ final class Scattered_Example: Sketch {
         fill(Color(hex: 0x9FB3C8, alpha: 0.8))
         for mark in marks { drawCircle(center: mark, radius: 3.5) }
 
-        // Three knobs: where the middle is, and how far out the ring sits. The cost is how
+        // Three parameters: where the middle is, and how far out the ring sits. The cost is how
         // badly the marks miss a ring with those three numbers.
         let found = Fit.minimize(from: [width / 2, height / 2, 200], steps: 260, rate: 6) { p in
             let center = Vector2(p[0], p[1])

@@ -20,7 +20,7 @@ import Ollin
 /// it *breathes* (a slow scale pulse), its eyes pulse, and its bead-chain arms
 /// lift and *wave*. Everything is mirrored about the vertical axis — the left and
 /// right halves are drawn once and reflected — so it waves with both arms at once
-/// and stays symmetric. Tune the motion with the `breath` / `gaze` / `wave` knobs.
+/// and stays symmetric. Tune the motion with the `breath` / `gaze` / `wave` parameters.
 @main
 final class Totem: Sketch {
     @Param(0...1) var breath = 0.5     // how much the figure breathes

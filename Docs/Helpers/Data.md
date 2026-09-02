@@ -253,4 +253,4 @@ let dataPath = sketchResource("quakes.csv", in: "Data")
 - [`Images`](../Drawing/Images.md) - `loadImage`, the same load-in-`setup()` shape for pictures
 - [`SVG`](../Drawing/SVG.md) - `loadSVG`, for vector artwork
 - [`Color`](../Drawing/Color.md) - palette import, which reads hex, CSV, JSON, and swatch files as colors
-- [`Parameters`](./Parameters.md) - `@Param` knobs, for values you tune rather than load
+- [`Parameters`](./Parameters.md) - `@Param` parameters, for values you tune rather than load

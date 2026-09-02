@@ -14,7 +14,7 @@ import Ollin
 /// GI off (press space) everything outside the pool is black. With it on, the pool
 /// on the floor becomes the room's real lamp: the ceiling glows from below, the
 /// orange and teal walls dye the white statue from either side, and the ball's
-/// shadowed back is filled with floor-light. The `intensity` knob is an honest
+/// shadowed back is filled with floor-light. The `intensity` parameter is an honest
 /// physical 1 by default; art wants what art wants, so it goes higher. The
 /// `quality` tier is the ray budget per probe: flip it live and watch the bounce
 /// smooth out or loosen up.

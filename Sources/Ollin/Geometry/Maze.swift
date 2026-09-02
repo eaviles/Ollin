@@ -6,7 +6,7 @@ import Foundation
 /// runs (long polylines, not per-cell fragments), so the maze strokes, hatches,
 /// and exports to SVG for a pen plotter like any other line-work.
 ///
-/// Three carving algorithms are built in, and the choice is a *texture* knob as
+/// Three carving algorithms are built in, and the choice is a *texture* parameter as
 /// much as an algorithmic one:
 ///
 /// - `.backtracker` (randomized depth-first search) wanders as far as it can

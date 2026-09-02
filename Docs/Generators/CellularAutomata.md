@@ -4,7 +4,7 @@
 
 ## Cellular automata
 
-Grids of cells that evolve by a local rule. The one-dimensional family, `elementaryCA` and `totalisticCA`, computes a row of cells generation by generation. Stacking the generations as rows is the classic picture. One number picks the rule, and the rule picks order, fractals, or chaos. The **turmite** family, `Turmite`, is the other shape of the idea. It is a tiny machine that *walks* a 2D grid and paints as it goes, Langton's ant being the famous one. Both are pure CPU geometry sources, deterministic, and cheap enough to rebuild live under a knob.
+Grids of cells that evolve by a local rule. The one-dimensional family, `elementaryCA` and `totalisticCA`, computes a row of cells generation by generation. Stacking the generations as rows is the classic picture. One number picks the rule, and the rule picks order, fractals, or chaos. The **turmite** family, `Turmite`, is the other shape of the idea. It is a tiny machine that *walks* a 2D grid and paints as it goes, Langton's ant being the famous one. Both are pure CPU geometry sources, deterministic, and cheap enough to rebuild live under a parameter.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-GridSimulations/WolframAndTurmite-dark.jpg">
@@ -60,7 +60,7 @@ func totalisticCA(code: Int, colors: Int = 3, width: Int, generations: Int,
                   from start: [Int]? = nil, wrap: Bool = true) -> [[Int]]
 ```
 
-Rows hold color indices `0 ..< colors`, so a palette lookup per cell is the natural draw. Code **777** over 3 colors is a classic irregular grower, and sweeping the code with a knob is a good way to prospect.
+Rows hold color indices `0 ..< colors`, so a palette lookup per cell is the natural draw. Code **777** over 3 colors is a classic irregular grower, and sweeping the code with a parameter is a good way to prospect.
 
 <a name="random-start"></a>
 

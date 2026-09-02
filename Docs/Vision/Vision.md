@@ -504,7 +504,7 @@ var rectangles: [DetectedRectangle] { get }
 static func detect(in: Image, …) async throws -> [DetectedRectangle]
 ```
 
-Finds rectangular shapes (a sheet of paper, a screen, a card, a sign) even seen at an angle, and reports their four corners. Unlike the pose and segmentation models, this is a *classical* detector with no ML, so it runs on any Mac. The aspect, size, and confidence knobs tune what counts as a rectangle.
+Finds rectangular shapes (a sheet of paper, a screen, a card, a sign) even seen at an angle, and reports their four corners. Unlike the pose and segmentation models, this is a *classical* detector with no ML, so it runs on any Mac. The aspect, size, and confidence parameters tune what counts as a rectangle.
 
 ```swift
 let camera = Camera()
@@ -763,7 +763,7 @@ override func draw() {
 }
 ```
 
-`labels` is everything at or above `minConfidence`, strongest first, and `topClassification` is the single strongest. The other read surface goes by name. `confidence(of: "dog")` answers `0…1` for any label in the vocabulary, unfiltered. A concept below the floor still reads its true, small value. That's the knob-shaped form, letting "how much does this look like a plant" drive a color, a speed, or a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
+`labels` is everything at or above `minConfidence`, strongest first, and `topClassification` is the single strongest. The other read surface goes by name. `confidence(of: "dog")` answers `0…1` for any label in the vocabulary, unfiltered. A concept below the floor still reads its true, small value. That's the parameter-shaped form, letting "how much does this look like a plant" drive a color, a speed, or a sound. Spaces work in place of underscores (`"blue sky"` finds `blue_sky`).
 
 Two things worth knowing about the vocabulary. It's hierarchical, so one clear subject lights up its whole lineage, and a blue sky scores `blue_sky`, `sky`, and `outdoor` together. The classifier also scores *all* of it every frame, mostly near zero. `minConfidence` (default `0.1`) is what keeps `labels` down to the meaningful few. `supportedLabels()` lists the full vocabulary when you want to browse for a concept to key on.
 

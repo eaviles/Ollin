@@ -696,7 +696,7 @@ private struct MonitorCostRow: View {
 
 // MARK: - Parameters
 
-/// What the parameters list offers under its cards: writing the knobs the user
+/// What the parameters list offers under its cards: writing the parameters the user
 /// turned back into the `@Param` lines that declared them, so a good set
 /// outlives the run instead of being typed back by hand.
 ///
@@ -708,8 +708,8 @@ public struct ParamSaveAction {
     /// ("Save parameters to Sketch.swift").
     public let title: String
     /// Write them, and hand back the one line to show underneath (what landed,
-    /// and the first knob that could not), or `nil` to say nothing. It runs on
-    /// the main thread, where the button is pressed and the knobs are read.
+    /// and the first parameter that could not), or `nil` to say nothing. It runs on
+    /// the main thread, where the button is pressed and the parameters are read.
     public let perform: @MainActor () -> String?
 
     public init(title: String, perform: @escaping @MainActor () -> String?) {
@@ -740,9 +740,9 @@ package enum ParamFoldMemory {
 }
 
 /// The parameter groups: for each group a header over a card of control rows,
-/// or an empty state when the sketch declares no `@Param` knobs. The control in
+/// or an empty state when the sketch declares no `@Param` parameters. The control in
 /// each row follows the parameter's type (slider, stepper, toggle, menu, color
-/// well); `@Param(group:)` names a section, and knobs without one lead under
+/// well); `@Param(group:)` names a section, and parameters without one lead under
 /// the default "Parameters" header. A group declared `.folded` renders as a
 /// disclosure section that starts closed; opening it is remembered under
 /// `sketchName`, so it stays how it was left. `onChange` reports edits (as the
@@ -763,10 +763,10 @@ public struct ParametersListView: View {
     /// the body's task, so a rule flipping mid-run moves the list.
     @State private var hiddenIDs: Set<String>
     /// The folded groups currently open. Seeded from what the sketch remembers,
-    /// and re-seeded when a reload or a host switch hands the view new knobs.
+    /// and re-seeded when a reload or a host switch hands the view new parameters.
     @State private var openFoldedGroups: Set<String>
     /// What the last save said, kept until the next one: a refusal names the
-    /// knob it could not write, which is worth reading twice.
+    /// parameter it could not write, which is worth reading twice.
     @State private var saveMessage: String?
 
     public init(parameters: [ParamHandle],
@@ -789,7 +789,7 @@ public struct ParametersListView: View {
     }
 
     /// The handles split into sections with the hidden rows left out: the
-    /// ungrouped knobs first (under the default header), then each named group
+    /// ungrouped parameters first (under the default header), then each named group
     /// in order of first declaration. A group whose rows are all hidden drops
     /// its whole card. A section is folded when any of its rows declares
     /// `group: .folded(…)`; the default group never folds. Package-visible so
@@ -849,9 +849,9 @@ public struct ParametersListView: View {
             }
             // The visibility poll, on the rows' own 100ms sync-pull cadence.
             // Keyed on the handle identities so a reload's fresh params restart
-            // it (the old task would keep reading the swapped-out sketch's knobs).
+            // it (the old task would keep reading the swapped-out sketch's parameters).
             .task(id: parameters.map { ObjectIdentifier($0.param) }) {
-                // Fresh knobs mean a fresh sketch (a reload, or a host switching
+                // Fresh parameters mean a fresh sketch (a reload, or a host switching
                 // sketches in place), so the folded state re-reads what that
                 // sketch remembers rather than carrying the old one's over.
                 openFoldedGroups = Self.rememberedOpenGroups(in: parameters, sketch: sketchName)
@@ -983,7 +983,7 @@ public struct ParametersListView: View {
             Text("No parameters")
                 .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(.secondary)
-            Text("Add \(Text("@Param").font(.system(size: 11.5, design: .monospaced)).foregroundStyle(OllinInspector.accent)) knobs to your sketch to tune them live.")
+            Text("Add \(Text("@Param").font(.system(size: 11.5, design: .monospaced)).foregroundStyle(OllinInspector.accent)) properties to your sketch to tune them live.")
                 .font(.system(size: 11.5))
                 .foregroundStyle(palette.textTertiary)
                 .multilineTextAlignment(.center)
@@ -1122,7 +1122,7 @@ private struct ParamRowLabel: View {
 }
 
 /// The timeline a host carries, when it carries one. Injected by the live
-/// host so every knob row grows its keyframe diamond; everywhere else it is
+/// host so every parameter row grows its keyframe diamond; everywhere else it is
 /// `nil` and the rows show nothing (the gallery is a showcase, and hosts
 /// without a transport have no playhead to key against).
 private struct AutomationTimelineKey: EnvironmentKey {
@@ -1136,10 +1136,10 @@ extension EnvironmentValues {
     }
 }
 
-/// The per-knob keyframe affordance: hollow when nothing drives the knob, the
+/// The per-parameter keyframe affordance: hollow when nothing drives the parameter, the
 /// accent diamond when a track does. A click places a key at the playhead
-/// with the value the knob holds (on a key already there, it takes the key
-/// away), so the loop is: scrub, turn the knob, click the diamond. Hidden
+/// with the value the parameter holds (on a key already there, it takes the key
+/// away), so the loop is: scrub, adjust the parameter, click the diamond. Hidden
 /// wherever no timeline is injected.
 struct KeyframeDiamond: View {
     let handle: ParamHandle
@@ -1452,7 +1452,7 @@ private struct ParamRangeSlider: View {
 /// user edit is written into the live `Param` and reported to `onChange`.
 ///
 /// The row is not the param's only writer (a MIDI/OSC binding, a smoothing
-/// glide, or the sketch itself may drive the same knob) so it also *follows*:
+/// glide, or the sketch itself may drive the same parameter) so it also *follows*:
 /// a ~10 Hz pull (the stats cadence) reflects the live value back into the
 /// thumb and pill, paused while the user is dragging, scrubbing, or typing.
 private struct SliderParamRow: View {

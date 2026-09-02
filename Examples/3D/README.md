@@ -33,7 +33,7 @@ Meshes, point clouds, and the 3D transform stack.
 | [LoadedMesh](Geometry/LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…); drop one in with `OLLIN_MESH=<path>` (or use the bundled crystal), recentered, scaled to fit, and lit. |
 | [TexturedMesh](Geometry/TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
 | [Wireframe](Geometry/Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
-| [SurfaceScatter](Geometry/SurfaceScatter/) | Trees standing on a globe: `surfacePoints` scatters over the skin by area, `alignment` stands each one up, and the `spread` knob compares an even covering, a plain draw, and the vertex-list shortcut. |
+| [SurfaceScatter](Geometry/SurfaceScatter/) | Trees standing on a globe: `surfacePoints` scatters over the skin by area, `alignment` stands each one up, and the `spread` parameter compares an even covering, a plain draw, and the vertex-list shortcut. |
 | [Terrain](Geometry/Terrain/) | Generated terrain, weathered: a heightfield grown by diamond-square subdivision, then eroded by tens of thousands of simulated raindrops carving ravines and building sediment fans. |
 | [Metaballs](Geometry/Metaballs/) | Soft spheres that reach for each other and fuse: every ball adds a bump to one shared field, and `isosurface` walks it into a mesh. |
 | [MeshGrowth](Geometry/MeshGrowth/) | A surface that makes more of itself than it has room for: vertices pushed apart, faster where the surface is already crowded, until it buckles. |
@@ -97,7 +97,7 @@ What surfaces are made of, from stylized finishes to physically-based metal.
 | [Materials](Materials/Materials/) | The material library: one orbiting sphere grid wearing each built-in `Material` (`.iridescent`/`.soapBubble`/`.velvet`/`.jade`/`.toon`/`.gooch`/…), the view-angle finishes shifting as it turns. |
 | [PhysicalMaterials](Materials/PhysicalMaterials/) | The physically-based finish as a metallic × roughness sweep: `Material.physicallyBased` shades one sphere grid from tight mirror highlights to matte, dielectric to metal. |
 | [Matcap](Materials/Matcap/) | Matcaps: a whole surface-and-lighting look baked into one sphere texture, sampled by the view normal (`matcap(_:)`), for chrome, clay, wax, or a cel look with no scene lights at all. |
-| [Explorer](Materials/Explorer/) | The material explorer: every finish in the hand, on one shape, with its knobs. |
+| [Explorer](Materials/Explorer/) | The material explorer: every finish in the hand, on one shape, with its parameters. |
 | [SurfaceMaps](Materials/SurfaceMaps/) | The rest of the surface-map set: metallic-roughness, occlusion, and emissive maps varying a finish per pixel. |
 | [NormalMaps](Materials/NormalMaps/) | Per-pixel surface relief without per-pixel geometry. |
 | [Detail](Materials/Detail/) | Detail maps: texture that survives a close look. |
@@ -151,7 +151,7 @@ Scene-wide realism passes over the 3D frame.
 | [SceneDefocus](Effects/SceneDefocus/) | Depth of field on a 3D scene defocused by its *own* depth buffer: a row of orbs drawn into a render target, then `scene.combined(with: scene.depth, .defocus(...))` racks focus through them. Drag to rack by hand. |
 | [AmbientOcclusion](Effects/AmbientOcclusion/) | Screen-space ambient occlusion from the scene's own depth and normals: the soft darkening in crevices and contact gaps that grounds a brightly lit scene. |
 | [ScreenSpaceReflections](Effects/ScreenSpaceReflections/) | Surfaces reflecting the scene around them: SSR traced over the frame, on a ring of reflective spheres in different metal finishes. |
-| [RayTracedReflections](Effects/RayTracedReflections/) | Metals mirroring the *actual* scene (off-screen geometry included, none of SSR's streaks), with glossy roughness-spread rays and a `reflectionBounces` knob. Needs a ray-tracing GPU and an environment. |
+| [RayTracedReflections](Effects/RayTracedReflections/) | Metals mirroring the *actual* scene (off-screen geometry included, none of SSR's streaks), with glossy roughness-spread rays and a `reflectionBounces` parameter. Needs a ray-tracing GPU and an environment. |
 | [ContactShadows](Effects/ContactShadows/) | The fine dark seam that seats an object on the surface it stands on. |
 | [Atmosphere](Effects/Atmosphere/) | Fog's distance-and-height cue and physical aerial perspective, over one colonnade (hold space to switch). |
 | [MotionBlur](Effects/MotionBlur/) | The streak a real camera's open shutter leaves on something moving. |

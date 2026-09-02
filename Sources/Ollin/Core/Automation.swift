@@ -1,11 +1,11 @@
 import Foundation
 
-/// A sketch's knobs written down over time: a value placed at one moment,
+/// A sketch's parameters written down over time: a value placed at one moment,
 /// another placed later, and a curve that carries the first into the second.
-/// Where `@Param` gives a sketch a knob to turn, an automation turns it, so a
+/// Where `@Param` gives a sketch a parameter to adjust, an automation moves it, so a
 /// piece can be *directed* rather than only tuned.
 ///
-/// Write the tracks in `setup()`, one per knob:
+/// Write the tracks in `setup()`, one per parameter:
 ///
 /// ```swift
 /// final class Breathing: Sketch {
@@ -22,9 +22,9 @@ import Foundation
 /// }
 /// ```
 ///
-/// Each frame, before the sketch draws, every track sets its knob to the value
+/// Each frame, before the sketch draws, every track sets its parameter to the value
 /// its curve holds at the sketch clock. The value is set directly rather than
-/// eased into, so a knob that carries `smoothing:` does not glide twice: the
+/// eased into, so a parameter that carries `smoothing:` does not glide twice: the
 /// curve is the glide.
 ///
 /// The position is a plain reading of the clock, `start + time * speed`, so
@@ -45,7 +45,7 @@ public struct Automation: Codable, Equatable, Sendable {
     ///
     /// Version 2 added a track that carries a ``Formula`` in place of keys.
     /// Version 3 added a track that carries one formula for each part of a
-    /// knob that holds more than one number.
+    /// parameter that holds more than one number.
     public static let currentVersion = 3
 
     // MARK: Curves
@@ -124,7 +124,7 @@ public struct Automation: Codable, Equatable, Sendable {
     public struct Key: Codable, Equatable, Sendable {
         /// Seconds from the start of the automation.
         public var time: Double
-        /// The knob's value at that moment.
+        /// The parameter's value at that moment.
         public var value: ParamStored
         /// How the value travels to the next key. The last key's curve is
         /// never read.
@@ -137,8 +137,8 @@ public struct Automation: Codable, Equatable, Sendable {
         }
     }
 
-    /// One knob's keys, in time order. A track may instead carry a
-    /// ``Formula``, and then the knob is worked out rather than looked up.
+    /// One parameter's keys, in time order. A track may instead carry a
+    /// ``Formula``, and then the parameter is worked out rather than looked up.
     public struct Track: Codable, Equatable, Sendable {
         /// The `@Param` property name this track drives.
         public var name: String
@@ -147,11 +147,11 @@ public struct Automation: Codable, Equatable, Sendable {
         public private(set) var keys: [Key]
         /// A formula worked out every frame, in place of the keys. It reads
         /// `time` (the position in the automation), the canvas and the pointer,
-        /// and the sketch's other knobs by name.
+        /// and the sketch's other parameters by name.
         public var formula: Formula?
-        /// One formula for each part of a knob that holds more than one number
+        /// One formula for each part of a parameter that holds more than one number
         /// (`x` and `y` for a point, `red` for a color), keyed by the part
-        /// name. A part with no rule keeps whatever the knob holds, so a track
+        /// name. A part with no rule keeps whatever the parameter holds, so a track
         /// can drive one part and leave the rest to the hand.
         public private(set) var parts: [String: Formula]
 
@@ -164,7 +164,7 @@ public struct Automation: Codable, Equatable, Sendable {
             self.parts = [:]
         }
 
-        /// A track that works its knob out from a formula rather than from
+        /// A track that works its parameter out from a formula rather than from
         /// placed keys.
         public init(name: String, formula: Formula) {
             self.name = name
@@ -173,7 +173,7 @@ public struct Automation: Codable, Equatable, Sendable {
             self.parts = [:]
         }
 
-        /// A track that works some parts of its knob out from formulas. Each
+        /// A track that works some parts of its parameter out from formulas. Each
         /// part is named the way ``Automation/parts(of:)`` names it, and a part
         /// with no formula is left alone.
         public init(name: String, parts: [String: Formula]) {
@@ -190,13 +190,13 @@ public struct Automation: Codable, Equatable, Sendable {
         /// The value this track holds at `position`, or `nil` when it carries
         /// neither keys nor a formula. A track of parts has no whole value of
         /// its own, so it answers `nil`; ask ``partValues(at:reading:noise:)``
-        /// for its numbers and put them into the knob's own value with
+        /// for its numbers and put them into the parameter's own value with
         /// ``Automation/applying(_:to:)``.
         ///
         /// A formula reads `time` as `position`, whatever else the caller
         /// passes under that name, so a track always agrees with the clock that
         /// drives it. It answers a plain number; the player turns that into a
-        /// switch when the knob it drives is one.
+        /// switch when the parameter it drives is one.
         public func value(at position: Double,
                           reading values: [String: Double] = [:],
                           noise: Formula.NoiseField? = nil) -> ParamStored? {
@@ -219,7 +219,7 @@ public struct Automation: Codable, Equatable, Sendable {
 
         /// The numbers this track's parts hold at `position`, keyed by the
         /// part name, and empty when the track carries no part formulas. Every
-        /// part reads `time` as `position`, exactly as a whole-knob formula
+        /// part reads `time` as `position`, exactly as a whole-parameter formula
         /// does, so a track always agrees with the clock that drives it.
         public func partValues(at position: Double,
                                reading values: [String: Double] = [:],
@@ -238,7 +238,7 @@ public struct Automation: Codable, Equatable, Sendable {
             formula?.usesNoise == true || parts.values.contains(where: \.usesNoise)
         }
 
-        /// Every name the formulas here read, the whole-knob one and the parts
+        /// Every name the formulas here read, the whole-parameter one and the parts
         /// together, in a fixed order. The order is fixed on purpose: a plan
         /// built from these names must be a function of the tracks, and never
         /// of the way a dictionary happened to be walked.
@@ -300,7 +300,7 @@ public struct Automation: Codable, Equatable, Sendable {
     // MARK: The automation itself
 
     public var version: Int
-    /// One track per automated knob, keyed by the property name.
+    /// One track per automated parameter, keyed by the property name.
     public var tracks: [Track]
     /// Whether the position wraps at `duration` instead of holding the last key.
     public var loops: Bool
@@ -339,7 +339,7 @@ public struct Automation: Codable, Equatable, Sendable {
         tracks.first { $0.name == name }
     }
 
-    /// Add a track, replacing any track already driving the same knob.
+    /// Add a track, replacing any track already driving the same parameter.
     public mutating func setTrack(_ track: Track) {
         if let index = tracks.firstIndex(where: { $0.name == track.name }) {
             tracks[index] = track
@@ -389,7 +389,7 @@ public struct Automation: Codable, Equatable, Sendable {
         }
     }
 
-    // MARK: The parts of a knob
+    // MARK: The parts of a parameter
 
     /// The numbers a stored value is made of, keyed by the part name: `x` and
     /// `y` for a point, `x`, `y`, `z` for a point in space, `red`, `green`,
@@ -421,8 +421,8 @@ public struct Automation: Codable, Equatable, Sendable {
     /// left it.
     ///
     /// A pair of ends stays ordered, because a crossed pair is not a value the
-    /// knob can hold at all. The lower end wins and the upper end is lifted to
-    /// meet it, which is what the knob's own two-thumb slider does when a
+    /// parameter can hold at all. The lower end wins and the upper end is lifted to
+    /// meet it, which is what the parameter's own two-thumb slider does when a
     /// minimum is pushed past its maximum.
     public static func applying(_ parts: [String: Double],
                                 to stored: ParamStored) -> ParamStored {
@@ -450,8 +450,8 @@ public struct Automation: Codable, Equatable, Sendable {
         }
     }
 
-    /// The knob a name reaches, which is the whole name for a plain knob and
-    /// the part before the dot for one of a knob's parts.
+    /// The parameter a name reaches, which is the whole name for a plain parameter and
+    /// the part before the dot for one of a parameter's parts.
     static func baseName(of name: String) -> String {
         String(name.prefix { $0 != "." })
     }
@@ -477,7 +477,7 @@ public struct Automation: Codable, Equatable, Sendable {
 
     // MARK: Building a track in code
 
-    /// Collects one knob's keys in the sketch's own value type, so a track is
+    /// Collects one parameter's keys in the sketch's own value type, so a track is
     /// written as the numbers the sketch already speaks rather than as stored
     /// payloads. Handed to the closure of `Sketch.automate(_:_:)`.
     public struct TrackBuilder<Value: ParamValue> {
@@ -509,9 +509,9 @@ public enum AutomationError: Error, CustomStringConvertible {
 
 // MARK: - Playback
 
-/// Drives a sketch's knobs from an automation. `Sketch.advance` hands it the
+/// Drives a sketch's parameters from an automation. `Sketch.advance` hands it the
 /// clock the frame is about to draw at, before the frame draws and before a
-/// take recorder samples the knobs, so a recorded run writes down the values
+/// take recorder samples the parameters, so a recorded run writes down the values
 /// the automation actually held. Attached by `Sketch.automation`; a sketch
 /// never touches it.
 @MainActor
@@ -542,7 +542,7 @@ final class AutomationPlayer {
         var readsNoise: Bool
     }
 
-    /// Set every automated knob to the value its track holds at `time`.
+    /// Set every automated parameter to the value its track holds at `time`.
     func apply(to sketch: Sketch, at time: Double) {
         guard !automation.tracks.isEmpty else { return }
         let handles = self.handles ?? {
@@ -564,7 +564,7 @@ final class AutomationPlayer {
                  + "which cannot settle on one frame; they are left alone\n").utf8))
         }
         // The numbers a formula reads are this frame's, and they are read as
-        // each track sets them, in an order where a knob worked out from
+        // each track sets them, in an order where a parameter worked out from
         // another lands after the one it names. That is what keeps a formula a
         // plain function of the clock: the same time gives the same value at
         // any frame rate, which is the promise the exports rest on.
@@ -576,8 +576,8 @@ final class AutomationPlayer {
             guard let param = handles[track.name] else { continue }
             var value: ParamStored
             if !track.parts.isEmpty {
-                // A knob of more than one number takes a rule for each part,
-                // and the parts no rule names keep what the knob holds, so a
+                // A parameter of more than one number takes a rule for each part,
+                // and the parts no rule names keep what the parameter holds, so a
                 // rule for `x` alone leaves `y` to the hand.
                 value = Automation.applying(
                     track.partValues(at: position, reading: values, noise: noise),
@@ -594,7 +594,7 @@ final class AutomationPlayer {
                 value = .boolean(FormulaNode.isTrue(v))
             }
             param.restore(value)
-            // Read the knob back rather than trusting the number: a knob holds
+            // Read the parameter back rather than trusting the number: a parameter holds
             // its own range, so what the next formula names is what the sketch
             // will actually see.
             guard plan.readsFormulas else { continue }
@@ -610,7 +610,7 @@ final class AutomationPlayer {
     }
 
     /// Work out the order to apply the tracks in. A track whose formula names
-    /// another track's knob goes after it, so both land on the same frame's
+    /// another track's parameter goes after it, so both land on the same frame's
     /// numbers. Names that lead back to themselves cannot all be settled on one
     /// frame, so the whole ring is dropped and reported rather than played at a
     /// value that would depend on the frame rate.
@@ -637,9 +637,9 @@ final class AutomationPlayer {
             state[i] = 1
             path.append(i)
             for name in tracks[i].readNames {
-                // A built-in name is never a knob, so it never orders anything.
+                // A built-in name is never a parameter, so it never orders anything.
                 guard !Automation.readableNames.contains(name) else { continue }
-                // A part names the knob it belongs to, so `center.x` orders the
+                // A part names the parameter it belongs to, so `center.x` orders the
                 // track driving `center`.
                 guard let j = indexOf[Automation.baseName(of: name)] else { continue }
                 visit(j, path: &path)
@@ -661,10 +661,10 @@ final class AutomationPlayer {
     }
 
     /// The numbers a formula may name: the sketch's own clock and canvas, the
-    /// pointer, every knob that is a plain number or a switch, and every part
-    /// of a knob that holds more than one (`center.x`).
+    /// pointer, every parameter that is a plain number or a switch, and every part
+    /// of a parameter that holds more than one (`center.x`).
     ///
-    /// The built-in names win over a knob of the same spelling, so a formula can
+    /// The built-in names win over a parameter of the same spelling, so a formula can
     /// always depend on what `time` and `width` mean. `frame` is the number the
     /// frame about to be drawn will carry, because this runs before the sketch
     /// steps its counter.
@@ -694,7 +694,7 @@ final class AutomationPlayer {
 
 public extension Sketch {
 
-    /// The automation driving this sketch's knobs, or `nil` when none is
+    /// The automation driving this sketch's parameters, or `nil` when none is
     /// attached. Assign one read from a file, or build the tracks with
     /// `automate(_:_:)`; reach through it to change how it plays
     /// (`automation?.loops = true`).
@@ -715,8 +715,8 @@ public extension Sketch {
         }
     }
 
-    /// Write one knob's values down over time. The closure places the keys, in
-    /// the knob's own type:
+    /// Write one parameter's values down over time. The closure places the keys, in
+    /// the parameter's own type:
     ///
     /// ```swift
     /// automate($radius) { track in
@@ -725,7 +725,7 @@ public extension Sketch {
     /// }
     /// ```
     ///
-    /// Calling it again for the same knob replaces that knob's track. A
+    /// Calling it again for the same parameter replaces that parameter's track. A
     /// property that is not a `@Param` on this sketch cannot be named, so it
     /// is reported and left alone.
     func automate<Value: ParamValue>(_ param: Param<Value>,
@@ -740,7 +740,7 @@ public extension Sketch {
         automate(Automation.Track(name: name, keys: builder.keys))
     }
 
-    /// Add a track by knob name, replacing any track already driving it. The
+    /// Add a track by parameter name, replacing any track already driving it. The
     /// name is the property name, the same key the take format and the host
     /// inspectors use.
     func automate(_ track: Automation.Track) {
@@ -757,9 +757,9 @@ public extension Sketch {
         return nil
     }
 
-    // MARK: Driving a knob from a formula
+    // MARK: Driving a parameter from a formula
 
-    /// Drive a knob from a formula worked out every frame, in place of placed
+    /// Drive a parameter from a formula worked out every frame, in place of placed
     /// keys:
     ///
     /// ```swift
@@ -770,27 +770,27 @@ public extension Sketch {
     ///
     /// The formula reads `time` (where the automation stands, in seconds),
     /// `frame`, `width`, `height`, `mouseX`, `mouseY`, and this sketch's other
-    /// knobs by name, so one knob can be worked out from another. It is the
-    /// same track a keyed knob uses, so `loops`, `speed`, and `start` shape it
+    /// parameters by name, so one parameter can be worked out from another. It is the
+    /// same track a keyed parameter uses, so `loops`, `speed`, and `start` shape it
     /// the same way and it travels in the same file.
     ///
-    /// Text that cannot be read is reported and the knob is left alone, so a
-    /// typo costs that one knob rather than the sketch. To handle the error
+    /// Text that cannot be read is reported and the parameter is left alone, so a
+    /// typo costs that one parameter rather than the sketch. To handle the error
     /// yourself, build the ``Formula`` with `try` and pass it instead.
     func drive(_ param: Param<Double>, _ formula: String) { driveNumber(param, formula) }
-    /// Drive a whole-number knob from a formula. The number is rounded.
+    /// Drive a whole-number parameter from a formula. The number is rounded.
     func drive(_ param: Param<Int>, _ formula: String) { driveNumber(param, formula) }
     /// Drive a switch from a formula. It is on whenever the number is anything
     /// but zero, so `"time % 2 < 1"` blinks once a second.
     func drive(_ param: Param<Bool>, _ formula: String) { driveNumber(param, formula) }
 
-    /// Drive a knob from a formula you read yourself, which is how to see a
+    /// Drive a parameter from a formula you read yourself, which is how to see a
     /// parse error rather than have it reported.
     func drive(_ param: Param<Double>, _ formula: Formula) { driveNumber(param, formula) }
     func drive(_ param: Param<Int>, _ formula: Formula) { driveNumber(param, formula) }
     func drive(_ param: Param<Bool>, _ formula: Formula) { driveNumber(param, formula) }
 
-    /// Drive the parts of a knob that holds more than one number, one rule
+    /// Drive the parts of a parameter that holds more than one number, one rule
     /// for each part:
     ///
     /// ```swift
@@ -801,10 +801,10 @@ public extension Sketch {
     ///
     /// A part with no rule is left alone, so a rule for `x` alone leaves `y`
     /// to the hand or to a keyed track. The rules read the same names a
-    /// whole-knob rule reads, and one part of any knob is one of those names:
+    /// whole-parameter rule reads, and one part of any parameter is one of those names:
     /// `"center.x"` gives this frame's x.
     ///
-    /// One call carries the whole knob, so a second call replaces what the
+    /// One call carries the whole parameter, so a second call replaces what the
     /// first one set. Give every part in one call.
     ///
     /// A rule that cannot be read is reported and that part is left alone; the
@@ -820,7 +820,7 @@ public extension Sketch {
     }
 
     /// Drive the parts of a color. They are the sRGB numbers in `0...1`, and
-    /// nothing holds them there, because a color knob carries no range of its
+    /// nothing holds them there, because a color parameter carries no range of its
     /// own. Use `saturate(...)` in the rule where you want one.
     func drive(_ param: Param<Color>, red: String? = nil, green: String? = nil,
                blue: String? = nil, alpha: String? = nil) {
@@ -842,7 +842,7 @@ public extension Sketch {
     }
 
     /// Drive the two ends of a range. The pair stays ordered: a lower end that
-    /// climbs past the upper one lifts it along, the way the knob's own
+    /// climbs past the upper one lifts it along, the way the parameter's own
     /// two-thumb slider does.
     func drive(_ param: Param<ClosedRange<Double>>, lower: String? = nil,
                upper: String? = nil) {
@@ -868,7 +868,7 @@ public extension Sketch {
                 formula = try Formula(source)
             } catch {
                 // A rule that cannot be read costs that one part, the way a
-                // whole-knob one costs that one knob.
+                // whole-parameter one costs that one parameter.
                 report("drive() could not read \"\(source)\" for '\(name).\(part)': \(error)")
                 continue
             }
@@ -885,7 +885,7 @@ public extension Sketch {
     }
 
     /// Every name a rule written on this sketch can read: the built-in ones,
-    /// each knob, and each part of a knob that holds more than one number.
+    /// each parameter, and each part of a parameter that holds more than one number.
     private func readableNames() -> Set<String> {
         var known = Set(Automation.readableNames)
         for handle in parameters() {
@@ -928,8 +928,8 @@ public extension Sketch {
 }
 
 public extension Automation {
-    /// The names a track's formula can read besides the sketch's own knobs.
-    /// A knob spelled the same as one of these cannot be reached, because the
+    /// The names a track's formula can read besides the sketch's own parameters.
+    /// A parameter spelled the same as one of these cannot be reached, because the
     /// built-in name wins.
     static let readableNames = ["time", "frame", "width", "height", "mouseX", "mouseY"]
 }

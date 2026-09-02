@@ -250,7 +250,7 @@ for (i, found) in classifier.labels.prefix(5).enumerated() {
 
 The bars on the right of the figure are that list, drawn for the made-up card. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `document` and `printed page` tie. And the classifier scores every word it knows on every frame, nearly all of them near zero. `minConfidence`, `0.1` by default, is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
 
-The other way to read the same result suits knobs better. `confidence(of: "plant")` answers for any word in the vocabulary, whether or not it cleared the floor. So "how much does this look like a plant" can drive a color or a speed straight from the room.
+The other way to read the same result suits parameters better. `confidence(of: "plant")` answers for any word in the vocabulary, whether or not it cleared the floor. So "how much does this look like a plant" can drive a color or a speed straight from the room.
 
 **`SaliencyTracker`** maps where an eye would go. `heatMap` is a white image whose alpha is the salience, so a `tint(_:)` turns it into a glow over the picture. `regions` are the boxes it peaks in. And `salience(at:in:)` answers for one canvas point, which is the field-shaped reading of [Chapter 14](14-FieldsAndFlow.md). Use it as a density for stippling, a weight for where to spend detail, or an attractor for particles.
 
@@ -329,7 +329,7 @@ The surface is the one `ModelTracker` gives a depth model, `map` and `value(at:i
 
 The model is not downloaded but built. Nobody publishes a Core ML version, so `Scripts/fetch-models.sh` makes one on your Mac from the published checkpoint. That is a one-time step of a few minutes, and it needs Python. It runs on the GPU, about fourteen readings a second on an M2. `Examples/Vision/DepthContours` draws the depth as contour lines. A parameter swaps in the single-image model, so you can watch the lines crawl and then hold still.
 
-### Words as knobs
+### Words as parameters
 
 The classifier's `confidence(of: "plant")` only answers for the 1,300 words it was trained on. **`ConceptTracker`** answers for any phrase you can type. Give it a few phrases in plain language and it scores each one against the picture, every frame. The vocabulary is any phrase you can say.
 
@@ -346,7 +346,7 @@ let spooky = ideas.confidence(of: "a spooky scene")   // 0…1, every frame
 
 Under it are two halves of one model. An image encoder turns each frame into a point in a shared space. A text encoder puts each phrase into the same space once, with the result cached. A score is how close the two land. The scores are shares across your phrase set and sum to 1, so one phrase alone always reads 1. Give the tracker contrasts, the thing and its opposite, and the share maps to a usable range. `similarity(of:)` reads the raw closeness instead, if you'd rather map the space yourself.
 
-The phrases stay live. Set `concepts` to a new list, or ask `confidence(of:)` about a phrase it hasn't seen, and the newcomer joins the scoring a frame later. `Examples/Vision/TugOfWords` wires two phrase knobs to a tug-of-war rope, with each phrase editable in the inspector while the sketch runs.
+The phrases stay live. Set `concepts` to a new list, or ask `confidence(of:)` about a phrase it hasn't seen, and the newcomer joins the scoring a frame later. `Examples/Vision/TugOfWords` wires two phrase parameters to a tug-of-war rope, with each phrase editable in the inspector while the sketch runs.
 
 ## Footage, the screen, and the past
 
@@ -413,7 +413,7 @@ screen.excludesOwnWindows = false
 
 That is video feedback, the thing people have been getting by pointing a camera at a monitor since the 1960s. Here it costs one boolean. How deep it goes depends on how fast the sketch draws relative to the capture. It smears and drifts as you move the window, which is the good part. (The figure uses a made-up desktop rather than a real capture, since no committed figure could reproduce your screen. The nesting is what the live one does.)
 
-One thing is worth knowing before you point this at a 5K display. At `scale = 1` a capture arrives at the screen's true backing resolution, which on a Retina display is twice its size in points. `screen.scale = 0.5` quarters the pixels and is the knob to reach for when an effect chain starts to labor.
+One thing is worth knowing before you point this at a 5K display. At `scale = 1` a capture arrives at the screen's true backing resolution, which on a Retina display is twice its size in points. `screen.scale = 0.5` quarters the pixels and is the parameter to reach for when an effect chain starts to labor.
 
 The catch is permission, and it behaves in a way worth understanding rather than being surprised by. Recording the screen needs the user's consent, and macOS grants that to an *application*. A sketch run from the terminal has no application identity of its own. The consent goes to whatever launched it, which is Terminal, iTerm, Ghostty, or whichever you use. The prompt names your terminal, and the entry in System Settings is your terminal. Once you allow it there, every sketch you run from that terminal can capture with no further prompt. That is convenient, and worth being clear-eyed about. Allowing your terminal to record the screen allows everything you run from it to do the same. Granting it doesn't reach a process already running, so allow it and then start the sketch again. `ScreenCapture.isAvailable` and `unavailableReason` tell you where you stand, and `drawFrame` puts the reason on the canvas for you.
 
@@ -516,7 +516,7 @@ Camera-as-instrument art is older than the personal computer. Myron Krueger's *V
 - Then the picture itself: [`ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`RectangleScan`](../Examples/Vision/RectangleScan/Sketch.swift), [`TextScan`](../Examples/Vision/TextScan/Sketch.swift), [`BarcodeReader`](../Examples/Vision/BarcodeReader/Sketch.swift), [`ObjectTracking`](../Examples/Vision/ObjectTracking/Sketch.swift), [`TrajectoryTracking`](../Examples/Vision/TrajectoryTracking/Sketch.swift), [`SceneLabels`](../Examples/Vision/SceneLabels/Sketch.swift), [`EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift).
 - Models of your own: [`DepthRelief`](../Examples/Vision/DepthRelief/Sketch.swift), [`DepthContours`](../Examples/Vision/DepthContours/Sketch.swift) for depth that holds still, [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift), [`PaintByClass`](../Examples/Vision/PaintByClass/Sketch.swift), [`TugOfWords`](../Examples/Vision/TugOfWords/Sketch.swift) for phrase scoring, [`StyleMirror`](../Examples/Vision/StyleMirror/Sketch.swift), and [`DigitReader`](../Examples/Vision/DigitReader/Sketch.swift), which points a model at the sketch's own pixels with no camera anywhere. The rest live in [`Examples/Vision/`](../Examples/Vision).
 - Footage and history: [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), [`Examples/Vision/ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), and [`Examples/Images/SlitScan`](../Examples/Images/SlitScan/Sketch.swift).
-- The screen itself: [`Examples/Integration/ScreenCapture`](../Examples/Integration/ScreenCapture/Sketch.swift), which lists what your Mac can capture as the line of code that names each one, and puts the feedback tunnel on a knob.
+- The screen itself: [`Examples/Integration/ScreenCapture`](../Examples/Integration/ScreenCapture/Sketch.swift), which lists what your Mac can capture as the line of code that names each one, and puts the feedback tunnel on a parameter.
 
 ---
 

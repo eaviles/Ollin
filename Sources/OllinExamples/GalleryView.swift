@@ -3,7 +3,7 @@ import Ollin
 import OllinRuntime
 
 /// The gallery window: the example list on the left, the running sketch in the
-/// middle, and the inspector (monitor card + `@Param` knobs) docked on the
+/// middle, and the inspector (monitor card + `@Param` parameters) docked on the
 /// right. Both sidebars collapse, and the window hugs whatever remains: the
 /// same fixed-size `HStack` + `.contentSize` recipe as the live host, under the
 /// same tall gradient title bar. Loading happens off the main thread (each
@@ -231,7 +231,7 @@ struct GalleryView: View {
         return CGSize(width: natural.width * scale, height: natural.height * scale)
     }
 
-    /// What the inspector shows: the loaded example (card + knobs) or nothing.
+    /// What the inspector shows: the loaded example (card + parameters) or nothing.
     private var inspectorContent: InspectorSidebar.Content {
         if case .loaded(let example, let sketch) = model.detail {
             return .example(example, sketch)
@@ -943,7 +943,7 @@ private struct FilterBar: View {
 // MARK: - Inspector sidebar
 
 /// The right sidebar: the shared monitor card (identity · timecode clock ·
-/// performance strip) over the running example's `@Param` knobs, the same
+/// performance strip) over the running example's `@Param` parameters, the same
 /// views the live host's inspector uses, so the two never drift. Idle (nothing
 /// running), it shows a quiet placeholder instead.
 private struct InspectorSidebar: View {

@@ -78,7 +78,7 @@ guilloche(rings: 36, innerRadius: 90, outerRadius: 320,
 
 **Superellipses** put the whole family between diamond and rectangle on one exponent. `n: 2` is the ellipse, `n: 4` the squircle of app icons, `n: 1` the diamond, and lower values pinch into a four-point star. Animate `n` and a mark breathes between round and square; the `Shapes/Superellipse` example sweeps a whole wall of them. The **supershape** generalizes further. One formula with a lobe count `m` and three shaping numbers covers stars, flowers, gears, and organic blobs. It's the same formula behind the 3D `Mesh.supershape`. Keep `m` a whole number, since the curve only closes in one turn for integer `m`. The `Shapes/Supershape` example morphs one through its family.
 
-**Guilloche** is the engraved ornament on watch faces and banknotes, and it too was a machine. A lathe's cams rocked the cutter while the piece turned: one wavy ring per pass, the piece nudged a hair between passes. `guilloche` returns those rings as a list of contours. The nudging is the `twist:` knob, and it's what braids neighboring rings into the woven moiré. Stack a coarse `Rosette` and a fine one and the ripple rides the wave. The `Patterns/Guilloche` example lets the braid crawl.
+**Guilloche** is the engraved ornament on watch faces and banknotes, and it too was a machine. A lathe's cams rocked the cutter while the piece turned: one wavy ring per pass, the piece nudged a hair between passes. `guilloche` returns those rings as a list of contours. The nudging is the `twist:` parameter, and it's what braids neighboring rings into the woven moiré. Stack a coarse `Rosette` and a fine one and the ripple rides the wave. The `Patterns/Guilloche` example lets the braid crawl.
 
 **Harmonographs** were real Victorian machines: pendulums swinging under a pen, drawing while they slowly died away. Ollin's takes a list of pendulums per axis, each with its own amplitude, frequency, phase, and damping. Near-but-not-quite matching frequencies are where the good tangles come from.
 
@@ -357,7 +357,7 @@ override func mousePressed() {
 }
 ```
 
-Three practical notes. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. The `smoothing` knob matters more than it looks. Raw frame-to-frame speed is far too jumpy to drive a width directly. The default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end.
+Three practical notes. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. The `smoothing` parameter matters more than it looks. Raw frame-to-frame speed is far too jumpy to drive a width directly. The default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end.
 
 `Examples/Shapes/Brushwork` is the whole thing to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
 
@@ -378,9 +378,9 @@ It is drawing state, like `strokeCap` or a profile, and `noStrokeBrush()` puts t
   <img src="Images/15-ShapesAsMaterial/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
 </picture>
 
-The first panel is the thing worth noticing. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the knob that decides whether a brush is a mark or a scatter. It is measured in *stamp sizes* rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
+The first panel is the thing worth noticing. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the parameter that decides whether a brush is a mark or a scatter. It is measured in *stamp sizes* rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
 
-The rest of the knobs are what you would guess. `sizeJitter` and `opacityJitter` vary each print, and `angle` faces it down the path, at a fixed angle, or anywhere. `scatter` throws it off the line, and `count` lays down several at each step. Every one of them is a fraction of the stamp's size. Everything random comes from a `seed`, so a mark stays exactly where it was frame after frame.
+The rest of the parameters are what you would guess. `sizeJitter` and `opacityJitter` vary each print, and `angle` faces it down the path, at a fixed angle, or anywhere. `scatter` throws it off the line, and `count` lays down several at each step. Every one of them is a fraction of the stamp's size. Everything random comes from a `seed`, so a mark stays exactly where it was frame after frame.
 
 The tip does not have to be a circle. `.square` turns with the path, and `.shape` and `.image` take anything you can draw or load. A trail of leaves is a shape tip with a little angle jitter.
 
@@ -495,7 +495,7 @@ let packed = packShapes(bag, count: 160, minRadius: 7, maxRadius: 62, padding: 2
 
 Both panels are the same packing. The left one also draws each shape's bounding circle, and the giveaway is that **those circles overlap**, which a circle packing could never allow. That overlap is the whole feature. The fit was measured to the outlines. A small star can settle into a big star's notch, or lie along a triangle's edge. It uses space a circle would have reserved and wasted.
 
-The knobs beyond `count` and the radius range are worth knowing, because they change the character rather than just the density. `padding` opens a consistent gap between shapes, which helps when they'll be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
+The parameters beyond `count` and the radius range are worth knowing, because they change the character rather than just the density. `padding` opens a consistent gap between shapes, which helps when they'll be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
 
 The output is `[Shape]`, so it flows straight into everything earlier in this chapter. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
 
@@ -511,7 +511,7 @@ A scatter usually has an outline you need for something. It may be the footprint
 
 `convexHull(of:)` returns the smallest convex polygon containing every point, the shape a rubber band would snap to around a handful of pins. It is quick and it always comes back as one simple loop. It also can never dip inward, which is the limit as much as the strength. A ring of points comes back as a filled blob. A rubber band has no way to reach into the middle.
 
-`concaveHull(of:concavity:)` lets the band sink into the gulfs between clusters while staying one simple polygon with every point inside it. The `concavity` knob runs `0...1`, where 0 gives you exactly the convex hull and 1 hugs the points as tightly as their spacing allows. Around 0.5 to 0.8 it reads as following the scatter. Pushed near 1 it erodes every bridge it can, and starts to look like a maze.
+`concaveHull(of:concavity:)` lets the band sink into the gulfs between clusters while staying one simple polygon with every point inside it. The `concavity` parameter runs `0...1`, where 0 gives you exactly the convex hull and 1 hugs the points as tightly as their spacing allows. Around 0.5 to 0.8 it reads as following the scatter. Pushed near 1 it erodes every bridge it can, and starts to look like a maze.
 
 `alphaShape(of:alpha:)` asks a different question, and it's the one that can say "these are two things". Picture rolling a disk of radius `alpha` over the points and keeping only the parts the disk can't get into. Nothing requires the answer to be a single piece. A clustered scatter can come back as several islands, and a ring comes back as a ring.
 
@@ -530,7 +530,7 @@ The two hulls hand back boundary points in order, so wrap them in a `Contour` or
 
 Choosing between them comes down to what you'll do next. When the result has to be one simple polygon, because it's a plotter path or a region you'll offset, use a hull. When you want the honest footprint of a scatter that really is clumpy, use the alpha shape.
 
-The one number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same knob give the same outline every run. The `Shapes/Hulls` example breathes `concavity` from 0 to tight so you can watch the band sink into the gulf.
+The one number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same parameter give the same outline every run. The `Shapes/Hulls` example breathes `concavity` from 0 to tight so you can watch the band sink into the gulf.
 
 ### The skeleton inside: the medial axis
 
@@ -549,7 +549,7 @@ for branch in skeleton.branches {
 }
 ```
 
-Two knobs shape the result. `spacing` is how finely the boundary gets sampled, so smaller means a more faithful skeleton and more work. Halving it roughly quadruples the cost. `prune` trims whiskers, removing terminal twigs shorter than the value you give. You want some pruning almost always, because every convex corner of the outline honestly grows a twig. A couple of spacings clears the fuzz while keeping the trunk. Branches come back as polylines, open runs between forks, or closed rings around holes, which is why `drawPolyline` takes `branch.isClosed`.
+Two parameters shape the result. `spacing` is how finely the boundary gets sampled, so smaller means a more faithful skeleton and more work. Halving it roughly quadruples the cost. `prune` trims whiskers, removing terminal twigs shorter than the value you give. You want some pruning almost always, because every convex corner of the outline honestly grows a twig. A couple of spacings clears the fuzz while keeping the trunk. Branches come back as polylines, open runs between forks, or closed rings around holes, which is why `drawPolyline` takes `branch.isClosed`.
 
 What makes this more than a line drawing is that the skeleton remembers thickness. Each branch carries `radii` alongside `points`, one radius per vertex, holding the size of the disk that fits there. So the skeleton knows how fat the shape is at every step along itself. Walk a branch drawing a circle from each pair and you rebuild the region as a train of disks. Size marks by the radius and a drawing swells through the thick parts, then thins into the tips. The largest radius anywhere marks the deepest point of the shape, the spot furthest from any edge.
 
@@ -831,10 +831,10 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Clothoid](../Docs/Drawing/Clothoid.md): the four numbers, the easement, the single curve that fits two points and two headings, corner rounding, and driving a chain by distance.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
-- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing knobs do, building a mark without a pointer, and what survives vector export.
+- [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing parameters do, building a mark without a pointer, and what survives vector export.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.
-- [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the knob ranges that read well and the cost of each.
+- [Hulls](../Docs/Generators/Hulls.md): `concaveHull` and `alphaShape`, with the parameter ranges that read well and the cost of each.
 - [Medial axis](../Docs/Generators/MedialAxis.md): the skeleton, the `Branch` type, and what the radii guarantee.
 - [Straight skeleton](../Docs/Generators/StraightSkeleton.md): arcs, faces, `inset(by:)`, and when to pick it over the medial axis or `offset`.
 - [Marbling](../Docs/Generators/Marbling.md): the bath, every raking tool, and floating your own outlines as ink.

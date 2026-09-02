@@ -8,7 +8,7 @@ import Ollin
 /// structs), they shade like any solid mesh, and they drop real shadows onto
 /// the floor.
 ///
-/// Flip the **instanced** knob off to draw the same field the ordinary way,
+/// Flip the **instanced** parameter off to draw the same field the ordinary way,
 /// one `drawMesh` per pillar, and watch the frame time in the inspector: that
 /// gap is the per-copy CPU cost instancing removes.
 @main

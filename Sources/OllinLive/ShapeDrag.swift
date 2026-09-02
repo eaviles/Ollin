@@ -9,8 +9,8 @@
 // Nothing here reaches into the sketch's memory to move anything. The file is
 // the only thing that changes, which is why the shape stays where the drag
 // left it after a reload, and why undo is the editor's own undo. The one
-// exception is a coordinate written as a knob's name, which turns that knob
-// instead: there is no number on the line to write, and the knob is where the
+// exception is a coordinate written as a parameter's name, which adjusts that parameter
+// instead: there is no number on the line to write, and the parameter is where the
 // value lives.
 
 import AppKit
@@ -21,7 +21,7 @@ import OllinRuntime
 import SwiftUI
 
 /// What the dragger needs from the session around it: the sketch running right
-/// now, the file it was compiled from, and somewhere to record a knob it turns.
+/// now, the file it was compiled from, and somewhere to record a parameter it turns.
 /// A protocol so the headless `--dragtest` can drive the whole controller
 /// without a window.
 @MainActor
@@ -202,7 +202,7 @@ final class ShapeDragController: ShapeDragging {
     }
 
     /// A move, which is the one gesture that has somewhere else to go: a
-    /// coordinate written as a knob's name turns that knob instead of being
+    /// coordinate written as a parameter's name adjusts that parameter instead of being
     /// refused, which costs no recompile.
     private func writeMove(_ pick: SourcePick, by delta: Vector2) -> Bool {
         guard let source = read(pick) else { return false }
@@ -215,14 +215,14 @@ final class ShapeDragController: ShapeDragging {
                                   in: source.name))
                 return false
             }
-            // Every name has to be a knob before any of them turns, so a drag
+            // Every name has to be a parameter before any of them moves, so a drag
             // that cannot be carried out whole changes nothing at all.
-            if let missed = plan.names.first(where: { knob($0, pick: pick) == nil }) {
+            if let missed = plan.names.first(where: { parameter($0, pick: pick) == nil }) {
                 say(Self.sentence(for: .computed(argument: missed.name), at: pick.site.line,
                                   in: source.name))
                 return false
             }
-            for named in plan.names { turnKnob(named, pick: pick) }
+            for named in plan.names { setParameter(named, pick: pick) }
             guard plan.text != source.text else { return !plan.names.isEmpty }
             try plan.text.write(toFile: source.path, atomically: true, encoding: .utf8)
             print("OllinLive: moved the shape at \(source.name):\(pick.site.line) ✓")
@@ -252,12 +252,12 @@ final class ShapeDragController: ShapeDragging {
         return (path, name, text)
     }
 
-    // MARK: A coordinate that is a knob
+    // MARK: A coordinate that is a parameter
 
     /// The `Param<Double>` a coordinate names, when the value it holds is the
     /// one the frame drew with. The equality is what keeps a local variable
-    /// that shadows a knob's name from moving the wrong thing.
-    private func knob(_ named: SourceEdit.MovePlan.Named,
+    /// that shadows a parameter's name from moving the wrong thing.
+    private func parameter(_ named: SourceEdit.MovePlan.Named,
                       pick: SourcePick) -> (ParamHandle, ParamControl.Slider)? {
         guard let sketch = session.currentSketch, let placedAt = pick.placedAt else { return nil }
         guard let handle = sketch.parameters().first(where: { $0.name == named.name }) else { return nil }
@@ -269,8 +269,8 @@ final class ShapeDragController: ShapeDragging {
 
     /// Turn it by the drag, the way the inspector row does, and remember the
     /// new value so the next reload keeps it.
-    private func turnKnob(_ named: SourceEdit.MovePlan.Named, pick: SourcePick) {
-        guard let (handle, slider) = knob(named, pick: pick) else { return }
+    private func setParameter(_ named: SourceEdit.MovePlan.Named, pick: SourcePick) {
+        guard let (handle, slider) = parameter(named, pick: pick) else { return }
         slider.write(slider.read() + named.delta)
         session.recordParam(handle.name, handle.param.stored)
         print("OllinLive: turned \(handle.name) to "

@@ -325,7 +325,7 @@ Run it, then drag the bead spacing. What each piece contributes:
 - `textToShapes` is the hinge. The headline is drawn twice from one call: filled as a shape, then beaded along the *same* outline. Nothing here could be done to a line of text.
 - `resampled(spacing:)` is what makes the beads even. Outline points come back dense on curves and sparse on straights, so beads placed one per raw point would clump around the O and thin out along the l. Respacing first puts every point a fixed distance from the last one.
 - The three font blocks are three calls because each kind of font is its own type. The pen font is the one to watch: it draws with `stroke`, so leaving `noStroke` set from the headline makes it disappear with no error at all.
-- `drawText(_:in:)` wraps the passage inside a rectangle, and `textJustify()` stretches the spaces so both edges line up. Turn the `Justify` knob off and the right edge goes ragged, which is the same passage doing less work.
+- `drawText(_:in:)` wraps the passage inside a rectangle, and `textJustify()` stretches the spaces so both edges line up. Turn the `Justify` parameter off and the right edge goes ragged, which is the same passage doing less work.
 
 Before moving on, make it yours:
 
@@ -342,7 +342,7 @@ Type on a computer screen owes its shape to a long argument about what a letter 
 
 - [Text](../Docs/Drawing/Text.md): the full reference, including text on a path, box wrapping, metrics (`textWidth`, `textBounds`), variable-font axes, [every script](../Docs/Drawing/Text.md#scripts) with `textDirection` and `textMissingCharacters`, and loading bitmap, outline, and stroke faces of your own.
 - Appendix B draws the geometry behind the glyphs: [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions), and [Shaping a value](B-JustEnoughMath.md#shaping-a-value) for the warp.
-- Worked examples, in [`Examples/Text/`](../Examples/Text/): `GlyphWave` (per-glyph motion), `TextOnPath`, `TextBox`, `VariableFont`, `TypeAsGeometry` (the warp live, plus the seeded per-frame jitter), `StrokeText` and `PlaydateFont` (the other two font kinds in action), `TextVolume` (the atlas mode at paragraph scale), `GlyphContours` (respaced outlines as curve, polygon, and shimmering dots), and `Scripts` (five scripts on one sheet, with the base direction as a live knob).
+- Worked examples, in [`Examples/Text/`](../Examples/Text/): `GlyphWave` (per-glyph motion), `TextOnPath`, `TextBox`, `VariableFont`, `TypeAsGeometry` (the warp live, plus the seeded per-frame jitter), `StrokeText` and `PlaydateFont` (the other two font kinds in action), `TextVolume` (the atlas mode at paragraph scale), `GlyphContours` (respaced outlines as curve, polygon, and shimmering dots), and `Scripts` (five scripts on one sheet, with the base direction as a live parameter).
 - Next door: [Chapter 9](09-Pictures.md) brings in the other kind of outside material, pictures and numbers, and ends by painting one with the type you just learned to set.
 
 ---

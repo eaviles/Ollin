@@ -1,13 +1,13 @@
 import Ollin
 
-/// A knob does not have to be a number. It can be a rule, typed as text and
+/// A parameter does not have to be a number. It can be a rule, typed as text and
 /// worked out every frame: `drive($radius, "190 + sin(time * tau / 6) * 80")`.
 ///
-/// The five knobs below are all driven that way, and the sketch prints the very
+/// The five parameters below are all driven that way, and the sketch prints the very
 /// text that drives them under the ring, beside what each one holds right now.
 /// `wobble` reads the sketch's own noise field, so `noiseSeed()` reproduces it.
 /// `edge` is worked out from `radius`, which lands on the same frame, because a
-/// knob named by another is always set first.
+/// parameter named by another is always set first.
 ///
 /// A formula is a track like any other, so it travels in the same file
 /// (`--automation`) and the same `loops` and `speed` shape it. See
@@ -21,7 +21,7 @@ final class Formulas: Sketch {
     @Param(2...40) var edge = 6.0
     @Param var filled = true
 
-    /// The knobs in the order the listing shows them.
+    /// The parameters in the order the listing shows them.
     static let shown = ["radius", "count", "spin", "wobble", "edge", "filled"]
 
     override func setup() {
@@ -68,7 +68,7 @@ final class Formulas: Sketch {
 
     // MARK: The listing
 
-    /// Read the tracks back and print the text that drives each knob, so the
+    /// Read the tracks back and print the text that drives each parameter, so the
     /// picture says what made it.
     private func drawListing() {
         var top = 800.0
@@ -92,7 +92,7 @@ final class Formulas: Sketch {
         }
     }
 
-    /// What the knob holds this frame, rounded to something readable.
+    /// What the parameter holds this frame, rounded to something readable.
     private func reading(of name: String) -> String {
         switch name {
         case "radius": return String(format: "%.1f", radius)

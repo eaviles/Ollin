@@ -59,8 +59,8 @@ public struct BluetoothReading: Sendable {
 /// }
 /// ```
 ///
-/// Or bind a value straight onto a `@Param` knob, so a sensor turns the same
-/// knob a slider turns:
+/// Or bind a value straight onto a `@Param`, so a sensor drives the same
+/// parameter a slider turns:
 ///
 /// ```swift
 /// @Param(20...400) var radius = 120.0
@@ -333,10 +333,10 @@ public final class BluetoothDevice: @unchecked Sendable {
         }
     }
 
-    // MARK: - Turning a knob
+    // MARK: - Adjusting a parameter
 
-    /// Drives a `@Param` knob from a value the device sends: each reading is
-    /// mapped from `from` into the knob's own range.
+    /// Drives a `@Param` parameter from a value the device sends: each reading is
+    /// mapped from `from` into the parameter's own range.
     ///
     /// ```swift
     /// strap.bind(.heartRateMeasurement, to: $radius, from: 50...180)
@@ -530,8 +530,8 @@ public final class BluetoothDevice: @unchecked Sendable {
         let reading = BluetoothReading(
             characteristic: BluetoothCharacteristic.standard(for: id), bytes: bytes)
 
-        // Stash under the lock, then turn any bound knob outside it, so the
-        // knob's own lock never nests under this one.
+        // Stash under the lock, then adjust any bound parameter outside it, so the
+        // parameter's own lock never nests under this one.
         let binding: ParamBinding? = state.withLock { state in
             guard state.connectedTo == device else { return nil }
             state.latest[id] = reading

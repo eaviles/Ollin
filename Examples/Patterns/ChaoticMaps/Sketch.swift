@@ -1,7 +1,7 @@
 import Ollin
 
 /// Every built-in `ChaoticMap` preset, drawn as an accumulating density field:
-/// pick one on the knob and each frame iterates the map another 60k steps,
+/// pick one on the parameter and each frame iterates the map another 60k steps,
 /// adding them as faint additive dots onto a canvas that never clears. Where
 /// the orbit returns again and again the dots pile into bright filaments; the
 /// sparse outskirts stay dim, so the structure paints itself in over a few

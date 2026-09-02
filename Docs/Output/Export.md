@@ -43,8 +43,8 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Reproducibility metadata](#reproducibility-metadata) - the regeneration recipe every export carries
 - [Captures that know their source](#captures-that-know-their-source) - `--capture-source`, keeping the exact code a file came from
 - [Rendering a chosen variation](#rendering-a-chosen-variation) - `--seed`, on every export path
-- [Setting a knob for the run](#setting-a-knob-for-the-run) - `--param name=value`, a declared `@Param` set from the command line
-- [Driving the knobs from a file](#driving-the-knobs-from-a-file) - `--automation`, keyframed parameters on every export path
+- [Setting a parameter for the run](#setting-a-parameter-for-the-run) - `--param name=value`, a declared `@Param` set from the command line
+- [Driving the parameters from a file](#driving-the-parameters-from-a-file) - `--automation`, keyframed parameters on every export path
 - [Contact sheets](#contact-sheets-proofing-a-variation-space) - `--export-grid` (seeds) and `--export-sweep` (a `@Param`), `OllinApp.contactSheet` / `exportContactSheet`
 - [Print separations](PrintSeparations.md) - `--export-separations`, per-ink masters for risograph and screen printing (its own page)
 - [Recording](Recording.md) - keep a *live* run instead of re-rendering one: real-time capture with sound (its own page)
@@ -393,7 +393,7 @@ When `randomSeed`/`noiseSeed` were set individually they appear as separate fiel
 | PDF | the document's Subject field |
 | Video | a description metadata item (`ffprobe` or any tag inspector shows it) |
 
-GIF is the one format without a writable slot. For a quick look at a PNG, run `exiftool frame.png`, or `strings frame.png | grep tool`. An artifact found months later names its own seed and knob settings, so the same sketch source plus `--seed` and `--frame` regenerates it exactly. Seeding is covered in [Random](../Generators/Random.md).
+GIF is the one format without a writable slot. For a quick look at a PNG, run `exiftool frame.png`, or `strings frame.png | grep tool`. An artifact found months later names its own seed and parameter settings, so the same sketch source plus `--seed` and `--frame` regenerates it exactly. Seeding is covered in [Random](../Generators/Random.md).
 
 ---
 
@@ -447,18 +447,18 @@ The same seed always renders the same pixels. A sketch that pins its own seed in
 
 ---
 
-### Setting a knob for the run
+### Setting a parameter for the run
 
-`--param <name>=<value>` sets one declared [`@Param`](../Helpers/Parameters.md) for this run, on **every** export path above. It works on a standalone window too, where it is a launch value: the inspector keeps whatever you turn it to afterwards. The flag repeats, so a run carries as many knobs as it needs:
+`--param <name>=<value>` sets one declared [`@Param`](../Helpers/Parameters.md) for this run, on **every** export path above. It works on a standalone window too, where it is a launch value: the inspector keeps whatever you change it to afterwards. The flag repeats, so a run carries as many parameters as it needs:
 
 ```sh
 swift run --package-path Examples Example-Live-Parameters --export keeper.png --param radius=40 --param rings=2
 swift run --package-path Examples Example-Live-Parameters --export dark.png --param paper=#101018 --param style=dots
 ```
 
-This closes the loop the [recipe](#reproducibility-metadata) opens. Every export writes the knob values it rendered with into the file. This is the way back in: a frame re-renders from its own recipe, with the sketch untouched.
+This closes the loop the [recipe](#reproducibility-metadata) opens. Every export writes the parameter values it rendered with into the file. This is the way back in: a frame re-renders from its own recipe, with the sketch untouched.
 
-The value is read against the knob's own kind:
+The value is read against the parameter's own kind:
 
 | Kind | Written as |
 |---|---|
@@ -473,11 +473,11 @@ The value is read against the knob's own kind:
 | `String` | `"caption=a longer line"`, quoted for the shell when it holds a space |
 | `Palette`, `Ramp` | `inks=#000,#FFF,#F06`, spread evenly, or `#000@0,#F06@0.75` to place a stop |
 
-The value lands after `setup()` and before the first frame. It goes through the same restore path the live hosts use across a reload. So it clamps to the declared range the way dragging the row does. It also wins over a value the sketch set for itself in `setup()`, and the recipe then names what the frame was really drawn with. Beside a `--replay`, it wins over the take's recorded knobs, the way `--seed` wins over its seed: the same gestures land on a different setting. A knob named twice ends on the last value given. A name the sketch does not have, or a value its kind cannot read, stops the run: it says what it expected rather than rendering something nobody asked for.
+The value lands after `setup()` and before the first frame. It goes through the same restore path the live hosts use across a reload. So it clamps to the declared range the way dragging the row does. It also wins over a value the sketch set for itself in `setup()`, and the recipe then names what the frame was really drawn with. Beside a `--replay`, it wins over the take's recorded parameters, the way `--seed` wins over its seed: the same gestures land on a different setting. A parameter named twice ends on the last value given. A name the sketch does not have, or a value its kind cannot read, stops the run: it says what it expected rather than rendering something nobody asked for.
 
 ---
 
-### Driving the knobs from a file
+### Driving the parameters from a file
 
 `--automation <file>` attaches [keyframed parameters](../Core/Automation.md) to the run, on **every** export path above and on a standalone window as well:
 
@@ -485,7 +485,7 @@ The value lands after `setup()` and before the first frame. It goes through the 
 swift run --package-path Examples Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
 ```
 
-Every export drives the clock at a fixed step, so the curves land on the same frames every time. The file arrives before `setup()`, so a sketch that writes a track for the same knob itself wins.
+Every export drives the clock at a fixed step, so the curves land on the same frames every time. The file arrives before `setup()`, so a sketch that writes a track for the same parameter itself wins.
 
 ---
 
@@ -519,7 +519,7 @@ let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 9
 
 Pick a tile you like, then render it big with `--export … --seed N`. The whole loop, and the live inspector half of it, is in [Variations](../Core/Variations.md).
 
-`--export-sweep` is the same sheet as a tuning tool. Instead of walking the sketch's chance, it walks one of its [`@Param`](../Helpers/Parameters.md) knobs. Name the parameter and a range, or explicit values. Every tile renders at the same seed with only that parameter changing, which is what makes the sheet a fair comparison. Seeds remain the identity a piece reproduces from. A sweep is for choosing the knob's value before you commit to it:
+`--export-sweep` is the same sheet as a tuning tool. Instead of walking the sketch's chance, it walks one of its [`@Param`](../Helpers/Parameters.md) parameters. Name the parameter and a range, or explicit values. Every tile renders at the same seed with only that parameter changing, which is what makes the sheet a fair comparison. Seeds remain the identity a piece reproduces from. A sweep is for choosing the parameter's value before you commit to it:
 
 ```sh
 swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --sweep-param radius --from 40 --to 360 --steps 9
@@ -535,7 +535,7 @@ swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.p
 | `--seed N` | the seed every tile is pinned to (one is rolled and recorded if omitted) |
 | `--columns`, `--tile`, `--frame`, `--fps` | as on `--export-grid` |
 
-The swept knob is named with `--sweep-param` because `--param` sets a value on every tile alike, which is how the rest of the sketch is held still while one knob moves; naming the same knob both ways stops the run. Values apply through the same restore path the live hosts use to carry knobs across reloads. A tile matches what dragging the knob there would show. Numeric parameters (`Double`, `Int`) sweep; an unknown name fails with the sketch's actual parameter list. The sheet's PNG records the knob, its values, and the pinned seed.
+The swept parameter is named with `--sweep-param` because `--param` sets a value on every tile alike, which is how the rest of the sketch is held still while one parameter moves; naming the same parameter both ways stops the run. Values apply through the same restore path the live hosts use to carry parameters across reloads. A tile matches what dragging the parameter there would show. Numeric parameters (`Double`, `Int`) sweep; an unknown name fails with the sketch's actual parameter list. The sheet's PNG records the parameter, its values, and the pinned seed.
 
 From code:
 

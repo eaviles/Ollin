@@ -15,7 +15,7 @@ Yard/
   Sources/Yard/yard.usdz
 ```
 
-Both directions are worth having, and they end in different places. `loadScene` keeps the file as the source of truth, so re-exporting from the design tool updates the sketch. This hands over **source you own**, so the camera, the lights and every placement become lines you can animate, put on a knob, or delete.
+Both directions are worth having, and they end in different places. `loadScene` keeps the file as the source of truth, so re-exporting from the design tool updates the sketch. This hands over **source you own**, so the camera, the lights and every placement become lines you can animate, put on a parameter, or delete.
 
 ## What becomes source, and what does not
 
@@ -78,7 +78,7 @@ One more, rarer: a transform that is not a translate, a rotate and a scale (a sh
 
 ## Once it runs
 
-It is an ordinary sketch. Put a placement on a knob:
+It is an ordinary sketch. Put a placement on a parameter:
 
 ```swift
 @Param(-2...2) var lampX = -1.45

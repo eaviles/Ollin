@@ -5,14 +5,14 @@ import SwiftUI
 // standalone detached panel): it shows the running sketch's current variation
 // seed and steps, randomizes, or jumps the sketch through its seed space. Each
 // navigation restarts the sketch in place at the chosen seed via the active
-// runner (the same route the host Camera menu takes), leaving `@Param` knob
+// runner (the same route the host Camera menu takes), leaving `@Param` parameter
 // values untouched. A sketch that pins its own seed in `setup()` simply
 // reproduces that variation, so the card is inert for it by design.
 
 /// A titled "Variation" section holding the seed readout and its controls:
 /// previous/next steppers, a randomize roll, and a type-to-jump field. Reads
 /// the live seed from `stats`; `onNavigate` reports each chosen seed so a host
-/// session can persist it across reloads (the tuned-knob precedent). Leave it
+/// session can persist it across reloads (the tuned-parameter precedent). Leave it
 /// defaulted where no reload exists (the gallery, the detached panel).
 public struct VariationCardView: View {
     let stats: FrameStats

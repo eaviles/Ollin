@@ -4,7 +4,7 @@ import OllinVision
 /// Something lifted off the background, two ways. A `PersonSegmenter` turns the
 /// camera frame into a soft people matte and the cutout it makes; a
 /// `SubjectSegmenter` finds whatever stands out instead (the thing you hold up,
-/// or you yourself). The `segmenter` knob (in the inspector, press ⌘/) switches
+/// or you yourself). The `segmenter` parameter (in the inspector, press ⌘/) switches
 /// between them, and each keeps its own composite: people land over a drifting
 /// gradient with the matte, tinted dark and nudged, as the drop shadow
 /// underneath (background replacement in a few lines), while subjects glow at

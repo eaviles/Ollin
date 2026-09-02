@@ -9,7 +9,7 @@ import OllinRuntime
 // Opens a window for the sketch, watches the file, and hot-swaps the running
 // sketch on save without closing the window. A SwiftUI `App` owns the window;
 // the sketch renders in the detail pane and a sidebar inspector shows reload
-// status (live FPS + parameter knobs land next).
+// status (live FPS + parameters land next).
 @main
 struct OllinLiveApp: App {
     @NSApplicationDelegateAdaptor(LiveAppDelegate.self) private var delegate
@@ -113,7 +113,7 @@ struct OllinLiveApp: App {
         let keepClock = arguments.contains("--keep-clock")
         let record = arguments.contains("--record")
         // The take flags (`--record-take <file>` writes the run's inputs and
-        // knobs down; `--replay <file>` plays a recorded run back). A bad take
+        // parameters down; `--replay <file>` plays a recorded run back). A bad take
         // file fails here, before a window opens.
         let replayTake: Take? = value(after: "--replay").map { path in
             do {

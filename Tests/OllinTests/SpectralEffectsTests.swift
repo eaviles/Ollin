@@ -16,7 +16,7 @@ struct SpectralEffectsTests {
 
     // MARK: Identities
 
-    /// Zero amount is an exact identity for both spectral filters: the knob is
+    /// Zero amount is an exact identity for both spectral filters: the parameter is
     /// only honest if an A/B costs nothing.
     @Test(.enabled(if: Snapshot.hasMetal))
     func zeroAmountIsIdentity() throws {

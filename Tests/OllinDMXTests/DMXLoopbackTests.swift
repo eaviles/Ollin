@@ -72,16 +72,16 @@ struct DMXLoopbackTests {
         let sender = DMXSender(sACN: "127.0.0.1", port: port)
         defer { receiver.stop(); sender.close() }
 
-        let knob = Param(wrappedValue: 0.0, 0...100)
-        receiver.bind(channel: 1, to: knob)
+        let parameter = Param(wrappedValue: 0.0, 0...100)
+        receiver.bind(channel: 1, to: parameter)
 
         var attempt: UInt8 = 0
         _ = try await waitFor { () -> Double? in
             attempt &+= 1
             sender.send(channels: [255, attempt])
-            return knob.wrappedValue > 99 ? knob.wrappedValue : nil
+            return parameter.wrappedValue > 99 ? parameter.wrappedValue : nil
         }
-        #expect(abs(knob.wrappedValue - 100) < 0.01)
+        #expect(abs(parameter.wrappedValue - 100) < 0.01)
     }
 
     @Test func closingAnSACNSenderSaysGoodbye() async throws {

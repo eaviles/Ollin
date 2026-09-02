@@ -7,7 +7,7 @@ import OllinPhysics
 /// pins knock it about, while still being lit, shadowed, and drawn as solid.
 ///
 /// **Space** fires the plunger: a small quick ball up the lane on the right.
-/// **Drag** any ball to move it. The three knobs are the three things a body
+/// **Drag** any ball to move it. The three parameters are the three things a body
 /// can be told about its own motion:
 ///
 /// - **flat** is `freedom`. On, every ball is `.plane()` and the table works.
@@ -145,7 +145,7 @@ final class Bagatelle: Sketch {
         castShadows()
         perspective(eye: Vector3(0.9, 0.4, 12.2), target: Vector3(0.2, 0.1, 0))
 
-        // All three knobs are live, so every ball is told again each frame:
+        // All three parameters are live, so every ball is told again each frame:
         // this is the whole cost of changing what a body is allowed to do.
         for ball in balls {
             ball.freedom = boardPlane
@@ -154,7 +154,7 @@ final class Bagatelle: Sketch {
         }
 
         // Anything that has left the table is gone; a ball only leaves when a
-        // knob let it.
+        // parameter let it.
         let escaped = balls.filter {
             abs($0.position.z) > 14 || abs($0.position.x) > 22
                 || abs($0.position.y) > 26

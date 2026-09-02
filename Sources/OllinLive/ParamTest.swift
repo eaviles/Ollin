@@ -148,7 +148,7 @@ enum ParamTest {
                   .init(position: 1, color: .white)])
         check(subject.fade.stops.map(\.position) == [0, 0.7, 1], "ramp stops not reflected")
 
-        // Show-rules: a knob hides while its source knob keeps it inert, and the
+        // Show-rules: a parameter hides while its source parameter keeps it inert, and the
         // inspector reads the flag through the same type-erased face.
         check(params[1].isShown, "isShown should default to true")
         subject.$noiseScale.show(when: subject.$visible) { $0 }

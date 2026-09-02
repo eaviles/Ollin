@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram: the multiplier on noise's input is a zoom knob. Three panels
+// Guide diagram: the multiplier on noise's input is a zoom control. Three panels
 // sample the same field with steps of three different sizes: tiny steps read
 // one hillside, bigger steps cross whole hills, big steps skim a mountain
 // range's worth of terrain into the same frame.

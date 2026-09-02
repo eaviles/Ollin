@@ -97,11 +97,11 @@ struct SpecularAntialiasRenderTests {
                 "only \(removed) of the excess crawl went (truth \(truth), off \(off), on \(on))")
     }
 
-    /// More strength buys more calm, which is what makes it a knob rather than a switch.
+    /// More strength buys more calm, which is what makes it a parameter rather than a switch.
     /// Strength 2 is the conservative kernel of the published work, and it reads quieter
     /// again: 0.087 against 0.112 at strength 1 and 0.148 unfiltered.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func theKnobKeepsBuying() throws {
+    func theParameterKeepsBuying() throws {
         let off = crawl(try frames(strength: nil))
         let some = crawl(try frames(strength: 1))
         let more = crawl(try frames(strength: 2))

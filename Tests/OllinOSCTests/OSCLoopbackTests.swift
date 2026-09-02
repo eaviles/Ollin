@@ -84,20 +84,20 @@ struct OSCLoopbackTests {
         let (sender, receiver) = try await makePair()
         defer { receiver.stop(); sender.close() }
 
-        let knob = Param(wrappedValue: 0.0, 0...100)
-        receiver.bind("/knob", to: knob)   // incoming 0…1 → 0…100
+        let parameter = Param(wrappedValue: 0.0, 0...100)
+        receiver.bind("/radius", to: parameter)   // incoming 0…1 → 0…100
 
         let value = try await waitFor(timeout: 3.0) { () -> Double? in
-            sender.send("/knob", 0.5)
-            return abs(knob.wrappedValue - 50) < 0.01 ? knob.wrappedValue : nil
+            sender.send("/radius", 0.5)
+            return abs(parameter.wrappedValue - 50) < 0.01 ? parameter.wrappedValue : nil
         }
         #expect(abs(value - 50) < 0.01)
 
         // Unbinding stops further updates.
-        receiver.unbind("/knob")
-        sender.send("/knob", 1.0)
+        receiver.unbind("/radius")
+        sender.send("/radius", 1.0)
         try await Task.sleep(nanoseconds: 100_000_000)   // 100 ms grace
-        #expect(abs(knob.wrappedValue - 50) < 0.01)
+        #expect(abs(parameter.wrappedValue - 50) < 0.01)
     }
 
     @Test func deliversBundle() async throws {

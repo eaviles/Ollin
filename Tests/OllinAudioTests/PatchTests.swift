@@ -169,7 +169,7 @@ import Testing
     }
 
     /// How hard the modulator pushes decides how many harmonics there are,
-    /// which is the one knob that matters most.
+    /// which is the one parameter that matters most.
     @Test func aHarderPushIsABrighterTone() {
         let f0 = 220.0
         func brightness(_ index: Double) -> Double {

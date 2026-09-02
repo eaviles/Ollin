@@ -29,7 +29,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid
 /// ```
 ///
 /// `kinds`, `radius`, and the matrix are fixed at build; the live feel comes from the
-/// `beta`, `forceFactor`, and `frictionHalfLife` knobs (tune them, or bind them to
+/// `beta`, `forceFactor`, and `frictionHalfLife` parameters (tune them, or bind them to
 /// `@Param`s). `randomizeMatrix(seed:)` rolls a fresh rule set without rebuilding.
 @MainActor
 public final class ParticleLife {
@@ -117,7 +117,7 @@ public final class ParticleLife {
     }
 
     /// The force + integration kernel. `kinds` bakes in as a literal so the matrix
-    /// index needs no extra uniform; the live knobs ride `custom` (beta, forceFactor,
+    /// index needs no extra uniform; the live parameters ride `custom` (beta, forceFactor,
     /// frictionHalfLife). The neighbor macro and toroidal helpers come from the
     /// spliced shader library.
     private static func makeKernel(kinds: Int) -> ComputeKernel {

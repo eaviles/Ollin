@@ -419,7 +419,7 @@ public struct Combine: Sendable {
     ///
     /// - Parameters:
     ///   - reach: how far light travels, in pixels. `nil` reaches across the whole
-    ///     layer. A shorter reach is the speed knob, since it takes rungs off the
+    ///     layer. A shorter reach is the speed parameter, since it takes rungs off the
     ///     ladder, and it also reads as a smaller room.
     ///   - brightness: scales the lights before anything is traced. Raise it for a
     ///     small lamp that has to fill a large space.

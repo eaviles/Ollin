@@ -151,7 +151,7 @@ Extensions are per instance. Every live reload starts a fresh sketch with none, 
 
 ### A type the inspector can drive
 
-`@Param` turns a property into a knob in the live inspector. Conform your own type to `ParamValue` and it gets one too, mapped onto a control that already exists.
+`@Param` turns a property into a parameter in the live inspector. Conform your own type to `ParamValue` and it gets one too, mapped onto a control that already exists.
 
 For an enum, `ParamOption` is the short way: conform to it and `CaseIterable`, give each case a label, and the inspector shows a menu.
 

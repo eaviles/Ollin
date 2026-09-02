@@ -7,7 +7,7 @@ import Ollin
 /// what its limits allow and is stopped by what they don't, jumps only from the
 /// ground, rides what moves under it, and shows up among the ordinary bodies so
 /// contacts and sensors can see it. Behavioral (the no-pixel-snapshot policy for
-/// physics), each knob pinned against a counterfactual twin: the same scene run
+/// physics), each parameter pinned against a counterfactual twin: the same scene run
 /// twice with one setting changed, so a passing test can't be explained by the
 /// geometry alone. Parallel-safe like the rest of the 3D suite.
 struct Character3DTests {
@@ -82,7 +82,7 @@ struct Character3DTests {
         #expect(climbRamp(degrees: 70) < -1)
     }
 
-    /// The sharper twin: one ramp, one knob. The same 40° slope is walkable or
+    /// The sharper twin: one ramp, one parameter. The same 40° slope is walkable or
     /// not depending only on `maxSlope`, which is what proves the limit is
     /// doing the deciding rather than the geometry.
     @Test func theSlopeLimitIsWhatDecides() {
@@ -146,7 +146,7 @@ struct Character3DTests {
         #expect(climbStep(blockHeight: 0.8, stepHeight: 0.4) < 0.05)
     }
 
-    /// The twin that isolates the knob: the very same 0.3 ledge is a step or a
+    /// The twin that isolates the parameter: the very same 0.3 ledge is a step or a
     /// wall depending only on whether stepping is switched on.
     @Test func stepHeightZeroTurnsALedgeIntoAWall() {
         let stepped = climbStep(blockHeight: 0.3, stepHeight: 0.4)

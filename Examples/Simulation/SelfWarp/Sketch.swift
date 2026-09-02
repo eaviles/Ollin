@@ -30,7 +30,7 @@ final class SelfWarp_Example: Sketch {
     }
 
     override func draw() {
-        // The knobs retune the sim live; the field's accumulated history carries on.
+        // The parameters retune the sim live; the field's accumulated history carries on.
         warp.sim = .selfWarp(amount: strength, refresh: refresh, smoothing: smoothing)
 
         withField(warp) {

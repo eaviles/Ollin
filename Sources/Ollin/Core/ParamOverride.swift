@@ -1,16 +1,16 @@
 import Foundation
 
-// Knob values carried into a run from the command line. Every export already
+// Parameter values carried into a run from the command line. Every export already
 // writes the `@Param` values it rendered with into its recipe; this is the way
 // back in, so a value read off a recipe (or found in the inspector, or written
 // down in a note) re-renders without editing the sketch.
 
-/// One knob value named on the command line: `--param radius=140`. The flag
+/// One parameter value named on the command line: `--param radius=140`. The flag
 /// repeats, so a run carries as many as it needs.
 ///
-/// The text is read against the knob's own kind, so a color, a vector, a menu
+/// The text is read against the parameter's own kind, so a color, a vector, a menu
 /// choice and a swatch strip arrive as readily as a number, and the value lands
-/// through the same restore path the hosts use to carry a tuned knob across a
+/// through the same restore path the hosts use to carry a tuned parameter across a
 /// reload (so it clamps to the declared range, the way dragging the row does).
 ///
 /// It applies after `setup()` and before the first frame: a value given here
@@ -25,7 +25,7 @@ struct ParamOverride: Equatable, Sendable {
 
 /// What reading a flag or a value came to: the thing itself, or a line saying
 /// what went wrong. A plain result rather than a thrown error, because every
-/// caller here reports the line and carries on to the next knob.
+/// caller here reports the line and carries on to the next parameter.
 enum ParamRead<Value> {
     case value(Value)
     case problem(String)
@@ -37,15 +37,15 @@ extension ParamOverride {
 
     static let usage = "usage: --param <name>=<value>, repeatable (--param radius=140 --param tint=#FF0066)"
 
-    /// Every `--param name=value` in `args`, in the order given, so a knob named
+    /// Every `--param name=value` in `args`, in the order given, so a parameter named
     /// twice ends on the last value. A flag with no `=` is a usage error, which
-    /// is where a swept knob's bare name lands, so the message points at the
+    /// is where a swept parameter's bare name lands, so the message points at the
     /// sheet's own flag.
     static func parse(_ args: [String]) -> ParamRead<[ParamOverride]> {
         var found: [ParamOverride] = []
         var hint = usage
         if args.contains("--export-sweep") {
-            hint += "\nthe knob a sheet sweeps is named with --sweep-param"
+            hint += "\nthe parameter a sheet sweeps is named with --sweep-param"
         }
         var i = 0
         while i < args.count {
@@ -63,13 +63,13 @@ extension ParamOverride {
     }
 }
 
-// MARK: - Reading a value against its knob
+// MARK: - Reading a value against its parameter
 
 extension ParamOverride {
 
-    /// Read `text` as a value of the same kind as `current`, which is the knob's
+    /// Read `text` as a value of the same kind as `current`, which is the parameter's
     /// value right now. Returns the payload to restore, or a line saying what
-    /// the kind expects. A menu choice is not read here: it needs the knob's own
+    /// the kind expects. A menu choice is not read here: it needs the parameter's own
     /// list of choices, which only its control carries.
     static func stored(_ text: String, like current: ParamStored) -> ParamRead<ParamStored> {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
@@ -85,7 +85,7 @@ extension ParamOverride {
             }
             return .value(.boolean(value))
         case .option:
-            return .problem("expected one of the knob's choices")
+            return .problem("expected one of the parameter's choices")
         case .color:
             guard let color = color(trimmed) else {
                 return .problem("expected a hex color like #FF0066, or numbers from 0 to 1 like 1,0.4,0")
@@ -121,14 +121,14 @@ extension ParamOverride {
             }
             return .value(.range(lower: lower, upper: upper))
         case .text:
-            // A text knob keeps what was typed, spaces included.
+            // A text parameter keeps what was typed, spaces included.
             return .value(.text(text))
         case .colors(_, let space):
             guard let stops = stops(trimmed) else {
                 return .problem("expected hex colors, like #FFF,#F06,#036"
                                 + " (a stop can name its place: #FFF@0,#036@0.75)")
             }
-            // The knob keeps the space it mixes in; only the colors move.
+            // The parameter keeps the space it mixes in; only the colors move.
             return .value(.colors(stops: stops, space: space))
         }
     }
@@ -217,9 +217,9 @@ extension ParamOverride {
                                 + (available.isEmpty ? "none" : available))
                 continue
             }
-            // A menu choice is matched against the knob's own list of choices,
+            // A menu choice is matched against the parameter's own list of choices,
             // which is what the control carries; every other kind reads its text
-            // against the value the knob holds now.
+            // against the value the parameter holds now.
             if case .option = handle.param.stored {
                 if let problem = choose(override, on: handle) { problems.append(problem) }
                 continue
@@ -237,7 +237,7 @@ extension ParamOverride {
     @MainActor
     private static func choose(_ override: ParamOverride, on handle: ParamHandle) -> String? {
         guard case .menu(let menu) = handle.control else {
-            return "--param \(override.name)=\(override.text): this knob takes a named choice,"
+            return "--param \(override.name)=\(override.text): this parameter takes a named choice,"
                 + " and it offers no list to match against"
         }
         let wanted = folded(override.text)
@@ -260,7 +260,7 @@ extension ParamOverride {
 
 extension OllinApp {
 
-    /// The knob values this run was started with (`--param name=value`), read
+    /// The parameter values this run was started with (`--param name=value`), read
     /// once while the command line is parsed and applied to every sketch a drive
     /// makes: each tile of a contact sheet gets them, not only the first.
     static var paramOverrides: [ParamOverride] = []

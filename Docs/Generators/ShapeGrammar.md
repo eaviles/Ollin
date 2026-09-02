@@ -62,7 +62,7 @@ final class Lattice: Sketch {
 | `.stop(_:into:weight:)` | renames the piece and leaves its outline alone |
 | `.custom(_:weight:minArea:_:)` | anything else, written as a closure |
 
-`cut` is the move behind the ice-ray lattices, the window frames whose bars look like cracks in river ice. Three of its knobs decide the character of a design:
+`cut` is the move behind the ice-ray lattices, the window frames whose bars look like cracks in river ice. Three of its parameters decide the character of a design:
 
 - **`balance`** is how uneven a cut may leave the two parts, as a fraction of the piece's area. At 0 every cut halves the area, which reads as regular and machined. At 0.4 one part may take 70 percent, and the design goes loose and hand cut. The cut is *solved* for a target inside that band rather than searched for, so the band always holds.
 - **`sides`** is how many corners a part may have. It is worth knowing what this really controls, which is [below](#laws).

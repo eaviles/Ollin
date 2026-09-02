@@ -41,7 +41,7 @@ DielectricBreakdown(seeds: [Vector2], in bounds: Rectangle, resolution: Int = 14
                     maxSites: Int = 3000, seed: UInt64 = 0)
 ```
 
-`seeds` are where the discharge starts, snapped to lattice cells. One center point grows a radial Lichtenberg figure; a row along the top grows lightning reaching down. `ground` is the far electrode it grows toward. `.border` is the rim of `bounds`, the classic radial figure. `.points(_:)` lays specific cells at full potential instead, a wire or a plate or one far point, and the rim then insulates. `resolution` is the lattice's cell count across the width; finer lattices give finer filaments and cost more per step. `eta` is the character knob: `1` is the aggregation regime, around `2` the lightning regime, higher values approach a single channel.
+`seeds` are where the discharge starts, snapped to lattice cells. One center point grows a radial Lichtenberg figure; a row along the top grows lightning reaching down. `ground` is the far electrode it grows toward. `.border` is the rim of `bounds`, the classic radial figure. `.points(_:)` lays specific cells at full potential instead, a wire or a plate or one far point, and the rim then insulates. `resolution` is the lattice's cell count across the width; finer lattices give finer filaments and cost more per step. `eta` is the character parameter: `1` is the aggregation regime, around `2` the lightning regime, higher values approach a single channel.
 
 <a name="growing"></a>
 

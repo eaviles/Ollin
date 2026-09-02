@@ -21,9 +21,9 @@ import Ollin
 // Most shapes below are placed by plain numbers, which is what makes them
 // draggable. Two are not, deliberately: the green dot is placed by a
 // calculation, so a drag says what stands where a number would have to be, and
-// the yellow one is placed by a knob's name, so a drag turns that knob instead
-// of writing the file. That is the whole rule. A number can be dragged, a knob
-// can be turned, a calculation can be neither.
+// the yellow one is placed by a parameter's name, so a drag sets that parameter instead
+// of writing the file. That is the whole rule. A number can be dragged, a parameter
+// can be set, a calculation can be neither.
 
 @main
 final class DragToEdit: Sketch {
@@ -73,7 +73,7 @@ final class DragToEdit: Sketch {
         fill(Color(hex: 0x9BBF3B))
         drawCircle(width - 120, 620, 34)
 
-        // And this one is placed by a knob. Dragging it turns the knob, which
+        // And this one is placed by a parameter. Dragging it sets the parameter, which
         // needs no recompile, and leaves the line as it is written.
         fill(Color(hex: 0xF2C14E))
         drawCircle(sunX, 120, 40)

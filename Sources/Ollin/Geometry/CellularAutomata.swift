@@ -9,7 +9,7 @@ import Foundation
 /// Returns `generations` rows (the first is the start row), each `width` cells wide,
 /// ready to draw over a `Grid` or as rects. Deterministic: the same inputs always
 /// produce the same rows. Setup-time work, not per-frame (though a small automaton is
-/// cheap enough to rebuild live under a rule knob).
+/// cheap enough to rebuild live under a rule parameter).
 ///
 /// - Parameters:
 ///   - rule: The rule number, wrapped into 0...255. Bit `(left<<2 | self<<1 | right)`

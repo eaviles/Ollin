@@ -64,7 +64,7 @@ The radii are what make the skeleton more than a line drawing. The largest radiu
 - **Prune with a couple of spacings.** The raw approximation grows a twig into every convex corner, which is the true axis rather than a bug. Sampling noise adds more whiskers on top. Set `prune: 2 * spacing` to keep the trunk lines and drop the fuzz. A whole branch that is its own component never prunes away, so small regions keep their skeletons.
 - **Spacing sets cost and fidelity together.** The Delaunay build over the boundary samples dominates the cost. A 1000-sample boundary extracts in well under a second, so per-glyph or per-blob use in `setup()` is comfortable. Halving `spacing` roughly quadruples the work.
 - **The radii are exact clearances** to the sampled boundary. Each skeleton vertex is a Voronoi vertex, equidistant from its nearest samples. Disks drawn from them therefore kiss the outline instead of crossing it.
-- **Deterministic** given the shape: same shape, same knobs, same branches in the same order, on any run.
+- **Deterministic** given the shape: same shape, same parameters, same branches in the same order, on any run.
 
 ---
 

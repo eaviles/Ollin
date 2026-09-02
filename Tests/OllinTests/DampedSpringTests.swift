@@ -95,7 +95,7 @@ struct DampedSpringTests {
         #expect(abs(spring.value - 10) < 1e-6) // and it came home
     }
 
-    @Test func knobsClampToSafeRanges() {
+    @Test func parametersClampToSafeRanges() {
         var spring = DampedSpring(value: 0.0, duration: -3, bounce: 5)
         #expect(spring.duration >= 0.0001)
         #expect(spring.bounce == 1)

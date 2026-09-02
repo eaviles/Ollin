@@ -342,7 +342,7 @@ photo.dithered(.atkinson, levels: 2)           // 8 colors: black, white, the pr
 photo.dithered(.ordered(size: 8), levels: 4)   // 64
 ```
 
-Two knobs, each ignored by the family it does not apply to. `amount` (`0...1`) scales the grain of the threshold maps. At `1` they hold the image's tone exactly, and at `0` they band like `.none`. `serpentine` (on by default) reverses every other row of an error-diffusion scan. That breaks up the directional streaks a straight left-to-right pass leaves behind.
+Two parameters, each ignored by the family it does not apply to. `amount` (`0...1`) scales the grain of the threshold maps. At `1` they hold the image's tone exactly, and at `0` they band like `.none`. `serpentine` (on by default) reverses every other row of an error-diffusion scan. That breaks up the directional streaks a straight left-to-right pass leaves behind.
 
 Dithering is per-pixel CPU work, like extraction. Do it in `setup()` and hold the result. Alpha passes through untouched, and a fully transparent pixel passes no error to its neighbors. A cutout's invisible background never bleeds into the subject's edge. A texture-backed image has no readable pixels and comes back unchanged, so call `snapshot()` on it first. That covers a video frame, a Syphon feed, and an effects layer. It is fully deterministic. The same image, method, and palette always give the same pixels, so a dithered result is safe to snapshot and to export.
 

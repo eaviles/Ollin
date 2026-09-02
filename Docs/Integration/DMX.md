@@ -38,7 +38,7 @@ The usual shape is to make the sender (or receiver) once, then fill and send a `
 - [DMXSender](#dmxsender) - put universes on the wire, Art-Net or sACN
 - [LEDMap](#ledmap) - the canvas itself onto LED strips and matrices
 - [DMXReceiver](#dmxreceiver) - let a console drive the sketch
-- [Binding to a `@Param`](#binding-to-a-param) - a console fader as a knob
+- [Binding to a `@Param`](#binding-to-a-param) - a console fader as a parameter
 - [Testing without hardware](#testing-without-hardware) - loopback and monitors
 
 <a name="dmxuniverse"></a>
@@ -200,18 +200,18 @@ func bind(channel: Int, universe: Int = 1, to param: Param<Double>)
 func unbind(channel: Int, universe: Int = 1)
 ```
 
-Wire a channel straight onto a [`@Param`](../Helpers/Parameters.md) knob, so a console fader drives the same parameter a live-inspector slider does. Each arriving value is mapped from the wire's 0…255 into the parameter's own range:
+Wire a channel straight onto a [`@Param`](../Helpers/Parameters.md), so a console fader drives the same parameter a live-inspector slider does. Each arriving value is mapped from the wire's 0…255 into the parameter's own range:
 
 ```swift
 @Param(20...400) var radius = 120.0
 
 override func setup() {
     try? dmx.start(universes: [1])
-    dmx.bind(channel: 1, to: $radius)            // fader 1 becomes the radius knob
+    dmx.bind(channel: 1, to: $radius)            // fader 1 drives the radius parameter
 }
 ```
 
-A bound knob updates on its own as data arrives. The same parameter still works from the inspector and from code, and whichever moved most recently wins.
+A bound parameter updates on its own as data arrives. The same parameter still works from the inspector and from code, and whichever moved most recently wins.
 
 <a name="testing-without-hardware"></a>
 

@@ -15,7 +15,7 @@ import Foundation
 ///
 /// Standard per-frame constants are bound at **buffer index 10** as
 /// `OllinComputeUniforms` (read `u.time`, `u.dt`, `u.resolution`, `u.mouse`,
-/// `u.frameCount`, `u.particleCount`), and an optional 4-float "custom" knob bag
+/// `u.frameCount`, `u.particleCount`), and an optional 4-float "custom" parameter bag
 /// (or any `ComputeParams` bytes) at **index 11**. Bind your own buffers at
 /// indices 0…9.
 ///

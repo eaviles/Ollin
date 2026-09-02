@@ -9,7 +9,7 @@ import Ollin
 /// the sketch clock; the boulders are ordinary meshes whose cast shadows the
 /// blades receive, because blades shade on the same lit path as every solid.
 ///
-/// Flip the **detail** knob off to give every blade full detail at every
+/// Flip the **detail** parameter off to give every blade full detail at every
 /// distance, and watch the frame time: that gap is what distance-graded
 /// geometry saves. The look barely moves, which is the point of putting the
 /// detail where the camera can see it.

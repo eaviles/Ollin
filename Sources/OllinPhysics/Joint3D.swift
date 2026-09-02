@@ -23,7 +23,7 @@ public final class Joint3D {
     let b: CJoltBodyID
 
     /// The kind this joint was connected as (nil for a grab, and for a link
-    /// between two joints), so the motor knobs know whether they drive an
+    /// between two joints), so the motor parameters know whether they drive an
     /// angle or an offset.
     public let kind: JointKind3D?
 

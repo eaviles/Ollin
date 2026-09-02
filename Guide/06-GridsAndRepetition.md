@@ -303,7 +303,7 @@ The primes are only the famous test. `points(where:)` takes any test at all, and
 for point in spiral.points(where: { $0 % 7 == 0 }) { drawCircle(center: point, radius: 2) }
 ```
 
-`start` is the other knob, and it is the one to animate. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form, which is the same fact seen from a different place.
+`start` is the other parameter, and it is the one to animate. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form, which is the same fact seen from a different place.
 
 ## A circle for every fraction
 
@@ -428,7 +428,7 @@ Run it, then click. What each piece contributes:
 - `translate` then `rotate` then `scale` is the usual order, and the order matters. The turn and the shrink both happen around the cell's center because `translate` moved the origin there first.
 - The arm reaches to `radius * 1.30`, well outside its own block. That is deliberate. The clip is what cuts it back, which is why every medallion has a crisp rim and no two rims are cut the same way.
 - `symmetry(folds, mirrored:)` is inside the clip, so the fold happens to the arm and not to the disc under it. Turn `Mirrored` off and the medallions become pinwheels: same arms, but every copy leaning the same way, and the seams between them stop closing.
-- `seed(wallSeed)` at the top of `draw()` pins the fold counts, the turns, and the shrinks, so the wall holds still. The Seed knob, or a click, deals a whole new wall.
+- `seed(wallSeed)` at the top of `draw()` pins the fold counts, the turns, and the shrinks, so the wall holds still. The Seed parameter, or a click, deals a whole new wall.
 
 Before moving on, make it yours:
 
@@ -450,7 +450,7 @@ The paper-moving transform model goes back to the earliest days of computer grap
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, `pushState`/`popState` (the unscoped siblings of `withState`), and every shape that benefits.
 - [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which don't. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
 - [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.
-- [Tiling and layout](../Docs/Drawing/Tiling.md): every knob for `HexGrid`, `TriangleGrid`, `Subdivision`, `Maze`, and `apollonianGasket`, including hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
+- [Tiling and layout](../Docs/Drawing/Tiling.md): every parameter for `HexGrid`, `TriangleGrid`, `Subdivision`, `Maze`, and `apollonianGasket`, including hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
 - Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Moving the paper](B-JustEnoughMath.md#moving-the-paper).
 - Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour) and the two named above.
 - Next door: [Chapter 7](07-Tiles.md) keeps the grid and changes what goes in the cells, so that neighboring cells have to agree with each other.

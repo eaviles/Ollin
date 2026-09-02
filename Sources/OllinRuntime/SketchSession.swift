@@ -13,7 +13,7 @@ import Ollin
 /// - A newer evaluation always supersedes an in-flight one, so a slower older
 ///   compile can never land last and swap in stale code.
 /// - Tuned parameter values are re-applied to the fresh sketch *before* the
-///   swap, so a knob never visibly snaps back.
+///   swap, so a parameter never visibly snaps back.
 /// - A failed compile leaves the running sketch untouched.
 /// - The sketch-compile error and the user-shader error are independent
 ///   channels: fixing one never clears the other.
@@ -44,7 +44,7 @@ public final class SketchSession {
     /// Wall-clock seconds of the last successful hot reload (compile + load).
     /// `nil` until the first reload (the initial mount doesn't count).
     public private(set) var lastBuildSeconds: Double?
-    /// The running sketch's `@Param` knobs, for the host's inspector surface.
+    /// The running sketch's `@Param` parameters, for the host's inspector surface.
     public private(set) var params: [ParamHandle] = []
     /// A user shader's compile error, reported by the runner after a frame
     /// (`nil` when every shader compiles). Distinct from `phase`, which tracks
@@ -60,7 +60,7 @@ public final class SketchSession {
     /// The automation the host carries: the launch file's tracks, then
     /// whatever the timeline panel authored. Re-installed on each freshly
     /// loaded sketch before its `setup()` runs, so the tracks survive a swap;
-    /// `setup()`'s own `automate(...)` calls then win per knob, the same
+    /// `setup()`'s own `automate(...)` calls then win per parameter, the same
     /// precedence a file has everywhere else.
     public var automation: Automation?
 
@@ -68,7 +68,7 @@ public final class SketchSession {
     /// detached `swiftc` still runs to completion; its result is refused.)
     @ObservationIgnored private var compileTask: Task<Void, Never>?
     /// User-tuned parameter values, keyed by name, re-applied to each freshly
-    /// loaded sketch so a knob doesn't snap back. Only values the user actually
+    /// loaded sketch so a parameter doesn't snap back. Only values the user actually
     /// changed are stored, so editing a default in code still takes effect.
     @ObservationIgnored private var paramValues: [String: ParamStored] = [:]
     /// A variation seed the user navigated to, re-applied to each freshly
@@ -97,15 +97,15 @@ public final class SketchSession {
         }
     }
 
-    /// Record a knob the user changed, so it survives the next evaluation.
+    /// Record a parameter the user changed, so it survives the next evaluation.
     public func recordParam(_ name: String, _ value: ParamStored) {
         paramValues[name] = value
     }
 
-    /// The knobs the user has turned, in declaration order, each carrying what
+    /// The parameters the user has turned, in declaration order, each carrying what
     /// it holds right now. This is the set an inspector writes back into the
-    /// sketch: a knob nobody touched is left as the file declares it, and the
-    /// value written is the one on screen (a knob turned by hand and then moved
+    /// sketch: a parameter nobody touched is left as the file declares it, and the
+    /// value written is the one on screen (a parameter turned by hand and then moved
     /// by a fader saves where the fader left it).
     public var tunedParams: [(name: String, stored: ParamStored)] {
         params.filter { paramValues[$0.name] != nil }.map { ($0.name, $0.param.stored) }
@@ -119,7 +119,7 @@ public final class SketchSession {
     }
 
     /// Record a variation seed the user navigated to, so it survives the next
-    /// evaluation the way tuned knobs do.
+    /// evaluation the way tuned parameters do.
     public func recordSeed(_ seed: Int) {
         navigatedSeed = seed
     }
@@ -158,7 +158,7 @@ public final class SketchSession {
             case .success(let dylibPath):
                 switch loader.instantiate(dylibPath: dylibPath) {
                 case .success(let newSketch):
-                    self.syncParams(newSketch)   // re-apply tuned knobs before it draws
+                    self.syncParams(newSketch)   // re-apply tuned parameters before it draws
                     if let runner = self.runner {
                         self.lastBuildSeconds = Date().timeIntervalSince(started)
                         runner.reload(to: newSketch, keepClock: carryClock)
@@ -186,12 +186,12 @@ public final class SketchSession {
         // sketch that pins its own seed there still wins, same as anywhere.
         if let navigatedSeed { sketch.seed(navigatedSeed) }
         // Carry the timeline's tracks the same way: installed before setup()
-        // runs, so a track the sketch writes there still wins its own knob.
+        // runs, so a track the sketch writes there still wins its own parameter.
         if let automation { sketch.automation = automation }
         let handles = sketch.parameters()
         for handle in handles {
             guard let stored = paramValues[handle.name] else { continue }
-            // Restore instantly (a smoothed knob shouldn't glide in from its
+            // Restore instantly (a smoothed parameter shouldn't glide in from its
             // default on every reload; it's resuming where it was, not
             // retargeting). A payload whose kind no longer matches the param
             // (the property changed type in the edit) is ignored, so the

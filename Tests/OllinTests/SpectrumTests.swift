@@ -64,7 +64,7 @@ struct SpectrumTests {
         #expect(mix.green > mix.blue)
     }
 
-    /// The knob is honest at its ends: t = 0 is the first paint, t = 1 the
+    /// The parameter is honest at its ends: t = 0 is the first paint, t = 1 the
     /// second, exactly.
     @Test func paintMixEndsOnItsEndpoints() {
         let a = Color(red: 0.7, green: 0.2, blue: 0.3)

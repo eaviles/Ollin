@@ -7,7 +7,7 @@ import OllinLaser
 /// The sketch builds a `LaserFrame` from a few shapes, optimizes it, and draws
 /// the resulting point stream: lit runs in their colors, the dark travel
 /// between shapes as faint lines, and, when you ask for them, the beam's own
-/// footsteps as dots. Turn the knobs and watch the cost of a picture: finer
+/// footsteps as dots. Adjust the parameters and watch the cost of a picture: finer
 /// spacing crowds the dots and drops the refresh rate, sharper corners cost
 /// points to hold, and reordering the shapes cuts the travel that buys nothing.
 ///

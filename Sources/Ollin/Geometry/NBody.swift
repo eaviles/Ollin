@@ -50,7 +50,7 @@ public final class NBody {
     /// simulation picks up the change on the next `step()`.
     public var bodies: [Body]
 
-    /// The gravitational constant: the one pace knob, in canvas units.
+    /// The gravitational constant: the one pace parameter, in canvas units.
     public var gravity: Double
 
     /// The far-field accuracy dial: a clump of bodies whose region looks

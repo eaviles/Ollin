@@ -54,7 +54,7 @@ This is **recursion**, a rule applied to its own output. `branch` draws one segm
 
 Look at where `withState` sits, because it's doing the quiet work. Each branch draws in its own coordinate world, using [Chapter 6](06-GridsAndRepetition.md)'s trick. `translate` walks to the top of the segment just drawn, each `withState { rotate(...) ... }` tilts, recurses, and *puts the transform back* when its block ends. That put-it-back is the whole trick of drawing a tree. The left subtree's thousands of segments may wander anywhere. After it finishes, the pen is back at the fork, facing the way the fork faced, ready for the right subtree. A saved-and-restored state is how every branching drawing in this chapter works, and it's about to get a name from 1968.
 
-The `* 1.15` on the right angle is a small honesty about nature, since perfectly symmetric trees read as diagrams. Drag the two knobs while it runs. `Shrink` near 0.78 grows old oaks, and `Angle` near 0.15 grows poplars.
+The `* 1.15` on the right angle is a small honesty about nature, since perfectly symmetric trees read as diagrams. Drag the two parameters while it runs. `Shrink` near 0.78 grows old oaks, and `Angle` near 0.15 grows poplars.
 
 > **Swift note.** A method can call itself by name, no ceremony needed. The one rule is that something must change on the way down (here `depth - 1`) so a call eventually stops. Each call gets its own copy of `length` and `depth`, which is why the left subtree's shrinking doesn't disturb the right's.
 
@@ -379,7 +379,7 @@ The sample is sixteen pixels square. You pass it in and ask for a size:
 let texture = wfc(from: sample, width: 48, height: 30)   // an Image, or nil
 ```
 
-Three knobs matter. `patternSize` is how big those squares are. `2` keeps only the loosest sense of the sample. `3` is the usual answer and holds on to corners and junctions. Larger reproduces whole motifs, but leaves less room to invent. `symmetry` decides whether the turned and mirrored copies of the sample are learned too. That multiplies what the solver has to work with, but it costs you which way is up. A sample of flowers standing on ground wants `symmetry: .none`, or they'll come back sideways. And `wrapsSample` decides whether the sample is read as joining its own edges. It is on by default, and it is the one that surprises people, because it joins the bottom row to the top. Ground under sky becomes a legal square, and your ground repeats in bands up the picture. Turn it off for a sample with a real top and bottom.
+Three parameters matter. `patternSize` is how big those squares are. `2` keeps only the loosest sense of the sample. `3` is the usual answer and holds on to corners and junctions. Larger reproduces whole motifs, but leaves less room to invent. `symmetry` decides whether the turned and mirrored copies of the sample are learned too. That multiplies what the solver has to work with, but it costs you which way is up. A sample of flowers standing on ground wants `symmetry: .none`, or they'll come back sideways. And `wrapsSample` decides whether the sample is read as joining its own edges. It is on by default, and it is the one that surprises people, because it joins the bottom row to the top. Ground under sky becomes a legal square, and your ground repeats in bands up the picture. Turn it off for a sample with a real top and bottom.
 
 Two constraints matter. The sample has to be **small and few-colored**, because squares are matched by exact color. Hand it a photograph and every square is unique, so there's nothing to recombine. And a solve **can fail**. It may paint itself into a corner where some cell has no square that fits, in which case it starts over. Past roughly fifty pixels a side, that starts happening often enough to matter. `wfc` hands back `nil` when it gives up. The general problem is NP-hard, and the tilesets that can never fail tend to be the ones too loose to produce interesting structure.
 
@@ -491,11 +491,11 @@ L-systems are Aristid Lindenmayer's 1968 invention. Their visual language comes 
 
 - [Differential growth](../Docs/Generators/DifferentialGrowth.md): the resample spacing, the three forces, and the grown line as ordinary geometry.
 - [L-systems](../Docs/Generators/LSystem.md): the grammar type, the turtle alphabet, all thirteen presets, and the [parametric](../Docs/Generators/LSystem.md#parametric) form with its rule language, weighted rules, and botany-literature presets.
-- [Space colonization](../Docs/Generators/SpaceColonization.md): every knob, plus recipes for venation, lightning, and multi-root plantings.
+- [Space colonization](../Docs/Generators/SpaceColonization.md): every parameter, plus recipes for venation, lightning, and multi-root plantings.
 - [Diffusion-limited aggregation](../Docs/Generators/DiffusionLimitedAggregation.md): stickiness, cages, and drawing the skeleton.
 - [Dielectric breakdown](../Docs/Generators/DielectricBreakdown.md): the eta regimes, ground as a rim or as electrodes, channel polylines and pipe widths, and reading the field back.
 - [Crack growth](../Docs/Generators/CrackGrowth.md): the stepper, the marks and the wash, and the plotter path through `segments`.
-- [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every knob, and drawing the oxbows and scars.
+- [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every parameter, and drawing the oxbows and scars.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.
 - [Shape grammars](../Docs/Generators/ShapeGrammar.md): all six rules, how a run picks between them, the fallback a weight of zero writes, and the two facts that hold exactly.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in [Chapter 15](15-ShapesAsMaterial.md).

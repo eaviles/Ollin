@@ -2,7 +2,7 @@
 //
 // Guide figure: the Chapter 1 payoff sketch. A ring of circles drifts and
 // breathes; every bit of motion comes from `time` appearing in an expression,
-// and the knobs tune it live in the inspector.
+// and the parameters tune it live in the inspector.
 import Ollin
 
 final class HelloMotion: Sketch {

@@ -34,7 +34,7 @@ override func draw() {
   <img src="Images/32-Installations/LampsAndBytes.jpg" alt="A diagram in two rows: six colored pars hanging over a dark stage throwing red through violet light, and below them the same universe's first eighteen channels as meter bars bracketed into fixtures, with the fourth par dim in both views" width="680">
 </picture>
 
-It works the other way around too. A `DMXReceiver` turns the sketch into a fixture. A real console fades channel 1, and `draw()` reads it as `dmx.level(1)`. Or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same knob the inspector slider moves. That is exactly like [Chapter 28](28-SoundAndControl.md)'s MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`. A sender chases colors across a drawn rig, and the rig is lit from what the receiver reads back. The whole path runs with no console and no hardware. When you do reach for real lights, two practical notes matter. macOS asks once for Local Network permission, attributed to the terminal you launched from. A free sACN monitor app will show you every universe on the wire. Use it while you find your fixture's address.
+It works the other way around too. A `DMXReceiver` turns the sketch into a fixture. A real console fades channel 1, and `draw()` reads it as `dmx.level(1)`. Or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same parameter the inspector slider moves. That is exactly like [Chapter 28](28-SoundAndControl.md)'s MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`. A sender chases colors across a drawn rig, and the rig is lit from what the receiver reads back. The whole path runs with no console and no hardware. When you do reach for real lights, two practical notes matter. macOS asks once for Local Network permission, attributed to the terminal you launched from. A free sACN monitor app will show you every universe on the wire. Use it while you find your fixture's address.
 
 The rig's big sibling is the LED wall, and for that you stop filling channels by hand. An `LEDMap` lays the fixtures over the canvas itself. A strip is a run of sample points along a line or a curve, and a matrix is a grid of them. Every frame the map reads the rendered pixels under each LED and ships them through a `DMXSender`. That read happens on the GPU, over a few hundred points, never as a whole-frame readback. The wall is just the canvas, somewhere else.
 
@@ -358,7 +358,7 @@ withState {
 
 That is a different tool from the `shows` rectangle earlier in this chapter, and they get on. `shows` cuts a finished canvas for a projector that is hung where it is hung. A seat tells the sketch which part of the wall it *is*, so the drawing itself can be wider than one screen. Ask for a fixed seat, as above, and a machine that restarts comes back to the same slice.
 
-**One set of knobs.** `room.shareAll()` makes every `@Param` travel; `room.share("speed", "hue")` picks. Turn a knob on any machine and the rest follow within a frame. Two people turning one knob at the same moment is settled by the room's clock: the later turn wins everywhere.
+**One set of parameters.** `room.shareAll()` makes every `@Param` travel; `room.share("speed", "hue")` picks. Change a parameter on any machine and the rest follow within a frame. Two people adjusting one parameter at the same moment is settled by the room's clock: the later turn wins everywhere.
 
 Anything else the piece wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 28](28-SoundAndControl.md):
 
@@ -396,7 +396,7 @@ Ollin installation [2026-08-16 03:12:08]: the screens woke
 
 ## Tuning it from the floor
 
-The piece is on the wall and the Mac is behind it. The right place to judge a speed or a color is in front of the wall, twenty steps from the keyboard. One line serves every knob the sketch declares to your phone.
+The piece is on the wall and the Mac is behind it. The right place to judge a speed or a color is in front of the wall, twenty steps from the keyboard. One line serves every parameter the sketch declares to your phone.
 
 ```swift
 import OllinRemote
@@ -411,11 +411,11 @@ override func setup() {
 
 On launch the sketch prints `Remote surface: http://your-mac.local:9330`. Open that address in the phone's browser, on the same Wi-Fi. Every `@Param` appears as a touch control. Sliders take the width of the screen; a `style: .pad` vector becomes an XY pad; switches, menus, and a color picker cover the rest. The groups match the inspector sidebar. A strip at the top carries the frame rate, the clock, and the frame count. The piece's health is readable from the floor too.
 
-Edits go both ways. Drag a slider on the phone and the value lands before the next frame, exactly where the inspector's own edits land. Turn a knob on the Mac and the phone follows. Stand in front of the wall, look at the piece, and turn the speed until it breathes right.
+Edits go both ways. Drag a slider on the phone and the value lands before the next frame, exactly where the inspector's own edits land. Change a parameter on the Mac and the phone follows. Stand in front of the wall, look at the piece, and turn the speed until it breathes right.
 
-One honest note: anyone on the same network who has the address can move the knobs. On your studio Wi-Fi or a private show network that is the convenience working as intended. On a network you do not control, do not leave it up.
+One honest note: anyone on the same network who has the address can move the parameters. On your studio Wi-Fi or a private show network that is the convenience working as intended. On a network you do not control, do not leave it up.
 
-In plain terms: the tuning knobs come off the laptop and into your hand, so you adjust the piece from where the audience stands.
+In plain terms: the tuning parameters come off the laptop and into your hand, so you adjust the piece from where the audience stands.
 
 The `RemoteSurface` example serves a tunable aurora with every control family. It draws its own address at the bottom of the canvas, so the piece tells you how to reach it:
 
@@ -502,7 +502,7 @@ cd Pulse && swift run Pulse
 
 A strip 56 points wide appears among the status items and starts moving. It draws at 30 frames a second, a rate a surface that never goes away can afford. The sketch inside sees a canvas of the strip's own points, so `width / 2` is still the middle and everything this guide taught still works. It is simply the smallest canvas you will ever draw on. A click opens the strip's menu, and Quit is there.
 
-Both kinds write the same wrapper the next section describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width knob among them.
+Both kinds write the same wrapper the next section describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width parameter among them.
 
 ## An app to hand somebody
 
@@ -641,8 +641,8 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 - [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
-- [Remote](../Docs/Integration/Remote.md): the `@Param` knobs served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.
-- [Room](../Docs/Integration/Room.md): several machines joining by name, the three ways to read what arrives, shared knobs, the clock they agree on and what it costs, seats, and who can join.
+- [Remote](../Docs/Integration/Remote.md): the `@Param` parameters served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.
+- [Room](../Docs/Integration/Room.md): several machines joining by name, the three ways to read what arrives, shared parameters, the clock they agree on and what it costs, seats, and who can join.
 - Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
 
 ---

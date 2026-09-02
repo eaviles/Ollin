@@ -10,7 +10,7 @@ import Ollin
 /// recorded from two eyes at once, and in a headset the colonnade has actual
 /// distance in it.
 ///
-/// The two knobs are the whole craft. `depth` scales how far apart the eyes
+/// The two parameters are the whole craft. `depth` scales how far apart the eyes
 /// stand: at 1 they sit where Ollin puts them by default, far enough apart
 /// that the wall at the back separates by one percent of the frame, which is
 /// the figure a cinema grades to so that nothing ever asks a viewer's eyes to
@@ -38,7 +38,7 @@ final class SpatialVideo: Sketch {
     }
 
     /// Ollin's own spacing for this shot, which `depth` then scales. Read back
-    /// from the camera the same way the exporter reads it, so the knob is a
+    /// from the camera the same way the exporter reads it, so the parameter is a
     /// multiple of the default rather than a number out of nowhere.
     private var derivedSpacing: Double {
         StereoGeometry(convergence: stage).resolved(for: shot).interocular

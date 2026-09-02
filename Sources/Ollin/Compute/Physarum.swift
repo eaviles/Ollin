@@ -24,7 +24,7 @@ import COllinShaders   // OllinParticle
 /// }
 /// ```
 ///
-/// The look lives in the sensing/movement knobs (`senseAngle`, `turnAngle`,
+/// The look lives in the sensing/movement parameters (`senseAngle`, `turnAngle`,
 /// `senseDistance`, `stepSize`) and the trail's `evaporation`; the defaults are Jones'
 /// (22.5° / 45° / 9 / 1, evaporation 0.1). Deposit races are avoided with an atomic
 /// deposit grid, so the trail is well-defined; the agent motion is still chaotic, so
@@ -148,7 +148,7 @@ public final class Physarum {
 
     /// The four kernels, sharing one compiled source. `DEPOSIT` (the per-step trail a
     /// landing agent adds) and `SCALE` (the atomic fixed-point factor) are constants;
-    /// the trail dimensions come from the texture, the live knobs from `custom`.
+    /// the trail dimensions come from the texture, the live parameters from `custom`.
     private static let source = """
     constant float DEPOSIT = 1.0;
     constant float SCALE = 1024.0;

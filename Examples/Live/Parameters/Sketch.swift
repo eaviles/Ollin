@@ -1,12 +1,12 @@
 import Foundation
 import Ollin
 
-// Parameters: tunable knobs with @Param. Run it under the live host to get
+// Parameters: tunable parameters with @Param. Run it under the live host to get
 // live controls in the inspector:
 //
 //   swift run OllinLive Examples/Live/Parameters/Sketch.swift
 //
-// Standalone (`swift run Example-Live-Parameters`) shows the same knobs in the
+// Standalone (`swift run Example-Live-Parameters`) shows the same parameters in the
 // inspector panel: View ▸ Show Inspector (⌘/).
 //
 // The control follows the property's type: Double → slider, Int → stepper,
@@ -18,11 +18,11 @@ import Ollin
 // Numeric value boxes scrub: drag across one to change it (Option = fine,
 // Shift = coarse), or click to type.
 //
-// Under the live host, the button below the knobs writes the ones you turned
+// Under the live host, the button below the parameters writes the ones you changed
 // into the @Param lines here, so a set you like survives the run. Copy the
 // file somewhere of your own first if you would rather not edit this one.
 //
-// A knob can also be set from the command line, on any export path and on the
+// A parameter can also be set from the command line, on any export path and on the
 // window, so one render can differ without editing the file:
 //
 //   swift run Example-Live-Parameters --export keeper.png --param radius=40 --param paper=#101018
@@ -54,7 +54,7 @@ final class Parameters: Sketch {
     @Param(0.5...12, step: 0.5, icon: "lineweight", group: "Look") var weight = 2.5
     @Param(icon: "character.cursor.ibeam", group: "Look") var caption = "rings"
 
-    // Knobs worth having but not worth a first glance: a `.folded` group
+    // Parameters worth having but not worth a first glance: a `.folded` group
     // starts closed behind its header, and opening it is remembered for this
     // sketch, so it stays how you left it.
     @Param(0...30, icon: "waveform.path", group: .folded("Advanced")) var jitter = 0.0

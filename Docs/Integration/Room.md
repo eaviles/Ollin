@@ -4,7 +4,7 @@
 
 ## Room
 
-Several machines drawing one piece. Two Macs on the same network find each other by the room's name alone: no server to run, no address to type, nothing to configure. Values, `@Param` knobs, and one agreed clock travel between them. That is what turns a row of screens into one piece rather than several copies of it. It lives in a separate library, so the drawing core stays free of MultipeerConnectivity. Add `import OllinRoom` alongside `import Ollin` to reach it.
+Several machines drawing one piece. Two Macs on the same network find each other by the room's name alone: no server to run, no address to type, nothing to configure. Values, `@Param` parameters, and one agreed clock travel between them. That is what turns a row of screens into one piece rather than several copies of it. It lives in a separate library, so the drawing core stays free of MultipeerConnectivity. Add `import OllinRoom` alongside `import Ollin` to reach it.
 
 ```swift
 import Ollin
@@ -32,7 +32,7 @@ Open that sketch on a second Mac and the two are in the same room. With one mach
 
 - [Joining a room](#joining-a-room) - the name, the seat, the passcode
 - [Sending and reading values](#sending-and-reading-values) - the three ways to read, as with OSC and MIDI
-- [Sharing knobs](#sharing-knobs) - one person turns a knob for the whole room
+- [Sharing parameters](#sharing-parameters) - one person adjusts a parameter for the whole room
 - [The clock everyone agrees on](#the-clock) - why `room.time` and not `time`
 - [Splitting one piece across screens](#splitting-a-piece) - seats
 - [The network story](#the-network-story) - who can join, and what the system asks
@@ -49,7 +49,7 @@ let room = Room(named: "wall", as: "left projector") // a name people can read
 let room = Room(named: "gallery", passcode: "cempoalli")
 ```
 
-`extend(room)` opens it, which is all a sketch needs. A room can also be opened by hand with `start()` and closed with `stop()`. That is what a sketch does when it trades values but shares no knobs. A room closed by `stop()` leaves the others at once, and so does one dropped when a live reload builds a fresh sketch.
+`extend(room)` opens it, which is all a sketch needs. A room can also be opened by hand with `start()` and closed with `stop()`. That is what a sketch does when it trades values but shares no parameters. A room closed by `stop()` leaves the others at once, and so does one dropped when a live reload builds a fresh sketch.
 
 Who is here:
 
@@ -102,10 +102,10 @@ for message in room.messages() {
 }
 ```
 
-**Bound to a knob**, so another machine drives a `@Param` the way an external fader does:
+**Bound to a parameter**, so another machine drives a `@Param` the way an external fader does:
 
 ```swift
-room.bind("dial", to: $radius)                 // 0...1 into the knob's own range
+room.bind("dial", to: $radius)                 // 0...1 into the parameter's own range
 room.bind("dial", to: $radius, from: 0...127)  // or another range
 ```
 
@@ -115,27 +115,27 @@ A value sent every frame can travel the quick way, where the next one matters mo
 room.send("pointer", mouse, reliable: false)
 ```
 
-<a name="sharing-knobs"></a>
+<a name="sharing-parameters"></a>
 
-### Sharing knobs
+### Sharing parameters
 
-A knob that travels is the difference between tuning one machine and tuning the room:
+A parameter that travels is the difference between tuning one machine and tuning the room:
 
 ```swift
 override func setup() {
     extend(room)
-    room.share("speed", "hue")   // these knobs travel
+    room.share("speed", "hue")   // these parameters travel
     room.shareAll()              // or every @Param on the sketch
 }
 ```
 
-Every machine that shares a knob both sends and follows, so it can be turned wherever the person is standing. Two people turning one knob at the same moment is settled by the room's clock: the later turn wins everywhere. A knob nobody shares stays home.
+Every machine that shares a parameter both sends and follows, so it can be set wherever the person is standing. Two people adjusting one parameter at the same moment is settled by the room's clock: the later change wins everywhere. A parameter nobody shares stays home.
 
-Values from another machine land on the main thread between frames, before `draw()`, which is exactly where the [inspector's](../Helpers/Parameters.md) own edits land. They ride the same persisted payloads, so a knob accepts and clamps what the inspector would.
+Values from another machine land on the main thread between frames, before `draw()`, which is exactly where the [inspector's](../Helpers/Parameters.md) own edits land. They ride the same persisted payloads, so a parameter accepts and clamps what the inspector would.
 
-A machine that joins later is sent the shared knobs as they stand, so it comes up showing the room's values rather than its own defaults.
+A machine that joins later is sent the shared parameters as they stand, so it comes up showing the room's values rather than its own defaults.
 
-Sharing needs `extend(room)`, because the knobs are read and applied on the frame boundary.
+Sharing needs `extend(room)`, because the parameters are read and applied on the frame boundary.
 
 <a name="the-clock"></a>
 
@@ -193,7 +193,7 @@ The name a machine goes by is its computer's name plus a few characters, so two 
 
 ### Trying it
 
-The **RoomCanvas** example (`Examples/Integration/RoomCanvas`) is the real thing. Beads travel along a wall as wide as the room has seats, every knob travels, and a readout shows the seat, the company, and how well the clocks agree. Open it on two Macs on the same network.
+The **RoomCanvas** example (`Examples/Integration/RoomCanvas`) is the real thing. Beads travel along a wall as wide as the room has seats, every parameter travels, and a readout shows the seat, the company, and how well the clocks agree. Open it on two Macs on the same network.
 
 ```sh
 swift run --package-path Examples Example-Integration-RoomCanvas
@@ -207,4 +207,4 @@ swift run --package-path Examples Example-Integration-RoomLoopback
 
 ---
 
-See [`@Param`](../Helpers/Parameters.md) for what a shared knob can declare, and [`Remote`](./Remote.md) for the other way a second device reaches a sketch: one machine drawing, a phone tuning it.
+See [`@Param`](../Helpers/Parameters.md) for what a shared parameter can declare, and [`Remote`](./Remote.md) for the other way a second device reaches a sketch: one machine drawing, a phone tuning it.

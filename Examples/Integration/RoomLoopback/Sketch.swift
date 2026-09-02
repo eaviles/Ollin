@@ -35,7 +35,7 @@ final class RoomLoopback: Sketch {
         here = Room(transport: MemoryLink(name: "here", bus: bus))
         there = Room(transport: MemoryLink(name: "there", bus: bus))
         // Started by hand rather than through `extend`, because these two rooms
-        // trade values and share no knobs.
+        // trade values and share no parameters.
         here.start()
         there.start()
     }

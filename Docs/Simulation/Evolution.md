@@ -17,7 +17,7 @@ The two are not the same tool at different sizes. A scored search can only find 
 
 - [A population on the GPU](#gpu)
 - [The genome, the trial, the score](#mechanism)
-- [Knobs](#knobs)
+- [Parameters](#parameters)
 - [How a run is doing](#report)
 - [Breeding by hand](#population)
 - [Genomes](#genome)
@@ -75,8 +75,8 @@ There is no explicit elitism, and none is needed. Every child draws `2 * tournam
 
 A child takes each gene from one parent or the other with an even chance. Then each gene has a `mutationRate` chance of being **nudged** by up to `mutationAmount`. The nudge is added to what the gene already held, rather than replacing it. A mutated path is a bent version of its parents' rather than a fresh random one.
 
-<a id="knobs"></a>
-### Knobs
+<a id="parameters"></a>
+### Parameters
 
 | | |
 |---|---|
@@ -95,7 +95,7 @@ The default `colors` shift hue and hold their brightness roughly level, for the 
 <a id="report"></a>
 ### How a run is doing
 
-The picture is the readout. The spray narrowing into a route is the search working. For a caption or a knob, turn on `measuresGenerations` and read `lastGeneration`:
+The picture is the readout. The spray narrowing into a route is the search working. For a caption or a parameter, turn on `measuresGenerations` and read `lastGeneration`:
 
 ```swift
 run.measuresGenerations = true    // in setup()

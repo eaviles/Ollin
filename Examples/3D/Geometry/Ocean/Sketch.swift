@@ -14,7 +14,7 @@ import Ollin
 /// reads the field for where the wave has carried it.
 ///
 /// `waveHeight` is in world units and means what a sailor means by it, the
-/// average of the tallest third, so the knob is a measurement rather than a
+/// average of the tallest third, so the parameter is a measurement rather than a
 /// dial to turn by eye. `windSpeed` moves the energy between short chop and
 /// long swell without changing that height, and `choppiness` moves water
 /// toward the crests, which is what makes them narrow and the troughs wide.

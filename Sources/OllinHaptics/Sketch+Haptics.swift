@@ -37,8 +37,8 @@ extension Sketch {
     /// Turn everything felt up or down at once, from 0 (silent) to 1 (as
     /// written).
     ///
-    /// This is the volume knob for touch. Set it in `setup()`, or drive it
-    /// from a knob so the piece can be turned down in a room where it is too
+    /// This is the volume parameter for touch. Set it in `setup()`, or drive it
+    /// from a parameter so the piece can be turned down in a room where it is too
     /// much.
     public func hapticStrength(_ strength: Double) {
         HapticHub.shared.strength = max(0, strength.finiteOrZero)

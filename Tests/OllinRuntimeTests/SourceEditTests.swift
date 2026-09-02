@@ -328,8 +328,8 @@ struct SourceEditTests {
 
     // MARK: A coordinate that is a name
 
-    /// The plan is what lets a host turn a knob where there is no number to
-    /// write. The name is reported; whether it is a knob is the host's question.
+    /// The plan is what lets a host adjust a parameter where there is no number to
+    /// write. The name is reported; whether it is a parameter is the host's question.
     @Test func aBareNameIsReportedRatherThanRefused() throws {
         let plan = try planned("drawCircle(cx, 300, 40)", call: "drawCircle",
                                move: .xy(radius: 2), by: Vector2(10, 5))

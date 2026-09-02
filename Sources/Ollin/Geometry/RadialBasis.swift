@@ -106,7 +106,7 @@ public struct RadialBasis<Point: RadialBasisPoint, Value: RadialBasisValue>: Sen
     /// divided by the same amount, so it keeps its meaning. What it buys is that the matrix
     /// stops depending on whether a sketch measures in pixels or in fractions. Numbers in
     /// the trillions become numbers near one, which is kinder to the solve, and `smoothing`
-    /// becomes one knob that means one thing rather than a number whose effect depends on
+    /// becomes one parameter that means one thing rather than a number whose effect depends on
     /// how big the canvas is.
     private let middle: [Double]
     private let spacing: Double

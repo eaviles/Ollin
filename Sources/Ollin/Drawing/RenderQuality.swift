@@ -1,4 +1,4 @@
-/// A coarse quality dial (three intent tiers) shared across the rendering knobs that trade
+/// A coarse quality dial (three intent tiers) shared across the rendering parameters that trade
 /// fidelity for frame rate: soft-shadow ray count, depth-of-field bokeh taps, ambient-occlusion
 /// samples, and the raymarched-3D-SDF render resolution. A feature maps each tier to a concrete
 /// setting tuned for the frame-rate band it should hold (`.performance` ~120fps, `.default`

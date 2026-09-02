@@ -64,7 +64,7 @@ land.eroded(.hydraulic(drops: 100_000, inertia: 0.1, radius: 4), seed: 7)
 
 What turns "noise" into "landscape". Tens of thousands of simulated raindrops each land at a random point and roll downhill. A drop picks up sediment while it runs fast and full, and lays it down as it slows or dries. Ravines deepen where drops agree and sediment fans build below them, so the result carries the drainage language of real rain on real slopes. This is the particle method, also called the droplet method, implemented from the published technique.
 
-The knobs, roughly in order of how much they change the look:
+The parameters, roughly in order of how much they change the look:
 
 - `drops` is how much history rains on the terrain.
 - `inertia` at 0 hugs every wrinkle into dense fine ravines, and higher values plow straighter.

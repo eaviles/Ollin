@@ -212,7 +212,7 @@ final class PerformanceSession {
         write(to: fileURL)
     }
 
-    // MARK: - Knobs back into the code
+    // MARK: - Parameters back into the code
 
     /// The inspector's save action. Here it writes the *buffer*, not the file:
     /// the buffer is what the audience is reading and what ⌘↩ evaluates, and ⌘S
@@ -223,7 +223,7 @@ final class PerformanceSession {
         }
     }
 
-    /// Put the knobs the performer turned into the `@Param` lines on screen, so
+    /// Put the parameters the performer turned into the `@Param` lines on screen, so
     /// the code the audience reads is the code that draws what they see. The
     /// running sketch is left alone: the values are already in it, and rewriting
     /// the text is not an evaluation.

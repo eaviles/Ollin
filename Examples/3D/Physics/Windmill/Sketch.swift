@@ -121,7 +121,7 @@ final class Windmill: Sketch {
         castShadows()
         perspective(eye: Vector3(-4.2, 3.8, 8.8), target: Vector3(0, 2.2, 0))
 
-        // Re-asserting the rate each frame keeps the knob live and the mill
+        // Re-asserting the rate each frame keeps the parameter live and the mill
         // awake; the strength cap gives it a mechanical spin-up.
         if powered { mill?.drive(at: millSpeed, strength: 500) }
         dragBodies(in: world)

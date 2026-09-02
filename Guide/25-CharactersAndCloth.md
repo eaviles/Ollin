@@ -192,7 +192,7 @@ Every joint grows a motor pulling toward the pose the target scene is holding. N
 
 Keep two copies of the scene. The animation poses one, the target, and the solver poses the other, the drawn one. A `Scene` is a value type, so that's one assignment. It matters, because a figure driven toward the scene it was just posed from has nowhere left to pull.
 
-`strength` is the knob to play with. It's the most torque a joint may use, in newton-meters. High, and the figure will not be moved. Low, and the heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. Sweep it and you get a whole range of characters out of one number.
+`strength` is the parameter to play with. It's the most torque a joint may use, in newton-meters. High, and the figure will not be moved. Low, and the heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. Sweep it and you get a whole range of characters out of one number.
 
 Nothing drives the root, so a powered figure still falls over as a whole. The motors hold its shape, not its place. Pin the hips (`ragdoll.limbs[0].body.kind = .kinematic`) and it stands there like a puppet on a hook, which is what the [`3D/Physics/Ragdoll`](../Examples/3D/Physics/Ragdoll/) example does. Press space there and the hips let go.
 
@@ -219,7 +219,7 @@ drawSoftBody(cloth)
 
 `drawSoftBody` draws the mesh the simulation just arrived at. It is the same mesh you handed over, with new positions and new normals. Its uvs, its colors, and its material all carry through, and shadows and reflections treat it like any other mesh. Drop that sheet on a sphere and it drapes over it. A hundred particles each found somewhere to be, and the springs between them argued about it.
 
-Two knobs decide what fabric it is, and they are separate for a good reason.
+Two parameters decide what fabric it is, and they are separate for a good reason.
 
 ```swift
 stiffness: 1     // how hard it resists being stretched
@@ -293,7 +293,7 @@ maxStretch: 1.02       // how far it may reach from what holds it
 
 `sway` is a leash. At `0` it welds that part to the skin, the default of `.infinity` lets it swing freely, and `0.05` really does mean five centimetres. `backStop` keeps the cape out of the back it hangs on without waiting for a collision to sort it out. `maxStretch` is the one worth remembering even for cloth no figure carries. A heavy sheet hung from one edge stretches under its own weight however stiff you make it, and `1`, its own rest length and no more, fixes that for almost nothing.
 
-Two knobs work while it runs: `cape.swayScale` multiplies every leash at once, and `cape.followsSkin = false` drops the leashes entirely, leaving only the clasp. The [`3D/Physics/Cape`](../Examples/3D/Physics/Cape/) example has both on keys, and a figure you can knock over so the cape comes down with it.
+Two parameters work while it runs: `cape.swayScale` multiplies every leash at once, and `cape.followsSkin = false` drops the leashes entirely, leaving only the clasp. The [`3D/Physics/Cape`](../Examples/3D/Physics/Cape/) example has both on keys, and a figure you can knock over so the cape comes down with it.
 
 ## A line that knows how it is turned
 
@@ -308,7 +308,7 @@ let rope = world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1,
 
 Anything that makes points makes a rope, so that list could as easily be a `Contour`, a sampled `Path`, a `randomWalk`, or a ridge you read off a `Heightfield`. The points become the particles one for one, so `pin`, `move(_:to:)`, and `positions` all speak in indices into the list you handed over. `drawSoftBody(rope)` sweeps a tube of `thickness` along it. Everything from the last few pages still applies. It lands on things, turns up in `world.contacts`, floats, takes `applyForce` for wind, and can be dragged with `grabSoftBody`.
 
-Two knobs shape it, and both mean the same thing on a twig and on a mooring line:
+Two parameters shape it, and both mean the same thing on a twig and on a mooring line:
 
 ```swift
 stiffness: 1,      // how much it resists being stretched
@@ -366,7 +366,7 @@ Here are four identical crates that differ in nothing but that number.
 
 `Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine and every crate in the scene rides higher, without touching any of them.
 
-The knob you will actually reach for first is drag.
+The parameter you will actually reach for first is drag.
 
 ```swift
 world.water = Water(level: 0, linearDrag: 0.5)   // the default
@@ -601,9 +601,9 @@ The cloth and the ropes are the one part with an academic line you can follow. P
 
 ## Go deeper
 
-- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles, ragdolls, soft bodies, ropes and buoyancyScale, including every knob on the suspension and the cloth solver, and what a snapshot keeps for each.
+- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles, ragdolls, soft bodies, ropes and buoyancyScale, including every parameter on the suspension and the cloth solver, and what a snapshot keeps for each.
 - Appendix B draws what the solvers are doing: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure) for the constraint relaxation.
-- Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stroll` and `Crawler` (a character and a tracked machine), `Joyride` (the vehicle with its knobs live), `Ragdoll` and `Cape` (a figure and the cloth on its back), `Drape`, `Raft` and `Rigging` (cloth, cloth on water, and ropes), `Chain` and `Bagatelle` (ropes and degrees of freedom), and `Yard`, which is this piece with a saved world, an animated figure, and rather more going on.
+- Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stroll` and `Crawler` (a character and a tracked machine), `Joyride` (the vehicle with its parameters live), `Ragdoll` and `Cape` (a figure and the cloth on its back), `Drape`, `Raft` and `Rigging` (cloth, cloth on water, and ropes), `Chain` and `Bagatelle` (ropes and degrees of freedom), and `Yard`, which is this piece with a saved world, an animated figure, and rather more going on.
 
 ---
 

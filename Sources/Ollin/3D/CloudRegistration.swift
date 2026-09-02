@@ -57,7 +57,7 @@ public struct CloudAlignment: Sendable {
     /// a mistake.
     public var applied: Bool
 
-    /// The knobs on the fit. The defaults suit a hand-held room sweep at a few
+    /// The parameters on the fit. The defaults suit a hand-held room sweep at a few
     /// centimeters per voxel; nothing here has to be set for that case.
     public struct Settings: Sendable {
 

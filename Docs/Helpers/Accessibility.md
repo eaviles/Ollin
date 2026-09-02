@@ -105,7 +105,7 @@ ColorVision.deuteranopia            // the cone is gone
 ColorVision.deuteranomaly(0.4)      // it is shifted, not gone
 ```
 
-`Kind` is a `ParamOption`, so it can be a knob in the live inspector, with a `Double` beside it for the severity.
+`Kind` is a `ParamOption`, so it can be a parameter in the live inspector, with a `Double` beside it for the severity.
 
 ### A whole sketch at once
 
@@ -178,4 +178,4 @@ Nothing changes on its own. A sketch decides what less movement means, because o
 - [Text](../Drawing/Text.md#scripts) - complex-script shaping: Arabic, Devanagari, Thai, vertical layouts
 - [Color](../Drawing/Color.md) - the color type, palettes, ramps and mixing
 - [Effects](../Drawing/Effects.md) - the rest of the filter catalog
-- [Parameters](./Parameters.md) - putting the kind on a knob
+- [Parameters](./Parameters.md) - putting the kind on a parameter

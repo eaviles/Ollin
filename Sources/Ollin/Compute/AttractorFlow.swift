@@ -187,7 +187,7 @@ public struct AttractorSystem: Sendable, Equatable {
 /// measured once at build from a short CPU orbit of the same equations, so `center`,
 /// `extent`, the colors' speed range, and the default pace all suit whatever the
 /// system and its constants happen to be. Change `system` live and the flow re-measures
-/// and carries on, which is what makes the constants worth putting on a knob.
+/// and carries on, which is what makes the constants worth putting on a parameter.
 ///
 /// Particles never die, so the picture is the attractor's own density: bright where the
 /// orbit dwells, faint where it hurries. A particle that leaves the neighborhood

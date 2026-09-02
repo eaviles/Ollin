@@ -3,7 +3,7 @@ import Network
 import Ollin
 import os
 
-/// Serves the sketch's `@Param` knobs to a phone or a second machine on the
+/// Serves the sketch's `@Param` parameters to a phone or a second machine on the
 /// local network, so an installation is tuned from in front of it rather than
 /// from behind the Mac running it. Register it on the extension seam:
 ///
@@ -19,11 +19,11 @@ import os
 ///
 /// The sketch then prints one line with the address, `http://your-mac.local:9330`
 /// by default; any browser on the same network opens a touch surface with the
-/// same knobs the inspector sidebar shows, live both ways. Values a visitor
+/// same parameters the inspector sidebar shows, live both ways. Values a visitor
 /// drags apply on the main thread between frames, exactly where the inspector's
 /// own edits land; edits made on the Mac travel back a few times a second.
 ///
-/// Anyone on the network who has the address can move the knobs while the
+/// Anyone on the network who has the address can move the parameters while the
 /// server is up, so treat it as a studio and venue tool, not something to
 /// leave on a hostile network.
 ///
@@ -76,7 +76,7 @@ public final class RemoteInspector: SketchExtension {
         server.start()
     }
 
-    /// The socket-free half of `setup`: knob discovery and the first wire
+    /// The socket-free half of `setup`: parameter discovery and the first wire
     /// snapshot. Split out so tests can drive the apply path with no listener.
     func discover(_ sketch: Sketch) {
         self.sketch = sketch

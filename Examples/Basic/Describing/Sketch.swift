@@ -14,7 +14,7 @@ import Ollin
 /// texture, not meaning, and a list of every shape tells nobody what the piece
 /// looks like.
 ///
-/// The `showWords` knob draws the description on the canvas, so you can read
+/// The `showWords` parameter draws the description on the canvas, so you can read
 /// what somebody using a screen reader is given.
 @main
 final class Describing: Sketch {

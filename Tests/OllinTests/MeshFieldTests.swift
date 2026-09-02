@@ -164,7 +164,7 @@ struct MeshFieldBenchmarkTests {
 }
 
 /// The benchmark's world: the example's five-mesh 240,000-copy plain under its
-/// low flying camera, so the numbers measure what the example's knob toggles.
+/// low flying camera, so the numbers measure what the example's parameter toggles.
 @MainActor
 private final class FieldBenchScene: Sketch {
     var fieldCulling = true

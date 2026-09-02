@@ -155,7 +155,7 @@ struct SourcePickTests {
 
     /// A circle is placed by its middle and sized by one number, so every
     /// corner can scale it, and nothing on the line says which way it faces.
-    @Test func aCircleOffersFourCornersAndNoTurnKnob() throws {
+    @Test func aCircleOffersFourCornersAndNoTurnParameter() throws {
         let sketch = run(TwoShapes())
         let pick = try #require(sketch.sourcePick(at: Vector2(145, 200)))
         #expect(pick.handles.filter { $0.kind == .resize }.count == 4)
@@ -178,8 +178,8 @@ struct SourcePickTests {
     }
 
     /// A line is sized by where its ends are, so it has no corner; it does have
-    /// a middle to swing about, so it has the knob.
-    @Test func aLineOffersATurnKnobAndNoCorners() throws {
+    /// a middle to swing about, so it has the parameter.
+    @Test func aLineOffersATurnParameterAndNoCorners() throws {
         final class OneLine: Sketch {
             var line = 0
             override func draw() {
@@ -198,8 +198,8 @@ struct SourcePickTests {
     }
 
     /// An arc carries its own two angles, so it has both: corners for its radii
-    /// and a knob for where it points.
-    @Test func anArcOffersCornersAndAKnob() throws {
+    /// and a parameter for where it points.
+    @Test func anArcOffersCornersAndAParameter() throws {
         final class OneArc: Sketch {
             override func draw() {
                 noFill()

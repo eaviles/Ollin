@@ -6,7 +6,7 @@ import OllinAudio
 /// A `Voice` is a fixed chain: something makes a wave, an envelope shapes it, a
 /// filter takes part of it away. A `Patch` is the tier underneath, where the
 /// routing itself is the value. Here two operators are wired live: the lower
-/// one pushes the upper one, and the knobs are what the pushing is.
+/// one pushes the upper one, and the parameters are what the pushing is.
 ///
 /// The thing to listen for is that this cannot be done with a filter. A filter
 /// can only take harmonics away, and a sine has none to take. Modulation puts

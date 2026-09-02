@@ -901,7 +901,7 @@ The GPU realization has four more load-bearing choices:
   also absorbs the ulp in a white mark's luminance. Nothing erases; easing off
   the pour is the only way to stop.
 
-`topplings` is `substeps`, a factory knob rather than a constant because an
+`topplings` is `substeps`, a factory parameter rather than a constant because an
 avalanche front moves one texel per pass, which makes it the pacing dial: watch
 single waves at 1, hurry a collapse at 128. The two pour protocols look very
 different and both are honest physics: the *classic relaxed figure* comes from
@@ -1107,7 +1107,7 @@ step longer than the truth walks a ray through a thin wall. And the emission is
 read **1.5 px inside** the surface the ray stopped on, so an antialiased rim
 hands back the shape's own light rather than a fraction of it.
 
-The top rung's ray is cut at the requested `reach`. Without that cut the knob
+The top rung's ray is cut at the requested `reach`. Without that cut the parameter
 would round up to the next whole rung, and a reach of 90 px would light 340.
 
 ### The bounce, and what it can and cannot say
@@ -1346,7 +1346,7 @@ converges.
 **Composite** upsamples. The march, blur, and temporal passes run at
 `resolveSSRScale` (half-res on `.performance`, full-res otherwise and always on
 export, so snapshots hold). `quality` maps to `resolveSSRSteps`, which is a
-*precision* knob (more coarse steps for a tighter crossing), not a reach cap;
+*precision* parameter (more coarse steps for a tighter crossing), not a reach cap;
 reach is resolution-independent regardless.
 
 The v1 model is a post-process over color, depth, and normal, so every surface
@@ -1807,7 +1807,7 @@ default-tier snapshots stay byte-identical and exported art is never downscaled;
 an explicit `raymarchResolution` fraction (or explicit tier) is honored on export
 too, coverage-adaptively. The dial rides the shared `RenderQuality` model, where
 `.default` doubles as automatic: live `.default`, export `.detail`, overridable
-by the `--render-quality` flag. All four quality knobs (shadows, defocus, ambient
+by the `--render-quality` flag. All four quality parameters (shadows, defocus, ambient
 occlusion, and raymarch resolution) target frame-rate bands.
 
 **The tier is a GPU sampling budget only; geometry dials never join it.** Every
@@ -1832,7 +1832,7 @@ in domain terms, and a tier-to-value mapping picked by the framework would
 itself be an artistic decision. Even the dials that converge toward an ideal (an
 isosurface's `resolution`, subdivision `levels`, `medialAxis` spacing) fail the
 first two tests. The framework's taxonomy already covers these: seeds are
-identity, knobs are tuning, and a geometry dial is a knob, served by `@Param`
+identity, parameters are tuning, and a geometry dial is a parameter, served by `@Param`
 and `--export-sweep` rather than by a tier.
 
 ---
@@ -2110,7 +2110,7 @@ the rare 90-first/270-last plane), expanded at sample time by folding the
 query azimuth into the stored wedge. Only Type C photometry parses (the
 architectural convention; A/B are automotive/floodlight aiming conventions
 Ashdown reports never meeting in practice), values normalize to peak 1 (the
-light's `intensity` stays the brightness knob, unitless like the rest of the
+light's `intensity` stays the brightness parameter, unitless like the rest of the
 punctual model), and every failure path returns `nil` with a one-line stderr
 reason, including header counts, which go through a guarded `Double`→`Int`
 conversion because a malformed exponent would otherwise trap the process.
@@ -2274,7 +2274,7 @@ samples at R_y(rotation)·ray, so content sits at R_y(−rotation) in the world,
 sign confirmed against the drawn sun disc → the first directional light negated
 → a default 35° elevation), and its radiance is white dimmed by the molecular
 slant-path extinction (airmass ≈ 1/sin e), so a horizon sun feeds the veil
-sunset color with no extra knob. A nil `density` derives as 0.35 / the
+sunset color with no extra parameter. A nil `density` derives as 0.35 / the
 eye-to-target distance (the contact-shadow default's rule). **The air veil steps
 aside behind a skybox** (the renderer flags `fogParams2.z` when the skybox drew;
 the air fragment then adds only the marched beams): the sky already is this
@@ -2686,7 +2686,7 @@ light size (in texels), the linearization term, and the tap budget, and the
 blocker search reuses the already-bound nearest `shadowCubeSamp` for raw depth
 reads (no new sampler or pipeline).
 
-One knob unifies every caster: the same softness drives the RT point caster's
+One parameter unifies every caster: the same softness drives the RT point caster's
 area radius (`dist * 0.06 * softness`; the 0.5 default reproduces the old
 `dist * 0.03`, so the `point-shadows` snapshot is byte-identical). The 2D tap
 budget rides `RenderQuality` via `resolveShadowTaps2D` (performance 24 /
@@ -3929,11 +3929,11 @@ Behavioral net: `GlobalIlluminationTests` (bounce-fills-the-unlit-ceiling,
 red-wall dye vs a repainted twin, no leak into a sealed box vs a light moved
 inside, intensity scaling, on-then-off byte-equality, two-render
 byte-determinism, the mirror-interior and render-target counterfactuals, the
-quality knob's export-tier bytes, the exact per-axis-count derivation, and the
+quality parameter's export-tier bytes, the exact per-axis-count derivation, and the
 cascade tier: the vast-scene near-field counterfactual against the test seam's
 forced single volume, the room-stays-single byte-equality, cascaded two-render
 determinism, and the exact ladder/scroll-math derivations), all RT-gated
-except the CPU unit tests, the toggle/mirror/target/knob/cascade claims each
+except the CPU unit tests, the toggle/mirror/target/parameter/cascade claims each
 verified red by sabotage. The two live stabilizers (the fixed relocation
 fan and the temporal-response pair) deliberately carry no test of their own:
 both defects exist only in the live hysteresis loop, which every deterministic
@@ -4271,7 +4271,7 @@ the sum at the inverse of its own velocity magnitude, which is what keeps a
 sharp pixel heavy and a fast one light. k is resolution-relative
 (`height/36`, clamped 16...64, reproducing the published 20 px at 720 tall)
 and S resolves 9/15/27 from the frame-wide automatic quality (the TAA
-no-per-knob rule, so export's automatic `.detail` lifts it).
+no-per-parameter rule, so export's automatic `.detail` lifts it).
 
 **Where the cross-frame state lives is the design decision.** The previous
 camera is kept on the *Drawer* (`previousCamera3D`, saved in `beginFrame`
@@ -5406,14 +5406,14 @@ rather than letting the solver assert. `set_motor` ends by activating both
 constraint bodies (`ActivateBody` skips statics internally): a settled body
 sleeps, a sleeping pair never feels a motor change, and a door whose closer
 engages after the scene has gone quiet would otherwise hang open forever with
-no error anywhere. And the friction knob (`SetMaxFrictionTorque` /
+no error anywhere. And the friction parameter (`SetMaxFrictionTorque` /
 `SetMaxFrictionForce`) applies only while the motor is *off*, per the solver's
 contract, which is exactly what lets one number serve as both the stiff-hinge
 drag and the coast-down brake after `stopMotor()`. Units cross the bridge the
 same way everything else does: angles and rad/s pass through untouched, slider
 targets/offsets convert by `unitsPerMeter`, and the effort caps stay in the
 solver's N·m / N (documented, defaulted to unlimited via a non-finite
-sentinel the bridge maps to ±FLT_MAX). `JointMotor3DTests` pins each knob
+sentinel the bridge maps to ±FLT_MAX). `JointMotor3DTests` pins each parameter
 behaviorally, always against its counterfactual twin (a capped motor against
 an unlimited one, a limited pendulum against a free one, soft limits against
 hard), the same discipline as the rest of the suite.
@@ -5611,7 +5611,7 @@ friction alone asks for more. And a slope *just* past `maxSlope` reads
 `.onSteepSlope` while a near-vertical face reads `.notSupported`, because at
 that angle nothing supports the capsule at all.
 
-`Character3DTests` pins the tier behaviorally, each knob against a
+`Character3DTests` pins the tier behaviorally, each parameter against a
 counterfactual twin that isolates it: the same 40° ramp is climbed or refused
 by `maxSlope` alone, the same 0.3 ledge is a step or a wall by `stepHeight`
 alone, the same crate scatters or blocks by `pushStrength` alone. Around those
@@ -5735,8 +5735,8 @@ at 0.08, which is a run of track plus its road wheels swung at the sprocket's
 radius. It was measured across a range of sizes rather than guessed, and the
 range from 0.02 to 0.15 turned out to be within a few percent on straight-line
 distance and turn rate, which is why it stays a constant instead of becoming a
-knob. The same derivation covers the brake: a band's `mMaxBrakeTorque` is the
-sum of its wheels' `brakeTorque`, so the shipped per-wheel knob keeps meaning
+parameter. The same derivation covers the brake: a band's `mMaxBrakeTorque` is the
+sum of its wheels' `brakeTorque`, so the shipped per-wheel parameter keeps meaning
 something and a tracked machine needs no new one.
 
 The motorcycle sibling is the same call with `balances: true`. Getting it to
@@ -5747,7 +5747,7 @@ second; with 30° of rake it rides, and leans into a corner. Note that a
 two-wheeler running dead straight stays up even with the controller *off*,
 because nothing perturbs it, so the counterfactual test starts it leaned over.
 
-`Vehicle3DTests` pins the tier behaviorally, each knob against a counterfactual
+`Vehicle3DTests` pins the tier behaviorally, each parameter against a counterfactual
 twin. The sharpest is the drive-routing one: two identical cars with slick
 front tires, differing only in which axle is driven, travel 2× apart, which
 pins where the torque goes rather than merely that there is some. Around it sit
@@ -5881,12 +5881,12 @@ agree with itself here (the same trap the subdivision surfaces hit), so a
 vote at build time: derive the normals for the *rest* shape, dot them against
 the mesh's authored normals, and remember a flip if the sum is negative.
 
-**Two knobs, both made scale-free, both by measurement.** The library's own
+**Two parameters, both made scale-free, both by measurement.** The library's own
 numbers are physical and therefore useless as a 0…1 dial:
 
 - *Compliance* (the inverse stiffness of a spring, in m/N) has to be compared
   against the load, so one fixed value visibly softens a heavy cloth and does
-  nothing at all to a light one. The knob is normalized by the body's own
+  nothing at all to a light one. The parameter is normalized by the body's own
   hanging weight: `scale = meanEdge * sqrt(particleCount) / (mass * gravity)` is
   the compliance at which one loaded edge stretches by its own length, and
   `stiffness` maps onto a fraction of it. Measured: mean edge stretch runs
@@ -5895,12 +5895,12 @@ numbers are physical and therefore useless as a 0…1 dial:
 - A *fold* constraint measures an angle where a stretch constraint measures a
   length, so its compliance carries two fewer powers of length. `bend` therefore
   divides the same scale by the mean edge squared. Without that correction the
-  whole 0.2…1.0 range of the knob was already rigid, which the first probe found
+  whole 0.2…1.0 range of the parameter was already rigid, which the first probe found
   by sweeping.
 
 `pressure` is the third: the solver's number is `n R T`, and working the force
 through `ApplyPressure` gives an outward acceleration of `pressure * area /
-(mass * volume)`. Expressing the knob as that acceleration *in gravities* makes
+(mass * volume)`. Expressing the parameter as that acceleration *in gravities* makes
 `pressure: 1` mean "just holds its own weight up" at any size, and the rest
 shape's area and volume are measured once at build time to convert. It is
 refused on an open surface with a one-time note, the closed test being that
@@ -5938,7 +5938,7 @@ to the result.
 
 Both models were built and measured against each other before the question was
 answered, because the answer decides whether a whole meshing pass and two more
-knobs earn their place. The shipped one wins or ties everywhere that matters, on
+parameters earn their place. The shipped one wins or ties everywhere that matters, on
 a 5 kg ball of radius 0.5 against a lattice six cells across:
 
 | | `pressure: 20` | interior lattice + tetrahedra |
@@ -6110,7 +6110,7 @@ sketch reads is the same convention `withSegment(_:)` applies (local +y along
 the rope, matching the axis Ollin's cylinders and capsules stand on; local +x
 carries the twist).
 
-**The bend knob needed its own scale, and the scale had to be measured.** The
+**The bend parameter needed its own scale, and the scale had to be measured.** The
 stretch constraint is a distance constraint with an orientation term bolted on,
 so the shipped cloth normalization (`meanEdge * sqrt(particleCount) /
 (mass * gravity)`) transfers to it unchanged and is exact across weight. The
@@ -6123,7 +6123,7 @@ several lengths and particle counts, gives
     compliance  ∝  meanRod² / (length³ · mass · gravity)
 
 with a measured constant that puts "drooping about a third" in the middle of the
-knob. Before the correction the knob's meaning ran away with length: `bend: 0.1`
+parameter. Before the correction the parameter's meaning ran away with length: `bend: 0.1`
 left a half-unit rope nearly rigid (drop/span 0.13) and a six-unit one limp
 (0.92). After it, `bend: 0.5` lands at 0.26 to 0.33 across twelve-fold in length,
 double in particle count, and a hundred-fold in mass. The one case that stays
@@ -6233,10 +6233,10 @@ buffer that Ollin's renderer would need a new path to draw, since the readback
 the header offers is labeled slow and for debugging. All of that pays for a
 system that still could not be blown by wind.
 
-`Rope3D`'s own knobs already reach hair scale, which is what makes the
+`Rope3D`'s own parameters already reach hair scale, which is what makes the
 alternative real rather than theoretical: swept from rope scale down, a
 cantilever of 8 points at 25 mm spacing droops 0.26 of its span at `bend: 0.5`
-and 0.79 at `bend: 0.05`. Below about 10 mm of spacing the bend knob loses its
+and 0.79 at `bend: 0.05`. Below about 10 mm of spacing the bend parameter loses its
 authority (0.149 against 0.165 across its whole range), which is the floor.
 
 What would reopen it: upstream growing **external forces** and **collision
@@ -6498,7 +6498,7 @@ pins each answer against its counterfactual twin, the sharpest being the four
 that exist only to catch a half-applied filter: the contact listener, the
 sensor, the second character, and the wheel testers.
 
-**Per-body motion knobs** are three fields the body descriptor and the solver
+**Per-body motion parameters** are three fields the body descriptor and the solver
 already carried, surfaced as `Body3D.freedom` / `.gravityScale` / `.checksPath`
 plus matching `addBody` parameters. Two of them are pass-throughs
 (`SetGravityFactor`, `SetMotionQuality`, both null-guarded upstream so they are
@@ -6600,7 +6600,7 @@ is column 0 of `GetConstraintToBody{1,2}Matrix()`, and both are already in the
 body's center-of-mass space, which is why the settings use
 `EConstraintSpace::LocalToBodyCOM`. Both links call `SetConstraints` with the
 two source joints so the solver can measure and correct its own drift. Two
-knobs are converted on Ollin's side: `travelPerTurn` becomes the library's
+parameters are converted on Ollin's side: `travelPerTurn` becomes the library's
 radians-per-meter (`2π / travel`), and a **gear ratio is forced positive** with
 a note, because a negative one leaves the position correction pulling against
 the velocity rule until the pair detonates (probe-confirmed), and a real gear
@@ -6635,7 +6635,7 @@ one holds its circle to 0.05 while its twin falls twenty units). Example
 pair over them. The format is **Ollin's own**, not the solver's
 `PhysicsScene`, and the reason is `Body3D.collider`: a snapshot has to hand back
 the *Ollin* description of each body, because that is what a sketch draws from
-and what `addBody`'s knobs are expressed in, and a restored Jolt shape cannot
+and what `addBody`'s parameters are expressed in, and a restored Jolt shape cannot
 be turned back into a `Collider3D` case (a compound or a hull has forgotten it
 ever was one). Once the colliders have to be written down anyway, the solver's
 serialization buys nothing and costs a second representation to keep in step.
@@ -6711,7 +6711,7 @@ Four things are load-bearing:
 
 Two bridge getters came with it (`cjolt_body_get_friction` /
 `_get_restitution`, surfaced as live `Body3D.friction` / `.restitution`), since
-the two knobs `addBody` took had until now been write-only.
+the two parameters `addBody` took had until now been write-only.
 
 The round trip is exact end to end, which is stronger than the docs promise: a
 restored pile's worst pose error is 0, a re-capture is byte-identical to the
@@ -7021,7 +7021,7 @@ integer `frequency`; k > n/2 folds negative). Read via `point(at:)` /
 `joints(at:)` / `path(samples:terms:)`. The sort's tie-break (slower
 |frequency| first, then positive) keeps symmetric inputs deterministic.
 `terms:` is always a largest-first *prefix* of the one built chain, so a
-detail knob needs no rebuild. `point(at:)` is periodic, so negative phases
+detail parameter needs no rebuild. `point(at:)` is periodic, so negative phases
 wrap and a fixed-length trail across the lap seam is a one-liner. With all
 terms the reconstruction is exact at sample phases; `EpicyclesTests` pins
 that plus the circle/ellipse closed forms. No rng anywhere. Example
@@ -7164,7 +7164,7 @@ allowed only while the edge exceeds a length threshold and the triangle's
 opposite vertex is not already on the boundary. That single stop rule is
 what keeps the polygon simple and every input point inside, and it makes
 each edge a one-shot decision (boundary vertices never leave the boundary,
-so a blocked edge stays blocked). The public knob inverts the JTS-style
+so a blocked edge stays blocked). The public parameter inverts the JTS-style
 edge-length ratio into `concavity` 0...1, interpolating the threshold
 between the triangulation's longest and shortest edge, so it reads
 scale-free.
@@ -7179,7 +7179,7 @@ than touch the substrate (whose exact output existing snapshots pin),
 `capHullNotches` compares the mesh boundary against `convexHull(of:)`,
 walks each notch path, and caps it with a fan of sliver triangles before
 erosion starts. Zero concavity then reproduces the convex hull exactly,
-and a cap erodes away like any border triangle the moment the knob turns,
+and a cap erodes away like any border triangle the moment the parameter changes,
 so higher concavities are untouched. `HullTests` keeps the seed-7 scatter
 that first exposed the notch as the regression.
 
@@ -7202,7 +7202,7 @@ domain, so the test and the triangulation agree). Each skeleton vertex is
 a circumcenter whose circumradius is exactly its clearance, which is what
 makes the carried radii honest inscribed-disk radii. The graph decomposes
 into branches between degree-not-2 vertices plus leftover pure rings (a
-hole's skeleton), and `prune` trims terminal twigs shorter than the knob.
+hole's skeleton), and `prune` trims terminal twigs shorter than the parameter.
 Pruning collects each round's twigs against the round-start graph and only
 then removes them together: the first cut removes a twig, drops its
 junction to degree 2, and a same-round sibling walk would run straight
@@ -7653,7 +7653,7 @@ the stateful walker class (the `DifferentialGrowth` shape): `[state][color]`
 published 1/2/4/8 codes, multi-ant in array order, no rng anywhere; the
 `Preset` catalog (`.langton`/`.spiral`/`.highway`/`.chaos`/`.frame`/
 `.fibonacci`) decodes the published turmite catalog and conforms to
-`ParamOption` for free menu knobs. `CellularAutomataTests` pins rule
+`ParamOption` for free menu parameters. `CellularAutomataTests` pins rule
 30/90/110 known rows, the totalistic 777 opening, wrap semantics, and
 Langton's flip-parity plus the exact 104-step highway period. Examples
 `Patterns/ElementaryCA` + `Patterns/Turmites`; snapshots
@@ -7923,7 +7923,7 @@ layer so the crosses stack into register; recipes carry the ink list
 (`ExportMetadata.inks`). GPU-backed image yields an empty separation; the
 model limits by physics (inks only darken; no white ink on dark stock).
 Example `Color/PrintSeparation` (the canvas *is* the poster; a `@Param` view
-knob flips artwork/masters/preview so exports separate the artwork, not a
+parameter flips artwork/masters/preview so exports separate the artwork, not a
 demo layout); snapshot `print-separation`; `PrintSeparationTests`.
 `Docs/Output/PrintSeparations.md`.
 
@@ -7968,7 +7968,7 @@ matter. Measured on the generic four-ink profile: relative in and relative
 out leaves white at 1.005 and lifts black to 0.055 (ink black, always shown);
 relative in and absolute out lands white at .934/.864/.726 (the stock's
 tint, opt-in). Turning BPC on for the four-step chain misbehaves outright
-(white drops to .862), which is why it is not exposed as a knob.
+(white drops to .862), which is why it is not exposed as a parameter.
 
 The live filter exists because the full transform measures about 145 ms on a
 1080 by 1080 canvas. `ProofLUTCache` bakes the condition into a 33 cubed
@@ -8208,7 +8208,7 @@ never on first launch. `SketchRunner.reload(to:)` honors the *new* sketch's
 declared `canvasSize` for non-`.resizable` modes, so an edited resolution
 takes effect on the swap.
 
-### `@Param` knobs and the inspector
+### `@Param` parameters and the inspector
 
 The generic `@Param` wrapper/registry in the core (`Param.swift`) drives the
 shared inspector (`Inspector.swift`) in all three hosts through the
@@ -8236,7 +8236,7 @@ HStack must be `.fixedSize()`, or the paired-pill (Vector2) row compresses it
 to zero width and it silently vanishes; and `.segmented`'s ViewThatFits needs
 the label `.fixedSize()`-pinned (an un-pinned truncatable label never wraps)
 plus `maxWidth` with `alignment: .leading` on the wrapped block (ViewThatFits
-centers a narrower child). Knob values persist across reloads as `ParamStored`
+centers a narrower child). Parameter values persist across reloads as `ParamStored`
 payloads (`SketchSession.recordParam`/`syncParams`; a property that changed
 *type* in the edit drops its stale value so the new default wins). Headless
 gates: `OllinLive --paramtest` plus `ParamTests`.
@@ -8267,7 +8267,7 @@ the AppKit/UIKit portability seam.
 
 `OllinRuntime.SketchSession` holds the compile/reload orchestration both
 OllinLive and OllinLiveCoding wrap (supersede-cancel compile scheduling,
-`syncParams` re-applied *before* the swap so knobs never snap, and the
+`syncParams` re-applied *before* the swap so parameters never snap, and the
 two-channel Swift-versus-shader error model where neither clears the other);
 `LiveSession` and `PerformanceSession` are thin wrappers. Orchestration
 changes go in `SketchSession`, never re-forked per host. Buffer compiles
@@ -8339,25 +8339,25 @@ cannot absorb) finishes the file cleanly and says so.
 
 `Take` (`Sources/Ollin/Core/Take.swift`) writes a run down as data: the `variation` seed, one clock sample per frame exactly as the display drove it (jitter included), every input event, and every `@Param` change, the last two stamped with the frame they precede. Playing the same file into a fresh instance walks it through the same frames, and the pixel test pins that to the byte. Where the real-time recorder above keeps a run's *pixels*, a take keeps the *performance*, so it is small (roughly 90 bytes a frame as JSON, about 20 MB an hour) and it can re-render through any export path afterwards, path tracer included.
 
-The design lives on two choke points rather than a parallel driver. Every driver Ollin has, the live window, each offline export loop, the benchmark, funnels its clock through `Sketch.advance`; the player overrides the caller's values there, after applying the frame's recorded events and knob changes, and the recorder writes down whichever clock is about to apply. And every input enters `Sketch` through a small set of internal handlers (`setMouse`, `handleMouseButton`, `handleKey`, `handleScroll`, and friends); each one logs to the recorder and then refuses the call while a player is attached, and the player re-ingests recorded events through the same private halves, which is what makes the hooks (`mousePressed()` et al.) fire again on replay. Because both seams sit below every host, `--replay` composes with the whole export flag surface through nothing but the one `make()` wrapper in `handleCommandLine`.
+The design lives on two choke points rather than a parallel driver. Every driver Ollin has, the live window, each offline export loop, the benchmark, funnels its clock through `Sketch.advance`; the player overrides the caller's values there, after applying the frame's recorded events and parameter changes, and the recorder writes down whichever clock is about to apply. And every input enters `Sketch` through a small set of internal handlers (`setMouse`, `handleMouseButton`, `handleKey`, `handleScroll`, and friends); each one logs to the recorder and then refuses the call while a player is attached, and the player re-ingests recorded events through the same private halves, which is what makes the hooks (`mousePressed()` et al.) fire again on replay. Because both seams sit below every host, `--replay` composes with the whole export flag surface through nothing but the one `make()` wrapper in `handleCommandLine`.
 
 This is deliberately *not* a `SketchExtension`. The seam's hooks see the frame boundary but never the input events between frames, and they run after `advance` has already applied the clock, too late to override it. The recorder and player are two small internal collaborators on `Sketch` (`takeRecorder` / `takePlayer`, at most one attached), wired by the runner or by `Take.install(on:)`.
 
-The stamp contract is the one non-obvious invariant. An event stamped `k` arrived after frame `k` drew; it applies at the advance whose pre-increment `frameCount` is `k`, and `frames[k]` is that advance's clock. Recording and playback must agree on the pre-increment stamp, or every replay shears its input by one frame. `Take.install(on:)` must run before `setup()` (seed first, then the starting knob values, then the player), because `setup()` builds from both; `--seed` beside `--replay` re-seeds deliberately *after* install, which replays the same gestures onto a different variation.
+The stamp contract is the one non-obvious invariant. An event stamped `k` arrived after frame `k` drew; it applies at the advance whose pre-increment `frameCount` is `k`, and `frames[k]` is that advance's clock. Recording and playback must agree on the pre-increment stamp, or every replay shears its input by one frame. `Take.install(on:)` must run before `setup()` (seed first, then the starting parameter values, then the player), because `setup()` builds from both; `--seed` beside `--replay` re-seeds deliberately *after* install, which replays the same gestures onto a different variation.
 
 Recording starts at the run's own frame 0 (the runner attaches the recorder in its first-frame block, ahead of `setup()`, or `beginTake` restarts in place), because a take that begins mid-state could never reproduce. The file autosaves on a doubling cadence capped at a minute of frames: a growing take re-encodes whole, so a fixed short cadence would cost more the longer the run gets, and the write is a value-copy handed to a utility queue so the frame loop never pays it. A live-reload swap or a seed restart ends the take (writing it out) rather than corrupting it.
 
-Scrubbing backward is re-simulation: rewind to frame 0 (reseed, restore the starting knobs, `setup()` again) and step forward to the target. The intermediate frames go through `stepReplayFrame`, which mirrors the headless drive in `renderImage(of:)`: an accumulating or feedback frame must actually render off-screen for its persistent surface to evolve, anything else only needs its compute stepped. Generic state snapshots are not possible (only the sketch knows its state), so the honest cost of a deep backward scrub is the frames in between; determinism is what makes the landing exact.
+Scrubbing backward is re-simulation: rewind to frame 0 (reseed, restore the starting parameters, `setup()` again) and step forward to the target. The intermediate frames go through `stepReplayFrame`, which mirrors the headless drive in `renderImage(of:)`: an accumulating or feedback frame must actually render off-screen for its persistent surface to evolve, anything else only needs its compute stepped. Generic state snapshots are not possible (only the sketch knows its state), so the honest cost of a deep backward scrub is the frames in between; determinism is what makes the landing exact.
 
 ## Keyframed parameters (the automation track)
 
 `Automation` (`Sources/Ollin/Core/Automation.swift`) is the other half of the take transport's idea, pointed the other way. A take writes down what a run *did*; an automation writes down what a run *should do*: one track per `@Param`, each a sorted list of keys carrying a `ParamStored` value and the curve that leaves it. Both are versioned Codable JSON keyed by the property name, which is what lets a future timeline view read and write either.
 
-The tracks are applied inside `Sketch.advance`, and the position in that function is the whole design. It runs *after* the take player has resolved the frame's clock, because a track is a function of that clock and a replay overrides it; and *before* `takeRecorder.recordFrame`, because the recorder diffs the knob values to find its changes. Put the apply after the recorder and a run recorded under an automation writes down the previous frame's values, so replaying that take without the automation shears the knobs by a frame. `AutomationTests` measures the take's own changes against the ramp for exactly this reason, and the sabotage (moving the apply below the recorder) turns it red.
+The tracks are applied inside `Sketch.advance`, and the position in that function is the whole design. It runs *after* the take player has resolved the frame's clock, because a track is a function of that clock and a replay overrides it; and *before* `takeRecorder.recordFrame`, because the recorder diffs the parameter values to find its changes. Put the apply after the recorder and a run recorded under an automation writes down the previous frame's values, so replaying that take without the automation shears the parameters by a frame. `AutomationTests` measures the take's own changes against the ramp for exactly this reason, and the sabotage (moving the apply below the recorder) turns it red.
 
-Two smaller decisions carry their own reasons. A track *sets* the knob rather than assigning it, so a `@Param` carrying `smoothing:` does not glide toward the curve on top of the curve's own glide; the curve is the glide, and a knob that snapped to each frame's target twice would lag behind its own automation. And the player caches the parameter handles on first use, the same way `TakeRecorder` does, because the `@Param` set of an instance is fixed and walking the mirror every frame costs real time; that cache is why the `automation` property mutates the player in place instead of building a new one for each `automate` call.
+Two smaller decisions carry their own reasons. A track *sets* the parameter rather than assigning it, so a `@Param` carrying `smoothing:` does not glide toward the curve on top of the curve's own glide; the curve is the glide, and a parameter that snapped to each frame's target twice would lag behind its own automation. And the player caches the parameter handles on first use, the same way `TakeRecorder` does, because the `@Param` set of an instance is fixed and walking the mirror every frame costs real time; that cache is why the `automation` property mutates the player in place instead of building a new one for each `automate` call.
 
-Blending is by kind, which is where the semantics live rather than the math. Numbers, colors, points, rects, insets, and ranges interpolate; a switch, a menu choice, and a piece of text have nothing between two settings, so they hold what they left until the next key, and so does any pair of different kinds (which is what a knob that changed type leaves behind). Both ends short-circuit, so a key always reads back as exactly itself, whatever curve leaves it.
+Blending is by kind, which is where the semantics live rather than the math. Numbers, colors, points, rects, insets, and ranges interpolate; a switch, a menu choice, and a piece of text have nothing between two settings, so they hold what they left until the next key, and so does any pair of different kinds (which is what a parameter that changed type leaves behind). Both ends short-circuit, so a key always reads back as exactly itself, whatever curve leaves it.
 
 The curve set is the shipped `Easing` catalog plus one editable curve, a unit cubic Bezier through two handle points, solved by Newton with a bisection fallback. The non-obvious part is that its handles bend the *clock* as well as the value: reading it means finding the parameter whose x is the progress and only then taking that parameter's y. A test that only checked symmetry could not see the difference, and passed while the solver was skipped entirely; the test that catches it measures against an independent bisection written in the test itself.
 

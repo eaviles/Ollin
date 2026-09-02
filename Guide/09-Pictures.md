@@ -140,7 +140,7 @@ Every cell of the target is averaged, every picture in the library is averaged o
 
 **The averaging happens in linear light, and that is not a detail.** A cell that is half black and half white is middle gray, which is 0.5 in linear light and about 0.74 written back out in sRGB. Average the sRGB numbers instead and you get 0.5, a quarter too dark, and the mosaic loses its lights. Ollin does this the right way for you; the reason to know it is that hand-rolling the same loop is where the mistake usually lives.
 
-Two knobs matter. `tint` mixes each cell toward the color it stands for, which is how a mosaic is made to read from further off: a quarter of the way is a good place to start, and 1 gives up and paints flat color. `maxUses` limits how often one picture may repeat, filling cells in reading order and falling back to the nearest picture when the library runs dry.
+Two parameters matter. `tint` mixes each cell toward the color it stands for, which is how a mosaic is made to read from further off: a quarter of the way is a good place to start, and 1 gives up and paints flat color. `maxUses` limits how often one picture may repeat, filling cells in reading order and falling back to the nearest picture when the library runs dry.
 
 The thing that decides whether a mosaic works is not the code. **The target needs range and the library needs range in the same places.** A target that is mostly one flat dark takes the one nearest picture and repeats it over the whole frame, which is a picture of nothing. `mosaic.uses(of:)` counts how many of the library actually got used, and it is the number to watch when a mosaic looks flat.
 
@@ -195,7 +195,7 @@ let line = singleLine(of: picture, points: 4000, in: frame)
 let veins = spanningTree(of: picture, points: 4000, in: frame)
 ```
 
-In those forms `cutoff` is the knob to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is exactly what the sun in the figure would have done.
+In those forms `cutoff` is the parameter to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is exactly what the sun in the figure would have done.
 
 ## A picture wound from thread
 
@@ -523,7 +523,7 @@ Run it with `swift run OllinLive MySketches/TypeMosaic.swift` and take it apart:
 - The double loop is [Chapter 6](06-GridsAndRepetition.md)'s grid chore done by hand, because what it loops over is the *message*: `k % chars.count` deals the letters out in reading order, so the rows spell the message over and over, and `u`/`v` fractions map each cell onto its pixel.
 - `brightness * brightness` is contrast shaping, since squaring pushes mid grays down so the sun pops. The `fill` mixes each pixel's color a step toward white in the brightest cells, which makes the sun read as light rather than paint.
 - `textMode(.atlas)` matters here, because fifty columns is a few thousand glyphs per frame, and the atlas mode draws each as one cheap textured quad instead of re-tessellating outlines. It's the volume switch for text, one line, and the chapter's one performance note.
-- `Breathe` feeds a slow `signedNoise` into the letter sizes, so the picture shimmers without changing what it says. The `Message` knob is a text field in the live window, so type into it and the sunset respells itself as you watch.
+- `Breathe` feeds a slow `signedNoise` into the letter sizes, so the picture shimmers without changing what it says. The `Message` parameter is a text field in the live window, so type into it and the sunset respells itself as you watch.
 
 > **Swift note.** `guard let source else { return }` is `if let` turned around, unwrapping the value or leaving the function right there. And `Array(message)` turns a string into a list of its characters, so `chars[k % chars.count]` can deal them out like [Chapter 1](01-HelloOllin.md)'s palette cycling.
 
@@ -545,14 +545,14 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 
 - [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for a picture bundled with a sketch, the sampling helpers, and authoring an image in code.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured coverage behind the glyph ramp, the dot shapes and screen angles, and the duotone options.
-- [Photo mosaic](../Docs/Drawing/PhotoMosaic.md): `averageColor` and its linear-light rule, the match, the tint and repeat knobs, and drawing the placements yourself.
+- [Photo mosaic](../Docs/Drawing/PhotoMosaic.md): `averageColor` and its linear-light rule, the match, the tint and repeat parameters, and drawing the placements yourself.
 - [Autostereogram](../Docs/Drawing/Autostereogram.md): the repeat and relief settings, the pattern, and why a scaled one stops working.
-- [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): every knob on the even scatter, the closed tour through it, and the branching tree over the same dots.
+- [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): every parameter on the even scatter, the closed tour through it, and the branching tree over the same dots.
 - [String art](../Docs/Generators/StringArt.md): the pins and the ink dial, and `inverted` for a pale thread on a dark ground.
 - [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
 - [Seam carving](../Docs/Drawing/SeamCarving.md): both energies, the two masks, growing rather than shrinking, and the `SeamMap` that hands back any width at once.
 - [Data](../Docs/Helpers/Data.md): `loadTable` and `loadJSON` in full, including the separator and header guesses, the two ways a column reads back, and what a missing key does.
-- [Live data](../Docs/Helpers/LiveData.md): every knob on `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
+- [Live data](../Docs/Helpers/LiveData.md): every parameter on `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift), [`StringArt`](../Examples/Images/StringArt/Sketch.swift), [`SeamCarve`](../Examples/Images/SeamCarve/Sketch.swift), and [`PixelField`](../Examples/Images/PixelField/Sketch.swift) (authoring an image pixel by pixel and reading it back).
 - Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart), [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey), and [`Examples/Data/Quakes`](../Examples/Data/Quakes/Sketch.swift) (an hour of earthquakes, redrawn as the list changes).

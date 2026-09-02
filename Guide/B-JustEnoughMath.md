@@ -192,14 +192,14 @@ Re-roll a position every frame and you get noise with no memory, a jagged hash. 
 
 `noise(x)` is not a roll. It's a *lookup* into a fixed, smooth landscape of values. Nearby inputs land on nearby outputs, so a sequence of close questions traces a rolling curve instead of a hash. That property, coherence, is the entire difference between noise and random, and everything [Chapter 5](05-Noise.md) builds rests on it.
 
-### The input multiplier is a zoom knob
+### The input multiplier is a zoom control
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseZoom-dark.jpg">
   <img src="Images/05-Noise/NoiseZoom.jpg" alt="Three panels sampling the same noise field with multipliers 0.004, 0.015, and 0.06: one gentle valley, rolling hills, busy wiggles" width="680">
 </picture>
 
-`noise(x * scale)` doesn't change the landscape, it changes how far apart your questions land on it. A small multiplier asks about points close together and sees one broad feature, while a large one strides across many hills and sees busy detail. When noise output looks wrong, the first dial to reach for is almost always this one. [Chapter 5](05-Noise.md) calls it the zoom knob.
+`noise(x * scale)` doesn't change the landscape, it changes how far apart your questions land on it. A small multiplier asks about points close together and sees one broad feature, while a large one strides across many hills and sees busy detail. When noise output looks wrong, the first dial to reach for is almost always this one. [Chapter 5](05-Noise.md) calls it the zoom parameter.
 
 ### A field of answers, drifting in time
 
@@ -390,7 +390,7 @@ Wave Function Collapse solves a grid the way you solve sudoku. Every cell starts
   <img src="Images/19-GridSimulations/FeedKillMap.jpg" alt="A grid of reaction-diffusion dishes at different feed and kill settings: most quiet, a diagonal band growing spots, rings, mazes, and dividing dots" width="680">
 </picture>
 
-Two knobs span a plane, where every pair of settings is a point. A system's behaviors live in *regions*, spots here, mazes there, dead calm nearly everywhere. Rendering the map, one small run per grid cell, turns knob-fiddling into geography. Interesting settings cluster along the borders between regions. [Chapter 19](19-GridSimulations.md) maps Gray-Scott's feed and kill this way.
+Two parameters span a plane, where every pair of settings is a point. A system's behaviors live in *regions*, spots here, mazes there, dead calm nearly everywhere. Rendering the map, one small run per grid cell, turns parameter-fiddling into geography. Interesting settings cluster along the borders between regions. [Chapter 19](19-GridSimulations.md) maps Gray-Scott's feed and kill this way.
 
 ### Escape time
 

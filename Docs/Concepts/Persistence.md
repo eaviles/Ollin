@@ -4,7 +4,7 @@
 
 ## What survives a frame
 
-Ollin throws most of a frame away and starts the next one clean (see [the frame](./Frame.md)). Knowing what it keeps clears up a class of surprise. A transform starts over each frame and a fill color does not. A batch ignores the number you just changed. A knob survives a reload.
+Ollin throws most of a frame away and starts the next one clean (see [the frame](./Frame.md)). Knowing what it keeps clears up a class of surprise. A transform starts over each frame and a fill color does not. A batch ignores the number you just changed. A parameter survives a reload.
 
 ### Dropped every frame
 
@@ -26,11 +26,11 @@ Ollin throws most of a frame away and starts the next one clean (see [the frame]
 
 ### Kept across a live reload
 
-A reload builds a fresh sketch: properties start over and `setup()` runs again. Two things carry across. Every `@Param` value stays, so a knob you tuned stays tuned. The clock carries too when the host is asked for it (`--keep-clock`), so an animation keeps its phase instead of jumping. `reloaded()` runs once after the swap, and never on the first launch.
+A reload builds a fresh sketch: properties start over and `setup()` runs again. Two things carry across. Every `@Param` value stays, so a parameter you tuned stays tuned. The clock carries too when the host is asked for it (`--keep-clock`), so an animation keeps its phase instead of jumping. `reloaded()` runs once after the swap, and never on the first launch.
 
 ### Kept across runs
 
-`@Saved` writes a property to disk on the cadence set by `checkpoint:`, along with the seed, the clock, and the knob values. A piece that has run on a wall for a week picks up where it stopped rather than starting over. See [running unattended](../Output/Installation.md).
+`@Saved` writes a property to disk on the cadence set by `checkpoint:`, along with the seed, the clock, and the parameter values. A piece that has run on a wall for a week picks up where it stopped rather than starting over. See [running unattended](../Output/Installation.md).
 
 ### Read next
 

@@ -7,13 +7,13 @@ import Ollin
 /// the wheels marked driven and no others, steering curves the path the way the
 /// driver asked, the brakes and hand brake do different things to different
 /// wheels, the springs carry the weight, and a two-wheeler holds itself up.
-/// Behavioral (the no-pixel-snapshot policy for physics), each knob pinned
+/// Behavioral (the no-pixel-snapshot policy for physics), each parameter pinned
 /// against a counterfactual twin: the same scene run twice with one setting
 /// changed, so a passing test can't be explained by the geometry alone.
 /// Parallel-safe like the rest of the 3D suite.
 struct Vehicle3DTests {
 
-    /// A four-wheeled car on a flat floor, with every knob a test might want to
+    /// A four-wheeled car on a flat floor, with every parameter a test might want to
     /// vary. `drive` picks which axle the engine turns; `frontGrip` lets a test
     /// make the front tyres slick, which is how "the engine turns *these*
     /// wheels" is pinned without changing anything else.

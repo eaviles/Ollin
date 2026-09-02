@@ -4,7 +4,7 @@
 
 ## The parameter timeline
 
-An [`Automation`](../Core/Automation.md) writes a sketch's knobs down over time. The timeline is OllinLive's surface for authoring one by hand. It is a floating panel with one lane per automated knob and a playhead over the sketch clock, plus a small diamond in every knob row of the inspector. What it edits is the sketch's own automation. The frames play exactly what the lanes show, and every export renders it the same way.
+An [`Automation`](../Core/Automation.md) writes a sketch's parameters down over time. The timeline is OllinLive's surface for authoring one by hand. It is a floating panel with one lane per automated parameter and a playhead over the sketch clock, plus a small diamond in every parameter row of the inspector. What it edits is the sketch's own automation. The frames play exactly what the lanes show, and every export renders it the same way.
 
 This page is about the host panel. The `Timeline` value type inside a sketch, the keyframe sequencer a sketch drives itself, lives in [Animation](../Helpers/Animation.md).
 
@@ -12,21 +12,21 @@ This page is about the host panel. The `Timeline` value type inside a sketch, th
 
 Click **Timeline** in the title bar of OllinLive, or press **⌘T**. The panel floats beside the window, remembers its place and size, and closes from its own close button or the same toggle.
 
-The panel lives in OllinLive only. The gallery shows knobs as a showcase; the live host is where a piece is directed.
+The panel lives in OllinLive only. The gallery shows parameters as a showcase; the live host is where a piece is directed.
 
 ### The authoring loop
 
 The loop is three moves, and it repeats:
 
 1. **Scrub.** Drag along the ruler. Space pauses, and the arrow keys step one frame at a time. The picture follows the playhead live.
-2. **Turn the knob.** Set the value in the inspector, the way you always do.
-3. **Click the diamond.** The knob's row places a key at the playhead with the value the knob holds.
+2. **Adjust the parameter.** Set the value in the inspector, the way you always do.
+3. **Click the diamond.** The parameter's row places a key at the playhead with the value the parameter holds.
 
-A hollow diamond means nothing drives the knob yet; the first click starts its track. A filled diamond means a track drives it. Clicking while the playhead stands on a key takes that key away, so the diamond both places and removes. The **+ Track** menu in the panel's footer starts a track the same way. A right-click on a diamond or a lane label removes the whole track.
+A hollow diamond means nothing drives the parameter yet; the first click starts its track. A filled diamond means a track drives it. Clicking while the playhead stands on a key takes that key away, so the diamond both places and removes. The **+ Track** menu in the panel's footer starts a track the same way. A right-click on a diamond or a lane label removes the whole track.
 
 ### Lanes and keys
 
-A number lane draws its track's sampled value, so the line is what the knob will do. A color lane draws the blend itself as a band. A switch steps between its two levels. A knob driven by a [formula](../Helpers/Formula.md) shows the rule and takes no keys; its text is edited in the sketch.
+A number lane draws its track's sampled value, so the line is what the parameter will do. A color lane draws the blend itself as a band. A switch steps between its two levels. A parameter driven by a [formula](../Helpers/Formula.md) shows the rule and takes no keys; its text is edited in the sketch.
 
 Drag a key along its lane to move it in time. Double-click a key to remove it. Click a key to select it. The footer then names the moment and the curve that leaves the key, with a menu to change the curve and a button to delete the key. Choosing **Bezier** shows two handles on the lane; drag them to shape the ease by eye. The handles bend the same `.bezier(x1:y1:x2:y2:)` curve the file carries.
 
@@ -48,7 +48,7 @@ swift run OllinLive Sketch.swift --export-video out.mp4 --seconds 12
 
 A standalone run or an example's own export reads the same file through the flag: `--automation Sketch.automation.json`.
 
-One precedence rule, the same rule the file has everywhere: the file's tracks install before `setup()` runs. A sketch that writes a track for the same knob in `setup()` wins that knob. A knob the sketch directs in code belongs to the code; the panel's edit of it lasts until the next reload.
+One precedence rule, the same rule the file has everywhere: the file's tracks install before `setup()` runs. A sketch that writes a track for the same parameter in `setup()` wins that parameter. A parameter the sketch directs in code belongs to the code; the panel's edit of it lasts until the next reload.
 
 ---
 

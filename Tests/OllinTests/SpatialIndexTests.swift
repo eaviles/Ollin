@@ -121,7 +121,7 @@ struct SpatialIndexTests {
         }
     }
 
-    /// The cell size is a speed knob, so a query has to answer the same whatever
+    /// The cell size is a speed parameter, so a query has to answer the same whatever
     /// it is set to, including sizes far smaller and far larger than the spacing.
     @Test
     func theAnswerDoesNotDependOnTheCellSize() {

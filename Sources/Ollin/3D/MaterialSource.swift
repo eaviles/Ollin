@@ -13,7 +13,7 @@ extension Material {
     /// `Material()`'s defaults, in the initializer's own order, so the expression
     /// stays as short as the built-in presets' definitions. Values print rounded
     /// to four decimals, and a field whose rounded text matches the default's is
-    /// left out, so a knob's float dust never reaches the source. The expression
+    /// left out, so a parameter's float dust never reaches the source. The expression
     /// passes back through the initializer, which clamps every field to its legal
     /// range. Paste it wherever a `Material` goes:
     ///

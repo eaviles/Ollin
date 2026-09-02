@@ -40,9 +40,9 @@ override func draw() {
 }
 ```
 
-`count`, `kinds`, and `radius` are fixed at build. The interaction matrix is random, and `life.randomizeMatrix(seed:)` rolls a fresh one. The live feel comes from three knobs you can set any frame or bind to a `@Param`:
+`count`, `kinds`, and `radius` are fixed at build. The interaction matrix is random, and `life.randomizeMatrix(seed:)` rolls a fresh one. The live feel comes from three parameters you can set any frame or bind to a `@Param`:
 
-| Knob | Meaning | Default |
+| Parameter | Meaning | Default |
 | --- | --- | --- |
 | `beta` | where the repulsion core ends and attraction begins, as a fraction of `radius` (0…1) | 0.3 |
 | `forceFactor` | overall strength of the interaction forces | 6 |
@@ -90,9 +90,9 @@ override func draw() {
 }
 ```
 
-The agents start in a central disc facing out, so a radial web reaches across the field over the first few seconds. The look lives in the sensing and trail knobs:
+The agents start in a central disc facing out, so a radial web reaches across the field over the first few seconds. The look lives in the sensing and trail parameters:
 
-| Knob | Meaning | Default (Jones) |
+| Parameter | Meaning | Default (Jones) |
 | --- | --- | --- |
 | `senseAngle` | degrees between the center sensor and each side sensor | 22.5 |
 | `turnAngle` | degrees an agent turns toward the stronger side each step | 45 |
@@ -130,7 +130,7 @@ override func draw() {
 
 `spacing` is the only length you name. It says how many canvas points one model unit is drawn as, so a configuration keeps its shape at any size. Everything else is the model itself, live every frame:
 
-| Knob | Meaning | Default |
+| Parameter | Meaning | Default |
 | --- | --- | --- |
 | `muK` | radius of the kernel's ring of influence, in model units | 4 |
 | `sigmaK` | how wide that ring is | 1 |
@@ -170,7 +170,7 @@ override func draw() {
 }
 ```
 
-| Knob | Meaning | Default |
+| Parameter | Meaning | Default |
 | --- | --- | --- |
 | `transmits` | whether recipes copy on contact at all; false freezes them into a plain mixture of kinds | true |
 | `competition` | who wins a contact: `.faster`, `.slower`, or `.majority` (whoever is surrounded by more of its own line) | `.majority` |

@@ -239,5 +239,5 @@ if let reason = controller.unavailableReason { drawStatus(reason, style: .info) 
 
 - [Input](../Helpers/Input.md) for the mouse, the keyboard, and trackpad pressure
 - [MIDI](MIDI.md) for knobs and faders, which is the other shape of hardware control
-- [Parameters](../Helpers/Parameters.md) for `@Param` knobs, which MIDI and OSC can drive
+- [Parameters](../Helpers/Parameters.md) for `@Param` parameters, which MIDI and OSC can drive
 - The `Integration/ControllerInput` example

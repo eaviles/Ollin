@@ -128,7 +128,7 @@ Run the example twice, in two terminals:
 swift run Example-Integration-Tempo
 ```
 
-The two windows find each other over loopback, settle on one tempo, and light the same bar dot at the same moment. Turn one window's BPM knob and both follow. Quit one and the other keeps the beat without a hiccup. Anything else that speaks Link joins the same way, on this machine or on the same network.
+The two windows find each other over loopback, settle on one tempo, and light the same bar dot at the same moment. Adjust one window's BPM parameter and both follow. Quit one and the other keeps the beat without a hiccup. Anything else that speaks Link joins the same way, on this machine or on the same network.
 
 ---
 

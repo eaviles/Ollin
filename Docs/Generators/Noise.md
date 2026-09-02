@@ -179,7 +179,7 @@ Same seed (`noiseSeed`), separate field: `noise` and `simplexNoise` at the same 
   <img src="../../Guide/Images/05-Noise/NoiseFlavors.jpg" alt="Six gray field panels from one seed: classic noise, simplex noise, warped fbm, cellular worley, ridged fbm, and turbulence" width="680">
 </picture>
 
-See the `Randomness/NoiseKinds` example for four of these read off one set of coordinates under one `noiseSeed`: `simplexNoise`, `signedSimplexNoise` split at zero, `worley` with its `feature` and `jitter` on knobs, and `turbulence`.
+See the `Randomness/NoiseKinds` example for four of these read off one set of coordinates under one `noiseSeed`: `simplexNoise`, `signedSimplexNoise` split at zero, `worley` with its `feature` and `jitter` on parameters, and `turbulence`.
 
 <a name="worley"></a>
 
@@ -225,7 +225,7 @@ ridgedFbm(_ x, _ y, loop: Double, radius: Double = 1, ...) -> Double
 turbulence(_ x, _ y, loop: Double, radius: Double = 1, ...) -> Double
 ```
 
-Two classic reshapings of `fbm`, same knobs, both `0...1`:
+Two classic reshapings of `fbm`, same parameters, both `0...1`:
 
 - **`ridgedFbm`** folds each octave into sharp creases (one minus the absolute value, squared) and lets an octave contribute only where the one below was strong, so detail gathers on the crest lines instead of filling the valleys. Bright values are the ridges; it's the standard basis for mountainous terrain. See the `RidgeLines` example.
 - **`turbulence`** layers the folded field without the feedback: billows with creased seams, the classic basis for clouds, smoke, and marble.
@@ -261,7 +261,7 @@ The GPU spellings of the same look: `generate(.noise(scale: 3, warp: 1))` fills 
 
 ### Choosing a scale
 
-The multiplier on noise's input is a zoom knob: it decides how far apart your samples land on the field, and it's the number you'll tune most.
+The multiplier on noise's input is a zoom control: it decides how far apart your samples land on the field, and it's the number you'll tune most.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/05-Noise/NoiseZoom-dark.jpg">

@@ -21,7 +21,7 @@ import OllinAudio
 /// comes back with that gap.
 ///
 /// Until the microphone is allowed, a generated pulse stands in: the sketch
-/// gates an oscillator at a knob tempo and the follower follows *that*, so the
+/// gates an oscillator at a parameter tempo and the follower follows *that*, so the
 /// whole mechanism is visible before any permission is granted. Allow the
 /// microphone and the room takes over. On speakers the sketch's own note lands
 /// on the beat it heard and reinforces it; headphones keep the lock honest.
@@ -86,7 +86,7 @@ final class PlayAlong: Sketch {
         drawCaption(status(live: live, room: room))
     }
 
-    /// Gates the stand-in oscillator at the knob tempo: silence, then a short
+    /// Gates the stand-in oscillator at the parameter tempo: silence, then a short
     /// decaying burst on each beat, which is exactly the kind of arrival the
     /// onset detector listens for. Two alternating pitches keep it musical.
     private func drivePulse() {

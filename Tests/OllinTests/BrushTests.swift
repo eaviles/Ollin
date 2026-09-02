@@ -53,7 +53,7 @@ struct BrushTests {
         #expect(three == one * 3)
     }
 
-    /// Every random knob is a fraction of the stamp's own size, so a brush stays
+    /// Every random parameter is a fraction of the stamp's own size, so a brush stays
     /// in proportion when the weight changes.
     @Test func scatterIsAFractionOfTheStampSize() {
         let brush = Brush(.circle, spacing: 0.5, scatter: 1, seed: 3)

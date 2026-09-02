@@ -7,7 +7,7 @@ import Ollin
 /// `SpatialHash` finds every particle's neighbors on the GPU, so the whole pool runs in
 /// real time.
 ///
-/// Drag to grab the water and fling it. The knobs change the liquid itself: stiffness
+/// Drag to grab the water and fling it. The parameters change the liquid itself: stiffness
 /// is how hard it resists squeezing, viscosity how syrupy it moves, bounce how lively
 /// the walls are.
 @main

@@ -68,7 +68,7 @@ override func draw() {
 }
 ```
 
-Run the sketch and the inspector (press ⌘/ if you launched it on its own) shows that number on a Variation card, with arrows to step to the next seed, a die to roll a random one, and a field to type one in. Each press restarts the sketch on the new seed while your parameter knobs stay where you set them, so you can hunt for a composition without touching the code.
+Run the sketch and the inspector (press ⌘/ if you launched it on its own) shows that number on a Variation card, with arrows to step to the next seed, a die to roll a random one, and a field to type one in. Each press restarts the sketch on the new seed while your parameters stay where you set them, so you can hunt for a composition without touching the code.
 
 When you want to see many at once, ask for a contact sheet. This renders one frame per seed and tiles them into a single labeled image, exactly like the nine-tile sheet you saw a moment ago:
 
@@ -195,7 +195,7 @@ selfAvoidingWalk(cellSize: 22)
 
 **`randomWalk`** is the one you just wrote, seeded and shipped. Notice what it does with five thousand steps in the first panel: it pools. A walk with equal-sized steps spreads outward only as fast as the square root of the number of steps, so it spends most of its time revisiting a small patch.
 
-**`levyFlight`** changes the step size rule. Instead of every step being about the same length, the lengths come from a distribution where small steps are overwhelmingly likely but occasionally an enormous one comes up. The result is the second panel: tight clusters joined by long straight leaps. This turns out to be how foraging animals actually move when they don't know where the food is, which is why the pattern shows up in tracking data for albatrosses, sharks, and bees. One knob needs care, and `minStep` must stay above zero, because the distribution's tail runs to infinity at zero and a zero minimum produces steps that never end.
+**`levyFlight`** changes the step size rule. Instead of every step being about the same length, the lengths come from a distribution where small steps are overwhelmingly likely but occasionally an enormous one comes up. The result is the second panel: tight clusters joined by long straight leaps. This turns out to be how foraging animals actually move when they don't know where the food is, which is why the pattern shows up in tracking data for albatrosses, sharks, and bees. One parameter needs care, and `minStep` must stay above zero, because the distribution's tail runs to infinity at zero and a zero minimum produces steps that never end.
 
 **`selfAvoidingWalk`** changes the memory rule. It moves on a grid and refuses to enter a cell it has already visited, so it can't pool, and it fills its region instead. It also gets stuck, which is not a bug but the whole character of the thing. When every neighbor has been used, the walk stops, and where it stops is part of the drawing.
 
@@ -284,11 +284,11 @@ final class DisorderGrid: Sketch {
 
 Run it with `swift run OllinLive MySketches/DisorderGrid.swift` and take it apart:
 
-- `randomSeed(gridSeed)` runs first, so the whole drawing is one seed's variation, held perfectly still. The `Seed` knob picks which one, and you can click the canvas to step to the next variation or click the knob's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number knob, the same move as [Chapter 3](03-MotionAndTime.md)'s `Waves`.
-- `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` knob, and every row between gets its share. One line decides the piece's entire top-to-bottom structure.
+- `randomSeed(gridSeed)` runs first, so the whole drawing is one seed's variation, held perfectly still. The `Seed` parameter picks which one, and you can click the canvas to step to the next variation or click the parameter's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number parameter, the same move as [Chapter 3](03-MotionAndTime.md)'s `Waves`.
+- `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` parameter, and every row between gets its share. One line decides the piece's entire top-to-bottom structure.
 - Each quadrilateral is four corners sitting on the posts of a perfect square, `inset` deep into its cell, and every corner coordinate rolls its own `random(-1, 1)` nudge, scaled by the row's reach `d`. That's eight rolls per shape, so the squares don't just shift, they *deform*. Four `drawLine` calls close the loop.
 - The accent is a gate and a pick working together, straight from this chapter, with eight percent of quads trading ink for `randomChoice(accents)`.
-- Turn `Disorder` to zero and the grid snaps to perfect order: the piece contains its own before picture. Because the *pattern* of rolls never changes with the knob (only their reach), the same tangles grow back in the same places as you turn it up again.
+- Turn `Disorder` to zero and the grid snaps to perfect order: the piece contains its own before picture. Because the *pattern* of rolls never changes with the parameter (only their reach), the same tangles grow back in the same places as you turn it up again.
 
 When a seed earns it, export the still:
 

@@ -11,7 +11,7 @@ import Ollin
 /// the sample never showed. The samples here are authored right in the source as
 /// little character grids, so you can edit one and watch the texture change.
 ///
-/// The `motif` knob picks a sample, `patternSize` sets how much context a patch
+/// The `motif` parameter picks a sample, `patternSize` sets how much context a patch
 /// carries (2 keeps only the loosest sense of it, 4 reproduces whole motifs), and
 /// `symmetry` decides whether turned and mirrored copies are learned too. Flowers
 /// know which way is up, so try them at `.none`.

@@ -51,7 +51,7 @@ final class Subsurface: Sketch {
         }
 
         // Left to right: skin (red runs farthest), marble (near-neutral, slightly
-        // warm), and a jade built from the bare knobs: a green-dominant
+        // warm), and a jade built from the bare parameters: a green-dominant
         // scatteringColor makes the diffusion itself green.
         var jade = Material.dielectric(roughness: 0.3)
         jade.scattering = 0.8

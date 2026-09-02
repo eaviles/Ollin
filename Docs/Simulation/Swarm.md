@@ -14,7 +14,7 @@ Every behavior is a **weight**, and a weight of zero is a behavior that is off. 
 
 - [Making one](#making-one)
 - [The behaviors](#behaviors)
-- [Knobs](#knobs)
+- [Parameters](#parameters)
 - [Choosing the numbers](#choosing)
 - [Seeing the movement](#trails)
 - [Notes](#notes)
@@ -72,10 +72,10 @@ flock.target = prey.position + prey.velocity * 0.4   // where it will be in 0.4s
 flock.seek = 2
 ```
 
-<a id="knobs"></a>
-### Knobs
+<a id="parameters"></a>
+### Parameters
 
-| Knob | Meaning | Default |
+| Parameter | Meaning | Default |
 | --- | --- | --- |
 | `target` | the point `seek` / `flee` / `arrive` steer by | `.zero` |
 | `maxSpeed` | top speed, points per second | 190 |

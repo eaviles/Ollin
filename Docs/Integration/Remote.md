@@ -4,7 +4,7 @@
 
 ## Remote
 
-The sketch's `@Param` knobs, served to a phone. An installation is tuned from in front of it, not from behind the Mac that runs it. Register one extension and the sketch starts a small server on the local network. Any browser on the same Wi-Fi opens a touch surface with the same knobs the [inspector](../Helpers/Parameters.md) shows, live in both directions. It lives in a separate library so the drawing core stays free of Network.framework. Add `import OllinRemote` alongside `import Ollin` to reach it.
+The sketch's `@Param` parameters, served to a phone. An installation is tuned from in front of it, not from behind the Mac that runs it. Register one extension and the sketch starts a small server on the local network. Any browser on the same Wi-Fi opens a touch surface with the same parameters the [inspector](../Helpers/Parameters.md) shows, live in both directions. It lives in a separate library so the drawing core stays free of Network.framework. Add `import OllinRemote` alongside `import Ollin` to reach it.
 
 ```swift
 import Ollin
@@ -58,7 +58,7 @@ Keep the reference if the sketch wants to draw the address on the canvas. The ex
 
 ### What the phone shows
 
-The page renders one touch control per knob, grouped the way `group:` arranges the inspector:
+The page renders one touch control per parameter, grouped the way `group:` arranges the inspector:
 
 - a `Double` becomes a full-width slider; the whole row is the touch surface
 - an `Int` becomes a stepper with large touch targets
@@ -74,7 +74,7 @@ The phone recolors a strip; it does not move a ramp's stops or change how many c
 
 A header shows the sketch's name and the connection state. A monitor strip carries the frame rate, the clock, and the frame count, refreshed a few times a second. Rows ruled by `Param.show(when:)` appear and disappear as their rule flips.
 
-Edits travel both ways. A slider moved on the phone lands in the sketch. A knob turned in the Mac inspector, or a value the sketch changes itself, travels back to every open page.
+Edits travel both ways. A slider moved on the phone lands in the sketch. A parameter changed in the Mac inspector, or a value the sketch changes itself, travels back to every open page.
 
 <a name="how-values-land"></a>
 
@@ -86,7 +86,7 @@ A value from the phone is queued and applied on the main thread at the next fram
 
 ### The network story
 
-The server listens on every interface of the Mac. Anyone on the same network who has the address can open the page and move the knobs while it is up. That makes it a studio and venue tool. It is fine on your own Wi-Fi or a private show network, and not something to leave running on hostile networks. There is no account and no pairing code; possession of the address is the whole key.
+The server listens on every interface of the Mac. Anyone on the same network who has the address can open the page and move the parameters while it is up. That makes it a studio and venue tool. It is fine on your own Wi-Fi or a private show network, and not something to leave running on hostile networks. There is no account and no pairing code; possession of the address is the whole key.
 
 The server stops when the sketch goes away, including across a live reload, which builds a fresh sketch and a fresh extension. Call `stop()` to end it earlier by hand.
 
@@ -102,4 +102,4 @@ swift run --package-path Examples Example-Integration-RemoteSurface
 
 ---
 
-See the **RemoteSurface** example for the full loop, and [`@Param`](../Helpers/Parameters.md) for everything a knob can declare.
+See the **RemoteSurface** example for the full loop, and [`@Param`](../Helpers/Parameters.md) for everything a parameter can declare.

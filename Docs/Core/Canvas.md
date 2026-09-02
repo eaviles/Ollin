@@ -152,7 +152,7 @@ Either way, a sketch written with `scale` composes the same at the preview size 
 
 ### The performance panel
 
-When a sketch feels slow, **View ▸ Show Inspector** (⌘/) opens a floating panel beside the sketch window: frame rate, the CPU time spent building a frame, the geometry the frame emitted (vertices, SDF shapes, point-cloud splats, and GPU particles), the clock, and the canvas size, with a slider for each of the sketch's `@Param` knobs below. Toggle it back off the same way.
+When a sketch feels slow, **View ▸ Show Inspector** (⌘/) opens a floating panel beside the sketch window: frame rate, the CPU time spent building a frame, the geometry the frame emitted (vertices, SDF shapes, point-cloud splats, and GPU particles), the clock, and the canvas size, with a slider for each of the sketch's `@Param` parameters below. Toggle it back off the same way.
 
 It's a separate utility window, not in-canvas drawing, so it never appears in an exported frame, since `--export` renders only the canvas. The CPU time is the cost of building a frame on the draw thread, the first thing to climb when a sketch gets heavy, and it reads far lower in a release build (`swift run -c release`) than the default debug build.
 

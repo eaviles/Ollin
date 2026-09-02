@@ -148,7 +148,7 @@ On a major scale the first of those is major and the second is minor, from the s
   <img src="../../Guide/Images/29-MakingSound/ScaleLadder.jpg" alt="Left: a ladder of pentatonic scale rungs over a faint semitone grid, with a wandering numbered sequence of dots landing only on rungs. Right: seven triads built on the degrees of C major, each three stacked marks two rungs apart, colored by what fell out: major on I, IV, and V, minor on ii, iii, and vi, diminished on the seventh" width="680">
 </picture>
 
-`Scale.Mode` is a `ParamOption`, so a mode can be a knob:
+`Scale.Mode` is a `ParamOption`, so a mode can be a parameter:
 
 ```swift
 @Param var mode: Scale.Mode = .minorPentatonic
@@ -229,7 +229,7 @@ The one genuinely ambiguous thing about the notation is a trailing number. The 7
 
 Degrees survive a change of key and symbols do not, which is the trade between the two forms.
 
-`Examples/Audio/ChordSymbols` is this half drawn, beside `Examples/Audio/Changes` for the degrees. A chart goes into a text knob, one card per token, and the sounding chord is spelled out.
+`Examples/Audio/ChordSymbols` is this half drawn, beside `Examples/Audio/Changes` for the degrees. A chart goes into a text parameter, one card per token, and the sounding chord is spelled out.
 
 ---
 
@@ -405,7 +405,7 @@ override func draw() {
 }
 ```
 
-`Examples/Audio/Generative` is that, drawn: three Euclidean rings on one step count, with the knobs changing what is played while it runs.
+`Examples/Audio/Generative` is that, drawn: three Euclidean rings on one step count, with the parameters changing what is played while it runs.
 
 ---
 

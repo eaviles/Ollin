@@ -114,7 +114,7 @@ maze(columns: Int, rows: Int,
 drawMaze(_ maze: Maze, in bounds: Rectangle? = nil)
 ```
 
-Carve a *perfect maze* (every cell reachable, no loops, one path between any two cells) and read it as geometry. The algorithm is a texture knob as much as an algorithmic one:
+Carve a *perfect maze* (every cell reachable, no loops, one path between any two cells) and read it as geometry. The algorithm is a texture parameter as much as an algorithmic one:
 
 - **`.backtracker`** (randomized depth-first search): long winding corridors, few dead ends.
 - **`.kruskal`** (randomized Kruskal's over union-find): many short dead ends, an even all-over texture.

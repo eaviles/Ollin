@@ -24,7 +24,7 @@ import os
 /// }
 /// ```
 ///
-/// Or bind a control straight onto a `@Param` knob, so a hardware fader drives the
+/// Or bind a control straight onto a `@Param`, so a hardware fader drives the
 /// same parameter the inspector slider does (give the param `smoothing:` and the
 /// hardware moves glide instead of jumping):
 ///
@@ -200,7 +200,7 @@ public final class MIDIInput: @unchecked Sendable {
 
     // MARK: Parameter binding
 
-    /// Drives a `@Param` from a control-change knob: each incoming value is mapped
+    /// Drives a `@Param` from a control-change parameter: each incoming value is mapped
     /// from `input` (a controller's `0…127` by default) into the parameter's own
     /// range and assigned. Give the param `smoothing:` and the hardware moves glide
     /// rather than jump. Pass `channel` (1…16) to bind one channel only.

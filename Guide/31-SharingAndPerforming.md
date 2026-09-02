@@ -41,7 +41,7 @@ The cost is what the geometry says it is: four times the pixels at 2, sixteen at
 swift run OllinLive MySketches/Finale.swift --export poster.png --render-scale 2
 ```
 
-One thing the dial leaves strictly alone: a blur, a flare, and anything else you asked for with `postProcess` still measure in canvas pixels. A `.gaussianBlur(radius: 12)` is twelve pixels wide at every scale. A quality knob that quietly resized your blur would not be a quality knob.
+One thing the dial leaves strictly alone: a blur, a flare, and anything else you asked for with `postProcess` still measure in canvas pixels. A `.gaussianBlur(radius: 12)` is twelve pixels wide at every scale. A quality parameter that quietly resized your blur would not be a quality parameter.
 
 ### The slow render that pays for itself
 
@@ -147,7 +147,7 @@ swift run OllinLive MySketches/Plot.swift --export-gcode plot.gcode
 swift run OllinLive MySketches/Plot.swift --export-gcode cut.gcode --gcode-machine laser
 ```
 
-A machine needs real units, so the export asks for a physical width, the way a 3D print asks for its size. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` carries the finer knobs: the pen lift, a laser's power and passes, a mill's depth per pass. Only line work travels. A stroke plots along its centerline and a fill contributes its outline, with `--hatch` shading fills exactly as it does for SVG.
+A machine needs real units, so the export asks for a physical width, the way a 3D print asks for its size. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` carries the finer parameters: the pen lift, a laser's power and passes, a mill's depth per pass. Only line work travels. A stroke plots along its centerline and a fill contributes its outline, with `--hatch` shading fills exactly as it does for SVG.
 
 The exporter plans the route before it writes a move. Open paths whose ends touch merge, so the pen stays down across them. Then a nearest-neighbor walk reorders the paths to keep the pen-up hops short:
 
@@ -156,7 +156,7 @@ The exporter plans the route before it writes a move. Open paths whose ends touc
   <img src="Images/31-SharingAndPerforming/MachineRoute.jpg" alt="Two panels of the same sun-and-wave line work. In the drawn order the pen-up travels tangle across the page at 991 mm; planned, they walk neatly around the shapes at 390 mm" width="680">
 </picture>
 
-The planner is public. `GCode.toolpath(_:in:)` returns the route as plain contours, with the drawn and travel lengths measured in millimeters. The `Export/Toolpath` example draws its own route and walks a pen along it at machine speed. One habit applies to a program from any tool: give it a dry run first, pen out, laser disarmed, cutter above the stock. [G-code](../Docs/Output/GCode.md) has the three machine profiles and every knob.
+The planner is public. `GCode.toolpath(_:in:)` returns the route as plain contours, with the drawn and travel lengths measured in millimeters. The `Export/Toolpath` example draws its own route and walks a pen along it at machine speed. One habit applies to a program from any tool: give it a dry run first, pen out, laser disarmed, cutter above the stock. [G-code](../Docs/Output/GCode.md) has the three machine profiles and every parameter.
 
 ## Drawing with light: a show laser
 
@@ -198,7 +198,7 @@ Time is the whole budget. The point rate divided by the frame rate is every poin
 
 The last part is not about pictures at all. A projector puts real power into a beam, and the mirrors are the only thing spreading it. So **a `LaserProjector` sends nothing until you call `arm()`**. Under that gate the brightness starts at half. A beam that stops moving is blanked, and so is a frame the sketch stopped feeding. Give the first run the same courtesy you give a cutter: low power, pointed at a wall, nobody in the beam.
 
-The **LaserPreview** example is that preview with the knobs attached, and it runs with no hardware at all. [Laser](../Docs/Integration/Laser.md) has the rest, including the ILDA file that reaches a rig this library does not talk to directly.
+The **LaserPreview** example is that preview with the parameters attached, and it runs with no hardware at all. [Laser](../Docs/Integration/Laser.md) has the rest, including the ILDA file that reaches a rig this library does not talk to directly.
 
 ## Printing one ink at a time: separations
 
@@ -292,7 +292,7 @@ print(check.summary)        // "9360 triangles, 60.00 x 52.50 x 26.02 units: rea
 
 Starting from a shape that closes by construction saves the repair work entirely. [Chapter 26](26-SculptingWithFields.md)'s metaballs and isosurfaces close by definition, since a field has an inside. So do the solid primitives and a tube swept with `closed: true`. A plane, or a lathe without caps, does not.
 
-One last thing happens quietly on the way out. Ollin's meshes are flat-shaded. Every triangle carries its own three corners, so each face can hold its own normal, and neighboring triangles share no vertex at all. Read as a solid, that is not a surface with a few holes in it, it is nothing but holes. The writers merge those duplicate corners first and settle the winding against the mesh's own normals. They also stand the model up on z. Ollin's world is y-up and a build platform is not. You get a solid without having to know any of that, which is the point. See [Fabrication](../Docs/Output/Fabrication.md) for the details. `Examples/3D/Geometry/Fabrication` is the knot above, with knobs.
+One last thing happens quietly on the way out. Ollin's meshes are flat-shaded. Every triangle carries its own three corners, so each face can hold its own normal, and neighboring triangles share no vertex at all. Read as a solid, that is not a surface with a few holes in it, it is nothing but holes. The writers merge those duplicate corners first and settle the winding against the mesh's own normals. They also stand the model up on z. Ollin's world is y-up and a build platform is not. You get a solid without having to know any of that, which is the point. See [Fabrication](../Docs/Output/Fabrication.md) for the details. `Examples/3D/Geometry/Fabrication` is the knot above, with parameters.
 
 ## Something you can walk around: USDZ
 
@@ -376,11 +376,11 @@ One detail is worth knowing because it explains something that could otherwise l
 
 The consequences of that are worth reading as rules. Anything the sketch already flattened while drawing keeps its one answer. A `project()`, a `depth(at:)` placement, and a billboard are all that kind of thing. Each lands flat on the screen plane in both eyes, which for captions and overlays is usually what you want. A 2D sketch has nothing to disagree about and comes out flat, and says so. So does an accumulating sketch, because its pile lives in one surface and there is only one of it.
 
-Finally, the file records how far apart the eyes that shot it really were, so a player can scale the depth it shows. `--meters-per-unit` is how you say what a world unit is, exactly as for a model. [Spatial](../Docs/Output/Spatial.md#spatial-video) has the rest. `Examples/3D/Geometry/SpatialVideo` is a colonnade built to have depth worth recording, with both numbers on knobs.
+Finally, the file records how far apart the eyes that shot it really were, so a player can scale the depth it shows. `--meters-per-unit` is how you say what a world unit is, exactly as for a model. [Spatial](../Docs/Output/Spatial.md#spatial-video) has the rest. `Examples/3D/Geometry/SpatialVideo` is a colonnade built to have depth worth recording, with both numbers on parameters.
 
 ## Reproducibility is part of the piece
 
-A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, [Chapter 4](04-Randomness.md)), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. A value you want for one render only can ride the command line instead, which is the next section. And share the `.swift` file alongside the render when you can. In Ollin the sketch is the artifact. A reader holding the source holds the whole piece, seeds, knobs, and all.
+A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, [Chapter 4](04-Randomness.md)), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. A value you want for one render only can ride the command line instead, which is the next section. And share the `.swift` file alongside the render when you can. In Ollin the sketch is the artifact. A reader holding the source holds the whole piece, seeds, parameters, and all.
 
 The exports meet you halfway. Every PNG, SVG, PDF, and video Ollin writes carries a small **recipe** in its metadata. It holds the seeds the run used, the value of every `@Param`, and the git commit the code was at. The commit is marked dirty if you had uncommitted edits. It also records which frame at which rate produced it.
 
@@ -390,7 +390,7 @@ Image metadata has existed for decades, in the same place a camera writes its sh
 exiftool -Description poster.png
 ```
 
-This matters when you need to recover a past render. You find an image from four months ago that you like. You have no memory of which of eleven variations produced it, and the sketch has changed since. The file tells you: seed 48213, these knob values, that commit. Check out the commit, pass the seed, and you have it back.
+This matters when you need to recover a past render. You find an image from four months ago that you like. You have no memory of which of eleven variations produced it, and the sketch has changed since. The file tells you: seed 48213, these parameter values, that commit. Check out the commit, pass the seed, and you have it back.
 
 One limit stays. GIF has no metadata slot in its format, so a GIF export carries nothing.
 
@@ -408,21 +408,21 @@ git show 93ae989:Sketch.swift
 
 See [the details](../Docs/Output/Export.md#reproducibility-metadata) for every field the recipe holds, and [captures that know their source](../Docs/Output/Export.md#captures-that-know-their-source) for the rest of that flag.
 
-### Passing the knobs back in
+### Passing the parameters back in
 
 Reading a recipe is half of it. The other half is handing those values back to a run.
 
-`--param name=value` sets one declared knob for this run. It repeats, so a run carries as many knobs as you need.
+`--param name=value` sets one declared parameter for this run. It repeats, so a run carries as many parameters as you need.
 
 ```sh
 swift run --package-path Examples Example-Live-Parameters --export keeper.png --param radius=40 --param paper=#101018
 ```
 
-Each value is read against its own knob. A number stays a number. A color is a hex string. A vector is two numbers with a comma between them. A menu choice is its name, spelled loosely: `easeOut`, `ease-out` and `"Ease Out"` all find the same one. The [Export page](../Docs/Output/Export.md#setting-a-knob-for-the-run) lists every kind.
+Each value is read against its own parameter. A number stays a number. A color is a hex string. A vector is two numbers with a comma between them. A menu choice is its name, spelled loosely: `easeOut`, `ease-out` and `"Ease Out"` all find the same one. The [Export page](../Docs/Output/Export.md#setting-a-parameter-for-the-run) lists every kind.
 
 The value lands after `setup()` and before the first frame. So it wins over a value the sketch sets for itself, and the new file's recipe names it. A frame can be rendered again from its own recipe, with the sketch on disk untouched.
 
-Ask for a knob the sketch does not have, or a value its kind cannot read, and the run stops and says so. It never renders something you did not ask for.
+Ask for a parameter the sketch does not have, or a value its kind cannot read, and the run stops and says so. It never renders something you did not ask for.
 
 ## Saying what it shows: describable output
 
@@ -616,13 +616,13 @@ The last output is a stage. `swift run OllinLiveCoding` opens the performance ho
   <img src="Images/31-SharingAndPerforming/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual filling the stage, code lines riding over it on translucent strips, an Evaluated toast, and callouts naming each part" width="680">
 </picture>
 
-The loop is different from the live-reload host you've used since [Chapter 1](01-HelloOllin.md). There is no file watching and no separate editor, so you type in the window and press **⌘↩** to evaluate. The buffer compiles in the background while the running sketch keeps drawing. On success the new sketch swaps in with the clock carried across, so a phase-driven motion never jumps mid-set. Tuned `@Param` knobs (including ones bound over MIDI or OSC) carry across too. A typo can't stop the show. The last good sketch keeps playing, the errors land in a strip along the bottom, and you fix and evaluate again. When the code should get out of the way, **⌃⇧H** hides it and the visuals keep the whole stage. Fullscreen for the projector is **⌃⌘F**. For a real set, `Scripts/OllinLiveCoding` builds the host in release mode so the framework renders at full speed.
+The loop is different from the live-reload host you've used since [Chapter 1](01-HelloOllin.md). There is no file watching and no separate editor, so you type in the window and press **⌘↩** to evaluate. The buffer compiles in the background while the running sketch keeps drawing. On success the new sketch swaps in with the clock carried across, so a phase-driven motion never jumps mid-set. Tuned `@Param` values (including ones bound over MIDI or OSC) carry across too. A typo can't stop the show. The last good sketch keeps playing, the errors land in a strip along the bottom, and you fix and evaluate again. When the code should get out of the way, **⌃⇧H** hides it and the visuals keep the whole stage. Fullscreen for the projector is **⌃⌘F**. For a real set, `Scripts/OllinLiveCoding` builds the host in release mode so the framework renders at full speed.
 
 Evaluation never writes your file (⌘S does), so you can riff as recklessly as the room deserves and keep only what worked.
 
 ## Keeping the take
 
-Every exporter in this chapter re-renders. That is their gift: a fixed clock, the same file every run, nothing left to chance. A performance is the opposite kind of thing. The knob you rode, the evaluation that landed at the right moment, the note that answered the room: none of it happens twice. An export remembers the sketch; a recording remembers the night.
+Every exporter in this chapter re-renders. That is their gift: a fixed clock, the same file every run, nothing left to chance. A performance is the opposite kind of thing. The parameter you rode, the evaluation that landed at the right moment, the note that answered the room: none of it happens twice. An export remembers the sketch; a recording remembers the night.
 
 So the host records. Press **⌘⇧R** and a red chip starts counting on the stage. Play the set. Press **⌘⇧R** again and the take is a movie in `~/Movies/Ollin/`, picture and sound together, named after the sketch and the moment. The recording rides through evaluations, so a set that changed its code twelve times is still one continuous movie.
 
@@ -651,7 +651,7 @@ Stopping is generous on purpose. Quitting the host finishes the movie first, and
 
 ## Playing the night again: replay
 
-A movie remembers what the performance looked like. A *take* remembers the performance itself: the seed the run rolled, the clock it followed, every pointer move, every knob you turned. It is one small JSON file, and playing it back walks the sketch through the same frames, pixel for pixel.
+A movie remembers what the performance looked like. A *take* remembers the performance itself: the seed the run rolled, the clock it followed, every pointer move, every parameter you adjusted. It is one small JSON file, and playing it back walks the sketch through the same frames, pixel for pixel.
 
 ```sh
 swift run OllinLive MySketches/Finale.swift --record-take take.json   # play; quitting writes the file
@@ -670,11 +670,11 @@ swift run OllinLive MySketches/Finale.swift --replay take.json --path-traced --e
 
 A replayed video needs no `--seconds`; it renders the whole take. So the set you played live at sixty frames a second can re-render overnight at seconds per frame, exactly as performed. And `--seed` beside `--replay` keeps your gestures while `random()` walks a different world, so one good performance can audition many variations.
 
-What replays is what drives the sketch: time, input, knobs, randomness. A camera feed or a microphone keeps playing live during a replay. A piece leaning on the room follows your recorded hands, not the recorded room. The whole contract, and the `Take` type under the flags, lives in [Replay](../Docs/Core/Replay.md).
+What replays is what drives the sketch: time, input, parameters, randomness. A camera feed or a microphone keeps playing live during a replay. A piece leaning on the room follows your recorded hands, not the recorded room. The whole contract, and the `Take` type under the flags, lives in [Replay](../Docs/Core/Replay.md).
 
-## Directing the knobs: keyframes
+## Directing the parameters: keyframes
 
-A take remembers what you did. Keyframes say what should happen. You already have knobs: the `@Param` properties from [Chapter 1](01-HelloOllin.md). An *automation* turns them for you. A value is placed at one moment, another later, and a curve carries the first into the second.
+A take remembers what you did. Keyframes say what should happen. You already have parameters: the `@Param` properties from [Chapter 1](01-HelloOllin.md). An *automation* moves them for you. A value is placed at one moment, another later, and a curve carries the first into the second.
 
 ```swift
 override func setup() {
@@ -687,18 +687,18 @@ override func setup() {
 }
 ```
 
-That is the whole idea. Every frame, before your `draw()` runs, the knob is set to whatever its curve holds at the sketch clock. You stop turning the knob and start writing down what it does.
+That is the whole idea. Every frame, before your `draw()` runs, the parameter is set to whatever its curve holds at the sketch clock. You stop adjusting the parameter and start writing down what it does.
 
 Each key carries the curve that *leaves* it, so the last key's curve is never read. Five of them are named, and one is drawn:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ParameterOnACurve-dark.jpg">
-  <img src="Images/31-SharingAndPerforming/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the knob holds there" width="680">
+  <img src="Images/31-SharingAndPerforming/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the parameter holds there" width="680">
 </picture>
 
 `.linear` is the straight line. `.easeIn`, `.easeOut`, and `.easeInOut` are the eases from [Chapter 3](03-MotionAndTime.md). `.hold` sits still and then jumps. `.bezier(x1:y1:x2:y2:)` is the one you shape by hand. Its two handles bend the clock as well as the value, the way a curve dragged in an editor does.
 
-Not every knob can travel. A number, a color, a point, or a range has values in between two settings, so it moves along the curve. A switch, a menu choice, and a piece of text have nothing in between. They step instead, holding what they were given until the next key takes over. That is the honest behavior, and it is why a fill toggle on a track blinks rather than fades.
+Not every parameter can travel. A number, a color, a point, or a range has values in between two settings, so it moves along the curve. A switch, a menu choice, and a piece of text have nothing in between. They step instead, holding what they were given until the next key takes over. That is the honest behavior, and it is why a fill toggle on a track blinks rather than fades.
 
 How a pass plays is three properties. `loops` wraps at the end. `speed` scales the clock, so `2` runs twice as fast, and a negative speed runs the piece backwards from a `start` at the end. `length` holds past the last key before the wrap comes around, which is how you leave a beat of stillness in a loop.
 
@@ -708,7 +708,7 @@ Here is why keyframes sit in this chapter. The tracks read the sketch clock, and
 swift run --package-path Examples Example-Motion-Automation --export-video directed.mp4 --seconds 12
 ```
 
-An automation is plain data as well, which means a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, playhead and all. And `--automation file.json` drives the same knobs from a file instead of from code. The full surface is in [Automation](../Docs/Core/Automation.md).
+An automation is plain data as well, which means a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, playhead and all. And `--automation file.json` drives the same parameters from a file instead of from code. The full surface is in [Automation](../Docs/Core/Automation.md).
 
 ### Directing by hand: the timeline panel
 
@@ -720,15 +720,15 @@ Click **Timeline** in the title bar, or press **⌘T**, and a floating panel ope
 swift run OllinLive Examples/Motion/Automation/Sketch.swift
 ```
 
-The loop has three moves. Scrub the ruler, or step a frame at a time, and the picture follows the playhead. Turn a knob in the inspector until the frame looks right. Then click the small diamond in that knob's row, and a key lands at the playhead holding that value. A hollow diamond starts a track; a filled one already has one; clicking on a key takes it away.
+The loop has three moves. Scrub the ruler, or step a frame at a time, and the picture follows the playhead. Adjust a parameter in the inspector until the frame looks right. Then click the small diamond in that parameter's row, and a key lands at the playhead holding that value. A hollow diamond starts a track; a filled one already has one; clicking on a key takes it away.
 
 The lanes draw what will happen. A number lane plots its curve, a color lane shows the blend as a band, and a switch steps. Drag a key to move it in time. Click one to pick the curve that leaves it, and a Bezier grows two handles you shape by eye. The loop button repeats a stretch while you work on it, and that region never touches the piece itself.
 
-Everything you place lands in `Sketch.automation.json` beside the sketch, the same file `--automation` and every export read. The live host reads it back on launch and across every reload, so the direction survives the edit loop. One rule to hold: a track your `setup()` writes for the same knob wins that knob, because the code is the artifact. The full tour is in [The parameter timeline](../Docs/Tools/Timeline.md).
+Everything you place lands in `Sketch.automation.json` beside the sketch, the same file `--automation` and every export read. The live host reads it back on launch and across every reload, so the direction survives the edit loop. One rule to hold: a track your `setup()` writes for the same parameter wins that parameter, because the code is the artifact. The full tour is in [The parameter timeline](../Docs/Tools/Timeline.md).
 
-## Writing the knob as a rule
+## Writing the parameter as a rule
 
-Keys say where a knob is at a few moments. Sometimes you do not want moments. You want to say what the knob *is*, and have it be that at every moment:
+Keys say where a parameter is at a few moments. Sometimes you do not want moments. You want to say what the parameter *is*, and have it be that at every moment:
 
 ```swift
 override func setup() {
@@ -743,24 +743,24 @@ override func setup() {
 
 That is a *formula*, and the thing to notice is the quotation marks. The rule is text, not Swift source. Text can arrive at runtime. It can be typed into a field, read out of a file, or changed while the piece is playing. None of that needs a recompile. That is the whole reason this exists beside the curves.
 
-The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, `smoothstep`, `noise`, `pi` and `tau`, spelled and ordered exactly as they are in `draw()` and in a shader. A formula reads `time`, which is where the pass stands, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and any of your other knobs by name:
+The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, `smoothstep`, `noise`, `pi` and `tau`, spelled and ordered exactly as they are in `draw()` and in a shader. A formula reads `time`, which is where the pass stands, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and any of your other parameters by name:
 
 ```swift
 drive($radius, "190 + sin(time * tau / 6) * 80")
 drive($count, "8 + round(sin(time * tau / 12) * 5)")   // a whole number rounds
-drive($edge, "radius / 22")                            // worked out from another knob
+drive($edge, "radius / 22")                            // worked out from another parameter
 drive($filled, "time % 6 < 3")                         // a switch, on when it is not zero
 ```
 
-`edge` is the interesting line. It reads *this* frame's radius, not last frame's, because the knob a formula names is always set first. That ordering is not a nicety. It is what keeps a formula a plain function of the clock. The same second gives the same picture whether the window runs at 60 a second or an export steps at 30.
+`edge` is the interesting line. It reads *this* frame's radius, not last frame's, because the parameter a formula names is always set first. That ordering is not a nicety. It is what keeps a formula a plain function of the clock. The same second gives the same picture whether the window runs at 60 a second or an export steps at 30.
 
-The price of that promise is that two knobs cannot name each other, and a knob cannot name itself. `"n + 1"` never settles on one frame. Ollin says so and leaves that knob alone, rather than play a value that would drift with the frame rate. For a number that builds on itself, keep a plain property and step it in `draw()`, the way [Chapter 3](03-MotionAndTime.md) does.
+The price of that promise is that two parameters cannot name each other, and a parameter cannot name itself. `"n + 1"` never settles on one frame. Ollin says so and leaves that parameter alone, rather than play a value that would drift with the frame rate. For a number that builds on itself, keep a plain property and step it in `draw()`, the way [Chapter 3](03-MotionAndTime.md) does.
 
-A formula is a track like any keyed one. It loops, it plays at any speed, and it renders frame for frame through every export. It travels in the same `--automation` file too, written down as the text you typed. The [Formula example](../Examples/Motion/Formula/Sketch.swift) drives six knobs this way and prints the rule driving each one under the picture. The whole vocabulary is in [Formula](../Docs/Helpers/Formula.md).
+A formula is a track like any keyed one. It loops, it plays at any speed, and it renders frame for frame through every export. It travels in the same `--automation` file too, written down as the text you typed. The [Formula example](../Examples/Motion/Formula/Sketch.swift) drives six parameters this way and prints the rule driving each one under the picture. The whole vocabulary is in [Formula](../Docs/Helpers/Formula.md).
 
 Two spellings will catch you once. `-2^2` is `-4`, because a power binds tighter than a minus sign, the way a calculator reads it. And `-1 % 3` is `2`, not `-1`, because the remainder wraps rather than reflects, which is what makes a phase continuous as it crosses zero.
 
-### A knob that holds more than one number
+### A parameter that holds more than one number
 
 A point holds two numbers. A color holds four. A rectangle holds four of its own. Each part takes its own rule, named where you write it:
 
@@ -771,16 +771,16 @@ drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ParameterParts-dark.jpg">
-  <img src="Images/31-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the knob's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
+  <img src="Images/31-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
 </picture>
 
-The part you leave out is the part you keep. That rectangle changes size while its `x` and `y` stay wherever you dragged them, and you can go on dragging them while the size plays. That is the reason to write a rule for one part rather than for a whole knob.
+The part you leave out is the part you keep. That rectangle changes size while its `x` and `y` stay wherever you dragged them, and you can go on dragging them while the size plays. That is the reason to write a rule for one part rather than for a whole parameter.
 
-One part of a knob is a name too, spelled `knob.part`. That is how `eye` above follows the rectangle it sits in. The name works whether keys carry that part or another rule works it out.
+One part of a parameter is a name too, spelled `parameter.part`. That is how `eye` above follows the rectangle it sits in. The name works whether keys carry that part or another rule works it out.
 
-Three things to know before you write one. One call carries the whole knob, so give every part at once, because a second call replaces the first. A pair of ends stays ordered, so a `lower` that climbs past `upper` lifts it along. And a color's parts are the plain 0-to-1 numbers with nothing holding them there, so write `saturate(...)` where you want a limit.
+Three things to know before you write one. One call carries the whole parameter, so give every part at once, because a second call replaces the first. A pair of ends stays ordered, so a `lower` that climbs past `upper` lifts it along. And a color's parts are the plain 0-to-1 numbers with nothing holding them there, so write `saturate(...)` where you want a limit.
 
-The [FormulaParts example](../Examples/Motion/FormulaParts/Sketch.swift) drives four such knobs and prints the rule driving each part under the picture.
+The [FormulaParts example](../Examples/Motion/FormulaParts/Sketch.swift) drives four such parameters and prints the rule driving each part under the picture.
 
 ## Putting it together: a set in five evaluations
 
@@ -823,7 +823,7 @@ Then close the loop this chapter opened. Save the buffer with ⌘S. Render a sha
 Then make it yours:
 
 - Play the set differently by reordering the moves, or swap step 2's fold for `.repeated(x: 3, y: 3)` and the mandala becomes wallpaper.
-- Wire [Chapter 28](28-SoundAndControl.md) in: `@Param` the oscillator frequency, bind it to a MIDI knob, and the set gets a second instrument.
+- Wire [Chapter 28](28-SoundAndControl.md) in: `@Param` the oscillator frequency, bind it to a MIDI parameter, and the set gets a second instrument.
 - Feed it eyes: `.displaced(by: .layer(feed), amount: 0.1)` over a layer you draw the webcam into, and the audience melts the piece.
 - Perform an old friend, since any finished piece from this guide runs in the host as-is. Try evaluating changes into [Chapter 19](19-GridSimulations.md)'s reaction-diffusion while it grows.
 
@@ -842,7 +842,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
-- [Formula](../Docs/Helpers/Formula.md): the whole arithmetic vocabulary a knob's rule speaks, what it can name, and what it reports rather than throws.
+- [Formula](../Docs/Helpers/Formula.md): the whole arithmetic vocabulary a parameter's rule speaks, what it can name, and what it reports rather than throws.
 - Worked examples: [`Examples/Export/`](../Examples/Export/), [`Examples/Live/`](../Examples/Live/), and [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift).
 
 ---

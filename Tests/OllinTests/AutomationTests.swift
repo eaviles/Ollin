@@ -7,7 +7,7 @@ import Testing
 /// and arrive at 1 without turning back, a value with nothing between two
 /// settings must step instead of blending, and the whole thing must survive a
 /// trip through a file. The last group drives a real sketch, because the
-/// promise is that the knob a sketch reads in `draw()` is the curve.
+/// promise is that the parameter a sketch reads in `draw()` is the curve.
 @Suite
 @MainActor
 struct AutomationTests {
@@ -21,7 +21,7 @@ struct AutomationTests {
     ]
 
     /// Every curve that travels leaves at 0, arrives at 1, and never turns
-    /// back on the way. A curve that failed this would read as a knob that
+    /// back on the way. A curve that failed this would read as a parameter that
     /// jumps or backs up mid move.
     @Test func curvesRunFromZeroToOneWithoutTurningBack() {
         for curve in Self.travelling {
@@ -182,7 +182,7 @@ struct AutomationTests {
 
     /// A switch, a menu choice, and a piece of text have nothing between two
     /// settings, so they hold the one they left. Two values of different kinds
-    /// hold as well, which is what a knob that changed type does.
+    /// hold as well, which is what a parameter that changed type does.
     @Test func settingsWithNothingBetweenThemStep() {
         #expect(Automation.blend(.boolean(false), .boolean(true), 0.99) == .boolean(false))
         #expect(Automation.blend(.option("a"), .option("b"), 0.75) == .option("a"))
@@ -251,15 +251,15 @@ struct AutomationTests {
         #expect(automation.position(at: 9) == 1)
     }
 
-    /// Nothing drives a knob no track names.
-    @Test func anUnnamedKnobIsUntouched() {
+    /// Nothing drives a parameter no track names.
+    @Test func anUnnamedParameterIsUntouched() {
         let automation = Automation(tracks: [.init(name: "n", keys: [.init(at: 0, .number(1))])])
         #expect(automation.value(of: "missing", at: 0) == nil)
         #expect(automation.track(named: "n") != nil)
     }
 
-    /// Adding a track for a knob that already has one replaces it.
-    @Test func aSecondTrackForOneKnobReplacesTheFirst() {
+    /// Adding a track for a parameter that already has one replaces it.
+    @Test func aSecondTrackForOneParameterReplacesTheFirst() {
         var automation = Automation()
         automation.setTrack(.init(name: "n", keys: [.init(at: 0, .number(1))]))
         automation.setTrack(.init(name: "n", keys: [.init(at: 0, .number(2))]))
@@ -296,7 +296,7 @@ struct AutomationTests {
 
     // MARK: Driving a sketch
 
-    /// A knob under a curve, a knob that is left alone, and a smoothed knob,
+    /// A parameter under a curve, a parameter that is left alone, and a smoothed parameter,
     /// so a run shows the curve reaching the sketch and no second glide on top
     /// of it.
     private final class Directed: Sketch {
@@ -320,7 +320,7 @@ struct AutomationTests {
     }
 
     /// The value the sketch reads each frame is the value the curve holds at
-    /// that frame's clock, including for a knob that carries smoothing: the
+    /// that frame's clock, including for a parameter that carries smoothing: the
     /// curve is the glide, so nothing eases into it a second time.
     @Test func theSketchReadsTheCurve() {
         let sketch = Directed()
@@ -332,13 +332,13 @@ struct AutomationTests {
             sketch.advance(time: t, deltaTime: 0.5, frameRate: 2)
             sketch.draw()
             #expect(abs(sketch.radius - t * 100) < 1e-9, "radius at \(t)")
-            #expect(abs(sketch.mix - t / 4) < 1e-9, "smoothed knob at \(t)")
+            #expect(abs(sketch.mix - t / 4) < 1e-9, "smoothed parameter at \(t)")
         }
         #expect(sketch.untouched == 4)
         #expect(sketch.seen.count == 8)
     }
 
-    /// A run recorded while an automation played writes the knob values down
+    /// A run recorded while an automation played writes the parameter values down
     /// on the frames they held, so the take replays the same performance with
     /// no automation attached.
     @Test func aRecordedRunWritesDownWhatTheCurveHeld() {
@@ -364,20 +364,20 @@ struct AutomationTests {
         #expect(take.changes.contains { $0.name == "radius" })
     }
 
-    /// A track naming a knob the sketch does not declare is skipped, and the
+    /// A track naming a parameter the sketch does not declare is skipped, and the
     /// other tracks still play.
-    @Test func aTrackForAnUnknownKnobIsSkipped() {
+    @Test func aTrackForAnUnknownParameterIsSkipped() {
         let sketch = Directed()
         sketch.setCanvasSize(width: 64, height: 64)
         sketch.setup()
-        sketch.automate(.init(name: "notAKnob", keys: [.init(at: 0, .number(99))]))
+        sketch.automate(.init(name: "notAParameter", keys: [.init(at: 0, .number(99))]))
         sketch.advance(time: 2, deltaTime: 0.5, frameRate: 2)
         #expect(abs(sketch.radius - 200) < 1e-9)
         #expect(sketch.untouched == 4)
     }
 }
 
-// MARK: - A knob driven by a formula
+// MARK: - A parameter driven by a formula
 
 /// The other half of a track: instead of values placed at moments, a rule
 /// worked out every frame. The claims worth pinning are the ones that decide
@@ -402,8 +402,8 @@ struct FormulaTrackTests {
         }
     }
 
-    /// The knob a sketch reads is the formula worked out at that frame's clock,
-    /// and each kind of knob takes the number the way its own type can: a whole
+    /// The parameter a sketch reads is the formula worked out at that frame's clock,
+    /// and each kind of parameter takes the number the way its own type can: a whole
     /// number rounds, and a switch is on for anything but zero.
     @Test func theSketchReadsTheFormula() {
         let sketch = Driven()
@@ -415,18 +415,18 @@ struct FormulaTrackTests {
             sketch.advance(time: t, deltaTime: 0.25, frameRate: 4)
             let expected = 120 + sin(t * .pi * 2) * 40
             #expect(abs(sketch.radius - expected) < 1e-9, "radius at \(t)")
-            #expect(abs(sketch.half - expected / 4) < 1e-9, "a knob worked out from another at \(t)")
+            #expect(abs(sketch.half - expected / 4) < 1e-9, "a parameter worked out from another at \(t)")
             #expect(sketch.count == Int((t * 10).rounded()), "a whole number at \(t)")
             #expect(sketch.lit == (t.truncatingRemainder(dividingBy: 2) < 1), "a switch at \(t)")
         }
     }
 
-    /// A knob worked out from another lands on the same frame's numbers, and it
+    /// A parameter worked out from another lands on the same frame's numbers, and it
     /// does so whichever order the tracks sit in: the one named is set first.
-    /// Reading in track order instead would give a knob its neighbor's value
+    /// Reading in track order instead would give a parameter its neighbor's value
     /// from the frame before, which would make the picture depend on the frame
     /// rate, and a 30-a-second export would not match the 60-a-second window.
-    @Test func aKnobWorkedOutFromAnotherLandsOnTheSameFrame() {
+    @Test func aParameterWorkedOutFromAnotherLandsOnTheSameFrame() {
         final class Chain: Sketch {
             @Param(0...100) var a = 0.0
             @Param(0...100) var b = 0.0
@@ -451,11 +451,11 @@ struct FormulaTrackTests {
         #expect(run(reversed: true) == (5, 6, 7))
     }
 
-    /// A knob worked out from one that is worked out from it cannot settle on a
+    /// A parameter worked out from one that is worked out from it cannot settle on a
     /// single frame. The whole ring is left alone rather than played at a value
-    /// that would depend on the frame rate, and a knob outside the ring still
+    /// that would depend on the frame rate, and a parameter outside the ring still
     /// plays.
-    @Test func knobsThatNameEachOtherAreLeftAlone() {
+    @Test func parametersThatNameEachOtherAreLeftAlone() {
         final class Ring: Sketch {
             @Param(0...100) var a = 3.0
             @Param(0...100) var b = 5.0
@@ -519,8 +519,8 @@ struct FormulaTrackTests {
     }
 
     /// A formula reaches the sketch's own noise field, so `noiseSeed()`
-    /// reproduces a wandering knob the same way it reproduces a drawn one.
-    @Test func aWanderingKnobFollowsTheSketchSeed() {
+    /// reproduces a wandering parameter the same way it reproduces a drawn one.
+    @Test func aWanderingParameterFollowsTheSketchSeed() {
         final class Wandering: Sketch {
             @Param(0...1) var drift = 0.0
             override func setup() { drive($drift, "noise(time)") }
@@ -559,7 +559,7 @@ struct FormulaTrackTests {
     }
 
     /// A file whose formula cannot be read is refused when it is read, rather
-    /// than loading as a knob that quietly holds zero.
+    /// than loading as a parameter that quietly holds zero.
     @Test func aFileWithUnreadableTextIsRefused() throws {
         let json = """
         {"version": 2, "loops": false, "speed": 1, "start": 0,
@@ -589,9 +589,9 @@ struct FormulaTrackTests {
         #expect(read.value(of: "radius", at: 0) == .number(5))
     }
 
-    /// Text that cannot be read costs that one knob, never the sketch: the
-    /// knob keeps the value it was given.
-    @Test func aTypoLeavesTheKnobAlone() {
+    /// Text that cannot be read costs that one parameter, never the sketch: the
+    /// parameter keeps the value it was given.
+    @Test func aTypoLeavesTheParameterAlone() {
         final class Mistyped: Sketch {
             @Param(0...400) var radius = 42.0
             override func setup() { drive($radius, "120 + sin(") }
@@ -605,13 +605,13 @@ struct FormulaTrackTests {
     }
 }
 
-// MARK: - A knob of more than one number, one rule per part
+// MARK: - A parameter of more than one number, one rule per part
 
 /// A point, a color, a rectangle, a set of insets, and a pair of ends each hold
 /// several numbers, so each takes several rules. The claims worth pinning are
 /// the ones a picture cannot show: that a part with no rule is left alone, that
-/// one part of a knob is a name another rule can read on the same frame, that
-/// the knob's own range still holds, and that the whole thing survives a trip
+/// one part of a parameter is a name another rule can read on the same frame, that
+/// the parameter's own range still holds, and that the whole thing survives a trip
 /// through a file.
 @Suite
 @MainActor
@@ -633,9 +633,9 @@ struct FormulaPartTests {
         return sketch
     }
 
-    /// Every knob that holds more than one number takes a rule for each part,
+    /// Every parameter that holds more than one number takes a rule for each part,
     /// and each number lands where its part is named.
-    @Test func everyKindOfKnobTakesARuleForEachPart() {
+    @Test func everyKindOfParameterTakesARuleForEachPart() {
         let sketch = Self.made()
         sketch.drive(sketch.$spot, x: "time * 10", y: "time * 20")
         sketch.drive(sketch.$eye, x: "1", y: "2", z: "3")
@@ -653,7 +653,7 @@ struct FormulaPartTests {
         #expect(sketch.span == 20...80)
     }
 
-    /// A part with no rule keeps whatever the knob holds, and the hand still
+    /// A part with no rule keeps whatever the parameter holds, and the hand still
     /// reaches it while the part beside it plays. That is the whole point of a
     /// rule per part: one part directed, the rest still yours.
     @Test func aPartWithNoRuleIsLeftAlone() {
@@ -668,7 +668,7 @@ struct FormulaPartTests {
         #expect(sketch.spot == Vector2(20, 500))
     }
 
-    /// One part of a knob is a name a rule can read, and it lands on the same
+    /// One part of a parameter is a name a rule can read, and it lands on the same
     /// frame whichever order the tracks sit in. Reading in track order instead
     /// would give the frame before's number, which would make the picture
     /// depend on the frame rate.
@@ -698,7 +698,7 @@ struct FormulaPartTests {
 
     /// The part a *keyed* track moves is a name as well, so a rule can follow a
     /// point that is being carried between two placed values.
-    @Test func aRuleReadsOnePartOfAKeyedKnob() {
+    @Test func aRuleReadsOnePartOfAKeyedParameter() {
         final class Keyed: Sketch {
             @Param(x: 0...1000, y: 0...1000) var spot = Vector2(0, 0)
             @Param(0...1000) var radius = 0.0
@@ -719,10 +719,10 @@ struct FormulaPartTests {
         #expect(sketch.radius == 25)
     }
 
-    /// A part worked out from another part of the same knob cannot settle on
-    /// one frame, so the whole knob is left alone rather than played at a value
-    /// that would depend on the frame rate. A knob outside the ring still plays.
-    @Test func aPartThatNamesItsOwnKnobIsLeftAlone() {
+    /// A part worked out from another part of the same parameter cannot settle on
+    /// one frame, so the whole parameter is left alone rather than played at a value
+    /// that would depend on the frame rate. A parameter outside the ring still plays.
+    @Test func aPartThatNamesItsOwnParameterIsLeftAlone() {
         final class Ring: Sketch {
             @Param(x: 0...1000, y: 0...1000) var spot = Vector2(3, 5)
             @Param(0...100) var fine = 0.0
@@ -741,9 +741,9 @@ struct FormulaPartTests {
         #expect(sketch.spot == Vector2(3, 5))     // and it never creeps
     }
 
-    /// The knob's own range still holds, exactly as it does when a hand drags
-    /// the field. A rule is a way to set a knob, never a way past it.
-    @Test func theKnobsOwnRangeStillHolds() {
+    /// The parameter's own range still holds, exactly as it does when a hand drags
+    /// the field. A rule is a way to set a parameter, never a way past it.
+    @Test func theParametersOwnRangeStillHolds() {
         let sketch = Self.made()
         sketch.drive(sketch.$spot, x: "0 - 500", y: "9999")
         sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
@@ -751,7 +751,7 @@ struct FormulaPartTests {
     }
 
     /// A pair of ends stays ordered, because a crossed pair is not a value the
-    /// knob can hold. The lower end wins and the upper end is lifted to meet
+    /// parameter can hold. The lower end wins and the upper end is lifted to meet
     /// it, the way the two-thumb slider behaves under a hand.
     @Test func thePairOfEndsStaysOrdered() {
         let climbing = Self.made()
@@ -789,9 +789,9 @@ struct FormulaPartTests {
         }
     }
 
-    /// A knob that is one number, a switch, a menu choice, or a piece of text
+    /// A parameter that is one number, a switch, a menu choice, or a piece of text
     /// has no parts at all, so nothing there can be driven part by part.
-    @Test func aKnobOfOneNumberHasNoParts() {
+    @Test func aParameterOfOneNumberHasNoParts() {
         for stored: ParamStored in [.number(3), .boolean(true), .option("a"), .text("b")] {
             #expect(Automation.parts(of: stored).isEmpty, "\(stored)")
             #expect(Automation.applying(["x": 9], to: stored) == stored, "\(stored)")
@@ -837,7 +837,7 @@ struct FormulaPartTests {
         #expect(throws: (any Error).self) { try Automation.load(from: url) }
     }
 
-    /// Text that cannot be read costs that one part, never the knob beside it.
+    /// Text that cannot be read costs that one part, never the parameter beside it.
     @Test func aTypoCostsOnePartOnly() {
         let sketch = Self.made()
         sketch.spot = Vector2(7, 0)
@@ -846,9 +846,9 @@ struct FormulaPartTests {
         #expect(sketch.spot == Vector2(7, 10))
     }
 
-    /// A call that names no part at all leaves the knob alone rather than
+    /// A call that names no part at all leaves the parameter alone rather than
     /// writing an empty track that would look like a rule and do nothing.
-    @Test func noRuleAtAllLeavesTheKnobAlone() {
+    @Test func noRuleAtAllLeavesTheParameterAlone() {
         let sketch = Self.made()
         sketch.drive(sketch.$spot)
         #expect(sketch.automation == nil)
@@ -856,7 +856,7 @@ struct FormulaPartTests {
         #expect(sketch.spot == Vector2(10, 20))
     }
 
-    /// One call carries the whole knob, so a second call replaces the first
+    /// One call carries the whole parameter, so a second call replaces the first
     /// rather than adding to it. Give every part in one call.
     @Test func aSecondCallReplacesTheFirst() {
         let sketch = Self.made()

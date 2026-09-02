@@ -2989,7 +2989,7 @@ final class MetalRenderer {
         return displayTexture
     }
 
-    // MARK: Quality-tier override knobs (stored here; the resolve
+    // MARK: Quality-tier override parameters (stored here; the resolve
     // functions live in MetalRenderer+Targets.swift)
 
     /// An exact bokeh tap count that, when set, overrides the resolved `.defocus` quality

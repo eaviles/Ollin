@@ -19,7 +19,7 @@ The usual shape is to make the input in `setup()` and read it in `draw()`.
 import Ollin
 import OllinMIDI
 
-final class Knob: Sketch {
+final class Wired: Sketch {
     let midi = MIDIInput()
 
     override func setup() { try? midi.start() }
@@ -36,7 +36,7 @@ final class Knob: Sketch {
 
 - [MIDIMessage & kinds](#midimessage--kinds) - the value you read and send
 - [MIDIInput](#midiinput) - read incoming MIDI three ways
-- [Binding to a `@Param`](#binding-to-a-param) - drive a knob from a controller
+- [Binding to a `@Param`](#binding-to-a-param) - drive a parameter from a controller
 - [Tempo sync (TempoClock)](#tempo-sync-tempoclock) - move on the beat of whatever is playing
 - [MIDIOutput](#midioutput) - send notes and control changes
 - [Testing without hardware](#testing-without-hardware) - loopback and the monitor
@@ -133,7 +133,7 @@ func bind(controlChange controller: Int, to param: Param<Double>,
 func unbind(controlChange controller: Int, channel: Int? = nil)
 ```
 
-The fourth way to read is to wire a control-change knob straight onto a [`@Param`](../Helpers/Parameters.md) knob. A hardware fader then drives the same parameter the inspector slider does. Each incoming value is mapped from `input` (a controller's `0…127` by default) into the parameter's own range and assigned there:
+The fourth way to read is to wire a control-change knob straight onto a [`@Param`](../Helpers/Parameters.md). A hardware fader then drives the same parameter the inspector slider does. Each incoming value is mapped from `input` (a controller's `0…127` by default) into the parameter's own range and assigned there:
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -144,9 +144,9 @@ override func setup() {
 }
 ```
 
-A bound knob updates on its own as messages arrive, so you don't read it each frame. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
+A bound parameter updates on its own as messages arrive, so you don't read it each frame. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
 
-**Softening the moves.** Give the `@Param` a `smoothing:` and the hardware glides instead of jumping. The same softening applies whether the value comes from MIDI, OSC, or a drag of the inspector slider. It is a property of the knob:
+**Softening the moves.** Give the `@Param` a `smoothing:` and the hardware glides instead of jumping. The same softening applies whether the value comes from MIDI, OSC, or a drag of the inspector slider. It is a property of the parameter:
 
 ```swift
 @Param(20...400, smoothing: .eased(0.3)) var radius = 120.0   // 0.3s glide

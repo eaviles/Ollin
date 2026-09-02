@@ -32,7 +32,7 @@ import COllinShaders   // OllinParticle (the GPU particle struct, shared with th
 /// `size` (on-screen diameter, points), `life` (`float`), and the scratch
 /// `seedA`/`seedB` (`float`). Read-only: `id` (`uint` particle index), `u`
 /// (`OllinComputeUniforms` — `u.time`/`u.dt`/`u.resolution`/`u.mouse`/…), and
-/// `custom` (`float4`, the live knobs you pass to `updateParticles(_:custom:)`).
+/// `custom` (`float4`, the live parameters you pass to `updateParticles(_:custom:)`).
 /// The shader-library helpers (`hash12`, `valueNoise`, `curlNoise`, `discSample`,
 /// `palette`, …) are available. The particle struct is `OllinParticle`.
 ///

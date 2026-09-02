@@ -193,7 +193,7 @@ struct Buoyancy3DTests {
         #expect((heights.max() ?? 0) - (heights.min() ?? 0) < 0.01)
     }
 
-    // MARK: The current, and the per-body knob
+    // MARK: The current, and the per-body parameter
 
     @Test func aCurrentCarriesAFloaterDownstream() {
         func drift(flow: Vector3) -> Double {

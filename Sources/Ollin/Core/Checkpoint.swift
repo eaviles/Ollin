@@ -165,7 +165,7 @@ struct Checkpoint {
     // MARK: Putting it back
 
     /// The half that has to happen before `setup()`: the seed the run was on,
-    /// and the knob values it was tuned to. A sketch's own `setup()` then builds
+    /// and the parameter values it was tuned to. A sketch's own `setup()` then builds
     /// from the same numbers it built from last time.
     @MainActor
     func applyBeforeSetup(to sketch: Sketch) {

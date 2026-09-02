@@ -94,7 +94,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 }
 ```
 
-Up to 64 floats; `info.paramCount` is how many you passed. Drive them from a [`@Param`](../Helpers/Parameters.md) knob to make a shader tunable live.
+Up to 64 floats; `info.paramCount` is how many you passed. Drive them from a [`@Param`](../Helpers/Parameters.md) parameter to make a shader tunable live.
 
 ---
 
@@ -193,4 +193,4 @@ To try a shader without launching a sketch at all, hand the file to [`ollin chec
 - [Layered effects](../Drawing/Effects.md): the off-screen layers, filters, and `compose { }` your shader plugs into
 - [Compute & GPU particles](./Compute.md): runtime-compiled compute kernels (the sibling for buffer/texture work)
 - [SDF combinators](../Drawing/Combinators.md): compose signed-distance fields without writing raw shader code
-- [Parameters](../Helpers/Parameters.md): `@Param` knobs to drive a shader's `params` live
+- [Parameters](../Helpers/Parameters.md): `@Param` parameters to drive a shader's `params` live

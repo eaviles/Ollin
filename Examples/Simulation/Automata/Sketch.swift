@@ -2,7 +2,7 @@ import Ollin
 
 /// Eight classic **cellular automata** on one `SimField`, behind a rule picker.
 /// Each rule is one entry in a table: its sim and parameters, its ramp, its
-/// seeding recipe, and its knobs. Switching rules starts a fresh field with that
+/// seeding recipe, and its parameters. Switching rules starts a fresh field with that
 /// rule's classic opening. One shared brush works everywhere: drag to paint the
 /// field, hold any key while dragging to erase. The rules, a line each (the `Sim`
 /// catalog in `Docs/Drawing/Effects.md` carries every rule's full story):
@@ -29,7 +29,7 @@ import Ollin
 ///     rule tunable live.
 ///   • **sand**: the falling-sand automaton; grains fall, roll off each other
 ///     into heaps, sink through water that spreads flat, and stop at walls; the
-///     brush pours whichever material the knob names, `friction` sets how steep
+///     brush pours whichever material the parameter names, `friction` sets how steep
 ///     a heap can stand.
 ///
 /// See `Simulation/GrayScott` for the reaction-diffusion sibling.
@@ -55,7 +55,7 @@ final class Automata: Sketch {
 
     @Param(icon: "square.grid.3x3", group: "Rule") var rule: Rule = .life
 
-    // Per-rule knobs, grouped under the rule they tune.
+    // Per-rule parameters, grouped under the rule they tune.
     @Param("States", 2 ... 24, icon: "circle.grid.3x3", group: "Cyclic") var hueStates = 14
     @Param("Threshold", 1 ... 4, icon: "chart.bar.fill", group: "Cyclic") var threshold = 1
     /// Count the corner neighbors too (the eight-cell block instead of the four).
@@ -120,7 +120,7 @@ final class Automata: Sketch {
     override func draw() {
         background(.black)
         if rule != active { restart(with: rule) }   // a rule switch starts fresh
-        field.sim = sim(for: rule)                  // the knobs retune the rule live
+        field.sim = sim(for: rule)                  // the parameters retune the rule live
         fieldAge += 1
 
         withField(field) {
@@ -140,7 +140,7 @@ final class Automata: Sketch {
         fieldAge = 0
     }
 
-    /// The table's sim column: each rule's `Sim` case under its knobs.
+    /// The table's sim column: each rule's `Sim` case under its parameters.
     private func sim(for rule: Rule) -> Sim {
         switch rule {
         case .life: return .gameOfLife()

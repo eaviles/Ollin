@@ -35,7 +35,7 @@ extension Vector2: Smoothable {
 /// let clean = filter.filter(noisy, deltaTime: deltaTime)
 /// ```
 ///
-/// Tuning is two knobs: lower `minCutoff` to cut jitter while the signal is slow;
+/// Tuning is two parameters: lower `minCutoff` to cut jitter while the signal is slow;
 /// raise `beta` to cut lag while it moves fast. The `Vector2` form adapts on the
 /// signal's overall speed, so smoothing stays even across x and y.
 ///

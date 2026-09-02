@@ -10,7 +10,7 @@ A sketch that draws something worth keeping has to be able to draw it again. Oll
 
 When a sketch is created it rolls one small number, its [`variation`](../Core/Variations.md), and seeds both `random()` and `noise()` from it. An unseeded sketch still looks different every run, but the run is no longer lost. The number behind it is on screen, in the export, and short enough to type back in. `seed(42)` in `setup()` pins a sketch to one variation forever.
 
-Every export writes that number into the file, beside the knob values and the commit it ran at. A picture carries the recipe that makes it again.
+Every export writes that number into the file, beside the parameter values and the commit it ran at. A picture carries the recipe that makes it again.
 
 ### One clock the export controls
 

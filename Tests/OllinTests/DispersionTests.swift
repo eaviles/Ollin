@@ -16,7 +16,7 @@ struct DispersionTests {
 
     // MARK: Identity
 
-    /// Zero is identity, in every mode. The knob is only honest if an A/B costs
+    /// Zero is identity, in every mode. The parameter is only honest if an A/B costs
     /// nothing, and a mode that tints or shifts at zero makes the whole family
     /// untrustworthy. `.axial` is included because its gather is the one that could
     /// blur at a zero radius.

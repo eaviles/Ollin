@@ -32,7 +32,7 @@ final class Dial: Sketch {
 - [Finding a device](#finding-a-device) - list what's plugged in, or match by name
 - [Opening, and staying open](#opening-and-staying-open) - reconnection is the default
 - [Reading](#reading) - the latest value, or every line since last frame
-- [Binding to a `@Param`](#binding-to-a-param) - a sensor drives a knob
+- [Binding to a `@Param`](#binding-to-a-param) - a sensor drives a parameter
 - [Writing](#writing) - lines and bytes back to the board
 - [Testing without hardware](#testing-without-hardware) - the loopback and monitor examples
 
@@ -112,7 +112,7 @@ func bind(to param: Param<Double>, from input: ClosedRange<Double> = 0...1023)
 func unbind()
 ```
 
-The third way to read is to wire the stream straight onto a [`@Param`](../Helpers/Parameters.md) knob. A sensor then drives the same parameter a live-inspector slider does. Each line that parses as a number is mapped from `input` into the parameter's own range and assigned. The default input range is the classic 10-bit analog read:
+The third way to read is to wire the stream straight onto a [`@Param`](../Helpers/Parameters.md). A sensor then drives the same parameter a live-inspector slider does. Each line that parses as a number is mapped from `input` into the parameter's own range and assigned. The default input range is the classic 10-bit analog read:
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -124,7 +124,7 @@ override func setup() {
 }
 ```
 
-A bound knob updates on its own as lines arrive. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
+A bound parameter updates on its own as lines arrive. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
 
 <a name="writing"></a>
 

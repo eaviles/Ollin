@@ -82,7 +82,7 @@ source.beatCount       // how many beats so far
 source.timeSinceBeat   // seconds of audio since the last one
 ```
 
-`beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is. Onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want. When it isn't, `beatSensitivity` is the knob, and a higher value asks for stronger arrivals before firing. The detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers. The same recording always beats in the same places.
+`beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is. Onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want. When it isn't, `beatSensitivity` is the parameter, and a higher value asks for stronger arrivals before firing. The detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers. The same recording always beats in the same places.
 
 ## Four places sound comes from
 
@@ -157,9 +157,9 @@ override func setup() {
 
 That form is deterministic, which is the same promise the seed made in [Chapter 4](04-Randomness.md). The same audio gives the same words every time, so a captioned export renders identically on Tuesday. The `Audio/Listening` example is the live one, with a caption you can talk into and marks you can clap at.
 
-## Knobs from anywhere
+## Parameters from anywhere
 
-The hands come next. Since [Chapter 1](01-HelloOllin.md) you've tuned sketches with `@Param` knobs in the inspector. The news here is that the inspector is only one of the hands that can hold those knobs.
+The hands come next. Since [Chapter 1](01-HelloOllin.md) you've tuned sketches with `@Param` parameters in the inspector. The news here is that the inspector is only one of the hands that can hold those parameters.
 
 **MIDI** is the protocol music hardware has spoken since 1983. Knob boxes, fader banks, pad grids, and keyboards all speak it. A controller sends small messages, and `OllinMIDI` reads them. A knob is a *control change* carrying a number `0...127`, and a pad is a *note* with a velocity:
 
@@ -247,7 +247,7 @@ Second, the beat never stops. A Link session has no transport freeze: `beats` al
 
 Alone, the clock free-runs at its own tempo, so the sketch behaves the same on a train as on stage. `peerCount` says which is happening. The `Integration/Tempo` example, switched to its Link mode, puts all of this on screen; run two copies and they pulse together. [The Link reference](../Docs/Integration/Link.md) has the full surface, and how the session works underneath.
 
-## One knob, three hands
+## One parameter, three hands
 
 Reading `controlValue` every frame works, but there's a nicer arrangement. A `@Param` already is a named, ranged value with a control in the inspector. Binding wires an outside source straight onto it:
 
@@ -266,18 +266,18 @@ override func setup() {
   <img src="Images/28-SoundAndControl/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
 </picture>
 
-Each incoming value is mapped into the parameter's own range and assigned. The sketch keeps reading plain `radius`, without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` and every source glides instead of stepping. `.eased(0.3)` is a fixed glide, and `.smoothed` is the adaptive filter that stays steady at rest and opens up under a moving hand. The softening belongs to the knob rather than to the wire.
+Each incoming value is mapped into the parameter's own range and assigned. The sketch keeps reading plain `radius`, without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` and every source glides instead of stepping. `.eased(0.3)` is a fixed glide, and `.smoothed` is the adaptive filter that stays steady at rest and opens up under a moving hand. The softening belongs to the parameter rather than to the wire.
 
-A panel that grows past a dozen knobs starts to hide the one you want behind the ones that don't matter yet. A *show-rule* trims it: tell a knob to appear only while another knob gives it something to do, and the inspector tucks the row away the rest of the time.
+A panel that grows past a dozen parameters starts to hide the one you want behind the ones that don't matter yet. A *show-rule* trims it: tell a parameter to appear only while another parameter gives it something to do, and the inspector tucks the row away the rest of the time.
 
 ```swift
 override func setup() {
-    $echoAmount.show(when: $echo) { $0 }        // the depth knob waits for the toggle
+    $echoAmount.show(when: $echo) { $0 }        // the depth parameter waits for the toggle
     $bands.show(when: $style) { $0 == .spokes } // spokes have a count; rings don't
 }
 ```
 
-The rule reads the other knob live, so flipping the toggle brings the row back, and a group whose rows are all hidden drops its whole card. Hiding is display only. The knob keeps its value, keeps persisting across reloads, and a MIDI or OSC binding keeps driving it while it's out of sight. The heaviest panel in the repo, [`Examples/3D/Materials/Explorer`](../Examples/3D/Materials/Explorer/Sketch.swift), runs a show-rule on every dependent finish scalar, which is why its glass knobs only appear under the shading model that reads them.
+The rule reads the other parameter live, so flipping the toggle brings the row back, and a group whose rows are all hidden drops its whole card. Hiding is display only. The parameter keeps its value, keeps persisting across reloads, and a MIDI or OSC binding keeps driving it while it's out of sight. The heaviest panel in the repo, [`Examples/3D/Materials/Explorer`](../Examples/3D/Materials/Explorer/Sketch.swift), runs a show-rule on every dependent finish scalar, which is why its glass parameters only appear under the shading model that reads them.
 
 ## Something to hold: game controllers
 
@@ -321,7 +321,7 @@ if controller.hasMotion { rotate(controller.gravity.x * 0.5) }
 
 Several people can play. `controller(2)` is player two, and a controller keeps its number while it stays connected. Unplugging player two doesn't turn player three into player two.
 
-Because a controller is live input, an export reads it as centered and says so, the same way the microphone did earlier. The `Integration/ControllerInput` example turns a pad into a drawing instrument. A `map` knob draws every stick, trigger and button as it's read. That is the fastest way to tell whether a controller is talking to the machine at all. See [the controller reference](../Docs/Integration/Controller.md) for the rest, including the deadzone and running while another window is in front.
+Because a controller is live input, an export reads it as centered and says so, the same way the microphone did earlier. The `Integration/ControllerInput` example turns a pad into a drawing instrument. A `map` parameter draws every stick, trigger and button as it's read. That is the fastest way to tell whether a controller is talking to the machine at all. See [the controller reference](../Docs/Integration/Controller.md) for the rest, including the deadzone and running while another window is in front.
 
 ## A wire to the physical world: serial
 
@@ -348,7 +348,7 @@ override func draw() {
   <img src="Images/28-SoundAndControl/SerialLoop.jpg" alt="A diagram of two boxes joined by two arrows: a microcontroller printing one number per line over USB to a SerialPort, a writeLine command returning, the port's three reads listed below, and a note that an unplugged port waits and reopens by itself" width="680">
 </picture>
 
-The two reads are the level-and-moment split this chapter has now made three times. `number(default:)` is the latest value, read fresh each frame, for a continuous sensor. `lines()` hands you every line since the last frame, once each, for discrete events. And the third read you can guess by now: `serial.bind(to: $radius)` wires the stream onto a `@Param`, mapped in from the `0...1023` an analog pin classically reads. A potentiometer on a breadboard drives the same knob the inspector slider does.
+The two reads are the level-and-moment split this chapter has now made three times. `number(default:)` is the latest value, read fresh each frame, for a continuous sensor. `lines()` hands you every line since the last frame, once each, for discrete events. And the third read you can guess by now: `serial.bind(to: $radius)` wires the stream onto a `@Param`, mapped in from the `0...1023` an analog pin classically reads. A potentiometer on a breadboard drives the same parameter the inspector slider does.
 
 `matching:` is worth a word. Serial devices live at paths like `/dev/cu.usbmodem101`, and the number changes between plugs. The match re-runs on every connection attempt, so the port finds the board wherever it lands. It even works when the board is plugged in after the sketch launches. The connection is patient by design too: `open()` doesn't fail, it waits. Unplug the board mid-performance and `isOpen` goes false while the port quietly retries; plug it back in and the values resume. A firmware re-flash mid-session heals the same way.
 
@@ -387,11 +387,11 @@ Three things differ from the wire, and each is worth a sentence.
 
 The catalog already knows the standard values, so `.heartRateMeasurement`, `.batteryLevel`, `.temperature`, and the rest read themselves. For a board of your own you say it once, `BluetoothCharacteristic(myUUID, as: .float32)`, and everything downstream reads it that way. And `.uart` is the de facto serial line over Bluetooth that most maker boards speak. A wireless board ends up looking almost exactly like the wired one above.
 
-The rest is familiar. `strap.bind(.heartRateMeasurement, to: $radius, from: 50...180)` puts a pulse on a knob. `strap.write("led on\n", to: .uartOut)` sends something back. `connect()` waits rather than failing, so a strap carried out of the room and back is picked up again by itself. `Integration/BluetoothSensor` is the introduction ritual for a device you own: type part of its name into a knob and watch everything it offers arrive. [The Bluetooth reference](../Docs/Integration/Bluetooth.md) has the full surface.
+The rest is familiar. `strap.bind(.heartRateMeasurement, to: $radius, from: 50...180)` puts a pulse on a parameter. `strap.write("led on\n", to: .uartOut)` sends something back. `connect()` waits rather than failing, so a strap carried out of the room and back is picked up again by itself. `Integration/BluetoothSensor` is the introduction ritual for a device you own: type part of its name into a parameter and watch everything it offers arrive. [The Bluetooth reference](../Docs/Integration/Bluetooth.md) has the full surface.
 
 ## Putting it together: a playable instrument
 
-The finished piece wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` knobs wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/28-SoundAndControl/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/28-SoundAndControl/Resonator.swift):
+The finished piece wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` parameters wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/28-SoundAndControl/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/28-SoundAndControl/Resonator.swift):
 
 ```swift
 import Ollin

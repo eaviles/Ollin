@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide figure (Chapter 26): the melt knob. The same two circles at four
+// Guide figure (Chapter 26): the melt parameter. The same two circles at four
 // smoothing radii: k = 0 is a hard union, and each larger k widens the blend
 // until the pair reads as one body, colors fusing across the seam.
 import Ollin

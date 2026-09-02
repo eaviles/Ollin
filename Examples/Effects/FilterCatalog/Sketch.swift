@@ -1,6 +1,6 @@
 import Ollin
 
-/// The whole `Filter` catalog on one switchable contact sheet: a segmented knob
+/// The whole `Filter` catalog on one switchable contact sheet: a segmented parameter
 /// picks a family (blur, color & tone, stylize & optical, retro, distortion,
 /// design), and every tile is `scene.filtered(...)` resolved on the GPU, laid
 /// out with `drawSheet`.

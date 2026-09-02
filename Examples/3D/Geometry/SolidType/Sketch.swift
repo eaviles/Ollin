@@ -20,7 +20,7 @@ import Ollin
 ///
 /// The one-call form is `drawText3D(word, size: 2, depth: 0.4)`, which builds the
 /// solid fresh every frame. This sketch keeps its own meshes instead, so the
-/// thickness knob decides when they are rebuilt.
+/// thickness parameter decides when they are rebuilt.
 ///
 /// Self-contained: the system face, no bundled asset.
 @main
@@ -33,7 +33,7 @@ final class SolidType: Sketch {
     private let word = "Ollin"
     private let size = 2.0
 
-    /// Built once, rebuilt only when the thickness knob moves: every call
+    /// Built once, rebuilt only when the thickness parameter moves: every call
     /// triangulates the glyphs and raises their walls again.
     private var solid = Mesh(positions: [], indices: [])
     private var letters: [Mesh] = []

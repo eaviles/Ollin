@@ -11,7 +11,7 @@ import Ollin
 /// *stamped* five times around the chart, each at its own position, angle, and
 /// size. One recording, many placements.
 ///
-/// Flip the **retained** knob off to draw the same stars through the ordinary
+/// Flip the **retained** parameter off to draw the same stars through the ordinary
 /// per-frame path (the exact same helper the recording captured) and watch the
 /// frame time in the inspector: that gap is the recording cost the batch pays
 /// once instead of every frame.

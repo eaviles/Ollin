@@ -2,8 +2,8 @@ import Foundation
 
 /// Nudging a handful of numbers until something matches.
 ///
-/// You have a few knobs and a way of saying how wrong a setting of them is. `Fit.minimize`
-/// walks the knobs downhill until the wrongness stops falling:
+/// You have a few parameters and a way of saying how wrong a setting of them is. `Fit.minimize`
+/// walks the parameters downhill until the wrongness stops falling:
 ///
 /// ```swift
 /// // Find the circle that passes closest to a set of marks.
@@ -40,10 +40,10 @@ public enum Fit {
     /// Walk `start` downhill on `cost` and hand back the best setting found.
     ///
     /// - Parameters:
-    ///   - start: the setting to begin from, and how many knobs there are.
-    ///   - bounds: an optional range per knob, which the walk is held inside.
+    ///   - start: the setting to begin from, and how many parameters there are.
+    ///   - bounds: an optional range per parameter, which the walk is held inside.
     ///   - steps: the most steps to take.
-    ///   - rate: how far a step moves a knob, in the knob's own units. Each knob moves by
+    ///   - rate: how far a step moves a parameter, in the parameter's own units. Each parameter moves by
     ///     about this much per step regardless of how steep the cost is there, so it is a
     ///     step size rather than a gain, and a sensible value is a small fraction of the
     ///     range you expect the answer to live in.
@@ -51,8 +51,8 @@ public enum Fit {
     ///   - cost: how wrong a setting is. Lower is better; the walk never reads its shape,
     ///     only its value.
     ///
-    /// The slope is measured rather than derived, by trying each knob a little either side
-    /// of where it stands, so `cost` is called about twice per knob per step. Keep it cheap.
+    /// The slope is measured rather than derived, by trying each parameter a little either side
+    /// of where it stands, so `cost` is called about twice per parameter per step. Keep it cheap.
     public static func minimize(from start: [Double], bounds: [ClosedRange<Double>]? = nil,
                                 steps: Int = 300, rate: Double = 0.05,
                                 tolerance: Double = 1e-9,
@@ -71,10 +71,10 @@ public enum Fit {
         var currentCost = cost(current)
         var best = current, bestCost = currentCost
 
-        // The step is scaled per knob by a running estimate of how steep the cost is along
-        // it, which is what lets one `rate` serve knobs measured in pixels beside knobs
+        // The step is scaled per parameter by a running estimate of how steep the cost is along
+        // it, which is what lets one `rate` serve parameters measured in pixels beside parameters
         // measured in turns. Without it a single step size either creeps along the wide
-        // knob or throws the narrow one across its whole range.
+        // parameter or throws the narrow one across its whole range.
         var momentum = [Double](repeating: 0, count: n)
         var steepness = [Double](repeating: 0, count: n)
         let smoothing = 0.9, steepSmoothing = 0.999, floor = 1e-8
@@ -83,7 +83,7 @@ public enum Fit {
         var settled = false
         for step in 1 ... max(1, steps) {
             taken = step
-            // The slope, measured. The probe is scaled to the knob so a knob holding
+            // The slope, measured. The probe is scaled to the parameter so a parameter holding
             // hundreds of pixels and one holding a fraction are both probed sensibly.
             var slope = [Double](repeating: 0, count: n)
             for i in 0 ..< n {

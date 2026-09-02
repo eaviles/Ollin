@@ -1,11 +1,11 @@
 import Ollin
 
-/// An `Automation` writes a sketch's knobs down over time: a value at one
+/// An `Automation` writes a sketch's parameters down over time: a value at one
 /// moment, another later, and a curve carrying the first into the second.
-/// Where `@Param` gives you a knob to turn, this turns it for you, so the
+/// Where `@Param` gives you a parameter to adjust, this moves it for you, so the
 /// piece is directed rather than only tuned.
 ///
-/// Four knobs are on tracks here, one per kind of value. The size and the
+/// Four parameters are on tracks here, one per kind of value. The size and the
 /// place travel along their curves; the color fades along its own; the fill
 /// switch *steps*, because a switch has nothing between off and on. The lanes
 /// under the stage are the automation drawing itself: the sketch reads its own

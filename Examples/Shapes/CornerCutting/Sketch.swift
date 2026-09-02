@@ -5,7 +5,7 @@ import Ollin
 /// into a flowing curve. Top: a spiky closed burst (its raw outline ghosted
 /// behind the smoothed fill). Bottom: an open zigzag ribbon, showing that
 /// smoothing preserves the exact endpoints. The spikes wobble on looping
-/// noise while the smoothing re-runs every frame, and the iterations knob
+/// noise while the smoothing re-runs every frame, and the iterations parameter
 /// walks from raw polygon to soft blob one halving at a time.
 @main
 final class CornerCutting: Sketch {

@@ -4,7 +4,7 @@ import Ollin
 /// circles. `Epicycles` runs the discrete Fourier transform over a whale
 /// silhouette read by the SVG importer; each term is a circle spinning a
 /// whole number of turns per lap, and chained tip to tail the last tip
-/// re-draws the whale. The Terms knob truncates the chain to its largest
+/// re-draws the whale. The Terms parameter truncates the chain to its largest
 /// circles (a handful gives a soft phantom, more sharpens the outline), and
 /// the chain itself is drawn by `drawEpicycles`. One trace is one lap, so the
 /// sketch declares `loopDuration` and `--export-loop epicycles.gif` renders a

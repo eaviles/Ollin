@@ -16,7 +16,7 @@ Learn more:
 
 ### Recreations here
 
-- [**Schotter**](Schotter/): a grid of squares falling out of order down the page, after Nees's *Schotter* (1968). An original Ollin interpretation written from the work and from published descriptions of how it was made, with knobs for how steeply the disorder arrives and a seed that fixes the fall.
+- [**Schotter**](Schotter/): a grid of squares falling out of order down the page, after Nees's *Schotter* (1968). An original Ollin interpretation written from the work and from published descriptions of how it was made, with parameters for how steeply the disorder arrives and a seed that fixes the fall.
 
   ```sh
   swift run Example-Recreations-GeorgNees-Schotter

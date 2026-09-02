@@ -5,12 +5,12 @@ import Ollin
 /// Top right: `signedSimplexNoise`, the same field read as -1...1, shown split
 /// at zero (warm above, cool below, dark right on the zero line the 0...1
 /// reading flattens away). Bottom left: `worley`, cellular distance, with its
-/// `feature` reading and `jitter` on knobs. Bottom right: `turbulence`, fbm
+/// `feature` reading and `jitter` on parameters. Bottom right: `turbulence`, fbm
 /// over folded octaves, the creased billows behind clouds and marble.
 ///
 /// Every panel samples the identical (x, y) under one `noiseSeed`, so the
 /// grains compare directly; only the reading changes. The pictures rebuild
-/// when a knob moves and are cached between frames.
+/// when a parameter moves and are cached between frames.
 @main
 final class NoiseKinds: Sketch {
     /// The three `WorleyFeature` readings, as a menu the inspector can show.
@@ -50,7 +50,7 @@ final class NoiseKinds: Sketch {
         drawCaption("four readings of one seeded field: every panel samples the same (x, y), scaled by \(Int(frequency))")
     }
 
-    /// Rebuild the four pictures when a knob has moved (and once at the start).
+    /// Rebuild the four pictures when a parameter has moved (and once at the start).
     func rebuildIfNeeded() {
         if let built = builtWith, built.jitter == jitter, built.feature == feature { return }
         let worleyFeature: WorleyFeature = switch feature {

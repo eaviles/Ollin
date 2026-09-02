@@ -70,7 +70,7 @@ Every host that shows an inspector (the live host's sidebar, the performance hos
 - `⚄` rolls a random one.
 - Click the number to type a seed and jump straight to it.
 
-Each move restarts the sketch in place at that seed: `setup()` runs again, the clock returns to zero, and any accumulated canvas is cleared, while your `@Param` knob values stay exactly where you left them. In the live host, a seed you navigated to **carries across a hot reload**, the same way a tuned knob does, so editing the code doesn't reshuffle the composition you were working on.
+Each move restarts the sketch in place at that seed: `setup()` runs again, the clock returns to zero, and any accumulated canvas is cleared, while your `@Param` parameter values stay exactly where you left them. In the live host, a seed you navigated to **carries across a hot reload**, the same way a tuned parameter does, so editing the code doesn't reshuffle the composition you were working on.
 
 A sketch that pins its own seed in `setup()` reproduces that one variation no matter what the card says. That's by design: the sketch's own decision wins.
 
@@ -140,4 +140,4 @@ Because [`random`](../Generators/Random.md) and [`noise`](../Generators/Noise.md
 
 - [`Random`](../Generators/Random.md) - the seeded generator behind `variation`, and `seed`/`randomSeed`/`noiseSeed`
 - [`Export`](../Output/Export.md) - the export flags `--seed` applies to, and the reproduction recipe every file carries
-- [`Parameters`](../Helpers/Parameters.md) - the `@Param` knobs that sit beside the Variation card, and carry across reloads the same way
+- [`Parameters`](../Helpers/Parameters.md) - the `@Param` parameters that sit beside the Variation card, and carry across reloads the same way

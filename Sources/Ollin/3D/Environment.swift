@@ -131,7 +131,7 @@ public struct Environment: Equatable, Hashable, Sendable {
         var e = self; e.clouds = clouds; return e
     }
 
-    /// The knob form of `clouds(_:)`: a cloudscape described by its dials. `phase`
+    /// The parameter form of `clouds(_:)`: a cloudscape described by its dials. `phase`
     /// is the wind's clock; advance it (`phase: time * 0.01`) and the weather
     /// drifts, deterministically, so an export reproduces.
     public func clouds(coverage: Double = 0.45, density: Double = 1, scale: Double = 1,

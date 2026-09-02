@@ -591,7 +591,7 @@ let package = Package(
         example("Integration/DMXLoopback", [.dmx]),
         example("Integration/LEDMapping", [.dmx]),
         // The optimizer made visible: the beam's own path across a drawing,
-        // with the knobs that decide what it costs. Runs with no hardware; the
+        // with the parameters that decide what it costs. Runs with no hardware; the
         // header says the two lines that point it at a real projector.
         example("Integration/LaserPreview", [.laser]),
         // Self-contained: a virtual-source output sends animated MIDI to itself and
@@ -600,7 +600,7 @@ let package = Package(
         // Listens to every MIDI source and prints/draws what arrives — connect a
         // controller and discover what each knob/pad sends just by touching it.
         example("Integration/MIDIMonitor", [.midi]),
-        // Visuals locked to a beat from either source, switched by a knob:
+        // Visuals locked to a beat from either source, switched by a parameter:
         // a self-contained MIDI clock (an internal timer sends clock to itself;
         // real gear pointed at the Mac drives the same sketch) or the local
         // network's shared tempo session (alone it free-runs at its own tempo).
@@ -614,13 +614,13 @@ let package = Package(
         // prints: plug a microcontroller in and its lines (and a numeric
         // value bar) appear; keys pick a device and send a line back.
         example("Integration/SerialMonitor", [.serial]),
-        // Serves its own @Param knobs to a phone on the same network: open the
+        // Serves its own @Param parameters to a phone on the same network: open the
         // address the canvas shows and every slider, toggle, menu, color, pad,
         // and stepper appears as a touch control, live both ways.
         example("Integration/RemoteSurface", [.remote]),
         // One piece across several machines: open it on two Macs on the same
         // network and they find each other by the room's name, sharing a clock,
-        // a seat each, and every knob. It runs alone as one seat of one.
+        // a seat each, and every parameter. It runs alone as one seat of one.
         example("Integration/RoomCanvas", [.room]),
         // Self-contained: two rooms inside one sketch trade values over a
         // transport that never leaves the process (like OSCLoopback), so the
@@ -652,7 +652,7 @@ let package = Package(
         // full of devices announcing themselves.
         example("Integration/BluetoothRoom", [.bluetooth]),
         // One Bluetooth device, connected and read: type part of a name into
-        // the knob and every value it offers appears as it arrives, with a
+        // the parameter and every value it offers appears as it arrives, with a
         // heart rate driving the disc.
         example("Integration/BluetoothSensor", [.bluetooth]),
         // Physics — a Verlet world stepped each frame. Packing is a field of
@@ -695,7 +695,7 @@ let package = Package(
         // The 3D pose: the skeleton in meters, overlaid on the feed and re-drawn
         // from the side — a view no camera is at.
         example("Vision/BodyPose3D", [.vision]),
-        // Lifted off the background, two ways (a knob switches): people over a
+        // Lifted off the background, two ways (a parameter switches): people over a
         // drawn gradient with the matte as drop shadow, or the salient subject
         // in a spotlight over the dimmed feed.
         example("Vision/Lift", [.vision]),
@@ -746,7 +746,7 @@ let package = Package(
         // The camera through a Create ML style-transfer model you train
         // yourself (no download — the model is the user's own work).
         example("Vision/StyleMirror", [.vision]),
-        // Typed phrases as live knobs (ConceptTracker): two phrases pull on
+        // Typed phrases as live parameters (ConceptTracker): two phrases pull on
         // one rope by how well each matches the frame. The model weights
         // download via Scripts/fetch-models.sh (never committed).
         example("Vision/TugOfWords", [.vision]),

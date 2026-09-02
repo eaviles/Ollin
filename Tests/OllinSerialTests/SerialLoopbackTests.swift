@@ -115,12 +115,12 @@ struct SerialLoopbackTests {
         let (pty, port) = try await makePair()
         defer { port.close(); close(pty.manager) }
 
-        let knob = Param(wrappedValue: 0.0, 0...100)
-        port.bind(to: knob)   // incoming 0...1023 into 0...100
+        let parameter = Param(wrappedValue: 0.0, 0...100)
+        port.bind(to: parameter)   // incoming 0...1023 into 0...100
 
         pty.send("512\n")
         let value = try await waitFor { () -> Double? in
-            abs(knob.wrappedValue - 50) < 0.5 ? knob.wrappedValue : nil
+            abs(parameter.wrappedValue - 50) < 0.5 ? parameter.wrappedValue : nil
         }
         #expect(abs(value - 50) < 0.5)
 
@@ -128,7 +128,7 @@ struct SerialLoopbackTests {
         port.unbind()
         pty.send("1023\n")
         _ = try await waitFor { port.latestLine == "1023" ? true : nil }
-        #expect(abs(knob.wrappedValue - 50) < 0.5)
+        #expect(abs(parameter.wrappedValue - 50) < 0.5)
     }
 
     @Test func writesReachTheDevice() async throws {

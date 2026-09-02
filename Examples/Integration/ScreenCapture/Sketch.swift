@@ -6,7 +6,7 @@ import OllinScreen
 /// be drawn, filtered, and composited: a browser, a map, a video call, a
 /// terminal, another sketch.
 ///
-/// The knob worth turning first is `tunnel`. By default the sketch's own window
+/// The parameter worth changing first is `tunnel`. By default the sketch's own window
 /// is cut out of the capture, so pointing it at the screen it is drawn on shows
 /// everything except itself. Turn `tunnel` on and the sketch is left in the
 /// picture, so it draws a screen containing a window drawing a screen containing
@@ -15,7 +15,7 @@ import OllinScreen
 ///
 /// `look` proves the frames are ordinary images: they go through the same filter
 /// catalog as anything else drawn. `detail` trades captured pixels for speed, and
-/// is the knob to reach for on a large display.
+/// is the parameter to reach for on a large display.
 ///
 /// Press `L` to list what this Mac can currently capture, with the line of code
 /// that names each one. Capturing needs the screen-recording permission; if it is

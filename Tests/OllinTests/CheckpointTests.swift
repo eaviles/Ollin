@@ -88,9 +88,9 @@ struct CheckpointTests {
         }
     }
 
-    /// The knobs have to be back before `setup()` runs, or a sketch that builds
-    /// itself from a knob builds from the default and the restore is a lie.
-    @Test func theKnobsAreBackBeforeSetupRuns() throws {
+    /// The parameters have to be back before `setup()` runs, or a sketch that builds
+    /// itself from a parameter builds from the default and the restore is a lie.
+    @Test func theParametersAreBackBeforeSetupRuns() throws {
         try inTemporaryStore {
             let saved = Reef()
             saved.density = 0.3

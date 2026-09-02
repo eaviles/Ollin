@@ -110,12 +110,12 @@ let package = Package(
         // free of it, and free of the permission it asks for.
         .library(name: "OllinBluetooth", targets: ["OllinBluetooth"]),
         // Remote as a satellite library: `import OllinRemote` to serve the
-        // sketch's `@Param` knobs to a phone or a second machine on the local
+        // sketch's `@Param` parameters to a phone or a second machine on the local
         // network, for tuning an installation from in front of it. Kept out of
         // `Ollin` so the drawing core stays free of Network.framework.
         .library(name: "OllinRemote", targets: ["OllinRemote"]),
         // Room as a satellite library: `import OllinRoom` to let several machines
-        // on one network draw one piece, sharing values, knobs, and a clock with
+        // on one network draw one piece, sharing values, parameters, and a clock with
         // no server between them. Kept out of `Ollin` so the drawing core stays
         // free of MultipeerConnectivity.
         .library(name: "OllinRoom", targets: ["OllinRoom"]),
@@ -519,7 +519,7 @@ let package = Package(
         // OSC 1.0 wire format implemented from the spec (no vendored library). A
         // satellite library (like OllinAudio) so the drawing core stays free of
         // networking; sketches opt in with `import OllinOSC`. Depends on Ollin
-        // only to bind an incoming address onto a `@Param` knob.
+        // only to bind an incoming address onto a `@Param` parameter.
         .target(
             name: "OllinOSC",
             dependencies: ["Ollin"]
@@ -529,7 +529,7 @@ let package = Package(
         // library), via Network.framework UDP. A satellite (like OllinOSC) so
         // the drawing core stays free of networking; sketches opt in with
         // `import OllinDMX`. Depends on Ollin for `Color` and to bind an
-        // incoming channel onto a `@Param` knob.
+        // incoming channel onto a `@Param` parameter.
         .target(
             name: "OllinDMX",
             dependencies: ["Ollin"]
@@ -550,7 +550,7 @@ let package = Package(
         // 1.0 message format parsed/encoded from the spec (no vendored library). A
         // satellite library (like OllinOSC) so the drawing core stays free of Core
         // MIDI; sketches opt in with `import OllinMIDI`. Depends on Ollin only to
-        // bind an incoming control onto a `@Param` knob.
+        // bind an incoming control onto a `@Param` parameter.
         .target(
             name: "OllinMIDI",
             dependencies: ["Ollin"]
@@ -584,7 +584,7 @@ let package = Package(
         // are sketch or extension territory. A satellite (like OllinOSC) so the
         // drawing core stays free of IOKit; sketches opt in with `import
         // OllinSerial`. Depends on Ollin only to bind the incoming stream onto
-        // a `@Param` knob.
+        // a `@Param` parameter.
         .target(
             name: "OllinSerial",
             dependencies: ["Ollin"]
@@ -601,7 +601,7 @@ let package = Package(
         ),
         // Room: several machines on one local network drawing one piece, over
         // MultipeerConnectivity, so there is no server and no address to type.
-        // Values, shared `@Param` knobs, and one agreed clock travel between
+        // Values, shared `@Param` parameters, and one agreed clock travel between
         // them. A satellite (like OllinOSC) so the drawing core stays free of
         // MultipeerConnectivity; sketches opt in with `import OllinRoom`.
         .target(
@@ -946,7 +946,7 @@ let package = Package(
         ),
         // Bluetooth reading correctness, radio-free on purpose: a stand-in
         // backend plays the part of the radio, so discovery, matching,
-        // connecting, subscribing, the value cache, the drain, the knob
+        // connecting, subscribing, the value cache, the drain, the parameter
         // binding, polling, and the reconnect all run exactly as shipped with
         // nothing switched on. The value formats are checked against the
         // standard's own byte layouts.

@@ -15,7 +15,7 @@ import Foundation
 /// let p = spring.advance(toward: mouse, by: deltaTime)
 /// ```
 ///
-/// Two knobs, both perceptual. `duration` is the response time in seconds,
+/// Two parameters, both perceptual. `duration` is the response time in seconds,
 /// roughly how long a settle takes. `bounce` sets the character: `0` is
 /// critically damped (the fastest approach with no overshoot, the default),
 /// `0 < bounce <= 1` overshoots and wobbles (1 rings forever), and negative
@@ -94,7 +94,7 @@ public struct DampedSpring<Value: Smoothable>: Sendable {
     public mutating func advance(by dt: Double) {
         guard dt > 0 else { return }
 
-        // The oscillator constants from the perceptual knobs: the undamped
+        // The oscillator constants from the perceptual parameters: the undamped
         // angular frequency from the response time, the damping ratio from
         // bounce (>= 0 backs off the critical damping, < 0 over-damps).
         let omega = 2 * Double.pi / rawDuration

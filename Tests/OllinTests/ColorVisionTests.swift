@@ -89,7 +89,7 @@ struct ColorVisionTests {
         for i in 0..<9 { #expect(exact[i] == high[i]) }
     }
 
-    /// Severity is clamped rather than extrapolated, so a knob dragged past
+    /// Severity is clamped rather than extrapolated, so a parameter dragged past
     /// either end keeps meaning something.
     @Test func severityIsClamped() {
         #expect(ColorVision(.protanomaly, severity: 4).severity == 1)

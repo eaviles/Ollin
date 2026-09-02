@@ -80,7 +80,7 @@ fragment float4 ollin_gen_mesh_gradient(PresentOut in [[stage_in]],
     int count = int(params[0].x);
     float aspect = params[0].y, distortion = params[0].z, swirl = params[0].w;
     float grain = params[1].x, phase = params[1].y;
-    float power = params[1].z;                // the mixing knob, mapped CPU-side
+    float power = params[1].z;                // the mixing parameter, mapped CPU-side
     constant float4 *colors = params + 2;
 
     float2 uv = ollin_pat_square(in.uv, aspect) + 0.5;
@@ -717,7 +717,7 @@ fragment float4 ollin_gen_pulsing_border(PresentOut in [[stage_in]],
 // scroll)^exponent, two fields multiplied so `breakup` chops streaks into
 // dashes, one drifting layer per color. atan2's branch cut is hidden by
 // evaluating the field on two parameterizations (−π…π and 0…2π; their seams
-// sit on opposite sides) blended across the cut. The bloom knob crossfades the
+// sit on opposite sides) blended across the cut. The bloom parameter crossfades the
 // layer stack from alpha compositing to additive light.
 
 fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
@@ -770,7 +770,7 @@ fragment float4 ollin_gen_god_rays(PresentOut in [[stage_in]],
         float4 src = ollin_pat_stop(colors[i]) * ray;
         acc = mix(ollin_pat_over(acc, src), acc + src, bloom);
     }
-    // An extra glow wash over the lit areas, scaled by the bloom knob.
+    // An extra glow wash over the lit areas, scaled by the bloom parameter.
     acc.rgb += ollin_pat_stop(bloomTint).rgb * acc.a * bloom;
     acc.a = min(acc.a, 1.0);
     return ollin_pat_out(ollin_pat_over(acc, ollin_pat_stop(back)));

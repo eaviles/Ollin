@@ -268,8 +268,8 @@ struct ImportedShaderProjectTests {
 
     @Test func aShaderNeedingAHandSaysSoInTheSketch() throws {
         let project = try ProjectGenerator.plan(Self.request("""
-        uniform vec2 knob;
-        void mainImage(out vec4 c, in vec2 f) { c = vec4(knob, 0.0, 1.0); }
+        uniform vec2 amount;
+        void mainImage(out vec4 c, in vec2 f) { c = vec4(amount, 0.0, 1.0); }
         """))
         let sketch = try #require(project.files.first { $0.path.hasSuffix("Sketch.swift") })
         #expect(sketch.contents.contains("TODO(ollin)"))

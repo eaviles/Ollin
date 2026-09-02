@@ -8,8 +8,8 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 
 | Example | What it shows |
 |---|---|
-| [Layers](Layers/Sketch.swift) | layered effects written both ways: the imperative `makeRenderTarget` + `filtered` + `drawImage` path and the `compose { }` DSL producing the same frame, flipped by a knob |
-| [FilterCatalog](FilterCatalog/Sketch.swift) | the whole `Filter` catalog on one switchable contact sheet: the blur, color & tone, stylize & optical, retro, distortion, and design families on a segmented knob |
+| [Layers](Layers/Sketch.swift) | layered effects written both ways: the imperative `makeRenderTarget` + `filtered` + `drawImage` path and the `compose { }` DSL producing the same frame, flipped by a parameter |
+| [FilterCatalog](FilterCatalog/Sketch.swift) | the whole `Filter` catalog on one switchable contact sheet: the blur, color & tone, stylize & optical, retro, distortion, and design families on a segmented parameter |
 | [Antialias](Antialias/Sketch.swift) | the stair-steps in a shader-written layer smoothed from the image alone, split-screen against the raw layer (`.antialias`) |
 | [Relight](Relight/Sketch.swift) | a layer read as a height map and lit as embossed physical matter: matte, metal, glass, sand, liquid (`.relight`) |
 | [Glitter](Glitter/Sketch.swift) | iridescent and glittering shapes: the thin-film `.iridescence` sheen and the sparkle-fleck `.glitter` filter, per shape via `compose { }` |

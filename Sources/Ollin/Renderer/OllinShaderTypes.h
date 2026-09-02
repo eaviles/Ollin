@@ -1192,7 +1192,7 @@ typedef struct {
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
 // index 10), so a kernel reads `u.time`/`u.dt`/`u.resolution`/… with no plumbing.
 // `particleCount` is the dispatch's thread count (set per dispatch). `custom` is a
-// 4-float per-dispatch knob bag the sketch fills (focus, strength, …) so a kernel
+// 4-float per-dispatch parameter bag the sketch fills (focus, strength, …) so a kernel
 // can take a couple of live parameters without declaring its own struct. Stride 48
 // (`custom` is float4, 16-aligned at offset 32).
 typedef struct {

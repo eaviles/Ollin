@@ -43,7 +43,7 @@ final class LiveSession {
     /// trigger and the OllinLive presentation on top.
     @ObservationIgnored let core: SketchSession
 
-    /// The parameter timeline behind the Timeline panel and the knob rows'
+    /// The parameter timeline behind the Timeline panel and the parameter rows'
     /// diamonds. Its edits land on the running sketch and are held by the
     /// engine, so the tracks survive every reload swap.
     @ObservationIgnored let timeline = TimelineModel()
@@ -68,7 +68,7 @@ final class LiveSession {
     /// second by the runner. Shared with the on-canvas overlay (one source of
     /// truth), so the inspector and overlay never disagree.
     var stats: FrameStats { core.stats }
-    /// The running sketch's `@Param` knobs, surfaced as sliders in the inspector.
+    /// The running sketch's `@Param` parameters, surfaced as sliders in the inspector.
     var params: [ParamHandle] { core.params }
     /// A user shader's compile error (`nil` when every shader compiles).
     /// Distinct from `status`, which tracks the Swift hot-reload, so a shader
@@ -125,7 +125,7 @@ final class LiveSession {
     /// frame; consumed when the runner attaches.
     @ObservationIgnored private var recordOnLaunch: Bool
 
-    /// Where `--record-take` asked the run's input-and-knob take to be
+    /// Where `--record-take` asked the run's input-and-parameter take to be
     /// written, and the take `--replay` asked to play back. Both consumed when
     /// the runner attaches; a later reload ends either (an edited sketch is a
     /// different run, so the take is written out and the replay stops).
@@ -209,18 +209,18 @@ final class LiveSession {
         }
     }
 
-    /// Record a knob the user changed, so it survives the next reload.
+    /// Record a parameter the user changed, so it survives the next reload.
     func recordParam(_ name: String, _ value: ParamStored) {
         core.recordParam(name, value)
     }
 
     /// Record a variation seed the user navigated to, so it survives the next
-    /// reload the way tuned knobs do.
+    /// reload the way tuned parameters do.
     func recordSeed(_ seed: Int) {
         core.recordSeed(seed)
     }
 
-    /// The inspector's save action: put the knobs the user turned into the
+    /// The inspector's save action: put the parameters the user turned into the
     /// watched file. Built fresh on each read so the button always names the
     /// file this session watches.
     var saveAction: ParamSaveAction {
@@ -229,7 +229,7 @@ final class LiveSession {
         }
     }
 
-    /// Write the tuned knob values into the `@Param` lines they came from, and
+    /// Write the tuned parameter values into the `@Param` lines they came from, and
     /// say in one line what happened. Nothing here reaches into the running
     /// sketch: the file is the only thing that changes, the watcher sees the
     /// save, and the reload brings the values back from the text. That is why

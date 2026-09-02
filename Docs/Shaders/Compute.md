@@ -102,7 +102,7 @@ The rest of the library is there too (cosine `palette`, OKLab conversions, the `
 <a id="custom"></a>
 ### Custom live parameters
 
-Pass up to four live floats per step (a focal distance, a strength, a mouse-driven knob) and read them as `custom.x`…`custom.w`:
+Pass up to four live floats per step (a focal distance, a strength, a mouse-driven parameter) and read them as `custom.x`…`custom.w`:
 
 ```swift
 let focus = mouseIsPressed ? Float(map(mouseX, 0, width, -1, 1)) : 0
@@ -171,7 +171,7 @@ In the `step:` snippet these are in scope:
 | `gid` | `uint2` | this cell's coordinate |
 | `size` | `uint2` | the field's size in texels |
 | `u` | `OllinComputeUniforms` | per-frame constants, read-only (as for particles) |
-| `custom` | `float4` | live knobs, read-only (as for particles) |
+| `custom` | `float4` | live parameters, read-only (as for particles) |
 
 Fresh fields start **zeroed**, so seed a sim's initial state with a one-shot `compute(_:writing: sim.current)` on the first frame (the `seeded` flag above). For a full custom kernel signature, pass `Simulation(width:height:kernel:)`.
 

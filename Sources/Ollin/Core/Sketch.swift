@@ -1127,7 +1127,7 @@ open class Sketch {
     public func specularSharpness(_ exponent: Double) { drawer.specularSharpness(exponent) }
 
     /// Give subsequent meshes a whole `Material` finish at once — its specular,
-    /// specularSharpness, and any iridescence, instead of setting those knobs one by one.
+    /// specularSharpness, and any iridescence, instead of setting those parameters one by one.
     /// The surface *color* stays the current `fill`. Reach for a built-in
     /// (`.clay`, `.plastic`, `.glossy`, `.soapBubble`, …) or build/tweak your own.
     /// Drawing state, saved by `withState`.
@@ -1495,7 +1495,7 @@ open class Sketch {
     /// hard edge (the classic shadow look); the `0.5` default sharpens the shadow where an object
     /// meets a surface and blurs it as it falls away (physically plausible soft shadows); `1` is
     /// very soft. It softens the directional and spot casters (a variable-kernel filter on their
-    /// shadow maps) **and** the ray-traced point caster's area light, so one knob controls every
+    /// shadow maps) **and** the ray-traced point caster's area light, so one parameter controls every
     /// shadow kind. A persistent setting; set it once in `setup()` or `draw()`.
     public func shadowSoftness(_ amount: Double = 0.5) { drawer.shadowSoftness(amount) }
 
@@ -2222,8 +2222,8 @@ open class Sketch {
     var takeRecorder: TakeRecorder?
     var takePlayer: TakePlayer?
 
-    /// The automation driving this sketch's knobs, when one is attached (see
-    /// `Automation`). It sets the automated knobs at the top of each frame; a
+    /// The automation driving this sketch's parameters, when one is attached (see
+    /// `Automation`). It sets the automated parameters at the top of each frame; a
     /// sketch reaches it through the `automation` property.
     var automationPlayer: AutomationPlayer?
 
@@ -3821,7 +3821,7 @@ open class Sketch {
     func advance(time: Double, deltaTime: Double, frameRate: Double) {
         var time = time, deltaTime = deltaTime, frameRate = frameRate
         // A replay overrides the caller's clock with the recorded one, after
-        // applying the frame's recorded events and knob changes; a recording
+        // applying the frame's recorded events and parameter changes; a recording
         // writes down whichever clock is about to apply. Every driver (the
         // live window, each export loop, the benchmark) funnels through here,
         // which is what lets one seam record and replay them all.
@@ -3830,8 +3830,8 @@ open class Sketch {
                 self, frame: frameCount,
                 fallback: (time: time, deltaTime: deltaTime, frameRate: frameRate))
         }
-        // A knob written down over time is set here, before the recorder
-        // samples the knobs, so a run recorded while an automation played
+        // A parameter written down over time is set here, before the recorder
+        // samples the parameters, so a run recorded while an automation played
         // writes down the values the curves actually held.
         automationPlayer?.apply(to: self, at: time)
         takeRecorder?.recordFrame(of: self, time: time, deltaTime: deltaTime,

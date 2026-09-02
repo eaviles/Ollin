@@ -141,7 +141,7 @@ fragment float4 ollin_light_cascade(PresentOut in [[stage_in]],
     if (top) {
         // The last rung is cut off at the reach the sketch asked for. Rungs come in
         // whole steps of four, so without this a reach of 90 pixels would light 340:
-        // the knob would round up to the next rung and read as doing nothing.
+        // the parameter would round up to the next rung and read as doing nothing.
         float end = max(t0, min(t1, params[2].z));
         float4 own = ollin_rc_trace(field, scene, samp, start, origin + dir * end,
                                     size, maxSteps);

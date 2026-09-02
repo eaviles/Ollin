@@ -2,7 +2,7 @@ import Ollin
 
 /// Worley cellular noise as a generator: space divided into organic cells by
 /// hashed feature points, filled straight on the GPU by `generate(.cellular)`.
-/// The `look` knob flips between the three readings of the same field:
+/// The `look` parameter flips between the three readings of the same field:
 /// `cells` (dark cores brightening toward the walls), `borders` (thin cracks
 /// tracing the walls), and `mosaic` (flat stained-glass panes). The feature
 /// points wander on their own small orbits, periodic over one lap, so the

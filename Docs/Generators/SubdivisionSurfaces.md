@@ -63,7 +63,7 @@ An open sheet doesn't shrink away, whether it is a `plane` or a capless `cylinde
 
 #### Levels and cost
 
-Each level multiplies the face count by about four, so cost climbs fast and smoothness saturates early. Level 2 or 3 is almost always enough, and past two million faces refinement stops early with a note. Subdivision is CPU work shaped like `setup()`. Refine once and keep the mesh, or cache it and rebuild when a knob changes, rather than re-subdividing every frame.
+Each level multiplies the face count by about four, so cost climbs fast and smoothness saturates early. Level 2 or 3 is almost always enough, and past two million faces refinement stops early with a note. Subdivision is CPU work shaped like `setup()`. Refine once and keep the mesh, or cache it and rebuild when a parameter changes, rather than re-subdividing every frame.
 
 <a name="result"></a>
 

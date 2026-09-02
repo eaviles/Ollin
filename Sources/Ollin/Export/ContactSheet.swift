@@ -38,12 +38,12 @@ extension OllinApp {
     /// the results into one proof-sheet image: a grid of thumbnails, each
     /// labeled with the value that made it. The complement of the seed sheet:
     /// where `contactSheet(of:seeds:)` walks the sketch's chance, this walks
-    /// one of its knobs.
+    /// one of its parameters.
     ///
     /// `name` is the `@Param` property's name (`"radius"`, not `"Radius"`);
     /// numeric values apply to `Double` and `Int` parameters through the same
-    /// restore path the live hosts use to carry knobs across reloads, so a
-    /// value lands exactly as if the knob had been dragged there. Every tile
+    /// restore path the live hosts use to carry parameters across reloads, so a
+    /// value lands exactly as if the parameter had been dragged there. Every tile
     /// runs at the same `seed` (one is rolled and recorded when not given), so
     /// the parameter is the only thing changing across the sheet. Returns
     /// `nil` when the sketch has no parameter by that name, listing what it

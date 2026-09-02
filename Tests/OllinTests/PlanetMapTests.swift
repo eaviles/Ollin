@@ -9,7 +9,7 @@ import Testing
 ///
 /// A pixel snapshot pins the frame as a picture. These pin the things a whole-frame
 /// mean difference averages away: that the map wraps, that the caps are ice, that
-/// water is smoother than land, that a light stands on land, that the cover knob
+/// water is smoother than land, that a light stands on land, that the cover parameter
 /// moves the weather, and that the surface is opaque.
 @Suite
 @MainActor
@@ -192,10 +192,10 @@ struct PlanetMapTests {
 
     // MARK: The weather
 
-    /// The cover knob moves the weather, in the direction it says. Nothing else in
+    /// The cover parameter moves the weather, in the direction it says. Nothing else in
     /// the bake depends on it, so this is the one thing to hold.
     @Test(.enabled(if: Snapshot.hasMetal))
-    func theCoverKnobRaisesTheCloud() throws {
+    func theCoverParameterRaisesTheCloud() throws {
         let clear = try #require(PlanetMaps.baked(cover: 0.1))
         let thick = try #require(PlanetMaps.baked(cover: 0.9))
         let a = try #require(clear.read(clear.cloudMap)).mean { $0.a }

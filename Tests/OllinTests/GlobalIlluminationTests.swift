@@ -158,11 +158,11 @@ struct GlobalIlluminationTests {
                 "expected bounce light on the target's ceiling: on \(lit), off \(dark)")
     }
 
-    /// The quality knob is plumbed end to end: on the export path `.default` resolves
+    /// The quality parameter is plumbed end to end: on the export path `.default` resolves
     /// to `.detail` (the automatic lift), so the two are byte-identical, while
     /// `.performance` traces fewer rays and iterations and lands on different bytes.
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
-    func theQualityKnobResolvesTheExportTiers() throws {
+    func theQualityParameterResolvesTheExportTiers() throws {
         func render(_ quality: RenderQuality?) throws -> [UInt8] {
             let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true, quality: quality),
                                                     frame: 1))

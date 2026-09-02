@@ -11,7 +11,7 @@ import Ollin
 /// exists: turn `sealed` off and the tube's ends open up, the shape looks the
 /// same from most angles, and the report underneath turns red.
 ///
-/// Press S to write the knot as `.3mf`, `.stl`, and `.obj`. The size knob is
+/// Press S to write the knot as `.3mf`, `.stl`, and `.obj`. The size parameter is
 /// the real one: the mesh is scaled so its longest side spans that many
 /// millimeters, which is what the file records.
 @main
@@ -66,7 +66,7 @@ final class Fabrication: Sketch {
     }
 
     /// The same examination the writers run, drawn where it can be read while
-    /// the knobs move.
+    /// the parameters move.
     private func report(on knot: Mesh) {
         let sized = knot.normalized(scale: millimeters)
         let check = sized.printCheck()
@@ -103,7 +103,7 @@ final class Fabrication: Sketch {
         drawCaption(saved ?? "S saves the knot as .3mf, .stl, and .obj")
     }
 
-    /// Write the shape at the size the knob asks for. `normalized(scale:)` is
+    /// Write the shape at the size the parameter asks for. `normalized(scale:)` is
     /// what turns model units into millimeters: it centers the mesh, which is
     /// where a build platform wants it, and fits its longest side.
     private func save() {

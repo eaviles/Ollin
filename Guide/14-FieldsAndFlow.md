@@ -93,7 +93,7 @@ The field becomes drawing the moment you stop interviewing it and start obeying 
   <img src="Images/14-FieldsAndFlow/TraceSteps.jpg" alt="A paper diagram of faint field needles with one walk drawn through them: an orange start dot, then black dots connected by arrows stepping along the flow, following a faint fine line traced through the same field" width="680">
 </picture>
 
-The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with properly small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have instant calligraphy. The `stepLength` is the accuracy knob, since big steps cut corners on tight curves, exactly like the exaggerated arrows in the diagram.
+The path this walk leaves is a **streamline**. `field.streamline(from: start)` traces one for you with properly small steps. It walks both directions from the start, so your point sits in the middle of the curve rather than at its end. Trace a handful from random starts and you have instant calligraphy. The `stepLength` is the accuracy parameter, since big steps cut corners on tight curves, exactly like the exaggerated arrows in the diagram.
 
 ## Lines that keep their distance
 
@@ -149,7 +149,7 @@ The walk stops at the layer's edge and at any pixel where the field is zero. A h
 
 ## A field you pin down yourself
 
-Every field so far came out of noise. You turned knobs on it, but you never told it what to be at any particular place. Sometimes that is exactly backwards. You know what you want at a few spots, and you want something sensible everywhere else.
+Every field so far came out of noise. You turned parameters on it, but you never told it what to be at any particular place. Sometimes that is exactly backwards. You know what you want at a few spots, and you want something sensible everywhere else.
 
 If those spots sat on a grid you could interpolate between the neighbors. Scattered points have no neighbors to speak of, so the answer has to come from all of them at once. `RadialBasis` does that. Each known point gets a bump centered on it, and the bumps are weighted so their sum lands exactly on every value you gave.
 
@@ -193,7 +193,7 @@ drawCircle(best.values[0], best.values[1], best.values[2])
 
 The closure is the whole of it. You never say how to search, only how to score. Squared distance is the usual scoring: it punishes one badly placed mark much harder than several slightly off ones, which is what makes the answer settle in the middle of the crowd.
 
-It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest, so when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each knob a little either side of where it stands, so your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
+It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest, so when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each parameter a little either side of where it stands, so your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
 
 ## Putting it together: the print
 
@@ -251,7 +251,7 @@ Vector fields are old mathematics, since fluid dynamics and electromagnetism bot
 - [Fitting](../Docs/Drawing/Fitting.md): the kernels `RadialBasis` can use, fields of vectors and colors, smoothing, and everything `Fit.minimize` takes.
 - [Layered effects](../Docs/Drawing/Effects.md): `.streaked(along:length:field:)` and the `.lineIntegralConvolution` combine, with the three field readings.
 - Appendix B draws this chapter's math, one picture per idea: [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).
-- Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), [`Examples/Effects/FlowStreaks`](../Examples/Effects/FlowStreaks/Sketch.swift) (a grained sheet brushed along a field, three readings on a knob), [`Examples/Shapes/Scattered`](../Examples/Shapes/Scattered/Sketch.swift) (a field, a warp, and a circle recovered from marks), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
+- Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), [`Examples/Effects/FlowStreaks`](../Examples/Effects/FlowStreaks/Sketch.swift) (a grained sheet brushed along a field, three readings on a parameter), [`Examples/Shapes/Scattered`](../Examples/Shapes/Scattered/Sketch.swift) (a field, a warp, and a circle recovered from marks), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
 
 ---
 

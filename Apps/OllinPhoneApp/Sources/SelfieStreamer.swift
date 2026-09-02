@@ -126,7 +126,7 @@ final class SelfieStreamer: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
             }
             // Rotate the delivered buffers upright for the current device hold, and
             // keep them upright when the phone turns. (If a hold ever reads rotated
-            // on-device, this is the one knob; the matte can't misalign with the
+            // on-device, this is the one parameter; the matte can't misalign with the
             // color, since Vision runs on the delivered buffer.)
             videoConnection = connection
             let coordinator = AVCaptureDevice.RotationCoordinator(device: camera, previewLayer: nil)

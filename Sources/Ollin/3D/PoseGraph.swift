@@ -41,7 +41,7 @@ struct PoseGraph {
         var robust: Bool = false
     }
 
-    /// The knobs on the straightening. The defaults suit a room-scale sweep in meters.
+    /// The parameters on the straightening. The defaults suit a room-scale sweep in meters.
     struct Settings {
         /// The most rounds to run. It stops as soon as a round stops moving the poses.
         var passes: Int = 25

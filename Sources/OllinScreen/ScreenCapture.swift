@@ -328,7 +328,7 @@ public final class ScreenCapture: FrameSource, VideoFeed {
         config.queueDepth = 6
     }
 
-    /// Push changed settings onto a running stream, for the knobs that do not
+    /// Push changed settings onto a running stream, for the parameters that do not
     /// need a new filter.
     private func applyConfiguration() {
         guard let stream = held.stream, let filter = currentFilter else { return }

@@ -72,7 +72,7 @@ final class Gallery: Sketch {
         fill(Color(hex: 0xF2CC8F))
         drawCircle(center: stage.point(u: 0.66, v: 0.66), radius: 20)
 
-        // The inspector: knobs and stats.
+        // The inspector: parameters and stats.
         fill(wash)
         drawRect(inspector)
         for index in 0 ..< 4 {
@@ -105,14 +105,14 @@ final class Gallery: Sketch {
         textAlign(.center, .top)
         drawText("every example, by folder", sidebar.x + sidebar.width / 2, window.y + window.height + 14)
         drawText("the sketch, running", stage.x + stage.width / 2, window.y + window.height + 14)
-        drawText("its knobs", inspector.x + inspector.width / 2, window.y + window.height + 14)
+        drawText("its parameters", inspector.x + inspector.width / 2, window.y + window.height + 14)
 
         fill(soft)
         textSize(14)
         textAlign(.center, .top)
         drawText("arrow keys move through the list, because the canvas takes the keyboard only when you click it",
                  width / 2, window.y + window.height + 48)
-        drawText("hide the knobs with ⌘/ · type in the filter to find an example by name",
+        drawText("hide the parameters with ⌘/ · type in the filter to find an example by name",
                  width / 2, window.y + window.height + 72)
     }
 }

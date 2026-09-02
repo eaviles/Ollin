@@ -761,7 +761,7 @@ public struct TuringScale: Sendable, Equatable {
     public var symmetry: Int
 
     /// The radius over which this scale's disagreement is averaged before the scales are
-    /// compared, in field texels. This is the knob that decides how large a region a
+    /// compared, in field texels. This is the parameter that decides how large a region a
     /// scale can claim, and it is load-bearing rather than a refinement: read at a single
     /// point, a fine scale's disagreement passes through zero along every contour of its
     /// own structure, and since the *least* disagreement wins, it would take a dense web

@@ -66,5 +66,5 @@ The camera runs the economy, per tile of the patch:
 
 - The blades exist only inside the draw. They cast no shadows into the maps, though they do *receive* them. The spatial exporter cannot record them and says so once, and SVG export skips them like every shaded solid. Strands are surface dressing; for solids at scale, reach for [instanced meshes and fields](./Instancing.md).
 - `makeBatch { }` refuses a strand field. Its blades are grown by the GPU each frame, so there is nothing to retain. Draw it where the batch is drawn.
-- Draw two fields, draw one twice under different transforms, or mutate the knobs live. A field is a plain value with no GPU state to invalidate.
-- The [`Grassland`](../../Examples/Rendering/Grassland/Sketch.swift) example is the 500,000-blade meadow with boulders shading the grass and a knob that flips the distance grading.
+- Draw two fields, draw one twice under different transforms, or mutate the parameters live. A field is a plain value with no GPU state to invalidate.
+- The [`Grassland`](../../Examples/Rendering/Grassland/Sketch.swift) example is the 500,000-blade meadow with boulders shading the grass and a parameter that flips the distance grading.

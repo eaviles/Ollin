@@ -19,7 +19,7 @@ The usual shape is to make the sender and receiver in `setup()`, then send and r
 import Ollin
 import OllinOSC
 
-final class Knob: Sketch {
+final class Wired: Sketch {
     let out = OSCSender(host: "127.0.0.1", port: 9000)
     let in_ = OSCReceiver(port: 8000)
 
@@ -39,7 +39,7 @@ final class Knob: Sketch {
 - [OSCMessage & arguments](#oscmessage--arguments) - the value you send and receive
 - [OSCSender](#oscsender) - send messages and bundles
 - [OSCReceiver](#oscreceiver) - read incoming messages three ways
-- [Binding to a `@Param`](#binding-to-a-param) - drive a knob from an address
+- [Binding to a `@Param`](#binding-to-a-param) - drive a parameter from an address
 - [Bundles & time tags](#bundles--time-tags) - group messages
 - [Testing without hardware](#testing-without-hardware) - loopback, monitors, and TouchOSC
 
@@ -138,7 +138,7 @@ func bind(_ address: String, to param: Param<Double>, from input: ClosedRange<Do
 func unbind(_ address: String)
 ```
 
-The third way to read is to wire an address straight onto a [`@Param`](../Helpers/Parameters.md) knob. An incoming value then drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
+The third way to read is to wire an address straight onto a [`@Param`](../Helpers/Parameters.md) parameter. An incoming value then drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -150,7 +150,7 @@ override func setup() {
 }
 ```
 
-A bound knob updates on its own as messages arrive, so you don't read it each frame. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
+A bound parameter updates on its own as messages arrive, so you don't read it each frame. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
 
 <a name="bundles--time-tags"></a>
 

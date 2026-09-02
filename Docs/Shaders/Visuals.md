@@ -22,7 +22,7 @@ override func draw() {
   <img src="../../Guide/Images/17-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
 </picture>
 
-Everything moves by default (sources drift with time), and every number can animate per frame, `.rotated(time * 0.2)`, a beat-driven amount, an [`@Param`](../Helpers/Parameters.md) knob, without recompiling anything: the chain's *structure* decides the shader (compiled once, cached), while its *numbers* travel in a uniform buffer.
+Everything moves by default (sources drift with time), and every number can animate per frame, `.rotated(time * 0.2)`, a beat-driven amount, an [`@Param`](../Helpers/Parameters.md) parameter, without recompiling anything: the chain's *structure* decides the shader (compiled once, cached), while its *numbers* travel in a uniform buffer.
 
 ### Contents
 
@@ -95,7 +95,7 @@ a.differenced(with: b)                // absolute per-channel difference
 a.masked(by: b)                       // keep a where b reads bright and opaque
 ```
 
-`amount` on `.blended` fades the whole effect, so a blend can ride a beat or a knob.
+`amount` on `.blended` fades the whole effect, so a blend can ride a beat or a parameter.
 
 ### Modulation: color drives coordinates
 

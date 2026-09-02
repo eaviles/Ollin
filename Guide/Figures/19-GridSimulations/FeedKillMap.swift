@@ -2,7 +2,7 @@
 //
 // Guide diagram (Chapter 19): the reaction-diffusion parameter map. The same
 // simulation, seeded the same way, at 24 different feed/kill settings; the
-// two knobs pick the regime, from dissolving to spots to mazes to coral.
+// two parameters pick the regime, from dissolving to spots to mazes to coral.
 import Ollin
 import OllinDiagram
 

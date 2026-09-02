@@ -177,7 +177,7 @@ Build a custom curve from any closure:
 let gentle = Easing { t in t * t * (3 - 2 * t) }   // a hand-rolled smoothstep
 ```
 
-A built-in curve carries its own name, so curves compare, persist, and sit on a menu: `@Param var spacing: Easing = .easeInOut` is a [knob](Parameters.md#family) like any other. The friendly aliases are the cubic curves themselves, so `.easeInOut == .easeInOutCubic`. A curve built from a closure equals itself and every copy of itself, and nothing else, since two closures cannot be compared.
+A built-in curve carries its own name, so curves compare, persist, and sit on a menu: `@Param var spacing: Easing = .easeInOut` is a [parameter](Parameters.md#family) like any other. The friendly aliases are the cubic curves themselves, so `.easeInOut == .easeInOutCubic`. A curve built from a closure equals itself and every copy of itself, and nothing else, since two closures cannot be compared.
 
 <a name="catalog"></a>
 
@@ -266,7 +266,7 @@ final class Cursor: Sketch {
 }
 ```
 
-It works on a `Double` or a `Vector2`. Two knobs tune the feel:
+It works on a `Double` or a `Vector2`. Two parameters tune the feel:
 
 - **`minCutoff`** (default `1`): lower it to cut jitter while the signal is slow, at the cost of a little more lag.
 - **`beta`** (default `0.007`): raise it to cut lag while the signal moves fast.
@@ -275,7 +275,7 @@ It works on a `Double` or a `Vector2`. Two knobs tune the feel:
 @Smoothed(minCutoff: 0.5, beta: 0.02) var angle = 0.0
 ```
 
-Both are reachable live through the projected value (`$angle.beta = …`), so a [`@Param`](../Helpers/Parameters.md) knob can dial them in by feel. The projected value also gives you `$p.rawValue` (the last unsmoothed input) and `$p.set(v)` (jump there with no glide). Because the filter is timed in seconds, it behaves the same at any frame rate.
+Both are reachable live through the projected value (`$angle.beta = …`), so a [`@Param`](../Helpers/Parameters.md) parameter can dial them in by feel. The projected value also gives you `$p.rawValue` (the last unsmoothed input) and `$p.set(v)` (jump there with no glide). Because the filter is timed in seconds, it behaves the same at any frame rate.
 
 To smooth a value that isn't a sketch property, the `OneEuroFilter<Value>` underneath is public: own the state and step it yourself.
 
@@ -306,7 +306,7 @@ final class Chase: Sketch {
 }
 ```
 
-Two knobs, both perceptual:
+Two parameters, both perceptual:
 
 - **`duration`** (default `0.5`) is the response time in seconds, roughly how long a settle takes.
 - **`bounce`** (default `0`) is the character. `0` is critically damped: the fastest possible arrival with no overshoot. Positive values overshoot and wobble (up to `1`, which rings forever); negative values drag in slowly, like moving through honey.

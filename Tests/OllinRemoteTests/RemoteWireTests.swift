@@ -5,10 +5,10 @@ import Testing
 
 // Socket-free on purpose: every test here exercises the wire layer as pure
 // functions (bytes in, bytes out) or the apply path through a real sketch's
-// discovered knobs. Nothing opens a port; the connection plumbing is thin
+// discovered parameters. Nothing opens a port; the connection plumbing is thin
 // glue over these pieces.
 
-/// A sketch wearing one knob of each family the wire carries.
+/// A sketch wearing one parameter of each family the wire carries.
 private final class RemoteProbeSketch: Sketch {
     enum Palette: String, CaseIterable, ParamOption { case dawn, dusk, noir }
 
@@ -208,7 +208,7 @@ private final class RemoteProbeSketch: Sketch {
         #expect(set.value == .number(2.5))
     }
 
-    @Test func aHelloCarriesTheSketchAndItsKnobs() throws {
+    @Test func aHelloCarriesTheSketchAndItsParameters() throws {
         let sketch = RemoteProbeSketch()
         let hello = RemoteHello(sketch: "RemoteProbeSketch", host: "mac.local",
                                 params: sketch.parameters().map(RemoteWire.descriptor(for:)))

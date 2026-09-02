@@ -104,7 +104,7 @@ struct ExportMetadata {
 
     /// The recipe for a parameter sweep: the swept `@Param`'s name, its
     /// values, and the seed every tile was pinned to, so any tile re-renders
-    /// at full resolution by setting that knob at that seed.
+    /// at full resolution by setting that parameter at that seed.
     @MainActor
     static func sheetRecipe(sweep name: String, values: [Double], seed: Int,
                             frame: Int, fps: Double) -> String {

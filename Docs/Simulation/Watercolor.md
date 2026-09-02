@@ -38,7 +38,7 @@ override func draw() {
 - [Pigments](#pigments)
 - [Drying and blotting a wash](#washes)
 - [The six classic effects](#effects)
-- [Knobs](#knobs)
+- [Parameters](#parameters)
 - [Notes](#notes)
 
 <a id="painting"></a>
@@ -99,12 +99,12 @@ Every hallmark of the medium comes out of the simulation rather than a filter.
 - **Flow effects.** Paint wet-in-wet, which is a loaded stroke into a still-wet wash. The color spreads soft and feathery, steered by the paper.
 - **Glazing.** Dry the sheet, then wash over it. The layers mix optically rather than additively. Hansa yellow over ultramarine reads as the muted green those real paints actually make.
 
-<a id="knobs"></a>
-### Knobs
+<a id="parameters"></a>
+### Parameters
 
-`Sim.watercolor(...)` takes the palette, plus these knobs.
+`Sim.watercolor(...)` takes the palette, plus these parameters.
 
-| knob | default | what it does |
+| parameter | default | what it does |
 |---|---|---|
 | `edgeDarkening` | 0.04 | how much water the wet edge sheds per step, which makes the dark rim (the reference model runs `0.01...0.05`) |
 | `backruns` | `true` | run the capillary layer, where moisture creeps through the paper's pores |

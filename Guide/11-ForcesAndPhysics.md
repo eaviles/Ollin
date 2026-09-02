@@ -305,7 +305,7 @@ arm.reach(toward: Vector2(mouseX, mouseY))
 drawPolyline(arm.joints)
 ```
 
-Two knobs decide the character, and the first is an aesthetic choice rather than a technical one. `solver` picks how the chain thinks about reaching. The default `.fabrik` spreads the bend evenly along the whole chain, which gives smooth, plant-like poses. `.ccd` favors the joints nearest the tip, so the chain whips and curls instead. `maxBend` is the stiffness limit, the sharpest angle any segment may fold against its neighbor. It's what turns a floppy tentacle into a spine. A target can sit out of reach, either past the chain's `totalLength` or behind its own stiffness. `reach` reports that by returning `false` rather than spinning.
+Two parameters decide the character, and the first is an aesthetic choice rather than a technical one. `solver` picks how the chain thinks about reaching. The default `.fabrik` spreads the bend evenly along the whole chain, which gives smooth, plant-like poses. `.ccd` favors the joints nearest the tip, so the chain whips and curls instead. `maxBend` is the stiffness limit, the sharpest angle any segment may fold against its neighbor. It's what turns a floppy tentacle into a spine. A target can sit out of reach, either past the chain's `totalLength` or behind its own stiffness. `reach` reports that by returning `false` rather than spinning.
 
 ### The classic chaos machine: DoublePendulum
 
@@ -325,7 +325,7 @@ galaxy.step()
 for p in galaxy.positions { drawCircle(center: p, radius: 2) }
 ```
 
-Doing this honestly for a few thousand bodies would mean millions of pairs every frame. So a distant clump gets treated as a single lump once it's far enough away to look like one. That approximation is what keeps the whole thing cheap. The `theta` knob sets how fussy it is, where `0` forces the exact all-pairs sum and the default `0.7` is fast. `softening` is the other one to know. It caps how hard a close encounter pulls, so two bodies that nearly touch swing through smoothly instead of slingshotting to infinity.
+Doing this honestly for a few thousand bodies would mean millions of pairs every frame. So a distant clump gets treated as a single lump once it's far enough away to look like one. That approximation is what keeps the whole thing cheap. The `theta` parameter sets how fussy it is, where `0` forces the exact all-pairs sum and the default `0.7` is fast. `softening` is the other one to know. It caps how hard a close encounter pulls, so two bodies that nearly touch swing through smoothly instead of slingshotting to infinity.
 
 Two seeded factories stage the usual scenes. `NBody.disk(...)` builds a spinning disk around a heavy center, starting each body on the circular orbit its radius calls for. That is the right panel above, drawn as velocity streaks so the circulation shows. `NBody.cluster(...)` drops a motionless swarm that collapses, swings through itself, and puffs back out into a bound cloud. Because the factories roll from a seed and every step is a fixed size, a run reproduces exactly. A fixed-frame export gives you the same galaxy twice. To stage a collision, build two disks and append one's `bodies` to the other's.
 
@@ -500,7 +500,7 @@ Then push it around:
 - Give the ball a `restitution: 0.8` and it bounces off the rubble instead of shoving through it.
 - Two towers, one on each side of the anchor, and the ball becomes a metronome of destruction.
 - Replace the tower with a pyramid (rows that get one brick shorter as they rise, each row offset half a brick). It resists the ball much better, and knocking it flat takes real aim.
-- Put `world.gravity` on a `@Param` knob and try demolition on the moon.
+- Put `world.gravity` on a `@Param` parameter and try demolition on the moon.
 
 Where does this leave the hand-rolled forces from the start of the chapter? Both are yours now, and they don't compete. When one or two things move and you want full control of the feel, write the forces yourself. That covers a chase, a flutter, or a custom bounce, in four lines you own completely. The moment bodies need to *negotiate*, piling, stacking, hanging, colliding, let a `World` do the negotiating. Plenty of good sketches do both in the same `draw()`, and the three ready-made systems sit alongside both.
 
@@ -516,10 +516,10 @@ The three ready-made systems each have a paper behind them. The default IK solve
 
 - [Physics](../Docs/Simulation/Physics.md): the full `World` / `Particle` / `Spring` / `Body` reference, including the parts this chapter left out: masses and forces on particles, `strain` for tinting springs by stress, soft blobs, and the other joint kinds.
 - [Articulated and chaotic motion](../Docs/Simulation/Motion.md): the full `IKChain`, `DoublePendulum`, and `NBody` reference, including both IK solvers, `maxBend`, the pendulum's `energy` check, and the n-body factories.
-- [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's knobs, and the pin-and-drag idiom.
+- [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's parameters, and the pin-and-drag idiom.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
 - Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), `Chain` (hanging chains to grab and fling), `Joints` (the four joint kinds side by side, one rig each), and `Forces` (a windy yard where every push, kick, and spin is a force call).
-- The ready-made systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK knobs live), `DoublePendulum` (a fan of twenty-four pendulums pulling apart), and `NBody` (two galaxies on a grazing orbit).
+- The ready-made systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK parameters live), `DoublePendulum` (a fan of twenty-four pendulums pulling apart), and `NBody` (two galaxies on a grazing orbit).
 - A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. [Chapter 12](12-FlocksAndSwarms.md) builds it.
 
 ---

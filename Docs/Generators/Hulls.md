@@ -38,7 +38,7 @@ stroke(.black)
 drawPolygon(outline)
 ```
 
-Under the hood the Delaunay triangulation's border triangles erode longest-boundary-edge-first. A triangle may only go while the polygon stays simple, which is also what keeps every point inside. The knob interpolates a length threshold between the triangulation's shortest and longest edge, so it is scale-free. The same value reads the same on a 400-pixel sketch and a 4000-pixel export.
+Under the hood the Delaunay triangulation's border triangles erode longest-boundary-edge-first. A triangle may only go while the polygon stays simple, which is also what keeps every point inside. The parameter interpolates a length threshold between the triangulation's shortest and longest edge, so it is scale-free. The same value reads the same on a 400-pixel sketch and a 4000-pixel export.
 
 <a name="alpha"></a>
 
@@ -66,8 +66,8 @@ Small `alpha` dissolves the scatter into dust, and returns an empty array at the
 - **Pick the tool by the question.** For one outline that must stay a simple polygon, such as a plotter path, a clip region, or a shape to offset, use `concaveHull`. For the honest footprint of a clustered scatter, islands and holes included, use `alphaShape`. For the loosest wrap, use `convexHull`.
 - **`concavity` near 1 goes labyrinthine.** The tightest setting erodes every bridge wider than the closest pair, which reads as a maze rather than an outline. The expressive range for "hug the clusters" sits around `0.5...0.8`.
 - **`alpha` is a radius, in point units.** Below the local point spacing the shape crumbles. A couple of spacings gives a snug footprint. The hole in a ring survives as long as `alpha` stays below the hole's inradius.
-- **Both are deterministic** given the points. The same scatter and the same knob give the same output on any run. Cost is the Delaunay build plus near-linear work on top, which is comfortable at tens of thousands of points.
-- **Erosion only shrinks.** Raising `concavity` never grows the hull, so a knob sweep animates cleanly from band to wrap. The `Shapes/Hulls` example breathes exactly this.
+- **Both are deterministic** given the points. The same scatter and the same parameter give the same output on any run. Cost is the Delaunay build plus near-linear work on top, which is comfortable at tens of thousands of points.
+- **Erosion only shrinks.** Raising `concavity` never grows the hull, so a parameter sweep animates cleanly from band to wrap. The `Shapes/Hulls` example breathes exactly this.
 
 ---
 

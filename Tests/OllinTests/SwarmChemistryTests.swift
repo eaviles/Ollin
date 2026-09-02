@@ -116,7 +116,7 @@ struct SwarmChemistryTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func theCompetitionFunctionDecidesWhichRecipesSpread() throws {
-        // The one knob that says what doing well even means here. Under "faster" the
+        // The one parameter that says what doing well even means here. Under "faster" the
         // recipes that spread are the ones whose particles are moving quickest, so the
         // population's preferred speed has to end up higher than under "slower", from the
         // same opening recipes and the same seed.

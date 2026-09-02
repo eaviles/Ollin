@@ -181,7 +181,7 @@ Same start, same finish, same four seconds. The only difference is *when* each d
 
 The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.md#catalog) reference, and the [EasingGallery example](../Examples/Motion/EasingGallery/Sketch.swift) plots them all side by side.
 
-Picking a curve by reading a table is slow work, so a curve can be a knob instead. Write `@Param var curve: Easing = .easeInOut` and the inspector shows a menu of every named curve. Try them against the motion itself and keep the one that feels right.
+Picking a curve by reading a table is slow work, so a curve can be a parameter instead. Write `@Param var curve: Easing = .easeInOut` and the inspector shows a menu of every named curve. Try them against the motion itself and keep the one that feels right.
 
 ## Values that chase, signals that shake: @Eased, @Sprung, @Smoothed
 
@@ -215,7 +215,7 @@ Click around and the dot springs to each click, with no progress variable for yo
 @Sprung(duration: 0.5, bounce: 0.3) var x = 540.0
 ```
 
-The two knobs are chosen to be describable rather than physical. `duration` is roughly how long a settle takes. `bounce` sets the character. At 0 it arrives without any overshoot at all. Positive values up toward 1 wobble more and more before settling, and negative values drag in slowly. There's also `kick(_:)`, which shoves a spring without moving its target, and that's how you make something recoil in place. Behind the wrapper, `DampedSpring` evaluates the exact solution for a damped oscillator at each step, instead of integrating one step at a time. So any frame rate produces the same motion.
+The two parameters are chosen to be describable rather than physical. `duration` is roughly how long a settle takes. `bounce` sets the character. At 0 it arrives without any overshoot at all. Positive values up toward 1 wobble more and more before settling, and negative values drag in slowly. There's also `kick(_:)`, which shoves a spring without moving its target, and that's how you make something recoil in place. Behind the wrapper, `DampedSpring` evaluates the exact solution for a damped oscillator at each step, instead of integrating one step at a time. So any frame rate produces the same motion.
 
 **`@Smoothed`** is for the opposite situation, where the value arrives *from outside*, continuously, and shakes. A jittery mouse is the obvious case, and later in this guide it'll be MIDI knobs, camera trackers, and phone sensors. There's no target to ease toward here, only a noisy stream to clean up as it comes:
 
@@ -230,7 +230,7 @@ The two knobs are chosen to be describable rather than physical. `duration` is r
 x = mouseX
 ```
 
-Behind it is an adaptive filter that stays steady while the signal is slow and snaps awake when it moves fast. A simple average can't manage that. File it away until Part V hands you your first shaky tracker, and the [Animation](../Docs/Helpers/Animation.md#smoothed) page has the tuning knobs when you need them.
+Behind it is an adaptive filter that stays steady while the signal is slow and snaps awake when it moves fast. A simple average can't manage that. File it away until Part V hands you your first shaky tracker, and the [Animation](../Docs/Helpers/Animation.md#smoothed) page has the tuning parameters when you need them.
 
 ## Choreography: Timeline
 
@@ -345,7 +345,7 @@ final class RingPulse: Sketch {
 Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the interesting lines apart:
 
 - `beat` is the loop's heartbeat. `loopProgress` laps `0...1` once every `loopTime` seconds, so multiplying by `.tau` turns it into exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, which is a whole multiple, so frame 0 and the frame at `loopTime` are identical. The loop rule is enforced by how the sketch is built rather than by checking afterward.
-- `wave` is the phase trick from earlier, bent into a circle. Each dot's head start is its angle times the wave count, so the crests *travel* around the ring. That count has to stay a whole number, or the wave won't meet itself where the ring closes. That is why `waves` starts at `3` rather than `3.0`. A whole-number property makes a whole-number knob, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as [Chapter 1](01-HelloOllin.md)'s `Double(i)`.
+- `wave` is the phase trick from earlier, bent into a circle. Each dot's head start is its angle times the wave count, so the crests *travel* around the ring. That count has to stay a whole number, or the wave won't meet itself where the ring closes. That is why `waves` starts at `3` rather than `3.0`. A whole-number property makes a whole-number parameter, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as [Chapter 1](01-HelloOllin.md)'s `Double(i)`.
 - `lit` is the window cutter from the shaping section, working here as a **soft spotlight**. The wave lives in `-1...1`, and smoothstep's edges carve out its crest. That gives 0 below the threshold, 1 at the peak, and soft shoulders in between. The dots swell and fade rather than switching on and off. Widen `Pulse width` and the lower edge drops, which opens the window until the whole ring breathes at once.
 - Everything `lit` touches is a `lerp` in spirit. The color leans toward warm white by `lit * 0.4`, using [Chapter 2](02-Color.md)'s `Color.mix`. The dot lifts outward by `lit * 18`, and it swells from 6 up to 26. One shaped value drives all three.
 - `direction` flips alternate rings, and that alone is most of why the piece feels alive rather than mechanical.

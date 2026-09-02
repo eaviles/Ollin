@@ -6,7 +6,7 @@
 
 The physical-computing loop with no wire. A heart rate strap, a weather sensor, a button, a board of your own. Anything that speaks Bluetooth Low Energy announces itself to the Mac, and a sketch reads its values in `draw()`. It lives in a separate library so the drawing core stays free of CoreBluetooth, and free of the permission it asks for. Add `import OllinBluetooth` alongside `import Ollin` to reach it.
 
-Everything is Apple-native (CoreBluetooth) and nothing is vendored. The values the standard defines are read from their own published byte layouts. Reading is the same shape as [OSC](./OSC.md), [MIDI](./MIDI.md), and [serial](./Serial.md): the latest value each frame, every arrival since the last frame, or a value bound onto a `@Param` knob.
+Everything is Apple-native (CoreBluetooth) and nothing is vendored. The values the standard defines are read from their own published byte layouts. Reading is the same shape as [OSC](./OSC.md), [MIDI](./MIDI.md), and [serial](./Serial.md): the latest value each frame, every arrival since the last frame, or a value bound onto a `@Param`.
 
 ```swift
 import Ollin
@@ -34,7 +34,7 @@ final class Pulse: Sketch {
 - [Reading](#reading) - the latest value, or every arrival since last frame
 - [Values and their formats](#values) - bytes mean nothing until a characteristic says so
 - [The catalog](#catalog) - the standard services and values, already named
-- [Binding to a `@Param`](#binding) - a sensor drives a knob
+- [Binding to a `@Param`](#binding) - a sensor drives a parameter
 - [Asking and writing](#asking-and-writing) - reading on demand, polling, writing back
 - [Testing without gear](#testing-without-gear) - what runs with nothing of your own
 
@@ -191,7 +191,7 @@ override func setup() {
 }
 ```
 
-Each reading is mapped from the range given into the knob's own range. A reading past either end stops at the knob's end rather than running out of it. A value with no number in it turns no knob. `unbind(_:)` removes it.
+Each reading is mapped from the range given into the parameter's own range. A reading past either end stops at the parameter's end rather than running out of it. A value with no number in it adjusts no parameter. `unbind(_:)` removes it.
 
 <a name="asking-and-writing"></a>
 
@@ -217,7 +217,7 @@ Writes with nothing connected are dropped rather than queued, on the serial port
 
 The **BluetoothRoom** example (`Examples/Integration/BluetoothRoom`) needs nothing of your own. A room is already full of devices announcing themselves several times a second, so the sketch draws them. The Mac sits at the center and each device sits at the distance its signal suggests, moving as somebody walks past with a phone in a pocket. It is also the way to find out what a device calls itself.
 
-The **BluetoothSensor** example (`Examples/Integration/BluetoothSensor`) is the introduction ritual for a device you do own. Type part of its name into the `deviceName` knob and every value it offers appears as it arrives, with a heart rate driving the disc.
+The **BluetoothSensor** example (`Examples/Integration/BluetoothSensor`) is the introduction ritual for a device you do own. Type part of its name into the `deviceName` parameter and every value it offers appears as it arrives, with a heart rate driving the disc.
 
 Inside the library, the radio sits behind a small seam. That is how the whole reading path is proved with no radio switched on and no second device in the room. `OllinBluetoothTests` drives a stand-in radio through the shipped matching, connecting, subscribing, caching, draining, binding, polling, and reconnecting. Note what that does **not** cover, and what only real gear can: CoreBluetooth itself, and a Mac's own radio hearing another device.
 

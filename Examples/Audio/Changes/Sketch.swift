@@ -6,7 +6,7 @@ import OllinAudio
 /// A progression is written as scale degrees rather than as chord names,
 /// because that is the fact that survives changing key. `I vi IV V` is the same
 /// progression in every key there is, and the qualities fall out of the scale
-/// instead of having to be said. Change the key with the knob while it plays
+/// instead of having to be said. Change the key with the parameter while it plays
 /// and the same four numbers come out major, minor, or somewhere stranger.
 ///
 /// Press `W` to let it wander: the moves this progression already makes become
@@ -46,7 +46,7 @@ final class Changes: Sketch {
         let key = Scale(mode, root: Pitch(48 + Double(root)))
         let base = Progression("I vi IV V ii V", in: key, noteCount: notes)
         // A wander is seeded, so the same one comes back rather than a new one
-        // every time a knob moves.
+        // every time a parameter moves.
         changes = wandering ? base.wandering(24, seed: 5) : base
         lit = [Double](repeating: 0, count: changes.count)
         built = recipe

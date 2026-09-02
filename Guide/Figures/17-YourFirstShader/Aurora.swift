@@ -9,7 +9,7 @@ final class Aurora: Sketch {
     @Param(0...0.4) var sway = 0.18
     @Param(0.5...2.5) var strength = 1.4
 
-    // A computed property, so each frame's shader carries the knobs' current
+    // A computed property, so each frame's shader carries the parameters' current
     // values; the compiled pipeline is cached by source, so this is free.
     var sky: Shader {
         Shader("""

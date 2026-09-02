@@ -43,7 +43,7 @@ final class MeshGrowthDemo: Sketch {
         lightingPreset(.studio)
         cameraShowcase(.autoOrbit(period: 34), radius: 4.2, elevation: 0.34)
 
-        // Rebuilt only when a knob changes the form's whole history. Growth is
+        // Rebuilt only when a parameter changes the form's whole history. Growth is
         // cumulative, so changing the rule halfway would leave a shape that is
         // neither one thing nor the other.
         if builtFor == nil || builtFor! != (driver, coarseness) {

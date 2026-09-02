@@ -4,7 +4,7 @@ import Ollin
 /// a printing press, or a piece of cheap glass pulls the color channels apart: a
 /// per-channel scale about the center, a shaped radial slide, one flat shift, a
 /// fringe that only appears at edges, and a difference in focus rather than in
-/// position. The last two tiles are the two knobs that cut across the modes: the
+/// position. The last two tiles are the two parameters that cut across the modes: the
 /// spectral tap budget, which turns three hard ghosts into a continuous smear, and
 /// the layer-driven `disperse` combine, which puts the split only where the mouse is.
 ///

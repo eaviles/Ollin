@@ -81,11 +81,11 @@ struct MIDILoopbackTests {
         guard let (output, input) = await makePair() else { return }   // soft-skip
         defer { output.close(); input.stop() }
 
-        let knob = Param(wrappedValue: 0.0, 0...100)   // no smoothing → instant
-        input.bind(controlChange: 20, to: knob.projectedValue)   // 0…127 → 0…100
+        let parameter = Param(wrappedValue: 0.0, 0...100)   // no smoothing → instant
+        input.bind(controlChange: 20, to: parameter.projectedValue)   // 0…127 → 0…100
 
         output.controlChange(20, value: 127)
-        let value = await waitFor { knob.wrappedValue >= 99.9 ? knob.wrappedValue : nil }
+        let value = await waitFor { parameter.wrappedValue >= 99.9 ? parameter.wrappedValue : nil }
         #expect((value ?? 0) > 99)
     }
 }

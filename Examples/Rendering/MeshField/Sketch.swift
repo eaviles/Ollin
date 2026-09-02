@@ -7,7 +7,7 @@ import Ollin
 /// see, so the far side of the plain costs (almost) nothing. Fog swallows the
 /// horizon, and every visible copy still drops a real shadow.
 ///
-/// Flip the **culling** knob off to make the GPU draw all 240,000 copies
+/// Flip the **culling** parameter off to make the GPU draw all 240,000 copies
 /// regardless, and watch the frame rate: that gap is everything the camera
 /// couldn't see. The picture itself must not change, which is the whole point:
 /// culling skips only what was invisible anyway.

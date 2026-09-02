@@ -5,7 +5,7 @@ import Ollin
 @testable import OllinPhysics
 
 /// Correctness for the soft-body tier: a mesh becomes a surface of particles
-/// that drapes and squashes, and every knob does what it says. Behavioral (the
+/// that drapes and squashes, and every parameter does what it says. Behavioral (the
 /// no-pixel-snapshot policy for physics), each one pinned against a
 /// counterfactual twin: the same scene run twice with one setting changed.
 struct SoftBody3DTests {
@@ -150,7 +150,7 @@ struct SoftBody3DTests {
 
     @Test func stiffnessMeansTheSameAtAnyWeight() throws {
         // Compliance is meters per newton, so a fixed number would soften a
-        // heavy cloth and do nothing to a light one. The knob is normalized by
+        // heavy cloth and do nothing to a light one. The parameter is normalized by
         // the body's own weight, and this is what pins that.
         func stretch(mass: Double) throws -> Double {
             let world = World3D()
@@ -204,7 +204,7 @@ struct SoftBody3DTests {
     }
 
     @Test func pressureIsIgnoredOnAnOpenSheet() throws {
-        // A sheet has no inside to fill, so the knob has nothing to act on and
+        // A sheet has no inside to fill, so the parameter has nothing to act on and
         // must not quietly blow the cloth into a shape.
         func settled(pressure: Double) throws -> [Vector3] {
             let world = World3D()

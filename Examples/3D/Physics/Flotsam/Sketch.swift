@@ -100,7 +100,7 @@ final class Flotsam: Sketch {
         cameraShowcase(.autoOrbit(period: 40), from: Camera3D
             .perspective(eye: Vector3(0.6, 5.4, 8.6), target: Vector3(0, -0.3, 0)))
 
-        // The knobs reach the water between steps, so a rising swell picks the
+        // The parameters reach the water between steps, so a rising swell picks the
         // crates up as you drag it.
         world.water?.waves?.amplitude = swell
         world.water?.flow = Vector3(current, 0, 0)

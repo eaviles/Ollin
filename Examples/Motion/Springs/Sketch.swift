@@ -2,7 +2,7 @@ import Ollin
 
 /// The spring family portrait. Five dots chase the same hopping target, each
 /// with a different `bounce`: drag (slow ooze), critical (fastest possible
-/// arrival with no overshoot), and three grades of wobble. Same knob, five
+/// arrival with no overshoot), and three grades of wobble. Same parameter, five
 /// personalities; watching them race is how to pick a feel.
 ///
 /// The big dot is `@Sprung`: it chases the mouse with real momentum, so
@@ -61,7 +61,7 @@ final class Springs: Sketch {
         drawLine(chaser, $chaser.target)
         drawCircle(center: $chaser.target, radius: 6)
 
-        drawCaption("five bounces, one knob. move the mouse; click to kick")
+        drawCaption("five bounces, one parameter. move the mouse; click to kick")
     }
 
     override func mousePressed() {

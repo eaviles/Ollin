@@ -96,7 +96,7 @@ drawMarbling(bath)          // fills each ink in its own color, oldest first
 - **Deterministic by construction.** There is no randomness inside, so the same operations always marble the same paper. Randomize drop positions and colors with the sketch's seeded [`random`](Random.md), and the whole sheet reproduces from its seed.
 - **Setup-shaped work.** Outlines gain points as they stretch, so cost grows with the operation count. Compose the bath in `setup()`, or per interaction, and redraw the held result. Don't rebuild it every frame.
 - **Order is the picture.** Later drops sit above earlier ones, and `drawMarbling` paints oldest-first, so the stack reads exactly as poured. Paper-colored drops carve negative space.
-- **`spacing` is the fidelity knob.** Halving it roughly doubles the points, and the default holds up to a full-canvas sheet. For heavy comb-after-comb sequences, consider `spacing: 6` while sketching and tighten for the final export.
+- **`spacing` is the fidelity parameter.** Halving it roughly doubles the points, and the default holds up to a full-canvas sheet. For heavy comb-after-comb sequences, consider `spacing: 6` while sketching and tighten for the final export.
 - **True ink dispersion is a different tool.** The bath is the classical *kinematic* model, which transforms outlines. Bleeding, granulation, and wet-into-wet diffusion belong to simulation, not marbling.
 
 ---

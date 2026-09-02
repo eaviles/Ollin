@@ -1,8 +1,8 @@
-// Putting the knobs you turned back where they were declared.
+// Putting the parameters you adjusted back where they were declared.
 //
 // A tuned value lives in the running process, and quitting drops it, so a good
 // set is typed back into the sketch by hand. This writes it instead: for each
-// knob the user moved, find its `@Param` declaration and replace the value
+// parameter the user moved, find its `@Param` declaration and replace the value
 // standing after the `=`.
 //
 // It is the scanner `SourceEdit` uses, pointed at a property's default rather
@@ -12,7 +12,7 @@
 // source, never a preset file beside it: the sketch is the artifact.
 //
 // Two rules are load-bearing, because breaking either writes a file that no
-// longer compiles. A `Double` knob whose default is written whole may be a
+// longer compiles. A `Double` parameter whose default is written whole may be a
 // `Double` only by the range beside it, so a fractional value keeps its point
 // (`86.0`, never `86`). A `ClosedRange` default writes both ends with a point
 // for the same reason: `40...50` reads as a range of `Int`.
@@ -26,13 +26,13 @@ import Ollin
 /// Writing tuned `@Param` values into the declarations they came from.
 package enum ParamWrite {
 
-    /// Why one knob's value could not be written down.
+    /// Why one parameter's value could not be written down.
     package enum Reason: Error, Equatable {
-        /// No `@Param` property of that name stands in this file. The knob is
+        /// No `@Param` property of that name stands in this file. The parameter is
         /// declared somewhere else, in a base class or another file.
         case notDeclared
         /// Two `@Param` properties in this file carry the name, so there is no
-        /// way to tell which one the knob belongs to.
+        /// way to tell which one the parameter belongs to.
         case ambiguous
         /// The declaration carries no plain value to replace.
         case noDefault
@@ -45,13 +45,13 @@ package enum ParamWrite {
         case unnamed(String)
     }
 
-    /// One knob that could not be written, and why.
+    /// One parameter that could not be written, and why.
     package struct Refusal: Equatable {
         package let name: String
         package let reason: Reason
     }
 
-    /// What one pass over the file did: the new text, the knobs written into
+    /// What one pass over the file did: the new text, the parameters written into
     /// it, and the ones refused with their reason.
     package struct Result {
         package let text: String
@@ -59,9 +59,9 @@ package enum ParamWrite {
         package let refused: [Refusal]
     }
 
-    /// `source` with each named knob's declared default replaced by `stored`.
+    /// `source` with each named parameter's declared default replaced by `stored`.
     ///
-    /// A knob that cannot be written leaves the text alone and comes back in
+    /// A parameter that cannot be written leaves the text alone and comes back in
     /// `refused`, so a set that is half writable still lands, and nothing is
     /// dropped in silence.
     package static func writing(_ source: String,
@@ -109,7 +109,7 @@ package enum ParamWrite {
 
     // MARK: What to say about it
 
-    /// Why one knob stayed where it was, in one sentence. Each one names the
+    /// Why one parameter stayed where it was, in one sentence. Each one names the
     /// thing standing where a value would have to go, because that is the only
     /// way to see what to do about it.
     package static func sentence(for refusal: Refusal, in file: String) -> String {
@@ -342,7 +342,7 @@ package enum ParamWrite {
         switch stored {
         case .number(let value):
             // A default written whole stays whole while the value is whole, so
-            // a knob that was tuned to a round number reads as it did before.
+            // a parameter that was tuned to a round number reads as it did before.
             // A fraction always keeps its point: without one the literal reads
             // as an `Int` and the declaration can stop compiling.
             let whole = !existing.contains(".") && value == value.rounded()

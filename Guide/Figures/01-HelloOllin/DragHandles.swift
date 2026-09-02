@@ -68,7 +68,7 @@ final class DragHandles: Sketch {
         arrow(from: corner + Vector2(12, 12), to: corner + Vector2(30, 30))
     }
 
-    /// A line, which has no size on its call and so offers the knob alone.
+    /// A line, which has no size on its call and so offers the parameter alone.
     private func turnedLine(in panel: Rectangle) {
         let center = middle(of: panel) + Vector2(4, 10)
         let half = Vector2(78, 6)
@@ -79,7 +79,7 @@ final class DragHandles: Sketch {
             drawLine(center + Vector2(-78, 0), center + Vector2(78, 0))
         }
         outline(at: center, half: half, corners: false, active: nil, knob: true)
-        // The sweep the knob makes on its way round, starting at the knob.
+        // The sweep the parameter makes on its way round, starting at the parameter.
         let reach = half.y + 26
         withState {
             noFill()

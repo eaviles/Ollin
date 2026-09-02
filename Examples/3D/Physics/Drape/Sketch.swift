@@ -121,7 +121,7 @@ final class Drape: Sketch {
         cameraShowcase(.autoOrbit(period: 34), from: Camera3D
             .perspective(eye: Vector3(0.4, 3.4, 8.4), target: Vector3(0, 1.9, 0)))
 
-        // Both knobs reach the solver between steps, which is the point of
+        // Both parameters reach the solver between steps, which is the point of
         // them being live: the ball deflates under your hand.
         ball?.pressure = air
         blow()

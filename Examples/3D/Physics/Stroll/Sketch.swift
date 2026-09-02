@@ -5,7 +5,7 @@ import OllinPhysics
 /// and the ground you stand on, and a `Character3D` walks it: arrow keys or
 /// WASD to go, space to jump. The island is built to be argued with. A flight
 /// of steps climbs to a lookout only because the walker's `stepHeight` allows
-/// it (drag that knob to zero and the same stairs become a wall), the crates on
+/// it (drag that parameter to zero and the same stairs become a wall), the crates on
 /// the plaza scatter only because it is strong enough to shove them, and the
 /// hills around the rim get too steep to climb somewhere on the way up, which
 /// is `maxSlope` deciding rather than the geometry. Stand on the lookout and
@@ -21,7 +21,7 @@ final class Stroll: Sketch {
     var crates: [Body3D] = []
 
     /// How fast the walk is, and the tallest step it will take. `stepHeight` is
-    /// the knob to play with: at 0 the stairs stop it dead.
+    /// the parameter to play with: at 0 the stairs stop it dead.
     @Param(1 ... 7, icon: "figure.walk") var walkSpeed = 3.4
     @Param(0 ... 0.6, icon: "stairs") var stepHeight = 0.4
 

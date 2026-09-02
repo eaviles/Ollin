@@ -153,7 +153,7 @@ struct LightTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func askingForLessReachStopsTheLightSooner() throws {
-        // `reach` takes rungs off the ladder, so it is the speed knob. It has to be an
+        // `reach` takes rungs off the ladder, so it is the speed parameter. It has to be an
         // honest one: the near field must be unchanged and only the far field go dark.
         let whole = try frame(.lamp(reach: nil))
         let short = try frame(.lamp(reach: 90))
@@ -177,7 +177,7 @@ struct LightTests {
                 "the far corner read \(corner.0) with no sky and \(corner.1) with one")
     }
 
-    @Test func theKnobsAreHeldToTheirRange() {
+    @Test func theParametersAreHeldToTheirRange() {
         // A negative brightness would subtract light, and a reach under a pixel asks for
         // a ladder with no rungs in it.
         let op = Combine.light(reach: 0.1, brightness: -3, bounces: 99)

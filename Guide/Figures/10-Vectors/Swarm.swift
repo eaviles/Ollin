@@ -28,7 +28,7 @@ final class Swarm: Sketch {
     override func draw() {
         background(Color(hex: 0x0C0F14))
 
-        // Keep the population matched to the knob.
+        // Keep the population matched to the parameter.
         while positions.count < movers {
             positions.append(Vector2(random(width), random(height)))
             velocities.append(Vector2(angle: random(0, .tau), length: 60))

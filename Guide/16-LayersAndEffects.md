@@ -70,7 +70,7 @@ A few notes for the road. Filters are values you pass around, so a `[Filter]` ar
 
 ## Filters that read the layer as something else
 
-Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those are worth meeting individually, because what you feed them matters more than the knobs.
+Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those are worth meeting individually, because what you feed them matters more than the parameters.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/SpecialFilters-dark.jpg">
@@ -89,7 +89,7 @@ layer.filtered(.swirl(angle: 4.2, radius: 0.42, center: Vector2(0.3, 0.34)))
 
 **The warp filters read a center.** `.swirl`, `.bulge`, `.ripple`, and their relatives all distort around the middle of the layer by default. Each takes a `center` given in `0...1` layer coordinates. That one argument is what turns a symmetric effect into a composition, and feeding it `uv(of: mouse)` puts the distortion under the pointer. The marked circle in the third panel is the center that swirl was given.
 
-The [effects reference](../Docs/Drawing/Effects.md#filter) has the full catalog with every knob, and the `Effects/Relight` example shows all five finishes side by side.
+The [effects reference](../Docs/Drawing/Effects.md#filter) has the full catalog with every parameter, and the `Effects/Relight` example shows all five finishes side by side.
 
 ## A picture inside itself
 
@@ -114,7 +114,7 @@ One thing to design for. The filter reads a ring, and the outer edge of that rin
 
 ## One filter, five pictures: chromatic aberration
 
-Most filters have a strength knob. Chromatic aberration has a strength knob and a **mode**, and the modes are not one look at five strengths. They are five different pictures.
+Most filters have a strength parameter. Chromatic aberration has a strength parameter and a **mode**, and the modes are not one look at five strengths. They are five different pictures.
 
 The idea underneath is always the same. Pull the color channels apart a little, so a white edge grows a colored rim. What the mode decides is *where* they get pulled.
 
@@ -142,7 +142,7 @@ layer.filtered(.chromaticAberration(amount: 0.018, spectral: true))
 
 **`.axial` changes focus instead of position.** One end of the spectrum stays sharp while the other softens, which is most of the look of a fast lens wide open. A positive amount keeps red sharp, and a negative one keeps blue sharp. That sign is the difference between a highlight going green and going magenta, and it is worth trying both.
 
-Two more things worth knowing. Every mode hands the layer straight back at `amount: 0`, so an A/B costs nothing and the knob never lies to you. And `spectral: true` takes the split over a whole set of wavelengths instead of three. That is the difference between the last panel and the first: three hard ghosts become one continuous smear. It costs more taps, and `quality:` sets how many.
+Two more things worth knowing. Every mode hands the layer straight back at `amount: 0`, so an A/B costs nothing and the parameter never lies to you. And `spectral: true` takes the split over a whole set of wavelengths instead of three. That is the difference between the last panel and the first: three hard ghosts become one continuous smear. It costs more taps, and `quality:` sets how many.
 
 There is a two-layer version too. `.dispersed(by:)` in a `compose` block, or `Combine.disperse` on its own, scales the amount by a second layer's brightness. Draw white where you want the color to come apart and black everywhere else, and the fringe lands only there.
 
@@ -190,7 +190,7 @@ Three things follow from working on the image alone, and all three are worth rem
 - **Place it right after whatever wrote the layer.** Before a warp, which would smear the ramp it just made, and before a blur, which makes it pointless.
 - **It halves the problem rather than removing it.** On a measured shallow edge, the edge strays 0.29 of a pixel from the straight line it should lie on, and 0.14 of a pixel after the filter. Half rather than none is the honest trade for a pass that never sees the shape.
 
-Two knobs. `threshold` is the contrast an edge needs before the filter touches it at all, so raising it leaves faint edges alone and lowering it reaches them. `amount` is how much of the result to keep, and `amount: 0` hands the layer back exactly as it came, which makes an A and B comparison free.
+Two parameters. `threshold` is the contrast an edge needs before the filter touches it at all, so raising it leaves faint edges alone and lowering it reaches them. `amount` is how much of the result to keep, and `amount: 0` hands the layer back exactly as it came, which makes an A and B comparison free.
 
 ## A picture made of a few marks: diffusion
 
@@ -375,7 +375,7 @@ The base layer is **the scene**: whatever you draw there is solid, and its alpha
 
 Look at what nobody drew. The comb throws four beams, and they fan out. Each shadow is hard where it meets the tooth that casts it, and soft further down. A pixel further down can see more of the lamp. The light thins out with distance, and it thins out at the rate a real one does. In the third panel the red bar reddens the floor beside it and the green wall greens its own corner of the room. Those are all one measurement rather than five effects that have to be kept in step by hand.
 
-The knob for that third panel is `bounces`:
+The parameter for that third panel is `bounces`:
 
 ```swift
 scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
@@ -383,7 +383,7 @@ scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
 
 At `0` every surface stays black and only the lamps are seen. That is the middle panel, and a good look in its own right. At `1`, the default, light comes back off whatever it lands on, carrying that surface's color with it. Each further bounce costs another pass, and past one or two you will not see the difference.
 
-Two more knobs are worth knowing early. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed knob.
+Two more parameters are worth knowing early. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed parameter.
 
 Speed is the thing to say plainly. This is the most expensive effect in the chapter. It is also the one whose cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
 
@@ -434,9 +434,9 @@ page.filtered(.adaptiveThreshold())
 
 That is the right panel. Every mark survives, in shadow and in light alike. **Hard contrast is local, and uneven light is not, so comparing locally keeps the first and throws away the second.**
 
-The knob that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, err wide. Left alone it is an eighth of the layer.
+The parameter that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, err wide. Left alone it is an eighth of the layer.
 
-There is one more knob, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, and that is not fussiness. Light falling on a page multiplies what comes back off it. Only a test that scales along with the average is unmoved when somebody turns the lamp down.
+There is one more parameter, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, and that is not fussiness. Light falling on a page multiplies what comes back off it. Only a test that scales along with the average is unmoved when somebody turns the lamp down.
 
 Two costs, and neither one grows with the window. Building the table is about twenty passes over the layer, a few milliseconds for a full canvas. One of these in a frame is comfortable. A dozen are not. And the running totals get large, which eats into a float's precision and leaves a small error behind. That error is a fixed amount divided by the size of your window, so it fades away as the window grows. It only shows up at tiny radii, which is where you would reach for a Gaussian anyway.
 
@@ -446,7 +446,7 @@ Two lines of that listing came from a set worth knowing as a set. Alongside the 
 
 ### The design generators
 
-The generator half is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of knobs when you want it to be yours. There's a third group, the pattern fields, with a more mathematical flavor. [Chapter 17](17-YourFirstShader.md) picks those up, because by then you'll be able to read how they work.
+The generator half is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of parameters when you want it to be yours. There's a third group, the pattern fields, with a more mathematical flavor. [Chapter 17](17-YourFirstShader.md) picks those up, because by then you'll be able to read how they work.
 
 Nearly all of them take a **`phase`**, and that is the one detail to remember. They have no clock of their own, so nothing moves until you feed it one.
 
@@ -478,7 +478,7 @@ drawImage(shape.filtered(.liquidMetal(phase: time)).image, 0, 0)
 
 Any silhouette works, which is the interesting part. It can be text from [Chapter 8](08-Words.md), a shape you built in [Chapter 15](15-ShapesAsMaterial.md), or a tracked hand from [Chapter 30](30-Seeing.md). The filter never knows or cares where the outline came from.
 
-One practical warning, since it cost the figure above a few attempts. These filters are tuned for **full-canvas** use. On a small layer the defaults can look like almost nothing. Push them hard and the distortion reaches past the layer's edge, and drags the transparent surround in as dark smears. The `edges` knob on the distorting ones controls how close to the border they're allowed to work. A continuous field takes a strong refraction more gracefully than a pattern of separate marks does.
+One practical warning, since it cost the figure above a few attempts. These filters are tuned for **full-canvas** use. On a small layer the defaults can look like almost nothing. Push them hard and the distortion reaches past the layer's edge, and drags the transparent surround in as dark smears. The `edges` parameter on the distorting ones controls how close to the border they're allowed to work. A continuous field takes a strong refraction more gracefully than a pattern of separate marks does.
 
 The design families of `Effects/GeneratorCatalog` and `Effects/FilterCatalog` tour both sets in full.
 
@@ -742,7 +742,7 @@ Read it as three acts. The flock is untouched [Chapter 12](12-FlocksAndSwarms.md
 
 Then make it yours:
 
-- Turn the feedback knobs. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of blooming outward.
+- Adjust the feedback parameters. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of blooming outward.
 - Put a `@Param` on the bloom `intensity` and `exposure` and grade the piece live, like color-timing film.
 - Swap the flock for anything that moves: [Chapter 14](14-FieldsAndFlow.md)'s advected particles, [Chapter 11](11-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
 - Add a second `compose` layer beneath with a dim `generate(.meshGradient(...))` and the comets fly over weather.
@@ -760,7 +760,7 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
 - [The frequency domain](../Docs/Drawing/Fourier.md): the transform both ways, filtering by scale, building a field from its spectrum, and what the ladder costs.
-- [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every knob, what it costs at each quality tier, what it will not do, and the ladder underneath it.
+- [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every parameter, what it costs at each quality tier, what it will not do, and the ladder underneath it.
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).

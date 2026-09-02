@@ -26,7 +26,7 @@ A bare call draws once and forgets. A value is a thing you keep, and keeping it 
 - A [`Vector2`](../Drawing/Geometry.md) adds, scales, rotates, and measures distance and angle.
 - A [`Rectangle`](../Drawing/Geometry.md) insets, reports the point at any fraction of itself, maps a point back to those fractions, and divides into cells through a `Grid`.
 - A [`Shape`](../Drawing/Geometry.md) can be combined with another one (union, subtract, intersect), offset, measured, [morphed](../Drawing/Morphing.md), hatched for a pen, and written into the SVG and PDF exports as real geometry.
-- A [`Color`](../Drawing/Color.md) mixes in OKLab, and a `Palette` or `Ramp` is itself a value a knob can hold.
+- A [`Color`](../Drawing/Color.md) mixes in OKLab, and a `Palette` or `Ramp` is itself a value a parameter can hold.
 
 None of that is available to a number you passed into a draw call and lost. So when a sketch grows past its first page, the move is usually to build the values first and draw them at the end.
 

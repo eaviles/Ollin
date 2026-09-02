@@ -15,7 +15,7 @@ import OllinRoom
 ///   seat, so screen 0 shows the left canvas and screen 1 the next one along.
 ///   Ask for a fixed seat with `Room(named: "wall", seat: 1)` when the machines
 ///   stand in a known order.
-/// - **Shared knobs.** Every `@Param` below travels, so turning `speed` on any
+/// - **Shared parameters.** Every `@Param` below travels, so changing `speed` on any
 ///   machine turns it on all of them.
 ///
 /// With one machine it still runs: one seat, one canvas, and the readout says
@@ -35,7 +35,7 @@ final class RoomCanvas: Sketch {
     private let paper = Color(red: 0.07, green: 0.08, blue: 0.11)
 
     override func setup() {
-        // Every knob travels, so whoever is standing next to a machine can turn
+        // Every parameter travels, so whoever is standing next to a machine can change
         // one and the whole room follows.
         room.shareAll()
         extend(room)

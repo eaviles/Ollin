@@ -259,7 +259,7 @@ See the `Forces` example for all three in one windy yard, next to a `.kinematic`
 
 **Shared rules and units**
 
-The rigid side reads the same `gravity`, `bounds` (as walls), `bounce` (wall and default contact restitution), and `drag` (as body damping) you already set, and rides the same `advance(by:)`. One knob is its own:
+The rigid side reads the same `gravity`, `bounds` (as walls), `bounce` (wall and default contact restitution), and `drag` (as body damping) you already set, and rides the same `advance(by:)`. One parameter is its own:
 
 ```swift
 var pixelsPerMeter: Double = 100

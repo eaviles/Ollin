@@ -11,7 +11,7 @@ let wobble = try Formula("120 + sin(time * 2) * 40")
 let radius = wobble.value(["time": time])
 ```
 
-That matters because a string arrives at runtime and Swift source does not. A knob can be driven by a rule you typed. A file can carry the rule instead of a list of numbers. An editing surface can hand a person a field to type in. It is the same arithmetic you would write in `draw()`, spelled the same way, only later.
+That matters because a string arrives at runtime and Swift source does not. A parameter can be driven by a rule you typed. A file can carry the rule instead of a list of numbers. An editing surface can hand a person a field to type in. It is the same arithmetic you would write in `draw()`, spelled the same way, only later.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ParameterAsARule-dark.jpg">
@@ -20,8 +20,8 @@ That matters because a string arrives at runtime and Swift source does not. A kn
 
 ### Contents
 
-- [Driving a knob](#driving-a-knob)
-- [A knob of more than one number](#a-knob-of-more-than-one-number)
+- [Driving a parameter](#driving-a-parameter)
+- [A parameter of more than one number](#a-parameter-of-more-than-one-number)
 - [What a formula can read](#what-a-formula-can-read)
 - [The vocabulary](#the-vocabulary)
 - [Two rules that surprise people](#two-rules-that-surprise-people)
@@ -31,9 +31,9 @@ That matters because a string arrives at runtime and Swift source does not. A kn
 
 ---
 
-### Driving a knob
+### Driving a parameter
 
-`drive(_:_:)` puts a [`@Param`](Parameters.md) knob under a formula. Call it in `setup()`:
+`drive(_:_:)` puts a [`@Param`](Parameters.md) parameter under a formula. Call it in `setup()`:
 
 ```swift
 final class Ring: Sketch {
@@ -45,19 +45,19 @@ final class Ring: Sketch {
     override func setup() {
         drive($radius, "190 + sin(time * tau / 6) * 80")
         drive($count, "8 + round(sin(time * tau / 12) * 5)")
-        drive($edge, "radius / 22")            // worked out from another knob
+        drive($edge, "radius / 22")            // worked out from another parameter
         drive($filled, "time % 6 < 3")         // a switch, on when it is not zero
     }
 }
 ```
 
-A formula answers a plain number, so three kinds of knob take one: a `Double`, an `Int` (rounded), and a `Bool` (on for anything but zero).
+A formula answers a plain number, so three kinds of parameter take one: a `Double`, an `Int` (rounded), and a `Bool` (on for anything but zero).
 
-A knob under a formula is a [track](../Core/Automation.md) like any keyed one. `loops`, `speed`, `start`, and `length` shape it the same way, it travels in the same file, and every export renders it frame for frame.
+A parameter under a formula is a [track](../Core/Automation.md) like any keyed one. `loops`, `speed`, `start`, and `length` shape it the same way, it travels in the same file, and every export renders it frame for frame.
 
-The [Formula example](../../Examples/Motion/Formula/Sketch.swift) drives six knobs this way and prints the text driving each one under the ring.
+The [Formula example](../../Examples/Motion/Formula/Sketch.swift) drives six parameters this way and prints the text driving each one under the ring.
 
-### A knob of more than one number
+### A parameter of more than one number
 
 A point holds two numbers, a color holds four, a pair of ends holds two more. Each part takes its own rule, named where you write it:
 
@@ -76,16 +76,16 @@ final class Card: Sketch {
 }
 ```
 
-**A part with no rule is left alone.** The frame above changes size while its `x` and `y` stay where the hand put them, and the hand can still move them while the size plays. That is the reason to write a rule for one part rather than for the whole knob.
+**A part with no rule is left alone.** The frame above changes size while its `x` and `y` stay where the hand put them, and the hand can still move them while the size plays. That is the reason to write a rule for one part rather than for the whole parameter.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ParameterParts-dark.jpg">
-  <img src="../../Guide/Images/31-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the knob's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
+  <img src="../../Guide/Images/31-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
 </picture>
 
-**One part of a knob is a name too**, spelled `knob.part`, so `"frame.x + frame.width / 2"` reads this frame's rectangle. The name works whether keys carry that part or another rule works it out.
+**One part of a parameter is a name too**, spelled `parameter.part`, so `"frame.x + frame.width / 2"` reads this frame's rectangle. The name works whether keys carry that part or another rule works it out.
 
-| Knob | Parts |
+| Parameter | Parts |
 | --- | --- |
 | `Vector2` | `x`, `y` |
 | `Vector3` | `x`, `y`, `z` |
@@ -96,13 +96,13 @@ final class Card: Sketch {
 
 Three things are worth knowing before you write one:
 
-- **One call carries the whole knob**, so a second call replaces the first. Give every part in one call.
+- **One call carries the whole parameter**, so a second call replaces the first. Give every part in one call.
 - **A pair of ends stays ordered.** A `lower` that climbs past `upper` lifts it along, which is what the two-thumb slider does under a hand.
-- **A color's parts are the sRGB numbers in `0...1`, and nothing holds them there**, because a color knob carries no range of its own. Write `saturate(...)` in the rule where you want one. Every other knob keeps its own range, exactly as it does when a hand drags the field.
+- **A color's parts are the sRGB numbers in `0...1`, and nothing holds them there**, because a color parameter carries no range of its own. Write `saturate(...)` in the rule where you want one. Every other parameter keeps its own range, exactly as it does when a hand drags the field.
 
-A part cannot name its own knob. An `x` worked out from the same point's `y` never settles on one frame, so that knob is reported and left alone, the way a ring of knobs is.
+A part cannot name its own parameter. An `x` worked out from the same point's `y` never settles on one frame, so that parameter is reported and left alone, the way a ring of parameters is.
 
-The [FormulaParts example](../../Examples/Motion/FormulaParts/Sketch.swift) drives four such knobs and prints the rule driving each part.
+The [FormulaParts example](../../Examples/Motion/FormulaParts/Sketch.swift) drives four such parameters and prints the rule driving each part.
 
 ### What a formula can read
 
@@ -112,14 +112,14 @@ The [FormulaParts example](../../Examples/Motion/FormulaParts/Sketch.swift) driv
 | `frame` | The number of the frame about to be drawn, the same number `frameCount` reads inside `draw()`. |
 | `width`, `height` | The canvas, in pixels. |
 | `mouseX`, `mouseY` | The pointer. |
-| any knob's name | Any `@Param` on the sketch that is a number or a switch. A switch reads as `1` or `0`. |
-| `knob.part` | One part of a knob that holds more than one number: `center.x`, `tint.alpha`, `span.lower`. |
+| any parameter's name | Any `@Param` on the sketch that is a number or a switch. A switch reads as `1` or `0`. |
+| `parameter.part` | One part of a parameter that holds more than one number: `center.x`, `tint.alpha`, `span.lower`. |
 
-The names in the table win over a knob spelled the same way, so `time` always means the clock.
+The names in the table win over a parameter spelled the same way, so `time` always means the clock.
 
-**A knob worked out from another lands on the same frame.** The knob named is always set first, whatever order the tracks sit in, so `drive($edge, "radius / 22")` reads *this* frame's radius. That is what keeps a formula a plain function of the clock. The same moment gives the same picture at any frame rate, which is what lets a 30-a-second export match the window.
+**A parameter worked out from another lands on the same frame.** The parameter named is always set first, whatever order the tracks sit in, so `drive($edge, "radius / 22")` reads *this* frame's radius. That is what keeps a formula a plain function of the clock. The same moment gives the same picture at any frame rate, which is what lets a 30-a-second export match the window.
 
-Two knobs that name each other cannot settle that way, and neither can a knob that names itself (`"n + 1"`). Such a ring is reported and left alone rather than played at a value that would depend on the frame rate. For a value that builds on itself, keep a plain property and step it in `draw()`.
+Two parameters that name each other cannot settle that way, and neither can a parameter that names itself (`"n + 1"`). Such a ring is reported and left alone rather than played at a value that would depend on the frame rate. For a value that builds on itself, keep a plain property and step it in `draw()`.
 
 ### The vocabulary
 
@@ -141,7 +141,7 @@ Two knobs that name each other cannot settle that way, and neither can a knob th
 
 The shaping names are spelled and ordered exactly like [the framework's own](Math.md) and like the shader library's. The same line reads the same in all three places.
 
-`noise` reads the sketch's own field, so `noiseSeed()` reproduces a wandering knob the way it reproduces a drawn one. There is deliberately no `random`: a formula answers the same number for the same moment, which is what makes a directed run render twice the same.
+`noise` reads the sketch's own field, so `noiseSeed()` reproduces a wandering parameter the way it reproduces a drawn one. There is deliberately no `random`: a formula answers the same number for the same moment, which is what makes a directed run render twice the same.
 
 `if` picks its branch before working it out, so the branch not taken never runs.
 
@@ -153,7 +153,7 @@ The shaping names are spelled and ordered exactly like [the framework's own](Mat
 
 ### Using one on its own
 
-Nothing about `Formula` needs a knob. Read one and evaluate it wherever you like:
+Nothing about `Formula` needs a parameter. Read one and evaluate it wherever you like:
 
 ```swift
 let f = try Formula("a * 2 + b")
@@ -175,7 +175,7 @@ try Formula("sin(tine)", variables: ["time"])
 
 `Formula` throws a `FormulaError` carrying a message and the `offset` of the character it stopped at, so a surface can point at the spot.
 
-`drive(_:_:)` does not throw. It reports the problem on standard error and leaves the knob alone. A typo costs that one knob rather than the sketch, which is what a live edit wants. It also says so when a formula names something nothing supplies, since that would otherwise read as zero every frame and draw something almost right. To handle the error yourself, build the formula with `try` and pass it instead:
+`drive(_:_:)` does not throw. It reports the problem on standard error and leaves the parameter alone. A typo costs that one parameter rather than the sketch, which is what a live edit wants. It also says so when a formula names something nothing supplies, since that would otherwise read as zero every frame and draw something almost right. To handle the error yourself, build the formula with `try` and pass it instead:
 
 ```swift
 drive($radius, try Formula("190 + sin(time) * 80"))
@@ -183,8 +183,8 @@ drive($radius, try Formula("190 + sin(time) * 80"))
 
 ### How it sits beside the rest
 
-- **[Keyframed parameters](../Core/Automation.md).** The same track, filled a different way: keys say where a knob *is* at a few moments, a formula says what it *is* at every moment. One automation holds both kinds, and a file carries the formula as the text it was written as, so a person can edit it there.
-- **[Parameters](Parameters.md).** A knob under a formula goes back on it at the next frame, so dragging its slider reads as a nudge. Take the formula off (`automation = nil`) to tune by hand.
+- **[Keyframed parameters](../Core/Automation.md).** The same track, filled a different way: keys say where a parameter *is* at a few moments, a formula says what it *is* at every moment. One automation holds both kinds, and a file carries the formula as the text it was written as, so a person can edit it there.
+- **[Parameters](Parameters.md).** A parameter under a formula goes back on it at the next frame, so dragging its slider reads as a nudge. Take the formula off (`automation = nil`) to tune by hand.
 - **[Math](Math.md).** The Swift side of the same vocabulary, for a value worked out in `draw()` rather than typed as text.
 - **[Replay](../Core/Replay.md).** A run recorded with `--record-take` writes down the values the formulas held, so a take replays the performance with or without them.
 
@@ -193,6 +193,6 @@ drive($radius, try Formula("190 + sin(time) * 80"))
 ### See also
 
 - [`Automation`](../Core/Automation.md) - the track a formula fills, and the file both kinds travel in
-- [`Parameters`](Parameters.md) - the `@Param` knobs a formula drives
+- [`Parameters`](Parameters.md) - the `@Param` parameters a formula drives
 - [`Math`](Math.md) - `map`, `lerp`, and the shaping scalars, spelled the same way
 - [`Noise`](../Generators/Noise.md) - the field `noise()` reads, and the seed that reproduces it

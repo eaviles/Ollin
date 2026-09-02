@@ -302,7 +302,7 @@ What makes it sound bowed is one nonlinearity. Rosin grips harder when the bow a
 Two things fall out of the model rather than being settings, and both are worth knowing:
 
 - **Bow too fast for the force and it breaks.** The string tears loose twice a cycle instead of once. The note jumps to the octave, which is exactly what over-bowing sounds like on a real instrument. Raise `force` or lower `drive` and it settles back.
-- **Loudness comes from force as much as from speed.** Across the whole range of `drive` the level moves by about 8 dB. `force` moves it further. That is also true of a bow, but it means `force` is the loudness knob and `drive` is the expression one.
+- **Loudness comes from force as much as from speed.** Across the whole range of `drive` the level moves by about 8 dB. `force` moves it further. That is also true of a bow, but it means `force` is the loudness parameter and `drive` is the expression one.
 
 #### A blown tube
 
@@ -680,11 +680,11 @@ An effect that has to remember something between blocks takes its memory as `sta
 
 Why not a captured variable? The audio thread calls this closure, so it has to be `@Sendable`, and Swift will not let a `@Sendable` closure write into anything it captured. `state:` is the memory that is allowed.
 
-Two rules, both about where the closure runs. It lands on the audio thread with the speakers waiting. Keep it to arithmetic over the samples: nothing allocated, nothing locked, nothing reached back into the sketch. And to change how it behaves from a knob, build a new effect and set the chain again. The new closure swaps onto the same link without the wiring being touched, so the sound never stops to change. A new effect does start with fresh `state:`.
+Two rules, both about where the closure runs. It lands on the audio thread with the speakers waiting. Keep it to arithmetic over the samples: nothing allocated, nothing locked, nothing reached back into the sketch. And to change how it behaves from a parameter, build a new effect and set the chain again. The new closure swaps onto the same link without the wiring being touched, so the sound never stops to change. A new effect does start with fresh `state:`.
 
 The effect is a value, with two footnotes. Putting the same one in two places shares one memory. And one that went through `Codable` comes back as a passthrough that still knows its name, because a closure cannot be written down.
 
-`Examples/Audio/Shaping` is three of these behind a knob: a wavefolder, a sample-holding crush with `state:`, and a wobble run off `time`.
+`Examples/Audio/Shaping` is three of these behind a parameter: a wavefolder, a sample-holding crush with `state:`, and a wobble run off `time`.
 
 #### What it costs to change one
 

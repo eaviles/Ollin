@@ -20,7 +20,7 @@ public enum SurfaceFitting: Sendable, Equatable {
     /// Nearest tangent plane (the default).
     case planes
     /// Robust kernel regression (RIMLS): smoother, outlier-resistant,
-    /// feature-preserving. See `SurfaceFitting` for the two knobs.
+    /// feature-preserving. See `SurfaceFitting` for the two parameters.
     case robust(sharpness: Double, iterations: Int)
 
     /// The robust fit at its balanced defaults (`sharpness` 1, 3 iterations).

@@ -80,7 +80,7 @@ override func draw() {
 
 An `IKChain` is a run of rigid segments joined end to end. Make one from explicit points (`IKChain(joints:)`, segment lengths captured from the spacing) or laid out straight (`IKChain(from:segments:length:angle:)`), then move it with one of two verbs:
 
-- **`reach(toward:)`** keeps the base planted and bends the chain so the tip strains for the target. This is the limb move. It returns whether the tip landed within `tolerance` (targets can be out of reach, or made unreachable by stiffness), and takes optional `iterations:` (default 10) and `tolerance:` (default 1) knobs. A target beyond the chain's `totalLength` stretches it dead straight toward the target in one pass.
+- **`reach(toward:)`** keeps the base planted and bends the chain so the tip strains for the target. This is the limb move. It returns whether the tip landed within `tolerance` (targets can be out of reach, or made unreachable by stiffness), and takes optional `iterations:` (default 10) and `tolerance:` (default 1) parameters. A target beyond the chain's `totalLength` stretches it dead straight toward the target in one pass.
 - **`drag(to:)`** pins the *tip* to the target and lets everything trail after it, base included. This is the rope move, cheap enough to call every frame with no iteration count.
 
 `moveBase(to:)` carries the whole pose rigidly to a new anchor (a chain mounted on a moving creature). Read `joints` to draw (a `drawPolyline` is the simplest body), plus `tip`, `base`, `lengths`, and `totalLength`.
@@ -94,7 +94,7 @@ Solving is warm-started from the current pose each call, so a chain moves cohere
 
 Both honor **`maxBend`**, the stiffness limit, which is the largest angle a segment may fold against its neighbor, enforced at every interior joint during solving (never patched afterward, so segment lengths stay exact). Low values make stiff rods and spines, and `nil` (the default) bends freely. Stiffness can put a reachable target out of reach, in which case the solve settles as close as it can and reports `false` rather than spinning.
 
-The [InverseKinematics example](../../Examples/Motion/InverseKinematics/Sketch.swift) plants five tentacles under a swimming lure with both knobs live.
+The [InverseKinematics example](../../Examples/Motion/InverseKinematics/Sketch.swift) plants five tentacles under a swimming lure with both parameters live.
 
 <a name="pendulum"></a>
 
@@ -115,9 +115,9 @@ Read positions through **`bob1`** and **`bob2`**, both relative to the pivot wit
 
 Every body pulls on every other, and that one rule makes orbits, spiral shear, tidal tails, and mergers. `NBody` holds a public `bodies` array (`NBody.Body`, with `position`, `velocity`, and `mass`) you may mutate freely between steps, and `step()` advances the whole system.
 
-Three knobs shape the physics:
+Three parameters shape the physics:
 
-- **`gravity`** (default `1`) is the gravitational constant, the one pace knob.
+- **`gravity`** (default `1`) is the gravitational constant, the one pace parameter.
 - **`theta`** (default `0.7`) is the accuracy dial for the far field. Forces run through a quadtree, where clumps of distant bodies act as single points when their region looks smaller than `theta` times its distance, which is what makes a few thousand bodies cheap. Use `0` for the exact all-pairs sum, `0.5` when accuracy shows, and `1` for fast and loose.
 - **`softening`** (default `4`) caps how hard a close encounter pulls, so near-collisions swing through smoothly instead of slingshotting to infinity. A few pixels, about the typical body spacing, reads well.
 

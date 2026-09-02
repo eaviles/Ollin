@@ -2,7 +2,7 @@
 #
 # Run Ollin's GPU micro-benchmarks on THIS GPU and recommend per-tier quality values.
 #
-# Each one renders a representative scene across a sweep of its quality knob, measures the
+# Each one renders a representative scene across a sweep of its quality parameter, measures the
 # true per-frame GPU time (vsync-independent, from command-buffer timestamps), and prints
 # the count that holds 60/120 fps plus a suggested .performance/.default/.detail mapping.
 # Run it on each machine you care about (Intel Mac, M-series, …) to tune the per-GPU values

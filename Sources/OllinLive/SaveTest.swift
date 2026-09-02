@@ -2,11 +2,11 @@ import Foundation
 import Ollin
 import OllinRuntime
 
-/// `swift run OllinLive --savetest`: the whole knob-write-back loop, headless.
+/// `swift run OllinLive --savetest`: the whole parameter-write-back loop, headless.
 ///
-/// It writes a sketch, compiles and loads it, turns knobs the way the inspector
+/// It writes a sketch, compiles and loads it, turns parameters the way the inspector
 /// does, writes those values into the `@Param` lines they came from, and then
-/// compiles the file again and reads the knobs of a *fresh* sketch, with
+/// compiles the file again and reads the parameters of a *fresh* sketch, with
 /// nothing restored into it. That last step is the part no unit test can prove:
 /// the text the rewriter produced has to compile, and the values have to arrive
 /// as the sketch's own defaults.
@@ -22,7 +22,7 @@ enum SaveTest {
         let source = """
         import Ollin
 
-        /// A value the sketch works out for itself, which no knob may overwrite.
+        /// A value the sketch works out for itself, which no parameter may overwrite.
         let houseRadius = 90.0
 
         enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
@@ -59,16 +59,16 @@ enum SaveTest {
             }
         }
 
-        print("OllinLive savetest: compile the sketch and turn its knobs …")
+        print("OllinLive savetest: compile the sketch and change its parameters …")
         let running = load()
         var handles: [String: ParamHandle] = [:]
         for handle in running.parameters() { handles[handle.name] = handle }
-        check(handles.count == 12, "expected 12 knobs, got \(handles.count)")
+        check(handles.count == 12, "expected 12 parameters, got \(handles.count)")
 
-        /// Turn one knob through its typed control, which is what an inspector
+        /// Adjust one parameter through its typed control, which is what an inspector
         /// row does, and hand back what the host would have recorded.
         func turn(_ name: String, _ change: (ParamControl) -> Void) -> (name: String, stored: ParamStored) {
-            guard let handle = handles[name] else { fail("no knob named \(name)") }
+            guard let handle = handles[name] else { fail("no parameter named \(name)") }
             change(handle.control)
             return (name, handle.param.stored)
         }
@@ -94,26 +94,26 @@ enum SaveTest {
         let text = try! String(contentsOfFile: file, encoding: .utf8)
         let result = ParamWrite.writing(text, values: tuned)
         check(result.written.count == 9,
-              "expected 9 knobs written, got \(result.written): \(result.refused)")
+              "expected 9 parameters written, got \(result.written): \(result.refused)")
         check(result.refused.map(\.name).sorted() == ["borrowed", "half"],
               "the refusals should be borrowed and half, not \(result.refused.map(\.name))")
         check(result.refused.contains { $0.reason == .computed("houseRadius") },
               "the refusal should name what stands there: \(result.refused)")
         check(result.text.contains("// tuned by eye"), "the author's comment did not survive")
         check(result.text.contains("@Param(0...200) var borrowed = houseRadius"),
-              "a refused knob's line must be left exactly as it was")
+              "a refused parameter's line must be left exactly as it was")
         check(result.text.contains(#"var caption = "hello""#),
-              "a knob nobody turned must be left alone")
+              "a parameter nobody changed must be left alone")
         try! result.text.write(toFile: file, atomically: true, encoding: .utf8)
 
-        print("OllinLive savetest: compile it again and read a fresh sketch's knobs …")
+        print("OllinLive savetest: compile it again and read a fresh sketch's parameters …")
         // Nothing is restored into this one: every value below is what the text
         // now declares.
         var fresh: [String: ParamHandle] = [:]
         for handle in load().parameters() { fresh[handle.name] = handle }
 
         func stored(_ name: String) -> ParamStored {
-            guard let handle = fresh[name] else { fail("no knob named \(name) after the reload") }
+            guard let handle = fresh[name] else { fail("no parameter named \(name) after the reload") }
             return handle.param.stored
         }
         check(stored("radius") == .number(86.5), "radius came back as \(stored("radius"))")
@@ -124,7 +124,7 @@ enum SaveTest {
         check(stored("margins") == .insets(top: 4, right: 8, bottom: 12, left: 16),
               "margins came back as \(stored("margins"))")
         check(stored("sizes") == .range(lower: 12, upper: 34), "sizes came back as \(stored("sizes"))")
-        check(stored("caption") == .text("hello"), "an untouched knob changed: \(stored("caption"))")
+        check(stored("caption") == .text("hello"), "an untouched parameter changed: \(stored("caption"))")
         // A color is written to four decimals, finer than one channel step.
         guard case .color(let red, let green, let blue, _) = stored("tint") else {
             fail("tint is not a color any more")
@@ -135,10 +135,10 @@ enum SaveTest {
         check(stops.count == 2 && stops[0].red == 0 && stops[1].green > 0.5,
               "the strip came back as \(stops)")
         // The two refusals stand exactly where the author left them.
-        check(stored("borrowed") == .number(90), "a refused knob moved: \(stored("borrowed"))")
-        check(stored("half") == .number(300), "a refused knob moved: \(stored("half"))")
+        check(stored("borrowed") == .number(90), "a refused parameter moved: \(stored("borrowed"))")
+        check(stored("half") == .number(300), "a refused parameter moved: \(stored("half"))")
 
-        print("OllinLive savetest: PASS: 9 knobs were written into the file, the file still "
+        print("OllinLive savetest: PASS: 9 parameters were written into the file, the file still "
             + "compiles, a fresh sketch carries them as its own defaults, and the two that "
             + "are worked out were named rather than overwritten.")
         exit(0)

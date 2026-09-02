@@ -9,12 +9,12 @@ import Ollin
 
 // MARK: - Messages
 
-/// One `@Param` knob as the page sees it: identity, display metadata, the
+/// One `@Param` parameter as the page sees it: identity, display metadata, the
 /// control kind, the current value, and the constraint payload for its kind.
 /// Values ride `ParamStored`, the same payload the hosts persist, with one
 /// exception: a menu travels as its option *index* (`.number`), because the
 /// page knows the display options and their order, not the enum's case names.
-/// The control kind a knob renders as on the page. Raw values are the wire
+/// The control kind a parameter renders as on the page. Raw values are the wire
 /// spelling, so the JSON the page reads is unchanged by the Swift casing.
 public enum RemoteControlKind: String, Codable, Equatable, Sendable {
     case slider, stepper, toggle, menu, color, vector, vector3, rect
@@ -34,7 +34,7 @@ public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
     public var lower: Double?
     public var upper: Double?
     public var step: Double?
-    /// A numeric knob declared `style: .field`: no track, value field only.
+    /// A numeric parameter declared `style: .field`: no track, value field only.
     public var isField: Bool?
     public var options: [String]?
     public var isSegmented: Bool?
@@ -59,7 +59,7 @@ public enum RemoteMessageKind: String, Codable, Sendable {
     case hello, update, stats, set
 }
 
-/// Server to client, once per connection: the sketch's identity and every knob.
+/// Server to client, once per connection: the sketch's identity and every parameter.
 public struct RemoteHello: Codable, Sendable {
     public var kind = RemoteMessageKind.hello
     public var sketch: String
@@ -83,7 +83,7 @@ public struct RemoteStats: Codable, Sendable {
     public var frame: Int
 }
 
-/// Client to server: one knob moved on the phone.
+/// Client to server: one parameter moved on the phone.
 public struct RemoteSet: Codable, Sendable {
     public var kind = RemoteMessageKind.set
     public var name: String
@@ -93,7 +93,7 @@ public struct RemoteSet: Codable, Sendable {
 // MARK: - Descriptors
 
 public enum RemoteWire {
-    /// Builds the wire descriptor for one discovered knob.
+    /// Builds the wire descriptor for one discovered parameter.
     public static func descriptor(for handle: ParamHandle) -> RemoteParamDescriptor {
         var d = RemoteParamDescriptor(
             name: handle.name, label: handle.label, icon: handle.icon,
@@ -157,7 +157,7 @@ public enum RemoteWire {
         return handle.param.stored
     }
 
-    /// Applies one incoming value to its knob. A menu index goes through the
+    /// Applies one incoming value to its parameter. A menu index goes through the
     /// control's own setter; everything else jumps through `restore`, the same
     /// path the hosts use to re-apply persisted values. A payload of the wrong
     /// kind is ignored, exactly as `restore` promises.

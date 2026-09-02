@@ -82,7 +82,7 @@ struct RadialBasisTests {
     /// sits on the diagonal of a kernel matrix whose entries grow with how far apart the
     /// points are, so a raw number would mean something different on a canvas of pixels
     /// than on the same layout measured in fractions: at 1 it did nothing at all over
-    /// hundreds of pixels. Measuring it against the typical bump is what makes the knob
+    /// hundreds of pixels. Measuring it against the typical bump is what makes the parameter
     /// mean one thing, and this is the check that it does.
     @Test func smoothingMeansTheSameThingAtAnyScale() throws {
         let values = [0.1, 0.9, 0.4, 0.65, 0.2, 0.8]
@@ -163,24 +163,24 @@ struct FitTests {
         #expect(result.cost < 1e-5)
     }
 
-    /// One knob measured in hundreds beside one measured in thousandths, both of which have
-    /// to arrive. This is what the per-knob step scaling is for: a single step size either
-    /// crawls along the wide knob or throws the narrow one across its whole range, and a
+    /// One parameter measured in hundreds beside one measured in thousandths, both of which have
+    /// to arrive. This is what the per-parameter step scaling is for: a single step size either
+    /// crawls along the wide parameter or throws the narrow one across its whole range, and a
     /// bowl this lopsided is where that shows.
-    @Test func knobsOnVeryDifferentScalesBothArrive() {
+    @Test func parametersOnVeryDifferentScalesBothArrive() {
         let result = Fit.minimize(from: [0, 0], steps: 4000, rate: 0.5) { p in
             let wide = (p[0] - 800) / 800
             let narrow = (p[1] - 0.004) / 0.004
             return wide * wide + narrow * narrow
         }
-        #expect(abs(result.values[0] - 800) < 8, "the wide knob stopped at \(result.values[0])")
+        #expect(abs(result.values[0] - 800) < 8, "the wide parameter stopped at \(result.values[0])")
         #expect(abs(result.values[1] - 0.004) < 4e-5,
-                "the narrow knob stopped at \(result.values[1])")
+                "the narrow parameter stopped at \(result.values[1])")
     }
 
-    /// A knob given a range stays inside it, including when the bottom of the bowl is
+    /// A parameter given a range stays inside it, including when the bottom of the bowl is
     /// outside and the walk keeps pushing that way.
-    @Test func aKnobStaysInsideItsRange() {
+    @Test func aParameterStaysInsideItsRange() {
         let result = Fit.minimize(from: [0], bounds: [-1 ... 1], steps: 400, rate: 0.2) { p in
             let d = p[0] - 50
             return d * d

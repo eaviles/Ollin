@@ -8,7 +8,7 @@ import Testing
 /// The parameter timeline: the clock transport the panel drives (a held clock
 /// draws nothing and keeps its time; a scrub draws one frame exactly there; a
 /// step moves exactly one frame; the loop region wraps the running clock) and
-/// the timeline model's edits (a key placed at the playhead holds the knob's
+/// the timeline model's edits (a key placed at the playhead holds the parameter's
 /// value, tracks stay sorted, edits round-trip to the file, and a track worked
 /// out from a formula is left alone).
 @Suite
@@ -26,8 +26,8 @@ struct ParameterTimelineTests {
         }
     }
 
-    /// Two knobs of different kinds, for the edit laws.
-    private final class KnobProbe: Sketch {
+    /// Two parameters of different kinds, for the edit laws.
+    private final class ParameterProbe: Sketch {
         @Param(0...300) var radius = 120.0
         @Param var filled = true
 
@@ -183,8 +183,8 @@ struct ParameterTimelineTests {
 
     // MARK: The model's edits
 
-    @Test func aToggledKeyHoldsTheKnobsValue() throws {
-        let probe = KnobProbe()
+    @Test func aToggledKeyHoldsTheParametersValue() throws {
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -200,7 +200,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func keysStaySortedThroughPlaceMoveAndRemove() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -219,7 +219,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func aPlacedKeyReplacesOneOnTheSameMoment() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -231,7 +231,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func aCurveSetOnAKeyReadsBack() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -243,7 +243,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func editsRoundTripThroughTheFile() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -260,7 +260,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func aWorkedOutTrackIsLeftAlone() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -274,7 +274,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func removingATrackClearsItsSelection() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -286,7 +286,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func addableParametersLeaveOutTheTracked() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -296,7 +296,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func thePlayheadRidesALoopingAutomation() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -310,7 +310,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func aScrubInvertsSpeedAndStart() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }
@@ -325,7 +325,7 @@ struct ParameterTimelineTests {
     }
 
     @Test func toEndUnderALoopLandsAFrameShort() throws {
-        let probe = KnobProbe()
+        let probe = ParameterProbe()
         let harness = try makeModel(probe)
         let model = harness.model
         defer { withExtendedLifetime(harness) {} }

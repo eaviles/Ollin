@@ -282,7 +282,7 @@ public final class Room: SketchExtension {
     ///
     /// A machine that calls this both sends and follows, so the parameter can be
     /// turned wherever the person happens to be standing. When two people turn
-    /// the same parameter at the same moment, the later turn wins everywhere, by the
+    /// the same parameter at the same moment, the later change wins everywhere, by the
     /// room's own clock.
     public func share(_ names: String...) {
         sharedNames.formUnion(names)

@@ -81,7 +81,7 @@ public struct ScanGraph {
         public var loop: Loop?
     }
 
-    /// The knobs. The defaults suit a hand-held sweep of a room, in meters.
+    /// The parameters. The defaults suit a hand-held sweep of a room, in meters.
     public struct Settings: Sendable {
 
         /// How far the camera has to move before the sweep keeps another keyframe.
@@ -169,7 +169,7 @@ public struct ScanGraph {
         public init() {}
     }
 
-    /// The knobs, live: changing one takes effect on the next frame.
+    /// The parameters, live: changing one takes effect on the next frame.
     public var settings: Settings
 
     /// The fused cloud and the drift correction under it. Everything `WorldCloud` can do

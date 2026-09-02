@@ -15,7 +15,7 @@ import Foundation
 
 /// How a filled region is converted to hatch line work for a pen plotter (or for
 /// drawing line-shaded fills on the canvas). The line geometry comes from
-/// `lines(filling:)`; the rest of the knobs apply when the SVG exporter hatches a
+/// `lines(filling:)`; the rest of the parameters apply when the SVG exporter hatches a
 /// recorded fill.
 public struct Hatching: Equatable, Sendable {
     /// Distance between adjacent hatch lines, in canvas points, for a fully-toned

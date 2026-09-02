@@ -19,7 +19,7 @@ Learn more:
 
 ### Recreations here
 
-- [**MáquinaEstética**](MaquinaEstetica/): a machine that composes in an alphabet of eight elements, weighs the ink it has laid down, and throws the sheet away when the weight sits too far off center. An original Ollin interpretation written from the work and from published accounts of how the machine was made, with the seed as the design, a knob for how much imbalance may pass, and a pen-only mode that shows the drawing before the paint.
+- [**MáquinaEstética**](MaquinaEstetica/): a machine that composes in an alphabet of eight elements, weighs the ink it has laid down, and throws the sheet away when the weight sits too far off center. An original Ollin interpretation written from the work and from published accounts of how the machine was made, with the seed as the design, a parameter for how much imbalance may pass, and a pen-only mode that shows the drawing before the paint.
 
   ```sh
   swift run Example-Recreations-ManuelFelguerez-MaquinaEstetica

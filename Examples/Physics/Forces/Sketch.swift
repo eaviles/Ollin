@@ -17,12 +17,12 @@ import OllinPhysics
 /// compressed, coral where stretched, so the wind load is visible traveling
 /// through the weave.
 ///
-/// `World.pixelsPerMeter` rides a knob. It maps sketch points onto the rigid
+/// `World.pixelsPerMeter` rides a parameter. It maps sketch points onto the rigid
 /// solver's meters, so raising it makes every collider smaller in meters and
 /// therefore lighter, and the same wind and kick numbers toss the shapes much
 /// harder; the scene rebuilds when it changes, because the walls and masses
 /// are all sized through the mapping. The particle side works directly in
-/// points, so the cloth ignores the knob entirely.
+/// points, so the cloth ignores the parameter entirely.
 @main
 final class Forces: Sketch {
     @Param(25 ... 400, icon: "ruler", group: "World") var pixelsPerMeter = 100.0
@@ -213,7 +213,7 @@ final class Forces: Sketch {
         if key == " " { reset() }
     }
 
-    /// Rebuild everything under the current knob values. Reassigning `bounds`
+    /// Rebuild everything under the current parameter values. Reassigning `bounds`
     /// rebuilds the walls, which are also sized through `pixelsPerMeter`.
     func reset() {
         world.removeAll()
@@ -227,7 +227,7 @@ final class Forces: Sketch {
     override func draw() {
         background(Color(white: 0.12))
 
-        // The knob remaps points onto the solver's meters; every wall and mass
+        // The parameter remaps points onto the solver's meters; every wall and mass
         // is sized through the mapping, so a change rebuilds the scene.
         if world.pixelsPerMeter != pixelsPerMeter { reset() }
 
@@ -321,7 +321,7 @@ final class Forces: Sketch {
             textAlign(.center)
             noStroke()
 
-            // The knob caption: what pixelsPerMeter changes.
+            // The parameter caption: what pixelsPerMeter changes.
             textSize(width * 0.0165)
             fill(Color(white: 0.7))
             drawText("pixelsPerMeter \(Int(world.pixelsPerMeter.rounded())): raise it and the shapes read lighter, so the same wind carries them further",

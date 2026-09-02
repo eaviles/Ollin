@@ -49,7 +49,7 @@ struct VisualTests {
     @Test func blendModesAreStructural() {
         let base = Visual.oscillator().blended(with: .noise(), .add).compile()
         let other = Visual.oscillator().blended(with: .noise(), .multiply).compile()
-        #expect(base.source != other.source)   // the mode is a code path, not a knob
+        #expect(base.source != other.source)   // the mode is a code path, not a parameter
     }
 
     @Test func layersDedupeByIdentity() {

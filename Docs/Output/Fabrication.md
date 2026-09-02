@@ -91,7 +91,7 @@ Vertex colors, uvs, and materials are dropped. All three formats in their base f
 
 ### Worked example
 
-`Examples/3D/Geometry/Fabrication` builds a torus knot you can tune and save, with the check drawn next to it. Turning its `sealed` knob off opens the tube's ends: the shape on screen barely changes, and the report underneath turns red.
+`Examples/3D/Geometry/Fabrication` builds a torus knot you can tune and save, with the check drawn next to it. Turning its `sealed` parameter off opens the tube's ends: the shape on screen barely changes, and the report underneath turns red.
 
 ```sh
 swift run --package-path Examples Example-3D-Geometry-Fabrication

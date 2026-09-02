@@ -5,7 +5,7 @@ import OllinAudio
 ///
 /// The offline exporters re-render a sketch on a fixed clock, which is how a
 /// file reproduces exactly. A performance is the opposite kind of thing: the
-/// mouse, the knobs, and the sound happen once, in real time. This sketch
+/// mouse, the parameters, and the sound happen once, in real time. This sketch
 /// keeps that once. Press **R** and play; press **R** again and the take is a
 /// movie in `~/Movies/Ollin/`, picture and sound together, stamped with the
 /// wall clock so a slow frame lasts longer instead of stretching time.
@@ -15,7 +15,7 @@ import OllinAudio
 /// same recording is on ⌘⇧R, and there it even survives an evaluate.
 ///
 /// A movie keeps the pixels; a *take* keeps the performance itself. Run with
-/// `--record-take take.json` to write the seed, clock, pointer, and knob
+/// `--record-take take.json` to write the seed, clock, pointer, and parameter
 /// timeline down, then `--replay take.json` to play the run back exactly
 /// (space pauses, the arrows step), or `--replay take.json --export-video`
 /// to re-render the performance offline. See Docs/Core/Replay.md.

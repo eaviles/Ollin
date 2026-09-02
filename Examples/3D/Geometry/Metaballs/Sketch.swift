@@ -9,10 +9,10 @@ import Ollin
 /// so the surface bulges across the gap and the two run together into one
 /// skin. Pull them apart and it necks down and snaps.
 ///
-/// The `merge` knob is that crossing level: lower it and every blob fattens
+/// The `merge` parameter is that crossing level: lower it and every blob fattens
 /// and reaches further, raise it and they thin out and separate. `detail` is
 /// how fine the cube grid is, which is where the cost lives, so it is the
-/// knob to drop first if the frame rate does.
+/// parameter to drop first if the frame rate does.
 @main
 final class Metaballs3D: Sketch {
 

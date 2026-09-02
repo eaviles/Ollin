@@ -155,7 +155,7 @@ struct DistanceFieldTests {
         #expect(wrong == 0, "\(wrong) of \(checked) pixels took the wrong dot's color")
     }
 
-    @Test func theKnobsAreHeldToTheirRange() {
+    @Test func theParametersAreHeldToTheirRange() {
         // A negative threshold would make every pixel of a layer inside the shape, and a
         // maxDistance under a pixel would ask for a ladder with no rungs in it.
         let filter = Filter.distanceField(from: .luminance, threshold: -2, maxDistance: 0.1)

@@ -6,7 +6,7 @@
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of circles in warm and cool colors, drifting and breathing on a dark ground" width="560">
 
-By the end of this chapter you'll have built the piece above. It's twenty-eight circles drifting around a ring, each one breathing slightly out of step with its neighbors, and a small panel of knobs for playing it like an instrument. Every dot is placed and moved by code you'll understand line by line. To get there you need a working toolchain, one new file, and three shapes, and along the way you'll meet the idea that runs through the whole guide: in Ollin, things move by default.
+By the end of this chapter you'll have built the piece above. It's twenty-eight circles drifting around a ring, each one breathing slightly out of step with its neighbors, and a small panel of parameters for playing it like an instrument. Every dot is placed and moved by code you'll understand line by line. To get there you need a working toolchain, one new file, and three shapes, and along the way you'll meet the idea that runs through the whole guide: in Ollin, things move by default.
 
 ## What you need
 
@@ -41,7 +41,7 @@ That opens the **gallery**, a window holding every example in the repository. It
   <img src="Images/01-HelloOllin/Gallery.jpg" alt="A diagram of the gallery window in three panes: a left sidebar listing example groups as a collapsible tree with one entry selected and a filter field at its foot, a dark center pane showing the running sketch, and a right sidebar of four labeled sliders" width="680">
 </picture>
 
-Three panes, and each is doing an obvious job. On the left, every example as a collapsible tree that mirrors the folders on disk, with a filter field at the bottom for finding one by name. In the middle, the selected sketch, actually running rather than pictured. On the right, that sketch's knobs, which you can drag while it runs, and hide with ⌘/ when you want the picture to yourself.
+Three panes, and each is doing an obvious job. On the left, every example as a collapsible tree that mirrors the folders on disk, with a filter field at the bottom for finding one by name. In the middle, the selected sketch, actually running rather than pictured. On the right, that sketch's parameters, which you can drag while it runs, and hide with ⌘/ when you want the picture to yourself.
 
 One piece of behavior will confuse you for a moment if nobody mentions it. **Arrow keys move through the example list**, not into the sketch, because the canvas only takes the keyboard once you *click* it. That's deliberate: plenty of examples read key presses, and if the canvas grabbed the keyboard on selection you could never arrow to the next one. Examples that use the keyboard show a small hint saying so, and clicking the canvas hands the keys over.
 
@@ -206,7 +206,7 @@ The knob turns the shape, and it only appears when the line can say which way th
 
 Two things are worth knowing before you rely on any of it. A number written whole stays whole: a shape placed at `300` lands on `286`, never `285.7`, and a nudge under half a point changes nothing. And only a plain number can be dragged. If you wrote `drawCircle(width / 2, 300, 40)`, that first slot holds no number to change. The host says so rather than moving anything: *places this shape with `width / 2`, so there is no number to move.*
 
-There is one exception, and you will meet the knobs it needs in a moment. A coordinate written as the name of a `@Param` has no number on the line either, but it does have somewhere to put the value:
+There is one exception, and you will meet the parameters it needs in a moment. A coordinate written as the name of a `@Param` has no number on the line either, but it does have somewhere to put the value:
 
 ```swift
 @Param(60 ... 660) var sunX = 120.0
@@ -214,7 +214,7 @@ There is one exception, and you will meet the knobs it needs in a moment. A coor
 drawCircle(sunX, 120, 40)     // dragging this turns sunX
 ```
 
-The drag turns that knob instead of writing the file. Nothing recompiles, so it is the quickest of the three. The value stays put across the next reload, the way any knob you turn by hand does.
+The drag sets that parameter instead of writing the file. Nothing recompiles, so it is the quickest of the three. The value stays put across the next reload, the way any parameter you change by hand does.
 
 That limit is the honest shape of the feature. The file is the sketch, and dragging edits the file. So anything the file works out for itself is changed the way it was written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends.
 
@@ -389,21 +389,21 @@ Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through 
 
 > **Swift note.** `for i in 0..<count` counts from 0 up to, but not including, `count`. `i` is an `Int` (a whole number) while positions want `Double` (numbers with fractions), so `Double(i)` converts. `[Color]` is a list of colors, `colors.count` its length, and `%` is the remainder after division, which is what makes the palette repeat. These four keep coming back; there's more Swift in the [Swift quick reference](../Docs/Swift.md) whenever you want it.
 
-That leaves the four `@Param` lines. Look at the sidebar of the `OllinLive` window and you'll find they became a small control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a knob with a label, a range, and a starting value, and the sketch reads it like any other property. Each knob arrived as the control its type asks for, so the two `Double`s became sliders, the whole-number `count` became a stepper, and `ground`, being a `Color`, became a well you can click to open a picker. There are more of these, including a toggle for a `Bool` and a draggable pad for a point, and you'll meet them as the guide goes on. The number beside any knob is live as well, so you can drag it sideways to scrub the value or click it to type one in.
+That leaves the four `@Param` lines. Look at the sidebar of the `OllinLive` window and you'll find they became a small control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a parameter with a label, a range, and a starting value, and the sketch reads it like any other property. Each parameter arrived as the control its type asks for, so the two `Double`s became sliders, the whole-number `count` became a stepper, and `ground`, being a `Color`, became a well you can click to open a picker. There are more of these, including a toggle for a `Bool` and a draggable pad for a point, and you'll meet them as the guide goes on. The number beside any parameter is live as well, so you can drag it sideways to scrub the value or click it to type one in.
 
-Play the panel while the piece runs. Your tuned values survive a save, which means you can edit the code, save, and find your knob positions carried over into the reloaded sketch instead of snapping back to the defaults. It's a habit worth building early, because almost every piece in this guide gets better once its magic numbers become knobs.
+Play the panel while the piece runs. Your tuned values survive a save, which means you can edit the code, save, and find your parameter positions carried over into the reloaded sketch instead of snapping back to the defaults. It's a habit worth building early, because almost every piece in this guide gets better once its magic numbers become parameters.
 
 Before moving on, make the piece yours. Some directions worth trying:
 
 - Run `Circles` from 4 to 120 with `Size` low and see what the ring wants to be: a clock face, a chain, a halo.
 - Swap the palette. Pick four hex colors you like and paste them in.
 - Add a second ring: another loop with a different base radius and its own speed.
-- Make the breathing depth (the `80`) a fifth knob and play it.
+- Make the breathing depth (the `80`) a fifth parameter and play it.
 - Replace `drawCircle` with `drawRect(center: Vector2(x, y), width: size, height: size)` and see how the character changes. Use the `center:` form here, because the positional `drawRect(x, y, size, size)` would hang each square down and to the right of its place on the ring.
 
 ## Keeping the numbers you turned
 
-There is one thing the panel cannot do on its own, and it is the obvious one: remember. A tuned value lives in the running program, so quitting drops it. That is why tuning used to end by hand. You copied each knob position back into the code, one at a time, and hoped you read the right one.
+There is one thing the panel cannot do on its own, and it is the obvious one: remember. A tuned value lives in the running program, so quitting drops it. That is why tuning used to end by hand. You copied each parameter position back into the code, one at a time, and hoped you read the right one.
 
 The button under the rows does that for you. Press **Save parameters to Sketch.swift**, and every value you turned goes into the `@Param` line that declared it.
 
@@ -412,9 +412,9 @@ The button under the rows does that for you. Press **Save parameters to Sketch.s
   <img src="Images/01-HelloOllin/ParametersToSource.jpg" alt="Two panels: a Radius slider at 120 above a waiting Save parameters to Sketch.swift button, and the same slider turned down to 86.5 with the button pressed, with the @Param line under each panel showing the number it now carries" width="680">
 </picture>
 
-Only the knobs you actually moved are written, and only the value on the line changes. Your label, your range, your spacing, and the comment you left at the end are all where you put them. The host then reloads the sketch from the file, the same way it does after any save of your own.
+Only the parameters you actually moved are written, and only the value on the line changes. Your label, your range, your spacing, and the comment you left at the end are all where you put them. The host then reloads the sketch from the file, the same way it does after any save of your own.
 
-A number keeps the shape you gave it. A whole default stays whole while the value is whole, and one written with a point keeps its point. That second rule matters more than it looks, because `86` and `86.0` are different types to Swift, and only one of them is the knob you declared.
+A number keeps the shape you gave it. A whole default stays whole while the value is whole, and one written with a point keeps its point. That second rule matters more than it looks, because `86` and `86.0` are different types to Swift, and only one of them is the parameter you declared.
 
 The same limit as the drag applies, for the same reason. A default the sketch works out has no value to replace:
 
@@ -422,7 +422,7 @@ The same limit as the drag applies, for the same reason. A default the sketch wo
 @Param(0...900) var radius = side / 3
 ```
 
-The line under the button says so and names what stands there. Write a number in its place if you want the knob to reach it.
+The line under the button says so and names what stands there. Write a number in its place if you want the parameter to reach it.
 
 ## Where this comes from
 
@@ -439,10 +439,10 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
 - [The reference offline](../Docs/Tools/Reference.md): `ollin docs` and `ollin examples` in full, including one section of a page, the search across everything, and what happens in a pipe.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
-- [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards (with an advanced group folded behind a disclosure row), icons, smoothing, saving a tuned set back into the code, and driving knobs from MIDI or OSC hardware.
+- [Parameters](../Docs/Helpers/Parameters.md): the full parameter family (toggles, menus, pads, and friends), grouping parameters into cards (with an advanced group folded behind a disclosure row), icons, smoothing, saving a tuned set back into the code, and driving parameters from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language met properly, every construct these sketches lean on taught in order. [The Swift quick reference](../Docs/Swift.md) is its terse sibling, for whenever a single construct felt mysterious.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping).
-- Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift), the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift), a page of shapes to drag around, [`Examples/Live/DragToEdit`](../Examples/Live/DragToEdit/Sketch.swift), and the whole press-drag-release surface as a toy, [`Examples/Input/Drag`](../Examples/Input/Drag/Sketch.swift).
+- Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift), the parameters demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift), a page of shapes to drag around, [`Examples/Live/DragToEdit`](../Examples/Live/DragToEdit/Sketch.swift), and the whole press-drag-release surface as a toy, [`Examples/Input/Drag`](../Examples/Input/Drag/Sketch.swift).
 
 ---
 

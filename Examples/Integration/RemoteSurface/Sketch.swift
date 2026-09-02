@@ -7,9 +7,9 @@ import OllinRemote
 /// server: open the address it prints (and draws, bottom of the canvas) in any
 /// browser on the same Wi-Fi and every `@Param` below appears as a touch
 /// control, live both ways. Drag a phone slider and the ribbons answer;
-/// change a knob in the host inspector and the phone follows.
+/// change a parameter in the host inspector and the phone follows.
 ///
-/// The knobs cover every control family the surface renders: sliders, a
+/// The parameters cover every control family the surface renders: sliders, a
 /// toggle, a menu, a color, an XY pad, and a stepper, in three groups.
 @main
 final class RemoteSurface: Sketch {

@@ -4,8 +4,8 @@ import MetalKit
 import Testing
 @testable import Ollin
 
-/// Knob values carried into a run from the command line (`--param name=value`):
-/// how a flag is read, how a value is read against its knob's own kind, that it
+/// Parameter values carried into a run from the command line (`--param name=value`):
+/// how a flag is read, how a value is read against its parameter's own kind, that it
 /// wins over the sketch's own `setup()`, and that the export recipe then names
 /// the value the frame was really drawn with. The render check needs a GPU, so
 /// it is Metal-gated the way the snapshot suite is; the rest is CPU-only.
@@ -15,8 +15,8 @@ struct ParamOverrideTests {
 
     enum Mood: String, CaseIterable, ParamOption { case calm, easeOut, deepBlue }
 
-    /// One knob of every kind the flag can set.
-    final class Knobs: Sketch {
+    /// One parameter of every kind the flag can set.
+    final class ParamSketch: Sketch {
         override var canvasSize: CanvasSize { .square(64) }
         @Param(0...200) var radius = 120.0
         @Param(1...12) var rings = 5
@@ -40,7 +40,7 @@ struct ParamOverrideTests {
         }
     }
 
-    /// A sketch that sets its own knob in `setup()`, to prove which one wins.
+    /// A sketch that sets its own parameter in `setup()`, to prove which one wins.
     final class Opinionated: Sketch {
         override var canvasSize: CanvasSize { .square(64) }
         @Param(0...200) var radius = 120.0
@@ -80,7 +80,7 @@ struct ParamOverrideTests {
             return
         }
         #expect(message.contains("--param <name>=<value>"))
-        // The sweep's own knob name is the bare form somebody would try here,
+        // The sweep's own parameter name is the bare form somebody would try here,
         // so the message says where it went.
         #expect(!message.contains("--sweep-param"))
         guard case .problem(let swept) = ParamOverride.parse(
@@ -91,10 +91,10 @@ struct ParamOverrideTests {
         #expect(swept.contains("--sweep-param"))
     }
 
-    // MARK: - Reading a value against its knob
+    // MARK: - Reading a value against its parameter
 
     @Test func everyKindReadsItsOwnValue() {
-        let sketch = Knobs()
+        let sketch = ParamSketch()
         let problems = ParamOverride.apply([
             ParamOverride(name: "radius", text: "40"),
             ParamOverride(name: "rings", text: "3"),
@@ -126,7 +126,7 @@ struct ParamOverrideTests {
     }
 
     @Test func aRangeReadsBothSpellingsAndEitherWayRound() {
-        let sketch = Knobs()
+        let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "band", text: "0.1,0.9")], to: sketch).isEmpty)
         #expect(sketch.band == 0.1...0.9)
         #expect(ParamOverride.apply([.init(name: "band", text: "0.8...0.3")], to: sketch).isEmpty)
@@ -134,7 +134,7 @@ struct ParamOverrideTests {
     }
 
     @Test func aColorReadsHexOrPlainNumbers() {
-        let sketch = Knobs()
+        let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "tint", text: "0,0.5,1")], to: sketch).isEmpty)
         #expect(sketch.tint.red == 0 && sketch.tint.green == 0.5 && sketch.tint.blue == 1)
         #expect(sketch.tint.alpha == 1)
@@ -143,26 +143,26 @@ struct ParamOverrideTests {
     }
 
     @Test func swatchesSpreadEvenlyUnlessTheyNameTheirPlace() {
-        let sketch = Knobs()
+        let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "ramp", text: "#000,#FFF,#F06")],
                                     to: sketch).isEmpty)
         #expect(sketch.ramp.stops.map(\.position) == [0, 0.5, 1])
         #expect(ParamOverride.apply([.init(name: "ramp", text: "#000@0,#FFF@0.75")],
                                     to: sketch).isEmpty)
         #expect(sketch.ramp.stops.map(\.position) == [0, 0.75])
-        // The knob keeps the space it mixes in: only the colors moved.
+        // The parameter keeps the space it mixes in: only the colors moved.
         #expect(sketch.ramp.space == .oklab)
     }
 
     @Test func aValueOutsideTheRangeClampsTheWayTheRowDoes() {
-        let sketch = Knobs()
+        let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "radius", text: "9999")], to: sketch).isEmpty)
         #expect(sketch.radius == 200)
     }
 
     @Test func aChoiceMatchesItsNameLoosely() {
         for spelling in ["easeOut", "ease-out", "Ease Out", "EASEOUT"] {
-            let sketch = Knobs()
+            let sketch = ParamSketch()
             #expect(ParamOverride.apply([.init(name: "mood", text: spelling)], to: sketch).isEmpty)
             #expect(sketch.mood == .easeOut, "\(spelling) should find the same choice")
         }
@@ -170,15 +170,15 @@ struct ParamOverrideTests {
 
     // MARK: - What it says when it cannot
 
-    @Test func anUnknownKnobNamesWhatTheSketchHas() {
-        let problems = ParamOverride.apply([.init(name: "radiuz", text: "40")], to: Knobs())
+    @Test func anUnknownParameterNamesWhatTheSketchHas() {
+        let problems = ParamOverride.apply([.init(name: "radiuz", text: "40")], to: ParamSketch())
         #expect(problems.count == 1)
         #expect(problems[0].contains("no @Param named 'radiuz'"))
         #expect(problems[0].contains("radius"))
     }
 
     @Test func aValueTheKindCannotReadSaysWhatItWanted() {
-        let sketch = Knobs()
+        let sketch = ParamSketch()
         let problems = ParamOverride.apply([
             .init(name: "radius", text: "wide"),
             .init(name: "anchor", text: "100"),
@@ -188,14 +188,14 @@ struct ParamOverrideTests {
         #expect(problems[0].contains("expected a number"))
         #expect(problems[1].contains("expected two numbers"))
         #expect(problems[2].contains("Calm"))          // the choices it does have
-        // Nothing landed halfway: a knob it could not read keeps its value.
+        // Nothing landed halfway: a parameter it could not read keeps its value.
         #expect(sketch.radius == 120)
         #expect(sketch.anchor == Vector2(540, 540))
         #expect(sketch.mood == .calm)
     }
 
-    @Test func aKnobNamedTwiceEndsOnTheLastValue() {
-        let sketch = Knobs()
+    @Test func aParameterNamedTwiceEndsOnTheLastValue() {
+        let sketch = ParamSketch()
         #expect(ParamOverride.apply([.init(name: "radius", text: "40"),
                                      .init(name: "radius", text: "60")], to: sketch).isEmpty)
         #expect(sketch.radius == 60)
@@ -216,7 +216,7 @@ struct ParamOverrideTests {
     }
 
     @Test func theRecipeNamesTheValueTheFrameWasDrawnWith() {
-        let sketch = Knobs()
+        let sketch = ParamSketch()
         withOverrides([.init(name: "radius", text: "40")]) {
             sketch.runSetup()
             let recipe = ExportMetadata.capture(from: sketch, frame: 0, fps: 60).recipe
@@ -229,7 +229,7 @@ struct ParamOverrideTests {
         func ink(_ overrides: [ParamOverride]) -> Int {
             var covered = 0
             withOverrides(overrides) {
-                guard let image = OllinApp.image(of: Knobs(), frame: 0, fps: 60) else { return }
+                guard let image = OllinApp.image(of: ParamSketch(), frame: 0, fps: 60) else { return }
                 covered = inkedPixels(of: image)
             }
             return covered

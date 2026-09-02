@@ -6,7 +6,7 @@ import Ollin
 /// standing on anyone, and the particle moves whichever way the total improves.
 ///
 /// From those three lines come membranes, cells that hold their shape, rotors, and
-/// things that split in two. The knobs are the whole model: `muK` and `sigmaK` are the
+/// things that split in two. The parameters are the whole model: `muK` and `sigmaK` are the
 /// ring a particle reaches with, `muG` and `sigmaG` the crowding it prefers, and `cRep`
 /// how hard it refuses to be crowded. Color is that crowding measured against what the
 /// rule wants, so an interior, a membrane, and a particle out on its own look different.
@@ -14,7 +14,7 @@ import Ollin
 final class ParticleLenia_Example: Sketch {
     var lenia: ParticleLenia!
 
-    // Live knobs: drag these to feel the model change character. Small moves in muG or
+    // Live parameters: drag these to feel the model change character. Small moves in muG or
     // sigmaG are the difference between a blob, a ring, and a thing that crawls.
     @Param(2 ... 7, icon: "circle.dashed") var ringRadius = 4.0
     @Param(0.3 ... 1.6, icon: "circle.dotted") var ringWidth = 1.0

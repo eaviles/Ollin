@@ -27,7 +27,7 @@ import Ollin
 ///
 /// `castShadows()` reaches the area lights too: with no punctual light present, the
 /// first rect or disk panel is the caster, and its penumbra comes from the panel's
-/// *real extent* rather than a knob. The softbox key breathes between a narrow
+/// *real extent* rather than a parameter. The softbox key breathes between a narrow
 /// strip and a broad panel; watch the shadows harden and soften with it, staying
 /// crisp where a shape meets the floor and spreading as they fall away (the
 /// contact-hardening a real softbox gives). The panel's radiance scales down as it

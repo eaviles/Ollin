@@ -10,7 +10,7 @@ import OllinAudio
 /// sits: each rung is a pitch, placed by its `cents` above the root, and the
 /// label is how far it leans away from the equal-tempered grid on the left.
 ///
-/// Switch the tuning with the knob and listen for two things. In `.just` and
+/// Switch the tuning with the parameter and listen for two things. In `.just` and
 /// `.thirtyOne` the held triad locks and sits still where the equal one beats
 /// slowly, because their thirds are whole number ratios or near them; the
 /// ladder shows the same fact as rungs pulled 14 cents off the grid. And

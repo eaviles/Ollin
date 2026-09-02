@@ -43,7 +43,7 @@ final class Attractor_Example: Sketch {
 
         flow.speed = pace
         // The flow sizes its own dots against the attractor's reach; this only scales
-        // that, so the knob means the same thing on a shape two units across and one
+        // that, so the parameter means the same thing on a shape two units across and one
         // that is fifty.
         flow.size = flow.extent / 150 * dots
         updateAttractorFlow(flow)

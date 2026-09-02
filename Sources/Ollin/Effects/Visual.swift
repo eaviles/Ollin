@@ -20,7 +20,7 @@ import COllinShaders
 /// A `Visual` is a value describing the chain, rebuilt each `draw()` like any
 /// other Ollin drawing. Its *structure* decides the shader (compiled once and
 /// cached); its *numbers* ride a uniform buffer, so animating any argument
-/// (`.rotated(time * 0.2)`, an `@Param` knob) costs no recompile.
+/// (`.rotated(time * 0.2)`, an `@Param` parameter) costs no recompile.
 ///
 /// Chains fall into five families:
 /// - **Sources** make color from nothing (`.oscillator`, `.noise`, `.voronoi`,
@@ -400,7 +400,7 @@ private struct VisualCompiler {
         return literal(v)
     }
 
-    /// A structural value spelled into the source (selectors, not knobs).
+    /// A structural value spelled into the source (selectors, not parameters).
     func literal(_ v: Double) -> String {
         let f = Float(v)
         return f == f.rounded() && abs(f) < 1e7 ? "\(Int(f)).0" : "\(f)"

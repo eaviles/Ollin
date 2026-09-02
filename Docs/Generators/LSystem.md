@@ -294,7 +294,7 @@ Ordinary `lSystem(…)` returns `[Contour]` exactly as the symbolic form does. T
 | `.taperedTree(…)` | a tree given its own width as well as its own length; draw it `tapered` |
 | `.randomBranch` | a weighted branch that leans differently every seed |
 
-`taperedTree` is the one preset with knobs, because it is a whole family. Its defaults are the first row of a published table of nine trees. Here are three more worth typing out:
+`taperedTree` is the one preset with parameters, because it is a whole family. Its defaults are the first row of a published table of nine trees. Here are three more worth typing out:
 
 ```swift
 .taperedTree(contraction1: 0.65, contraction2: 0.71, angle1: 27, angle2: -68,

@@ -106,7 +106,7 @@ final class Ragdoll: Sketch {
         ragdoll.goLimp()
     }
 
-    /// The looseness knob, applied to every joint the moment it moves.
+    /// The looseness parameter, applied to every joint the moment it moves.
     func retune() {
         guard abs(looseness - appliedLooseness) > 0.01 else { return }
         appliedLooseness = looseness

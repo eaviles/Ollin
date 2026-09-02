@@ -11,7 +11,7 @@ import Ollin
 /// should print.
 ///
 /// The canvas is the poster itself, which is the whole point: draw normally,
-/// declare the `printInks`, and the separation is an export away. The `view` knob
+/// declare the `printInks`, and the separation is an export away. The `view` parameter
 /// in the inspector flips to the three masters, or to the overprint preview
 /// screened through `halftoned()` so the dots the press would lay down are
 /// visible, each ink's grid at its own angle. Write the actual print files

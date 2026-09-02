@@ -61,7 +61,7 @@ final class ParametersToSource: Sketch {
                  size: 17, color: theme.ink, align: .right, .middle)
     }
 
-    /// The one action under the knobs, waiting in the first panel and run in
+    /// The one action under the parameters, waiting in the first panel and run in
     /// the second, where it says what it wrote.
     private func saveButton(in panel: Rectangle, pressed: Bool) {
         let button = Rectangle(x: panel.x + 26, y: panel.y + 132, width: panel.width - 52, height: 38)

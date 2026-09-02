@@ -14,7 +14,7 @@ import Ollin
 /// height's slopes, in the standard green-up encoding `(n + 1) / 2`. Attaching
 /// one is `mesh.normalMapped(map)`, which also generates the per-vertex
 /// tangent basis the map needs (MikkTSpace, the same basis normal-map bakers
-/// target, so maps baked in other tools light the same way). The `relief` knob
+/// target, so maps baked in other tools light the same way). The `relief` parameter
 /// is the map's strength: 0 turns it off, 1 is as authored, higher exaggerates.
 ///
 /// The fourth sphere is the bare control: same geometry, same light, no map.

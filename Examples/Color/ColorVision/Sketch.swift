@@ -9,7 +9,7 @@ import Ollin
 /// second column. `confusions(under:)` finds that pair for you, and the swatch
 /// is marked where it happens.
 ///
-/// The `preview` knob puts `Filter.colorVision` over the whole canvas instead,
+/// The `preview` parameter puts `Filter.colorVision` over the whole canvas instead,
 /// which is how you check a finished piece rather than a palette.
 @main
 final class ColorVisionSketch: Sketch {

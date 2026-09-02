@@ -10,7 +10,7 @@ import Ollin
 ///
 /// Both panels are pure functions of the window, so they render once into
 /// retained batches and every frame just replays them; drag the `from`/`to`
-/// knobs to zoom into the cascade (try 3.82...3.87: the period-3 window's
+/// parameters to zoom into the cascade (try 3.82...3.87: the period-3 window's
 /// own doubling cascade, the whole diagram again in miniature).
 @main
 final class Bifurcation: Sketch {
@@ -49,7 +49,7 @@ final class Bifurcation: Sketch {
 
     /// Both panels, recorded once per window: the diagram's dot columns and
     /// the exponent trace are static geometry, so the batch replays them for
-    /// free while the knobs rest.
+    /// free while the parameters rest.
     private func drawPlates(over window: ClosedRange<Double>) {
         // The diagram: one column of settled orbit values per pixel, faint
         // ink dots piling into tone where the branches crowd.

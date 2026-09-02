@@ -54,7 +54,7 @@ final class EditorController {
     }
 
     /// Replace the buffer with an edit made for the person at the keyboard (the
-    /// knob values written into their own `@Param` lines), keeping what
+    /// parameter values written into their own `@Param` lines), keeping what
     /// `setText` throws away: the caret, the scroll, and one undo step that
     /// takes the whole thing back. It goes through the text view rather than the
     /// storage so the change is an ordinary edit, which is what marks the
@@ -121,7 +121,7 @@ final class EditorController {
         }
     }
 
-    /// Push the persisted style knobs (font size, backdrop opacity) into the
+    /// Push the persisted style parameters (font size, backdrop opacity) into the
     /// highlighter; no-ops when nothing changed so SwiftUI update passes stay
     /// cheap.
     func configure(fontSize: Double, backdropOpacity: Double) {

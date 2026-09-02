@@ -88,7 +88,7 @@ The reason to bother is one sentence. **A filter can only take harmonics away, a
 
 The picture is that sentence measured. Each column is the arithmetic one operator pushing another does, with the wave on top and, below it, how much of the wave sits at each multiple of half the note. The plain sine has one bar and nothing else to take. Turn the index up and a run of harmonics grows out of it. Move the ratio to 3.5 and the bars stop landing on the note's own harmonics and fall between them, which is the difference between a tone and a clang.
 
-`Examples/Audio/Patching` puts both knobs under your hand with the graph drawn as it is wired.
+`Examples/Audio/Patching` puts both parameters under your hand with the graph drawn as it is wired.
 
 There is a constraint worth knowing about, because it explains the one number in the API that looks arbitrary. A patch travels to the audio thread inside a note, through a queue of slots that already exist. It has to be something copyable a word at a time, with no arrays, no references, and nothing to allocate. So the operators live in fixed lanes and there are eight. A patch that would need more comes back unchanged and says so, rather than quietly dropping one. A patch with a piece missing is a different instrument, and finding that out by ear is worse than reading it in the log.
 
@@ -130,7 +130,7 @@ The closure is handed each block of samples on its way to the speakers and rewri
 
 An effect that has to remember something between blocks takes its memory as `state:` and gets it back on every block. That is how a filter, an envelope follower, or an echo of your own carries itself from one block to the next. The closure runs on the audio thread with the speakers waiting. Keep it to arithmetic over the samples: no allocating, no locking, no reaching back into the sketch. `state:` exists because the thread rule also means the closure cannot write into a captured variable.
 
-`Examples/Audio/Shaping` is three of these behind one knob: a wavefolder, a crush that remembers each held sample in `state:`, and a wobble that breathes on `sound.time`. The sound going in is drawn dim, and the sound coming out bright.
+`Examples/Audio/Shaping` is three of these behind one parameter: a wavefolder, a crush that remembers each held sample in `state:`, and a wobble that breathes on `sound.time`. The sound going in is drawn dim, and the sound coming out bright.
 
 ## An instrument somebody recorded
 
@@ -358,7 +358,7 @@ for step in counter.steps(upTo: time * 104 / 60) {
 }
 ```
 
-That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count. The key, the figure, and the tempo are knobs you move while it plays. All of it repeats. The same seed gives the same melody, and the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
+That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count. The key, the figure, and the tempo are parameters you move while it plays. All of it repeats. The same seed gives the same melody, and the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
 
 ## Chords that come out of a key
 
@@ -380,7 +380,7 @@ Degrees, because that is the fact that survives changing key. `I vi IV V` is the
   <img src="Images/29-MakingSound/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
 </picture>
 
-Those are the notes `pitches(at:)` actually hands back, in two keys, with nothing else changed. Every chord comes out different, and each one is whatever the scale's own notes make of that degree. Watch the second column, which is minor in the major key and major in the minor one. That is not a special case. It is what happens when the numeral only ever meant "start here and take every other note". `Examples/Audio/Changes` puts the key on a knob so you can hear this happen while it plays. One thing about the labels. Ollin names every black key with a sharp, so the minor row's `G#` is the A flat a score would print. It is the same pitch either way.
+Those are the notes `pitches(at:)` actually hands back, in two keys, with nothing else changed. Every chord comes out different, and each one is whatever the scale's own notes make of that degree. Watch the second column, which is minor in the major key and major in the minor one. That is not a special case. It is what happens when the numeral only ever meant "start here and take every other note". `Examples/Audio/Changes` puts the key on a parameter so you can hear this happen while it plays. One thing about the labels. Ollin names every black key with a sharp, so the minor row's `G#` is the A flat a score would print. It is the same pitch either way.
 
 There are named ones (`.pop`, `.blues`, `.twoFiveOne`, `.andalusian`), and there is a way to leave the cycle:
 
@@ -671,7 +671,7 @@ Then make it yours:
 - Change the three strike counts. `Rhythm(7, in: 16)` under the string turns the floor into something you have to count.
 - Give the bell a whole-number ratio, `3` instead of `3.47`. It stops being metal and becomes an organ pipe, and nothing else in the sketch changes.
 - Swap `Scale(.minorPentatonic, root: "A2")` for `.hirajoshi` or `.blues`. Every wandering degree stays in the new key, because that is the one thing a scale guarantees.
-- Put the tempo on a `@Param` knob and drag it while it runs.
+- Put the tempo on a `@Param` and drag its slider while it runs.
 - Feed the same step number to something you draw in 3D, and let the piece move a scene rather than a score.
 
 ## Where this comes from
@@ -692,7 +692,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.
 - [Spatial audio](../Docs/Helpers/Synthesis.md#placing-a-sound): placing a source in the room, the listener, and what an export writes.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with knobs), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
+- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
 
 ---
 

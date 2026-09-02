@@ -470,7 +470,7 @@ extension MetalRenderer {
         case let .antialias(amount, threshold, quality):
             // The floor under the relative test is half of it. A ratio alone finds
             // "edges" in near-black, where a step of a few thousandths is a large
-            // fraction of nothing, so one knob sets both and they stay in step.
+            // fraction of nothing, so one parameter sets both and they stay in step.
             return pass("ollin_fx_antialias", [input],
                         [SIMD4(texel.x, texel.y, Float(threshold), Float(threshold) * 0.5),
                          SIMD4(Float(amount), Float(antialiasSearchSteps(quality)), 0, 0)])
@@ -1045,7 +1045,7 @@ extension MetalRenderer {
     /// The fitted kernels a convolution pyramid runs, one set per field it stands in
     /// for. Both h1 and g are symmetric, so only half of each is carried: h1's outer,
     /// inner and center taps, the h2 weight on what comes up from below, and g's outer
-    /// and center taps. The numbers are the published fits, not tuning knobs: they
+    /// and center taps. The numbers are the published fits, not tuning parameters: they
     /// are what makes the pyramid approximate its field rather than blur.
     enum ConvolutionKernel {
         /// The membrane: the field that is the average of its neighbors away from
@@ -2073,7 +2073,7 @@ extension MetalRenderer {
         // Design patterns. Each packs its scalars into leading rows and appends
         // the palette as trailing color rows the fragment indexes past them.
         case let .meshGradient(colors, distortion, swirl, mixing, grain, phase):
-            // The blend knob maps to the inverse-distance power piecewise so the
+            // The blend parameter maps to the inverse-distance power piecewise so the
             // 0.5 default is *exactly* the classic 3.5 (snapshot-pinned): 0 is a
             // hard near-Voronoi 16, 1 a buttery 1.
             let power = mixing <= 0.5 ? 16.0 - (16.0 - 3.5) * (mixing * 2)
@@ -2385,7 +2385,7 @@ extension MetalRenderer {
     /// are what keeps the ends of the ramp on the outermost nodes). Kept across
     /// frames, since the lattice behind it is: a sketch proofs against the same
     /// printing condition every frame and re-uploading half a megabyte for that
-    /// would be pure waste. Bounded, so sweeping a knob through conditions cannot
+    /// would be pure waste. Bounded, so sweeping a parameter through conditions cannot
     /// grow it without end.
     private func proofLUTTexture(_ lut: ProofLUT) -> MTLTexture? {
         let id = ObjectIdentifier(lut)

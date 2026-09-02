@@ -6,7 +6,7 @@ import Foundation
 /// same seed and the same inputs walk a fresh instance through the same
 /// frames, so frame N of the replay is frame N of the original run.
 ///
-/// A take captures what *drives* a sketch (time, pointer, keys, knobs,
+/// A take captures what *drives* a sketch (time, pointer, keys, parameters,
 /// randomness), not what it draws. Anything outside that loop (a live camera,
 /// a microphone, incoming OSC or MIDI, a wall clock read directly) plays live
 /// during a replay and is not reproduced.
@@ -75,7 +75,7 @@ public struct Take: Codable, Equatable, Sendable {
     /// The canvas size at recording time, `[width, height]`, informational.
     public var canvas: [Int]
     /// Every `@Param` value at the moment recording started, so a replay
-    /// starts from the same knob settings before `setup()` reads them.
+    /// starts from the same parameter settings before `setup()` reads them.
     public var initialParams: [String: ParamStored]
     /// One clock sample per frame: `frames[k]` drove the advance from
     /// `frameCount == k` to `k + 1`.
@@ -108,9 +108,9 @@ public struct Take: Codable, Equatable, Sendable {
     // MARK: Replay
 
     /// Prepare a fresh sketch to play this take back: seed it, restore the
-    /// recorded starting knob values, and attach the player that will feed it
+    /// recorded starting parameter values, and attach the player that will feed it
     /// the recorded clock and inputs. Call before the first frame, so
-    /// `setup()` already runs under the take's seed and knob values. The
+    /// `setup()` already runs under the take's seed and parameter values. The
     /// windowed and headless drivers both go through `Sketch.advance`, so
     /// after this call any of them replays the run with no further wiring.
     @MainActor
@@ -121,7 +121,7 @@ public struct Take: Codable, Equatable, Sendable {
         sketch.takePlayer = TakePlayer(take: self)
     }
 
-    /// Restore the recorded starting `@Param` values (a knob the sketch has
+    /// Restore the recorded starting `@Param` values (a parameter the sketch has
     /// since renamed or retyped is skipped; the new default wins).
     @MainActor
     func applyStart(to sketch: Sketch) {
@@ -176,7 +176,7 @@ final class TakeRecorder {
         take.events.append(Take.StampedEvent(frame: frame, event: event))
     }
 
-    /// Record one frame's clock, and any knob values that moved since the
+    /// Record one frame's clock, and any parameter values that moved since the
     /// last frame. Called from `Sketch.advance`, before the frame draws.
     func recordFrame(of sketch: Sketch, time: Double, deltaTime: Double, frameRate: Double) {
         // The recorder can attach before the canvas size is known (the runner
@@ -199,7 +199,7 @@ final class TakeRecorder {
 // MARK: - Playback
 
 /// Feeds a recorded take back into a sketch: `Sketch.advance` asks it for each
-/// frame's clock, and it applies that frame's events and knob changes first,
+/// frame's clock, and it applies that frame's events and parameter changes first,
 /// through the same paths live input takes, so the hooks fire again. Past the
 /// end of the take the clock keeps advancing on the caller's step, so a run
 /// can play on beyond its recording.

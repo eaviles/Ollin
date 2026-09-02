@@ -206,4 +206,4 @@ Careful with the near neighbors: `.stereoMultiviewVideo` is true for any two-lay
 - [Export](./Export.md) covers frames, ordinary video, and the vector formats.
 - [3D](../3D/3D.md) and [Camera](../3D/Camera.md) cover the scene and the shot a stereo pair is taken from.
 - `Examples/3D/Geometry/SpatialExport` is a ring of solids you can write out and open.
-- `Examples/3D/Geometry/SpatialVideo` is a colonnade built for depth, with the two stereo numbers on knobs.
+- `Examples/3D/Geometry/SpatialVideo` is a colonnade built for depth, with the two stereo numbers on parameters.

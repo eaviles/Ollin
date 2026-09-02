@@ -71,7 +71,7 @@ The flame algorithm extends the chaos game three ways.
 - **Structural coloring.** The orbit carries a color coordinate that averages toward each visited transform's palette index. Color therefore encodes *which maps* shaped each region.
 - **Log density.** The render accumulates a per-pixel density histogram and shows it through a logarithm, which is why filaments, veils, and cores all stay visible at once.
 
-Three knobs tune the development. `gamma` goes up to 4 to pull faint structure out of the veils. `vibrancy` at 1 keeps colors saturated under a strong gamma, and 0 washes them toward pastel. `brightness` multiplies the log-scaled density before gamma.
+Three parameters tune the development. `gamma` goes up to 4 to pull faint structure out of the veils. `vibrancy` at 1 keeps colors saturated under a strong gamma, and 0 washes them toward pastel. `brightness` multiplies the log-scaled density before gamma.
 
 ```swift
 let renderer = FractalFlame.Renderer(flame, width: 560, height: 560, seed: variation)

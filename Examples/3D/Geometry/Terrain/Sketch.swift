@@ -6,7 +6,7 @@ import Ollin
 /// the slopes that stand too steep (`.thermal`). Both the raw and the eroded
 /// fields become meshes in `setup()`, wearing a texture that colors each
 /// sample by its height, so the `weathered` toggle flips between them and the
-/// carving reads directly. Everything reproduces from the seed knob.
+/// carving reads directly. Everything reproduces from the seed parameter.
 @main
 final class Terrain3D: Sketch {
     private var rawMesh = Mesh(positions: [], indices: [])

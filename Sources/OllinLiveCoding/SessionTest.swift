@@ -61,11 +61,11 @@ enum SessionTest {
         }
 
         print("OllinLiveCoding sessiontest: param carry across an evaluation …")
-        session.recordParam("radius", .number(42))   // the user dragged this knob
+        session.recordParam("radius", .number(42))   // the user dragged this parameter
         session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 2)))
         await settle(session)
         guard value(of: "radius", session) == 42 else {
-            fail("the dragged knob snapped back to \(value(of: "radius", session) ?? .nan)")
+            fail("the dragged parameter snapped back to \(value(of: "radius", session) ?? .nan)")
         }
         guard value(of: "speed", session) == 2 else {
             fail("the untouched param kept a stale default instead of the edited one")

@@ -69,7 +69,7 @@ public enum TrackpadPlan {
     ///
     /// - Parameters:
     ///   - pattern: what the sketch asked for.
-    ///   - strength: an overall multiplier, the sketch's own volume knob.
+    ///   - strength: an overall multiplier, the sketch's own volume parameter.
     public static func knocks(for pattern: HapticPattern, strength: Double = 1) -> [TrackpadKnock] {
         let scale = max(0, strength.finiteOrZero)
         var planned: [TrackpadKnock] = []

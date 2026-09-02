@@ -93,7 +93,7 @@ dish = makeSimField(.lenia(radius: 13), scale: 0.55)
 
 <img src="Images/19-GridSimulations/Lenia.jpg" alt="Lenia colonies on near-black: several large patches of fine cream-colored ridges with soft glowing teal edges, growing outward into open space, with a few small round organisms drifting alone at the left" width="560">
 
-Those knobs are the model's whole personality. `radius` is how far the ring reaches. The growth center and width are the target mass, and how forgiving the rule is about missing it. The one thing to know before running it is that **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, which looks like a bug and isn't. So give it a generous soup of soft marks, and a few hundred frames. What grows are colonies with soft glowing edges, and at the right settings, small self-contained creatures that swim.
+Those parameters are the model's whole personality. `radius` is how far the ring reaches. The growth center and width are the target mass, and how forgiving the rule is about missing it. The one thing to know before running it is that **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, which looks like a bug and isn't. So give it a generous soup of soft marks, and a few hundred frames. What grows are colonies with soft glowing edges, and at the right settings, small self-contained creatures that swim.
 
 ## The medium that has to rest: excitable media
 
@@ -206,7 +206,7 @@ Reaction-diffusion is the Game of Life's continuous cousin, and the engine of th
   <img src="Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 </picture>
 
-Read the map honestly, because most of the parameter space is quiet. Life, in this system, is a narrow band where feeding and killing balance. Every regime along that band has its own signature. There are dividing dots, which are the defaults, plus worm mazes and coral walls. Put `feed` and `kill` on `@Param` knobs and you can walk the map live, and the `Simulation/GrayScott` example is exactly that.
+Read the map honestly, because most of the parameter space is quiet. Life, in this system, is a narrow band where feeding and killing balance. Every regime along that band has its own signature. There are dividing dots, which are the defaults, plus worm mazes and coral walls. Put `feed` and `kill` on `@Param` parameters and you can walk the map live, and the `Simulation/GrayScott` example is exactly that.
 
 The regime doesn't have to be one choice for the whole dish. Give the sim two settings: `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`. Then attach any layer as `dish.modulation`, and that layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. **A picture can choose the chemistry, place by place.** It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
 
@@ -246,7 +246,7 @@ That's the whole sketch, and the missing piece is the point. There's no `withFie
 
 The look is worth a word. People usually reach for `.gradientMap` on a grayscale field, but try `.relight` first here. The algorithm is flat and two-dimensional and knows nothing about light, yet the result reads convincingly like something photographed under a microscope. McCabe noticed this too, and the resemblance to electron micrographs of diatoms is what the pictures are known for.
 
-Two knobs repay understanding, because each one is the difference between the pattern and a near-miss. Keep the **amounts equal** across scales. Every step renormalizes the field to fill its range, so whichever scale pushes hardest sets that range. It squeezes the others toward mid gray, leaving you one scale's pattern with the rest as a faint wash. And **`variationRadius`** decides how large a region a scale can claim, by setting how far each scale's disagreement is averaged before the scales are compared. Read at a single point, a fine scale's disagreement passes through zero along every contour of its own structure. And since *least* disagreement wins, it takes a dense web of pixels across the whole field, burying the coarse scales entirely.
+Two parameters repay understanding, because each one is the difference between the pattern and a near-miss. Keep the **amounts equal** across scales. Every step renormalizes the field to fill its range, so whichever scale pushes hardest sets that range. It squeezes the others toward mid gray, leaving you one scale's pattern with the rest as a faint wash. And **`variationRadius`** decides how large a region a scale can claim, by setting how far each scale's disagreement is averaged before the scales are compared. Read at a single point, a fine scale's disagreement passes through zero along every contour of its own structure. And since *least* disagreement wins, it takes a dense web of pixels across the whole field, burying the coarse scales entirely.
 
 Add `symmetry` and the field folds around its center. `.rosette(n)` does it to every rung at once, which is where the diatom resemblance becomes uncanny:
 
@@ -348,7 +348,7 @@ Leave a stroke alone and its edge darkens on its own. The wet rim sheds water an
 
 Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far into a fixed glaze. The next wash paints over it without disturbing it, and the layers mix like light through stained glass rather than like ink. Hansa yellow over ultramarine makes the muted green those real paints actually mix. `paint.blot()` lifts only the standing water and leaves the pigment sitting damp, which is the state a *backrun* wants. Hold a clean-water touch in a blotted wash and the water floods back through the damp paint. It shoves pigment ahead of it into a pale bloom with a dark branching rim. A single tap only nudges. Holding the wet brush is what blooms. The water does the painting, and your job is deciding where it lands.
 
-There are knobs for the paper too. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you can't find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
+There are parameters for the paper too. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you can't find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
 
 ## The picture dragging its past: self-warp
 
@@ -435,7 +435,7 @@ Run it live and draw. Your marks don't appear on the canvas; they enter the chem
 
 Then make it yours:
 
-- Walk the map by putting `feed` and `kill` on knobs, and steer the culture between mitosis, worms, and coral while it grows.
+- Walk the map by putting `feed` and `kill` on parameters, and steer the culture between mitosis, worms, and coral while it grows.
 - Recolor the skin ramp. The same labyrinth reads as coral, lichen, or circuitry depending entirely on four colors.
 - Seed with meaning. [Chapter 8](08-Words.md)'s `drawText` into the field grows a word into a labyrinth that slowly forgets it was a word.
 - Swap `.relight(.liquid)` for `.relight(.metal, color:)` and the organism becomes an engraving.
@@ -453,7 +453,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 
 ## Go deeper
 
-- [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every knob, seeding semantics, and field scale.
+- [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every parameter, seeding semantics, and field scale.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (eight rules on a picker, the falling sand among them), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).

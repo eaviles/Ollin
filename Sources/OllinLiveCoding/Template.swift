@@ -1,7 +1,7 @@
 import Foundation
 
 /// The starter buffer for a new, untitled performance: a short motion-by-default
-/// sketch with one tunable knob, so the first ⌘↩ already moves and the
+/// sketch with one tunable parameter, so the first ⌘↩ already moves and the
 /// inspector already has a slider. Kept tiny on purpose; it's a stage to type
 /// over, not a showcase.
 enum SketchTemplate {

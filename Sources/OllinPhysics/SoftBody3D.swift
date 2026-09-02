@@ -73,7 +73,7 @@ public class SoftBody3D {
     /// The source mesh's vertices merged onto particles, plus the map back.
     private let welding: MeshWelding
 
-    /// Raw pressure per unit of the `pressure` knob: the body's own mass, rest
+    /// Raw pressure per unit of the `pressure` parameter: the body's own mass, rest
     /// volume, and rest area folded into one number, so `pressure` means the
     /// same at any size.
     private let pressureScale: Double
@@ -202,8 +202,8 @@ public class SoftBody3D {
         self.buildPosition = position
         self.buildRotation = rotation
 
-        // Rest measurements, in meters, are what let the knobs mean the same
-        // thing whatever the body's size: the pressure knob is calibrated
+        // Rest measurements, in meters, are what let the parameters mean the same
+        // thing whatever the body's size: the pressure parameter is calibrated
         // against them and the spring compliance against the particle mass.
         let scale = world.unitsPerMeter
         var area = 0.0
@@ -257,7 +257,7 @@ public class SoftBody3D {
         }
         // The solver's pressure is `n R T`, and the outward acceleration it
         // gives works out to pressure * area / (mass * volume). Expressing the
-        // knob as that acceleration in gravities is what makes `pressure: 1`
+        // parameter as that acceleration in gravities is what makes `pressure: 1`
         // mean "just holds its own weight up" at any scale.
         let gravity = world.gravity.length > 1e-6 ? world.gravity.length : 9.8
         pressureScale = area > 1e-12 && volume > 1e-12
@@ -278,7 +278,7 @@ public class SoftBody3D {
             }
         }
 
-        // The compliance a knob setting maps onto depends on the body it is
+        // The compliance a parameter setting maps onto depends on the body it is
         // describing, so the scale is measured from the rest shape once.
         let complianceScale = meanEdge * Double(welding.count).squareRoot()
             / (massKg * gravity)
@@ -326,7 +326,7 @@ public class SoftBody3D {
         // A fold constraint measures an angle where a stretch constraint
         // measures a length, so its compliance carries two fewer powers of
         // length: dividing by the edge length squared is what puts the same
-        // 0…1 knob over the range that actually reads as limp to stiff.
+        // 0…1 parameter over the range that actually reads as limp to stiff.
         let bendScale = complianceScale / max(meanEdge * meanEdge, 1e-12)
         desc.bendCompliance = bend > 0
             ? Float(SoftBody3D.compliance(for: bend, scale: bendScale))
@@ -996,7 +996,7 @@ public class SoftBody3D {
     /// Compliance is a physical quantity, so a fixed number means different
     /// things on different bodies: the same 0.001 that visibly softens a heavy
     /// cloth does nothing at all to a light one, because the load is a
-    /// thousandth of the size. The knob is made scale-free by turning it into a
+    /// thousandth of the size. The parameter is made scale-free by turning it into a
     /// *relative stretch* instead, and `scale` converts that back:
     ///
     ///     scale = meanEdgeLength * sqrt(particleCount) / (mass * gravity)
@@ -1005,7 +1005,7 @@ public class SoftBody3D {
     /// body's own hanging weight, stretches by its own length. So a softness of
     /// `0.1` means "the most loaded springs give about a tenth of their length",
     /// on a curtain or on a beach ball.
-    /// The compliance a rod's bend-and-twist knob maps onto, per unit of
+    /// The compliance a rod's bend-and-twist parameter maps onto, per unit of
     /// softness, in the same 0…1 terms the rest of the tier uses.
     ///
     /// A rod's bend constraint holds a *rotation*, which is a pure number, so
@@ -1018,7 +1018,7 @@ public class SoftBody3D {
     ///
     /// which is what makes one `bend` setting mean the same thing on a stem, a
     /// vine, and a mooring line. The constant is what puts "drooping about a
-    /// third of the way" in the middle of the knob rather than at one end.
+    /// third of the way" in the middle of the parameter rather than at one end.
     static func rodBendScale(meanEdge: Double, length: Double, mass: Double,
                              gravity: Double) -> Double {
         let span = max(length, 1e-9)

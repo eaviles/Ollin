@@ -64,7 +64,7 @@ public struct Filter: Sendable {
     /// different pictures rather than one look at different strengths: a lens, a
     /// misregistered plate, a fringe that only appears at edges, and a difference in
     /// focus rather than in position. Every one of them hands back the layer unchanged
-    /// at `amount: 0`, so the knob is honest and an A/B costs nothing.
+    /// at `amount: 0`, so the parameter is honest and an A/B costs nothing.
     public enum Dispersion: Sendable, Equatable {
         /// A per-channel scale of the frame about its center: the split grows straight
         /// with the distance from the middle, so straight lines stay straight and the
@@ -1275,7 +1275,7 @@ public struct Filter: Sendable {
     /// centers, so an antialiased shape measures to a fraction of a pixel.
     ///
     /// `maxDistance` stops the measurement early. It is both an answer ("I only care
-    /// about the first 64 pixels") and the speed knob, since the flood costs one pass per
+    /// about the first 64 pixels") and the speed parameter, since the flood costs one pass per
     /// doubling of the distance it has to carry. Past it the field reads flat, with a
     /// zero direction, which says "nothing within reach" rather than pointing nowhere.
     public static func distanceField(from source: FieldSource = .alpha,
@@ -1359,7 +1359,7 @@ public struct Filter: Sendable {
     /// pixel must fall before it goes dark, which keeps flat paper from breaking up into
     /// noise. A fraction rather than a distance is what makes the cut survive uneven
     /// light, since light falling on a page multiplies what comes back off it. The window
-    /// costs nothing to widen, so it is a knob to turn freely.
+    /// costs nothing to widen, so it is a parameter to adjust freely.
     public static func adaptiveThreshold(window: Double? = nil, bias: Double = 0.15,
                                          invert: Bool = false) -> Filter {
         Filter(kind: .adaptiveThreshold(window: window.map { max(1, $0) },

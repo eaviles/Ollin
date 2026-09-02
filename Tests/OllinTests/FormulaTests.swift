@@ -242,10 +242,10 @@ struct FormulaTests {
         }
     }
 
-    /// A dot joins a knob to one of its parts, so `center.x` is one name. The
+    /// A dot joins a parameter to one of its parts, so `center.x` is one name. The
     /// dot in a number is untouched by that, which is the pair a tokenizer gets
     /// wrong: reading `1.5` as a name, or `center.x` as three tokens.
-    @Test func aDotJoinsAKnobToOneOfItsParts() throws {
+    @Test func aDotJoinsAParameterToOneOfItsParts() throws {
         let formula = try Formula("center.x + center.y * 2")
         #expect(formula.variables == ["center.x", "center.y"])
         #expect(formula.value(["center.x": 3, "center.y": 4]) == 11)

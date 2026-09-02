@@ -24,7 +24,7 @@ override func draw() {
 }
 ```
 
-As a reference point, take 150,000 circles. The ordinary path costs ~13.5 ms of CPU per frame in a release build on an M2. That is a ~74 fps ceiling before anything else happens. The same field replayed as a `Batch` costs ~0.003 ms. The [`RetainedBatch`](../../Examples/Rendering/RetainedBatch/Sketch.swift) example has a knob that flips between the two paths so the difference shows live in the inspector.
+As a reference point, take 150,000 circles. The ordinary path costs ~13.5 ms of CPU per frame in a release build on an M2. That is a ~74 fps ceiling before anything else happens. The same field replayed as a `Batch` costs ~0.003 ms. The [`RetainedBatch`](../../Examples/Rendering/RetainedBatch/Sketch.swift) example has a parameter that flips between the two paths so the difference shows live in the inspector.
 
 (Don't confuse this with the *collection calls* like [`drawCircles(_:)`](./Drawing.md#batches), which draw many shapes in one call but still record them every frame. Those are the right tool for *dynamic* crowds, and a `Batch` is the right tool for *static* ones.)
 

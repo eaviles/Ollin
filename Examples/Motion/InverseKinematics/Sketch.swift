@@ -5,7 +5,7 @@ import Ollin
 /// row of rigid segments solved fresh every frame, warm-started from its last
 /// pose, so the arms move coherently instead of snapping.
 ///
-/// The `stiffness` knob is `maxBend`, the angle each segment may fold against
+/// The `stiffness` parameter is `maxBend`, the angle each segment may fold against
 /// its neighbor: low values make ropes, high values make whips. The `whippy`
 /// toggle swaps the solver, and the difference is the whole aesthetic choice:
 /// the default spreads motion evenly down the arm (smooth, plant-like), the

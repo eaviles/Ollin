@@ -10,7 +10,7 @@ import OllinPhysics
 /// that belongs to the wheels: the front pair turns, the back pair is what the
 /// engine reaches, each one rides a spring you can stiffen until the island
 /// starts throwing the car around, and the hand brake locks only the pair that
-/// has one, which is what lets the back step out. The three knobs are all live,
+/// has one, which is what lets the back step out. The three parameters are all live,
 /// so you can soften the springs or oil the tires mid-corner and feel it.
 @main
 final class Joyride: Sketch {
@@ -20,7 +20,7 @@ final class Joyride: Sketch {
     var car: Vehicle3D!
     var crates: [Body3D] = []
 
-    /// The three knobs worth turning while driving. `topSpeed` is the gearing:
+    /// The three parameters worth changing while driving. `topSpeed` is the gearing:
     /// wind it down and the car pulls harder but runs out of legs.
     @Param(10 ... 45, icon: "speedometer") var topSpeed = 26.0
     @Param(1.0 ... 3.2, icon: "car.side.rear.tilted") var springs = 1.6

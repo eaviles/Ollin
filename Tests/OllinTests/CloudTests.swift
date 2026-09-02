@@ -10,7 +10,7 @@ import Foundation
 @Suite
 struct CloudStateTests {
 
-    @Test func knobsClampSane() {
+    @Test func parametersClampSane() {
         let c = Clouds(coverage: 3, density: -1, scale: 100, tallness: -2, phase: 5)
         #expect(c.coverage == 1)
         #expect(c.density == 0)
@@ -28,9 +28,9 @@ struct CloudStateTests {
     @Test func theModifierRidesTheEnvironment() {
         let e = Environment.sky(sunElevation: 0.5).clouds(.broken)
         #expect(e.clouds == .broken)
-        let knobs = Environment.sky().clouds(coverage: 0.3, phase: 2)
-        #expect(knobs.clouds?.coverage == 0.3)
-        #expect(knobs.clouds?.phase == 2)
+        let parameters = Environment.sky().clouds(coverage: 0.3, phase: 2)
+        #expect(parameters.clouds?.coverage == 0.3)
+        #expect(parameters.clouds?.phase == 2)
     }
 
     @Test func theCacheKeySeparatesCloudsOnSkiesOnly() {

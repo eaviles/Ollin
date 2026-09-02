@@ -17,7 +17,7 @@ import simd
 /// }
 /// ```
 ///
-/// `waveHeight` is the one knob in world units, and it means what a sailor
+/// `waveHeight` is the one parameter in world units, and it means what a sailor
 /// means: the significant wave height, the average of the tallest third, which
 /// is four times the surface's standard deviation. The rest shape the sea
 /// rather than size it. Everything is deterministic from `seed`, so the same
@@ -70,7 +70,7 @@ public struct Ocean: Hashable, Sendable {
     public var loopSeconds: Double
 
     /// The seed behind the sea's randomness. Two oceans with the same seed and
-    /// the same knobs are the same water, frame for frame.
+    /// the same parameters are the same water, frame for frame.
     public var seed: Int
 
     public init(waveHeight: Double = 1.6,
@@ -137,7 +137,7 @@ public struct Ocean: Hashable, Sendable {
     /// The height at a point is the sum of every wave in the field, so its
     /// variance is the sum of the spectrum over the whole grid (twice it, since
     /// each wave arrives as a conjugate pair). That sum is a closed form of the
-    /// knobs above, so the scale can be worked out on the CPU rather than
+    /// parameters above, so the scale can be worked out on the CPU rather than
     /// measured back off the GPU, and `waveHeight` becomes a number in world
     /// units instead of a dial to be turned by eye.
     func amplitude(resolution: Int) -> Double {
@@ -197,7 +197,7 @@ struct OceanRequest {
 }
 
 /// What the amplitude of a sea state depends on, and nothing more, so a sketch
-/// turning a knob every frame works the sum out once per value it lands on.
+/// adjusting a parameter every frame works the sum out once per value it lands on.
 struct OceanAmplitudeKey: Hashable {
     var ocean: Ocean
     var resolution: Int

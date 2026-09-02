@@ -4,7 +4,7 @@ import OllinLink
 import OllinMIDI
 
 /// Motion locked to a beat, from either of the two ways a beat arrives. The
-/// `source` knob picks which clock drives the picture: `midi` follows MIDI
+/// `source` parameter picks which clock drives the picture: `midi` follows MIDI
 /// clock (a background timer sends the standard sync messages, timing clock at
 /// 24 pulses per quarter note plus transport start/stop, through a virtual
 /// source, and a `TempoClock` reads them back), and `link` joins the local
@@ -16,7 +16,7 @@ import OllinMIDI
 ///
 ///   swift run Example-Integration-Tempo
 ///
-/// Turn the BPM knob and the whole picture keeps step in either mode. On the
+/// Adjust the BPM parameter and the whole picture keeps step in either mode. On the
 /// MIDI side, flip `playing` off and it freezes where the transport stopped;
 /// leave it off and send MIDI clock from a DAW, a drum machine, or a DJ mixer
 /// to this Mac, and the sketch follows that instead. On the Link side a BPM
@@ -39,7 +39,7 @@ final class Tempo: Sketch {
     @Param(60...180) var bpm = 120.0
     @Param var playing = true
 
-    // Last values pushed to each side, so knob moves apply once and a change
+    // Last values pushed to each side, so parameter moves apply once and a change
     // arriving from a Link peer is not immediately overwritten.
     var sentBPM = 0.0
     var wasPlaying: Bool?
@@ -50,8 +50,8 @@ final class Tempo: Sketch {
         try? midi.start()
         sender = InternalClock()
         link.start()
-        // Seed the Link side with the knobs as they stand, so joining a session
-        // proposes nothing until a knob actually moves.
+        // Seed the Link side with the parameters as they stand, so joining a session
+        // proposes nothing until a parameter actually moves.
         sentLinkBPM = bpm
         sentLinkPlaying = playing
         noStroke()
@@ -60,7 +60,7 @@ final class Tempo: Sketch {
     override func draw() {
         background(Color(white: 0.08))
         driveInternalClock()
-        applyLinkKnobs()
+        applyLinkParameters()
 
         let accent = source == .midi
             ? Color(red: 0.55, green: 0.5, blue: 0.95)
@@ -151,7 +151,7 @@ final class Tempo: Sketch {
         drawText(status, 40 * scale, 105 * scale)
     }
 
-    /// Applies the knobs to the internal MIDI clock, once per change: `playing`
+    /// Applies the parameters to the internal MIDI clock, once per change: `playing`
     /// starts/stops its transport, and a BPM move retimes the running train.
     func driveInternalClock() {
         if playing != wasPlaying {
@@ -168,9 +168,9 @@ final class Tempo: Sketch {
         }
     }
 
-    /// Applies the knobs to the Link session, once per change: a BPM move
+    /// Applies the parameters to the Link session, once per change: a BPM move
     /// proposes the new tempo, and `playing` flips the shared transport flag.
-    func applyLinkKnobs() {
+    func applyLinkParameters() {
         if bpm != sentLinkBPM {
             sentLinkBPM = bpm
             link.tempo = bpm

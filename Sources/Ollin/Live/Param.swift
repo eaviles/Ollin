@@ -2,7 +2,7 @@ import Foundation
 import os
 
 /// How a `@Param` eases into a new value instead of snapping to it. Pass one to a
-/// parameter to soften *every* source that drives the knob: a MIDI fader, an OSC
+/// parameter to soften *every* source that drives the parameter: a MIDI fader, an OSC
 /// address, or a drag of the inspector slider all glide rather than jump.
 ///
 /// ```swift
@@ -13,7 +13,7 @@ import os
 ///
 /// `.eased` glides to the target over a fixed time along an `Easing` curve:
 /// crisp and predictable. `.smoothed` runs the value through a `OneEuroFilter`,
-/// which stays steady while the knob is still and opens up as it moves, the
+/// which stays steady while the parameter is still and opens up as it moves, the
 /// better feel for a hand on live hardware. Smoothing applies to `Double`
 /// parameters; the other kinds switch instantly.
 public enum ParamSmoothing: Sendable {
@@ -29,14 +29,14 @@ public enum ParamSmoothing: Sendable {
         .eased(duration: duration, curve: curve)
     }
 
-    /// The 1€ filter at its gentle defaults, a good start for a live knob.
+    /// The 1€ filter at its gentle defaults, a good start for a live parameter.
     public static var smoothed: ParamSmoothing { .smoothed(minCutoff: 1, beta: 0.007) }
 }
 
 // MARK: - Stored values
 
 /// A parameter value in its host-persistable form. The live hosts record one per
-/// tuned knob (keyed by property name) and re-apply it across reloads, so the
+/// tuned parameter (keyed by property name) and re-apply it across reloads, so the
 /// payload is a small, codable value rather than the parameter's Swift type.
 public enum ParamStored: Equatable, Sendable, Codable {
     /// A `Double` or `Int` parameter's value.
@@ -115,7 +115,7 @@ private func evenPositions(_ count: Int) -> [Double] {
 /// which control kind to show, its metadata, and closures that read and write
 /// the live value. The inspector switches on this to build the right row; the
 /// closures are safe to call from the main thread while anything else drives
-/// the same knob.
+/// the same parameter.
 public enum ParamControl {
     case slider(Slider)
     case stepper(Stepper)
@@ -130,7 +130,7 @@ public enum ParamControl {
     case text(TextBox)
     case swatches(Swatches)
 
-    /// A `Double` knob: a slider over `range`, optionally snapped to `step`.
+    /// A `Double` parameter: a slider over `range`, optionally snapped to `step`.
     /// `style: .field` drops the track and leaves the scrubbable value field.
     public struct Slider: Sendable {
         public let range: ClosedRange<Double>
@@ -146,7 +146,7 @@ public enum ParamControl {
         }
     }
 
-    /// An `Int` knob: a value field with increment/decrement, stepping by `step`.
+    /// An `Int` parameter: a value field with increment/decrement, stepping by `step`.
     public struct Stepper: Sendable {
         public let range: ClosedRange<Int>
         public let step: Int
@@ -159,7 +159,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `Bool` knob: an on/off switch.
+    /// A `Bool` parameter: an on/off switch.
     public struct Toggle: Sendable {
         public let read: @Sendable () -> Bool
         public let write: @Sendable (Bool) -> Void
@@ -169,7 +169,7 @@ public enum ParamControl {
         }
     }
 
-    /// An enum knob: a pop-up menu (or segmented control) over `options`,
+    /// An enum parameter: a pop-up menu (or segmented control) over `options`,
     /// addressed by index.
     public struct Menu: Sendable {
         public let options: [String]
@@ -183,7 +183,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `Color` knob: a color well.
+    /// A `Color` parameter: a color well.
     public struct ColorWell: Sendable {
         public let read: @Sendable () -> Color
         public let write: @Sendable (Color) -> Void
@@ -193,7 +193,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `Vector2` knob: paired x/y value fields, each over its own range,
+    /// A `Vector2` parameter: paired x/y value fields, each over its own range,
     /// optionally with an XY pad below (`style: .pad`).
     public struct Vector: Sendable {
         public let xRange: ClosedRange<Double>
@@ -210,7 +210,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `Vector3` knob: x/y/z value fields, each over its own range.
+    /// A `Vector3` parameter: x/y/z value fields, each over its own range.
     public struct Vector3Fields: Sendable {
         public let xRange: ClosedRange<Double>
         public let yRange: ClosedRange<Double>
@@ -226,7 +226,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `Rectangle` knob: x/y/w/h value fields, each over its own range.
+    /// A `Rectangle` parameter: x/y/w/h value fields, each over its own range.
     public struct RectangleFields: Sendable {
         public let xRange: ClosedRange<Double>
         public let yRange: ClosedRange<Double>
@@ -244,7 +244,7 @@ public enum ParamControl {
         }
     }
 
-    /// An `Insets` knob: t/r/b/l value fields sharing one per-edge range.
+    /// An `Insets` parameter: t/r/b/l value fields sharing one per-edge range.
     public struct InsetsFields: Sendable {
         public let edgeRange: ClosedRange<Double>
         public let read: @Sendable () -> Insets
@@ -256,7 +256,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `ClosedRange<Double>` knob: min/max value fields within `outer`, over
+    /// A `ClosedRange<Double>` parameter: min/max value fields within `outer`, over
     /// a two-thumb slider by default (`style: .field` drops the track).
     public struct RangeFields: Sendable {
         public let outer: ClosedRange<Double>
@@ -271,7 +271,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `String` knob: a free text field.
+    /// A `String` parameter: a free text field.
     public struct TextBox: Sendable {
         public let read: @Sendable () -> String
         public let write: @Sendable (String) -> Void
@@ -281,7 +281,7 @@ public enum ParamControl {
         }
     }
 
-    /// A `Palette` or `Ramp` knob: a strip of colors, each opened in a color
+    /// A `Palette` or `Ramp` parameter: a strip of colors, each opened in a color
     /// well. Every color carries the position it sits at, so a ramp's stops
     /// can be moved along the band; a palette's colors are spread evenly and
     /// their positions only say where each block is drawn.
@@ -720,7 +720,7 @@ extension Ramp: ParamValue {
                 space: value.space.paramName)
     }
 
-    /// A palette's payload restores too (it carries no space), so a knob that
+    /// A palette's payload restores too (it carries no space), so a parameter that
     /// changed from one to the other keeps its colors.
     public static func restored(_ stored: ParamStored) -> Ramp? {
         guard case .colors(let stops, let space) = stored else { return nil }
@@ -745,7 +745,7 @@ extension Ramp: ParamValue {
 }
 
 private extension ColorSpace {
-    /// The name a ramp knob persists its blending space under. Stable: a
+    /// The name a ramp parameter persists its blending space under. Stable: a
     /// renamed key forgets a tuned ramp's space.
     var paramName: String {
         switch self {
@@ -855,7 +855,7 @@ public extension ParamChoices {
 
 // MARK: Built-in options
 
-// Ollin's own CaseIterable mode enums make natural knobs, so they conform out
+// Ollin's own CaseIterable mode enums make natural parameters, so they conform out
 // of the box: `@Param var blend: BlendMode = .normal` gets a menu for free.
 extension BlendMode: ParamOption {}
 extension StrokeCap: ParamOption {}
@@ -869,7 +869,7 @@ extension RenderingIntent: ParamOption {}
 // The curated-preset structs join through the named-choices tier. The
 // parameterized Material helpers (`.glass(...)`, `.metal(...)`, `.skin(radius:)`)
 // stay off the menu: a menu needs fixed values, so pick the nearest built-in
-// and turn the knobs from there.
+// and adjust the parameters from there.
 extension Material: ParamChoices {
     public static var paramChoices: [(name: String, value: Material)] {
         [("matte", .matte), ("clay", .clay), ("rubber", .rubber),
@@ -904,9 +904,9 @@ extension Easing: ParamChoices {
 
 // MARK: - The wrapper
 
-/// The inspector section a knob belongs to. A plain string literal names an
+/// The inspector section a parameter belongs to. A plain string literal names an
 /// always-open section, so `group: "Rings"` reads as it always has; `.folded`
-/// names one that starts closed behind a disclosure row, for the knobs worth
+/// names one that starts closed behind a disclosure row, for the parameters worth
 /// having but not worth a first glance:
 ///
 /// ```swift
@@ -977,7 +977,7 @@ public struct ParamGroup: Equatable, Sendable, ExpressibleByStringLiteral {
 ///
 /// The value is safe to read and write from any thread: the live inspector
 /// drives it from the main thread, and an external control source (a hardware
-/// fader, a networked message) may drive the same knob from its own thread, so
+/// fader, a networked message) may drive the same parameter from its own thread, so
 /// the storage is guarded by a lock and the type is `Sendable`.
 @propertyWrapper
 public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing {
@@ -992,7 +992,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     }
     private let storage: OSAllocatedUnfairLock<Storage>
 
-    /// The show-rule, type-erased over its source knob, or `nil` while the row
+    /// The show-rule, type-erased over its source parameter, or `nil` while the row
     /// always shows. Behind its own lock: `setup()` writes it once, and the
     /// inspector reads it on the main thread while the value lock stays busy.
     private let showRule = OSAllocatedUnfairLock<(@Sendable () -> Bool)?>(initialState: nil)
@@ -1004,9 +1004,9 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     public let label: String?
     /// An SF Symbol name the inspector shows leading the row, or `nil` for none.
     public let icon: String?
-    /// The inspector section this knob belongs to, or `nil` for the default group.
+    /// The inspector section this parameter belongs to, or `nil` for the default group.
     public let group: String?
-    /// Whether this knob's group starts closed behind a disclosure row
+    /// Whether this parameter's group starts closed behind a disclosure row
     /// (`group: .folded("…")`). One folded member folds the whole group.
     public let groupIsFolded: Bool
     /// How the value eases into changes, or `nil` for an immediate snap.
@@ -1058,13 +1058,13 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         }
     }
 
-    /// Show this knob's inspector row only while `rule` passes for `other`'s
+    /// Show this parameter's inspector row only while `rule` passes for `other`'s
     /// current value. While the rule fails, the row leaves the inspector, and a
     /// group whose rows are all hidden drops its whole card. The value itself is
-    /// untouched: a hidden knob still holds, persists, and restores its value,
+    /// untouched: a hidden parameter still holds, persists, and restores its value,
     /// and any OSC/MIDI binding keeps driving it.
     ///
-    /// Set the rule in `setup()`, reaching both knobs through `$`:
+    /// Set the rule in `setup()`, reaching both parameters through `$`:
     ///
     /// ```swift
     /// override func setup() {
@@ -1080,7 +1080,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
         showRule.withLock { $0 = { rule(other.wrappedValue) } }
     }
 
-    /// Whether the inspector should show this knob's row right now: `true`
+    /// Whether the inspector should show this parameter's row right now: `true`
     /// unless a `show(when:_:)` rule is set and currently fails.
     public var isShown: Bool {
         guard let rule = showRule.withLock({ $0 }) else { return true }
@@ -1089,7 +1089,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
 
     /// Set a new target. With no smoothing the value snaps; otherwise it begins
     /// gliding from wherever it is now. Assigning the value it's already heading
-    /// for is a no-op, so it's safe to drive every frame (a knob repeating its
+    /// for is a no-op, so it's safe to drive every frame (a parameter repeating its
     /// last position won't restart the glide).
     private func retarget(_ value: Value) {
         let v = Value.clamped(value, by: constraints)
@@ -1137,7 +1137,7 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
 // MARK: Per-kind initializers
 
 public extension Param where Value == Double {
-    /// A `Double` knob over `range`, optionally snapped to `step`. The default
+    /// A `Double` parameter over `range`, optionally snapped to `step`. The default
     /// presentation is a slider; `style: .field` keeps just the value field.
     convenience init(wrappedValue: Double, _ range: ClosedRange<Double>, step: Double? = nil,
                      style: ParamNumericStyle = .slider, smoothing: ParamSmoothing? = nil,
@@ -1370,9 +1370,9 @@ public protocol AnyParam: AnyObject, Sendable {
     var label: String? { get }
     /// An SF Symbol name shown leading the inspector row, or `nil` for none.
     var icon: String? { get }
-    /// The inspector section this knob belongs to, or `nil` for the default group.
+    /// The inspector section this parameter belongs to, or `nil` for the default group.
     var group: String? { get }
-    /// Whether this knob's group starts closed behind a disclosure row.
+    /// Whether this parameter's group starts closed behind a disclosure row.
     var groupIsFolded: Bool { get }
     /// The inspector control that edits this parameter (metadata + live get/set).
     var control: ParamControl { get }
@@ -1406,7 +1406,7 @@ public struct ParamHandle: Identifiable {
     public var label: String { param.label ?? ParamHandle.humanize(name) }
     public var icon: String? { param.icon }
     public var group: String? { param.group }
-    /// Whether this knob's group starts closed behind a disclosure row.
+    /// Whether this parameter's group starts closed behind a disclosure row.
     public var groupIsFolded: Bool { param.groupIsFolded }
     public var control: ParamControl { param.control }
     /// Whether the row belongs in the inspector right now (see `Param.show(when:_:)`).

@@ -95,7 +95,7 @@ struct Rope3DTests {
         #expect(!rope.isPinned(9))
     }
 
-    // MARK: The knobs
+    // MARK: The parameters
 
     @Test func aStifferRopeStretchesLess() {
         func stretch(_ stiffness: Double) -> Double {

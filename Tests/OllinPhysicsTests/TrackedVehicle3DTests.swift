@@ -7,7 +7,7 @@ import Ollin
 /// which side of the hull they sit on, steering reaches the ground through
 /// those bands rather than through a steering rack, full lock spins the machine
 /// on the spot, and the brakes slow both tracks. Behavioral (the
-/// no-pixel-snapshot policy for physics), each knob pinned against a
+/// no-pixel-snapshot policy for physics), each parameter pinned against a
 /// counterfactual twin: the same machine run twice with one thing changed.
 /// Parallel-safe like the rest of the 3D suite.
 struct TrackedVehicle3DTests {

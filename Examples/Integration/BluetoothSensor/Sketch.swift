@@ -4,7 +4,7 @@ import OllinBluetooth
 
 /// One Bluetooth device, connected and read.
 ///
-/// Type part of a device's name into the `deviceName` knob and the sketch
+/// Type part of a device's name into the `deviceName` parameter and the sketch
 /// connects to the first device that matches, then lists everything the
 /// device offers, with each value as it arrives. A heart rate also drives the
 /// disc, so a strap makes the whole canvas beat.
@@ -108,7 +108,7 @@ final class BluetoothSensor: Sketch {
 
         guard let device else {
             fill(Color(white: 0.5))
-            drawText("Type a name into the deviceName knob", 36, 56)
+            drawText("Type a name into the deviceName parameter", 36, 56)
             return
         }
         if let reason = device.unavailableReason {

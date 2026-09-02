@@ -5,7 +5,7 @@ import Ollin
 
 /// The whole reading path, driven by a stand-in radio: finding the right
 /// device, connecting, asking about what it carries, the value cache, the
-/// drain, a bound knob, writing, polling, and coming back after a device is
+/// drain, a bound parameter, writing, polling, and coming back after a device is
 /// carried out of the room. No radio, no second device, no GPU.
 @Suite @MainActor
 struct BluetoothDeviceTests {
@@ -220,36 +220,36 @@ struct BluetoothDeviceTests {
         #expect(drained.first?.int == 50 % 200)
     }
 
-    // MARK: - Turning a knob
+    // MARK: - Adjusting a parameter
 
-    @Test func aBoundKnobFollowsTheDeviceAndStaysInsideItsRange() {
+    @Test func aBoundParameterFollowsTheDeviceAndStaysInsideItsRange() {
         let (device, radio, strap) = connectedStrap()
-        let knob = Param(wrappedValue: 0.0, 20...400)
-        device.bind(.heartRateMeasurement, to: knob, from: 50...180)
+        let parameter = Param(wrappedValue: 0.0, 20...400)
+        device.bind(.heartRateMeasurement, to: parameter, from: 50...180)
 
         radio.send([0x00, 115], of: .heartRateMeasurement, from: strap)
         // Halfway along 50...180 is halfway along 20...400.
-        #expect(abs(knob.wrappedValue - 210) < 1)
+        #expect(abs(parameter.wrappedValue - 210) < 1)
 
-        // A reading past the range given stops at the knob's own end rather
+        // A reading past the range given stops at the parameter's own end rather
         // than running out of it.
         radio.send([0x00, 220], of: .heartRateMeasurement, from: strap)
-        #expect(knob.wrappedValue == 400)
+        #expect(parameter.wrappedValue == 400)
         radio.send([0x00, 20], of: .heartRateMeasurement, from: strap)
-        #expect(knob.wrappedValue == 20)
+        #expect(parameter.wrappedValue == 20)
 
         device.unbind(.heartRateMeasurement)
         radio.send([0x00, 115], of: .heartRateMeasurement, from: strap)
-        #expect(knob.wrappedValue == 20)
+        #expect(parameter.wrappedValue == 20)
     }
 
-    @Test func aValueWithNoNumberInItTurnsNoKnob() {
+    @Test func aValueWithNoNumberInItTurnsNoParameter() {
         let (device, radio, strap) = connectedStrap()
-        let knob = Param(wrappedValue: 7.0, 0...10)
+        let parameter = Param(wrappedValue: 7.0, 0...10)
         let raw = BluetoothCharacteristic("ABCD")
-        device.bind(raw, to: knob, from: 0...255)
+        device.bind(raw, to: parameter, from: 0...255)
         radio.send([0x01, 0x02], of: raw, from: strap)
-        #expect(knob.wrappedValue == 7)
+        #expect(parameter.wrappedValue == 7)
     }
 
     // MARK: - Writing

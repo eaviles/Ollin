@@ -13,7 +13,7 @@ import Ollin
 /// book's own highlight orange, one hue tuned per variant, so the thing a
 /// diagram points at never reads as a link.
 ///
-/// A figure declares its `darkTheme` knob and builds the theme from it:
+/// A figure declares its `darkTheme` parameter and builds the theme from it:
 ///
 /// ```swift
 /// @Param var darkTheme = false

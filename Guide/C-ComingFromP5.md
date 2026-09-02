@@ -194,7 +194,7 @@ Each of these gets a chapter, so the table only points.
 
 | p5.js | Ollin | Where |
 |---|---|---|
-| `createSlider`, `createButton`, the DOM | `@Param` knobs in the inspector | [Chapter 1](01-HelloOllin.md) |
+| `createSlider`, `createButton`, the DOM | `@Param` parameters in the inspector | [Chapter 1](01-HelloOllin.md) |
 | `filter(BLUR)` | layers and the `Filter` catalog | [Chapter 16](16-LayersAndEffects.md) |
 | `loadShader` / `shader()` | the `Shader` type: `generate`, `.filtered`, `.combined` | [Chapter 17](17-YourFirstShader.md) |
 | `WEBGL` mode, `box()`, `sphere()` | `camera()` or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 21](21-3DGently.md) |
@@ -237,7 +237,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 - **Animating with `frameCount` arithmetic.** Reach for `time`. The magic numbers become real units (turns per second, pixels per second) and survive a change of display.
 - **Mixing colors in RGB.** `Color.mix` defaults to a perceptual space, so the midpoint of blue and yellow is a color you'd actually want. [Chapter 2](02-Color.md) shows the difference side by side.
 - **Hand-rolling grids from margins and nested loops.** `grid(columns: 12, rows: 8)` hands you the cells and their centers in one loop, indices included. [Chapter 6](06-GridsAndRepetition.md).
-- **Hardcoding a constant, re-running, hardcoding again.** Declare it `@Param` and drag the knob while the sketch runs. When the value feels right, make it the new default. [Chapter 1](01-HelloOllin.md).
+- **Hardcoding a constant, re-running, hardcoding again.** Declare it `@Param` and drag the parameter while the sketch runs. When the value feels right, make it the new default. [Chapter 1](01-HelloOllin.md).
 - **Writing pixel loops for effects.** Blur, glow, and their relatives are GPU filters on layers, which [Chapter 16](16-LayersAndEffects.md) covers. Anything per-pixel you'd invent yourself is a short `shade` function away, in [Chapter 17](17-YourFirstShader.md).
 
 ## Go deeper

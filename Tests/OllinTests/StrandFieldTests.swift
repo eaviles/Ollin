@@ -116,7 +116,7 @@ struct StrandBenchmarkTests {
 }
 
 /// The benchmark's meadow: the example's field and camera, so the numbers
-/// measure what the example's knob toggles.
+/// measure what the example's parameter toggles.
 @MainActor
 private final class StrandBenchScene: Sketch {
     var detail = true

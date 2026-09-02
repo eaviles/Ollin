@@ -267,7 +267,7 @@ Move a zero and the whole field reorganizes around it. Repeat a point for a doub
 
 The size you threw away can come back as shading. `.modulus` ramps from dark to light between one doubling of the value and the next, which draws contour rings. `.conformal` rules the direction the same way, and the two rulings cross. That is the right panel, and away from the interesting points its tiles are little squares. Squares are not a coincidence. A function like this one turns and stretches small shapes but never shears them, and the grid is that fact made visible.
 
-One knob is free. `phase` turns the palette around the wheel without recomputing anything, so `phase: time * 0.05` costs nothing and the color drifts forever.
+One parameter is free. `phase` turns the palette around the wheel without recomputing anything, so `phase: time * 0.05` costs nothing and the color drifts forever.
 
 `Examples/Effects/DomainColoring` swims a pair of zeros around a pair of poles. It is the best argument for the technique that exists. The field pours from one arrangement into the next, and nothing was animated except two points.
 
@@ -379,10 +379,10 @@ The formula-driven maps come from elsewhere again. The Clifford attractor is nam
 - [Billiards](../Docs/Generators/Billiards.md): the four rooms, letting a ball go, what each room draws and why, posts standing in a room, and drawing the room itself. The [`Examples/Patterns/Billiards`](../Examples/Patterns/Billiards/Sketch.swift) example puts all four side by side with a fan of balls.
 - [Attractors](../Docs/Drawing/Attractors.md): every `ChaoticMap`, the `IteratedMap` family, `bifurcationImage`, and the GPU tier that carries a million orbits at once, which [Chapter 23](23-Landscapes.md) puts to work as a field of drifting points.
 - [Chaotic maps and bifurcation](../Docs/Generators/Bifurcation.md): the one-dimensional families, the diagram's dot and density forms, cobwebs, and Lyapunov exponents.
-- [Escape time as a generator](../Docs/Drawing/Effects.md#generate): `.mandelbrot`, `.julia`, and `.orbitTrap` as layers a chain can filter, with the center, zoom, iteration, and banding knobs.
+- [Escape time as a generator](../Docs/Drawing/Effects.md#generate): `.mandelbrot`, `.julia`, and `.orbitTrap` as layers a chain can filter, with the center, zoom, iteration, and banding parameters.
 - [Domain coloring](../Docs/Drawing/Effects.md#generate): `.domainColoring` with its placeable zeros and poles, the named functions, and the modulus and conformal rulings.
 - Appendix B draws the idea underneath all of this, one picture per entry: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Where things are](B-JustEnoughMath.md#where-things-are) for the coordinates the orbits live in.
-- Worked examples: [`Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Patterns/Buddhabrot`](../Examples/Patterns/Buddhabrot/Sketch.swift), [`Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift), [`Patterns/Schottky`](../Examples/Patterns/Schottky/Sketch.swift) (the lean swung back and forth), [`Patterns/ChaoticMaps`](../Examples/Patterns/ChaoticMaps/Sketch.swift) (the density bloom, all six presets on a knob), [`Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift), and [`Effects/EscapeTime`](../Examples/Effects/EscapeTime/Sketch.swift) (the escape-time pair as a shader).
+- Worked examples: [`Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Patterns/Buddhabrot`](../Examples/Patterns/Buddhabrot/Sketch.swift), [`Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift), [`Patterns/Schottky`](../Examples/Patterns/Schottky/Sketch.swift) (the lean swung back and forth), [`Patterns/ChaoticMaps`](../Examples/Patterns/ChaoticMaps/Sketch.swift) (the density bloom, all six presets on a parameter), [`Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift), and [`Effects/EscapeTime`](../Examples/Effects/EscapeTime/Sketch.swift) (the escape-time pair as a shader).
 
 ---
 

@@ -79,7 +79,7 @@ Look at the third line. `smoothstep` is [Chapter 3](03-MotionAndTime.md)'s easin
 
 This is the sentence at the heart of nearly every shader ever written: *measure a distance, shape it with smoothstep, turn it into color.* Everything else is choosing more interesting distances and more interesting colors.
 
-## Time, mouse, and knobs
+## Time, mouse, and parameters
 
 The `info` argument carries the outside world in: `info.time` (seconds, so anything you feed it moves), `info.mouse` (in canvas points), `info.resolution` (the layer's pixel size), and `info.frame`. A pulsing disc is the disc shader with one line changed:
 
@@ -88,7 +88,7 @@ float r = 0.3 + 0.05 * sin(info.time * 2.0);
 float v = smoothstep(r, r - 0.01, d);
 ```
 
-Your own numbers ride along as `params`, read back inside as `param(info, 0)`, `param(info, 1)`, and so on. Pair them with `@Param` and a computed property, and the shader gets live knobs:
+Your own numbers ride along as `params`, read back inside as `param(info, 0)`, `param(info, 1)`, and so on. Pair them with `@Param` and a computed property, and the shader gets live parameters:
 
 ```swift
 @Param(0...0.4) var sway = 0.18
@@ -160,7 +160,7 @@ Nothing about `z = info.time` is special either. Reading a 3D field at a moving 
 
 Two conventions apply across the whole design and pattern-field set. Their palettes blend in **sRGB**, the space design tools work in, so mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer doesn't get a squashed crystal.
 
-So: when a built-in is close to what you want, take it and turn its knobs. When it isn't, you now know what's inside one.
+So: when a built-in is close to what you want, take it and adjust its parameters. When it isn't, you now know what's inside one.
 
 ## Chains: patching without typing Metal
 
@@ -179,7 +179,7 @@ drawVisual(
   <img src="Images/17-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
 </picture>
 
-The signature move is the last step, where one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as [Chapter 16](16-LayersAndEffects.md)'s displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a knob or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
+The signature move is the last step, where one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as [Chapter 16](16-LayersAndEffects.md)'s displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a parameter or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
 
 ## Somebody else's shader
 
@@ -311,7 +311,7 @@ final class Aurora: Sketch {
     @Param(0...0.4) var sway = 0.18
     @Param(0.5...2.5) var strength = 1.4
 
-    // A computed property, so each frame's shader carries the knobs' current
+    // A computed property, so each frame's shader carries the parameters' current
     // values; the compiled pipeline is cached by source, so this is free.
     var sky: Shader {
         Shader("""
@@ -376,12 +376,12 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 
 ## Go deeper
 
-- [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the closed form behind the plate, and the knobs on the pattern. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example sweeps the modes, and [`Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift) drives them from a live signal.
+- [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the closed form behind the plate, and the parameters on the pattern. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example sweeps the modes, and [`Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift) drives them from a live signal.
 - [User shaders](../Docs/Shaders/Shaders.md): the full contract, filters and combines that read layers, `.metal` file loading, and the error model.
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [Checking a shader](../Docs/Tools/ShaderCheck.md): `ollin check` on the command line, with what it reports, naming the shape yourself, and checking several files in one go.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature.
-- [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the whole pattern-field catalog with every knob, and how a generated layer feeds the rest of an effect chain.
+- [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the whole pattern-field catalog with every parameter, and how a generated layer feeds the rest of an effect chain.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 19](19-GridSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).

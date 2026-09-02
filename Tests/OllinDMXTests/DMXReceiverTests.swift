@@ -118,12 +118,12 @@ struct DMXReceiverTests {
 
     @Test func bindingDrivesAParam() {
         let receiver = DMXReceiver()
-        let knob = Param(wrappedValue: 0.0, 0...100)
-        receiver.bind(channel: 2, to: knob)
+        let parameter = Param(wrappedValue: 0.0, 0...100)
+        receiver.bind(channel: 2, to: parameter)
         receiver.handle(packet(channels: [0, 51], sequence: 1))
-        #expect(abs(knob.wrappedValue - 20) < 0.1)   // 51/255 of the range
+        #expect(abs(parameter.wrappedValue - 20) < 0.1)   // 51/255 of the range
         receiver.unbind(channel: 2)
         receiver.handle(packet(channels: [0, 255], sequence: 2))
-        #expect(abs(knob.wrappedValue - 20) < 0.1)
+        #expect(abs(parameter.wrappedValue - 20) < 0.1)
     }
 }

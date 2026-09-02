@@ -20,7 +20,7 @@ import os
 /// }
 /// ```
 ///
-/// Or bind the stream straight onto a `@Param` knob (the third way), so a
+/// Or bind the stream straight onto a `@Param` parameter (the third way), so a
 /// sensor drives the same parameter a live-inspector slider does:
 ///
 /// ```swift

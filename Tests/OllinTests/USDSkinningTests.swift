@@ -35,7 +35,7 @@ struct USDSkinningTests {
     /// `Base` and the top ring to `Base/Tip` (elementSize 1), the tip bending
     /// 90 degrees about z over one second, plus one sparse blend shape
     /// ("bulge", pushing points 1 and 3 outward) whose weight ramps 0 to 1.
-    /// The knobs vary the binding for the per-feature tests; the defaults are
+    /// The parameters vary the binding for the per-feature tests; the defaults are
     /// the canonical arm.
     private func armUSDA(rootOps: String = "",
                          meshExtras: String = "",

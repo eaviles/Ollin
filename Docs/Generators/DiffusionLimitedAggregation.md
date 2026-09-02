@@ -41,7 +41,7 @@ DiffusionLimitedAggregation(seeds: [Vector2], particleRadius: Double = 4,
                             maxParticles: Int = 20000, seed: UInt64 = 0)
 ```
 
-`seeds` are the frozen starting particles, and their arrangement decides the shape. One center point grows a radial snowflake. A row of points along the bottom edge grows frost creeping up, and a ring grows inward and outward at once. `stickiness` is the density knob. At `1` a walker freezes on first contact, giving wispy, open fingers. Lower values let walkers slide deeper into the cluster before freezing, so it grows denser and rounder. `bounds` cages the walkers, and growth that reaches the cage crawls along it.
+`seeds` are the frozen starting particles, and their arrangement decides the shape. One center point grows a radial snowflake. A row of points along the bottom edge grows frost creeping up, and a ring grows inward and outward at once. `stickiness` is the density parameter. At `1` a walker freezes on first contact, giving wispy, open fingers. Lower values let walkers slide deeper into the cluster before freezing, so it grows denser and rounder. `bounds` cages the walkers, and growth that reaches the cage crawls along it.
 
 <a name="growing"></a>
 

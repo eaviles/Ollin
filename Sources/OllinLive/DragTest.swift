@@ -9,8 +9,8 @@ import OllinRuntime
 /// then compiles and draws again and finds the shape at its new place. That is
 /// the part no unit test can prove on its own: the site a running sketch
 /// reports has to match the numbers standing in the file it was built from.
-/// The same loop then resizes a shape by a corner, turns a line by its knob,
-/// and drags one placed by a knob's name, which turns the knob instead.
+/// The same loop then resizes a shape by a corner, turns a line by its parameter,
+/// and drags one placed by a parameter's name, which sets the parameter instead.
 ///
 /// No window and no render: a frame is recorded, not drawn to a screen.
 enum DragTest {
@@ -33,7 +33,7 @@ enum DragTest {
                 drawCircle(200, 200, 60)          // the one that moves
                 drawRect(400, 400, 120, 80)
                 drawCircle(width / 2, 500, 30)    // no numbers to move
-                drawCircle(cx, 100, 25)           // placed by a knob
+                drawCircle(cx, 100, 25)           // placed by a parameter
                 stroke(.black)
                 strokeWeight(6)
                 drawLine(80, 400, 220, 400)
@@ -41,7 +41,7 @@ enum DragTest {
         }
         """
         // Where each of them stands in the text above.
-        let circleLine = 9, knobLine = 12, lineLine = 15
+        let circleLine = 9, parameterLine = 12, lineLine = 15
 
         /// Compile the file, draw one frame with tracking on, and hand back the
         /// sketch to ask about. The frame is the real one an export renders, so
@@ -177,16 +177,16 @@ enum DragTest {
         check(turned.contains("drawLine(150, 330, 150, 470)"),
               "the turned line should stand upright about its middle")
 
-        // A coordinate that is a knob's name turns the knob, and the file stays
+        // A coordinate that is a parameter's name adjusts the parameter, and the file stays
         // as it was: there is no number on that line to write.
-        print("OllinLive dragtest: a coordinate that is a knob's name turns the knob …")
-        guard let byKnob = third.sourcePick(at: Vector2(300, 100)) else {
-            fail("the circle placed by a knob was not found")
+        print("OllinLive dragtest: a coordinate that is a parameter's name sets the parameter …")
+        guard let byParameter = third.sourcePick(at: Vector2(300, 100)) else {
+            fail("the circle placed by a parameter was not found")
         }
-        check(byKnob.site.line == knobLine, "the knob circle is on line \(knobLine)")
-        let plan = try! SourceEdit.planningMove(text(), line: byKnob.site.line,
-                                                column: byKnob.site.column,
-                                                move: byKnob.site.move, by: Vector2(40, 15))
+        check(byParameter.site.line == parameterLine, "the parameter circle is on line \(parameterLine)")
+        let plan = try! SourceEdit.planningMove(text(), line: byParameter.site.line,
+                                                column: byParameter.site.column,
+                                                move: byParameter.site.move, by: Vector2(40, 15))
         check(plan.refused == nil, "a bare name is not a refusal")
         check(plan.names.count == 1 && plan.names[0].name == "cx" && plan.names[0].isAcross,
               "the plan should name cx as the x coordinate, not \(plan.names)")
@@ -240,30 +240,30 @@ enum DragTest {
         check(text().contains("drawCircle(200, 200, 90)"),
               "the corner drag did not write the new radius")
 
-        // And the knob drag, which writes nothing and turns the knob instead.
-        print("OllinLive dragtest: a knob drag, through the controller …")
-        let knobSketch = restore()
-        host.currentSketch = knobSketch
+        // And the parameter drag, which writes nothing and sets the parameter instead.
+        print("OllinLive dragtest: a parameter drag, through the controller …")
+        let parameterSketch = restore()
+        host.currentSketch = parameterSketch
         controller.modifierChanged(held: true, at: Vector2(300, 100))
-        check(controller.dragBegan(at: Vector2(300, 100)), "the press on the knob circle was not taken")
+        check(controller.dragBegan(at: Vector2(300, 100)), "the press on the parameter circle was not taken")
         controller.dragMoved(to: Vector2(360, 100))
         controller.dragEnded()
-        check(text() == source, "a drag that only turns a knob must leave the file alone")
-        check(host.recorded["cx"] != nil, "the turned knob should have been recorded")
-        guard let cx = knobSketch.parameters().first(where: { $0.name == "cx" }),
+        check(text() == source, "a drag that only sets a parameter must leave the file alone")
+        check(host.recorded["cx"] != nil, "the changed parameter should have been recorded")
+        guard let cx = parameterSketch.parameters().first(where: { $0.name == "cx" }),
               case .slider(let slider) = cx.control else {
-            fail("the sketch lost its cx knob")
+            fail("the sketch lost its cx parameter")
         }
         check(abs(slider.read() - 360) < 1e-6, "cx should now hold 360, not \(slider.read())")
 
         print("OllinLive dragtest: PASS: the shape was found, moved by editing the file, "
             + "found again where the drag left it, resized by a corner, turned about its "
-            + "middle, and a knob's name turned the knob instead of the text.")
+            + "middle, and a parameter's name set the parameter instead of the text.")
         exit(0)
     }
 
     /// Stands in for the live session: the sketch that is running, the file it
-    /// came from, and the tuned knobs it would carry across a reload.
+    /// came from, and the tuned parameters it would carry across a reload.
     @MainActor
     private final class StubHost: ShapeDragHost {
         var currentSketch: Sketch?

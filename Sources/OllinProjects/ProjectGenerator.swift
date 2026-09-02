@@ -1477,7 +1477,7 @@ public enum ProjectGenerator {
         swift run \(target) --export-svg out.svg        # vectors, for a plotter
         ```
 
-        Each export records the seed and the knob values it used, so a picture you like can be made again.
+        Each export records the seed and the parameter values it used, so a picture you like can be made again.
 
         ## What is wired in
 

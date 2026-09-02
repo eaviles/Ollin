@@ -6,7 +6,7 @@ import AppKit
 // live host's sidebar reborn as a detached utility window. The app shows just
 // the sketch; toggling "Show FPS" (⌘/) summons this panel over it. It replaces
 // the old on-canvas overlay chip: same shared `MonitorCardView` the live host's
-// sidebar uses (so they never drift), plus the sketch's `@Param` knobs, tunable
+// sidebar uses (so they never drift), plus the sketch's `@Param` parameters, tunable
 // live. Used in the standalone `swift run` mode; the live host and the gallery
 // omit it because their inspector sidebars already show the same content.
 
@@ -160,7 +160,7 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         // measure the inner content with a throwaway host instead. The height
         // gains the title-bar safe-area inset (the content starts below it),
         // then caps at the screen's visible height: past the cap the scroll
-        // view takes over, so every knob stays reachable.
+        // view takes over, so every parameter stays reachable.
         let root = host.rootView
         let probe = NSHostingController(rootView: DetachedInspectorContent(
             identity: root.identity, stats: root.stats, params: root.params))

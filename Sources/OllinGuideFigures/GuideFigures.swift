@@ -79,10 +79,10 @@ enum GuideFigures {
         /// compared to anything.
         var probe = false
         /// `themed` renders the figure twice: once as committed (`<Name>.jpg`)
-        /// and once with its `darkTheme` knob flipped on (`<Name>-dark.jpg`),
+        /// and once with its `darkTheme` parameter flipped on (`<Name>-dark.jpg`),
         /// so a page can serve the dark variant through a `<picture>` tag.
         /// The figure declares `@Param var darkTheme = false` and keys its
-        /// palette on it; the runner sets the knob between the two renders of
+        /// palette on it; the runner sets the parameter between the two renders of
         /// the same instance, so a themed figure must draw the same under a
         /// second `setup()` pass (assign state, never append). Stills only.
         var themed = false
@@ -506,7 +506,7 @@ enum GuideFigures {
                     } else {
                         log = "no output written"
                     }
-                    // The dark pass: flip the figure's own knob and render the
+                    // The dark pass: flip the figure's own parameter and render the
                     // same instance again, beside the light image.
                     if ok, directive.themed {
                         if directive.gif {

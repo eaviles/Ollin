@@ -3,7 +3,7 @@ import OllinMIDI
 
 /// A live MIDI monitor. It listens to every connected MIDI device and shows
 /// everything that arrives, so you can plug in a controller and discover what each
-/// knob, pad, and key sends just by touching it.
+/// parameter, pad, and key sends just by touching it.
 ///
 ///   swift run Example-Integration-MIDIMonitor
 ///
@@ -42,7 +42,7 @@ final class MIDIMonitor: Sketch {
             lastSeenFrame = frameCount
         }
 
-        // A pulse, so motion is obvious when you wiggle a knob or hit a pad.
+        // A pulse, so motion is obvious when you wiggle a parameter or hit a pad.
         let live = frameCount - lastSeenFrame < 30
         fill(live ? Color(red: 0.55, green: 0.5, blue: 0.95) : Color(white: 0.3))
         drawCircle(width - 120 * scale, 90 * scale, (18 + lastValue * 70) * scale)

@@ -39,7 +39,7 @@ override func draw() {
 
 Three things are fixed at build. `count` is how many particles there are. `radius` is the interaction range, which is the fluid's resolution and, through the derived `spacing`, its packing. `bounds` is the box, and it defaults to the canvas. The liquid itself is live:
 
-| Knob | Meaning | Default |
+| Parameter | Meaning | Default |
 | --- | --- | --- |
 | `gravity` | pull in points/s²; tilt or zero it | `(0, 1500)` |
 | `stiffness` | pressure strength (resistance to squeezing); higher wants more `substeps` | 240 000 |
@@ -74,9 +74,9 @@ override func draw() {
 }
 ```
 
-Blobs scatter (separated) in the upper part of the box, each varying around `radius`, one hue per body. The knobs:
+Blobs scatter (separated) in the upper part of the box, each varying around `radius`, one hue per body. The parameters:
 
-| Knob | Meaning | Default |
+| Parameter | Meaning | Default |
 | --- | --- | --- |
 | `squish` | how firmly a body holds its shape, 0…1 (low = jelly, high = rubber) | 0.3 |
 | `gravity` | pull in points/s² | `(0, 1600)` |

@@ -30,7 +30,7 @@ final class Bouncer: Sketch {
 
 - [Writing a pattern](#writing-a-pattern) - taps, hums, runs, and silence
 - [Composing](#composing) - end to end, layered, moved, repeated, scaled, reversed
-- [Playing it](#playing-it) - `playHaptic`, the volume knob, and stopping
+- [Playing it](#playing-it) - `playHaptic`, the volume parameter, and stopping
 - [What is on the other end](#what-is-on-the-other-end) - an engine, a trackpad, or nothing
 - [How a pattern reaches a trackpad](#how-a-pattern-reaches-a-trackpad) - the plan, and the three rules in it
 - [What is not here yet](#what-is-not-here-yet) - rumble, and the phone
@@ -112,12 +112,12 @@ let arrival = HapticPattern.hum(0.8, intensity: 0.5, fadeIn: 0.6)
 ```swift
 playHaptic(pattern)         // start it now
 stopHaptics()               // stop everything in flight
-hapticStrength(0.4)         // the volume knob, 0 to 1, over everything
+hapticStrength(0.4)         // the volume, 0 to 1, over everything
 ```
 
 Play at the moment something happens, not every frame. Touch marks events, the way a drum marks a bar. A pattern played over one already running joins it, because there is one actuator to share.
 
-A knob makes the strength something the room can decide:
+A parameter makes the strength something the room can decide:
 
 ```swift
 @Param(0 ... 1, icon: "speaker.wave.2") var feel = 1.0

@@ -8,7 +8,7 @@ import Ollin
 /// sized from its own mesh, the simulated pose comes back onto the skin exactly,
 /// a powered figure holds a shape a limp one loses, and a cone-limited joint
 /// stops where a free one keeps going. Behavioral (the no-pixel-snapshot policy
-/// for physics), each knob pinned against a counterfactual twin: the same scene
+/// for physics), each parameter pinned against a counterfactual twin: the same scene
 /// run twice with one setting changed.
 struct Ragdoll3DTests {
 

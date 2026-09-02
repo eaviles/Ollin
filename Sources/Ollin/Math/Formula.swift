@@ -2,7 +2,7 @@ import Foundation
 
 /// A small arithmetic language, read from a string and evaluated as often as
 /// you like. It is what lets a number arrive as *typed text* rather than as
-/// Swift source: a knob driven by `"120 + sin(time) * 40"`, a value read from a
+/// Swift source: a parameter driven by `"120 + sin(time) * 40"`, a value read from a
 /// file, a control an editing surface hands to a person.
 ///
 /// ```swift
@@ -126,7 +126,7 @@ struct FormulaToken: Equatable {
 /// Split the text into tokens. Two spellings need care. A number may carry an
 /// exponent (`1e3`), and `e` is also the name of a constant, so the exponent is
 /// only taken when a digit follows it. A dot inside a name (`center.x`) belongs
-/// to the name, because a knob's part is named that way.
+/// to the name, because a parameter's part is named that way.
 func formulaTokens(_ source: String) throws -> [FormulaToken] {
     var tokens: [FormulaToken] = []
     let characters = Array(source)
@@ -176,7 +176,7 @@ func formulaTokens(_ source: String) throws -> [FormulaToken] {
                     i += 1
                     continue
                 }
-                // A dot joins a knob to one of its parts, so `center.x` is one
+                // A dot joins a parameter to one of its parts, so `center.x` is one
                 // name and not three tokens. A dot with no name after it is
                 // left where it is, and reads as an error there.
                 if d == ".", let next = peek(1), next.isLetter || next == "_" {

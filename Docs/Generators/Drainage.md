@@ -84,7 +84,7 @@ river.order      // Strahler's order for the reach
 river.flow       // the flow at its lowest end, in cells
 ```
 
-`minFlow` has a real meaning: it is the smallest catchment you are willing to call a river, in cells. It is the whole difference between a few great trunks and a fine tracery of creeks, and it is worth putting on a knob.
+`minFlow` has a real meaning: it is the smallest catchment you are willing to call a river, in cells. It is the whole difference between a few great trunks and a fine tracery of creeks, and it is worth putting on a parameter.
 
 Each reach is traced once. A run starts at a source, or just below a meeting, and stops at the next meeting, sharing that cell with the reach below it so the lines join. One odd case exists and is kept rather than dropped: a single-cell reach, where a cell over the threshold leaves the field at once, fed only by ground too small to count.
 
@@ -123,7 +123,7 @@ A basin is everybody who leaves by the same door, so a cell and the cell below i
 
 #### What it costs
 
-The whole pass is a flood, a sweep, and a count, so a 257-square field is a few tens of milliseconds. It is still real work, and the field does not change while you draw it, so do it in `setup()` or when a knob moves. Keep the network and let `draw()` draw it.
+The whole pass is a flood, a sweep, and a count, so a 257-square field is a few tens of milliseconds. It is still real work, and the field does not change while you draw it, so do it in `setup()` or when a parameter moves. Keep the network and let `draw()` draw it.
 
 Everything is a pure function of the field, and a field is a pure function of its seed, so a run reproduces exactly.
 

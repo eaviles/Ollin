@@ -8,7 +8,7 @@ import Ollin
 /// tapered shapes weigh and rest as their geometry says, a `Heightfield`
 /// collider traces the same surface its mesh draws, and a loaded `Scene`
 /// becomes static scenery in one call. Behavioral (the no-pixel-snapshot
-/// policy for physics), each knob pinned against a counterfactual twin where
+/// policy for physics), each parameter pinned against a counterfactual twin where
 /// one exists; parallel-safe like the rigid-body suite.
 struct Collider3DTests {
 

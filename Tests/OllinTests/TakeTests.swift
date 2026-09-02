@@ -7,7 +7,7 @@ import Testing
 
 /// Record and replay (`Take`): the claims worth pinning are determinism ones.
 /// A recorded run replayed onto a fresh instance must walk the same state,
-/// fire the same hooks, apply the same knob moves at the same frames, and
+/// fire the same hooks, apply the same parameter moves at the same frames, and
 /// render the same pixels, while live input stays gated off; and the file
 /// must round-trip and refuse a format it does not read.
 @Suite
@@ -18,7 +18,7 @@ struct TakeTests {
 
     /// Draws nothing; instead it writes down everything it can feel each
     /// frame, so two runs compare as plain values. It reads the clock, the
-    /// pointer, pressure, scroll, keys, modifiers, a knob, and both random
+    /// pointer, pressure, scroll, keys, modifiers, a parameter, and both random
     /// generators, and it counts every hook.
     private final class Performance: Sketch {
         @Param(0...10) var gain = 1.0
@@ -47,7 +47,7 @@ struct TakeTests {
     }
 
     /// Drive a run the way the live window does: an irregular clock, input
-    /// arriving between frames, a knob moved mid-run. Returns the sketch,
+    /// arriving between frames, a parameter moved mid-run. Returns the sketch,
     /// still wearing its recorder.
     private func recordPerformance(frames: Int = 60) -> Performance {
         let live = Performance()
@@ -116,7 +116,7 @@ struct TakeTests {
         #expect(replayed.wheels == live.wheels)
     }
 
-    @Test func theKnobMoveLandsOnItsFrame() {
+    @Test func theParameterMoveLandsOnItsFrame() {
         let live = recordPerformance()
         let take = live.takeRecorder!.take
         let change = take.changes.first { $0.name == "gain" }

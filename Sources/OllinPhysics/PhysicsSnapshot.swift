@@ -32,7 +32,7 @@ internal import CJolt
 /// ```
 ///
 /// What it holds is the rigid tier: `Body3D`s (with their colliders, poses,
-/// motion, and every knob `addBody` takes), the `Joint3D`s between them,
+/// motion, and every parameter `addBody` takes), the `Joint3D`s between them,
 /// gears and racks, the collision-group table, and the world's `gravity`,
 /// `ground`, `bounce`, `maxTimestep`, `unitsPerMeter`, and `water`. Characters,
 /// vehicles, ragdolls, and soft bodies are each built from something a

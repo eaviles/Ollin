@@ -122,7 +122,7 @@ drawLaserPreview(laser.stream, showsTravel: true, showsPoints: true)
 
 The preview draws the stream the way the beam will trace it: lit runs in their own colors, the dark travel as faint lines, and the beam's own footsteps as dots. It shows things the drawn picture cannot. Where the dots bunch up the line is bright and slow; where they spread it is faint. Every travel line is time spent drawing nothing.
 
-The **LaserPreview** example (`Examples/Integration/LaserPreview`) is that view with the knobs attached, and it runs with no hardware at all.
+The **LaserPreview** example (`Examples/Integration/LaserPreview`) is that view with the parameters attached, and it runs with no hardware at all.
 
 <a name="safety"></a>
 

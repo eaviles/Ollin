@@ -127,7 +127,7 @@ struct DrosteTests {
         #expect(try meanDifference(still, half) > 8, "half a copy should not")
     }
 
-    /// A quarter turn of `rotation` moves the picture, so the knob is wired.
+    /// A quarter turn of `rotation` moves the picture, so the parameter is wired.
     @Test(.enabled(if: Snapshot.hasMetal))
     func rotationTurnsIt() throws {
         let flat = try #require(OllinApp.image(of: DrosteProbe.make(twist: 1), frame: 1))

@@ -1,6 +1,6 @@
 import Ollin
 
-/// A knob does not have to hold one number. A point holds two, a color holds
+/// A parameter does not have to hold one number. A point holds two, a color holds
 /// four, a pair of ends holds two more. Each part takes its own rule:
 /// `drive($eye, x: "…", y: "…")`.
 ///
@@ -19,7 +19,7 @@ final class FormulaParts: Sketch {
     @Param var ink = Color(red: 0.2, green: 0.4, blue: 0.9, alpha: 1)
     @Param(in: 0...1) var band = 0.2...0.8
 
-    /// The parts in the order the listing shows them, knob by knob.
+    /// The parts in the order the listing shows them, parameter by parameter.
     static let shown = [("frame", ["width", "height"]),
                         ("eye", ["x", "y"]),
                         ("ink", ["red", "green", "blue"]),

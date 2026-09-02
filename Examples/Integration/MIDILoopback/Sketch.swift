@@ -8,7 +8,7 @@ import OllinMIDI
 ///   swift run Example-Integration-MIDILoopback
 ///
 /// It also shows the softening a `@Param` can carry: the incoming value steps
-/// (like a knob jumped to a new position every so often), but `radius` is bound to
+/// (like a parameter jumped to a new position every so often), but `radius` is bound to
 /// a smoothed param, so the filled circle *glides* toward each new step while the
 /// thin ring marks the raw target it's chasing. The companion `MIDIMonitor`
 /// example is the one for real gear. See `Docs/Integration/MIDI.md`.
@@ -39,7 +39,7 @@ final class MIDILoopback: Sketch {
     override func draw() {
         background(Color(white: 0.08))
 
-        // Every ~0.75s, "turn the knob" to a new spot and send it to ourselves.
+        // Every ~0.75s, "adjust the parameter" to a new spot and send it to ourselves.
         if frameCount >= nextStepFrame {
             rawValue = Int(random(0, 127))
             out.controlChange(1, value: rawValue)

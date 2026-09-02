@@ -69,7 +69,7 @@ Two behaviors are worth knowing. Over long paths the veil *saturates* toward the
 
 Behind an environment skybox the air veil deliberately steps aside. The sky already *is* this scattering carried to infinity, so painting more would double-count. With no environment, the air paints its own implied horizon glow over the 2D clear.
 
-The example `3D/Effects/Atmosphere` holds the aerial haze over the same colonnade its fog mode uses, with the density, haziness, and sun on knobs.
+The example `3D/Effects/Atmosphere` holds the aerial haze over the same colonnade its fog mode uses, with the density, haziness, and sun on parameters.
 
 <a id="volumetric"></a>
 ### Volumetric light
@@ -97,7 +97,7 @@ It composes with `fog` two ways:
 <a id="quality"></a>
 ### Quality
 
-The march's cost is its step count per pixel, one shadow-map read each. It rides the same three-tier `RenderQuality` model as the other sampling knobs: [soft shadows](./3D.md#soft-shadows), the raymarch resolution, the bokeh taps.
+The march's cost is its step count per pixel, one shadow-map read each. It rides the same three-tier `RenderQuality` model as the other sampling parameters: [soft shadows](./3D.md#soft-shadows), the raymarch resolution, the bokeh taps.
 
 ```swift
 volumetricQuality(.performance)  // 16 steps

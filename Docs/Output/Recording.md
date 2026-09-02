@@ -6,7 +6,7 @@
 
 Record a live run while you play it: the frames as they render, the sound as it plays, written straight into a movie file in real time.
 
-[Export](./Export.md) is the other way to a video, and the two answer different questions. An export re-renders the sketch on a fixed clock, which is how a file reproduces exactly. Nothing you do while it renders can reach it. A recording keeps the run that is happening right now, with the mouse, the knobs, and the sound in it. Tune a piece live and record the take. Play a live-coding set and keep the set.
+[Export](./Export.md) is the other way to a video, and the two answer different questions. An export re-renders the sketch on a fixed clock, which is how a file reproduces exactly. Nothing you do while it renders can reach it. A recording keeps the run that is happening right now, with the mouse, the parameters, and the sound in it. Tune a piece live and record the take. Play a live-coding set and keep the set.
 
 ### From a sketch
 

@@ -18,7 +18,7 @@ import os
 ///
 /// Every named curve carries its name, so a curve is a value you can compare,
 /// persist, and pick from a menu: `@Param var curve: Easing = .easeInOut` gets
-/// an inspector row like any other knob. Two closures cannot be compared, so a
+/// an inspector row like any other parameter. Two closures cannot be compared, so a
 /// curve built from one takes a serial of its own instead: it equals itself
 /// (and every copy of itself) and nothing else.
 public struct Easing: Sendable, Equatable {

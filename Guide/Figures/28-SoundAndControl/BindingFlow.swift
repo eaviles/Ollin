@@ -1,6 +1,6 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 28): three hands on one knob. A MIDI controller, an
+// Guide diagram (Chapter 28): three hands on one parameter. A MIDI controller, an
 // OSC message from a phone, and the inspector slider all drive the same
 // @Param; the sketch just reads the property. Boxes and arrows drawn with
 // Ollin, like every diagram in the guide.
@@ -67,7 +67,7 @@ final class BindingFlow: Sketch {
         fill(soft)
         textSize(19)
         textAlign(.center, .top)
-        drawText("three hands on one knob: whichever moved most recently wins", width / 2, 495)
+        drawText("three hands on one parameter: whichever moved most recently wins", width / 2, 495)
     }
 
     func box(x: Double, y: Double, w: Double, h: Double,

@@ -137,9 +137,9 @@ The recording. `record` is the live path; `Sketch.record(into:)` fills its three
 if mouseIsPressed { record(into: &mark) }
 ```
 
-Three knobs:
+Three parameters:
 
-- **`dynamics`** is settable mid-mark, so a live knob can change the brush while a stroke is in progress. Points already recorded keep what they were given.
+- **`dynamics`** is settable mid-mark, so a live parameter can change the brush while a stroke is in progress. Points already recorded keep what they were given.
 - **`smoothing`** (`0` raw to `1` heavy, default `0.5`) is how much the measured speed and pressure are filtered. Raw per-frame speed is far too noisy to drive a width directly. The default sits where a mark reads as deliberate without visibly trailing the pointer.
 - **`minSpacing`** (default `1.5` points) is how far the pointer must travel before a new point is recorded. It keeps a slow hand from piling hundreds of near-identical points into one spot. Frames under it bank their time rather than dropping it, so the point that does land measures its speed over the whole interval.
 
@@ -236,7 +236,7 @@ drawPolyline(points)
 
 The stamp takes its **size** from `strokeWeight` and its **color** from `stroke`. A brush decides texture, not weight or color, which is what lets you swap brushes without re-tuning everything else.
 
-### The knobs
+### The parameters
 
 | | |
 |---|---|

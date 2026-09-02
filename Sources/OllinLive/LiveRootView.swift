@@ -20,7 +20,7 @@ private enum LiveChrome {
 }
 
 /// The live host's window: the sketch renders in the detail pane; the sidebar
-/// holds the monitor card + parameter knobs. The reload status sits in the
+/// holds the monitor card + parameters. The reload status sits in the
 /// toolbar. A reload compile leaves the canvas alone — the last good sketch
 /// keeps animating while the chip pulses amber — and a compile error floats
 /// its diagnostic over the dimmed last good frame. The full-stage "Compiling…"

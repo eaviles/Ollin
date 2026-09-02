@@ -75,7 +75,7 @@ layer.filtered(.softProof(press, warning: .magenta))        // one layer
 postProcess(.softProof(press, warning: .magenta, amount: 0))  // flag only, colors untouched
 ```
 
-`amount` blends between the canvas as drawn and the proof. At `0` the colors are left alone and only the warning shows, which is the mode for checking a palette without living inside the proof. The lattice is cached per printing condition, so changing the intent or the paper knob answers immediately and costs one bake the first time.
+`amount` blends between the canvas as drawn and the proof. At `0` the colors are left alone and only the warning shows, which is the mode for checking a palette without living inside the proof. The lattice is cached per printing condition, so changing the intent or the paper parameter answers immediately and costs one bake the first time.
 
 ### Plates
 

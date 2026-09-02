@@ -4,7 +4,7 @@ import AVFoundation
 /// sound as it is played, written straight into a movie file in real time.
 ///
 /// The offline exporters re-render on a fixed clock, which is exactly wrong
-/// for an improvised run: the input, the knobs, and the sound happen once, in
+/// for an improvised run: the input, the parameters, and the sound happen once, in
 /// real time. This records that once. Start it and stop it from the sketch
 /// (`startRecording()` / `stopRecording()`), from a host's record control, or
 /// hold the recorder yourself and drive it directly.

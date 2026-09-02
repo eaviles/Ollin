@@ -3,7 +3,7 @@ import SwiftUI
 import AppKit
 
 // The parameter timeline: a floating, frosted panel with one lane per
-// automated knob. Keys are placed from the knob rows' diamonds or the
+// automated parameter. Keys are placed from the parameter rows' diamonds or the
 // "+ Track" menu, dragged along their lane, and shaped by the curve that
 // leaves them; the playhead scrubs the deterministic clock, so the picture
 // follows the drag live. The tracks are the sketch's own `Automation`, and
@@ -87,7 +87,7 @@ struct TimelinePanelView: View {
         VStack(spacing: 6) {
             Text("No tracks yet")
                 .font(.system(size: 12, weight: .medium))
-            Text("Click a knob's diamond in the inspector, or add a track below, to place a key at the playhead.")
+            Text("Click a parameter's diamond in the inspector, or add a track below, to place a key at the playhead.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -301,7 +301,7 @@ private struct TimelineLaneLabel: View {
         }
     }
 
-    /// The number the knob holds right now, for the trailing readout.
+    /// The number the parameter holds right now, for the trailing readout.
     private var liveValue: String? {
         guard let stored = model.sketch?.parameters()
             .first(where: { $0.name == track.name })?.param.stored else { return nil }
@@ -485,7 +485,7 @@ private struct TimelineLaneView: View {
             context.stroke(path, with: .color(OllinInspector.accent.opacity(0.45)),
                            lineWidth: 1.5)
         } else if case .color = track.keys.first?.value {
-            // A color track draws itself: the band is the blend the knob will
+            // A color track draws itself: the band is the blend the parameter will
             // wear, sampled from the track rather than faded between stops.
             let bandHeight: CGFloat = 10
             let y = (size.height - bandHeight) / 2
@@ -559,7 +559,7 @@ private struct TimelineFooterRow: View {
             Menu {
                 let addable = model.addableParameters()
                 if addable.isEmpty {
-                    Text("Every knob has a track")
+                    Text("Every parameter has a track")
                 } else {
                     ForEach(addable) { handle in
                         Button(handle.label) { model.addTrack(named: handle.name) }

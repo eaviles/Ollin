@@ -362,9 +362,9 @@ struct PhysicsSnapshotTests {
         #expect(drop(writingTheRule: true) < -7, "the rule lets it through")
     }
 
-    /// Every per-body knob comes back, including the ones only the solver knows
+    /// Every per-body parameter comes back, including the ones only the solver knows
     /// (friction and restitution) and the ones only Ollin does (`buoyancyScale`).
-    @Test func everyBodyKnobCarries() {
+    @Test func everyBodyParameterCarries() {
         let world = World3D()
         world.ground = 0
         let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
@@ -697,10 +697,10 @@ struct SnapshotTierTests {
                 "and the measurement is not blind to a figure that stayed put")
     }
 
-    /// Every knob a character was tuned with comes back, each set away from
+    /// Every parameter a character was tuned with comes back, each set away from
     /// its default so a forgotten one reads as the default rather than passing
     /// by accident.
-    @Test func everyCharacterKnobCarries() {
+    @Test func everyCharacterParameterCarries() {
         let world = World3D()
         world.ground = 0
         let walker = world.addCharacter(radius: 0.42, height: 1.55,
@@ -813,8 +813,8 @@ struct SnapshotTierTests {
                 "a carried drivetrain keeps pace better than one from rest: \(carried) against \(fromRest)")
     }
 
-    /// Every wheel knob comes back, each moved off its default.
-    @Test func everyWheelKnobCarries() throws {
+    /// Every wheel parameter comes back, each moved off its default.
+    @Test func everyWheelParameterCarries() throws {
         let world = World3D()
         world.ground = 0
         let front = Wheel3D.wheel(at: Vector3(0.9, -0.1, 1.3), radius: 0.41,

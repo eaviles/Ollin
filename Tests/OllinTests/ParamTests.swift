@@ -435,7 +435,7 @@ struct ParamTests {
     }
 
     @Test func aStoredPaletteRestoresIntoARampAsAnEvenBlend() {
-        // Both kinds carry the same payload, so a knob that changed from one to
+        // Both kinds carry the same payload, so a parameter that changed from one to
         // the other keeps its colors; a palette names no space, so the ramp
         // falls back to the default one.
         let palette = Param(wrappedValue: Palette(.red, .white, .black))
@@ -483,12 +483,12 @@ struct ParamTests {
 
     // MARK: Show-rules
 
-    @Test func knobsShowByDefault() {
+    @Test func parametersShowByDefault() {
         let p = Param(wrappedValue: 1.0, 0...10)
         #expect(p.isShown)
     }
 
-    @Test func aShowRuleFollowsItsSourceKnob() {
+    @Test func aShowRuleFollowsItsSourceParameter() {
         let transmission = Param(wrappedValue: 0.0, 0...1)
         let thickness = Param(wrappedValue: 0.8, 0...3)
         thickness.show(when: transmission) { $0 > 0 }
@@ -576,8 +576,8 @@ struct ParamTests {
         defaults.removePersistentDomain(forName: "OllinParamFoldTests")
         defer { defaults.removePersistentDomain(forName: "OllinParamFoldTests") }
 
-        let knob = Param(wrappedValue: 1.0, 0...10, group: .folded("Advanced"))
-        let handles = [ParamHandle(name: "knob", param: knob)]
+        let depth = Param(wrappedValue: 1.0, 0...10, group: .folded("Advanced"))
+        let handles = [ParamHandle(name: "depth", param: depth)]
 
         // Untouched: closed (nothing remembered), whoever asks.
         #expect(ParamFoldMemory.isOpen(sketch: "Pulse", group: "Advanced", defaults: defaults) == nil)

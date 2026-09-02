@@ -39,7 +39,7 @@ public final class Soundtrack: AudioSource {
     private let store: SoundtrackAnalyzerStore
 
     /// Starts analyzing `source`'s audio. `fftSize` and `smoothing` mirror the
-    /// other audio sources' knobs.
+    /// other audio sources' parameters.
     public init(of source: any AudioTapSource, fftSize: Int = 1024, smoothing: Float = 0.8) {
         let store = SoundtrackAnalyzerStore(fftSize: fftSize, smoothing: smoothing)
         self.store = store

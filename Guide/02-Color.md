@@ -135,7 +135,7 @@ fill(dusk.color(at: t))
 
 Two kinds of ramp come pre-made. **`Colormap`** holds eight scientific maps such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work beautifully when fed with `time`. Both answer to the same `color(at:)`.
 
-Either one can be a knob, which saves a lot of editing and rerunning:
+Either one can be a parameter, which saves a lot of editing and rerunning:
 
 ```swift
 @Param var inks = Palette(.red, .white, .black)      // a strip of blocks
@@ -317,8 +317,8 @@ Run it and walk the interesting lines:
 
 - `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Now click the canvas. `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters, giving you the same poster as a fresh variation, as many as you care to click through.
 - Two loops, one inside the other, visit every column and row, and `diagonal` turns each cell's position into the `0...1` the ramp wants.
-- The `t` line carries the whole look: position, plus seeded jitter scaled by the knob, plus a slow shimmer. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a look worth keeping in its own right.
-- The knobs do a lot of work here. `Columns` changes the piece's whole character, chunky at 5 and woven at 28, and `Jitter` takes it from formal to painterly.
+- The `t` line carries the whole look: position, plus seeded jitter scaled by the parameter, plus a slow shimmer. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a look worth keeping in its own right.
+- The parameters do a lot of work here. `Columns` changes the piece's whole character, chunky at 5 and woven at 28, and `Jitter` takes it from formal to painterly.
 
 > **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive from one frame to the next. A `let` or `var` written inside `draw()` is born and dies with that frame. `mousePressed()` is another function Ollin calls for you, once per click, alongside `setup()` and `draw()`. And a loop inside a loop does what it sounds like: for every column, visit every row.
 

@@ -44,7 +44,7 @@ package enum SourceEdit {
     enum Coordinate: Equatable {
         /// A number, and where it stands.
         case number(Range<Int>, Literal)
-        /// A bare name (`radius`, `cx`): a knob's name, or any other variable.
+        /// A bare name (`radius`, `cx`): a parameter's name, or any other variable.
         case name(String)
         /// A calculation (`width / 2`, `p.x + 10`), with its text.
         case expression(String)
@@ -174,14 +174,14 @@ package enum SourceEdit {
     }
 
     /// A move worked out coordinate by coordinate, so a host can write the
-    /// numbers it can write and turn a knob for a coordinate that stands there
-    /// as a knob's name.
+    /// numbers it can write and adjust a parameter for a coordinate that stands there
+    /// as a parameter's name.
     package struct MovePlan: Equatable {
         /// The file with every coordinate that is a number already moved. The
         /// text unchanged when none of them is.
         package let text: String
         /// Coordinates written as a bare name, each with how far the drag moves
-        /// it: `("cx", 13)`. Whether that name is a knob is the host's question.
+        /// it: `("cx", 13)`. Whether that name is a parameter is the host's question.
         package let names: [Named]
         /// What stands where a coordinate has to be, when it is neither a
         /// number nor a name. Nothing was written in that case.

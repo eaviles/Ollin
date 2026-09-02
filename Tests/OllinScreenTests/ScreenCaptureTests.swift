@@ -168,7 +168,7 @@ import Ollin
     }
 
     /// Always on: the size multiplier is clamped into a range that can produce a
-    /// texture at all, since a sketch can set it from a knob.
+    /// texture at all, since a sketch can set it from a parameter.
     @Test func theSizeMultiplierStaysInRange() {
         let capture = ScreenCapture(.mainDisplay)
         capture.scale = 4

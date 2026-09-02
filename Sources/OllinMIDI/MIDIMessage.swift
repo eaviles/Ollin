@@ -4,7 +4,7 @@ import Foundation
 /// on. This is the unit a sketch reads from a `MIDIInput` and sends through a
 /// `MIDIOutput`.
 ///
-/// The everyday ones are notes and control changes — a key pressed, a knob
+/// The everyday ones are notes and control changes: a key pressed, a parameter
 /// turned:
 ///
 /// ```swift

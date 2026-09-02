@@ -101,7 +101,7 @@ Names are matched leniently, because that is what makes them worth writing. An a
 
 Capturing a **window** gives you that window alone, at its own size, with nothing in front of it, even when something covers it on screen. Capturing an **app** gives you its windows against their display, keeping their positions and overlap.
 
-The source is a live property, so a sketch can switch targets from a knob or a key without stopping:
+The source is a live property, so a sketch can switch targets from a parameter or a key without stopping:
 
 ```swift
 screen.source = .app("Music")
@@ -165,7 +165,7 @@ screen.frameRate = 30       // most frames per second (default 60)
 screen.showsCursor = false  // draw the pointer into the frames (default true)
 ```
 
-`scale` is the knob that matters on a large display. At `1` a capture arrives at the display's true backing resolution. On a Retina screen that is twice its size in points, so a 5K display is a 5120-pixel-wide texture every frame. Halving it quarters the pixels, and is the cheap way to feed a heavy effect chain.
+`scale` is the parameter that matters on a large display. At `1` a capture arrives at the display's true backing resolution. On a Retina screen that is twice its size in points, so a 5K display is a 5120-pixel-wide texture every frame. Halving it quarters the pixels, and is the cheap way to feed a heavy effect chain.
 
 Frames are delivered only when the captured content actually changes, so a still screen costs nothing whatever `frameRate` says. The cap is there to keep a busy screen from outrunning the sketch.
 
@@ -205,4 +205,4 @@ The CPU copy a tracker needs is made only while a tap is installed, so a capture
 - [Vision](../Vision/Vision.md) - the trackers a captured feed can be read by
 - [Video](../Video/Video.md) - recorded footage as the same kind of live image
 - [Effects](../Drawing/Effects.md) - the filters a captured frame goes through
-- Example: `Examples/Integration/ScreenCapture` - the display, filtered, with the feedback tunnel on a knob
+- Example: `Examples/Integration/ScreenCapture` - the display, filtered, with the feedback tunnel on a parameter

@@ -54,7 +54,7 @@ final class SerialLoop: Sketch {
         fill(soft)
         drawText("the latest reading", 716, 290)
         drawText("each line, once", 716, 318)
-        drawText("drives a knob", 716, 346)
+        drawText("drives a parameter", 716, 346)
 
         noStroke()
         fill(soft)

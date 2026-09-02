@@ -381,7 +381,7 @@ struct MeshGrowthTests {
                 "settling collapsed the surface: \(before) to \(after)")
     }
 
-    /// The other drivers have nothing to settle, so the knob leaves them
+    /// The other drivers have nothing to settle, so the parameter leaves them
     /// byte-identical.
     @Test
     func settleLeavesOtherDriversUntouched() {

@@ -17,7 +17,7 @@ import Foundation
 /// whose source is yours to edit.
 ///
 /// Point it at any scene of your own by setting `OLLIN_SCENE` to the file's
-/// path; the File knob then switches back to the bundled stages.
+/// path; the File parameter then switches back to the bundled stages.
 @main
 final class SceneExplorer: Sketch {
 

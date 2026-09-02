@@ -111,7 +111,7 @@ An older shader written around `main` with `gl_FragCoord` and `gl_FragColor` is 
 
 ## Once it runs
 
-It is Metal now, so the rest of the framework is open to it. [Ollin's shader library](../Shaders/ShaderLibrary.md) is spliced in already, so `palette`, the noise, the hashes and the `sd*` distance functions are all callable. `param(info, i)` reads values from the sketch, which is how a knob reaches the shader. The whole [layered-effects](../Drawing/Effects.md) tier composes around it.
+It is Metal now, so the rest of the framework is open to it. [Ollin's shader library](../Shaders/ShaderLibrary.md) is spliced in already, so `palette`, the noise, the hashes and the `sd*` distance functions are all callable. `param(info, i)` reads values from the sketch, which is how a parameter reaches the shader. The whole [layered-effects](../Drawing/Effects.md) tier composes around it.
 
 If the shader is small enough to keep in the Swift file, ask for one loose file and it travels inline:
 

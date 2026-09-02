@@ -2,7 +2,7 @@ import Ollin
 @testable import OllinRuntime
 import Testing
 
-/// Writing tuned knob values back into the `@Param` lines they came from.
+/// Writing tuned parameter values back into the `@Param` lines they came from.
 ///
 /// Every check works on text alone, the way the hosts call it: hand it a
 /// sketch's source and the values the inspector holds, and read the source
@@ -58,8 +58,8 @@ struct ParamWriteTests {
         #expect(result.text.contains("@Param(0...10) var speed = 1.0"))   // untouched
     }
 
-    /// A knob nobody turned is not in the set, so its line is not even read.
-    @Test func onlyTheNamedKnobsMove() {
+    /// A parameter nobody turned is not in the set, so its line is not even read.
+    @Test func onlyTheNamedParametersMove() {
         let source = "@Param(0...5) var a = 1.0\n@Param(0...5) var b = 2.0"
         let result = written(source, ("b", .number(4)))
         #expect(result.text == "@Param(0...5) var a = 1.0\n@Param(0...5) var b = 4.0")
@@ -67,7 +67,7 @@ struct ParamWriteTests {
 
     // MARK: The two rules that keep the file compiling
 
-    /// A `Double` knob is a `Double` only because of the range beside it, so a
+    /// A `Double` parameter is a `Double` only because of the range beside it, so a
     /// fraction must keep its point. Without this the line reads as an `Int`
     /// and the declaration stops compiling.
     @Test func aFractionKeepsItsPoint() {
@@ -75,7 +75,7 @@ struct ParamWriteTests {
         #expect(result.text.hasSuffix("= 86.5"))
     }
 
-    /// A whole value written into a whole default stays whole, so a knob turned
+    /// A whole value written into a whole default stays whole, so a parameter turned
     /// to a round number reads the way its author wrote it.
     @Test func aWholeValueStaysWhole() {
         let result = written("@Param(1...12) var rings = 5", ("rings", .number(8)))
@@ -88,7 +88,7 @@ struct ParamWriteTests {
     }
 
     /// Both ends of a range carry a point for the same reason: `40...50` reads
-    /// as a range of `Int`, which no `ClosedRange<Double>` knob can take.
+    /// as a range of `Int`, which no `ClosedRange<Double>` parameter can take.
     @Test func bothEndsOfARangeKeepTheirPoint() {
         let result = written("@Param(in: 0...50) var sizes = 5.0...20.0",
                              ("sizes", .range(lower: 40, upper: 50)))
@@ -112,7 +112,7 @@ struct ParamWriteTests {
     }
 
     /// A curve built from a closure carries a serial rather than a member name,
-    /// so there is nothing to write and the knob says so.
+    /// so there is nothing to write and the parameter says so.
     @Test func aChoiceWithNoNameIsRefused() {
         let result = written("@Param var curve: Easing = .easeOut", ("curve", .option("curve 3")))
         #expect(result.written.isEmpty)
@@ -225,23 +225,23 @@ struct ParamWriteTests {
                     .refused.count == 1)
     }
 
-    @Test func aKnobDeclaredSomewhereElseIsSaidOutLoud() {
+    @Test func aParameterDeclaredSomewhereElseIsSaidOutLoud() {
         let result = written("@Param(0...5) var here = 1.0", ("elsewhere", .number(2)))
         #expect(result.refused == [.init(name: "elsewhere", reason: .notDeclared)])
         #expect(ParamWrite.sentence(for: result.refused[0], in: "Sketch.swift")
                 == "Sketch.swift does not declare elsewhere.")
     }
 
-    /// Two sketches in one file may carry the same knob name, and there is no
+    /// Two sketches in one file may carry the same parameter name, and there is no
     /// way to tell which one is running, so neither is written.
-    @Test func twoKnobsOfOneNameAreRefused() {
+    @Test func twoParametersOfOneNameAreRefused() {
         let source = "@Param(0...5) var radius = 1.0\n@Param(0...5) var radius = 2.0"
         let result = written(source, ("radius", .number(3)))
         #expect(result.refused == [.init(name: "radius", reason: .ambiguous)])
         #expect(result.text == source)
     }
 
-    /// A property that only looks like a knob is not one, and a `var` inside a
+    /// A property that only looks like a parameter is not one, and a `var` inside a
     /// string or a comment is not a declaration at all.
     @Test func onlyRealParamsAreFound() {
         #expect(written("var radius = 1.0", ("radius", .number(2))).refused
@@ -307,7 +307,7 @@ struct ParamWriteTests {
     }
 
     /// A `@Param` that carries no value cannot be written into, and a computed
-    /// property is not a knob at all.
+    /// property is not a parameter at all.
     @Test func aDeclarationWithNoValueIsRefused() {
         #expect(written("@Param(0...9) var a: Double { 5 }", ("a", .number(2))).refused
                     == [.init(name: "a", reason: .noDefault)])

@@ -42,14 +42,14 @@ final class Melt: Sketch {
 }
 ```
 
-Run it and watch the seam. `SDF.circle` and `SDF.rect` are field *values*, like a `Shape` or a `Color`. From there `.at` moves one, `.colored` paints one, `.smoothUnion` merges two into a new field, and `drawSDF` rasterizes whatever field you hand it in a single pass. The knob `k` is the width of the melt, in canvas points:
+Run it and watch the seam. `SDF.circle` and `SDF.rect` are field *values*, like a `Shape` or a `Color`. From there `.at` moves one, `.colored` paints one, `.smoothUnion` merges two into a new field, and `drawSDF` rasterizes whatever field you hand it in a single pass. The parameter `k` is the width of the melt, in canvas points:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/MeltStrip-dark.jpg">
   <img src="Images/26-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
 </picture>
 
-At `k = 0` the union is hard, two shapes overlapping like [Chapter 15](15-ShapesAsMaterial.md). As `k` grows, the seam becomes a fillet, then a neck, then the pair is one body. Look at the colors. The smooth union blends the two operands' colors across the melt, and that is what makes the result read as one object rather than a trick. This one knob is most of the medium, so put it on a `@Param` slider and you'll feel it immediately.
+At `k = 0` the union is hard, two shapes overlapping like [Chapter 15](15-ShapesAsMaterial.md). As `k` grows, the seam becomes a fillet, then a neck, then the pair is one body. Look at the colors. The smooth union blends the two operands' colors across the melt, and that is what makes the result read as one object rather than a trick. This one parameter is most of the medium, so put it on a `@Param` slider and you'll feel it immediately.
 
 One habit is worth setting early, and it's that **order matters in the chain**. Every call wraps the field before it, so `circle.at(p).scaled(2)` scales the *moved* circle (it lands twice as far out), while `circle.scaled(2).at(p)` scales in place and then moves. Read chains inside out and they always make sense.
 
@@ -127,7 +127,7 @@ A mesh is triangles, and the GPU knows how to draw triangles. A field is just a 
 
 The hops shrink as the ray nears a surface and grow again in open space, so the ray lands on the surface without ever stepping through it. Watch them tighten as the ray passes over the lower shape. This is called **sphere tracing**, and it's the second big advantage of the representation. The same number that let shapes melt is what steers the rays that draw them.
 
-You get all of this without writing any of it. The one practical knob is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces at a resolution budget by default while exports always render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` loosens that budget further.
+You get all of this without writing any of it. The one practical parameter is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces at a resolution budget by default while exports always render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` loosens that budget further.
 
 ## The other way out: field to mesh
 
@@ -289,7 +289,7 @@ Under the hood, Ollin scatters a grid of invisible **light probes** through the 
 
 - **It composes with what you already know.** With `castShadows()` on, bounce respects the same shadows the direct light does, so light doesn't sneak through a wall on the second hop (a sealed box stays dark inside). With an `environment(_:)`, the probes carry the sky in *with occlusion*, so a room lit through a doorway darkens with distance from the door instead of glowing evenly, which the plain environment ambient can't do.
 - **It's the diffuse half.** Matte surfaces gather bounce; a mirror's sharp image of the scene is `rayTracedReflections()`, the specular half from the previous section, and the two are made to run together.
-- **`intensity` is an artistic dial, not a lie detector.** `1` is physical. The figure runs `1.6` because the picture wanted it, and that's the whole job of the knob.
+- **`intensity` is an artistic dial, not a lie detector.** `1` is physical. The figure runs `1.6` because the picture wanted it, and that's the whole job of the parameter.
 
 Like the reflections, the probe field settles over a few frames live, so a sudden lighting change fades in the way your eyes adjust. It converges fully inside each frame on export, so a still or a video reproduces exactly. And like the reflections, it needs a ray-tracing GPU and does nothing at all elsewhere, so the call can stay in the sketch.
 
@@ -313,7 +313,7 @@ drawSphere(radius: 0.9)               // its bright spot lands inside its own sh
 
 **A shadow is where light couldn't go; a caustic is where it went instead.** The renderer traces thousands of little parcels of light from the sun, through every glass and every polished metal, and draws each one where it lands. A clear ball throws a tight hot spot. A bottle-green ball throws a green one, because the parcels crossed the green interior. A chrome ring folds light into the curved fan a wedding band leaves beside itself. Nothing needs declaring: whatever transmits or mirrors, casts.
 
-Two knobs. `caustics(intensity: 1.6)` turns the patterns up past physical, for drama. `caustics(dispersion: 1)` gives every parcel its own wavelength, so a prism's edge fans into a real rainbow and even a plain sphere's spot picks up red and blue fringes. If the patterns look coarse, `causticsQuality(.detail)` traces more parcels; exports always use the fine setting on their own. Like the other traced light, it needs a Mac that traces and quietly does nothing elsewhere, so the call can stay in the sketch. The [`Caustics` example](../Examples/3D/Lighting/Caustics/Sketch.swift) is the sunlit-table scene: two glass spheres and a chrome ring, with the space bar to compare.
+Two parameters. `caustics(intensity: 1.6)` turns the patterns up past physical, for drama. `caustics(dispersion: 1)` gives every parcel its own wavelength, so a prism's edge fans into a real rainbow and even a plain sphere's spot picks up red and blue fringes. If the patterns look coarse, `causticsQuality(.detail)` traces more parcels; exports always use the fine setting on their own. Like the other traced light, it needs a Mac that traces and quietly does nothing elsewhere, so the call can stay in the sketch. The [`Caustics` example](../Examples/3D/Lighting/Caustics/Sketch.swift) is the sunlit-table scene: two glass spheres and a chrome ring, with the space bar to compare.
 
 ## Edges that settle: temporal anti-aliasing
 
@@ -328,7 +328,7 @@ Every 3D frame already takes eight samples per pixel, but always at the *same* e
 
 One thing the average can't know on its own is where a *moving object* was last frame. The camera's motion is followed automatically. A mesh spinning or flying through the scene on its own refreshes its history instead, so there are no ghost trails, at the price of its edges reading rawer mid-flight. Wrap its drawing in `withMotion { }` and Ollin remembers the block's placement from frame to frame. That hands the average each mover's exact screen motion, so its edges keep their refinement while they move. Name the block, as in `withMotion("rotor") { }`, if the code path that draws it changes between frames.
 
-The [`TemporalAA` example](../Examples/3D/Effects/TemporalAA/Sketch.swift) is a trellis of thin tilted rods under a slow camera sway, with the toggle on a knob. An orbiting bar has a `withMotion` knob of its own. Flip them mid-motion and watch the edges stop crawling. The scenes where it makes the most difference are exactly that kind, so hairline geometry, high contrast, and movement.
+The [`TemporalAA` example](../Examples/3D/Effects/TemporalAA/Sketch.swift) is a trellis of thin tilted rods under a slow camera sway, with the toggle on a parameter. An orbiting bar has a `withMotion` parameter of its own. Flip them mid-motion and watch the edges stop crawling. The scenes where it makes the most difference are exactly that kind, so hairline geometry, high contrast, and movement.
 
 ## Highlights that hold still: specular anti-aliasing
 
@@ -347,7 +347,7 @@ It finds the detail on its own. A flat wall holds one direction across every pix
 
 Two things it will not do. A highlight so bright that it has already gone flat white cannot be calmed, and widening it only spreads that white. Turn the strength down if a picture reads softer rather than steadier. The measurement also comes from the pixels next door, so detail far below one pixel is guessed rather than measured.
 
-The [`SpecularAntialias` example](../Examples/3D/Effects/SpecularAntialias/Sketch.swift) is a bed of small polished balls under one hard light, with the toggle and the strength on knobs. The plate standing behind them is flat, so it never changes. Watch the balls at the back of the bed, where they are smallest.
+The [`SpecularAntialias` example](../Examples/3D/Effects/SpecularAntialias/Sketch.swift) is a bed of small polished balls under one hard light, with the toggle and the strength on parameters. The plate standing behind them is flat, so it never changes. Watch the balls at the back of the bed, where they are smallest.
 
 ## The streak a shutter leaves: motion blur
 
@@ -368,7 +368,7 @@ The figure is one still frame, and it already tells you who is moving and how fa
 
 `shutter` is the photographic dial. The default `0.5` is the film standard, the shutter open for half of each frame, the look every movie trained you on. Drop it toward `0.1` and motion turns crisp and staccato, the action-movie look. Raise it to `1` for a full frame of smear, and past it for a streak no real camera could make. Because the blur reads the motion *between frames*, an export carries it deterministically. Frame k streaks by exactly how things moved since frame k-1, a video export looks like the live window, and the very first frame, with nothing before it, is honestly sharp.
 
-The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is the figure's scene live, with the toggle and the shutter on knobs. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. Captions, 2D overlays, and the environment backdrop never streak, so the interface stays still while the world moves.
+The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is the figure's scene live, with the toggle and the shutter on parameters. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. Captions, 2D overlays, and the environment backdrop never streak, so the interface stays still while the world moves.
 
 ## Light in the camera: lens flare
 
@@ -415,7 +415,7 @@ lensFlare(amount: 0.6, lens: .heliar.stopped(to: 11))
 
 The last part is what keeps a flare from reading as a sticker stuck to the lens. Its strength follows how much of the source the camera can actually **see**. Walk something in front of the lamp and the flare fades as the lamp is covered. It does not switch off the moment the lamp's center goes behind. That is one of those details you never notice when it is right and cannot stop noticing when it is wrong.
 
-The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts a lamp back and forth behind a slab with the strength, the f-number, and the blade count on knobs. Watch the ghosts fade as the lamp goes behind, and watch them shrink together as you stop down.
+The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts a lamp back and forth behind a slab with the strength, the f-number, and the blade count on parameters. Watch the ghosts fade as the lamp goes behind, and watch them shrink together as you stop down.
 
 ## Rendering fewer pixels: temporal upscaling
 
@@ -428,7 +428,7 @@ temporalUpscaling()      // render at two-thirds size, reconstruct the full canv
 
 The live window draws the whole frame at a fraction of the canvas. The platform's temporal scaler then rebuilds the full-size image from the same jittered history that "Edges that settle: temporal anti-aliasing" accumulates. You render fewer pixels, and the history remembers the rest. The tier picks how few. `.performance` renders at half size per side, a quarter of the pixels, `.default` at two-thirds, and `.detail` at three-quarters. It replaces `temporalAntialiasing()` while it runs, since it *is* that accumulation aimed at resolution. It reads the same `withMotion { }` declarations, so a mover reconstructs cleanly mid-flight. It needs Apple silicon, and anywhere else the call renders normally, with a note.
 
-What you keep is never the preview. Exports and snapshots render at full resolution with the deterministic average. So upscaling is purely a live-window trade, and the same sketch previews fast and exports full. The [`Upscaling` example](../Examples/3D/Effects/Upscaling/Sketch.swift) is a mirror floor tracing a ring of columns, with the toggle and the tier on knobs. Watch the FPS readout while you flip them, since that scene runs about twice as fast at `.performance` on an M2. Like temporal AA, the win is temporal and a still can't show it, so the example carries the demonstration.
+What you keep is never the preview. Exports and snapshots render at full resolution with the deterministic average. So upscaling is purely a live-window trade, and the same sketch previews fast and exports full. The [`Upscaling` example](../Examples/3D/Effects/Upscaling/Sketch.swift) is a mirror floor tracing a ring of columns, with the toggle and the tier on parameters. Watch the FPS readout while you flip them, since that scene runs about twice as fast at `.performance` on an M2. Like temporal AA, the win is temporal and a still can't show it, so the example carries the demonstration.
 
 ## Drawing fewer frames: the ones in between
 
@@ -445,7 +445,7 @@ Your clock is untouched, which is the part that matters for a sketch. `time` sti
 
 Two things come with it. A drawn frame waits one refresh before it is shown, because the made frame belongs in front of it, so everything arrives about sixteen milliseconds later than it would; a piece steered by the mouse can feel that. And a made frame is a guess: where something moves further than the interpolator can follow, it repeats the drawn frame instead of smearing it. The first frame after it starts is repeated for the same reason, which is why turning it on shows nothing odd.
 
-Exports never interpolate. What you keep is the frames you drew, so no file ever carries a guessed picture. The [`FrameInterpolation` example](../Examples/3D/Effects/FrameInterpolation/Sketch.swift) is a ring of orbiting blocks with a fast arm sweeping through them, with the toggle and a speed knob. Turn the speed up until the arm stops keeping up, which is the honest edge of what this can do.
+Exports never interpolate. What you keep is the frames you drew, so no file ever carries a guessed picture. The [`FrameInterpolation` example](../Examples/3D/Effects/FrameInterpolation/Sketch.swift) is a ring of orbiting blocks with a fast arm sweeping through them, with the toggle and a speed parameter. Turn the speed up until the arm stops keeping up, which is the honest edge of what this can do.
 
 ## Putting it together: molten
 
@@ -509,14 +509,14 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 
 - [SDF combinators](../Docs/Drawing/Combinators.md): the complete reference, including the machined joint family, gradient paint on merged fields, per-axis stretching, the infinite plane, and the quality dials.
 - [Shadow art](../Docs/Generators/ShadowArt.md): the carving, what the solid really throws, and the rule for when two or three shadows can be cast at all.
-- [Isosurfaces and metaballs](../Docs/Generators/Isosurface.md): the mesh route in full, including all three merge knobs, how the marching handles the faces that could be joined two ways, and the resolution and cost rules.
+- [Isosurfaces and metaballs](../Docs/Generators/Isosurface.md): the mesh route in full, including all three merge parameters, how the marching handles the faces that could be joined two ways, and the resolution and cost rules.
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.
 - [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced reflections, the global-illumination probe field, temporal anti-aliasing with `withMotion`, specular anti-aliasing, motion blur, and temporal upscaling, each with what it needs and what it costs.
 - [Caustics](../Docs/3D/Caustics.md): what casts and what receives, the emitting light's priority, dispersion, the quality dial, and how the photon chain works.
 - [Lens flare](../Docs/3D/LensFlare.md): the lens as a stack of interfaces, writing your own prescription, the iris and its blades, which sources flare, and how a flare follows what the camera can see.
 - Appendix B draws this chapter's math, one picture per idea: [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples for this section: [`Examples/3D/Materials/PhysicalMaterials`](../Examples/3D/Materials/PhysicalMaterials/Sketch.swift), [`Examples/3D/Materials/Glass`](../Examples/3D/Materials/Glass/Sketch.swift) (hold space to drop the traced view through the glass), [`Examples/3D/Environments/ImageBasedLighting`](../Examples/3D/Environments/ImageBasedLighting/Sketch.swift), [`EnvironmentGallery`](../Examples/3D/Environments/EnvironmentGallery/Sketch.swift) (steps through all twenty), and [`ProceduralSky`](../Examples/3D/Environments/ProceduralSky/Sketch.swift).
-- Worked example for the mesh route: [`Examples/3D/Geometry/Metaballs`](../Examples/3D/Geometry/Metaballs/Sketch.swift), a cluster that keeps fusing and parting, with the merge level and the grid detail on knobs.
+- Worked example for the mesh route: [`Examples/3D/Geometry/Metaballs`](../Examples/3D/Geometry/Metaballs/Sketch.swift), a cluster that keeps fusing and parting, with the merge level and the grid detail on parameters.
 - Worked examples: [`Examples/Shapes/Combinators`](../Examples/Shapes/Combinators/Sketch.swift) and [`CombinatorsGradient`](../Examples/Shapes/CombinatorsGradient/Sketch.swift) in 2D; in 3D, [`Examples/3D/Raymarching/RaymarchedSDF`](../Examples/3D/Raymarching/RaymarchedSDF/Sketch.swift), [`RaymarchedShapes`](../Examples/3D/Raymarching/RaymarchedShapes/Sketch.swift), [`RaymarchedSculpt`](../Examples/3D/Raymarching/RaymarchedSculpt/Sketch.swift), [`RaymarchedClay`](../Examples/3D/Raymarching/RaymarchedClay/Sketch.swift), [`RaymarchedDomain`](../Examples/3D/Raymarching/RaymarchedDomain/Sketch.swift), [`RaymarchedRadial`](../Examples/3D/Raymarching/RaymarchedRadial/Sketch.swift), [`RaymarchedPlane`](../Examples/3D/Raymarching/RaymarchedPlane/Sketch.swift), and [`RaymarchedEnvironment`](../Examples/3D/Raymarching/RaymarchedEnvironment/Sketch.swift).
 
 ---

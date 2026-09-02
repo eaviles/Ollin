@@ -39,9 +39,9 @@ let mesh = field.mesh(resolution: 56)
 
 `radius` is the size the ball reads at **on its own**, so one lone ball meshes to a sphere of exactly that radius. Bring a second within reach and the two fields add. The value in the gap lifts above what either makes there alone, the surface swells across it, and the pair fuses into one skin. Pull them apart and the bridge necks down and snaps.
 
-Three knobs shape the merging:
+Three parameters shape the merging:
 
-| Knob | Effect |
+| Parameter | Effect |
 |---|---|
 | `level` | The value the surface is drawn at. Lower fattens every ball and makes them merge from further apart. Raise it and they thin and separate. |
 | `strength` | How hard one ball pushes. Above `1` it swells and reaches further. A **negative** value carves into its neighbors instead of joining them. |

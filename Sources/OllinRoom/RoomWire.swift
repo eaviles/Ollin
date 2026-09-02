@@ -283,7 +283,7 @@ public extension RoomWire {
     /// The time is what settles an argument. Two people turning the same parameter on
     /// two machines in the same second would otherwise end up looking at
     /// different values forever, each having taken the other's and stopped. With
-    /// the time on it, the later turn wins on every machine.
+    /// the time on it, the later change wins on every machine.
     static func encodeParameter(name: String, stored: ParamStored, turnedAt: Double) -> Data? {
         guard let encoded = try? JSONEncoder().encode(stored) else { return nil }
         var payload: [UInt8] = []

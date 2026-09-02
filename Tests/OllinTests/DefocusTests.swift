@@ -168,7 +168,7 @@ private final class MidgroundProbe: Sketch {
     var depth = 0.55
     var maxBlur = 48.0
 
-    /// `Sketch` requires `init()`, so the knobs are set on the instance.
+    /// `Sketch` requires `init()`, so the parameters are set on the instance.
     static func make(depth: Double, maxBlur: Double = 48) -> MidgroundProbe {
         let probe = MidgroundProbe()
         probe.depth = depth; probe.maxBlur = maxBlur

@@ -79,7 +79,7 @@ public enum GrowthDriver {
 /// a suggestion. Past it the surface stops making new area and only relaxes.
 public final class MeshGrowth {
 
-    // MARK: Knobs
+    // MARK: Parameters
 
     /// What decides where the surface grows fastest.
     public var driver: GrowthDriver

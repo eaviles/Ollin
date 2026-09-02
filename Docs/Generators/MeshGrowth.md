@@ -24,7 +24,7 @@ That is the whole idea, and everything that looks designed about the result come
 - [Why it folds](#folding)
 - [What drives the growth](#drivers)
 - [Reaction-diffusion on the surface](#chemistry)
-- [The knobs that matter](#knobs)
+- [The parameters that matter](#parameters)
 - [Open surfaces](#boundaries)
 - [Cost and reproducibility](#cost)
 
@@ -39,7 +39,7 @@ This means *every* driver folds, including the perfectly even one. What a driver
 Two other pieces make the folds behave:
 
 - **Self-avoidance.** Parts of the surface that come near each other without being near *along* the surface push apart, so a fold stacks against its neighbor instead of passing through it.
-- **Bending resistance.** A sheet with no stiffness buckles at the smallest scale available. The folds then come out the size of a triangle, and the form reads as crumpled paper. Resisting bending makes small wrinkles expensive, so the same growth gathers into broader waves. That is the `stiffness` knob, and it is the difference between crumpled and ruffled.
+- **Bending resistance.** A sheet with no stiffness buckles at the smallest scale available. The folds then come out the size of a triangle, and the form reads as crumpled paper. Resisting bending makes small wrinkles expensive, so the same growth gathers into broader waves. That is the `stiffness` parameter, and it is the difference between crumpled and ruffled.
 
 <a name="drivers"></a>
 
@@ -95,11 +95,11 @@ The pattern also only ever covers part of the surface. At the same `growthRate` 
 
 Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded geometry whose triangles share no vertices. An icosphere is therefore, by index, thousands of loose triangles. Without welding, nothing can spread across it at all.
 
-<a name="knobs"></a>
+<a name="parameters"></a>
 
-#### The knobs that matter
+#### The parameters that matter
 
-| Knob | Does | Notes |
+| Parameter | Does | Notes |
 |---|---|---|
 | `edgeLength` | the triangle size the remesher holds | sets the finest fold the surface can hold, and is where the cost lives |
 | `growthRate` | how fast area is made | 0 leaves the surface only relaxing |

@@ -195,7 +195,7 @@ A flow is 3D and rides the camera, so `drawParticles` is a no-op without one. Me
 
 Both are percentiles of the orbit rather than its outright extremes. Several of these systems take rare long excursions, so a maximum keeps growing the longer you watch. The four-wing's reach measures 2.0 over 120,000 points and 3.5 over 400,000. A percentile settles instead.
 
-| Knob | Meaning |
+| Parameter | Meaning |
 | --- | --- |
 | `system: AttractorSystem` | Which field. Settable live: the flow re-measures and the particles flow into the new shape. |
 | `speed: Double` | Pace, as a multiple of the measured one (1 crosses the attractor about once a second). |

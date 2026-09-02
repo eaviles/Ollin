@@ -24,7 +24,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Input](Input/) | mouse-driven sketches |
 | [Installation](Installation/) | pieces left running unattended, on a wall or in a window |
 | [Integration](Integration/) | talking to other apps and gear: OSC, MIDI, DMX lighting, Syphon (`import OllinOSC` / `OllinMIDI` / `OllinDMX` / `OllinSyphon`) |
-| [Live](Live/) | tunable `@Param` knobs under OllinLive |
+| [Live](Live/) | tunable `@Param` parameters under OllinLive |
 | [Motion](Motion/) | animation driven by `time` |
 | [Patterns](Patterns/) | generative patterns: grids, tessellations, rule-based repetition |
 | [Physics](Physics/) | simulated motion (`import OllinPhysics`) |
@@ -62,7 +62,7 @@ Or browse them all in one window, from the repo root:
 swift run OllinExamples
 ```
 
-The example list sits on the left, grouped like the folders, with a filter bar at the bottom; the arrow keys walk it. Click a sketch and it compiles and runs in the middle, with an inspector of live stats and `@Param` knobs docked on the right. Both sidebars collapse from the title bar.
+The example list sits on the left, grouped like the folders, with a filter bar at the bottom; the arrow keys walk it. Click a sketch and it compiles and runs in the middle, with an inspector of live stats and `@Param` parameters docked on the right. Both sidebars collapse from the title bar.
 
 ### Adding an example
 

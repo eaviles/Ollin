@@ -36,7 +36,7 @@ struct MaterialSourceTests {
     }
 
     @Test func floatDustDoesNotPrint() {
-        // A knob's value a hair off the default rounds back onto it, so the
+        // A parameter's value a hair off the default rounds back onto it, so the
         // field stays out of the expression.
         var m = Material()
         m.roughness = 0.5 + 1e-9

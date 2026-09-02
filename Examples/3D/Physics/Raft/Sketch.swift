@@ -134,7 +134,7 @@ final class Raft: Sketch {
         cameraShowcase(.autoOrbit(period: 44), from: Camera3D
             .perspective(eye: Vector3(1.2, 5.4, 9.2), target: Vector3(0, 0.2, 0)))
 
-        // Both knobs reach the water between steps, so the raft answers them
+        // Both parameters reach the water between steps, so the raft answers them
         // while she is riding.
         world.water?.waves?.amplitude = swell
         raft?.density = deckDensity

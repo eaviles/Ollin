@@ -20,7 +20,7 @@ final class Crawler: Sketch {
     var crawler: Vehicle3D!
     var rubble: [Body3D] = []
 
-    /// The knobs worth turning while driving. Wind `topSpeed` down and the
+    /// The parameters worth changing while driving. Wind `topSpeed` down and the
     /// machine pulls harder and crawls, which is what a working one does.
     @Param(3 ... 18, icon: "speedometer") var topSpeed = 9.0
     @Param(0.05 ... 1.5, icon: "road.lanes") var grip = 1.0

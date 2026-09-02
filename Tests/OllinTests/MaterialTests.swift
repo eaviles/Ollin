@@ -53,7 +53,7 @@ struct MaterialTests {
 
     @Test func gpuPackingLinearizesColorsAndCarriesStrengths() {
         // Rim/subsurface strengths ride the alpha of their color slots; the model and
-        // scalar knobs map across; colors come out linearized (an sRGB 0.5 gray is < 0.5).
+        // scalar parameters map across; colors come out linearized (an sRGB 0.5 gray is < 0.5).
         let m = Material(shading: .toon, toonBands: 5,
                          specular: 0.4, specularSharpness: 64,
                          iridescence: 0.7, iridescenceScale: 2.0,

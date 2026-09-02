@@ -159,7 +159,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// (which the host carries across the swap anyway).
     private var didApplyLaunchParams = false
 
-    /// Apply the knob values this run was started with, the first time only.
+    /// Apply the parameter values this run was started with, the first time only.
     private func applyLaunchParams() {
         guard !didApplyLaunchParams else { return }
         didApplyLaunchParams = true
@@ -358,7 +358,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
     /// Start recording this run into a fresh take. The run restarts (same
     /// seed, fresh `setup()`) so the take begins at frame 0, which is what
-    /// makes it replayable; knob values stay put, and the take writes them
+    /// makes it replayable; parameter values stay put, and the take writes them
     /// down as its starting point. Pass a file to also write the take there,
     /// on a growing autosave cadence and at `finishTake()`.
     public func beginTake(writingTo url: URL? = nil) {
@@ -399,7 +399,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     /// Play a recorded take back in this window: the sketch restarts under the
-    /// take's seed and starting knob values, live input hands over to the
+    /// take's seed and starting parameter values, live input hands over to the
     /// recording, and the keyboard becomes the transport (space pauses and
     /// resumes, the arrows step a frame, with shift they jump thirty, Home and
     /// End go to the ends, and space at the end starts over).
@@ -413,7 +413,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     /// The `restart(variation:)` recipe without the reseed: a replay's install
-    /// already seeded the sketch and restored its starting knobs.
+    /// already seeded the sketch and restored its starting parameters.
     private func restartForTransport() {
         sketch.frameCount = 0
         renderer.resetAccumulation()
@@ -691,7 +691,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// Restart the running sketch at a chosen variation seed, requested from a
     /// host's seed-navigation card. In place, on the same instance: the sketch
     /// reseeds now, the clock and any accumulated canvas reset, and `setup()`
-    /// re-runs at the top of the next frame, while `@Param` knob values stay
+    /// re-runs at the top of the next frame, while `@Param` parameter values stay
     /// put (same instance, so every host's parameter surface keeps working).
     /// A sketch whose `setup()` pins its own seed simply reproduces that one
     /// variation. **Call on the main thread.**
@@ -969,7 +969,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                 print("Ollin: recording a take to \(url.path)")
             }
             // A run that keeps a checkpoint gets one restore, at its first
-            // setup: the seed and the tuned knobs before `setup()` builds
+            // setup: the seed and the tuned parameters before `setup()` builds
             // anything from them, the state itself after.
             var restored: Checkpoint?
             if checkpointInterval != nil, !didRestoreCheckpoint {
@@ -2224,7 +2224,7 @@ public enum OllinApp {
     /// Read the windowed take flags (`--replay <file>`, `--record-take <file>`)
     /// against the sketch about to open. A replay installs on the sketch now,
     /// before its window exists, so `setup()` already runs under the take's
-    /// seed and knobs; a recording is left for the runner to start (see
+    /// seed and parameters; a recording is left for the runner to start (see
     /// `pendingTakeRecording`). Called by the hosts that own a window; the
     /// headless export surface reads `--replay` on its own in
     /// `handleCommandLine`.
@@ -2256,9 +2256,9 @@ public enum OllinApp {
         installAutomation(args, on: sketch)
     }
 
-    /// Read `--automation <file>` and hand the knob curves in it to the sketch
+    /// Read `--automation <file>` and hand the parameter curves in it to the sketch
     /// about to run. Called before `setup()`, so a sketch that also writes
-    /// tracks in code replaces the file's track for any knob it names itself.
+    /// tracks in code replaces the file's track for any parameter it names itself.
     /// The standalone window and every export path go through here; under the
     /// live-reload host a sketch carries its tracks in `setup()` instead, which
     /// is what survives each swap.
@@ -2844,7 +2844,7 @@ public extension OllinApp {
     /// `--export-gcode`,
     /// `--export-usdz`, `--export-grid`, `--export-sweep`,
     /// `--export-separations` with their options, `--seed` on any of them,
-    /// `--param name=value` to set a declared knob on any of them (and on the
+    /// `--param name=value` to set a declared parameter on any of them (and on the
     /// windowed path, which reaches here first),
     /// `--replay` to drive any of them from a recorded take, plus `--bench`)
     /// against a sketch supplied on demand.
@@ -2884,7 +2884,7 @@ public extension OllinApp {
                     "Ollin: --capture-source needs a git repository; the files keep their given names.\n".utf8))
             }
         }
-        // `--param <name>=<value>` sets a declared knob for this run, repeatable.
+        // `--param <name>=<value>` sets a declared parameter for this run, repeatable.
         // Read here rather than inside an export branch, so the windowed path
         // picks it up too (`handleCommandLine` runs before any window opens).
         readParamOverrides(args)
@@ -2974,7 +2974,7 @@ public extension OllinApp {
             return Int(args[i + 1])
         }()
         // `--replay <file>` beside any export flag re-renders a recorded take:
-        // the fresh sketch gets the recording's seed, starting knobs, clock,
+        // the fresh sketch gets the recording's seed, starting parameters, clock,
         // and inputs, so the export is the recorded run frame for frame (see
         // `Take`). `--seed N` beside it re-seeds on purpose, playing the same
         // gestures onto a different variation. The video-shaped exports
@@ -2992,7 +2992,7 @@ public extension OllinApp {
             let sketch = makeSketch()
             if let replayTake { replayTake.install(on: sketch) }
             if let seedOverride { sketch.seed(seedOverride) }
-            // `--automation <file>` drives the declared knobs from written-down
+            // `--automation <file>` drives the declared parameters from written-down
             // curves; the exports read the clock at a fixed step, so the render
             // is the automation exactly.
             installAutomation(args, on: sketch)
@@ -3220,9 +3220,9 @@ public extension OllinApp {
         // renders a contact sheet sweeping one `@Param` across a range, one
         // labeled tile per value, every tile pinned to the same seed (`--seed`,
         // or one rolled and recorded in the sheet's recipe), and exits. The
-        // swept knob is named with `--sweep-param` because `--param` sets a
+        // swept parameter is named with `--sweep-param` because `--param` sets a
         // value on every tile alike (`--param name=value`), which is how the
-        // rest of the sheet is held still while one knob moves.
+        // rest of the sheet is held still while one parameter moves.
         if let i = args.firstIndex(of: "--export-sweep"), i + 1 < args.count {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
@@ -3233,11 +3233,11 @@ public extension OllinApp {
                 FileHandle.standardError.write(Data(usage.utf8))
                 return true
             }
-            // Setting the swept knob as well would flatten the sheet: the value
+            // Setting the swept parameter as well would flatten the sheet: the value
             // would land after every tile's own, on every tile alike.
             if paramOverrides.contains(where: { $0.name == name }) {
                 FileHandle.standardError.write(Data(
-                    "Ollin: --param \(name)=… sets the knob --sweep-param \(name) sweeps; drop one of them\n".utf8))
+                    "Ollin: --param \(name)=… sets the parameter --sweep-param \(name) sweeps; drop one of them\n".utf8))
                 return true
             }
             var values: [Double] = []

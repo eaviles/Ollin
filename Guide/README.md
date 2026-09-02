@@ -52,7 +52,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part I: Seeing something move
 
-1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the guide uses: live reload and tunable knobs.
+1. **[Hello, Ollin](01-HelloOllin.md).** Your first sketch, the draw loop, coordinates, shapes, and motion by default. Plus the workflow the rest of the guide uses: live reload and tunable parameters.
 2. **[Color that works](02-Color.md).** Naming colors, thinking in hue, mixing that trusts your eye, palettes and ramps, gradients as paint.
 3. **[Motion and time](03-MotionAndTime.md).** Time, shaping functions as curves you can see (map, lerp, smoothstep, easing), sine and cosine without fear, timelines.
 4. **[Randomness](04-Randomness.md).** Random values, seeds, choices, distributions, and why reproducibility matters.
@@ -91,7 +91,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 ### Part V: Out into the world
 
 27. **[Depth and the iPhone as a sensor](27-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
-28. **[Sound and control](28-SoundAndControl.md).** Hearing loudness, spectrum, beats, speech and sound events, then the hands on the other side: MIDI, OSC, and game controllers, all bound to the same knobs.
+28. **[Sound and control](28-SoundAndControl.md).** Hearing loudness, spectrum, beats, speech and sound events, then the hands on the other side: MIDI, OSC, and game controllers, all bound to the same parameters.
 29. **[Making sound](29-MakingSound.md).** A sketch that plays: synths and the voices inside them, instruments built by patching or recorded, the modeled string, struck shape, bow and tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
 30. **[Seeing](30-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
 31. **[Sharing and performing](31-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, USDZ and spatial video, reproducibility, describable output, feeding other apps, handing the work over, and live coding on stage.

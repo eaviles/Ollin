@@ -847,7 +847,7 @@ private final class AreaReflectionProbe: Sketch {
 /// back into the prefiltered environment. The measurable consequence is that past the
 /// fade's ramp, geometry in the hit's own mirror direction stops mattering: blocking that
 /// direction with a black wall must leave a rough surface's mirrored image alone while
-/// visibly darkening a smooth one. Rendered as two counterfactual pairs (one knob, the
+/// visibly darkening a smooth one. Rendered as two counterfactual pairs (one parameter, the
 /// wall's roughness) because the whole-frame snapshot diff averages this away entirely.
 /// RT-gated: without ray tracing there is no traced hit to fade.
 @Suite

@@ -79,7 +79,7 @@ final class Swarm_Example: Sketch {
         switch mood {
         case 1:  flock.flow = 1.4              // a current runs through the whole field
         case 2:  flock.wander = 1.0            // everyone roams on their own
-        default: break                         // flocking, set per frame from the knobs
+        default: break                         // flocking, set per frame from the parameters
         }
     }
 }

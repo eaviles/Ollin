@@ -170,7 +170,7 @@ struct HapticHubTests {
         #expect(performer.performed == [.generic, .alignment])
     }
 
-    @Test func theStrengthKnobReachesThePlan() {
+    @Test func theStrengthParameterReachesThePlan() {
         let (hub, performer, _) = prepare()
         hub.strength = 0
         hub.play(.tap())

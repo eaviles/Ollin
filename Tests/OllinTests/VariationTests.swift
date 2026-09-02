@@ -107,37 +107,37 @@ struct VariationTests {
 
     // MARK: - Parameter sweeps
 
-    /// A sketch that records what its knob and seed were at draw time, so a
+    /// A sketch that records what its parameter and seed were at draw time, so a
     /// sweep's tiles can testify to what actually reached them.
-    final class Knobbed: Sketch {
+    final class Parameterized: Sketch {
         override var canvasSize: CanvasSize { .square(64) }
         @Param(0...500) var radius = 100.0
         nonisolated(unsafe) static var seen: [(radius: Double, variation: Int)] = []
         override func draw() {
             background(.white)
-            Knobbed.seen.append((radius, variation))
+            Parameterized.seen.append((radius, variation))
         }
     }
 
     /// The sweep applies each value through the same restore path the live
-    /// hosts use, and pins every tile to one seed, so the knob is the only
+    /// hosts use, and pins every tile to one seed, so the parameter is the only
     /// thing changing across the sheet.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func sweepAppliesEachValueAtOnePinnedSeed() throws {
-        Knobbed.seen = []
-        let sheet = OllinApp.contactSheet(of: { Knobbed() },
+        Parameterized.seen = []
+        let sheet = OllinApp.contactSheet(of: { Parameterized() },
                                           sweeping: "radius", values: [40, 120, 360],
                                           seed: 55, tileWidth: 64)
         #expect(sheet != nil)
-        #expect(Knobbed.seen.map(\.radius) == [40, 120, 360])
-        #expect(Knobbed.seen.map(\.variation) == [55, 55, 55])
+        #expect(Parameterized.seen.map(\.radius) == [40, 120, 360])
+        #expect(Parameterized.seen.map(\.variation) == [55, 55, 55])
     }
 
     /// An unknown parameter name returns nil rather than rendering a sheet of
     /// defaults that silently ignores the ask.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func sweepingAnUnknownParameterMakesNoSheet() {
-        #expect(OllinApp.contactSheet(of: { Knobbed() },
+        #expect(OllinApp.contactSheet(of: { Parameterized() },
                                       sweeping: "nosuch", values: [1, 2]) == nil)
     }
 
@@ -145,15 +145,15 @@ struct VariationTests {
     /// unseeded sweep still isolates the parameter.
     @Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil))
     func unseededSweepStillPinsOneSeed() {
-        Knobbed.seen = []
-        _ = OllinApp.contactSheet(of: { Knobbed() },
+        Parameterized.seen = []
+        _ = OllinApp.contactSheet(of: { Parameterized() },
                                   sweeping: "radius", values: [10, 20, 30],
                                   tileWidth: 64)
-        #expect(Set(Knobbed.seen.map(\.variation)).count == 1)
+        #expect(Set(Parameterized.seen.map(\.variation)).count == 1)
     }
 
-    /// The sweep recipe names the knob, its values, and the pinned seed.
-    @Test func sweepRecipeCarriesKnobValuesAndSeed() {
+    /// The sweep recipe names the parameter, its values, and the pinned seed.
+    @Test func sweepRecipeCarriesParameterValuesAndSeed() {
         let recipe = ExportMetadata.sheetRecipe(sweep: "radius", values: [0.5, 2],
                                                 seed: 77, frame: 3, fps: 30)
         #expect(recipe.contains("\"sweep\":\"radius\""))

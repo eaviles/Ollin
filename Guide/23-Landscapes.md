@@ -63,7 +63,7 @@ for river in water.rivers(minFlow: 140, in: mapFrame) {
 
 Nothing in there decides where a river should go. Water on any cell runs to whichever of its eight neighbors is steepest downhill, and the flow through a cell is the count of every cell that ends up running through it. A cell joins the network once enough ground drains through it. The branching is the ground's, which is why it looks like branching you have seen.
 
-`minFlow` is the knob worth putting on a slider, and it means something real: the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
+`minFlow` is the parameter worth putting on a slider, and it means something real: the smallest catchment you are willing to call a river, counted in cells. Take it down and a fine tracery fills every crease. Take it up and a few trunks are left.
 
 One thing has to happen before any of it works. A landscape is full of hollows with no way out, and water arriving in one has nowhere to go, so the network would stop dead there. Every hollow is filled first, up to the level it would brim over at, which is what a real basin does once it has filled. `drainage()` does that for you, and `land.filled()` is the same pass on its own.
 
@@ -136,7 +136,7 @@ override func draw() {
 
 A `MeshInstance` is a position, a rotation, a scale, and an optional tint, applied in the order the names suggest: place it, turn it, size it. Rebuilding the list every frame is the normal way to animate a field. Twelve thousand small structs is nothing next to the twelve thousand mesh expansions it replaces. And the copies are not a special cheap kind of object. They take the current `fill` and material, the scene's lights, the environment, and the fog. They drop real shadows, and they stand in a mirror when one is nearby, exactly as if you had drawn each one yourself.
 
-This is the same division of labor as the retained `Batch` in [Chapter 15](15-ShapesAsMaterial.md) and the particle flow above, applied to solid geometry. Keep the heavy thing on the GPU and send only what changed. The numbers land where you would hope. Recording this field costs the per-copy loop about 12 ms of CPU per frame on an M2, and the instanced call about a quarter of a millisecond, a 53x drop, while the GPU does the same work either way. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a knob that flips between the two, so you can watch the inspector's CPU frame time tell the story. And when even the placement list is too much CPU, a compute kernel can write the placements into a buffer that never visits the CPU at all. The [instancing reference](../Docs/3D/Instancing.md) shows that form.
+This is the same division of labor as the retained `Batch` in [Chapter 15](15-ShapesAsMaterial.md) and the particle flow above, applied to solid geometry. Keep the heavy thing on the GPU and send only what changed. The numbers land where you would hope. Recording this field costs the per-copy loop about 12 ms of CPU per frame on an M2, and the instanced call about a quarter of a millisecond, a 53x drop, while the GPU does the same work either way. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a parameter that flips between the two, so you can watch the inspector's CPU frame time tell the story. And when even the placement list is too much CPU, a compute kernel can write the placements into a buffer that never visits the CPU at all. The [instancing reference](../Docs/3D/Instancing.md) shows that form.
 
 ## Where the copies go
 
@@ -189,7 +189,7 @@ override func draw() {
 }
 ```
 
-The picture above holds 240,000 solids. Each frame, a small compute pass tests every copy's bounding sphere against the camera and writes the draws itself. The CPU issues one draw per *kind* of mesh and never meets a copy again. Point the camera at the ground and the rest of the plain simply is not drawn. The part worth trusting is that culling can never change the picture, because everything it skips was outside the view to begin with. The [`MeshField`](../Examples/Rendering/MeshField/Sketch.swift) example wires the culling to a knob so you can watch the frame rate move while the picture holds still, and the test suite pins exactly that.
+The picture above holds 240,000 solids. Each frame, a small compute pass tests every copy's bounding sphere against the camera and writes the draws itself. The CPU issues one draw per *kind* of mesh and never meets a copy again. Point the camera at the ground and the rest of the plain simply is not drawn. The part worth trusting is that culling can never change the picture, because everything it skips was outside the view to begin with. The [`MeshField`](../Examples/Rendering/MeshField/Sketch.swift) example wires the culling to a parameter so you can watch the frame rate move while the picture holds still, and the test suite pins exactly that.
 
 A field bakes its colors when you place it (each copy's own tint on top), shades through whatever `material(_:)` is current, and still drops real shadows, including from copies *behind* you, which is the sort of detail you only notice when it is wrong. The shadow pass culls too, against the light's own view instead of yours. A field stands in a mirror as well, so a ray-traced reflection shows its copies like anything else. That part is bounded on purpose. A copy inside the traced scene costs real GPU time every frame. So a field larger than `tracedCopyBudget`, 20,000 copies by default, stays out of the traced passes and says so once. Raise it when a slow frame is a price you are happy to pay. On an M2, this world costs 18.5 ms of GPU per frame with culling on and 50.8 ms with it off, a 2.7x win, and the one `drawMeshField` call costs the CPU nothing worth printing. The [instancing reference](../Docs/3D/Instancing.md) has the field's fine print.
 
@@ -212,7 +212,7 @@ override func draw() {
 
 There is no vertex buffer and no instance list behind that call, and `setup()` built nothing. A GPU stage looks at each tile of the patch, skips the ones the camera cannot see, and decides how much detail the rest deserve. A second stage synthesizes the visible ribbons from hashes of each blade's index, four segments near the camera and one far away. Where a blade roots, how it bends, how it sways on the sketch clock: all of it is arithmetic that happens during the draw and is never written down anywhere.
 
-And the blades are not a special effect painted over the scene. They shade on the same lit path as every solid, so the boulders' cast shadows fall across the grass, the fog takes the far rows, and your `material(_:)` finish applies. The meadow above draws in about 22.5 ms on an M2, from zero bytes of geometry and zero per-frame CPU. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a knob on the distance grading. The [strand reference](../Docs/3D/Strands.md) has the blade knobs and the fine print (blades receive shadows but cast none; nothing exists for an exporter to record).
+And the blades are not a special effect painted over the scene. They shade on the same lit path as every solid, so the boulders' cast shadows fall across the grass, the fog takes the far rows, and your `material(_:)` finish applies. The meadow above draws in about 22.5 ms on an M2, from zero bytes of geometry and zero per-frame CPU. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a parameter on the distance grading. The [strand reference](../Docs/3D/Strands.md) has the blade parameters and the fine print (blades receive shadows but cast none; nothing exists for an exporter to record).
 
 ## The sea, from what a sea is made of
 
@@ -238,7 +238,7 @@ how far the water has moved sideways, how high it stands, and how hard it is fol
 there. The draw then works out its grid from vertex indices alone, the way the grass did, and
 reads the field for where each corner has gone. Nothing is uploaded.
 
-**The knob worth trusting is `waveHeight`.** It is in world units, and it means what a sailor
+**The parameter worth trusting is `waveHeight`.** It is in world units, and it means what a sailor
 means: the average height of the tallest third of the waves. Ask for 3 and the water stands
 3, whatever the wind or the grid resolution is doing, because the scale is worked out from
 the spectrum's own arithmetic rather than turned by eye until it looks right.
@@ -522,14 +522,14 @@ Lorenz and his relatives come from Edward Lorenz's 1963 paper on deterministic n
 ## Go deeper
 
 - [Drainage](../Docs/Generators/Drainage.md): the filling pass and its two visible details, flow, the network and its threshold, Strahler ordering, and basins. The [`Examples/Patterns/Rivers`](../Examples/Patterns/Rivers/Sketch.swift) example draws one as a contour map.
-- [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion knob, and reading a field out as a mesh, an image, or samples.
+- [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion parameter, and reading a field out as a mesh, an image, or samples.
 - [Instancing](../Docs/3D/Instancing.md): the whole `MeshInstance` surface, placements written by a compute kernel so they never visit the CPU, and the `MeshField` fine print (what the cull tests, what it does to shadow casters, what a placed color does to your `fill`).
 - [Points on a surface](../Docs/Generators/SurfaceSampling.md): the whole `surfacePoints` surface, asking by spacing instead of count, what a `SurfaceSample` carries, `alignment(spin:)`, and `surfaceArea` for holding a density rather than a count.
-- [The ocean](../Docs/3D/Ocean.md): the whole sea state, the field a transform writes, every look knob, what it costs, and the four things it will not do.
-- [Strands](../Docs/3D/Strands.md): every blade knob, the distance grading, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
-- [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` knobs, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can ride in a compute kernel of your own.
+- [The ocean](../Docs/3D/Ocean.md): the whole sea state, the field a transform writes, every look parameter, what it costs, and the four things it will not do.
+- [Strands](../Docs/3D/Strands.md): every blade parameter, the distance grading, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
+- [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` parameters, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can ride in a compute kernel of your own.
 - Appendix B draws two ideas this chapter leans on: [Layering scales](B-JustEnoughMath.md#layering-scales), which is what makes a heightfield look like land, and [The 3D world frame](B-JustEnoughMath.md#the-3d-world-frame).
-- Worked examples: [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift), [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a knob that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side), and [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift).
+- Worked examples: [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift), [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a parameter that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side), and [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift).
 
 ---
 

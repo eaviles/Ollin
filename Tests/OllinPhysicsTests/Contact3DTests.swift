@@ -8,7 +8,7 @@ import CJolt
 /// per-step list a `draw()` poll can read, a pair reports once however many of
 /// its shapes are in contact, a sensor reports what passes through without
 /// pushing it, and a body that falls asleep inside a sensor keeps being
-/// reported. Behavioral (the no-pixel-snapshot policy for physics), each knob
+/// reported. Behavioral (the no-pixel-snapshot policy for physics), each parameter
 /// pinned against a counterfactual twin where one exists; parallel-safe like
 /// the rest of the 3D suite.
 struct Contact3DTests {

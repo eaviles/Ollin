@@ -38,7 +38,7 @@ public func concaveHull(of points: [Vector2], concavity: Double = 0.5) -> [Vecto
     let n = points.count
 
     // Edge incidence: for every unique edge, the one or two triangles that
-    // own it, plus the edge-length range the concavity knob interpolates
+    // own it, plus the edge-length range the concavity parameter interpolates
     // over. Built in triangle order; the dictionary is only ever indexed.
     var incidence: [UInt64: (Int, Int)] = [:]
     incidence.reserveCapacity(tris.count * 2)
@@ -62,7 +62,7 @@ public func concaveHull(of points: [Vector2], concavity: Double = 0.5) -> [Vecto
     // triangulation's finite-precision build can drop a hairline hull
     // sliver, leaving a shallow notch. Cap any missing hull edge with a fan
     // of sliver triangles: zero concavity is then exactly the convex hull,
-    // and a cap erodes away like any border triangle once the knob turns.
+    // and a cap erodes away like any border triangle once the parameter changes.
     capHullNotches(&tris, &incidence, points, &minLength, &maxLength)
 
     let tightness = min(max(concavity, 0), 1)
@@ -349,7 +349,7 @@ private func capHullNotches(_ tris: inout [(Int, Int, Int)],
         guard path.count >= 3, path.last == b else { continue }
 
         // Fan the notch polygon from `a`; every new edge joins the length
-        // range the concavity knob interpolates over.
+        // range the concavity parameter interpolates over.
         for k in 1 ..< path.count - 1 {
             let t = tris.count
             tris.append((a, path[k], path[k + 1]))

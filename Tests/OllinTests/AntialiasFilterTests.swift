@@ -18,7 +18,7 @@ import Testing
 @MainActor
 struct AntialiasFilterTests {
 
-    // MARK: The knob is honest
+    // MARK: The parameter is honest
 
     /// Zero amount hands the layer back byte for byte, so an A/B costs nothing. It has
     /// to hold on both paths through the fragment: the pixel that returns early with

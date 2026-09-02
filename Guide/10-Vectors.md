@@ -161,7 +161,7 @@ let steer = (desired - velocity).limited(to: maxForce)
 velocity = (velocity + steer * deltaTime).limited(to: maxSpeed)
 ```
 
-In words, you figure out the velocity you *wish* you had, straight at the target at full speed. Then you subtract the velocity you actually have, which gives the correction arrow between them. You cap that correction, because nothing real turns instantly, and finally you apply it like any other acceleration. The two caps are the character knobs. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. High force snaps onto the target like a hunting fly, while low force sails past and swings back in wide, lazy arcs. The misses are where the life is: the chaser overshoots *because* it has momentum, and the correction is visible.
+In words, you figure out the velocity you *wish* you had, straight at the target at full speed. Then you subtract the velocity you actually have, which gives the correction arrow between them. You cap that correction, because nothing real turns instantly, and finally you apply it like any other acceleration. The two caps are the character parameters. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. High force snaps onto the target like a hunting fly, while low force sails past and swings back in wide, lazy arcs. The misses are where the life is: the chaser overshoots *because* it has momentum, and the correction is visible.
 
 Watch the two temperaments race. Make `MySketches/Chasers.swift`, two chasers with one number different between them:
 
@@ -245,7 +245,7 @@ final class Swarm: Sketch {
     override func draw() {
         background(Color(hex: 0x0C0F14))
 
-        // Keep the population matched to the knob.
+        // Keep the population matched to the parameter.
         while positions.count < movers {
             positions.append(Vector2(random(width), random(height)))
             velocities.append(Vector2(angle: random(0, .tau), length: 60))
@@ -296,7 +296,7 @@ final class Swarm: Sketch {
 
 Run it with `swift run OllinLive MySketches/Swarm.swift`, watch the school wheel after the wandering dot, then press and drag, and the swarm is yours. Take it apart:
 
-- The state is three parallel lists: mover `i`'s position, velocity, and personality live at index `i` of each. The `while`/`if` block at the top keeps the lists matched to the `Movers` knob, so you can pour movers in and out live.
+- The state is three parallel lists: mover `i`'s position, velocity, and personality live at index `i` of each. The `while`/`if` block at the top keeps the lists matched to the `Movers` parameter, so you can pour movers in and out live.
 - `quickness` is one seeded roll per mover, and it does more than any other line for the feel, because everyone runs the same rules at a different top speed, so the crowd naturally stretches into warm leaders and cool stragglers. The streak color reads straight from it.
 - The steering block is the chase recipe verbatim, aimed at `lure`. Turn `Chase` down and the school swings in long arcs past the dot; turn it up and the swarm snaps tight around it.
 - Each mover draws as a `drawLine` from a little behind itself (`- velocities[i] * 0.11`) to where it is, giving a streak that grows with speed and points where it's going, with no rotation math needed.

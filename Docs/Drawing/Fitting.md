@@ -8,7 +8,7 @@ Two helpers for getting from a few numbers to a whole picture, and back.
 
 [`RadialBasis`](#radial-basis) goes outward: you know a value at a handful of scattered
 places and want one everywhere. [`Fit.minimize`](#minimize) goes inward: you have a handful
-of knobs and a way of saying how wrong a setting of them is, and you want the setting that
+of parameters and a way of saying how wrong a setting of them is, and you want the setting that
 is least wrong.
 
 <picture>
@@ -124,18 +124,18 @@ drawCircle(best.values[0], best.values[1], best.values[2])
 
 | | |
 |---|---|
-| `from` | the setting to start at, and how many knobs there are |
-| `bounds` | an optional range per knob, which the walk is held inside |
+| `from` | the setting to start at, and how many parameters there are |
+| `bounds` | an optional range per parameter, which the walk is held inside |
 | `steps` | the most steps to take |
-| `rate` | how far a step moves a knob, in that knob's own units |
+| `rate` | how far a step moves a parameter, in that parameter's own units |
 | `tolerance` | settle once a step improves the cost by less than this |
 
 The result carries the best setting found, its cost, how many steps it took, and whether it
 `settled` on its own rather than running out. A walk that used every step may just need more
 of them, or a larger `rate`.
 
-Two things to know. Each knob moves by about `rate` per step whatever the slope is there,
-so one `rate` serves a knob measured in pixels beside a knob measured in turns. And the walk
+Two things to know. Each parameter moves by about `rate` per step whatever the slope is there,
+so one `rate` serves a parameter measured in pixels beside a parameter measured in turns. And the walk
 goes **downhill from where you start**, so a cost with several separate valleys hands back
 whichever one your starting point sat in. When that matters, start it from several places
 and keep the best answer.
@@ -148,9 +148,9 @@ points. A few hundred fit in milliseconds; tens of thousands are the wrong tool.
 field afterward costs one term per point, every time, so a large fit read over a whole
 canvas is the expensive half. Fit once in `setup()`, read in `draw()`.
 
-**Minimizing** measures the slope rather than deriving it, by trying each knob a little
-either side of where it stands, so your cost is called about twice per knob per step. Keep
-it cheap, and remember that 300 steps over 3 knobs is already 1,800 calls.
+**Minimizing** measures the slope rather than deriving it, by trying each parameter a little
+either side of where it stands, so your cost is called about twice per parameter per step. Keep
+it cheap, and remember that 300 steps over 3 parameters is already 1,800 calls.
 
 ---
 

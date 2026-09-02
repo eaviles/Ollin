@@ -23,7 +23,7 @@ public enum DMXError: Error, Sendable {
 /// }
 /// ```
 ///
-/// Or bind a channel straight onto a `@Param` knob, so a console fader drives
+/// Or bind a channel straight onto a `@Param`, so a console fader drives
 /// the same parameter a live-inspector slider does:
 ///
 /// ```swift

@@ -110,7 +110,7 @@ struct DiffusionCurveTests {
         #expect(across > along * 3, "expected the jump at the curve: \(across) against \(along)")
     }
 
-    @Test func theKnobsAreHeldToTheirRange() {
+    @Test func theParametersAreHeldToTheirRange() {
         // Nothing renders here: a threshold of zero would make every pixel of an
         // empty layer a source, and the sharpness feeds a pass count.
         let filter = Filter.diffuse(threshold: -4, sharpness: 9)

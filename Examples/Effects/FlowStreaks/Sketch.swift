@@ -5,7 +5,7 @@ import Ollin
 /// it, walked both ways, so fine grain turns into hair-thin strokes that follow
 /// the field wherever it bends. The field is an `aside { }` layer, drawn only to
 /// steer the streaks and never composited; `field:` says how its colors encode a
-/// direction. Three readings, on a knob:
+/// direction. Three readings, on a parameter:
 ///
 ///   • **swirl**: a noise layer read as an **angle** (`.angle(turns:)`), the
 ///     classic flow-field look; `turns` winds the field tighter.

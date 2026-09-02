@@ -62,7 +62,7 @@ public struct StrokeMark: Sendable {
     public private(set) var samples: [Sample] = []
 
     /// How measured motion becomes width and opacity. Settable mid-mark, so a
-    /// live knob can change the brush while a stroke is in progress; points
+    /// live parameter can change the brush while a stroke is in progress; points
     /// already recorded keep what they were given.
     public var dynamics: StrokeDynamics
 
@@ -210,8 +210,8 @@ public struct StrokeMark: Sendable {
         samples.append(Sample(position: position, width: m.width, opacity: m.opacity))
     }
 
-    /// The smoothing knob as a filter cutoff in hertz. Cutoffs are heard
-    /// logarithmically, so the knob spans the range that way too: about 15 Hz
+    /// The smoothing parameter as a filter cutoff in hertz. Cutoffs are heard
+    /// logarithmically, so the parameter spans the range that way too: about 15 Hz
     /// (effectively raw) at `0`, 3 Hz at the default, and under 1 Hz at `1`.
     private static func cutoff(for smoothing: Double) -> Double {
         15 * pow(0.05, min(max(smoothing, 0), 1))

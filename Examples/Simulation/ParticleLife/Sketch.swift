@@ -14,7 +14,7 @@ import Ollin
 final class ParticleLife_Example: Sketch {
     var life: ParticleLife!
 
-    // Live knobs: drag these in the OllinLive / gallery inspector to feel how the
+    // Live parameters: drag these in the OllinLive / gallery inspector to feel how the
     // interaction changes the emergent behavior.
     @Param(0.05 ... 0.6, icon: "circle.circle") var beta = 0.3
     @Param(1 ... 16, icon: "bolt") var force = 7.0

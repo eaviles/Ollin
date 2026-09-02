@@ -144,11 +144,11 @@ struct ShaderImportRenderTests {
     /// so it must be reported rather than guessed at.
     @Test func aPipelineInputIsReportedRatherThanGuessed() {
         let result = ShaderImport.translate(glsl: """
-        uniform vec2 knob;
-        void mainImage(out vec4 c, in vec2 f) { c = vec4(knob, 0.0, 1.0); }
+        uniform vec2 amount;
+        void mainImage(out vec4 c, in vec2 f) { c = vec4(amount, 0.0, 1.0); }
         """)
         #expect(result.needsAttention)
-        #expect(result.diagnostics.contains { $0.message.contains("knob") })
+        #expect(result.diagnostics.contains { $0.message.contains("amount") })
         // And the reader is told about it in the file itself, not only in a return value.
         #expect(result.metalSource.contains("TODO(ollin)"))
     }

@@ -648,7 +648,7 @@ final class Drawer {
     /// artistic overdrive. Meaningful while `motionBlurEnabled` is set.
     private(set) var motionBlurShutter: Double = 0.5
 
-    /// The global-illumination quality knob (`globalIlluminationQuality`): a persistent
+    /// The global-illumination quality parameter (`globalIlluminationQuality`): a persistent
     /// `RenderQuality` tier (not reset each frame, like `shadowQualitySetting`) the renderer
     /// resolves to rays per probe per update (per GPU, like the shadow rays) and, on the
     /// headless path, whole in-frame convergence iterations. The probe *grid* stays at its
@@ -657,7 +657,7 @@ final class Drawer {
     /// would then light an export differently from the live window.
     private(set) var giQualitySetting: RenderQuality = .default
 
-    /// The ray-traced-reflection resolution knob (`reflectionQuality`): a persistent
+    /// The ray-traced-reflection resolution parameter (`reflectionQuality`): a persistent
     /// `RenderQuality` tier (like `giQualitySetting`) the renderer resolves to the fraction
     /// of the drawable the deferred reflection layer traces at. `.performance` halves it in
     /// each direction, so the trace does a quarter of the work; the other tiers keep it
@@ -685,7 +685,7 @@ final class Drawer {
     /// the lit fragment fades into that environment over the last fifth of the range.
     static let glossyReflectionCeiling: Float = 0.75
 
-    /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
+    /// The soft-shadow quality parameter (`shadowQuality`/`shadowSamples`), a persistent setting
     /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
     /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
     /// it, so a hardware-RT GPU gets a richer level than a software-RT one); an absolute count
@@ -696,7 +696,7 @@ final class Drawer {
     /// How soft a cast shadow's penumbra is, 0…1. 0 = a hard edge (the legacy 3×3 PCF, so
     /// `shadowSoftness(0)` is byte-identical to the old look); the 0.5 default is contact-
     /// hardening soft (PCSS for the directional/spot 2D maps); 1 = very soft. It drives the
-    /// ray-traced point caster's area-light radius too, so one knob softens every caster kind.
+    /// ray-traced point caster's area-light radius too, so one parameter softens every caster kind.
     private(set) var shadowSoftnessAmount: Double = 0.5
 
     /// The raymarched-3D-SDF (`drawSDF3D`) quality intent: a `RenderQuality` tier the renderer
@@ -2435,7 +2435,7 @@ final class Drawer {
     /// (`OLLIN_AERIAL_RAYLEIGH`); keep the two in step.
     static let aerialRayleighRatios = SIMD3<Double>(0.428, 1.0, 2.442)
     /// The aerosol phase's forward anisotropy (the standard atmospheric value): the
-    /// bright halo leaning into the sun. Fixed rather than a knob; `haziness` decides
+    /// bright halo leaning into the sun. Fixed rather than a parameter; `haziness` decides
     /// how much of the extinction that lobe owns.
     static let aerialMieAnisotropy = 0.76
 
@@ -2700,7 +2700,7 @@ final class Drawer {
                     // area-light radius that softens the traced shadow into a
                     // contact-hardening penumbra (light-relative, so it's camera-independent).
                     // The cube path ignores it, so it's harmless to always pack. Driven by the
-                    // same `shadowSoftness` knob as the 2D casters (one control for every kind);
+                    // same `shadowSoftness` parameter as the 2D casters (one control for every kind);
                     // the default 0.5 reproduces the previous fixed `dist · 0.03` exactly.
                     c.depthB = dist * 0.06 * Float(shadowSoftnessAmount)
                     // `samples` (rays/pixel) is resolved by the renderer from the GPU's
@@ -2710,7 +2710,7 @@ final class Drawer {
                     // panel's center, aimed at the scene (the camera target, the same framing
                     // proxy the directional box uses; a panel lights its whole front
                     // hemisphere, so unlike a spot it has no cone to aim by), its PCSS
-                    // penumbra sized by the panel's *real extent* rather than the knob-only
+                    // penumbra sized by the panel's *real extent* rather than the parameter-only
                     // size, so a bigger softbox casts a proportionally softer shadow. The map
                     // is a from-the-center approximation of the panel; on a ray-tracing
                     // device the renderer traces visibility to the panel's actual surface

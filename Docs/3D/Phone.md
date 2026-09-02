@@ -181,7 +181,7 @@ for face in device.latestFaces {     // up to 3 people
 
 `latestFaces` is the complete current set each frame, so a face leaving simply drops out and the list shrinks. ARKit's order isn't spatially meaningful, so sort by `headPosition.x` if you want each face to keep a steady color.
 
-The blendshapes are the `PhoneBlendShape` set, ARKit's 52 named coefficients: `jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, `browInnerUp`, `cheekPuff`, `tongueOut`, and the rest. Each runs `0` at neutral to `1` fully expressed. They're the cheap, expressive payload, so read one to drive a knob, or `strongestBlendShapes()` to name the current expression.
+The blendshapes are the `PhoneBlendShape` set, ARKit's 52 named coefficients: `jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, `browInnerUp`, `cheekPuff`, `tongueOut`, and the rest. Each runs `0` at neutral to `1` fully expressed. They're the cheap, expressive payload, so read one to drive a parameter, or `strongestBlendShapes()` to name the current expression.
 
 Draw each face as a `mesh()`, its triangle surface, carrying the ARKit topology, computed normals, and the per-vertex texture coordinates. Draw it solid, textured, or as a `wireframe()`, the recognizable AR face net. The texture coordinates are the mapping every face shares and they never change frame to frame, so a mask image painted once (`face.mesh().textured(maskImage)`) fits every face and stays in place while the mesh deforms. The vertices are face-local, centered on the face, so add `face.headPosition` to place several people apart in space, then orbit their centroid:
 
@@ -407,7 +407,7 @@ world.correction  // the whole fix so far: placed = correction * reported
 
 Two rules keep it honest. A frame that finds too little to match, or that asks for a jump rather than a nudge, is **held back**: the cloud still goes in, at the fix earlier frames established, and `applied` reads false. And a direction the geometry does not pin down is left alone rather than guessed, so sweeping one blank wall corrects across it and never slides along it.
 
-The fit costs about half of what merging the frame costs, and it stops as soon as a round stops moving the cloud, so a well-tracked frame pays for one or two rounds. `CloudAlignment.Settings` has the knobs (how many points to fit through, how many rounds, how far to look, and the two guards); the defaults suit a hand-held sweep at a few centimeters per voxel.
+The fit costs about half of what merging the frame costs, and it stops as soon as a round stops moving the cloud, so a well-tracked frame pays for one or two rounds. `CloudAlignment.Settings` has the parameters (how many points to fit through, how many rounds, how far to look, and the two guards); the defaults suit a hand-held sweep at a few centimeters per voxel.
 
 Apply `world.correction` to anything else the phone reports in the same space, so it lands where the fused cloud does:
 
@@ -458,7 +458,7 @@ if let loop = update.loop {
 
 **A straightened scan is rebuilt from the keyframes.** So `keyframeDetail`, 4 cm by default, sets both the detail the finished scan holds and the memory the keyframes cost. Use a value near the fusion `voxelSize` for the most detail, or several times it to stay light. Frames after the last keyframe are not kept and are not laid down again; the sweep replaces their detail as it continues.
 
-The rest are knobs on `ScanGraph.Settings`: the distance between keyframes, how far back to look, how many candidates to fit, how much the two views must agree, and the distance at which a turn is weighed. Leave that last one unset and the scan supplies it.
+The rest are parameters on `ScanGraph.Settings`: the distance between keyframes, how far back to look, how many candidates to fit, how much the two views must agree, and the distance at which a turn is weighed. Leave that last one unset and the scan supplies it.
 
 Without a phone, `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan` walks a made-up hall twice, side by side. The left half lines up frame by frame, the right half also closes loops, and the true walls are drawn over both.
 

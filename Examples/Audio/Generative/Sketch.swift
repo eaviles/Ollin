@@ -84,7 +84,7 @@ final class Generative: Sketch {
         drawCaption("\(bassStrikes)/\(chordStrikes)/\(airStrikes) over \(steps) "
                     + "· \(mode.optionLabel) · \(quality.optionLabel) · \(Int(tempo)) bpm",
                     edge: .top)
-        drawCaption("Three Euclidean rhythms on one step count. The knobs change what is played, live.")
+        drawCaption("Three Euclidean rhythms on one step count. The parameters change what is played, live.")
     }
 
     // MARK: Playing

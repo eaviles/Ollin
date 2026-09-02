@@ -24,7 +24,7 @@ Holding Command outlines the shape and puts its handles on it. Which handles app
 | a corner | the numbers that size it | any shape whose call carries a size |
 | the knob above it | which way it faces | a shape with two ends, or one with its own angles |
 
-A corner is a small square on the outline. The knob is a small circle standing clear above the top edge, so the two never read as the same thing.
+A corner is a small square on the outline. The parameter is a small circle standing clear above the top edge, so the two never read as the same thing.
 
 ```swift
 drawCircle(200, 300, 40)     // the shape moves, four corners resize, no knob
@@ -77,7 +77,7 @@ Two things are deliberately left alone: a corner radius, and a count such as `si
 
 ## Turning it
 
-The knob swings the shape about its own middle. What it writes depends on what the line says about the shape's direction:
+The parameter swings the shape about its own middle. What it writes depends on what the line says about the shape's direction:
 
 ```swift
 drawLine(0, 0, 100, 0)          // before
@@ -87,11 +87,11 @@ drawArc(300, 300, 100, 100, start: 0, stop: 1.5)          // before
 drawArc(300, 300, 100, 100, start: 0.500, stop: 2.000)    // after half a radian
 ```
 
-A shape with two ends turns by moving those ends. A shape that carries its own angles turns by moving those. A circle offers no knob at all. Nothing on its line says which way it faces: its direction lives in a `rotate` further up, which this does not touch.
+A shape with two ends turns by moving those ends. A shape that carries its own angles turns by moving those. A circle offers no parameter at all. Nothing on its line says which way it faces: its direction lives in a `rotate` further up, which this does not touch.
 
-## A coordinate that is a knob
+## A coordinate that is a parameter
 
-A coordinate can be a knob's name rather than a number:
+A coordinate can be a parameter's name rather than a number:
 
 ```swift
 @Param(60 ... 660) var sunX = 120.0
@@ -99,9 +99,9 @@ A coordinate can be a knob's name rather than a number:
 drawCircle(sunX, 120, 40)
 ```
 
-There is no number on that line to write, so the drag turns the knob instead, exactly as the inspector row would. The value it lands on is kept across a reload, the way any tuned knob is. The file is left as you wrote it, and nothing recompiles, so it is the quickest of the three.
+There is no number on that line to write, so the drag sets the parameter instead, exactly as the inspector row would. The value it lands on is kept across a reload, the way any tuned parameter is. The file is left as you wrote it, and nothing recompiles, so it is the quickest of the three.
 
-The name has to be the one the frame actually drew with. A local variable sharing a knob's name holds a different value. The drag is refused rather than turning the wrong thing.
+The name has to be the one the frame actually drew with. A local variable sharing a parameter's name holds a different value. The drag is refused rather than turning the wrong thing.
 
 Mixing works. In `drawCircle(sunX, 120, 40)` the drag turns `sunX` and writes `120` in the same gesture.
 
@@ -117,7 +117,7 @@ Dragging that one says `Sketch.swift:10 places this shape with width / 2, so the
 
 Text, images, paths, `Shape`s, and the point-cloud and mesh families cannot be dragged at all. They are placed by a value or a whole path, not by two numbers on the call.
 
-This is the rule, and it is worth saying plainly: **a number can be dragged, a knob can be turned, a calculation can be neither.** A sketch that computes everything is not a sketch this helps with, and that is fine. Reach for it while you are laying something out by hand.
+This is the rule, and it is worth saying plainly: **a number can be dragged, a parameter can be set, a calculation can be neither.** A sketch that computes everything is not a sketch this helps with, and that is fine. Reach for it while you are laying something out by hand.
 
 ## Inside a transform
 
@@ -137,7 +137,7 @@ The shape follows the pointer either way. What changes is the arithmetic behind 
 
 Moving, resizing, and turning, on one shape at a time. Shapes cannot yet be reordered by hand, several cannot be picked at once, and the performance host has none of this. See the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
 
-A knob turned in the inspector goes back into the file by the same scanner, from a button rather than a drag. See [saving what you turned](../Helpers/Parameters.md#saving).
+A parameter set in the inspector goes back into the file by the same scanner, from a button rather than a drag. See [saving what you changed](../Helpers/Parameters.md#saving).
 
 ## See also
 

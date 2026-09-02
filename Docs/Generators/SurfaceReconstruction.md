@@ -28,7 +28,7 @@ Both are deterministic given their inputs. Both come back as ordinary meshes, wh
 - [Holes are honest](#holes)
 - [Colors carry](#colors)
 - [Sweeping a room](#rooms)
-- [Cost and knobs](#cost)
+- [Cost and parameters](#cost)
 
 <a name="skin"></a>
 
@@ -64,7 +64,7 @@ let room = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
                               orientedToward: path, fitting: .robust)
 ```
 
-`.robust` takes two knobs when you want them, as `.robust(sharpness:iterations:)`. `sharpness` is how eagerly disagreeing samples are set aside. 1 is the balanced default, and below 1 is softer. 2 is the sharpest useful setting, and it clamps there, where the fit would start to disconnect. `iterations` is the number of re-weighting passes. The first pass is always the plain unweighted blend, so `iterations: 1` is a smooth blend with no re-weighting at all. The default 3 is enough for nearly everything.
+`.robust` takes two parameters when you want them, as `.robust(sharpness:iterations:)`. `sharpness` is how eagerly disagreeing samples are set aside. 1 is the balanced default, and below 1 is softer. 2 is the sharpest useful setting, and it clamps there, where the fit would start to disconnect. `iterations` is the number of re-weighting passes. The first pass is always the plain unweighted blend, so `iterations: 1` is a smooth blend with no re-weighting at all. The default 3 is enough for nearly everything.
 
 <a name="orientation"></a>
 
@@ -135,9 +135,9 @@ A recorded clip works the same way without the live tether. `Record3DRecording` 
 
 <a name="cost"></a>
 
-#### Cost and knobs
+#### Cost and parameters
 
-| Knob | Does | Notes |
+| Parameter | Does | Notes |
 |---|---|---|
 | `resolution` | grid cells across the longest side | detail finer than the sampling cannot be recovered, so past `bounds / spacing` it only costs |
 | `spacing` | the sampling density the cloud was taken at | nil estimates it; a `WorldCloud` knows it as `voxelSize` |

@@ -92,7 +92,7 @@ for trail in colony.trails {
 drawPolyline(colony.bestTourPoints, closed: true)   // the answer so far
 ```
 
-Two knobs set the search's temperament. `evaporation` is the forgetting rate: high keeps exploring, low commits early, sometimes to a rut. `elitism` re-lays the best tour every iteration, which sharpens the web onto the current answer. Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The `Patterns/AntColony` example runs the whole search as a living sketch; the [reference](../Docs/Generators/AntColony.md) has the rest of the knobs.
+Two parameters set the search's temperament. `evaporation` is the forgetting rate: high keeps exploring, low commits early, sometimes to a rut. `elitism` re-lays the best tour every iteration, which sharpens the web onto the current answer. Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The `Patterns/AntColony` example runs the whole search as a living sketch; the [reference](../Docs/Generators/AntColony.md) has the rest of the parameters.
 
 ## Matter that decides what shape to be: Particle Lenia
 
@@ -164,7 +164,7 @@ drawParticles(fluid)
 
 `gravity` tilts the box, and `stiffness` sets how hard the liquid resists being squeezed. `nearStiffness` is an extra short-range pressure that stops particles clumping, and gives the surface its tension. Grabbing a handful with `pull(at:)` and flinging it is most of the fun.
 
-**`SoftBodies`** is the jelly counterpart, and it works by *shape matching*. Each body remembers the shape it was born with. Every step it works out where that shape would be now, its center and its rotation. Then it pulls its particles back toward those remembered positions. `squish` is how firmly it pulls, and that one knob is the difference between a bouncing ball and a slime:
+**`SoftBodies`** is the jelly counterpart, and it works by *shape matching*. Each body remembers the shape it was born with. Every step it works out where that shape would be now, its center and its rotation. Then it pulls its particles back toward those remembered positions. `squish` is how firmly it pulls, and that one parameter is the difference between a bouncing ball and a slime:
 
 ```swift
 blobs = makeSoftBodies(bodies: 12, radius: 80)
@@ -254,7 +254,7 @@ drawParticles(chem)
 
 The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Six lines, then two, then very nearly one. Nobody chose the winner, and nobody could have told you in advance which it would be.
 
-`competition` is the one knob that says what winning even means, and it is the whole character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added. That is a fixed mixture of six kinds, worth looking at on its own.
+`competition` is the one parameter that says what winning even means, and it is the whole character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added. That is a fixed mixture of six kinds, worth looking at on its own.
 
 Mutation here is a chance *per contact*, not per generation, and a particle in a crowd makes contact several times a second. So the rate is far below the one `Evolution` uses. Set it as high as a generational search would, and the recipes take dozens of nudges inside a single takeover. They arrive as noise, which you see immediately. The structures dissolve, and the whole thing flattens into an even gas.
 
@@ -320,7 +320,7 @@ Give it a few seconds to settle, then pull the fade down. What each piece contri
 
 - The step body is the entire simulation. Four lines of it are the physics; the rest is birth and color. It runs a quarter of a million times per frame, and nothing in it can see any other particle, which is why it scales the way it does.
 - `id % 3` is the whole species system here. One number changes, and the three kinds read the same field at three zooms, which is enough to make them separate visually without any of them knowing the others exist.
-- `custom` is how a knob reaches the GPU. Everything a `@Param` changes has to arrive through those four floats, which is a real constraint and worth feeling early.
+- `custom` is how a parameter reaches the GPU. Everything a `@Param` changes has to arrive through those four floats, which is a real constraint and worth feeling early.
 - `noClear()` plus the wash is the trail. Without it you get confetti, because a particle's position tells you nothing and its *path* tells you everything. The wash sets how long the canvas remembers; drop `Fade` to 0.02 and the trails run nearly forever.
 - The additive blend is what turns overlapping trails into light rather than paint. Where many particles have crossed, the color climbs toward white, which is the same crowding-is-brightness idea the field simulations used on a grid.
 
@@ -339,11 +339,11 @@ The breeding half has its own lineage. The genetic algorithm is John Holland's, 
 
 ## Go deeper
 
-- [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` knobs, and dropping to a raw `ComputeKernel` when the built-in layout is not enough.
-- [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every knob, plus the matrix rolling and the reproducibility caveat.
+- [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, and dropping to a raw `ComputeKernel` when the built-in layout is not enough.
+- [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every parameter, plus the matrix rolling and the reproducibility caveat.
 - [Ant colony](../Docs/Generators/AntColony.md): the trail and closeness pulls, evaporation, elitism, and reading the best tour back out.
-- [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every knob, and how to pick a temperament rather than a number.
-- [Fluids and soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching knobs, grabbing with the mouse, and what each solver is and is not good for.
+- [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every parameter, and how to pick a temperament rather than a number.
+- [Fluids and soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching parameters, grabbing with the mouse, and what each solver is and is not good for.
 - [Evolution](../Docs/Simulation/Evolution.md): the scoring and selection in full, the pacing you can control, and the interactive form.
 - Appendix B draws the idea underneath all of this: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Simulation/ParticleLife`](../Examples/Simulation/ParticleLife/Sketch.swift), [`PrimordialParticles`](../Examples/Simulation/PrimordialParticles/Sketch.swift), [`Physarum`](../Examples/Simulation/Physarum/Sketch.swift), [`ParticleLenia`](../Examples/Simulation/ParticleLenia/Sketch.swift), [`Swarm`](../Examples/Simulation/Swarm/Sketch.swift), [`SwarmChemistry`](../Examples/Simulation/SwarmChemistry/Sketch.swift), [`ParticleFluid`](../Examples/Simulation/ParticleFluid/Sketch.swift), [`SoftBodies`](../Examples/Simulation/SoftBodies/Sketch.swift), [`Evolution`](../Examples/Simulation/Evolution/Sketch.swift), and [`Breeding`](../Examples/Simulation/Breeding/Sketch.swift).

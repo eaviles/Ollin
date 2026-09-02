@@ -109,7 +109,7 @@ struct SwarmTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func agentsStayFiniteAndInsideTheWorld() throws {
         // Everything on at once, in the worst combination, still lands inside the
-        // torus with no NaN: the numbers a sketch drags a knob to must stay safe.
+        // torus with no NaN: the numbers a sketch drags a parameter to must stay safe.
         let ps = try probeSwarm(target: Vector2(300, 300), frames: 90) {
             $0.separation = 3; $0.alignment = 3; $0.cohesion = 3
             $0.seek = 3; $0.flee = 3; $0.arrive = 3; $0.wander = 3; $0.flow = 3

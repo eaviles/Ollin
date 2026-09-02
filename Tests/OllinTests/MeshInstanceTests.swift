@@ -198,7 +198,7 @@ struct MeshInstanceBenchmarkTests {
 
 /// The benchmark's field: the example's 12,000-pillar wave at 1080², rebuilt
 /// per frame on both paths, so the numbers measure exactly what the example's
-/// knob toggles.
+/// parameter toggles.
 @MainActor
 private final class InstancedBenchScene: Sketch {
     private let instanced: Bool

@@ -32,7 +32,7 @@ struct AerialStateTests {
         #expect(abs(len - 1) < 1e-5)
     }
 
-    @Test func explicitKnobsPassThroughAndClamp() {
+    @Test func explicitParametersPassThroughAndClamp() {
         let d = freshDrawer()
         d.aerialPerspective(density: 0.02, haziness: 3, heightFalloff: 0.4, sun: nil)
         let u = d.makeLighting()

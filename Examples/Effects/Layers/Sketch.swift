@@ -6,7 +6,7 @@ import Ollin
 /// (`drawImage` under a `blendMode`); the `compose { }` DSL declares the same
 /// stack as one block, each `layer { }` run through its `.post(...)` filters
 /// and composited in its `.blended(...)` mode, the intermediates managed for
-/// you. **Both paths produce the same frame**; flip the knob and nothing moves.
+/// you. **Both paths produce the same frame**; flip the parameter and nothing moves.
 /// That equivalence is the teaching point: the DSL is shorthand over the calls
 /// you already know, not a second renderer.
 ///

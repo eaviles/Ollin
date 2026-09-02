@@ -10,7 +10,7 @@ import OllinAudio
 ///
 /// Two things worth listening for. The pitches are snapped through a `Scale`,
 /// so the reading stays in key however the ground moves: change the key with
-/// the knob and the same hills come out in a different mood. And the pale line
+/// the parameter and the same hills come out in a different mood. And the pale line
 /// across the middle is a *reference*: it sounds its own note every bar, so you
 /// hear each hill as above or below something instead of having to know what
 /// any one note means. It is the grid line of an ordinary chart, in sound.
@@ -76,7 +76,7 @@ final class Sonify: Sketch {
     override func draw() {
         background(Color(hex: 0x0B0D12))
 
-        // The knobs rebuild the reading, so a change is heard on the next note.
+        // The parameters rebuild the reading, so a change is heard on the next note.
         if built != Settings(source: source, mode: mode, moreIsHigher: moreIsHigher) {
             rebuild()
         }
@@ -106,7 +106,7 @@ final class Sonify: Sketch {
         (reading.valueDomain.lowerBound + reading.valueDomain.upperBound) / 2
     }
 
-    /// What the current reading was built from, so a knob turn rebuilds it and
+    /// What the current reading was built from, so a parameter change rebuilds it and
     /// nothing else does.
     struct Settings: Equatable {
         var source: Source

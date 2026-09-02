@@ -7,7 +7,7 @@ import Ollin
 /// shader, so per-shape CPU work is one struct write and the whole field
 /// stays smooth.
 ///
-/// The "Rounded rects" knob swaps the circles for a field of rounded rects on
+/// The "Rounded rects" parameter swaps the circles for a field of rounded rects on
 /// the SDF box path. Two more `noise` fields, decorrelated from the first by
 /// an offset in the field's third coordinate, drive what a circle does not
 /// have: the corner radius sweeps its whole range, so tiles morph from sharp

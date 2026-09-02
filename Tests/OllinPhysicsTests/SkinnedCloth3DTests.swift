@@ -7,7 +7,7 @@ import Ollin
 /// Correctness for cloth a skeleton carries: a cape follows the figure it was
 /// hung on, each leash holds it exactly as far as it was told to, and the
 /// long-range attachments stop a hung sheet stretching. Behavioral (the
-/// no-pixel-snapshot policy for physics), each knob pinned against a
+/// no-pixel-snapshot policy for physics), each parameter pinned against a
 /// counterfactual twin: the same cape run twice with one setting changed.
 struct SkinnedCloth3DTests {
 

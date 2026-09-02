@@ -10,7 +10,7 @@ A sketch's line work can leave as a program a machine runs directly. G-code is t
 swift run Example-Export-Toolpath --export-gcode plot.gcode
 ```
 
-The same thing from code, with the full knobs:
+The same thing from code, with the full parameters:
 
 ```swift
 OllinApp.exportGCode(sketch, to: "plot.gcode",
@@ -21,7 +21,7 @@ OllinApp.exportGCode(sketch, to: "plot.gcode",
 
 ### The three machines
 
-Each factory carries curated defaults, and every number is a knob:
+Each factory carries curated defaults, and every number is a parameter:
 
 ```swift
 GCode(.plotter(), width: 150)                          // pen up Z5, down Z0, 2400 mm/min
@@ -76,7 +76,7 @@ swift run Example-X --export-gcode out.gcode --gcode-machine mill --gcode-width 
 swift run Example-X --export-gcode out.gcode --hatch --hatch-spacing 6
 ```
 
-`--gcode-machine` picks a profile with its defaults; the API is where the finer knobs live. `--hatch`, `--cross-hatch`, `--hatch-spacing`, and `--hatch-angle` work the same as they do for SVG.
+`--gcode-machine` picks a profile with its defaults; the API is where the finer parameters live. `--hatch`, `--cross-hatch`, `--hatch-spacing`, and `--hatch-angle` work the same as they do for SVG.
 
 ### Before you run it
 

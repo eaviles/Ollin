@@ -4,7 +4,7 @@ import AppKit
 /// The transparent code layer over the stage: an `NSTextView` in a transparent
 /// scroll view, styled entirely through `EditorController`. Configuration
 /// happens once in `makeNSView`; SwiftUI never owns the buffer (see
-/// `EditorController`), so `updateNSView` only forwards the style knobs.
+/// `EditorController`), so `updateNSView` only forwards the style settings.
 struct CodeEditorView: NSViewRepresentable {
     let controller: EditorController
     var fontSize: Double

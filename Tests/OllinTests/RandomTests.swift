@@ -65,7 +65,7 @@ struct RandomTests {
 
     @Test func zeroWidthRangeReturnsItsBoundWithoutConsumingARoll() {
         // Load-bearing for seeded sketches (documented in Docs/Generators/Random.md):
-        // an empty range short-circuits, so knob-scaled jitter should roll
+        // an empty range short-circuits, so parameter-scaled jitter should roll
         // random(-1, 1) * amount to keep the draw sequence stable at zero.
         let a = Sketch(), b = Sketch()
         a.randomSeed(9)

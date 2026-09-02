@@ -15,7 +15,7 @@ import Ollin
 /// - a small lamp **falls off with distance**, because it covers less and less of the
 ///   circle of directions a pixel can look along;
 /// - a lit wall **gives its own color back**, so the red block reddens the floor beside
-///   it and the green wall greens the room. That is the `bounces` knob; at 0 every
+///   it and the green wall greens the room. That is the `bounces` parameter; at 0 every
 ///   surface stays black and only the lamps are seen.
 ///
 /// Try it: turn `bounces` to 0 and back to watch the room lose and regain its color,

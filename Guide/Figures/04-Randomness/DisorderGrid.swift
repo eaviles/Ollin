@@ -2,7 +2,7 @@
 //
 // Guide payoff (Chapter 4): an ordered grid of nested quadrilaterals whose
 // corners slip further off their posts with every row, seeded so each value
-// of the Seed knob is a repeatable variation. After Vera Molnár's studies
+// of the Seed parameter is a repeatable variation. After Vera Molnár's studies
 // of order and disorder.
 import Ollin
 

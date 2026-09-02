@@ -158,7 +158,7 @@ The most lifelike behavior needs no target at all. `wander` gives a creature aim
   <img src="Images/12-FlocksAndSwarms/WanderCircle.jpg" alt="Two-panel diagram. Left: a dot with a heading arrow, a faint circle ahead of it, an orange point on the circle's rim labeled the wandering target, and ghost points showing the jitter. Right: a long looping meander labeled what that produces" width="680">
 </picture>
 
-Because the target can only slide gradually, the creature's curve bends gradually too, so it remembers roughly where it was going. The jitter amount is the personality knob. Small values drift in long, calm arcs; large values get twitchy. Three of them, with trails, make `MySketches/Wanderer.swift`:
+Because the target can only slide gradually, the creature's curve bends gradually too, so it remembers roughly where it was going. The jitter amount is the personality parameter. Small values drift in long, calm arcs; large values get twitchy. Three of them, with trails, make `MySketches/Wanderer.swift`:
 
 ```swift
 import Ollin
@@ -206,7 +206,7 @@ final class Wanderer: Sketch {
 
 Two behaviors are stacked here, and that's the point of forces-that-compose: `wander` supplies the roaming and `contain` supplies the walls, a push back inside the canvas that only wakes up within `margin` of an edge. Each creature has its own `seed`, because wander is the one behavior that draws random numbers, and giving two creatures the same seed makes them roam in eerie lockstep.
 
-The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target by aiming where it will be, not where it is, the hunting trick every kitten knows. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` rides the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and you'll meet it properly in a moment. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every knob.
+The rest of the behavior shelf works the same way, so a list will do. `pursue` and `evade` chase and dodge a *moving* target by aiming where it will be, not where it is, the hunting trick every kitten knows. `follow(path:)` keeps a creature inside a corridor along a polyline, correcting only when it strays. `follow(_ field:)` rides the flow fields coming in [Chapter 14](14-FieldsAndFlow.md). `separate(from:)` keeps personal space within a group, and you'll meet it properly in a moment. The `Motion/Steering` example runs most of the shelf in one scene, and the [steering reference](../Docs/Generators/Steering.md) has every parameter.
 
 ## Three rules make a flock
 
@@ -259,7 +259,7 @@ override func draw() {
 }
 ```
 
-The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament. Raise separation and the flock loosens into a crowd keeping polite distance. Raise cohesion and it balls up. Shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished piece below puts all three on knobs so you can search for your own.
+The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament. Raise separation and the flock loosens into a crowd keeping polite distance. Raise cohesion and it balls up. Shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished piece below puts all three on parameters so you can search for your own.
 
 ## The trick that keeps it cheap
 
@@ -292,7 +292,7 @@ Build it fresh each frame when the points move. That costs one pass over them, w
 
 ## Putting it together: the living flock
 
-The piece at the top of the chapter is the flock with its temperament on knobs and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which [Chapter 16](16-LayersAndEffects.md) explores, and this is a first taste.)
+The piece at the top of the chapter is the flock with its temperament on parameters and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which [Chapter 16](16-LayersAndEffects.md) explores, and this is a first taste.)
 
 Make `MySketches/Flock.swift`:
 
@@ -352,7 +352,7 @@ Each boid is a triangle rotated to its heading ([Chapter 6](06-GridsAndRepetitio
 
 Then make it yours:
 
-- Drag the three knobs while it runs. Somewhere around high cohesion and low separation the flock balls up into a swirling knot, while high separation with low everything else dissolves it into a polite crowd. Find the edge between flock and crowd.
+- Drag the three parameters while it runs. Somewhere around high cohesion and low separation the flock balls up into a swirling knot, while high separation with low everything else dissolves it into a polite crowd. Find the edge between flock and crowd.
 - Give the flock somewhere to go. Setting `flock.field = curlField(scale: 0.003)` with a small `flock.fieldStrength` sends the whole society drifting along an invisible current (a preview of [Chapter 14](14-FieldsAndFlow.md)).
 - Add a predator, one `Vehicle` that pursues the flock's first boid, drawn large and pale. For real drama, make nearby boids `flee` it. All the forces compose.
 - Swap the triangle for a short line along the velocity, and the piece stops reading as creatures and starts reading as brushstrokes.
@@ -363,9 +363,9 @@ Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and
 
 ## Go deeper
 
-- [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and knob, including pursuit, evasion, and path following.
+- [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and parameter, including pursuit, evasion, and path following.
 - [Flocking](../Docs/Generators/Boids.md): the full `Boids` reference, including flow-field following.
-- [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's exact laws, and the knobs (`maxTurn`, `catchDistance`, the kept chase lines).
+- [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's exact laws, and the parameters (`maxTurn`, `catchDistance`, the kept chase lines).
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), and [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth).
 - [Spatial index](../Docs/Drawing/SpatialIndex.md): the neighbor search behind the flock, on its own, with the k-d tree for clumped sets and the growing form for sets you build point by point ([`Examples/Shapes/Neighbors`](../Examples/Shapes/Neighbors/Sketch.swift)).

@@ -63,7 +63,7 @@ final class HapticHub {
 
     // MARK: - State
 
-    /// An overall multiplier on everything played, the sketch's volume knob.
+    /// An overall multiplier on everything played, the sketch's volume parameter.
     var strength = 1.0
 
     private var engine: DeviceHaptics?

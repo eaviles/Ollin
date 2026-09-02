@@ -241,6 +241,6 @@ A sketch run from the terminal reaches the network freely. A sketch wrapped as a
 ### See also
 
 - [`Data`](./Data.md) - `loadTable` and `loadJSON`, the load-once documents a feed hands back
-- [`Parameters`](./Parameters.md) - `@Param` knobs, for values you tune rather than fetch
+- [`Parameters`](./Parameters.md) - `@Param` parameters, for values you tune rather than fetch
 - [`OSC`](../Integration/OSC.md) - values pushed at the sketch over the network, where a feed pulls them
 - [`Installation`](../Output/Installation.md) - what else changes for a sketch that runs for weeks

@@ -18,8 +18,8 @@
     --text-3: rgba(255,255,255,0.34);
     --sep: rgba(255,255,255,0.085);
     --track: rgba(255,255,255,0.16);
-    --knob: #f6f6f8;
-    --knob-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(0,0,0,0.25);
+    --thumb: #f6f6f8;
+    --thumb-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(0,0,0,0.25);
     --accent: #bf5af2;
     --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
     --accent-text: color-mix(in srgb, var(--accent) 62%, white);
@@ -40,8 +40,8 @@
       --text-3: rgba(0,0,0,0.32);
       --sep: rgba(0,0,0,0.09);
       --track: rgba(0,0,0,0.14);
-      --knob: #ffffff;
-      --knob-shadow: 0 1px 3px rgba(0,0,0,0.28), 0 0 0 0.5px rgba(0,0,0,0.08);
+      --thumb: #ffffff;
+      --thumb-shadow: 0 1px 3px rgba(0,0,0,0.28), 0 0 0 0.5px rgba(0,0,0,0.08);
       --accent: #af52de;
       --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
       --accent-text: color-mix(in srgb, var(--accent) 78%, black);
@@ -86,7 +86,7 @@
   .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft); border-right: 2px solid var(--accent); pointer-events: none; }
   .bar .label { position: relative; padding-left: 13px; font-size: 15px; font-weight: 500; pointer-events: none; }
   .bar .val { position: relative; margin-left: auto; padding-right: 13px; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px; pointer-events: none; }
-  .bar .thumb { position: absolute; top: 50%; width: 22px; height: 22px; border-radius: 50%; background: var(--knob); box-shadow: var(--knob-shadow); transform: translate(-50%, -50%); pointer-events: none; }
+  .bar .thumb { position: absolute; top: 50%; width: 22px; height: 22px; border-radius: 50%; background: var(--thumb); box-shadow: var(--thumb-shadow); transform: translate(-50%, -50%); pointer-events: none; }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 13px; min-height: 52px; }
   .row + .row { border-top: 0.5px solid var(--sep); }
   .row .label { font-size: 15px; font-weight: 500; }
@@ -119,7 +119,7 @@
   .pad { position: relative; height: 168px; background: var(--field); border: 0.5px solid var(--card-stroke); border-radius: 9px; overflow: hidden; touch-action: none; }
   .pad .axis-v { position: absolute; left: 50%; top: 0; bottom: 0; width: 0.5px; background: var(--sep); }
   .pad .axis-h { position: absolute; top: 50%; left: 0; right: 0; height: 0.5px; background: var(--sep); }
-  .pad .dot { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--knob); box-shadow: var(--knob-shadow); border: 2px solid var(--accent); transform: translate(-50%, -50%); pointer-events: none; }
+  .pad .dot { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--thumb); box-shadow: var(--thumb-shadow); border: 2px solid var(--accent); transform: translate(-50%, -50%); pointer-events: none; }
   .pad .tag { position: absolute; left: 10px; top: 8px; font-size: 12px; font-weight: 600; color: var(--text-2); pointer-events: none; }
   .pad .read { position: absolute; right: 10px; bottom: 8px; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-2); background: var(--card); border: 0.5px solid var(--card-stroke); border-radius: 5px; padding: 3px 7px; pointer-events: none; }
   .fields { display: flex; gap: 8px; }
@@ -637,7 +637,7 @@
     if (!hello.params.length) {
       var note = document.createElement('div');
       note.className = 'empty';
-      note.textContent = 'This sketch declares no @Param knobs yet.';
+      note.textContent = 'This sketch declares no @Param properties yet.';
       groupsHost.appendChild(note);
       return;
     }
