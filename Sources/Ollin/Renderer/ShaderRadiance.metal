@@ -39,45 +39,180 @@
 // jumps that whole distance and lands no further than the surface. Empty space
 // costs a handful of taps whatever its size.
 
+// What a surface gives off, read at a point just inside it; a point marked dark (the
+// field's alpha said the nearest surface emits nothing) costs no read at all, which is
+// most walls and most grazes.
+static inline float3 ollin_rc_emission(texture2d<float> scene, sampler samp, float2 size,
+                                       float2 at) {
+    if (at.x < 0.0) { return float3(0.0); }
+    return scene.sample(samp, at / size, level(0)).rgb;
+}
+
 // One ray, marched from `a` to `b` against the measured field.
 //
 // Returns the radiance the ray met in rgb, and in alpha how much of the ray got
-// through: 1 where nothing stopped it, 0 where it ended on a surface. That alpha is
-// the whole merging rule, so it is a hit test rather than the scene's own opacity.
+// through: 1 where nothing stopped it, 0 where it ended on a surface, and a fraction
+// where it passed a surface by. That alpha is the whole merging rule, so it is a hit
+// test rather than the scene's own opacity.
+//
+// The ray is not a line but a thin cone. It stands for the whole wedge of directions
+// between its two neighbors, so it widens with distance at half the angular spacing
+// of its rung (`halfTan`, measured from `tBase`, the distance its rung begins at),
+// and a surface it passes counts by the share of the cone's width it covers. A line
+// either meets a lamp or misses it, so a lamp nine rays wide reads as eight, nine or
+// ten of them from one probe to the next, and a penumbra crossing that lamp moves in
+// steps of a ninth: drawn as light, those steps are cells the size of the rung's
+// probe spacing, a mottled and blocky penumbra at every quality, because halving the
+// probe spacing only moves the same lamp one rung up. A cone reads the fraction, so
+// the count runs continuously across the fan and the cells are gone.
+//
+// The share is the straight-edge one. The nearest surface, at signed distance `d`
+// from the cone's axis, is taken as a line beside the axis at the distance measured
+// *across* the ray (`d` over the sine of the angle between the ray and the direction
+// to that surface), covering `(h - across) / 2h` of a cone `2h` wide. So a wall the
+// ray runs into head-on counts for nothing until the axis crosses it and then for
+// everything, however thin it is, while a wall the ray runs along counts by how much
+// of the width it takes, and a lamp's rim seen past a tooth's edge reads what the
+// geometry says it should. The largest share met along the way is the one kept,
+// since a thin cone grazes one thing, and the march carries on past it.
+//
+// Once the axis is inside a surface the march jumps ahead by the distance a straight
+// edge would need to cover the whole cone, and reads the field there: still inside
+// and deep enough is a full hit, out the far side of a strip (the nearest face there
+// looks straight back the way the ray came in) is a wall crossed and a full hit too,
+// and out past any other rim is a lamp's limb grazed, which keeps the share it
+// reached and carries on. That is what keeps a thin wall opaque at any angle, at a
+// cost of one or two reads for a ray that hits something obliquely, where the safe
+// step of the field's own bound would walk an oblique wall in seven; a ray within
+// forty-five degrees of head-on skips the look, since a strip crossed that squarely
+// blocks the whole cone however thin. A lamp narrower than about three cones is the
+// one thing this gets wrong, and it errs bright: its middle chords read as a strip,
+// which is the case the ladder was never asked to resolve.
+//
+// What a surface gives off is read once, after the march, and only where the field's
+// alpha says the surface emits at all (`ollin_light_mark`): a dark wall, which is most
+// of what a ray meets or grazes, costs no read. That skip is what keeps the cone at
+// the cost of a line.
 //
 // The field's red channel is a signed distance in pixels, negative inside a shape,
-// and the march trusts it as a *lower* bound on how far it may go. Half a pixel
-// comes off each step because the field is kept in half floats, which space whole
-// numbers a unit apart out past a thousand, and a step longer than the truth is the
-// one error that walks a ray through a thin wall.
+// and the outside march trusts it as a *lower* bound on how far it may go. Half a
+// pixel comes off each step because the field is kept in half floats, which space
+// whole numbers a unit apart out past a thousand, and a step longer than the truth is
+// the one error that walks a ray through a thin wall.
 //
-// Every tap names `level(0)`. The loop returns from inside a conditional, so the
-// hardware cannot work out a sampling footprint here at all, and a sampler asked to
-// pick a level from a broken derivative reads whatever it likes.
+// Every tap names `level(0)`. The reads sit behind conditionals and a loop that runs
+// a different number of times in every fragment, so the hardware cannot work out a
+// sampling footprint here at all, and a sampler asked to pick a level from a broken
+// derivative reads whatever it likes.
 static inline float4 ollin_rc_trace(texture2d<float> field, texture2d<float> scene,
                                     sampler samp, float2 a, float2 b,
-                                    float2 size, int maxSteps) {
+                                    float2 size, int maxSteps,
+                                    float halfTan, float tBase) {
     float2 delta = b - a;
     float span = length(delta);
     if (span < 1e-4) { return float4(0.0, 0.0, 0.0, 1.0); }
     float2 dir = delta / span;
     float t = 0.0;
+    // The largest share of the cone anything passed so far has covered, and where
+    // to read its light from, taken once at the end rather than at every sample
+    // that raises the share.
+    float graze = 0.0;
+    float2 grazeAt = float2(0.0);
+    // The surface the axis is inside, while it is: the outward normal of the face it
+    // went in by, what it gives off and where that was read, and the share of the
+    // cone it has covered so far.
+    bool inside = false;
+    float2 normal = float2(0.0);
+    float2 emittedAt = float2(0.0);
+    float limb = 0.0;
+    int looks = 0;
+    bool blocked = false;
     for (int i = 0; i < maxSteps; ++i) {
         float2 p = a + dir * t;
         // Off the layer there is nothing left to meet: the scene is what was drawn.
         if (p.x < 0.0 || p.y < 0.0 || p.x > size.x || p.y > size.y) { break; }
-        float d = field.sample(samp, p / size, level(0)).r;
-        if (d <= 0.5) {
-            // Land inside the surface before reading it, so an antialiased rim
-            // hands back the shape's own light rather than a fraction of it.
-            float2 inside = (p + dir * 1.5) / size;
-            float4 e = scene.sample(samp, inside, level(0));
-            return float4(e.rgb, 0.0);
+        float4 m = field.sample(samp, p / size, level(0));
+        float d = m.r;
+        float h = max((tBase + t) * halfTan, 0.5);
+        // How the nearest edge lies against the ray: the sine of the angle between
+        // the ray and the direction to it (1 beside the ray, 0 straight ahead).
+        float g = abs(m.g * dir.y - m.b * dir.x);
+        if (inside && d > 0.5) {
+            // Out again. A nearest face here looking straight back the way the ray
+            // came in is the far side of a strip, so the whole cone was blocked; any
+            // other is the rim the axis went in by, so it grazed a limb and the share
+            // it reached is what that lamp covered. Either way the outside march
+            // resumes from this sample.
+            if (dot(-m.gb, normal) < -0.5) { blocked = true; break; }
+            if (limb > graze) { graze = limb; grazeAt = emittedAt; }
+            inside = false;
         }
-        t += max(d - 0.5, 0.5);
+        if (!inside) {
+            if (d > 0.5) {
+                // Beside the axis rather than ahead of it: the share of the cone the
+                // nearest edge takes, measured across the ray. Nothing further off
+                // than the cone is wide can take any.
+                if (d < h) {
+                    float share = (h - d / max(g, 1e-3)) / (2.0 * h);
+                    if (share > graze) {
+                        graze = share;
+                        // Inside the surface rather than on it, so an antialiased
+                        // rim hands back the shape's own light rather than a fraction;
+                        // a dark one is marked so as never to be read.
+                        grazeAt = m.a > 0.5 ? p + m.gb * (d + 1.5) : float2(-1.0);
+                    }
+                }
+                t += max(d - 0.5, 0.5);
+                if (t > span) { break; }
+                continue;
+            }
+            // The axis meets a surface. What it gives off is read from inside, so an
+            // antialiased rim hands back the shape's own light rather than a fraction
+            // of it, and the face it went in by is kept: `toward` points at the
+            // nearest edge, so it is the outward normal from inside and the inward one
+            // from just outside.
+            emittedAt = m.a > 0.5 ? p + dir * 1.5 : float2(-1.0);
+            // Within forty-five degrees of head-on the cone is blocked outright: a
+            // strip crossed that squarely blocks all of it however thin, and a lamp
+            // more than three cones wide has the depth to. The ray that begins inside
+            // a shape is the same case: its probe is buried and sees nothing else,
+            // since the field inside a wall is dark by construction.
+            if (i == 0 || g < 0.7071) { blocked = true; break; }
+            inside = true;
+            normal = (d < 0.0) ? m.gb : -m.gb;
+            limb = 0.0;
+            looks = 0;
+        }
+        // Inside. The share the surface covers is read from how deep the axis is and
+        // how the nearest edge lies here, not at the entry: inside an oblique wall the
+        // nearest edge stays the face it came in by, while halfway along a lamp's
+        // chord the nearest rim is straight beside the ray, and there the depth alone
+        // is the share the lamp takes.
+        float sine = max(g, 1e-3);
+        float cosine = max(sqrt(max(1.0 - g * g, 0.0)), 0.05);
+        float depth = max(-d, 0.0);
+        limb = max(limb, (h + depth / sine) / (2.0 * h));
+        // Three looks inside without coming out is a wall run along at a grazing
+        // angle, and a wall blocks the cone: a lamp's limb chord is out by then.
+        if (limb >= 1.0 || looks >= 3) { blocked = true; break; }
+        // Jump to where a straight edge would cover the cone, and look again.
+        float needed = h * sine - depth;
+        t += min(needed / cosine + 0.5, 3.0 * h);
+        looks += 1;
         if (t > span) { break; }
     }
-    return float4(0.0, 0.0, 0.0, 1.0);
+    if (blocked) {
+        // Ended on a surface: that surface's light, less the share of anything it
+        // grazed on the way, whose light stands in for that share.
+        float3 emitted = ollin_rc_emission(scene, samp, size, emittedAt);
+        if (graze > 0.0) {
+            emitted = graze * ollin_rc_emission(scene, samp, size, grazeAt) + (1.0 - graze) * emitted;
+        }
+        return float4(emitted, 0.0);
+    }
+    if (inside && limb > graze) { graze = limb; grazeAt = emittedAt; }
+    if (graze <= 0.0) { return float4(0.0, 0.0, 0.0, 1.0); }
+    return float4(graze * ollin_rc_emission(scene, samp, size, grazeAt), 1.0 - graze);
 }
 
 // The scene as the cascades read it: what every pixel gives off in rgb, and in
@@ -92,6 +227,26 @@ fragment float4 ollin_light_scene(PresentOut in [[stage_in]],
     float4 s = scene.sample(samp, in.uv);
     float4 l = lights.sample(samp, in.uv);
     return float4(l.rgb * params[0].x, max(s.a, l.a));
+}
+
+// The measured field with one more thing in its alpha: whether the surface nearest
+// each pixel gives off any light, read a pixel and a half inside its edge, past the
+// antialiased rim. A ray that meets or grazes a surface marked dark hands back black
+// without reading it, which is most walls and most grazes; the ladder marks the field
+// again for every bounce, since a bounce turns lit walls into emitters. A pixel the
+// field never reached keeps the mark set, so nothing is skipped on a guess.
+// texture(0) is the measured field, texture(1) what the ladder reads as emission.
+// params[0] = (layer w, layer h, -, -)
+fragment float4 ollin_light_mark(PresentOut in [[stage_in]],
+                                 texture2d<float> field [[texture(0)]],
+                                 texture2d<float> emission [[texture(1)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float4 m = field.read(uint2(in.position.xy));
+    if (dot(m.gb, m.gb) < 1e-6) { return float4(m.rgb, 1.0); }
+    float2 within = in.position.xy + m.gb * (abs(m.r) + (m.r < 0.0 ? -1.5 : 1.5));
+    float3 e = emission.sample(samp, within / params[0].xy, level(0)).rgb;
+    return float4(m.rgb, max(max(e.r, e.g), e.b) > 0.0 ? 1.0 : 0.0);
 }
 
 // One ring of the ladder.
@@ -130,6 +285,9 @@ fragment float4 ollin_light_cascade(PresentOut in [[stage_in]],
     float2 origin = (float2(probe) + 0.5) * spacing;
     float angle = (float(dirIndex) + 0.5) * (2.0 * M_PI_F) / dirCount;
     float2 dir = float2(cos(angle), sin(angle));
+    // Half the angular spacing, as a slope: how fast the ray widens into the wedge
+    // of directions it stands for (see `ollin_rc_trace`).
+    float halfTan = tan(M_PI_F / dirCount);
 
     // Ring `level` covers the span that begins where every ring below it ended:
     // spans of span0, 4·span0, 16·span0 … so the start is their sum.
@@ -144,7 +302,7 @@ fragment float4 ollin_light_cascade(PresentOut in [[stage_in]],
         // the parameter would round up to the next rung and read as doing nothing.
         float end = max(t0, min(t1, params[2].z));
         float4 own = ollin_rc_trace(field, scene, samp, start, origin + dir * end,
-                                    size, maxSteps);
+                                    size, maxSteps, halfTan, t0);
         return float4(own.rgb + own.a * params[3].rgb, own.a);
     }
 
@@ -177,7 +335,7 @@ fragment float4 ollin_light_cascade(PresentOut in [[stage_in]],
         int2 np = clamp(base + step, int2(0), upProbes - 1);
         float2 upOrigin = (float2(np) + 0.5) * upSpacing;
         float4 own = ollin_rc_trace(field, scene, samp, start, upOrigin + dir * t1,
-                                    size, maxSteps);
+                                    size, maxSteps, halfTan, t0);
         float4 acc = float4(0.0);
         for (int k = 0; k < 4; ++k) {
             int child = dirIndex * 4 + k;

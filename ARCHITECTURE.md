@@ -1110,6 +1110,68 @@ hands back the shape's own light rather than a fraction of it.
 The top rung's ray is cut at the requested `reach`. Without that cut the parameter
 would round up to the next whole rung, and a reach of 90 px would light 340.
 
+### A ray is a thin cone, and why a finer ladder could not fix the penumbra
+
+The first shipped march traced each ray as a line: it either met a lamp or missed
+it. Seen from the rung that resolves it, a lamp is a small number of rays wide (the
+pointer lamp of the `Effects/Light` example, 32 px across at 584 px, spans nine of
+the 1024 directions of the rung that sees it), so one probe counted eight of them,
+its neighbor ten, and a penumbra crossing that lamp moved in steps of a ninth.
+Drawn as light, those steps are cells the size of that rung's probe spacing, 32 px:
+a mottled, blocky penumbra, read at the desk as a compressed photograph. Halving
+the probe spacing (`.detail`) did not cure it, and the arithmetic says why: the
+rung that sees a lamp at distance `D` has probes about `sqrt(3·D·s0)` apart, so
+halving `s0` shrinks the cells by only a root of two, and the finer ladder puts the
+same lamp one rung up where the rays are twice as dense and the steps half as
+tall, still cells. The paper's penumbra condition (an angular step smaller than the
+lamp's angular size) was met; what failed was the reconstruction, a point sample of
+a hard-edged function.
+
+Each ray is now the thin cone it stands for, half the rung's angular spacing wide,
+widening from the distance its rung begins at. A surface the ray passes counts by
+the share of the cone's width it covers under a straight-edge model: the field's
+signed distance `d`, divided by the sine of the angle between the ray and the
+direction to that edge, is where the edge crosses the cone's cross-section, and it
+covers `(h - across) / 2h` of a cone `2h` wide. That division is what makes a wall
+met head-on count for nothing until the axis crosses it (the edge is ahead, not
+beside) and a wall run along count by the width it takes. Once the axis is inside
+a surface the march jumps to where a straight edge would cover the whole cone and
+reads the field again: still inside and deep enough is a full hit; out past a face
+looking straight back the way it came in is a strip crossed, opaque however thin;
+out past any other rim is a lamp's limb grazed, which keeps the share it reached
+and carries on past the lamp. The share is read from the local angle at every
+sample rather than the entry's, because halfway along a lamp's chord the nearest
+rim is straight beside the ray and the depth alone is the share. Three refinements
+bound the cost: a ray within 45° of head-on is blocked outright (a strip crossed
+that squarely blocks all of it, and a lamp more than three cones wide has the depth
+to), the jumps are capped at three (a wall run along at a grazing angle, which a
+lamp's chord never is), and the largest share along the ray is the one kept, since
+a thin cone grazes one thing. A lamp narrower than about three cones is the one
+case that stays wrong, and it errs bright: its middle chords read as a strip. That
+is the regime the penumbra condition never covered.
+
+The probes that pin it use a four-pixel lamp, about one ray wide at the rung that
+sees it, where a line is at its worst: the shadow's edge far below a bar climbs
+without a dip (0.054 of the peak with a line, 0.018 with the cone), and a ring of
+equal distance reads evenly (0.113 of its mean with a line, 0.072 with the cone).
+The disc-lamp falloff moved from 0.902…0.952 to 0.926…0.972 of exact, since the
+rim is now read by the share it covers rather than missed.
+
+The cone's reads are what it costs, and the field pays them back. Every ladder run
+marks the field's alpha with whether the surface nearest each pixel emits anything
+(`ollin_light_mark`, one fullscreen pass, run per bounce because a bounce turns
+lit walls into emitters), so a ray that meets or grazes a dark wall, which is most
+of what a ray meets, reads nothing at all, where the line read the scene at every
+hit. Measured old against new **in one process, alternating through live shader
+reload** (`reloadShaderLibrary(fromDirectory:)`), three rounds each: 0.94…1.02× at
+`.performance` and `.default`, 1.03…1.12× at `.detail`. That harness is the finding
+worth keeping. Two others gave wrong answers first: frames submitted back to back
+with three in flight overlap on the GPU, so one command buffer's span carries its
+neighbors' work and the cone read as 1.2…1.5× dearer; and one shader per process,
+drained between frames, drifts 30% run to run with the GPU's clock, which made the
+cone read as 1.6…2.2× before the same protocol read the old shader against itself
+at 1.0×. A GPU cost comparison here has to run both sides in one process.
+
 ### The bounce, and what it can and cannot say
 
 A bounce is a second run of the ladder with the emission raised by what each
@@ -1139,7 +1201,8 @@ out of march steps is a graceful failure: the ray reports meeting nothing and th
 rung above it fills in, so a budget too small leaks light rather than tearing.
 
 `.detail` is what an export resolves `.default` to, so an exported frame pays the
-one-pixel spacing. It differs from two mostly at a lamp's own rim (max 94/255
+one-pixel spacing. Those figures predate the cone, which measures at 0.94…1.12× of
+them by the in-process comparison above. It differs from two mostly at a lamp's own rim (max 94/255
 there, 0.73 mean over the frame), which is the right thing for a still and the
 wrong trade live.
 

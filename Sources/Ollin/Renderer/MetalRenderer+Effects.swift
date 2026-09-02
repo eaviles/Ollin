@@ -970,10 +970,20 @@ extension MetalRenderer {
                                                 maxDistance: far, into: cb, pooled: pooled)
         else { return nil }
 
+        // The field the ladder marches carries one more thing in its alpha: whether
+        // the surface nearest each pixel gives off any light. That is what lets a ray
+        // skip reading the emission of a wall it can already tell is dark, which is
+        // most of what a ray meets. Every ladder marks the field again against the
+        // emission it reads, since a bounce turns lit walls into emitters.
+        guard let marked = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
         let geometry = SIMD4<Float>(Float(probesX), Float(probesY), Float(width), Float(height))
         let litSky = SIMD4<Float>(sky.x * sky.w, sky.y * sky.w, sky.z * sky.w, sky.w)
         var emission = emissionA
         for bounce in 0...max(0, bounces) {
+            encodeEffectFragment("ollin_light_mark", inputs: [field, emission], output: marked,
+                                 params: [SIMD4<Float>(Float(width), Float(height), 0, 0)],
+                                 into: cb)
             var read = front, write = back
             for rung in stride(from: rungs - 1, through: 0, by: -1) {
                 let top = rung == rungs - 1
@@ -981,7 +991,7 @@ extension MetalRenderer {
                     "ollin_light_cascade",
                     // At the top there is no rung above; the flag says so, and the
                     // scene stands in for the binding so it is never left unset.
-                    inputs: [field, emission, top ? emission : read], output: write,
+                    inputs: [marked, emission, top ? emission : read], output: write,
                     params: [SIMD4<Float>(Float(rung), Float(rungs), Float(spacing), Float(spacing)),
                              geometry,
                              SIMD4<Float>(steps, top ? 1 : 0, Float(far), 0),

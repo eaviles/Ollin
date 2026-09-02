@@ -35,6 +35,17 @@ private struct Frame {
         return sum / Double(half * 2 + 1)
     }
 
+    /// Linear luminance averaged over a small square, for a reading at a point rather
+    /// than along a row.
+    func patch(_ x: Int, _ y: Int, radius: Int = 3) -> Double {
+        var sum = 0.0
+        for dy in -radius ... radius {
+            for dx in -radius ... radius { sum += lum(x + dx, y + dy) }
+        }
+        let n = Double(2 * radius + 1)
+        return sum / (n * n)
+    }
+
     /// The three channels at one pixel, in linear light.
     func rgb(_ x: Int, _ y: Int) -> (Double, Double, Double) {
         let i = index(x, y)
@@ -76,7 +87,7 @@ struct LightTests {
         // The bar sits between the lamp and the pixel below it. The pixel beside it, the
         // same distance from the lamp, has nothing in the way, so the two readings are a
         // shadow test with the falloff taken out of it.
-        let f = try frame(.room)
+        let f = try frame(.room())
         let shaded = f.band(LightProbe.underBar, LightProbe.readingRow)
         let open = f.band(LightProbe.beside, LightProbe.readingRow)
         #expect(shaded < open * 0.25,
@@ -101,7 +112,7 @@ struct LightTests {
         // The penumbra. Beside the shape a pixel sees the lamp cut off sharply; further
         // down, the same edge is spread over many pixels. This is the behavior the
         // ladder exists for, and a single-resolution light field cannot produce it.
-        let f = try frame(.room)
+        let f = try frame(.room())
         let near = edgeWidth(f, row: LightProbe.nearRow)
         let far = edgeWidth(f, row: LightProbe.farRow)
         #expect(far > near * 1.8,
@@ -122,7 +133,8 @@ struct LightTests {
         // stretch of a ray counted twice, which is what happens when each rung's rays
         // end where this probe's ray would rather than where the rung above it starts.
         // Measured with that one line changed: 0.900…1.108 of the exact answer, against
-        // 0.902…0.952 as it stands.
+        // 0.926…0.972 as it stands (0.902…0.952 before each ray became a thin cone,
+        // which reads the disc's rim by the share it covers rather than missing it).
         let f = try frame(.disc)
         for y in stride(from: 200, through: 490, by: 10) {
             let r = Double(y - LightProbe.lampY)
@@ -133,6 +145,55 @@ struct LightTests {
             #expect(ratio > 0.85 && ratio < 1.02,
                     "at \(Int(r)) px the light is \(ratio) of what the geometry allows")
         }
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSmallLampFarAwayReadsEvenlyAllAround() throws {
+        // A lamp seen from the same distance in every direction gives the same light,
+        // and the ladder has to say so however the lamp happens to sit against a
+        // probe's fan of rays. At this distance the lamp is under three rays wide at
+        // the rung that sees it, so a ray that is a line either meets it or misses it,
+        // and the reading jumps by a third from one probe to the next: drawn as light,
+        // that is the mottled, cell-sized penumbra. A ray that is a thin cone reads the
+        // share of itself the lamp covers, and the ring reads even.
+        let f = try frame(.lamp(reach: nil, radius: LightProbe.tinyRadius))
+        var readings: [Double] = []
+        let count = 240
+        for i in 0 ..< count {
+            // The lower half of the ring, which is the half that stays on the layer.
+            let angle = Double.pi * (0.1 + 0.8 * Double(i) / Double(count - 1))
+            let x = Double(LightProbe.lampX) + cos(angle) * LightProbe.ringRadius
+            let y = Double(LightProbe.lampY) + sin(angle) * LightProbe.ringRadius
+            readings.append(f.patch(Int(x.rounded()), Int(y.rounded())))
+        }
+        //
+        // Measured as the spread of the ring's readings about their mean: 0.113 with a
+        // ray that is a line, 0.072 with a cone. The lamp here is narrower than the cone
+        // at that distance, which the ladder was never asked to resolve (its middle
+        // chords read as a wall), so a good deal of unevenness survives; the bound sits
+        // between the two, and the ramp probe below is the sharper of the pair.
+        let mean = readings.reduce(0, +) / Double(readings.count)
+        let rms = (readings.map { ($0 - mean) * ($0 - mean) }.reduce(0, +)
+                   / Double(readings.count)).squareRoot() / mean
+        #expect(rms < 0.09, "around the ring the light varies by \(rms) of its mean")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theShadowEdgeIsOneSmoothRamp() throws {
+        // Well below the bar the shadow's edge is a ramp tens of pixels wide, and the
+        // light along a row through it has to climb without a dip. A dip is the ladder
+        // reading the lamp as a different number of rays from one probe to the next.
+        // Measured against the peak: 0.054 with a ray that is a line, 0.018 with a cone.
+        let f = try frame(.room(radius: LightProbe.tinyRadius))
+        var climbed = 0.0, dip = 0.0, peak = 0.0
+        for x in stride(from: 120, through: 270, by: 1) {
+            let v = f.band(x, LightProbe.farRow)
+            peak = max(peak, v)
+            dip = max(dip, climbed - v)
+            climbed = max(climbed, v)
+        }
+        #expect(dip < peak * 0.03,
+                "along the shadow's edge the light dips by \(dip) against a peak of \(peak)")
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -211,9 +272,10 @@ struct LightTests {
 private final class LightProbe: Sketch {
     enum Subject {
         /// One small lamp in an empty scene: falloff, rings, reach, and sky.
-        case lamp(reach: Double?, sky: Color = .clear)
+        case lamp(reach: Double?, sky: Color = .clear, radius: Double = 10,
+                  quality: RenderQuality = .performance)
         /// A lamp above a bar: shadows and the penumbra.
-        case room
+        case room(radius: Double = 10)
         /// A lamp beside a red wall, with nothing between them: the bounce.
         case wall(bounces: Int)
         /// One wide disc of light in an empty scene, whose falloff has an exact answer.
@@ -228,6 +290,8 @@ private final class LightProbe: Sketch {
     static let farRow = 420            // well under it
 
     static let discRadius = 60.0
+    static let tinyRadius = 4.0       // a lamp about one ray wide at the ring below
+    static let ringRadius = 240.0     // around the lamp, where the ring stays on the layer
     static let wallLampX = 300, wallLampY = 256
     static let nearWall = 52           // the open floor just beside the red wall
     static let wallX = 40, wallY = 256 // inside the wall, near the face the lamp shines on
@@ -248,17 +312,17 @@ private final class LightProbe: Sketch {
         let lamps = makeRenderTarget()
 
         switch subject {
-        case let .lamp(reach, sky):
+        case let .lamp(reach, sky, radius, quality):
             // Even an empty scene is drawn into: a layer nobody draws into is never
             // recorded, and the combine then has no base to read at all.
             withTarget(scene) {}
             withTarget(lamps) { lamp(at: Vector2(Double(LightProbe.lampX),
-                                                 Double(LightProbe.lampY))) }
+                                                 Double(LightProbe.lampY)), radius: radius) }
             let lit = scene.combined(with: lamps,
                                      .light(reach: reach, brightness: 6, bounces: 0, sky: sky,
-                                            quality: .performance))
+                                            quality: quality))
             drawImage(lit.image, 0, 0)
-        case .room:
+        case let .room(radius):
             withTarget(scene) {
                 noStroke()
                 // The bar reaches the left edge, so each row below it holds exactly one
@@ -267,7 +331,7 @@ private final class LightProbe: Sketch {
                 drawRect(0, 190, 256, 16)
             }
             withTarget(lamps) { lamp(at: Vector2(Double(LightProbe.lampX),
-                                                 Double(LightProbe.lampY))) }
+                                                 Double(LightProbe.lampY)), radius: radius) }
             let lit = scene.combined(with: lamps,
                                      .light(brightness: 6, bounces: 0, quality: .performance))
             drawImage(lit.image, 0, 0)
@@ -298,9 +362,9 @@ private final class LightProbe: Sketch {
         }
     }
 
-    private func lamp(at p: Vector2) {
+    private func lamp(at p: Vector2, radius: Double = 10) {
         noStroke()
         fill(.white)
-        drawCircle(p.x, p.y, 10)
+        drawCircle(p.x, p.y, radius)
     }
 }

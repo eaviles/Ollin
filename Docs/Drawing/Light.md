@@ -134,7 +134,8 @@ the bounce):
 | `.default` | 13.1 ms | 23.4 ms |
 | `.detail` | 42.0 ms | 79.6 ms |
 
-A second bounce costs about as much as the first. A shorter `reach` is cheaper, because the
+A second bounce costs about as much as the first. The cone each ray widens into costs
+nothing measurable at `.performance` and `.default`, and up to a tenth more at `.detail`. A shorter `reach` is cheaper, because the
 ladder gets shorter. A smaller layer is much cheaper: half the width and half the height is
 a quarter of the work, so `makeRenderTarget(scale: 0.5)` is the first thing to reach for if a
 sketch needs the frame rate back.
@@ -170,7 +171,12 @@ four cancel, so every rung is the same size, however far it reaches.
 
 The rays are marched against a [measured distance field](DistanceFields.md) of the scene,
 which is why the cost does not follow how much was drawn: a ray crosses an empty room in one
-step whatever stands outside it.
+step whatever stands outside it. Each ray is a thin cone rather than a line. It stands for
+the wedge of directions between its neighbors. A lamp it passes counts by the share of that
+wedge the lamp covers. A line either meets a lamp or misses it. A lamp a few rays wide
+then reads as a different number of rays from one probe to the next, and a shadow's edge
+comes out as cells the size of the probe spacing. The cone reads the fraction, so the edge
+is one smooth ramp.
 
 The technique is Alexander Sannikov's, implemented here from the published description and
 credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md), along with the "bilinear fix" that
