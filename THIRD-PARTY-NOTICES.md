@@ -290,6 +290,22 @@ redistributed inside this repository.
 
 ---
 
+## Video Depth Anything, small (example model, built locally, not bundled)
+
+- **Used for:** the `DepthContours` example sketch and the `DepthTracker` it demonstrates: temporally consistent video depth over the live feed. Not part of the Ollin framework; Ollin (and `OllinVision`) bundle no model weights themselves.
+- **Location in this repo:** none. Nobody publishes a Core ML build of this model, so [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) makes one on a developer's machine: [`Scripts/convert-video-depth.sh`](Scripts/convert-video-depth.sh) clones the upstream repository at a pinned commit, downloads the checkpoint, and [`Scripts/convert-video-depth.py`](Scripts/convert-video-depth.py) traces the model's streaming step into `VideoDepthAnythingSmallF16.mlpackage` (checked against the upstream code), all under the gitignored `Models/`. The upstream source is used only at conversion time, in that work directory; none of it is copied into this repository.
+- **Work:** *Video Depth Anything: Consistent Depth Estimation for Super-Long Videos* (the **small** checkpoint, `video_depth_anything_vits.pth`), Sili Chen, Hengkai Guo, Shengnan Zhu, Feihu Zhang, Zilong Huang, Jiashi Feng, Bingyi Kang (CVPR 2025), https://arxiv.org/abs/2501.12375. Its temporal head builds on the AnimateDiff motion module (Yuwei Guo et al., Apache-2.0), which the upstream code credits in its own headers.
+- **Upstream:** https://github.com/DepthAnything/Video-Depth-Anything (code, Apache-2.0) and https://huggingface.co/depth-anything/Video-Depth-Anything-Small (the checkpoint).
+- **License:** Apache-2.0, https://www.apache.org/licenses/LICENSE-2.0 (the code and the small checkpoint; the Base and Large checkpoints are CC BY-NC 4.0 and are not used)
+
+> Apache-2.0 applies to the checkpoint the script downloads and to the package
+> it derives from it; nothing from the model is redistributed in this
+> repository, so the root [`LICENSE`](LICENSE) is unaffected. The conversion
+> script is Ollin's own work (MIT with the rest of the repository), written
+> against the model's published streaming procedure.
+
+---
+
 ## Depth Anything V2, small (example model — downloaded, not bundled)
 
 - **Used for:** the `DepthRelief` example sketch only — a monocular depth-estimation model, to demonstrate `ModelTracker` running a custom Core ML model. Not part of the Ollin framework; Ollin (and `OllinVision`) bundle no model weights themselves.

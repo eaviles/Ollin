@@ -726,6 +726,11 @@ let package = Package(
         // depth map sampled into a relief of disks. The model weights download
         // via Scripts/fetch-models.sh (never committed).
         example("Vision/DepthRelief", [.vision]),
+        // Depth that holds still: contour lines of depth from a video depth
+        // model that reads each frame against the ones before it, with the
+        // single-image model one toggle away for comparison. Both models come
+        // from Scripts/fetch-models.sh (never committed).
+        example("Vision/DepthContours", [.vision]),
         // Object detection (YOLOv3-tiny) — labeled boxes over the live feed.
         // The model weights download via Scripts/fetch-models.sh (never
         // committed).

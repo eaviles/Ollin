@@ -73,6 +73,7 @@ final class Faces: Sketch {
 - [ModelTracker](#modeltracker) - run your own Core ML model over the frames
 - [ModelOutput](#modeloutput) - its decoded surfaces: labels, objects, map
 - [ClassMask](#classmask) - a semantic segmenter's output: every pixel named
+- [DepthTracker](#depthtracker) - depth that holds still, from a video depth model
 - [Coordinate mapping](#coordinate-mapping) - placing normalized results on the canvas
 - [Still images](#still-images) - running a tracker on a loaded image
 - [Availability](#availability) - when a model can't run on a Mac
@@ -923,12 +924,13 @@ override func draw() {
 
 Loading happens in the background, off the frame loop, started by the first analyzed frame (or the first `detect(in:)`). `isLoaded` flips when the model is ready, and frames simply pass by until then, so the source's other trackers aren't stalled behind it. The compiled model is cached at a stable path, which is load-bearing. Core ML *specializes* a model for this Mac's compute device. It keys that work to the compiled files and the executable that loads them. So the **first launch of a (re)built sketch takes several seconds**, while every later launch of the same build starts in milliseconds. A model file that's missing or won't load surfaces through the [availability](#availability) pair, instead of failing silently. So check it and tell the user what to do. The `DepthRelief` example points at its download script.
 
-Model weights are yours to bring, since Ollin bundles none. The examples fetch theirs with `Scripts/fetch-models.sh`, and the repo ignores `Models/`. It downloads Apple's official conversions of four models:
+Model weights are yours to bring, since Ollin bundles none. The examples fetch theirs with `Scripts/fetch-models.sh`, and the repo ignores `Models/`. It downloads Apple's official conversions of four models, and builds a fifth:
 
 - **Depth Anything V2 (small)**. Apache-2.0, about 50 MB, for the `DepthRelief` example.
 - **YOLOv3-tiny**. YOLO License v2, about 18 MB, for `ObjectDetection`.
 - The **MNIST drawing classifier**. MIT, about 400 KB, for `DigitReader`, which points the model at the sketch's *own* pixels, with no camera anywhere.
 - **DeepLabV3**. Apache-2.0, about 4 MB, for `PaintByClass`, the class-mask surface.
+- **Video Depth Anything (small)**. Apache-2.0, about 55 MB, for [`DepthTracker`](#depthtracker) and the `DepthContours` example. Nobody publishes a Core ML version, so the script builds this one on your Mac, a one-time Python step of a few minutes.
 
 The `StyleMirror` example's model isn't fetched at all. You train it yourself from any style image in a couple of minutes with `swift Scripts/train-style-model.swift <image>`. The CreateML framework is underneath, since the Create ML app no longer offers its Style Transfer template. The weights are therefore your own work, with no license to check.
 
@@ -998,6 +1000,47 @@ override func draw() {
     }
 }
 ```
+
+<a name="depthtracker"></a>
+
+### DepthTracker
+
+```swift
+DepthTracker(_ source: any FrameSource, modelAt: URL)
+var map: Image? { get }                                   // depth, white-alpha, 0 far … 1 near
+func value(at: Vector2, in: Rectangle, mirrored: Bool = false) -> Double
+var sourceFrame: Image? { get }                           // the frame the map was read from
+var range: ClosedRange<Double>? { get }                   // the model values read as 0 and 1
+var analyzedFrames: Int { get }
+func reset()                                              // a new session on the next frame
+var isLoaded: Bool { get }
+```
+
+Depth that holds still. A single-image depth model decides each frame on its own. That is the one [`ModelTracker`](#modeltracker) runs in the `DepthRelief` example. A still scene can shimmer under it, and a slow move can wobble. `DepthTracker` runs a *video* depth model instead. It keeps a cache of the frames it has seen, about a second of them, and reads each new frame against that cache. The map then moves with the scene and with nothing else.
+
+The surface is the one `ModelTracker` gives a depth model. `map` is the depth as a white-alpha `Image`, `0` far to `1` near, sized to the model's output. Draw it into the frame's rectangle and it lines up. `value(at:in:)` answers under any canvas point, in the same `0…1`. `sourceFrame` is the frame the map was read from, in step with it, for drawing under an overlay with no relative lag.
+
+```swift
+let camera = Camera()
+lazy var depth = DepthTracker(camera, modelAt: URL(fileURLWithPath:
+    "Models/VideoDepthAnythingSmallF16.mlpackage"))
+
+override func draw() {
+    guard let rect = drawFrame(camera) else { return }
+    let near = depth.value(at: Vector2(mouseX, mouseY), in: rect)   // 0 far … 1 near
+    if let map = depth.map { drawImage(map, in: rect) }
+}
+
+override func keyPressed() {
+    if key == "r" { depth.reset() }   // a new scene: anchor the depth again
+}
+```
+
+Two things are particular to it. The depth is *relative*: nearer and farther, not meters. The model keeps that scale consistent across a session by anchoring on the first frame it sees. `reset()` is for a camera that moved to another room, or a clip that started over. The next frame becomes the new anchor. And the values you read pass through a range that follows the scene slowly. `range` tells you which of the model's own values currently read as `0` and `1`. It reaches out at once when something nearer or farther than anything so far appears. It eases back over a few seconds. So the picture never re-scales between two frames. The reading also settles over its first second: the model's window fills as the frames arrive.
+
+The model runs on the GPU, at about 70 ms a frame on an M2. A sketch gets some fourteen depth readings a second, while the picture keeps its own frame rate. Frames are read squashed to the model's landscape input, so a portrait source is reasoned about a little stretched. There is no still-image mode; a video model has nothing to say about one picture, and `ModelTracker` covers that.
+
+The model is not downloaded but **built**. Nobody publishes a Core ML version of it, so `Scripts/fetch-models.sh` makes one on your Mac from the published checkpoint. That is a one-time step of a few minutes. It needs a Python from 3.10 to 3.13 (`brew install python@3.13`). The converter, `Scripts/convert-video-depth.py`, checks its work against the upstream code before writing the package. The small checkpoint is Apache-2.0. The larger ones are licensed for non-commercial use only, so the script never fetches them. The converter accepts them by hand, for work of your own under those terms. Loading and availability behave like `ModelTracker`'s, and the model needs Apple silicon. `Examples/Vision/DepthContours` draws the depth as contour lines. A parameter swaps in the single-image model, so you can watch the lines crawl and then hold still.
 
 <a name="coordinate-mapping"></a>
 

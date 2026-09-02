@@ -73,6 +73,7 @@ extension BodyTracker: VisionAvailability {}
 extension ConceptTracker: VisionAvailability {}
 extension BodyTracker3D: VisionAvailability {}
 extension ContourDetector: VisionAvailability {}
+extension DepthTracker: VisionAvailability {}
 extension FaceTracker: VisionAvailability {}
 extension FlowTracker: VisionAvailability {}
 extension HandTracker: VisionAvailability {}

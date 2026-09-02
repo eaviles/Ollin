@@ -306,6 +306,29 @@ override func draw() {
 
 Loading runs in the background off the frame loop, and `isLoaded` flips when the model is ready, with frames simply passing by until then. Expect the first launch of a freshly built sketch to sit for a few seconds, while Core ML specializes the model for your Mac. Every later launch of that same build starts immediately. A model file that's missing or won't load reports through the same `isAvailable` and `unavailableReason` pair the built-in trackers use. So you can tell the person in front of the screen what to do about it.
 
+### Depth that holds still
+
+A single-image depth model decides each frame on its own. Point `DepthRelief` at a still room and the relief can breathe. The map shimmers, and the disks with it, because nothing ties one frame's answer to the next. **`DepthTracker`** runs a *video* depth model instead. It keeps what it saw over the last second and reads each new frame against that, so the map moves only when the scene does.
+
+```swift
+lazy var depth = DepthTracker(camera, modelAt: URL(fileURLWithPath:
+    "Models/VideoDepthAnythingSmallF16.mlpackage"))
+
+override func draw() {
+    guard let rect = drawFrame(camera) else { return }
+    let near = depth.value(at: Vector2(mouseX, mouseY), in: rect)   // 0 far … 1 near
+    if let map = depth.map { drawImage(map, in: rect) }
+}
+
+override func keyPressed() {
+    if key == "r" { depth.reset() }   // a new scene: anchor the depth again
+}
+```
+
+The surface is the one `ModelTracker` gives a depth model, `map` and `value(at:in:)`, so a sketch swaps one for the other in a line. Two things are new. The depth is relative: nearer and farther, not meters. The model keeps that scale consistent by anchoring on the first frame it sees. Move the camera to another room and call `reset()`, and the next frame becomes the anchor. And the numbers you read pass through a range that follows the scene slowly, `range`. It reaches out at once for something nearer than anything so far, and eases back over a few seconds. So the picture never re-scales between two frames.
+
+The model is not downloaded but built. Nobody publishes a Core ML version, so `Scripts/fetch-models.sh` makes one on your Mac from the published checkpoint. That is a one-time step of a few minutes, and it needs Python. It runs on the GPU, about fourteen readings a second on an M2. `Examples/Vision/DepthContours` draws the depth as contour lines. A parameter swaps in the single-image model, so you can watch the lines crawl and then hold still.
+
 ### Words as knobs
 
 The classifier's `confidence(of: "plant")` only answers for the 1,300 words it was trained on. **`ConceptTracker`** answers for any phrase you can type. Give it a few phrases in plain language and it scores each one against the picture, every frame. The vocabulary is any phrase you can say.
@@ -491,7 +514,7 @@ Camera-as-instrument art is older than the personal computer. Myron Krueger's *V
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).
 - Worked examples, people first: [`FaceTracking`](../Examples/Vision/FaceTracking/Sketch.swift), [`HandTracking`](../Examples/Vision/HandTracking/Sketch.swift), [`BodyPose`](../Examples/Vision/BodyPose/Sketch.swift), [`BodyPose3D`](../Examples/Vision/BodyPose3D/Sketch.swift), [`Lift`](../Examples/Vision/Lift/Sketch.swift).
 - Then the picture itself: [`ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`RectangleScan`](../Examples/Vision/RectangleScan/Sketch.swift), [`TextScan`](../Examples/Vision/TextScan/Sketch.swift), [`BarcodeReader`](../Examples/Vision/BarcodeReader/Sketch.swift), [`ObjectTracking`](../Examples/Vision/ObjectTracking/Sketch.swift), [`TrajectoryTracking`](../Examples/Vision/TrajectoryTracking/Sketch.swift), [`SceneLabels`](../Examples/Vision/SceneLabels/Sketch.swift), [`EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift).
-- Models of your own: [`DepthRelief`](../Examples/Vision/DepthRelief/Sketch.swift), [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift), [`PaintByClass`](../Examples/Vision/PaintByClass/Sketch.swift), [`TugOfWords`](../Examples/Vision/TugOfWords/Sketch.swift) for phrase scoring, [`StyleMirror`](../Examples/Vision/StyleMirror/Sketch.swift), and [`DigitReader`](../Examples/Vision/DigitReader/Sketch.swift), which points a model at the sketch's own pixels with no camera anywhere. The rest live in [`Examples/Vision/`](../Examples/Vision).
+- Models of your own: [`DepthRelief`](../Examples/Vision/DepthRelief/Sketch.swift), [`DepthContours`](../Examples/Vision/DepthContours/Sketch.swift) for depth that holds still, [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift), [`PaintByClass`](../Examples/Vision/PaintByClass/Sketch.swift), [`TugOfWords`](../Examples/Vision/TugOfWords/Sketch.swift) for phrase scoring, [`StyleMirror`](../Examples/Vision/StyleMirror/Sketch.swift), and [`DigitReader`](../Examples/Vision/DigitReader/Sketch.swift), which points a model at the sketch's own pixels with no camera anywhere. The rest live in [`Examples/Vision/`](../Examples/Vision).
 - Footage and history: [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), [`Examples/Vision/ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), and [`Examples/Images/SlitScan`](../Examples/Images/SlitScan/Sketch.swift).
 - The screen itself: [`Examples/Integration/ScreenCapture`](../Examples/Integration/ScreenCapture/Sketch.swift), which lists what your Mac can capture as the line of code that names each one, and puts the feedback tunnel on a knob.
 
