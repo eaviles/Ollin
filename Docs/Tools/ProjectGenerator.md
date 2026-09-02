@@ -127,13 +127,23 @@ There are three columns, and the window resizes. The stage takes the slack, beca
 
 **Left, one list.** Templates sit as a group at the top. Then come the examples, grouped the way the folders already group them. One filter runs over both, and it matches group names as well as sketch names. Ten curated starting points and 350 cataloged ones are a short list and a long one, not two modes.
 
-**Middle, the stage.** The starting point runs here. A line under it says what it is, how fast it is going, and whether it was just built or came from the cache. For the 3D template, the options strip sits under that (see below).
+**Middle, the stage.** The starting point runs here. A line under it says what it is, how fast it is going, and whether it was just built or came from the cache. For the 3D template, the options strip sits under that (see below). For an extension package, the stage shows source instead (see [below](#an-extension-package-in-the-window)).
 
 **Right, the project.** Name, where, canvas, and everything else behind one **Wire in** row that still reports what the starting point brought. The file list sits above the fold, with the guarantee under it. Nothing is written until you press Create, and Create refuses rather than overwriting.
 
 The folder you last chose is remembered. The name field *suggests* the next serial in that folder, rather than filling it in. So making several in a row is Create, Create, Create, and naming one properly is typing over a suggestion.
 
 The kind menu lives in the title bar, since it scopes the whole window. The kinds that are not ready sit under a divider inside it, dimmed, each with what it waits on.
+
+### An extension package in the window
+
+Pick **Extension package** in that menu and the window changes shape, because a library has nothing to run.
+
+The list on the left holds the four seams instead of the templates. The stage shows the starter's source instead of a frame, colored and selectable. A strip under it switches between the files that will be written. Type a name and the file on the stage renames itself as you type, since what is shown is the plan itself.
+
+The starter is checked against the framework on this machine, the way a sketch is compiled. The chip in the title bar says **Compiles** once it has. A seam that stopped compiling shows its log over the source, before you press Create. The canvas and the wiring go away, since a library declares neither.
+
+`ollin generate --kind extension --seam filter` opens the window already set to a seam.
 
 ## What a project folder looks like
 
@@ -181,10 +191,11 @@ The path form is the right default on a machine that has the framework, since th
 | `--examples` | Print every example that can be started from. |
 | `--with <a,b>` | Extra libraries and folders. |
 | `--canvas <id>` | The canvas size to declare (`a4`, `fhd1080`, `vertical1080`, and the rest). |
+| `--seam <id>` | What an extension package is built on, with `--kind extension`. Defaults to `draw-call`. |
 | `--in <dir>` | Where to put it. Defaults to the current folder. |
 | `--remote` | Point the manifest at the published framework. |
 | `--framework-path <dir>` | Point it at a particular copy of the framework. |
-| `--list` | Print every kind, template, and extra. |
+| `--list` | Print every kind, template, seam, and extra. |
 
 ## Adding to it
 

@@ -38,6 +38,8 @@ Pick what the starter is built on with `--seam`. The four seams are the four sec
 ollin new Vignette --kind extension --seam filter
 ```
 
+The generator window offers the same. Pick **Extension package** from its kind menu, or open it with `ollin generate --kind extension`. The seams take the place of the templates on the left. The stage shows the starter's source instead of a running sketch, checked against the framework. A seam that stopped compiling says so before anything is written. See [the window](ProjectGenerator.md#an-extension-package-in-the-window).
+
 ## The name
 
 The package and its repository take `ollinx-` in lower case with dashes. The module inside takes `Ollinx` in camel case. `Halftone` becomes the package `ollinx-halftone` and the module `OllinxHalftone`.

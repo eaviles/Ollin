@@ -179,13 +179,62 @@ public struct SketchLoader: Sendable {
             sourceFile, factoryPath,
             "-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup",
         ]
-        // `-I` the dirs holding `Ollin.swiftmodule` (so `import Ollin` type-checks)
-        // and the C targets' clang module maps that `import Ollin` pulls in
-        // (`CLibtess2` / `CClipper2` / `COllinShaders`). Discovered across both
-        // build layouts; see `moduleSearchPaths()`. Without them the compile fails
-        // with "no such module 'Ollin'" or "missing required modules".
-        // One build layout does not put its C module maps anywhere `-I` can find
-        // them, so they are named outright; see `explicitModuleMaps()`.
+        args += moduleArguments()
+        let result = run("/usr/bin/xcrun", args)
+        guard result.status == 0 else {
+            let log = result.stderr.isEmpty ? result.stdout : result.stderr
+            return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
+        }
+        return .success(dylibPath)
+    }
+
+    /// Type-check a source that is not a sketch, against the same modules a
+    /// sketch compile sees. For a library file (an extension's starter, say),
+    /// which has no `Sketch` subclass to build and nothing to run, this is the
+    /// whole honest check: does it still compile against the framework on this
+    /// machine. No dylib is produced and nothing is linked, so it is a fraction
+    /// of a compile. Safe to run off the main thread.
+    ///
+    /// The text is written into a work directory under `fileName`, so a
+    /// diagnostic names the file the caller knows and keeps its exact line.
+    public func typecheck(_ source: String, fileName: String) -> Result<Void, LoadError> {
+        let token = UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let work = (NSTemporaryDirectory() as NSString)
+            .appendingPathComponent("OllinRuntime-check-\(token)")
+        try? FileManager.default.createDirectory(atPath: work, withIntermediateDirectories: true)
+        let sourceFile = (work as NSString).appendingPathComponent(fileName)
+        do {
+            try source.write(toFile: sourceFile, atomically: true, encoding: .utf8)
+        } catch {
+            return .failure(.loadFailed("couldn't write source buffer: \(error)"))
+        }
+        defer { try? FileManager.default.removeItem(atPath: work) }
+
+        var args = [
+            "swiftc", "-typecheck", "-parse-as-library",
+            "-module-name", "OllinRuntimeCheck_\(token)",
+            sourceFile,
+        ]
+        args += moduleArguments()
+        let result = run("/usr/bin/xcrun", args)
+        guard result.status == 0 else {
+            let log = result.stderr.isEmpty ? result.stdout : result.stderr
+            return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
+        }
+        return .success(())
+    }
+
+    /// The module arguments every compile against the framework needs.
+    ///
+    /// `-I` the dirs holding `Ollin.swiftmodule` (so `import Ollin` type-checks)
+    /// and the C targets' clang module maps that `import Ollin` pulls in
+    /// (`CLibtess2` / `CClipper2` / `COllinShaders`). Discovered across both
+    /// build layouts; see `moduleSearchPaths()`. Without them the compile fails
+    /// with "no such module 'Ollin'" or "missing required modules".
+    /// One build layout does not put its C module maps anywhere `-I` can find
+    /// them, so they are named outright; see `explicitModuleMaps()`.
+    private func moduleArguments() -> [String] {
+        var args: [String] = []
         let named = explicitModuleMaps()
         // A module named outright must not also be reachable through a search path,
         // or clang sees it declared twice and refuses the whole compile with
@@ -201,12 +250,7 @@ public struct SketchLoader: Sendable {
         for path in named {
             args.append(contentsOf: ["-Xcc", "-fmodule-map-file=\(path)"])
         }
-        let result = run("/usr/bin/xcrun", args)
-        guard result.status == 0 else {
-            let log = result.stderr.isEmpty ? result.stdout : result.stderr
-            return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
-        }
-        return .success(dylibPath)
+        return args
     }
 
     /// `dlopen` the compiled dylib and build the `Sketch` from its factory entry

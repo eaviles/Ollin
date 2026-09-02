@@ -25,32 +25,26 @@ struct SwiftHighlighter {
     private static let commentColor = NSColor(red: 0.58, green: 0.66, blue: 0.60, alpha: 1)
     private static let attributeColor = NSColor(red: 0.55, green: 0.90, blue: 0.60, alpha: 1)
 
-    private static let keywords = [
-        "as", "any", "associatedtype", "await", "break", "case", "catch", "class",
-        "continue", "convenience", "default", "defer", "deinit", "do", "else",
-        "enum", "extension", "fallthrough", "false", "final", "for", "func",
-        "guard", "if", "import", "in", "indirect", "infix", "init", "inout",
-        "internal", "is", "lazy", "let", "mutating", "nil", "nonisolated", "open",
-        "operator", "override", "private", "protocol", "public", "repeat",
-        "required", "return", "self", "some", "static", "struct", "subscript",
-        "super", "switch", "throw", "throws", "true", "try", "typealias",
-        "unowned", "var", "weak", "where", "while",
-    ]
-
-    private static func regex(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression {
-        // The patterns are fixed literals; a failure is a programmer error.
-        try! NSRegularExpression(pattern: pattern, options: options)
+    private static func regex(_ pattern: String) -> NSRegularExpression {
+        // The pattern is a fixed literal; a failure is a programmer error.
+        try! NSRegularExpression(pattern: pattern)
     }
 
+    /// The token patterns live in `SwiftTokens`, shared with the generator's
+    /// source stage. This stage owns the one run its backdrop needs, and the
+    /// colors.
     private static let glyphRuns = regex(#"[^\n]+"#)
-    private static let typeNames = regex(#"\b[A-Z][A-Za-z0-9_]*\b"#)
-    private static let numbers = regex(#"\b\d[\d_]*(?:\.\d[\d_]*)?(?:e[+-]?\d+)?\b"#)
-    private static let attributes = regex(#"@\w+"#)
-    private static let keywordRuns = regex(#"\b(?:"# + keywords.joined(separator: "|") + #")\b"#)
-    private static let multilineStrings = regex(#"\"\"\"[\s\S]*?\"\"\""#)
-    private static let strings = regex(#""(?:[^"\\\n]|\\.)*""#)
-    private static let lineComments = regex(#"//[^\n]*"#)
-    private static let blockComments = regex(#"/\*[\s\S]*?\*/"#)
+
+    private static func color(for kind: SwiftTokens.Kind) -> NSColor {
+        switch kind {
+        case .type: typeColor
+        case .number: numberColor
+        case .keyword: keywordColor
+        case .attribute: attributeColor
+        case .string: stringColor
+        case .comment: commentColor
+        }
+    }
 
     var font: NSFont {
         .monospacedSystemFont(ofSize: fontSize, weight: .regular)
@@ -83,20 +77,10 @@ struct SwiftHighlighter {
         storage.beginEditing()
         storage.setAttributes([.font: font, .foregroundColor: Self.textColor], range: all)
 
-        func color(_ regex: NSRegularExpression, _ color: NSColor) {
-            regex.enumerateMatches(in: storage.string, range: all) { match, _, _ in
-                guard let match else { return }
-                storage.addAttribute(.foregroundColor, value: color, range: match.range)
-            }
+        // In the scanner's own order: a later run paints over an earlier one.
+        for run in SwiftTokens.runs(in: storage.string) {
+            storage.addAttribute(.foregroundColor, value: Self.color(for: run.kind), range: run.range)
         }
-        color(Self.typeNames, Self.typeColor)
-        color(Self.numbers, Self.numberColor)
-        color(Self.keywordRuns, Self.keywordColor)
-        color(Self.attributes, Self.attributeColor)
-        color(Self.multilineStrings, Self.stringColor)
-        color(Self.strings, Self.stringColor)
-        color(Self.lineComments, Self.commentColor)
-        color(Self.blockComments, Self.commentColor)
 
         // The backdrop hugs glyph runs (newlines excluded), so short lines
         // carry short strips rather than full-width bars.

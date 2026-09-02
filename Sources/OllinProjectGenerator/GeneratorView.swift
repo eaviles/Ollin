@@ -42,6 +42,12 @@ struct GeneratorView: View {
     @State private var canvas: CanvasChoice = .default
     @State private var threeD = ThreeDRecipe.realistic
     @State private var hovered: ThreeDOption?
+    /// What an extension package's starter is built on. Only read for that
+    /// kind, where it is the starting point the way a template is for a sketch.
+    @State private var seam: ExtensionSeam = .drawCall
+    /// The planned file on the source stage, by its path in the project. Nil
+    /// until a file is picked, which means the starter.
+    @State private var shownFile: String?
     @State private var wiringExpanded = false
     /// The package the chosen folder already sits in, if any. Found when the
     /// folder changes rather than on every keystroke.
@@ -49,6 +55,8 @@ struct GeneratorView: View {
 
     @State private var preview: PreviewState = .idle
     @State private var previewCache: [String: Sketch] = [:]
+    @State private var check: CheckState = .idle
+    @State private var checkCache: [String: CheckState] = [:]
     @State private var lastBuild: BuildOutcome = .none
     @State private var outcome: Outcome?
     @State private var stats = FrameStats()
@@ -57,6 +65,17 @@ struct GeneratorView: View {
         case idle
         case compiling(String)
         case running(Sketch)
+        case failed(String)
+    }
+
+    /// The source stage's own honesty check: a library has nothing to run, so
+    /// its starter is type-checked against the framework instead, the way a
+    /// sketch is compiled. A seam that stopped compiling shows up here rather
+    /// than in someone's new package.
+    enum CheckState: Equatable {
+        case idle
+        case checking
+        case passed(seconds: Double)
         case failed(String)
     }
 
@@ -177,18 +196,18 @@ struct GeneratorView: View {
     /// Joining a package is offered only where there is one to join, since it
     /// is the only kind whose availability depends on where you are pointing.
     ///
-    /// An extension package is left out for a different reason: this window
-    /// previews a starting point by *running* it, and a library has nothing to
-    /// run. Offering it here would show a template list and a run button for
-    /// something that is neither, so it stays on the command line
-    /// (`ollin new <name> --kind extension`) until the stage can show source
-    /// rather than a frame.
+    /// An extension package is offered like any other kind, but the window
+    /// changes shape for it: a library has nothing to run, so the list holds
+    /// the seams instead of the templates, the stage shows the starter's
+    /// source instead of a frame, and the canvas and wiring go away, since a
+    /// library has neither.
     private var offeredKinds: [ProjectKind] {
         ProjectKind.available.filter {
-            $0.id != ProjectKind.extensionPackage.id
-                && ($0.id != ProjectKind.inPackage.id || host?.linksOllin == true)
+            $0.id != ProjectKind.inPackage.id || host?.linksOllin == true
         }
     }
+
+    private var isExtension: Bool { kind.id == ProjectKind.extensionPackage.id }
 
     private var trailingChrome: some View {
         HStack(spacing: 12) {
@@ -206,11 +225,20 @@ struct GeneratorView: View {
     }
 
     private var statusChip: some View {
-        let (text, color): (String, SwiftUI.Color) = switch preview {
-        case .running: ("Running", OllinInspector.green)
-        case .compiling: ("Building", OllinInspector.amber)
-        case .failed: ("Compile error", OllinInspector.red)
-        case .idle: ("Idle", OllinInspector.amber)
+        let (text, color): (String, SwiftUI.Color) = if isExtension {
+            switch check {
+            case .passed: ("Compiles", OllinInspector.green)
+            case .checking: ("Checking", OllinInspector.amber)
+            case .failed: ("Compile error", OllinInspector.red)
+            case .idle: ("Source", OllinInspector.amber)
+            }
+        } else {
+            switch preview {
+            case .running: ("Running", OllinInspector.green)
+            case .compiling: ("Building", OllinInspector.amber)
+            case .failed: ("Compile error", OllinInspector.red)
+            case .idle: ("Idle", OllinInspector.amber)
+            }
         }
         return HStack(spacing: 6) {
             Circle().fill(color).frame(width: 7, height: 7)
@@ -268,7 +296,9 @@ struct GeneratorView: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 11.5))
             if filterText.isEmpty {
-                Text("10 templates, ~\(examples.count) examples")
+                Text(isExtension
+                     ? "\(ExtensionSeam.all.count) seams"
+                     : "10 templates, ~\(examples.count) examples")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             } else {
@@ -293,6 +323,7 @@ struct GeneratorView: View {
         case header(id: String, title: String, detail: String, expanded: Bool, depth: Int)
         case template(ProjectTemplate)
         case example(ExampleSource.Example)
+        case seam(ExtensionSeam)
         case empty(String)
 
         var id: String {
@@ -300,6 +331,7 @@ struct GeneratorView: View {
             case .header(let id, _, _, _, _): "header:" + id
             case .template(let t): "template:" + t.id
             case .example(let e): "example:" + e.path
+            case .seam(let s): "seam:" + s.id
             case .empty(let text): "empty:" + text
             }
         }
@@ -327,6 +359,17 @@ struct GeneratorView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(template.title).font(.system(size: 12, weight: .medium))
                     Text(template.summary)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .padding(.leading, 15)
+            case .seam(let seam):
+                // A seam is to a library what a template is to a sketch, so it
+                // reads as one row of the same shape.
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(seam.title).font(.system(size: 12, weight: .medium))
+                    Text(seam.summary)
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -398,8 +441,27 @@ struct GeneratorView: View {
 
     private var filtering: Bool { !filterText.isEmpty }
 
+    private var matchingSeams: [ExtensionSeam] {
+        guard !filterText.isEmpty else { return ExtensionSeam.all }
+        return ExtensionSeam.all.filter {
+            $0.title.localizedCaseInsensitiveContains(filterText)
+                || $0.summary.localizedCaseInsensitiveContains(filterText)
+        }
+    }
+
     private var rows: [Row] {
         var out: [Row] = []
+        // A library starts from a seam and never from a sketch, so for the
+        // extension kind the list holds the seams and nothing else: offering
+        // the examples too would offer starting points the plan ignores.
+        if isExtension {
+            let seams = matchingSeams
+            out.append(.header(id: "seams", title: "Seams",
+                               detail: filtering && seams.isEmpty ? "no matches" : "\(seams.count)",
+                               expanded: true, depth: 0))
+            out += seams.map(Row.seam)
+            return out
+        }
         let templates = matchingTemplates
         // While filtering, a group with no matches is reported rather than
         // hidden, so the list never looks like it lost something.
@@ -437,7 +499,8 @@ struct GeneratorView: View {
     }
 
     private var selectionID: String? {
-        example.map { "example:" + $0.path } ?? "template:" + template.id
+        if isExtension { return "seam:" + seam.id }
+        return example.map { "example:" + $0.path } ?? "template:" + template.id
     }
 
     private func select(_ id: String?) {
@@ -447,6 +510,9 @@ struct GeneratorView: View {
         } else if let templateID = id.dropPrefix("template:"), let found = ProjectTemplate.named(templateID) {
             template = found
             example = nil
+        } else if let seamID = id.dropPrefix("seam:"), let found = ExtensionSeam.named(seamID) {
+            seam = found
+            shownFile = nil
         }
         outcome = nil
     }
@@ -466,7 +532,11 @@ struct GeneratorView: View {
             stage
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             statusLine
-            if template.id == ProjectTemplate.threeD.id && example == nil {
+            if isExtension {
+                SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
+                SourceFileStrip(files: stagedFiles, shown: $shownFile)
+                    .tint(OllinInspector.accent)
+            } else if template.id == ProjectTemplate.threeD.id && example == nil {
                 SwiftUI.Rectangle().fill(OllinInspector.separator(for: colorScheme)).frame(height: 0.5)
                 ThreeDStrip(recipe: $threeD, hovered: $hovered)
                     .tint(OllinInspector.accent)
@@ -475,7 +545,65 @@ struct GeneratorView: View {
         }
     }
 
-    private var stage: some View {
+    /// The plan the window is showing, worked out from the form as it stands.
+    /// Pure, so asking is cheap enough to do on every render.
+    private var plannedProject: GeneratedProject? {
+        try? ProjectGenerator.plan(request())
+    }
+
+    /// The files of an extension package in reading order: the starter first,
+    /// its tests, the manifest, the README, and the housekeeping last.
+    private var stagedFiles: [GeneratedFile] {
+        let files = plannedProject?.files ?? []
+        let rank: (GeneratedFile) -> Int = {
+            if $0.path.hasPrefix("Sources/") { return 0 }
+            if $0.path.hasPrefix("Tests/") { return 1 }
+            if $0.path == "Package.swift" { return 2 }
+            if $0.path == "README.md" { return 3 }
+            return 4
+        }
+        return files.sorted { (rank($0), $0.path) < (rank($1), $1.path) }
+    }
+
+    /// The file on the source stage: the one picked in the strip, or the
+    /// starter when none is.
+    private var stagedFile: GeneratedFile? {
+        let files = stagedFiles
+        return files.first { $0.path == shownFile } ?? files.first
+    }
+
+    @ViewBuilder private var stage: some View {
+        if isExtension {
+            ZStack {
+                SwiftUI.Color.black
+                if let file = stagedFile {
+                    SourceStage(path: file.path, text: file.contents)
+                }
+                if case .failed(let message) = check {
+                    // The starter that stopped compiling is the defect this
+                    // stage exists to show, so the log sits over the source
+                    // rather than behind a chip.
+                    VStack {
+                        Spacer()
+                        ScrollView {
+                            Text(message)
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(OllinInspector.red)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                        }
+                        .frame(maxHeight: 160)
+                        .background(.black.opacity(0.85))
+                    }
+                }
+            }
+        } else {
+            runningStage
+        }
+    }
+
+    private var runningStage: some View {
         ZStack {
             SwiftUI.Color.black
             switch preview {
@@ -510,7 +638,40 @@ struct GeneratorView: View {
     }
 
     /// What is on the stage and how it got there, in one quiet line.
-    private var statusLine: some View {
+    @ViewBuilder private var statusLine: some View {
+        if isExtension { sourceStatusLine } else { runningStatusLine }
+    }
+
+    private var sourceStatusLine: some View {
+        var parts: [String] = [seam.title]
+        if let file = stagedFile {
+            parts.append(file.path)
+            let lines = file.contents.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline).count
+            parts.append("\(lines) lines")
+        }
+        switch check {
+        case .passed(let seconds): parts.append(String(format: "checked in %.1fs", seconds))
+        case .checking: parts.append("checking against the framework")
+        case .failed: parts.append("does not compile")
+        case .idle: break
+        }
+        return HStack {
+            // One line, however long the serial name makes the path: the
+            // middle of a path is the part a reader can spare.
+            Text(parts.joined(separator: " \u{00B7} "))
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer()
+            Text(request().extensionPackageName).font(.system(size: 10)).foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(.bar)
+    }
+
+    private var runningStatusLine: some View {
         let name = example?.name ?? template.title
         var parts: [String] = [name]
         switch preview {
@@ -554,9 +715,10 @@ struct GeneratorView: View {
                             TextField("", text: $typedName, prompt: Text(suggestedName))
                                 .textFieldStyle(.roundedBorder)
                                 .onChange(of: typedName) { _, _ in outcome = nil }
-                            Text("Next serial in \(destination.lastPathComponent). Type to name it.")
+                            Text(nameHint)
                                 .font(.system(size: 10))
                                 .foregroundStyle(.tertiary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
 
@@ -572,16 +734,20 @@ struct GeneratorView: View {
                         }
                     }
 
-                    field("Canvas") {
-                        Picker("", selection: $canvas) {
-                            ForEach(CanvasChoice.all) { option in
-                                Text(option.title).tag(option)
+                    // A library declares no canvas and links nothing but the
+                    // framework, so neither question is asked for one.
+                    if !isExtension {
+                        field("Canvas") {
+                            Picker("", selection: $canvas) {
+                                ForEach(CanvasChoice.all) { option in
+                                    Text(option.title).tag(option)
+                                }
                             }
+                            .labelsHidden()
                         }
-                        .labelsHidden()
-                    }
 
-                    wiring
+                        wiring
+                    }
                     Divider()
                     fileList
                 }
@@ -589,6 +755,17 @@ struct GeneratorView: View {
             }
             createBar
         }
+    }
+
+    /// Under the name: for a sketch, where the serial comes from; for a
+    /// library, the two spellings the name becomes, since the convention is
+    /// the point of the kind.
+    private var nameHint: String {
+        if isExtension {
+            let request = request()
+            return "Folder \(request.extensionPackageName), module \(request.extensionModuleName)."
+        }
+        return "Next serial in \(destination.lastPathComponent). Type to name it."
     }
 
     /// One row that still reports its state, because for most starting points
@@ -699,7 +876,7 @@ struct GeneratorView: View {
                 .foregroundStyle(OllinInspector.amber)
                 .fixedSize(horizontal: false, vertical: true)
         case nil:
-            if let plan = try? ProjectGenerator.plan(request()) {
+            if let plan = plannedProject {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Will write \(plan.files.count) file\(plan.files.count == 1 ? "" : "s")")
                         .font(.system(size: 11, weight: .semibold))
@@ -743,6 +920,9 @@ struct GeneratorView: View {
     private var guarantee: String {
         if kind.id == ProjectKind.inPackage.id {
             return "The sketch folder is new. The only file changed is the manifest, and only to list it."
+        }
+        if isExtension {
+            return "A library, not a sketch: nothing runs, and the README says what to fix before anyone else can install it. Create refuses rather than overwriting."
         }
         return example == nil
             ? "Nothing is written until you press Create, and Create refuses rather than overwriting."
@@ -798,6 +978,7 @@ struct GeneratorView: View {
             capabilities: Capability.all.filter { chosen.contains($0.id) },
             canvas: canvas,
             threeD: threeD,
+            seam: isExtension ? seam : nil,
             packageHost: host,
             destination: destination,
             framework: .localPath(Self.frameworkRoot())
@@ -860,6 +1041,7 @@ struct GeneratorView: View {
     /// What the stage is showing. A 3D change is a different sketch, so the
     /// recipe rides the key or the cache would hand back the last combination.
     private var previewKey: String {
+        if isExtension { return "seam:" + seam.id }
         if let example { return example.path }
         guard template.id == ProjectTemplate.threeD.id else { return template.id }
         return template.id + "-" + threeD.chosen.sorted().joined(separator: "-")
@@ -872,6 +1054,10 @@ struct GeneratorView: View {
         }
         if let wanted = Self.launchArgument("--kind"), let found = ProjectKind.named(wanted) {
             kind = found
+        }
+        if let wanted = Self.launchArgument("--seam"), let found = ExtensionSeam.named(wanted) {
+            seam = found
+            kind = .extensionPackage
         }
         if let wanted = Self.launchArgument("--from"),
            let found = examples.first(where: { $0.path.lowercased() == wanted.lowercased() }) {
@@ -895,6 +1081,20 @@ struct GeneratorView: View {
         }
         suggestName()
         findHost()
+        await runHarnessIfRequested()
+    }
+
+    // MARK: Harness (--stagetest / --self-shot; see GeneratorHarness)
+
+    private func runHarnessIfRequested() async {
+        if GeneratorHarness.stageTest {
+            await GeneratorHarness.runStageTest(frameworkRoot: Self.frameworkRoot())
+        } else if let path = GeneratorHarness.shotPath {
+            try? await Task.sleep(for: .seconds(8))
+            let ok = GeneratorHarness.writeWindowShot(to: path)
+            print("OllinProjectGenerator self-shot: \(ok ? "wrote" : "FAILED to write") \(path)")
+            exit(ok ? 0 : 1)
+        }
     }
 
     /// Compile the very source the generator would write, then run it. What you
@@ -903,6 +1103,10 @@ struct GeneratorView: View {
     private func showPreview() async {
         outcome = nil
         let key = previewKey
+        if isExtension {
+            await checkStarter(key: key)
+            return
+        }
         if let cached = previewCache[key] {
             preview = .running(cached)
             lastBuild = .cached
@@ -944,6 +1148,33 @@ struct GeneratorView: View {
         case .failure(let error):
             preview = .failed(String(describing: error))
         }
+    }
+
+    /// Type-check the starter the plan would write, against the framework on
+    /// this machine, through the loader's own module discovery. The name typed
+    /// in the form does not change whether a seam compiles, so the verdict is
+    /// cached per seam rather than per keystroke.
+    private func checkStarter(key: String) async {
+        if let cached = checkCache[key] {
+            check = cached
+            return
+        }
+        guard let file = plannedProject.flatMap(GeneratorHarness.starter) else {
+            check = .failed("the plan holds no starter file")
+            return
+        }
+        check = .checking
+        let started = Date()
+        let result = await Task.detached(priority: .userInitiated) {
+            GeneratorHarness.check(file)
+        }.value
+        guard !Task.isCancelled else { return }
+        let verdict: CheckState = switch result {
+        case .success: .passed(seconds: Date().timeIntervalSince(started))
+        case .failure(let error): .failed(String(describing: error))
+        }
+        checkCache[key] = verdict
+        check = verdict
     }
 
     // MARK: - Where things are
