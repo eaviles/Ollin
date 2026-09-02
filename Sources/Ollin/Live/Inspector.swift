@@ -60,6 +60,24 @@ public enum InspectorStatus: Equatable, Sendable {
 
 // MARK: - Tokens & helpers
 
+extension View {
+    /// A click on the bare surface of an inspector ends whatever typing is going
+    /// on in it: the seed box, a value pill, the caption field.
+    ///
+    /// AppKit leaves a text field first responder until another one takes over,
+    /// so without this a field clicked once holds the keyboard until a second
+    /// field is clicked. A control under the click still wins (a button runs,
+    /// a field takes the focus); only a click on nothing reaches this.
+    public func endsTypingOnBackgroundTap() -> some View {
+        #if os(macOS)
+        contentShape(SwiftUI.Rectangle())
+            .onTapGesture { NSApp.keyWindow?.makeFirstResponder(nil) }
+        #else
+        self
+        #endif
+    }
+}
+
 /// Design tokens that aren't covered by semantic colors, plus the timecode
 /// formatter. Resolved per `ColorScheme` so the card matches the spec in both
 /// appearances.
@@ -1242,21 +1260,27 @@ private struct ScrubbableField: View {
         .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
             .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
-        .overlay { if !isTyping { scrubSurface } }
+        .overlay { scrubSurface }
         .onChange(of: isTyping) { _, typing in isInteracting = typing || scrubBase != nil }
     }
 
     /// The transparent layer that owns the drag. It sits over the text field
     /// until the field has focus, so a plain click falls through to typing (the
     /// tap gesture hands focus over) while any horizontal drag scrubs.
+    ///
+    /// It stays in the tree while the field is being typed in, switched off
+    /// rather than removed: a view taken out from under the pointer never gets
+    /// to put the cursor it set back, and the resize cursor then followed the
+    /// pointer around the whole screen until another view set its own.
     private var scrubSurface: some View {
         SwiftUI.Color.clear
             .contentShape(SwiftUI.Rectangle())
             // The cursor shape is a desk affordance: there is no pointer to
             // change on glass.
             #if os(macOS)
-            .pointerStyle(.columnResize)
+            .pointerStyle(isTyping ? nil : .columnResize)
             #endif
+            .allowsHitTesting(!isTyping)
             .onTapGesture { isTyping = true }
             .gesture(
                 DragGesture(minimumDistance: 2)

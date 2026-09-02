@@ -27,6 +27,7 @@ struct InspectorPanel: View {
                                        },
                                        save: session.saveAction)
                 }
+                .endsTypingOnBackgroundTap()
             }
             .padding(14)
         }

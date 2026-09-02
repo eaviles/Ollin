@@ -80,6 +80,7 @@ public struct VariationCardView: View {
                 .onChange(of: editing) { _, isEditing in
                     if !isEditing { commitDraft() }
                 }
+                .onExitCommand { editing = false }
                 .help("Jump to a seed")
 
             stepButton("chevron.right", help: "Next seed") { step(+1) }
@@ -125,8 +126,15 @@ public struct VariationCardView: View {
         onNavigate(seed)
     }
 
+    /// Show the live seed, unless someone is typing a different one.
+    ///
+    /// A box that holds the keyboard but nothing typed still fills: the panel
+    /// can open before the first frame has a seed to show, and the first text
+    /// field in a fresh window is handed the keyboard by the system, so the
+    /// seed arriving a moment later used to find the box "busy" and leave it
+    /// empty until the keyboard moved on.
     private func syncDraft() {
-        guard !editing else { return }
+        guard !editing || draft.isEmpty else { return }
         draft = current.map(String.init) ?? ""
     }
 }

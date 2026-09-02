@@ -980,6 +980,7 @@ private struct InspectorSidebar: View {
                         VariationCardView(stats: stats)
                         ParametersListView(parameters: sketch.parameters(), sketchName: example.name)
                     }
+                    .endsTypingOnBackgroundTap()
                 }
                 .padding(14)
             }

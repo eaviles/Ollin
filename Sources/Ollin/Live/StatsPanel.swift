@@ -59,10 +59,28 @@ struct DetachedInspectorContent: View {
             VariationCardView(stats: stats)
             ParametersListView(parameters: params, sketchName: identity.name)
         }
+        .endsTypingOnBackgroundTap()
         .padding(.horizontal, 14)
         .padding(.top, 8)      // tight under the title bar (safe area already insets the rest)
         .padding(.bottom, 14)
         .frame(width: OllinInspector.sidebarWidth)
+    }
+}
+
+/// The inspector's own panel: one that does not hand the keyboard to its first
+/// text field when it becomes key.
+///
+/// A window becoming key gives its initial first responder the keyboard, and
+/// the hosted SwiftUI view's answer to that is its first text field, the seed
+/// box at the top. So the first click anywhere in the panel used to start
+/// typing in the seed box, whatever was clicked, and the box then held the
+/// keyboard until another field took it. Dropping that grant right after the
+/// window becomes key leaves the click itself to decide: a field clicked takes
+/// the keyboard, a button clicked runs, and a click on nothing does nothing.
+private final class InspectorPanelWindow: NSPanel {
+    override func becomeKey() {
+        super.becomeKey()
+        makeFirstResponder(nil)
     }
 }
 
@@ -73,6 +91,9 @@ struct DetachedInspectorContent: View {
 final class StatsPanelController: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
     private var host: NSHostingController<DetachedInspectorView>?
+
+    /// The panel itself, for a test that wants to ask it who holds the keyboard.
+    var window: NSWindow? { panel }
 
     /// Reflect the desired visibility: show the panel for `sketch`/`stats` when
     /// `visible`, otherwise hide it. Building the content is cheap and the
@@ -95,6 +116,14 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         }
         panel?.title = sketch.title          // window title: "Ollin - <Sketch>"
         panel?.orderFront(nil)
+        // Ordering a window front hands its first text field the keyboard,
+        // whether or not the window is key. That field is the seed box, and a
+        // seed box holding the keyboard from the start showed empty, could not
+        // be left, and had nobody's typing in it. Take the keyboard back once
+        // the window is up; a click on a field still gives it to that field.
+        DispatchQueue.main.async { [weak self] in
+            self?.panel?.makeFirstResponder(nil)
+        }
     }
 
     /// Tear the panel down (window closed / view disappeared).
@@ -112,7 +141,7 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         host.sizingOptions = []
         self.host = host
 
-        let panel = NSPanel(contentViewController: host)
+        let panel = InspectorPanelWindow(contentViewController: host)
         // `.fullSizeContentView` so the content (and its `Material`) fills the whole
         // panel, *including under the title bar* — without it that top strip is the
         // panel's clear background showing through (a see-through title bar).

@@ -200,7 +200,7 @@ In the live host the button writes the file, so the watcher reloads the sketch, 
 
 ### Scrubbing values
 
-Every numeric value box scrubs, so drag horizontally across it to change the value, the way pro inspectors do. Hold **Option** while dragging for a fine adjust (a tenth of the speed), **Shift** for a coarse one (ten times). A plain click starts typing instead, and a typed value is clamped to the range on commit. The slider, the box, and the scrub all drive the same parameter.
+Every numeric value box scrubs, so drag horizontally across it to change the value, the way pro inspectors do. Hold **Option** while dragging for a fine adjust (a tenth of the speed), **Shift** for a coarse one (ten times). A plain click starts typing instead, and a typed value is clamped to the range on commit. A click on the inspector's bare surface ends the typing. The slider, the box, and the scrub all drive the same parameter.
 
 <a name="smoothing"></a>
 
