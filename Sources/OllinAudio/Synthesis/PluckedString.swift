@@ -118,6 +118,10 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     /// themselves live on the ``Synth``, since they are far too large to
     /// travel inside a note. See ``SampledInstrument``.
     case sampled(Sampler)
+    /// A place in a table of cycles, read as a blend of the two it lands
+    /// between, and moved while the note sounds. The table itself lives on
+    /// the ``Synth``. See ``Wavetable``.
+    case wavetable(WavetableScan)
 
     /// Whether this source has to be driven to keep sounding.
     ///
@@ -125,7 +129,7 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     public var isDriven: Bool {
         switch self {
         case .bowed, .blown: return true
-        case .wave, .plucked, .struck, .patch, .sampled: return false
+        case .wave, .plucked, .struck, .patch, .sampled, .wavetable: return false
         }
     }
 }

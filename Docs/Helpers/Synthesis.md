@@ -37,6 +37,7 @@ Two things are worth noticing there. Nothing was started, because the first note
 - [Physical models](#physical-models) - a plucked string, a struck shape, a bowed string, and a blown tube
 - [Patch](#patch) - an instrument built rather than picked
 - [Sampled instruments](#sampled-instruments) - an instrument made of recordings, and where to find more
+- [Wavetables](#wavetables) - a row of cycles a note reads by position, and moves through
 - [Placing a sound](#placing-a-sound) - where it comes from in the 3D scene
 - [Sound in an export](#sound-in-an-export) - carrying the music out of the window
 - [Envelope](#envelope) - how a note arrives and how it goes
@@ -141,7 +142,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 | Property | What it does |
 |---|---|
-| `source` | what the note is built from: `.wave(Waveform)`, `.plucked(PluckedString)`, `.struck(ModalBody)`, `.bowed(BowedString)`, `.blown(BlownTube)`, `.patch(Patch)`, or `.sampled(Sampler)`. See [Physical models](#physical-models), [Patch](#patch) and [Sampled instruments](#sampled-instruments) |
+| `source` | what the note is built from: `.wave(Waveform)`, `.plucked(PluckedString)`, `.struck(ModalBody)`, `.bowed(BowedString)`, `.blown(BlownTube)`, `.patch(Patch)`, `.sampled(Sampler)`, or `.wavetable(WavetableScan)`. See [Physical models](#physical-models), [Patch](#patch), [Sampled instruments](#sampled-instruments) and [Wavetables](#wavetables) |
 | `waveform` | `.sine`, `.triangle`, `.sawtooth`, `.square`, `.noise`, brightest last |
 | `envelope` | how the note's loudness moves. See [Envelope](#envelope) |
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
@@ -465,6 +466,55 @@ The [SFZ format site](https://sfzformat.com/) documents the format itself and li
 
 ---
 
+### Wavetables
+
+A row of single cycles a note reads by position. An oscillator traces one shape and a patch pushes a few into each other. A wavetable holds any shapes side by side, and a note reads the blend of the two its `position` lands between. Move the position while the note sounds and the wave itself changes shape.
+
+```swift
+synth.wavetable = .basic                                     // sine, triangle, sawtooth, square
+synth.voice = Voice(wavetable: WavetableScan(position: 0.3))
+synth.play("C3", for: 2)
+
+synth.voice = .morph            // struck to the far end, settling back
+synth.wavetable = .vowels       // five mouth shapes a note sings through
+```
+
+The table is set on the `Synth` and the voice says where in it to read, for the same reason a sampled instrument's recordings are. A voice travels to the audio thread inside a note and has to be copyable a word at a time, and a table is hundreds of kilobytes. A wavetable voice played with no table set reads `.basic`.
+
+| Member | What it does |
+|---|---|
+| `Synth.wavetable` | which table. Set it before the notes that need it; notes already sounding keep theirs |
+| `Voice(wavetable:)` | where in it a note reads, as a `WavetableScan` |
+| `WavetableScan.position` | `0` the first frame to `1` the last, blending between the two it lands between |
+| `WavetableScan.sweep` | how far the scan's envelope moves the position, `-1...1`. Zero holds it still |
+| `WavetableScan.envelope` | the shape of that movement, an ordinary [`Envelope`](#envelope) |
+| `.at(_:)` | a scan held at one position |
+| `Voice.morph` | struck to the far end of the table and settling back toward the first frame |
+
+Three tables are built in, and a table is easy to make:
+
+| Table | What it holds |
+|---|---|
+| `.basic` | sine, triangle, sawtooth, square: purest to brightest |
+| `.pulse` | a square narrowing to a thin spike, the classic width sweep as frames |
+| `.vowels` | a, e, i, o, u, as the harmonics a voice shapes them into |
+| `Wavetable(harmonics:)` | each frame as amplitudes per harmonic, the fundamental first |
+| `Wavetable(frames:)` | each frame as a cycle you drew, any length |
+| `Wavetable(frameCount:_:)` | each frame from a rule, `(phase, frame) -> value` |
+
+```swift
+let bend = Wavetable(name: "bend", frameCount: 8) { phase, frame in
+    sin(2 * .pi * pow(phase, 1 + 2 * frame))       // a sine bent harder each frame
+}
+let odd = Wavetable(harmonics: [[1], [1, 0, 1 / 3, 0, 1 / 5]])
+```
+
+`frame(_:)` hands back one cycle and `cycle(at:)` the blend a position reads, for drawing what is playing. A frame is scaled so its loudest point is 1, so a bright frame and a plain one play at the same level.
+
+#### Why a high note reads a softer copy
+
+A cycle with a corner holds harmonics past any sampling limit. Read fast enough, those fold back down the spectrum as a gritty ring that tracks pitch the wrong way. So every frame is kept at eleven strengths, each with half the harmonics of the one before, and a note reads the strongest one whose top harmonic still fits under half the sample rate. A sawtooth stays a sawtooth at the top of the keyboard. Every strength is built from the same harmonics, so nothing shifts when a note moves from one to the next, and `frame(_:harmonicsUpTo:)` shows what a given pitch actually reads.
+
 ### Placing a sound
 
 A sound can come from somewhere in the 3D scene, with the camera as the listener.
@@ -704,6 +754,7 @@ Said plainly, so you can plan around it rather than go looking:
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when. [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **A sampler, but not a sample editor.** [Recordings](#sampled-instruments) are read and played. Nothing here trims, loops by ear, or lays out a map for you. The map is the `.sfz`.
 - **One recording at a time per note.** There is no crossfading between velocity layers, or between neighboring recordings. A change of layer is a step rather than a fade.
+- **A wavetable's position is read when the note starts.** The sweep moves it over the note. The position itself is not a live control the way `pressure` is, so moving a held note by hand means the sweep, or a new note.
 - **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.
 - **One drive per instrument.** Every note a `Synth` is playing is bowed or blown by the same hand, which is usually what you want. Two independently driven lines means two `Synth`s.
 - **One position per instrument.** A `Synth` is placed as a whole. Several sounds in several places means several `Synth`s, which is fine and cheap.

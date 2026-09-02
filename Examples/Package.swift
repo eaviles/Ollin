@@ -560,6 +560,7 @@ let package = Package(
         example("Audio/Patching", [.audio]),
         example("Audio/Shaping", [.audio]),
         example("Audio/Sampler", [.audio]),
+        example("Audio/Wavetable", [.audio]),
         example("Audio/Spectrum", [.audio]),
         // Plays along with the room: mic onsets give a tempo, and the sketch
         // joins in once it is following steadily.

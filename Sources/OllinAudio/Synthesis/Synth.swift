@@ -84,8 +84,34 @@ public final class Synth: AudioSource {
     public var voice: Voice {
         didSet {
             guard voice != oldValue else { return }
+            // A wavetable voice with no table to read plays the plain one, so
+            // the first note is a sound rather than silence. The table is put
+            // in place here, before the note that would read it.
+            if voice.wavetable != nil, renderer.wavetable == nil {
+                renderer.wavetable = .basic
+            }
             emit(SynthEvent(kind: .changeVoice, voice: voice))
         }
+    }
+
+    /// The table of cycles a wavetable voice reads.
+    ///
+    /// Set separately from ``voice`` for the same reason ``instrument`` is: a
+    /// voice travels to the audio thread inside a note and has to be copyable
+    /// a word at a time, where a table is hundreds of kilobytes. So the voice
+    /// says where in the table to read and this says which table.
+    ///
+    /// ```swift
+    /// synth.wavetable = .vowels
+    /// synth.voice = Voice(wavetable: WavetableScan(position: 0.4))
+    /// ```
+    ///
+    /// Set it before the notes that need it. Notes already sounding keep the
+    /// table they started on. A wavetable voice played with none set reads
+    /// `.basic`.
+    public var wavetable: Wavetable? {
+        get { renderer.wavetable }
+        set { renderer.wavetable = newValue }
     }
 
     /// Overall level, `0...1`.
@@ -211,6 +237,9 @@ public final class Synth: AudioSource {
         self.renderer = SynthRenderer(
             voice: voice, polyphony: polyphony, sampleRate: self.sampleRate, events: events
         )
+        // A synth made with a wavetable voice reads the plain table until a
+        // sketch sets another, the same rule the `voice` setter keeps.
+        if voice.wavetable != nil { renderer.wavetable = .basic }
 
         // The chain runs in the output's own channel layout, not in mono. The
         // effect units refuse a format the hardware end of the graph does not

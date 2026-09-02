@@ -163,6 +163,39 @@ let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)
 
 Where to find them, and the licenses, are on the [Synthesis](../Docs/Helpers/Synthesis.md#where-to-find-instruments) page. Here is the short version. [VCSL](https://github.com/sgossner/VCSL) and [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/) are CC0, so you can do anything with them, including ship them. [Freesound](https://freesound.org/) is per-clip and mixes CC0 with non-commercial, so check each one. The [Philharmonia](https://philharmonia.co.uk/resources/sound-samples/) samples are free to make music with, but explicitly not free to pass on as a sampler instrument. That distinction is worth reading before you build something on them.
 
+## A wave you can draw: wavetables
+
+An oscillator traces one shape. A patch pushes a few shapes into each other. A wavetable is the plain third way: several cycles side by side, any shapes at all, and a note reads the blend of the two its position lands between.
+
+```swift
+synth.wavetable = .basic                                     // sine, triangle, sawtooth, square
+synth.voice = Voice(wavetable: WavetableScan(position: 0.3))
+synth.play("C3", for: 2)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/WavetableFrames-dark.jpg">
+  <img src="Images/29-MakingSound/WavetableFrames.jpg" alt="Four cycles stacked up the page, sine to square, with a colored cycle drawn between the triangle and the sawtooth where a position of 0.4 reads, and below it the sawtooth frame three times, with every harmonic, with sixteen, and with four, the corner softening each time" width="680">
+</picture>
+
+The top of that picture is the whole idea. The position runs up the stack, and the colored cycle is what a note at 0.4 reads: mostly triangle, a little sawtooth. Move the position and the wave changes shape. That is the part an envelope and a filter cannot do, and it is what makes a held note travel:
+
+```swift
+synth.voice = .morph     // struck to the square end, settling back toward the sine
+```
+
+A `WavetableScan` carries the position, and a `sweep` with its own envelope moves it over the note. `morph` starts at the first frame, jumps to the last as the note strikes, and slides most of the way back while it sounds. Give the sweep a slow attack instead and a note opens up as it is held. `Examples/Audio/Wavetable` puts the position under the pointer and the sweep on a parameter, with the frames stacked on screen and the cycle the next note reads drawn over them.
+
+The table is set on the synth, not inside the voice, for the reason you met a page ago. A voice has to be copyable a word at a time, and a table is hundreds of kilobytes. Three are built in. `.basic` is the four plain shapes, `.pulse` a square narrowing to a spike, and `.vowels` five mouth shapes a note sings through. Making your own is one line:
+
+```swift
+synth.wavetable = Wavetable(name: "bend", frameCount: 8) { phase, frame in
+    sin(2 * .pi * pow(phase, 1 + 2 * frame))     // a sine bent harder in every frame
+}
+```
+
+The bottom of the picture is the quiet part of the design. A sawtooth has a corner, and a corner holds harmonics past any sampling limit. Read it fast enough and those fold back down as a gritty ring that gets *worse* as the note goes up. So every frame is kept at eleven strengths, each with half the harmonics of the one before, and a note reads the strongest one whose top harmonic still fits under half the sample rate. The three panels are the same sawtooth as a low, a middle, and a high note read it. The corner softens and the note stays clean. Every strength is built from the same harmonics, so nothing shifts when a note moves from one to the next.
+
 ## A string, worked out rather than drawn: the plucked string
 
 Every voice so far starts with a wave, a shape an oscillator traces over and over. You then carve it with an envelope and a filter until it sounds like something. That works, and it is what most synthesizers are. But it is a description of a result, and there is another way in.
@@ -687,12 +720,13 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb, and the whole effects chain.
 - [Patches](../Docs/Helpers/Synthesis.md#patch): what an operator is, the named patches, and why eight.
 - [Sampled instruments](../Docs/Helpers/Synthesis.md#sampled-instruments): loading an SFZ instrument, what a recording being moved costs, and where to find instruments you are allowed to ship.
+- [Wavetables](../Docs/Helpers/Synthesis.md#wavetables): the built-in tables, making one from harmonics, drawn cycles, or a rule, and why a high note reads a softer copy.
 - [Physical models](../Docs/Helpers/Synthesis.md#physical-models): all four models, their settings, why the tuning is exact, and how a shape is measured for its modes.
 - [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, progressions, arpeggios, chains, tunings, following a beat, and the step counter under all of them.
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.
 - [Spatial audio](../Docs/Helpers/Synthesis.md#placing-a-sound): placing a source in the room, the listener, and what an export writes.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
+- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
 
 ---
 

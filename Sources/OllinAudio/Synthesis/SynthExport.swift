@@ -136,6 +136,10 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                 sampleRate: sampleRate, events: events
             )
             renderer.gain = synth.gain
+            // What the live renderer holds by reference travels here too, or
+            // a sampled or wavetable note in the export renders as silence.
+            renderer.instrument = synth.instrument
+            renderer.wavetable = synth.wavetable
 
             // A placed instrument has to reach the listener as a single stream,
             // because turning one into two is the listener's whole job. An

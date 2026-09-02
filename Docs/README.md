@@ -166,7 +166,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`LiveData`](./Helpers/LiveData.md) - `DataFeed`, one address read over and over on a background queue, so a sketch draws what is true now; conditional polling, backoff, and one fixed answer in an export
 - [`Audio`](./Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 - [`Listening`](./Helpers/Listening.md) - speech as a caption you can draw and phrases you can act on, plus 300-odd everyday sounds named as they happen, over any audio source
-- [`Synthesis`](./Helpers/Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, delay and reverb
+- [`Synthesis`](./Helpers/Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, a wavetable read by position, delay and reverb
 - [`Composition`](./Helpers/Composition.md) - working out what to play: Euclidean rhythms, scales and chords, arpeggios, and Markov sequences, as pure values on a step number
 - [`Sonification`](./Helpers/Sonification.md) - numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale
 

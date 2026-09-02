@@ -25,8 +25,12 @@ final class SynthRenderer: @unchecked Sendable {
         var patch: PatchVoice
         var secondPatch: PatchVoice
         var sampler = SamplerVoice()
+        var table = WavetableVoice()
+        var secondTable = WavetableVoice()
         var amplitude = EnvelopeRunner()
         var filterEnvelope = EnvelopeRunner()
+        /// The envelope a wavetable scan moves its position by.
+        var scanEnvelope = EnvelopeRunner()
         var filter = StateVariableFilter()
 
         var spec = Voice()
@@ -60,6 +64,11 @@ final class SynthRenderer: @unchecked Sendable {
     /// reach the audio thread. Set before the note that needs it and only read
     /// afterwards, so the render thread never sees it change under a note.
     var instrument: SampledInstrument?
+
+    /// The table of cycles a wavetable voice reads, if a sketch has set one.
+    /// Held here for the same reason `instrument` is: it is a reference to
+    /// something large, set before the note that needs it and only read after.
+    var wavetable: Wavetable?
 
     /// The voice every new note is built from. Changed between notes.
     private var currentVoice: Voice
@@ -198,6 +207,7 @@ final class SynthRenderer: @unchecked Sendable {
             if remaining <= 0 {
                 voice.amplitude.noteOff()
                 voice.filterEnvelope.noteOff()
+                voice.scanEnvelope.noteOff()
                 voice.isHeld = false
                 voice.remaining = nil
             } else {
@@ -263,6 +273,15 @@ final class SynthRenderer: @unchecked Sendable {
                 sample = 0.5 * (sample
                                 + voice.secondTube.next(breath: breath,
                                                         breathiness: spec.breathiness))
+            }
+        case .wavetable:
+            // The table was chosen when the note started; here the note only
+            // moves through its cycle, and the scan's envelope moves where in
+            // the table that cycle is read from.
+            let travel = voice.scanEnvelope.next()
+            sample = voice.table.next(travel: travel)
+            if voice.spec.detune != 0 {
+                sample = 0.5 * (sample + voice.secondTable.next(travel: travel))
             }
         }
 
@@ -338,6 +357,22 @@ final class SynthRenderer: @unchecked Sendable {
                                     velocity: voice.velocity, spec: spec,
                                     sampleRate: sampleRate)
             }
+        }
+        voice.table.reset()
+        voice.secondTable.reset()
+        if case .wavetable(let scan) = currentVoice.source, let wavetable {
+            let played = frequency(of: event.pitch)
+            voice.table.start(table: wavetable, scan: scan, frequency: played,
+                              sampleRate: sampleRate)
+            if currentVoice.detune != 0 {
+                voice.secondTable.start(
+                    table: wavetable, scan: scan,
+                    frequency: frequency(of: event.pitch + currentVoice.detune),
+                    sampleRate: sampleRate
+                )
+            }
+            voice.scanEnvelope.prepare(scan.envelope, sampleRate: sampleRate)
+            voice.scanEnvelope.noteOn()
         }
         voice.patch.reset()
         voice.secondPatch.reset()
@@ -449,6 +484,7 @@ final class SynthRenderer: @unchecked Sendable {
         guard voice.isHeld else { return }
         voice.amplitude.noteOff()
         voice.filterEnvelope.noteOff()
+        voice.scanEnvelope.noteOff()
         voice.isHeld = false
         voice.remaining = nil
     }
