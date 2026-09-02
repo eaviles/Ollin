@@ -283,14 +283,21 @@ public final class Wavetable: @unchecked Sendable {
     public static let basic: Wavetable = {
         let top = length / 2 - 1
         let sine = [1.0]
-        let triangle = (1...top).map { h -> Double in
-            h % 2 == 1 ? (h % 4 == 1 ? 1 : -1) * 8 / (Double.pi * Double.pi * Double(h * h)) : 0
+        // Spelled out step by step: one ternary of mixed literals is enough for a
+        // type checker to give up on within the build's time limit.
+        let triangle: [Double] = (1...top).map { h -> Double in
+            guard h % 2 == 1 else { return 0 }
+            let sign: Double = h % 4 == 1 ? 1 : -1
+            let squared = Double(h * h)
+            return sign * 8 / (Double.pi * Double.pi * squared)
         }
-        let sawtooth = (1...top).map { h -> Double in
-            (h % 2 == 1 ? 1 : -1) * 2 / (Double.pi * Double(h))
+        let sawtooth: [Double] = (1...top).map { h -> Double in
+            let sign: Double = h % 2 == 1 ? 1 : -1
+            return sign * 2 / (Double.pi * Double(h))
         }
-        let square = (1...top).map { h -> Double in
-            h % 2 == 1 ? 4 / (Double.pi * Double(h)) : 0
+        let square: [Double] = (1...top).map { h -> Double in
+            guard h % 2 == 1 else { return 0 }
+            return 4 / (Double.pi * Double(h))
         }
         return Wavetable(name: "basic", harmonics: [sine, triangle, sawtooth, square])
     }()
