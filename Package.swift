@@ -294,18 +294,30 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]
         ),
+        // Shader source handled as text: the lexer and the function scan that
+        // the GLSL import (GLSL in, Metal out) and the web export's rewriter
+        // (Metal in, GLSL out) share, and the rewriter itself with the GLSL
+        // helpers it splices. Pure text, no Metal, so it builds in a blink and
+        // its tests run without a GPU; the one gate that needs more is the
+        // headless-browser compile in its test target.
+        .target(
+            name: "OllinShaderText"
+        ),
         // The project generator's model: the kinds of project it can make, the
         // ready-made templates, the capabilities each one wires in, and the files
-        // they turn into. Depends on nothing at all, not even Ollin, because it
-        // only ever produces text; that keeps it quick to build and quick to test,
-        // and lets both faces of the generator share one implementation.
+        // they turn into. Depends on nothing but the shader lexer above, never on
+        // Ollin, because it only ever produces text; that keeps it quick to build
+        // and quick to test, and lets both faces of the generator share one
+        // implementation.
         .target(
-            name: "OllinProjects"
+            name: "OllinProjects",
+            dependencies: ["OllinShaderText"]
         ),
         // Reads a 3D scene file into the generator's plain description. It is its
         // own target because it needs both the framework (for the loader) and
         // OllinProjects (for the description), and OllinProjects must keep
-        // depending on nothing. Both faces of the generator share it.
+        // depending on nothing but the shader lexer. Both faces of the generator
+        // share it.
         .target(
             name: "OllinSceneImport",
             dependencies: ["Ollin", "OllinProjects"]
@@ -989,6 +1001,14 @@ let package = Package(
         .testTarget(
             name: "OllinProjectsTests",
             dependencies: ["OllinProjects"]
+        ),
+        // The Metal-to-GLSL rewriter: each rule pinned on a small source, and the
+        // shader helper library translated whole and compiled in a headless
+        // browser, since a rewrite that merely looks right is worth nothing.
+        // The browser tests skip themselves where no browser is installed.
+        .testTarget(
+            name: "OllinShaderTextTests",
+            dependencies: ["OllinShaderText"]
         ),
         // The reference in the terminal: the page catalog, the markdown
         // renderer, the lookup, the search, and the example listing. Text in,

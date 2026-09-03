@@ -1,11 +1,12 @@
 import Foundation
 
-/// A GLSL token, carrying its exact text so the whole stream concatenates back
-/// into the source it came from. Whitespace and comments are tokens too, which is
-/// what lets a translation keep the author's own layout: a rule rewrites the few
-/// tokens it cares about and every other byte survives untouched.
-struct GLSLToken: Equatable {
-    enum Kind: Equatable {
+/// A token of a C-family shader source (GLSL or Metal), carrying its exact text
+/// so the whole stream concatenates back into the source it came from.
+/// Whitespace and comments are tokens too, which is what lets a translation keep
+/// the author's own layout: a rule rewrites the few tokens it cares about and
+/// every other byte survives untouched.
+package struct ShaderToken: Equatable {
+    package enum Kind: Equatable {
         case whitespace
         case comment
         /// A whole `#…` line, taken verbatim. The preprocessor is close enough in
@@ -16,32 +17,41 @@ struct GLSLToken: Equatable {
         case punctuation
     }
 
-    var kind: Kind
-    var text: String
+    package var kind: Kind
+    package var text: String
     /// 1-based line the token starts on, for a diagnostic that names a place.
-    var line: Int
+    package var line: Int
     /// Which bracket this token was when it was read, kept apart from the text so
     /// that rewriting the text can never make the source unreadable to the passes
     /// that walk it. A rule may turn a `(` into a `{` or hang a whole argument off
     /// a `)`, and every later pass still sees the shape the author wrote.
-    var bracket: Character?
+    package var bracket: Character?
+
+    package init(kind: Kind, text: String, line: Int, bracket: Character? = nil) {
+        self.kind = kind
+        self.text = text
+        self.line = line
+        self.bracket = bracket
+    }
 
     /// Whether the token carries meaning rather than layout.
-    var isSignificant: Bool { kind != .whitespace && kind != .comment }
+    package var isSignificant: Bool { kind != .whitespace && kind != .comment }
 
     /// Whether the token still carries meaning. A rule removes a token by emptying
     /// its text, and an emptied token must stop counting.
-    var hasText: Bool { isSignificant && !text.isEmpty }
+    package var hasText: Bool { isSignificant && !text.isEmpty }
 }
 
-/// Splits GLSL into tokens. It is a lexer only: it never builds a tree, because
-/// the translation works on names and on a handful of local shapes (a parameter
-/// list, a call, a struct body), and a full parser would be far more to keep
-/// right than those rules need.
-enum GLSLLexer {
+/// Splits a shader source into tokens. It is a lexer only: it never builds a
+/// tree, because the translations work on names and on a handful of local
+/// shapes (a parameter list, a call, a struct body), and a full parser would be
+/// far more to keep right than those rules need. GLSL and Metal share the C
+/// grammar this reads, so one lexer serves the import (GLSL in) and the web
+/// export (Metal in).
+package enum ShaderLexer {
 
-    static func tokenize(_ source: String) -> [GLSLToken] {
-        var tokens: [GLSLToken] = []
+    package static func tokenize(_ source: String) -> [ShaderToken] {
+        var tokens: [ShaderToken] = []
         let chars = Array(source)
         var i = 0
         var line = 1
@@ -49,11 +59,11 @@ enum GLSLLexer {
         /// as a directive only where one can legally start.
         var atLineStart = true
 
-        func take(_ kind: GLSLToken.Kind, from start: Int, to end: Int) {
+        func take(_ kind: ShaderToken.Kind, from start: Int, to end: Int) {
             let text = String(chars[start..<end])
             let bracket: Character? = (kind == .punctuation && text.count == 1
                                        && "()[]{}".contains(text)) ? Character(text) : nil
-            tokens.append(GLSLToken(kind: kind, text: text, line: line, bracket: bracket))
+            tokens.append(ShaderToken(kind: kind, text: text, line: line, bracket: bracket))
             line += text.filter { $0 == "\n" }.count
         }
 
@@ -137,8 +147,8 @@ enum GLSLLexer {
                         }
                     }
                 }
-                // Width and sign suffixes.
-                while i < chars.count, "uUfFlL".contains(chars[i]) { i += 1 }
+                // Width and sign suffixes, including Metal's `h` for a half literal.
+                while i < chars.count, "uUfFlLhH".contains(chars[i]) { i += 1 }
                 take(.number, from: start, to: i)
                 continue
             }
@@ -164,15 +174,15 @@ enum GLSLLexer {
 
     /// Puts a token stream back together. Concatenation is the whole of it, which
     /// is the property that keeps a translated shader looking like what was pasted.
-    static func join(_ tokens: [GLSLToken]) -> String {
+    package static func join(_ tokens: [ShaderToken]) -> String {
         tokens.map(\.text).joined()
     }
 }
 
-extension Array where Element == GLSLToken {
+extension Array where Element == ShaderToken {
     /// The index of the next token that still carries meaning, at or after `i`.
     /// A token a rule has emptied is skipped, because it is no longer there.
-    func nextSignificant(from i: Int) -> Int? {
+    package func nextSignificant(from i: Int) -> Int? {
         var j = i
         while j < count {
             if self[j].hasText { return j }
@@ -182,7 +192,7 @@ extension Array where Element == GLSLToken {
     }
 
     /// The index of the previous token that still carries meaning, at or before `i`.
-    func previousSignificant(from i: Int) -> Int? {
+    package func previousSignificant(from i: Int) -> Int? {
         var j = i
         while j >= 0 {
             if j < count, self[j].hasText { return j }
@@ -197,7 +207,7 @@ extension Array where Element == GLSLToken {
     ///
     /// The match runs on what each token *was*, not on what a rule has since
     /// written into it.
-    func matchingBracket(from open: Int) -> Int? {
+    package func matchingBracket(from open: Int) -> Int? {
         let pairs: [Character: Character] = ["(": ")", "[": "]", "{": "}"]
         guard let opener = self[open].bracket, let closer = pairs[opener] else { return nil }
         var depth = 0
@@ -213,5 +223,35 @@ extension Array where Element == GLSLToken {
             i += 1
         }
         return nil
+    }
+
+    /// The commas that separate one argument list, ignoring any nested inside it.
+    package func topLevelCommas(from open: Int, to close: Int) -> [Int] {
+        var commas: [Int] = []
+        var depth = 0
+        guard open + 1 < close else { return commas }
+        for i in (open + 1)..<close {
+            if let b = self[i].bracket {
+                if b == "(" || b == "[" || b == "{" { depth += 1 } else { depth -= 1 }
+            } else if depth == 0, self[i].kind == .punctuation, self[i].text == "," {
+                commas.append(i)
+            }
+        }
+        return commas
+    }
+
+    /// The token ranges of each argument between `open` and `close`, split on the
+    /// top-level commas. An empty list has no arguments.
+    package func argumentRanges(from open: Int, to close: Int) -> [Range<Int>] {
+        guard let first = nextSignificant(from: open + 1), first < close else { return [] }
+        let commas = topLevelCommas(from: open, to: close)
+        var ranges: [Range<Int>] = []
+        var start = open + 1
+        for comma in commas {
+            ranges.append(start..<comma)
+            start = comma + 1
+        }
+        ranges.append(start..<close)
+        return ranges
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import OllinShaderText
 
 /// Something the translation could not do, or did in a way worth knowing about.
 /// Every one of these reaches the reader as a comment in the emitted file, so a
@@ -33,7 +34,7 @@ struct GLSLTranslation {
     var helpers: Set<GLSLCompat.Helper>
     /// The token stream after rewriting, for a caller that needs to keep working
     /// on it (the entry-point mapping does).
-    var tokens: [GLSLToken]
+    var tokens: [ShaderToken]
 }
 
 /// Rewrites GLSL into Metal at the level of names and small local shapes.
@@ -45,12 +46,12 @@ struct GLSLTranslation {
 enum GLSLTranslator {
 
     static func translate(_ source: String) -> GLSLTranslation {
-        var tokens = GLSLLexer.tokenize(source)
+        var tokens = ShaderLexer.tokenize(source)
         var diagnostics: [GLSLDiagnostic] = []
         var helpers: Set<GLSLCompat.Helper> = []
 
-        let structNames = GLSLScan.structNames(in: tokens)
-        let functions = GLSLScan.functions(in: tokens)
+        let structNames = ShaderScan.structNames(in: tokens)
+        let functions = ShaderScan.functions(in: tokens)
         let functionNames = Set(functions.map(\.name))
 
         stripPrecision(&tokens)
@@ -62,14 +63,14 @@ enum GLSLTranslator {
         rewriteConstructions(&tokens, structNames: structNames)
         rewriteArrayConstructors(&tokens)
 
-        return GLSLTranslation(body: GLSLLexer.join(tokens), diagnostics: diagnostics,
+        return GLSLTranslation(body: ShaderLexer.join(tokens), diagnostics: diagnostics,
                                helpers: helpers, tokens: tokens)
     }
 
     // MARK: - Passes
 
     /// Removes the precision machinery, which Metal states per type instead.
-    private static func stripPrecision(_ tokens: inout [GLSLToken]) {
+    private static func stripPrecision(_ tokens: inout [ShaderToken]) {
         let qualifiers: Set<String> = ["lowp", "mediump", "highp"]
         var i = 0
         while i < tokens.count {
@@ -97,7 +98,7 @@ enum GLSLTranslator {
 
     /// Turns a parameter GLSL marks as written-to into the Metal reference that
     /// says the same thing, and drops the plain input marker, which Metal implies.
-    private static func rewriteParameterQualifiers(_ tokens: inout [GLSLToken], functions: [GLSLFunction]) {
+    private static func rewriteParameterQualifiers(_ tokens: inout [ShaderToken], functions: [ShaderFunction]) {
         for fn in functions {
             var i = fn.openParen + 1
             var expectingParameter = true
@@ -141,8 +142,8 @@ enum GLSLTranslator {
     /// Handles what sits at file scope outside a function: a constant becomes a
     /// Metal constant, and anything a shader means to write to is reported,
     /// because Metal has nowhere to put it.
-    private static func rewriteFileScopeDeclarations(_ tokens: inout [GLSLToken],
-                                                     functions: [GLSLFunction],
+    private static func rewriteFileScopeDeclarations(_ tokens: inout [ShaderToken],
+                                                     functions: [ShaderFunction],
                                                      diagnostics: inout [GLSLDiagnostic]) {
         // Ranges a function already owns, so a body is never mistaken for a
         // file-scope statement.
@@ -189,7 +190,7 @@ enum GLSLTranslator {
         }
     }
 
-    private static func classifyFileScopeStatement(_ tokens: inout [GLSLToken],
+    private static func classifyFileScopeStatement(_ tokens: inout [ShaderToken],
                                                    from start: Int, to end: Int,
                                                    droppedQualifiers: Set<String>,
                                                    samplerTypes: Set<String>,
@@ -251,7 +252,7 @@ enum GLSLTranslator {
     }
 
     /// Renames the vector and matrix types.
-    private static func rewriteTypes(_ tokens: inout [GLSLToken]) {
+    private static func rewriteTypes(_ tokens: inout [ShaderToken]) {
         for i in tokens.indices where tokens[i].kind == .identifier {
             if let mapped = GLSLCompat.typeNames[tokens[i].text] {
                 tokens[i].text = mapped
@@ -260,7 +261,7 @@ enum GLSLTranslator {
     }
 
     /// Renames or reshapes the built-in calls.
-    private static func rewriteBuiltins(_ tokens: inout [GLSLToken],
+    private static func rewriteBuiltins(_ tokens: inout [ShaderToken],
                                         functionNames: Set<String>,
                                         structNames: Set<String>,
                                         helpers: inout Set<GLSLCompat.Helper>,
@@ -328,7 +329,7 @@ enum GLSLTranslator {
 
     /// Turns a struct construction into the Metal spelling. GLSL builds one with
     /// parentheses; Metal fills the members in braces.
-    private static func rewriteConstructions(_ tokens: inout [GLSLToken], structNames: Set<String>) {
+    private static func rewriteConstructions(_ tokens: inout [ShaderToken], structNames: Set<String>) {
         guard !structNames.isEmpty else { return }
         for i in tokens.indices where tokens[i].kind == .identifier && structNames.contains(tokens[i].text) {
             // Skip the declaration itself.
@@ -342,7 +343,7 @@ enum GLSLTranslator {
 
     /// Turns an array construction into the Metal spelling: the type and its size
     /// go away and the values stay in braces.
-    private static func rewriteArrayConstructors(_ tokens: inout [GLSLToken]) {
+    private static func rewriteArrayConstructors(_ tokens: inout [ShaderToken]) {
         var i = 0
         while i < tokens.count {
             guard tokens[i].kind == .identifier,
@@ -368,16 +369,7 @@ enum GLSLTranslator {
     // MARK: - Helpers
 
     /// The commas that separate one argument list, ignoring any nested inside it.
-    static func topLevelCommas(in tokens: [GLSLToken], from open: Int, to close: Int) -> [Int] {
-        var commas: [Int] = []
-        var depth = 0
-        for i in (open + 1)..<close {
-            if let b = tokens[i].bracket {
-                if b == "(" || b == "[" || b == "{" { depth += 1 } else { depth -= 1 }
-            } else if depth == 0, tokens[i].kind == .punctuation, tokens[i].text == "," {
-                commas.append(i)
-            }
-        }
-        return commas
+    static func topLevelCommas(in tokens: [ShaderToken], from open: Int, to close: Int) -> [Int] {
+        tokens.topLevelCommas(from: open, to: close)
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import OllinShaderText
 
 /// Turns a pasted web fragment shader into one Ollin can run.
 ///
@@ -67,7 +68,7 @@ public enum ShaderImport {
         rewriteSuppliedValues(&tokens, diagnostics: &diagnostics)
         reportLeftoverInputs(in: tokens, diagnostics: &diagnostics)
 
-        let functions = GLSLScan.functions(in: tokens)
+        let functions = ShaderScan.functions(in: tokens)
         let needsInfo = functionsNeedingInfo(in: tokens, functions: functions)
         threadInfo(&tokens, functions: functions, needing: needsInfo)
 
@@ -80,7 +81,7 @@ public enum ShaderImport {
         }
 
         let source = assemble(
-            body: GLSLLexer.join(tokens),
+            body: ShaderLexer.join(tokens),
             helpers: translation.helpers,
             routing: routing,
             entryNeedsInfo: needsInfo.contains("mainImage"),
@@ -99,8 +100,8 @@ public enum ShaderImport {
         case none
     }
 
-    static func findEntryPoint(in tokens: [GLSLToken], diagnostics: inout [GLSLDiagnostic]) -> EntryPoint {
-        let functions = GLSLScan.functions(in: tokens)
+    static func findEntryPoint(in tokens: [ShaderToken], diagnostics: inout [GLSLDiagnostic]) -> EntryPoint {
+        let functions = ShaderScan.functions(in: tokens)
         if functions.contains(where: { $0.name == "mainImage" && $0.isDefinition }) { return .mainImage }
         if let main = functions.first(where: { $0.name == "main" && $0.isDefinition }) {
             diagnostics.append(.init(
@@ -115,9 +116,9 @@ public enum ShaderImport {
 
     /// Gives a plain `main` the entry-point shape the rest of this expects, and
     /// points the built-in pixel position and output color at the new parameters.
-    static func reshapePlainMain(_ tokens: inout [GLSLToken], mainIndex: Int,
+    static func reshapePlainMain(_ tokens: inout [ShaderToken], mainIndex: Int,
                                  diagnostics: inout [GLSLDiagnostic]) {
-        let functions = GLSLScan.functions(in: tokens)
+        let functions = ShaderScan.functions(in: tokens)
         guard mainIndex < functions.count else { return }
         let main = functions[mainIndex]
 
@@ -158,7 +159,7 @@ public enum ShaderImport {
 
     // MARK: - Inputs
 
-    static func channelsUsed(in tokens: [GLSLToken]) -> [String] {
+    static func channelsUsed(in tokens: [ShaderToken]) -> [String] {
         var used: [String] = []
         for t in tokens where t.kind == .identifier && channelNames.contains(t.text) {
             if !used.contains(t.text) { used.append(t.text) }
@@ -184,7 +185,7 @@ public enum ShaderImport {
     /// Turns a channel read into a layer read. The vertical axis turns over,
     /// because the pasted shader measures a texture from the bottom and Ollin
     /// measures a layer from the top.
-    static func rewriteChannelSampling(_ tokens: inout [GLSLToken], channels: [String],
+    static func rewriteChannelSampling(_ tokens: inout [ShaderToken], channels: [String],
                                        diagnostics: inout [GLSLDiagnostic]) {
         let samplers: Set<String> = ["texture", "texture2D", "textureLod", "texture2DLod"]
 
@@ -234,7 +235,7 @@ public enum ShaderImport {
 
     /// Reports an input the rewrite could not reach, which happens when a channel
     /// is handed to a function rather than read on the spot.
-    static func reportLeftoverInputs(in tokens: [GLSLToken], diagnostics: inout [GLSLDiagnostic]) {
+    static func reportLeftoverInputs(in tokens: [ShaderToken], diagnostics: inout [GLSLDiagnostic]) {
         var reported: Set<String> = []
         for t in tokens where t.kind == .identifier && channelNames.contains(t.text) {
             guard reported.insert(t.text).inserted else { continue }
@@ -247,7 +248,7 @@ public enum ShaderImport {
     }
 
     /// Points each supplied value at the matching field of `ShaderInfo`.
-    static func rewriteSuppliedValues(_ tokens: inout [GLSLToken], diagnostics: inout [GLSLDiagnostic]) {
+    static func rewriteSuppliedValues(_ tokens: inout [ShaderToken], diagnostics: inout [GLSLDiagnostic]) {
         var notedDate = false
         var notedSampleRate = false
         var notedMouse = false
@@ -313,7 +314,7 @@ public enum ShaderImport {
     }
 
     /// Replaces `name[k]` with one value, taking the subscript with it.
-    private static func replaceIndexed(_ tokens: inout [GLSLToken], at i: Int, with replacement: String) {
+    private static func replaceIndexed(_ tokens: inout [ShaderToken], at i: Int, with replacement: String) {
         tokens[i].text = replacement
         if let bracket = tokens.nextSignificant(from: i + 1), tokens[bracket].text == "[",
            let close = tokens.matchingBracket(from: bracket) {
@@ -329,7 +330,7 @@ public enum ShaderImport {
     /// function may read one. Metal has no such global, so `info` travels as a
     /// parameter, and it is added only to the functions that need it: the ones
     /// that read a value themselves, and the ones that call those.
-    static func functionsNeedingInfo(in tokens: [GLSLToken], functions: [GLSLFunction]) -> Set<String> {
+    static func functionsNeedingInfo(in tokens: [ShaderToken], functions: [ShaderFunction]) -> Set<String> {
         let definitions = functions.filter { $0.isDefinition }
         var needs: Set<String> = []
         var callsOf: [String: Set<String>] = [:]
@@ -341,7 +342,7 @@ public enum ShaderImport {
             // field of `info` sitting inside a token's text rather than as a
             // token of its own. Look for the name inside the text.
             if body.contains(where: { readsInfo(tokens[$0].text) }) { needs.insert(fn.name) }
-            callsOf[fn.name] = GLSLScan.callsMade(in: tokens, range: body)
+            callsOf[fn.name] = ShaderScan.callsMade(in: tokens, range: body)
         }
 
         // A caller of a needing function needs it too, until nothing more changes.
@@ -380,7 +381,7 @@ public enum ShaderImport {
 
     /// Adds the parameter to every function that needs it, and the argument to
     /// every call of one.
-    static func threadInfo(_ tokens: inout [GLSLToken], functions: [GLSLFunction], needing: Set<String>) {
+    static func threadInfo(_ tokens: inout [ShaderToken], functions: [ShaderFunction], needing: Set<String>) {
         guard !needing.isEmpty else { return }
 
         var declarationParens: Set<Int> = []
@@ -399,7 +400,7 @@ public enum ShaderImport {
 
     /// Puts one more entry at the end of a parenthesised list, whether or not the
     /// list already holds anything.
-    private static func addArgument(_ tokens: inout [GLSLToken], openParen: Int, closeParen: Int, text: String) {
+    private static func addArgument(_ tokens: inout [ShaderToken], openParen: Int, closeParen: Int, text: String) {
         // A list already carrying something needs a separator. What it carries may
         // sit in the tokens between the brackets, or, for a list an earlier rule
         // rewrote whole, on the opening bracket itself.
