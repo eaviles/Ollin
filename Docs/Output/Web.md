@@ -18,7 +18,8 @@ The sketch keeps its source in Swift. The page holds a canvas, the shaders, and 
 - [What crosses](#what-crosses) - the analytic shapes, and what stops the export
 - [The two forms](#the-two-forms) - one self-contained file, or a fragment for a page of your own
 - [Playing back](#playing-back) - the handle on the canvas, interpolation, loops, reduced motion
-- [What the page weighs](#what-the-page-weighs) - what is stored once, what streams
+- [Motion that stays live](#motion-that-stays-live) - a parameter driven by a formula crosses as the formula
+- [What the page weighs](#what-the-page-weighs) - what is worked out, what is fitted, what streams
 
 ---
 
@@ -86,8 +87,31 @@ The script leaves a handle on the canvas, `canvas.ollin` (and `window.ollin` for
 
 The page needs WebGL2, which every current browser has. It composites in linear light like the Mac, in a half-float intermediate where the browser renders to one. The present pass encodes to the canvas with the same dither.
 
+### Motion that stays live
+
+A parameter driven by a [formula](../Helpers/Formula.md) crosses as the formula, not as its values:
+
+```swift
+@Param(0 ... 300) var radius = 100.0
+
+override func setup() {
+    drive($radius, "150 + sin(time * tau / 6) * 40")
+}
+
+override func draw() {
+    background(.white)
+    noFill()
+    stroke(.black)
+    drawCircle(width / 2, height / 2, radius)
+}
+```
+
+The recorder keeps the formula's value at every frame beside the shapes. A shape column that turns out to be a straight function of it (the radius here, or a position that adds an offset to it) is wired to the formula instead of being stored. The page carries the formula as JavaScript and works those columns out every frame from its own clock and pointer. So `time`, `frame`, `width`, `height`, `mouseX`, and `mouseY` mean on the page what they mean in the sketch, and a formula that reads the pointer follows it live. The parameter's range and step apply on the page as they do on the Mac. A formula that reads another driven parameter is evaluated after it, as on the Mac. One that reads a noise field stays a recorded value, since the page has no copy of the field.
+
+A column the sketch computes in Swift from the parameter in some other way (squared, say) is not wired, and travels as the next section describes.
+
 ### What the page weighs
 
-Each shape costs 28 numbers per frame, kept as the float32 the Mac used, so the page draws with the numbers the Mac had. Two things keep that small. A frame whose shapes are the previous frame's is stored once, so a still costs one frame however long it is recorded. When the cast is stable, the columns that never change (colors, a fixed transform, a stroke weight) are stored once as the base. Only the moving ones stream. A breathing circle streams its radius and nothing else. The ring of twenty-eight circles the site opens on streams about 560 bytes a frame. The exporter prints the file size when it finishes, with the count of distinct frames where some folded. Measured: the breathing circle for six seconds at 30 fps is 74 KB, most of it the shaders and the player. The ring's whole sixty-second lap is 521 KB at 10 fps and 1.4 MB at 30.
+Each shape is 28 numbers per frame, and four things keep that small. A frame whose shapes are the previous frame's is stored once, so a still costs one frame however long it is recorded. When the cast is stable, the columns that never change (colors, a fixed transform, a stroke weight) are stored once as the base, in float32. Only the moving ones travel. A moving column wired to a formula travels as nothing at all. A moving column of a lap (a track recorded from `loopDuration`) is fitted to the sines it is made of. A motion written as sines with whole cycle counts per lap, the ordinary looping sketch, fits exactly in as many terms as it has sines. The page evaluates those at any time, so the motion between the recorded frames is the true one rather than a straight line. What fits nothing short travels as 16-bit samples, each within one part in 65,535 of its column's range, interpolated between frames.
 
-The rate is the other lever. The page interpolates, so a motion made of slow sines looks the same recorded at 10 fps as at 60. It weighs a sixth as much.
+The exporter prints the file size when it finishes, with what stayed live, what fitted, and what sampled. Measured on the ring of twenty-eight circles the site opens on: its sixty-second lap fits whole, every moving column to a few sines, and the page is 83 KB whether recorded at 10 fps or at 30. Most of that is the shaders and the player. The breathing circle for six seconds at 30 fps, not a lap, samples its radius: 75 KB. The rate still matters for a track that samples. The page interpolates, so a slow motion looks the same recorded at 10 fps as at 60 and weighs a sixth as much. A host serves the page compressed, and the encoding is shaped for that.

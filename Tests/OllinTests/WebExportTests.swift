@@ -89,6 +89,23 @@ import OllinWebGate
         }
     }
 
+    /// A circle whose radius a formula drives: the motion the page works out
+    /// live from the formula rather than reading back.
+    final class Driven: Sketch {
+        override var canvasSize: CanvasSize { .square(240) }
+        @Param(0 ... 300) var radius: Double = 100
+        override func setup() {
+            drive($radius, "150 + sin(time * tau / 6) * 40")
+        }
+        override func draw() {
+            background(.white)
+            noFill()
+            stroke(.black)
+            strokeWeight(3.75 * scale)
+            drawCircle(width / 2, height / 2, radius * scale)
+        }
+    }
+
     final class Lined: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
         override func draw() {
@@ -211,6 +228,90 @@ import OllinWebGate
         #expect(track.stable)
         #expect(track.uniqueFrames == 600)
         #expect(track.meta.contains("\"loops\":true"))
+        // Every moving column (center, radius, and the stroke's alpha of each
+        // of the 28 circles) is a sum of a few sines with whole cycle counts per
+        // lap, so all of them fit and nothing streams as samples.
+        #expect(track.fittedColumns == 28 * 5)
+        #expect(track.sampledColumns == 0)
+        #expect(track.stream.isEmpty)
+        #expect(track.fitTerms > 0 && track.fitTerms <= 28 * 9, "\(track.fitTerms) terms")
+        #expect(!track.fit.isEmpty)
+    }
+
+    @Test func aFitRebuildsItsSamplesAndRefusesWhatItCannotShorten() {
+        let n = 600
+        let sines = (0 ..< n).map { k -> Double in
+            let w = 2 * Double.pi * Double(k) / Double(n)
+            return 3 + 2 * sin(7 * w) + 0.5 * cos(10 * w)
+        }
+        let fit = FourierFit.fit(sines, tolerance: 1e-6, maxTerms: n / 8)
+        #expect(fit?.terms.count == 2)
+        #expect(fit?.terms.map(\.frequency) == [7, 10])
+        #expect(abs((fit?.mean ?? 0) - 3) < 1e-9)
+        if let fit {
+            var worst = 0.0
+            for k in 0 ..< n { worst = max(worst, abs(fit.value(at: Double(k), period: n) - sines[k])) }
+            #expect(worst < 1e-9)
+            // Between the samples the fit is the signal itself, not a straight line.
+            let between = fit.value(at: 100.5, period: n)
+            let w = 2 * Double.pi * 100.5 / Double(n)
+            #expect(abs(between - (3 + 2 * sin(7 * w) + 0.5 * cos(10 * w))) < 1e-9)
+        }
+        // A ramp over the lap has a jump at the wrap, which no short fit crosses.
+        let ramp = (0 ..< n).map { Double($0) / Double(n) }
+        #expect(FourierFit.fit(ramp, tolerance: 1e-4, maxTerms: n / 8) == nil)
+    }
+
+    @Test func theTransformAgreesWithTheDirectSum() {
+        for n in [60, 61, 64, 90, 1800 / 30] {
+            var seed: UInt64 = 12345
+            func next() -> Double {
+                seed = seed &* 6364136223846793005 &+ 1442695040888963407
+                return Double(seed >> 11) / Double(1 << 53) * 2 - 1
+            }
+            let re = (0 ..< n).map { _ in next() }
+            let im = (0 ..< n).map { _ in next() }
+            let fast = DiscreteFourier.transform(re: re, im: im)
+            let plain = DiscreteFourier.direct(re: re, im: im)
+            var worst = 0.0
+            for k in 0 ..< n {
+                worst = max(worst, abs(fast.re[k] - plain.re[k]), abs(fast.im[k] - plain.im[k]))
+            }
+            #expect(worst < 1e-9, "length \(n): \(worst)")
+        }
+    }
+
+    @Test func aDrivenParameterCrossesAsItsFormula() throws {
+        let recording = try OllinApp.recordWebFrames(of: Driven(), frames: 30, fps: 30)
+        #expect(recording.formulas.count == 1)
+        let formula = try #require(recording.formulas.first)
+        #expect(formula.name == "radius")
+        #expect(formula.source == "150 + sin(time * tau / 6) * 40")
+        #expect(formula.javaScript.contains("Math.sin("))
+        #expect(formula.javaScript.contains("v[\"time\"]"))
+        #expect(formula.lowerBound == 0 && formula.upperBound == 300)
+        #expect(recording.series.first?.count == 30)
+        // The radius column (size.x and size.y) reads as radius times the
+        // canvas scale, so both are wired to the formula and nothing samples.
+        let track = WebTrack(recording)
+        #expect(track.stable)
+        #expect(track.drivenColumns == 2)
+        #expect(track.sampledColumns == 0 && track.fittedColumns == 0)
+        #expect(track.stream.isEmpty)
+        let meta = try #require(try JSONSerialization.jsonObject(with: Data(track.meta.utf8)) as? [String: Any])
+        let drives = try #require(meta["drive"] as? [[Double]])
+        #expect(drives.count == 2)
+        for (i, drive) in drives.enumerated() {
+            #expect(drive[0] == Double(8 + i) && drive[1] == 0, "\(drive)")
+            #expect(abs(drive[2] - 0.24) < 1e-5 && abs(drive[3]) < 1e-3, "\(drive)")
+        }
+        #expect(track.meta.contains("\"formulas\":[{"))
+        #expect(track.meta.contains("\"hi\":300"))
+        #expect(track.meta.contains("\"clock\":{"))
+        // A sketch without formulas carries none.
+        let plain = WebTrack(try OllinApp.recordWebFrames(of: Hello(), frames: 3, fps: 30))
+        #expect(plain.drivenColumns == 0)
+        #expect(plain.meta.contains("\"formulas\":[]"))
     }
 
     @Test func aStillCostsOneFrame() throws {
@@ -219,6 +320,8 @@ import OllinWebGate
         #expect(track.uniqueFrames == 1)
         #expect(track.stable)
         #expect(track.meta.contains("\"refs\":[0,0,0"))
+        #expect(track.meta.contains("\"clear\":[") && !track.meta.contains("\"clears\""))
+        #expect(track.meta.contains("\"tone\":0") && track.meta.contains("\"exposure\":1"))
         // Nothing moves, so nothing streams: the base holds the two shapes.
         #expect(track.stream.isEmpty)
         #expect(!track.base.isEmpty)
@@ -233,6 +336,8 @@ import OllinWebGate
         // Only the radius (size.x and size.y) changes from frame to frame.
         #expect(track.meta.contains("\"varying\":[8,9]"))
         #expect(track.meta.contains("\"stable\":true"))
+        // Every frame is its own record, so the frame map is not written.
+        #expect(!track.meta.contains("\"refs\""))
     }
 
     @Test func aChangingCastIsStoredWhole() throws {
@@ -242,6 +347,29 @@ import OllinWebGate
         #expect(track.meta.contains("\"counts\":[2,3,4,5]"))
         #expect(track.meta.contains("\"offsets\":[0,56,140,252]"))
         #expect(track.base.isEmpty)
+        // 14 instances of 28 fields, two bytes each, base64.
+        #expect(track.stream.count == (14 * 28 * 2 + 2) / 3 * 4)
+        #expect(track.meta.contains("\"ranges\":["))
+    }
+
+    @Test func aSampledColumnStaysWithinItsRange() throws {
+        // Not a lap, so the breathing radius travels as 16-bit samples inside
+        // its own range: both ends exact, the middle within half a step.
+        let recording = try OllinApp.recordWebFrames(of: Hello(), frames: 30, fps: 30)
+        let track = WebTrack(recording)
+        #expect(track.sampledColumns == 2)
+        let values = recording.frames.map { Double($0.instances[8]) }
+        let lo = values.min()!, hi = values.max()!
+        let meta = try #require(try JSONSerialization.jsonObject(with: Data(track.meta.utf8)) as? [String: Any])
+        let ranges = try #require(meta["ranges"] as? [Double])
+        #expect(ranges.count == 4)
+        #expect(abs(ranges[0] - lo) < 1e-5 && abs(ranges[1] - hi) < 1e-5, "\(ranges)")
+        let step = (hi - lo) / 65535
+        for v in values {
+            let q = WebTrack.quantize(Float(v), in: (Float(lo), Float(hi)))
+            let back = lo + Double(q) * step
+            #expect(abs(back - v) <= step / 2 + 1e-9)
+        }
     }
 
     @Test func refusesWhatCannotCrossAndNamesTheCall() throws {
@@ -306,23 +434,68 @@ import OllinWebGate
 
     @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
     func thePagePlaysWhatTheMacDrew() async throws {
-        let cases: [(name: String, make: () -> Sketch, frames: Int, probe: Int)] = [
-            ("HelloCircle", { Hello() }, 12, 0),
-            ("HelloCircle", { Hello() }, 12, 7),
-            ("BreathingRing", { Ring() }, 60, 0),
-            ("BreathingRing", { Ring() }, 60, 41),
-            ("Still", { Still() }, 2, 1),
-            ("Moving", { Moving() }, 20, 12),
+        let cases: [(name: String, make: () -> Sketch, frames: Int, fps: Double, probe: Int)] = [
+            ("HelloCircle", { Hello() }, 12, 30, 0),
+            ("HelloCircle", { Hello() }, 12, 30, 7),
+            ("BreathingRing", { Ring() }, 60, 30, 0),
+            ("BreathingRing", { Ring() }, 60, 30, 41),
+            ("BreathingRing lap, fitted", { Ring() }, 600, 10, 41),
+            ("Still", { Still() }, 2, 30, 1),
+            ("Moving", { Moving() }, 20, 30, 12),
+            ("Driven, live", { Driven() }, 30, 30, 17),
         ]
         for c in cases {
-            let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: 30)
+            let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: c.fps)
             let page = try OllinApp.webPage(of: recording, form: .inline)
             let played = try await Self.pagePixels(page, frame: c.probe)
-            let reference = try #require(OllinApp.image(of: c.make(), frame: c.probe, fps: 30))
+            let reference = try #require(OllinApp.image(of: c.make(), frame: c.probe, fps: c.fps))
             let difference = try Self.meanDifference(played, reference)
             // Printed on every run, so a drift shows before it crosses the line.
             print("web page against the Mac: \(c.name) frame \(c.probe), mean difference \(String(format: "%.3f", difference))")
             #expect(difference < Snapshot.tolerance, "\(c.name) frame \(c.probe): mean difference \(difference)")
+        }
+    }
+
+    @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func theFormulaJavaScriptComputesWhatSwiftComputes() async throws {
+        let sources = [
+            "150 + sin(time * tau / 6) * 40",
+            "mod(-1, 3) + fract(-0.25) + round(-2.5) + round(2.5) + trunc(-1.7)",
+            "if(time > 1 && !(frame < 0), map(time, 0, 2, 10, 20), step(0.5, time))",
+            "clamp(2^3^2 / 512, 0, 1) + smoothstep(0, 1, 0.3) + min(3, 1, 2) + max(1, 4)",
+            "-2^2 + lerp(0, 10, 0.25) + hypot(3, 4) + saturate(1.5) + sign(-3) + degrees(pi) + radians(90)",
+            "(time >= 1.5 || frame == 3) * 7 + (time != 1.5) + atan2(1, 2) + pow(2, 0.5) + log2(8) + e",
+            "width / 2 + mouseX * 0.5 + abs(-3) + floor(2.7) + ceil(2.1) + sqrt(16) + exp(0) + log(1) + log10(100)",
+        ]
+        let names = ["time": 1.5, "frame": 3.0, "width": 240.0, "height": 240.0, "mouseX": 10.0, "mouseY": 20.0]
+        var expected: [Double] = []
+        var expressions: [String] = []
+        for source in sources {
+            let formula = try Formula(source)
+            expected.append(formula.value(names))
+            expressions.append(try #require(FormulaJS.compile(formula)))
+        }
+        let namesJSON = String(decoding: try JSONSerialization.data(withJSONObject: names, options: [.sortedKeys]), as: UTF8.self)
+        let pushes = expressions.map { "out.push(" + $0 + ");" }.joined(separator: "\n  ")
+        let page = """
+        <!doctype html><html><body><pre id="r0">PENDING</pre>
+        <script>
+        \(FormulaJS.helpers)
+        (function () {
+          var v = \(namesJSON);
+          var out = [];
+          \(pushes)
+          document.getElementById('r0').textContent = out.map(function (x) { return x.toPrecision(17); }).join(';');
+        })();
+        </script></body></html>
+        """
+        let dom = try await HeadlessBrowser.dom(of: page)
+        let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
+        let values = report.split(separator: ";").map { Double($0) ?? .nan }
+        try #require(values.count == sources.count, "\(report.prefix(300))")
+        for (i, source) in sources.enumerated() {
+            #expect(abs(values[i] - expected[i]) <= 1e-9 * max(1, abs(expected[i])),
+                    "\(source): the page says \(values[i]), Swift says \(expected[i])")
         }
     }
 

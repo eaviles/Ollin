@@ -65,6 +65,21 @@ struct WebRecording {
     var recipe: String
     /// What the sketch said about itself, the canvas's accessible label.
     var description: String
+    /// The formulas driving parameters, in evaluation order (see `WebFormula`).
+    var formulas: [WebFormula] = []
+    /// Each formula's value at each recorded frame, read back from its
+    /// parameter, so a shape column can be matched to the one that moves it.
+    var series: [[Float]] = []
+    /// The numbers a formula may read that nothing drives, as they stood at
+    /// the first recorded frame.
+    var constants: [String: Double] = [:]
+    /// The automation's clock, when the sketch has one.
+    var clock: WebAutomationClock?
+    /// Frames the sketch ran before the first recorded one (`--skip`), so the
+    /// page stands a formula's `time` and `frame` where the Mac did.
+    var frameOffset: Int = 0
+    /// The pointer at the first recorded frame, the page's starting mouse.
+    var mouse: (x: Double, y: Double) = (0, 0)
 
     var duration: Double { Double(frames.count) / rate }
 }
@@ -112,6 +127,15 @@ extension OllinApp {
             throw WebExportRefusal(call: "colorOutput \(sketch.colorOutput) (wide gamut and HDR output)", frame: 0)
         }
         let skip = max(0, Int((skipSeconds * fps).rounded()))
+        // A parameter driven by a formula crosses as the formula (see
+        // `WebFormula`); its value each frame is what a shape column is
+        // matched against.
+        let formulas = webFormulas(of: sketch)
+        var handles: [String: ParamHandle] = [:]
+        for handle in sketch.parameters() { handles[handle.name] = handle }
+        var series = [[Float]](repeating: [], count: formulas.count)
+        var constants: [String: Double] = [:]
+        var mouse: (x: Double, y: Double) = (0, 0)
         var recorded: [WebFrame] = []
         recorded.reserveCapacity(frames)
         for k in 0 ..< (skip + frames) {
@@ -124,14 +148,29 @@ extension OllinApp {
                 }
                 continue
             }
+            if k == skip {
+                constants = webConstants(of: sketch)
+                for f in formulas { constants.removeValue(forKey: f.name) }
+                mouse = (sketch.mouseX, sketch.mouseY)
+            }
+            for (i, f) in formulas.enumerated() {
+                series[i].append(Float(webFormulaValue(named: f.name, in: handles) ?? 0))
+            }
             recorded.append(try captureWebFrame(sketch.drawer, frame: k - skip))
         }
         let loops = sketch.loopDuration.map { abs($0 * fps - Double(frames)) < 0.5 } ?? false
-        return WebRecording(name: String(describing: type(of: sketch)),
-                            width: size.width, height: size.height, rate: fps,
-                            frames: recorded, loops: loops,
-                            recipe: ExportMetadata.capture(from: sketch, frame: 0, fps: fps).recipe,
-                            description: sketch.accessibleDescription.lines.joined(separator: " "))
+        var recording = WebRecording(name: String(describing: type(of: sketch)),
+                                     width: size.width, height: size.height, rate: fps,
+                                     frames: recorded, loops: loops,
+                                     recipe: ExportMetadata.capture(from: sketch, frame: 0, fps: fps).recipe,
+                                     description: sketch.accessibleDescription.lines.joined(separator: " "))
+        recording.formulas = formulas
+        recording.series = series
+        recording.constants = constants
+        recording.clock = webAutomationClock(of: sketch)
+        recording.frameOffset = skip
+        recording.mouse = mouse
+        return recording
     }
 
     /// One frame's data, read off the drawer after `performDraw()`: the batches
@@ -445,6 +484,8 @@ extension OllinApp {
         script = script.replacingOccurrences(of: "@META@", with: track.meta)
         script = script.replacingOccurrences(of: "@STREAM@", with: track.stream)
         script = script.replacingOccurrences(of: "@BASE@", with: track.base)
+        script = script.replacingOccurrences(of: "@FIT@", with: track.fit)
+        script = script.replacingOccurrences(of: "@HELPERS@", with: FormulaJS.helpers)
         script = script.replacingOccurrences(of: "@SDF_VS@", with: jsString(shaders.sdfVertex))
         script = script.replacingOccurrences(of: "@SDF_FS@", with: jsString(shaders.sdfFragment))
         script = script.replacingOccurrences(of: "@PRESENT_VS@", with: jsString(shaders.presentVertex))
@@ -465,7 +506,7 @@ extension OllinApp {
     }
 
     /// A JavaScript string literal, safe inside a script element.
-    static func jsString(_ s: String) -> String {
+    nonisolated static func jsString(_ s: String) -> String {
         var out = "\""
         for c in s.unicodeScalars {
             switch c {
@@ -496,114 +537,13 @@ extension OllinApp {
     }
 }
 
-/// The recorded frames packed for the page. Weight is the governor: a frame
-/// whose shapes are the previous frame's is stored once (a still costs one
-/// frame), and when every frame carries the same cast (the same count of
-/// shapes with the same tags, the ordinary animation), the columns that never
-/// change are stored once as the base and only the moving ones stream, which
-/// is what makes interpolating between frames possible at all. Values stay
-/// float32, so the page computes with the numbers the Mac had.
-struct WebTrack {
-    /// A JSON object: the facts the player reads.
-    var meta: String
-    /// Base64 float32: the moving columns per unique frame (a stable cast), or
-    /// every instance of every unique frame.
-    var stream: String
-    /// Base64 float32: the first unique frame whole, for a stable cast; empty
-    /// otherwise.
-    var base: String
-    var uniqueFrames: Int
-    var stable: Bool
-
-    init(_ recording: WebRecording) {
-        // Consecutive duplicates fold onto one record.
-        var uniques: [[Float]] = []
-        var refs: [Int] = []
-        for frame in recording.frames {
-            if let last = uniques.last, last == frame.instances {
-                refs.append(uniques.count - 1)
-            } else {
-                uniques.append(frame.instances)
-                refs.append(uniques.count - 1)
-            }
-        }
-        uniqueFrames = uniques.count
-
-        let n = WebInstance.floats
-        var stable = false
-        if let first = uniques.first, first.count % n == 0 {
-            stable = uniques.allSatisfy { u in
-                guard u.count == first.count else { return false }
-                var i = WebInstance.shapeColumn
-                while i < u.count {
-                    if u[i] != first[i] { return false }
-                    i += n
-                }
-                return true
-            }
-        }
-        self.stable = stable
-
-        var values: [Float] = []
-        var base: [Float] = []
-        var meta: [String: Any] = [
-            "width": recording.width,
-            "height": recording.height,
-            "rate": recording.rate,
-            "frames": recording.frames.count,
-            "loops": recording.loops,
-            "accumulates": recording.frames.contains { $0.clear == nil },
-            "refs": refs,
-            "clears": recording.frames.map { f -> [Float] in f.clear.map { [$0.x, $0.y, $0.z] } ?? [] },
-            "tones": recording.frames.map(\.toneMapMode),
-            "exposures": recording.frames.map(\.exposure),
-            "recipe": recording.recipe,
-        ]
-        if stable, let first = uniques.first {
-            base = first
-            var varying: [Int] = []
-            for column in first.indices where uniques.contains(where: { $0[column] != first[column] }) {
-                varying.append(column)
-            }
-            for u in uniques {
-                for column in varying { values.append(u[column]) }
-            }
-            meta["stable"] = true
-            meta["count"] = first.count / n
-            meta["varying"] = varying
-        } else {
-            var offsets: [Int] = []
-            var counts: [Int] = []
-            for u in uniques {
-                offsets.append(values.count)
-                counts.append(u.count / n)
-                values.append(contentsOf: u)
-            }
-            meta["stable"] = false
-            meta["offsets"] = offsets
-            meta["counts"] = counts
-        }
-        self.stream = Self.base64(values)
-        self.base = Self.base64(base)
-        let json = (try? JSONSerialization.data(withJSONObject: meta, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
-        self.meta = String(decoding: json, as: UTF8.self).replacingOccurrences(of: "<", with: "\\u003C")
-    }
-
-    /// Little-endian float32 bytes, base64.
-    static func base64(_ values: [Float]) -> String {
-        var data = Data(capacity: values.count * 4)
-        for v in values {
-            var bits = v.bitPattern.littleEndian
-            withUnsafeBytes(of: &bits) { data.append(contentsOf: $0) }
-        }
-        return data.base64EncodedString()
-    }
-}
-
 /// The player: a WebGL2 canvas that replays the track with the page's
 /// shaders, the intermediate in linear light (half float where the browser
-/// renders to one), the present pass on the canvas. Frames interpolate when
-/// the cast is stable; an accumulating track draws every frame in order. A
+/// renders to one), the present pass on the canvas. A moving column arrives
+/// one of three ways and the player works each out per frame: live, from a
+/// parameter's formula evaluated on the page's clock and pointer; fitted, from
+/// the few sines of a lap; or sampled, interpolated between the records when
+/// the cast is stable. An accumulating track draws every frame in order. A
 /// reader who asked the system for less motion sees the first frame, still.
 /// The handle on the canvas (`canvas.ollin`, also `window.ollin`) plays,
 /// pauses, seeks, and shows one frame.
@@ -617,21 +557,30 @@ enum WebPlayer {
       var D = @META@;
       var STREAM = "@STREAM@";
       var BASE = "@BASE@";
+      var FIT = "@FIT@";
       var SDF_VS = @SDF_VS@;
       var SDF_FS = @SDF_FS@;
       var PRESENT_VS = @PRESENT_VS@;
       var PRESENT_FS = @PRESENT_FS@;
+      @HELPERS@
       var F = 28;
       var W = D.width, H = D.height;
+      function ref(index) { return D.refs ? D.refs[index] : index; }
+      function clearOf(index) { return D.clears ? D.clears[index] : D.clear; }
+      function toneOf(index) { return D.tones ? D.tones[index] : D.tone; }
+      function exposureOf(index) { return D.exposures ? D.exposures[index] : D.exposure; }
 
-      function floats(b64) {
-        if (!b64) return new Float32Array(0);
-        var s = atob(b64), n = s.length, bytes = new Uint8Array(n);
-        for (var i = 0; i < n; i++) bytes[i] = s.charCodeAt(i);
-        return new Float32Array(bytes.buffer, 0, n >> 2);
+      function bytes(b64) {
+        if (!b64) return new Uint8Array(0);
+        var s = atob(b64), n = s.length, out = new Uint8Array(n);
+        for (var i = 0; i < n; i++) out[i] = s.charCodeAt(i);
+        return out;
       }
-      var stream = floats(STREAM);
+      function floats(b64) { var b = bytes(b64); return new Float32Array(b.buffer, 0, b.length >> 2); }
+      function shorts(b64) { var b = bytes(b64); return new Uint16Array(b.buffer, 0, b.length >> 1); }
+      var stream = shorts(STREAM);
       var base = floats(BASE);
+      var fitData = floats(FIT);
 
       var gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false,
                                              premultipliedAlpha: false, preserveDrawingBuffer: true });
@@ -695,36 +644,91 @@ enum WebPlayer {
       }
       gl.bindVertexArray(null);
 
-      var varying = D.stable ? D.varying : null;
+      // Sampled values sit inside their column's range as 16-bit positions.
+      var lows = [], scales = [];
+      for (var r = 0; r < D.ranges.length; r += 2) { lows.push(D.ranges[r]); scales.push((D.ranges[r + 1] - D.ranges[r]) / 65535); }
+      // A fitted column: its mean, then a frequency, a cosine, and a sine per term.
+      var fits = D.fit || [], fitOffsets = [], fitOffset = 0;
+      for (var f = 0; f < fits.length; f++) { fitOffsets.push(fitOffset); fitOffset += 1 + 3 * fits[f][1]; }
+      // A live column: a parameter's formula, evaluated here on the clock and the pointer.
+      var formulas = D.formulas || [], evaluators = [];
+      for (var e = 0; e < formulas.length; e++) evaluators.push(new Function('v', 'Fx', 'return ' + formulas[e].js + ';'));
+      var drives = D.drive || [];
+      var formulaValues = new Float64Array(formulas.length);
+      var mouse = { x: D.mouse[0], y: D.mouse[1] };
+      canvas.addEventListener('pointermove', function (ev) {
+        var rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          mouse.x = (ev.clientX - rect.left) * W / rect.width;
+          mouse.y = (ev.clientY - rect.top) * H / rect.height;
+        }
+      });
+
+      // Every formula at fractional frame `kf`, in the order the Mac evaluates
+      // them: a formula reads the clock, the canvas, the pointer, the constants,
+      // and the driven values already worked out this frame.
+      function evaluateFormulas(kf) {
+        var t = (kf + D.frameOffset) / D.rate;
+        var position = t, c = D.clock;
+        if (c) {
+          position = c.start + t * c.speed;
+          if (c.loops && c.duration > 0) { position = position % c.duration; if (position < 0) position += c.duration; }
+        }
+        var v = Object.assign({}, D.constants);
+        v.time = position;
+        v.frame = Math.floor(kf) + D.frameOffset + 1;
+        v.width = W;
+        v.height = H;
+        v.mouseX = mouse.x;
+        v.mouseY = mouse.y;
+        for (var i = 0; i < formulas.length; i++) {
+          var x = Fx.param(evaluators[i](v, Fx), formulas[i]);
+          v[formulas[i].name] = x;
+          formulaValues[i] = x;
+        }
+      }
+
       var maxCount = D.stable ? D.count : (D.counts.length ? Math.max.apply(null, D.counts) : 0);
       var scratch = new Float32Array(Math.max(1, maxCount) * F);
 
-      // The instances of unique frame `u`, moved a fraction `f` toward unique
-      // frame `u2` when the cast is stable.
-      function assemble(u, f, u2) {
+      // The instances at frame `index`, moved `fraction` of the way to the next.
+      function assemble(index, fraction) {
+        var u = ref(index);
         if (D.stable) {
           scratch.set(base);
-          var v = varying, n = v.length, off = u * n;
-          if (f > 0 && u2 !== u) {
-            var off2 = u2 * n;
-            for (var i = 0; i < n; i++) { var x = stream[off + i]; scratch[v[i]] = x + (stream[off2 + i] - x) * f; }
-          } else {
-            for (var j = 0; j < n; j++) scratch[v[j]] = stream[off + j];
+          var u2 = ref((index + 1) % D.frames);
+          var v = D.varying, n = v.length, off = u * n, off2 = u2 * n;
+          for (var i = 0; i < n; i++) {
+            var a = lows[i] + stream[off + i] * scales[i];
+            if (fraction > 0 && u2 !== u) { var b = lows[i] + stream[off2 + i] * scales[i]; a += (b - a) * fraction; }
+            scratch[v[i]] = a;
+          }
+          var kf = index + fraction;
+          var w = 2 * Math.PI * kf / D.frames;
+          for (var j = 0; j < fits.length; j++) {
+            var p = fitOffsets[j], terms = fits[j][1], value = fitData[p];
+            for (var q = 0; q < terms; q++) {
+              var m = fitData[p + 1 + q * 3];
+              value += fitData[p + 2 + q * 3] * Math.cos(w * m) + fitData[p + 3 + q * 3] * Math.sin(w * m);
+            }
+            scratch[fits[j][0]] = value;
+          }
+          if (drives.length) {
+            evaluateFormulas(kf);
+            for (var d = 0; d < drives.length; d++) { var dr = drives[d]; scratch[dr[0]] = dr[2] * formulaValues[dr[1]] + dr[3]; }
           }
           return D.count;
         }
         var start = D.offsets[u], count = D.counts[u];
-        scratch.set(stream.subarray(start, start + count * F));
+        for (var k = 0; k < count * F; k++) { var c = k % F; scratch[k] = lows[c] + stream[start + k] * scales[c]; }
         return count;
       }
 
       function draw(index, fraction) {
-        var u = D.refs[index];
-        var next = D.refs[(index + 1) % D.frames];
-        var count = assemble(u, fraction, next);
+        var count = assemble(index, fraction);
         gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
         gl.viewport(0, 0, W, H);
-        var clear = D.clears[index];
+        var clear = clearOf(index);
         if (clear.length) { gl.clearColor(clear[0], clear[1], clear[2], 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
         if (count > 0) {
           gl.useProgram(sdf);
@@ -746,8 +750,8 @@ enum WebPlayer {
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.uniform1i(pSrc, 0);
         gl.uniform2f(pViewport, W, H);
-        gl.uniform1f(pExposure, D.exposures[index]);
-        gl.uniform1i(pToneMap, D.tones[index]);
+        gl.uniform1f(pExposure, exposureOf(index));
+        gl.uniform1i(pToneMap, toneOf(index));
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
 
@@ -755,24 +759,29 @@ enum WebPlayer {
                      loops: D.loops, playing: false, time: 0 };
       var shown = -1;
 
-      // Show the picture at `t` seconds. An accumulating track draws every
-      // frame between the last shown and this one, in order, since each one
-      // builds on the last.
+      // Show frame `index`, moved `fraction` toward the next. An accumulating
+      // track draws every frame between the last shown and this one, in order,
+      // since each one builds on the last.
+      function showAt(index, fraction) {
+        if (D.accumulates) {
+          if (shown < 0) { for (var k = 0; k <= index; k++) draw(k, 0); }
+          else { var k2 = shown; while (k2 !== index) { k2 = (k2 + 1) % D.frames; draw(k2, 0); } }
+          shown = index;
+          return;
+        }
+        draw(index, fraction);
+        shown = index;
+      }
+      // Show the picture at `t` seconds of the track.
       function show(t) {
         player.time = t;
         var pos = Math.max(0, t) * D.rate;
-        var i = Math.floor(pos) % D.frames;
-        var f = pos - Math.floor(pos);
+        var i = Math.floor(pos), f = pos - i;
+        if (f > 0.999999) { i += 1; f = 0; } else if (f < 0.000001) { f = 0; }
+        i = i % D.frames;
         if (!D.loops && i === D.frames - 1) f = 0;
         if (!D.stable) f = 0;
-        if (D.accumulates) {
-          if (shown < 0) { for (var k = 0; k <= i; k++) draw(k, 0); }
-          else { var k2 = shown; while (k2 !== i) { k2 = (k2 + 1) % D.frames; draw(k2, 0); } }
-          shown = i;
-          return;
-        }
-        draw(i, f);
-        shown = i;
+        showAt(i, f);
       }
 
       var last = null, raf = 0;
@@ -785,7 +794,7 @@ enum WebPlayer {
         raf = requestAnimationFrame(tick);
       }
       player.play = function () {
-        if (player.playing || D.frames < 2) return;
+        if (player.playing || (D.frames < 2 && !drives.length)) return;
         player.playing = true;
         last = null;
         raf = requestAnimationFrame(tick);
@@ -798,8 +807,9 @@ enum WebPlayer {
       };
       player.seek = function (t) { show(t); };
       player.showFrame = function (i) {
-        var n = D.frames;
-        show((((i % n) + n) % n) / D.rate);
+        var n = D.frames, index = ((i % n) + n) % n;
+        player.time = index / D.rate;
+        showAt(index, 0);
       };
       var resume = false;
       document.addEventListener('visibilitychange', function () {
@@ -864,7 +874,12 @@ public extension OllinApp {
         let unique = track.uniqueFrames == recording.frames.count
             ? "" : ", \(track.uniqueFrames) distinct"
         let wraps = recording.loops ? ", a seamless loop" : ""
-        print("Ollin: exported \(recording.frames.count) frames (\(seconds) s at \(formattedRate(fps)) fps\(unique)\(wraps)) → \(path) (web page, \(form.rawValue), \(size))")
+        var live: [String] = []
+        if track.drivenColumns > 0 { live.append("\(track.drivenColumns) columns live from \(recording.formulas.count) formulas") }
+        if track.fittedColumns > 0 { live.append("\(track.fittedColumns) columns fitted to \(track.fitTerms) sines") }
+        if track.sampledColumns > 0 || !track.stable { live.append(track.stable ? "\(track.sampledColumns) columns sampled" : "every frame sampled") }
+        let how = live.isEmpty ? "" : "; " + live.joined(separator: ", ")
+        print("Ollin: exported \(recording.frames.count) frames (\(seconds) s at \(formattedRate(fps)) fps\(unique)\(wraps)) → \(path) (web page, \(form.rawValue), \(size)\(how))")
     }
 
     private static func formattedRate(_ fps: Double) -> String {
