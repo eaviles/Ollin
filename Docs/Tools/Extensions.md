@@ -145,7 +145,7 @@ Every hook is optional, so write only the moments you want:
 | `afterFrame` | After the render, with `FrameInfo` | Reading rather than drawing: a readout, a log |
 | `frameRendered` | After the render, with the pixels | A recorder, a snapshot, sharing the frame |
 
-The pixel hooks cost a GPU readback, so they only fire when the extension asks. Return `true` from `wantsRenderedFrame` for a `CGImage`, or from `wantsRenderedTexture` for a Metal texture with no round trip through the CPU. Both are read every frame, so a recorder can arm and disarm itself.
+The pixel hooks cost a tone-map pass and a copy, so they only fire when the extension asks. Return `true` from `wantsRenderedFrame` for a `CGImage`, or from `wantsRenderedTexture` for a Metal texture with no round trip through the CPU. Both are read once every frame, so a recorder can arm and disarm itself. The frame arrives once the GPU has finished it, a refresh or so after `afterFrame`. It is the frame the window shows, at the canvas size, in frame order. An extension that wants a single frame keeps the first that arrives. A second one, asked for before the first landed, it lets go.
 
 Extensions are per instance. Every live reload starts a fresh sketch with none, which is why one registers itself in `setup()` rather than anywhere else.
 

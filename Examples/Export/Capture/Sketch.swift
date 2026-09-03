@@ -6,9 +6,9 @@ import Ollin
 ///
 /// `FrameSaver` is a `SketchExtension`. It only asks for the rendered frame
 /// while a capture is armed (`wantsRenderedFrame` returns `armed`), so the
-/// sketch pays the grab's readback cost only on the frame it saves — the rest
-/// of the time it runs full speed. Press **S** to save the current frame; the
-/// path is printed and a ring flashes to confirm.
+/// sketch pays for the grab only on the frame it saves, and the rest of the
+/// time it runs full speed. Press **S** to save the current frame; the path is
+/// printed and a ring flashes to confirm.
 @main
 final class Capture: Sketch {
     private let saver = FrameSaver()
@@ -47,6 +47,9 @@ final class FrameSaver: SketchExtension {
     /// Arm a one-frame capture: the next rendered frame is saved, then disarms.
     func capture() { armed = true }
 
+    /// Read once per frame. The frame arrives once the GPU has finished it, a
+    /// refresh or so later, so a heavy sketch may have asked for a second frame
+    /// before the first lands; `frameRendered` keeps only the first.
     var wantsRenderedFrame: Bool { armed }
 
     func afterDraw(_ sketch: Sketch) {
@@ -61,6 +64,7 @@ final class FrameSaver: SketchExtension {
     }
 
     func frameRendered(_ sketch: Sketch, image: CGImage) {
+        guard armed else { return }  // a frame asked for before the first arrived
         armed = false                // one frame only
         flash = 30                   // confirm on the frames after (kept out of the saved PNG)
 

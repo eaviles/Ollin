@@ -1285,22 +1285,22 @@ final class MetalRenderer {
     /// SSR ops resolved this frame, so only those flip their ping-pong.
     var ssrHistoryUsedThisFrame: Set<SSRSlotKey> = []
     /// Occurrence counters per SSR call site this frame; reset at the start of
-    /// `encodeEffectTargets`, so both encodes of a repeated frame (the frame-grab
-    /// re-render) resolve identical keys.
+    /// `encodeEffectTargets`, so both encodes of a repeated frame (a settled
+    /// export frame) resolve identical keys.
     var ssrOccurrenceThisFrame: [String: Int] = [:]
 
     /// The deferred ray-traced reflection's temporal history (the live on-screen path):
     /// one slot for the main canvas, reusing the SSR slot shape (ping-pong pair +
     /// previous view·projection + first-frame gate). The headless/export path never
-    /// touches it (it supersamples within the frame instead), so a live recording's
-    /// off-screen re-render can't double-step the accumulation.
+    /// touches it (it supersamples within the frame instead), so an export beside
+    /// a running window can't double-step the accumulation.
     var rtReflectHistory: SSRHistorySlot?
 
     /// The temporal anti-aliasing history (the live on-screen path): the same
     /// ping-pong-plus-previous-view·projection slot shape as `rtReflectHistory`, but
     /// over the whole resolved frame. The headless/export path never touches it (it
-    /// averages N deterministically jittered renders within the frame instead), so a
-    /// live recording's off-screen re-render can't double-step the accumulation.
+    /// averages N deterministically jittered renders within the frame instead), so an
+    /// export beside a running window can't double-step the accumulation.
     var taaHistory: SSRHistorySlot?
     /// The single-sample depth the main geometry pass resolves (`.min`, the front
     /// surface) when temporal AA is on, read by the resolve's camera reprojection.
@@ -1497,15 +1497,14 @@ final class MetalRenderer {
     var scatterKernels: [ScatterProfileKey: [SIMD4<Float>]] = [:]
 
     /// The (drawer, frame) whose stateful passes (feedback / sim fields / fluid / SSR
-    /// temporal) have already advanced, so a same-frame re-encode reuses their results
-    /// instead of stepping them again. The live frame-grab and Syphon hooks re-render
-    /// the frame off-screen after the on-screen render; without this, every recorded
-    /// frame stepped the sims twice (a recording ran feedback at 2x speed) and blended
-    /// the SSR history twice (the recorded frame one temporal step ahead of the
-    /// screen). Keyed by the sketch's frame count (`performDraw` stamps it once per
-    /// frame), so headless warmup frames each still advance exactly once. Note for a
-    /// future benchmark: re-rendering one frame in a timing loop skips these passes
-    /// after the first iteration.
+    /// temporal) have already advanced, so a same-frame re-encode (a settled export
+    /// frame, a benchmark loop) reuses their results instead of stepping them again.
+    /// Without this, a frame encoded twice steps the sims twice (feedback runs at 2x
+    /// speed) and blends the SSR history twice (the second encode one temporal step
+    /// ahead of the first). Keyed by the sketch's frame count (`performDraw` stamps
+    /// it once per frame), so headless warmup frames each still advance exactly
+    /// once. Note for a future benchmark: re-rendering one frame in a timing loop
+    /// skips these passes after the first iteration.
     var lastStatefulEncode: (drawer: ObjectIdentifier, frame: UInt32)?
     /// Whether the encode in progress is such a same-frame repeat (set at the top of
     /// `encodeEffectTargets`, read by the stateful blocks and `applyCombine`).
@@ -1612,17 +1611,48 @@ final class MetalRenderer {
     /// background decode never touches it).
     var equirectLastRequest: [Environment.Source: UInt64] = [:]
 
-    /// Off-screen targets for the GPU-texture frame hook (`texture(of:)`), kept and
-    /// reused across frames — rebuilt only when the canvas size changes, so live
-    /// frame-sharing (Syphon) doesn't allocate a texture every frame. Geometry
-    /// composites into the float MSAA target (`textureTargetMSAA`, `.memoryless`),
-    /// resolves into `textureFloatResolve`, and the present pass tone-maps that into
-    /// `textureResolve` — the single-sample sRGB texture handed out (`.shaderRead`
-    /// so a consumer can sample/copy it, `.pixelFormatView` for Syphon's byte-pass).
-    private var textureTargetMSAA: MTLTexture?
-    private var textureFloatResolve: MTLTexture?
-    private var textureResolve: MTLTexture?
-    private var textureTargetSize = (width: 0, height: 0)
+    /// What the live loop wants of a frame besides showing it: the finished
+    /// picture, brought to the canvas's own size, as a CPU image, a GPU texture,
+    /// or both. The grab is encoded into the frame's own command buffer (one
+    /// tone-map pass and, for an image, one copy) and delivered once the GPU has
+    /// finished the frame, so the frame is drawn once and the render loop never
+    /// waits for it.
+    struct FrameGrabRequest {
+        /// The canvas size, which is the size every delivered frame has.
+        let width: Int
+        let height: Int
+        let wantsImage: Bool
+        let wantsTexture: Bool
+        /// Runs on the main queue, in frame order, with whichever of the two was
+        /// asked for. The texture is the renderer's again once this returns.
+        let deliver: @MainActor (CGImage?, MTLTexture?) -> Void
+    }
+
+    /// A grab between its encode and its delivery: the texture the present pass
+    /// wrote, the buffer the image was copied to, and where to hand them.
+    /// `@unchecked Sendable` so the completed handler, which runs off the main
+    /// thread, can carry it back to the main queue.
+    private final class FrameGrabInFlight: @unchecked Sendable {
+        let request: FrameGrabRequest
+        let texture: MTLTexture
+        let buffer: MTLBuffer?
+        init(request: FrameGrabRequest, texture: MTLTexture, buffer: MTLBuffer?) {
+            self.request = request
+            self.texture = texture
+            self.buffer = buffer
+        }
+    }
+
+    /// Display textures and read-back buffers a grab is written into, each handed
+    /// to exactly one delivery and put back when that delivery has run, so nothing
+    /// here is written while a consumer still reads it. Let go of on a frame
+    /// nobody asks for.
+    private var grabTextures: [MTLTexture] = []
+    private var grabBuffers: [MTLBuffer] = []
+    /// A mipmapped copy of the finished picture for a grab smaller than it, so the
+    /// present pass's sampler minifies through the chain rather than skipping
+    /// texels. Kept while the picture keeps its size.
+    private var grabMipped: MTLTexture?
 
     /// The persistent accumulation surface (`Drawer.accumulates` / `noClear`): a
     /// render target the frame *doesn't* clear, so additive samples pile up across
@@ -1635,13 +1665,14 @@ final class MetalRenderer {
     /// variant) and preserves edge anti-aliasing while accumulating. The targets are
     /// linear-float, so faint additive samples (below 1/255) sum correctly instead of
     /// quantizing away — the precision the light-accumulation look needs. `accumResolve`
-    /// holds the raw linear pile; presentation/read-back tone-maps it through
-    /// `accumDisplay` (a single-sample sRGB texture) so a consumer gets display-ready
-    /// bytes, never the raw HDR float.
+    /// holds the raw linear pile; the present pass (and a frame grab) tone-maps it
+    /// into display bytes, so a consumer never sees the raw HDR float.
     private var accumTarget: MTLTexture?
     private var accumResolve: MTLTexture?
-    private var accumDisplay: MTLTexture?
     private var accumSize = (width: 0, height: 0)
+    /// The display texture the headless accumulation export tone-maps the pile
+    /// into and reads back, made when that path first runs at a size.
+    private var accumExportDisplay: MTLTexture?
     private var accumNeedsClear = true
 
     /// Sampler for the image pipeline: linear filtering, clamp to edge. Built once.
@@ -1777,13 +1808,22 @@ final class MetalRenderer {
     /// - Parameter also: the other displays the same frame goes on. They are
     ///   presented from the same command buffer as the drawing display, so every
     ///   beam of a wall carries the same frame rather than one a step behind.
+    /// - Parameter grab: what of this frame is wanted besides showing it (a
+    ///   recorder's image, a shared texture), delivered once the GPU is done.
     func render(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView,
-                also: [ExtraDisplay] = []) {
+                also: [ExtraDisplay] = [], grab: FrameGrabRequest? = nil) {
         if drawer.accumulates {
-            renderAccumulating(drawer, viewport: viewport, in: view, also: also)
+            renderAccumulating(drawer, viewport: viewport, in: view, also: also, grab: grab)
             return
         }
-        let (width, height) = pictureSize(view.drawableSize, canvas: viewport)
+        var (width, height) = pictureSize(view.drawableSize, canvas: viewport)
+        // A frame being handed out is drawn no smaller than the canvas: the take
+        // is the canvas, so a window smaller than it shows the frame scaled
+        // rather than deciding how sharp the recording is. A larger window keeps
+        // its size, and the grab is minified from it.
+        if let grab, width < grab.width || height < grab.height {
+            (width, height) = (grab.width, grab.height)
+        }
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
         // The temporal upscaler renders the whole frame at a reduced size and
@@ -2124,6 +2164,13 @@ final class MetalRenderer {
         }
         commandBuffer.present(drawable)
         encodeExtraDisplays(also, from: presented, drawer: drawer, into: commandBuffer)
+        // The frame grab reads the drawn frame (not a made in-between one), the
+        // same picture the other displays of a wall carry.
+        if let grab {
+            encodeFrameGrab(grab, from: presented, drawer: drawer, into: commandBuffer)
+        } else {
+            releaseFrameGrabStorage()
+        }
         commandBuffer.commit()
         // The encode ends at the commit (the GPU runs on its own clock after it).
         // The GPU time is the last frame the device finished, one or two frames
@@ -2140,7 +2187,7 @@ final class MetalRenderer {
     /// triple-buffer vertex ring and its semaphore exactly like `render`, so the
     /// upload still can't stomp a buffer an in-flight frame is reading.
     private func renderAccumulating(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView,
-                                    also: [ExtraDisplay] = []) {
+                                    also: [ExtraDisplay] = [], grab: FrameGrabRequest? = nil) {
         let (width, height) = pictureSize(view.drawableSize, canvas: viewport)
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
@@ -2197,6 +2244,14 @@ final class MetalRenderer {
         }
         commandBuffer.present(drawable)
         encodeExtraDisplays(also, from: resolve, drawer: drawer, into: commandBuffer)
+        // The pile keeps its size while a grab is armed (resizing it would wipe
+        // the drawing), so a grab of an accumulating sketch is the pile brought
+        // to the canvas size, sharper or softer as the window is.
+        if let grab {
+            encodeFrameGrab(grab, from: resolve, drawer: drawer, into: commandBuffer)
+        } else {
+            releaseFrameGrabStorage()
+        }
         commandBuffer.commit()
         profile.cpuEncodeMS = (CACurrentMediaTime() - encodeStart) * 1000
         profile.gpuMS = gpuFrameMS.withLock { $0 }
@@ -2245,9 +2300,12 @@ final class MetalRenderer {
             print("Ollin: a piling canvas (noClear) keeps one surface across frames, "
                   + "so it renders at 1x and the render scale does not reach it.")
         }
+        if accumExportDisplay?.width != width || accumExportDisplay?.height != height {
+            accumExportDisplay = makeDisplayTexture(width: width, height: height)
+        }
         guard width > 0, height > 0,
               let pass = accumulationPass(drawer, width: width, height: height),
-              let resolve = accumResolve, let display = accumDisplay,
+              let resolve = accumResolve, let display = accumExportDisplay,
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                width: width, height: height)
@@ -2289,39 +2347,6 @@ final class MetalRenderer {
         return (readbackBuffer, bytesPerRow)
     }
 
-    /// Read the current accumulated canvas back as a `CGImage` without re-rendering
-    /// the geometry — for the live frame-grab hook (a recorder/Syphon consumer)
-    /// while accumulating, since the on-screen pile is exactly what it wants. Runs
-    /// the tone-map present pass over the existing float pile first (it can't hand
-    /// back the raw HDR float). Nil before the first accumulating frame.
-    func accumulatedFrameImage(_ drawer: Drawer) -> CGImage? {
-        guard let display = accumulatedDisplayTexture(drawer) else { return nil }
-        return readback(display, width: accumSize.width, height: accumSize.height)
-    }
-
-    /// The current accumulated canvas as a tone-mapped sRGB texture, for the
-    /// GPU-texture frame hook while accumulating — handed straight to a consumer
-    /// that stays on the GPU. Nil before the first accumulating frame.
-    func accumulatedTexture(_ drawer: Drawer) -> MTLTexture? {
-        accumulatedDisplayTexture(drawer)
-    }
-
-    /// Tone-map the existing float accumulation pile into `accumDisplay` (no
-    /// geometry re-render) and return it. Synchronous: waits for the GPU so the
-    /// display texture is complete on return.
-    private func accumulatedDisplayTexture(_ drawer: Drawer) -> MTLTexture? {
-        guard let resolve = accumResolve, let display = accumDisplay,
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let presentEncoder = countedEncoder(commandBuffer, presentPass(into: display)) else {
-            return nil
-        }
-        encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
-        presentEncoder.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
-        return display
-    }
-
     /// Wipe the accumulated canvas on the next accumulating frame — for a live
     /// reload, so a freshly swapped-in sketch starts from a clean surface rather
     /// than inheriting the previous sketch's pile (the fresh-restart reload model).
@@ -2339,11 +2364,9 @@ final class MetalRenderer {
             // persist across frames; both it and the resolve are linear float so
             // faint additive samples accumulate without quantizing away.
             guard let msaa = makeFloatMSAA(width: width, height: height, storage: .private),
-                  let resolve = makeFloatResolve(width: width, height: height),
-                  let display = makeDisplayTexture(width: width, height: height) else { return nil }
+                  let resolve = makeFloatResolve(width: width, height: height) else { return nil }
             accumTarget = msaa
             accumResolve = resolve
-            accumDisplay = display         // tone-mapped output for hand-off / read-back
             accumSize = (width, height)
             accumNeedsClear = true         // fresh memory: clear before the first load
         }
@@ -2358,26 +2381,6 @@ final class MetalRenderer {
         pass.colorAttachments[0].storeAction = .storeAndMultisampleResolve
         accumNeedsClear = false
         return pass
-    }
-
-    /// Blit `texture` into a CPU-readable buffer and build a `CGImage`. A
-    /// standalone command buffer (commits + waits) for reading a texture an earlier
-    /// command buffer already produced (the live accumulation grab).
-    private func readback(_ texture: MTLTexture, width: Int, height: Int) -> CGImage? {
-        guard width > 0, height > 0 else { return nil }
-        let bytesPerRow = width * displayBytesPerPixel, byteCount = bytesPerRow * height
-        guard let buffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
-              let commandBuffer = commandQueue.makeCommandBuffer(),
-              let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
-        blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
-                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: width, height: height, depth: 1),
-                  to: buffer, destinationOffset: 0,
-                  destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
-        blit.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
-        return displayImage(from: buffer, width: width, height: height)
     }
 
     /// How many bytes one pixel of the display texture takes: four for the 8-bit
@@ -2552,9 +2555,9 @@ final class MetalRenderer {
         // Global illumination, historyless: the volume fits this frame's own bounds and
         // K whole trace+blend iterations converge the field within the frame (seed = the
         // iteration index), so the result is a pure function of the frame: byte-stable
-        // snapshots, flicker-free video, and the frame-grab re-render can't double-step
-        // the live accumulation. Ahead of the effect layers, so a target drawing 3D
-        // samples the converged field.
+        // snapshots, flicker-free video, and an export beside a running window can't
+        // double-step the live accumulation. Ahead of the effect layers, so a target
+        // drawing 3D samples the converged field.
         let gi = encodeGIPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
                               accel: renderedShadow.giAccel,
                               geoOffsets: renderedShadow.giGeoOffsets,
@@ -2591,8 +2594,8 @@ final class MetalRenderer {
         }
         // Deferred ray-traced reflections, historyless: N deterministic jittered rays
         // averaged within this one frame, so a single export is anti-aliased with no
-        // warmup, a video export can't flicker, and the live frame-grab re-render
-        // (which routes through here) never double-steps the on-screen accumulation.
+        // warmup, a video export can't flicker, and an export beside a running window
+        // never double-steps the on-screen accumulation.
         // Encoded once, outside any TAA sample loop (it is already supersampled
         // internally; the composite reads it at most half a pixel off, which the
         // average absorbs).
@@ -2610,8 +2613,8 @@ final class MetalRenderer {
             gi: gi)
             .map { (texture: $0.traced, guide: $0.guide, scale: Float(reflectionScale)) }
         // Caustics, historyless: uniform emission at the export budget, no history
-        // slot touched, so a single export is a pure function of the frame and the
-        // live frame-grab re-render never steps the on-screen adaptation.
+        // slot touched, so a single export is a pure function of the frame and an
+        // export beside a running window never steps the on-screen adaptation.
         let caustics = encodeCausticsPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             causticAccel: renderedShadow.causticAccel,
@@ -2972,71 +2975,120 @@ final class MetalRenderer {
         return counted > 0 ? totalMs / Double(counted) : 0
     }
 
-    /// Render `drawer`'s geometry off-screen and return the resolved color texture
-    /// (single-sample, sRGB, `.shaderRead`) — same pipeline, MSAA, and blending as
-    /// on-screen and as `image(of:)`, but **without** the CPU read-back. The
-    /// GPU-only companion to `image(of:)`, for handing the live frame to a consumer
-    /// that stays on the GPU (Syphon publishing; later the effects graph).
-    ///
-    /// The returned texture is reused on the next call (the target is cached and
-    /// only rebuilt on a size change), so a consumer must *copy* from it during the
-    /// call, not retain it across frames. Synchronous: waits for the GPU so the
-    /// texture is complete on return.
-    func texture(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> MTLTexture? {
-        guard width > 0, height > 0 else { return nil }
+    // MARK: The frame grab (the live frame hooks)
 
-        if textureTargetSize != (width, height) || textureTargetMSAA == nil
-            || textureFloatResolve == nil || textureResolve == nil {
-            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
-                  let floatResolve = makeFloatResolve(width: width, height: height),
-                  let display = makeDisplayTexture(width: width, height: height) else { return nil }
-            textureTargetMSAA = msaa
-            textureFloatResolve = floatResolve
-            textureResolve = display
-            textureTargetSize = (width, height)
+    /// Encode a frame grab into the frame's own command buffer: tone-map `source`
+    /// (the finished linear-float picture) into a display texture of the canvas's
+    /// size, copy it to a shared buffer when an image is wanted, and arrange the
+    /// delivery for when the GPU is done. A source larger than the canvas is
+    /// minified through a mip chain, so the present pass's sampler averages every
+    /// texel it covers; one the same size presents straight, byte for byte the
+    /// tone-map the drawable gets.
+    private func encodeFrameGrab(_ grab: FrameGrabRequest, from source: MTLTexture,
+                                 drawer: Drawer, into commandBuffer: MTLCommandBuffer) {
+        guard let texture = takeGrabTexture(width: grab.width, height: grab.height) else { return }
+
+        var presentSource = source
+        if source.pixelFormat == linearFormat,
+           source.width > grab.width || source.height > grab.height {
+            if grabMipped?.width != source.width || grabMipped?.height != source.height {
+                grabMipped = makeFloatResolveMipped(width: source.width, height: source.height)
+            }
+            if let mipped = grabMipped, let blit = commandBuffer.makeBlitCommandEncoder() {
+                blit.copy(from: source, sourceSlice: 0, sourceLevel: 0,
+                          sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                          sourceSize: MTLSize(width: source.width, height: source.height, depth: 1),
+                          to: mipped, destinationSlice: 0, destinationLevel: 0,
+                          destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+                blit.generateMipmaps(for: mipped)
+                blit.endEncoding()
+                presentSource = mipped
+            }
         }
-        guard let msaaTexture = textureTargetMSAA,
-              let floatResolve = textureFloatResolve,
-              let displayTexture = textureResolve else { return nil }
 
-        let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = msaaTexture
-        pass.colorAttachments[0].resolveTexture = floatResolve
-        pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
-        pass.colorAttachments[0].storeAction = .multisampleResolve
-        let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
-                                               width: width, height: height)
-
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
-        encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
-        encodeMeshFieldCulling(drawer, into: commandBuffer,
-                               viewport: SIMD2<Float>(Float(width), Float(height)))
-        guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless)") else { return nil }
-
-        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
-               triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
-               sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
-               imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
-               glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
-               pointBuffer: exportPointBuffer(for: drawer.points.count),
-               meshBuffer: exportMeshBuffer(for: tracedMeshVertexCount(drawer)),
-               sdfGroupBuffer: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
-               sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
-               sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
-               sdf3DNodeBuffer: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
-               depthFormat: nil,   // 3D over the texture/Syphon hand-off isn't supported in M1
-               stencil: passHasStencil)
-        encoder.endEncoding()
-
-        // Tone-map the resolved float frame into the sRGB display texture handed out.
-        guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
-        encodePresent(from: floatResolve, drawer: drawer, into: presentEncoder)
+        guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: texture),
+                                                  caller: "frame grab") else {
+            grabTextures.append(texture)
+            return
+        }
+        encodePresent(from: presentSource, drawer: drawer, into: presentEncoder)
         presentEncoder.endEncoding()
 
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
-        return displayTexture
+        // The image's bytes, copied out on the GPU (works on every Mac GPU,
+        // unlike `getBytes` on a discrete card) and read on the main queue once
+        // the frame is done.
+        var buffer: MTLBuffer?
+        if grab.wantsImage {
+            let bytesPerRow = grab.width * displayBytesPerPixel
+            let byteCount = bytesPerRow * grab.height
+            if let readback = takeGrabBuffer(length: byteCount),
+               let blit = commandBuffer.makeBlitCommandEncoder() {
+                blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0,
+                          sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                          sourceSize: MTLSize(width: grab.width, height: grab.height, depth: 1),
+                          to: readback, destinationOffset: 0,
+                          destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+                blit.endEncoding()
+                buffer = readback
+            }
+        }
+
+        // Command buffers complete in the order they were committed and the run
+        // loop runs its blocks in the order they were given, so the deliveries
+        // land in frame order. They ride the run loop rather than the main queue:
+        // a main-queue block cannot run while another one is spinning the run
+        // loop (a modal loop, a test's wait), and a run-loop block can. Every
+        // common mode, so a frame lands during a drag too, and a wake-up so it
+        // lands as soon as the GPU is done rather than at the next event.
+        let inFlight = FrameGrabInFlight(request: grab, texture: texture, buffer: buffer)
+        commandBuffer.addCompletedHandler { [weak self] _ in
+            RunLoop.main.perform(inModes: [.common]) {
+                MainActor.assumeIsolated { self?.finishFrameGrab(inFlight) }
+            }
+            CFRunLoopWakeUp(CFRunLoopGetMain())
+        }
+    }
+
+    /// The delivery half of a grab, on the main queue once the GPU has finished
+    /// the frame: build the image from the copied bytes, hand over what was
+    /// asked, and put the texture and buffer back for a later frame.
+    private func finishFrameGrab(_ grab: FrameGrabInFlight) {
+        let request = grab.request
+        let image = request.wantsImage
+            ? grab.buffer.flatMap { displayImage(from: $0, width: request.width, height: request.height) }
+            : nil
+        request.deliver(image, request.wantsTexture ? grab.texture : nil)
+        if grabTextures.count <= MetalRenderer.maxFramesInFlight { grabTextures.append(grab.texture) }
+        if let buffer = grab.buffer, grabBuffers.count <= MetalRenderer.maxFramesInFlight {
+            grabBuffers.append(buffer)
+        }
+    }
+
+    /// A display texture of the grab's size: one put back by an earlier delivery,
+    /// or a fresh one. One of another size is dropped rather than kept.
+    private func takeGrabTexture(width: Int, height: Int) -> MTLTexture? {
+        while let texture = grabTextures.popLast() {
+            if texture.width == width, texture.height == height { return texture }
+        }
+        return makeDisplayTexture(width: width, height: height)
+    }
+
+    /// A shared buffer of the grab's byte count, the same way.
+    private func takeGrabBuffer(length: Int) -> MTLBuffer? {
+        while let buffer = grabBuffers.popLast() {
+            if buffer.length == length { return buffer }
+        }
+        return device.makeBuffer(length: length, options: .storageModeShared)
+    }
+
+    /// Let go of the grab's storage on a frame nobody asked for. A delivery still
+    /// in flight puts its own back afterwards, and the next such frame lets go of
+    /// that too.
+    private func releaseFrameGrabStorage() {
+        guard !grabTextures.isEmpty || !grabBuffers.isEmpty || grabMipped != nil else { return }
+        grabTextures.removeAll()
+        grabBuffers.removeAll()
+        grabMipped = nil
     }
 
     // MARK: Quality-tier override parameters (stored here; the resolve

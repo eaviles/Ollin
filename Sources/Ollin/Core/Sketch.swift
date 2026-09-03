@@ -4019,29 +4019,34 @@ open class Sketch {
         return pendingGPUCapture
     }
 
-    /// Whether any registered extension currently wants the rendered frame.
-    /// Computed live (not cached), so an extension can arm/disarm capture
-    /// between frames; the runner reads it each frame and only pays the
-    /// GPU→CPU readback when it's `true`.
-    var wantsRenderedFrames: Bool { extensions.contains { $0.wantsRenderedFrame } }
-
-    /// Fired by the runner after the render, handing the rendered frame to each
-    /// extension that asked for it (via `wantsRenderedFrame`).
-    func runFrameRendered(_ image: CGImage) {
-        for e in extensions where e.wantsRenderedFrame { e.frameRendered(self, image: image) }
+    /// The extensions that want a frame's pixels, as an image and as a texture.
+    /// Taken once per frame before the frame is drawn, and the frame is handed
+    /// to exactly these once the GPU has finished it, so an extension that
+    /// changes its mind in between still gets the frame it asked for and never
+    /// one it did not.
+    struct RenderedFrameAskers {
+        let image: [SketchExtension]
+        let texture: [SketchExtension]
+        var isEmpty: Bool { image.isEmpty && texture.isEmpty }
     }
 
-    /// Whether any registered extension currently wants the rendered frame as a
-    /// GPU texture (via `wantsRenderedTexture`). Computed live like
-    /// `wantsRenderedFrames`, so a recorder/sharer can arm/disarm between frames;
-    /// the runner only pays the off-screen re-render when it's `true`.
-    var wantsRenderedTextures: Bool { extensions.contains { $0.wantsRenderedTexture } }
+    /// Ask every registered extension, once, whether it wants this frame's
+    /// pixels. The runner reads this each frame, so an extension can arm and
+    /// disarm between frames, and pays for the grab only when someone asked.
+    func renderedFrameAskers() -> RenderedFrameAskers {
+        RenderedFrameAskers(image: extensions.filter { $0.wantsRenderedFrame },
+                            texture: extensions.filter { $0.wantsRenderedTexture })
+    }
 
-    /// Fired by the runner after the render, handing the rendered frame as a Metal
-    /// texture to each extension that asked (via `wantsRenderedTexture`). The
-    /// GPU-side companion to `runFrameRendered(_:)` — for sharing the live frame
-    /// without a CPU round-trip (Syphon, and later the effects graph).
-    func runFrameRendered(texture: MTLTexture) {
-        for e in extensions where e.wantsRenderedTexture { e.frameRendered(self, texture: texture) }
+    /// Hand a finished frame to the extensions that asked for it: the image to
+    /// the ones that wanted an image, the texture to the ones that wanted a
+    /// texture. Fired by the runner once the GPU has finished the frame.
+    func runFrameRendered(image: CGImage?, texture: MTLTexture?, to askers: RenderedFrameAskers) {
+        if let image {
+            for e in askers.image { e.frameRendered(self, image: image) }
+        }
+        if let texture {
+            for e in askers.texture { e.frameRendered(self, texture: texture) }
+        }
     }
 }

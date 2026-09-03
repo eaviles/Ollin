@@ -137,7 +137,7 @@ let feed = SyphonClient(named: "Composition", appName: "Resolume Arena")
 
 ### How frames are shared
 
-A published frame is the rendered canvas, handed over on the GPU with no CPU round-trip. Ollin re-renders the frame off-screen into a texture and shares that texture. The result is pixel-identical to what is on screen and to `--export`. Syphon carries it as an `IOSurface`, so another app reads the same memory rather than a copy over a wire.
+A published frame is the rendered canvas, handed over on the GPU with no CPU round-trip. Ollin tone-maps the frame the window shows once more into a texture of the canvas size and shares that texture. A feed costs one pass per frame, and nothing is drawn twice. The frame is what is on screen, brought to the canvas size, lit meshes and effects included. Syphon carries it as an `IOSurface`, so another app reads the same memory rather than a copy over a wire.
 
 Sharing happens on the sketch's own Metal device, and a client connects on the system's default device. On a single-GPU Mac (the common case) those are the same, which is what every consumer expects. On a multi-GPU machine they can differ, and that case isn't handled.
 

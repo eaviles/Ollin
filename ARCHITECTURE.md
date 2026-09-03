@@ -3605,9 +3605,9 @@ trace into a small deferred chain (`encodeReflectionPass`, main canvas only):
    `supersample: true`: N deterministic jittered rays averaged **within the one
    frame** (perf 4 / default 8 / detail 16; export resolves `.detail`), no
    history slot touched. A single exported frame is anti-aliased with no warmup,
-   a video export cannot flicker, and the live recording's off-screen re-render
-   (which routes through `image(of:)`) never advances the on-screen
-   accumulation, which is also why reflections need no `usesFeedback` warmup.
+   a video export cannot flicker, and an export beside a running window never
+   advances the on-screen accumulation, which is also why reflections need no
+   `usesFeedback` warmup.
 
 The lit mesh fragments sample the finished layer by screen position
 (`position.xy · rtReflectionScale / texSize`, the fieldShadowScale rule, fragment
@@ -3874,8 +3874,8 @@ entirely: the volume refits from the frame's own bounds and
 `resolveGIIterations()` whole trace+blend+relocate iterations (8/12/16 by
 tier) run from scratch with a progressive-mean hysteresis (`i/(i+1)`) and
 seed = the iteration index, so a frame is a pure function of itself:
-byte-stable snapshots (`gi-3d`), flicker-free video, and the frame-grab
-re-render can't double-step the live accumulation (`statefulEncodeIsRepeat`
+byte-stable snapshots (`gi-3d`), flicker-free video, and a same-frame
+re-encode can't double-step the live accumulation (`statefulEncodeIsRepeat`
 guards the live path like the other stateful passes; `beginStatefulEncode`
 runs the frame-scoped reset ahead of the GI pass, which now precedes the
 effect-target encode so layers sample the same update). Rays per probe
@@ -4086,7 +4086,7 @@ sequence (4/8/16 by tier via `resolveTAASamples`; export's automatic tier is
 `ollin_fx_weighted_sum` ping-pong passes, the pre-passes (shadows, GI,
 effect layers, sims, the deferred reflection) running once outside the loop.
 A single export is anti-aliased with no warmup, a video can't flicker, two
-renders are byte-identical, and the live frame-grab re-render can't
+renders are byte-identical, and an export beside a running window can't
 double-step the on-screen accumulation. The benchmark path takes the live
 shape (cost parity).
 
@@ -4590,8 +4590,8 @@ a few hundred output values a frame): a `package`-access `CanvasSampler` in
 rendered display texture with one small compute dispatch and reads back an
 N-entry byte buffer. It rides the rendered-*texture* extension hook
 (`wantsRenderedTexture` / `frameRendered(_:texture:)`, the frame-sharing seam),
-so the off-screen re-render is only paid while a consumer is registered, and a
-headless export (which never fires the hook) costs nothing. The design point is
+so the grab is only paid while a consumer is registered, and a headless export
+(which never fires the hook) costs nothing. The design point is
 the readback size: the whole-frame `CGImage` grab moves megabytes per frame
 where a map of a few hundred LEDs needs a few hundred bytes, so the CPU never
 touches the frame, only the sampled results.
@@ -4617,10 +4617,10 @@ Mechanics, and the decisions inside them:
   straight; it carries no gamma.
 - **Synchronous by design.** The pass runs on its own queue and waits for
   completion before returning, for the same reason frame-sharing does: the
-  renderer re-renders into the handed-out texture in place next frame on its
-  own queue, and Metal's hazard tracking doesn't span queues. The wait is a
-  few hundred threads deep and lands on the render loop that was already
-  paused for the off-screen re-render.
+  renderer takes the handed-out texture back when the hook returns and may
+  write a later frame's grab into it on its own queue, and Metal's hazard
+  tracking doesn't span queues. The wait is a few hundred threads deep and
+  lands on the main thread between frames, where the delivery runs.
 - **Buffers persist; points re-upload only on change.** The point list is
   uploaded when assigned (a static map costs one upload total), and the output
   buffer is reused across frames.
@@ -8350,13 +8350,44 @@ CLAUDE.md's *Live coding* block.
 `SessionRecorder` (`Sources/Ollin/Export/SessionRecorder.swift`) records a live
 run as it happens, where the offline exporters re-render on a fixed clock. It
 is a `SketchExtension`: while a take runs it arms `wantsRenderedFrame` and
-receives each frame as a `CGImage` from the runner's frame-grab hook. That is
-the CPU-readback path on purpose. The GPU-texture hook is cheaper but its
-off-screen render skips shadows, effect targets, and the whole 3D pass list,
-so a recording through it would silently degrade exactly the sketches worth
-recording. The CGImage path is the same full off-screen re-render the export
-uses, pixel-identical to `--export-video`, at the cost the frame-grab design
-already accepted (an async readback stays the later optimization).
+receives each frame as a `CGImage` from the runner's frame-grab hook.
+
+The hook reads the frame the window shows. It used to draw the frame a second
+time off-screen through the export path and read it back synchronously, which
+cost a lit 3D scene more than half its frame rate while a take ran (46 to 19
+fps on the scene explorer's file camera at 1080², a light 2D sketch 940 to 195
+frames a second in the headless probe), and the texture hook had an
+off-screen render of its own that skipped the 3D pass list, so Syphon and the
+virtual camera shared a degraded frame of a 3D sketch. Now the runner asks
+every extension once, before the frame is drawn, and hands the renderer a
+`FrameGrabRequest` carrying the canvas size. The renderer tone-maps the
+finished linear-float picture once more into a display texture of that size
+inside the frame's own command buffer (a picture larger than the canvas is
+copied into a mipmapped texture first, so the present sampler minifies
+through the chain; one the same size presents byte-identically to the
+headless render), blits it into a shared buffer when an image is wanted, and
+hands both to a completed handler that puts the delivery on the main run
+loop in every common mode. So a frame lands as soon as the GPU is done, in
+frame order, during a drag, and inside a nested run loop, where a main-queue
+block could not run (one cannot start while another is spinning the loop,
+which is what a test's wait does). Textures and buffers come from a small
+pool a delivery returns to after the hook ran, so nothing is written while a
+consumer still reads it, and a frame nobody asks for lets the pool go.
+
+Three rules follow. A frame being handed out is drawn no smaller than the
+canvas, so a window smaller than it shows the frame scaled rather than
+deciding how sharp the take is; an accumulating pile keeps its size, since
+resizing it would wipe the drawing, and is brought to the canvas size on the
+way out. The ground grid, host chrome injected into the geometry pass, leaves
+the window while a hook is armed, because the window's frame is now the
+take. And the take is the live picture rather than the export's: temporal
+anti-aliasing converges over frames and reflections and global illumination
+accumulate, where `--export-video` resolves each frame on its own. Measured
+after the change, the lit scene records at its unarmed rate (45.7 against 46
+fps) and so does the light sketch. `FrameGrabTests` pins the pass count (one
+more present, never a render), the byte-identity at equal size, the floor,
+the minification, the pile, the frame order, and the grid gate; the floor and
+the gate were verified red by sabotage.
 
 Everything that touches the `AVAssetWriter` lives in a queue-confined
 `RecorderWriter` on one serial queue: the frame appends, the audio drain

@@ -36,11 +36,14 @@ public struct FrameInfo: Sendable {
 ///   sketch through the bare API (guides, a border, a watermark).
 /// - `afterFrame` runs after the render, with the frame's timing — for observers
 ///   that read rather than draw (a performance readout, a recorder).
-/// - `frameRendered` hands over the *rendered pixels* of the frame as a
-///   `CGImage`, after the render — for a recorder or a live snapshot. Grabbing
-///   the frame costs a GPU→CPU readback, so it's off unless the extension opts
-///   in by returning `true` from `wantsRenderedFrame` (which the loop reads each
-///   frame, so an extension can arm and disarm capture on the fly).
+/// - `frameRendered` hands over the *rendered pixels* of the frame, as a
+///   `CGImage` or a Metal texture, once the GPU has finished it: for a recorder,
+///   a live snapshot, a shared feed. It is the frame the window shows, brought to
+///   the canvas size, and it arrives a refresh or so after `afterFrame`, in frame
+///   order. Grabbing a frame costs a tone-map pass and a copy, so it's off unless
+///   the extension opts in by returning `true` from `wantsRenderedFrame` or
+///   `wantsRenderedTexture` (read once each frame, so an extension can arm and
+///   disarm capture on the fly).
 ///
 /// Extensions are per-instance: a fresh sketch — including each live-reload swap
 /// — starts with none, which is why a sketch registers its own in `setup()`.
@@ -52,28 +55,32 @@ public protocol SketchExtension: AnyObject {
     func afterFrame(_ sketch: Sketch, _ info: FrameInfo)
 
     /// Whether this extension wants the rendered frame delivered to
-    /// `frameRendered(_:_:)`. Read every frame, so it can change at runtime
-    /// (arm one capture, then disarm). Defaults to `false`: no readback cost
-    /// unless something asks. When *any* registered extension returns `true`,
-    /// the loop grabs the frame and calls `frameRendered` on each that asked.
+    /// `frameRendered(_:image:)`. Read once every frame, before the frame is
+    /// drawn, so it can change at runtime (arm one capture, then disarm), and a
+    /// frame asked for is a frame delivered, a refresh or so later. Defaults to
+    /// `false`: no grab unless something asks. When *any* registered extension
+    /// returns `true`, the loop grabs the frame and calls `frameRendered` on each
+    /// that asked.
     var wantsRenderedFrame: Bool { get }
-    /// The rendered frame, as a `CGImage`, after it's drawn. Only delivered when
-    /// `wantsRenderedFrame` is `true`. Use it to save a snapshot, feed a video
-    /// encoder, or compare against a reference.
+    /// The rendered frame, as a `CGImage` at the canvas size, once the GPU has
+    /// finished it: the frame the window shows. Only delivered when
+    /// `wantsRenderedFrame` was `true` for that frame. Use it to save a
+    /// snapshot, feed a video encoder, or compare against a reference.
     func frameRendered(_ sketch: Sketch, image: CGImage)
 
     /// Whether this extension wants the rendered frame delivered as a Metal
     /// *texture* to `frameRendered(_:texture:)`. The GPU-side companion to
-    /// `wantsRenderedFrame`: read every frame (so it can arm/disarm), defaults to
-    /// `false`. When `true`, the loop re-renders the frame off-screen and hands
-    /// over the texture — for sharing the live frame on the GPU (Syphon) with no
-    /// CPU round-trip. Independent of `wantsRenderedFrame`; an extension can want
-    /// either, both, or neither.
+    /// `wantsRenderedFrame`: read once every frame (so it can arm/disarm),
+    /// defaults to `false`. When `true`, the loop hands over the frame's texture
+    /// with no round trip through the CPU, for sharing the live frame on the GPU
+    /// (Syphon, the virtual camera, an LED map). Independent of
+    /// `wantsRenderedFrame`; an extension can want either, both, or neither.
     var wantsRenderedTexture: Bool { get }
-    /// The rendered frame as a Metal texture (the resolved canvas pixels, sRGB),
-    /// after it's drawn. Only delivered when `wantsRenderedTexture` is `true`. The
-    /// texture is the loop's to reuse after this call returns, so copy from it
-    /// (e.g. publish it) rather than retaining it across frames.
+    /// The rendered frame as a Metal texture (the display pixels, sRGB, at the
+    /// canvas size), once the GPU has finished it. Only delivered when
+    /// `wantsRenderedTexture` was `true` for that frame. The texture is the
+    /// loop's to reuse after this call returns, so copy from it (e.g. publish
+    /// it) rather than retaining it across frames.
     func frameRendered(_ sketch: Sketch, texture: MTLTexture)
 }
 

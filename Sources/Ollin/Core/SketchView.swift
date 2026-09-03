@@ -1152,8 +1152,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // infinite; the cell size snaps to a nice step for the current viewing distance.
         // Never inject onto an accumulation surface: `noClear()` composites every
         // frame's geometry into the persistent pile, so the chrome would burn
-        // permanent grid lines into the artwork.
-        if let cam = sketch.activeCamera, !sketch.drawer.accumulates,
+        // permanent grid lines into the artwork. And never into a frame that is
+        // being handed out: a recorder or a shared feed reads the frame the window
+        // shows, so while one is armed the grid leaves the window rather than
+        // reaching the take.
+        let frameAskers = sketch.renderedFrameAskers()
+        if let cam = sketch.activeCamera, !sketch.drawer.accumulates, frameAskers.isEmpty,
            UserDefaults.standard.bool(forKey: OllinHUD.showGridKey) {
             let eye = cam.eye.simd3
             let eyeDist = max(Double(simd_distance(eye, cam.target.simd3)), 0.001)
@@ -1213,9 +1217,25 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             wall = otherDisplays.compactMap { $0.nextDisplay(canvas: canvas) }
         }
 
+        // The frame hooks: whoever asked for this frame's pixels gets them once
+        // the GPU has finished it, from the frame the window shows, brought to
+        // the canvas size. Delivered on the main queue in frame order, a refresh
+        // or so after `afterFrame`; nothing is drawn twice and nothing waits.
+        var grab: MetalRenderer.FrameGrabRequest?
+        if !frameAskers.isEmpty {
+            let sketch = sketch
+            grab = MetalRenderer.FrameGrabRequest(
+                width: Int(sketch.width.rounded()), height: Int(sketch.height.rounded()),
+                wantsImage: !frameAskers.image.isEmpty,
+                wantsTexture: !frameAskers.texture.isEmpty,
+                deliver: { image, texture in
+                    sketch.runFrameRendered(image: image, texture: texture, to: frameAskers)
+                })
+        }
+
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
-                        in: view, also: wall)
+                        in: view, also: wall, grab: grab)
 
         if capturing, let capture { renderer.endGPUCapture(at: capture) }
 
@@ -1228,9 +1248,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
 
         // The grid is host chrome for the live window only. It was appended after the
-        // sketch's own draw, so pop it back off before anything re-consumes the drawer:
-        // the frame-grab and Syphon paths below re-render the same drawer, and a
-        // recorder or a shared feed must never capture the debug grid.
+        // sketch's own draw, so pop it back off now that the on-screen render has
+        // consumed it, and nothing that reads the drawer after the frame (a pick, a
+        // later export of it) sees the debug grid as the sketch's own geometry.
         sketch.drawer.removeGridChrome()
 
         // Hand the frame's camera orientation to the axis widget (no-op if unused).
@@ -1274,42 +1294,6 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         if elapsed >= nextCheckpoint, let interval = checkpointInterval {
             nextCheckpoint = elapsed + interval
             saveCheckpointNow()
-        }
-
-        // Frame-grab: if any extension asked for the rendered pixels, render the
-        // frame off-screen and hand it over. Gated on `wantsRenderedFrames` so a
-        // sketch that doesn't record pays nothing. We re-render off-screen (same
-        // pipeline/MSAA, so the pixels match `image(of:)`/`--export`) rather than
-        // read the on-screen drawable back — the drawable is `framebufferOnly`,
-        // and a re-render keeps this off the live present path. The drawer still
-        // holds this frame's geometry (it clears at the next `beginFrame`); an
-        // async drawable readback is a later optimization.
-        if sketch.wantsRenderedFrames {
-            let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
-            // While accumulating, the on-screen pile is what a recorder wants, so
-            // read it back rather than re-rendering (which would double-accumulate).
-            let image = sketch.drawer.accumulates
-                ? renderer.accumulatedFrameImage(sketch.drawer)
-                : renderer.image(of: sketch.drawer,
-                                 viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
-                                 width: w, height: h)
-            if let image { sketch.runFrameRendered(image) }
-        }
-
-        // GPU-texture frame hook: same off-screen re-render, but the texture is
-        // handed over without a CPU read-back — for live frame-sharing (Syphon).
-        // Gated on `wantsRenderedTextures` so a sketch that isn't sharing pays
-        // nothing; armed live, so a sharer can start/stop between frames.
-        if sketch.wantsRenderedTextures {
-            let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
-            // While accumulating, share the on-screen pile directly (a re-render
-            // would double-accumulate); otherwise re-render this frame off-screen.
-            let texture = sketch.drawer.accumulates
-                ? renderer.accumulatedTexture(sketch.drawer)
-                : renderer.texture(of: sketch.drawer,
-                                   viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
-                                   width: w, height: h)
-            if let texture { sketch.runFrameRendered(texture: texture) }
         }
 
         // Hand the pause back to a `noLoop()` sketch once the camera work that

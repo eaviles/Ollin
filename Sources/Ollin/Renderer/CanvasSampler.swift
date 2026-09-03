@@ -10,10 +10,10 @@ import Metal
 /// hundreds of bytes rather than megabytes.
 ///
 /// Feed it the texture the rendered-texture extension hook hands over
-/// (`frameRendered(_:texture:)`): that texture is the resolved canvas in
-/// display form (sRGB-encoded bytes), and the samples come back in the same
-/// encoding, so a byte sampled here is the byte a screenshot of that pixel
-/// would hold.
+/// (`frameRendered(_:texture:)`): that texture is the frame the window shows,
+/// at the canvas size, in display form (sRGB-encoded bytes), and the samples
+/// come back in the same encoding, so a byte sampled here is the byte a
+/// screenshot of that pixel would hold.
 ///
 /// Each point carries its own box radius: the kernel averages the
 /// `(2r+1)×(2r+1)` texel patch around the point, **in linear light** (the

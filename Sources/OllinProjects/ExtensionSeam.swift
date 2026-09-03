@@ -348,8 +348,9 @@ extension ExtensionSeam {
         ///   bare calls, as this one does.
         /// - `afterFrame` runs after the render and carries the frame's timing,
         ///   for something that reads rather than draws.
-        /// - `frameRendered` hands over the rendered pixels, and costs a readback,
-        ///   so it only arrives when `wantsRenderedFrame` asks for it.
+        /// - `frameRendered` hands over the rendered pixels once the GPU has finished
+        ///   the frame, and costs a pass and a copy, so it only arrives when
+        ///   `wantsRenderedFrame` asks for it.
         ///
         /// Extensions are per instance. A fresh sketch, including every live
         /// reload, starts with none, which is why one registers itself in
