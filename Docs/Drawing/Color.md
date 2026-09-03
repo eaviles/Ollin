@@ -162,6 +162,8 @@ let sky = Ramp(stops: [(0, Color(hex: 0x0B1A40)),
                        (1, Color(hex: 0xFFD9A0))], in: .oklch)
 ```
 
+The stops are `Ramp.Stop` values (`position`, `color`), and `Ramp(stops: [Ramp.Stop])` takes them as such, so a ramp can be built from stops you edit or generate. `reversed` runs a ramp the other way, every stop at `1 - position`: `heat.reversed` cools from white to black, the way a colormap's `_r` variant does.
+
 <a name="gradient"></a>
 
 ### Gradient paint

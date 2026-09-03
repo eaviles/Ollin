@@ -232,6 +232,15 @@ public extension Double {
     /// The angle `value` whole turns, as radians: `.turns(0.25)` is a quarter
     /// circle, `.turns(1)` all the way around. See also `.degrees(_:)`.
     static func turns(_ value: Double) -> Double { value * .tau }
+
+    /// The vertical field of view of a lens of `millimeters` focal length, as
+    /// radians: `fieldOfView: .focalLength(35)`. Measured on a full-frame sensor
+    /// (36×24 mm, so `sensorHeight` is 24) the way lenses are named; pass another
+    /// `sensorHeight` for a smaller format. A shorter lens sees wider: 24 mm is
+    /// about 53°, 35 mm about 38°, 50 mm about 27°, 85 mm about 16°.
+    static func focalLength(_ millimeters: Double, sensorHeight: Double = 24) -> Double {
+        2 * atan(sensorHeight / (2 * Swift.max(millimeters, 1e-9)))
+    }
 }
 
 // MARK: Looping progress

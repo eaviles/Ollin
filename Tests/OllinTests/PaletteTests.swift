@@ -45,6 +45,32 @@ struct PaletteTests {
         #expect(close(edge.color(at: 0.51), .blue, 0.05))
     }
 
+    @Test func rampTakesTypedStops() {
+        let typed = Ramp(stops: [Ramp.Stop(position: 0.8, color: .blue),
+                                 Ramp.Stop(position: 0.2, color: .red)])
+        let tuples = Ramp(stops: [(0.8, Color.blue), (0.2, Color.red)])
+        #expect(typed == tuples, "the typed list sorts and clamps the same way")
+    }
+
+    @Test func rampReversedMirrorsEveryStop() {
+        let ramp = Ramp(stops: [(0.2, Color.red), (0.7, Color.blue)])
+        let back = ramp.reversed
+        let positions = back.stops.map(\.position)
+        #expect(close(positions[0], 0.3) && close(positions[1], 0.8))
+        #expect(back.stops.map(\.color) == [.blue, .red])
+        #expect(close(back.color(at: 0.1), .blue), "what sat at 1 now sits at 0")
+        #expect(close(back.color(at: 0.9), .red))
+        let twice = back.reversed
+        #expect(zip(twice.stops, ramp.stops).allSatisfy { close($0.position, $1.position) && $0.color == $1.color },
+                "reversing twice is the identity")
+        // A hard edge keeps its colors in mirrored order.
+        let edge = Ramp(stops: [(0, Color.red), (0.5, Color.red), (0.5, Color.blue), (1, Color.blue)])
+        let flipped = edge.reversed
+        #expect(flipped.stops.map(\.color) == [.blue, .blue, .red, .red])
+        #expect(close(flipped.color(at: 0.25), .blue))
+        #expect(close(flipped.color(at: 0.75), .red))
+    }
+
     @Test func rampDegenerateInputs() {
         #expect(close(Ramp([]).color(at: 0.5), .clear))
         #expect(close(Ramp([.green]).color(at: 0.0), .green))

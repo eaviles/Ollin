@@ -179,7 +179,7 @@ final class Planet_Example: Sketch {
 
         let turn = time * spin * 0.10
         let eye = Camera3D.perspective(eye: Vector3(0, 0.26, 3.55), target: .zero,
-                                       fieldOfView: .pi / 4.6)
+                                       fieldOfView: .focalLength(35))
 
         // The sun comes from the side and a little behind, which is what puts a
         // terminator across the middle of the disc rather than lighting

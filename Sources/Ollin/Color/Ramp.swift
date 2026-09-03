@@ -53,6 +53,21 @@ public struct Ramp: Equatable, Hashable, Sendable {
         self.space = space
     }
 
+    /// Place `Stop` values at explicit positions: the typed form of the tuple
+    /// list above, for stops built or edited as values (sorted for you;
+    /// positions clamp to `0...1`).
+    public init(stops: [Stop], in space: ColorSpace = .oklab) {
+        self.init(stops: stops.map { (position: $0.position, color: $0.color) }, in: space)
+    }
+
+    /// The same ramp run the other way: every stop moves to `1 - position`, so
+    /// the color that sat at 0 sits at 1, and a hard edge keeps its two colors
+    /// in mirrored order. The `_r` of a colormap, as a property.
+    public var reversed: Ramp {
+        Ramp(stops: stops.reversed().map { Stop(position: 1 - $0.position, color: $0.color) },
+             in: space)
+    }
+
     /// The color at `t`, clamped to the ends. Between stops, the bracketing
     /// pair mixes in `space`.
     public func color(at t: Double) -> Color {

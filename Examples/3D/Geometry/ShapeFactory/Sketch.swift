@@ -42,7 +42,7 @@ final class ShapeFactory: Sketch {
     override func draw() {
         background(Color(hex: 0x07080D))
         cameraShowcase(.sway(amplitude: 0.16, period: .tau / 0.18), target: .zero, radius: 13,
-                    elevation: 0.18, fieldOfView: .pi / 3.4)
+                    elevation: 0.18, fieldOfView: .focalLength(24))
 
         // The two morphing shapes, rebuilt from time-driven parameters.
         let wobble = unipolar(sin(time * 0.4))                // 0…1

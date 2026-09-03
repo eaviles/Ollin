@@ -105,6 +105,17 @@ struct ConvenienceHelperTests {
         #expect(abs(Double.turns(0.25) - .pi / 2) < 1e-12)
     }
 
+    @Test func aLensReadsAsItsVerticalAngle() {
+        // 2·atan(sensorHeight / 2f) on the 24 mm tall full-frame sensor.
+        #expect(abs(Double.focalLength(50) - 2 * atan(12.0 / 50)) < 1e-12)
+        #expect(abs(Double.focalLength(24) - .degrees(53.13)) < 1e-3)
+        #expect(abs(Double.focalLength(85) - .degrees(16.07)) < 1e-3)
+        #expect(Double.focalLength(24) > Double.focalLength(35), "a shorter lens sees wider")
+        // A smaller sensor sees less through the same glass.
+        #expect(Double.focalLength(35, sensorHeight: 15.6) < Double.focalLength(35))
+        #expect(abs(Double.focalLength(35, sensorHeight: 15.6) - 2 * atan(7.8 / 35)) < 1e-12)
+    }
+
     // MARK: Sketch properties
 
     @Test func shortAndLongSideAreTheTwoEdges() {
