@@ -114,9 +114,8 @@ final class PhoneRoomMesh: Sketch {
     /// toward the target so the view does not jump each time a block lands.
     private func frame(on scan: PhoneSceneMesh) {
         let bounds = scan.bounds
-        let center = (bounds.min + bounds.max) * 0.5
-        let size = bounds.max - bounds.min
-        let radius = max(1.5, max(size.x, max(size.y, size.z)) * 0.9)
+        let center = bounds.center
+        let radius = max(1.5, bounds.longestSide * 0.9)
         if framed {
             orbitCenter = orbitCenter.lerp(to: center, 0.05)
             orbitRadius += (radius - orbitRadius) * 0.05

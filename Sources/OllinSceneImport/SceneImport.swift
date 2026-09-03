@@ -171,10 +171,10 @@ public enum SceneImport {
     /// A camera far enough back to hold the whole scene, looking slightly down.
     static func framing(_ scene: Scene) -> ImportedCamera? {
         let bounds = scene.bounds
-        let span = bounds.max - bounds.min
+        let span = bounds.size
         guard span.length > 0 else { return nil }
 
-        let center = (bounds.min + bounds.max) * 0.5
+        let center = bounds.center
         let radius = span.length / 2
         // Far enough that the bounding sphere sits inside a 60 degree view, with
         // room to spare so nothing grazes the edge.

@@ -36,11 +36,11 @@ public struct ShadowArt: Sendable {
     /// One flag per voxel, indexed `x + y * resolution + z * resolution * resolution`.
     public let occupied: [Bool]
     /// The cube the solid is carved out of.
-    public let bounds: (min: Vector3, max: Vector3)
+    public let bounds: Box3
 
     /// How wide one voxel is.
     public var voxelSize: Double {
-        (bounds.max.x - bounds.min.x) / Double(Swift.max(1, resolution))
+        bounds.size.x / Double(Swift.max(1, resolution))
     }
 
     /// Whether the voxel at these whole-number coordinates survived.
@@ -128,9 +128,9 @@ public func shadowArt(fromFront front: Image? = nil,
                       resolution: Int = 48,
                       threshold: Double = 0.5,
                       inverted: Bool = false,
-                      in bounds: (min: Vector3, max: Vector3)? = nil) -> ShadowArt {
+                      in bounds: Box3? = nil) -> ShadowArt {
     let n = Swift.max(1, resolution)
-    let box = bounds ?? (min: Vector3(-1, -1, -1), max: Vector3(1, 1, 1))
+    let box = bounds ?? Box3(min: Vector3(-1, -1, -1), max: Vector3(1, 1, 1))
     let frontMask = mask(front, resolution: n, threshold: threshold, inverted: inverted)
     let sideMask = mask(side, resolution: n, threshold: threshold, inverted: inverted)
     let aboveMask = mask(above, resolution: n, threshold: threshold, inverted: inverted)

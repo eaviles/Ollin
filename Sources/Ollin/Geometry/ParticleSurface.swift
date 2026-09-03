@@ -53,7 +53,7 @@ public func particleSurface(of points: [Vector3],
     let size = hi - lo
     let longest = max(size.x, max(size.y, size.z), radius)
     let pad = radius + 1.5 * longest / Double(max(resolution, 1))
-    let bounds = (min: lo - Vector3(pad, pad, pad), max: hi + Vector3(pad, pad, pad))
+    let bounds = Box3(min: lo, max: hi).padded(by: pad)
 
     let s2 = support * support
     return isosurface(at: 0, in: bounds, resolution: resolution) { p in

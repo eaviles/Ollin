@@ -24,6 +24,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Changed
 
+- **A typed box for bounds.** `Box3` replaces the `(min: Vector3, max: Vector3)` tuple everywhere it appeared: `Scene.bounds`, `Metaballs.bounds`, `ShadowArt.bounds`, `PhoneSceneMesh.bounds`, `PhonePlanes.bounds`, and the `in:` box of `isosurface` and `shadowArt`. Reading `.min` and `.max` is unchanged; a tuple literal becomes `Box3(min:max:)`, and `center`, `size`, `longestSide`, `padded(by:)`, and `union(_:)` come with it.
 - The `Rendering/DepthOfField` example runs on the accumulating pipeline: a million samples a pass deposited as light into a running mean that converges, with the focus, the lens, the color shift, and the passes per frame as parameters, instead of a `noClear` pile that brightened forever.
 
 ### Fixed

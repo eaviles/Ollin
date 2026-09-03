@@ -7,7 +7,7 @@ import Foundation
 /// 3D reading of what `isolines` does in the plane.
 ///
 /// ```swift
-/// let blob = isosurface(at: 1, in: (min: Vector3(-2, -2, -2), max: Vector3(2, 2, 2))) { p in
+/// let blob = isosurface(at: 1, in: Box3(min: Vector3(-2, -2, -2), max: Vector3(2, 2, 2))) { p in
 ///     1 / (p - a).lengthSquared + 1 / (p - b).lengthSquared
 /// }
 /// drawMesh(blob)
@@ -35,7 +35,7 @@ import Foundation
 /// decider, which reads only the four values on that face, so neighboring
 /// cells always agree and the surface never cracks. Deterministic.
 public func isosurface(at level: Double = 0,
-                       in bounds: (min: Vector3, max: Vector3),
+                       in bounds: Box3,
                        resolution: Int = 48,
                        field: (Vector3) -> Double) -> Mesh {
     guard let grid = IsosurfaceGrid(bounds: bounds, resolution: resolution) else {
@@ -54,7 +54,7 @@ public func isosurface(at level: Double = 0,
 /// `isosurface` (total fields) and `reconstructSurface` (which builds its
 /// field on this).
 func partialIsosurface(at level: Double,
-                       in bounds: (min: Vector3, max: Vector3),
+                       in bounds: Box3,
                        resolution: Int,
                        field: (Vector3) -> Double?) -> Mesh {
     guard let grid = IsosurfaceGrid(bounds: bounds, resolution: resolution) else {
@@ -120,9 +120,9 @@ struct IsosurfaceGrid {
     let nx: Int, ny: Int, nz: Int   // cells per axis
     let sx: Int, sy: Int, sz: Int   // lattice points per axis (cells + 1)
 
-    init?(bounds: (min: Vector3, max: Vector3), resolution: Int) {
-        let size = bounds.max - bounds.min
-        let longest = max(size.x, max(size.y, size.z))
+    init?(bounds: Box3, resolution: Int) {
+        let size = bounds.size
+        let longest = bounds.longestSide
         guard longest.isFinite, longest > 0, resolution >= 1 else { return nil }
 
         let cells = min(resolution, 512)

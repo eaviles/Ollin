@@ -37,7 +37,7 @@ public struct PhonePlane: Sendable, Identifiable {
     public let boundary: [Vector3]
 
     /// The box this surface fills, worked out once when it is built.
-    public let bounds: (min: Vector3, max: Vector3)
+    public let bounds: Box3
 
     /// A surface built by hand, in world space. The phone fills these in, and this
     /// is here so a room can also come from somewhere else: a room you saved and
@@ -60,7 +60,7 @@ public struct PhonePlane: Sendable, Identifiable {
             lo = Vector3(min(lo.x, p.x), min(lo.y, p.y), min(lo.z, p.z))
             hi = Vector3(max(hi.x, p.x), max(hi.y, p.y), max(hi.z, p.z))
         }
-        bounds = (lo, hi)
+        bounds = Box3(min: lo, max: hi)
     }
 
     /// How much surface this really is, in square meters, measured on the outline
@@ -223,23 +223,19 @@ public struct PhonePlanes: Sendable {
         Set(planes.map(\.surface))
     }
 
-    /// The box every surface fits inside, as `min` and `max` corners (`(.zero,
-    /// .zero)` before anything arrives). The room's own extent, so a camera can
+    /// The box every surface fits inside, as `min` and `max` corners (`.zero`
+    /// before anything arrives). The room's own extent, so a camera can
     /// frame it.
-    public var bounds: (min: Vector3, max: Vector3) {
-        var lo: Vector3?, hi: Vector3?
+    public var bounds: Box3 {
+        var box: Box3?
         for plane in planes where !plane.boundary.isEmpty {
-            let box = plane.bounds
-            let low = lo ?? box.min, high = hi ?? box.max
-            lo = Vector3(min(low.x, box.min.x), min(low.y, box.min.y), min(low.z, box.min.z))
-            hi = Vector3(max(high.x, box.max.x), max(high.y, box.max.y), max(high.z, box.max.z))
+            box = box.map { $0.union(plane.bounds) } ?? plane.bounds
         }
-        guard let lo, let hi else { return (.zero, .zero) }
-        return (lo, hi)
+        return box ?? .zero
     }
 
     /// The middle of `bounds`, the point to aim a camera at.
-    public var center: Vector3 { let b = bounds; return (b.min + b.max) * 0.5 }
+    public var center: Vector3 { bounds.center }
 
     // MARK: Drawing
 

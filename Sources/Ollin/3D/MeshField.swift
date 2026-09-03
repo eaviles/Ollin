@@ -132,10 +132,8 @@ public final class MeshField {
     /// The mesh's local bounding sphere (center + radius over its positions),
     /// the conservative volume the cull kernel tests per copy.
     static func boundingSphere(of mesh: Mesh) -> (SIMD3<Float>, Float) {
-        let bounds = mesh.bounds
-        let center = SIMD3<Float>(Float((bounds.min.x + bounds.max.x) / 2),
-                                  Float((bounds.min.y + bounds.max.y) / 2),
-                                  Float((bounds.min.z + bounds.max.z) / 2))
+        let mid = mesh.bounds.center
+        let center = SIMD3<Float>(Float(mid.x), Float(mid.y), Float(mid.z))
         var radius: Float = 0
         for p in mesh.positions {
             let d = SIMD3<Float>(Float(p.x), Float(p.y), Float(p.z)) - center

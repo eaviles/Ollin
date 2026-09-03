@@ -44,7 +44,7 @@ shadowArt(fromFront front: Image? = nil,
           resolution: Int = 48,
           threshold: Double = 0.5,
           inverted: Bool = false,
-          in bounds: (min: Vector3, max: Vector3)? = nil) -> ShadowArt
+          in bounds: Box3? = nil) -> ShadowArt
 ```
 
 Each picture is read as a silhouette: **bright means solid** (a white shape on black), and `threshold` is where the line falls. `inverted` reads dark as solid instead, which is what a scanned drawing looks like.
@@ -63,7 +63,7 @@ A side left out places no constraint at all, so **one picture alone gives a pris
 struct ShadowArt {
     let resolution: Int
     let occupied: [Bool]                       // x + y*n + z*n*n
-    let bounds: (min: Vector3, max: Vector3)
+    let bounds: Box3
     var voxelSize: Double
     var count: Int
     var boxes: [Vector3]                       // the middle of every solid voxel

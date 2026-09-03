@@ -58,7 +58,7 @@ A ball's influence stops at a finite distance rather than trailing off forever. 
 `isosurface` doesn't care where the numbers come from:
 
 ```swift
-let box = (min: Vector3(-100, -100, -100), max: Vector3(100, 100, 100))
+let box = Box3(min: Vector3(-100, -100, -100), max: Vector3(100, 100, 100))
 
 // A noise volume, carved into caves.
 let caves = isosurface(at: 0.55, in: box, resolution: 64) { p in

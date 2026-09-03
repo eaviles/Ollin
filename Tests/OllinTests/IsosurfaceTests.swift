@@ -90,7 +90,7 @@ struct IsosurfaceTests {
         return value - 3 * r * r * r * r
     }
 
-    private let box = (min: Vector3(-1.6, -1.6, -1.6), max: Vector3(1.6, 1.6, 1.6))
+    private let box = Box3(min: Vector3(-1.6, -1.6, -1.6), max: Vector3(1.6, 1.6, 1.6))
 
     // MARK: A sphere, the case with a known answer
 
@@ -165,7 +165,7 @@ struct IsosurfaceTests {
     /// that pushes crossings onto the cell corners. It must still close.
     @Test func aSurfaceThroughLatticeValuesStillCloses() {
         // The field takes whole-number values on a grid aligned with the march.
-        let mesh = isosurface(at: 0, in: (min: Vector3(-2, -2, -2), max: Vector3(2, 2, 2)),
+        let mesh = isosurface(at: 0, in: Box3(min: Vector3(-2, -2, -2), max: Vector3(2, 2, 2)),
                               resolution: 8) { p in
             2 - max(abs(p.x), max(abs(p.y), abs(p.z)))
         }
@@ -194,7 +194,7 @@ struct IsosurfaceTests {
 
     /// A degenerate box yields nothing rather than trapping.
     @Test func aDegenerateBoxYieldsNothing() {
-        let flat = (min: Vector3(1, 2, 3), max: Vector3(1, 2, 3))
+        let flat = Box3(min: Vector3(1, 2, 3), max: Vector3(1, 2, 3))
         #expect(isosurface(at: 0, in: flat, resolution: 16) { 1 - $0.length }.isEmpty)
         #expect(isosurface(at: 0, in: box, resolution: 0) { 1 - $0.length }.isEmpty)
     }
@@ -211,7 +211,7 @@ struct IsosurfaceTests {
     /// Cells stay cubic, so a long thin box gets proportionally fewer of them
     /// across its short sides rather than stretched ones.
     @Test func cellsStayCubicInALongBox() {
-        let long = (min: Vector3(-4, -1, -1), max: Vector3(4, 1, 1))
+        let long = Box3(min: Vector3(-4, -1, -1), max: Vector3(4, 1, 1))
         let mesh = isosurface(at: 0, in: long, resolution: 64) { p in
             0.6 - Vector3(p.x - clamp(p.x, -3, 3), p.y, p.z).length
         }

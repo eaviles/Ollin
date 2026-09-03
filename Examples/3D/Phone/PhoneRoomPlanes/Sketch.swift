@@ -162,9 +162,8 @@ final class PhoneRoomPlanes: Sketch {
     /// toward the target so the view does not jump each time a surface lands.
     private func frame(on room: PhonePlanes) {
         let bounds = room.bounds
-        let center = (bounds.min + bounds.max) * 0.5
-        let size = bounds.max - bounds.min
-        let radius = max(1.5, max(size.x, max(size.y, size.z)) * 1.1)
+        let center = bounds.center
+        let radius = max(1.5, bounds.longestSide * 1.1)
         if framed {
             orbitCenter = orbitCenter.lerp(to: center, 0.05)
             orbitRadius += (radius - orbitRadius) * 0.05

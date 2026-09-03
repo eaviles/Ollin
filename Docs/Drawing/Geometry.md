@@ -18,6 +18,7 @@
 - [Vector3](#vector3)
 - [Rotation3D](#rotation3d)
 - [Ray3](#ray3)
+- [Box3](#box3)
 - [Rectangle](#rectangle)
 - [Grid](#grid)
 - [Insets](#insets)
@@ -244,6 +245,31 @@ if let distance = ray.hit(sphereAt: ball, radius: 0.2) {
 ```
 
 Its 2D sibling is [`Ray2`](./Envelopes.md), which carries a family of lines rather than a pointer and leaves its direction as given.
+
+<a name="box3"></a>
+
+### `Box3`
+
+An axis-aligned box in space: a `min` corner and a `max` corner, the smallest and largest coordinate on every axis. It is what a mesh or a scene reports as its bounds, what a metaball field reaches, and the region a surface is marched over. Like `Rectangle` on the canvas, it is a value you pass around and compose.
+
+```swift
+Box3(min: Vector3, max: Vector3)
+Box3(center: Vector3, size: Vector3)
+Box3(containing: [Vector3])                   // nil for no points
+```
+
+- **Reading it:** `center`, `size` (width, height, and depth as one `Vector3`), `longestSide`, `isEmpty` (no volume), and `contains(_:)`, with the faces counting as inside.
+- **Deriving one:** `padded(by:)` grows the box by that much on every side (a negative amount shrinks it), and `union(_:)` is the smallest box holding both.
+- **Where it appears:** `Mesh.bounds`, `Scene.bounds`, and the phone room's mesh and planes report one (`.zero` when there is nothing yet); `Metaballs.bounds` is optional, since a field with no balls has no reach; `isosurface(at:in:resolution:)` and `shadowArt(in:)` march over one.
+
+```swift
+let room = scan.bounds
+camera(.orbiting(target: room.center, radius: room.longestSide * 0.9))
+
+let field = isosurface(at: 0.5, in: Box3(center: .zero, size: Vector3(4, 4, 4)), resolution: 64) { p in
+    fbm(p.x, p.y, p.z, octaves: 4)
+}
+```
 
 <a name="rectangle"></a>
 

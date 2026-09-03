@@ -82,7 +82,7 @@ public struct Metaballs: Sendable, Equatable {
     }
 
     /// The box every ball's reach fits inside, or `nil` when there are none.
-    public var bounds: (min: Vector3, max: Vector3)? {
+    public var bounds: Box3? {
         var lo = Vector3(.infinity, .infinity, .infinity)
         var hi = Vector3(-.infinity, -.infinity, -.infinity)
         var found = false
@@ -92,7 +92,7 @@ public struct Metaballs: Sendable, Equatable {
             lo = Vector3(min(lo.x, ball.center.x - r), min(lo.y, ball.center.y - r), min(lo.z, ball.center.z - r))
             hi = Vector3(max(hi.x, ball.center.x + r), max(hi.y, ball.center.y + r), max(hi.z, ball.center.z + r))
         }
-        return found ? (min: lo, max: hi) : nil
+        return found ? Box3(min: lo, max: hi) : nil
     }
 
     /// The surface as a `Mesh`, marched over a grid `resolution` cells across
@@ -104,11 +104,8 @@ public struct Metaballs: Sendable, Equatable {
     /// field is better marched once in `setup()` and kept.
     public func mesh(resolution: Int = 48) -> Mesh {
         guard let box = bounds, resolution >= 1 else { return Mesh(positions: [], indices: []) }
-        let size = box.max - box.min
-        let pad = max(size.x, max(size.y, size.z)) / Double(resolution) * 1.5
-        let padded = (min: box.min - Vector3(pad, pad, pad),
-                      max: box.max + Vector3(pad, pad, pad))
-        return isosurface(at: level, in: padded, resolution: resolution) { value(at: $0) }
+        let pad = box.longestSide / Double(resolution) * 1.5
+        return isosurface(at: level, in: box.padded(by: pad), resolution: resolution) { value(at: $0) }
     }
 
     /// The soft-object falloff, in terms of `u`, the squared distance over the

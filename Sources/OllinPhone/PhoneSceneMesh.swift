@@ -28,7 +28,7 @@ public struct PhoneSceneChunk: Sendable, Identifiable {
     /// The box this block fills, worked out once when it is built. A room holds a
     /// few hundred blocks and several hundred thousand vertices, so framing a camera
     /// on the whole scan folds these boxes rather than walking the vertices again.
-    public let bounds: (min: Vector3, max: Vector3)
+    public let bounds: Box3
 
     /// A block built by hand, in world space. The phone fills these in, and this
     /// is here so a room can also come from somewhere else: a scan you saved and
@@ -47,7 +47,7 @@ public struct PhoneSceneChunk: Sendable, Identifiable {
             lo = Vector3(min(lo.x, p.x), min(lo.y, p.y), min(lo.z, p.z))
             hi = Vector3(max(hi.x, p.x), max(hi.y, p.y), max(hi.z, p.z))
         }
-        bounds = (lo, hi)
+        bounds = Box3(min: lo, max: hi)
     }
 
     /// The number of triangles in this block.
@@ -145,20 +145,16 @@ public struct PhoneSceneMesh: Sendable {
     }
 
     /// The axis-aligned box the whole scan fills, as `min` and `max` corners
-    /// (`(.zero, .zero)` before anything arrives). The room's own extent, so a
+    /// (`.zero` before anything arrives). The room's own extent, so a
     /// camera can frame it. Each block already knows its own box, so this folds a
     /// few hundred boxes rather than walking every vertex, and is cheap to read
     /// every frame.
-    public var bounds: (min: Vector3, max: Vector3) {
-        var lo: Vector3?, hi: Vector3?
+    public var bounds: Box3 {
+        var box: Box3?
         for chunk in chunks where !chunk.positions.isEmpty {
-            let box = chunk.bounds
-            let low = lo ?? box.min, high = hi ?? box.max
-            lo = Vector3(min(low.x, box.min.x), min(low.y, box.min.y), min(low.z, box.min.z))
-            hi = Vector3(max(high.x, box.max.x), max(high.y, box.max.y), max(high.z, box.max.z))
+            box = box.map { $0.union(chunk.bounds) } ?? chunk.bounds
         }
-        guard let lo, let hi else { return (.zero, .zero) }
-        return (lo, hi)
+        return box ?? .zero
     }
 
     /// The middle of `bounds`, the point to aim a camera at.

@@ -156,7 +156,7 @@ public func reconstructSurface(of points: [Vector3],
     // convention (inside = field above the level).
     let centerGrid = PointGrid3(points: centers, cellSize: sampleSpacing * 2)
     let pad = sampleSpacing * 2 + 1.5 * longest / Double(resolution)
-    let bounds = (min: lo - Vector3(pad, pad, pad), max: hi + Vector3(pad, pad, pad))
+    let bounds = Box3(min: lo, max: hi).padded(by: pad)
 
     // The derived per-point cutoff is capped at a small multiple of the global
     // spacing. Uncapped, the k-th-neighbor distance *inflates* exactly where

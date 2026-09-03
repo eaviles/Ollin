@@ -114,8 +114,8 @@ public struct Scene: Sendable {
     }
 
     /// The world-space axis-aligned bounds over every node's mesh, composing the
-    /// node transforms. `(.zero, .zero)` for a scene with no geometry.
-    public var bounds: (min: Vector3, max: Vector3) {
+    /// node transforms. `.zero` for a scene with no geometry.
+    public var bounds: Box3 {
         var lo = Vector3(.infinity, .infinity, .infinity)
         var hi = Vector3(-.infinity, -.infinity, -.infinity)
         var any = false
@@ -138,7 +138,7 @@ public struct Scene: Sendable {
             for child in node.children { visit(child, parent: world) }
         }
         for node in nodes { visit(node, parent: matrix_identity_float4x4) }
-        return any ? (lo, hi) : (.zero, .zero)
+        return any ? Box3(min: lo, max: hi) : .zero
     }
 
     // MARK: - Node-riding cameras and lights
