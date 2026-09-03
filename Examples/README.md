@@ -36,6 +36,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Text](Text/) | drawing text — bitmap, outline, and stroke fonts over one `drawText` |
 | [Video](Video/) | recorded footage as drawing material (`import OllinVideo`) |
 | [Vision](Vision/) | the camera plus on-device perception (`import OllinVision`) |
+| [Web](Web/) | sketches made for a web page, kept to what a browser can carry |
 | [Recreations](Recreations/) | homages to past computer artists, by artist |
 
 ### Running

@@ -8,6 +8,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 - **Fractal fields.** Three fractals join the raymarched field as leaves: `SDF3D.mandelbulb(power:iterations:radius:)`, `.mengerSponge(iterations:size:)`, and `.mandelbox(scale:iterations:size:)`. They melt, carve, mirror, and repeat like any other leaf, and the example `3D/Raymarching/RaymarchedFractals` turns each one's own dial.
 - **The sketch on the phone.** A sketch runs on an iPhone or iPad as an app, and `ollin phone Sketch.swift` puts it there and installs it again on every save, its clock and parameters carried across, with the parameters live on the Mac. `SketchRunner.beginInstallation` is public, so an app of your own can turn the checkpoint on. [The sketch on the phone](Docs/Tools/OnThePhone.md).
+- **A Web example group.** `Examples/Web/BreathingRing` draws the ring of breathing circles the site opens on as a sketch: a sixty-second loop that wraps without a seam, its ink and paper as parameters so a page can set its own theme.
 - **The website.** `ollin site` writes the README, the Guide, the reference, and every example with its source out as a static website, the pages rendered from the same files `ollin docs` reads, with a workflow that publishes it to GitHub Pages. [The reference offline](Docs/Tools/Reference.md#in-a-browser).
 
 ### Fixed

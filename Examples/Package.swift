@@ -757,6 +757,8 @@ let package = Package(
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         example("Vision/TrajectoryTracking", [.vision]),
+        // Web: sketches made for a web page.
+        example("Web/BreathingRing"),
         // Recreations — sketches recreating past computer artists, namespaced by
         // artist (see Examples/Recreations/README.md).
         example("Recreations/VeraMolnar/Interruptions"),
