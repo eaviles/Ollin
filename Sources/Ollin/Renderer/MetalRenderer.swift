@@ -86,6 +86,12 @@ final class MetalRenderer {
         /// intermediate every filter uses; a wider one is for a pass whose *intermediate*
         /// magnitudes leave half float's range, which the convolution pyramid's do.
         var effectFormat: MTLPixelFormat? = nil
+        /// The color attachment a *geometry* pipeline writes. `nil` is the shared
+        /// linear-float intermediate; a layer made with `precision: .float32` sets
+        /// its format here so every batch drawn into it builds against it. Left
+        /// nil for the canvas and every half-float layer, so those keys (and the
+        /// pipelines behind them) are untouched.
+        var colorFormat: MTLPixelFormat? = nil
         /// Force `rasterSampleCount = 1` instead of the view's MSAA count. The half-res
         /// raymarch pass (and its upsample composite) run single-sample, since the raymarch's
         /// silhouette AA is analytic, so it needs no MSAA, and the half-res target is a
@@ -220,9 +226,14 @@ final class MetalRenderer {
         static func glyphAtlas(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_image_vertex", fragment: "ollin_glyph_fragment", blend: blend, depthFormat: depth)
         }
-        // instanced GPU-particle discs (compute-resident buffer)
-        static func points(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
-            PipelineKey(vertex: "ollin_particle_vertex", fragment: "ollin_particle_fragment", blend: blend, depthFormat: depth)
+        // instanced GPU-particle discs (compute-resident buffer): the perceptual
+        // ink discs, or the radiometric light deposit (`ParticleStyle.light`)
+        static func points(_ blend: BlendMode, depth: MTLPixelFormat? = nil, light: Bool = false) -> PipelineKey {
+            light
+                ? PipelineKey(vertex: "ollin_particle_light_vertex", fragment: "ollin_particle_light_fragment",
+                              blend: blend, depthFormat: depth)
+                : PipelineKey(vertex: "ollin_particle_vertex", fragment: "ollin_particle_fragment",
+                              blend: blend, depthFormat: depth)
         }
         // instanced 3D point-cloud splats (camera-facing discs, depth-tested)
         static func pointCloud(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -451,7 +462,7 @@ final class MetalRenderer {
                              depth: MTLPixelFormat? = nil, textured: Bool = false,
                              wireframe: Bool = false, matcap: Bool = false,
                              grid: Bool = false, normalMapped: Bool = false,
-                             surfaceMapped: Bool = false) -> PipelineKey {
+                             surfaceMapped: Bool = false, light: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .fringe:     return .fringe(blend, depth: depth)
@@ -460,7 +471,7 @@ final class MetalRenderer {
             case .sdfGroup3D: return .raymarch(blend, depth: depth)
             case .image:      return .image(blend, depth: depth)
             case .glyphAtlas: return .glyphAtlas(blend, depth: depth)
-            case .particles:  return .points(blend, depth: depth)
+            case .particles:  return .points(blend, depth: depth, light: light)
             case .points3D:   return .pointCloud(blend, depth: depth)
             case .mesh3D:
                 return grid          ? .grid(blend, depth: depth)
@@ -1034,7 +1045,7 @@ final class MetalRenderer {
     /// ring slot (`frameIndex`) so a texture is never reused while an in-flight frame
     /// still reads it: the same discipline as the vertex-buffer ring. `*Next` is the
     /// per-frame acquisition cursor, reset at the start of the effects graph.
-    var targetTexPool: [[(msaa: MTLTexture, resolve: MTLTexture, w: Int, h: Int)]] =
+    var targetTexPool: [[(msaa: MTLTexture, resolve: MTLTexture, w: Int, h: Int, format: MTLPixelFormat)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     var filterTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
@@ -1070,6 +1081,9 @@ final class MetalRenderer {
     final class FeedbackSlot {
         let a: MTLTexture, b: MTLTexture
         let w: Int, h: Int
+        /// The pair's pixel format (`LayerPrecision`): a layer remade at another
+        /// precision reallocates rather than reading a mismatched pair.
+        let format: MTLPixelFormat
         var flipped = false
         /// Frames this slot has been stepped, handed to the step passes as a seed
         /// so a per-pass hash (the falling sand's friction coin) is fresh each
@@ -1077,10 +1091,46 @@ final class MetalRenderer {
         /// cycles with the in-flight ring, so it cannot serve.
         var age = 0
         weak var owner: AnyObject?
-        init(a: MTLTexture, b: MTLTexture, w: Int, h: Int, owner: AnyObject) {
-            self.a = a; self.b = b; self.w = w; self.h = h; self.owner = owner
+        init(a: MTLTexture, b: MTLTexture, w: Int, h: Int, format: MTLPixelFormat, owner: AnyObject) {
+            self.a = a; self.b = b; self.w = w; self.h = h; self.format = format; self.owner = owner
         }
     }
+
+    /// One `Accumulator`'s persistent state: the running sum in single-precision
+    /// float (a value that only ever grows wants every bit half float would drop),
+    /// and the mean the sketch reads, rewritten from the sum every frame a pass is
+    /// added. Both are written by a compute pass in place (each thread its own
+    /// texel), so there is no pair to flip; Metal's hazard tracking orders one
+    /// frame's write after the previous frame's read. `owner` is weak so the slot
+    /// is pruned once the sketch releases its `Accumulator`.
+    final class AccumulatorSlot {
+        let sum: MTLTexture, mean: MTLTexture
+        let w: Int, h: Int
+        weak var owner: AnyObject?
+        init(sum: MTLTexture, mean: MTLTexture, w: Int, h: Int, owner: AnyObject) {
+            self.sum = sum; self.mean = mean; self.w = w; self.h = h; self.owner = owner
+        }
+    }
+    /// Persistent accumulator storage, kept across frames like `feedbackSlots`
+    /// and pruned the same way.
+    var accumulatorSlots: [ObjectIdentifier: AccumulatorSlot] = [:]
+
+    /// The accumulate pass: add this frame's pass into the running sum (or replace
+    /// it, after a reset) and write the mean beside it. `params.x` is one over the
+    /// passes so far, `params.y` is 1 to replace.
+    static let accumulateKernel = ComputeKernel(entry: "ollin_accumulate", """
+        kernel void ollin_accumulate(texture2d<float, access::read> frame [[texture(0)]],
+                                     texture2d<float, access::read_write> sum [[texture(1)]],
+                                     texture2d<float, access::write> mean [[texture(2)]],
+                                     constant float4 &params [[buffer(0)]],
+                                     uint2 gid [[thread_position_in_grid]]) {
+            if (gid.x >= sum.get_width() || gid.y >= sum.get_height()) { return; }
+            float4 pass = frame.read(gid);
+            float4 total = params.y > 0.5 ? pass : sum.read(gid) + pass;
+            sum.write(total, gid);
+            mean.write(total * params.x, gid);
+        }
+        """)
     /// Persistent feedback storage, kept across frames (and across the live `pooled`
     /// ring and the headless path alike), distinct from the per-frame pools above,
     /// which is the whole point of feedback. Feedback is inherently serial (frame
@@ -1978,7 +2028,7 @@ final class MetalRenderer {
             frameBoundary.signal()
         }
 
-        encode(drawer, viewport: viewport, into: geomEncoder,
+        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: geomEncoder,
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -2124,7 +2174,7 @@ final class MetalRenderer {
             frameBoundary.signal()
         }
 
-        encode(drawer, viewport: viewport, into: encoder,
+        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
                sdfBuffer: sdfBuffer(at: frameIndex, for: drawer.sdfInstances.count),
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
@@ -2204,7 +2254,7 @@ final class MetalRenderer {
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating, headless)") else { return nil }
 
-        encode(drawer, viewport: viewport, into: encoder,
+        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
                sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
@@ -2609,7 +2659,7 @@ final class MetalRenderer {
             for s in 0..<taaSamples {
                 let jitter = taaJitterNDC(index: s, width: width, height: height)
                 guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless)") else { return nil }
-                encode(drawer, viewport: viewport, into: encoder,
+                encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                        imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                        pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -2666,7 +2716,7 @@ final class MetalRenderer {
                                           into: commandBuffer, pooled: false)
         } else {
             guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless supersample)") else { return nil }
-            encode(drawer, viewport: viewport, into: encoder,
+            encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                    pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -2873,7 +2923,7 @@ final class MetalRenderer {
                 supersample: false, pooled: false, gi: gi, taaJitter: taaJitter)
                 .map { (texture: $0.traced, guide: $0.guide, scale: Float(reflectionScale)) }
             guard let encoder = countedEncoder(cb, pass) else { continue }
-            encode(drawer, viewport: viewport, into: encoder,
+            encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                    pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -2964,7 +3014,7 @@ final class MetalRenderer {
                                viewport: SIMD2<Float>(Float(width), Float(height)))
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless)") else { return nil }
 
-        encode(drawer, viewport: viewport, into: encoder,
+        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
                sdfBuffer: exportSDFBuffer(for: drawer.sdfInstances.count),
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),

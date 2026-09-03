@@ -147,6 +147,20 @@ static inline float2 discSample(float2 seed) {
     float a = h.y * 6.28318530718;
     return float2(cos(a), sin(a)) * r;
 }
+
+// A point in the unit ball, uniform over its *volume* (radius via the cube root,
+// direction uniform over the sphere), the three-dimensional counterpart of
+// discSample: the scatter a depth-of-field lens applies to a sample in camera
+// space, where a point out of focus lands anywhere in a ball rather than a disc.
+// `seed` is any per-sample value to decorrelate the draws.
+static inline float3 ballSample(float3 seed) {
+    float3 h = hash33(seed);
+    float r = pow(h.x, 1.0 / 3.0);
+    float cosTheta = h.y * 2.0 - 1.0;
+    float sinTheta = sqrt(max(1.0 - cosTheta * cosTheta, 0.0));
+    float phi = h.z * 6.28318530718;
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta) * r;
+}
 // OLLIN_LIB_END hash
 
 // OLLIN_LIB_BEGIN noise
@@ -1310,6 +1324,39 @@ static inline float4 ollin_vis_mask(float4 a, float4 b) {
     return float4(a.rgb * k, a.a * k);
 }
 // OLLIN_LIB_END visual
+
+// MARK: - The sketch's camera (compute-only)
+//
+// Project a world point through a `Camera3D` a sketch packed into its params
+// (`ComputeParams.append(camera:aspect:)`, which writes an `OllinCameraMatrices`).
+// Returns the canvas position in points (top-left origin, y down) in xy, the
+// view-space depth along the camera's axis in z (positive in front of the camera,
+// the distance a focal plane is measured against), and in w the clip-space w, so a
+// point behind the camera or on its plane reads w <= 0 and should be skipped.
+// `resolution` is the canvas size in points (`u.resolution`). Unmarked (outside
+// any `OLLIN_LIB_BEGIN` module) so it always splices into a compute kernel.
+static inline float4 ollin_project(constant OllinCameraMatrices &camera, float3 world,
+                                   float2 resolution) {
+    float4 eye = camera.view * float4(world, 1.0);
+    float4 clip = camera.projection * eye;
+    if (clip.w <= 0.0) { return float4(0.0, 0.0, -eye.z, clip.w); }
+    float2 ndc = clip.xy / clip.w;
+    return float4((ndc.x + 1.0) * 0.5 * resolution.x,
+                  (1.0 - ndc.y) * 0.5 * resolution.y,
+                  -eye.z, clip.w);
+}
+
+// The same projection from a camera-space point (one already taken through
+// `camera.view`, moved there by a lens's scatter, say): canvas xy, depth, clip w.
+static inline float4 ollin_project_eye(constant OllinCameraMatrices &camera, float3 eye,
+                                       float2 resolution) {
+    float4 clip = camera.projection * float4(eye, 1.0);
+    if (clip.w <= 0.0) { return float4(0.0, 0.0, -eye.z, clip.w); }
+    float2 ndc = clip.xy / clip.w;
+    return float4((ndc.x + 1.0) * 0.5 * resolution.x,
+                  (1.0 - ndc.y) * 0.5 * resolution.y,
+                  -eye.z, clip.w);
+}
 
 // MARK: - Spatial-hash neighbor search (compute-only)
 //

@@ -212,7 +212,8 @@ extension MetalRenderer {
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
                                 premultiplied: key.premultiplied, blend: key.blend,
                                 depthFormat: key.depthFormat, singleSample: key.singleSample,
-                                stencilFormat: key.stencilFormat, clipWrite: key.isClipWrite)
+                                stencilFormat: key.stencilFormat, clipWrite: key.isClipWrite,
+                                colorFormat: key.colorFormat)
     }
 
     /// A shadow pass pipeline. Two shapes share this factory: the **2D map**
@@ -313,7 +314,8 @@ extension MetalRenderer {
                               depthFormat: MTLPixelFormat? = nil,
                               singleSample: Bool = false,
                               stencilFormat: MTLPixelFormat? = nil,
-                              clipWrite: Bool = false) throws -> MTLRenderPipelineState {
+                              clipWrite: Bool = false,
+                              colorFormat: MTLPixelFormat? = nil) throws -> MTLRenderPipelineState {
         guard let vertexFunction = library.makeFunction(name: vertex),
               let fragmentFunction = library.makeFunction(name: fragment) else {
             throw RendererError.shaderFunctions
@@ -339,8 +341,9 @@ extension MetalRenderer {
 
         let state = blend.blendState(premultiplied: premultiplied)
         let attachment = descriptor.colorAttachments[0]!
-        // Geometry composites into the linear-float intermediate, not the drawable.
-        attachment.pixelFormat = linearFormat
+        // Geometry composites into the linear-float intermediate, not the drawable
+        // (or into a single-precision layer, when the key names one).
+        attachment.pixelFormat = colorFormat ?? linearFormat
         if clipWrite {
             // The clip push/pop draw only into the stencil: color fully masked off,
             // blending irrelevant (and disabled).
@@ -386,7 +389,7 @@ extension MetalRenderer {
         }
         let state = key.blend.blendState(premultiplied: key.premultiplied)
         let attachment = descriptor.colorAttachments[0]!
-        attachment.pixelFormat = linearFormat
+        attachment.pixelFormat = key.colorFormat ?? linearFormat
         attachment.isBlendingEnabled = true
         attachment.rgbBlendOperation = state.colorOperation
         attachment.alphaBlendOperation = state.alphaOperation

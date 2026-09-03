@@ -164,6 +164,7 @@ let package = Package(
         example("Rendering/ToneMapping"),
         example("Rendering/ColorOutput"),
         example("Rendering/DepthOfField"),
+        example("Rendering/LineSpray"),
         example("Rendering/RetainedBatch"),
         example("Rendering/ViewBoxes"),
         example("Rendering/InstancedMesh"),

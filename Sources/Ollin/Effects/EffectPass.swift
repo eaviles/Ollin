@@ -129,6 +129,8 @@ extension Filter {
             return pass("ollin_fx_vibrance", [f(amount, 0, 0, 0)])
         case .exposure(let gain):
             return pass("ollin_fx_exposure", [f(gain, 0, 0, 0)])
+        case let .develop(exposure, ground):
+            return pass("ollin_fx_develop", [f(exposure, 0, 0, 0), ground])
         case let .levels(blackPoint, whitePoint, gamma):
             return pass("ollin_fx_levels", [f(blackPoint, whitePoint, gamma, 0)])
         case let .colorama(cycles, shift):

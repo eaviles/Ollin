@@ -487,23 +487,57 @@ open class Sketch {
     /// Run a compute `kernel` reading `reading` (index 0) and writing `writing`
     /// (index 1) — the ping-pong form for a sim whose output the render path also
     /// reads, so the GPU can overlap this frame's render with the next step. Swap
-    /// the two buffers yourself between frames. `count` defaults to `reading`'s
-    /// element count.
-    public func compute<T>(_ kernel: ComputeKernel, reading: ComputeBuffer<T>,
-                           writing: ComputeBuffer<T>, count: Int? = nil,
-                           params: ComputeParams = ComputeParams()) {
+    /// the two buffers yourself between frames. The two buffers may hold different
+    /// element types (a segment list read, a particle buffer written). `count`
+    /// defaults to `reading`'s element count.
+    public func compute<A, B>(_ kernel: ComputeKernel, reading: ComputeBuffer<A>,
+                              writing: ComputeBuffer<B>, count: Int? = nil,
+                              params: ComputeParams = ComputeParams()) {
         drawer.recordDispatch(RecordedDispatch(
             kernel: kernel, threadCount: count ?? reading.count,
             buffers: [reading, writing], params: params.bytes))
     }
 
-    /// Draw a GPU particle `buffer` as additive sub-pixel discs (the area-conserving
-    /// disc coverage `drawCircle` uses, so a million jittered marks fade by area
-    /// rather than flicker). Composites under the active blend mode (`.add` sums
-    /// them as light) and in draw order with everything else. `count` defaults to
-    /// the buffer's element count.
-    public func drawParticles(_ buffer: ComputeBuffer<OllinParticle>, count: Int? = nil) {
-        drawer.recordParticles(buffer, count: count ?? buffer.count)
+    /// Run a compute `kernel` over up to ten `buffers` of any element types, bound
+    /// at indices 0, 1, 2, … in the order given: the form for a kernel that reads a
+    /// static geometry buffer, a lookup table, and writes a particle buffer at once.
+    /// `count` is the thread count and defaults to the *first* buffer's element
+    /// count. Indices 10 and 11 stay the standard constants and `params`.
+    public func compute(_ kernel: ComputeKernel, buffers: [any ComputeBindable],
+                        count: Int? = nil, params: ComputeParams = ComputeParams()) {
+        precondition(!buffers.isEmpty, "compute(_:buffers:) needs at least one buffer")
+        precondition(buffers.count <= 10, "compute(_:buffers:) binds at most ten buffers (indices 0…9)")
+        drawer.recordDispatch(RecordedDispatch(
+            kernel: kernel, threadCount: count ?? buffers[0].count,
+            buffers: buffers.map { $0 }, params: params.bytes))
+    }
+
+    /// The active camera's view and projection matrices packed as `ComputeParams`
+    /// (an `OllinCameraMatrices`, 128 bytes) for the canvas's aspect, so a kernel
+    /// can project world points through the sketch's own camera with the library's
+    /// `ollin_project(camera, world, u.resolution)`. Append your own values after
+    /// it and start the kernel's `constant` struct with an `OllinCameraMatrices`.
+    /// Empty when no camera is set.
+    public func cameraParams() -> ComputeParams {
+        var params = ComputeParams()
+        if let camera = drawer.camera3D {
+            params.append(camera: camera, aspect: height > 0 ? width / height : 1)
+        }
+        return params
+    }
+
+    /// Draw a GPU particle `buffer` as sub-pixel discs. In the default `.marks`
+    /// style each is an anti-aliased mark of ink (the area-conserving disc coverage
+    /// `drawCircle` uses, remapped to perceptual alpha, so a million jittered marks
+    /// fade by area rather than flicker); in the `.light` style each deposits
+    /// `color × alpha × area` as linear light, the radiometric deposit an additive
+    /// accumulation wants, with a one-texel path for particles at or under a pixel.
+    /// Composites under the active blend mode (`.add` sums them as light) and in
+    /// draw order with everything else. `count` defaults to the buffer's element
+    /// count. See `ParticleStyle`.
+    public func drawParticles(_ buffer: ComputeBuffer<OllinParticle>, count: Int? = nil,
+                              style: ParticleStyle = .marks) {
+        drawer.recordParticles(buffer, count: count ?? buffer.count, style: style)
     }
 
     /// Step a `Particles` system one frame (records its compute dispatch and swaps
@@ -513,10 +547,61 @@ open class Sketch {
         particles.recordStep(into: drawer, custom: custom)
     }
 
-    /// Draw a `Particles` system's current state as additive discs (see
-    /// `drawParticles(_ buffer:)`).
-    public func drawParticles(_ particles: Particles) {
-        drawer.recordParticles(particles.current, count: particles.count)
+    /// Draw a `Particles` system's current state as discs (see
+    /// `drawParticles(_ buffer:count:style:)`).
+    public func drawParticles(_ particles: Particles, style: ParticleStyle = .marks) {
+        drawer.recordParticles(particles.current, count: particles.count, style: style)
+    }
+
+    // MARK: Light accumulation
+
+    /// Make a full-canvas `Accumulator`: a layer that keeps the running **mean** of
+    /// every pass drawn into it, so a picture built from faint samples converges
+    /// instead of brightening without end. Like `makeFeedback()`, it's
+    /// **persistent**: create it once in `setup()` and store it. `scale` is its
+    /// internal resolution as a fraction of the canvas (1 = full).
+    public func makeAccumulator(scale: Double = 1) -> Accumulator {
+        Accumulator(width: Int(width.rounded()), height: Int(height.rounded()),
+                    scale: scale, drawer: drawer)
+    }
+
+    /// Make an `Accumulator` of an explicit pixel size, rather than the canvas size.
+    public func makeAccumulator(width: Int, height: Int, scale: Double = 1) -> Accumulator {
+        Accumulator(width: width, height: height, scale: scale, drawer: drawer)
+    }
+
+    /// Draw one pass of samples into `accumulator`: everything drawn in `body` is
+    /// added into its running sum, and its mean (`accumulator.image`) divides by
+    /// one more pass. A block that scatters several passes' worth of samples says
+    /// so with `passes:`, so the mean stays honest. Scoped like `withTarget { }`;
+    /// set `blendMode(.add)` inside so the samples sum as light.
+    public func withAccumulator(_ accumulator: Accumulator, passes: Int = 1, _ body: () -> Void) {
+        drawer.withAccumulator(accumulator, passes: passes, body)
+    }
+
+    /// Make a `LineSpray`: lines of light rendered as depth of field by
+    /// scattering points along them through a `Bokeh` lens into an `Accumulator`
+    /// (see `LineSpray`). `sampling` shares a pass's points out by length or gives
+    /// every line the same count; `passesPerFrame` trades convergence speed for
+    /// cost. Persistent: create it once in `setup()` and store it, then call
+    /// `drawLineSpray(_:)` every frame with a camera set.
+    public func makeLineSpray(_ lines: [SprayLine],
+                              sampling: LineSpray.Sampling = .byLength(pointsPerPass: 50_000),
+                              passesPerFrame: Int = 5,
+                              bokeh: Bokeh = Bokeh(focalDistance: 10)) -> LineSpray {
+        LineSpray(lines: lines, sampling: sampling, passesPerFrame: passesPerFrame,
+                  bokeh: bokeh, accumulator: makeAccumulator())
+    }
+
+    /// Scatter one frame of passes through `spray`'s lens and add them into its
+    /// running mean. Projects through the active camera (set one with `camera(_:)`
+    /// first; a no-op without one), restarting the average when the camera, the
+    /// lens, or the lines changed. Composite the result with
+    /// `drawImage(spray.developed(exposure:), 0, 0)`.
+    public func drawLineSpray(_ spray: LineSpray) {
+        guard let camera = drawer.camera3D else { return }
+        spray.record(into: drawer, camera: camera, width: width, height: height,
+                     seed: Float(random(100)))
     }
 
     // MARK: Compute (spatial hash & artificial life)
@@ -3003,15 +3088,18 @@ open class Sketch {
     /// filter (see `RenderTarget`). `scale` is the layer's internal resolution as a
     /// fraction of the canvas (1 = full); drop it for cheap blur/glow layers.
     /// Create it inside `draw()`; it's a per-frame handle.
-    public func makeRenderTarget(scale: Double = 1) -> RenderTarget {
+    /// `precision` picks the layer's bits per channel: half float by default, or
+    /// `.float32` for a layer whose values are sums (see `LayerPrecision`).
+    public func makeRenderTarget(scale: Double = 1, precision: LayerPrecision = .float16) -> RenderTarget {
         RenderTarget(width: Int(width.rounded()), height: Int(height.rounded()),
-                     scale: scale, drawer: drawer)
+                     scale: scale, drawer: drawer, precision: precision)
     }
 
     /// Make an off-screen layer of an explicit pixel size (rather than the canvas
     /// size), for a layer that isn't full-canvas.
-    public func makeRenderTarget(width: Int, height: Int, scale: Double = 1) -> RenderTarget {
-        RenderTarget(width: width, height: height, scale: scale, drawer: drawer)
+    public func makeRenderTarget(width: Int, height: Int, scale: Double = 1,
+                                 precision: LayerPrecision = .float16) -> RenderTarget {
+        RenderTarget(width: width, height: height, scale: scale, drawer: drawer, precision: precision)
     }
 
     /// Redirect everything drawn in `body` into `target` instead of the canvas.
@@ -3059,14 +3147,20 @@ open class Sketch {
     /// Unlike `makeRenderTarget()`, it's **persistent**: create it once in `setup()`
     /// and store it; its identity is what carries state from one frame to the next.
     /// `scale` is its internal resolution as a fraction of the canvas (1 = full).
-    public func makeFeedback(scale: Double = 1) -> Feedback {
+    /// `precision` picks the pair's bits per channel: half float by default, or
+    /// `.float32` for a layer that sums faint light across thousands of frames,
+    /// where half float stops moving once each frame's contribution falls under
+    /// its spacing (see `LayerPrecision`; an `Accumulator` keeps its own sum in
+    /// single precision and divides by the passes for you).
+    public func makeFeedback(scale: Double = 1, precision: LayerPrecision = .float16) -> Feedback {
         Feedback(width: Int(width.rounded()), height: Int(height.rounded()),
-                 scale: scale, drawer: drawer)
+                 scale: scale, drawer: drawer, precision: precision)
     }
 
     /// Make a feedback layer of an explicit pixel size, rather than the canvas size.
-    public func makeFeedback(width: Int, height: Int, scale: Double = 1) -> Feedback {
-        Feedback(width: width, height: height, scale: scale, drawer: drawer)
+    public func makeFeedback(width: Int, height: Int, scale: Double = 1,
+                             precision: LayerPrecision = .float16) -> Feedback {
+        Feedback(width: width, height: height, scale: scale, drawer: drawer, precision: precision)
     }
 
     /// Draw into `feedback`, with last frame's content handed in as `prev`. Read,

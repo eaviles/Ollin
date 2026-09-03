@@ -102,7 +102,8 @@ extension MetalRenderer {
         for target in drawer.renderTargets {
             guard case .geometry = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
-            guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled) else { continue }
+            guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled,
+                                                  format: target.pixelFormat) else { continue }
             let pass = MTLRenderPassDescriptor()
             pass.colorAttachments[0].texture = tex.msaa
             pass.colorAttachments[0].resolveTexture = tex.resolve
@@ -174,8 +175,9 @@ extension MetalRenderer {
         for target in drawer.renderTargets {
             guard case let .feedback(fb) = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
-            guard let slot = feedbackSlot(for: fb, width: pw, height: ph, into: cb),
-                  let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless) else { continue }
+            guard let slot = feedbackSlot(for: fb, width: pw, height: ph, format: target.pixelFormat, into: cb),
+                  let msaa = makeFloatMSAA(width: pw, height: ph, storage: .memoryless,
+                                           format: target.pixelFormat) else { continue }
             let front = slot.flipped ? slot.b : slot.a
             let back  = slot.flipped ? slot.a : slot.b
             if statefulEncodeIsRepeat {
@@ -208,6 +210,46 @@ extension MetalRenderer {
             enc.endEncoding()
             target.texture = back                // `image` resolves to this frame
             feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
+        }
+        // Accumulators: this frame's pass renders like a geometry target into a
+        // transient layer, and a compute pass then adds it into the persistent
+        // single-precision sum and writes the mean beside it. A reset replaces the
+        // sum instead of adding to it, and the divide uses the pass count the
+        // drawer noted when the block was recorded.
+        for target in drawer.renderTargets {
+            guard case let .accumulate(acc) = target.origin else { continue }
+            let pw = target.pixelWidth, ph = target.pixelHeight
+            guard let slot = accumulatorSlot(for: acc, width: pw, height: ph) else { continue }
+            if statefulEncodeIsRepeat {
+                // The first encode of this frame already added the pass; adding it
+                // again would count it twice. Serve what it left.
+                acc.meanLayer.texture = slot.mean
+                acc.sumLayer.texture = slot.sum
+                continue
+            }
+            guard let tex = acquireTargetTextures(width: pw, height: ph, pooled: pooled) else { continue }
+            let pass = MTLRenderPassDescriptor()
+            pass.colorAttachments[0].texture = tex.msaa
+            pass.colorAttachments[0].resolveTexture = tex.resolve
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].clearColor = target.clearColor.mtlClearColor
+            pass.colorAttachments[0].storeAction = .multisampleResolve
+            let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
+                                                   width: pw, height: ph)
+            guard let enc = countedEncoder(cb, pass) else { continue }
+            encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
+                   triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
+                   glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   instancedMeshBuffer: buffers.instancedMesh,
+                   meshInstanceBuffer: buffers.meshInstance,
+                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+                   sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+                   depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
+            enc.endEncoding()
+            target.texture = tex.resolve
+            encodeAccumulate(acc, frame: tex.resolve, slot: slot, into: cb)
+            acc.meanLayer.texture = slot.mean
+            acc.sumLayer.texture = slot.sum
         }
         // Simulation fields: a persistent ping-pong like feedback, but the renderer
         // evolves the state itself. Render this frame's drawn seeds into a transient
@@ -359,6 +401,9 @@ extension MetalRenderer {
         feedbackUsedThisFrame.removeAll(keepingCapacity: true)
         if feedbackSlots.contains(where: { $0.value.owner == nil }) {
             feedbackSlots = feedbackSlots.filter { $0.value.owner != nil }
+        }
+        if accumulatorSlots.contains(where: { $0.value.owner == nil }) {
+            accumulatorSlots = accumulatorSlots.filter { $0.value.owner != nil }
         }
         for id in fluidUsedThisFrame { fluidSlots[id]?.flipped.toggle() }
         fluidUsedThisFrame.removeAll(keepingCapacity: true)
@@ -580,7 +625,7 @@ extension MetalRenderer {
         case .colorGrade, .invert, .posterize, .threshold, .sepia, .colorVision, .duotone,
              .gradientMap, .antialias, .edges, .sharpen, .vignette, .chromaticAberration,
              .halftone, .dither, .ditherDuo, .grain, .pixelate, .lineScreen, .solarize,
-             .temperature, .vibrance, .exposure, .levels, .colorama, .lumaKey, .motionBlur,
+             .temperature, .vibrance, .exposure, .develop, .levels, .colorama, .lumaKey, .motionBlur,
              .radialBlur, .bilateral, .emboss, .oilPaint, .crosshatch, .toon, .median,
              .contour, .cmykHalftone, .normalMap, .relight, .iridescence, .glitter,
              .thinFilm, .diffraction, .scanlines, .glitch, .crt, .kaleidoscope, .swirl,
@@ -2098,6 +2143,53 @@ extension MetalRenderer {
         return texture
     }
 
+    /// `acc`'s persistent sum and mean, allocated on first use, a size change, or
+    /// after the address was reused by a different accumulator. A fresh slot starts
+    /// with the reset pending, so the first pass replaces rather than adds.
+    private func accumulatorSlot(for acc: Accumulator, width: Int, height: Int) -> AccumulatorSlot? {
+        let id = ObjectIdentifier(acc)
+        if let slot = accumulatorSlots[id], slot.owner === acc, slot.w == width, slot.h == height {
+            return slot
+        }
+        func make(_ format: MTLPixelFormat) -> MTLTexture? {
+            let desc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: format, width: width, height: height, mipmapped: false)
+            desc.usage = [.shaderRead, .shaderWrite]
+            desc.storageMode = .private
+            return device.makeTexture(descriptor: desc)
+        }
+        guard let sum = make(.rgba32Float), let mean = make(linearFormat) else { return nil }
+        let slot = AccumulatorSlot(sum: sum, mean: mean, w: width, h: height, owner: acc)
+        accumulatorSlots[id] = slot
+        acc.needsClear = true
+        return slot
+    }
+
+    /// Add this frame's pass (`frame`, the transient layer's resolve) into the
+    /// running sum and write the mean: one compute dispatch over the layer. After
+    /// a reset the pass replaces the sum. The divide uses the passes the drawer
+    /// counted when the block was recorded (never zero once a pass was recorded).
+    private func encodeAccumulate(_ acc: Accumulator, frame: MTLTexture, slot: AccumulatorSlot,
+                                  into cb: MTLCommandBuffer) {
+        guard let state = try? computePipeline(for: MetalRenderer.accumulateKernel),
+              let encoder = cb.makeComputeCommandEncoder() else { return }
+        let passes = max(1, acc.passesAtRecord)
+        var params = SIMD4<Float>(1 / Float(passes), acc.needsClear ? 1 : 0, 0, 0)
+        acc.needsClear = false
+        encoder.setComputePipelineState(state)
+        encoder.setTexture(frame, index: 0)
+        encoder.setTexture(slot.sum, index: 1)
+        encoder.setTexture(slot.mean, index: 2)
+        encoder.setBytes(&params, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        let tew = state.threadExecutionWidth
+        let groupWidth = max(1, min(slot.w, tew))
+        let groupHeight = max(1, min(slot.h, state.maxTotalThreadsPerThreadgroup / tew))
+        profile.computeDispatches += 1
+        encoder.dispatchThreads(MTLSize(width: slot.w, height: slot.h, depth: 1),
+                                threadsPerThreadgroup: MTLSize(width: groupWidth, height: groupHeight, depth: 1))
+        encoder.endEncoding()
+    }
+
     /// `fb`'s persistent ping-pong slot, allocating both textures (and clearing them
     /// to transparent, so the very first frame's `previous` reads clean) on first use,
     /// a size change, or after the address was reused by a different layer.
@@ -2109,13 +2201,16 @@ extension MetalRenderer {
     private func feedbackSlot(for fb: AnyObject, width: Int, height: Int,
                               restState: MTLClearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0),
                               fill: ((MTLTexture) -> Void)? = nil,
+                              format: MTLPixelFormat? = nil,
                               into cb: MTLCommandBuffer) -> FeedbackSlot? {
         let id = ObjectIdentifier(fb)
-        if let slot = feedbackSlots[id], slot.owner === fb, slot.w == width, slot.h == height {
+        let format = format ?? linearFormat
+        if let slot = feedbackSlots[id], slot.owner === fb, slot.w == width, slot.h == height,
+           slot.format == format {
             return slot
         }
-        guard let a = makeFloatResolve(width: width, height: height),
-              let b = makeFloatResolve(width: width, height: height) else { return nil }
+        guard let a = makeFloatResolve(width: width, height: height, format: format),
+              let b = makeFloatResolve(width: width, height: height, format: format) else { return nil }
         // A freshly allocated pair starts at the owner's rest state (transparent for a
         // feedback layer, the sim's substrate for a SimField) rather than undefined.
         if let fill {
@@ -2125,7 +2220,7 @@ extension MetalRenderer {
             clearFloatTexture(a, color: restState, into: cb)
             clearFloatTexture(b, color: restState, into: cb)
         }
-        let slot = FeedbackSlot(a: a, b: b, w: width, h: height, owner: fb)
+        let slot = FeedbackSlot(a: a, b: b, w: width, h: height, format: format, owner: fb)
         feedbackSlots[id] = slot
         return slot
     }
@@ -2223,20 +2318,22 @@ extension MetalRenderer {
 
     /// Acquire an MSAA + resolve pair for a geometry target. Pooled: reuse the slot
     /// for this frame-ring index (safe: the frame semaphore gates slot reuse).
-    private func acquireTargetTextures(width: Int, height: Int, pooled: Bool) -> (msaa: MTLTexture, resolve: MTLTexture)? {
+    private func acquireTargetTextures(width: Int, height: Int, pooled: Bool,
+                                       format: MTLPixelFormat? = nil) -> (msaa: MTLTexture, resolve: MTLTexture)? {
+        let format = format ?? linearFormat
         guard pooled else {
-            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
-                  let resolve = makeFloatResolve(width: width, height: height) else { return nil }
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless, format: format),
+                  let resolve = makeFloatResolve(width: width, height: height, format: format) else { return nil }
             return (msaa, resolve)
         }
         let slot = targetTexNext; targetTexNext += 1
         var pool = targetTexPool[frameIndex]
-        if slot < pool.count, pool[slot].w == width, pool[slot].h == height {
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height, pool[slot].format == format {
             return (pool[slot].msaa, pool[slot].resolve)
         }
-        guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
-              let resolve = makeFloatResolve(width: width, height: height) else { return nil }
-        let entry = (msaa, resolve, width, height)
+        guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless, format: format),
+              let resolve = makeFloatResolve(width: width, height: height, format: format) else { return nil }
+        let entry = (msaa, resolve, width, height, format)
         if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
         targetTexPool[frameIndex] = pool
         return (msaa, resolve)
@@ -2355,6 +2452,7 @@ extension MetalRenderer {
     /// front-to-back as the sketch drew them. Shared by the on-screen and
     /// off-screen (export) paths.
     func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
+                        attachment: SIMD2<Float>? = nil,
                         into encoder: MTLRenderCommandEncoder,
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
@@ -2458,9 +2556,24 @@ extension MetalRenderer {
             }
         }
 
+        // Texels per canvas point for this pass: a layer's own pixel size over its
+        // logical size, or the canvas attachment the caller named over the viewport
+        // (1:1 when it named none). The light particle path sizes a one-pixel
+        // point in texels from it; nothing else reads it.
+        let attachmentSize: SIMD2<Float> = passTarget.map {
+            SIMD2(Float($0.pixelWidth), Float($0.pixelHeight))
+        } ?? (attachment ?? viewport)
+        let pixelScale = SIMD2<Float>(viewport.x > 0 ? attachmentSize.x / viewport.x : 1,
+                                      viewport.y > 0 ? attachmentSize.y / viewport.y : 1)
+        // A single-precision layer builds every pipeline drawn into it against its
+        // own format; the canvas and half-float layers leave the key untouched.
+        let passColorFormat: MTLPixelFormat? = passTarget.flatMap {
+            $0.pixelFormat == linearFormat ? nil : $0.pixelFormat
+        }
         var uniforms = Uniforms(viewport: viewport, clipDepth: 0,
                                 batchTransformed: 0,
-                                batchTransform: matrix_identity_float3x3)
+                                batchTransform: matrix_identity_float3x3,
+                                pixelScale: pixelScale)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
 
         // 3D camera constants for the points3D batches, bound once at index 2 —
@@ -2842,7 +2955,7 @@ extension MetalRenderer {
                 if let handle = batch.retained {
                     encodeRetained(handle, reference: batch, drawer: drawer,
                                    loopUniforms: uniforms, into: encoder,
-                                   depthFormat: depthFormat, hasStencil: hasStencil)
+                                   depthFormat: depthFormat, hasStencil: hasStencil, colorFormat: passColorFormat)
                 }
                 continue
             }
@@ -2878,10 +2991,12 @@ extension MetalRenderer {
                                                    textured: meshTextured, wireframe: meshWireframe,
                                                    matcap: meshMatcap, grid: meshGrid,
                                                    normalMapped: meshNormalMapped,
-                                                   surfaceMapped: meshSurfaceMapped)
+                                                   surfaceMapped: meshSurfaceMapped,
+                                                   light: batch.particleStyle == .light)
             // A stencil-carrying pass (clipping active) needs every pipeline in it
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
+            if let passColorFormat { pipelineKey.colorFormat = passColorFormat }
             guard let state = try? pipeline(pipelineKey) else { continue }
             // In a depth pass (active camera): 3D batches z-test + write depth. A 2D
             // batch that opted into a depth (`depth(at:)`) does too: its constant
@@ -3107,7 +3222,7 @@ extension MetalRenderer {
                 // frame), drawn as one instanced disc per particle. Uniforms are
                 // already bound at index 1; the particle struct is read at index 0.
                 guard batch.particleCount > 0,
-                      let buffer = batch.particleBuffer?.metalBuffer(for: device) else { continue }
+                      let buffer = batch.particleBuffer?.realizedBuffer(for: device) else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: 0, index: 0)
                 profile.countDraw(batch.kind, batch.particleCount)
@@ -3124,7 +3239,7 @@ extension MetalRenderer {
                     // written by a compute dispatch this frame and are read straight
                     // from that buffer, never uploaded through the frame's point list.
                     guard batch.particleCount > 0,
-                          let buffer = gpuBuffer.metalBuffer(for: device) else { continue }
+                          let buffer = gpuBuffer.realizedBuffer(for: device) else { continue }
                     encoder.setRenderPipelineState(state)
                     encoder.setVertexBuffer(buffer, offset: 0, index: 0)
                     profile.countDraw(batch.kind, batch.particleCount)
@@ -3284,7 +3399,7 @@ extension MetalRenderer {
                     // particle/point-cloud rule): read straight from that buffer,
                     // never uploaded through the frame's instance list.
                     guard batch.particleCount > 0,
-                          let ib = gpuBuffer.metalBuffer(for: device) else { continue }
+                          let ib = gpuBuffer.realizedBuffer(for: device) else { continue }
                     encoder.setVertexBuffer(ib, offset: 0, index: 4)
                     copies = batch.particleCount
                 } else {
@@ -3460,7 +3575,8 @@ extension MetalRenderer {
     private func encodeRetained(_ handle: Batch, reference: GeometryBatch,
                                 drawer: Drawer, loopUniforms: Uniforms,
                                 into encoder: MTLRenderCommandEncoder,
-                                depthFormat: MTLPixelFormat?, hasStencil: Bool) {
+                                depthFormat: MTLPixelFormat?, hasStencil: Bool,
+                                colorFormat: MTLPixelFormat? = nil) {
         let resources = handle.gpuResources(for: device)
         var u = loopUniforms
         if depthFormat != nil { u.clipDepth = reference.depth ?? 0 }
@@ -3481,6 +3597,7 @@ extension MetalRenderer {
             let next = j + 1 < inner.count ? inner[j + 1] : nil
             var key = PipelineKey.forBatch(run.kind, run.blendMode, depth: depthFormat)
             if hasStencil { key.stencilFormat = .stencil8 }
+            if let colorFormat { key.colorFormat = colorFormat }
             guard let state = try? pipeline(key) else { continue }
             // Depth/stencil per the main loop's rules, at the reference batch's
             // clip level and depth: point-cloud runs z-test + write, 2D runs do
@@ -3594,7 +3711,7 @@ extension MetalRenderer {
                   let state = try? computePipeline(for: dispatch.kernel) else { continue }
             encoder.setComputePipelineState(state)
             for (index, bindable) in dispatch.buffers.enumerated() {
-                encoder.setBuffer(bindable?.metalBuffer(for: device), offset: 0, index: index)
+                encoder.setBuffer(bindable?.realizedBuffer(for: device), offset: 0, index: index)
             }
             for (index, bindable) in dispatch.textures.enumerated() {
                 encoder.setTexture(bindable?.metalTexture(for: device), index: index)

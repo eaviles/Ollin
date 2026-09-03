@@ -81,6 +81,7 @@ Mixing in OKLab/OKLCH (interpolate, then convert back) gives even lightness and 
 | `float2 hash22(float2 p)` | two channels from a `float2`. |
 | `float3 hash33(float3 p3)` | three channels from a `float3`. |
 | `float2 discSample(float2 seed)` | a point in the unit disc, uniform over its *area* (radius via square root, so samples don't bunch at the center), the right scatter for energy-conserving bokeh. |
+| `float3 ballSample(float3 seed)` | a point in the unit ball, uniform over its *volume* (radius via cube root, direction uniform over the sphere): the three-dimensional scatter a depth-of-field lens applies to a sample in camera space. |
 
 ## Noise
 

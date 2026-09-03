@@ -17,9 +17,10 @@ extension MetalRenderer {
     /// transient per-frame targets (the samples live only in tile memory, never
     /// backed by DRAM, since the frame clears each time) and `.private` for the
     /// accumulation target (its samples must persist across frames).
-    func makeFloatMSAA(width: Int, height: Int, storage: MTLStorageMode) -> MTLTexture? {
+    func makeFloatMSAA(width: Int, height: Int, storage: MTLStorageMode,
+                       format: MTLPixelFormat? = nil) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+            pixelFormat: format ?? linearFormat, width: width, height: height, mipmapped: false)
         desc.textureType = .type2DMultisample
         desc.sampleCount = sampleCount
         desc.usage = .renderTarget
@@ -3041,7 +3042,7 @@ extension MetalRenderer {
         // The geometry buffers already hold this frame's data (the main pass or the
         // caller filled them), and re-copying them is harmless: `encode` writes the same
         // bytes into the same buffers before it draws.
-        encode(drawer, viewport: viewport, into: enc,
+        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: enc,
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -3455,7 +3456,7 @@ extension MetalRenderer {
                                                 instanceCount: batch.meshInstanceCount,
                                                 mat: claimSlot(), batch: i))
                 } else if batch.particleCount > 0,
-                          let placements = batch.particleBuffer?.metalBuffer(for: device) {
+                          let placements = batch.particleBuffer?.realizedBuffer(for: device) {
                     gpuGroups.append(GPUCopyGroup(vertexStart: batch.instancedVertexStart,
                                                   vertexCount: batch.instancedVertexCount,
                                                   placements: placements,
@@ -4030,7 +4031,7 @@ extension MetalRenderer {
             let copies: Int
             if let gpuBuffer = batch.particleBuffer {
                 guard batch.particleCount > 0,
-                      let ib = gpuBuffer.metalBuffer(for: device) else { continue }
+                      let ib = gpuBuffer.realizedBuffer(for: device) else { continue }
                 encoder.setVertexBuffer(ib, offset: 0, index: 4)
                 copies = batch.particleCount
             } else {
@@ -4087,9 +4088,9 @@ extension MetalRenderer {
 
     /// The single-sample linear-float resolve target: the MSAA resolve destination
     /// (`.renderTarget`) that the present pass then samples (`.shaderRead`).
-    func makeFloatResolve(width: Int, height: Int) -> MTLTexture? {
+    func makeFloatResolve(width: Int, height: Int, format: MTLPixelFormat? = nil) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+            pixelFormat: format ?? linearFormat, width: width, height: height, mipmapped: false)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         return device.makeTexture(descriptor: desc)

@@ -11,7 +11,8 @@ How the frame composites. Every frame is built in a linear floating-point canvas
 | [Accumulation](Accumulation/Sketch.swift) | a persistent canvas that builds up over frames: slow pens and a soft mouse spray piling faint light on an uncleared surface (`noClear()`) |
 | [ToneMapping](ToneMapping/Sketch.swift) | lamps summing as HDR light in float, rolled onto the screen instead of clipping, with a flat `.normal` control for comparison (`toneMap(_:)`, `blendMode(.add)`) |
 | [ColorOutput](ColorOutput/Sketch.swift) | colors outside sRGB and highlights brighter than white (`colorOutput`, `Color(displayP3:)`) |
-| [DepthOfField](DepthOfField/Sketch.swift) | sandpainting depth of field: bokeh earned by scattering accumulated samples (drag to rack focus) |
+| [DepthOfField](DepthOfField/Sketch.swift) | depth of field that emerges from scattered light: a million samples a pass through a bokeh ball, deposited as light (`drawParticles(style: .light)`) into a running mean (`Accumulator`) that converges instead of brightening, printed with `developed` (drag to rack focus) |
+| [LineSpray](LineSpray/Sketch.swift) | a sphere of a hundred and fifty rings of light seen through a real lens: `LineSpray` scattering points along every line through a `Bokeh` ball into a running mean until bokeh emerges, with the camera, the lens, and the print as parameters |
 | [RetainedBatch](RetainedBatch/Sketch.swift) | 150k stars recorded once into a `Batch` and replayed for free, plus a rosette stamped at many placements (`makeBatch`/`drawBatch`; flip the parameter to feel the per-frame cost) |
 | [InstancedMesh](InstancedMesh/Sketch.swift) | 12,000 wave-riding pillars from one mesh and one draw call (`drawMesh(_:instances:)`; flip the parameter to feel the per-copy cost) |
 | [MeshField](MeshField/Sketch.swift) | 240,000 solids across a foggy plain, GPU-culled per copy (`MeshField`/`drawMeshField`; flip the parameter to feel what culling saves) |

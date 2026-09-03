@@ -5,7 +5,8 @@
 ## Drawing
 
 - [`Drawing`](./Drawing.md) - `background`, `fill`/`stroke`, the shapes, and the transform stack
-- [`Accumulation`](./Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up (long exposures, paint-on-canvas, light accumulation)
+- [`Accumulation`](./Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up (long exposures, paint-on-canvas), and `Accumulator` for a layer that keeps the running mean, so a picture built from faint samples converges
+- [`Depth of field from light`](./DepthOfField.md) - `LineSpray` and `Bokeh`: lines drawn as millions of scattered points through a lens, added into a running mean until bokeh emerges, with the `.light` particle style and the `develop` print filter underneath
 - [`HDR & tone-mapping`](./HDR.md) - `toneMap` to roll bright, out-of-range light off the screen instead of clipping it (the linear-float pipeline behind every frame; the glow/bloom and sandpainting looks)
 - [`Wide gamut & HDR output`](./ColorOutput.md) - `colorOutput` to present through Display P3 and keep highlights brighter than white, `Color(displayP3:)` for colors outside sRGB, and HDR10 video export
 - [`Retained batches`](./Batches.md) - `makeBatch`/`drawBatch` to record heavy static drawing once and replay it each frame from the GPU for (almost) nothing, the draw-time transform placing or stamping the whole recording

@@ -137,6 +137,10 @@ struct GeometryBatch {
     var particleBuffer: ComputeBindable?
     /// Number of particles to draw (instances) for a `.particles` batch.
     var particleCount: Int = 0
+    /// How a `.particles` batch turns its particles into pixels (`ParticleStyle`):
+    /// the perceptual ink discs or the radiometric light deposit. Selects the
+    /// pipeline, so a change of style opens a new batch.
+    var particleStyle: ParticleStyle = .marks
     /// Clip-space z (Metal NDC, [0,1]) this 2D batch tests and writes against the
     /// 3D depth buffer — `nil` (the default) means "draw over" (always-pass, no
     /// write), the byte-identical legacy behavior. Set by `depth(at:)` and carried
@@ -1441,6 +1445,21 @@ final class Drawer {
         withTarget(feedback.writeLayer, body)
     }
 
+    /// Redirect `body` into an `Accumulator`'s write surface: one more pass of
+    /// samples (or `passes` of them) for its running mean. The block lands in a
+    /// transient layer cleared every frame, which the renderer then adds into the
+    /// persistent sum; the accumulator counts the passes at record time so its
+    /// `passes` reads right inside the block. Records exactly like `withTarget(_:)`.
+    func withAccumulator(_ accumulator: Accumulator, passes: Int, _ body: () -> Void) {
+        guard !isRecordingBatch else {
+            noteBatchRecording("withAccumulator inside makeBatch { } is not recorded (the block is skipped); accumulate where the batch is drawn instead.")
+            return
+        }
+        accumulator.writeLayer.clearColor = .clear
+        accumulator.notePasses(passes)
+        withTarget(accumulator.writeLayer, body)
+    }
+
     /// Redirect `body` into a persistent `SimField`'s seed surface: the marks drawn
     /// inside are composited onto the field's current state, which the renderer then
     /// evolves one frame by the field's `Sim`. Records exactly like `withTarget(_:)`;
@@ -1473,7 +1492,7 @@ final class Drawer {
     /// reflection. See `OllinApp.image(of:)`.
     var usesFeedback: Bool {
         renderTargets.contains {
-            switch $0.origin { case .feedback, .simField: return true; default: return false }
+            switch $0.origin { case .feedback, .simField, .accumulate: return true; default: return false }
         } || filterOps.contains {
             if case let .combine(_, _, op) = $0.origin, case .screenSpaceReflections = op.kind { return true }
             return false
@@ -1562,7 +1581,7 @@ final class Drawer {
     /// Like `beginImageBatch`, it always appends (each draw carries its own buffer)
     /// and resets `currentKind` so a following primitive reopens its own batch. The
     /// particle buffer's positions are in canvas space, so it rides no CTM.
-    func recordParticles(_ buffer: ComputeBindable, count: Int) {
+    func recordParticles(_ buffer: ComputeBindable, count: Int, style: ParticleStyle = .marks) {
         // A particle batch reads a compute buffer the GPU rewrites every frame;
         // there's nothing static to retain.
         if isRecordingBatch {
@@ -1584,6 +1603,7 @@ final class Drawer {
                                      sdf3DGroupStart: sdf3DGroups.count,
                                      blendMode: currentBlend,
                                      particleBuffer: buffer, particleCount: count,
+                                     particleStyle: style,
                                      depth: currentDepth, target: currentTarget,
                                      clipLevel: activeClipLevel))
     }

@@ -60,6 +60,83 @@ fragment float4 ollin_particle_fragment(ParticleOut in [[stage_in]]) {
     return float4(srgbToLinear(in.color.rgb), a);
 }
 
+// MARK: - GPU particles as light
+//
+// The `.light` particle style: the same instanced quad per particle, but the
+// deposit is radiometric. Coverage is the plain area ramp (no perceptual remap),
+// so a disc deposits color * alpha * its area wherever it lands, and the color is
+// taken as linear light rather than an sRGB tone. A disc at or under one texel
+// takes the cheap path: its quad is exactly one texel wide, centered on the point,
+// so it rasterizes to the texel that holds it (two to four under MSAA, sharing the
+// deposit by covered samples) and the fragment writes the whole disc's area at
+// once. The area is continuous across the one-texel boundary, so a size animated
+// through it never steps in brightness.
+
+struct ParticleLightOut {
+    float4 position [[position]];
+    float2 local;     // fragment offset from the particle center, in sketch points
+    float  radius;    // disc radius in points; 0 marks the one-texel point path
+    float4 color;     // linear light rgb; a = weight (the area is folded in on the point path)
+};
+
+vertex ParticleLightOut ollin_particle_light_vertex(uint vid [[vertex_id]],
+                                                    uint iid [[instance_id]],
+                                                    const device OllinParticle *particles [[buffer(0)]],
+                                                    constant Uniforms &uniforms [[buffer(1)]]) {
+    OllinParticle pt = particles[iid];
+    const float2 corners[6] = { float2(-1, -1), float2(1, -1), float2(1, 1),
+                                float2(-1, -1), float2(1, 1), float2(-1, 1) };
+    // One canvas point is `pixelScale` texels; a texel is `texel` points on each axis.
+    float2 texel = 1.0 / max(uniforms.pixelScale, float2(1e-6));
+    float radius = max(pt.size, 0.0) * 0.5;
+    float diameterTexels = pt.size * max(uniforms.pixelScale.x, uniforms.pixelScale.y);
+
+    ParticleLightOut out;
+    float2 local;
+    if (diameterTexels <= 1.0) {
+        // The point path: a quad one texel wide, so it covers the texel holding
+        // the point; the fragment deposits the disc's whole area in texels.
+        local = corners[vid] * 0.5 * texel;
+        out.radius = 0.0;
+        float areaTexels = 0.78539816339 * diameterTexels * diameterTexels;
+        out.color = float4(pt.color.rgb, pt.color.a * areaTexels);
+    } else {
+        // The disc path: the quad grown by one texel for the coverage ramp.
+        local = corners[vid] * (radius + max(texel.x, texel.y));
+        out.radius = radius;
+        out.color = pt.color;
+    }
+    float2 sketch = pt.position + local;
+    float2 ndc;
+    ndc.x = (sketch.x / uniforms.viewport.x) * 2.0 - 1.0;
+    ndc.y = 1.0 - (sketch.y / uniforms.viewport.y) * 2.0;
+    out.position = float4(ndc, uniforms.clipDepth, 1.0);
+    out.local = local;
+    return out;
+}
+
+fragment float4 ollin_particle_light_fragment(ParticleLightOut in [[stage_in]]) {
+    if (in.radius <= 0.0) {
+        // One texel, the whole area: straight linear light out.
+        if (in.color.a <= 0.0) { return float4(0.0); }
+        return float4(in.color.rgb, in.color.a);
+    }
+    // Plain area coverage: the ramp is one texel wide across the true edge and
+    // is never remapped. Over a curved edge the ramp's outer half covers a little
+    // more ground than its inner half loses (pi * px^2 / 12 for a disc, a third
+    // of a small disc's own area), so the coverage is scaled by the disc's area
+    // over the ramp's integral, which makes the total deposit the area exactly
+    // and continuous with the one-texel path at a one-texel diameter.
+    float d = sdEllipse(in.local, float2(in.radius));
+    float px = max(fwidth(d), 1e-5);
+    float coverage = clamp(0.5 - d / px, 0.0, 1.0);
+    float r2 = in.radius * in.radius;
+    coverage *= r2 / (r2 + px * px / 12.0);
+    float a = in.color.a * coverage;
+    if (a <= 0.0) { return float4(0.0); }
+    return float4(in.color.rgb, a);
+}
+
 // MARK: - 3D point cloud (instanced splats)
 //
 // One instanced quad per point, billboarded in camera (view) space so it always

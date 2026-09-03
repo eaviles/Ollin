@@ -2,6 +2,28 @@ import Foundation
 import Metal
 import simd
 
+/// How many bits a layer keeps per channel. Every layer composites in linear
+/// floating point; the default half precision is plenty for a picture, while a
+/// layer that *sums* small values across thousands of frames (a long light
+/// accumulation held in a `Feedback`) wants single precision, since half float
+/// stops moving once a value's step falls under its spacing (about one part in a
+/// thousand near 1). An `Accumulator` keeps its running sum in single precision
+/// on its own.
+public enum LayerPrecision: Sendable, Equatable {
+    /// Sixteen bits per channel (`rgba16Float`), the default.
+    case float16
+    /// Thirty-two bits per channel (`rgba32Float`): twice the memory, and the
+    /// precision a running sum keeps over any number of frames.
+    case float32
+
+    var pixelFormat: MTLPixelFormat {
+        switch self {
+        case .float16: return .rgba16Float
+        case .float32: return .rgba32Float
+        }
+    }
+}
+
 /// An off-screen layer a sketch draws into and then reads back: the substrate of
 /// layered effects. Draw into it with `withTarget(_:)`, sample it as an `Image`
 /// (`target.image`, composited with `drawImage`), or run a `Filter` over it
@@ -39,6 +61,13 @@ public final class RenderTarget {
     /// upsamples when drawn back. Clamped to a sane range.
     public let scale: Double
 
+    /// Bits per channel in the backing texture (`makeRenderTarget(precision:)`).
+    /// Half float by default; `.float32` for a layer whose values are sums.
+    public let precision: LayerPrecision
+
+    /// The Metal format `precision` names.
+    var pixelFormat: MTLPixelFormat { precision.pixelFormat }
+
     /// How this target gets filled. A `.geometry` target is drawn into by a
     /// `withTarget` block; a `.generator` target is filled by a procedural pattern
     /// pass; a `.filter` target is the output of `filtered(_:)`, run from `input`;
@@ -47,8 +76,10 @@ public final class RenderTarget {
     /// write surface, filled like a `.geometry` target but into persistent
     /// ping-pong storage the renderer keeps across frames; an `.ocean` target is
     /// one frame of a wave field, filled by the spectrum pass, the inverse
-    /// Fourier ladder, and the resolve. Internal: the renderer
-    /// reads it at render time.
+    /// Fourier ladder, and the resolve; an `.accumulate` target is an
+    /// `Accumulator`'s per-frame write surface, drawn like a `.geometry` target
+    /// and then added into the running sum the renderer keeps across frames.
+    /// Internal: the renderer reads it at render time.
     enum Origin {
         case geometry
         case generator(Generator)
@@ -57,6 +88,7 @@ public final class RenderTarget {
         case feedback(Feedback)
         case simField(SimField)
         case ocean(OceanRequest)
+        case accumulate(Accumulator)
     }
     /// Settable so a `Feedback` can stamp its write layer with `.feedback(self)`
     /// once `self` exists (the layer is built before the back-reference is known).
@@ -117,12 +149,14 @@ public final class RenderTarget {
     var pixelWidth: Int { max(1, Int((Double(width) * scale).rounded())) }
     var pixelHeight: Int { max(1, Int((Double(height) * scale).rounded())) }
 
-    init(width: Int, height: Int, scale: Double, drawer: Drawer?, origin: Origin = .geometry) {
+    init(width: Int, height: Int, scale: Double, drawer: Drawer?, origin: Origin = .geometry,
+         precision: LayerPrecision = .float16) {
         self.width = max(1, width)
         self.height = max(1, height)
         self.scale = min(4, max(0.05, scale))
         self.drawer = drawer
         self.origin = origin
+        self.precision = precision
     }
 
     /// This layer as a drawable `Image`, for `drawImage`. The image resolves the

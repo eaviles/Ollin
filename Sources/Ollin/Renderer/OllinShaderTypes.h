@@ -74,6 +74,11 @@ typedef struct {
                             // (byte-identical, the flag-gate rule).
     simd_float3x3 batchTransform;  // canvas space -> canvas space (the CTM at
                                    // drawBatch time); identity when unused
+    simd_float2 pixelScale;  // attachment texels per canvas point (x, y): 1 when the
+                             // pass draws at canvas size, above 1 for a supersampled
+                             // export or a window larger than the canvas, below 1 for
+                             // a fraction-resolution layer. Read only by the light
+                             // particle path, which sizes a one-pixel point in texels.
 } Uniforms;
 
 // Per-frame constants for the 3D pipelines (an active `Camera3D`). Bound at
@@ -1212,6 +1217,27 @@ typedef struct {
     unsigned int particleCount; // this dispatch's thread count
     simd_float4 custom;         // four free per-dispatch floats (see ComputeParams)
 } OllinComputeUniforms;
+
+// A `Camera3D`'s two matrices, packed for a compute kernel so it can project world
+// points through the sketch's own camera (`ComputeParams.append(camera:aspect:)`
+// writes exactly this, and `ollin_project` in the shader library reads it). Stride
+// 128: two column-major float4x4, 16-aligned, so a kernel's `constant` struct may
+// begin with one and carry its own fields after it.
+typedef struct {
+    simd_float4x4 view;        // world -> camera space (camera looks down -z)
+    simd_float4x4 projection;  // camera -> clip space (Metal z in [0, 1])
+} OllinCameraMatrices;
+
+// One line of light in a `LineSpray`: the segment a kernel samples points along,
+// with the linear radiance at each end. `start.w` carries 1 / (points on this line
+// per pass), so every point deposits its share and a line's light per pass is its
+// color whatever its point count; `end.w` is unused. Stride 64 (four float4 rows).
+typedef struct {
+    simd_float4 start;       // xyz world space; w = 1 / points per pass on this line
+    simd_float4 end;         // xyz world space; w unused
+    simd_float4 startColor;  // linear radiance at `start` (w unused)
+    simd_float4 endColor;    // linear radiance at `end` (w unused)
+} OllinSprayLine;
 
 // A uniform-grid spatial hash over a toroidal 2-D domain (the GPU neighbor-search
 // primitive `SpatialHash` builds and every particle-interaction sim queries).

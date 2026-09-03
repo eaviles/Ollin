@@ -2,6 +2,30 @@ import Foundation
 import simd
 import COllinShaders   // OllinParticle (the GPU particle struct, shared with the shaders)
 
+/// How `drawParticles` turns a particle into pixels.
+///
+/// - `.marks` (the default) draws each particle as an anti-aliased disc of ink:
+///   its coverage is remapped to perceptual alpha, the same carve-out every thin
+///   mark in Ollin takes so a sub-pixel dot reads as dark as its area warrants over
+///   a light ground, and its color is an sRGB tone linearized on the way in.
+/// - `.light` draws each particle as light: the coverage is the plain area ramp,
+///   so a particle deposits `color × alpha × area` wherever it lands, exactly linear
+///   in its size and independent of where it falls on the pixel grid, and `color`
+///   is taken as linear radiance (author an sRGB tone through `srgbToLinear` in the
+///   kernel). It is the style for additive accumulation (`blendMode(.add)` into an
+///   `Accumulator` or a `noClear` canvas), where the perceptual remap would lift a
+///   dot that straddles a pixel corner to more than twice the light of one that
+///   lands on a center. A disc at or under one pixel takes a cheap path: its quad
+///   is a single texel, so a million one-pixel points cost a million fragments
+///   rather than twenty-five million.
+public enum ParticleStyle: Sendable, Equatable {
+    /// Anti-aliased ink over a ground: perceptual coverage, sRGB color.
+    case marks
+    /// Radiometric light for additive sums: linear area coverage, linear color,
+    /// and a one-texel path for particles at or under one pixel.
+    case light
+}
+
 /// A GPU particle system in a few lines — the headline of the compute path.
 ///
 /// You give it a count and a per-particle update written as a short MSL **body

@@ -925,6 +925,21 @@ fragment float4 ollin_fx_exposure(PresentOut in [[stage_in]],
     return float4(s.rgb * params[0].x, s.a);
 }
 
+// develop: print a layer of accumulated light. The layer's linear values are
+// scaled by an exposure, rolled off by the Reinhard curve x / (1 + x), and laid on
+// a ground color added *after* the curve, the whole written as the display value
+// itself (no gamma re-encode), which is what gives a sandpainting its deep
+// midtones. params[0].x = exposure; params[1] = the ground as display (sRGB) rgb.
+fragment float4 ollin_fx_develop(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float3 light = max(src.sample(samp, in.uv).rgb, 0.0) * params[0].x;
+    float3 mapped = light / (light + 1.0);
+    float3 display = clamp(mapped + params[1].rgb, 0.0, 1.0);
+    return float4(srgbToLinear(display), 1.0);
+}
+
 // levels: pull [black,white] to [0,1], then bend midtones by gamma.
 fragment float4 ollin_fx_levels(PresentOut in [[stage_in]],
                                 texture2d<float> src [[texture(0)]],

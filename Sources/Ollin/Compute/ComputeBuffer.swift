@@ -1,14 +1,31 @@
 import Foundation
 import Metal
+import simd
+import COllinShaders
 
-/// Type-erased view of a GPU buffer the renderer can realize, used so the drawer's
-/// recorded dispatches and particle batches can hold buffers of any element type.
-protocol ComputeBindable: AnyObject {
+/// A GPU buffer a compute dispatch can bind, whatever its element type: the
+/// type-erased face of `ComputeBuffer<Element>`, so one `compute(_:buffers:)` call
+/// can hand a kernel a segment list, a lookup table, and a particle buffer at once.
+/// Only `ComputeBuffer` conforms; the renderer realizes the Metal buffer through an
+/// internal seam, so a conformance of your own would bind nothing.
+public protocol ComputeBindable: AnyObject {
     /// The buffer's element count (the natural 1-D dispatch width).
     var count: Int { get }
-    /// Realize (and cache) the Metal buffer on `device`, uploading the seed once.
-    /// Renderer-only — called on the main actor while encoding a frame.
+}
+
+/// The renderer's half of `ComputeBindable`: realize (and cache) the Metal buffer
+/// on `device`, uploading the seed once. Called on the main actor while encoding a
+/// frame. Internal, so the public protocol carries no Metal type.
+protocol ComputeRealizable: ComputeBindable {
     func metalBuffer(for device: MTLDevice) -> MTLBuffer?
+}
+
+extension ComputeBindable {
+    /// The Metal buffer behind a bindable, or `nil` for a type the renderer does
+    /// not know how to realize.
+    func realizedBuffer(for device: MTLDevice) -> MTLBuffer? {
+        (self as? ComputeRealizable)?.metalBuffer(for: device)
+    }
 }
 
 /// A persistent, typed GPU buffer — the storage a compute kernel reads and writes
@@ -26,7 +43,7 @@ protocol ComputeBindable: AnyObject {
 ///
 /// Marked `@unchecked Sendable`: it carries an `MTLBuffer` (not `Sendable`) but is
 /// only ever realized/read on the main actor, the same boundary `Image` crosses.
-public final class ComputeBuffer<Element>: ComputeBindable, @unchecked Sendable {
+public final class ComputeBuffer<Element>: ComputeRealizable, @unchecked Sendable {
     /// Number of `Element`s the buffer holds.
     public let count: Int
     private var buffer: MTLBuffer?
@@ -117,6 +134,11 @@ public final class PingPong<Element>: @unchecked Sendable {
 /// 16-byte alignment for `float4`/`float2` runs, the usual rules for a Metal
 /// constant buffer. For just a few live floats, the `Particles` `custom:` 4-float
 /// bag (also index 11) is simpler.
+///
+/// `append(camera:aspect:)` packs a `Camera3D` as an `OllinCameraMatrices` (its
+/// view and projection, 128 bytes), so a kernel can project world points through
+/// the sketch's own camera with the library's `ollin_project`; a `Sketch` builds
+/// one for its active camera with `cameraParams()`.
 public struct ComputeParams: Sendable {
     public private(set) var bytes: [UInt8] = []
     public init() {}
@@ -126,6 +148,19 @@ public struct ComputeParams: Sendable {
     public mutating func append(_ value: SIMD4<Float>) { appendBytes(of: value) }
     public mutating func append(_ value: Int32)        { appendBytes(of: value) }
     public mutating func append(_ value: UInt32)       { appendBytes(of: value) }
+    /// A column-major 4x4 matrix (64 bytes, 16-aligned): a kernel reads it as a
+    /// `float4x4`.
+    public mutating func append(_ value: simd_float4x4) { appendBytes(of: value) }
+
+    /// A camera's view and projection matrices, as the `OllinCameraMatrices` the
+    /// library's `ollin_project(camera, world, u.resolution)` takes. `aspect` is the
+    /// canvas width over its height (the projection depends on it), which is what
+    /// `Sketch.cameraParams()` fills in for you. Append it first and start your
+    /// kernel's `constant` struct with an `OllinCameraMatrices` field, or bind the
+    /// struct alone as `constant OllinCameraMatrices &camera [[buffer(11)]]`.
+    public mutating func append(camera: Camera3D, aspect: Double) {
+        appendBytes(of: camera.matrices(aspect: aspect))
+    }
 
     /// Whether anything has been packed (the renderer binds index 11 only if not).
     public var isEmpty: Bool { bytes.isEmpty }

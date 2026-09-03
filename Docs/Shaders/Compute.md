@@ -24,6 +24,7 @@ Both write the per-element update as a short snippet of Metal, and Ollin generat
 - [Texture kernels & simulations](#textures) - `Simulation`, `ComputeTexture`
 - [Kernels in a `.metal` file](#metalfile)
 - [The typed core](#core) - `ComputeKernel`, `ComputeBuffer`, `compute`
+- [Projecting through the camera](#camera) - a kernel that sees the sketch's `Camera3D`
 - [SpatialHash, the GPU neighbor search](#spatialhash)
 - [Notes](#notes)
 
@@ -60,9 +61,9 @@ final class Flow: Sketch {
 ```
 
 - **`updateParticles(_:)`** records the simulation step, so the kernel runs once over every particle, on the GPU, before the frame is drawn.
-- **`drawParticles(_:)`** draws the particles as additive sub-pixel discs (the same area-conserving coverage [`drawCircle`](../Drawing/Drawing.md) uses, so a million tiny jittered marks fade by area instead of flickering). They composite under the active [`blendMode`](../Drawing/Drawing.md#blendmode) and in draw order with everything else, so you can draw particles, then switch to `.normal` and draw a caption over them.
+- **`drawParticles(_:)`** draws the particles as sub-pixel discs (the same area-conserving coverage [`drawCircle`](../Drawing/Drawing.md) uses, so a million tiny jittered marks fade by area instead of flickering). They composite under the active [`blendMode`](../Drawing/Drawing.md#blendmode) and in draw order with everything else, so you can draw particles, then switch to `.normal` and draw a caption over them.
 
-That's the whole loop. For the sandpainting look, pair it with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode), [`noClear()`](../Drawing/Accumulation.md), and [`toneMap`](../Drawing/HDR.md), so particles sum as light into a float buffer that tone-maps to a glow. See `Examples/Compute/CurlField` and `Examples/Rendering/DepthOfField`.
+That's the whole loop. For the sandpainting look, pair it with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode) and an [`Accumulator`](../Drawing/Accumulation.md#accumulator), so particles sum as light into a running mean that converges, and draw them with the **`.light` style**, `drawParticles(sand, style: .light)`, which deposits each particle's light in proportion to its area with no perceptual remap (the default `.marks` style is ink: right over a light ground, wrong for a sum of light). Particles at or under one pixel then take a one-texel path, so a million of them cost a million fragments rather than twenty-five million. See [Depth of field from light](../Drawing/DepthOfField.md#light) for the deposit rules, and `Examples/Compute/CurlField` and `Examples/Rendering/DepthOfField`.
 
 <a id="snippet"></a>
 ### The kernel snippet
@@ -94,7 +95,8 @@ Every kernel gets the [shader library](./ShaderLibrary.md) spliced in for free, 
 - `hash11`/`hash12`/`hash13` → `float`, `hash22` → `float2`, and `hash33` → `float3` are fast hashes for randomness (`hashNM` gives `N` output channels from an `M`-component seed).
 - `valueNoise(float2)` / `valueNoise(float3)` → `float` and `fbm(float2)` give smooth value noise.
 - `curlNoise(float2)` → `float2` is a divergence-free flow field, so particles advected by it swirl without clumping.
-- `discSample(float2 seed)` → `float2` is a point in the unit disc, uniform over its *area* (the right scatter for energy-conserving bokeh).
+- `discSample(float2 seed)` → `float2` is a point in the unit disc, uniform over its *area* (the right scatter for energy-conserving bokeh), and `ballSample(float3 seed)` → `float3` its three-dimensional counterpart, uniform over the unit ball's *volume* (the scatter a lens applies to a sample in camera space).
+- `ollin_project(camera, world, u.resolution)` projects a world point through a `Camera3D` the sketch packed into the params; see [Projecting through the camera](#camera).
 - `srgbToLinear(float3)` converts when you need linear color.
 
 The rest of the library is there too (cosine `palette`, OKLab conversions, the `sd*` distance-function catalog, the domain operators). See the [shader library reference](./ShaderLibrary.md) for the full set.
@@ -241,7 +243,7 @@ let sim = ComputeKernel(entry: "step", """
 """)
 ```
 
-Bind your own buffers at indices **0…9**. Index **10** is the standard `OllinComputeUniforms`, and index **11** is `custom`/params. The compiled pipeline is cached by the source's hash, so re-creating the same kernel value each frame is free.
+Bind your own buffers at indices **0…9** (`compute(_:buffers:)` hands a kernel up to ten, in order). Index **10** is the standard `OllinComputeUniforms`, and index **11** is `custom`/params. The compiled pipeline is cached by the source's hash, so re-creating the same kernel value each frame is free.
 
 <a id="computebuffer"></a>
 #### ComputeBuffer
@@ -264,16 +266,52 @@ Record a dispatch:
 // In place, one buffer read and written:
 compute(sim, over: buffer)
 
-// Ping-pong, read one and write the other (swap between frames):
+// Ping-pong, read one and write the other (swap between frames). The two may
+// hold different element types: a segment list read, a particle buffer written.
 compute(sim, reading: pp.read, writing: pp.write)
 pp.advance()
+
+// Up to ten buffers of any element types, bound at indices 0, 1, 2, … in order;
+// the thread count defaults to the first buffer's element count.
+compute(scatter, buffers: [segments, lookup, particles], count: particles.count, params: params)
 
 // Textures, write one (texture 0), or read one and write another (0 → 1):
 compute(generator, writing: tex)
 compute(transform, reading: src, writing: dst)
 ```
 
+The `buffers:` form is the one for a kernel that reads static geometry uploaded once (a `ComputeBuffer` of your own struct) and writes an `OllinParticle` buffer the renderer draws, with a table or two beside them; nothing has to be packed into a struct it isn't. Any `ComputeBuffer` is a `ComputeBindable`, whatever its element type.
+
 Draw a `ComputeBuffer<OllinParticle>` directly with `drawParticles(_ buffer:)`. For a custom struct, draw it with your own geometry (read the buffer in your own shader, or copy positions out). Draw a `ComputeTexture` with its `image` (a texture-backed [`Image`](../Drawing/Drawing.md)).
+
+<a id="camera"></a>
+### Projecting through the camera
+
+A kernel can place its particles by projecting world points through the sketch's own `Camera3D`, so a 3D scene sampled on the GPU lands exactly where `drawMesh` or `project(_:)` would put it. `cameraParams()` packs the active camera's view and projection matrices (an `OllinCameraMatrices`, 128 bytes) as the head of a `ComputeParams`; append your own values after it and start the kernel's `constant` struct with the same field:
+
+```swift
+var params = cameraParams()                                   // the active camera, canvas aspect
+params.append(SIMD4<Float>(Float(focalDistance), Float(strength), 0, 0))
+compute(scatter, buffers: [segments, particles], params: params)
+```
+
+```metal
+struct Lens { OllinCameraMatrices camera; float4 lens; };
+
+kernel void scatter(device const Segment *segments [[buffer(0)]],
+                    device OllinParticle *out [[buffer(1)]],
+                    constant OllinComputeUniforms &u [[buffer(10)]],
+                    constant Lens &p [[buffer(11)]],
+                    uint id [[thread_position_in_grid]]) {
+    float3 world = …;
+    float4 screen = ollin_project(p.camera, world, u.resolution);
+    if (screen.w <= 0.0) { /* behind the camera */ }
+    out[id].position = screen.xy;           // canvas points, top-left origin
+    float depth = screen.z;                 // distance along the view axis
+}
+```
+
+`ollin_project` returns the canvas position in `xy`, the view-space depth in `z`, and the clip-space `w`. The depth is positive in front of the camera and is the distance a focal plane is measured against. A `w` of zero or less means the point is behind the camera. To move a point in camera space first, the way a lens pushes a sample sideways and in depth, take it through `p.camera.view` yourself, move it, and finish with `ollin_project_eye(p.camera, eye, u.resolution)`. The matrices are the public `Camera3D.viewMatrix` and `projectionMatrix(aspect:)`, so `ComputeParams.append(camera:aspect:)` packs any camera, not only the active one. [Depth of field from light](../Drawing/DepthOfField.md) builds a lens on this.
 
 <a id="spatialhash"></a>
 ### SpatialHash, the GPU neighbor search
@@ -322,6 +360,7 @@ The buffer-index contract for a query kernel: `reading` at 0, `writing` at 1, `s
 ### Notes
 
 - **`OllinParticle`** is the built-in particle struct (`position`, `velocity`, `color`, `size`, `life`, two scratch floats). `drawParticles` reads `position`/`color`/`size` from it. A custom struct that wants the built-in renderer must place those fields at the same offsets, or render itself.
+- **Two particle styles.** `.marks` (the default) is ink: perceptual coverage and an sRGB `color`. `.light` is light: linear area coverage, a linear `color`, and a one-texel path at or under one pixel. Use `.light` for anything summed additively into an `Accumulator` or a `noClear` canvas; see [the light particle style](../Drawing/DepthOfField.md#light).
 - **Ping-pong, not in place, for simulation.** When a buffer or texture is both written by the kernel and read by the render path each frame, drive it as a `PingPong` / `PingPongTexture` pair (`Particles` and `Simulation` do this for you). In-place `compute(_:over:)` is for scratch work the render path doesn't also read that frame.
 - **A `ComputeTexture` draws as linear color.** Its texels feed the render pipeline as linear values (the format the renderer composites in). Author display colors in a kernel through `srgbToLinear` (from the [shader library](#prelude)) and keep alpha at 1 for opaque, predictable compositing. Storage is `.shared` (unified memory) with `.shaderRead`+`.shaderWrite` usage.
 - **Determinism.** GPU floating-point results are deterministic on a given device but can differ across GPUs (reassociation), so compute renders aren't pinned to exact reference images.

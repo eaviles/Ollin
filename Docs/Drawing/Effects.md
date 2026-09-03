@@ -64,6 +64,8 @@ let badge = makeRenderTarget(width: 256, height: 256)
 
 Make a target inside `draw()`. It's a per-frame handle, and the GPU texture behind it is pooled and reused across frames for you, so creating one each frame doesn't allocate.
 
+`makeRenderTarget(scale:precision:)` also takes a `precision`: `.float16` (the default, `rgba16Float`) or `.float32` (`rgba32Float`) for a layer whose values are sums rather than a picture, since half float stops moving once a step falls under about one part in a thousand of the value. Twice the memory; a filter over it still writes a half-float layer.
+
 <a id="withtarget"></a>
 ### withTarget(_:_:)
 
@@ -141,6 +143,7 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 - **`.gradientMap(_:amount:)`** read luminance and look its color up along a [`Ramp`](../Drawing/Color.md) or [`Colormap`](../Drawing/Color.md) (viridis, magma, turbo, …). A fast recolor of a grayscale field or a whole scene.
 - **`.softProof(_:warning:amount:)`** show the layer as a press will print it, through an ICC profile: the colors ink cannot reach pulled in, the blacks lifted to what ink can do. `warning` paints what will not survive in that color instead, and `amount: 0` leaves the colors alone so only the flag shows. See [Print color](../Output/PrintColor.md).
 - **`.exposure(stops:)`** scale the light in linear-light stops (+1 doubles, −1 halves).
+- `.develop(exposure:ground:)` prints a layer of accumulated light: scaled by `exposure`, rolled off through the Reinhard curve, and laid on `ground`, added after the curve as a display color and written as the display value itself. What an [`Accumulator`](./Accumulation.md#accumulator)'s `developed` runs; see [Depth of field from light](./DepthOfField.md#develop).
 - **`.levels(blackPoint:whitePoint:gamma:)`** the photo-tool staple: pull `blackPoint` to black and `whitePoint` to white, then bend the midtones by `gamma` (>1 darkens).
 - **`.solarize(_:softness:)`** invert the tones above a brightness with a soft fold, the part-positive, part-negative darkroom (Sabattier) look.
 - **`.temperature(amount:tint:)`** white balance: `amount` warms (>0) or cools (<0), `tint` pushes toward magenta (>0) or green (<0).
@@ -627,6 +630,7 @@ override func draw() {
 - `withFeedback(_:_:)` hands the previous frame in as the closure parameter. The `withTarget(feedback) { … }` form works too, reading last frame by name with `feedback.previous` inside.
 - `feedback.previous` is last frame's content, and `feedback.image` is this frame's, for compositing.
 - `feedback.filtered(_:)` runs this frame's result through a `Filter` (bloom the trails, recolor them through a gradient map) like any layer, and the state the loop carries forward stays untouched.
+- `makeFeedback(precision: .float32)` keeps the pair in single-precision float, for a loop that carries a long sum of faint light: half float stops moving once each frame's contribution falls under one part in a thousand of the total. For a sum that should converge rather than grow, an [`Accumulator`](./Accumulation.md#accumulator) keeps the sum in single precision and divides by the passes for you.
 - Call `background(_:)` **before** the block. On the canvas it resets the whole frame, so calling it after would wipe the layer's geometry (like any other `withTarget` layer). Inside the block, `background(_:)` clears just the feedback layer.
 - See the `Effects/Feedback` example for a spiralling tunnel.
 

@@ -21,8 +21,9 @@ extension Color {
     }
 
     /// This color's straight-alpha RGBA as linear-light floats: the form the
-    /// effect fragments and generators composite in (RGB linearized, alpha as-is).
-    var linearRGBA: SIMD4<Float> {
+    /// effect fragments and generators composite in (RGB linearized, alpha as-is),
+    /// and the radiance a `.light` particle or a `SprayLine` carries.
+    public var linearRGBA: SIMD4<Float> {
         SIMD4(Float(Color.srgbToLinear(red)), Float(Color.srgbToLinear(green)),
               Float(Color.srgbToLinear(blue)), Float(alpha))
     }

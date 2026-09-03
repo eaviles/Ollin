@@ -42,6 +42,12 @@ public final class Feedback {
     /// Clamped to a sane range.
     public let scale: Double
 
+    /// Bits per channel in the ping-pong pair (`makeFeedback(precision:)`). Half
+    /// float by default; `.float32` for a layer that sums faint light over
+    /// thousands of frames, where half float stops moving once each frame's
+    /// contribution falls under its spacing.
+    public let precision: LayerPrecision
+
     /// The drawer that owns the recording, so a `withFeedback` block records against
     /// it. Weak: the drawer outlives per-frame work; the sketch owns the `Feedback`.
     weak var drawer: Drawer?
@@ -63,15 +69,17 @@ public final class Feedback {
     var pixelWidth: Int { max(1, Int((Double(width) * scale).rounded())) }
     var pixelHeight: Int { max(1, Int((Double(height) * scale).rounded())) }
 
-    init(width: Int, height: Int, scale: Double, drawer: Drawer?) {
+    init(width: Int, height: Int, scale: Double, drawer: Drawer?,
+         precision: LayerPrecision = .float16) {
         self.width = max(1, width)
         self.height = max(1, height)
         self.scale = min(4, max(0.05, scale))
+        self.precision = precision
         self.drawer = drawer
         self.writeLayer = RenderTarget(width: self.width, height: self.height,
-                                       scale: self.scale, drawer: drawer)
+                                       scale: self.scale, drawer: drawer, precision: precision)
         self.previousLayer = RenderTarget(width: self.width, height: self.height,
-                                          scale: self.scale, drawer: drawer)
+                                          scale: self.scale, drawer: drawer, precision: precision)
         // Stamp the write layer now that `self` exists, so the renderer can recover
         // this `Feedback` (and its persistent textures) from the recorded target.
         self.writeLayer.origin = .feedback(self)

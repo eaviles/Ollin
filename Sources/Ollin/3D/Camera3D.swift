@@ -1,5 +1,6 @@
 import Foundation
 import simd
+import COllinShaders
 
 /// A camera for 3D drawing: an eye looking at a target, plus how it flattens
 /// space onto the canvas (perspective or orthographic).
@@ -170,10 +171,14 @@ extension Camera3D {
     }
 }
 
-// MARK: - Matrices (internal — the renderer consumes these; sketches set the camera)
+// MARK: - Matrices (the renderer consumes these; a kernel can too)
 
-extension Camera3D {
-    /// The view matrix (world → camera space), column-major for Metal.
+public extension Camera3D {
+    /// The view matrix (world → camera space), column-major for Metal: multiply a
+    /// world point (as a `SIMD4<Float>` with w = 1) by it to land in camera space,
+    /// where the camera sits at the origin looking down −z. Public so a compute
+    /// kernel or a shader of your own can project through the sketch's camera;
+    /// `ComputeParams.append(camera:aspect:)` packs it with the projection.
     var viewMatrix: simd_float4x4 {
         Camera3D.lookAt(eye: eye.simd3, center: target.simd3, up: up.simd3)
     }
@@ -237,9 +242,16 @@ extension Camera3D {
         projectionMatrix(aspect: aspect) * viewMatrix
     }
 
+    /// Both matrices as the shared `OllinCameraMatrices` a compute kernel reads
+    /// (`ollin_project` in the shader library takes one). `aspect` is the canvas
+    /// width over its height.
+    func matrices(aspect: Double) -> OllinCameraMatrices {
+        OllinCameraMatrices(view: viewMatrix, projection: projectionMatrix(aspect: aspect))
+    }
+
     /// Right-handed look-at: world → camera space, camera looking down −z.
     /// Column-major (Metal). Written from the standard formula.
-    static func lookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
+    internal static func lookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {
         let z = simd_normalize(eye - center)        // +z points back toward the eye
         let x = simd_normalize(simd_cross(up, z))   // camera right
         let y = simd_cross(z, x)                     // camera up (re-orthogonalized)
@@ -253,7 +265,7 @@ extension Camera3D {
 
     /// Right-handed perspective with Metal's z ∈ [0, 1] clip range (near → 0,
     /// far → 1). `fovY` is the full vertical field of view in radians.
-    static func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
+    internal static func perspective(fovY: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
         let f = 1 / tan(fovY / 2)
         let zRange = near - far
         return simd_float4x4(columns: (
@@ -274,7 +286,7 @@ extension Camera3D {
     /// point projects back to the pixel it came from, and NDC spans the full image
     /// (col 0…W → x −1…1, row 0…H → y +1…−1). It collapses to the symmetric
     /// `perspective(fovY:...)` when `cx = W/2`, `cy = H/2`, `fx = fy`.
-    static func perspective(intrinsics k: CameraIntrinsics, near: Float, far: Float) -> simd_float4x4 {
+    internal static func perspective(intrinsics k: CameraIntrinsics, near: Float, far: Float) -> simd_float4x4 {
         let w = Float(k.width), h = Float(k.height)
         guard w > 0, h > 0 else { return matrix_identity_float4x4 }
         let fx = Float(k.fx), fy = Float(k.fy), cx = Float(k.cx), cy = Float(k.cy)
@@ -291,7 +303,7 @@ extension Camera3D {
 
     /// Right-handed orthographic with Metal's z ∈ [0, 1] clip range, centered,
     /// framing `height` world units tall and `height · aspect` wide.
-    static func orthographic(height: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
+    internal static func orthographic(height: Float, aspect: Float, near: Float, far: Float) -> simd_float4x4 {
         let w = height * aspect
         let zRange = near - far
         return simd_float4x4(columns: (

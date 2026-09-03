@@ -201,6 +201,7 @@ final class WebGraphRecorder {
         var ordered: [RenderTarget] = []
         for target in drawer.renderTargets { if case .generator = target.origin { ordered.append(target) } }
         for target in drawer.renderTargets { if case .ocean = target.origin { throw refuse("an ocean field") } }
+        for target in drawer.renderTargets { if case .accumulate = target.origin { throw refuse("an accumulator (a running mean of light)") } }
         for target in drawer.renderTargets { if case .geometry = target.origin { ordered.append(target) } }
         for target in drawer.renderTargets { if case .feedback = target.origin { ordered.append(target) } }
         for target in drawer.renderTargets { if case .simField = target.origin { ordered.append(target) } }
@@ -410,6 +411,8 @@ final class WebGraphRecorder {
                 layer.kind = .sim(simNode, clear: clearOf(target), items: try items(for: target))
             case .ocean:
                 throw refuse("an ocean field")
+            case .accumulate:
+                throw refuse("an accumulator (a running mean of light)")
             }
             layers.append(layer)
         }

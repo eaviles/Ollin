@@ -185,6 +185,10 @@ public struct Filter: Sendable {
         case vibrance(amount: Double)
         /// Multiply linear-light color by `gain` (an exposure stop is `2^stops`).
         case exposure(gain: Double)
+        /// Print accumulated light: scale by `exposure`, roll off through the
+        /// Reinhard curve, then add `ground` as a display color and write the
+        /// result as the display value itself.
+        case develop(exposure: Double, ground: SIMD4<Float>)
         /// Remap tones: lift `blackPoint` to 0 and `whitePoint` to 1, then apply `gamma`.
         case levels(blackPoint: Double, whitePoint: Double, gamma: Double)
         /// Cycle the hue wheel `cycles` times across the luminance range (rainbow banding).
@@ -694,6 +698,21 @@ public struct Filter: Sendable {
     /// ones least (so it punches up a flat image without blowing skin tones). Negative dulls.
     public static func vibrance(amount: Double = 0.5) -> Filter {
         Filter(kind: .vibrance(amount: min(max(amount, -1), 2)))
+    }
+
+    /// Print a layer of accumulated light as a picture. The layer's linear values
+    /// (an `Accumulator`'s mean, a `noClear` pile) are scaled by `exposure`, rolled
+    /// off through the Reinhard curve `x / (1 + x)` so nothing ever clips, and laid
+    /// on `ground`, which is added *after* the curve as a display color and never
+    /// touched by it: the paper the light is printed on. The sum is written as the
+    /// display value itself rather than re-encoded, which is what gives a
+    /// sandpainting its deep midtones. Alpha comes out 1. For a picture rather
+    /// than a pile of light, `.exposure` plus the frame's `toneMap` is the ordinary
+    /// route.
+    public static func develop(exposure: Double = 1, ground: Color = .black) -> Filter {
+        Filter(kind: .develop(exposure: max(0, exposure),
+                              ground: SIMD4<Float>(Float(ground.red), Float(ground.green),
+                                                   Float(ground.blue), 1)))
     }
 
     /// Exposure in `stops` (linear-light): +1 doubles the light, −1 halves it.

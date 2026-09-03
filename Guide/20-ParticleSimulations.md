@@ -38,7 +38,19 @@ Inside the snippet, each particle's `position`, `color`, `size`, and `life` are 
 
 <img src="Images/20-ParticleSimulations/MillionGrains.jpg" alt="Three strips of the same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, and a smooth field of light" width="560">
 
-Each grain sheds the same faint light, and density does the drawing. At ten thousand you see individuals, at a million you see a *material*. Pair this with [Chapter 16](16-LayersAndEffects.md)'s `noClear()` and `toneMap(.aces)`, and the grains deposit into the long-exposure sandpainting look. The `Rendering/DepthOfField` example pushes it all the way to a photographic bokeh field. The [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, and the typed core underneath.
+Each grain sheds the same faint light, and density does the drawing. At ten thousand you see individuals, at a million you see a *material*. Pair this with [Chapter 16](16-LayersAndEffects.md)'s `noClear()` and `toneMap(.aces)`, and the grains deposit into the long-exposure sandpainting look.
+
+When the grains are meant as *light* rather than ink, draw them as light: `drawParticles(sand, style: .light)`. The default style is tuned for marks over a light ground, and it lifts a dot that straddles a pixel corner to more than twice the light of one that lands on a center, which a sum of a million dots then bakes in. The light style deposits each grain's `color × alpha × area` wherever it falls, and a grain at or under one pixel costs one fragment instead of twenty-five. Put those into Chapter 16's `Accumulator` and the picture converges instead of brightening:
+
+```swift
+withAccumulator(light) {
+    blendMode(.add)
+    drawParticles(sand, style: .light)
+}
+drawImage(light.developed(exposure: 20).image, 0, 0)
+```
+
+The `Rendering/DepthOfField` example pushes this all the way to a photograph with a real lens: a million samples a frame, each pushed into a ball that grows with its distance from the plane of focus, projected through the sketch's own camera by a kernel (`cameraParams()` packs the matrices, `ballSample` scatters, `ollin_project_eye` lands the point), averaged until bokeh emerges. For a scene made of lines, `LineSpray` is that whole pipeline in one call, and the `Rendering/LineSpray` example is a sphere of a hundred and fifty rings seen through it. The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules; the [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, the multi-buffer dispatch, and the typed core underneath.
 
 ## Crowds that organize themselves: Physarum
 
@@ -339,14 +351,15 @@ The breeding half has its own lineage. The genetic algorithm is John Holland's, 
 
 ## Go deeper
 
-- [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, and dropping to a raw `ComputeKernel` when the built-in layout is not enough.
+- [Compute and GPU particles](../Docs/Shaders/Compute.md): the full `Particles` snippet vocabulary, every local in scope, the `custom` parameters, dropping to a raw `ComputeKernel` when the built-in layout is not enough, binding up to ten buffers, and projecting through the sketch's camera from a kernel.
+- [Depth of field from light](../Docs/Drawing/DepthOfField.md): `LineSpray` and the `Bokeh` lens, the light particle style's deposit rules, and the `develop` print.
 - [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every parameter, plus the matrix rolling and the reproducibility caveat.
 - [Ant colony](../Docs/Generators/AntColony.md): the trail and closeness pulls, evaporation, elitism, and reading the best tour back out.
 - [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every parameter, and how to pick a temperament rather than a number.
 - [Fluids and soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching parameters, grabbing with the mouse, and what each solver is and is not good for.
 - [Evolution](../Docs/Simulation/Evolution.md): the scoring and selection in full, the pacing you can control, and the interactive form.
 - Appendix B draws the idea underneath all of this: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Simulation/ParticleLife`](../Examples/Simulation/ParticleLife/Sketch.swift), [`PrimordialParticles`](../Examples/Simulation/PrimordialParticles/Sketch.swift), [`Physarum`](../Examples/Simulation/Physarum/Sketch.swift), [`ParticleLenia`](../Examples/Simulation/ParticleLenia/Sketch.swift), [`Swarm`](../Examples/Simulation/Swarm/Sketch.swift), [`SwarmChemistry`](../Examples/Simulation/SwarmChemistry/Sketch.swift), [`ParticleFluid`](../Examples/Simulation/ParticleFluid/Sketch.swift), [`SoftBodies`](../Examples/Simulation/SoftBodies/Sketch.swift), [`Evolution`](../Examples/Simulation/Evolution/Sketch.swift), and [`Breeding`](../Examples/Simulation/Breeding/Sketch.swift).
+- Worked examples: [`Examples/Simulation/ParticleLife`](../Examples/Simulation/ParticleLife/Sketch.swift), [`PrimordialParticles`](../Examples/Simulation/PrimordialParticles/Sketch.swift), [`Physarum`](../Examples/Simulation/Physarum/Sketch.swift), [`ParticleLenia`](../Examples/Simulation/ParticleLenia/Sketch.swift), [`Swarm`](../Examples/Simulation/Swarm/Sketch.swift), [`SwarmChemistry`](../Examples/Simulation/SwarmChemistry/Sketch.swift), [`ParticleFluid`](../Examples/Simulation/ParticleFluid/Sketch.swift), [`SoftBodies`](../Examples/Simulation/SoftBodies/Sketch.swift), [`Evolution`](../Examples/Simulation/Evolution/Sketch.swift), [`Breeding`](../Examples/Simulation/Breeding/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift), and [`Examples/Rendering/LineSpray`](../Examples/Rendering/LineSpray/Sketch.swift).
 
 ---
 
