@@ -43,6 +43,9 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               write the run itself down;
                                               --replay take.json plays it back
                                               or re-renders it via any export
+       ollin phone <path/to/Sketch.swift>     run it on a paired iPhone or iPad,
+                                              built and installed again on every
+                                              save (--device, --once, --fresh)
        ollin new [name.swift]                 write a starter sketch file
        ollin new <Name> [--template ...]      make a project folder
        ollin new <Name> --from-shader <src>   translate a GLSL fragment shader
@@ -177,9 +180,29 @@ cmd_install() {
     echo "  try it:    ollin new Dots.swift && ollin Dots.swift"
 }
 
+# ollin phone <Sketch.swift> [--device <name>] [--once] [--fresh]: the sketch on
+# a paired iPhone or iPad, built and installed again on every save, its state
+# carried across each relaunch and its parameters reachable from the Mac. The
+# command draws nothing itself, so it builds in the everyday configuration.
+cmd_phone() {
+    local sketch="${1:-}"
+    if [[ -z "$sketch" ]]; then
+        echo "usage: ollin phone <path/to/Sketch.swift> [--device <name>] [--once] [--fresh]" >&2
+        exit 2
+    fi
+    shift
+    if [[ ! -f "$sketch" ]]; then
+        echo "ollin: file not found: $sketch" >&2
+        exit 2
+    fi
+    exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinTether "${sketch:A}" "$@"
+}
+
 case "${1:-}" in
     new)
         shift; cmd_new "$@" ;;
+    phone)
+        shift; cmd_phone "$@" ;;
     generate)
         shift; cmd_generate "$@" ;;
     check)

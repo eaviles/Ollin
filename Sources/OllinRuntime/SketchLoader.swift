@@ -422,7 +422,7 @@ public struct SketchLoader: Sendable {
 
     /// The name of the first `class …: Sketch` in the source (allowing a leading
     /// `final` and trailing protocol conformances after `Sketch`).
-    static func sketchClassName(in source: String) -> String? {
+    package static func sketchClassName(in source: String) -> String? {
         let pattern = #"class\s+(\w+)\s*:\s*[^{]*\bSketch\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let range = NSRange(source.startIndex..., in: source)

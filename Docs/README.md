@@ -227,6 +227,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 - [`Project generator`](./Tools/ProjectGenerator.md) - `ollin new` and `ollin generate`: a ready-to-run sketch folder from a few questions, with templates you can watch running before you pick one
 - [`Single-file sketches`](./Tools/SingleFile.md) - the `ollin` command: run one `.swift` file as a sketch from anywhere, no package needed
+- [`The sketch on the phone`](./Tools/OnThePhone.md) - `ollin phone`: the sketch on a paired iPhone or iPad, installed again on every save with its clock and parameters carried across, and the parameters live on the Mac
 - [`Live coding`](./Tools/LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 - [`Bringing a shader over`](./Tools/ShaderImport.md) - `ollin new --from-shader`: translate a GLSL fragment shader into Metal and get a project around it
 - [`Checking a shader`](./Tools/ShaderCheck.md) - `ollin check`: compile a `.metal` file on this machine's GPU and see the errors at your own line, what the shader is, and the parameters it reads

@@ -6,6 +6,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **The sketch on the phone.** A sketch runs on an iPhone or iPad as an app, and `ollin phone Sketch.swift` puts it there and installs it again on every save, its clock and parameters carried across, with the parameters live on the Mac. `SketchRunner.beginInstallation` is public, so an app of your own can turn the checkpoint on. [The sketch on the phone](Docs/Tools/OnThePhone.md).
 - **The website.** `ollin site` writes the README, the Guide, the reference, and every example with its source out as a static website, the pages rendered from the same files `ollin docs` reads, with a workflow that publishes it to GitHub Pages. [The reference offline](Docs/Tools/Reference.md#in-a-browser).
 
 ## [0.1.0] - 2026-09-02

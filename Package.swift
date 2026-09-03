@@ -238,6 +238,17 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]
         ),
+        // `ollin phone <Sketch.swift>`: the edit loop against a paired iPhone or
+        // iPad. A phone loads no pushed dylib, so the loop is a rebuild and a
+        // reinstall through devicectl on every save, with the app's checkpoint
+        // carrying the clock and the parameters across each relaunch, and the
+        // phone's parameter surface proxied to the Mac over the cable. It draws
+        // nothing itself, so it needs neither -export_dynamic nor the satellites.
+        .executableTarget(
+            name: "OllinTether",
+            dependencies: ["OllinRuntime", "OllinUSBMux"],
+            path: "Sources/OllinTether"
+        ),
         // The examples gallery: a sidebar list of every Examples/ sketch; click
         // one and it compiles + renders in the detail pane. Reuses OllinRuntime's
         // loader and Ollin's SketchView. Needs -export_dynamic for the same

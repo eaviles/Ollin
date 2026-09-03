@@ -167,8 +167,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     /// Start the parts of an installation the runner owns. Called by the host
-    /// that opened the window, once, before the first frame.
-    func beginInstallation(_ settings: Installation) {
+    /// that opened the window, once, before the first frame. Public so an app
+    /// that puts a sketch in a `SketchView` (a phone, say) can turn the
+    /// checkpoint on: the app owns the launch there, so nothing else reads
+    /// what the sketch would declare in its `Installation`.
+    public func beginInstallation(_ settings: Installation) {
         guard let interval = settings.checkpoint.interval else { return }
         checkpointInterval = interval
         // A watchdog stopping the piece, or Control-C in the terminal it was

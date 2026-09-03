@@ -1,4 +1,5 @@
 import Foundation
+import OllinRuntime
 import os
 
 /// `swift run OllinLive --watchtest` — a headless check that the FSEvents

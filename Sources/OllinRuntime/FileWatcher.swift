@@ -7,7 +7,7 @@ import CoreServices
 /// It watches *directories* on purpose: editors save by writing a temp file and
 /// renaming it over the original, which invalidates a file-descriptor watch but
 /// shows up fine as a directory event.
-final class FileWatcher {
+package final class FileWatcher {
     private let paths: [String]
     private let debounce: TimeInterval
     private let onChange: @Sendable ([String]) -> Void
@@ -17,13 +17,13 @@ final class FileWatcher {
     private var pending: DispatchWorkItem?
     private var changed = Set<String>()
 
-    init(paths: [String], debounce: TimeInterval = 0.15, onChange: @escaping @Sendable ([String]) -> Void) {
+    package init(paths: [String], debounce: TimeInterval = 0.15, onChange: @escaping @Sendable ([String]) -> Void) {
         self.paths = paths
         self.debounce = debounce
         self.onChange = onChange
     }
 
-    func start() {
+    package func start() {
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
@@ -49,7 +49,7 @@ final class FileWatcher {
                     | kFSEventStreamCreateFlagFileEvents
                     | kFSEventStreamCreateFlagNoDefer))
         else {
-            FileHandle.standardError.write(Data("OllinLive: couldn't start file watcher\n".utf8))
+            FileHandle.standardError.write(Data("Ollin: couldn't start file watcher\n".utf8))
             return
         }
         self.stream = stream
@@ -57,7 +57,7 @@ final class FileWatcher {
         FSEventStreamStart(stream)
     }
 
-    func stop() {
+    package func stop() {
         guard let stream else { return }
         FSEventStreamStop(stream)
         FSEventStreamInvalidate(stream)
