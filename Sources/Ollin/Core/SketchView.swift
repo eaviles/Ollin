@@ -2425,6 +2425,17 @@ public enum OllinApp {
     /// sketch asked for.
     public static var exportRenderScale = 1
 
+    /// How many times each exported frame is drawn before it is written, with
+    /// the clock held: `--settle N`. The first draw advances the sketch's clock
+    /// as always; the next N−1 draw the same moment again (`time` unchanged,
+    /// `deltaTime` zero, `frameCount` counting on), and the last one is what
+    /// lands in the file. A picture that converges over frames, an
+    /// `Accumulator`'s running mean or a `LineSpray` through a moving camera,
+    /// settles for every written frame instead of only the first, at N times
+    /// the cost. 1 (the default) draws each frame once. A `noClear` pile keeps
+    /// adding through the held draws, so it brightens N times faster there.
+    public static var exportSettle = 1
+
     /// The renderer a headless render draws through. A failure is said out loud, since the
     /// usual cause is a shader that stopped compiling and the export would otherwise die
     /// with a "no Metal device" that hides the compiler's message.
@@ -2471,27 +2482,37 @@ public enum OllinApp {
         var accumulated: CGImage?
         var fedBack: CGImage?
         let target = max(0, frame)
+        // The captured frame is drawn `exportSettle` times with the clock held
+        // (the same `time`, no `deltaTime`, the frame count moving on so the
+        // renderer steps its persistent layers), and the last draw is the one
+        // returned: a running mean settles before the still is taken.
+        let settle = max(1, exportSettle)
         for k in 0...target {                        // advance so frame N is correct
-            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-            sketch.performDraw()
-            if sketch.drawer.accumulates {
-                accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
-                                                        width: width, height: height)
-            } else if sketch.drawer.usesFeedback {
-                // Feedback state lives in render-pass-filled ping-pong textures, so
-                // (like accumulation) every intermediate frame must render (which also
-                // steps compute) for the layer to evolve; only the last frame is kept.
-                fedBack = renderer.image(of: sketch.drawer, viewport: viewport,
-                                         width: width, height: height)
-            } else if k < target {
-                // A stateful compute sim must run on the GPU every frame to evolve;
-                // the intermediate frames we don't capture still need their steps
-                // executed (only the final frame is rendered + read back below).
-                renderer.stepCompute(sketch.drawer)
+            let draws = k == target ? settle : 1
+            for pass in 0..<draws {
+                sketch.advance(time: Double(k) / fps, deltaTime: pass == 0 ? 1 / fps : 0, frameRate: fps)
+                sketch.performDraw()
+                if sketch.drawer.accumulates {
+                    accumulated = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
+                                                            width: width, height: height)
+                } else if sketch.drawer.usesFeedback || pass > 0 {
+                    // Feedback state lives in render-pass-filled ping-pong textures, so
+                    // (like accumulation) every intermediate frame must render (which also
+                    // steps compute) for the layer to evolve; only the last frame is kept.
+                    // A settle draw always renders, since rendering is what steps the
+                    // layer it is there to settle.
+                    fedBack = renderer.image(of: sketch.drawer, viewport: viewport,
+                                             width: width, height: height)
+                } else if k < target {
+                    // A stateful compute sim must run on the GPU every frame to evolve;
+                    // the intermediate frames we don't capture still need their steps
+                    // executed (only the final frame is rendered + read back below).
+                    renderer.stepCompute(sketch.drawer)
+                }
             }
         }
         if sketch.drawer.accumulates { return accumulated }
-        if sketch.drawer.usesFeedback { return fedBack }
+        if sketch.drawer.usesFeedback || settle > 1 { return fedBack }
         return renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
     }
 
@@ -2698,6 +2719,19 @@ public enum OllinApp {
                 rendered = accumulates
                     ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
                     : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                // A written frame settles: the same moment drawn again `exportSettle`
+                // times with the clock held (no `deltaTime`, the frame count moving
+                // on so the renderer steps its persistent layers), and the last
+                // draw is the one written. Warmup frames are drawn once.
+                if k >= skipFrames {
+                    for _ in 1..<max(1, exportSettle) {
+                        sketch.advance(time: Double(k) / clock, deltaTime: 0, frameRate: clock)
+                        sketch.performDraw()
+                        rendered = accumulates
+                            ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                            : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                    }
+                }
             } else {
                 // Non-accumulating warmup frame: not captured, but a stateful compute
                 // sim still needs its steps run on the GPU so the field evolves into
@@ -2943,6 +2977,32 @@ public extension OllinApp {
         if let i = args.firstIndex(of: "--render-scale"), i + 1 < args.count,
            let n = Int(args[i + 1]) {
             exportRenderScale = max(1, n)
+        }
+        // `--settle N` draws each exported frame N times with the clock held and
+        // writes the last (see `exportSettle`). Pre-parsed like the render scale,
+        // so it applies to whichever export flag follows.
+        if let i = args.firstIndex(of: "--settle") {
+            guard i + 1 < args.count, let n = Int(args[i + 1]), n >= 1 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --settle N, N the number of draws per written frame (1 draws each frame once)\n".utf8))
+                exit(1)
+            }
+            // A take carries one frame of input per drawn frame, so drawing a
+            // frame several times would read through it several times too fast,
+            // and a recording would write the held draws down as frames.
+            if args.contains("--replay") || args.contains("--record-take") {
+                FileHandle.standardError.write(Data(
+                    "--settle cannot replay or record a take: a take carries one frame of input per drawn frame, and a held clock draws each frame several times\n".utf8))
+                exit(1)
+            }
+            // The interpolator builds a frame from the motion between two drawn
+            // ones, and a held clock leaves none between the settle draws.
+            if args.contains("--made-frames") {
+                FileHandle.standardError.write(Data(
+                    "--settle cannot use --made-frames: a made frame is built from the motion between two drawn frames, and a held clock has none\n".utf8))
+                exit(1)
+            }
+            exportSettle = n
         }
         // `--slow-motion N` writes a file that plays N times slower than the
         // sketch ran: the clock steps N times finer, the file keeps its `--fps`,

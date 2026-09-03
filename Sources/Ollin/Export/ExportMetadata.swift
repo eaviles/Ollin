@@ -39,6 +39,11 @@ struct ExportMetadata {
     /// drawn form, and at `fps` under the made one.
     var slowMotion: SlowMotion? = nil
 
+    /// Draws per written frame with the clock held (`OllinApp.exportSettle`),
+    /// read at capture time so every export path records it; 1 is the ordinary
+    /// single draw and is left out of the recipe.
+    var settle: Int = 1
+
     /// Capture the recipe from `sketch` as it stands: the last seeds applied,
     /// every `@Param`'s current value, and the working tree's git commit.
     @MainActor
@@ -48,7 +53,8 @@ struct ExportMetadata {
                        params: sketch.parameters().map { ($0.name, $0.param.stored) },
                        gitHash: ExportMetadata.workingTreeHash,
                        frame: frame, fps: fps,
-                       captureCommit: ExportMetadata.capturedCommit)
+                       captureCommit: ExportMetadata.capturedCommit,
+                       settle: OllinApp.exportSettle)
     }
 
     /// The recipe as one compact JSON line, e.g.
@@ -85,6 +91,9 @@ struct ExportMetadata {
             // where the rest of its recipe is.
             if slowMotion.source == .made { fields.append("\"madeFrames\":true") }
         }
+        // Said only when it changes the picture: a frame drawn several times with
+        // the clock held is not the frame a single draw would give.
+        if settle > 1 { fields.append("\"settle\":\(settle)") }
         return "{\(fields.joined(separator: ","))}"
     }
 

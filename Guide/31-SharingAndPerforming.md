@@ -125,6 +125,16 @@ swift run OllinLive MySketches/Finale.swift --export-video half.mp4 --seconds 4 
 
 `--made-frames` draws the frames it would have drawn anyway, and asks the GPU to build the ones in between out of the pair on either side. It is the same interpolator a live window can use. It hands you pictures your sketch never drew, so it says so on the console and writes `"madeFrames":true` into the file's own recipe. It needs a 3D scene under a perspective camera, and it does half speed only. Use it when a frame is expensive to draw, and use the drawn form the rest of the time. The full comparison is in [`Docs/Output/Export.md`](../Docs/Output/Export.md#slow-motion).
 
+## Settled, then written
+
+One more dial belongs beside these two, for the pictures that are not finished by one draw. A running mean, the `Accumulator` from [Chapter 16](16-LayersAndEffects.md) or a `LineSpray` through a lens, starts grainy and settles as the frames pile up, and it starts over the moment the camera moves. In a video of a turning scene every frame has a new camera, so every frame is the grainy first one. `--settle N` draws each written frame N times with the clock held, and writes the last:
+
+```sh
+swift run --package-path Examples Example-Rendering-LineSpray --export-video turn.mp4 --seconds 10 --settle 40
+```
+
+The clock does not move during the held draws, so a camera written against `time` stays put while the mean converges underneath it, and then the clock steps on. It costs N times a plain export, which is what a settled frame costs. The [export reference](../Docs/Output/Export.md#settled-frames) has what it refuses (a take, made frames) and why a piling `noClear` canvas is the one thing it does not settle.
+
 ## Vector: the plotter path
 
 [Chapter 15](15-ShapesAsMaterial.md) promised that shapes held as geometry could leave as geometry, and `--export-svg` is that promise kept:

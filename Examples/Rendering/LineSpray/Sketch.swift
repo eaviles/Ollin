@@ -28,6 +28,10 @@ final class LineSpray_Example: Sketch {
     @Param("Elevation", -80 ... 80) var elevation = -24.09
     @Param("Distance", 20 ... 120) var distance = 49.0
     @Param("Field of view", 5 ... 60) var fieldOfView = 20.0
+    /// Turn the camera around the sphere at six degrees a second. Every frame
+    /// then restarts the average, so an export of the turn wants `--settle N`
+    /// to draw each written frame several times with the clock held.
+    @Param("Turn") var turning = false
 
     // The lens.
     @Param("Focal distance", 20 ... 80) var focalDistance = 49.19
@@ -49,8 +53,9 @@ final class LineSpray_Example: Sketch {
 
     override func draw() {
         background(.black)
+        let turn = turning ? time * 6 : 0
         camera(.orbiting(target: .zero, radius: distance,
-                         azimuth: azimuth * .pi / 180, elevation: elevation * .pi / 180,
+                         azimuth: (azimuth + turn) * .pi / 180, elevation: elevation * .pi / 180,
                          fieldOfView: fieldOfView * .pi / 180, near: 2, far: 200))
         spray.bokeh = Bokeh(focalDistance: focalDistance, strength: bokeh, minSize: minimumSize)
         spray.passesPerFrame = passesPerFrame

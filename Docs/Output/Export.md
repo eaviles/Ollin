@@ -37,6 +37,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Animated GIF](#animated-gif) - `--export-gif`, `OllinApp.exportGIF`
 - [Perfect loops](#perfect-loops) - `--export-loop`, `Sketch.loopDuration`
 - [Slow motion](#slow-motion) - `--slow-motion`, `--made-frames`, a file that plays slower than the sketch ran
+- [Settled frames](#settled-frames) - `--settle`, each written frame drawn several times with the clock held, for a picture that converges
 - [Vector: SVG](#vector-svg) - `--export-svg`, `OllinApp.svg` / `exportSVG`
 - [Vector: PDF](#vector-pdf) - `--export-pdf`, `OllinApp.pdf` / `exportPDF`, paper sizes
 - [What SVG export records](#what-svg-export-records) - the shape mapping and the limits
@@ -267,6 +268,26 @@ In code it is one argument, `slowMotion:`, on `exportSequence`, `exportVideo`, a
 ```swift
 OllinApp.exportVideo(sketch, to: "slow.mp4", frames: 480, fps: 60, slowMotion: .drawn(4))
 OllinApp.exportSequence(sketch, to: "frames", frames: 240, fps: 30, slowMotion: .made(2))
+```
+
+### Settled frames
+
+Some pictures are not finished by one draw. A `LineSpray`, or anything drawn into an `Accumulator`, is a running mean that starts grainy and settles as passes pile up, and it starts over whenever the camera moves. In a live window that is fine, because the camera rests and the picture catches up. In a video of a turning scene every frame has a new camera, so every frame is the grainy first one. `--settle N` draws each written frame N times with the clock held and writes the last:
+
+```sh
+swift run --package-path Examples Example-Rendering-LineSpray --export-video turn.mp4 --seconds 10 --settle 40
+swift run --package-path Examples Example-Rendering-LineSpray --export still.png --frame 0 --settle 120
+```
+
+The first draw of a frame advances the sketch's clock as always. The next N−1 draw the same moment again: `time` does not move, `deltaTime` is zero, and only `frameCount` counts on, so a camera or a motion written against the clock holds still while the layers underneath keep stepping. The mean converges, the frame is written, and the clock moves to the next one. It costs N times a plain export, which is the price of a settled frame; 40 draws is 200 passes of the ring sphere and reads clean, 120 is the still the reference page shows.
+
+It applies to `--export`, `--export-sequence`, `--export-video`, `--export-gif`, and `--export-loop`, and the recipe each file carries records `"settle"`. Three things it will not do. A **take** cannot be replayed or recorded under it, since a take carries one frame of input per drawn frame. **Made frames** cannot be asked for beside it, since they are built from the motion between two drawn frames and a held clock has none. And a **piling canvas** (`noClear`) keeps adding through the held draws, so it brightens N times faster rather than settling; a pile has no mean to converge to.
+
+In code the same control is `OllinApp.exportSettle`, set before the export call:
+
+```swift
+OllinApp.exportSettle = 40
+OllinApp.exportVideo(sketch, to: "turn.mp4", frames: 300, fps: 30)
 ```
 
 ### Vector: SVG

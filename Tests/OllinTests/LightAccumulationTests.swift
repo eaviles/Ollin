@@ -218,6 +218,36 @@ struct LightAccumulationTests {
         #expect(moved.spray.passes == 3 * moved.spray.passesPerFrame, "a lens change restarts the average")
     }
 
+    /// `exportSettle` draws a written frame several times with the clock held: a
+    /// still counts N passes for its frame (and one for each run-up frame), the
+    /// mean stays the mean, and a sequence settles every written frame.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func settledExportsDrawEachWrittenFrameSeveralTimes() throws {
+        OllinApp.exportSettle = 6
+        defer { OllinApp.exportSettle = 1 }
+
+        let still = AccumulatorSketch()
+        let image = try #require(OllinApp.image(of: still, frame: 0))
+        #expect(still.light.passes == 6, "one advance plus five held draws")
+        #expect(abs(centerLinear(of: image) - 0.2) < 0.02, "the mean is still the mean")
+
+        let later = AccumulatorSketch()
+        _ = OllinApp.image(of: later, frame: 2)
+        #expect(later.light.passes == 8, "two run-up frames drawn once, the captured one six times")
+        #expect(later.frameCount == 8)
+        #expect(abs(later.time - 2.0 / 60) < 1e-9, "the clock held at the captured frame")
+
+        let sequence = AccumulatorSketch()
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-settle-\(UUID().uuidString)").path
+        defer { try? FileManager.default.removeItem(atPath: directory) }
+        OllinApp.exportSequence(sequence, to: directory, frames: 2, fps: 60)
+        #expect(sequence.light.passes == 12, "every written frame settles")
+        let written = (try? FileManager.default.contentsOfDirectory(atPath: directory))?
+            .filter { $0.hasSuffix(".png") }.count
+        #expect(written == 2)
+    }
+
     // MARK: Support
 
     private func pixels(of image: CGImage) -> [UInt8] {

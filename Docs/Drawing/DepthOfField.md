@@ -126,6 +126,7 @@ The `Rendering/DepthOfField` example is exactly that, over nine closed curves, w
 - **A camera is required.** `drawLineSpray` projects through the active `Camera3D` and does nothing without one. The focal distance is measured along the view axis, so `focalDistance` equals the camera's `radius` when the target is what should be sharp.
 - **Every pass counts.** The mean divides by the passes recorded, so a frame that draws several passes' worth of samples should say so (`passesPerFrame`, or `withAccumulator(_:passes:)`), or the picture reads too bright by that factor.
 - **Exposure is a print setting.** It scales the mean after it converged, so turning it does not restart the average. The lens and the camera do.
+- **A moving camera in an export.** Every frame of a turning scene restarts the average, so a plain video is grainy. `--settle N` draws each written frame N times with the clock held before writing it (see [Settled frames](../Output/Export.md#settled-frames)); 40 draws is 200 passes of the ring sphere.
 - **Not on the web page.** An accumulator keeps state the recorded page cannot, so `--export-web` names it and stops; export the sketch as video instead.
 - **Attribution.** The technique is Anders Hoff's ([inconvergent](https://inconvergent.net/2019/depth-of-field/)); [Blurry](https://github.com/Domenicobrz/Blurry) by Domenico Bruzzese is the reference implementation, read for approach and written independently. See `ATTRIBUTION.md`.
 
