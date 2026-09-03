@@ -6,7 +6,8 @@ import Foundation
 /// function crossed with nothing Metal-only left behind; the browser checks say
 /// the result actually compiles, section by section, and that the two rules with
 /// a semantic difference (the sign of `fmod`, the shape of `select`) compute what
-/// Metal computes.
+/// Metal computes. The browser checks are skipped, with the reason in the log,
+/// on a machine whose browser cannot give a WebGL2 context.
 struct WebShaderLibraryTests {
 
     // MARK: Support
@@ -127,8 +128,8 @@ struct WebShaderLibraryTests {
 
     // MARK: The browser
 
-    @Test(.enabled(if: HeadlessBrowser.isAvailable))
-    func theWholeLibraryAndEachSectionCompileInABrowser() throws {
+    @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func theWholeLibraryAndEachSectionCompileInABrowser() async throws {
         let metal = try Self.libraryText()
         var shaders: [String] = []
         var names: [String] = []
@@ -138,21 +139,21 @@ struct WebShaderLibraryTests {
             shaders.append(Self.pageShader(WebShaderLibrary.translate(metal, wanted: [section])))
             names.append(section)
         }
-        let dom = try HeadlessBrowser.dom(of: WebGLPage.compile(shaders))
+        let dom = try await HeadlessBrowser.dom(of: WebGLPage.compile(shaders))
         for (i, name) in names.enumerated() {
             let verdict = try #require(HeadlessBrowser.text(of: "r\(i)", in: dom))
             #expect(verdict == "OK", "\(name): \(verdict.prefix(1200))")
         }
     }
 
-    @Test(.enabled(if: HeadlessBrowser.isAvailable))
-    func theGateCatchesABrokenLibrary() throws {
+    @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func theGateCatchesABrokenLibrary() async throws {
         // A gate that cannot fail proves nothing, so break the translated text
         // on purpose and read the browser's complaint, line and all.
         let metal = try Self.libraryText()
         let translation = WebShaderLibrary.translate(metal, wanted: ["sdf"])
         let broken = Self.pageShader(translation, main: "out vec4 o;\nvoid main() { o = vec4(undeclared_thing); }")
-        let dom = try HeadlessBrowser.dom(of: WebGLPage.compile([broken]))
+        let dom = try await HeadlessBrowser.dom(of: WebGLPage.compile([broken]))
         let verdict = try #require(HeadlessBrowser.text(of: "r0", in: dom))
         #expect(verdict.hasPrefix("FAIL compile"))
         #expect(verdict.contains("undeclared_thing"))
@@ -161,8 +162,8 @@ struct WebShaderLibraryTests {
         #expect(verdict.contains(":\(mainLine):"), "the log should name line \(mainLine): \(verdict.prefix(300))")
     }
 
-    @Test(.enabled(if: HeadlessBrowser.isAvailable))
-    func theRewrittenMathComputesWhatMetalComputes() throws {
+    @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func theRewrittenMathComputesWhatMetalComputes() async throws {
         let metal = try Self.libraryText()
         let translation = WebShaderLibrary.translate(metal, wanted: ["domain"])
         let main = """
@@ -179,7 +180,7 @@ struct WebShaderLibraryTests {
             o = v;
         }
         """
-        let dom = try HeadlessBrowser.dom(of: WebGLPage.pixels(fragment: Self.pageShader(translation, main: main), width: 6))
+        let dom = try await HeadlessBrowser.dom(of: WebGLPage.pixels(fragment: Self.pageShader(translation, main: main), width: 6))
         let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
         #expect(!report.hasPrefix("FAIL"), "\(report.prefix(600))")
         let pixels = WebGLPage.bytes(from: report)

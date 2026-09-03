@@ -3,6 +3,13 @@ import Foundation
 /// A headless browser as a GLSL compiler. WebGL compiles a shader synchronously,
 /// so a page that compiles one and writes the result into its own DOM reports
 /// through the browser's DOM dump; no server, no driver, no waiting on a promise.
+///
+/// The browser is waited on asynchronously, through its termination handler,
+/// and its output goes to a file rather than a pipe. Both are load-bearing: a
+/// blocking read on a pipe the browser's child processes still hold parked a
+/// test-runner thread for good on a machine where the browser never exited, and
+/// with the whole cooperative pool parked that way the run stalled until its
+/// timeout. Nothing here blocks a thread, and a browser that hangs is killed.
 enum HeadlessBrowser {
 
     /// The browser to run, if one is installed: `OLLIN_CHROME` first, then the
@@ -20,19 +27,65 @@ enum HeadlessBrowser {
         return candidates.first { fm.isExecutableFile(atPath: $0) }
     }()
 
-    static var isAvailable: Bool { executable != nil }
+    static var isInstalled: Bool { executable != nil }
 
     struct Failure: Error, CustomStringConvertible {
         var description: String
     }
 
+    /// The flags every run carries. No `--user-data-dir` on purpose: with one,
+    /// the browser here dumped the DOM and then never exited. The keychain and
+    /// password-store flags keep a fresh machine from raising a prompt nothing
+    /// will answer.
+    static let baseFlags = ["--headless=new", "--no-first-run", "--no-default-browser-check",
+                            "--disable-extensions", "--use-mock-keychain", "--password-store=basic",
+                            "--enable-unsafe-swiftshader"]
+
+    /// What the installed browser can do, found once: the flags that yield a
+    /// WebGL2 context, or the reason none did. The GPU-backed run is tried first,
+    /// then the software renderer for a machine without a GPU.
+    struct Capability: Sendable {
+        var flags: [String]?
+        var reason: String
+    }
+
+    static let capability: Task<Capability, Never> = Task {
+        guard isInstalled else { return Capability(flags: nil, reason: "no browser is installed") }
+        var reasons: [String] = []
+        for extra in [[], ["--use-angle=swiftshader"]] {
+            let flags = baseFlags + extra
+            do {
+                let dom = try await dom(of: WebGLPage.compile(["#version 300 es\nprecision highp float;\nout vec4 o;\nvoid main() { o = vec4(1.0); }"]),
+                                        flags: flags, timeout: 60)
+                if text(of: "r0", in: dom) == "OK" { return Capability(flags: flags, reason: "") }
+                reasons.append("\(extra.joined(separator: " ")): \(text(of: "r0", in: dom) ?? "no report")")
+            } catch {
+                reasons.append("\(extra.joined(separator: " ")): \(error)")
+            }
+        }
+        return Capability(flags: nil, reason: "the browser gave no WebGL2 context (\(reasons.joined(separator: "; ")))")
+    }
+
+    /// Whether the browser tests can run here. A test names this in its
+    /// `.enabled` trait so a machine without a usable browser skips them with
+    /// the reason in the log, rather than failing or waiting.
+    static func hasWebGL2() async -> Bool {
+        await capability.value.flags != nil
+    }
+
     /// Loads `html` from a temporary file and returns the DOM once its scripts
-    /// have run. A browser that never exits is killed after `timeout`, so a hang
-    /// fails the test instead of parking the run.
-    ///
-    /// No `--user-data-dir` is passed on purpose: with one, the browser here
-    /// dumped the DOM and then never exited.
-    static func dom(of html: String, timeout: TimeInterval = 90) throws -> String {
+    /// have run, with the flags the capability probe found.
+    static func dom(of html: String, timeout: TimeInterval = 90) async throws -> String {
+        guard let flags = await capability.value.flags else {
+            throw Failure(description: await capability.value.reason)
+        }
+        return try await dom(of: html, flags: flags, timeout: timeout)
+    }
+
+    /// The run itself. The browser is killed after `timeout`, so a hang fails
+    /// the call instead of parking anything; stdout goes to a file so a child
+    /// process outliving the browser holds no pipe open.
+    static func dom(of html: String, flags: [String], timeout: TimeInterval) async throws -> String {
         guard let browser = executable else { throw Failure(description: "no browser is installed") }
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-web-gate-\(UUID().uuidString)")
@@ -40,24 +93,41 @@ enum HeadlessBrowser {
         defer { try? FileManager.default.removeItem(at: folder) }
         let page = folder.appendingPathComponent("page.html")
         try html.write(to: page, atomically: true, encoding: .utf8)
+        let output = folder.appendingPathComponent("dom.html")
+        guard FileManager.default.createFile(atPath: output.path, contents: nil) else {
+            throw Failure(description: "could not create \(output.path)")
+        }
+        let handle = try FileHandle(forWritingTo: output)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: browser)
-        process.arguments = ["--headless=new", "--no-first-run", "--enable-unsafe-swiftshader",
-                             "--dump-dom", page.absoluteString]
-        let output = Pipe()
-        process.standardOutput = output
+        process.arguments = flags + ["--dump-dom", page.absoluteString]
+        process.standardOutput = handle
         process.standardError = FileHandle.nullDevice
-        try process.run()
 
-        let watchdog = DispatchWorkItem { if process.isRunning { process.terminate() } }
-        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: watchdog)
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        watchdog.cancel()
+        let status: Int32 = try await withCheckedThrowingContinuation { continuation in
+            process.terminationHandler = { finished in
+                continuation.resume(returning: finished.terminationStatus)
+            }
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+                return
+            }
+            let pid = process.processIdentifier
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+                if process.isRunning { process.terminate() }
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout + 5) {
+                if process.isRunning { kill(pid, SIGKILL) }
+            }
+        }
+        try? handle.close()
 
-        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else {
-            throw Failure(description: "the browser wrote nothing (exit status \(process.terminationStatus))")
+        let text = (try? String(contentsOf: output, encoding: .utf8)) ?? ""
+        guard !text.isEmpty else {
+            throw Failure(description: "the browser wrote nothing (exit status \(status))")
         }
         return text
     }
