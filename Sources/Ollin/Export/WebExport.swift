@@ -7,16 +7,18 @@ import OllinShaderText
 
 /// One recorded frame of the page: the clear the frame asked for, the frame's
 /// float vector (the analytic-shape instances the renderer received, in call
-/// order, then the image quads that composite a layer, then the parameter rows
-/// of every effect pass), and the graph that says what the vector means. The
-/// vector is the same data the GPU reads each frame, so the page draws it with
-/// the same fragments the Mac does.
+/// order, then the image quads that composite a layer, then the vertices of
+/// every fill and stroke the triangle path tessellated, then the parameter
+/// rows of every effect pass), and the graph that says what the vector means.
+/// The vector is the same data the GPU reads each frame, so the page draws it
+/// with the same fragments the Mac does.
 struct WebFrame: Equatable {
     /// The clear color in linear light, or `nil` when the frame drew onto what
     /// the previous frame left (an accumulating sketch).
     var clear: SIMD3<Float>?
     /// Shapes (`WebInstance.floats` each), then quads (`WebQuad.floats` each),
-    /// then parameter rows, laid out as `graph` says.
+    /// then vertices (`WebVertex.floats` each), then parameter rows, laid out
+    /// as `graph` says.
     var vector: [Float]
     var graph: WebGraph
     var toneMapMode: Int
@@ -200,10 +202,6 @@ extension OllinApp {
     /// The call, or the family of calls, a batch kind stands for in a refusal.
     nonisolated static func webRefusalName(for kind: GeometryKind) -> String {
         switch kind {
-        case .triangles:
-            return "a filled polygon, shape, or outline text (drawPolygon, drawShape, drawCurve, drawText, an elliptical or full-turn drawArc), which goes through the triangle path"
-        case .fringe:
-            return "a stroked path (drawLine, drawPolyline, drawBezier, drawCurve, a drawShape outline), which goes through the stroke path"
         case .image: return "drawImage"
         case .glyphAtlas: return "drawText (the glyph atlas)"
         case .sdfGroup: return "drawSDF (a combined field)"
@@ -214,7 +212,8 @@ extension OllinApp {
         case .mesh3D, .meshInstanced, .meshField, .strands, .ocean:
             return "3D drawing (a mesh, a field, strands, the ocean)"
         case .clipPush, .clipPop: return "withClip"
-        case .sdf, .retained: return "an analytic shape"
+        // Never refused: shapes, fills, strokes, and a recording of them cross.
+        case .sdf, .triangles, .fringe, .retained: return "shapes, strokes, and fills"
         }
     }
 }
@@ -257,6 +256,11 @@ struct WebShaders {
     var presentFragment: String
     var imageVertex: String
     var imageFragment: String
+    /// The triangle path: one vertex stage for a fill and a stroke, the fill's
+    /// fragment (`ollin_fragment`) and the stroke's (`ollin_fringe_fragment`).
+    var triangleVertex: String
+    var triangleFragment: String
+    var fringeFragment: String
     /// The fullscreen stage every effect and user pass draws with.
     var effectVertex: String
     /// The framework's effect fragments by name.
@@ -275,6 +279,8 @@ struct WebShaders {
         let sdfFragment = WebShaderCompat.preamble + "\n" + shapes.support + "\n\n" + shapes.body + "\n" + sdfFragmentTail
         let presentFragment = WebShaderCompat.preamble + "\n" + present.support + "\n\n" + present.body + "\n" + presentFragmentTail
         let imageFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + imageFragmentTail
+        let triangleFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + triangleFragmentTail
+        let fringeFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + fringeFragmentTail
 
         var effects: [String: String] = [:]
         for (name, rows) in wanted {
@@ -286,14 +292,65 @@ struct WebShaders {
         return WebShaders(sdfVertex: sdfVertex, sdfFragment: sdfFragment,
                           presentVertex: presentVertex, presentFragment: presentFragment,
                           imageVertex: imageVertex, imageFragment: imageFragment,
+                          triangleVertex: triangleVertex, triangleFragment: triangleFragment,
+                          fringeFragment: fringeFragment,
                           effectVertex: effectVertex, effects: effects, users: userSources)
     }
+
+    /// The triangle path's vertex stage, `ollin_vertex` and `ollin_fringe_vertex`
+    /// in one: a vertex already in sketch space mapped into clip space with y
+    /// down, its color and its coverage handed on. A retained batch's draw-time
+    /// transform was applied to the recorded vertices on the Mac side, so no
+    /// transform rides here.
+    static let triangleVertex = """
+    #version 300 es
+    precision highp float;
+    layout(location = 0) in vec2 aPosition;
+    layout(location = 1) in float aCoverage;
+    layout(location = 2) in vec4 aColor;
+    uniform vec2 viewport;
+    uniform float ollin_flip;
+    out vec4 vColor;
+    out float vCoverage;
+    void main() {
+        gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
+        vColor = aColor;
+        vCoverage = aCoverage;
+    }
+    """
+
+    /// `ollin_fragment`: a fill's vertex color linearized, its alpha straight,
+    /// the edge left to the multisampled raster.
+    static let triangleFragmentTail = """
+    in vec4 vColor;
+    in float vCoverage;
+    out vec4 fragColor;
+    void main() {
+        fragColor = vec4(srgbToLinear(vColor.rgb), vColor.a);
+    }
+    """
+
+    /// `ollin_fringe_fragment`: the stroke's color linearized, its paint alpha
+    /// scaled by the fringe coverage remapped to perceptual alpha, the two kept
+    /// apart as the Mac keeps them.
+    static let fringeFragmentTail = """
+    in vec4 vColor;
+    in float vCoverage;
+    out vec4 fragColor;
+    void main() {
+        float a = vColor.a * perceptualCoverage(clamp(vCoverage, 0.0, 1.0));
+        fragColor = vec4(srgbToLinear(vColor.rgb), a);
+    }
+    """
 
     /// The covering quad of one instance, exactly as `ollin_sdf_vertex` builds it:
     /// the shape plus half the stroke plus a margin for the AA falloff, placed by
     /// the instance's own transform, mapped into clip space with y down. The
     /// viewport is the surface's logical size, so a layer drawn at a fraction of
-    /// its size keeps its coordinates and only the raster shrinks.
+    /// its size keeps its coordinates and only the raster shrinks. `ollin_flip`
+    /// is 1, or -1 into a multisampled surface, where the picture is rasterized
+    /// upright in the GPU's own texture space so the fixed sample pattern sits
+    /// on it as it sits on the Mac's (the resolve turns it back over).
     static let sdfVertex = """
     #version 300 es
     precision highp float;
@@ -308,6 +365,7 @@ struct WebShaders {
     layout(location = 7) in vec4 aP2WE;
     layout(location = 8) in vec2 aBandShape;
     uniform vec2 viewport;
+    uniform float ollin_flip;
     out vec2 vLocal;
     out vec2 vSize;
     out vec4 vFill;
@@ -332,7 +390,7 @@ struct WebShaders {
         vec2 local = corners[gl_VertexID] * extent;
         vec2 q = aCenterSize.xy + local;
         vec2 sketch = aT0 * q.x + aT1 * q.y + aT2;
-        gl_Position = vec4((sketch.x / viewport.x) * 2.0 - 1.0, 1.0 - (sketch.y / viewport.y) * 2.0, 0.0, 1.0);
+        gl_Position = vec4((sketch.x / viewport.x) * 2.0 - 1.0, (1.0 - (sketch.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
         vLocal = local;
         vSize = size;
         vFill = aFill;
@@ -447,10 +505,11 @@ struct WebShaders {
     layout(location = 1) in vec2 aUV;
     layout(location = 2) in vec4 aTint;
     uniform vec2 viewport;
+    uniform float ollin_flip;
     out vec2 vUV;
     out vec4 vTint;
     void main() {
-        gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, 1.0 - (aPosition.y / viewport.y) * 2.0, 0.0, 1.0);
+        gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
         vUV = aUV;
         vTint = aTint;
     }
@@ -658,6 +717,8 @@ extension OllinApp {
         script = script.replacingOccurrences(of: "@META@", with: track.meta)
         script = script.replacingOccurrences(of: "@STREAM@", with: track.stream)
         script = script.replacingOccurrences(of: "@BASE@", with: track.base)
+        script = script.replacingOccurrences(of: "@VBASE@", with: track.vertexBase)
+        script = script.replacingOccurrences(of: "@VPOS@", with: track.vertexPositions)
         script = script.replacingOccurrences(of: "@FIT@", with: track.fit)
         script = script.replacingOccurrences(of: "@EXTRA@", with: track.extra)
         script = script.replacingOccurrences(of: "@HELPERS@", with: FormulaJS.helpers)
@@ -667,6 +728,9 @@ extension OllinApp {
         script = script.replacingOccurrences(of: "@PRESENT_FS@", with: jsString(shaders.presentFragment))
         script = script.replacingOccurrences(of: "@IMAGE_VS@", with: jsString(shaders.imageVertex))
         script = script.replacingOccurrences(of: "@IMAGE_FS@", with: jsString(shaders.imageFragment))
+        script = script.replacingOccurrences(of: "@TRI_VS@", with: jsString(shaders.triangleVertex))
+        script = script.replacingOccurrences(of: "@TRI_FS@", with: jsString(shaders.triangleFragment))
+        script = script.replacingOccurrences(of: "@FRINGE_FS@", with: jsString(shaders.fringeFragment))
         script = script.replacingOccurrences(of: "@FX_VS@", with: jsString(shaders.effectVertex))
         script = script.replacingOccurrences(of: "@BLUR_FS@", with: jsString(WebShaders.blurFragment))
         let effectEntries = shaders.effects.keys.sorted().map { "\(jsString($0)): \(jsString(shaders.effects[$0]!))" }
@@ -730,8 +794,12 @@ extension OllinApp {
 /// surfaces: each layer is filled in the order the Mac filled it (drawn into,
 /// generated, filtered from another, combined from two, run by a user shader,
 /// or carried over from last frame by a feedback layer or a simulation), the
-/// canvas draws its shapes and composites the layers it names, and the
-/// whole-frame filters run last. A moving column arrives one of three ways
+/// canvas draws its shapes, its fills and strokes, and composites the layers
+/// it names, and the whole-frame filters run last. A track that draws
+/// triangles rasterizes every drawn surface through a multisampled buffer
+/// resolved into the surface, the way the Mac's passes resolve, so a fill's
+/// edge is anti-aliased there too; an accumulating canvas keeps its samples
+/// from frame to frame, as the Mac's accumulation surface does. A moving column arrives one of three ways
 /// and the player works each out per frame: live, from a parameter's formula
 /// evaluated on the page's clock and pointer; fitted, from the few sines of a
 /// lap; or sampled, interpolated between the records when the cast is stable.
@@ -749,6 +817,8 @@ enum WebPlayer {
       var D = @META@;
       var STREAM = "@STREAM@";
       var BASE = "@BASE@";
+      var VBASE = "@VBASE@";
+      var VPOS = "@VPOS@";
       var FIT = "@FIT@";
       var EXTRA = "@EXTRA@";
       var SDF_VS = @SDF_VS@;
@@ -757,13 +827,16 @@ enum WebPlayer {
       var PRESENT_FS = @PRESENT_FS@;
       var IMAGE_VS = @IMAGE_VS@;
       var IMAGE_FS = @IMAGE_FS@;
+      var TRI_VS = @TRI_VS@;
+      var TRI_FS = @TRI_FS@;
+      var FRINGE_FS = @FRINGE_FS@;
       var FX_VS = @FX_VS@;
       var BLUR_FS = @BLUR_FS@;
       var FX = @FX@;
       var USERS = @USERS@;
       var TABLES = @TABLES@;
       @HELPERS@
-      var F = 28, Q = 48;
+      var F = 28, Q = 48, V = 7;
       var W = D.width, H = D.height;
       function ref(index) { return D.refs ? D.refs[index] : index; }
       function clearOf(index) { return D.clears ? D.clears[index] : D.clear; }
@@ -781,6 +854,8 @@ enum WebPlayer {
       function shorts(b64) { var b = bytes(b64); return new Uint16Array(b.buffer, 0, b.length >> 1); }
       var stream = shorts(STREAM);
       var base = floats(BASE);
+      var vertexBase = shorts(VBASE);
+      var vertexPositions = floats(VPOS);
       var fitData = floats(FIT);
       var extra = floats(EXTRA);
 
@@ -807,17 +882,30 @@ enum WebPlayer {
       var sdf = program(SDF_VS, SDF_FS);
       var present = program(PRESENT_VS, PRESENT_FS);
       var uViewport = gl.getUniformLocation(sdf, 'viewport');
+      var uFlip = gl.getUniformLocation(sdf, 'ollin_flip');
       var pSrc = gl.getUniformLocation(present, 'src');
       var pViewport = gl.getUniformLocation(present, 'viewport');
       var pExposure = gl.getUniformLocation(present, 'exposure');
       var pToneMap = gl.getUniformLocation(present, 'toneMapMode');
-      var image = null, iViewport, iTex;
+      var image = null, iViewport, iTex, iFlip;
       function imageProgram() {
         if (image) return image;
         image = program(IMAGE_VS, IMAGE_FS);
         iViewport = gl.getUniformLocation(image, 'viewport');
         iTex = gl.getUniformLocation(image, 'tex');
+        iFlip = gl.getUniformLocation(image, 'ollin_flip');
         return image;
+      }
+      // The triangle path's two programs, built when a frame first draws a fill
+      // or a stroke.
+      var solid = null, fringe = null;
+      function triangleProgram(isFringe) {
+        if (isFringe) {
+          if (!fringe) { var pf = program(TRI_VS, FRINGE_FS); fringe = { p: pf, viewport: gl.getUniformLocation(pf, 'viewport'), flip: gl.getUniformLocation(pf, 'ollin_flip') }; }
+          return fringe;
+        }
+        if (!solid) { var ps = program(TRI_VS, TRI_FS); solid = { p: ps, viewport: gl.getUniformLocation(ps, 'viewport'), flip: gl.getUniformLocation(ps, 'ollin_flip') }; }
+        return solid;
       }
       // One program per framework fragment and per user shader, built on first use.
       var fxPrograms = {};
@@ -911,6 +999,46 @@ enum WebPlayer {
       }
       var main = makeSurface(W, H);
       if (!main.ok) { format = gl.RGBA8; main = makeSurface(W, H); }
+      // A drawn surface's multisampled buffer, four samples like the Mac's
+      // canvas, made once per surface and resolved into its texture after each
+      // fill. A surface that persists (the canvas, a feedback pair) keeps its
+      // samples, so an accumulating canvas loads them as the Mac's does. The
+      // items are rasterized into it upright in the GPU's own texture space
+      // (the page otherwise keeps its pictures bottom-up), because the sample
+      // pattern is fixed in that space and a mirrored picture meets it
+      // mirrored: a diagonal edge then differs from the Mac's by a sample or
+      // two, where an upright one matches to a level. The resolve turns the
+      // picture back over on its way into the surface's texture.
+      var MSAA = !!D.msaa;
+      var samples = MSAA ? Math.min(4, gl.getParameter(gl.MAX_SAMPLES)) : 0;
+      if (samples < 2) MSAA = false;
+      function multisampled(s) {
+        if (s.ms !== undefined) return s.ms;
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, format, s.w, s.h);
+        var fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rb);
+        var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        s.ms = ok ? { rb: rb, fbo: fbo } : null;
+        return s.ms;
+      }
+      // The resolve lands in a plain surface of the same size first (a
+      // multisampled read allows no flip), then flips into the texture.
+      var upright = {};
+      function resolve(s) {
+        var key = s.w + 'x' + s.h;
+        var mid = upright[key] || (upright[key] = makeSurface(s.w, s.h));
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, s.ms.fbo);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, mid.fbo);
+        gl.blitFramebuffer(0, 0, s.w, s.h, 0, 0, s.w, s.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, mid.fbo);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, s.fbo);
+        gl.blitFramebuffer(0, 0, s.w, s.h, 0, s.h, s.w, 0, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
       var pool = [], used = [];
       function acquire(w, h) {
         for (var i = 0; i < pool.length; i++) {
@@ -983,6 +1111,24 @@ enum WebPlayer {
         gl.vertexAttribPointer(b, qlayout[b][0], gl.FLOAT, false, 32, qlayout[b][1]);
       }
       gl.bindVertexArray(null);
+      // One triangle vertex: position, coverage, color, the seven floats the
+      // recorder wrote.
+      var tvao = gl.createVertexArray();
+      var tvbo = gl.createBuffer();
+      gl.bindVertexArray(tvao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, tvbo);
+      var tlayout = [[2, 0], [1, 8], [4, 12]];
+      for (var t = 0; t < tlayout.length; t++) {
+        gl.enableVertexAttribArray(t);
+        gl.vertexAttribPointer(t, tlayout[t][0], gl.FLOAT, false, V * 4, tlayout[t][1]);
+      }
+      gl.bindVertexArray(null);
+      // A vertex's position travels exact; its coverage and color sit inside
+      // their field's range as 16-bit positions.
+      var P = 2, VS = V - P;
+      var vlows = [], vscales = [];
+      var vranges = D.vranges || [];
+      for (var vr = 0; vr < vranges.length; vr += 2) { vlows.push(vranges[vr]); vscales.push((vranges[vr + 1] - vranges[vr]) / 65535); }
 
       // Sampled values sit inside their column's range as 16-bit positions.
       var lows = [], scales = [];
@@ -1034,15 +1180,26 @@ enum WebPlayer {
         }
       }
 
-      var maxLength = D.stable ? base.length : (D.lengths.length ? Math.max.apply(null, D.lengths) : 0);
+      var maxLength = D.stable ? base.length + vertexBase.length + vertexPositions.length : (D.lengths.length ? Math.max.apply(null, D.lengths) : 0);
       var scratch = new Float32Array(Math.max(1, maxLength));
+      // Where each region of a graph's vector starts.
+      function vertexOffset(g) { return g.instances * F + g.quads * Q; }
+      function paramOffset(g) { return vertexOffset(g) + g.vertices * V; }
 
       // The frame's whole vector at frame `index`, moved `fraction` of the way
-      // to the next: the shapes, the quads, and the parameter rows.
+      // to the next: the shapes, the quads, the vertices, and the parameter rows.
       function assemble(index, fraction) {
         var u = ref(index);
         if (D.stable) {
-          scratch.set(base);
+          var vo = vertexOffset(D.graph), po = paramOffset(D.graph);
+          scratch.set(base.subarray(0, vo), 0);
+          if (base.length > vo) scratch.set(base.subarray(vo), po);
+          for (var vx = 0; vx < D.graph.vertices; vx++) {
+            var at = vo + vx * V;
+            scratch[at] = vertexPositions[vx * P];
+            scratch[at + 1] = vertexPositions[vx * P + 1];
+            for (var vf = 0; vf < VS; vf++) scratch[at + P + vf] = vlows[vf] + vertexBase[vx * VS + vf] * vscales[vf];
+          }
           var u2 = ref((index + 1) % D.frames);
           var v = D.varying, n = v.length, off = u * n, off2 = u2 * n;
           for (var i = 0; i < n; i++) {
@@ -1066,54 +1223,71 @@ enum WebPlayer {
           }
           return;
         }
-        // Every frame its own record: the shapes and quads as 16-bit samples by
-        // field, the parameter rows as floats.
+        // Every frame its own record: the shapes, quads, and vertices as 16-bit
+        // samples by field, the parameter rows as floats.
         var g = graphOf(index);
-        var start = D.offsets[u], count = g.instances * F + g.quads * Q;
+        var si = D.offsets[u], pi = D.positionOffsets[u], vo2 = vertexOffset(g), count = paramOffset(g);
         for (var k = 0; k < count; k++) {
-          var c = k < g.instances * F ? (k % F) : (F + (k - g.instances * F) % Q);
-          scratch[k] = lows[c] + stream[start + k] * scales[c];
+          if (k >= vo2 && (k - vo2) % V < P) { scratch[k] = vertexPositions[pi++]; continue; }
+          var c = k < g.instances * F ? (k % F) : (k < vo2 ? F + (k - g.instances * F) % Q : F + Q + (k - vo2) % V);
+          scratch[k] = lows[c] + stream[si++] * scales[c];
         }
         var pstart = D.paramOffsets[u];
         for (var e2 = 0; e2 < g.params; e2++) scratch[count + e2] = extra[pstart + e2];
       }
 
+      // The blend factors under each mode, as the Mac's pipelines set them: a
+      // straight-alpha fragment (a shape, a fill, a stroke) scales by its own
+      // alpha, a premultiplied one (an image) by one.
+      function setBlend(mode, straight) {
+        gl.enable(gl.BLEND);
+        var src = straight ? gl.SRC_ALPHA : gl.ONE;
+        switch (mode) {
+          case 1: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          case 2: gl.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          case 3: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 4: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE_MINUS_DST_COLOR, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 5: gl.blendEquation(gl.MAX); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          case 6: gl.blendEquation(gl.MIN); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          default: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        }
+      }
       // The shapes at instance `start`, `count` of them, drawn into the bound
       // surface at logical size `w` by `h`.
-      function drawShapes(start, count, w, h) {
+      function drawShapes(start, count, blend, w, h, flip) {
         gl.useProgram(sdf);
         gl.uniform2f(uViewport, w, h);
-        gl.enable(gl.BLEND);
-        gl.blendEquation(gl.FUNC_ADD);
-        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.uniform1f(uFlip, flip);
+        setBlend(blend, true);
         gl.bindVertexArray(vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
         gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(start * F, (start + count) * F), gl.DYNAMIC_DRAW);
         gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
         gl.bindVertexArray(null);
       }
-      // The blend factors of a premultiplied image under each mode, as the Mac's
-      // pipelines set them.
-      function setBlend(mode) {
-        gl.enable(gl.BLEND);
-        switch (mode) {
-          case 1: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
-          case 2: gl.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
-          case 3: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
-          case 4: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE_MINUS_DST_COLOR, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
-          case 5: gl.blendEquation(gl.MAX); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
-          case 6: gl.blendEquation(gl.MIN); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
-          default: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        }
+      // The triangle vertices at `start`, `count` of them, a fill's or, with
+      // `isFringe`, a stroke's, drawn into the bound surface.
+      function drawTriangles(start, count, isFringe, blend, w, h, vo, flip) {
+        var e = triangleProgram(isFringe);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        setBlend(blend, true);
+        gl.bindVertexArray(tvao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tvbo);
+        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(vo + start * V, vo + (start + count) * V), gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, count);
+        gl.bindVertexArray(null);
       }
-      function drawQuad(quad, tex, blend, w, h, quadOffset) {
+      function drawQuad(quad, tex, blend, w, h, quadOffset, flip) {
         var p = imageProgram();
         gl.useProgram(p);
         gl.uniform2f(iViewport, w, h);
+        gl.uniform1f(iFlip, flip);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.uniform1i(iTex, 0);
-        setBlend(blend);
+        setBlend(blend, false);
         gl.bindVertexArray(qvao);
         gl.bindBuffer(gl.ARRAY_BUFFER, qvbo);
         var at = quadOffset + quad * Q;
@@ -1125,16 +1299,20 @@ enum WebPlayer {
       // size is the layer's, its raster the surface's). `results` holds each
       // layer's texture this frame; `previous` the fronts of the feedback layers.
       function drawItems(items, surface, w, h, clear, results, previous, g) {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, surface.fbo);
+        var ms = MSAA ? multisampled(surface) : null;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, ms ? ms.fbo : surface.fbo);
         gl.viewport(0, 0, surface.w, surface.h);
         if (clear && clear.length) { gl.clearColor(clear[0], clear[1], clear[2], clear.length > 3 ? clear[3] : 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
+        var vo = vertexOffset(g), flip = ms ? -1 : 1;
         for (var i = 0; i < items.length; i++) {
           var item = items[i];
-          if (item[0] === 's') { drawShapes(item[1], item[2], w, h); continue; }
+          if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
+          if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
           var tex = item[0] === 'p' ? (previous[item[1]] || blank) : (results[item[1]] || blank);
-          drawQuad(item[2], tex, item[3], w, h, g.instances * F);
+          drawQuad(item[2], tex, item[3], w, h, g.instances * F, flip);
         }
         gl.disable(gl.BLEND);
+        if (ms) resolve(surface);
       }
       // One fullscreen pass of a framework fragment into `out`: the inputs bound
       // in order, the rows at `params`.
@@ -1154,7 +1332,7 @@ enum WebPlayer {
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
       function rowsOf(node, g) {
-        var start = g.instances * F + g.quads * Q + node.p;
+        var start = paramOffset(g) + node.p;
         return scratch.subarray(start, start + node.r * 4);
       }
       function resolveInputs(list, results) {
@@ -1181,7 +1359,7 @@ enum WebPlayer {
         gl.uniform1ui(e.frame, Math.floor(kf) + D.frameOffset + 1);
         gl.uniform1ui(e.paramCount, layer.count || 0);
         var rows = new Float32Array(64);
-        var start = g.instances * F + g.quads * Q + layer.p;
+        var start = paramOffset(g) + layer.p;
         for (var r = 0; r < layer.r * 4; r++) rows[r] = scratch[start + r];
         gl.uniform4fv(e.params, rows);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -1380,7 +1558,7 @@ public extension OllinApp {
     /// shaders translated to GLSL, so a frame matches the Mac's.
     ///
     /// Throws a `WebExportRefusal` naming the first call the page cannot carry
-    /// (a stroked path, a filled polygon, text, an image, 3D) and the frame it
+    /// (text through the glyph atlas, an image, a clip, 3D) and the frame it
     /// was met at; nothing partial is written.
     static func web(of sketch: Sketch, frames: Int, fps: Double = 30, skipSeconds: Double = 0,
                     form: WebPageForm = .standalone) throws -> String {
@@ -1423,6 +1601,7 @@ public extension OllinApp {
         if track.sampledColumns > 0 || !track.stable { live.append(track.stable ? "\(track.sampledColumns) columns sampled" : "every frame sampled") }
         let passes = track.passCount
         if passes > 0 { live.append("\(passes) shader passes a frame") }
+        if track.vertexCount > 0 { live.append("\(track.vertexCount) triangle vertices in the fullest frame") }
         let how = live.isEmpty ? "" : "; " + live.joined(separator: ", ")
         print("Ollin: exported \(recording.frames.count) frames (\(seconds) s at \(formattedRate(fps)) fps\(unique)\(wraps)) → \(path) (web page, \(form.rawValue), \(size)\(how))")
     }

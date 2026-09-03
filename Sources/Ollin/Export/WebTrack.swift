@@ -3,9 +3,10 @@ import Foundation
 /// The recorded frames packed for the page. Weight is the governor, and three
 /// things keep it down. A frame whose vector and graph are the previous
 /// frame's is stored once, so a still costs one frame. When every frame
-/// carries the same cast (the same graph, with the same count of shapes and
-/// the same tags, the ordinary animation), the columns that never change are
-/// stored once as the base and only the moving ones travel, which is what
+/// carries the same cast (the same graph, with the same count of shapes,
+/// quads, and vertices and the same tags, the ordinary animation), the columns
+/// that never change are stored once as the base (the vertices of it as 16-bit
+/// samples) and only the moving ones travel, which is what
 /// makes interpolating between frames possible at all. And a moving column of
 /// a lap (a track recorded from `loopDuration`) is fitted to the few sines it
 /// is made of, so the page evaluates the motion at any time from a handful of
@@ -20,9 +21,21 @@ struct WebTrack {
     /// every shape and quad of every unique frame, each value quantized inside
     /// its column's range.
     var stream: String
-    /// Base64 float32: the first unique frame's whole vector, for a stable
-    /// cast; empty otherwise.
+    /// Base64 float32: the first unique frame's shapes, quads, and parameter
+    /// rows, for a stable cast; empty otherwise. Its triangle vertices travel
+    /// apart, in `vertexBase`.
     var base: String
+    /// Base64 float32: the first unique frame's vertex positions, exact, for a
+    /// stable cast; empty otherwise. A position is what the multisampled
+    /// raster reads, and one quantized over a canvas-wide drawing lands a
+    /// sixtieth of a pixel off, which flips a sample on a fill's edge once in
+    /// every twenty or so edge pixels; measured on a caption, that put a sixth
+    /// of its edge pixels a sample off the Mac.
+    var vertexPositions: String
+    /// Base64 uint16: the first unique frame's vertex coverage and color, each
+    /// field quantized inside its own range across the frame (`meta.vranges`),
+    /// for a stable cast; empty otherwise.
+    var vertexBase: String
     /// Base64 float32: the fitted columns' coefficients (the mean, then a
     /// frequency, a cosine, and a sine per term), in `meta.fit` order.
     var fit: String
@@ -40,6 +53,8 @@ struct WebTrack {
     var fitTerms: Int
     /// Shader passes the first frame runs (layers and whole-frame filters).
     var passCount: Int
+    /// The most triangle vertices any frame draws.
+    var vertexCount: Int
 
     /// The largest fraction of the frame count a column's fit may spend on
     /// terms and still be worth more than its samples.
@@ -84,6 +99,10 @@ struct WebTrack {
             "accumulates": recording.frames.contains { $0.clear == nil },
             "stateful": recording.isStateful,
             "recipe": recording.recipe,
+            // A frame that draws triangles wants the multisampled raster the
+            // Mac gives every 2D pass; the page then rasterizes every drawn
+            // surface that way for the whole track.
+            "msaa": uniques.contains { $0.graph.hasTriangles },
         ]
         // A per-frame fact that never changes travels once: the frame map when
         // every frame is its own record, and the clear, the tone map, and the
@@ -99,6 +118,9 @@ struct WebTrack {
         var samples: [UInt16] = []
         var ranges: [Float] = []
         var base: [Float] = []
+        var vertexPositions: [Float] = []
+        var vertexBase: [UInt16] = []
+        var vertexRanges: [Float] = []
         var coefficients: [Float] = []
         var fitIndex: [[Int]] = []
         var drives: [[Double]] = []
@@ -109,7 +131,26 @@ struct WebTrack {
         var sampledColumns = 0
 
         if stable, let first = uniques.first {
-            base = first.vector
+            // The shapes, the quads, and the rows as floats; the vertices, the
+            // bulk of a drawing, as their positions in float32 and their
+            // coverage and color as 16-bit samples by field.
+            let vo = first.graph.vertexOffset, po = first.graph.paramOffset
+            base = Array(first.vector[0 ..< vo]) + Array(first.vector[po...])
+            let v = WebVertex.floats, p = WebVertex.positionFloats, quantized = v - p
+            var fieldRanges = [(Float, Float)](repeating: (Float.greatestFiniteMagnitude, -Float.greatestFiniteMagnitude), count: quantized)
+            for i in vo ..< po where (i - vo) % v >= p {
+                let c = (i - vo) % v - p
+                fieldRanges[c] = (min(fieldRanges[c].0, first.vector[i]), max(fieldRanges[c].1, first.vector[i]))
+            }
+            for c in fieldRanges.indices where fieldRanges[c].0 > fieldRanges[c].1 { fieldRanges[c] = (0, 0) }
+            for (lo, hi) in fieldRanges { vertexRanges.append(lo); vertexRanges.append(hi) }
+            vertexBase.reserveCapacity((po - vo) / v * quantized)
+            vertexPositions.reserveCapacity((po - vo) / v * p)
+            for i in vo ..< po {
+                let f = (i - vo) % v
+                if f < p { vertexPositions.append(first.vector[i]) }
+                else { vertexBase.append(Self.quantize(first.vector[i], in: fieldRanges[f - p])) }
+            }
             var moving: [Int] = []
             for column in first.vector.indices where uniques.contains(where: { $0.vector[column] != first.vector[column] }) {
                 moving.append(column)
@@ -161,22 +202,29 @@ struct WebTrack {
             }
             meta["stable"] = true
             meta["count"] = first.graph.instanceCount
+            meta["vranges"] = vertexRanges
             meta["varying"] = sampled
             meta["fit"] = fitIndex
             meta["drive"] = drives
             meta["graph"] = first.graph.meta
         } else {
-            // Every shape and quad of every unique frame, each field inside the
-            // range it spans across the whole track; the parameter rows whole.
-            let q = WebQuad.floats
-            let fields = n + q
+            // Every shape, quad, and vertex of every unique frame, each field
+            // inside the range it spans across the whole track, but a vertex's
+            // position, which travels exact; the parameter rows whole.
+            let q = WebQuad.floats, v = WebVertex.floats, p = WebVertex.positionFloats
+            let fields = n + q + v
             var fieldRanges = [(Float, Float)](repeating: (Float.greatestFiniteMagnitude, -Float.greatestFiniteMagnitude), count: fields)
             func field(_ i: Int, _ g: WebGraph) -> Int {
-                i < g.quadOffset ? i % n : n + (i - g.quadOffset) % q
+                if i < g.quadOffset { return i % n }
+                if i < g.vertexOffset { return n + (i - g.quadOffset) % q }
+                return n + q + (i - g.vertexOffset) % v
+            }
+            func isPosition(_ i: Int, _ g: WebGraph) -> Bool {
+                i >= g.vertexOffset && (i - g.vertexOffset) % v < p
             }
             var any = false
             for u in uniques {
-                for i in 0 ..< u.graph.paramOffset {
+                for i in 0 ..< u.graph.paramOffset where !isPosition(i, u.graph) {
                     let c = field(i, u.graph)
                     fieldRanges[c] = (min(fieldRanges[c].0, u.vector[i]), max(fieldRanges[c].1, u.vector[i]))
                     any = true
@@ -186,15 +234,18 @@ struct WebTrack {
             for c in fieldRanges.indices where fieldRanges[c].0 > fieldRanges[c].1 { fieldRanges[c] = (0, 0) }
             for (lo, hi) in fieldRanges { ranges.append(lo); ranges.append(hi) }
             var offsets: [Int] = []
+            var positionOffsets: [Int] = []
             var lengths: [Int] = []
             var paramOffsets: [Int] = []
             var graphs: [WebGraph] = []
             var graphOf: [Int] = []
             for u in uniques {
                 offsets.append(samples.count)
+                positionOffsets.append(vertexPositions.count)
                 lengths.append(u.vector.count)
                 for i in 0 ..< u.graph.paramOffset {
-                    samples.append(Self.quantize(u.vector[i], in: fieldRanges[field(i, u.graph)]))
+                    if isPosition(i, u.graph) { vertexPositions.append(u.vector[i]) }
+                    else { samples.append(Self.quantize(u.vector[i], in: fieldRanges[field(i, u.graph)])) }
                 }
                 paramOffsets.append(extra.count)
                 extra.append(contentsOf: u.vector[u.graph.paramOffset...])
@@ -203,6 +254,7 @@ struct WebTrack {
             }
             meta["stable"] = false
             meta["offsets"] = offsets
+            meta["positionOffsets"] = positionOffsets
             meta["lengths"] = lengths
             meta["paramOffsets"] = paramOffsets
             meta["graphs"] = graphs.map(\.meta)
@@ -222,8 +274,11 @@ struct WebTrack {
         self.sampledColumns = sampledColumns
         self.fitTerms = fitTerms
         self.passCount = uniques.first.map { $0.graph.layers.count + $0.graph.frameFilters.count } ?? 0
+        self.vertexCount = uniques.map(\.graph.vertexCount).max() ?? 0
         self.stream = Self.base64(samples)
         self.base = Self.base64(base)
+        self.vertexPositions = Self.base64(vertexPositions)
+        self.vertexBase = Self.base64(vertexBase)
         self.fit = Self.base64(coefficients)
         self.extra = Self.base64(extra)
         let json = (try? JSONSerialization.data(withJSONObject: meta, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()

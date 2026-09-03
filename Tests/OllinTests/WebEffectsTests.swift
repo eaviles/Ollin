@@ -319,7 +319,7 @@ import OllinWebGate
         #expect(g.layers.count == 3)
         guard case let .geometry(clear, items) = g.layers[0].kind else { Issue.record("layer 0 is not drawn"); return }
         #expect(clear.count == 4 && clear[3] == 1)
-        #expect(items == [.shapes(start: 0, count: 16)])
+        #expect(items == [.shapes(start: 0, count: 16, blend: 0)])
         guard case let .filter(input1, swirl) = g.layers[1].kind else { Issue.record("layer 1 is not a filter"); return }
         #expect(input1 == 0 && swirl.fragment == "ollin_fx_swirl" && swirl.paramRows == 2)
         guard case let .filter(input2, grade) = g.layers[2].kind else { Issue.record("layer 2 is not a filter"); return }
@@ -398,7 +398,7 @@ import OllinWebGate
         let g = recording.frames[0].graph
         #expect(g.layers.isEmpty)
         #expect(g.frameFilters.map(\.fragment) == ["ollin_fx_invert", "ollin_fx_vignette"])
-        #expect(g.canvas == [.shapes(start: 0, count: 1)])
+        #expect(g.canvas == [.shapes(start: 0, count: 1, blend: 0)])
         #expect(g.paramFloats == 8)
     }
 

@@ -6,8 +6,8 @@ import COllinShaders
 
 /// The pass graph of one recorded frame: the layers the renderer filled, in
 /// the order it filled them, what each was filled from, what the canvas drew,
-/// and the whole-frame filters after it. Every shape run, image quad, and
-/// parameter row points into the frame's float vector, so the structure is
+/// and the whole-frame filters after it. Every shape run, image quad, triangle
+/// run, and parameter row points into the frame's float vector, so the structure is
 /// one value and the numbers travel apart from it: a frame whose graph equals
 /// the last frame's differs only in its vector, which is what lets the moving
 /// columns be fitted and sampled the way the shapes already are.
@@ -16,14 +16,33 @@ struct WebGraph: Hashable {
     var canvas: [WebDrawItem]
     var frameFilters: [WebPassNode]
     /// The vector's layout: `instanceCount` shapes of `WebInstance.floats`,
-    /// then `quadCount` image quads of `WebQuad.floats`, then `paramFloats`.
+    /// then `quadCount` image quads of `WebQuad.floats`, then `vertexCount`
+    /// triangle vertices of `WebVertex.floats`, then `paramFloats`.
     var instanceCount: Int
     var quadCount: Int
+    var vertexCount: Int
     var paramFloats: Int
 
-    var vectorCount: Int { instanceCount * WebInstance.floats + quadCount * WebQuad.floats + paramFloats }
+    var vectorCount: Int { paramOffset + paramFloats }
     var quadOffset: Int { instanceCount * WebInstance.floats }
-    var paramOffset: Int { quadOffset + quadCount * WebQuad.floats }
+    var vertexOffset: Int { quadOffset + quadCount * WebQuad.floats }
+    var paramOffset: Int { vertexOffset + vertexCount * WebVertex.floats }
+
+    /// Whether any surface draws triangles this frame, so the page rasterizes
+    /// its drawn surfaces with multisampling, as the Mac does for every 2D pass
+    /// (a fill's edge has no analytic coverage of its own).
+    var hasTriangles: Bool {
+        func any(_ items: [WebDrawItem]) -> Bool {
+            items.contains { if case .triangles = $0 { return true } else { return false } }
+        }
+        if any(canvas) { return true }
+        return layers.contains { layer in
+            switch layer.kind {
+            case let .geometry(_, items), let .feedback(_, items), let .sim(_, _, items): return any(items)
+            default: return false
+            }
+        }
+    }
 
     /// Whether the frame carries state from the one before it (a feedback layer
     /// or a simulation), so the page must play every frame in order.
@@ -70,8 +89,13 @@ struct WebLayer: Hashable {
 
 /// One drawing into a surface (a layer or the canvas), in call order.
 enum WebDrawItem: Hashable {
-    /// `count` analytic shapes starting at instance `start`.
-    case shapes(start: Int, count: Int)
+    /// `count` analytic shapes starting at instance `start`, under a blend
+    /// mode (`WebBlend`).
+    case shapes(start: Int, count: Int, blend: Int)
+    /// `count` vertices of tessellated geometry starting at vertex `start`: a
+    /// fill's triangles, or, with `fringe`, a stroke's edge-expanded bands with
+    /// the AA coverage riding each vertex; under a blend mode.
+    case triangles(start: Int, count: Int, fringe: Bool, blend: Int)
     /// A layer composited as a textured quad (its six vertices at `quad`),
     /// under a blend mode (`WebBlend`).
     case image(source: WebImageSource, quad: Int, blend: Int)
@@ -142,6 +166,25 @@ enum WebBlend {
     }
 }
 
+/// One vertex of the triangle path on the wire: the `OllinVertex` fields the
+/// page's vertex shader reads, as plain floats. The sketch-space position, the
+/// AA coverage a fringe vertex carries (0 on a fill's, where the pipeline
+/// ignores it), and the straight sRGB color with its alpha (a fringe vertex's
+/// paint alpha; the fragment applies the perceptual coverage remap to the
+/// coverage alone, as the Mac's does). A gradient on this path was baked into
+/// the vertex colors on the Mac, so it crosses as they are.
+enum WebVertex {
+    static let floats = 7
+    /// The leading fields that are the position, which the track carries
+    /// exact; the rest are quantized.
+    static let positionFloats = 2
+
+    static func append(_ v: OllinVertex, into out: inout [Float]) {
+        out.append(contentsOf: [v.position.x, v.position.y, v.aa.x,
+                                v.color.x, v.color.y, v.color.z, v.color.w])
+    }
+}
+
 /// An image quad on the wire: six vertices of position, uv, and tint.
 enum WebQuad {
     static let vertices = 6
@@ -192,6 +235,8 @@ final class WebGraphRecorder {
         var instanceCount = 0
         var quadCount = 0
         var quads: [Float] = []
+        var vertexCount = 0
+        var vertices: [Float] = []
         var params: [Float] = []
 
         // The layers, in the order the renderer fills them: generators, drawn
@@ -223,32 +268,78 @@ final class WebGraphRecorder {
             for (i, batch) in batches.enumerated() where batch.target === surface {
                 if batch.kind == .clipPush || batch.kind == .clipPop || batch.clipLevel > 0 { throw refuse("withClip") }
                 if batch.depth != nil { throw refuse("depth(at:)") }
+                let blend = WebBlend.index(of: batch.blendMode)
                 switch batch.kind {
                 case .sdf:
-                    if batch.blendMode != .normal { throw refuse("blendMode(.\(batch.blendMode)) on a shape") }
                     let end = nextStart(i, \.instanceStart, end: drawer.sdfInstances.count)
                     let start = instanceCount
                     for instance in drawer.sdfInstances[batch.instanceStart ..< end] {
                         try Self.appendInstance(instance, into: &vector, frame: frame)
                         instanceCount += 1
                     }
-                    if instanceCount > start { items.append(.shapes(start: start, count: instanceCount - start)) }
-                case .retained:
-                    if batch.blendMode != .normal { throw refuse("blendMode(.\(batch.blendMode)) on a batch") }
-                    guard let recording = batch.retained else { continue }
-                    let onlyShapes = recording.vertices.isEmpty && recording.imageVertices.isEmpty
-                        && recording.glyphVertices.isEmpty && recording.points.isEmpty
-                        && recording.sdfGroups.isEmpty
-                        && recording.innerBatches.allSatisfy { $0.kind == .sdf && $0.blendMode == .normal && $0.depth == nil }
-                    guard onlyShapes else { throw refuse("drawBatch (a recording holding more than analytic shapes)") }
-                    let start = instanceCount
-                    for instance in recording.sdfInstances {
-                        var placed = instance
-                        if let t = batch.retainedTransform { placed.transform = t * instance.transform }
-                        try Self.appendInstance(placed, into: &vector, frame: frame)
-                        instanceCount += 1
+                    if instanceCount > start { items.append(.shapes(start: start, count: instanceCount - start, blend: blend)) }
+                case .triangles, .fringe:
+                    // A fill's triangles or a stroke's fringe bands: the run the
+                    // renderer would draw, vertex for vertex.
+                    let end = nextStart(i, \.vertexStart, end: drawer.vertices.count)
+                    let start = vertexCount
+                    for vertex in drawer.vertices[batch.vertexStart ..< end] {
+                        WebVertex.append(vertex, into: &vertices)
+                        vertexCount += 1
                     }
-                    if instanceCount > start { items.append(.shapes(start: start, count: instanceCount - start)) }
+                    if vertexCount > start {
+                        items.append(.triangles(start: start, count: vertexCount - start,
+                                                fringe: batch.kind == .fringe, blend: blend))
+                    }
+                case .retained:
+                    // A recording of shapes, strokes, and fills replays as its
+                    // own runs, the draw-time transform composed onto each shape's
+                    // own and applied to each vertex, as the replay's vertex
+                    // stages do.
+                    guard let recording = batch.retained else { continue }
+                    let inner = recording.innerBatches
+                    let simple = recording.imageVertices.isEmpty && recording.glyphVertices.isEmpty
+                        && recording.points.isEmpty && recording.sdfGroups.isEmpty
+                        && inner.allSatisfy {
+                            ($0.kind == .sdf || $0.kind == .triangles || $0.kind == .fringe) && $0.depth == nil
+                        }
+                    guard simple else { throw refuse("drawBatch (a recording holding more than shapes, strokes, and fills)") }
+                    for (j, run) in inner.enumerated() {
+                        let next = j + 1 < inner.count ? inner[j + 1] : nil
+                        let runBlend = WebBlend.index(of: run.blendMode)
+                        switch run.kind {
+                        case .sdf:
+                            let end = next?.instanceStart ?? recording.sdfInstances.count
+                            let start = instanceCount
+                            for instance in recording.sdfInstances[run.instanceStart ..< end] {
+                                var placed = instance
+                                if let t = batch.retainedTransform { placed.transform = t * instance.transform }
+                                try Self.appendInstance(placed, into: &vector, frame: frame)
+                                instanceCount += 1
+                            }
+                            if instanceCount > start {
+                                items.append(.shapes(start: start, count: instanceCount - start, blend: runBlend))
+                            }
+                        case .triangles, .fringe:
+                            let end = next?.vertexStart ?? recording.vertices.count
+                            let start = vertexCount
+                            for vertex in recording.vertices[run.vertexStart ..< end] {
+                                var placed = vertex
+                                if let t = batch.retainedTransform {
+                                    let p = t * SIMD3<Float>(vertex.position.x, vertex.position.y, 1)
+                                    placed.position = SIMD2<Float>(p.x, p.y)
+                                }
+                                WebVertex.append(placed, into: &vertices)
+                                vertexCount += 1
+                            }
+                            if vertexCount > start {
+                                items.append(.triangles(start: start, count: vertexCount - start,
+                                                        fringe: run.kind == .fringe, blend: runBlend))
+                            }
+                        default:
+                            continue
+                        }
+                    }
                 case .image:
                     guard let image = batch.image else { continue }
                     let source: WebImageSource
@@ -429,11 +520,14 @@ final class WebGraphRecorder {
             frameFilters.append(node(pass))
         }
 
-        // The vector: the shapes already appended, then the quads, then the rows.
+        // The vector: the shapes already appended, then the quads, the vertices,
+        // and the rows.
         vector.append(contentsOf: quads)
+        vector.append(contentsOf: vertices)
         vector.append(contentsOf: params)
         let graph = WebGraph(layers: layers, canvas: canvas, frameFilters: frameFilters,
-                             instanceCount: instanceCount, quadCount: quadCount, paramFloats: params.count)
+                             instanceCount: instanceCount, quadCount: quadCount,
+                             vertexCount: vertexCount, paramFloats: params.count)
 
         // The ordinary frame clears to the background; an accumulating one only
         // when the sketch asked for a wipe. The first frame always clears, since
@@ -480,7 +574,8 @@ extension WebGraph {
         func items(_ list: [WebDrawItem]) -> [[Any]] {
             list.map { item -> [Any] in
                 switch item {
-                case let .shapes(start, count): return ["s", start, count]
+                case let .shapes(start, count, blend): return ["s", start, count, blend]
+                case let .triangles(start, count, fringe, blend): return ["t", start, count, fringe ? 1 : 0, blend]
                 case let .image(source, quad, blend):
                     switch source {
                     case .layer(let i): return ["i", i, quad, blend]
@@ -524,7 +619,7 @@ extension WebGraph {
             return d
         }
         return ["layers": layers, "canvas": items(canvas), "post": frameFilters.map(pass),
-                "instances": instanceCount, "quads": quadCount, "params": paramFloats]
+                "instances": instanceCount, "quads": quadCount, "vertices": vertexCount, "params": paramFloats]
     }
 
     /// Every framework fragment the graph runs, with the most rows any pass

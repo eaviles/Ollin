@@ -106,12 +106,14 @@ import OllinWebGate
         }
     }
 
-    final class Lined: Sketch {
+    final class Clipped: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
         override func draw() {
             background(.white)
             drawCircle(60, 60, 20)
-            if frameCount == 2 { drawLine(0, 0, 120, 120) }   // the second recorded frame
+            if frameCount == 2 {   // the second recorded frame
+                withClip(Rectangle(x: 0, y: 0, width: 60, height: 60)) { drawCircle(30, 30, 40) }
+            }
         }
     }
 
@@ -129,6 +131,7 @@ import OllinWebGate
         override func draw() {
             background(.white)
             fill(.black)
+            textMode(.atlas)
             drawText("hi", 20, 60)
         }
     }
@@ -384,17 +387,17 @@ import OllinWebGate
                 return nil
             }
         }
-        let lined = try #require(refusal(Lined()))
-        #expect(lined.call.contains("drawLine"))
-        #expect(lined.frame == 1)
-        #expect(lined.description.contains("--export-video"))
+        let clipped = try #require(refusal(Clipped()))
+        #expect(clipped.call == "withClip")
+        #expect(clipped.frame == 1)
+        #expect(clipped.description.contains("--export-video"))
         let graded = try #require(refusal(Graded()))
         #expect(graded.call == "a gradient fill or stroke")
         #expect(graded.frame == 0)
-        // Outline text fills through the triangle path, so that is what it names.
+        // Outline text crosses as its fills; the glyph atlas does not yet.
         let written = try #require(refusal(Written()))
         #expect(written.call.contains("drawText"))
-        #expect(written.call.contains("triangle path"))
+        #expect(written.call.contains("glyph atlas"))
         #expect(refusal(Hello()) == nil)
     }
 
