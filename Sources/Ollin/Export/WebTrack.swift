@@ -1,30 +1,35 @@
 import Foundation
 
 /// The recorded frames packed for the page. Weight is the governor, and three
-/// things keep it down. A frame whose shapes are the previous frame's is
-/// stored once, so a still costs one frame. When every frame carries the same
-/// cast (the same count of shapes with the same tags, the ordinary animation),
-/// the columns that never change are stored once as the base and only the
-/// moving ones travel, which is what makes interpolating between frames
-/// possible at all. And a moving column of a lap (a track recorded from
-/// `loopDuration`) is fitted to the few sines it is made of, so the page
-/// evaluates the motion at any time from a handful of coefficients instead of
-/// reading it back frame by frame; a column that fits nothing short travels
-/// as 16-bit samples, each within a 65,535th of its range of the float the Mac
-/// used.
+/// things keep it down. A frame whose vector and graph are the previous
+/// frame's is stored once, so a still costs one frame. When every frame
+/// carries the same cast (the same graph, with the same count of shapes and
+/// the same tags, the ordinary animation), the columns that never change are
+/// stored once as the base and only the moving ones travel, which is what
+/// makes interpolating between frames possible at all. And a moving column of
+/// a lap (a track recorded from `loopDuration`) is fitted to the few sines it
+/// is made of, so the page evaluates the motion at any time from a handful of
+/// coefficients instead of reading it back frame by frame; a column that fits
+/// nothing short travels as 16-bit samples, each within a 65,535th of its range
+/// of the float the Mac used. A parameter row of an effect pass is a column
+/// like any other, so a generator's phase fed the clock fits as the shapes do.
 struct WebTrack {
     /// A JSON object: the facts the player reads.
     var meta: String
     /// Base64 uint16: the sampled columns per unique frame (a stable cast), or
-    /// every instance of every unique frame, each value quantized inside its
-    /// column's range.
+    /// every shape and quad of every unique frame, each value quantized inside
+    /// its column's range.
     var stream: String
-    /// Base64 float32: the first unique frame whole, for a stable cast; empty
-    /// otherwise.
+    /// Base64 float32: the first unique frame's whole vector, for a stable
+    /// cast; empty otherwise.
     var base: String
     /// Base64 float32: the fitted columns' coefficients (the mean, then a
     /// frequency, a cosine, and a sine per term), in `meta.fit` order.
     var fit: String
+    /// Base64 float32: the parameter rows of every unique frame when the cast
+    /// changes (a row travels whole; its range is not known ahead); empty for a
+    /// stable cast.
+    var extra: String
     var uniqueFrames: Int
     var stable: Bool
     /// Columns worked out live from a parameter's formula.
@@ -33,6 +38,8 @@ struct WebTrack {
     var sampledColumns: Int
     /// Sine terms across every fitted column.
     var fitTerms: Int
+    /// Shader passes the first frame runs (layers and whole-frame filters).
+    var passCount: Int
 
     /// The largest fraction of the frame count a column's fit may spend on
     /// terms and still be worth more than its samples.
@@ -40,13 +47,13 @@ struct WebTrack {
 
     init(_ recording: WebRecording) {
         // Consecutive duplicates fold onto one record.
-        var uniques: [[Float]] = []
+        var uniques: [WebFrame] = []
         var refs: [Int] = []
         for frame in recording.frames {
-            if let last = uniques.last, last == frame.instances {
+            if let last = uniques.last, last.vector == frame.vector, last.graph == frame.graph {
                 refs.append(uniques.count - 1)
             } else {
-                uniques.append(frame.instances)
+                uniques.append(frame)
                 refs.append(uniques.count - 1)
             }
         }
@@ -54,12 +61,13 @@ struct WebTrack {
 
         let n = WebInstance.floats
         var stable = false
-        if let first = uniques.first, first.count % n == 0 {
+        if let first = uniques.first {
             stable = uniques.allSatisfy { u in
-                guard u.count == first.count else { return false }
+                guard u.graph == first.graph, u.vector.count == first.vector.count else { return false }
                 var i = WebInstance.shapeColumn
-                while i < u.count {
-                    if u[i] != first[i] { return false }
+                let end = first.graph.instanceCount * n
+                while i < end {
+                    if u.vector[i] != first.vector[i] { return false }
                     i += n
                 }
                 return true
@@ -74,6 +82,7 @@ struct WebTrack {
             "frames": recording.frames.count,
             "loops": recording.loops,
             "accumulates": recording.frames.contains { $0.clear == nil },
+            "stateful": recording.isStateful,
             "recipe": recording.recipe,
         ]
         // A per-frame fact that never changes travels once: the frame map when
@@ -93,15 +102,16 @@ struct WebTrack {
         var coefficients: [Float] = []
         var fitIndex: [[Int]] = []
         var drives: [[Double]] = []
+        var extra: [Float] = []
         var drivenColumns = 0
         var fittedColumns = 0
         var fitTerms = 0
         var sampledColumns = 0
 
         if stable, let first = uniques.first {
-            base = first
+            base = first.vector
             var moving: [Int] = []
-            for column in first.indices where uniques.contains(where: { $0[column] != first[column] }) {
+            for column in first.vector.indices where uniques.contains(where: { $0.vector[column] != first.vector[column] }) {
                 moving.append(column)
             }
             // A moving column is first matched to a formula's values (it stays
@@ -110,7 +120,7 @@ struct WebTrack {
             var sampled: [Int] = []
             let frameCount = recording.frames.count
             for column in moving {
-                let signal = refs.map { Double(uniques[$0][column]) }
+                let signal = refs.map { Double(uniques[$0].vector[column]) }
                 let lo = signal.min() ?? 0, hi = signal.max() ?? 0
                 let tolerance = max((hi - lo) * 1e-4, 1e-6)
                 if let wired = Self.affineFit(signal, against: recording.series, tolerance: tolerance) {
@@ -140,44 +150,63 @@ struct WebTrack {
             sampledColumns = sampled.count
             let columnRanges = sampled.map { column -> (Float, Float) in
                 var lo = Float.greatestFiniteMagnitude, hi = -Float.greatestFiniteMagnitude
-                for u in uniques { lo = min(lo, u[column]); hi = max(hi, u[column]) }
+                for u in uniques { lo = min(lo, u.vector[column]); hi = max(hi, u.vector[column]) }
                 return (lo, hi)
             }
             for (lo, hi) in columnRanges { ranges.append(lo); ranges.append(hi) }
             for u in uniques {
                 for (i, column) in sampled.enumerated() {
-                    samples.append(Self.quantize(u[column], in: columnRanges[i]))
+                    samples.append(Self.quantize(u.vector[column], in: columnRanges[i]))
                 }
             }
             meta["stable"] = true
-            meta["count"] = first.count / n
+            meta["count"] = first.graph.instanceCount
             meta["varying"] = sampled
             meta["fit"] = fitIndex
             meta["drive"] = drives
+            meta["graph"] = first.graph.meta
         } else {
-            // Every instance of every unique frame, each field inside the range
-            // it spans across the whole track.
-            var fieldRanges = [(Float, Float)](repeating: (Float.greatestFiniteMagnitude, -Float.greatestFiniteMagnitude), count: n)
+            // Every shape and quad of every unique frame, each field inside the
+            // range it spans across the whole track; the parameter rows whole.
+            let q = WebQuad.floats
+            let fields = n + q
+            var fieldRanges = [(Float, Float)](repeating: (Float.greatestFiniteMagnitude, -Float.greatestFiniteMagnitude), count: fields)
+            func field(_ i: Int, _ g: WebGraph) -> Int {
+                i < g.quadOffset ? i % n : n + (i - g.quadOffset) % q
+            }
+            var any = false
             for u in uniques {
-                for (i, v) in u.enumerated() {
-                    let c = i % n
-                    fieldRanges[c] = (min(fieldRanges[c].0, v), max(fieldRanges[c].1, v))
+                for i in 0 ..< u.graph.paramOffset {
+                    let c = field(i, u.graph)
+                    fieldRanges[c] = (min(fieldRanges[c].0, u.vector[i]), max(fieldRanges[c].1, u.vector[i]))
+                    any = true
                 }
             }
-            if uniques.allSatisfy(\.isEmpty) { fieldRanges = [(Float, Float)](repeating: (0, 0), count: n) }
+            if !any { fieldRanges = [(Float, Float)](repeating: (0, 0), count: fields) }
+            for c in fieldRanges.indices where fieldRanges[c].0 > fieldRanges[c].1 { fieldRanges[c] = (0, 0) }
             for (lo, hi) in fieldRanges { ranges.append(lo); ranges.append(hi) }
             var offsets: [Int] = []
-            var counts: [Int] = []
+            var lengths: [Int] = []
+            var paramOffsets: [Int] = []
+            var graphs: [WebGraph] = []
+            var graphOf: [Int] = []
             for u in uniques {
                 offsets.append(samples.count)
-                counts.append(u.count / n)
-                for (i, v) in u.enumerated() {
-                    samples.append(Self.quantize(v, in: fieldRanges[i % n]))
+                lengths.append(u.vector.count)
+                for i in 0 ..< u.graph.paramOffset {
+                    samples.append(Self.quantize(u.vector[i], in: fieldRanges[field(i, u.graph)]))
                 }
+                paramOffsets.append(extra.count)
+                extra.append(contentsOf: u.vector[u.graph.paramOffset...])
+                if let gi = graphs.firstIndex(of: u.graph) { graphOf.append(gi) }
+                else { graphs.append(u.graph); graphOf.append(graphs.count - 1) }
             }
             meta["stable"] = false
             meta["offsets"] = offsets
-            meta["counts"] = counts
+            meta["lengths"] = lengths
+            meta["paramOffsets"] = paramOffsets
+            meta["graphs"] = graphs.map(\.meta)
+            meta["graphOf"] = graphOf
         }
         meta["ranges"] = ranges
         // The formulas travel only when a column reads one live; the page then
@@ -192,9 +221,11 @@ struct WebTrack {
         self.fittedColumns = fittedColumns
         self.sampledColumns = sampledColumns
         self.fitTerms = fitTerms
+        self.passCount = uniques.first.map { $0.graph.layers.count + $0.graph.frameFilters.count } ?? 0
         self.stream = Self.base64(samples)
         self.base = Self.base64(base)
         self.fit = Self.base64(coefficients)
+        self.extra = Self.base64(extra)
         let json = (try? JSONSerialization.data(withJSONObject: meta, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
         self.meta = String(decoding: json, as: UTF8.self).replacingOccurrences(of: "<", with: "\\u003C")
     }

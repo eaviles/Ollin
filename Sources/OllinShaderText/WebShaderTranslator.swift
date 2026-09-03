@@ -79,6 +79,7 @@ package enum WebShaderTranslator {
         rewriteParameters(&tokens, functions: functions, diagnostics: &diagnostics)
         rewriteAddressSpaces(&tokens, functions: functions, diagnostics: &diagnostics)
         rewriteTypes(&tokens, diagnostics: &diagnostics)
+        rewriteScalarInitializers(&tokens)
         rewriteNumbers(&tokens)
         rewriteBuiltins(&tokens, functions: functions, functionNames: functionNames, structNames: structNames,
                         helpers: &helpers, constants: &constants, diagnostics: &diagnostics)
@@ -332,6 +333,55 @@ package enum WebShaderTranslator {
                                          message: "'\(text)' is a Metal texture type; the page reads a layer through its own seam.",
                                          line: tokens[i].line))
             }
+        }
+    }
+
+    /// Metal spreads a scalar over a vector it initializes (`float2 p = 0.0;`);
+    /// GLSL wants the constructor, so a bare number (or its negative) that
+    /// initializes a declared vector is wrapped in one, through the whole
+    /// declarator list.
+    private static func rewriteScalarInitializers(_ tokens: inout [ShaderToken]) {
+        let vectors: Set<String> = ["vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4"]
+        var i = 0
+        while i < tokens.count {
+            guard tokens[i].kind == .identifier, vectors.contains(tokens[i].text),
+                  let name = tokens.nextSignificant(from: i + 1), tokens[name].kind == .identifier,
+                  let equals = tokens.nextSignificant(from: name + 1), tokens[equals].text == "=" else { i += 1; continue }
+            let type = tokens[i].text
+            var cursor = equals
+            while true {
+                guard let value = tokens.nextSignificant(from: cursor + 1) else { break }
+                var end = value
+                var number = value
+                var negative = false
+                if tokens[value].kind == .punctuation, tokens[value].text == "-",
+                   let n = tokens.nextSignificant(from: value + 1) { number = n; negative = true }
+                if tokens[number].kind == .number, let after = tokens.nextSignificant(from: number + 1),
+                   tokens[after].text == "," || tokens[after].text == ";" {
+                    if negative {
+                        tokens[value].text = type + "(-"
+                        tokens[number].text += ")"
+                    } else {
+                        tokens[number].text = type + "(" + tokens[number].text + ")"
+                    }
+                    end = after
+                } else {
+                    // Not a bare number: skip to the end of this declarator.
+                    var depth = 0
+                    var j = value
+                    while j < tokens.count {
+                        if let b = tokens[j].bracket { depth += (b == "(" || b == "[" || b == "{") ? 1 : -1 }
+                        else if depth == 0, tokens[j].kind == .punctuation, tokens[j].text == "," || tokens[j].text == ";" { break }
+                        j += 1
+                    }
+                    end = j
+                }
+                if end >= tokens.count || tokens[end].text == ";" { break }
+                guard let next = tokens.nextSignificant(from: end + 1), tokens[next].kind == .identifier,
+                      let eq2 = tokens.nextSignificant(from: next + 1), tokens[eq2].text == "=" else { break }
+                cursor = eq2
+            }
+            i = name + 1
         }
     }
 

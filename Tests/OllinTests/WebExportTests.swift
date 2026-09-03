@@ -344,8 +344,9 @@ import OllinWebGate
         let recording = try OllinApp.recordWebFrames(of: Growing(), frames: 4, fps: 30)
         let track = WebTrack(recording)
         #expect(!track.stable)
-        #expect(track.meta.contains("\"counts\":[2,3,4,5]"))
+        #expect(track.meta.contains("\"lengths\":[56,84,112,140]"))
         #expect(track.meta.contains("\"offsets\":[0,56,140,252]"))
+        #expect(track.meta.contains("\"graphOf\":[0,1,2,3]"))
         #expect(track.base.isEmpty)
         // 14 instances of 28 fields, two bytes each, base64.
         #expect(track.stream.count == (14 * 28 * 2 + 2) / 3 * 4)

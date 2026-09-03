@@ -397,19 +397,47 @@ extension MetalRenderer {
         return current
     }
 
-    /// Run one `filter` from `input` into a freshly acquired output texture. Blur is
-    /// a hardware MPS kernel and bloom a bright-pass + blur + add-back chain; the rest
-    /// are single fullscreen fragment passes, each reading premultiplied-linear input
-    /// and writing the same. `f` is the float vector of the type's parameters.
+    /// Encode one pass described as data (`EffectPass`): its layers bound in
+    /// order, a lookup table uploaded where the pass reads one, the rows at
+    /// buffer 0, into a fresh output texture.
+    private func encodeSinglePass(_ pass: EffectPass, layers: [MTLTexture],
+                                  width: Int, height: Int,
+                                  into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        var inputs: [MTLTexture] = []
+        for input in pass.inputs {
+            switch input {
+            case .layer(let index):
+                guard index < layers.count else { return nil }
+                inputs.append(layers[index])
+            case .table(let samples):
+                guard let tex = makeLUTTexture(samples) else { return nil }
+                inputs.append(tex)
+            }
+        }
+        guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+        encodeEffectFragment(pass.fragment, inputs: inputs, output: output, params: pass.params, into: cb)
+        return output
+    }
+
+    /// Run one `filter` from `input` into a freshly acquired output texture. A
+    /// filter that is one fullscreen fragment pass is described as data by
+    /// `Filter.singlePass` (the same description the web recorder writes down)
+    /// and encoded here; the rest are orchestrated below: blur is a hardware MPS
+    /// kernel, bloom a bright-pass + blur + add-back chain, and the solves and
+    /// ladders run their own sequences. Every pass reads premultiplied-linear
+    /// input and writes the same. `f` is the float vector of the type's parameters.
     private func applyFilter(_ filter: Filter, input: MTLTexture, width: Int, height: Int,
                              into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        if let single = filter.singlePass(width: width, height: height, resolve: effectiveQuality) {
+            return encodeSinglePass(single, layers: [input], width: width, height: height,
+                                    into: cb, pooled: pooled)
+        }
         // One fragment pass into a fresh output texture (the common shape).
         func pass(_ fragment: String, _ inputs: [MTLTexture], _ params: [SIMD4<Float>]) -> MTLTexture? {
             guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
             encodeEffectFragment(fragment, inputs: inputs, output: output, params: params, into: cb)
             return output
         }
-        let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
         let aspect = Float(width) / Float(max(1, height))
         let f = { (a: Double, b: Double, c: Double, d: Double) in
             SIMD4<Float>(Float(a), Float(b), Float(c), Float(d)) }
@@ -440,25 +468,6 @@ extension MetalRenderer {
                                  params: [f(intensity, 0, 0, 0)], into: cb)
             return output
 
-        case let .colorGrade(brightness, contrast, saturation, hue):
-            return pass("ollin_fx_color_grade", [input], [f(brightness, contrast, saturation, hue)])
-        case .invert(let amount):
-            return pass("ollin_fx_invert", [input], [f(amount, 0, 0, 0)])
-        case .posterize(let levels):
-            return pass("ollin_fx_posterize", [input], [f(levels, 0, 0, 0)])
-        case let .threshold(value, softness):
-            return pass("ollin_fx_threshold", [input], [f(value, softness, 0, 0)])
-        case .sepia(let amount):
-            return pass("ollin_fx_sepia", [input], [f(amount, 0, 0, 0)])
-        case .colorVision(let vision):
-            let m = vision.matrix
-            return pass("ollin_fx_color_vision", [input],
-                        [f(m[0], m[1], m[2], 0), f(m[3], m[4], m[5], 0), f(m[6], m[7], m[8], 0)])
-        case let .duotone(dark, light, amount):
-            return pass("ollin_fx_duotone", [input], [f(amount, 0, 0, 0), dark, light])
-        case let .gradientMap(lut, amount):
-            guard let lutTex = makeLUTTexture(lut) else { return nil }
-            return pass("ollin_fx_gradient_map", [input, lutTex], [f(amount, 0, 0, 0)])
         case let .softProof(lut, warning, amount):
             // A printing condition whose profiles could not be read leaves the
             // layer alone rather than showing something invented.
@@ -467,13 +476,6 @@ extension MetalRenderer {
                         [f(amount, warning == nil ? 0 : 1, 0, 0),
                          warning ?? SIMD4<Float>(repeating: 0)])
 
-        case let .antialias(amount, threshold, quality):
-            // The floor under the relative test is half of it. A ratio alone finds
-            // "edges" in near-black, where a step of a few thousandths is a large
-            // fraction of nothing, so one parameter sets both and they stay in step.
-            return pass("ollin_fx_antialias", [input],
-                        [SIMD4(texel.x, texel.y, Float(threshold), Float(threshold) * 0.5),
-                         SIMD4(Float(amount), Float(antialiasSearchSteps(quality)), 0, 0)])
         case .fourier(let channel):
             // A layer the transform cannot work on comes back untouched rather
             // than empty; the note is printed where the filter is recorded, which
@@ -506,170 +508,12 @@ extension MetalRenderer {
         case .spectrum(let gain):
             let texels = Float(max(1, input.width * input.height))
             return pass("ollin_fft_view", [input], [SIMD4(Float(gain), 1 / texels, 0, 0)])
-        case .edges(let intensity):
-            return pass("ollin_fx_edges", [input], [SIMD4(texel.x, texel.y, Float(intensity), 0)])
-        case .sharpen(let amount):
-            return pass("ollin_fx_sharpen", [input], [SIMD4(texel.x, texel.y, Float(amount), 0)])
-        case let .vignette(amount, radius, softness):
-            return pass("ollin_fx_vignette", [input], [SIMD4(Float(amount), Float(radius), Float(softness), aspect)])
-        case let .chromaticAberration(amount, mode, spectral, quality):
-            // Texture 1 is the per-pixel drive, unused here (the driven flag is 0), so the
-            // input stands in for it and the binding stays valid, the same stand-in the
-            // SSAO pass makes for its optional normal buffer.
-            let taps = spectral ? Float(resolveDispersionTaps(quality)) : 3
-            return pass("ollin_fx_chromatic", [input, input],
-                        [SIMD4(Float(amount), mode.rawIndex, mode.shapeA, mode.shapeB),
-                         SIMD4(aspect, taps, 0, 0), texel])
-        case let .halftone(scale, angle):
-            return pass("ollin_fx_halftone", [input], [SIMD4(Float(scale), Float(angle), aspect, 0)])
-        case let .dither(levels, pixelSize):
-            return pass("ollin_fx_dither", [input], [f(levels, pixelSize, 0, 0)])
-        case let .ditherDuo(dark, light, bias, pixelSize):
-            return pass("ollin_fx_dither_duo", [input], [f(bias, pixelSize, 0, 0), dark, light])
-        case let .grain(amount, seed):
-            return pass("ollin_fx_grain", [input], [f(amount, seed, 0, 0)])
-        case let .pixelate(size, channel, tint):
-            let cols = max(1, (Double(width) / size).rounded())
-            return pass("ollin_fx_pixelate", [input],
-                        [SIMD4(Float(cols), aspect, channel.rawIndex, tint == nil ? 0 : 1),
-                         tint ?? SIMD4<Float>(repeating: 0)])
-        case let .lineScreen(scale, softness, angle, foreground, background):
-            return pass("ollin_fx_linescreen", [input],
-                        [SIMD4(Float(scale), Float(softness), Float(angle), aspect), foreground, background])
-
-        // Color & tone (continued)
-        case let .solarize(value, softness):
-            return pass("ollin_fx_solarize", [input], [f(value, softness, 0, 0)])
-        case let .temperature(amount, tint):
-            return pass("ollin_fx_temperature", [input], [f(amount, tint, 0, 0)])
-        case .vibrance(let amount):
-            return pass("ollin_fx_vibrance", [input], [f(amount, 0, 0, 0)])
-        case .exposure(let gain):
-            return pass("ollin_fx_exposure", [input], [f(gain, 0, 0, 0)])
-        case let .levels(blackPoint, whitePoint, gamma):
-            return pass("ollin_fx_levels", [input], [f(blackPoint, whitePoint, gamma, 0)])
-        case let .colorama(cycles, shift):
-            return pass("ollin_fx_colorama", [input], [f(cycles, shift, 0, 0)])
-        case let .lumaKey(low, high, invert):
-            return pass("ollin_fx_lumakey", [input], [f(low, high, invert ? 1 : 0, 0)])
-
-        // Blur
-        case let .motionBlur(angle, distance):
-            return pass("ollin_fx_motion_blur", [input], [f(angle, distance, 0, 0)])
-        case .radialBlur(let amount):
-            return pass("ollin_fx_radial_blur", [input], [f(amount, 0, 0, 0)])
-        case let .bilateral(radius, sigma):
-            return pass("ollin_fx_bilateral", [input], [SIMD4(texel.x, texel.y, Float(radius), Float(sigma))])
-
-        // Stylize & optical (continued)
-        case let .emboss(amount, angle):
-            return pass("ollin_fx_emboss", [input], [SIMD4(texel.x, texel.y, Float(amount), Float(angle))])
-        case .oilPaint(let radius):
-            return pass("ollin_fx_oilpaint", [input], [SIMD4(texel.x, texel.y, Float(radius), 0)])
-        case let .crosshatch(scale, foreground, background):
-            return pass("ollin_fx_crosshatch", [input],
-                        [SIMD4(Float(scale), aspect, 0, 0), foreground, background])
-        case let .toon(levels, edges):
-            return pass("ollin_fx_toon", [input], [SIMD4(Float(levels), Float(edges), texel.x, texel.y)])
-        case .median:
-            return pass("ollin_fx_median", [input], [SIMD4(texel.x, texel.y, 0, 0)])
-        case let .contour(levels, intensity):
-            return pass("ollin_fx_contour", [input], [f(levels, intensity, 0, 0)])
-        case .cmykHalftone(let scale):
-            return pass("ollin_fx_cmyk_halftone", [input], [SIMD4(Float(scale), aspect, 0, 0)])
-        case .normalMap(let strength):
-            return pass("ollin_fx_normal_map", [input], [SIMD4(texel.x, texel.y, Float(strength), 0)])
-        case let .relight(finish, angle, elevation, height, intensity, color):
-            return pass("ollin_fx_relight", [input],
-                        [SIMD4(texel.x, texel.y, Float(height), finish.rawIndex),
-                         SIMD4(Float(angle), Float(elevation), Float(intensity),
-                               color == nil ? 0 : 1),
-                         color ?? SIMD4<Float>(repeating: 0)])
-        case let .iridescence(amount, scale, bands, shift):
-            return pass("ollin_fx_iridescence", [input],
-                        [f(amount, scale, bands, shift), SIMD4(aspect, 0, 0, 0)])
-        case let .glitter(density, amount, size, saturation, phase):
-            return pass("ollin_fx_glitter", [input],
-                        [SIMD4(Float(density), Float(amount), Float(phase), aspect),
-                         f(saturation, size, 0, 0)])
-        case let .thinFilm(amount, thickness, variation, ior, scale, shift, quality):
-            return pass("ollin_fx_thin_film", [input],
-                        [f(amount, thickness, variation, ior),
-                         SIMD4(Float(scale), Float(shift), aspect, 0)]
-                        + SpectralTaps.block(resolveDispersionTaps(quality)))
-        case let .diffraction(amount, angle, orders, falloff, quality):
-            return pass("ollin_fx_diffraction", [input],
-                        [f(amount, angle, orders, falloff),
-                         SIMD4(aspect, 0, 0, 0)]
-                        + SpectralTaps.block(resolveDispersionTaps(quality)))
-
-        // Retro / optical
-        case let .scanlines(count, intensity):
-            return pass("ollin_fx_scanlines", [input], [f(count, intensity, 0, 0)])
-        case let .glitch(amount, seed):
-            return pass("ollin_fx_glitch", [input], [f(amount, seed, 0, 0)])
-        case let .crt(curvature, scanline, aberration):
-            return pass("ollin_fx_crt", [input], [f(curvature, scanline, aberration, 0)])
-
-        // Distortion
-        case let .kaleidoscope(segments, angle):
-            return pass("ollin_fx_kaleidoscope", [input], [SIMD4(Float(segments), Float(angle), aspect, 0)])
-        case let .swirl(angle, radius, center):
-            return pass("ollin_fx_swirl", [input],
-                        [SIMD4(Float(angle), Float(radius), aspect, 0),
-                         SIMD4(Float(center.x), Float(center.y), 0, 0)])
-        case let .droste(inner, twist, zoom, center, rotation):
-            return pass("ollin_fx_droste", [input],
-                        [SIMD4(Float(inner), Float(twist), aspect, Float(zoom)),
-                         SIMD4(Float(center.x), Float(center.y), Float(rotation), 0)])
-        case let .bulge(amount, radius, center):
-            return pass("ollin_fx_bulge", [input],
-                        [SIMD4(Float(amount), Float(radius), aspect, 0),
-                         SIMD4(Float(center.x), Float(center.y), 0, 0)])
-        case let .wave(amplitude, frequency, phase, vertical):
-            return pass("ollin_fx_wave", [input],
-                        [SIMD4(Float(amplitude), Float(frequency), Float(phase), vertical ? 1 : 0)])
-        case let .ripple(amplitude, frequency, phase, center):
-            return pass("ollin_fx_ripple", [input],
-                        [SIMD4(Float(amplitude), Float(frequency), Float(phase), aspect),
-                         SIMD4(Float(center.x), Float(center.y), 0, 0)])
-        case let .mirror(vertical, flip):
-            return pass("ollin_fx_mirror", [input], [SIMD4(vertical ? 1 : 0, flip ? 1 : 0, 0, 0)])
-        case .polar(let amount):
-            return pass("ollin_fx_polar", [input], [SIMD4(Float(amount), aspect, 0, 0)])
-        case let .tile(count, mirror):
-            return pass("ollin_fx_tile", [input], [SIMD4(Float(count), mirror ? 1 : 0, 0, 0)])
-        case let .perturb(amount, scale, phase):
-            return pass("ollin_fx_perturb", [input],
-                        [SIMD4(Float(amount), Float(scale), Float(phase), aspect)])
 
         // Design filters. The three alpha-shape effects (liquid metal, heatmap,
         // gem smoke) first extract the layer's alpha as a mask and Gaussian-blur
         // it into smooth interior/halo fields; the fragment reads those beside
         // the layer. Blur sigmas scale with the layer so shapes read the same at
         // any resolution.
-        case let .flutedGlass(flutes, shape, profile, distortion, shift, stretch,
-                              blur, edges, highlights, shadows, margins, angle):
-            return pass("ollin_fx_fluted_glass", [input],
-                        [SIMD4(Float(flutes), aspect, shape.rawIndex, profile.rawIndex),
-                         SIMD4(Float(distortion), Float(shift), Float(stretch), Float(blur)),
-                         SIMD4(Float(edges), Float(highlights), Float(shadows), Float(angle)),
-                         SIMD4(Float(margins.left / Double(width)),
-                               Float(margins.right / Double(width)),
-                               Float(margins.top / Double(max(1, height))),
-                               Float(margins.bottom / Double(max(1, height)))),
-                         SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(0, 0, 0, 1),
-                         SIMD4(Float(max(1, height)), 0, 0, 0)])
-        case let .water(scale, waves, refraction, layering, edges, highlights, highlight, phase):
-            return pass("ollin_fx_water", [input],
-                        [SIMD4(Float(scale), Float(waves), Float(refraction), Float(edges)),
-                         SIMD4(Float(highlights), Float(phase), aspect, Float(layering)), highlight])
-        case let .paperTexture(paper, shading, contrast, roughness, fiber, crumples,
-                               folds, drops, seed):
-            return pass("ollin_fx_paper_texture", [input],
-                        [SIMD4(Float(contrast), Float(roughness), Float(fiber), Float(crumples)),
-                         SIMD4(Float(folds), Float(drops), Float(seed), aspect),
-                         paper, shading])
         case let .liquidMetal(repetition, softness, dispersion, distortion, contour,
                               angle, tint, phase):
             guard let field = poissonInteriorField(of: input, width: width, height: height,
@@ -709,10 +553,6 @@ extension MetalRenderer {
                                           SIMD4(Float(phase), aspect, 0, 0),
                                           body] + colors, into: cb)
             return output
-        case let .melt(colors, scale, warp, liquify, blend, phase):
-            return pass("ollin_fx_melt", [input],
-                        [SIMD4(Float(scale), Float(liquify), Float(blend), aspect),
-                         SIMD4(Float(warp), Float(phase), 0, 0)] + colors)
         case let .diffuse(threshold, sharpness):
             return diffusedColorField(of: input, width: width, height: height,
                                       threshold: threshold, sharpness: sharpness,
@@ -722,10 +562,6 @@ extension MetalRenderer {
             return measuredDistanceField(of: input, width: width, height: height,
                                          source: source, threshold: threshold,
                                          maxDistance: maxDistance, into: cb, pooled: pooled)
-        case let .fieldMap(lut, from, to, repeating):
-            guard let lutTex = makeLUTTexture(lut) else { return nil }
-            return pass("ollin_fx_field_map", [input, lutTex],
-                        [f(from, to, repeating ? 1 : 0, 0)])
         case let .boxBlur(radius):
             guard let sat = summedAreaTable(of: input, width: width, height: height,
                                             into: cb, pooled: pooled) else { return nil }
@@ -738,6 +574,19 @@ extension MetalRenderer {
                                             into: cb, pooled: pooled) else { return nil }
             return pass("ollin_fx_adaptive_threshold", [sat, input],
                         [f(max(1, (side / 2).rounded()), bias, invert ? 1 : 0, 0)])
+
+        // Every single-pass filter was encoded from its `singlePass` description
+        // above; the list stays exhaustive so a new kind must choose a side.
+        case .colorGrade, .invert, .posterize, .threshold, .sepia, .colorVision, .duotone,
+             .gradientMap, .antialias, .edges, .sharpen, .vignette, .chromaticAberration,
+             .halftone, .dither, .ditherDuo, .grain, .pixelate, .lineScreen, .solarize,
+             .temperature, .vibrance, .exposure, .levels, .colorama, .lumaKey, .motionBlur,
+             .radialBlur, .bilateral, .emboss, .oilPaint, .crosshatch, .toon, .median,
+             .contour, .cmykHalftone, .normalMap, .relight, .iridescence, .glitter,
+             .thinFilm, .diffraction, .scanlines, .glitch, .crt, .kaleidoscope, .swirl,
+             .droste, .bulge, .wave, .ripple, .mirror, .polar, .tile, .perturb,
+             .flutedGlass, .water, .paperTexture, .melt, .fieldMap:
+            return nil
         }
     }
 
@@ -1317,10 +1166,9 @@ extension MetalRenderer {
                               depth: DepthReconstruction? = nil, normals: MTLTexture? = nil,
                               width: Int, height: Int,
                               into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
-        func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> MTLTexture? {
-            guard let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
-            encodeEffectFragment(fragment, inputs: [base, aux], output: output, params: params, into: cb)
-            return output
+        if let single = op.singlePass(width: width, height: height, resolve: effectiveQuality) {
+            return encodeSinglePass(single, layers: [base, aux], width: width, height: height,
+                                    into: cb, pooled: pooled)
         }
         switch op.kind {
         case let .shader(shader):
@@ -1328,33 +1176,8 @@ extension MetalRenderer {
             encodeUserShader(shader, variant: .combine, inputs: [base, aux], output: output,
                              width: width, height: height, into: cb)
             return output
-        case let .mask(channel, invert):
-            return pass("ollin_fx_mask", [SIMD4(channel.rawIndex, invert ? 1 : 0, 0, 0)])
-        case let .displace(amount):
-            return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
-        case let .lineIntegralConvolution(length, field):
-            // Half the streak each way, in texels of the base, walked one texel a
-            // step up to a fixed cap; past the cap the step grows so a long streak
-            // still spans its length at the same cost.
-            let half = Float(length) * 0.5 * Float(max(width, height))
-            let steps = min(128, max(0, Int(half.rounded())))
-            let stepTexels = steps == 0 ? 0 : half / Float(steps)
-            return pass("ollin_fx_lic", [SIMD4(1 / Float(width), 1 / Float(height),
-                                               Float(steps), stepTexels),
-                                         field.row])
-        case let .disperse(amount, mode, spectral, quality):
-            let taps = spectral ? Float(resolveDispersionTaps(quality)) : 3
-            let aspect = Float(width) / Float(max(1, height))
-            return pass("ollin_fx_chromatic",
-                        [SIMD4(Float(amount), mode.rawIndex, mode.shapeA, mode.shapeB),
-                         SIMD4(aspect, taps, 1, 0),
-                         SIMD4(1 / Float(width), 1 / Float(height), 0, 0)])
-        case let .mix(amount):
-            return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
-        case let .paintMix(amount, quality):
-            return pass("ollin_fx_paint_mix",
-                        [SIMD4(Float(amount), 0, 0, 0)]
-                        + SpectralTaps.block(resolveDispersionTaps(quality)))
+        case .mask, .displace, .lineIntegralConvolution, .disperse, .mix, .paintMix:
+            return nil   // encoded from `singlePass` above
         case let .seamlessClone(amount, threshold):
             // Three passes and no new solver: read the patch's rim as boundary values,
             // settle them on the shared Laplace ladder, add the answer back under the
@@ -2058,164 +1881,15 @@ extension MetalRenderer {
     /// just its parameters. `aspect` lets the fragment keep cells square.
     private func encodeGenerator(_ generator: Generator, output: MTLTexture,
                                  width: Int, height: Int, into cb: MTLCommandBuffer) {
-        let aspect = Float(width) / Float(max(1, height))
-        switch generator.kind {
-        case let .shader(shader):
+        if case let .shader(shader) = generator.kind {
             encodeUserShader(shader, variant: .generator, inputs: [], output: output,
                              width: width, height: height, into: cb)
-        case let .checkers(scale, fg, bg):
-            encodeEffectFragment("ollin_gen_checkers", inputs: [], output: output,
-                                 params: [SIMD4(Float(scale), aspect, 0, 0), fg, bg], into: cb)
-        case let .gridLines(scale, weight, fg, bg):
-            encodeEffectFragment("ollin_gen_grid", inputs: [], output: output,
-                                 params: [SIMD4(Float(scale), Float(weight), aspect, 0), fg, bg], into: cb)
-        case let .bars(scale, vertical, fg, bg):
-            encodeEffectFragment("ollin_gen_bars", inputs: [], output: output,
-                                 params: [SIMD4(Float(scale), vertical ? 1 : 0, aspect, 0), fg, bg], into: cb)
-        case let .noise(scale, sharpness, warp, fg, bg):
-            encodeEffectFragment("ollin_gen_noise", inputs: [], output: output,
-                                 params: [SIMD4(Float(scale), Float(sharpness), aspect, Float(warp)), fg, bg], into: cb)
-        case let .cellular(scale, jitter, style, fg, bg, phase):
-            encodeEffectFragment("ollin_gen_cellular", inputs: [], output: output,
-                                 params: [SIMD4(Float(scale), Float(jitter), aspect, Float(phase)),
-                                          SIMD4(style.rawIndex, 0, 0, 0), fg, bg], into: cb)
-
-        // Design patterns. Each packs its scalars into leading rows and appends
-        // the palette as trailing color rows the fragment indexes past them.
-        case let .meshGradient(colors, distortion, swirl, mixing, grain, phase):
-            // The blend parameter maps to the inverse-distance power piecewise so the
-            // 0.5 default is *exactly* the classic 3.5 (snapshot-pinned): 0 is a
-            // hard near-Voronoi 16, 1 a buttery 1.
-            let power = mixing <= 0.5 ? 16.0 - (16.0 - 3.5) * (mixing * 2)
-                                      : 3.5 - 2.5 * ((mixing - 0.5) * 2)
-            encodeEffectFragment("ollin_gen_mesh_gradient", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(distortion), Float(swirl)),
-                                          SIMD4(Float(grain), Float(phase), Float(power), 0)] + colors, into: cb)
-        case let .filaments(color, highlight, background, scale, brightness, contrast, phase):
-            encodeEffectFragment("ollin_gen_filaments", inputs: [], output: output,
-                                 params: [SIMD4(Float(scale), aspect, Float(brightness), Float(contrast)),
-                                          SIMD4(Float(phase), 0, 0, 0),
-                                          color, highlight, background], into: cb)
-        case let .smokeRing(colors, background, radius, thickness, fill, scale, detail, phase):
-            encodeEffectFragment("ollin_gen_smoke_ring", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(radius), Float(thickness)),
-                                          SIMD4(Float(fill), Float(scale), Float(detail), Float(phase)),
-                                          background] + colors, into: cb)
-        case let .colorPanels(colors, background, density, length, skew, blur,
-                              fadeIn, fadeOut, gradient, phase):
-            // Panels tile the palette an even number of times (≥ 12 panes) so the
-            // two mirrored half-phase sets stay color-aligned across the wrap.
-            var panels = 12
-            while panels % colors.count != 0 || (panels / colors.count) % 2 != 0 { panels += 1 }
-            encodeEffectFragment("ollin_gen_color_panels", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(density), Float(length)),
-                                          SIMD4(Float(skew), Float(blur), Float(gradient), Float(phase)),
-                                          SIMD4(Float(fadeIn), Float(fadeOut), Float(panels),
-                                                Float(panels) / 12),
-                                          background] + colors, into: cb)
-        case let .spiral(foreground, background, density, distortion, strokeWidth,
-                         taper, cap, noise, noiseScale, softness, scale, phase):
-            encodeEffectFragment("ollin_gen_spiral", inputs: [], output: output,
-                                 params: [SIMD4(aspect, Float(density), Float(distortion), Float(strokeWidth)),
-                                          SIMD4(Float(taper), Float(cap), Float(noise), Float(noiseScale)),
-                                          SIMD4(Float(softness), Float(scale), Float(phase), 0),
-                                          foreground, background], into: cb)
-        case let .waves(foreground, background, shape, frequency, amplitude,
-                        spacing, proportion, softness, scale, phase):
-            encodeEffectFragment("ollin_gen_waves", inputs: [], output: output,
-                                 params: [SIMD4(aspect, Float(shape), Float(frequency), Float(amplitude)),
-                                          SIMD4(Float(spacing), Float(proportion), Float(softness), Float(scale)),
-                                          SIMD4(Float(phase), 0, 0, 0),
-                                          foreground, background], into: cb)
-        case let .dotOrbit(colors, background, scale, size, sizeVariation, spread, steps, phase):
-            encodeEffectFragment("ollin_gen_dot_orbit", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(scale), Float(size)),
-                                          SIMD4(Float(sizeVariation), Float(spread), Float(steps), Float(phase)),
-                                          background] + colors, into: cb)
-        case let .grainGradient(colors, background, shape, softness, intensity, noise, phase):
-            encodeEffectFragment("ollin_gen_grain_gradient", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, shape.rawIndex, Float(softness)),
-                                          SIMD4(Float(intensity), Float(noise), Float(phase),
-                                                Float(max(1, height))),
-                                          background] + colors, into: cb)
-        case let .pulsingBorder(colors, background, roundness, thickness, softness, intensity,
-                                bloom, spots, spotSize, pulse, smoke, smokeScale, margins, phase):
-            // Margins arrive in layer pixels; the border lives in centered
-            // square units, so convert per side.
-            let unit = Double(min(aspect, 1))
-            let mL = margins.left / Double(width) * Double(aspect) / unit
-            let mR = margins.right / Double(width) * Double(aspect) / unit
-            let mT = margins.top / Double(max(1, height)) / unit
-            let mB = margins.bottom / Double(max(1, height)) / unit
-            encodeEffectFragment("ollin_gen_pulsing_border", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(roundness), Float(thickness)),
-                                          SIMD4(Float(softness), Float(intensity), Float(bloom), Float(spots)),
-                                          SIMD4(Float(spotSize), Float(pulse), Float(smoke), Float(smokeScale)),
-                                          SIMD4(Float(phase), Float(mL), Float(mR), Float(mT)),
-                                          SIMD4(Float(mB), 0, 0, 0),
-                                          background] + colors, into: cb)
-        case let .godRays(colors, background, x, y, density, breakup, coreSize,
-                          coreIntensity, intensity, bloom, bloomTint, phase):
-            encodeEffectFragment("ollin_gen_god_rays", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(x), Float(y)),
-                                          SIMD4(Float(density), Float(breakup), Float(coreSize),
-                                                Float(coreIntensity)),
-                                          SIMD4(Float(intensity), Float(bloom), Float(phase), 0),
-                                          bloomTint, background] + colors, into: cb)
-
-        // Pattern fields: scalars in the leading rows, background at params[2],
-        // the palette (where one applies) as trailing rows.
-        case let .quasicrystal(colors, background, symmetry, scale, contrast, phase):
-            encodeEffectFragment("ollin_gen_quasicrystal", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(symmetry), Float(scale)),
-                                          SIMD4(Float(contrast), Float(phase), 0, 0),
-                                          background] + colors, into: cb)
-        case let .moire(foreground, background, sources, frequency, scale, phase):
-            encodeEffectFragment("ollin_gen_moire", inputs: [], output: output,
-                                 params: [SIMD4(aspect, Float(sources), Float(frequency), Float(scale)),
-                                          SIMD4(Float(phase), 0, 0, 0),
-                                          foreground, background], into: cb)
-        case let .gyroid(foreground, background, scale, thickness, phase):
-            encodeEffectFragment("ollin_gen_gyroid", inputs: [], output: output,
-                                 params: [SIMD4(aspect, Float(scale), Float(thickness), Float(phase)),
-                                          foreground, background], into: cb)
-        case let .phyllotaxis(colors, background, count, dotSize, phase):
-            encodeEffectFragment("ollin_gen_phyllotaxis", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(count), Float(dotSize)),
-                                          SIMD4(Float(phase), 0, 0, 0),
-                                          background] + colors, into: cb)
-        case let .hexPulse(colors, background, scale, gap, phase):
-            encodeEffectFragment("ollin_gen_hexpulse", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(scale), Float(gap)),
-                                          SIMD4(Float(phase), 0, 0, 0),
-                                          background] + colors, into: cb)
-        case let .chladni(m, n, style, weight, grain, foreground, background, scale, phase):
-            encodeEffectFragment("ollin_gen_chladni", inputs: [], output: output,
-                                 params: [SIMD4(aspect, Float(m), Float(n), Float(scale)),
-                                          SIMD4(style.rawIndex, Float(weight), Float(grain), Float(phase)),
-                                          foreground, background], into: cb)
-        case let .escapeTime(colors, interior, mode, c, center, zoom, iterations, cycles, phase):
-            encodeEffectFragment("ollin_gen_escape", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(mode), Float(iterations)),
-                                          SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(cycles)),
-                                          SIMD4(Float(c.x), Float(c.y), Float(phase), 0),
-                                          interior] + colors, into: cb)
-        case let .orbitTrap(colors, trap, mode, c, center, zoom, iterations, glow, angle):
-            encodeEffectFragment("ollin_gen_orbittrap", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(mode), Float(iterations)),
-                                          SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(glow)),
-                                          SIMD4(Float(c.x), Float(c.y), trap.rawIndex, Float(angle)),
-                                          SIMD4(Float(trap.trapCenter.x), Float(trap.trapCenter.y),
-                                                Float(trap.trapRadius), 0)] + colors, into: cb)
-        case let .domainColoring(colors, mode, exponent, zeros, poles, shading,
-                                 strength, center, zoom, phase):
-            encodeEffectFragment("ollin_gen_domain", inputs: [], output: output,
-                                 params: [SIMD4(Float(colors.count), aspect, Float(mode), shading.rawIndex),
-                                          SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(phase)),
-                                          SIMD4(Float(strength), Float(exponent),
-                                                Float(zeros.count), Float(poles.count))]
-                                         + pointPairRows(zeros) + pointPairRows(poles) + colors, into: cb)
+            return
         }
+        // Every pattern is one fragment pass described as data (the same
+        // description the web recorder writes down).
+        guard let pass = generator.pass(width: width, height: height) else { return }
+        encodeEffectFragment(pass.fragment, inputs: [], output: output, params: pass.params, into: cb)
     }
 
     /// Encode one fullscreen filter (or generator) fragment pass: bind `inputs` as
@@ -4177,10 +3851,3 @@ extension MetalRenderer {
 /// Pack up to four plane points two to a params row (the domain-coloring zeros
 /// and poles), zero-filling the slots a shorter list leaves empty, so the colors
 /// that follow always start at the same row.
-private func pointPairRows(_ points: [Vector2]) -> [SIMD4<Float>] {
-    stride(from: 0, to: 4, by: 2).map { i in
-        let a = i < points.count ? points[i] : Vector2.zero
-        let b = i + 1 < points.count ? points[i + 1] : Vector2.zero
-        return SIMD4(Float(a.x), Float(a.y), Float(b.x), Float(b.y))
-    }
-}

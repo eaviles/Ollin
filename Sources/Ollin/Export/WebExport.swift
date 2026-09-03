@@ -5,20 +5,25 @@ import OllinShaderText
 
 // MARK: - The recording
 
-/// One recorded frame of the page: the clear the frame asked for and the
-/// analytic-shape instances the renderer received, in call order. This is the
-/// same data the GPU reads each frame, kept on the primitives door (the closed
-/// analytic shapes: circles, ellipses, rects, arcs, triangles, polygons by
-/// count, stars, rings, markers, and the novelty catalog), so the page draws
-/// them with the same fragment the Mac does.
+/// One recorded frame of the page: the clear the frame asked for, the frame's
+/// float vector (the analytic-shape instances the renderer received, in call
+/// order, then the image quads that composite a layer, then the parameter rows
+/// of every effect pass), and the graph that says what the vector means. The
+/// vector is the same data the GPU reads each frame, so the page draws it with
+/// the same fragments the Mac does.
 struct WebFrame: Equatable {
     /// The clear color in linear light, or `nil` when the frame drew onto what
     /// the previous frame left (an accumulating sketch).
     var clear: SIMD3<Float>?
-    /// `WebInstance.floats` values per instance, in call order.
-    var instances: [Float]
+    /// Shapes (`WebInstance.floats` each), then quads (`WebQuad.floats` each),
+    /// then parameter rows, laid out as `graph` says.
+    var vector: [Float]
+    var graph: WebGraph
     var toneMapMode: Int
     var exposure: Float
+
+    /// The shape region of the vector alone.
+    var instances: [Float] { Array(vector[0 ..< graph.instanceCount * WebInstance.floats]) }
 }
 
 /// What one analytic shape becomes on the wire: the `SDFInstance` fields the
@@ -80,8 +85,14 @@ struct WebRecording {
     var frameOffset: Int = 0
     /// The pointer at the first recorded frame, the page's starting mouse.
     var mouse: (x: Double, y: Double) = (0, 0)
+    /// The lookup strips the passes read, each once.
+    var tables: [[SIMD4<Float>]] = []
+    /// The user shaders the frames run, each once.
+    var shaders: [WebUserShader] = []
 
     var duration: Double { Double(frames.count) / rate }
+    /// Whether any frame carries state from the one before it.
+    var isStateful: Bool { frames.contains { $0.graph.isStateful } }
 }
 
 /// Why a sketch could not cross to the page: the first call the recorder met
@@ -113,9 +124,9 @@ struct WebShaderError: Error, CustomStringConvertible {
 extension OllinApp {
     /// Drive `sketch` headlessly the way the video export does (`setup()`, then
     /// `draw()` advanced frame by frame at `fps`) and record what the renderer
-    /// received each frame, kept to the primitives door. Never touches Metal, so
-    /// the page holds nothing GPU-specific. `skipSeconds` runs the sketch that
-    /// long before the first recorded frame.
+    /// received each frame. Never touches Metal, so the page holds nothing
+    /// GPU-specific. `skipSeconds` runs the sketch that long before the first
+    /// recorded frame.
     static func recordWebFrames(of sketch: Sketch, frames: Int, fps: Double,
                                 skipSeconds: Double = 0) throws -> WebRecording {
         isRenderingHeadless = true
@@ -138,13 +149,18 @@ extension OllinApp {
         var mouse: (x: Double, y: Double) = (0, 0)
         var recorded: [WebFrame] = []
         recorded.reserveCapacity(frames)
+        let recorder = WebGraphRecorder()
         for k in 0 ..< (skip + frames) {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()
             if k < skip {
-                // The page cannot replay a pile it never saw.
+                // The page cannot replay a pile it never saw, nor a state it
+                // never stepped.
                 if sketch.drawer.accumulates {
                     throw WebExportRefusal(call: "--skip on a sketch that accumulates (noClear)", frame: 0)
+                }
+                if sketch.drawer.usesFeedback {
+                    throw WebExportRefusal(call: "--skip on a sketch with a feedback layer or a simulation", frame: 0)
                 }
                 continue
             }
@@ -156,7 +172,8 @@ extension OllinApp {
             for (i, f) in formulas.enumerated() {
                 series[i].append(Float(webFormulaValue(named: f.name, in: handles) ?? 0))
             }
-            recorded.append(try captureWebFrame(sketch.drawer, frame: k - skip))
+            recorded.append(try recorder.capture(sketch.drawer, frame: k - skip,
+                                                 width: size.width, height: size.height))
         }
         let loops = sketch.loopDuration.map { abs($0 * fps - Double(frames)) < 0.5 } ?? false
         var recording = WebRecording(name: String(describing: type(of: sketch)),
@@ -170,81 +187,18 @@ extension OllinApp {
         recording.clock = webAutomationClock(of: sketch)
         recording.frameOffset = skip
         recording.mouse = mouse
+        recording.tables = recorder.tables
+        recording.shaders = recorder.shaders
         return recording
     }
 
-    /// One frame's data, read off the drawer after `performDraw()`: the batches
-    /// in call order, each one either a run of analytic shapes or the reason the
-    /// export stops.
-    static func captureWebFrame(_ drawer: Drawer, frame: Int) throws -> WebFrame {
-        func refuse(_ call: String) -> WebExportRefusal { WebExportRefusal(call: call, frame: frame) }
-        if drawer.camera3D != nil || !drawer.lights.isEmpty {
-            throw refuse("3D drawing (a camera or a light)")
-        }
-        if !drawer.dispatches.isEmpty {
-            throw refuse("compute work (a simulation or GPU particles)")
-        }
-        if !drawer.renderTargets.isEmpty || !drawer.filterOps.isEmpty || !drawer.frameFilters.isEmpty {
-            throw refuse("a layer or an effect (withTarget, a filter, postProcess, a Visual chain)")
-        }
-
-        var floats: [Float] = []
-        let batches = drawer.batches
-        for (i, batch) in batches.enumerated() {
-            if batch.target != nil { throw refuse("a layer (withTarget)") }
-            if batch.kind == .clipPush || batch.kind == .clipPop || batch.clipLevel > 0 { throw refuse("withClip") }
-            if batch.blendMode != .normal { throw refuse("blendMode(.\(batch.blendMode))") }
-            if batch.depth != nil { throw refuse("depth(at:)") }
-            switch batch.kind {
-            case .sdf:
-                let end = i + 1 < batches.count ? batches[i + 1].instanceStart : drawer.sdfInstances.count
-                for instance in drawer.sdfInstances[batch.instanceStart ..< end] {
-                    try appendInstance(instance, into: &floats, frame: frame)
-                }
-            case .retained:
-                // A recording made of analytic shapes alone replays as those shapes
-                // under the draw-time transform, composed onto each one's own.
-                guard let recording = batch.retained else { continue }
-                let onlyShapes = recording.vertices.isEmpty && recording.imageVertices.isEmpty
-                    && recording.glyphVertices.isEmpty && recording.points.isEmpty
-                    && recording.sdfGroups.isEmpty
-                    && recording.innerBatches.allSatisfy { $0.kind == .sdf && $0.blendMode == .normal && $0.depth == nil }
-                guard onlyShapes else { throw refuse("drawBatch (a recording holding more than analytic shapes)") }
-                for instance in recording.sdfInstances {
-                    var placed = instance
-                    if let t = batch.retainedTransform { placed.transform = t * instance.transform }
-                    try appendInstance(placed, into: &floats, frame: frame)
-                }
-            default:
-                throw refuse(webRefusalName(for: batch.kind))
-            }
-        }
-
-        // The ordinary frame clears to the background; an accumulating one only
-        // when the sketch asked for a wipe. The first frame always clears, since
-        // a fresh surface starts at the background color.
-        let clears = frame == 0 || !drawer.accumulates || drawer.backgroundSetThisFrame
-        let bg = drawer.backgroundColor
-        let clear: SIMD3<Float>? = clears
-            ? SIMD3<Float>(Float(Color.srgbToLinear(bg.red)), Float(Color.srgbToLinear(bg.green)),
-                           Float(Color.srgbToLinear(bg.blue)))
-            : nil
-        return WebFrame(clear: clear, instances: floats,
-                        toneMapMode: Int(drawer.toneMapMode.shaderIndex),
-                        exposure: Float(drawer.toneMapExposure))
-    }
-
-    private static func appendInstance(_ instance: SDFInstance, into floats: inout [Float], frame: Int) throws {
-        let fillKind = (instance.shape >> 10) & 0x3
-        let strokeKind = (instance.shape >> 12) & 0x3
-        if fillKind != 0 || strokeKind != 0 {
-            throw WebExportRefusal(call: "a gradient fill or stroke", frame: frame)
-        }
-        WebInstance.append(instance, into: &floats)
+    /// One frame's data, read off the drawer after `performDraw()`.
+    static func captureWebFrame(_ drawer: Drawer, frame: Int, width: Int, height: Int) throws -> WebFrame {
+        try WebGraphRecorder().capture(drawer, frame: frame, width: width, height: height)
     }
 
     /// The call, or the family of calls, a batch kind stands for in a refusal.
-    static func webRefusalName(for kind: GeometryKind) -> String {
+    nonisolated static func webRefusalName(for kind: GeometryKind) -> String {
         switch kind {
         case .triangles:
             return "a filled polygon, shape, or outline text (drawPolygon, drawShape, drawCurve, drawText, an elliptical or full-turn drawArc), which goes through the triangle path"
@@ -269,41 +223,77 @@ extension OllinApp {
 
 /// The framework's shader text the page's shaders are cut from, read once from
 /// the resource bundle: the helper library, the core segment (the dither), the
-/// shapes segment (the analytic primitives' coverage), and the effects segment
-/// (the tone-map curve). Only the marked sections cross.
+/// shapes segment (the analytic primitives' coverage), and the four effect
+/// segments (the tone-map curve, the filters, the combines, the simulations,
+/// the patterns). A page carries only what its frames run.
 enum WebShaderSources {
     static let text: String = {
-        ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderEffects"].compactMap { name -> String? in
+        ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderEffects", "ShaderCombine",
+         "ShaderSim", "ShaderPatterns"].compactMap { name -> String? in
             guard let url = OllinResources.bundle.url(forResource: name, withExtension: "metal") else { return nil }
             return try? String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
     }()
+
+    /// The helper library alone, the text a user shader is compiled against.
+    static let library: String = {
+        guard let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal") else { return "" }
+        return (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+    }()
 }
 
-/// The four GLSL ES 3.00 shaders a page carries. The shape coverage and the
-/// present pass's dither and tone-map curve are the framework's own Metal,
-/// translated; the vertex stages and the two fragment tails are the page's, and
-/// they mirror `ollin_sdf_vertex` and `ollin_present_fragment` line for line.
+/// The GLSL ES 3.00 shaders a page carries: the shape and present pairs every
+/// page has, the image quad pair and the fullscreen effect stage when a frame
+/// uses a layer, then one fragment per framework effect the frames run and
+/// one per user shader. The shape coverage, the present pass's dither and
+/// tone-map curve, and every effect fragment are the framework's own Metal,
+/// translated; the vertex stages and the two fragment tails are the page's,
+/// and they mirror `ollin_sdf_vertex` and `ollin_present_fragment` line for
+/// line.
 struct WebShaders {
     var sdfVertex: String
     var sdfFragment: String
     var presentVertex: String
     var presentFragment: String
+    var imageVertex: String
+    var imageFragment: String
+    /// The fullscreen stage every effect and user pass draws with.
+    var effectVertex: String
+    /// The framework's effect fragments by name.
+    var effects: [String: String]
+    /// The user shaders, in the recording's order.
+    var users: [String]
 
-    static func make() throws -> WebShaders {
-        let shapes = WebShaderLibrary.translate(WebShaderSources.text, wanted: ["shapes"])
+    static func make(effects wanted: [String: Int] = [:], users: [WebUserShader] = []) throws -> WebShaders {
+        let text = WebShaderSources.text
+        let shapes = WebShaderLibrary.translate(text, wanted: ["shapes"])
         guard shapes.isClean else { throw WebShaderError(diagnostics: shapes.unsupported) }
-        let present = WebShaderLibrary.translate(WebShaderSources.text, wanted: ["present"])
+        let present = WebShaderLibrary.translate(text, wanted: ["present"])
         guard present.isClean else { throw WebShaderError(diagnostics: present.unsupported) }
+        let base = WebShaderLibrary.translate(text, wanted: [])
+        guard base.isClean else { throw WebShaderError(diagnostics: base.unsupported) }
         let sdfFragment = WebShaderCompat.preamble + "\n" + shapes.support + "\n\n" + shapes.body + "\n" + sdfFragmentTail
         let presentFragment = WebShaderCompat.preamble + "\n" + present.support + "\n\n" + present.body + "\n" + presentFragmentTail
+        let imageFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + imageFragmentTail
+
+        var effects: [String: String] = [:]
+        for (name, rows) in wanted {
+            let t = WebFragmentTranslator.translate(entry: name, in: text, paramRows: max(1, rows))
+            guard t.isClean else { throw WebShaderError(diagnostics: t.unsupported) }
+            effects[name] = t.glsl
+        }
+        let userSources = try users.map { try WebUserShaderGLSL.make($0) }
         return WebShaders(sdfVertex: sdfVertex, sdfFragment: sdfFragment,
-                          presentVertex: presentVertex, presentFragment: presentFragment)
+                          presentVertex: presentVertex, presentFragment: presentFragment,
+                          imageVertex: imageVertex, imageFragment: imageFragment,
+                          effectVertex: effectVertex, effects: effects, users: userSources)
     }
 
     /// The covering quad of one instance, exactly as `ollin_sdf_vertex` builds it:
     /// the shape plus half the stroke plus a margin for the AA falloff, placed by
-    /// the instance's own transform, mapped into clip space with y down.
+    /// the instance's own transform, mapped into clip space with y down. The
+    /// viewport is the surface's logical size, so a layer drawn at a fraction of
+    /// its size keeps its coordinates and only the raster shrinks.
     static let sdfVertex = """
     #version 300 es
     precision highp float;
@@ -432,6 +422,186 @@ struct WebShaders {
         fragColor = vec4(enc, 1.0);
     }
     """
+
+    /// The fullscreen stage the effect passes draw with, `ollin_present_vertex`
+    /// as written: `uv` turned so (0, 0) is the top-left, the way a Metal
+    /// fragment expects it. The reads inside a translated fragment turn the
+    /// coordinate back, since the page keeps its layers bottom-up.
+    static let effectVertex = """
+    #version 300 es
+    precision highp float;
+    out vec2 uv;
+    void main() {
+        vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+        gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        uv = vec2(p.x, 1.0 - p.y);
+    }
+    """
+
+    /// A textured quad, like `ollin_image_vertex`: the six vertices already in
+    /// sketch space, mapped by the surface's logical size.
+    static let imageVertex = """
+    #version 300 es
+    precision highp float;
+    layout(location = 0) in vec2 aPosition;
+    layout(location = 1) in vec2 aUV;
+    layout(location = 2) in vec4 aTint;
+    uniform vec2 viewport;
+    out vec2 vUV;
+    out vec4 vTint;
+    void main() {
+        gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, 1.0 - (aPosition.y / viewport.y) * 2.0, 0.0, 1.0);
+        vUV = aUV;
+        vTint = aTint;
+    }
+    """
+
+    /// The page's Gaussian blur, one direction per pass: the taps out to three
+    /// and a half sigma, each weighed by the Gaussian and the whole normalized
+    /// by the sum, over a layer clamped at its edges, the way the Mac's kernel
+    /// reads. Measured against the Mac on a one-pixel line: the profile is the
+    /// same normalized Gaussian to within a level or two out past three sigma.
+    static let blurFragment = """
+    #version 300 es
+    precision highp float;
+    uniform sampler2D src;
+    uniform vec2 step;
+    uniform float sigma;
+    in vec2 uv;
+    out vec4 fragColor;
+    void main() {
+        vec2 q = vec2(uv.x, 1.0 - uv.y);
+        int radius = int(ceil(sigma * 3.5));
+        float twoSigma2 = 2.0 * sigma * sigma;
+        vec4 sum = texture(src, q);
+        float weight = 1.0;
+        for (int i = 1; i <= radius; i++) {
+            float w = exp(-float(i * i) / twoSigma2);
+            vec2 d = step * float(i);
+            sum += (texture(src, q + d) + texture(src, q - d)) * w;
+            weight += 2.0 * w;
+        }
+        fragColor = sum / weight;
+    }
+    """
+
+    /// The tail of `ollin_image_fragment`: the layer's premultiplied linear
+    /// texel (read with the row turned over), the straight tint linearized and
+    /// applied so the result stays premultiplied.
+    static let imageFragmentTail = """
+    uniform sampler2D tex;
+    in vec2 vUV;
+    in vec4 vTint;
+    out vec4 fragColor;
+    void main() {
+        vec4 c = texture(tex, vec2(vUV.x, 1.0 - vUV.y));
+        c.rgb *= srgbToLinear(vTint.rgb);
+        c *= vTint.a;
+        fragColor = c;
+    }
+    """
+}
+
+/// A user shader as a page fragment: the framework's wrapper written for the
+/// page (the `ShaderInfo` the user's `shade` reads, the readers over the layers
+/// the pass binds, the clock and pointer as uniforms), the helper library's
+/// sections the shader asked for and the user's own source both carried by the
+/// token rewriter, and a `main` that converts the straight sRGB result to the
+/// premultiplied linear a layer holds, as `ollin_user_fragment` does.
+enum WebUserShaderGLSL {
+    static func make(_ user: WebUserShader) throws -> String {
+        // The library sections the shader asked for, then the user's text, each
+        // through the rewriter; the user's `ShaderInfo` references are by value
+        // on the page, where Metal took them by reference.
+        let modules = Shader.Modules(rawValue: user.modules)
+        var sections: Set<String> = []
+        if modules.contains(.hash) { sections.insert("hash") }
+        if modules.contains(.noise) { sections.insert("noise") }
+        if modules.contains(.color) { sections.insert("color") }
+        if modules.contains(.sdf) { sections.insert("sdf") }
+        if modules.contains(.domain) { sections.insert("domain") }
+        if modules.contains(.visual) { sections.insert("visual") }
+        let library = WebShaderLibrary.translate(WebShaderSources.library, wanted: sections)
+        guard library.isClean else { throw WebShaderError(diagnostics: library.unsupported) }
+        let source = user.source
+            .replacingOccurrences(of: "thread const ShaderInfo &", with: "const ShaderInfo ")
+            .replacingOccurrences(of: "thread const ShaderInfo&", with: "const ShaderInfo ")
+            .replacingOccurrences(of: "thread ShaderInfo &", with: "ShaderInfo ")
+            .replacingOccurrences(of: "thread ShaderInfo&", with: "ShaderInfo ")
+        let body = WebShaderTranslator.translate(source)
+        guard body.isClean else {
+            throw WebExportRefusal(call: "a Shader the page cannot carry (\(user.name): "
+                                   + body.unsupported.map(\.message).joined(separator: "; ") + ")", frame: 0)
+        }
+        let support = WebShaderCompat.source(for: library.helpers.union(body.helpers),
+                                             constants: library.constants.union(body.constants))
+
+        var out = WebShaderCompat.preamble
+        if !support.isEmpty { out += support + "\n\n" }
+        out += "in vec2 uv;\nuniform vec2 ollin_viewport;\n"
+        if user.variant >= 1 { out += "uniform sampler2D ollin_src0;\n" }
+        if user.variant >= 2 { out += "uniform sampler2D ollin_src1;\n" }
+        out += """
+        uniform vec2 ollin_resolution;
+        uniform vec2 ollin_mouse;
+        uniform float ollin_time;
+        uniform float ollin_dt;
+        uniform uint ollin_frame;
+        uniform uint ollin_paramCount;
+        uniform vec4 ollin_params[16];
+        \(WebFragmentTranslator.readHelpers)
+
+        """
+        out += library.body + "\n\n"
+        out += """
+        struct ShaderInfo {
+            vec2 resolution;
+            vec2 mouse;
+            float time;
+            float deltaTime;
+            uint frame;
+            uint paramCount;
+            vec4 params[16];
+        };
+        float param(ShaderInfo info, int i) { return info.params[i >> 2][i & 3]; }
+        float param(ShaderInfo info, uint i) { return info.params[int(i >> 2u)][int(i & 3u)]; }
+        vec4 ollin_layer_sample(sampler2D t, vec2 q) { vec4 c = ollin_tex(t, clamp(q, 0.0, 1.0)); return vec4(linearToSrgb(ollin_unpremul(c)), c.a); }
+        vec4 ollin_layer_read(sampler2D t, vec2 q) { return ollin_tex(t, clamp(q, 0.0, 1.0)); }
+
+        """
+        if user.variant >= 1 {
+            out += """
+            vec4 sample_(ShaderInfo info, vec2 p) { return ollin_layer_sample(ollin_src0, p); }
+            vec4 sampleRaw(ShaderInfo info, vec2 p) { return ollin_layer_read(ollin_src0, p); }
+
+            """
+        }
+        if user.variant >= 2 {
+            out += """
+            vec4 sampleAux(ShaderInfo info, vec2 p) { return ollin_layer_sample(ollin_src1, p); }
+            vec4 sampleAuxRaw(ShaderInfo info, vec2 p) { return ollin_layer_read(ollin_src1, p); }
+
+            """
+        }
+        out += body.body + "\n\n"
+        out += """
+        out vec4 fragColor;
+        void main() {
+            ShaderInfo info;
+            info.resolution = ollin_resolution;
+            info.mouse = ollin_mouse;
+            info.time = ollin_time;
+            info.deltaTime = ollin_dt;
+            info.frame = ollin_frame;
+            info.paramCount = ollin_paramCount;
+            for (int i = 0; i < 16; ++i) info.params[i] = ollin_params[i];
+            vec4 c = shade(uv, info);
+            fragColor = vec4(srgbToLinear(c.rgb) * c.a, c.a);
+        }
+
+        """
+        return out
+    }
 }
 
 // MARK: - The page
@@ -475,7 +645,11 @@ extension OllinApp {
 
     /// The canvas and its script: the player, the page's shaders, and the track.
     static func webInlineFragment(of recording: WebRecording) throws -> String {
-        let shaders = try WebShaders.make()
+        var rows: [String: Int] = [:]
+        for frame in recording.frames {
+            for (name, r) in frame.graph.fragmentRows { rows[name] = max(rows[name] ?? 0, r) }
+        }
+        let shaders = try WebShaders.make(effects: rows, users: recording.shaders)
         let track = WebTrack(recording)
         let label = recording.description.isEmpty
             ? "\(recording.name), a sketch made with Ollin"
@@ -485,11 +659,24 @@ extension OllinApp {
         script = script.replacingOccurrences(of: "@STREAM@", with: track.stream)
         script = script.replacingOccurrences(of: "@BASE@", with: track.base)
         script = script.replacingOccurrences(of: "@FIT@", with: track.fit)
+        script = script.replacingOccurrences(of: "@EXTRA@", with: track.extra)
         script = script.replacingOccurrences(of: "@HELPERS@", with: FormulaJS.helpers)
         script = script.replacingOccurrences(of: "@SDF_VS@", with: jsString(shaders.sdfVertex))
         script = script.replacingOccurrences(of: "@SDF_FS@", with: jsString(shaders.sdfFragment))
         script = script.replacingOccurrences(of: "@PRESENT_VS@", with: jsString(shaders.presentVertex))
         script = script.replacingOccurrences(of: "@PRESENT_FS@", with: jsString(shaders.presentFragment))
+        script = script.replacingOccurrences(of: "@IMAGE_VS@", with: jsString(shaders.imageVertex))
+        script = script.replacingOccurrences(of: "@IMAGE_FS@", with: jsString(shaders.imageFragment))
+        script = script.replacingOccurrences(of: "@FX_VS@", with: jsString(shaders.effectVertex))
+        script = script.replacingOccurrences(of: "@BLUR_FS@", with: jsString(WebShaders.blurFragment))
+        let effectEntries = shaders.effects.keys.sorted().map { "\(jsString($0)): \(jsString(shaders.effects[$0]!))" }
+        script = script.replacingOccurrences(of: "@FX@", with: "{" + effectEntries.joined(separator: ",\n") + "}")
+        script = script.replacingOccurrences(of: "@USERS@", with: "[" + shaders.users.map(jsString).joined(separator: ",\n") + "]")
+        let tables = recording.tables.map { table -> String in
+            let flat = table.flatMap { [$0.x, $0.y, $0.z, $0.w] }
+            return "[\(table.count), \"\(WebTrack.base64(flat))\"]"
+        }
+        script = script.replacingOccurrences(of: "@TABLES@", with: "[" + tables.joined(separator: ",") + "]")
         return """
         <canvas class="ollin-sketch" width="\(recording.width)" height="\(recording.height)" role="img" aria-label="\(htmlEscaped(label))"></canvas>
         <script>
@@ -539,14 +726,19 @@ extension OllinApp {
 
 /// The player: a WebGL2 canvas that replays the track with the page's
 /// shaders, the intermediate in linear light (half float where the browser
-/// renders to one), the present pass on the canvas. A moving column arrives
-/// one of three ways and the player works each out per frame: live, from a
-/// parameter's formula evaluated on the page's clock and pointer; fitted, from
-/// the few sines of a lap; or sampled, interpolated between the records when
-/// the cast is stable. An accumulating track draws every frame in order. A
-/// reader who asked the system for less motion sees the first frame, still.
-/// The handle on the canvas (`canvas.ollin`, also `window.ollin`) plays,
-/// pauses, seeks, and shows one frame.
+/// renders to one), the present pass on the canvas. A frame is a graph of
+/// surfaces: each layer is filled in the order the Mac filled it (drawn into,
+/// generated, filtered from another, combined from two, run by a user shader,
+/// or carried over from last frame by a feedback layer or a simulation), the
+/// canvas draws its shapes and composites the layers it names, and the
+/// whole-frame filters run last. A moving column arrives one of three ways
+/// and the player works each out per frame: live, from a parameter's formula
+/// evaluated on the page's clock and pointer; fitted, from the few sines of a
+/// lap; or sampled, interpolated between the records when the cast is stable.
+/// An accumulating or stateful track draws every frame in order. A reader who
+/// asked the system for less motion sees the first frame, still. The handle on
+/// the canvas (`canvas.ollin`, also `window.ollin`) plays, pauses, seeks, and
+/// shows one frame.
 enum WebPlayer {
     static let script = #"""
     (function () {
@@ -558,17 +750,26 @@ enum WebPlayer {
       var STREAM = "@STREAM@";
       var BASE = "@BASE@";
       var FIT = "@FIT@";
+      var EXTRA = "@EXTRA@";
       var SDF_VS = @SDF_VS@;
       var SDF_FS = @SDF_FS@;
       var PRESENT_VS = @PRESENT_VS@;
       var PRESENT_FS = @PRESENT_FS@;
+      var IMAGE_VS = @IMAGE_VS@;
+      var IMAGE_FS = @IMAGE_FS@;
+      var FX_VS = @FX_VS@;
+      var BLUR_FS = @BLUR_FS@;
+      var FX = @FX@;
+      var USERS = @USERS@;
+      var TABLES = @TABLES@;
       @HELPERS@
-      var F = 28;
+      var F = 28, Q = 48;
       var W = D.width, H = D.height;
       function ref(index) { return D.refs ? D.refs[index] : index; }
       function clearOf(index) { return D.clears ? D.clears[index] : D.clear; }
       function toneOf(index) { return D.tones ? D.tones[index] : D.tone; }
       function exposureOf(index) { return D.exposures ? D.exposures[index] : D.exposure; }
+      function graphOf(index) { return D.graph ? D.graph : D.graphs[D.graphOf[ref(index)]]; }
 
       function bytes(b64) {
         if (!b64) return new Uint8Array(0);
@@ -581,6 +782,7 @@ enum WebPlayer {
       var stream = shorts(STREAM);
       var base = floats(BASE);
       var fitData = floats(FIT);
+      var extra = floats(EXTRA);
 
       var gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false,
                                              premultipliedAlpha: false, preserveDrawingBuffer: true });
@@ -609,27 +811,154 @@ enum WebPlayer {
       var pViewport = gl.getUniformLocation(present, 'viewport');
       var pExposure = gl.getUniformLocation(present, 'exposure');
       var pToneMap = gl.getUniformLocation(present, 'toneMapMode');
+      var image = null, iViewport, iTex;
+      function imageProgram() {
+        if (image) return image;
+        image = program(IMAGE_VS, IMAGE_FS);
+        iViewport = gl.getUniformLocation(image, 'viewport');
+        iTex = gl.getUniformLocation(image, 'tex');
+        return image;
+      }
+      // One program per framework fragment and per user shader, built on first use.
+      var fxPrograms = {};
+      function fxProgram(name) {
+        var entry = fxPrograms[name];
+        if (entry) return entry;
+        var source = FX[name];
+        if (!source) throw new Error('Ollin page: no fragment ' + name);
+        var p = program(FX_VS, source);
+        entry = { p: p, viewport: gl.getUniformLocation(p, 'ollin_viewport'),
+                  params: gl.getUniformLocation(p, 'params'), textures: [] };
+        var count = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+        // The samplers, in the order the fragment bound them: the translation
+        // names them and the recorder binds inputs in that same order.
+        for (var i = 0; i < count; i++) {
+          var info = gl.getActiveUniform(p, i);
+          if (info.type === gl.SAMPLER_2D) entry.textures.push({ name: info.name, loc: gl.getUniformLocation(p, info.name) });
+        }
+        fxPrograms[name] = entry;
+        return entry;
+      }
+      var blur = null, bSrc, bStep, bSigma;
+      function blurProgram() {
+        if (blur) return blur;
+        blur = program(FX_VS, BLUR_FS);
+        bSrc = gl.getUniformLocation(blur, 'src');
+        bStep = gl.getUniformLocation(blur, 'step');
+        bSigma = gl.getUniformLocation(blur, 'sigma');
+        return blur;
+      }
+      // A separable Gaussian over `sigma`, one pass each way through a spare surface.
+      function runBlur(input, sigma, out) {
+        var p = blurProgram();
+        var mid = acquire(out.w, out.h);
+        var passes = [[input, mid, 1 / out.w, 0], [mid.tex, out, 0, 1 / out.h]];
+        for (var i = 0; i < 2; i++) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, passes[i][1].fbo);
+          gl.viewport(0, 0, out.w, out.h);
+          gl.disable(gl.BLEND);
+          gl.useProgram(p);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, passes[i][0]);
+          gl.uniform1i(bSrc, 0);
+          gl.uniform2f(bStep, passes[i][2], passes[i][3]);
+          gl.uniform1f(bSigma, sigma);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+      }
+      // The two passes the page owns: the blur, and the bloom as bright pass,
+      // blur, and add-back.
+      function runOwned(name, input, rows, out) {
+        if (name === 'ollin_web_blur') { runBlur(input, rows[0], out); return; }
+        var bright = acquire(out.w, out.h), blurred = acquire(out.w, out.h);
+        runFragment('ollin_fx_brightpass', [input], [rows[1], 0, 0, 0], bright);
+        runBlur(bright.tex, rows[0], blurred);
+        runFragment('ollin_fx_bloom_combine', [input, blurred.tex], [rows[2], 0, 0, 0], out);
+      }
+      var userPrograms = [];
+      function userProgram(index) {
+        var entry = userPrograms[index];
+        if (entry) return entry;
+        var p = program(FX_VS, USERS[index]);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        entry = { p: p, viewport: u('ollin_viewport'), src0: u('ollin_src0'), src1: u('ollin_src1'),
+                  resolution: u('ollin_resolution'), mouse: u('ollin_mouse'), time: u('ollin_time'),
+                  dt: u('ollin_dt'), frame: u('ollin_frame'), paramCount: u('ollin_paramCount'),
+                  params: u('ollin_params') };
+        userPrograms[index] = entry;
+        return entry;
+      }
 
-      // The linear intermediate: half float where the browser can render to one.
+      // Textures: the canvas intermediate, a pool of per-frame layers by size,
+      // and the persistent pairs a feedback layer or a simulation keeps.
       var floatOK = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
-      var tex = gl.createTexture();
-      var fbo = gl.createFramebuffer();
-      function makeIntermediate(format) {
+      gl.getExtension('OES_texture_float_linear');
+      var format = floatOK ? gl.RGBA16F : gl.RGBA8;
+      function makeSurface(w, h) {
+        var tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.texStorage2D(gl.TEXTURE_2D, 1, format, W, H);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, format, w, h);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        var fbo = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-        return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return { tex: tex, fbo: fbo, w: w, h: h, ok: ok };
       }
-      if (!(floatOK && makeIntermediate(gl.RGBA16F))) {
-        gl.deleteTexture(tex); tex = gl.createTexture();
-        makeIntermediate(gl.RGBA8);
+      var main = makeSurface(W, H);
+      if (!main.ok) { format = gl.RGBA8; main = makeSurface(W, H); }
+      var pool = [], used = [];
+      function acquire(w, h) {
+        for (var i = 0; i < pool.length; i++) {
+          if (pool[i].w === w && pool[i].h === h) { var s = pool.splice(i, 1)[0]; used.push(s); return s; }
+        }
+        var made = makeSurface(w, h);
+        used.push(made);
+        return made;
       }
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      function releaseAll() { while (used.length) pool.push(used.pop()); }
+      var persistent = {};
+      function slot(key, w, h, rest, seedFill) {
+        var s = persistent[key];
+        if (s && s.w === w && s.h === h) return s;
+        s = { a: makeSurface(w, h), b: makeSurface(w, h), w: w, h: h, flipped: false, age: 0 };
+        var fills = [s.a, s.b];
+        for (var i = 0; i < 2; i++) {
+          if (seedFill && seedFill.length) {
+            runFragment('ollin_sim_state_seed', [], [1 / w, 1 / h, 0, 0, seedFill[0], seedFill[1], 0, 0], fills[i]);
+          } else {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fills[i].fbo);
+            gl.clearColor(rest[0], rest[1], rest[2], rest[3]);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+          }
+        }
+        persistent[key] = s;
+        return s;
+      }
+      function clearSurface(s, c) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
+        gl.viewport(0, 0, s.w, s.h);
+        gl.clearColor(c[0], c[1], c[2], c.length > 3 ? c[3] : 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+      var blank = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, blank);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+      // The lookup strips, uploaded once.
+      var tables = TABLES.map(function (t) {
+        var tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, t[0], 1, 0, gl.RGBA, gl.FLOAT, floats(t[1]));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        return tex;
+      });
 
       // One instance record per shape, the same 28 floats the recorder wrote.
       var vao = gl.createVertexArray();
@@ -641,6 +970,17 @@ enum WebPlayer {
         gl.enableVertexAttribArray(a);
         gl.vertexAttribPointer(a, layout[a][0], gl.FLOAT, false, F * 4, layout[a][1]);
         gl.vertexAttribDivisor(a, 1);
+      }
+      gl.bindVertexArray(null);
+      // Six vertices per image quad: position, uv, tint.
+      var qvao = gl.createVertexArray();
+      var qvbo = gl.createBuffer();
+      gl.bindVertexArray(qvao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, qvbo);
+      var qlayout = [[2, 0], [2, 8], [4, 16]];
+      for (var b = 0; b < qlayout.length; b++) {
+        gl.enableVertexAttribArray(b);
+        gl.vertexAttribPointer(b, qlayout[b][0], gl.FLOAT, false, 32, qlayout[b][1]);
       }
       gl.bindVertexArray(null);
 
@@ -664,18 +1004,24 @@ enum WebPlayer {
         }
       });
 
-      // Every formula at fractional frame `kf`, in the order the Mac evaluates
-      // them: a formula reads the clock, the canvas, the pointer, the constants,
-      // and the driven values already worked out this frame.
-      function evaluateFormulas(kf) {
-        var t = (kf + D.frameOffset) / D.rate;
+      // The sketch's clock at fractional frame `kf`, and the automation's
+      // position on it.
+      function sketchTime(kf) { return (kf + D.frameOffset) / D.rate; }
+      function clockPosition(kf) {
+        var t = sketchTime(kf);
         var position = t, c = D.clock;
         if (c) {
           position = c.start + t * c.speed;
           if (c.loops && c.duration > 0) { position = position % c.duration; if (position < 0) position += c.duration; }
         }
+        return position;
+      }
+      // Every formula at fractional frame `kf`, in the order the Mac evaluates
+      // them: a formula reads the clock, the canvas, the pointer, the constants,
+      // and the driven values already worked out this frame.
+      function evaluateFormulas(kf) {
         var v = Object.assign({}, D.constants);
-        v.time = position;
+        v.time = clockPosition(kf);
         v.frame = Math.floor(kf) + D.frameOffset + 1;
         v.width = W;
         v.height = H;
@@ -688,10 +1034,11 @@ enum WebPlayer {
         }
       }
 
-      var maxCount = D.stable ? D.count : (D.counts.length ? Math.max.apply(null, D.counts) : 0);
-      var scratch = new Float32Array(Math.max(1, maxCount) * F);
+      var maxLength = D.stable ? base.length : (D.lengths.length ? Math.max.apply(null, D.lengths) : 0);
+      var scratch = new Float32Array(Math.max(1, maxLength));
 
-      // The instances at frame `index`, moved `fraction` of the way to the next.
+      // The frame's whole vector at frame `index`, moved `fraction` of the way
+      // to the next: the shapes, the quads, and the parameter rows.
       function assemble(index, fraction) {
         var u = ref(index);
         if (D.stable) {
@@ -717,37 +1064,228 @@ enum WebPlayer {
             evaluateFormulas(kf);
             for (var d = 0; d < drives.length; d++) { var dr = drives[d]; scratch[dr[0]] = dr[2] * formulaValues[dr[1]] + dr[3]; }
           }
-          return D.count;
+          return;
         }
-        var start = D.offsets[u], count = D.counts[u];
-        for (var k = 0; k < count * F; k++) { var c = k % F; scratch[k] = lows[c] + stream[start + k] * scales[c]; }
-        return count;
+        // Every frame its own record: the shapes and quads as 16-bit samples by
+        // field, the parameter rows as floats.
+        var g = graphOf(index);
+        var start = D.offsets[u], count = g.instances * F + g.quads * Q;
+        for (var k = 0; k < count; k++) {
+          var c = k < g.instances * F ? (k % F) : (F + (k - g.instances * F) % Q);
+          scratch[k] = lows[c] + stream[start + k] * scales[c];
+        }
+        var pstart = D.paramOffsets[u];
+        for (var e2 = 0; e2 < g.params; e2++) scratch[count + e2] = extra[pstart + e2];
+      }
+
+      // The shapes at instance `start`, `count` of them, drawn into the bound
+      // surface at logical size `w` by `h`.
+      function drawShapes(start, count, w, h) {
+        gl.useProgram(sdf);
+        gl.uniform2f(uViewport, w, h);
+        gl.enable(gl.BLEND);
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.bindVertexArray(vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(start * F, (start + count) * F), gl.DYNAMIC_DRAW);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+        gl.bindVertexArray(null);
+      }
+      // The blend factors of a premultiplied image under each mode, as the Mac's
+      // pipelines set them.
+      function setBlend(mode) {
+        gl.enable(gl.BLEND);
+        switch (mode) {
+          case 1: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
+          case 2: gl.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
+          case 3: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 4: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE_MINUS_DST_COLOR, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 5: gl.blendEquation(gl.MAX); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
+          case 6: gl.blendEquation(gl.MIN); gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE); break;
+          default: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        }
+      }
+      function drawQuad(quad, tex, blend, w, h, quadOffset) {
+        var p = imageProgram();
+        gl.useProgram(p);
+        gl.uniform2f(iViewport, w, h);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.uniform1i(iTex, 0);
+        setBlend(blend);
+        gl.bindVertexArray(qvao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, qvbo);
+        var at = quadOffset + quad * Q;
+        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(at, at + Q), gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.bindVertexArray(null);
+      }
+      // The items of one surface, in call order, into `surface` (its logical
+      // size is the layer's, its raster the surface's). `results` holds each
+      // layer's texture this frame; `previous` the fronts of the feedback layers.
+      function drawItems(items, surface, w, h, clear, results, previous, g) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, surface.fbo);
+        gl.viewport(0, 0, surface.w, surface.h);
+        if (clear && clear.length) { gl.clearColor(clear[0], clear[1], clear[2], clear.length > 3 ? clear[3] : 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          if (item[0] === 's') { drawShapes(item[1], item[2], w, h); continue; }
+          var tex = item[0] === 'p' ? (previous[item[1]] || blank) : (results[item[1]] || blank);
+          drawQuad(item[2], tex, item[3], w, h, g.instances * F);
+        }
+        gl.disable(gl.BLEND);
+      }
+      // One fullscreen pass of a framework fragment into `out`: the inputs bound
+      // in order, the rows at `params`.
+      function runFragment(name, inputs, rows, out) {
+        var e = fxProgram(name);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo);
+        gl.viewport(0, 0, out.w, out.h);
+        gl.disable(gl.BLEND);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, out.w, out.h);
+        for (var i = 0; i < e.textures.length; i++) {
+          gl.activeTexture(gl.TEXTURE0 + i);
+          gl.bindTexture(gl.TEXTURE_2D, inputs[i] || blank);
+          gl.uniform1i(e.textures[i].loc, i);
+        }
+        if (e.params) gl.uniform4fv(e.params, rows);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      function rowsOf(node, g) {
+        var start = g.instances * F + g.quads * Q + node.p;
+        return scratch.subarray(start, start + node.r * 4);
+      }
+      function resolveInputs(list, results) {
+        var out = [];
+        for (var i = 0; i < list.length; i++) out.push(list[i][0] === 't' ? tables[list[i][1]] : (results[list[i][1]] || blank));
+        return out;
+      }
+      function runUser(layer, out, results, kf, g) {
+        var e = userProgram(layer.shader);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo);
+        gl.viewport(0, 0, out.w, out.h);
+        gl.disable(gl.BLEND);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, out.w, out.h);
+        for (var i = 0; i < layer.inputs.length; i++) {
+          gl.activeTexture(gl.TEXTURE0 + i);
+          gl.bindTexture(gl.TEXTURE_2D, results[layer.inputs[i]] || blank);
+          gl.uniform1i(i === 0 ? e.src0 : e.src1, i);
+        }
+        gl.uniform2f(e.resolution, out.w, out.h);
+        gl.uniform2f(e.mouse, mouse.x, mouse.y);
+        gl.uniform1f(e.time, sketchTime(kf));
+        gl.uniform1f(e.dt, 1 / D.rate);
+        gl.uniform1ui(e.frame, Math.floor(kf) + D.frameOffset + 1);
+        gl.uniform1ui(e.paramCount, layer.count || 0);
+        var rows = new Float32Array(64);
+        var start = g.instances * F + g.quads * Q + layer.p;
+        for (var r = 0; r < layer.r * 4; r++) rows[r] = scratch[start + r];
+        gl.uniform4fv(e.params, rows);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      // A simulation field: the seed marks drawn, laid onto the front state by
+      // the inject, the step run its substeps, the last one into the back.
+      function runSim(layer, results, previous, g, index) {
+        var s = slot(layer.k, layer.pw, layer.ph, layer.sim.rest, layer.sim.seed);
+        var front = s.flipped ? s.b : s.a, back = s.flipped ? s.a : s.b;
+        var seed = acquire(layer.pw, layer.ph);
+        drawItems(layer.items, seed, layer.w, layer.h, layer.clear, results, previous, g);
+        var texel = [1 / layer.pw, 1 / layer.ph, 0, 0];
+        var own = rowsOf({ p: layer.sim.p, r: layer.sim.r }, g);
+        var rows = new Float32Array(4 + own.length);
+        rows.set(texel, 0); rows.set(own, 4);
+        var s0 = acquire(layer.pw, layer.ph), s1 = acquire(layer.pw, layer.ph);
+        runFragment(layer.sim.inject, [front.tex, seed.tex], rows, s0);
+        var step = layer.sim.step, extraTex = [];
+        if (layer.sim.modStep !== undefined) { step = layer.sim.modStep; extraTex = [results[layer.sim.mod] || blank]; }
+        var read = s0, n = layer.sim.n;
+        for (var i = 0; i < n; i++) {
+          var write = (i === n - 1) ? back : (read === s0 ? s1 : s0);
+          rows[2] = i; rows[3] = s.age;
+          runFragment(step, [read.tex].concat(extraTex), rows, write);
+          read = write;
+        }
+        s.age += 1;
+        s.flipped = !s.flipped;
+        return back.tex;
       }
 
       function draw(index, fraction) {
-        var count = assemble(index, fraction);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        gl.viewport(0, 0, W, H);
+        assemble(index, fraction);
+        var g = graphOf(index);
+        var kf = index + fraction;
+        var results = [], previous = [];
+        releaseAll();
+        for (var li = 0; li < g.layers.length; li++) {
+          var layer = g.layers[li];
+          var out;
+          switch (layer.t) {
+            case 'g':
+              out = acquire(layer.pw, layer.ph);
+              drawItems(layer.items, out, layer.w, layer.h, layer.clear, results, previous, g);
+              results[li] = out.tex;
+              break;
+            case 'gen':
+              out = acquire(layer.pw, layer.ph);
+              runFragment(layer.pass.f, resolveInputs(layer.pass.in, results), rowsOf(layer.pass, g), out);
+              results[li] = out.tex;
+              break;
+            case 'fx':
+            case 'cx': {
+              out = acquire(layer.pw, layer.ph);
+              if (layer.pass.f.indexOf('ollin_web_') === 0) {
+                runOwned(layer.pass.f, results[layer.input] || blank, rowsOf(layer.pass, g), out);
+                results[li] = out.tex;
+                break;
+              }
+              var ins = layer.t === 'fx' ? [results[layer.input]] : [results[layer.base], results[layer.aux]];
+              var bound = [];
+              for (var k = 0; k < layer.pass.in.length; k++) {
+                var inp = layer.pass.in[k];
+                bound.push(inp[0] === 't' ? tables[inp[1]] : (ins[inp[1]] || blank));
+              }
+              runFragment(layer.pass.f, bound, rowsOf(layer.pass, g), out);
+              results[li] = out.tex;
+              break;
+            }
+            case 'u':
+              out = acquire(layer.pw, layer.ph);
+              runUser(layer, out, results, kf, g);
+              results[li] = out.tex;
+              break;
+            case 'fb': {
+              var s = slot(layer.k, layer.pw, layer.ph, [0, 0, 0, 0], null);
+              var front = s.flipped ? s.b : s.a, back = s.flipped ? s.a : s.b;
+              previous[li] = front.tex;
+              drawItems(layer.items, back, layer.w, layer.h, layer.clear, results, previous, g);
+              results[li] = back.tex;
+              s.flipped = !s.flipped;
+              break;
+            }
+            case 'sim':
+              results[li] = runSim(layer, results, previous, g, index);
+              break;
+          }
+        }
+        // The canvas, then the whole-frame filters through a spare pair.
         var clear = clearOf(index);
-        if (clear.length) { gl.clearColor(clear[0], clear[1], clear[2], 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
-        if (count > 0) {
-          gl.useProgram(sdf);
-          gl.uniform2f(uViewport, W, H);
-          gl.enable(gl.BLEND);
-          gl.blendEquation(gl.FUNC_ADD);
-          gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-          gl.bindVertexArray(vao);
-          gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-          gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(0, count * F), gl.DYNAMIC_DRAW);
-          gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
-          gl.bindVertexArray(null);
+        drawItems(g.canvas, main, W, H, clear.length ? clear : null, results, previous, g);
+        var shown = main;
+        for (var pi = 0; pi < g.post.length; pi++) {
+          var target = acquire(W, H);
+          if (g.post[pi].f.indexOf('ollin_web_') === 0) runOwned(g.post[pi].f, shown.tex, rowsOf(g.post[pi], g), target);
+          else runFragment(g.post[pi].f, [shown.tex].concat(resolveInputs(g.post[pi].in.slice(1), results)), rowsOf(g.post[pi], g), target);
+          shown = target;
         }
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
         gl.disable(gl.BLEND);
         gl.useProgram(present);
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.bindTexture(gl.TEXTURE_2D, shown.tex);
         gl.uniform1i(pSrc, 0);
         gl.uniform2f(pViewport, W, H);
         gl.uniform1f(pExposure, exposureOf(index));
@@ -758,14 +1296,19 @@ enum WebPlayer {
       var player = { canvas: canvas, frames: D.frames, rate: D.rate, duration: D.frames / D.rate,
                      loops: D.loops, playing: false, time: 0 };
       var shown = -1;
+      var sequential = D.accumulates || D.stateful;
 
       // Show frame `index`, moved `fraction` toward the next. An accumulating
-      // track draws every frame between the last shown and this one, in order,
-      // since each one builds on the last.
+      // or stateful track draws every frame between the last shown and this
+      // one, in order, since each one builds on the last.
       function showAt(index, fraction) {
-        if (D.accumulates) {
-          if (shown < 0) { for (var k = 0; k <= index; k++) draw(k, 0); }
-          else { var k2 = shown; while (k2 !== index) { k2 = (k2 + 1) % D.frames; draw(k2, 0); } }
+        if (sequential) {
+          if (shown < 0 || index < shown) {
+            persistent = {};
+            for (var k = 0; k <= index; k++) draw(k, 0);
+          } else {
+            var k2 = shown; while (k2 !== index) { k2 = (k2 + 1) % D.frames; draw(k2, 0); }
+          }
           shown = index;
           return;
         }
@@ -834,11 +1377,11 @@ public extension OllinApp {
     /// self-contained HTML file, `.inline` the canvas plus one script block for
     /// a page of your own. No window, no GPU: the track is what the renderer
     /// would have received, and the page draws it with the framework's own
-    /// shapes shader translated to GLSL, so a frame matches the Mac's.
+    /// shaders translated to GLSL, so a frame matches the Mac's.
     ///
     /// Throws a `WebExportRefusal` naming the first call the page cannot carry
-    /// (a stroked path, a filled polygon, text, an image, a layer, 3D) and the
-    /// frame it was met at; nothing partial is written.
+    /// (a stroked path, a filled polygon, text, an image, 3D) and the frame it
+    /// was met at; nothing partial is written.
     static func web(of sketch: Sketch, frames: Int, fps: Double = 30, skipSeconds: Double = 0,
                     form: WebPageForm = .standalone) throws -> String {
         let recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds)
@@ -878,6 +1421,8 @@ public extension OllinApp {
         if track.drivenColumns > 0 { live.append("\(track.drivenColumns) columns live from \(recording.formulas.count) formulas") }
         if track.fittedColumns > 0 { live.append("\(track.fittedColumns) columns fitted to \(track.fitTerms) sines") }
         if track.sampledColumns > 0 || !track.stable { live.append(track.stable ? "\(track.sampledColumns) columns sampled" : "every frame sampled") }
+        let passes = track.passCount
+        if passes > 0 { live.append("\(passes) shader passes a frame") }
         let how = live.isEmpty ? "" : "; " + live.joined(separator: ", ")
         print("Ollin: exported \(recording.frames.count) frames (\(seconds) s at \(formattedRate(fps)) fps\(unique)\(wraps)) → \(path) (web page, \(form.rawValue), \(size)\(how))")
     }

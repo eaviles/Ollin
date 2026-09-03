@@ -906,7 +906,7 @@ extension MetalRenderer {
     /// Map a feature's requested quality through the automatic fallback: `.default` means
     /// "unset", so it resolves to `automaticQuality`; anything else is an explicit choice and
     /// passes through. (Live keeps `.default` as `.default`; export lifts it to `.detail`.)
-    private func effectiveQuality(_ q: RenderQuality) -> RenderQuality {
+    func effectiveQuality(_ q: RenderQuality) -> RenderQuality {
         q == .default ? automaticQuality : q
     }
 
@@ -1056,11 +1056,7 @@ extension MetalRenderer {
     /// three hard ghosts; past about 15 the smear is already continuous, so `.detail`
     /// buys smoothness in the widest splits rather than a different look.
     func resolveDispersionTaps(_ quality: RenderQuality) -> Int {
-        switch effectiveQuality(quality) {
-        case .performance: return 7
-        case .default:     return 15
-        case .detail:      return 31
-        }
+        EffectQuality.dispersionTaps(effectiveQuality(quality))
     }
 
     /// Resolve an anti-aliasing quality tier to how many steps each end of an edge may
@@ -1069,11 +1065,7 @@ extension MetalRenderer {
     /// buys is the shallow edge, where a long run of pixels shares one step and a walk
     /// that gives up early reports the middle of the span everywhere along it.
     func antialiasSearchSteps(_ quality: RenderQuality) -> Int {
-        switch effectiveQuality(quality) {
-        case .performance: return 4
-        case .default:     return 8
-        case .detail:      return 12
-        }
+        EffectQuality.antialiasSteps(effectiveQuality(quality))
     }
 
     /// Resolve a raymarch quality setting to the camera-march and self-shadow step budgets.

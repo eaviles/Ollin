@@ -84,6 +84,9 @@ public final class Image {
     /// frame, before any draw that samples it), so `drawImage(layer.image)` always
     /// composites what was drawn into the layer this frame. CPU pixel paths are inert.
     private var renderTargetSource: RenderTarget?
+    /// The layer this image draws, when it is a layer's `image` rather than a
+    /// picture: what the web recorder writes down in place of pixels.
+    var webRenderTarget: RenderTarget? { renderTargetSource }
 
     /// Whether this image has a CPU pixel buffer to read and write. A GPU-backed
     /// image (a live texture, a compute texture, an effects layer) has none: the

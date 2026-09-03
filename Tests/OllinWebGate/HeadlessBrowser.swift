@@ -171,7 +171,10 @@ package enum WebGLPage {
           function report(i, text) { document.getElementById('r' + i).textContent = text; }
           var gl = document.createElement('canvas').getContext('webgl2');
           if (!gl) { for (var i = 0; i < count; i++) report(i, 'FAIL no WebGL2 context'); return; }
-          var vertexSource = '#version 300 es\\nvoid main() { gl_Position = vec4(0.0, 0.0, 0.0, 1.0); }';
+          // The page's own fullscreen vertex stage, so a fragment that reads `uv` links.
+          var vertexSource = '#version 300 es\\nout vec2 uv;\\nvoid main() {'
+            + ' vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));'
+            + ' gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); uv = vec2(p.x, 1.0 - p.y); }';
           for (var i = 0; i < count; i++) {
             var source = document.getElementById('s' + i).textContent;
             var fs = gl.createShader(gl.FRAGMENT_SHADER);
