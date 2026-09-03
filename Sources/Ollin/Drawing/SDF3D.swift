@@ -72,6 +72,7 @@ enum SDF3DShape: UInt32 {
     case roundBox = 4, cylinder = 5, cone = 6, octahedron = 7, ellipsoid = 8
     case plane = 9
     case line = 10, hexPrism = 11, pyramid = 12, cappedTorus = 13, link = 14
+    case mandelbulb = 15, mengerSponge = 16, mandelbox = 17
 }
 
 // MARK: Leaf shapes (the common centered solids)
@@ -191,6 +192,59 @@ public extension SDF3D {
         .init(.leaf(shape: .link,
                     geo0: SIMD4(Float(max(height, 0) / 2), Float(radius), Float(tube), 0),
                     geo1: .zero, color: nil))
+    }
+}
+
+// MARK: Fractal leaves (distance-estimated)
+//
+// Three classic 3D fractals as leaves. None has a closed-form distance: each one *estimates*
+// it by iterating the fractal's own map and reading the escape rate, so the march leans on
+// the step fudge the way a smooth union does. They compose like any other leaf (melt, carve,
+// mirror, repeat), each carries its own bound, and `iterations` is the detail-versus-cost
+// dial (every march step runs the loop). Value-type-only: no mesh primitive stands in for
+// them in the scoped block form.
+
+public extension SDF3D {
+    /// The Mandelbulb: the triplex power-`power` map iterated from each point, kept where the
+    /// orbit stays bounded. `power` 8 is the classic bulb, with the family's (`power` - 1)-fold
+    /// symmetry about the y-axis (seven lobes around the equator), and a fractional value is
+    /// a different picture (sweep it for the breathing animation). `radius` is the ball the
+    /// set fits in; a low `iterations` draws a skin a few percent past it. Each march step
+    /// costs `iterations` trigonometric rounds, so raise it for close-ups only.
+    static func mandelbulb(power: Double = 8, iterations: Int = 8, radius: Double = 1) -> SDF3D {
+        let n = min(max(power, 1.5), 32)
+        // Any point past the escape radius 2^(1/(n-1)) diverges, so the set lies inside it;
+        // mapping that ball onto `radius` makes the parameter the bulb's outer size.
+        let escape = pow(2.0, 1.0 / (n - 1.0))
+        let r = max(radius, 1e-4)
+        return .init(.leaf(shape: .mandelbulb,
+                           geo0: SIMD4(Float(r / escape), Float(n), Float(min(max(iterations, 1), 32)), Float(r)),
+                           geo1: .zero, color: nil))
+    }
+    /// The Menger sponge: a cube `size` on a side with the middle third of every face bored
+    /// through, `iterations` times over (0 is the plain cube, 4 is sub-pixel at a typical
+    /// framing). Its silhouette down any axis is the Sierpinski carpet.
+    static func mengerSponge(iterations: Int = 4, size: Double = 2) -> SDF3D {
+        .init(.leaf(shape: .mengerSponge,
+                    geo0: SIMD4(Float(max(size, 1e-4) / 2), Float(min(max(iterations, 0), 8)), 0, 0),
+                    geo1: .zero, color: nil))
+    }
+    /// The Mandelbox: a box fold and a sphere fold, then a scale, iterated from each point.
+    /// `scale` is the fractal's own parameter (-1.5 is the classic; a magnitude near 1 makes
+    /// the set blow up, so it is held at 1.1 or more). The canonical set sits in a known cube
+    /// for each scale, and that cube is scaled onto `size` on a side and clipped to it, so
+    /// the leaf is bounded whatever the scale.
+    static func mandelbox(scale: Double = -1.5, iterations: Int = 12, size: Double = 2) -> SDF3D {
+        let magnitude = min(max(abs(scale), 1.1), 4)
+        let s = scale < 0 ? -magnitude : magnitude
+        // The half-width of the cube the canonical set (fold limit 1, radii 0.5 and 1) sits
+        // in: for a positive scale the far points settle at 2(s+1)/(s-1) per axis; a negative
+        // scale keeps everything inside 2 (the corner at (2, 2, 2) is the farthest point).
+        let halfWidth = s > 0 ? 2 * (s + 1) / (s - 1) : 2
+        let clip = max(size, 1e-4) / 2
+        return .init(.leaf(shape: .mandelbox,
+                           geo0: SIMD4(Float(clip / halfWidth), Float(s), Float(min(max(iterations, 1), 32)), Float(clip)),
+                           geo1: SIMD4(0.25, 1.0, 1.0, 0), color: nil))
     }
 }
 
@@ -398,6 +452,9 @@ extension SDF3D {
         var valueDepth: Int
         var pointDepth: Int
         var unbounded: Bool = false   // contains an infinite plane (no finite AABB)
+        var normalEpsilon: Float = 0  // the widest gradient step a leaf asked for (local units;
+                                      // 0 = the shader's default), so a fractal's normal reads
+                                      // its surface rather than the estimate's sub-step noise
     }
 
     /// Append this field's instruction nodes to `nodes` (in evaluation order) and
@@ -418,7 +475,8 @@ extension SDF3D {
             }
             let half = SDF3D.leafHalfExtent(shape, geo0)
             return FlattenResult(lo: -half, hi: half, valueDepth: 1, pointDepth: 0,
-                                 unbounded: shape == .plane)
+                                 unbounded: shape == .plane,
+                                 normalEpsilon: SDF3D.leafNormalEpsilon(shape, geo0))
 
         case let .combine(op, a, b, k, n):
             let ra = a.flatten(defaultFill: defaultFill, into: &nodes)
@@ -465,7 +523,8 @@ extension SDF3D {
             return FlattenResult(lo: lo, hi: hi,
                                  valueDepth: max(ra.valueDepth, 1 + rb.valueDepth),
                                  pointDepth: max(ra.pointDepth, rb.pointDepth),
-                                 unbounded: unbounded)
+                                 unbounded: unbounded,
+                                 normalEpsilon: max(ra.normalEpsilon, rb.normalEpsilon))
 
         case let .modify(m, c, amount, frequency):
             let rc = c.flatten(defaultFill: defaultFill, into: &nodes)
@@ -486,7 +545,7 @@ extension SDF3D {
             return FlattenResult(lo: rc.lo - SIMD3(repeating: grow),
                                  hi: rc.hi + SIMD3(repeating: grow),
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth,
-                                 unbounded: rc.unbounded)
+                                 unbounded: rc.unbounded, normalEpsilon: rc.normalEpsilon)
 
         case let .transformed(t, c):
             nodes.append(Self.xformNode(t))
@@ -521,7 +580,8 @@ extension SDF3D {
             let (lo, hi) = Self.transformBounds(t, lo: rc.lo, hi: rc.hi)
             return FlattenResult(lo: lo, hi: hi,
                                  valueDepth: rc.valueDepth, pointDepth: rc.pointDepth + 1,
-                                 unbounded: rc.unbounded)
+                                 unbounded: rc.unbounded,
+                                 normalEpsilon: rc.normalEpsilon * distanceScale)
         }
     }
 
@@ -542,9 +602,26 @@ extension SDF3D {
         case .pyramid:    return SIMD3(g.x / 2, g.y / 2, g.x / 2)           // base half-width, half-height
         case .cappedTorus: let r = g.z + g.w; return SIMD3(r, g.w, r)       // ring + tube in xz, tube in y
         case .link:       return SIMD3(g.y + g.z, g.x + g.y + g.z, g.z)     // ring + tube, stretched along y
+        case .mandelbulb: return SIMD3(repeating: g.w * 1.2)   // the escape ball, padded: a low iteration
+                                                              // count draws a skin a few percent past it
+        case .mengerSponge: return SIMD3(repeating: g.x)       // the cube's half-side, exact
+        case .mandelbox:  return SIMD3(repeating: g.w)         // the clip cube's half-side, exact
         case .plane:      return SIMD3(repeating: 64)   // no finite bound; sized only to seed
                                                         // the self-shadow march budget (the
                                                         // field is flagged unbounded for the camera)
+        }
+    }
+
+    /// The gradient step a leaf's normal wants, in local units (0 = the shader's default).
+    /// A closed-form leaf is smooth below any step, so the default holds; a fractal's
+    /// estimate keeps varying below it, so its normal reads the surface only through a
+    /// step near the size of the detail a picture can show.
+    static func leafNormalEpsilon(_ shape: SDF3DShape, _ g: SIMD4<Float>) -> Float {
+        switch shape {
+        case .mandelbulb:   return g.w * 0.008   // of the radius: the bulb's skin is the noisiest
+        case .mandelbox:    return g.w * 0.004   // of the clip half-side
+        case .mengerSponge: return 0             // a clean signed bound: the default holds
+        default:            return 0
         }
     }
 

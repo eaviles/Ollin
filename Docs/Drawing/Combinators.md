@@ -34,6 +34,7 @@ leaves individually (melting at smooth seams); a linear or radial `fill`/`stroke
 - [Domain operators](#domain)
 - [Scoped blocks](#scoped-blocks)
 - [3D fields](#fields-3d)
+- [Fractal leaves](#fractals)
 - [Notes and limits](#notes)
 
 <a name="quick-start"></a>
@@ -387,6 +388,41 @@ has no mesh primitive. Merge it with the scene's shapes as one field and call `c
 and the shapes drop soft self-shadows onto it: a true infinite floor (see
 `Examples/3D/Raymarching/RaymarchedPlane`).
 
+<a name="fractals"></a>
+
+#### Fractal leaves
+
+Three classic fractals are leaves too. None has a distance anyone can write down. Each one
+*estimates* it by iterating the fractal's own map from the query point and reading how fast
+the orbit escapes, and the same sphere tracer draws the result:
+
+| Constructor | Solid |
+| --- | --- |
+| `SDF3D.mandelbulb(power:iterations:radius:)` | the Mandelbulb: the triplex power-`power` map (8 is the classic, seven lobes around its equator), fitted inside `radius` |
+| `SDF3D.mengerSponge(iterations:size:)` | the Menger sponge: a cube `size` on a side with the middle third of every face bored through, `iterations` times over |
+| `SDF3D.mandelbox(scale:iterations:size:)` | the Mandelbox: a box fold, a sphere fold, and a scale, iterated; `scale` is its own parameter (-1.5 is the classic), and the set is fitted into a cube `size` on a side |
+
+<picture>
+  <img src="../../Guide/Images/26-SculptingWithFields/FractalFields.jpg" alt="Three fractal solids in a row under one light: a red Mandelbulb with its lobed, cauliflower skin, a yellow Menger sponge with square holes through every face, and a blue Mandelbox, a cube whose faces carry a deep carved relief" width="680">
+</picture>
+
+```swift
+// The breathing bulb: a fractional power is a different picture, so sweep it.
+drawSDF3D(SDF3D.mandelbulb(power: 8 + 4 * sin(time * 0.3), iterations: 8, radius: 1.2))
+```
+
+Three things to know. `iterations` is detail against cost: every march step runs the loop,
+so raise it for a close-up and lower it for a busy scene (the sponge's holes drop below a
+pixel around level 5 at an ordinary framing). A fractional `power` is a different bulb, and
+sweeping it slowly is the classic breathing animation. And the finest detail a picture shows
+is set by the march itself, not by the fractal, so to see deeper, make the leaf bigger and
+raise `iterations` rather than moving the camera closer. Each leaf carries its own bound
+(the Mandelbox is clipped to its cube, so it stays finite whatever its scale), and the
+estimates lean on the tracer's step fudge the way a smooth union does. They are
+value-type-only: no mesh primitive stands in for them in the scoped block form. The example
+is `Examples/3D/Raymarching/RaymarchedFractals`, a menu over the three with each one's own
+dial.
+
 The combinators (`.union` / `.smoothUnion(_:k:)` / `.subtract` / `.smoothSubtract(_:k:)` /
 `.intersect` / `.smoothIntersect(_:k:)` / `.morph(_:amount:)`, plus the [joint
 family](#combining): the chamfer, stairs, and columns trios plus the
@@ -541,6 +577,7 @@ through. The examples are `Examples/Shapes/Combinators` (2D),
 primitive catalog), `Examples/3D/Raymarching/RaymarchedSculpt` (the scoped block form),
 `Examples/3D/Raymarching/RaymarchedDomain` (the mirror and repeat domain operators),
 `Examples/3D/Raymarching/RaymarchedRadial` (the radial/polar repeat operator),
+`Examples/3D/Raymarching/RaymarchedFractals` (the fractal leaves: a Mandelbulb, a Menger sponge, and a Mandelbox),
 `Examples/3D/Raymarching/RaymarchedPlane` (the infinite plane grounding shapes with self-shadows),
 `Examples/3D/Raymarching/RaymarchedShadow` (self-shadowing under `castShadows()`),
 `Examples/3D/Raymarching/RaymarchedCastShadow` (a field casting its shadow onto a rasterized mesh, under a directional or point caster),

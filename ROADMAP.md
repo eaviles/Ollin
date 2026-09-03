@@ -93,6 +93,7 @@ Ways a sketch leaves the window:
 
 - **Rumble on a game controller.** A pad's motors are an output of the same kind as [haptics](Docs/Integration/Haptics.md), so they belong with that rather than with reading the pad. It needs a controller on the desk to write against.
 - **A desktop widget.** Wrap a sketch as a widget, so the output lives in the system rather than a window. The timeline refresh there is measured in minutes, so what a `draw()` means under that constraint is the design question.
+- **A sketch on the web, in the limited form the Metal bet allows.** Not a browser runtime for the framework, which stays out (the platform stance in `CLAUDE.md` says why), but an export: a sketch whose whole picture is one fragment program (a user shader, a generator, an SDF combinator, a raymarched field) written out as a self-contained page that draws through WebGPU, with time, the mouse, and the sketch's parameters as uniforms. A second step compiles the sketch's own `draw()` through Swift's WebAssembly SDK, so a composition that changes with `time` keeps changing in the browser. Everything that draws geometry falls back to the video export, and the exporter says so. The website's example pages are the first customer.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 

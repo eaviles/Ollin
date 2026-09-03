@@ -215,6 +215,22 @@ petal.at(82, 0).repeatedRadially(count: 9)      // a rosette
 
 There is still only one cluster. The domain operator rewrites each query point before the field answers, folding it across the mirror, wrapping it into a cell, or rotating it into a wedge. Copies are free, so a thousand-copy tiling costs what one copy costs. All three work in 3D too, where `repeatedRadially` fans a wedge around an axis and a mirrored melt becomes a symmetric creature. One honest caveat is worth knowing. The radial fold is exact when the repeated content is symmetric within its wedge. An asymmetric cluster can show a faint seam where the wedges meet, which is why the rosette panel uses a symmetric petal.
 
+## Infinite detail: the fractal leaves
+
+Every leaf so far had a distance you could write down. A sphere is the length of the point minus its radius, and the rest are a page of the same kind of algebra. Three leaves have no such formula at all:
+
+<img src="Images/26-SculptingWithFields/FractalFields.jpg" alt="Three fractal solids in a row under one light: a red Mandelbulb with its lobed, cauliflower skin, a yellow Menger sponge with square holes through every face, and a blue Mandelbox, a cube whose faces carry a deep carved relief" width="680">
+
+```swift
+SDF3D.mandelbulb(power: 8, iterations: 8, radius: 1.2)
+SDF3D.mengerSponge(iterations: 3, size: 2.1)
+SDF3D.mandelbox(scale: -1.5, iterations: 12, size: 2.2)
+```
+
+These three are fractals. Each one is a rule applied to a point over and over. The shape is the set of points the rule never flings away. There is no equation for that surface, so the field *estimates* its distance instead. It runs the rule a few times from the query point and watches how quickly the orbit escapes. A point about to be flung far must be far from the set. A point that keeps circling must be near it. That rate becomes a length the tracer can hop by. Everything else in this chapter then works unchanged. A fractal melts into a sphere. It carves a box. It mirrors and repeats.
+
+`iterations` is the dial between detail and cost, since every hop runs the rule again. The bulb's `power` is its own shape. Eight is the classic. A fractional power is a different bulb, so sweeping it slowly gives the breathing animation people know it by. The box's `scale` plays the same role. One thing to expect: the finest detail you can see is set by the tracer, not by the fractal. To look deeper, make the leaf bigger and raise `iterations` rather than moving the camera in. The example `3D/Raymarching/RaymarchedFractals` puts each one's dial in the inspector.
+
 ## The light this needs
 
 A field shades like a mesh, so the finishes of [Chapter 22](22-Meshes.md) reach it. `material(.jade)` gives a melt its glow, an `environment(_:)` lights it exactly as it lights a solid, and `castShadows()` grounds it. A field even self-shadows, and it trades shadows with the meshes around it. `material(.glass(...))` works on one too. A tinted interior deepens over the same distance it would inside the mesh of that shape. A green blob and a green ball come out the same green. What is left is the light itself: what it does when it bounces, what it does on its way through glass, and what a frame can borrow from the frames before it.
@@ -503,11 +519,11 @@ Then make it yours:
 
 ## Where this comes from
 
-Distance fields as a drawing medium are the craft of the demoscene and Shadertoy communities, and above all of Inigo Quilez. His catalogs of distance functions, the polynomial smooth minimum, and the raymarching articles underlie nearly everything here, and they are credited throughout Ollin's implementation. Sphere tracing was formalized by John C. Hart in 1996. The blobby, merging-spheres idea is much older, going back to Jim Blinn's 1982 "blobby model" and the metaballs of 1980s Japanese graphics research. The space-folding domain operators follow the hg_sdf library by the demogroup Mercury. The sculpt-block idea of building form by adding and carving under a melt radius is the working model of digital clay tools, studied from Shader Park's composable API. The lens flare is written from the matrix formulation of Sungkil Lee and Elmar Eisemann, and the color its coatings leave from the thin-film reflectance of Matthias Hullin and colleagues. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Distance fields as a drawing medium are the craft of the demoscene and Shadertoy communities, and above all of Inigo Quilez. His catalogs of distance functions, the polynomial smooth minimum, and the raymarching articles underlie nearly everything here, and they are credited throughout Ollin's implementation. Sphere tracing was formalized by John C. Hart in 1996. The blobby, merging-spheres idea is much older, going back to Jim Blinn's 1982 "blobby model" and the metaballs of 1980s Japanese graphics research. The space-folding domain operators follow the hg_sdf library by the demogroup Mercury. The sculpt-block idea of building form by adding and carving under a melt radius is the working model of digital clay tools, studied from Shader Park's composable API. The lens flare is written from the matrix formulation of Sungkil Lee and Elmar Eisemann, and the color its coatings leave from the thin-film reflectance of Matthias Hullin and colleagues. Full credits are in the project's [attribution notes](../ATTRIBUTION.md). The three fractal leaves have their own lineage: the Mandelbulb is Daniel White and Paul Nylander's 2009 find, the Mandelbox is Tom Lowe's from 2010, and the trick of estimating a fractal's distance from its escape rate goes back to Hart, Sandin, and Kauffman in 1989.
 
 ## Go deeper
 
-- [SDF combinators](../Docs/Drawing/Combinators.md): the complete reference, including the machined joint family, gradient paint on merged fields, per-axis stretching, the infinite plane, and the quality dials.
+- [SDF combinators](../Docs/Drawing/Combinators.md): the complete reference, including the machined joint family, gradient paint on merged fields, per-axis stretching, the infinite plane, the fractal leaves, and the quality dials.
 - [Shadow art](../Docs/Generators/ShadowArt.md): the carving, what the solid really throws, and the rule for when two or three shadows can be cast at all.
 - [Isosurfaces and metaballs](../Docs/Generators/Isosurface.md): the mesh route in full, including all three merge parameters, how the marching handles the faces that could be joined two ways, and the resolution and cost rules.
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.

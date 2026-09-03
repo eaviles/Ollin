@@ -2425,13 +2425,25 @@ public enum OllinApp {
     /// sketch asked for.
     public static var exportRenderScale = 1
 
+    /// The renderer a headless render draws through. A failure is said out loud, since the
+    /// usual cause is a shader that stopped compiling and the export would otherwise die
+    /// with a "no Metal device" that hides the compiler's message.
+    static func headlessRenderer(for sketch: Sketch, device: MTLDevice) -> MetalRenderer? {
+        do {
+            return try MetalRenderer(device: device,
+                                     pixelFormat: sketch.colorOutput.drawablePixelFormat,
+                                     sampleCount: ollinPreferredSampleCount(device),
+                                     encoding: sketch.colorOutput.presentEncoding)
+        } catch {
+            print("Ollin: the renderer failed to start: \(error)")
+            return nil
+        }
+    }
+
     public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
                              quality: RenderQuality = .detail) -> CGImage? {
         guard let device = MTLCreateSystemDefaultDevice(),
-              let renderer = try? MetalRenderer(device: device,
-                                                pixelFormat: sketch.colorOutput.drawablePixelFormat,
-                                                sampleCount: ollinPreferredSampleCount(device),
-                                                encoding: sketch.colorOutput.presentEncoding) else {
+              let renderer = headlessRenderer(for: sketch, device: device) else {
             return nil
         }
         isRenderingHeadless = true

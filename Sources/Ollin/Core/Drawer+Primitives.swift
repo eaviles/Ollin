@@ -941,7 +941,7 @@ extension Drawer {
             modelScale: scale, nodeStart: UInt32(nodeStart),
             nodeCount: UInt32(nodes.count), unbounded: bounds.unbounded ? 1 : 0,
             fillGradientKind: gradientKind, fillGradientRow: gradientRow,
-            _pad0: 0, _pad1: 0))
+            normalEpsilon: bounds.normalEpsilon * scale, _pad1: 0))
     }
 
     // MARK: SDF-combinator scoped blocks (sugar over the `SDF` value type)

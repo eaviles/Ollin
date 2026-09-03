@@ -524,6 +524,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Decals: `Decal` + `drawDecal(_:at:...)` (`3D/3D.md#decals`) | Ch 22 | taught ("A picture stamped onto the scene: decals" with the Stamped figure: a sticker that does not care about meshes, the projection box placed per frame like a light so a moving stamp conforms across floor and crates, transparency and call-order compositing, the edge-on fade as the failure it prevents, and paint-takes-the-surface's-finish; the Decals example is the worked version with a sliding roundel, a rolled tag, and a see-through ring on parameters) |
 | Point clouds (`3D/3D.md`) | Ch 27 | taught |
 | `Drawing/Combinators.md` (SDF 2D + SDF3D raymarching) | Ch 26 | taught |
+| Fractal leaves: `SDF3D.mandelbulb` / `mengerSponge` / `mandelbox` (`Drawing/Combinators.md#fractals`) | Ch 26 | taught ("Infinite detail: the fractal leaves" with the FractalFields figure: three estimates, one tracer; power, depth, and scale as the dials; iterations as detail against cost; make the leaf bigger rather than the camera closer) |
 | `3D/DepthCompositing.md` | Ch 27 | taught ("Flat drawing that knows where it is" with a three-pillar figure: `depth(at:)` sets depth alone, `project` returns nil behind the camera, `withBillboard` does both and moves the origin, why a 2D mark keeps its canvas size, and `depth(_:)` for a feed) |
 | `3D/RGBD.md` | Ch 27 | taught |
 | `3D/Record3D.md` | Ch 27 | taught |

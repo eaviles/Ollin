@@ -288,6 +288,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | 2D SDF combinators | Shapes as distance fields that merge, melt, morph, and repeat | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
 | The `sculpt { }` block | Add, carve, and blend region shapes with stateful verbs, built for live coding | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
 | Raymarched 3D fields | `SDF3D` sphere-traced through the camera, depth-composited with meshes | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md) |
+| Fractal fields | `mandelbulb`, `mengerSponge`, and `mandelbox` as leaves of a raymarched field, each a distance estimate | [Ch 26](26-SculptingWithFields.md) | [Combinators](../Docs/Drawing/Combinators.md#fractals) |
 
 ## Depth and the phone
 

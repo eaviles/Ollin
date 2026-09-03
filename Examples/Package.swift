@@ -220,6 +220,7 @@ let package = Package(
         example("3D/Raymarching/RaymarchedClay"),
         example("3D/Raymarching/RaymarchedDomain"),
         example("3D/Raymarching/RaymarchedRadial"),
+        example("3D/Raymarching/RaymarchedFractals"),
         example("3D/Raymarching/RaymarchedPlane"),
         example("3D/Raymarching/RaymarchedCastShadow"),
         example("3D/Raymarching/RaymarchedGradient"),

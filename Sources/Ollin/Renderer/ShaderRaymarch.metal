@@ -177,6 +177,81 @@ static float ollin_sd3_link(float3 p, float le, float r1, float r2) {
 
 // Evaluate one leaf's 3D SDF. `sel` is the SDF3DShape tag; this switch must stay in
 // sync with SDF3DShape in SDF3D.swift (the EVAL param packing lives there).
+// --- Fractal leaves: distance *estimates* read off an iterated map -----------------------
+// None of these has a closed-form distance. Each iterates the fractal's own map from the
+// query point and turns the escape rate into a lower bound on the distance to the set, the
+// estimate sphere tracing needs; the step fudge covers the places where it runs a little
+// long. `iterations` is the detail dial, and it runs on every march step.
+
+// The Mandelbulb: the triplex power-n map w = w^n + c in spherical form, the running
+// derivative dr alongside it, and the estimate 0.5 · r · log(r) / dr. `unit` maps the escape
+// ball (radius 2^(1/(n-1))) onto the leaf's radius, so the parameter is the bulb's size.
+static float ollin_sd3_mandelbulb(float3 p, float unit, float power, int iterations) {
+    float3 c = p / unit;
+    float3 w = c;
+    float m = dot(w, w);
+    float dz = 1.0;
+    for (int i = 0; i < iterations; i++) {
+        dz = power * pow(m, (power - 1.0) * 0.5) * dz + 1.0;
+        float r = max(sqrt(m), 1e-9);
+        float b = power * acos(clamp(w.y / r, -1.0, 1.0));
+        float a = power * atan2(w.x, w.z);
+        w = c + pow(r, power) * float3(sin(b) * sin(a), cos(b), sin(b) * cos(a));
+        m = dot(w, w);
+        if (m > 256.0) break;
+    }
+    m = max(m, 1e-12);
+    return 0.25 * log(m) * sqrt(m) / dz * unit;
+}
+
+// The Menger sponge: start from the cube, then at each level fold the point into the unit
+// cell (a floored modulo, so the fold holds on the negative side too) and cut the three
+// crossing bars out of it. `half` is the cube's half-side; the unit sponge is [-1, 1]^3.
+static float ollin_sd3_menger(float3 p, float halfSide, int iterations) {
+    float3 q = p / halfSide;
+    float d = ollin_sd3_box(q, float3(1.0));
+    float s = 1.0;
+    for (int m = 0; m < iterations; m++) {
+        float3 qs = q * s;
+        float3 a = qs - 2.0 * floor(qs * 0.5) - 1.0;       // mod(q·s, 2) - 1
+        s *= 3.0;
+        float3 r = abs(1.0 - 3.0 * abs(a));
+        float da = max(r.x, r.y), db = max(r.y, r.z), dc = max(r.z, r.x);
+        float c = (min(da, min(db, dc)) - 1.0) / s;      // the three bars, at this level's scale
+        d = max(d, c);
+    }
+    return d * halfSide;
+}
+
+// The Mandelbox: a box fold (reflect what lies past the fold limit back in), a sphere fold
+// (invert what lies inside the fixed radius, blow up what lies inside the minimum one), then
+// the scale, iterated with the running derivative; the estimate is |z| / |dr|. `unit` maps
+// the cube the canonical set sits in onto the leaf's box, and the result is clipped to that
+// box so the leaf is bounded whatever the scale.
+static float ollin_sd3_mandelbox(float3 p, float unit, float scale, int iterations, float clipHalf,
+                                 float minRadius2, float fixedRadius2, float foldLimit) {
+    float3 c = p / unit;
+    float3 z = c;
+    float dr = 1.0;
+    for (int i = 0; i < iterations; i++) {
+        z = clamp(z, -foldLimit, foldLimit) * 2.0 - z;
+        float r2 = dot(z, z);
+        if (r2 < minRadius2) {
+            float t = fixedRadius2 / minRadius2; z *= t; dr *= t;
+        } else if (r2 < fixedRadius2) {
+            float t = fixedRadius2 / r2; z *= t; dr *= t;
+        }
+        z = scale * z + c;
+        dr = dr * abs(scale) + 1.0;
+        if (dot(z, z) > 1.0e12) break;   // escaped for good: the estimate is already large
+    }
+    // The orbit radius less |scale - 1| over the derivative: the form that goes negative
+    // inside the solid (so a hit a hair under the surface still reads an outward normal) and
+    // reaches less far just outside it than the plain radius does.
+    float d = (length(z) - abs(scale - 1.0)) / abs(dr) * unit;
+    return max(d, ollin_sd3_box(p, float3(clipHalf)));
+}
+
 static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0, float4 geo1) {
     switch (shape) {
     case 0u: return ollin_sd3_sphere(p, geo0.x);                       // sphere: radius
@@ -193,6 +268,10 @@ static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0, float4 geo1) {
     case 12u: return ollin_sd3_pyramid(p, geo0.x, geo0.y);            // pyramid: base, height
     case 13u: return ollin_sd3_capped_torus(p, geo0.xy, geo0.z, geo0.w); // capped torus: (sin,cos), ring, tube
     case 14u: return ollin_sd3_link(p, geo0.x, geo0.y, geo0.z);       // link: half-stretch, ring, tube
+    case 15u: return ollin_sd3_mandelbulb(p, geo0.x, geo0.y, int(geo0.z));        // mandelbulb: unit, power, iterations
+    case 16u: return ollin_sd3_menger(p, geo0.x, int(geo0.y));                    // menger sponge: half-side, iterations
+    case 17u: return ollin_sd3_mandelbox(p, geo0.x, geo0.y, int(geo0.z), geo0.w,  // mandelbox: unit, scale, iterations, clip
+                                         geo1.x, geo1.y, geo1.z);                 //   + min radius², fixed radius², fold limit
     default: return ollin_sd3_plane(p, geo0.xyz, geo0.w);             // plane (9): unit normal, signed offset
     }
 }
@@ -441,7 +520,7 @@ static float ollin_sdf3d_world(float3 pw, SDF3DGroupInstance g,
 
 // Tetrahedron (4-tap) normal of the world field. `e` is a small world-space step.
 static float3 ollin_sdf3d_normal(float3 pw, SDF3DGroupInstance g, const device SDFNode3D *nodes) {
-    const float e = 0.0008;
+    const float e = g.normalEpsilon > 0.0 ? g.normalEpsilon : 0.0008;
     const float2 k = float2(1.0, -1.0);
     float4 dummy;
     return normalize(
@@ -662,6 +741,11 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // to the plain full-res form.
     float kPixel = 1.0 / (max(u.projection[1][1], 1e-4)
                           * max(u.viewport.y * max(u.raymarchScale.x, 1e-3), 1.0));
+    // Under an orthographic projection (no perspective divide: the w row is zero) the
+    // footprint does not grow with distance, so the cone is the flat half-pixel `kPixel`;
+    // scaled by t it would be the whole eye distance too wide, a soft halo at every
+    // orthographic silhouette that swallows any gap narrower than itself.
+    bool orthographic = u.projection[2][3] == 0.0;
     float t = t0;
     float4 col = float4(0.0);
     bool hit = false;
@@ -673,7 +757,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         float3 pw = ro + rd * t;
         float d = ollin_sdf3d_world(pw, g, nodes, col);
         if (d < OLLIN_RAYMARCH_EPS) { hit = true; break; }
-        float ratio = d / max(t * kPixel, 1e-6);
+        float ratio = d / max((orthographic ? 1.0 : t) * kPixel, 1e-6);
         if (ratio < minRatio) { minRatio = ratio; tNear = t; }
         t += d * OLLIN_RAYMARCH_STEP_SCALE;
     }

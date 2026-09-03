@@ -94,6 +94,8 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { RaymarchedSDF3DRadialScene() }),
     SnapshotCase("sdf-combinators-3d-plane", note: "The raymarched 3D SDF infinite plane.",
                  make: { RaymarchedSDF3DPlaneScene() }),
+    SnapshotCase("sdf-combinators-3d-fractals", note: "The raymarched 3D SDF fractal leaves.",
+                 make: { RaymarchedSDF3DFractalsScene() }),
     SnapshotCase("sdf-combinators-3d-cast", note: "A raymarched 3D field casting onto meshes.",
                  make: { RaymarchedSDF3DCastShadowScene() }),
     SnapshotCase("sdf-combinators-3d-gradient", note: "Raymarched 3D SDF gradient paint.",
@@ -9599,5 +9601,28 @@ private final class CreasePatternScene: Sketch {
                         stage.center.y + ($0.y - box.center.y) * scale)
             })
         }
+    }
+}
+
+/// The three fractal leaves lit and shaded like any field: a Mandelbulb, a Menger sponge,
+/// and a Mandelbox in a row under one directional light. Pins the estimates, the per-leaf
+/// bounds, and the wider normal step the bulb and box ask for. Static at frame 0.
+private final class RaymarchedSDF3DFractalsScene: Sketch {
+    override var canvasSize: CanvasSize { .size(384, 160) }
+
+    override func draw() {
+        background(Color(hex: 0x0b1020))
+        camera(.perspective(eye: Vector3(0, 2.2, 8.0), target: Vector3(0, 0, 0),
+                            fieldOfView: .pi / 4.6, near: 1, far: 20))
+        directionalLight(.white, direction: Vector3(-0.45, -0.8, -0.4),
+                         intensity: 1.2, softness: 0.25)
+        ambientLight(Color(white: 0.16))
+        material(.clay)
+        drawSDF3D(SDF3D.mandelbulb(power: 8, iterations: 8, radius: 1.2)
+            .colored(Color(hex: 0xff6b6b)).rotatedY(0.6).at(-3.0, 0, 0))
+        drawSDF3D(SDF3D.mengerSponge(iterations: 3, size: 2.1)
+            .colored(Color(hex: 0xffd166)).rotatedY(0.5).at(0, 0, 0))
+        drawSDF3D(SDF3D.mandelbox(scale: -1.5, iterations: 12, size: 2.2)
+            .colored(Color(hex: 0x4ea8ff)).rotatedY(0.4).at(3.0, 0, 0))
     }
 }

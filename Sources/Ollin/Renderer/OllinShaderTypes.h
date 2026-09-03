@@ -300,8 +300,10 @@ typedef struct {
                                 // ignores boundsMin/Max and runs to the camera's far plane instead
     float fillGradientKind;     // 0 solid (the leaves' own colors), 1 linear, 2 radial (screen-space)
     float fillGradientRow;      // gradient-strip row index for the ramp (when kind != 0)
-    float _pad0;                // pads the stride to 144 (16-aligned)
-    float _pad1;
+    float normalEpsilon;        // world-space step of the 4-tap gradient normal; 0 = the default
+                                // (a fractal leaf asks for a wider one, since its estimate
+                                // carries detail below the default step and the normal reads noise)
+    float _pad1;                // pads the stride to 144 (16-aligned)
 } SDF3DGroupInstance;
 
 // The light-space matrices for rendering a raymarched 3D field into the directional/spot 2D

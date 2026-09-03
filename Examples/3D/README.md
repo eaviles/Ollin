@@ -185,6 +185,7 @@ The 3D SDF combinators: fields that merge, sphere-traced beside the meshes.
 | [RaymarchedJoinery](Raymarching/RaymarchedJoinery/) | Machined joints and hardware: chamfered and stepped unions, a hanging chain, a capped-torus hook. |
 | [RaymarchedDetailing](Raymarching/RaymarchedDetailing/) | The detailing ops: fluted seams, engraved rings, grooved bands, beading, and a pipe bead left hanging where two bodies crossed. |
 | [RaymarchedDistort](Raymarching/RaymarchedDistort/) | The sculpting distortions: twisted, bent, displaced, and roughened, one plinth each. |
+| [RaymarchedFractals](Raymarching/RaymarchedFractals/) | The fractal leaves: a Mandelbulb, a Menger sponge, and a Mandelbox, each a distance *estimate* the same sphere tracer draws; a menu picks one, and the bulb's power, the sponge's depth, and the box's scale are its own dials. |
 
 ### Depth
 
