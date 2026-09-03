@@ -38,14 +38,18 @@ import OllinRuntime
 ///   pixel, to the image committed beside it. All identical means the change
 ///   was render-neutral, and the rest keep their cache entries.
 ///
-/// One rule spans both: **"changed" means the pixels, never the bytes.** The
-/// JPEG and PNG encoders here are not byte-deterministic, so a fresh render of
-/// an unchanged figure can encode to different bytes with identical pixels. A
-/// render therefore lands in a dot-temp beside the committed image and replaces
-/// it only when the decoded pixels differ (`promote`); without that rule, every
-/// full pass leaves a few byte-churned images dirty in the working tree, and a
-/// sub-perceptual framework change rewrites megabytes of identical-looking
-/// JPEGs into git history.
+/// One rule spans both: **"changed" means the pixels, never the bytes, and a
+/// move the framework made on its own has to be visible.** The JPEG and PNG
+/// encoders here are not byte-deterministic, so a fresh render of an unchanged
+/// figure can encode to different bytes with identical pixels. A render
+/// therefore lands in a dot-temp beside the committed image and replaces it
+/// only when the decoded pixels moved (`promote`), and a move the framework
+/// caused counts only past the visible threshold in `Movement`; a figure whose
+/// own source changed is recorded exactly, since its author meant the new
+/// picture. Without the first half, every full pass leaves a few byte-churned
+/// images dirty in the working tree; without the second, a sub-perceptual
+/// framework change rewrites megabytes of identical-looking JPEGs into git
+/// history, which is most of what that history weighs.
 /// - **Sharded worker processes.** The work left after the cache is split
 ///   across child copies of this executable. Sharding rather than in-process
 ///   concurrency is deliberate: the expensive figures spend their time in
@@ -154,6 +158,12 @@ enum GuideFigures {
         var unstable = false
         var darkOutput: String?
         var darkPath: String?
+        /// A recording render that moved below the visible threshold and so
+        /// kept the committed image, described for the end-of-run report.
+        var note = ""
+        /// How far a probe's render sits from the image committed beside it
+        /// (the larger move of the two, for a themed figure).
+        var movement: Movement?
     }
 
     /// One figure to render, plus what may happen to its committed image.
@@ -161,30 +171,42 @@ enum GuideFigures {
     /// because the framework moved: the render still has to succeed, but its
     /// image is arbitrary, so overwriting it would report a change that means
     /// nothing and leave a diff to throw away. `probeOnly` also leaves the
-    /// committed image alone, but it *hashes* the fresh render instead of
-    /// discarding it, which is how the probe phase learns whether the pixels
-    /// moved.
+    /// committed image alone, but it *measures* the fresh render against it
+    /// instead of discarding it, which is how the probe phase learns whether
+    /// the pixels moved. `exact` replaces the committed image on any pixel
+    /// move rather than only a visible one: set when the figure's own source
+    /// changed (its author meant the new picture) and under `--exact`.
     struct Work {
         var figure: String
         var verifyOnly: Bool
         var probeOnly = false
+        var exact = false
 
-        init(figure: String, verifyOnly: Bool, probeOnly: Bool = false) {
+        init(figure: String, verifyOnly: Bool, probeOnly: Bool = false, exact: Bool = false) {
             self.figure = figure
             self.verifyOnly = verifyOnly
             self.probeOnly = probeOnly
+            self.exact = exact
         }
 
         init(line: String) {
-            let parts = line.split(separator: "\t", maxSplits: 1)
-            figure = String(parts[0])
-            verifyOnly = parts.count > 1 && parts[1] == "verify"
-            probeOnly = parts.count > 1 && parts[1] == "probe"
+            let parts = line.split(separator: "\t").map(String.init)
+            figure = parts[0]
+            let flags = parts.dropFirst()
+            verifyOnly = flags.contains("verify")
+            probeOnly = flags.contains("probe")
+            exact = flags.contains("exact")
         }
 
         var line: String {
-            if probeOnly { return "\(figure)\tprobe" }
-            return verifyOnly ? "\(figure)\tverify" : figure
+            var flags: [String] = []
+            if probeOnly {
+                flags.append("probe")
+            } else if verifyOnly {
+                flags.append("verify")
+            }
+            if exact { flags.append("exact") }
+            return ([figure] + flags).joined(separator: "\t")
         }
     }
 
@@ -198,11 +220,13 @@ enum GuideFigures {
 
         var only: String?
         var force = false
+        var exact = false
         var verbose = false
         var jobs = defaultJobs
         var listPath: String?
         var resultsPath: String?
         var progressPath: String?
+        var compare: (String, String)?
 
         var probing = true
         var arguments = Array(CommandLine.arguments.dropFirst())
@@ -216,16 +240,30 @@ enum GuideFigures {
             switch argument {
             case "--only": only = value("--only")
             case "--force": force = true
+            case "--exact": exact = true
             case "--no-probe": probing = false
             case "--verbose": verbose = true
             case "--jobs": jobs = max(1, Int(value("--jobs")) ?? 1)
             case "--list": listPath = value("--list")
             case "--results": resultsPath = value("--results")
             case "--progress": progressPath = value("--progress")
+            case "--compare":
+                let first = value("--compare")
+                compare = (first, value("--compare"))
             case "--help", "-h": usage()
             default:
                 die("unknown argument '\(argument)'; try --help")
             }
+        }
+
+        // A measurement on its own: how far one image sits from another, and
+        // which side of the visible threshold that lands on.
+        if let (first, second) = compare {
+            let movement = Movement.between(first, and: second)
+            let verdict = movement.identical ? "identical"
+                : movement.isVisible ? "a visible change" : "below the visible threshold"
+            print("\(movement.summary): \(verdict)")
+            exit(0)
         }
 
         let root = FileManager.default.currentDirectoryPath
@@ -300,9 +338,17 @@ enum GuideFigures {
                               + " Run with --no-probe to re-render everything anyway.")
                         exit(0)
                     }
-                    print("guide-figures: the probe found \(moved.count) changed"
-                          + " figure\(plural(moved.count)) (\(moved.joined(separator: ", "))),"
-                          + " so every figure is re-rendered")
+                    // Any move at all hands the run to the full render, since
+                    // a change too small to see on the sample can still be
+                    // visible on a figure it never looked at; the full render
+                    // then rewrites only the images that moved visibly.
+                    print("guide-figures: the probe found \(moved.count)"
+                          + " figure\(plural(moved.count)) whose pixels moved, so every"
+                          + " figure is re-rendered; only a visible move rewrites"
+                          + " a committed image")
+                    for (figure, movement) in moved {
+                        print("  \(figure): \(movement?.summary ?? "failed to render")")
+                    }
                     cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
                 } else if !cache.figures.isEmpty {
                     print("guide-figures: the framework changed, so every figure is re-rendered")
@@ -336,15 +382,23 @@ enum GuideFigures {
         // verifies when the committed image exists, so a brand-new unstable
         // figure still gets its image written, and re-recording an edited one
         // with no cache entry means deleting its image first.
+        // A figure whose own source changed is recorded exactly: its author
+        // meant the new picture, however small the move. Only a render the
+        // framework moved on its own is held to the visible threshold (see
+        // `Movement`), and with no cache entry to say which it was, the
+        // threshold applies, so a fresh clone does not rewrite every drifted
+        // figure the first time it renders.
         let stale = staleFigures.map { figure -> Work in
             let verifyOnly: Bool
+            var sourceChanged = false
             if let entry = previous.figures[figure] {
-                verifyOnly = entry.unstable
-                    && unchanged(figure, cache: previous, root: root)
+                let same = unchanged(figure, cache: previous, root: root)
+                verifyOnly = entry.unstable && same
+                sourceChanged = !same
             } else {
                 verifyOnly = directiveIsUnstable(figure, root: root)
             }
-            return Work(figure: figure, verifyOnly: verifyOnly)
+            return Work(figure: figure, verifyOnly: verifyOnly, exact: exact || sourceChanged)
         }
         let skipped = figures.count - stale.count
         guard !stale.isEmpty else {
@@ -386,6 +440,13 @@ enum GuideFigures {
         for failure in failures where !failure.log.isEmpty {
             warn("FAILED \(failure.figure)\n\(failure.log)")
         }
+        let held = results.filter { $0.ok && !$0.note.isEmpty }
+        if !held.isEmpty {
+            print("guide-figures: \(held.count) figure\(plural(held.count)) moved below the"
+                  + " visible threshold and kept \(held.count == 1 ? "its" : "their")"
+                  + " committed image (--exact rewrites them anyway):")
+            for result in held { print("  \(result.figure): \(result.note)") }
+        }
         reportSlowest(cache: cache, among: figures)
         if failures.isEmpty {
             print("guide-figures: \(results.count) figure\(plural(results.count)) rendered"
@@ -417,11 +478,12 @@ enum GuideFigures {
     }
 
     /// Render the sample and report which of them no longer match the image
-    /// committed beside them. A figure that fails to render counts as changed:
-    /// the point of the probe is to hand any doubt to the full run.
+    /// committed beside them, each with how far it moved. A figure that fails
+    /// to render counts as changed, with no measurement: the point of the
+    /// probe is to hand any doubt to the full run.
     @MainActor
-    private static func runProbe(_ sample: [String], root: String,
-                                 jobs: Int, verbose: Bool) -> [String] {
+    private static func runProbe(_ sample: [String], root: String, jobs: Int,
+                                 verbose: Bool) -> [(figure: String, movement: Movement?)] {
         print("guide-figures: the framework changed; probing \(sample.count)"
               + " figure\(plural(sample.count)) to see whether it moved any pixels")
         let work = sample.map { Work(figure: $0, verifyOnly: false, probeOnly: true) }
@@ -429,15 +491,10 @@ enum GuideFigures {
         let results = workers <= 1
             ? render(work, root: root, progressPath: nil, echo: verbose)
             : renderSharded(work, workers: workers, verbose: verbose)
-        return results.filter { result in
-            guard result.ok, !result.output.isEmpty else { return true }
-            let directory = imageFolder(result.figure, root: root)
-            if pixelHash(directory + "/" + result.outputPath) != result.output { return true }
-            if let darkPath = result.darkPath, let darkOutput = result.darkOutput {
-                return pixelHash(directory + "/" + darkPath) != darkOutput
-            }
-            return false
-        }.map(\.figure).sorted()
+        return results.compactMap { result -> (figure: String, movement: Movement?)? in
+            guard result.ok, let movement = result.movement else { return (result.figure, nil) }
+            return movement.identical ? nil : (result.figure, movement)
+        }.sorted { $0.figure < $1.figure }
     }
 
     // MARK: - Rendering
@@ -458,9 +515,9 @@ enum GuideFigures {
             var sourceHash = ""
             var ok = false
             var unstable = false
-            var probeHash = ""
+            var held = ""
+            var movement: Movement?
             var darkOutPath: String?
-            var darkProbeHash = ""
 
             if let data = FileManager.default.contents(atPath: sourcePath),
                let source = String(data: data, encoding: .utf8) {
@@ -477,11 +534,12 @@ enum GuideFigures {
 
                 // Verifying rather than recording: render beside the committed
                 // image and throw the result away. Probing is the same detour
-                // with the result pixel-hashed first, so the caller can compare
-                // it to what is committed without ever overwriting that. And a
-                // recording render goes to a dot-temp too, promoted over the
-                // committed image only when the pixels actually changed (see
-                // the type comment on byte-nondeterministic encoders).
+                // with the result measured against the committed image first,
+                // so the caller learns how far it moved without that image ever
+                // being overwritten. And a recording render goes to a dot-temp
+                // too, promoted over the committed image only when the picture
+                // actually changed (see the type comment on byte-nondeterministic
+                // encoders and the visible threshold).
                 let verifying = work.verifyOnly
                     && FileManager.default.fileExists(atPath: outPath)
                 let probing = work.probeOnly
@@ -526,15 +584,19 @@ enum GuideFigures {
                             }
                             if FileManager.default.fileExists(atPath: darkWrite) {
                                 darkOutPath = directory + "/" + darkName
-                                if probing { darkProbeHash = pixelHash(darkWrite) }
+                                if probing {
+                                    movement = Movement.between(darkWrite,
+                                                                and: directory + "/" + darkName)
+                                }
                             } else {
                                 ok = false
                                 log = "no dark output written"
                             }
                             if verifying || probing {
                                 try? FileManager.default.removeItem(atPath: darkWrite)
-                            } else if ok {
-                                promote(darkWrite, over: directory + "/" + darkName)
+                            } else if ok, let kept = promote(darkWrite, over: directory + "/" + darkName,
+                                                             exact: work.exact) {
+                                held = "dark: " + kept
                             }
                         } else {
                             ok = false
@@ -542,11 +604,14 @@ enum GuideFigures {
                                 + " `@Param var darkTheme = false` parameter to flip"
                         }
                     }
-                    if probing { probeHash = pixelHash(writePath) }
+                    if probing {
+                        let light = Movement.between(writePath, and: outPath)
+                        movement = movement.map { Movement.larger($0, light) } ?? light
+                    }
                     if verifying || probing {
                         try? FileManager.default.removeItem(atPath: writePath)
-                    } else if ok {
-                        promote(writePath, over: outPath)
+                    } else if ok, let kept = promote(writePath, over: outPath, exact: work.exact) {
+                        held = held.isEmpty ? kept : kept + "; " + held
                     }
                 case .failure(let error):
                     log = "\(error)"
@@ -555,21 +620,20 @@ enum GuideFigures {
                 log = "unreadable"
             }
 
-            // A probe reports the hash of what it just drew; everything else
-            // reports the hash of the image now on disk.
-            let outputHash = work.probeOnly ? probeHash
-                : (ok && !unstable ? fileHash(outPath) : "")
+            // A probe reports how far it moved; everything else reports the
+            // hash of the image now on disk.
+            let outputHash = ok && !unstable && !work.probeOnly ? fileHash(outPath) : ""
             var darkHash: String?
-            if let darkOutPath {
-                darkHash = work.probeOnly ? darkProbeHash
-                    : (ok && !unstable ? fileHash(darkOutPath) : nil)
+            if let darkOutPath, ok, !unstable, !work.probeOnly {
+                darkHash = fileHash(darkOutPath)
             }
             results.append(Rendered(
                 figure: relative, ok: ok, seconds: Date().timeIntervalSince(started),
                 source: sourceHash, output: outputHash,
                 outputPath: (outPath as NSString).lastPathComponent, log: log,
                 unstable: unstable, darkOutput: darkHash,
-                darkPath: darkOutPath.map { ($0 as NSString).lastPathComponent }))
+                darkPath: darkOutPath.map { ($0 as NSString).lastPathComponent },
+                note: held, movement: work.probeOnly ? movement : nil))
             if !ok { warn("FAILED \(relative)\(log.isEmpty ? "" : "\n" + log)") }
             note(progressPath, ok ? "." : "x")
         }
@@ -881,16 +945,20 @@ enum GuideFigures {
         return hex(SHA256.hash(data: data))
     }
 
-    /// A hash of what an image *shows* rather than the bytes that encode it:
-    /// every frame decoded to tightly packed RGBA8 and hashed. The JPEG and PNG
-    /// encoders here are not byte-deterministic, so a byte comparison reports
-    /// change where a reader could never see one; this comparison means "the
-    /// pixels moved". Falls back to the byte hash when the file does not decode.
-    private static func pixelHash(_ path: String) -> String {
+    /// One frame of an image file, decoded to tightly packed RGBA8.
+    struct Frame {
+        var width: Int
+        var height: Int
+        var pixels: Data
+    }
+
+    /// Every frame of an image file decoded to pixels (a still has one, a GIF
+    /// its whole loop), or nil when the file does not decode.
+    private static func decodedFrames(_ path: String) -> [Frame]? {
         guard let source = CGImageSourceCreateWithURL(
                 URL(fileURLWithPath: path) as CFURL, nil),
-              CGImageSourceGetCount(source) > 0 else { return fileHash(path) }
-        var hasher = SHA256()
+              CGImageSourceGetCount(source) > 0 else { return nil }
+        var frames: [Frame] = []
         for index in 0..<CGImageSourceGetCount(source) {
             guard let image = CGImageSourceCreateImageAtIndex(source, index, nil),
                   let context = CGContext(
@@ -898,28 +966,125 @@ enum GuideFigures {
                     bitsPerComponent: 8, bytesPerRow: image.width * 4,
                     space: CGColorSpaceCreateDeviceRGB(),
                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-            else { return fileHash(path) }
+            else { return nil }
             context.draw(image, in: CGRect(x: 0, y: 0,
                                            width: image.width, height: image.height))
-            guard let data = context.data else { return fileHash(path) }
-            hasher.update(data: Data(bytes: data,
-                                     count: image.width * image.height * 4))
+            guard let data = context.data else { return nil }
+            frames.append(Frame(width: image.width, height: image.height,
+                                pixels: Data(bytes: data,
+                                             count: image.width * image.height * 4)))
         }
+        return frames
+    }
+
+    /// A hash of what an image *shows* rather than the bytes that encode it:
+    /// every frame decoded to tightly packed RGBA8 and hashed. The JPEG and PNG
+    /// encoders here are not byte-deterministic, so a byte comparison reports
+    /// change where a reader could never see one; this comparison means "the
+    /// pixels moved". Falls back to the byte hash when the file does not decode.
+    private static func pixelHash(_ path: String) -> String {
+        guard let frames = decodedFrames(path) else { return fileHash(path) }
+        var hasher = SHA256()
+        for frame in frames { hasher.update(data: frame.pixels) }
         return hex(hasher.finalize())
     }
 
-    /// Put a fresh render into place: keep the committed file when the new
+    /// How far one image moved from another, over every frame, in the terms
+    /// that decide whether a reader could see it. A framework change that
+    /// shifts a stroke's anti-aliasing by a level or two moves pixels in most
+    /// figures and is invisible in all of them, and rewriting the JPEGs for
+    /// that is what filled the repository's history with figures nobody can
+    /// tell apart. So a render the framework moved on its own replaces the
+    /// committed image only when the move is visible by one of two measures,
+    /// calibrated against every figure rewrite in the history: a patch of
+    /// pixels moved hard (more than `strongLevel` levels in some channel, over
+    /// at least `strongFraction` of the image), which is a label, a shape, or
+    /// a highlight that changed; or the whole picture drifted (a mean
+    /// difference of `meanThreshold` levels or more per channel, twice what
+    /// the snapshot suite tolerates), which is a tone or palette shift. Under
+    /// both, the committed image stays. The measured classes sit apart: the
+    /// largest invisible moves in the history reach 0.12% of pixels past 32
+    /// levels, or a mean of 2.1 with almost none past it, while the smallest
+    /// visible one, a marker that moved to the other corner, is 0.32%.
+    struct Movement: Codable {
+        static let strongLevel = 32
+        static let strongFraction = 0.002
+        static let meanThreshold = 4.0
+
+        /// Mean absolute difference per channel, in 8-bit levels.
+        var mean: Double
+        /// The fraction of pixels where some channel moved past `strongLevel`.
+        var strong: Double
+        /// The two could not be compared (a different size or frame count, or
+        /// a file that does not decode); counts as visible.
+        var incomparable = false
+
+        var identical: Bool { !incomparable && mean == 0 && strong == 0 }
+        var isVisible: Bool {
+            incomparable || mean >= Self.meanThreshold || strong >= Self.strongFraction
+        }
+
+        var summary: String {
+            if incomparable { return "a different size or frame count" }
+            return String(format: "mean %.2f levels, %.2f%% of pixels moved more than %d levels",
+                          mean, strong * 100, Self.strongLevel)
+        }
+
+        /// The larger of two moves, measure by measure, for a themed figure's
+        /// pair of renders.
+        static func larger(_ a: Movement, _ b: Movement) -> Movement {
+            if a.incomparable { return a }
+            if b.incomparable { return b }
+            return Movement(mean: max(a.mean, b.mean), strong: max(a.strong, b.strong))
+        }
+
+        static func between(_ fresh: String, and committed: String) -> Movement {
+            let incomparable = Movement(mean: 0, strong: 0, incomparable: true)
+            guard let a = decodedFrames(fresh), let b = decodedFrames(committed),
+                  a.count == b.count, !a.isEmpty else { return incomparable }
+            var sum = 0
+            var strong = 0
+            var pixels = 0
+            for (fa, fb) in zip(a, b) {
+                guard fa.width == fb.width, fa.height == fb.height else { return incomparable }
+                pixels += fa.width * fa.height
+                fa.pixels.withUnsafeBytes { pa in
+                    fb.pixels.withUnsafeBytes { pb in
+                        for i in stride(from: 0, to: pa.count, by: 4) {
+                            var worst = 0
+                            for c in 0..<3 {
+                                let d = abs(Int(pa[i + c]) - Int(pb[i + c]))
+                                sum += d
+                                if d > worst { worst = d }
+                            }
+                            if worst > strongLevel { strong += 1 }
+                        }
+                    }
+                }
+            }
+            return Movement(mean: Double(sum) / Double(pixels * 3),
+                            strong: Double(strong) / Double(pixels))
+        }
+    }
+
+    /// Put a fresh render into place. The committed file stays when the new
     /// pixels are identical, so a nondeterministic encoder cannot churn the
-    /// working tree, and replace it only when the picture actually changed.
-    private static func promote(_ fresh: String, over committed: String) {
+    /// working tree, and, unless `exact`, when they moved below the visible
+    /// threshold (see `Movement`); it is replaced when the picture changed.
+    /// Returns the description of a move that was held back, for the report.
+    private static func promote(_ fresh: String, over committed: String,
+                                exact: Bool) -> String? {
         let manager = FileManager.default
-        if manager.fileExists(atPath: committed),
-           pixelHash(fresh) == pixelHash(committed) {
-            try? manager.removeItem(atPath: fresh)
-            return
+        if manager.fileExists(atPath: committed) {
+            let movement = Movement.between(fresh, and: committed)
+            if movement.identical || (!exact && !movement.isVisible) {
+                try? manager.removeItem(atPath: fresh)
+                return movement.identical ? nil : movement.summary
+            }
         }
         try? manager.removeItem(atPath: committed)
         try? manager.moveItem(atPath: fresh, toPath: committed)
+        return nil
     }
 
     private static func hex(_ digest: some Sequence<UInt8>) -> String {
@@ -940,9 +1105,13 @@ enum GuideFigures {
 
           --only <substring>   only figures whose path contains this
           --force              re-render even figures the cache calls unchanged
+          --exact              rewrite a committed image on any pixel move,
+                               not only a visible one
           --no-probe           skip the probe sample; re-render everything
           --jobs <n>           worker processes (default \(defaultJobs))
           --verbose            print each shard's full log
+          --compare <a> <b>    measure how far one image moved from another,
+                               and say which side of the threshold it lands on
           --help               this message
 
         Unchanged figures are skipped using Guide/.figure-cache.json, which is
@@ -971,7 +1140,14 @@ enum GuideFigures {
 
         Every comparison here is of decoded pixels, never encoded bytes: the
         JPEG/PNG encoders are not byte-deterministic, so a fresh render replaces
-        a committed image only when the picture actually changed.
+        a committed image only when the picture actually changed. And a move
+        the framework made on its own has to be visible to count: at least
+        \(String(format: "%.1f", Movement.strongFraction * 100))% of the pixels moved by
+        more than \(Movement.strongLevel) levels, or a mean difference of
+        \(String(format: "%.0f", Movement.meanThreshold)) levels or more per channel.
+        Below that the committed image stays, and the run lists what it held.
+        A figure whose own source changed is recorded on any move, since its
+        author meant the new picture; --exact treats every figure that way.
         """)
         exit(0)
     }
