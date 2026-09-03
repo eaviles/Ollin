@@ -11,13 +11,23 @@ package enum WebShaderLibrary {
     /// The section names, in the order the library defines them.
     package static let sectionNames = ["base", "hash", "noise", "color", "sdf", "domain", "visual"]
 
+    /// The sections the framework's own segments mark for the page, beyond the
+    /// helper library: `shapes` (the analytic primitives' coverage, in
+    /// `ShaderShapes.metal`) and `present` (the dither and the tone-map curve, in
+    /// `ShaderCore.metal` and `ShaderEffects.metal`). Each is cut from the
+    /// segment text with the same markers, so the page draws from one source.
+    package static let segmentSectionNames = ["shapes", "present"]
+
     /// The sections `wanted` needs, with the library's own dependencies added:
-    /// `base` always, `hash` under `noise`, and both under `visual`.
+    /// `base` always, `hash` under `noise`, both under `visual`, `sdf` under
+    /// `shapes`, and `hash` under `present`.
     package static func closure(of wanted: Set<String>) -> Set<String> {
         var sections = wanted
         sections.insert("base")
         if sections.contains("noise") { sections.insert("hash") }
         if sections.contains("visual") { sections.insert("hash"); sections.insert("noise") }
+        if sections.contains("shapes") { sections.insert("sdf") }
+        if sections.contains("present") { sections.insert("hash") }
         return sections
     }
 

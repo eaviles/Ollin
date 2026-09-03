@@ -213,6 +213,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 | `saveGif(…)` | `--export-gif loop.gif --seconds 4` | |
 | video capture libraries | `--export-video out.mp4 --seconds 10` | |
 | (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 31](31-SharingAndPerforming.md)) |
+| the sketch runs in the browser | `--export-web out.html` | a page that plays what the sketch drew, with no framework in the browser ([Chapter 31](31-SharingAndPerforming.md)) |
 
 ## Different on purpose
 

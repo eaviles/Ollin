@@ -138,6 +138,21 @@ The exporter records each draw call at its own level, before any pixels exist. C
 
 The same recording writes as a **PDF** with `--export-pdf plot.pdf`, and that is the path to paper. One canvas pixel maps to one PDF point, so the paper presets on `CanvasSize` come out true to size. Declare `override var canvasSize: CanvasSize { .a4 }` and the exported page *is* that sheet, vector-sharp at any printer's resolution. `.usLetter` and `.a5` are there too, and `.landscape` turns the sheet. If the raster export should be print-grade too, `.a4.dpi(300)` renders the pixels at 300 dots per inch. The PDF page stays exactly A4. Everything the SVG carries, the PDF carries the same way, hatching included.
 
+## A page that plays it
+
+A video carries pixels, and a page can carry what made them. `--export-web` records what the sketch draws over a duration, frame by frame at a fixed rate. It writes a page that plays the recording back in a browser:
+
+```sh
+swift run OllinLive MySketches/Ring.swift --export-web ring.html
+swift run OllinLive MySketches/Ring.swift --export-web ring.html --inline
+```
+
+The recorder writes down the shape records the renderer would have received each frame. Nothing is rendered on the Mac, so nothing GPU-specific lands in the file. The page draws those records with the framework's own shape shader, carried from Metal to GLSL. The rewriter that does it is the one that brings [somebody else's shader](17-YourFirstShader.md#somebody-elses-shader) the other way. A frame on the page is the frame `--export` would have given you. A sketch that declares `loopDuration`, as [Chapter 3](03-MotionAndTime.md) taught, records one lap with no length given, and the page wraps it without a seam. Between the recorded frames the page interpolates. A slow motion records well at ten frames a second, at a sixth of the weight of sixty.
+
+The first form is one self-contained file: open it, host it, drop it in an `iframe`. The second, `--inline`, is the canvas and one script block with no page around them, for a page you already have. Paste the two together where the picture belongs. The script leaves a handle on the canvas, `canvas.ollin`, that plays, pauses, and seeks. A reader whose system asks for less motion sees the first frame, still.
+
+What crosses today is the closed analytic shapes, with their fills, strokes, and transforms. That is circles, ellipses, rects, arcs, triangles, polygons by count, stars, rings, markers, and the rest of the catalog. A sketch that accumulates plays back frame on frame. A stroked path, a filled polygon, text, an image, a gradient, a layer, or a 3D scene stops the export before a file is written. The message names the call and the frame it was met at, and those sketches leave as video. The page's own reference is [`Docs/Output/Web.md`](../Docs/Output/Web.md).
+
 ## Driving the machine itself: G-code
 
 An SVG hands your drawing to a machine's own tooling. Many machines skip the tooling: hobby plotters, laser cutters, and CNC routers run on G-code, a program of moves in millimeters. `--export-gcode` writes one from the same recorded frame:
@@ -850,6 +865,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 ## Go deeper
 
 - [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching.
+- [Web page](../Docs/Output/Web.md): the flag and its length, what crosses and what stops the export, the two forms, the handle on the canvas, and what the page weighs.
 - [Recording](../Docs/Output/Recording.md): recording a live run in real time, what the sound modes hear, and how a take survives an evaluation.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.

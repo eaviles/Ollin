@@ -745,7 +745,10 @@ let package = Package(
         .target(
             name: "Ollin",
             dependencies: ["CLibtess2", "CClipper2", "COllinShaders", "CHosekWilkie", "CMikkTSpace",
-                           "CSpectralData"],
+                           "CSpectralData",
+                           // The web export cuts the page's shaders from the framework's
+                           // own Metal text through the Metal-to-GLSL rewriter.
+                           "OllinShaderText"],
             // Declaring the `.metal` files as resources makes SwiftPM copy them
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary reads and concatenates (ShaderCore
@@ -817,7 +820,8 @@ let package = Package(
         // `OLLIN_RECORD_SNAPSHOTS=1 swift test`. Skips when no Metal device.
         .testTarget(
             name: "OllinTests",
-            dependencies: ["Ollin", "COllinShaders", "OllinProjects", "OllinSceneImport"],
+            dependencies: ["Ollin", "COllinShaders", "OllinProjects", "OllinSceneImport",
+                           "OllinShaderText", "OllinWebGate"],
             resources: [.copy("References")]
         ),
         // DSP correctness for the audio analyzer: feed synthesized signals and
@@ -1002,13 +1006,21 @@ let package = Package(
             name: "OllinProjectsTests",
             dependencies: ["OllinProjects"]
         ),
+        // The headless-browser gate the web tests share: a browser as a GLSL
+        // compiler and as a page renderer. A regular target kept under `Tests/`
+        // (a test target may depend on a library target, never on another test
+        // target) with nothing but Foundation in it, so it builds in a second.
+        .target(
+            name: "OllinWebGate",
+            path: "Tests/OllinWebGate"
+        ),
         // The Metal-to-GLSL rewriter: each rule pinned on a small source, and the
         // shader helper library translated whole and compiled in a headless
         // browser, since a rewrite that merely looks right is worth nothing.
         // The browser tests skip themselves where no browser is installed.
         .testTarget(
             name: "OllinShaderTextTests",
-            dependencies: ["OllinShaderText"]
+            dependencies: ["OllinShaderText", "OllinWebGate"]
         ),
         // The reference in the terminal: the page catalog, the markdown
         // renderer, the lookup, the search, and the example listing. Text in,

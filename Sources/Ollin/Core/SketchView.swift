@@ -2881,7 +2881,7 @@ public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
     /// `--export-loop`, `--export-spatial`, `--export-svg`, `--export-pdf`,
-    /// `--export-gcode`,
+    /// `--export-gcode`, `--export-web`,
     /// `--export-usdz`, `--export-grid`, `--export-sweep`,
     /// `--export-separations` with their options, `--seed` on any of them,
     /// `--param name=value` to set a declared parameter on any of them (and on the
@@ -3163,6 +3163,37 @@ public extension OllinApp {
                                  codec: codec, bitsPerSecond: bitrate, encodeQuality: quality,
                                  renderQuality: renderQuality, skipSeconds: skip,
                                  slowMotion: slowMotion)
+            return true
+        }
+        // `--export-web <path> [--frames N | --seconds S] [--fps F] [--skip S] [--inline]`
+        // records what the sketch draws over a duration and writes a page that
+        // plays it back in a browser, then exits. With no length given, a sketch
+        // that declares `loopDuration` records one lap, which the page wraps
+        // without a seam. `--inline` writes the fragment (the canvas plus one
+        // script block) for a page of your own instead of a whole file.
+        if let i = args.firstIndex(of: "--export-web"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let fps = value("--fps").flatMap(Double.init) ?? 30
+            var frames = value("--frames").flatMap(Int.init) ?? 0
+            if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
+                frames = Int((seconds * fps).rounded())
+            }
+            if frames <= 0, let replayTake { frames = replayTake.frameCount }
+            let skip = value("--skip").flatMap(Double.init) ?? 0
+            let form: WebPageForm = args.contains("--inline") ? .inline : .standalone
+            let sketch = make()
+            if frames <= 0, let lap = sketch.loopDuration, lap > 0 {
+                frames = Int((lap * fps).rounded())
+            }
+            guard frames > 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-web <path> (--frames N | --seconds S, or a sketch that declares loopDuration) [--fps F] [--skip S] [--inline]\n".utf8))
+                return true
+            }
+            OllinApp.exportWeb(sketch, to: args[i + 1], frames: frames, fps: fps, skipSeconds: skip, form: form)
             return true
         }
         // `--export-spatial <path.mov> (--frames N | --seconds S) [--fps F] [--skip S]

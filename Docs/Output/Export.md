@@ -33,6 +33,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Sound](#sound) - a sketch's own music, in the file
 - [Video](#video) - `--export-video`, `OllinApp.exportVideo`
 - [Spatial video](Spatial.md#spatial-video) - `--export-spatial`, a stereo pair per frame for a headset (its own page)
+- [Web page](Web.md) - `--export-web`, a page that plays what the sketch drew back in a browser, standalone or inline (its own page)
 - [Animated GIF](#animated-gif) - `--export-gif`, `OllinApp.exportGIF`
 - [Perfect loops](#perfect-loops) - `--export-loop`, `Sketch.loopDuration`
 - [Slow motion](#slow-motion) - `--slow-motion`, `--made-frames`, a file that plays slower than the sketch ran

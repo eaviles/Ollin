@@ -210,6 +210,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 ### Output
 
 - [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG for pen plotters, PDF for print)
+- [`Web page`](./Output/Web.md) - `--export-web`: record what a sketch draws and write a page that plays it back in a browser, one self-contained file or a fragment for a page of your own
 - [`Path-traced export`](./Output/PathTraced.md) - `--path-traced`: render the same 3D scene offline by tracing light paths, for soft shadows, color bleed, mirror-in-mirror reflections, and a real lens
 - [`Recording`](./Output/Recording.md) - record a live run as it happens, picture and the sketch's own sound (or the room) in one movie, in real time
 - [`Fabrication`](./Output/Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check

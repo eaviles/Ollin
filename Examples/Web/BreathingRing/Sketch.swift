@@ -16,7 +16,10 @@ final class BreathingRing: Sketch {
     @Param(icon: "doc") var paper: Color = .white
 
     /// Seconds for one whole turn of the ring, the period every beat divides.
+    /// Declared as the loop, so `--export-loop` and `--export-web` record one
+    /// lap with no length given.
     private let loop = 60.0
+    override var loopDuration: Double? { loop }
     private let count = 28
 
     override func draw() {

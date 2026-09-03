@@ -10,11 +10,11 @@ import Foundation
 /// test-runner thread for good on a machine where the browser never exited, and
 /// with the whole cooperative pool parked that way the run stalled until its
 /// timeout. Nothing here blocks a thread, and a browser that hangs is killed.
-enum HeadlessBrowser {
+package enum HeadlessBrowser {
 
     /// The browser to run, if one is installed: `OLLIN_CHROME` first, then the
     /// usual application paths.
-    static let executable: String? = {
+    package static let executable: String? = {
         let fm = FileManager.default
         if let env = ProcessInfo.processInfo.environment["OLLIN_CHROME"], fm.isExecutableFile(atPath: env) {
             return env
@@ -27,29 +27,29 @@ enum HeadlessBrowser {
         return candidates.first { fm.isExecutableFile(atPath: $0) }
     }()
 
-    static var isInstalled: Bool { executable != nil }
+    package static var isInstalled: Bool { executable != nil }
 
-    struct Failure: Error, CustomStringConvertible {
-        var description: String
+    package struct Failure: Error, CustomStringConvertible {
+        package var description: String
     }
 
     /// The flags every run carries. No `--user-data-dir` on purpose: with one,
     /// the browser here dumped the DOM and then never exited. The keychain and
     /// password-store flags keep a fresh machine from raising a prompt nothing
     /// will answer.
-    static let baseFlags = ["--headless=new", "--no-first-run", "--no-default-browser-check",
+    package static let baseFlags = ["--headless=new", "--no-first-run", "--no-default-browser-check",
                             "--disable-extensions", "--use-mock-keychain", "--password-store=basic",
                             "--enable-unsafe-swiftshader"]
 
     /// What the installed browser can do, found once: the flags that yield a
     /// WebGL2 context, or the reason none did. The GPU-backed run is tried first,
     /// then the software renderer for a machine without a GPU.
-    struct Capability: Sendable {
-        var flags: [String]?
-        var reason: String
+    package struct Capability: Sendable {
+        package var flags: [String]?
+        package var reason: String
     }
 
-    static let capability: Task<Capability, Never> = Task {
+    package static let capability: Task<Capability, Never> = Task {
         guard isInstalled else { return Capability(flags: nil, reason: "no browser is installed") }
         var reasons: [String] = []
         for extra in [[], ["--use-angle=swiftshader"]] {
@@ -69,13 +69,13 @@ enum HeadlessBrowser {
     /// Whether the browser tests can run here. A test names this in its
     /// `.enabled` trait so a machine without a usable browser skips them with
     /// the reason in the log, rather than failing or waiting.
-    static func hasWebGL2() async -> Bool {
+    package static func hasWebGL2() async -> Bool {
         await capability.value.flags != nil
     }
 
     /// Loads `html` from a temporary file and returns the DOM once its scripts
     /// have run, with the flags the capability probe found.
-    static func dom(of html: String, timeout: TimeInterval = 90) async throws -> String {
+    package static func dom(of html: String, timeout: TimeInterval = 90) async throws -> String {
         guard let flags = await capability.value.flags else {
             throw Failure(description: await capability.value.reason)
         }
@@ -85,7 +85,7 @@ enum HeadlessBrowser {
     /// The run itself. The browser is killed after `timeout`, so a hang fails
     /// the call instead of parking anything; stdout goes to a file so a child
     /// process outliving the browser holds no pipe open.
-    static func dom(of html: String, flags: [String], timeout: TimeInterval) async throws -> String {
+    package static func dom(of html: String, flags: [String], timeout: TimeInterval) async throws -> String {
         guard let browser = executable else { throw Failure(description: "no browser is installed") }
         let folder = FileManager.default.temporaryDirectory
             .appendingPathComponent("ollin-web-gate-\(UUID().uuidString)")
@@ -133,7 +133,7 @@ enum HeadlessBrowser {
     }
 
     /// The text content of the element with `id`, with the DOM dump's escapes undone.
-    static func text(of id: String, in dom: String) -> String? {
+    package static func text(of id: String, in dom: String) -> String? {
         guard let attribute = dom.range(of: "id=\"\(id)\"") else { return nil }
         let rest = dom[attribute.upperBound...]
         guard let open = rest.range(of: ">"),
@@ -154,11 +154,11 @@ enum HeadlessBrowser {
 /// The two pages the gate uses: one that compiles and links a list of fragment
 /// shaders, and one that draws a fragment shader across a row of pixels and
 /// reads the bytes back.
-enum WebGLPage {
+package enum WebGLPage {
 
     /// Each shader lands in `<script id="sN">`, each verdict in `<pre id="rN">`:
     /// `OK`, or `FAIL` followed by the compiler's log.
-    static func compile(_ shaders: [String]) -> String {
+    package static func compile(_ shaders: [String]) -> String {
         var html = "<!doctype html><html><body>\n"
         for (i, shader) in shaders.enumerated() {
             html += "<script type=\"text/plain\" id=\"s\(i)\">\(shader)</script>\n"
@@ -204,7 +204,7 @@ enum WebGLPage {
     /// Draws `fragment` over a `width` by 1 canvas and writes the pixels read back
     /// into `<pre id="r0">` as bytes, `r,g,b,a` per pixel joined by `;`. A failure
     /// to compile or link reports as the compile page does.
-    static func pixels(fragment: String, width: Int) -> String {
+    package static func pixels(fragment: String, width: Int) -> String {
         """
         <!doctype html><html><body>
         <script type="text/plain" id="s0">\(fragment)</script>
@@ -242,7 +242,7 @@ enum WebGLPage {
     }
 
     /// The bytes a `pixels` page reported, one `[r, g, b, a]` per pixel.
-    static func bytes(from report: String) -> [[Int]] {
+    package static func bytes(from report: String) -> [[Int]] {
         report.split(separator: ";").map { $0.split(separator: ",").compactMap { Int($0) } }
     }
 }

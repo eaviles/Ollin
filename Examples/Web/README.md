@@ -10,4 +10,4 @@ Sketches made for a web page: pictures kept to the shapes and shaders a browser 
 |---|---|
 | [BreathingRing](BreathingRing/Sketch.swift) | a ring of drifting, breathing circles that loops without a seam: the picture the site opens on, as a sketch |
 
-Run one with `swift run Example-Web-<Name>`, e.g. `swift run Example-Web-BreathingRing`.
+Run one with `swift run Example-Web-<Name>`, e.g. `swift run Example-Web-BreathingRing`. Export it as the page it was made for with `swift run Example-Web-BreathingRing --export-web ring.html` (see [Docs/Output/Web.md](../../Docs/Output/Web.md)).

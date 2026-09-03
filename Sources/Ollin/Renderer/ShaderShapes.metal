@@ -102,6 +102,7 @@ vertex SDFOut ollin_sdf_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// OLLIN_LIB_BEGIN shapes
 // Coverage for a stroke band of half-width `hw` straddling an outline. `t` is the
 // unsigned distance to the band centerline (|d - strokeBias|) and `px` the
 // screen-space footprint. A band wider than ~1px is a plain smoothstep edge; a
@@ -189,40 +190,15 @@ static inline float capsuleCoverage(float s, float hw) {
     return perceptualCoverage(c);
 }
 
-// Resolve one paint slot to linear straight-alpha color at this fragment. A
-// solid slot (kind 0) carries an sRGB color, linearized here like the old
-// direct path. A gradient slot carries geometry relative to the shape center
-// (the space `p` lives in), mapped to t and sampled from `row` of the gradient
-// strip — an sRGB texture, so the sample comes back linear with no extra math.
-// `pathT` is the along-path coordinate (kind 3): the curve parameter on a
-// capsule/Bézier, a conic sweep around the center on region shapes.
-static float4 resolvePaint(float4 slot, uint kind, float row, float2 p, float pathT,
-                           texture2d<float> gradients, sampler gradientSampler) {
-    if (kind == 0u) { return float4(srgbToLinear(slot.rgb), slot.a); }
-    float t;
-    if (kind == 1u) {            // linear: slot = (start.xy, end.xy)
-        float2 d = slot.zw - slot.xy;
-        t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
-    } else if (kind == 2u) {     // radial: slot = (center.xy, radius, –)
-        t = length(p - slot.xy) / max(slot.z, 1e-6);
-    } else {                     // along-path
-        t = pathT;
-    }
-    float w = float(gradients.get_width());
-    float u = (clamp(t, 0.0, 1.0) * (w - 1.0) + 0.5) / w;
-    float v = (row + 0.5) / float(gradients.get_height());
-    return gradients.sample(gradientSampler, float2(u, v));
-}
-
 // Signed distance for the *closed region* shapes — every SDFShape except the open
 // marks (capsule/line, the open/chord/pie arcs, the Bézier stroke), which have no
 // interior to fill. This is the SDF-combinator VM's leaf evaluator
 // (ShaderCombinator.metal): given a shape tag + the generic slots (read per shape
 // exactly as SDFShape encodes them), it returns the signed distance at local point
 // `p`. It mirrors the per-shape param decoding (Y-flips, recentering, insets) in
-// ollin_sdf_fragment's region cases below — they're kept in sync deliberately, so a
+// ollin_sdf_coverage's region cases below; they are kept in sync deliberately, so a
 // new region shape must be added in *both* places (here for combinators, the
-// fragment switch for the single-shape draw).
+// coverage switch for the single-shape draw).
 static float ollin_sdf_distance(uint shape, float2 p, float2 size,
                                 float2 param0, float2 param1, float2 param2, float extra) {
     switch (shape) {
@@ -327,49 +303,57 @@ static float ollin_sdf_distance(uint shape, float2 p, float2 size,
     }
 }
 
-fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
-                                   texture2d<float> gradients [[texture(0)]],
-                                   sampler gradientSampler [[sampler(0)]]) {
-    float2 p = in.local;
-    float hw = in.strokeWidth * 0.5;
+// Fill and stroke coverage of one analytic shape at the local point `p`, read
+// from the instance's generic slots exactly as the vertex stage hands them over
+// (`shape` is the low byte of the tag, `align` its alignment bits). `pathT` is the
+// along-path coordinate a gradient paint may ask for: region shapes sweep once
+// around their center (0 at 12 o'clock, clockwise, computed only when
+// `wantsPathT`), and the capsule and Bezier overwrite it with their true path
+// parameter. The single-shape fragment calls this, and so does the page a sketch
+// exports to (where it crosses to GLSL by the shader rewriter), so the shapes
+// draw from one text in both places.
+static void ollin_sdf_coverage(uint shape, uint align, float2 p, float2 size,
+                               float2 param0, float2 param1, float2 param2,
+                               float strokeWidth, float extra, float bandWidth,
+                               bool wantsPathT,
+                               thread float &fillCov, thread float &strokeCov,
+                               thread float &pathT) {
+    float hw = strokeWidth * 0.5;
     // Stroke alignment: shift the stroke band inside (-hw) or outside (+hw) the
     // edge, or leave it centered (0). d is negative inside, positive outside.
-    float strokeBias = (in.align == 1u) ? -hw : (in.align == 2u) ? hw : 0.0;
-    float fillCov = 0.0;
-    float strokeCov = 0.0;
-    // The along-path coordinate: region shapes sweep once around their center
-    // (0 at 12 o'clock, clockwise — computed only when an along paint asks);
-    // the capsule and Bézier overwrite it with their true path parameter below.
-    float pathT = 0.0;
-    if (in.fillKind == 3u || in.strokeKind == 3u) {
+    float strokeBias = (align == 1u) ? -hw : (align == 2u) ? hw : 0.0;
+    fillCov = 0.0;
+    strokeCov = 0.0;
+    pathT = 0.0;
+    if (wantsPathT) {
         pathT = fract(atan2(p.x, -p.y) * (1.0 / 6.283185307179586));
     }
 
-    switch (in.shape) {
+    switch (shape) {
     case 1u:     // rounded box
-        regionFill(sdRoundBox(p, in.size, in.extra), in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(sdRoundBox(p, size, extra), bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     case 6u:     // isosceles triangle: apex at center, size = (base/2, height)
         // Region coverage (inside-biased), so abutting triangles — the rotated
         // wedges that tile a cell — meet at full coverage and leave no seam.
-        regionFill(sdTriangleIsosceles(p, in.size), in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(sdTriangleIsosceles(p, size), bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     case 7u: {   // regular polygon / star: size.x = outer radius (= AABB extent)
         // sdStar's native vertex points along +Y, which is *down* in y-down space;
         // mirror Y so a vertex points up. Region coverage like the triangle/box.
-        float d = sdStar(float2(p.x, -p.y), in.size.x, in.param0, in.param1, in.extra);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdStar(float2(p.x, -p.y), size.x, param0, param1, extra);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 8u: {   // point marker: size = (h, h); extra = kind; param0.x = arm half-width
-        float h = in.size.x;
-        float t = in.param0.x;
-        uint kind = uint(in.extra + 0.5);
+        float h = size.x;
+        float t = param0.x;
+        uint kind = uint(extra + 0.5);
         float d;
         if (kind == 0u) {          // square: side 2h
-            d = sdRoundBox(p, in.size, 0.0);
+            d = sdRoundBox(p, size, 0.0);
         } else if (kind == 1u) {   // diamond: a rhombus with diagonal 2h
-            d = sdRhombus(p, in.size);
+            d = sdRhombus(p, size);
         } else if (kind == 2u) {   // cross (+): arms reach ±h, half-width t
             d = sdCross(p, float2(h, t), 0.0);
         } else {                   // x (✕): the sharp cross (+) rotated 45°
@@ -378,7 +362,7 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
             d = sdCross(q, float2(h * 1.41421356 - t, t), 0.0);   // arm length set so the X still spans 2h
         }
         // Region coverage (fill-only — strokeWidth is 0 on the point path).
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 2u: {   // capsule (a line): solid fill in fillColor, round caps
@@ -393,12 +377,12 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
         // cap radius (half the weight). The segment math is inlined (same form
         // as sdSegment) so the closest-point parameter doubles as the line's
         // along-path coordinate for a gradient stroke.
-        float2 pa = p + in.param0;             // p - a, with a = -param0
-        float2 ba = in.param0 * 2.0;           // b - a
+        float2 pa = p + param0;             // p - a, with a = -param0
+        float2 ba = param0 * 2.0;           // b - a
         float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);
         float s = length(pa - ba * h);
         pathT = h;
-        fillCov = capsuleCoverage(s, in.extra);
+        fillCov = capsuleCoverage(s, extra);
         break;
     }
     case 3u:     // arc, open
@@ -407,28 +391,28 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
         // Rotate the local point so the arc's bisector points to +Y (param1 =
         // (cos, sin) of the rotation), then evaluate in that canonical frame.
         // param0 = (sin, cos) of the half-aperture; size.x = radius.
-        float2 q = float2(p.x * in.param1.x - p.y * in.param1.y,
-                          p.x * in.param1.y + p.y * in.param1.x);
-        float ra = in.size.x;
-        float2 sc = in.param0;
-        if (in.shape == 5u) {
+        float2 q = float2(p.x * param1.x - p.y * param1.y,
+                          p.x * param1.y + p.y * param1.x);
+        float ra = size.x;
+        float2 sc = param0;
+        if (shape == 5u) {
             // pie: filled wedge; the stroke band traces its whole outline (the
             // two radii and the arc).
-            regionCoverage(sdPie(q, sc, ra), hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+            regionCoverage(sdPie(q, sc, ra), hw, strokeWidth, strokeBias, fillCov, strokeCov);
         } else {
             // chord & open share the circular-segment region for the fill: inside
             // the disk and on the arc side of the chord (the chord lies at
             // q.y = ra * sc.y, the line through the two arc endpoints).
             float dSeg = max(length(q) - ra, ra * sc.y - q.y);
-            if (in.shape == 4u) {
+            if (shape == 4u) {
                 // chord: the stroke traces the segment outline (curve + chord).
-                regionCoverage(dSeg, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+                regionCoverage(dSeg, hw, strokeWidth, strokeBias, fillCov, strokeCov);
             } else {
                 // open: fill the segment, but stroke only the curve via the
                 // thick-arc band, so the chord stays open (matches ArcMode.open).
                 float aa = max(fwidth(dSeg), 1e-5);
                 fillCov = 1.0 - smoothstep(0.0, aa, dSeg);
-                if (in.strokeWidth > 0.0) {
+                if (strokeWidth > 0.0) {
                     float dArc = sdArc(q, sc, ra, hw);
                     float aaA = max(fwidth(dArc), 1e-5);
                     strokeCov = 1.0 - smoothstep(0.0, aaA, dArc);
@@ -441,143 +425,143 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
         // Inset the core by r and round by r, so the rounded shape keeps the
         // (w, h) footprint (its tips still reach the size box). Region coverage
         // (inside-biased) so a tiled diamond grid leaves no seam.
-        float r = in.extra;
-        float d = sdRhombus(p, max(in.size - r, float2(1e-4))) - r;
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float r = extra;
+        float d = sdRhombus(p, max(size - r, float2(1e-4))) - r;
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 10u: {  // vesica (pointed lens): param0 = (circle radius, center offset);
                  // param1.x = 1 for a horizontal lens; extra = corner radius (rounds
                  // the tips). The builder insets so rounding keeps the footprint.
-        float2 q = (in.param1.x > 0.5) ? p.yx : p.xy;
-        float d = sdVesica(q, in.param0.x, in.param0.y) - in.extra;
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float2 q = (param1.x > 0.5) ? p.yx : p.xy;
+        float d = sdVesica(q, param0.x, param0.y) - extra;
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 11u: {  // moon (crescent): param0 = (outer radius, inner radius);
                  // param1.x = offset; extra = corner radius (rounds the cusps).
-        float d = sdMoon(p, in.param1.x, in.param0.x, in.param0.y) - in.extra;
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdMoon(p, param1.x, param0.x, param0.y) - extra;
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 12u: {  // cross (plus): size.x = arm half-length (AABB); param0.x = arm
                  // half-width; extra = corner radius. Union of two rounded boxes,
                  // so the outer corners round (radius r) and the inner notches stay
                  // sharp — the usual rounded-plus look.
-        float L = in.size.x;
-        float w = in.param0.x;
-        float r = in.extra;
+        float L = size.x;
+        float w = param0.x;
+        float r = extra;
         float d = min(sdRoundBox(p, float2(L, w), r), sdRoundBox(p, float2(w, L), r));
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 13u: {  // ring (filled annulus): param0 = (mid radius, half thickness).
                  // The disk SDF turned into a band (opOnion); fill only.
-        float d = abs(length(p) - in.param0.x) - in.param0.y;
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = abs(length(p) - param0.x) - param0.y;
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 14u: {  // trapezoid: param0 = (top half-width, bottom half-width);
                  // size.y = half-height. Symmetric in y, so no flip needed.
-        float d = sdTrapezoid(p, in.param0.x, in.param0.y, in.size.y);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdTrapezoid(p, param0.x, param0.y, size.y);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 15u: {  // parallelogram: param0.x = base half-width; size.y = half-height;
                  // extra = skew. Flip Y so a positive skew leans the top edge +x.
-        float d = sdParallelogram(float2(p.x, -p.y), in.param0.x, in.size.y, in.extra);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdParallelogram(float2(p.x, -p.y), param0.x, size.y, extra);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 16u: {  // egg: param0 = (bottom radius ra, top radius rb), ra >= rb.
                  // Flip Y (fat end down) and recenter on the quad: the native
                  // shape spans y in [-ra, A] with A the apex, center yc.
-        float ra = in.param0.x, rb = in.param0.y;
+        float ra = param0.x, rb = param0.y;
         float A = 1.7320508 * (ra - rb) + rb;
         float yc = (A - ra) * 0.5;
         float d = sdEgg(float2(p.x, -p.y + yc), ra, rb);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 17u: {  // heart: param0.x = unit->local scale. Flip Y (lobes up) and
                  // recenter (the unit heart's center sits at y = 0.5538).
-        float s = in.param0.x;
+        float s = param0.x;
         float2 u = float2(p.x, -p.y) / s + float2(0.0, 0.5538);
         float d = sdHeart(u) * s;
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 18u: {  // cut disk: param0 = (radius, cut height h). Flip Y so the flat
                  // edge faces down (-y) and the dome bulges up; a positive cut
                  // raises the chord toward the dome, keeping a smaller cap.
-        float d = sdCutDisk(float2(p.x, -p.y), in.param0.x, in.param0.y);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdCutDisk(float2(p.x, -p.y), param0.x, param0.y);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 19u: {  // uneven capsule: param0 = (r1, r2); param1 = (cos, sin) of the
                  // rotation into the capsule's axis frame (+y from a to b);
-                 // extra = end-to-end length. Shift the r1 end to the origin.
-        float2 q = float2(p.x * in.param1.x - p.y * in.param1.y,
-                          p.x * in.param1.y + p.y * in.param1.x);
-        q.y += in.extra * 0.5;
-        float d = sdUnevenCapsule(q, in.param0.x, in.param0.y, in.extra);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+                 // extra = end-to-end length. Shift the r1 end to the orig
+        float2 q = float2(p.x * param1.x - p.y * param1.y,
+                          p.x * param1.y + p.y * param1.x);
+        q.y += extra * 0.5;
+        float d = sdUnevenCapsule(q, param0.x, param0.y, extra);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 20u: {  // horseshoe: param0 = (cos, sin) half-gap; param1 = (cap half-len,
                  // half-thick); extra = mid radius. Flip Y so the opening faces down.
-        float d = sdHorseshoe(float2(p.x, -p.y), in.param0, in.extra, in.param1);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdHorseshoe(float2(p.x, -p.y), param0, extra, param1);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 21u: {  // parabola arch: param0 = (top half-width wi, height he). Flip Y so
                  // the curve peaks up; clip the open base with the y >= 0 half-plane.
-        float wi = in.param0.x, he = in.param0.y;
+        float wi = param0.x, he = param0.y;
         float2 u = float2(p.x, he * 0.5 - p.y);
         float d = max(sdParabolaSegment(u, wi, he), -u.y);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 22u: {  // rounded X: param0.x = arm reach w; extra = arm half-width r.
-        float d = sdRoundedX(p, in.param0.x, in.extra);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdRoundedX(p, param0.x, extra);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 23u: {  // blobby cross: param0 = (scale s, blobbiness he). Evaluate the
                  // unit shape and rescale the distance.
-        float s = in.param0.x, he = in.param0.y;
+        float s = param0.x, he = param0.y;
         float d = sdBlobbyCross(p / s, he) * s;
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 24u: {  // tunnel / archway: param0 = (half-width wh.x, wall height wh.y).
                  // Recenter on the quad and flip Y so the rounded top faces up.
-        float2 wh = in.param0;
+        float2 wh = param0;
         float yc = (wh.x - wh.y) * 0.5;
         float d = sdTunnel(float2(p.x, yc - p.y), wh);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 25u: {  // staircase: param0 = (step width, step height); extra = step count.
                  // Recenter on the quad and flip Y so it ascends upward to the right.
-        float2 wh = in.param0;
-        float n = in.extra;
+        float2 wh = param0;
+        float n = extra;
         float bx = wh.x * n, by = wh.y * n;
         float2 u = float2(p.x + bx * 0.5, by * 0.5 - p.y);
         float d = sdStairs(u, wh, n);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 26u: {  // cool S: param0.x = scale. 180°-symmetric, so no Y flip needed.
-        float s = in.param0.x;
+        float s = param0.x;
         float d = sdCoolS(p / s) * s;
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 27u: {  // general triangle: param0/param1/param2 = the three corners,
                  // relative to center. Region coverage like the isosceles form.
-        float d = sdTriangle(p, in.param0, in.param1, in.param2);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdTriangle(p, param0, param1, param2);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 28u: {  // quadratic Bézier stroke: param0/param1/param2 = (start, control,
@@ -586,33 +570,71 @@ fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
                  // capsule's centered, area-conserving fade rather than regionFill —
                  // a sub-pixel-thin curve fades by width instead of vanishing.
         float t = 0.0;
-        float s = sdBezier(p, in.param0, in.param1, in.param2, t);
+        float s = sdBezier(p, param0, param1, param2, t);
         pathT = t;
-        fillCov = capsuleCoverage(s, in.extra);   // same coverage as the line
+        fillCov = capsuleCoverage(s, extra);   // same coverage as the line
         break;
     }
     case 29u: {  // oriented box: param0/param1 = centerline endpoints (rel. center);
                  // extra = thickness. Region coverage like the rounded box.
-        float d = sdOrientedBox(p, in.param0, in.param1, in.extra);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdOrientedBox(p, param0, param1, extra);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     case 30u: {  // oriented vesica: param0/param1 = tip endpoints (rel. center);
                  // extra = waist half-width. Region coverage like the vesica.
-        float d = sdOrientedVesica(p, in.param0, in.param1, in.extra);
-        regionFill(d, in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        float d = sdOrientedVesica(p, param0, param1, extra);
+        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         break;
     }
     default:     // 0: ellipse / circle / point
         // Solid disks use area-conserving coverage (smooth sub-pixel dots); a
         // hollow disk is an elliptical ring, so onion the ellipse SDF instead.
-        if (in.bandWidth > 0.0) {
-            regionFill(sdEllipse(p, in.size), in.bandWidth, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+        if (bandWidth > 0.0) {
+            regionFill(sdEllipse(p, size), bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         } else {
-            diskCoverage(p, in.size, hw, in.strokeWidth, strokeBias, fillCov, strokeCov);
+            diskCoverage(p, size, hw, strokeWidth, strokeBias, fillCov, strokeCov);
         }
         break;
     }
+}
+// OLLIN_LIB_END shapes
+
+// Resolve one paint slot to linear straight-alpha color at this fragment. A
+// solid slot (kind 0) carries an sRGB color, linearized here. A gradient slot carries geometry relative to the shape center
+// (the space `p` lives in), mapped to t and sampled from `row` of the gradient
+// strip, an sRGB texture, so the sample comes back linear with no extra math.
+// `pathT` is the along-path coordinate (kind 3): the curve parameter on a
+// capsule/Bézier, a conic sweep around the center on region shapes.
+static float4 resolvePaint(float4 slot, uint kind, float row, float2 p, float pathT,
+                           texture2d<float> gradients, sampler gradientSampler) {
+    if (kind == 0u) { return float4(srgbToLinear(slot.rgb), slot.a); }
+    float t;
+    if (kind == 1u) {            // linear: slot = (start.xy, end.xy)
+        float2 d = slot.zw - slot.xy;
+        t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
+    } else if (kind == 2u) {     // radial: slot = (center.xy, radius, –)
+        t = length(p - slot.xy) / max(slot.z, 1e-6);
+    } else {                     // along-path
+        t = pathT;
+    }
+    float w = float(gradients.get_width());
+    float u = (clamp(t, 0.0, 1.0) * (w - 1.0) + 0.5) / w;
+    float v = (row + 0.5) / float(gradients.get_height());
+    return gradients.sample(gradientSampler, float2(u, v));
+}
+
+fragment float4 ollin_sdf_fragment(SDFOut in [[stage_in]],
+                                   texture2d<float> gradients [[texture(0)]],
+                                   sampler gradientSampler [[sampler(0)]]) {
+    float2 p = in.local;
+    float fillCov = 0.0;
+    float strokeCov = 0.0;
+    float pathT = 0.0;
+    ollin_sdf_coverage(in.shape, in.align, p, in.size, in.param0, in.param1, in.param2,
+                       in.strokeWidth, in.extra, in.bandWidth,
+                       in.fillKind == 3u || in.strokeKind == 3u,
+                       fillCov, strokeCov, pathT);
 
     // Resolve each slot to linear straight-alpha (a solid color linearized, a
     // gradient sampled at this fragment), composite stroke over fill in

@@ -152,7 +152,7 @@ extension CaptureSource {
         "--export", "--export-sequence", "--export-video", "--export-gif",
         "--export-loop", "--export-spatial", "--export-svg", "--export-pdf",
         "--export-gcode", "--export-usdz", "--export-grid", "--export-sweep",
-        "--export-separations", "--export-plates",
+        "--export-separations", "--export-plates", "--export-web",
     ]
 
     /// `out.png` with capture `a1b2c3d` becomes `out-a1b2c3d.png`; a directory

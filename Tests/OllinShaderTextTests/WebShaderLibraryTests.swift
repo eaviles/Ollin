@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import OllinWebGate
 @testable import OllinShaderText
 
 /// The shader helper library translated whole. The text checks say every
@@ -35,6 +36,15 @@ struct WebShaderLibraryTests {
     }
 
     static let everySection = Set(WebShaderLibrary.sectionNames)
+
+    /// The framework's own segments the page cuts sections from, beside the
+    /// library, read from the checkout in the order the exporter joins them.
+    static func segmentText() throws -> String {
+        let root = try #require(Self.repositoryRoot())
+        return try ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderEffects"].map { name in
+            try String(contentsOf: root.appendingPathComponent("Sources/Ollin/Renderer/\(name).metal"), encoding: .utf8)
+        }.joined(separator: "\n")
+    }
 
     /// A whole page shader: the preamble, the support the translation needs, the
     /// translated sections, and a `main` so the program links.
@@ -126,6 +136,34 @@ struct WebShaderLibraryTests {
         #expect(body.contains("M_PI_F * p.x"))
     }
 
+    @Test func theSegmentSectionsTranslateClean() throws {
+        let text = try Self.segmentText()
+        #expect(WebShaderLibrary.closure(of: ["shapes"]) == ["base", "sdf", "shapes"])
+        #expect(WebShaderLibrary.closure(of: ["present"]) == ["base", "hash", "present"])
+        for section in WebShaderLibrary.segmentSectionNames {
+            let translation = WebShaderLibrary.translate(text, wanted: [section])
+            #expect(translation.isClean, "\(section): \(translation.unsupported.map(\.message))")
+            #expect(Self.metalWordsLeft(in: translation.body).isEmpty,
+                    "\(section) still says \(Self.metalWordsLeft(in: translation.body))")
+        }
+        // The shapes: the coverage function the fragment calls, with its
+        // reference outputs as inout, over the sdf primitives it needs.
+        let shapes = WebShaderLibrary.translate(text, wanted: ["shapes"]).body
+        #expect(shapes.contains("void ollin_sdf_coverage(uint shape, uint align, vec2 p, vec2 size,"))
+        #expect(shapes.contains("inout float fillCov, inout float strokeCov,"))
+        #expect(shapes.contains("float ollin_sdf_distance(uint shape, vec2 p, vec2 size,"))
+        #expect(shapes.contains("float sdEllipse("))
+        #expect(shapes.contains("float perceptualCoverage(float c)"))
+        #expect(!shapes.contains("resolvePaint"))       // a texture reader stays behind
+        #expect(!shapes.contains("fragment float4"))     // so does the entry point
+        // The present pass: the dither and the tone-map curve, over the hash.
+        let present = WebShaderLibrary.translate(text, wanted: ["present"]).body
+        #expect(present.contains("float ditherTriangle(vec2 fragCoord)"))
+        #expect(present.contains("vec3 toneMapACES(vec3 x)"))
+        #expect(present.contains("float hash12(vec2 p)"))
+        #expect(!present.contains("ollin_present_fragment"))
+    }
+
     // MARK: The browser
 
     @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
@@ -141,6 +179,19 @@ struct WebShaderLibraryTests {
         }
         let dom = try await HeadlessBrowser.dom(of: WebGLPage.compile(shaders))
         for (i, name) in names.enumerated() {
+            let verdict = try #require(HeadlessBrowser.text(of: "r\(i)", in: dom))
+            #expect(verdict == "OK", "\(name): \(verdict.prefix(1200))")
+        }
+    }
+
+    @Test(.enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func theSegmentSectionsCompileInABrowser() async throws {
+        let text = try Self.segmentText()
+        let shaders = WebShaderLibrary.segmentSectionNames.map {
+            Self.pageShader(WebShaderLibrary.translate(text, wanted: [$0]))
+        }
+        let dom = try await HeadlessBrowser.dom(of: WebGLPage.compile(shaders))
+        for (i, name) in WebShaderLibrary.segmentSectionNames.enumerated() {
             let verdict = try #require(HeadlessBrowser.text(of: "r\(i)", in: dom))
             #expect(verdict == "OK", "\(name): \(verdict.prefix(1200))")
         }

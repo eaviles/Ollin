@@ -33,6 +33,7 @@ using namespace metal::raytracing;
 // renders stay reproducible (snapshot tests). The color conversions and hash it
 // builds on (srgbToLinear / linearToSrgb / hash12) live in OllinShaderLib.
 
+// OLLIN_LIB_BEGIN present
 // Triangular-PDF dither in [-1, 1]: the difference of two uniform samples, the
 // right noise shape for de-banding a quantizer.
 static inline float ditherTriangle(float2 fragCoord) {
@@ -47,6 +48,8 @@ static inline float4 finalizeColor(float4 linearColor, float2 fragCoord) {
     enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0);
     return float4(srgbToLinear(enc), linearColor.a);
 }
+
+// OLLIN_LIB_END present
 
 // One pipeline draws everything for now: solid-color 2D triangles. Fills
 // (triangle fans) and strokes (triangle-strip annuli) are both tessellated on

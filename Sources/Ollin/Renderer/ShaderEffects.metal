@@ -33,12 +33,15 @@ vertex PresentOut ollin_present_vertex(uint vid [[vertex_id]]) {
     return out;
 }
 
+// OLLIN_LIB_BEGIN present
 // ACES filmic tone-map (Krzysztof Narkowicz's fitted curve, written from the
 // published approximation): rolls highlights off smoothly instead of clipping.
 static inline float3 toneMapACES(float3 x) {
     const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
+
+// OLLIN_LIB_END present
 
 fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
                                        texture2d<float> src [[texture(0)]],
