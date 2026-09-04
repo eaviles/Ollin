@@ -80,6 +80,7 @@ struct OllinDocsCommand {
                 print("\(report.missing.count) targets point at nothing in this checkout (left as written):")
                 for line in report.missing { print("  " + line) }
             }
+            for note in report.notes { print("note: " + note) }
             if let domain { print("CNAME: \(domain)") }
         } catch {
             fail("could not write the site: \(error.localizedDescription)")

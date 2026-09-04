@@ -25,14 +25,18 @@
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #   Guide/ or Docs/ prose changed
 #       -> Scripts/prose-lint.sh over just those files
+#   the ring sketch, the web exporter, the shader rewriter, or the shaders
+#   changed
+#       -> Scripts/site-hero.sh (the site's front-page ring is the sketch's
+#          recorded web page, committed as source; any of those moves it)
 #   always
 #       -> the em-dash and invisible-character net over the added diff lines
 #   --milestone adds
 #       -> Scripts/test.sh milestone (both phases plus the four nested
 #          signed-bundle builds the everyday run leaves out), guide-figures
-#          --no-probe, and swift build --package-path Examples (the examples
-#          anti-rot guard; CI runs on pull requests only, so nothing else
-#          compiles them)
+#          --no-probe, site-hero, and swift build --package-path Examples (the
+#          examples anti-rot guard; CI runs on pull requests only, so nothing
+#          else compiles them)
 #
 # This does not commit and does not replace the docs audit's judgment passes
 # (stale prose, snippet APIs, comment leaks); it is the mechanical half.
@@ -72,6 +76,7 @@ images=$(grep -E '^(Guide|Docs)/Images/' <<<"$changed")
 prose=$(grep -E '\.md$' <<<"$changed")
 examples=$(grep -E '^Examples/' <<<"$changed")
 reader_prose=$(grep -E '^(Guide|Docs)/.*\.md$' <<<"$changed" | grep -vE '^Guide/(PLAN|AUTHORING)\.md$')
+hero=$(grep -E '^(Examples/Web/BreathingRing/|Sources/Ollin/Export/Web|Sources/OllinShaderText/|Sources/Ollin/Renderer/Shader|Scripts/site-hero\.sh$)' <<<"$changed")
 
 # The figure gate: a framework change may move any figure (the probe decides),
 # and an edited figure sketch or a hand-touched image must re-render or fail.
@@ -100,6 +105,16 @@ elif [[ $milestone -eq 1 ]]; then
     run "prose-lint" Scripts/prose-lint.sh
 else
     skip "prose-lint" "no Guide/ or Docs/ prose change"
+fi
+
+# The front page's ring: the sketch's own web page, recorded into
+# Sources/OllinReference/SiteHero.swift. The recording is deterministic, so
+# rerunning it rewrites the file only when something it carries moved, and
+# the rewrite then shows in the diff to be committed with the change.
+if [[ -n "$hero" || $milestone -eq 1 ]]; then
+    run "site-hero" Scripts/site-hero.sh
+else
+    skip "site-hero" "no change to the ring sketch, the web exporter, or the shaders it carries"
 fi
 
 # The iOS build: nothing else compiles the framework for the phone, so a

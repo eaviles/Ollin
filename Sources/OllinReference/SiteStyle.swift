@@ -5,8 +5,8 @@ import Foundation
 /// Kept as text inside the target rather than as resources so the command
 /// stays one binary with nothing to find at run time. The design is system
 /// type, hairline rules, and generous space, in a light scheme and a dark one
-/// that follow the reader's own setting, so the figures' dark variants and the
-/// chrome switch together.
+/// that follow the reader's own setting, so the figures' dark variants, the
+/// front page's ring, and the chrome switch together.
 enum SiteStyle {
 
     /// The placeholder mark until the logo lands: a plain circle.
@@ -194,7 +194,8 @@ enum SiteStyle {
     .button { display: inline-flex; align-items: center; padding: 0.7rem 1.25rem; border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 500; font-size: 15px; transition: transform 300ms var(--ease), opacity 150ms; }
     .button:hover { text-decoration: none; transform: translateY(-1px); opacity: 0.9; }
     .button.quiet { background: transparent; color: var(--text); border: 1.5px solid var(--text); }
-    .hero-canvas { width: 100%; aspect-ratio: 1; max-height: 460px; color: var(--text); }
+    .hero-canvas { width: 100%; max-width: 460px; justify-self: center; }
+    .hero-canvas canvas { width: 100%; height: auto; }
     .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; margin-bottom: 3rem; }
     .card { display: block; padding: 1.5rem; background: var(--surface); border-radius: 18px; color: var(--text); transition: transform 400ms var(--ease), background 150ms; }
     .card:hover { text-decoration: none; transform: translateY(-2px); background: var(--surface-2); }
@@ -220,7 +221,7 @@ enum SiteStyle {
       .sidebar details { margin-top: 0.5rem; }
       main { padding-top: 1.75rem; padding-bottom: 2.5rem; }
       .hero { grid-template-columns: minmax(0, 1fr); }
-      .hero-canvas { max-height: 320px; order: -1; }
+      .hero-canvas { max-width: 320px; order: -1; }
       .cards { grid-template-columns: minmax(0, 1fr); }
       .prose h1 { font-size: 32px; }
       .prose h2 { font-size: 24px; }
@@ -234,52 +235,25 @@ enum SiteStyle {
     }
     """
 
-    /// The front page's canvas: a ring of drifting, breathing circles, the
-    /// first thing the Guide draws, so the site opens on motion the way a
-    /// sketch does. It stands still for a reader who asked for less motion.
-    static let script = """
+    /// The front page's ring, dressed in the page's colors. The ring is the
+    /// sketch's own web page (`SiteHero.fragment`), which plays on its own,
+    /// stands still for a reader who asked for less motion, and leaves a
+    /// handle on its canvas; this sets the ring's `ink` and `paper` through
+    /// that handle from the stylesheet's own variables, and again when the
+    /// reader's color scheme changes, so the ring follows the site rather
+    /// than keeping the black on white it was recorded in.
+    static let heroScript = """
     (() => {
-      const canvas = document.querySelector('.hero-canvas');
-      if (!canvas) return;
-      const context = canvas.getContext('2d');
-      const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const count = 28;
-      let width = 0, height = 0;
-
-      function size() {
-        const scale = devicePixelRatio || 1;
-        width = canvas.clientWidth;
-        height = canvas.clientHeight;
-        canvas.width = Math.round(width * scale);
-        canvas.height = Math.round(height * scale);
-        context.setTransform(scale, 0, 0, scale, 0, 0);
-      }
-
-      function frame(now) {
-        const time = now / 1000;
-        context.clearRect(0, 0, width, height);
-        context.strokeStyle = getComputedStyle(canvas).color;
-        context.lineWidth = 1.25;
-        const cx = width / 2, cy = height / 2;
-        const ring = Math.min(width, height) * 0.3;
-        for (let i = 0; i < count; i++) {
-          const angle = (i / count) * Math.PI * 2 + time * 0.06;
-          const drift = Math.sin(time * 0.7 + i * 1.31) * ring * 0.08;
-          const x = cx + Math.cos(angle) * (ring + drift);
-          const y = cy + Math.sin(angle) * (ring + drift);
-          const radius = ring * 0.19 + Math.sin(time * 1.1 + i * 0.83) * ring * 0.07;
-          context.globalAlpha = 0.28 + 0.22 * Math.sin(time * 0.9 + i * 0.5);
-          context.beginPath();
-          context.arc(x, y, Math.max(1, radius), 0, Math.PI * 2);
-          context.stroke();
-        }
-        context.globalAlpha = 1;
-        if (!still) requestAnimationFrame(frame);
-      }
-
-      size();
-      addEventListener('resize', () => { size(); if (still) frame(0); });
-      requestAnimationFrame(frame);
+      const canvas = document.querySelector('.hero-canvas canvas');
+      const player = canvas && canvas.ollin;
+      if (!player) return;
+      const paint = () => {
+        const style = getComputedStyle(document.documentElement);
+        player.set('paper', style.getPropertyValue('--bg').trim());
+        player.set('ink', style.getPropertyValue('--text').trim());
+      };
+      paint();
+      matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
     })();
     """
 }

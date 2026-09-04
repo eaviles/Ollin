@@ -26,6 +26,8 @@ public struct SiteBuilder {
         /// `page: target`. The link checker gates these; the build reports
         /// them and goes on.
         public var missing: [String] = []
+        /// What the build went without, and what would give it back.
+        public var notes: [String] = []
     }
 
     public var root: URL
@@ -252,12 +254,14 @@ public struct SiteBuilder {
         }
 
         try write(SiteStyle.css, to: output.appendingPathComponent("assets/site.css"))
-        try write(SiteStyle.script, to: output.appendingPathComponent("assets/site.js"))
         try write(SiteStyle.favicon, to: output.appendingPathComponent("favicon.svg"))
         try write("", to: output.appendingPathComponent(".nojekyll"))
         if let domain { try write(domain + "\n", to: output.appendingPathComponent("CNAME")) }
 
         report.missing = log.missing.sorted()
+        if SiteHero.fragment.isEmpty {
+            report.notes.append("the front page opens without its ring: Sources/OllinReference/SiteHero.swift holds no recording; run Scripts/site-hero.sh on a Mac to record one")
+        }
         return report
     }
 
@@ -296,8 +300,17 @@ public struct SiteBuilder {
     static let tagline = "A Metal-rendered creative-coding framework for Swift on Apple platforms."
 
     /// The front page's opening, lifted off the README and set as the hero:
-    /// the title and the one bold line under it. The README's prose follows
-    /// exactly as written; only these two lines are placed differently.
+    /// the title and the one bold line under it, beside the ring. The README's
+    /// prose follows exactly as written; only these two lines are placed
+    /// differently.
+    ///
+    /// The ring is `Examples/Web/BreathingRing` played by its own web page: the
+    /// inline fragment the exporter wrote for it, verbatim, then the site's
+    /// script setting the ring's ink and paper from the page's own colors.
+    /// That script runs right after the fragment rather than from a deferred
+    /// file, so the recorded white paper is never painted in the dark scheme.
+    /// The wrapper is hidden from assistive technology, since the ring is
+    /// decoration here and the README's own words follow.
     func homeHero(_ markdown: inout String, page: Page, plan: Plan) -> String {
         var lines = markdown.components(separatedBy: "\n")
         var tagline = Self.tagline
@@ -317,6 +330,15 @@ public struct SiteBuilder {
         let chapters = plan.pages.filter { $0.repoPath.hasPrefix("Guide/") && $0.repoPath.dropFirst(6).first?.isNumber == true }.count
         let references = plan.pages.filter { if case .docs = $0.kind { return !$0.repoPath.hasSuffix("README.md") }; return false }.count
         let sketches = plan.examples.count
+        let ring = SiteHero.fragment.isEmpty ? "" : """
+          <div class="hero-canvas" aria-hidden="true">
+        \(SiteHero.fragment)
+        <script>
+        \(SiteStyle.heroScript)
+        </script>
+          </div>
+
+        """
 
         return """
         <section class="hero">
@@ -325,8 +347,7 @@ public struct SiteBuilder {
             <h1>\(HTML.escape(tagline))</h1>
             <p class="hero-actions"><a class="button" href="\(guide)">Start with the Guide</a><a class="button quiet" href="\(HTML.escape(repository))" rel="noopener">View on GitHub</a></p>
           </div>
-          <canvas class="hero-canvas" aria-hidden="true"></canvas>
-        </section>
+        \(ring)</section>
         <section class="cards">
           <a class="card" href="\(guide)"><h2>Guide</h2><p>Creative coding from zero, taught through Ollin in \(chapters) chapters.</p></a>
           <a class="card" href="\(docs)"><h2>Reference</h2><p>\(references) pages, one for each type and helper, grouped the way you meet them.</p></a>
@@ -529,7 +550,6 @@ public struct SiteBuilder {
             <p>Ollin is MIT licensed and built in public. <a href="\(HTML.escape(repository))" rel="noopener">The repository</a> holds everything on this site.</p>
           </div>
         </footer>
-        \(isHome ? "<script src=\"\(asset("assets/site.js"))\" defer></script>" : "")
         </body>
         </html>
         """
