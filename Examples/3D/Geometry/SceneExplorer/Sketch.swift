@@ -165,9 +165,9 @@ final class SceneExplorer: Sketch {
         }
 
         // The camera: the file's own, or a free orbit sized to the scene.
-        let (lo, hi) = scene.bounds
-        let center = (lo + hi) / 2
-        let radius = max((hi - lo).length, 0.001)
+        let bounds = scene.bounds
+        let center = bounds.center
+        let radius = max(bounds.size.length, 0.001)
         if view == .file, let fileCamera = scene.camera {
             camera(fileCamera)
         } else {
@@ -205,10 +205,8 @@ final class SceneExplorer: Sketch {
         // The picked part's bounds, and what the import wants said about it.
         if let p = picked {
             if showBounds {
-                var (plo, phi) = isolated(p.chain).bounds
-                let breathe = radius * 0.015
-                plo = plo - Vector3(breathe, breathe, breathe)
-                phi = phi + Vector3(breathe, breathe, breathe)
+                let cage = isolated(p.chain).bounds.padded(by: radius * 0.015)
+                let plo = cage.min, phi = cage.max
                 // The light rig is frame state, not stack state, so the cage is
                 // drawn lit; a bright fill keeps it reading as a marker.
                 withState {
