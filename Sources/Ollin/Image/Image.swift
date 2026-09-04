@@ -109,6 +109,15 @@ public final class Image {
     /// texture then builds from `pixelBytes` rather than the original `cgImage`,
     /// so edits show on the next `drawImage`.
     private var pixelsModified = false
+    /// Counts the pixel writes, so a reader that carries the picture somewhere
+    /// (the web recorder) can tell an edited image from the one it already
+    /// holds without comparing the bytes.
+    private(set) var pixelGeneration = 0
+
+    /// The file this image was decoded from, when it came from one: what the
+    /// web recorder carries in place of a re-encode, since a browser reads the
+    /// same file.
+    private(set) var sourceURL: URL?
 
     /// Wrap an already-decoded `CGImage`.
     public init(cgImage: CGImage) {
@@ -219,6 +228,7 @@ public final class Image {
             return nil
         }
         self.init(cgImage: image)
+        self.sourceURL = url
     }
 
     /// Decode image file `data` (the bytes of a PNG, JPEG, …). Returns `nil` if
@@ -302,8 +312,13 @@ public final class Image {
         // CG drawing) comes back in a *linear* pixel format holding the same
         // sRGB-encoded bytes, so sampling skips the decode and everything washes
         // out lighter. When that happens, rebuild the texture by hand in the
-        // sRGB format.
-        if texture.pixelFormat != .bgra8Unorm_srgb, texture.pixelFormat != .rgba8Unorm_srgb,
+        // sRGB format. The loader also keeps a straight-alpha source straight
+        // (ImageIO decodes a PNG with alpha that way), while the image pipeline
+        // blends premultiplied, so a straight texture draws a translucent pixel
+        // too bright; the rebuild draws through a premultiplied context, which
+        // premultiplies too.
+        let straight = source.alphaInfo == .last || source.alphaInfo == .first
+        if straight || (texture.pixelFormat != .bgra8Unorm_srgb && texture.pixelFormat != .rgba8Unorm_srgb),
            let rebuilt = Image.sRGBTexture(from: source, on: device) {
             texture = rebuilt
         }
@@ -483,6 +498,7 @@ public final class Image {
             let i = (y * width + x) * 4
             pixelBytes?[i] = r; pixelBytes?[i + 1] = g; pixelBytes?[i + 2] = b; pixelBytes?[i + 3] = a
             pixelsModified = true
+            pixelGeneration += 1
             cachedTexture = nil
             cachedDeviceID = nil
             cachedLinearTexture = nil
@@ -498,6 +514,11 @@ public final class Image {
         guard hasCPUPixels else { return nil }
         return materializePixels()
     }
+
+    /// Whether the picture drawn is the file it was decoded from, untouched: the
+    /// web recorder then carries the file's own bytes, which a browser decodes
+    /// as the Mac did, instead of a re-encode of the pixels.
+    var drawsSourceFile: Bool { sourceURL != nil && !pixelsModified && hasCPUPixels }
 
     /// Build (once) and return the CPU RGBA8 buffer, drawing the source `cgImage`
     /// into a top-left-origin, premultiplied, device-RGB bitmap.
@@ -538,7 +559,7 @@ public final class Image {
     private static func unitByte(_ v: Double) -> UInt8 { UInt8(max(0, min(255, (v * 255).rounded()))) }
 
     /// Build a top-left-origin `CGImage` over RGBA8 premultiplied `buffer`.
-    private static func makeCGImage(_ buffer: [UInt8], width: Int, height: Int) -> CGImage? {
+    static func makeCGImage(_ buffer: [UInt8], width: Int, height: Int) -> CGImage? {
         guard width > 0, height > 0, buffer.count == width * height * 4,
               let provider = CGDataProvider(data: Data(buffer) as CFData) else { return nil }
         return CGImage(width: width, height: height,

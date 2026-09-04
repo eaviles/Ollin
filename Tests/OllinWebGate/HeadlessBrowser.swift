@@ -36,7 +36,10 @@ package enum HeadlessBrowser {
     /// The flags every run carries. No `--user-data-dir` on purpose: with one,
     /// the browser here dumped the DOM and then never exited. The keychain and
     /// password-store flags keep a fresh machine from raising a prompt nothing
-    /// will answer.
+    /// will answer. No virtual-time budget either: a page that decodes a
+    /// picture holds the load event through an image element, which the dump
+    /// waits for on its own, and the budget was measured to wait for a bitmap
+    /// decode only two times in three.
     package static let baseFlags = ["--headless=new", "--no-first-run", "--no-default-browser-check",
                             "--disable-extensions", "--use-mock-keychain", "--password-store=basic",
                             "--enable-unsafe-swiftshader"]

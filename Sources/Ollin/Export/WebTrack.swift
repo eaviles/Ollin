@@ -99,10 +99,10 @@ struct WebTrack {
             "accumulates": recording.frames.contains { $0.clear == nil },
             "stateful": recording.isStateful,
             "recipe": recording.recipe,
-            // A frame that draws triangles wants the multisampled raster the
-            // Mac gives every 2D pass; the page then rasterizes every drawn
-            // surface that way for the whole track.
-            "msaa": uniques.contains { $0.graph.hasTriangles },
+            // A frame that draws triangles or a picture wants the multisampled
+            // raster the Mac gives every 2D pass; the page then rasterizes
+            // every drawn surface that way for the whole track.
+            "msaa": uniques.contains { $0.graph.needsMultisampling },
         ]
         // A per-frame fact that never changes travels once: the frame map when
         // every frame is its own record, and the clear, the tone map, and the

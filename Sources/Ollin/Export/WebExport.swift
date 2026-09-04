@@ -32,10 +32,10 @@ struct WebFrame: Equatable {
 /// page's vertex shader reads, as plain floats. The affine transform travels as
 /// its two axis columns and its translation (the third row of a 2D CTM is
 /// always 0 0 1), the shape tag as a float (it fits in fourteen bits, so the
-/// value is exact), and the two gradient rows stay behind, since a gradient
-/// paint does not cross yet.
+/// value is exact), and the two gradient rows renumbered into the recording's
+/// one strip (a frame's own table is per frame).
 enum WebInstance {
-    static let floats = 28
+    static let floats = 30
 
     static func append(_ i: SDFInstance, into out: inout [Float]) {
         let t = i.transform
@@ -46,6 +46,7 @@ enum WebInstance {
             i.strokeColor.x, i.strokeColor.y, i.strokeColor.z, i.strokeColor.w,
             i.param0.x, i.param0.y, i.param1.x, i.param1.y, i.param2.x, i.param2.y,
             i.strokeWidth, i.extra, i.bandWidth, Float(i.shape),
+            i.fillGradient, i.strokeGradient,
         ])
     }
 
@@ -91,6 +92,12 @@ struct WebRecording {
     var tables: [[SIMD4<Float>]] = []
     /// The user shaders the frames run, each once.
     var shaders: [WebUserShader] = []
+    /// The pictures `drawImage` drew, each once.
+    var pictures: [WebPicture] = []
+    /// The glyph atlas pages atlas text sampled, each once.
+    var atlases: [WebAtlas] = []
+    /// The gradient rows the shapes read, each once, the page's strip.
+    var gradientRows: [[UInt8]] = []
 
     var duration: Double { Double(frames.count) / rate }
     /// Whether any frame carries state from the one before it.
@@ -191,6 +198,9 @@ extension OllinApp {
         recording.mouse = mouse
         recording.tables = recorder.tables
         recording.shaders = recorder.shaders
+        recording.pictures = recorder.pictures
+        recording.atlases = try recorder.finish(frame: max(0, frames - 1))
+        recording.gradientRows = recorder.gradientRows
         return recording
     }
 
@@ -202,8 +212,6 @@ extension OllinApp {
     /// The call, or the family of calls, a batch kind stands for in a refusal.
     nonisolated static func webRefusalName(for kind: GeometryKind) -> String {
         switch kind {
-        case .image: return "drawImage"
-        case .glyphAtlas: return "drawText (the glyph atlas)"
         case .sdfGroup: return "drawSDF (a combined field)"
         case .sdfGroup3D: return "a raymarched 3D field"
         case .particles: return "drawParticles"
@@ -212,8 +220,11 @@ extension OllinApp {
         case .mesh3D, .meshInstanced, .meshField, .strands, .ocean:
             return "3D drawing (a mesh, a field, strands, the ocean)"
         case .clipPush, .clipPop: return "withClip"
-        // Never refused: shapes, fills, strokes, and a recording of them cross.
-        case .sdf, .triangles, .fringe, .retained: return "shapes, strokes, and fills"
+        // Never refused by kind: shapes, fills, strokes, pictures, atlas text,
+        // and a recording of them cross (a picture that is a live texture is
+        // refused where it is read).
+        case .sdf, .triangles, .fringe, .retained, .image, .glyphAtlas:
+            return "shapes, strokes, fills, pictures, and text"
         }
     }
 }
@@ -256,6 +267,9 @@ struct WebShaders {
     var presentFragment: String
     var imageVertex: String
     var imageFragment: String
+    /// Atlas text: the glyph quads' fragment (`ollin_glyph_fragment`), over the
+    /// same vertex stage as an image quad.
+    var glyphFragment: String
     /// The triangle path: one vertex stage for a fill and a stroke, the fill's
     /// fragment (`ollin_fragment`) and the stroke's (`ollin_fringe_fragment`).
     var triangleVertex: String
@@ -279,6 +293,7 @@ struct WebShaders {
         let sdfFragment = WebShaderCompat.preamble + "\n" + shapes.support + "\n\n" + shapes.body + "\n" + sdfFragmentTail
         let presentFragment = WebShaderCompat.preamble + "\n" + present.support + "\n\n" + present.body + "\n" + presentFragmentTail
         let imageFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + imageFragmentTail
+        let glyphFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + glyphFragmentTail
         let triangleFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + triangleFragmentTail
         let fringeFragment = WebShaderCompat.preamble + "\n" + base.support + "\n\n" + base.body + "\n" + fringeFragmentTail
 
@@ -291,7 +306,7 @@ struct WebShaders {
         let userSources = try users.map { try WebUserShaderGLSL.make($0) }
         return WebShaders(sdfVertex: sdfVertex, sdfFragment: sdfFragment,
                           presentVertex: presentVertex, presentFragment: presentFragment,
-                          imageVertex: imageVertex, imageFragment: imageFragment,
+                          imageVertex: imageVertex, imageFragment: imageFragment, glyphFragment: glyphFragment,
                           triangleVertex: triangleVertex, triangleFragment: triangleFragment,
                           fringeFragment: fringeFragment,
                           effectVertex: effectVertex, effects: effects, users: userSources)
@@ -364,6 +379,7 @@ struct WebShaders {
     layout(location = 6) in vec4 aP01;
     layout(location = 7) in vec4 aP2WE;
     layout(location = 8) in vec2 aBandShape;
+    layout(location = 9) in vec2 aRows;
     uniform vec2 viewport;
     uniform float ollin_flip;
     out vec2 vLocal;
@@ -376,8 +392,12 @@ struct WebShaders {
     out float vStrokeWidth;
     out float vExtra;
     out float vBand;
+    out float vFillRow;
+    out float vStrokeRow;
     flat out uint vShape;
     flat out uint vAlign;
+    flat out uint vFillKind;
+    flat out uint vStrokeKind;
     void main() {
         vec2 corners[6] = vec2[6](vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
                                   vec2(-1.0, -1.0), vec2(1.0, 1.0), vec2(-1.0, 1.0));
@@ -401,16 +421,23 @@ struct WebShaders {
         vStrokeWidth = strokeWidth;
         vExtra = aP2WE.w;
         vBand = aBandShape.x;
+        vFillRow = aRows.x;
+        vStrokeRow = aRows.y;
         vShape = tag & 255u;
         vAlign = align;
+        vFillKind = (tag >> 10u) & 3u;
+        vStrokeKind = (tag >> 12u) & 3u;
     }
     """
 
     /// The tail of `ollin_sdf_fragment`: the coverage from the translated
-    /// `ollin_sdf_coverage`, the two solid paints linearized, stroke composited
-    /// over fill in premultiplied linear light, returned straight so the same
-    /// source-over blend applies.
+    /// `ollin_sdf_coverage`, each paint resolved as `resolvePaint` resolves it
+    /// (a solid color linearized; a gradient's geometry mapped to `t` and read
+    /// from its row of the strip, an sRGB texture, so the sample comes back
+    /// linear), stroke composited over fill in premultiplied linear light,
+    /// returned straight so the same source-over blend applies.
     static let sdfFragmentTail = """
+    uniform sampler2D gradients;
     in vec2 vLocal;
     in vec2 vSize;
     in vec4 vFill;
@@ -421,17 +448,38 @@ struct WebShaders {
     in float vStrokeWidth;
     in float vExtra;
     in float vBand;
+    in float vFillRow;
+    in float vStrokeRow;
     flat in uint vShape;
     flat in uint vAlign;
+    flat in uint vFillKind;
+    flat in uint vStrokeKind;
     out vec4 fragColor;
+    vec4 resolvePaint(vec4 slot, uint kind, float row, vec2 p, float pathT) {
+        if (kind == 0u) { return vec4(srgbToLinear(slot.rgb), slot.a); }
+        float t;
+        if (kind == 1u) {
+            vec2 d = slot.zw - slot.xy;
+            t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
+        } else if (kind == 2u) {
+            t = length(p - slot.xy) / max(slot.z, 1e-6);
+        } else {
+            t = pathT;
+        }
+        vec2 size = vec2(textureSize(gradients, 0));
+        float u = (clamp(t, 0.0, 1.0) * (size.x - 1.0) + 0.5) / size.x;
+        float v = (row + 0.5) / size.y;
+        return texture(gradients, vec2(u, v));
+    }
     void main() {
         float fillCov = 0.0;
         float strokeCov = 0.0;
         float pathT = 0.0;
         ollin_sdf_coverage(vShape, vAlign, vLocal, vSize, vP0, vP1, vP2,
-                           vStrokeWidth, vExtra, vBand, false, fillCov, strokeCov, pathT);
-        vec4 fillPaint = vec4(srgbToLinear(vFill.rgb), vFill.a);
-        vec4 strokePaint = vec4(srgbToLinear(vStroke.rgb), vStroke.a);
+                           vStrokeWidth, vExtra, vBand, vFillKind == 3u || vStrokeKind == 3u,
+                           fillCov, strokeCov, pathT);
+        vec4 fillPaint = resolvePaint(vFill, vFillKind, vFillRow, vLocal, pathT);
+        vec4 strokePaint = resolvePaint(vStroke, vStrokeKind, vStrokeRow, vLocal, pathT);
         float fillA = fillPaint.a * fillCov;
         float strokeA = strokePaint.a * strokeCov;
         vec3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);
@@ -544,19 +592,41 @@ struct WebShaders {
     }
     """
 
-    /// The tail of `ollin_image_fragment`: the layer's premultiplied linear
-    /// texel (read with the row turned over), the straight tint linearized and
-    /// applied so the result stays premultiplied.
+    /// The tail of `ollin_image_fragment`: the premultiplied linear texel (a
+    /// layer's read with the row turned over, since the page keeps its layers
+    /// bottom-up; a picture's as uploaded, its first row at the top, the way
+    /// the Mac's texture holds it), the straight tint linearized and applied so
+    /// the result stays premultiplied.
     static let imageFragmentTail = """
     uniform sampler2D tex;
+    uniform float vflip;
     in vec2 vUV;
     in vec4 vTint;
     out vec4 fragColor;
     void main() {
-        vec4 c = texture(tex, vec2(vUV.x, 1.0 - vUV.y));
+        vec4 c = texture(tex, vec2(vUV.x, mix(vUV.y, 1.0 - vUV.y, vflip)));
         c.rgb *= srgbToLinear(vTint.rgb);
         c *= vTint.a;
         fragColor = c;
+    }
+    """
+
+    /// The tail of `ollin_glyph_fragment`: the atlas's normalized distance
+    /// (0.5 at the edge) turned into screen-space coverage through its
+    /// derivative, remapped to perceptual alpha as the Mac's is, over the tint
+    /// linearized; straight alpha, like the solid path.
+    static let glyphFragmentTail = """
+    uniform sampler2D atlas;
+    in vec2 vUV;
+    in vec4 vTint;
+    out vec4 fragColor;
+    void main() {
+        float sd = texture(atlas, vUV).r;
+        float d = sd - 0.5;
+        float aa = fwidth(d);
+        float cov = (aa > 0.0) ? smoothstep(-aa, aa, d) : step(0.0, d);
+        cov = perceptualCoverage(clamp(cov, 0.0, 1.0));
+        fragColor = vec4(srgbToLinear(vTint.rgb), vTint.a * cov);
     }
     """
 }
@@ -728,6 +798,7 @@ extension OllinApp {
         script = script.replacingOccurrences(of: "@PRESENT_FS@", with: jsString(shaders.presentFragment))
         script = script.replacingOccurrences(of: "@IMAGE_VS@", with: jsString(shaders.imageVertex))
         script = script.replacingOccurrences(of: "@IMAGE_FS@", with: jsString(shaders.imageFragment))
+        script = script.replacingOccurrences(of: "@GLYPH_FS@", with: jsString(shaders.glyphFragment))
         script = script.replacingOccurrences(of: "@TRI_VS@", with: jsString(shaders.triangleVertex))
         script = script.replacingOccurrences(of: "@TRI_FS@", with: jsString(shaders.triangleFragment))
         script = script.replacingOccurrences(of: "@FRINGE_FS@", with: jsString(shaders.fringeFragment))
@@ -741,6 +812,15 @@ extension OllinApp {
             return "[\(table.count), \"\(WebTrack.base64(flat))\"]"
         }
         script = script.replacingOccurrences(of: "@TABLES@", with: "[" + tables.joined(separator: ",") + "]")
+        // The assets: each picture as its file's bytes or a PNG, each atlas page
+        // as a gray PNG with the page size and the rows it holds, and the
+        // gradient strip's rows as raw texels (a few kilobytes at most).
+        let pictures = recording.pictures.map { "[\(jsString($0.mime)), \"\($0.data.base64EncodedString())\"]" }
+        script = script.replacingOccurrences(of: "@PICTURES@", with: "[" + pictures.joined(separator: ",\n") + "]")
+        let atlases = recording.atlases.map { "[\"\($0.png.base64EncodedString())\", \($0.size), \($0.rows)]" }
+        script = script.replacingOccurrences(of: "@ATLASES@", with: "[" + atlases.joined(separator: ",\n") + "]")
+        let strip = Data(recording.gradientRows.joined()).base64EncodedString()
+        script = script.replacingOccurrences(of: "@STRIP@", with: "[\(recording.gradientRows.count), \(BakedGradient.width), \"\(strip)\"]")
         return """
         <canvas class="ollin-sketch" width="\(recording.width)" height="\(recording.height)" role="img" aria-label="\(htmlEscaped(label))"></canvas>
         <script>
@@ -827,6 +907,7 @@ enum WebPlayer {
       var PRESENT_FS = @PRESENT_FS@;
       var IMAGE_VS = @IMAGE_VS@;
       var IMAGE_FS = @IMAGE_FS@;
+      var GLYPH_FS = @GLYPH_FS@;
       var TRI_VS = @TRI_VS@;
       var TRI_FS = @TRI_FS@;
       var FRINGE_FS = @FRINGE_FS@;
@@ -835,8 +916,11 @@ enum WebPlayer {
       var FX = @FX@;
       var USERS = @USERS@;
       var TABLES = @TABLES@;
+      var PICTURES = @PICTURES@;
+      var ATLASES = @ATLASES@;
+      var STRIP = @STRIP@;
       @HELPERS@
-      var F = 28, Q = 48, V = 7;
+      var F = 30, Q = 48, V = 7;
       var W = D.width, H = D.height;
       function ref(index) { return D.refs ? D.refs[index] : index; }
       function clearOf(index) { return D.clears ? D.clears[index] : D.clear; }
@@ -887,14 +971,25 @@ enum WebPlayer {
       var pViewport = gl.getUniformLocation(present, 'viewport');
       var pExposure = gl.getUniformLocation(present, 'exposure');
       var pToneMap = gl.getUniformLocation(present, 'toneMapMode');
-      var image = null, iViewport, iTex, iFlip;
+      var image = null, iViewport, iTex, iFlip, iFlipV;
       function imageProgram() {
         if (image) return image;
         image = program(IMAGE_VS, IMAGE_FS);
         iViewport = gl.getUniformLocation(image, 'viewport');
         iTex = gl.getUniformLocation(image, 'tex');
         iFlip = gl.getUniformLocation(image, 'ollin_flip');
+        iFlipV = gl.getUniformLocation(image, 'vflip');
         return image;
+      }
+      // Atlas text: the image quad's vertex stage under the glyph fragment.
+      var glyph = null, gViewport, gAtlas, gFlip;
+      function glyphProgram() {
+        if (glyph) return glyph;
+        glyph = program(IMAGE_VS, GLYPH_FS);
+        gViewport = gl.getUniformLocation(glyph, 'viewport');
+        gAtlas = gl.getUniformLocation(glyph, 'atlas');
+        gFlip = gl.getUniformLocation(glyph, 'ollin_flip');
+        return glyph;
       }
       // The triangle path's two programs, built when a frame first draws a fill
       // or a stroke.
@@ -1076,6 +1171,69 @@ enum WebPlayer {
       var blank = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, blank);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+      function clampLinear(tex) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+      // The gradient strip: one row per ramp the shapes read, sRGB texels the
+      // sampler decodes to linear, as the Mac's strip is.
+      var strip = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, strip);
+      if (STRIP[0] > 0) gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, STRIP[1], STRIP[0], 0, gl.RGBA, gl.UNSIGNED_BYTE, bytes(STRIP[2]));
+      else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+      clampLinear(strip);
+      var uGradients = gl.getUniformLocation(sdf, 'gradients');
+      // The pictures and the atlas pages, decoded by the browser (which is
+      // asynchronous, so the first frame waits on `ready`). Each is loaded
+      // through an image element from a data URL: a picture in flight that way
+      // holds the document's load event, which is what a headless dump waits
+      // for (a bitmap decode holds nothing, and the dump beat it one time in
+      // three), and the upload flags apply to an image element where a bitmap
+      // ignores them. A picture is read raw (no color conversion, no
+      // orientation) and premultiplied on upload into an sRGB texture with its
+      // smaller levels, the way the Mac holds it; an atlas page lands at the
+      // top of a page-sized texture, since the glyph quads address the whole
+      // page.
+      function decode(b64, mime) {
+        return new Promise(function (resolve, reject) {
+          var img = new Image();
+          img.style.imageOrientation = 'none';
+          img.onload = function () { resolve(img); };
+          img.onerror = function () { reject(new Error('Ollin page: a picture did not decode')); };
+          img.src = 'data:' + mime + ';base64,' + b64;
+        });
+      }
+      var pictures = [], atlases = [], pending = [];
+      PICTURES.forEach(function (p, i) {
+        var tex = gl.createTexture();
+        pictures[i] = tex;
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+        clampLinear(tex);
+        pending.push(decode(p[1], p[0]).then(function (img) {
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, gl.RGBA, gl.UNSIGNED_BYTE, img);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+          gl.generateMipmap(gl.TEXTURE_2D);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        }));
+      });
+      ATLASES.forEach(function (a, i) {
+        var tex = gl.createTexture();
+        atlases[i] = tex;
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, a[1], a[1]);
+        clampLinear(tex);
+        pending.push(decode(a[0], 'image/png').then(function (img) {
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+          gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        }));
+      });
       // The lookup strips, uploaded once.
       var tables = TABLES.map(function (t) {
         var tex = gl.createTexture();
@@ -1088,12 +1246,12 @@ enum WebPlayer {
         return tex;
       });
 
-      // One instance record per shape, the same 28 floats the recorder wrote.
+      // One instance record per shape, the same 30 floats the recorder wrote.
       var vao = gl.createVertexArray();
       var vbo = gl.createBuffer();
       gl.bindVertexArray(vao);
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-      var layout = [[2, 0], [2, 8], [2, 16], [4, 24], [4, 40], [4, 56], [4, 72], [4, 88], [2, 104]];
+      var layout = [[2, 0], [2, 8], [2, 16], [4, 24], [4, 40], [4, 56], [4, 72], [4, 88], [2, 104], [2, 112]];
       for (var a = 0; a < layout.length; a++) {
         gl.enableVertexAttribArray(a);
         gl.vertexAttribPointer(a, layout[a][0], gl.FLOAT, false, F * 4, layout[a][1]);
@@ -1258,6 +1416,9 @@ enum WebPlayer {
         gl.useProgram(sdf);
         gl.uniform2f(uViewport, w, h);
         gl.uniform1f(uFlip, flip);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, strip);
+        gl.uniform1i(uGradients, 0);
         setBlend(blend, true);
         gl.bindVertexArray(vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
@@ -1279,20 +1440,31 @@ enum WebPlayer {
         gl.drawArrays(gl.TRIANGLES, 0, count);
         gl.bindVertexArray(null);
       }
-      function drawQuad(quad, tex, blend, w, h, quadOffset, flip) {
-        var p = imageProgram();
-        gl.useProgram(p);
-        gl.uniform2f(iViewport, w, h);
-        gl.uniform1f(iFlip, flip);
+      // `count` textured quads from quad `quad`: a layer's (its rows turned
+      // over, premultiplied), a picture's (as uploaded, premultiplied), or the
+      // glyphs of atlas text (the glyph fragment, straight alpha).
+      function drawQuads(quad, count, tex, blend, kind, w, h, quadOffset, flip) {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
-        gl.uniform1i(iTex, 0);
-        setBlend(blend, false);
+        if (kind === 'glyph') {
+          gl.useProgram(glyphProgram());
+          gl.uniform2f(gViewport, w, h);
+          gl.uniform1f(gFlip, flip);
+          gl.uniform1i(gAtlas, 0);
+          setBlend(blend, true);
+        } else {
+          gl.useProgram(imageProgram());
+          gl.uniform2f(iViewport, w, h);
+          gl.uniform1f(iFlip, flip);
+          gl.uniform1f(iFlipV, kind === 'layer' ? 1 : 0);
+          gl.uniform1i(iTex, 0);
+          setBlend(blend, false);
+        }
         gl.bindVertexArray(qvao);
         gl.bindBuffer(gl.ARRAY_BUFFER, qvbo);
         var at = quadOffset + quad * Q;
-        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(at, at + Q), gl.DYNAMIC_DRAW);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(at, at + count * Q), gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, count * 6);
         gl.bindVertexArray(null);
       }
       // The items of one surface, in call order, into `surface` (its logical
@@ -1308,8 +1480,11 @@ enum WebPlayer {
           var item = items[i];
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
+          var count = item[4] || 1, qo = g.instances * F;
+          if (item[0] === 'a') { drawQuads(item[2], count, atlases[item[1]] || blank, item[3] || 0, 'glyph', w, h, qo, flip); continue; }
+          if (item[0] === 'm') { drawQuads(item[2], count, pictures[item[1]] || blank, item[3] || 0, 'picture', w, h, qo, flip); continue; }
           var tex = item[0] === 'p' ? (previous[item[1]] || blank) : (results[item[1]] || blank);
-          drawQuad(item[2], tex, item[3], w, h, g.instances * F, flip);
+          drawQuads(item[2], count, tex, item[3] || 0, 'layer', w, h, qo, flip);
         }
         gl.disable(gl.BLEND);
         if (ms) resolve(surface);
@@ -1472,7 +1647,7 @@ enum WebPlayer {
       }
 
       var player = { canvas: canvas, frames: D.frames, rate: D.rate, duration: D.frames / D.rate,
-                     loops: D.loops, playing: false, time: 0 };
+                     loops: D.loops, playing: false, time: 0, autoplay: true };
       var shown = -1;
       var sequential = D.accumulates || D.stateful;
 
@@ -1522,6 +1697,7 @@ enum WebPlayer {
       };
       player.pause = function () {
         player.playing = false;
+        player.autoplay = false;
         if (raf) cancelAnimationFrame(raf);
         raf = 0;
         last = null;
@@ -1540,9 +1716,28 @@ enum WebPlayer {
       canvas.ollin = player;
       window.ollin = player;
 
-      show(0);
+      // The first frame, once every picture and page is decoded; a page with
+      // none draws it at once. Until then the canvas shows the first frame's paper,
+      // so nothing flashes black. A reader who asked the system for less motion
+      // sees that frame, still; `pause()` before the start holds it too.
       var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!still) player.play();
+      function start() {
+        show(0);
+        if (!still && player.autoplay) player.play();
+      }
+      if (pending.length) {
+        var paper = clearOf(0);
+        if (paper.length) {
+          var enc = function (v) { return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; };
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.clearColor(enc(paper[0]), enc(paper[1]), enc(paper[2]), 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+        player.ready = Promise.all(pending).then(start);
+      } else {
+        player.ready = Promise.resolve();
+        start();
+      }
     })();
     """#
 }
@@ -1558,8 +1753,8 @@ public extension OllinApp {
     /// shaders translated to GLSL, so a frame matches the Mac's.
     ///
     /// Throws a `WebExportRefusal` naming the first call the page cannot carry
-    /// (text through the glyph atlas, an image, a clip, 3D) and the frame it
-    /// was met at; nothing partial is written.
+    /// (a clip, a live texture drawn as an image, 3D) and the frame it was met
+    /// at; nothing partial is written.
     static func web(of sketch: Sketch, frames: Int, fps: Double = 30, skipSeconds: Double = 0,
                     form: WebPageForm = .standalone) throws -> String {
         let recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds)
@@ -1602,6 +1797,15 @@ public extension OllinApp {
         let passes = track.passCount
         if passes > 0 { live.append("\(passes) shader passes a frame") }
         if track.vertexCount > 0 { live.append("\(track.vertexCount) triangle vertices in the fullest frame") }
+        let assetBytes = recording.pictures.reduce(0) { $0 + $1.data.count } + recording.atlases.reduce(0) { $0 + $1.png.count }
+        if assetBytes > 0 {
+            var assets: [String] = []
+            if !recording.pictures.isEmpty { assets.append("\(recording.pictures.count) picture\(recording.pictures.count == 1 ? "" : "s")") }
+            if !recording.atlases.isEmpty { assets.append("\(recording.atlases.count) atlas page\(recording.atlases.count == 1 ? "" : "s")") }
+            let akb = Double(assetBytes) / 1024
+            let asize = akb >= 1024 ? String(format: "%.1f MB", akb / 1024) : String(format: "%.0f KB", akb)
+            live.append(assets.joined(separator: " and ") + " (\(asize) before base64)")
+        }
         let how = live.isEmpty ? "" : "; " + live.joined(separator: ", ")
         print("Ollin: exported \(recording.frames.count) frames (\(seconds) s at \(formattedRate(fps)) fps\(unique)\(wraps)) → \(path) (web page, \(form.rawValue), \(size)\(how))")
     }

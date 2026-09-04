@@ -28,17 +28,28 @@ struct WebGraph: Hashable {
     var vertexOffset: Int { quadOffset + quadCount * WebQuad.floats }
     var paramOffset: Int { vertexOffset + vertexCount * WebVertex.floats }
 
-    /// Whether any surface draws triangles this frame, so the page rasterizes
-    /// its drawn surfaces with multisampling, as the Mac does for every 2D pass
-    /// (a fill's edge has no analytic coverage of its own).
-    var hasTriangles: Bool {
-        func any(_ items: [WebDrawItem]) -> Bool {
-            items.contains { if case .triangles = $0 { return true } else { return false } }
+    /// Whether any surface draws triangles this frame.
+    var hasTriangles: Bool { draws { if case .triangles = $0 { return true } else { return false } } }
+
+    /// Whether any surface draws an item whose edge the raster decides (a
+    /// fill's triangles, a picture's quad), so the page rasterizes its drawn
+    /// surfaces with multisampling, as the Mac does for every 2D pass. A shape
+    /// carries analytic coverage, and a glyph quad's edge is outside its
+    /// glyph's field, so neither asks for it.
+    var needsMultisampling: Bool {
+        draws { item in
+            switch item {
+            case .triangles, .image: return true
+            default: return false
+            }
         }
-        if any(canvas) { return true }
+    }
+
+    private func draws(_ test: (WebDrawItem) -> Bool) -> Bool {
+        if canvas.contains(where: test) { return true }
         return layers.contains { layer in
             switch layer.kind {
-            case let .geometry(_, items), let .feedback(_, items), let .sim(_, _, items): return any(items)
+            case let .geometry(_, items), let .feedback(_, items), let .sim(_, _, items): return items.contains(where: test)
             default: return false
             }
         }
@@ -96,9 +107,13 @@ enum WebDrawItem: Hashable {
     /// fill's triangles, or, with `fringe`, a stroke's edge-expanded bands with
     /// the AA coverage riding each vertex; under a blend mode.
     case triangles(start: Int, count: Int, fringe: Bool, blend: Int)
-    /// A layer composited as a textured quad (its six vertices at `quad`),
-    /// under a blend mode (`WebBlend`).
-    case image(source: WebImageSource, quad: Int, blend: Int)
+    /// A layer or a picture composited as `count` textured quads (six vertices
+    /// each, from quad `quad`; more than one when symmetry replicated the
+    /// draw), under a blend mode (`WebBlend`).
+    case image(source: WebImageSource, quad: Int, count: Int, blend: Int)
+    /// `count` glyph quads of atlas text (from quad `quad`, the tint carrying
+    /// the fill), sampling atlas `atlas` of the recording, under a blend mode.
+    case glyphs(atlas: Int, quad: Int, count: Int, blend: Int)
 }
 
 enum WebImageSource: Hashable {
@@ -106,6 +121,8 @@ enum WebImageSource: Hashable {
     case layer(Int)
     /// Feedback layer `index`'s content last frame.
     case previous(Int)
+    /// Picture `index` of the recording's assets.
+    case picture(Int)
 }
 
 /// One fragment pass: the fragment by name, what it reads at texture 0
@@ -213,14 +230,84 @@ struct WebUserShader: Hashable {
 
 /// Reads one frame's pass graph and float vector off the drawer after
 /// `performDraw()`. Held across the frames of a recording, since a persistent
-/// layer keeps its key, a table travels once, and a user shader compiles once.
+/// layer keeps its key, a table travels once, a user shader compiles once, a
+/// picture travels once however often it is drawn, a gradient row is baked
+/// once, and an atlas page is read at the end, when every glyph the frames
+/// used is on it.
 final class WebGraphRecorder {
     private(set) var tables: [[SIMD4<Float>]] = []
     private(set) var shaders: [WebUserShader] = []
     private var keys: [ObjectIdentifier: Int] = [:]
 
+    /// The pictures the frames draw, each once, in first-use order.
+    private(set) var pictures: [WebPicture] = []
+    private struct PictureEntry {
+        weak var image: Image?
+        var generation: Int
+        var index: Int
+    }
+    private var pictureEntries: [ObjectIdentifier: PictureEntry] = [:]
+
+    /// The atlases the frames draw through, in first-use order, with the page
+    /// generation each was first seen at.
+    private var atlasList: [(atlas: GlyphAtlas, generation: Int)] = []
+    private var atlasIndex: [ObjectIdentifier: Int] = [:]
+
+    /// The gradient rows the frames' shapes read, each once: a frame's own row
+    /// table is per frame and in first-use order, so the recorder renumbers
+    /// each instance's rows into this one table, which the page uploads as
+    /// its strip.
+    private(set) var gradientRows: [[UInt8]] = []
+    private var gradientRowIndex: [[UInt8]: Int] = [:]
+
     /// Resolves a `.default` quality the way an export does.
     static func exportQuality(_ q: RenderQuality) -> RenderQuality { q == .default ? .detail : q }
+
+    /// The atlas assets, read once the frames are all recorded, so each page
+    /// holds every glyph they drew. Throws when a page was rebuilt during the
+    /// recording (an earlier frame's quads then address glyphs that moved).
+    func finish(frame: Int) throws -> [WebAtlas] {
+        try atlasList.map { entry in
+            guard entry.atlas.generation == entry.generation else {
+                throw WebExportRefusal(call: "drawText through a glyph atlas that filled up and was rebuilt during the recording", frame: frame)
+            }
+            let page = entry.atlas.webPage()
+            guard let asset = WebAssetEncoder.atlas(page: page.bytes, size: GlyphAtlas.webPageSize, rows: page.rows) else {
+                throw WebExportRefusal(call: "drawText (the glyph atlas could not be encoded)", frame: frame)
+            }
+            return asset
+        }
+    }
+
+    private func pictureIndex(_ image: Image, frame: Int) throws -> Int {
+        let id = ObjectIdentifier(image)
+        if let entry = pictureEntries[id], entry.image === image, entry.generation == image.pixelGeneration {
+            return entry.index
+        }
+        guard let picture = WebAssetEncoder.picture(of: image) else {
+            throw WebExportRefusal(call: "drawImage of a live texture (a camera, a video, a compute texture)", frame: frame)
+        }
+        let index: Int
+        if let found = pictures.firstIndex(of: picture) { index = found }
+        else { pictures.append(picture); index = pictures.count - 1 }
+        pictureEntries[id] = PictureEntry(image: image, generation: image.pixelGeneration, index: index)
+        return index
+    }
+
+    private func atlasIndex(_ atlas: GlyphAtlas) -> Int {
+        let id = ObjectIdentifier(atlas)
+        if let i = atlasIndex[id] { return i }
+        atlasList.append((atlas, atlas.generation))
+        atlasIndex[id] = atlasList.count - 1
+        return atlasList.count - 1
+    }
+
+    private func gradientRow(_ row: [UInt8]) -> Int {
+        if let i = gradientRowIndex[row] { return i }
+        gradientRows.append(row)
+        gradientRowIndex[row] = gradientRows.count - 1
+        return gradientRows.count - 1
+    }
 
     func capture(_ drawer: Drawer, frame: Int, width canvasWidth: Int, height canvasHeight: Int) throws -> WebFrame {
         func refuse(_ call: String) -> WebExportRefusal { WebExportRefusal(call: call, frame: frame) }
@@ -230,6 +317,8 @@ final class WebGraphRecorder {
         if !drawer.dispatches.isEmpty {
             throw refuse("compute work (a simulation or GPU particles)")
         }
+        // The frame's gradient rows renumbered into the recording's table.
+        let frameRows = drawer.gradientRows.map { gradientRow($0) }
 
         var vector: [Float] = []
         var instanceCount = 0
@@ -263,6 +352,32 @@ final class WebGraphRecorder {
         func nextStart(_ i: Int, _ key: KeyPath<GeometryBatch, Int>, end: Int) -> Int {
             i + 1 < batches.count ? batches[i + 1][keyPath: key] : end
         }
+        /// What a `drawImage` quad samples: a layer the frame filled, a feedback
+        /// layer's last frame, or a picture carried as an asset.
+        func imageSource(_ image: Image) throws -> WebImageSource {
+            if let target = image.webRenderTarget {
+                if let li = index[ObjectIdentifier(target)] { return .layer(li) }
+                if let pi = previousOf[ObjectIdentifier(target)] { return .previous(pi) }
+                throw refuse("drawImage of a layer the frame did not fill (a depth or normal layer)")
+            }
+            return .picture(try pictureIndex(image, frame: frame))
+        }
+        /// Appends a run of image or glyph quads to the quad region, placed by
+        /// `transform` when a recording replays them, and returns how many.
+        func appendQuads(_ run: ArraySlice<OllinImageVertex>, transform: matrix_float3x3?, call: String) throws -> Int {
+            guard run.count % WebQuad.vertices == 0 else { throw refuse("\(call) (a run of \(run.count) vertices)") }
+            for vertex in run {
+                var placed = vertex
+                if let t = transform {
+                    let p = t * SIMD3<Float>(vertex.position.x, vertex.position.y, 1)
+                    placed.position = SIMD2<Float>(p.x, p.y)
+                }
+                WebQuad.append([placed], into: &quads)
+            }
+            let count = run.count / WebQuad.vertices
+            quadCount += count
+            return count
+        }
         func items(for surface: RenderTarget?) throws -> [WebDrawItem] {
             var items: [WebDrawItem] = []
             for (i, batch) in batches.enumerated() where batch.target === surface {
@@ -274,7 +389,7 @@ final class WebGraphRecorder {
                     let end = nextStart(i, \.instanceStart, end: drawer.sdfInstances.count)
                     let start = instanceCount
                     for instance in drawer.sdfInstances[batch.instanceStart ..< end] {
-                        try Self.appendInstance(instance, into: &vector, frame: frame)
+                        try Self.appendInstance(instance, rows: frameRows, into: &vector, frame: frame)
                         instanceCount += 1
                     }
                     if instanceCount > start { items.append(.shapes(start: start, count: instanceCount - start, blend: blend)) }
@@ -298,12 +413,14 @@ final class WebGraphRecorder {
                     // stages do.
                     guard let recording = batch.retained else { continue }
                     let inner = recording.innerBatches
-                    let simple = recording.imageVertices.isEmpty && recording.glyphVertices.isEmpty
-                        && recording.points.isEmpty && recording.sdfGroups.isEmpty
+                    let simple = recording.points.isEmpty && recording.sdfGroups.isEmpty
                         && inner.allSatisfy {
-                            ($0.kind == .sdf || $0.kind == .triangles || $0.kind == .fringe) && $0.depth == nil
+                            ($0.kind == .sdf || $0.kind == .triangles || $0.kind == .fringe
+                             || $0.kind == .image || $0.kind == .glyphAtlas) && $0.depth == nil
                         }
-                    guard simple else { throw refuse("drawBatch (a recording holding more than shapes, strokes, and fills)") }
+                    guard simple else { throw refuse("drawBatch (a recording holding more than shapes, strokes, fills, pictures, and text)") }
+                    // The recording's rows are its own table, renumbered like a frame's.
+                    let recordingRows = recording.gradientRows.map { gradientRow($0) }
                     for (j, run) in inner.enumerated() {
                         let next = j + 1 < inner.count ? inner[j + 1] : nil
                         let runBlend = WebBlend.index(of: run.blendMode)
@@ -314,7 +431,7 @@ final class WebGraphRecorder {
                             for instance in recording.sdfInstances[run.instanceStart ..< end] {
                                 var placed = instance
                                 if let t = batch.retainedTransform { placed.transform = t * instance.transform }
-                                try Self.appendInstance(placed, into: &vector, frame: frame)
+                                try Self.appendInstance(placed, rows: recordingRows, into: &vector, frame: frame)
                                 instanceCount += 1
                             }
                             if instanceCount > start {
@@ -336,26 +453,51 @@ final class WebGraphRecorder {
                                 items.append(.triangles(start: start, count: vertexCount - start,
                                                         fringe: run.kind == .fringe, blend: runBlend))
                             }
+                        case .image:
+                            guard let image = run.image else { continue }
+                            let end = next?.imageStart ?? recording.imageVertices.count
+                            let slice = recording.imageVertices[run.imageStart ..< end]
+                            guard !slice.isEmpty else { continue }
+                            let source = try imageSource(image)
+                            let start = quadCount
+                            let count = try appendQuads(slice, transform: batch.retainedTransform, call: "drawImage")
+                            items.append(.image(source: source, quad: start, count: count, blend: runBlend))
+                        case .glyphAtlas:
+                            guard let atlas = run.atlas else { continue }
+                            let end = next?.glyphStart ?? recording.glyphVertices.count
+                            let slice = recording.glyphVertices[run.glyphStart ..< end]
+                            guard !slice.isEmpty else { continue }
+                            let ai = atlasIndex(atlas)
+                            let start = quadCount
+                            let count = try appendQuads(slice, transform: batch.retainedTransform, call: "drawText")
+                            items.append(.glyphs(atlas: ai, quad: start, count: count, blend: runBlend))
                         default:
                             continue
                         }
                     }
                 case .image:
+                    // A layer's image or a picture: the quads the draw recorded
+                    // (one, or one per symmetry copy), sampling the layer this
+                    // frame or the picture carried once as an asset.
                     guard let image = batch.image else { continue }
-                    let source: WebImageSource
-                    if let target = image.webRenderTarget {
-                        if let li = index[ObjectIdentifier(target)] { source = .layer(li) }
-                        else if let pi = previousOf[ObjectIdentifier(target)] { source = .previous(pi) }
-                        else { throw refuse("drawImage of a layer the frame did not fill (a depth or normal layer)") }
-                    } else {
-                        throw refuse("drawImage")
-                    }
                     let end = nextStart(i, \.imageStart, end: drawer.imageVertices.count)
-                    let run = Array(drawer.imageVertices[batch.imageStart ..< end])
-                    guard run.count == WebQuad.vertices else { throw refuse("drawImage (a quad of \(run.count) vertices)") }
-                    WebQuad.append(run, into: &quads)
-                    items.append(.image(source: source, quad: quadCount, blend: WebBlend.index(of: batch.blendMode)))
-                    quadCount += 1
+                    let slice = drawer.imageVertices[batch.imageStart ..< end]
+                    guard !slice.isEmpty else { continue }
+                    let source = try imageSource(image)
+                    let start = quadCount
+                    let count = try appendQuads(slice, transform: nil, call: "drawImage")
+                    items.append(.image(source: source, quad: start, count: count, blend: blend))
+                case .glyphAtlas:
+                    // Atlas text: one quad per glyph, the tint its fill, sampling
+                    // the font's page, which the recording carries once at the end.
+                    guard let atlas = batch.atlas else { continue }
+                    let end = nextStart(i, \.glyphStart, end: drawer.glyphVertices.count)
+                    let slice = drawer.glyphVertices[batch.glyphStart ..< end]
+                    guard !slice.isEmpty else { continue }
+                    let ai = atlasIndex(atlas)
+                    let start = quadCount
+                    let count = try appendQuads(slice, transform: nil, call: "drawText")
+                    items.append(.glyphs(atlas: ai, quad: start, count: count, blend: blend))
                 default:
                     throw refuse(OllinApp.webRefusalName(for: batch.kind))
                 }
@@ -549,13 +691,21 @@ final class WebGraphRecorder {
         return tables.count - 1
     }
 
-    private static func appendInstance(_ instance: SDFInstance, into floats: inout [Float], frame: Int) throws {
+    /// Appends one shape, its gradient rows (when a paint is one) renumbered
+    /// from the frame's or the recording's table into the recording's through
+    /// `rows`.
+    private static func appendInstance(_ instance: SDFInstance, rows: [Int], into floats: inout [Float], frame: Int) throws {
+        var placed = instance
         let fillKind = (instance.shape >> 10) & 0x3
         let strokeKind = (instance.shape >> 12) & 0x3
-        if fillKind != 0 || strokeKind != 0 {
-            throw WebExportRefusal(call: "a gradient fill or stroke", frame: frame)
+        func row(_ local: Float) throws -> Float {
+            let i = Int(local.rounded())
+            guard i >= 0, i < rows.count else { throw WebExportRefusal(call: "a gradient whose row the frame did not bake", frame: frame) }
+            return Float(rows[i])
         }
-        WebInstance.append(instance, into: &floats)
+        placed.fillGradient = fillKind != 0 ? try row(instance.fillGradient) : 0
+        placed.strokeGradient = strokeKind != 0 ? try row(instance.strokeGradient) : 0
+        WebInstance.append(placed, into: &floats)
     }
 
     /// The case name of an enum value, without its payload.
@@ -576,11 +726,14 @@ extension WebGraph {
                 switch item {
                 case let .shapes(start, count, blend): return ["s", start, count, blend]
                 case let .triangles(start, count, fringe, blend): return ["t", start, count, fringe ? 1 : 0, blend]
-                case let .image(source, quad, blend):
+                case let .image(source, quad, count, blend):
                     switch source {
-                    case .layer(let i): return ["i", i, quad, blend]
-                    case .previous(let i): return ["p", i, quad, blend]
+                    case .layer(let i): return ["i", i, quad, blend, count]
+                    case .previous(let i): return ["p", i, quad, blend, count]
+                    case .picture(let i): return ["m", i, quad, blend, count]
                     }
+                case let .glyphs(atlas, quad, count, blend):
+                    return ["a", atlas, quad, blend, count]
                 }
             }
         }

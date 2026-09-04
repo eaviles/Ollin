@@ -67,6 +67,14 @@ final class GlyphAtlas: @unchecked Sendable {
     private var dirty = true
     private var cachedTexture: MTLTexture?
     private var cachedDeviceID: ObjectIdentifier?
+    /// Counts the page rebuilds (`reset`). A slot handed out before a rebuild
+    /// points into a page that no longer holds its glyph, so a reader carrying
+    /// the page elsewhere (the web recorder) compares this against the value it
+    /// saw when it first took a slot.
+    private(set) var generation = 0
+
+    /// The page's texel width (and height), for a reader that carries the page.
+    static var webPageSize: Int { pageSize }
 
     /// Guards all the mutable page/packer/cache state above. `slot(for:)`
     /// (recording) and `texture(for:)` (encoding) both run on the main draw thread
@@ -279,6 +287,17 @@ final class GlyphAtlas: @unchecked Sendable {
         dirty = true
         cachedTexture = nil
         cachedDeviceID = nil
+        generation += 1
+    }
+
+    /// The page's bytes down to the last packed shelf: the rows a reader must
+    /// carry to reproduce every slot handed out so far (the rest of the page is
+    /// zero), one byte per texel, row 0 at the top, `webPageSize` wide. What the
+    /// web recorder writes into the page as the atlas asset.
+    func webPage() -> (bytes: [UInt8], rows: Int) {
+        lock.lock(); defer { lock.unlock() }
+        let rows = min(GlyphAtlas.pageSize, max(1, penY + rowHeight + GlyphAtlas.gutter))
+        return (Array(page[0 ..< rows * GlyphAtlas.pageSize]), rows)
     }
 
     // MARK: GPU texture

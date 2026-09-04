@@ -300,7 +300,7 @@ import OllinWebGate
         #expect(node.paramRows == 4)
         #expect(node.inputs.isEmpty)
         // The canvas composites the layer as one quad; no shapes.
-        #expect(frame.graph.canvas == [.image(source: .layer(0), quad: 0, blend: 0)])
+        #expect(frame.graph.canvas == [.image(source: .layer(0), quad: 0, count: 1, blend: 0)])
         #expect(frame.graph.instanceCount == 0 && frame.graph.quadCount == 1)
         #expect(frame.vector.count == WebQuad.floats + 16)
         // The phase (params[0].w, the fourth float of the rows) is the one thing
@@ -324,7 +324,7 @@ import OllinWebGate
         #expect(input1 == 0 && swirl.fragment == "ollin_fx_swirl" && swirl.paramRows == 2)
         guard case let .filter(input2, grade) = g.layers[2].kind else { Issue.record("layer 2 is not a filter"); return }
         #expect(input2 == 1 && grade.fragment == "ollin_fx_color_grade")
-        #expect(g.canvas == [.image(source: .layer(2), quad: 0, blend: 0)])
+        #expect(g.canvas == [.image(source: .layer(2), quad: 0, count: 1, blend: 0)])
         // Only the swirl's angle moves.
         let track = WebTrack(recording)
         #expect(track.stable)
@@ -379,7 +379,7 @@ import OllinWebGate
         guard case let .feedback(_, items) = g.layers[0].kind else { Issue.record("layer 0 is not feedback"); return }
         #expect(g.layers[0].key == 0)
         #expect(items.count == 2)
-        #expect(items[0] == .image(source: .previous(0), quad: 0, blend: 0))
+        #expect(items[0] == .image(source: .previous(0), quad: 0, count: 1, blend: 0))
         if case .shapes = items[1] {} else { Issue.record("the new mark is missing") }
         #expect(WebTrack(remembering).meta.contains("\"stateful\":true"))
 

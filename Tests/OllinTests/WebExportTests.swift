@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import CoreGraphics
 import ImageIO
+import Metal
 import OllinWebGate
 @testable import Ollin
 
@@ -151,8 +152,12 @@ import OllinWebGate
             var player = window.ollin;
             if (!player) { out.textContent = 'FAIL no player'; return; }
             player.pause();
-            player.showFrame(\(frame));
-            out.textContent = player.canvas.toDataURL('image/png');
+            // A page with pictures or atlas text draws its first frame once
+            // the browser has decoded them; the probe waits the same way.
+            (player.ready || Promise.resolve()).then(function () {
+              player.showFrame(\(frame));
+              out.textContent = player.canvas.toDataURL('image/png');
+            }).catch(function (e) { out.textContent = 'FAIL ' + e; });
           } catch (e) { out.textContent = 'FAIL ' + e; }
         })();
         </script>
@@ -347,12 +352,13 @@ import OllinWebGate
         let recording = try OllinApp.recordWebFrames(of: Growing(), frames: 4, fps: 30)
         let track = WebTrack(recording)
         #expect(!track.stable)
-        #expect(track.meta.contains("\"lengths\":[56,84,112,140]"))
-        #expect(track.meta.contains("\"offsets\":[0,56,140,252]"))
+        let n = WebInstance.floats
+        #expect(track.meta.contains("\"lengths\":[\(2 * n),\(3 * n),\(4 * n),\(5 * n)]"))
+        #expect(track.meta.contains("\"offsets\":[0,\(2 * n),\(5 * n),\(9 * n)]"))
         #expect(track.meta.contains("\"graphOf\":[0,1,2,3]"))
         #expect(track.base.isEmpty)
-        // 14 instances of 28 fields, two bytes each, base64.
-        #expect(track.stream.count == (14 * 28 * 2 + 2) / 3 * 4)
+        // 14 instances of `n` fields, two bytes each, base64.
+        #expect(track.stream.count == (14 * n * 2 + 2) / 3 * 4)
         #expect(track.meta.contains("\"ranges\":["))
     }
 
@@ -391,14 +397,30 @@ import OllinWebGate
         #expect(clipped.call == "withClip")
         #expect(clipped.frame == 1)
         #expect(clipped.description.contains("--export-video"))
-        let graded = try #require(refusal(Graded()))
-        #expect(graded.call == "a gradient fill or stroke")
-        #expect(graded.frame == 0)
-        // Outline text crosses as its fills; the glyph atlas does not yet.
-        let written = try #require(refusal(Written()))
-        #expect(written.call.contains("drawText"))
-        #expect(written.call.contains("glyph atlas"))
+        // A gradient on a shape and text through the glyph atlas cross
+        // (`WebAssetTests`); a picture that is a live texture does not.
+        #expect(refusal(Graded()) == nil)
+        #expect(refusal(Written()) == nil)
         #expect(refusal(Hello()) == nil)
+        if let device = MTLCreateSystemDefaultDevice() {
+            let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 4, height: 4, mipmapped: false)
+            if let texture = device.makeTexture(descriptor: descriptor) {
+                Live.image = Image(texture: texture)
+                let live = try #require(refusal(Live()))
+                #expect(live.call.contains("drawImage of a live texture"))
+                #expect(live.frame == 0)
+            }
+        }
+    }
+
+    /// A live texture drawn as a picture (`Live.image`, set before the sketch is made).
+    final class Live: Sketch {
+        static var image: Image?
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(.white)
+            if let image = Live.image { drawImage(image, 10, 10, 100, 100) }
+        }
     }
 
     // MARK: The page
