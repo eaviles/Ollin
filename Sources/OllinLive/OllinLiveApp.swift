@@ -81,8 +81,13 @@ struct OllinLiveApp: App {
         // The sibling automation rides along, so an export renders the piece
         // as the timeline panel played it; the `--automation` flag still wins
         // (the shared handler applies it after this).
+        // The sketch compiles optimized unless `--no-optimize` asks for the
+        // plain compile (a debugging aid: asserts fire, backtraces keep every
+        // frame); see `SketchLoader.Optimization`.
+        let optimization: SketchLoader.Optimization =
+            arguments.contains("--no-optimize") ? .none : .speed
         let handled = OllinApp.handleCommandLine(arguments, makeSketch: {
-            switch SketchLoader(sketchPath: sketchPath).load() {
+            switch SketchLoader(sketchPath: sketchPath, optimization: optimization).load() {
             case .success(let sketch):
                 if let automation { sketch.automation = automation }
                 return sketch
@@ -129,7 +134,8 @@ struct OllinLiveApp: App {
             takeRecordURL = nil
         }
         let session = LiveSession(
-            loader: SketchLoader(sketchPath: sketchPath), sketchPath: sketchPath,
+            loader: SketchLoader(sketchPath: sketchPath, optimization: optimization),
+            sketchPath: sketchPath,
             displayName: pathArg, keepClock: keepClock, recordOnLaunch: record,
             takeRecordOnLaunch: takeRecordURL, replayOnLaunch: replayTake,
             automation: automation, automationURL: automationURL)

@@ -16,8 +16,38 @@ import Ollin
 public struct SketchLoader: Sendable {
     public let sketchPath: String
 
-    public init(sketchPath: String) {
+    /// How hard `swiftc` optimizes the sketch. `.speed` (`-O`) is the default:
+    /// the compiled dylib runs at release speed whatever the host was built
+    /// as, so a sketch that does real CPU work every frame (points displaced
+    /// by noise, a particle system stepped on the CPU, geometry rebuilt per
+    /// frame) draws under the live window at the rate a release build gets,
+    /// rather than the several-times-slower `-Onone` picture the compiler's
+    /// default would give. Measured under a release host on 50k points moved
+    /// by six octaves of noise a frame: 35 ms optimized against 80 ms plain
+    /// when the noise is the framework's (the host's own code, already
+    /// optimized, does most of the work), and 52 ms against 1,170 ms when the
+    /// noise is written in the sketch itself. `.none` (`-Onone`) is for
+    /// debugging the sketch: an `assert` fires again and a crash's backtrace
+    /// names every frame. The hosts expose it as `--no-optimize`.
+    public var optimization: Optimization
+
+    public enum Optimization: Sendable {
+        /// `-O`: the release speed the sketch would get from `swift run -c release`.
+        case speed
+        /// `-Onone`: no optimization, for debugging the sketch.
+        case none
+
+        var flag: String {
+            switch self {
+            case .speed: return "-O"
+            case .none: return "-Onone"
+            }
+        }
+    }
+
+    public init(sketchPath: String, optimization: Optimization = .speed) {
         self.sketchPath = sketchPath
+        self.optimization = optimization
     }
 
     /// What to compile: the file at `sketchPath`, or an in-memory buffer standing
@@ -170,15 +200,9 @@ public struct SketchLoader: Sendable {
         }
 
         let dylibPath = (work as NSString).appendingPathComponent("sketch.dylib")
-        // `-undefined dynamic_lookup` (and *no* `-lOllin`) leaves Ollin symbols
-        // unresolved at link time so they bind to the host process at `dlopen`,
-        // keeping one shared copy of `Sketch` across the boundary.
-        var args = [
-            "swiftc", "-emit-library", "-o", dylibPath,
-            "-module-name", "OllinRuntimeSketch_\(token)",
-            sourceFile, factoryPath,
-            "-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup",
-        ]
+        var args = Self.compileArguments(
+            dylibPath: dylibPath, moduleName: "OllinRuntimeSketch_\(token)",
+            sources: [sourceFile, factoryPath], optimization: optimization)
         args += moduleArguments()
         let result = run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
@@ -186,6 +210,29 @@ public struct SketchLoader: Sendable {
             return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
         return .success(dylibPath)
+    }
+
+    /// The `swiftc` line a sketch compile starts from, before the module search
+    /// paths: the dylib to emit, the per-load module name, the sources, the
+    /// optimization level, and the linker flags. Pure, so a test can read it.
+    ///
+    /// `-undefined dynamic_lookup` (and *no* `-lOllin`) leaves Ollin symbols
+    /// unresolved at link time so they bind to the host process at `dlopen`,
+    /// keeping one shared copy of `Sketch` across the boundary. The
+    /// optimization flag is always spelled out: `swiftc`'s own default is
+    /// `-Onone`, and a sketch compiled that way ran its CPU work several
+    /// times slower under the live window than under a release build.
+    static func compileArguments(dylibPath: String, moduleName: String,
+                                 sources: [String],
+                                 optimization: Optimization) -> [String] {
+        var args = [
+            "swiftc", "-emit-library", "-o", dylibPath,
+            "-module-name", moduleName,
+            optimization.flag,
+        ]
+        args += sources
+        args += ["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"]
+        return args
     }
 
     /// Type-check a source that is not a sketch, against the same modules a

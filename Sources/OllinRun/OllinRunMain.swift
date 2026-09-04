@@ -56,14 +56,20 @@ enum OllinRunHost {
         // host: the shared handler recognizes one before anything is compiled,
         // so the windowed path pays nothing and a loose file keeps one export
         // surface wherever it is run from.
-        if OllinApp.handleCommandLine(arguments, makeSketch: { load(sketchPath) }) { exit(0) }
+        // The sketch compiles optimized unless `--no-optimize` asks for the
+        // plain compile; see `SketchLoader.Optimization`.
+        let optimization: SketchLoader.Optimization =
+            arguments.contains("--no-optimize") ? .none : .speed
+        if OllinApp.handleCommandLine(arguments, makeSketch: {
+            load(sketchPath, optimization: optimization)
+        }) { exit(0) }
 
         // Compiled here rather than inside the run, which also makes a broken
         // file fail once, out loud, with the compiler's own message. A piece
         // that asks to be started again after a crash becomes its own
         // supervisor inside `run`, and a file that cannot compile would
         // otherwise fail in each child in turn until the watch gave up.
-        OllinApp.run(load(sketchPath))
+        OllinApp.run(load(sketchPath, optimization: optimization))
     }
 
     /// Compile the file and build the sketch out of it, or say why not and
@@ -71,8 +77,9 @@ enum OllinRunHost {
     /// dylib whose Ollin symbols bind to this process, so the loaded object
     /// really is an `Ollin.Sketch`.
     @MainActor
-    private static func load(_ sketchPath: String) -> Sketch {
-        switch SketchLoader(sketchPath: sketchPath).load() {
+    private static func load(_ sketchPath: String,
+                             optimization: SketchLoader.Optimization) -> Sketch {
+        switch SketchLoader(sketchPath: sketchPath, optimization: optimization).load() {
         case .success(let sketch):
             return sketch
         case .failure(let error):

@@ -67,8 +67,12 @@ final class PerformanceSession {
         fileURL?.path ?? Self.supportDirectory.appendingPathComponent("Untitled.swift").path
     }
 
-    init(fileURL: URL?) {
+    /// How the buffer compiles; see `SketchLoader.Optimization`.
+    @ObservationIgnored private let optimization: SketchLoader.Optimization
+
+    init(fileURL: URL?, optimization: SketchLoader.Optimization = .speed) {
         self.fileURL = fileURL
+        self.optimization = optimization
     }
 
     /// Called once from the root view's `.task`: load the document (or the
@@ -112,7 +116,7 @@ final class PerformanceSession {
     func evaluate(fresh: Bool = false) {
         let text = editor.text()
         autosave(text)
-        let loader = SketchLoader(sketchPath: effectivePath)
+        let loader = SketchLoader(sketchPath: effectivePath, optimization: optimization)
         core.evaluate(loader, input: .source(text), keepClock: fresh ? false : nil) { [weak self] sketch in
             guard let self else { return }
             self.diagnostics = []

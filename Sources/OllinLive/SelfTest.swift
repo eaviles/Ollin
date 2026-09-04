@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import Ollin
 import OllinRuntime
 
@@ -33,8 +34,9 @@ enum SelfTest {
             try! source.write(toFile: sketchFile, atomically: true, encoding: .utf8)
         }
 
-        func compileLoadRender(to path: String) -> Bool {
-            switch SketchLoader(sketchPath: sketchFile).load() {
+        func compileLoadRender(to path: String,
+                               optimization: SketchLoader.Optimization = .speed) -> Bool {
+            switch SketchLoader(sketchPath: sketchFile, optimization: optimization).load() {
             case .success(let sketch):
                 OllinApp.export(sketch, to: path)   // off-screen MSAA render, no window
                 return FileManager.default.fileExists(atPath: path)
@@ -59,6 +61,23 @@ enum SelfTest {
         let b = (try? Data(contentsOf: URL(fileURLWithPath: pngB))) ?? Data()
         guard !a.isEmpty, !b.isEmpty else { fail("a render produced no output") }
         guard a != b else { fail("v1 and v2 rendered identically — the reload had no effect") }
+
+        // The sketch compiles optimized by default (`-O`); `--no-optimize`
+        // compiles it plain. Both must load, and the picture is the same
+        // either way, since the drawing happens in the host.
+        print("OllinLive selftest: v2 compiled without optimization renders the same bytes …")
+        let pngD = (dir as NSString).appendingPathComponent("d.png")
+        guard compileLoadRender(to: pngD, optimization: .none) else {
+            fail("v2 failed to compile/load/render without optimization")
+        }
+        // Decoded pixels, not file bytes: the PNG carries the export's
+        // metadata, and its timestamp differs between two exports.
+        guard let pixelsB = pixels(pngB), let pixelsD = pixels(pngD) else {
+            fail("could not decode the v2 renders")
+        }
+        guard pixelsD == pixelsB else {
+            fail("the unoptimized compile rendered different pixels")
+        }
 
         // A hashbang first line (the directly-executable single-file form) must
         // compile: the loader neutralizes it before handing the source to swiftc,
@@ -105,9 +124,19 @@ enum SelfTest {
         }
 
         print("OllinLive selftest: PASS: the edited sketch recompiled, loaded, and "
-            + "rendered differently (\(a.count) vs \(b.count) bytes), and the "
-            + "hashbang form compiled with exact diagnostic lines.")
+            + "rendered differently (\(a.count) vs \(b.count) bytes), the unoptimized "
+            + "compile rendered the same bytes, and the hashbang form compiled with "
+            + "exact diagnostic lines.")
         exit(0)
+    }
+
+    /// The decoded pixels of a PNG, for comparing two exports whose bytes
+    /// differ only in their metadata.
+    private static func pixels(_ path: String) -> Data? {
+        guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              let data = image.dataProvider?.data else { return nil }
+        return data as Data
     }
 
     private static func fail(_ message: String) -> Never {

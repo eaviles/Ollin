@@ -44,7 +44,11 @@ struct LiveCodingApp: App {
             fileURL = URL(fileURLWithPath: path)
         }
 
-        let session = PerformanceSession(fileURL: fileURL)
+        // `--no-optimize` compiles the buffer plain (asserts fire, backtraces
+        // keep every frame); the default is the release-speed compile.
+        let session = PerformanceSession(
+            fileURL: fileURL,
+            optimization: arguments.contains("--no-optimize") ? .none : .speed)
         _session = State(initialValue: session)
         ActivePerformance.session = session
     }

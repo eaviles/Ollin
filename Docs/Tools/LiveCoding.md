@@ -17,7 +17,7 @@ swift run OllinLiveCoding Examples/Basic/HelloCircle/Sketch.swift
 Scripts/OllinLiveCoding                                       # release build (performance speed)
 ```
 
-`Scripts/OllinLiveCoding` builds the host in release mode, which is what a live set wants. Evaluations stay quick either way, because only the sketch recompiles and never the host. Release mode is what makes the framework render at full speed.
+`Scripts/OllinLiveCoding` builds the host in release mode, which is what a live set wants. Evaluations stay quick either way, because only the sketch recompiles and never the host. Release mode is what makes the framework render at full speed. The buffer itself compiles optimized on every evaluation, whichever way the host was built. A sketch that moves fifty thousand points on the CPU each frame runs at the speed a release build gets. `--no-optimize` compiles it plain, for when you are debugging the sketch rather than performing it: asserts fire, and a crash names every frame.
 
 It is a sibling of `OllinLive`, not a replacement. OllinLive watches a file you edit in your own editor, which is the development loop. OllinLiveCoding is the on-stage instrument, with the editor inside the window.
 

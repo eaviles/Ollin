@@ -89,7 +89,7 @@ ollin dots.swift --export-grid sheet.png --seeds 25
 ollin dots.swift --seed 10 --export keeper.png
 ```
 
-`--debug` as the first flag runs a debug build of the host (faster first build, slower rendering); everything else passes through to the sketch host.
+`--debug` as the first flag runs a debug build of the host (faster first build, slower rendering); everything else passes through to the sketch host. The sketch file compiles optimized either way; `--no-optimize` compiles it plain, for debugging it.
 
 ### Leaving one running
 
