@@ -68,10 +68,11 @@ jobs:
     # The runner's paravirtualized GPU once failed at test startup and left
     # `swift test` hung for 4.5 hours; at the 10x macOS billing multiplier
     # that single run consumed most of a month's Actions minutes. A full
-    # build plus the tests fits under this cap (the build measured 527 s and
-    # 732 s across two green runs on 2026-09-01, the test step about 22
-    # minutes), and the test step carries its own tighter one.
-    timeout-minutes: 50
+    # build plus the tests fits under this cap (the build measured 458 s to
+    # 732 s across the green runs of 2026-09-01 to 09-03, the test step 22 to
+    # 30 minutes and rising; see its note), and the test step carries its own
+    # tighter one.
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -145,35 +146,29 @@ jobs:
       # the middle of a color round trip, and trivial string tests reported
       # durations of 444 seconds each because they all unblocked at once.
       #
-      # The step timeout is the hang guard, and it has twice been set too low
-      # rather than too high: ten minutes was a figure from a much smaller
-      # suite, and twenty-two was guessed while a crash was still ending every
-      # run before the question could be asked.
-      #
-      # What is actually known, and it is less than it looks. This step has
-      # never once run to completion. The two runs that got furthest each
-      # reported about 4,500 tests, at 16 and at 21 minutes, and both were cut
-      # short by the crash rather than finishing. A third reached the
-      # twenty-two minute cap while still healthy, and its count means nothing:
-      # an uncaught exception flushes stdio on the way out, a killed process
-      # does not, so a timed-out run always looks like it did less work than a
-      # crashed one. So thirty-five is headroom chosen against an unmeasured
-      # total, not a measurement, and the next green run is the first real
-      # number this project will have. The job cap above is still the outer
-      # bound.
-      #
-      # Measured since: 1316 s green. Four seconds under the twenty-two minute
-      # cap that had been cutting it off, which is why one run finished and the
-      # next did not. Two runs of the same commit came in 1.6% apart, so the
-      # step itself is steady even though the build step above varied 39%
-      # between the same two runs.
+      # The step timeout is the hang guard, and it has three times been set
+      # too low rather than too high: ten minutes was a figure from a much
+      # smaller suite, twenty-two was guessed while a crash was still ending
+      # every run, and thirty-five was headroom over a single 1316 s green run.
+      # What the step has measured since, on 2026-09-03 and 09-04: 1330 s and
+      # 1578 s green for near-identical trees (that spread is the runner's, not
+      # the suite's), 1820 s one commit later with twelve failures in suites
+      # that had starved past their own deadlines, and then a run killed at
+      # 2094 s with 1046 of its tests reported, right after five test files
+      # for the web page's doors landed. Those suites draw through the main
+      # actor and launch a headless browser twenty times between them, and
+      # take 109 s on a desk. So forty-five, over a measured half hour and
+      # rising, with the job cap above moved to match. A killed run always
+      # looks like it did less work than it did: an uncaught exception flushes
+      # stdio on the way out, a killed process does not.
       #
       # Why it is slow is known, and it is not the machine. OllinTests draws
       # through `Sketch`, which is main-actor isolated, so every render probe
       # queues on one thread and the target uses a fraction of the cores. Those
-      # long silences in the log are that queue draining. Sharding is the
-      # standing answer and does not work here yet; the note on the test step
-      # below says what stopped it.
+      # long silences in the log are that queue draining, and every door the
+      # web page gains adds to it, so this number will want another look.
+      # Sharding is the standing answer and does not work here yet; the note on
+      # the test step below says what stopped it.
       #
       # Three more join them for the same reason, found the same way. Screen
       # capture is permitted here and still delivers nothing: the guard those
@@ -239,10 +234,11 @@ jobs:
       # per-target bundles, the runner is on 6.3.3 and produces the merged one,
       # and there is no flag to make either behave like the other. That makes it
       # work to do when a run costs nothing, which is the moment the repository
-      # goes public, rather than against a billed runner now. The step fits in
-      # its cap unsharded: 1316 s measured green.
+      # goes public, rather than against a billed runner now. Checked again on
+      # 2026-09-04: the image is still on Swift 6.3.3 and still emits the merged
+      # bundle.
       - name: Test (excluding GPU snapshots)
-        timeout-minutes: 35
+        timeout-minutes: 45
         run: >-
           swift test --skip
           'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'

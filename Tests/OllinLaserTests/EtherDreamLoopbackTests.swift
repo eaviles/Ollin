@@ -27,6 +27,26 @@ struct EtherDreamLoopbackTests {
         }
     }
 
+    /// Waits until the DAC has read a run of blanked points longer than any the
+    /// lit frame carries, across its seam: the sign that the swap to the dark
+    /// frame has gone out and been parsed on the far side. A fixed sleep here
+    /// measured the machine rather than the stream. On a loaded runner the
+    /// stand-in's receive lagged the wire, and the lit frame's tail was read
+    /// after the sleep, as if the dark frame had never arrived.
+    func waitForTheDark(at dac: StandInDAC, after lit: [LaserPoint]) async throws {
+        var longest = 0, run = 0
+        for point in lit + lit {
+            run = point.isBlanked ? run + 1 : 0
+            longest = max(longest, run)
+        }
+        let need = longest + 8
+        _ = try await waitFor(timeout: 20) { () -> Bool? in
+            let points = dac.points
+            guard points.count >= need, points.suffix(need).allSatisfy({ $0.isBlanked }) else { return nil }
+            return true
+        }
+    }
+
     // MARK: The handshake
 
     @Test func theHandshakeIsPrepareThenStart() async throws {
@@ -152,7 +172,7 @@ struct EtherDreamLoopbackTests {
         client.play(litSquare())
         _ = try await waitFor { dac.pointsReceived > 0 ? true : nil }
         client.play([])
-        try await Task.sleep(nanoseconds: 150_000_000)
+        try await waitForTheDark(at: dac, after: litSquare())
         dac.forgetPoints()
         let recent = try await waitFor { () -> [LaserPoint]? in
             let points = dac.points
@@ -206,9 +226,9 @@ struct EtherDreamLoopbackTests {
 
         // And disarming puts it out again without dropping the connection. The
         // dark hold takes over at the end of the frame already going out, so
-        // give that frame time to finish before looking.
+        // wait until the DAC has read that frame's end before looking.
         laser.disarm()
-        try await Task.sleep(nanoseconds: 200_000_000)
+        try await waitForTheDark(at: dac, after: stream.points)
         dac.forgetPoints()
         let after = try await waitFor { () -> [LaserPoint]? in
             let points = dac.points
