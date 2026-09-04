@@ -75,6 +75,23 @@ vertex SDFGroupOut ollin_sdfgroup_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// OLLIN_LIB_BEGIN combinator
+// The node VM's shared arithmetic, cut out for the web page by the markers around it
+// (WebShaderLibrary): the periodic joint ops, the combine switch, and the query-point
+// transforms. The instruction record is the header's `SDFNode`; a page has no header,
+// so the same record is declared here for it alone, under a guard Metal never enters.
+#ifndef __METAL_VERSION__
+struct SDFNode {
+    uint kind;
+    uint sel;
+    float k;
+    float extra;
+    float4 color;
+    float4 geo0;
+    float4 geo1;
+};
+#endif
+
 // Euclidean (floored) modulo: always in [0, y) for y > 0. Metal's fmod truncates
 // toward zero (negative for negative x), which would break the periodic joint ops below
 // wherever an operand distance goes negative.
@@ -281,6 +298,8 @@ static float2 ollin_sdf_xform(float2 p, SDFNode nd) {
                                                       // an exact SDF (distance preserved, scale 1)
     }
 }
+
+// OLLIN_LIB_END combinator
 
 fragment float4 ollin_sdfgroup_fragment(SDFGroupOut in [[stage_in]],
                                         const device SDFNode *nodes [[buffer(0)]],

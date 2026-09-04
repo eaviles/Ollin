@@ -41,7 +41,7 @@ struct WebShaderLibraryTests {
     /// library, read from the checkout in the order the exporter joins them.
     static func segmentText() throws -> String {
         let root = try #require(Self.repositoryRoot())
-        return try ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderEffects"].map { name in
+        return try ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "ShaderRaymarch", "ShaderEffects"].map { name in
             try String(contentsOf: root.appendingPathComponent("Sources/Ollin/Renderer/\(name).metal"), encoding: .utf8)
         }.joined(separator: "\n")
     }
@@ -140,6 +140,8 @@ struct WebShaderLibraryTests {
         let text = try Self.segmentText()
         #expect(WebShaderLibrary.closure(of: ["shapes"]) == ["base", "sdf", "shapes"])
         #expect(WebShaderLibrary.closure(of: ["present"]) == ["base", "hash", "present"])
+        #expect(WebShaderLibrary.closure(of: ["combinator"]) == ["base", "combinator"])
+        #expect(WebShaderLibrary.closure(of: ["raymarch"]) == ["base", "hash", "noise", "sdf", "combinator", "raymarch"])
         for section in WebShaderLibrary.segmentSectionNames {
             let translation = WebShaderLibrary.translate(text, wanted: [section])
             #expect(translation.isClean, "\(section): \(translation.unsupported.map(\.message))")
@@ -162,6 +164,26 @@ struct WebShaderLibraryTests {
         #expect(present.contains("vec3 toneMapACES(vec3 x)"))
         #expect(present.contains("float hash12(vec2 p)"))
         #expect(!present.contains("ollin_present_fragment"))
+        // The composed field's VM arithmetic: the combine switch with its reference
+        // outputs as inout, the point transforms over the page's own node record,
+        // the buffer-walking fragment left behind.
+        let combinator = WebShaderLibrary.translate(text, wanted: ["combinator"]).body
+        #expect(combinator.contains("void ollin_sdf_combine(uint op, float da, vec4 ca, float db, vec4 cb,"))
+        #expect(combinator.contains("float k, float n, inout float outD, inout vec4 outC)"))
+        #expect(combinator.contains("vec2 ollin_sdf_xform(vec2 p, SDFNode nd)"))
+        #expect(combinator.contains("struct SDFNode {"))
+        #expect(!combinator.contains("ollin_sdfgroup_fragment"))
+        #expect(!combinator.contains("distStack"))
+        // The raymarcher: every 3D distance function and the leaf switch, over the
+        // combinator's joint ops and the library's value noise; the march stays behind.
+        let raymarch = WebShaderLibrary.translate(text, wanted: ["raymarch"]).body
+        #expect(raymarch.contains("float ollin_sdf3d_eval(uint shape, vec3 p, vec4 geo0, vec4 geo1)"))
+        #expect(raymarch.contains("float ollin_sd3_mandelbulb(vec3 p, float unit, float power, int iterations)"))
+        #expect(raymarch.contains("vec3 ollin_sdf3d_xform(vec3 p, SDFNode3D nd)"))
+        #expect(raymarch.contains("float ollin_op_stairs(float a, float b, float r, float n)"))
+        #expect(raymarch.contains("float valueNoise(vec3 p)"))
+        #expect(!raymarch.contains("ollin_sdf3d_field"))
+        #expect(!raymarch.contains("ollin_raymarch_fragment"))
     }
 
     // MARK: The browser

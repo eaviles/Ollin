@@ -6,30 +6,70 @@ import COllinShaders
 
 /// The pass graph of one recorded frame: the layers the renderer filled, in
 /// the order it filled them, what each was filled from, what the canvas drew,
-/// and the whole-frame filters after it. Every shape run, image quad, triangle
-/// run, and parameter row points into the frame's float vector, so the structure is
-/// one value and the numbers travel apart from it: a frame whose graph equals
-/// the last frame's differs only in its vector, which is what lets the moving
-/// columns be fitted and sampled the way the shapes already are.
+/// and the whole-frame filters after it. Every shape run, image quad, composed
+/// field, node program, triangle run, and parameter row points into the frame's
+/// float vector, so the structure is one value and the numbers travel apart from
+/// it: a frame whose graph equals the last frame's differs only in its vector,
+/// which is what lets the moving columns be fitted and sampled the way the
+/// shapes already are.
 struct WebGraph: Hashable {
     var layers: [WebLayer]
     var canvas: [WebDrawItem]
     var frameFilters: [WebPassNode]
     /// The vector's layout: `instanceCount` shapes of `WebInstance.floats`,
-    /// then `quadCount` image quads of `WebQuad.floats`, then `vertexCount`
-    /// triangle vertices of `WebVertex.floats`, then `paramFloats`.
+    /// then `quadCount` image quads of `WebQuad.floats`, then `groupCount`
+    /// composed 2D fields of `WebGroup.floats` over `nodeCount` instructions of
+    /// `WebNode.floats`, then `fieldCount` raymarched 3D fields of
+    /// `WebField.floats` over `node3DCount` instructions of `WebNode3D.floats`,
+    /// then `vertexCount` triangle vertices of `WebVertex.floats` (last among
+    /// the records, since the track carries their positions apart), then
+    /// `paramFloats`.
     var instanceCount: Int
     var quadCount: Int
+    var groupCount: Int = 0
+    var nodeCount: Int = 0
+    var fieldCount: Int = 0
+    var node3DCount: Int = 0
     var vertexCount: Int
     var paramFloats: Int
 
     var vectorCount: Int { paramOffset + paramFloats }
     var quadOffset: Int { instanceCount * WebInstance.floats }
-    var vertexOffset: Int { quadOffset + quadCount * WebQuad.floats }
+    var groupOffset: Int { quadOffset + quadCount * WebQuad.floats }
+    var nodeOffset: Int { groupOffset + groupCount * WebGroup.floats }
+    var fieldOffset: Int { nodeOffset + nodeCount * WebNode.floats }
+    var node3DOffset: Int { fieldOffset + fieldCount * WebField.floats }
+    var vertexOffset: Int { node3DOffset + node3DCount * WebNode3D.floats }
     var paramOffset: Int { vertexOffset + vertexCount * WebVertex.floats }
 
     /// Whether any surface draws triangles this frame.
     var hasTriangles: Bool { draws { if case .triangles = $0 { return true } else { return false } } }
+
+    /// Whether the canvas marches a 3D field this frame, so the page keeps a
+    /// depth buffer on it (the fields occlude one another through it, as the
+    /// Mac's do) and the frame carries a scene block.
+    var hasFields: Bool { fieldCount > 0 }
+
+    /// The columns whose value is part of the cast rather than its motion: a
+    /// node's kind and op, a field's program length and boundedness. A frame
+    /// that differs from the first in one of these is a different cast, however
+    /// alike the graphs read.
+    var structuralColumns: [Int] {
+        var columns: [Int] = []
+        for i in 0 ..< groupCount {
+            for c in WebGroup.structuralColumns { columns.append(groupOffset + i * WebGroup.floats + c) }
+        }
+        for i in 0 ..< nodeCount {
+            for c in WebNode.structuralColumns { columns.append(nodeOffset + i * WebNode.floats + c) }
+        }
+        for i in 0 ..< fieldCount {
+            for c in WebField.structuralColumns { columns.append(fieldOffset + i * WebField.floats + c) }
+        }
+        for i in 0 ..< node3DCount {
+            for c in WebNode3D.structuralColumns { columns.append(node3DOffset + i * WebNode3D.floats + c) }
+        }
+        return columns
+    }
 
     /// Whether any surface draws an item whose edge the raster decides (a
     /// fill's triangles, a picture's quad), so the page rasterizes its drawn
@@ -114,6 +154,15 @@ enum WebDrawItem: Hashable {
     /// `count` glyph quads of atlas text (from quad `quad`, the tint carrying
     /// the fill), sampling atlas `atlas` of the recording, under a blend mode.
     case glyphs(atlas: Int, quad: Int, count: Int, blend: Int)
+    /// `count` composed 2D fields (`drawSDF`) starting at group `start`, each a
+    /// covering quad whose fragment walks the field's node program, under a
+    /// blend mode.
+    case groups(start: Int, count: Int, blend: Int)
+    /// `count` raymarched 3D fields (`drawSDF3D`) starting at field `start`,
+    /// each a fullscreen pass that sphere-traces the field through the frame's
+    /// scene block and shades the hit under the finish whose rows sit at
+    /// `material` in the parameter region, under a blend mode.
+    case fields(start: Int, count: Int, blend: Int, material: Int)
 }
 
 enum WebImageSource: Hashable {
@@ -202,6 +251,120 @@ enum WebVertex {
     }
 }
 
+/// A composed 2D field on the wire: the `SDFGroupInstance` fields the page's
+/// group stage reads, as plain floats in the rows of four that stage reads them
+/// by (the transform's axes; its translation with the center; the size with the
+/// stroke width and the band width; the stroke slot; the fill gradient
+/// geometry; the program's start and length with the fill kind and row; the
+/// stroke kind and row), the program renumbered to where it sits in the frame's
+/// node region and the gradient rows into the recording's strip.
+enum WebGroup {
+    static let floats = 26
+    /// The program's start and length: columns that name the cast.
+    static let structuralColumns = [20, 21]
+
+    static func append(_ g: SDFGroupInstance, nodeStart: Int, fillRow: Float, strokeRow: Float,
+                       into out: inout [Float]) {
+        let t = g.transform
+        out.append(contentsOf: [
+            t.columns.0.x, t.columns.0.y, t.columns.1.x, t.columns.1.y,
+            t.columns.2.x, t.columns.2.y, g.center.x, g.center.y,
+            g.size.x, g.size.y, g.strokeWidth, g.bandWidth,
+            g.strokeColor.x, g.strokeColor.y, g.strokeColor.z, g.strokeColor.w,
+            g.fillGradientGeo.x, g.fillGradientGeo.y, g.fillGradientGeo.z, g.fillGradientGeo.w,
+            Float(nodeStart), Float(g.nodeCount), g.fillGradientKind, fillRow,
+            g.strokeGradientKind, strokeRow,
+        ])
+    }
+}
+
+/// One instruction of a composed 2D field on the wire: the `SDFNode` record as
+/// four rows of four floats, the way the page's uniform block holds it (the
+/// kind and the op as floats, exact at their small values).
+enum WebNode {
+    static let floats = 16
+    static let structuralColumns = [0, 1]
+
+    static func append(_ n: SDFNode, into out: inout [Float]) {
+        out.append(contentsOf: [
+            Float(n.kind), Float(n.sel), n.k, n.extra,
+            n.color.x, n.color.y, n.color.z, n.color.w,
+            n.geo0.x, n.geo0.y, n.geo0.z, n.geo0.w,
+            n.geo1.x, n.geo1.y, n.geo1.z, n.geo1.w,
+        ])
+    }
+}
+
+/// A raymarched 3D field on the wire: the `SDF3DGroupInstance` fields the
+/// page's field pass reads, as plain floats: the inverse model matrix by
+/// columns, the world bounds with the model scale and the unbounded flag, the
+/// screen-space gradient geometry, the program's place in the frame's 3D node
+/// region, the paint kind and its row in the recording's strip, and the normal
+/// step a fractal leaf asked for.
+enum WebField {
+    static let floats = 36
+    /// The unbounded flag and the program's start and length.
+    static let structuralColumns = [23, 28, 29]
+
+    static func append(_ f: SDF3DGroupInstance, nodeStart: Int, fillRow: Float, into out: inout [Float]) {
+        let m = f.inverseModel
+        for column in [m.columns.0, m.columns.1, m.columns.2, m.columns.3] {
+            out.append(contentsOf: [column.x, column.y, column.z, column.w])
+        }
+        out.append(contentsOf: [
+            f.boundsMin.x, f.boundsMin.y, f.boundsMin.z, f.modelScale,
+            f.boundsMax.x, f.boundsMax.y, f.boundsMax.z, f.unbounded,
+            f.fillGradientGeo.x, f.fillGradientGeo.y, f.fillGradientGeo.z, f.fillGradientGeo.w,
+            Float(nodeStart), Float(f.nodeCount), f.fillGradientKind, fillRow,
+            f.normalEpsilon, 0, 0, 0,
+        ])
+    }
+}
+
+/// One instruction of a raymarched 3D field on the wire, laid out as `WebNode`.
+enum WebNode3D {
+    static let floats = 16
+    static let structuralColumns = [0, 1]
+
+    static func append(_ n: SDFNode3D, into out: inout [Float]) {
+        out.append(contentsOf: [
+            Float(n.kind), Float(n.sel), n.k, n.extra,
+            n.color.x, n.color.y, n.color.z, n.color.w,
+            n.geo0.x, n.geo0.y, n.geo0.z, n.geo0.w,
+            n.geo1.x, n.geo1.y, n.geo1.z, n.geo1.w,
+        ])
+    }
+}
+
+/// The finish of a field batch as the page's rows: the four tinted layers, then
+/// the scalars the lighting reads. Nine rows of four.
+enum WebMaterial {
+    static let rows = 9
+
+    static func rows(of m: OllinMaterial) -> [SIMD4<Float>] {
+        [
+            m.rimColor, m.subsurfaceColor, m.goochWarm, m.goochCool, m.sparkleColor,
+            SIMD4(m.specular, m.specularSharpness, m.iridescence, m.iridescenceScale),
+            SIMD4(m.rimSharpness, m.toonBands, Float(m.shadingModel), m.metallic),
+            SIMD4(m.roughness, m.sparkleSize, m.sparkleSharpness, m.f0),
+            SIMD4(m.iridescenceFlow, m.iridescencePhase, m.iridescenceFlowSize, 0),
+        ]
+    }
+
+    /// What the page's lighting cannot shade on a field, by name, or `nil`.
+    static func refusal(for m: OllinMaterial) -> String? {
+        if m.shadingModel == 3 {
+            if m.transmission > 0 { return "a transmissive (glass) finish on a raymarched field" }
+            if m.clearcoat > 0 { return "a clear-coated finish on a raymarched field" }
+            if m.sheenColor.x + m.sheenColor.y + m.sheenColor.z > 0 { return "a sheened finish on a raymarched field" }
+            if m.thinFilm > 0 { return "a thin-film finish on a raymarched field" }
+            if m.anisotropy.x != 0 { return "a brushed (anisotropic) finish on a raymarched field" }
+        }
+        if m.scatterStrength > 0 { return "a scattering finish on a raymarched field" }
+        return nil
+    }
+}
+
 /// An image quad on the wire: six vertices of position, uv, and tint.
 enum WebQuad {
     static let vertices = 6
@@ -260,6 +423,10 @@ final class WebGraphRecorder {
     private(set) var gradientRows: [[UInt8]] = []
     private var gradientRowIndex: [[UInt8]: Int] = [:]
 
+    /// Whether a frame marched a field under a physically-based finish, so the
+    /// page needs the split-sum table that finish prices its energy against.
+    private(set) var usesPhysicallyBasedField = false
+
     /// Resolves a `.default` quality the way an export does.
     static func exportQuality(_ q: RenderQuality) -> RenderQuality { q == .default ? .detail : q }
 
@@ -311,9 +478,6 @@ final class WebGraphRecorder {
 
     func capture(_ drawer: Drawer, frame: Int, width canvasWidth: Int, height canvasHeight: Int) throws -> WebFrame {
         func refuse(_ call: String) -> WebExportRefusal { WebExportRefusal(call: call, frame: frame) }
-        if drawer.camera3D != nil || !drawer.lights.isEmpty {
-            throw refuse("3D drawing (a camera or a light)")
-        }
         if !drawer.dispatches.isEmpty {
             throw refuse("compute work (a simulation or GPU particles)")
         }
@@ -324,6 +488,14 @@ final class WebGraphRecorder {
         var instanceCount = 0
         var quadCount = 0
         var quads: [Float] = []
+        var groupCount = 0
+        var groups: [Float] = []
+        var nodeCount = 0
+        var nodes: [Float] = []
+        var fieldCount = 0
+        var fields: [Float] = []
+        var node3DCount = 0
+        var nodes3D: [Float] = []
         var vertexCount = 0
         var vertices: [Float] = []
         var params: [Float] = []
@@ -378,6 +550,58 @@ final class WebGraphRecorder {
             quadCount += count
             return count
         }
+        /// A gradient row of the frame's (or a recording's) table renumbered into
+        /// the recording's strip.
+        func row(_ local: Float, in rows: [Int]) throws -> Float {
+            let i = Int(local.rounded())
+            guard i >= 0, i < rows.count else { throw refuse("a gradient whose row the frame did not bake") }
+            return Float(rows[i])
+        }
+        /// Appends a composed 2D field and, once per source program, its
+        /// instructions; `placed` names where the program landed in the frame's
+        /// node region, so a symmetry copy or a replayed recording shares it.
+        var placedPrograms: [ObjectIdentifier: [Int: Int]] = [:]
+        func appendGroup(_ g: SDFGroupInstance, transform: matrix_float3x3?, program: [SDFNode],
+                         source: AnyObject, rows: [Int]) throws {
+            let ns = Int(g.nodeStart), nc = Int(g.nodeCount)
+            guard nc > 0, ns >= 0, ns + nc <= program.count else {
+                throw refuse("drawSDF (a field whose program the frame did not hold)")
+            }
+            let key = ObjectIdentifier(source)
+            let local: Int
+            if let found = placedPrograms[key]?[ns] {
+                local = found
+            } else {
+                local = nodeCount
+                for node in program[ns ..< ns + nc] { WebNode.append(node, into: &nodes); nodeCount += 1 }
+                placedPrograms[key, default: [:]][ns] = local
+            }
+            var placed = g
+            if let t = transform { placed.transform = t * g.transform }
+            let fillRow = g.fillGradientKind != 0 ? try row(g.fillGradientRow, in: rows) : 0
+            let strokeRow = g.strokeGradientKind != 0 ? try row(g.strokeGradientRow, in: rows) : 0
+            WebGroup.append(placed, nodeStart: local, fillRow: fillRow, strokeRow: strokeRow, into: &groups)
+            groupCount += 1
+        }
+        /// Appends a raymarched 3D field and its instructions the same way.
+        var placedPrograms3D: [Int: Int] = [:]
+        func appendField(_ f: SDF3DGroupInstance, rows: [Int]) throws {
+            let ns = Int(f.nodeStart), nc = Int(f.nodeCount)
+            guard nc > 0, ns >= 0, ns + nc <= drawer.sdf3DNodes.count else {
+                throw refuse("drawSDF3D (a field whose program the frame did not hold)")
+            }
+            let local: Int
+            if let found = placedPrograms3D[ns] {
+                local = found
+            } else {
+                local = node3DCount
+                for node in drawer.sdf3DNodes[ns ..< ns + nc] { WebNode3D.append(node, into: &nodes3D); node3DCount += 1 }
+                placedPrograms3D[ns] = local
+            }
+            let fillRow = f.fillGradientKind != 0 ? try row(f.fillGradientRow, in: rows) : 0
+            WebField.append(f, nodeStart: local, fillRow: fillRow, into: &fields)
+            fieldCount += 1
+        }
         func items(for surface: RenderTarget?) throws -> [WebDrawItem] {
             var items: [WebDrawItem] = []
             for (i, batch) in batches.enumerated() where batch.target === surface {
@@ -413,12 +637,12 @@ final class WebGraphRecorder {
                     // stages do.
                     guard let recording = batch.retained else { continue }
                     let inner = recording.innerBatches
-                    let simple = recording.points.isEmpty && recording.sdfGroups.isEmpty
+                    let simple = recording.points.isEmpty
                         && inner.allSatisfy {
                             ($0.kind == .sdf || $0.kind == .triangles || $0.kind == .fringe
-                             || $0.kind == .image || $0.kind == .glyphAtlas) && $0.depth == nil
+                             || $0.kind == .image || $0.kind == .glyphAtlas || $0.kind == .sdfGroup) && $0.depth == nil
                         }
-                    guard simple else { throw refuse("drawBatch (a recording holding more than shapes, strokes, fills, pictures, and text)") }
+                    guard simple else { throw refuse("drawBatch (a recording holding more than shapes, strokes, fills, pictures, text, and composed fields)") }
                     // The recording's rows are its own table, renumbered like a frame's.
                     let recordingRows = recording.gradientRows.map { gradientRow($0) }
                     for (j, run) in inner.enumerated() {
@@ -471,6 +695,16 @@ final class WebGraphRecorder {
                             let start = quadCount
                             let count = try appendQuads(slice, transform: batch.retainedTransform, call: "drawText")
                             items.append(.glyphs(atlas: ai, quad: start, count: count, blend: runBlend))
+                        case .sdfGroup:
+                            let end = next?.sdfGroupStart ?? recording.sdfGroups.count
+                            let start = groupCount
+                            for group in recording.sdfGroups[run.sdfGroupStart ..< end] {
+                                try appendGroup(group, transform: batch.retainedTransform, program: recording.sdfNodes,
+                                                source: recording, rows: recordingRows)
+                            }
+                            if groupCount > start {
+                                items.append(.groups(start: start, count: groupCount - start, blend: runBlend))
+                            }
                         default:
                             continue
                         }
@@ -498,6 +732,31 @@ final class WebGraphRecorder {
                     let start = quadCount
                     let count = try appendQuads(slice, transform: nil, call: "drawText")
                     items.append(.glyphs(atlas: ai, quad: start, count: count, blend: blend))
+                case .sdfGroup:
+                    // A composed field: its covering quad and its program, the
+                    // program once per `drawSDF` however many symmetry copies
+                    // share it.
+                    let end = nextStart(i, \.sdfGroupStart, end: drawer.sdfGroups.count)
+                    let start = groupCount
+                    for group in drawer.sdfGroups[batch.sdfGroupStart ..< end] {
+                        try appendGroup(group, transform: nil, program: drawer.sdfNodes, source: drawer, rows: frameRows)
+                    }
+                    if groupCount > start { items.append(.groups(start: start, count: groupCount - start, blend: blend)) }
+                case .sdfGroup3D:
+                    // A raymarched field on the canvas (a layer that carries depth
+                    // was refused above): the fields, their programs, and the
+                    // batch's finish as rows the page's lighting reads.
+                    if let name = WebMaterial.refusal(for: batch.finish) { throw refuse(name) }
+                    if batch.finish.shadingModel == 3 { usesPhysicallyBasedField = true }
+                    let end = nextStart(i, \.sdf3DGroupStart, end: drawer.sdf3DGroups.count)
+                    let start = fieldCount
+                    let material = rows(WebMaterial.rows(of: batch.finish))
+                    for field in drawer.sdf3DGroups[batch.sdf3DGroupStart ..< end] {
+                        try appendField(field, rows: frameRows)
+                    }
+                    if fieldCount > start {
+                        items.append(.fields(start: start, count: fieldCount - start, blend: blend, material: material.offset))
+                    }
                 default:
                     throw refuse(OllinApp.webRefusalName(for: batch.kind))
                 }
@@ -662,13 +921,23 @@ final class WebGraphRecorder {
             frameFilters.append(node(pass))
         }
 
-        // The vector: the shapes already appended, then the quads, the vertices,
-        // and the rows.
+        // The scene the fields are marched through: the camera, the lights, and
+        // the march budget, read the way the export's renderer would set them.
+        let scene = fieldCount > 0 ? try Self.sceneBlock(drawer, width: canvasWidth, height: canvasHeight, frame: frame) : []
+
+        // The vector: the shapes already appended, then the quads, the fields
+        // and their programs, the vertices, and the rows.
         vector.append(contentsOf: quads)
+        vector.append(contentsOf: groups)
+        vector.append(contentsOf: nodes)
+        vector.append(contentsOf: fields)
+        vector.append(contentsOf: nodes3D)
         vector.append(contentsOf: vertices)
         vector.append(contentsOf: params)
         let graph = WebGraph(layers: layers, canvas: canvas, frameFilters: frameFilters,
                              instanceCount: instanceCount, quadCount: quadCount,
+                             groupCount: groupCount, nodeCount: nodeCount,
+                             fieldCount: fieldCount, node3DCount: node3DCount,
                              vertexCount: vertexCount, paramFloats: params.count)
 
         // The ordinary frame clears to the background; an accumulating one only
@@ -682,7 +951,99 @@ final class WebGraphRecorder {
             : nil
         return WebFrame(clear: clear, vector: vector, graph: graph,
                         toneMapMode: Int(drawer.toneMapMode.shaderIndex),
-                        exposure: Float(drawer.toneMapExposure))
+                        exposure: Float(drawer.toneMapExposure), scene: scene)
+    }
+
+    /// The layout of a frame's scene block, the floats the field pass reads
+    /// whole: the three camera matrices by columns, then four rows (the
+    /// viewport and the two step budgets; the march scale with the reduced
+    /// pass's size and the scene scale; the ambient; the eye with the lit flag),
+    /// then a row of counts, then `WebScene.lightFloats` per light and one row
+    /// per caster.
+    enum WebScene {
+        static let headerFloats = 48 + 4 * 5
+        static let lightFloats = 20
+        static let casterFloats = 4
+    }
+
+    /// The scene block of a frame that marches a field: what `Uniforms3D` and
+    /// `OllinLighting` would carry for the export's renderer, as far as the
+    /// page's lighting reaches, and a refusal by name for what it does not (an
+    /// environment, fog, an area light, a shaped light, the traced and
+    /// screen-space passes). The march budget resolves as the export resolves
+    /// it, `.default` lifted to `.detail`; a reduced march resolution keeps the
+    /// coverage-adaptive scale the Mac would trace at, so the page marches the
+    /// same pixels and upsamples them the same way.
+    static func sceneBlock(_ drawer: Drawer, width: Int, height: Int, frame: Int) throws -> [Float] {
+        func refuse(_ call: String) -> WebExportRefusal { WebExportRefusal(call: call, frame: frame) }
+        guard let camera = drawer.camera3D else { throw refuse("drawSDF3D without a camera") }
+        if drawer.environment != nil { throw refuse("an environment (image-based lighting) on a raymarched field") }
+        if drawer.contactShadowsEnabled { throw refuse("contactShadows() on a raymarched field") }
+        if drawer.globalIlluminationEnabled { throw refuse("globalIllumination() on a raymarched field") }
+        if drawer.rayTracedReflectionsEnabled { throw refuse("rayTracedReflections() on a raymarched field") }
+        if drawer.sceneThroughGlassEnabled { throw refuse("sceneThroughGlass() on a raymarched field") }
+        if drawer.causticsEnabled { throw refuse("caustics() on a raymarched field") }
+        let lighting = drawer.makeLighting()
+        if lighting.fogColor.w > 0 { throw refuse("fog or aerial perspective around a raymarched field") }
+        if !drawer.usedIESProfiles.isEmpty || !drawer.usedLightCookies.isEmpty {
+            throw refuse("a light profile or cookie on a raymarched field")
+        }
+        let lightCount = Int(lighting.lightCount)
+        let lights: [OllinLight] = withUnsafePointer(to: lighting.lights) { ptr in
+            ptr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
+                (0 ..< lightCount).map { buf[$0] }
+            }
+        }
+        if lights.contains(where: { $0.kind >= 3 }) { throw refuse("an area light (a panel or a tube) on a raymarched field") }
+
+        let viewport = SIMD2<Float>(Float(width), Float(height))
+        let aspect = Double(viewport.x / viewport.y)
+        let view = camera.viewMatrix
+        let projection = camera.projectionMatrix(aspect: aspect)
+        let viewProjection = projection * view
+        let inverse = simd_inverse(viewProjection)
+        let steps = MetalRenderer.raymarchBudget(drawer.raymarchQualitySetting, automatic: .detail)
+        // The reduced march resolution, as the export resolves it: the base
+        // fraction over the fields' screen coverage, full when it reaches one
+        // or when a field blends other than normally.
+        var scale = MetalRenderer.raymarchScale(drawer.raymarchQualitySetting, automatic: .detail)
+        if drawer.batches.contains(where: { $0.kind == .sdfGroup3D && $0.blendMode != .normal }) { scale = 1 }
+        if scale < 1 {
+            let coverage = MetalRenderer.fieldScreenCoverage(drawer.sdf3DGroups, viewProjection: viewProjection)
+            scale = min(1.0, scale / max(coverage.squareRoot(), 1e-3))
+        }
+        let w = scale < 1 ? max(1, Int((Double(width) * scale).rounded())) : width
+        let h = scale < 1 ? max(1, Int((Double(height) * scale).rounded())) : height
+
+        // The one caster a field marches toward: the primary, which is what the
+        // renderer keeps when no mesh rendered a map (every other slot needs one).
+        var casters: [SIMD4<Float>] = []
+        if lighting.enabled != 0, lighting.shadowCasterCount > 0, lighting.shadowLight >= 0 {
+            casters.append(SIMD4(Float(lighting.shadowLight), lighting.shadowStrength, 0, 0))
+        }
+
+        var out: [Float] = []
+        out.reserveCapacity(WebScene.headerFloats + lightCount * WebScene.lightFloats + casters.count * WebScene.casterFloats)
+        for m in [view, projection, inverse] {
+            for column in [m.columns.0, m.columns.1, m.columns.2, m.columns.3] {
+                out.append(contentsOf: [column.x, column.y, column.z, column.w])
+            }
+        }
+        out.append(contentsOf: [viewport.x, viewport.y, Float(steps.march), Float(steps.shadow)])
+        out.append(contentsOf: [Float(scale), Float(w), Float(h), lighting.sceneScale])
+        out.append(contentsOf: [lighting.ambient.x, lighting.ambient.y, lighting.ambient.z, lighting.ambient.w])
+        out.append(contentsOf: [lighting.cameraPosition.x, lighting.cameraPosition.y, lighting.cameraPosition.z,
+                                Float(lighting.enabled)])
+        out.append(contentsOf: [Float(lightCount), Float(casters.count), 0, 0])
+        for l in lights {
+            out.append(contentsOf: [l.color.x, l.color.y, l.color.z, l.color.w,
+                                    l.position.x, l.position.y, l.position.z, l.position.w,
+                                    l.direction.x, l.direction.y, l.direction.z, l.direction.w,
+                                    Float(l.kind), l.cosInner, l.cosOuter, l.softness,
+                                    l.specular.x, l.specular.y, l.specular.z, l.specular.w])
+        }
+        for c in casters { out.append(contentsOf: [c.x, c.y, c.z, c.w]) }
+        return out
     }
 
     private func tableIndex(_ samples: [SIMD4<Float>]) -> Int {
@@ -734,6 +1095,10 @@ extension WebGraph {
                     }
                 case let .glyphs(atlas, quad, count, blend):
                     return ["a", atlas, quad, blend, count]
+                case let .groups(start, count, blend):
+                    return ["g", start, count, blend]
+                case let .fields(start, count, blend, material):
+                    return ["f", start, count, blend, material]
                 }
             }
         }
@@ -772,7 +1137,8 @@ extension WebGraph {
             return d
         }
         return ["layers": layers, "canvas": items(canvas), "post": frameFilters.map(pass),
-                "instances": instanceCount, "quads": quadCount, "vertices": vertexCount, "params": paramFloats]
+                "instances": instanceCount, "quads": quadCount, "groups": groupCount, "nodes": nodeCount,
+                "fields": fieldCount, "nodes3d": node3DCount, "vertices": vertexCount, "params": paramFloats]
     }
 
     /// Every framework fragment the graph runs, with the most rows any pass

@@ -43,6 +43,10 @@ struct WebTrack {
     /// changes (a row travels whole; its range is not known ahead); empty for a
     /// stable cast.
     var extra: String
+    /// Base64 float32: the scene block of every unique frame that marches a 3D
+    /// field (`WebGraphRecorder.sceneBlock`), whole and exact, at `meta.sceneOffsets`
+    /// with `meta.sceneLengths`; empty when no frame does.
+    var scene: String
     var uniqueFrames: Int
     var stable: Bool
     /// Columns worked out live from a parameter's formula.
@@ -55,17 +59,23 @@ struct WebTrack {
     var passCount: Int
     /// The most triangle vertices any frame draws.
     var vertexCount: Int
+    /// The most composed 2D fields any frame draws, and the most raymarched 3D
+    /// fields.
+    var groupCount: Int
+    var fieldCount: Int
 
     /// The largest fraction of the frame count a column's fit may spend on
     /// terms and still be worth more than its samples.
     static let maxTermFraction = 8
 
     init(_ recording: WebRecording) {
-        // Consecutive duplicates fold onto one record.
+        // Consecutive duplicates fold onto one record. A frame's scene block
+        // counts: a still field under a turning camera is a new frame every
+        // frame, though its vector and its graph never move.
         var uniques: [WebFrame] = []
         var refs: [Int] = []
         for frame in recording.frames {
-            if let last = uniques.last, last.vector == frame.vector, last.graph == frame.graph {
+            if let last = uniques.last, last.vector == frame.vector, last.graph == frame.graph, last.scene == frame.scene {
                 refs.append(uniques.count - 1)
             } else {
                 uniques.append(frame)
@@ -77,14 +87,19 @@ struct WebTrack {
         let n = WebInstance.floats
         var stable = false
         if let first = uniques.first {
+            // The same cast: the graph, the shape tags, and the columns that
+            // name a field's program (its kinds and ops, its length).
+            let structural = first.graph.structuralColumns
             stable = uniques.allSatisfy { u in
-                guard u.graph == first.graph, u.vector.count == first.vector.count else { return false }
+                guard u.graph == first.graph, u.vector.count == first.vector.count,
+                      u.scene.count == first.scene.count else { return false }
                 var i = WebInstance.shapeColumn
                 let end = first.graph.instanceCount * n
                 while i < end {
                     if u.vector[i] != first.vector[i] { return false }
                     i += n
                 }
+                for c in structural where u.vector[c] != first.vector[c] { return false }
                 return true
             }
         }
@@ -118,6 +133,15 @@ struct WebTrack {
         var samples: [UInt16] = []
         var ranges: [Float] = []
         var base: [Float] = []
+        // The scene blocks, whole, one per unique frame that has one.
+        var sceneFloats: [Float] = []
+        var sceneOffsets: [Int] = []
+        var sceneLengths: [Int] = []
+        for u in uniques {
+            sceneOffsets.append(sceneFloats.count)
+            sceneLengths.append(u.scene.count)
+            sceneFloats.append(contentsOf: u.scene)
+        }
         var vertexPositions: [Float] = []
         var vertexBase: [UInt16] = []
         var vertexRanges: [Float] = []
@@ -208,16 +232,22 @@ struct WebTrack {
             meta["drive"] = drives
             meta["graph"] = first.graph.meta
         } else {
-            // Every shape, quad, and vertex of every unique frame, each field
-            // inside the range it spans across the whole track, but a vertex's
-            // position, which travels exact; the parameter rows whole.
+            // Every shape, quad, field, instruction, and vertex of every unique
+            // frame, each field inside the range it spans across the whole
+            // track, but a vertex's position, which travels exact; the
+            // parameter rows whole.
             let q = WebQuad.floats, v = WebVertex.floats, p = WebVertex.positionFloats
-            let fields = n + q + v
+            let gf = WebGroup.floats, nf = WebNode.floats, ff = WebField.floats, n3 = WebNode3D.floats
+            let fields = n + q + gf + nf + ff + n3 + v
             var fieldRanges = [(Float, Float)](repeating: (Float.greatestFiniteMagnitude, -Float.greatestFiniteMagnitude), count: fields)
             func field(_ i: Int, _ g: WebGraph) -> Int {
                 if i < g.quadOffset { return i % n }
-                if i < g.vertexOffset { return n + (i - g.quadOffset) % q }
-                return n + q + (i - g.vertexOffset) % v
+                if i < g.groupOffset { return n + (i - g.quadOffset) % q }
+                if i < g.nodeOffset { return n + q + (i - g.groupOffset) % gf }
+                if i < g.fieldOffset { return n + q + gf + (i - g.nodeOffset) % nf }
+                if i < g.node3DOffset { return n + q + gf + nf + (i - g.fieldOffset) % ff }
+                if i < g.vertexOffset { return n + q + gf + nf + ff + (i - g.node3DOffset) % n3 }
+                return n + q + gf + nf + ff + n3 + (i - g.vertexOffset) % v
             }
             func isPosition(_ i: Int, _ g: WebGraph) -> Bool {
                 i >= g.vertexOffset && (i - g.vertexOffset) % v < p
@@ -268,6 +298,10 @@ struct WebTrack {
         if let clock = recording.clock, !drives.isEmpty { meta["clock"] = clock.meta }
         meta["frameOffset"] = recording.frameOffset
         meta["mouse"] = [recording.mouse.x, recording.mouse.y]
+        if !sceneFloats.isEmpty {
+            meta["sceneOffsets"] = sceneOffsets
+            meta["sceneLengths"] = sceneLengths
+        }
 
         self.drivenColumns = drivenColumns
         self.fittedColumns = fittedColumns
@@ -275,6 +309,9 @@ struct WebTrack {
         self.fitTerms = fitTerms
         self.passCount = uniques.first.map { $0.graph.layers.count + $0.graph.frameFilters.count } ?? 0
         self.vertexCount = uniques.map(\.graph.vertexCount).max() ?? 0
+        self.groupCount = uniques.map(\.graph.groupCount).max() ?? 0
+        self.fieldCount = uniques.map(\.graph.fieldCount).max() ?? 0
+        self.scene = Self.base64(sceneFloats)
         self.stream = Self.base64(samples)
         self.base = Self.base64(base)
         self.vertexPositions = Self.base64(vertexPositions)

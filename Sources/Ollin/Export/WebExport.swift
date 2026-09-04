@@ -23,6 +23,10 @@ struct WebFrame: Equatable {
     var graph: WebGraph
     var toneMapMode: Int
     var exposure: Float
+    /// The 3D scene the frame's fields are marched through (`WebGraphRecorder.sceneBlock`),
+    /// or empty: it travels apart from the vector, whole and exact, since a
+    /// camera matrix quantized inside its range moves a silhouette.
+    var scene: [Float] = []
 
     /// The shape region of the vector alone.
     var instances: [Float] { Array(vector[0 ..< graph.instanceCount * WebInstance.floats]) }
@@ -98,6 +102,9 @@ struct WebRecording {
     var atlases: [WebAtlas] = []
     /// The gradient rows the shapes read, each once, the page's strip.
     var gradientRows: [[UInt8]] = []
+    /// The split-sum table (`WebBRDFLUT`) when a field wears a physically-based
+    /// finish; empty otherwise.
+    var brdfLUT: [UInt16] = []
 
     var duration: Double { Double(frames.count) / rate }
     /// Whether any frame carries state from the one before it.
@@ -201,6 +208,7 @@ extension OllinApp {
         recording.pictures = recorder.pictures
         recording.atlases = try recorder.finish(frame: max(0, frames - 1))
         recording.gradientRows = recorder.gradientRows
+        if recorder.usesPhysicallyBasedField { recording.brdfLUT = WebBRDFLUT.shared }
         return recording
     }
 
@@ -212,8 +220,6 @@ extension OllinApp {
     /// The call, or the family of calls, a batch kind stands for in a refusal.
     nonisolated static func webRefusalName(for kind: GeometryKind) -> String {
         switch kind {
-        case .sdfGroup: return "drawSDF (a combined field)"
-        case .sdfGroup3D: return "a raymarched 3D field"
         case .particles: return "drawParticles"
         case .points3D: return "drawPointCloud"
         case .depthScene: return "drawDepthScene"
@@ -221,10 +227,11 @@ extension OllinApp {
             return "3D drawing (a mesh, a field, strands, the ocean)"
         case .clipPush, .clipPop: return "withClip"
         // Never refused by kind: shapes, fills, strokes, pictures, atlas text,
-        // and a recording of them cross (a picture that is a live texture is
-        // refused where it is read).
-        case .sdf, .triangles, .fringe, .retained, .image, .glyphAtlas:
-            return "shapes, strokes, fills, pictures, and text"
+        // composed and raymarched fields, and a recording of them cross (a
+        // picture that is a live texture, and a field under a light the page
+        // cannot carry, are refused where they are read).
+        case .sdf, .triangles, .fringe, .retained, .image, .glyphAtlas, .sdfGroup, .sdfGroup3D:
+            return "shapes, strokes, fills, pictures, text, and fields"
         }
     }
 }
@@ -233,13 +240,14 @@ extension OllinApp {
 
 /// The framework's shader text the page's shaders are cut from, read once from
 /// the resource bundle: the helper library, the core segment (the dither), the
-/// shapes segment (the analytic primitives' coverage), and the four effect
-/// segments (the tone-map curve, the filters, the combines, the simulations,
-/// the patterns). A page carries only what its frames run.
+/// shapes segment (the analytic primitives' coverage), the two field segments
+/// (the composed field's arithmetic, the raymarcher's distance functions), and
+/// the four effect segments (the tone-map curve, the filters, the combines, the
+/// simulations, the patterns). A page carries only what its frames run.
 enum WebShaderSources {
     static let text: String = {
-        ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderEffects", "ShaderCombine",
-         "ShaderSim", "ShaderPatterns"].compactMap { name -> String? in
+        ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "ShaderRaymarch",
+         "ShaderEffects", "ShaderCombine", "ShaderSim", "ShaderPatterns"].compactMap { name -> String? in
             guard let url = OllinResources.bundle.url(forResource: name, withExtension: "metal") else { return nil }
             return try? String(contentsOf: url, encoding: .utf8)
         }.joined(separator: "\n")
@@ -281,8 +289,23 @@ struct WebShaders {
     var effects: [String: String]
     /// The user shaders, in the recording's order.
     var users: [String]
+    /// A composed 2D field (`drawSDF`): the covering quad's stage and the
+    /// fragment that walks the field's program (`ollin_sdfgroup_fragment`), over
+    /// the combinator's arithmetic and the shapes' distance functions and
+    /// coverage. Empty when no frame draws one.
+    var groupVertex: String = ""
+    var groupFragment: String = ""
+    /// A raymarched 3D field (`drawSDF3D`): the fullscreen stage, the fragment
+    /// that sphere-traces the field and shades the hit
+    /// (`ollin_raymarch_fragment` and the punctual half of `meshLitColor`), and
+    /// the upsample that composites a reduced-resolution march
+    /// (`ollin_raymarch_upsample_fragment`). Empty when no frame marches one.
+    var fieldVertex: String = ""
+    var fieldFragment: String = ""
+    var upsampleFragment: String = ""
 
-    static func make(effects wanted: [String: Int] = [:], users: [WebUserShader] = []) throws -> WebShaders {
+    static func make(effects wanted: [String: Int] = [:], users: [WebUserShader] = [],
+                     groups: Bool = false, fields: Bool = false) throws -> WebShaders {
         let text = WebShaderSources.text
         let shapes = WebShaderLibrary.translate(text, wanted: ["shapes"])
         guard shapes.isClean else { throw WebShaderError(diagnostics: shapes.unsupported) }
@@ -304,12 +327,28 @@ struct WebShaders {
             effects[name] = t.glsl
         }
         let userSources = try users.map { try WebUserShaderGLSL.make($0) }
-        return WebShaders(sdfVertex: sdfVertex, sdfFragment: sdfFragment,
-                          presentVertex: presentVertex, presentFragment: presentFragment,
-                          imageVertex: imageVertex, imageFragment: imageFragment, glyphFragment: glyphFragment,
-                          triangleVertex: triangleVertex, triangleFragment: triangleFragment,
-                          fringeFragment: fringeFragment,
-                          effectVertex: effectVertex, effects: effects, users: userSources)
+        var shaders = WebShaders(sdfVertex: sdfVertex, sdfFragment: sdfFragment,
+                                 presentVertex: presentVertex, presentFragment: presentFragment,
+                                 imageVertex: imageVertex, imageFragment: imageFragment, glyphFragment: glyphFragment,
+                                 triangleVertex: triangleVertex, triangleFragment: triangleFragment,
+                                 fringeFragment: fringeFragment,
+                                 effectVertex: effectVertex, effects: effects, users: userSources)
+        if groups {
+            let combinator = WebShaderLibrary.translate(text, wanted: ["combinator", "shapes"])
+            guard combinator.isClean else { throw WebShaderError(diagnostics: combinator.unsupported) }
+            shaders.groupVertex = groupVertex
+            shaders.groupFragment = WebShaderCompat.preamble + "\n" + combinator.support + "\n\n" + combinator.body
+                + "\n" + resolvePaintSource + "\n" + groupFragmentTail
+        }
+        if fields {
+            let raymarch = WebShaderLibrary.translate(text, wanted: ["raymarch"])
+            guard raymarch.isClean else { throw WebShaderError(diagnostics: raymarch.unsupported) }
+            shaders.fieldVertex = fieldVertex
+            shaders.fieldFragment = WebShaderCompat.preamble + "\n" + raymarch.support + "\n\n" + raymarch.body
+                + "\n" + resolvePaintSource + "\n" + fieldLightingSource + "\n" + fieldFragmentTail
+            shaders.upsampleFragment = upsampleFragment
+        }
+        return shaders
     }
 
     /// The triangle path's vertex stage, `ollin_vertex` and `ollin_fringe_vertex`
@@ -436,8 +475,30 @@ struct WebShaders {
     /// from its row of the strip, an sRGB texture, so the sample comes back
     /// linear), stroke composited over fill in premultiplied linear light,
     /// returned straight so the same source-over blend applies.
-    static let sdfFragmentTail = """
+    /// `resolvePaint` as the page spells it, over the strip bound as `gradients`:
+    /// a solid slot linearized, a gradient's geometry mapped to `t` and read from
+    /// its row of the strip (an sRGB texture, so the sample comes back linear).
+    static let resolvePaintSource = """
     uniform sampler2D gradients;
+    vec4 resolvePaint(vec4 slot, uint kind, float row, vec2 p, float pathT) {
+        if (kind == 0u) { return vec4(srgbToLinear(slot.rgb), slot.a); }
+        float t;
+        if (kind == 1u) {
+            vec2 d = slot.zw - slot.xy;
+            t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
+        } else if (kind == 2u) {
+            t = length(p - slot.xy) / max(slot.z, 1e-6);
+        } else {
+            t = pathT;
+        }
+        vec2 size = vec2(textureSize(gradients, 0));
+        float u = (clamp(t, 0.0, 1.0) * (size.x - 1.0) + 0.5) / size.x;
+        float v = (row + 0.5) / size.y;
+        return texture(gradients, vec2(u, v));
+    }
+    """
+
+    static let sdfFragmentTail = resolvePaintSource + """
     in vec2 vLocal;
     in vec2 vSize;
     in vec4 vFill;
@@ -455,22 +516,6 @@ struct WebShaders {
     flat in uint vFillKind;
     flat in uint vStrokeKind;
     out vec4 fragColor;
-    vec4 resolvePaint(vec4 slot, uint kind, float row, vec2 p, float pathT) {
-        if (kind == 0u) { return vec4(srgbToLinear(slot.rgb), slot.a); }
-        float t;
-        if (kind == 1u) {
-            vec2 d = slot.zw - slot.xy;
-            t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);
-        } else if (kind == 2u) {
-            t = length(p - slot.xy) / max(slot.z, 1e-6);
-        } else {
-            t = pathT;
-        }
-        vec2 size = vec2(textureSize(gradients, 0));
-        float u = (clamp(t, 0.0, 1.0) * (size.x - 1.0) + 0.5) / size.x;
-        float v = (row + 0.5) / size.y;
-        return texture(gradients, vec2(u, v));
-    }
     void main() {
         float fillCov = 0.0;
         float strokeCov = 0.0;
@@ -629,6 +674,582 @@ struct WebShaders {
         fragColor = vec4(srgbToLinear(vTint.rgb), vTint.a * cov);
     }
     """
+
+    // MARK: Composed 2D fields
+
+    /// The covering quad of one composed field, as `ollin_sdfgroup_vertex` builds
+    /// it: the field's AABB half-extent about its center, placed by the group's
+    /// transform, the field-local point handed on for the VM. The group's 26
+    /// floats arrive as seven rows: the two axis columns and the translation of
+    /// the transform with the center; the size with the stroke width and the
+    /// band width; the stroke slot; the fill gradient geometry; the program's
+    /// start and length with the fill kind and row; the stroke kind and row.
+    static let groupVertex = """
+    #version 300 es
+    precision highp float;
+    precision highp int;
+    uniform vec4 group[7];
+    uniform vec2 viewport;
+    uniform float ollin_flip;
+    out vec2 vField;
+    void main() {
+        vec2 corners[6] = vec2[6](vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
+                                  vec2(-1.0, -1.0), vec2(1.0, 1.0), vec2(-1.0, 1.0));
+        vec2 local = corners[gl_VertexID] * group[2].xy;
+        vec2 field = group[1].zw + local;
+        vec2 sketch = group[0].xy * field.x + group[0].zw * field.y + group[1].xy;
+        gl_Position = vec4((sketch.x / viewport.x) * 2.0 - 1.0, (1.0 - (sketch.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);
+        vField = field;
+    }
+    """
+
+    /// The tail of `ollin_sdfgroup_fragment`: the program read from the page's
+    /// uniform block (four rows a node, the kind and the op as floats), walked
+    /// by the same two stacks over the translated leaf, combine, modify, and
+    /// transform arithmetic, then the merged field's coverage and paints
+    /// resolved exactly as the Mac's fragment resolves them.
+    static let groupFragmentTail = """
+    layout(std140) uniform Nodes { vec4 nodeRows[1024]; };
+    uniform vec4 group[7];
+    in vec2 vField;
+    out vec4 fragColor;
+    SDFNode readNode(int i) {
+        SDFNode nd;
+        vec4 r0 = nodeRows[i * 4];
+        nd.kind = uint(r0.x + 0.5);
+        nd.sel = uint(r0.y + 0.5);
+        nd.k = r0.z;
+        nd.extra = r0.w;
+        nd.color = nodeRows[i * 4 + 1];
+        nd.geo0 = nodeRows[i * 4 + 2];
+        nd.geo1 = nodeRows[i * 4 + 3];
+        return nd;
+    }
+    void main() {
+        vec2 p = vField;
+        float distStack[16];
+        vec4 colStack[16];
+        vec2 pointStack[16];
+        int sp = 0;
+        int pp = 0;
+        int count = int(group[5].y + 0.5);
+        for (int i = 0; i < count; i++) {
+            SDFNode nd = readNode(i);
+            switch (nd.kind) {
+            case 0u: {
+                float d = ollin_sdf_distance(nd.sel, p, nd.geo0.xy, nd.geo0.zw,
+                                             nd.geo1.xy, nd.geo1.zw, nd.extra);
+                if (sp < 16) { distStack[sp] = d; colStack[sp] = nd.color; sp++; }
+                break;
+            }
+            case 1u:
+                if (sp >= 2) {
+                    float d; vec4 c;
+                    ollin_sdf_combine(nd.sel, distStack[sp-2], colStack[sp-2],
+                                      distStack[sp-1], colStack[sp-1], nd.k, nd.extra, d, c);
+                    sp -= 1;
+                    distStack[sp-1] = d; colStack[sp-1] = c;
+                }
+                break;
+            case 2u:
+                if (sp >= 1) {
+                    distStack[sp-1] = (nd.sel == 0u) ? (distStack[sp-1] - nd.k)
+                                                     : (abs(distStack[sp-1]) - nd.k);
+                }
+                break;
+            case 3u:
+                if (pp < 16) { pointStack[pp] = p; pp++; }
+                p = ollin_sdf_xform(p, nd);
+                break;
+            default:
+                if (pp > 0) { pp--; p = pointStack[pp]; }
+                if (nd.k != 1.0 && sp >= 1) { distStack[sp-1] *= nd.k; }
+                break;
+            }
+        }
+        float d = (sp >= 1) ? distStack[sp-1] : 1.0e9;
+        vec4 fillColor = (sp >= 1) ? colStack[sp-1] : vec4(0.0);
+        float fillCov = 0.0, strokeCov = 0.0;
+        float strokeWidth = group[2].z;
+        float hw = strokeWidth * 0.5;
+        regionCoverage(d, hw, strokeWidth, 0.0, fillCov, strokeCov);
+        uint fillKind = uint(group[5].z + 0.5);
+        uint strokeKind = uint(group[6].x + 0.5);
+        vec3 fillLin; float fillBaseA;
+        if (fillKind == 0u) { fillLin = srgbToLinear(fillColor.rgb); fillBaseA = fillColor.a; }
+        else {
+            vec4 fp = resolvePaint(group[4], fillKind, group[5].w, vField, 0.0);
+            fillLin = fp.rgb; fillBaseA = fp.a;
+        }
+        float fillA = fillBaseA * fillCov;
+        vec3 strokeLin; float strokeBaseA;
+        if (strokeKind == 0u) { strokeLin = srgbToLinear(group[3].rgb); strokeBaseA = group[3].a; }
+        else {
+            vec4 sp2 = resolvePaint(group[3], strokeKind, group[6].y, vField, 0.0);
+            strokeLin = sp2.rgb; strokeBaseA = sp2.a;
+        }
+        float strokeA = strokeBaseA * strokeCov;
+        vec3 premul = strokeLin * strokeA + fillLin * fillA * (1.0 - strokeA);
+        float a = strokeA + fillA * (1.0 - strokeA);
+        if (a <= 0.0) { fragColor = vec4(0.0); return; }
+        fragColor = vec4(premul / a, a);
+    }
+    """
+
+    // MARK: Raymarched 3D fields
+
+    /// One oversized triangle over the canvas, like `ollin_raymarch_vertex`, its
+    /// clip position handed on for the ray.
+    static let fieldVertex = """
+    #version 300 es
+    precision highp float;
+    out vec2 vClip;
+    void main() {
+        vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+        gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        vClip = p * 2.0 - 1.0;
+    }
+    """
+
+    /// The punctual half of `meshLitColor` as the page spells it: the four
+    /// shading models under directional, point, and spot lights with the wrap
+    /// term and the cone, the one caster's self-shadow factor, the subsurface
+    /// bleed, the iridescent sheen in both of its modes, the sparkle, and the
+    /// rim, each inert at its zero value as on the Mac. A field carries no
+    /// tangent, no map, no coat, sheen, film, or brushing (the recorder refuses
+    /// those), no environment, and no fog, so those branches are not here. The
+    /// physically-based lobe prices its energy from the same split-sum table the
+    /// Mac bakes, carried as a page asset.
+    static let fieldLightingSource = """
+    uniform vec4 uAmbient;
+    uniform vec4 uEye;
+    uniform vec4 uCounts;
+    uniform vec4 uLights[40];
+    uniform vec4 uCasters[4];
+    uniform vec4 uMaterial[9];
+    uniform vec4 uScale;
+    uniform sampler2D brdfLUT;
+    float pbrDGGX(float NoH, float roughness) {
+        float a = roughness * roughness;
+        float d = NoH * a;
+        float k = a / (1.0 - NoH * NoH + d * d);
+        return k * k * (1.0 / 3.14159265);
+    }
+    float pbrVSmithGGX(float NoV, float NoL, float roughness) {
+        float a = roughness * roughness;
+        float a2 = a * a;
+        float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
+        float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
+        return 0.5 / max(GGXV + GGXL, 1e-5);
+    }
+    vec3 pbrFSchlick(float VoH, vec3 F0) {
+        float f = pow(1.0 - VoH, 5.0);
+        return F0 + (vec3(1.0) - F0) * f;
+    }
+    float pbrEss(float NoV, float rough) {
+        vec2 ab = texture(brdfLUT, vec2(NoV, rough)).rg;
+        return clamp(ab.x + ab.y, 0.0, 1.0);
+    }
+    vec3 pbrEnergyComp(vec3 F0, float ess) {
+        return 1.0 + F0 * (1.0 / max(ess, 0.1) - 1.0);
+    }
+    float sssTranslucency(vec3 viewDir, vec3 toLight, vec3 n) {
+        vec3 bent = normalize(toLight + n * 0.35);
+        float through = pow(max(dot(viewDir, -bent), 0.0), 3.0);
+        float thin = 1.0 - max(dot(n, viewDir), 0.0);
+        float thickness = 0.35 + 0.65 * thin;
+        return (through + 0.22) * thickness;
+    }
+    vec4 litColor(vec3 base, float alpha, vec3 normal, vec3 worldPos, float fieldShadow[4]) {
+        vec3 n = normalize(normal);
+        if (uEye.w == 0.0) { return vec4(base, alpha); }
+        vec3 viewDir = normalize(uEye.xyz - worldPos);
+        float specStrength = uMaterial[5].x;
+        float specularSharpness = max(uMaterial[5].y, 1.0);
+        int model = int(uMaterial[6].z + 0.5);
+        float bands = max(uMaterial[6].y, 1.0);
+        float metallic = uMaterial[6].w;
+        bool wantsSSS = uMaterial[1].a > 0.0;
+        vec3 lit;
+        if (model == 2) { lit = vec3(0.0); }
+        else if (model == 3) { lit = uAmbient.rgb * base * (1.0 - metallic); }
+        else { lit = uAmbient.rgb * base; }
+        vec3 incoming = uAmbient.rgb;
+        vec3 sssAccum = vec3(0.0);
+        vec3 keyToLight = vec3(0.0, 1.0, 0.0);
+        bool haveKey = false;
+        int lightCount = int(uCounts.x + 0.5);
+        int casterCount = int(uCounts.y + 0.5);
+        for (int i = 0; i < 8; i++) {
+            if (i >= lightCount) { break; }
+            vec4 Lcolor = uLights[i * 5];
+            vec4 Lpos = uLights[i * 5 + 1];
+            vec4 Ldir = uLights[i * 5 + 2];
+            vec4 Lp = uLights[i * 5 + 3];
+            vec4 Lspec = uLights[i * 5 + 4];
+            int kind = int(Lp.x + 0.5);
+            int cs = -1;
+            for (int c = 0; c < 4; c++) {
+                if (c >= casterCount) { break; }
+                if (int(uCasters[c].x + 0.5) == i) { cs = c; break; }
+            }
+            vec3 toLight;
+            float atten = 1.0;
+            if (kind == 0) {
+                toLight = Ldir.xyz;
+            } else {
+                toLight = normalize(Lpos.xyz - worldPos);
+                if (kind == 2) {
+                    float cosA = dot(-toLight, Ldir.xyz);
+                    atten = smoothstep(Lp.z, Lp.y, cosA);
+                }
+            }
+            if (cs >= 0) {
+                float lit01 = fieldShadow[cs];
+                atten *= mix(1.0, lit01, uCasters[cs].y);
+            }
+            if (!haveKey) { keyToLight = toLight; haveKey = true; }
+            float raw = dot(n, toLight);
+            float ndl = max((raw + Lp.w) / (1.0 + Lp.w), 0.0);
+            vec3 h = normalize(toLight + viewDir);
+            float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), specularSharpness) : 0.0;
+            vec3 specCol = Lspec.rgb * (specRaw * specStrength);
+            if (model == 1) {
+                float d = ceil(ndl * bands) / bands;
+                float spec = (specRaw > 0.5) ? specStrength : 0.0;
+                lit += atten * (Lcolor.rgb * base * d + Lspec.rgb * spec);
+            } else if (model == 2) {
+                lit += atten * specCol;
+            } else if (model == 3) {
+                float NoL = max(raw, 0.0);
+                if (NoL > 0.0) {
+                    float rough = clamp(uMaterial[7].x, 0.045, 1.0);
+                    float NoV = max(dot(n, viewDir), 1e-4);
+                    float NoH = max(dot(n, h), 0.0);
+                    float VoH = max(dot(viewDir, h), 0.0);
+                    vec3 F0 = mix(vec3(uMaterial[7].w), base, metallic);
+                    float D = pbrDGGX(NoH, rough);
+                    float Vis = pbrVSmithGGX(NoV, NoL, rough);
+                    vec3 F = pbrFSchlick(VoH, F0);
+                    vec3 spec = D * Vis * F * pbrEnergyComp(F0, pbrEss(NoV, rough));
+                    vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+                    vec3 diff = kD * base * (1.0 / 3.14159265);
+                    lit += (diff + spec) * Lcolor.rgb * (atten * NoL);
+                }
+            } else {
+                lit += atten * (Lcolor.rgb * base * ndl + specCol);
+            }
+            incoming += atten * Lcolor.rgb * ndl;
+            if (wantsSSS) {
+                sssAccum += atten * Lcolor.rgb * sssTranslucency(viewDir, toLight, n);
+            }
+        }
+        if (model == 2) {
+            float t = dot(n, keyToLight) * 0.5 + 0.5;
+            lit += mix(uMaterial[3].rgb, uMaterial[2].rgb, t) * base;
+        }
+        if (wantsSSS) {
+            lit += uMaterial[1].a * uMaterial[1].rgb * base * sssAccum;
+        }
+        float iridescence = uMaterial[5].z;
+        if (iridescence > 0.0) {
+            float fres = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
+            float irrad = dot(incoming, vec3(0.299, 0.587, 0.114));
+            float iridescenceScale = uMaterial[5].w;
+            float flow = uMaterial[8].x;
+            if (flow > 0.0) {
+                float cell = max(uScale.w, 1e-4) * 0.35 * uMaterial[8].z;
+                vec3 q = worldPos / cell;
+                float t = uMaterial[8].y;
+                vec3 d1 = vec3(0.12 * t, -0.30 * t, 0.0);
+                vec3 d2 = vec3(-0.22 * t, -0.50 * t, 0.09 * t);
+                float wa = fbm(q * 1.2 + d1) * 2.0 - 1.0;
+                float wb = fbm(q * 1.2 + d1 + vec3(4.7, 9.1, 2.3)) * 2.0 - 1.0;
+                float wm = fbm(q * 2.3 + d2 + vec3(wa, wb, 0.5 * (wa - wb)) * 3.2) * 2.0 - 1.0;
+                float head = 0.5 - 0.5 * clamp(n.y, -1.0, 1.0);
+                float d = iridescenceScale
+                        * max(0.18 + 1.1 * head * head + flow * (0.35 * wa + 0.55 * wm), 0.0);
+                vec3 rate = vec3(1.0, 1.2146, 1.4513);
+                vec3 wave = 0.5 - 0.5 * cos(6.2831853 * d * rate);
+                float coh = exp(-0.18 * d);
+                vec3 filmC = mix(vec3(0.5), wave, coh);
+                float body = mix(0.35, 1.0, fres);
+                lit += iridescence * body * filmC * (0.15 + 0.85 * irrad);
+            } else {
+                float phase = fres * iridescenceScale;
+                vec3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (phase + vec3(0.0, 0.3333, 0.6667)));
+                lit += iridescence * fres * rainbow * (0.15 + 0.85 * irrad);
+            }
+        }
+        if (uMaterial[4].a > 0.0) {
+            float sparkleSize = uMaterial[7].y;
+            float cell = max(uScale.w, 1e-4) * 0.0022 * sparkleSize;
+            vec3 q = worldPos / cell;
+            vec3 rnd = hash33(floor(q));
+            float soft = max(0.05, 0.26 / sparkleSize);
+            float mask = smoothstep(0.5, 0.5 - soft, length(fract(q) - 0.5));
+            vec3 flakeN = normalize(n + (rnd * 2.0 - 1.0) * 0.7);
+            float align = clamp(dot(flakeN, viewDir), 0.0, 1.0);
+            float sharp = uMaterial[7].z;
+            float flash = pow(align, sharp) + 0.18 * pow(align, sharp * 0.12);
+            float irrad = dot(incoming, vec3(0.299, 0.587, 0.114));
+            lit += uMaterial[4].a * 1.6 * flash * mask * uMaterial[4].rgb * (0.15 + 0.85 * irrad);
+        }
+        if (uMaterial[0].a > 0.0) {
+            float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), uMaterial[6].x);
+            lit += uMaterial[0].a * rim * uMaterial[0].rgb;
+        }
+        return vec4(lit, alpha);
+    }
+    """
+
+    /// The tail of `ollin_raymarch_fragment`: the field's program read from the
+    /// page's uniform block and walked by the same stacks over the translated
+    /// leaf, combine, modify, and transform arithmetic (the roughening's noise
+    /// among them); the world ray rebuilt through the inverse view-projection;
+    /// the sphere trace with its pixel-cone coverage at the silhouette; the
+    /// tetrahedron normal; the analytic self-shadow toward the one caster; the
+    /// leaf color or the screen-space gradient; the lighting above; and the
+    /// hit's depth through the camera, written as the fragment's own. The
+    /// field's 36 floats arrive as nine rows: the inverse model by columns, the
+    /// bounds with the model scale and the unbounded flag, the gradient
+    /// geometry, the program's place and length with the paint kind and row,
+    /// and the normal step. `ollin_flip` turns the ray's clip position over
+    /// where the surface is rasterized upright under multisampling, the way the
+    /// other stages turn their positions.
+    static let fieldFragmentTail = """
+    layout(std140) uniform Nodes { vec4 nodeRows[1024]; };
+    uniform vec4 field[9];
+    uniform mat4 uView;
+    uniform mat4 uProj;
+    uniform mat4 uInvVP;
+    uniform vec4 uViewportSteps;
+    uniform float ollin_flip;
+    in vec2 vClip;
+    out vec4 fragColor;
+    const float OLLIN_RAYMARCH_STEP_SCALE = 0.85;
+    const float OLLIN_RAYMARCH_EPS = 0.001;
+    const float OLLIN_SDF3D_SHADOW_K = 10.0;
+    SDFNode3D readNode3D(int i) {
+        SDFNode3D nd;
+        vec4 r0 = nodeRows[i * 4];
+        nd.kind = uint(r0.x + 0.5);
+        nd.sel = uint(r0.y + 0.5);
+        nd.k = r0.z;
+        nd.extra = r0.w;
+        nd.color = nodeRows[i * 4 + 1];
+        nd.geo0 = nodeRows[i * 4 + 2];
+        nd.geo1 = nodeRows[i * 4 + 3];
+        return nd;
+    }
+    float fieldDistance(vec3 p0, out vec4 outColor) {
+        float distStack[16];
+        vec4 colStack[16];
+        vec3 pointStack[16];
+        int sp = 0;
+        int pp = 0;
+        vec3 p = p0;
+        int count = int(field[7].y + 0.5);
+        for (int i = 0; i < count; i++) {
+            SDFNode3D nd = readNode3D(i);
+            switch (nd.kind) {
+            case 0u: {
+                float d = ollin_sdf3d_eval(nd.sel, p, nd.geo0, nd.geo1);
+                if (sp < 16) { distStack[sp] = d; colStack[sp] = nd.color; sp++; }
+                break;
+            }
+            case 1u:
+                if (sp >= 2) {
+                    float d; vec4 c;
+                    ollin_sdf3d_combine(nd.sel, distStack[sp-2], colStack[sp-2],
+                                        distStack[sp-1], colStack[sp-1], nd.k, nd.extra, d, c);
+                    sp -= 1;
+                    distStack[sp-1] = d; colStack[sp-1] = c;
+                }
+                break;
+            case 2u:
+                if (sp >= 1) {
+                    switch (nd.sel) {
+                    case 0u: distStack[sp-1] -= nd.k; break;
+                    case 1u: distStack[sp-1] = abs(distStack[sp-1]) - nd.k; break;
+                    case 2u: {
+                        float f = nd.extra;
+                        float disp = nd.k * sin(f * p.x) * sin(f * p.y) * sin(f * p.z);
+                        distStack[sp-1] = (distStack[sp-1] + disp) * nd.geo0.x;
+                        break;
+                    }
+                    default: {
+                        float nse = valueNoise(p * nd.extra) * 2.0 - 1.0;
+                        distStack[sp-1] = (distStack[sp-1] + nd.k * nse) * nd.geo0.x;
+                        break;
+                    }
+                    }
+                }
+                break;
+            case 3u:
+                if (pp < 16) { pointStack[pp] = p; pp++; }
+                p = ollin_sdf3d_xform(p, nd);
+                break;
+            default:
+                if (pp > 0) { pp--; p = pointStack[pp]; }
+                if (nd.k != 1.0 && sp >= 1) { distStack[sp-1] *= nd.k; }
+                break;
+            }
+        }
+        outColor = (sp >= 1) ? colStack[sp-1] : vec4(0.0);
+        return (sp >= 1) ? distStack[sp-1] : 1.0e9;
+    }
+    float worldDistance(vec3 pw, out vec4 col) {
+        mat4 inv = mat4(field[0], field[1], field[2], field[3]);
+        vec3 pl = (inv * vec4(pw, 1.0)).xyz;
+        return fieldDistance(pl, col) * field[4].w;
+    }
+    vec3 fieldNormal(vec3 pw) {
+        float e = field[8].x > 0.0 ? field[8].x : 0.0008;
+        vec2 k = vec2(1.0, -1.0);
+        vec4 dummy;
+        return normalize(
+            k.xyy * worldDistance(pw + k.xyy * e, dummy) +
+            k.yyx * worldDistance(pw + k.yyx * e, dummy) +
+            k.yxy * worldDistance(pw + k.yxy * e, dummy) +
+            k.xxx * worldDistance(pw + k.xxx * e, dummy));
+    }
+    float softShadow(vec3 ro, vec3 rd, float maxt, float k, int steps) {
+        float res = 1.0;
+        float t = 0.02;
+        vec4 dummy;
+        for (int i = 0; i < steps; i++) {
+            if (t >= maxt) { break; }
+            float h = worldDistance(ro + rd * t, dummy);
+            if (h < 0.001) { return 0.0; }
+            res = min(res, k * h / t);
+            t += h * OLLIN_RAYMARCH_STEP_SCALE;
+        }
+        return clamp(res, 0.0, 1.0);
+    }
+    vec2 rayBox(vec3 ro, vec3 rd, vec3 lo, vec3 hi) {
+        vec3 inv = 1.0 / rd;
+        vec3 ta = (lo - ro) * inv;
+        vec3 tb = (hi - ro) * inv;
+        vec3 tmn = min(ta, tb), tmx = max(ta, tb);
+        float t0 = max(max(tmn.x, tmn.y), tmn.z);
+        float t1 = min(min(tmx.x, tmx.y), tmx.z);
+        return vec2(t0, t1);
+    }
+    void main() {
+        vec2 ndc = vec2(vClip.x, vClip.y * ollin_flip);
+        vec4 nearH = uInvVP * vec4(ndc, 0.0, 1.0);
+        vec4 farH = uInvVP * vec4(ndc, 1.0, 1.0);
+        vec3 nearW = nearH.xyz / nearH.w;
+        vec3 farW = farH.xyz / farH.w;
+        vec3 ro = nearW;
+        vec3 rd = normalize(farW - nearW);
+        vec3 boundsMin = field[4].xyz;
+        vec3 boundsMax = field[5].xyz;
+        float t0, t1;
+        if (field[5].w != 0.0) {
+            t0 = 0.0;
+            t1 = length(farW - nearW);
+        } else {
+            vec2 tb = rayBox(ro, rd, boundsMin, boundsMax);
+            t0 = max(tb.x, 0.0);
+            t1 = tb.y;
+            if (t1 < t0) { discard; }
+        }
+        float kPixel = 1.0 / (max(uProj[1][1], 1e-4)
+                              * max(uViewportSteps.y * max(uScale.x, 1e-3), 1.0));
+        bool orthographic = uProj[2][3] == 0.0;
+        float t = t0;
+        vec4 col = vec4(0.0);
+        bool hit = false;
+        float minRatio = 1.0e9;
+        float tNear = t0;
+        int steps = int(uViewportSteps.z + 0.5);
+        for (int i = 0; i < steps; i++) {
+            if (t > t1) { break; }
+            vec3 pw = ro + rd * t;
+            float d = worldDistance(pw, col);
+            if (d < OLLIN_RAYMARCH_EPS) { hit = true; break; }
+            float ratio = d / max((orthographic ? 1.0 : t) * kPixel, 1e-6);
+            if (ratio < minRatio) { minRatio = ratio; tNear = t; }
+            t += d * OLLIN_RAYMARCH_STEP_SCALE;
+        }
+        float coverage = 1.0;
+        vec3 pw;
+        if (hit) {
+            pw = ro + rd * t;
+        } else {
+            coverage = clamp(1.0 - minRatio, 0.0, 1.0);
+            if (coverage < 0.004) { discard; }
+            pw = ro + rd * tNear;
+            worldDistance(pw, col);
+        }
+        vec3 n = fieldNormal(pw);
+        float fieldShadow[4];
+        fieldShadow[0] = -1.0; fieldShadow[1] = -1.0; fieldShadow[2] = -1.0; fieldShadow[3] = -1.0;
+        int casterCount = int(uCounts.y + 0.5);
+        if (uEye.w != 0.0) {
+            float fieldDiag = length(boundsMax - boundsMin);
+            int shadowSteps = int(uViewportSteps.w + 0.5);
+            for (int c = 0; c < 4; c++) {
+                if (c >= casterCount) { break; }
+                int li = int(uCasters[c].x + 0.5);
+                vec4 Lpos = uLights[li * 5 + 1];
+                vec4 Ldir = uLights[li * 5 + 2];
+                int kind = int(uLights[li * 5 + 3].x + 0.5);
+                vec3 toLight; float maxt;
+                if (kind == 0) {
+                    toLight = Ldir.xyz; maxt = fieldDiag;
+                } else {
+                    vec3 dl = Lpos.xyz - pw;
+                    float dist = length(dl);
+                    toLight = dl / max(dist, 1e-5);
+                    maxt = min(dist, fieldDiag);
+                }
+                fieldShadow[c] = softShadow(pw + n * 0.015, toLight, maxt, OLLIN_SDF3D_SHADOW_K, shadowSteps);
+            }
+        }
+        vec3 baseRGB = srgbToLinear(col.rgb);
+        float baseA = col.a;
+        uint fillKind = uint(field[7].z + 0.5);
+        if (fillKind != 0u) {
+            vec4 clipP = uProj * (uView * vec4(pw, 1.0));
+            vec2 ndcP = clipP.xy / clipP.w;
+            vec2 screenP = vec2((ndcP.x * 0.5 + 0.5) * uViewportSteps.x,
+                                (0.5 - ndcP.y * 0.5) * uViewportSteps.y);
+            vec4 grad = resolvePaint(field[6], fillKind, field[7].w, screenP, 0.0);
+            baseRGB = grad.rgb;
+            baseA = grad.a;
+        }
+        vec4 lit = litColor(baseRGB, baseA, n, pw, fieldShadow);
+        vec4 clip = uProj * (uView * vec4(pw, 1.0));
+        fragColor = vec4(lit.rgb, lit.a * coverage);
+        gl_FragDepth = clip.z / clip.w;
+    }
+    """
+
+    /// `ollin_raymarch_upsample_fragment`: the reduced-resolution march read
+    /// back at full resolution, its color bilinear and its depth point-sampled,
+    /// the depth re-emitted as the fragment's own so the fields keep occluding
+    /// one another, the background left alone.
+    static let upsampleFragment = """
+    #version 300 es
+    precision highp float;
+    uniform sampler2D halfColor;
+    uniform sampler2D halfDepth;
+    uniform vec4 region;
+    uniform float ollin_flip;
+    in vec2 vClip;
+    out vec4 fragColor;
+    void main() {
+        vec2 uv = vec2(vClip.x * 0.5 + 0.5, vClip.y * ollin_flip * 0.5 + 0.5);
+        uv = min(uv * region.xy, region.zw);
+        vec4 c = texture(halfColor, uv);
+        if (c.a < 0.004) { discard; }
+        fragColor = c;
+        gl_FragDepth = texture(halfDepth, uv).r;
+    }
+    """
 }
 
 /// A user shader as a page fragment: the framework's wrapper written for the
@@ -778,7 +1399,9 @@ extension OllinApp {
         for frame in recording.frames {
             for (name, r) in frame.graph.fragmentRows { rows[name] = max(rows[name] ?? 0, r) }
         }
-        let shaders = try WebShaders.make(effects: rows, users: recording.shaders)
+        let shaders = try WebShaders.make(effects: rows, users: recording.shaders,
+                                          groups: recording.frames.contains { $0.graph.groupCount > 0 },
+                                          fields: recording.frames.contains { $0.graph.hasFields })
         let track = WebTrack(recording)
         let label = recording.description.isEmpty
             ? "\(recording.name), a sketch made with Ollin"
@@ -791,7 +1414,16 @@ extension OllinApp {
         script = script.replacingOccurrences(of: "@VPOS@", with: track.vertexPositions)
         script = script.replacingOccurrences(of: "@FIT@", with: track.fit)
         script = script.replacingOccurrences(of: "@EXTRA@", with: track.extra)
+        script = script.replacingOccurrences(of: "@SCENE@", with: track.scene)
         script = script.replacingOccurrences(of: "@HELPERS@", with: FormulaJS.helpers)
+        script = script.replacingOccurrences(of: "@GROUP_VS@", with: jsString(shaders.groupVertex))
+        script = script.replacingOccurrences(of: "@GROUP_FS@", with: jsString(shaders.groupFragment))
+        script = script.replacingOccurrences(of: "@FIELD_VS@", with: jsString(shaders.fieldVertex))
+        script = script.replacingOccurrences(of: "@FIELD_FS@", with: jsString(shaders.fieldFragment))
+        script = script.replacingOccurrences(of: "@UPSAMPLE_FS@", with: jsString(shaders.upsampleFragment))
+        let lut = recording.brdfLUT.isEmpty ? "[0, \"\"]"
+            : "[\(WebBRDFLUT.size), \"\(WebTrack.base64(recording.brdfLUT))\"]"
+        script = script.replacingOccurrences(of: "@BRDF@", with: lut)
         script = script.replacingOccurrences(of: "@SDF_VS@", with: jsString(shaders.sdfVertex))
         script = script.replacingOccurrences(of: "@SDF_FS@", with: jsString(shaders.sdfFragment))
         script = script.replacingOccurrences(of: "@PRESENT_VS@", with: jsString(shaders.presentVertex))
@@ -874,8 +1506,11 @@ extension OllinApp {
 /// surfaces: each layer is filled in the order the Mac filled it (drawn into,
 /// generated, filtered from another, combined from two, run by a user shader,
 /// or carried over from last frame by a feedback layer or a simulation), the
-/// canvas draws its shapes, its fills and strokes, and composites the layers
-/// it names, and the whole-frame filters run last. A track that draws
+/// canvas draws its shapes, its fills and strokes, its composed fields, and
+/// its raymarched fields (each field's program in a uniform block, the frame's
+/// camera and lights in a scene block that travels whole; a reduced march
+/// traces into a smaller target and upsamples once, as the Mac's does), and
+/// composites the layers it names, and the whole-frame filters run last. A track that draws
 /// triangles rasterizes every drawn surface through a multisampled buffer
 /// resolved into the surface, the way the Mac's passes resolve, so a fill's
 /// edge is anti-aliased there too; an accumulating canvas keeps its samples
@@ -901,6 +1536,7 @@ enum WebPlayer {
       var VPOS = "@VPOS@";
       var FIT = "@FIT@";
       var EXTRA = "@EXTRA@";
+      var SCENE = "@SCENE@";
       var SDF_VS = @SDF_VS@;
       var SDF_FS = @SDF_FS@;
       var PRESENT_VS = @PRESENT_VS@;
@@ -911,6 +1547,11 @@ enum WebPlayer {
       var TRI_VS = @TRI_VS@;
       var TRI_FS = @TRI_FS@;
       var FRINGE_FS = @FRINGE_FS@;
+      var GROUP_VS = @GROUP_VS@;
+      var GROUP_FS = @GROUP_FS@;
+      var FIELD_VS = @FIELD_VS@;
+      var FIELD_FS = @FIELD_FS@;
+      var UPSAMPLE_FS = @UPSAMPLE_FS@;
       var FX_VS = @FX_VS@;
       var BLUR_FS = @BLUR_FS@;
       var FX = @FX@;
@@ -919,8 +1560,9 @@ enum WebPlayer {
       var PICTURES = @PICTURES@;
       var ATLASES = @ATLASES@;
       var STRIP = @STRIP@;
+      var BRDF = @BRDF@;
       @HELPERS@
-      var F = 30, Q = 48, V = 7;
+      var F = 30, Q = 48, V = 7, G = 26, NF = 16, FF = 36, N3 = 16;
       var W = D.width, H = D.height;
       function ref(index) { return D.refs ? D.refs[index] : index; }
       function clearOf(index) { return D.clears ? D.clears[index] : D.clear; }
@@ -942,6 +1584,7 @@ enum WebPlayer {
       var vertexPositions = floats(VPOS);
       var fitData = floats(FIT);
       var extra = floats(EXTRA);
+      var sceneFloats = floats(SCENE);
 
       var gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false,
                                              premultipliedAlpha: false, preserveDrawingBuffer: true });
@@ -1001,6 +1644,56 @@ enum WebPlayer {
         }
         if (!solid) { var ps = program(TRI_VS, TRI_FS); solid = { p: ps, viewport: gl.getUniformLocation(ps, 'viewport'), flip: gl.getUniformLocation(ps, 'ollin_flip') }; }
         return solid;
+      }
+      // The node programs of the frame's fields, one field at a time, in a
+      // uniform block (four rows a node, 256 nodes at most, the recorder's own cap).
+      var nodeUBO = null;
+      function nodeBuffer() {
+        if (nodeUBO) return nodeUBO;
+        nodeUBO = gl.createBuffer();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, nodeUBO);
+        gl.bufferData(gl.UNIFORM_BUFFER, 16384, gl.DYNAMIC_DRAW);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, nodeUBO);
+        return nodeUBO;
+      }
+      function uploadNodes(view) {
+        gl.bindBuffer(gl.UNIFORM_BUFFER, nodeBuffer());
+        gl.bufferSubData(gl.UNIFORM_BUFFER, 0, view);
+      }
+      function bindNodes(p) {
+        var bi = gl.getUniformBlockIndex(p, 'Nodes');
+        if (bi !== 4294967295) gl.uniformBlockBinding(p, bi, 0);
+      }
+      // A composed 2D field: the covering quad under the VM fragment.
+      var groupP = null;
+      function groupProgram() {
+        if (groupP) return groupP;
+        var p = program(GROUP_VS, GROUP_FS);
+        bindNodes(p);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        groupP = { p: p, viewport: u('viewport'), flip: u('ollin_flip'), group: u('group'), gradients: u('gradients') };
+        return groupP;
+      }
+      // A raymarched 3D field: the fullscreen march, and the upsample of a
+      // reduced-resolution one.
+      var fieldP = null, upP = null;
+      function fieldProgram() {
+        if (fieldP) return fieldP;
+        var p = program(FIELD_VS, FIELD_FS);
+        bindNodes(p);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        fieldP = { p: p, flip: u('ollin_flip'), field: u('field'), view: u('uView'), proj: u('uProj'), invVP: u('uInvVP'),
+                   viewportSteps: u('uViewportSteps'), scale: u('uScale'), ambient: u('uAmbient'), eye: u('uEye'),
+                   counts: u('uCounts'), lights: u('uLights'), casters: u('uCasters'), material: u('uMaterial'),
+                   gradients: u('gradients'), brdf: u('brdfLUT') };
+        return fieldP;
+      }
+      function upsampleProgram() {
+        if (upP) return upP;
+        var p = program(FIELD_VS, UPSAMPLE_FS);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        upP = { p: p, color: u('halfColor'), depth: u('halfDepth'), region: u('region'), flip: u('ollin_flip') };
+        return upP;
       }
       // One program per framework fragment and per user shader, built on first use.
       var fxPrograms = {};
@@ -1134,6 +1827,50 @@ enum WebPlayer {
         gl.blitFramebuffer(0, 0, s.w, s.h, 0, s.h, s.w, 0, gl.COLOR_BUFFER_BIT, gl.NEAREST);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       }
+      // A depth buffer on a surface that marches 3D fields, so the fields
+      // occlude one another through it as the Mac's do; one on the
+      // multisampled buffer when the surface has one.
+      function ensureDepth(s) {
+        if (s.depthRB) return;
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, s.w, s.h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        s.depthRB = rb;
+      }
+      function ensureDepthMS(ms, s) {
+        if (!ms || ms.depthRB) return;
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, s.w, s.h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, ms.fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        ms.depthRB = rb;
+      }
+      // The reduced-resolution march's target, by size: a surface with a depth
+      // texture the upsample reads back.
+      var halfSurfaces = {};
+      function halfSurface(w, h) {
+        var key = w + 'x' + h;
+        if (halfSurfaces[key]) return halfSurfaces[key];
+        var s = makeSurface(w, h);
+        var dt = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, dt);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, w, h);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, dt, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        s.depthTex = dt;
+        halfSurfaces[key] = s;
+        return s;
+      }
       var pool = [], used = [];
       function acquire(w, h) {
         for (var i = 0; i < pool.length; i++) {
@@ -1185,6 +1922,15 @@ enum WebPlayer {
       else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
       clampLinear(strip);
       var uGradients = gl.getUniformLocation(sdf, 'gradients');
+      // The split-sum table a physically-based field prices its energy against,
+      // half floats as the Mac stores them.
+      var brdf = null;
+      if (BRDF[0] > 0) {
+        brdf = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, brdf);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, BRDF[0], BRDF[0], 0, gl.RG, gl.HALF_FLOAT, shorts(BRDF[1]));
+        clampLinear(brdf);
+      }
       // The pictures and the atlas pages, decoded by the browser (which is
       // asynchronous, so the first frame waits on `ready`). Each is loaded
       // through an image element from a data URL: a picture in flight that way
@@ -1341,8 +2087,31 @@ enum WebPlayer {
       var maxLength = D.stable ? base.length + vertexBase.length + vertexPositions.length : (D.lengths.length ? Math.max.apply(null, D.lengths) : 0);
       var scratch = new Float32Array(Math.max(1, maxLength));
       // Where each region of a graph's vector starts.
-      function vertexOffset(g) { return g.instances * F + g.quads * Q; }
+      function groupOffset(g) { return g.instances * F + g.quads * Q; }
+      function nodeOffset(g) { return groupOffset(g) + (g.groups || 0) * G; }
+      function fieldOffset(g) { return nodeOffset(g) + (g.nodes || 0) * NF; }
+      function node3DOffset(g) { return fieldOffset(g) + (g.fields || 0) * FF; }
+      function vertexOffset(g) { return node3DOffset(g) + (g.nodes3d || 0) * N3; }
       function paramOffset(g) { return vertexOffset(g) + g.vertices * V; }
+      // The scene block of frame `index`, moved `fraction` of the way to the
+      // next (the camera and the lights slide between records), or null.
+      var sceneScratch = null;
+      function sceneAt(index, fraction) {
+        if (!D.sceneOffsets) return null;
+        var u = ref(index), len = D.sceneLengths[u];
+        if (!len) return null;
+        var a = sceneFloats.subarray(D.sceneOffsets[u], D.sceneOffsets[u] + len);
+        if (fraction > 0 && D.stable) {
+          var u2 = ref((index + 1) % D.frames);
+          if (u2 !== u && D.sceneLengths[u2] === len) {
+            var b = sceneFloats.subarray(D.sceneOffsets[u2], D.sceneOffsets[u2] + len);
+            if (!sceneScratch || sceneScratch.length < len) sceneScratch = new Float32Array(len);
+            for (var i = 0; i < len; i++) sceneScratch[i] = a[i] + (b[i] - a[i]) * fraction;
+            return sceneScratch.subarray(0, len);
+          }
+        }
+        return a;
+      }
 
       // The frame's whole vector at frame `index`, moved `fraction` of the way
       // to the next: the shapes, the quads, the vertices, and the parameter rows.
@@ -1385,9 +2154,16 @@ enum WebPlayer {
         // samples by field, the parameter rows as floats.
         var g = graphOf(index);
         var si = D.offsets[u], pi = D.positionOffsets[u], vo2 = vertexOffset(g), count = paramOffset(g);
+        var go = groupOffset(g), no = nodeOffset(g), fo = fieldOffset(g), n3o = node3DOffset(g);
         for (var k = 0; k < count; k++) {
           if (k >= vo2 && (k - vo2) % V < P) { scratch[k] = vertexPositions[pi++]; continue; }
-          var c = k < g.instances * F ? (k % F) : (k < vo2 ? F + (k - g.instances * F) % Q : F + Q + (k - vo2) % V);
+          var c;
+          if (k < go) c = k < g.instances * F ? (k % F) : F + (k - g.instances * F) % Q;
+          else if (k < no) c = F + Q + (k - go) % G;
+          else if (k < fo) c = F + Q + G + (k - no) % NF;
+          else if (k < n3o) c = F + Q + G + NF + (k - fo) % FF;
+          else if (k < vo2) c = F + Q + G + NF + FF + (k - n3o) % N3;
+          else c = F + Q + G + NF + FF + N3 + (k - vo2) % V;
           scratch[k] = lows[c] + stream[si++] * scales[c];
         }
         var pstart = D.paramOffsets[u];
@@ -1467,19 +2243,141 @@ enum WebPlayer {
         gl.drawArrays(gl.TRIANGLES, 0, count * 6);
         gl.bindVertexArray(null);
       }
+      // The composed fields at group `start`, `count` of them, each its own draw:
+      // the group's rows as uniforms, its program in the node block.
+      var groupRows = new Float32Array(28);
+      function drawGroups(start, count, blend, w, h, flip, g) {
+        var e = groupProgram();
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, strip);
+        gl.uniform1i(e.gradients, 0);
+        setBlend(blend, true);
+        gl.bindVertexArray(null);
+        var go = groupOffset(g), no = nodeOffset(g);
+        for (var j = 0; j < count; j++) {
+          var at = go + (start + j) * G;
+          groupRows.set(scratch.subarray(at, at + G));
+          gl.uniform4fv(e.group, groupRows);
+          var ns = Math.round(scratch[at + 20]), nc = Math.round(scratch[at + 21]);
+          uploadNodes(scratch.subarray(no + ns * NF, no + (ns + nc) * NF));
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+      }
+      // The scene block as the field program's uniforms: the camera, the march
+      // budget with the scale this pass traces at, the lights, the casters.
+      var lightRows = new Float32Array(160), casterRows = new Float32Array(16);
+      function setScene(e, sc, scale) {
+        gl.uniformMatrix4fv(e.view, false, sc.subarray(0, 16));
+        gl.uniformMatrix4fv(e.proj, false, sc.subarray(16, 32));
+        gl.uniformMatrix4fv(e.invVP, false, sc.subarray(32, 48));
+        gl.uniform4fv(e.viewportSteps, sc.subarray(48, 52));
+        gl.uniform4f(e.scale, scale, sc[53], sc[54], sc[55]);
+        gl.uniform4fv(e.ambient, sc.subarray(56, 60));
+        gl.uniform4fv(e.eye, sc.subarray(60, 64));
+        gl.uniform4fv(e.counts, sc.subarray(64, 68));
+        var n = Math.min(8, Math.round(sc[64])), nc = Math.min(4, Math.round(sc[65]));
+        lightRows.fill(0); casterRows.fill(0);
+        lightRows.set(sc.subarray(68, 68 + n * 20));
+        casterRows.set(sc.subarray(68 + n * 20, 68 + n * 20 + nc * 4));
+        gl.uniform4fv(e.lights, lightRows);
+        gl.uniform4fv(e.casters, casterRows);
+      }
+      // The fields of one item, marched into the bound target under the depth
+      // test, the finish's rows as uniforms, each field's program in the node block.
+      function drawFields(item, w, h, flip, g, sc, scale) {
+        var e = fieldProgram();
+        gl.useProgram(e.p);
+        setScene(e, sc, scale);
+        gl.uniform1f(e.flip, flip);
+        var po = paramOffset(g) + item[4];
+        gl.uniform4fv(e.material, scratch.subarray(po, po + 36));
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, strip);
+        gl.uniform1i(e.gradients, 0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, brdf || blank);
+        gl.uniform1i(e.brdf, 1);
+        setBlend(item[3] || 0, true);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.depthMask(true);
+        gl.bindVertexArray(null);
+        var fo = fieldOffset(g), n3o = node3DOffset(g);
+        for (var j = 0; j < item[2]; j++) {
+          var at = fo + (item[1] + j) * FF;
+          gl.uniform4fv(e.field, scratch.subarray(at, at + FF));
+          var ns = Math.round(scratch[at + 28]), nc = Math.round(scratch[at + 29]);
+          uploadNodes(scratch.subarray(n3o + ns * N3, n3o + (ns + nc) * N3));
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+        gl.disable(gl.DEPTH_TEST);
+      }
+      // A reduced-resolution march: every field of the surface into a smaller
+      // target at the scene's scale (the Mac's coverage-adaptive fraction),
+      // then upsampled onto the target once, its depth re-emitted.
+      function drawFieldsReduced(items, target, w, h, flip, g, sc) {
+        var scale = sc[52], hw = Math.max(1, Math.round(sc[53])), hh = Math.max(1, Math.round(sc[54]));
+        var half = halfSurface(hw, hh);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, half.fbo);
+        gl.viewport(0, 0, hw, hh);
+        gl.clearColor(0, 0, 0, 0);
+        gl.depthMask(true);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        for (var i = 0; i < items.length; i++) {
+          if (items[i][0] === 'f') drawFields(items[i], w, h, 1, g, sc, scale);
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        gl.viewport(0, 0, target.w, target.h);
+        var e = upsampleProgram();
+        gl.useProgram(e.p);
+        gl.uniform1f(e.flip, flip);
+        gl.uniform4f(e.region, 1, 1, (hw - 0.5) / hw, (hh - 0.5) / hh);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, half.tex);
+        gl.uniform1i(e.color, 0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, half.depthTex);
+        gl.uniform1i(e.depth, 1);
+        setBlend(0, false);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.depthMask(true);
+        gl.bindVertexArray(null);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.disable(gl.DEPTH_TEST);
+      }
       // The items of one surface, in call order, into `surface` (its logical
       // size is the layer's, its raster the surface's). `results` holds each
-      // layer's texture this frame; `previous` the fronts of the feedback layers.
-      function drawItems(items, surface, w, h, clear, results, previous, g) {
+      // layer's texture this frame; `previous` the fronts of the feedback layers;
+      // `sc` the frame's scene block when the surface marches 3D fields.
+      function drawItems(items, surface, w, h, clear, results, previous, g, sc) {
         var ms = MSAA ? multisampled(surface) : null;
-        gl.bindFramebuffer(gl.FRAMEBUFFER, ms ? ms.fbo : surface.fbo);
+        var target = ms ? { fbo: ms.fbo, w: surface.w, h: surface.h } : surface;
+        if (sc) { ensureDepth(surface); ensureDepthMS(ms, surface); }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
         gl.viewport(0, 0, surface.w, surface.h);
         if (clear && clear.length) { gl.clearColor(clear[0], clear[1], clear[2], clear.length > 3 ? clear[3] : 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
-        var vo = vertexOffset(g), flip = ms ? -1 : 1;
+        if (sc) { gl.depthMask(true); gl.clear(gl.DEPTH_BUFFER_BIT); }
+        var vo = vertexOffset(g), flip = ms ? -1 : 1, reduced = false;
         for (var i = 0; i < items.length; i++) {
           var item = items[i];
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
+          if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
+          if (item[0] === 'f') {
+            if (!sc) continue;
+            if (sc[52] < 1.0) {
+              if (reduced) continue;
+              reduced = true;
+              drawFieldsReduced(items, target, w, h, flip, g, sc);
+            } else {
+              drawFields(item, w, h, flip, g, sc, 1.0);
+            }
+            continue;
+          }
           var count = item[4] || 1, qo = g.instances * F;
           if (item[0] === 'a') { drawQuads(item[2], count, atlases[item[1]] || blank, item[3] || 0, 'glyph', w, h, qo, flip); continue; }
           if (item[0] === 'm') { drawQuads(item[2], count, pictures[item[1]] || blank, item[3] || 0, 'picture', w, h, qo, flip); continue; }
@@ -1623,9 +2521,10 @@ enum WebPlayer {
               break;
           }
         }
-        // The canvas, then the whole-frame filters through a spare pair.
+        // The canvas (with the frame's scene when it marches fields), then the
+        // whole-frame filters through a spare pair.
         var clear = clearOf(index);
-        drawItems(g.canvas, main, W, H, clear.length ? clear : null, results, previous, g);
+        drawItems(g.canvas, main, W, H, clear.length ? clear : null, results, previous, g, g.fields ? sceneAt(index, fraction) : null);
         var shown = main;
         for (var pi = 0; pi < g.post.length; pi++) {
           var target = acquire(W, H);
@@ -1797,6 +2696,8 @@ public extension OllinApp {
         let passes = track.passCount
         if passes > 0 { live.append("\(passes) shader passes a frame") }
         if track.vertexCount > 0 { live.append("\(track.vertexCount) triangle vertices in the fullest frame") }
+        if track.groupCount > 0 { live.append("\(track.groupCount) composed field\(track.groupCount == 1 ? "" : "s") a frame") }
+        if track.fieldCount > 0 { live.append("\(track.fieldCount) raymarched field\(track.fieldCount == 1 ? "" : "s") a frame") }
         let assetBytes = recording.pictures.reduce(0) { $0 + $1.data.count } + recording.atlases.reduce(0) { $0 + $1.png.count }
         if assetBytes > 0 {
             var assets: [String] = []

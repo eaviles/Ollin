@@ -35,8 +35,8 @@ struct FieldCoverageTests {
     func coverageShrinksAsTheCameraDolliesOut() throws {
         guard let renderer = try makeRenderer() else { return }
         let unit = box(min: SIMD3(-1, -1, -1), max: SIMD3(1, 1, 1))
-        let near = renderer.fieldScreenCoverage([unit], viewProjection: viewProjection(eyeZ: 4))
-        let far = renderer.fieldScreenCoverage([unit], viewProjection: viewProjection(eyeZ: 20))
+        let near = MetalRenderer.fieldScreenCoverage([unit], viewProjection: viewProjection(eyeZ: 4))
+        let far = MetalRenderer.fieldScreenCoverage([unit], viewProjection: viewProjection(eyeZ: 20))
         #expect(near > far)
         #expect(far > 0)                 // on screen, so it still contributes
         #expect(far < 0.05)              // a dollied-out box covers little of the screen
@@ -47,11 +47,11 @@ struct FieldCoverageTests {
         guard let renderer = try makeRenderer() else { return }
         // Camera inside the box: a corner lands at/behind the camera plane.
         let room = box(min: SIMD3(-5, -5, -5), max: SIMD3(5, 5, 5))
-        #expect(renderer.fieldScreenCoverage([room], viewProjection: viewProjection(eyeZ: 0.5)) == 1.0)
+        #expect(MetalRenderer.fieldScreenCoverage([room], viewProjection: viewProjection(eyeZ: 0.5)) == 1.0)
         // An unbounded field (a plane) spans the screen.
         var plane = box(min: SIMD3(repeating: 0), max: SIMD3(repeating: 0))
         plane.unbounded = 1
-        #expect(renderer.fieldScreenCoverage([plane], viewProjection: viewProjection(eyeZ: 10)) == 1.0)
+        #expect(MetalRenderer.fieldScreenCoverage([plane], viewProjection: viewProjection(eyeZ: 10)) == 1.0)
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -60,9 +60,9 @@ struct FieldCoverageTests {
         let vp = viewProjection(eyeZ: 10)
         // Far off to the side, in front of the camera: clipped to zero area.
         let aside = box(min: SIMD3(99, -1, -1), max: SIMD3(101, 1, 1))
-        #expect(renderer.fieldScreenCoverage([aside], viewProjection: vp) == 0)
+        #expect(MetalRenderer.fieldScreenCoverage([aside], viewProjection: vp) == 0)
         // Many screen-filling fields: the sum caps at 1.
         let big = box(min: SIMD3(-8, -8, -1), max: SIMD3(8, 8, 1))
-        #expect(renderer.fieldScreenCoverage([big, big, big], viewProjection: vp) == 1.0)
+        #expect(MetalRenderer.fieldScreenCoverage([big, big, big], viewProjection: vp) == 1.0)
     }
 }

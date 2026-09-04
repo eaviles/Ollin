@@ -46,6 +46,24 @@ constant constexpr float OLLIN_RAYMARCH_EPS        = 0.001;
 // dial-resolved `Uniforms3D.raymarchSteps.y`.
 constant constexpr float OLLIN_SDF3D_SHADOW_K      = 10.0;
 
+// OLLIN_LIB_BEGIN raymarch
+// The distance functions, the leaf switch, the 3D combine, and the query-point
+// transforms, cut out for the web page by the markers around them (WebShaderLibrary);
+// the march itself reads the node buffer and stays behind, the page writes its own
+// walk over the same functions. The instruction record is the header's `SDFNode3D`,
+// declared here for the page alone under a guard Metal never enters.
+#ifndef __METAL_VERSION__
+struct SDFNode3D {
+    uint kind;
+    uint sel;
+    float k;
+    float extra;
+    float4 color;
+    float4 geo0;
+    float4 geo1;
+};
+#endif
+
 // --- 3D distance functions (dot2 comes from the shared library segment) ---
 static float ollin_sd3_sphere(float3 p, float r) { return length(p) - r; }
 
@@ -268,9 +286,9 @@ static float ollin_sdf3d_eval(uint shape, float3 p, float4 geo0, float4 geo1) {
     case 12u: return ollin_sd3_pyramid(p, geo0.x, geo0.y);            // pyramid: base, height
     case 13u: return ollin_sd3_capped_torus(p, geo0.xy, geo0.z, geo0.w); // capped torus: (sin,cos), ring, tube
     case 14u: return ollin_sd3_link(p, geo0.x, geo0.y, geo0.z);       // link: half-stretch, ring, tube
-    case 15u: return ollin_sd3_mandelbulb(p, geo0.x, geo0.y, int(geo0.z));        // mandelbulb: unit, power, iterations
-    case 16u: return ollin_sd3_menger(p, geo0.x, int(geo0.y));                    // menger sponge: half-side, iterations
-    case 17u: return ollin_sd3_mandelbox(p, geo0.x, geo0.y, int(geo0.z), geo0.w,  // mandelbox: unit, scale, iterations, clip
+    case 15u: return ollin_sd3_mandelbulb(p, geo0.x, geo0.y, int(geo0.z + 0.5));  // mandelbulb: unit, power, iterations
+    case 16u: return ollin_sd3_menger(p, geo0.x, int(geo0.y + 0.5));              // menger sponge: half-side, iterations
+    case 17u: return ollin_sd3_mandelbox(p, geo0.x, geo0.y, int(geo0.z + 0.5), geo0.w,  // mandelbox: unit, scale, iterations, clip
                                          geo1.x, geo1.y, geo1.z);                 //   + min radius², fixed radius², fold limit
     default: return ollin_sd3_plane(p, geo0.xyz, geo0.w);             // plane (9): unit normal, signed offset
     }
@@ -443,6 +461,8 @@ static float3 ollin_sdf3d_xform(float3 p, SDFNode3D nd) {
         return p;
     }
 }
+
+// OLLIN_LIB_END raymarch
 
 // Walk the field's node program at field-local point `p0`, returning distance + color
 // (the value-stack top). Two fixed-depth stacks, clamped on overflow (the CPU also caps).

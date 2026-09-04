@@ -1075,16 +1075,24 @@ extension MetalRenderer {
     /// (surface-resolution) parameter, not a hardware-RT one, so the tiers are GPU-independent; the
     /// `.performance` *render-scale* drop (`resolveRaymarchScale`) is the bigger lever.
     private func resolveRaymarchSteps(_ setting: RaymarchQualitySetting) -> (march: Int32, shadow: Int32) {
+        Self.raymarchBudget(setting, automatic: automaticQuality, override: raymarchStepsOverride)
+    }
+
+    /// The budgets for a setting under a given automatic quality (what `.default`
+    /// resolves to: the live tier, or `.detail` on an export), so a recorder with
+    /// no device (the web page's) resolves them exactly as the export does.
+    nonisolated static func raymarchBudget(_ setting: RaymarchQualitySetting, automatic: RenderQuality,
+                               override: Int? = nil) -> (march: Int32, shadow: Int32) {
         func pair(_ march: Int) -> (Int32, Int32) {
             let m = max(16, min(march, 512))
             return (Int32(m), Int32(max(8, m * 3 / 8)))   // shadow ≈ 3/8 of the march (128→48)
         }
-        if let override = raymarchStepsOverride { return pair(override) }
+        if let override { return pair(override) }
         switch setting {
         case .absolute(let n): return pair(n)
         case .resolution: return (128, 48)   // a custom-resolution field keeps the default march budget
         case .tier(let quality):
-            switch effectiveQuality(quality) {
+            switch quality == .default ? automatic : quality {
             case .performance: return (64, 24)
             case .default:     return (128, 48)   // live `.default`; export lifts to `.detail`
             case .detail:      return (192, 72)
@@ -1101,11 +1109,16 @@ extension MetalRenderer {
     /// 1.0 skips the pre-pass), so `--export`/snapshots are never downscaled and stay
     /// byte-identical. An absolute step count also marches at full resolution.
     func resolveRaymarchScale(_ setting: RaymarchQualitySetting) -> Double {
+        Self.raymarchScale(setting, automatic: automaticQuality)
+    }
+
+    /// The scale for a setting under a given automatic quality (see `raymarchBudget`).
+    nonisolated static func raymarchScale(_ setting: RaymarchQualitySetting, automatic: RenderQuality) -> Double {
         switch setting {
         case .absolute: return 1.0
         case .resolution(let f): return min(1.0, max(0.1, f))   // an exact fraction (clamped)
         case .tier(let q):
-            switch effectiveQuality(q) {
+            switch q == .default ? automatic : q {
             case .detail:      return 1.0
             case .default:     return 0.5
             case .performance: return 0.25
@@ -1126,7 +1139,7 @@ extension MetalRenderer {
     /// marched-pixel count the fraction allows when the field fills the screen. A dollied-out
     /// field therefore stays crisp instead of dissolving into an upsampled blur, and the cost
     /// never exceeds what the chosen fraction already costs at full coverage.
-    func fieldScreenCoverage(_ groups: [SDF3DGroupInstance], viewProjection: simd_float4x4) -> Double {
+    nonisolated static func fieldScreenCoverage(_ groups: [SDF3DGroupInstance], viewProjection: simd_float4x4) -> Double {
         var total = 0.0
         for g in groups {
             if g.unbounded != 0 { return 1.0 }   // a plane spans the screen
@@ -1163,7 +1176,7 @@ extension MetalRenderer {
     }
 
     /// The area of a small point set's convex hull (Andrew's monotone chain + shoelace).
-    static func convexHullArea(_ points: [SIMD2<Double>]) -> Double {
+    nonisolated static func convexHullArea(_ points: [SIMD2<Double>]) -> Double {
         guard points.count >= 3 else { return 0 }
         let p = points.sorted { $0.x != $1.x ? $0.x < $1.x : $0.y < $1.y }
         func cross(_ o: SIMD2<Double>, _ a: SIMD2<Double>, _ b: SIMD2<Double>) -> Double {
@@ -1304,7 +1317,7 @@ extension MetalRenderer {
         // Coverage-adaptive scale: trace denser as the fields cover less of the screen, at the
         // same marched-pixel budget. At/above full resolution skip the pre-pass entirely: the
         // inline march is both crisper (no upsample) and cheaper (no second pass).
-        let coverage = fieldScreenCoverage(groups3D,
+        let coverage = Self.fieldScreenCoverage(groups3D,
                                            viewProjection: uniforms3D.projection * uniforms3D.view)
         let scale = min(1.0, baseScale / max(coverage.squareRoot(), 1e-3))
         guard scale < 1.0 else { return nil }

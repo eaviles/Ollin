@@ -13,17 +13,26 @@ package enum WebShaderLibrary {
 
     /// The sections the framework's own segments mark for the page, beyond the
     /// helper library: `shapes` (the analytic primitives' coverage, in
-    /// `ShaderShapes.metal`) and `present` (the dither and the tone-map curve, in
-    /// `ShaderCore.metal` and `ShaderEffects.metal`). Each is cut from the
-    /// segment text with the same markers, so the page draws from one source.
-    package static let segmentSectionNames = ["shapes", "present"]
+    /// `ShaderShapes.metal`), `present` (the dither and the tone-map curve, in
+    /// `ShaderCore.metal` and `ShaderEffects.metal`), `combinator` (the composed
+    /// field VM's joint ops, combine switch, and point transforms, in
+    /// `ShaderCombinator.metal`), and `raymarch` (the 3D distance functions, the
+    /// leaf switch, the 3D combine, and the 3D point transforms, in
+    /// `ShaderRaymarch.metal`). Each is cut from the segment text with the same
+    /// markers, so the page draws from one source.
+    package static let segmentSectionNames = ["shapes", "present", "combinator", "raymarch"]
 
     /// The sections `wanted` needs, with the library's own dependencies added:
     /// `base` always, `hash` under `noise`, both under `visual`, `sdf` under
-    /// `shapes`, and `hash` under `present`.
+    /// `shapes`, `hash` under `present`, and `combinator`, `noise` (the 3D
+    /// roughening reads value noise), and `sdf` (the cone reads `dot2`) under
+    /// `raymarch`.
     package static func closure(of wanted: Set<String>) -> Set<String> {
         var sections = wanted
         sections.insert("base")
+        if sections.contains("raymarch") {
+            sections.insert("combinator"); sections.insert("noise"); sections.insert("sdf")
+        }
         if sections.contains("noise") { sections.insert("hash") }
         if sections.contains("visual") { sections.insert("hash"); sections.insert("noise") }
         if sections.contains("shapes") { sections.insert("sdf") }
