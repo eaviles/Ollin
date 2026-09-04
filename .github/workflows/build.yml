@@ -237,10 +237,19 @@ jobs:
       # goes public, rather than against a billed runner now. Checked again on
       # 2026-09-04: the image is still on Swift 6.3.3 and still emits the merged
       # bundle.
+      #
+      # The run goes through Scripts/ci-test.sh, a watchdog over `swift test`:
+      # after fifteen minutes with no output it samples every test process
+      # (each thread's stack lands in this log), kills the run, and exits 124.
+      # Two runs in one day went silent at about ten minutes in, on a tree that
+      # had just passed, and sat there until the cap. A killed process loses
+      # its buffered last lines, so the log named nothing; the sample is the
+      # diagnosis a machine nobody can attach to can still give. The cap below
+      # stays as the outer bound.
       - name: Test (excluding GPU snapshots)
         timeout-minutes: 45
         run: >-
-          swift test --skip
+          Scripts/ci-test.sh --skip
           'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
 
   # The anti-rot guard: every sketch still compiles against the current API.

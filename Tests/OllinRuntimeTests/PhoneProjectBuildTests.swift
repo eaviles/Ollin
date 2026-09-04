@@ -17,12 +17,16 @@ private let xcodegenInstalled: Bool = {
 /// It builds for the generic iOS destination with signing off, so it needs no
 /// device and no team, and it keeps one derived-data folder under `.build` so
 /// the framework compiles for the phone cold once ever rather than once per
-/// run. The time limit is the hang backstop for a wedged subprocess.
+/// run. The time limit is the hang backstop for a wedged subprocess, and the
+/// build is waited on asynchronously so that backstop can act: a blocking
+/// wait cannot be cancelled, and on a three-core runner it parked one of the
+/// three cooperative threads for the ten minutes the build took, with every
+/// other suite queued behind that thread.
 @Suite("The phone project builds", .serialized, .timeLimit(.minutes(15)))
 struct PhoneProjectBuildTests {
 
     @Test("The host ollin phone writes compiles for iOS", .enabled(if: xcodegenInstalled, "xcodegen is not installed"))
-    func theHostCompilesForIOS() throws {
+    func theHostCompilesForIOS() async throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
         let sketch = repository.appendingPathComponent("Apps/OllinSketchApp/Sources/TouchRings.swift").path
         let folder = FileManager.default.temporaryDirectory
@@ -32,11 +36,11 @@ struct PhoneProjectBuildTests {
         let plan = try PhoneProject.plan(sketchPath: sketch, frameworkPath: repository.path, team: "ABCDE12345")
         try plan.write(to: folder)
 
-        let generated = Self.run(["xcodegen", "generate", "--quiet"], in: folder)
+        let generated = try await Self.run(["xcodegen", "generate", "--quiet"], in: folder)
         #expect(generated.status == 0, Comment(rawValue: generated.output))
 
         let derivedData = repository.appendingPathComponent(".build/PhoneProjectBuild/DerivedData")
-        let build = Self.run([
+        let build = try await Self.run([
             "xcodebuild",
             "-project", folder.appendingPathComponent("OllinPhone.xcodeproj").path,
             "-scheme", "OllinPhone",
@@ -61,17 +65,42 @@ struct PhoneProjectBuildTests {
         return nil
     }
 
-    private static func run(_ command: [String], in directory: URL) -> (status: Int32, output: String) {
+    /// Runs `command` and returns its status and everything it printed. The
+    /// process is waited on through its termination handler, so no thread is
+    /// parked, and its output goes to a file rather than a pipe, so a child
+    /// that outlives it holds nothing open. Cancelling the task (the suite's
+    /// time limit) terminates the process, which is what resumes the wait.
+    private static func run(_ command: [String], in directory: URL) async throws -> (status: Int32, output: String) {
+        let output = directory.appendingPathComponent("\(command[0])-\(UUID().uuidString).log")
+        guard FileManager.default.createFile(atPath: output.path, contents: nil) else {
+            return (127, "could not create \(output.path)")
+        }
+        let handle = try FileHandle(forWritingTo: output)
+        defer { try? FileManager.default.removeItem(at: output) }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = command
         process.currentDirectoryURL = directory
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        do { try process.run() } catch { return (127, "\(error)") }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return (process.terminationStatus, String(decoding: data, as: UTF8.self))
+        process.standardOutput = handle
+        process.standardError = handle
+
+        let status: Int32 = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                process.terminationHandler = { finished in
+                    continuation.resume(returning: finished.terminationStatus)
+                }
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        } onCancel: {
+            if process.isRunning { process.terminate() }
+        }
+        try? handle.close()
+        let text = (try? String(contentsOf: output, encoding: .utf8)) ?? ""
+        return (status, text)
     }
 }
