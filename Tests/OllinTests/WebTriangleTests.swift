@@ -261,7 +261,7 @@ import OllinWebGate
         #expect(track.vertexPositions.count == (total * WebVertex.positionFloats * 4 + 2) / 3 * 4)
         #expect(track.meta.contains("\"positionOffsets\":[0,"))
         let meta = try #require(try JSONSerialization.jsonObject(with: Data(track.meta.utf8)) as? [String: Any])
-        let ranges = try #require(meta["ranges"] as? [Double])
+        let ranges = WebTrack.floats(track.ranges)
         #expect(ranges.count == 2 * (WebInstance.floats + WebQuad.floats + WebGroup.floats + WebNode.floats
                                      + WebField.floats + WebNode3D.floats + WebVertex.floats))
         let graphs = try #require(meta["graphs"] as? [[String: Any]])

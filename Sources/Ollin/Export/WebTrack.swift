@@ -36,6 +36,15 @@ struct WebTrack {
     /// field quantized inside its own range across the frame (`meta.vranges`),
     /// for a stable cast; empty otherwise.
     var vertexBase: String
+    /// Base64 float32: each sampled column's range (low, high) in `varying`
+    /// order for a stable cast, or each field's range across the track for a
+    /// changing one. As JSON text a range would weigh thirty-some bytes a
+    /// column, twice what the column's samples weigh over a short recording;
+    /// as float32 it is eight.
+    var ranges: String
+    /// Base64 uint32: the sampled columns' indices into the frame vector, for
+    /// a stable cast; empty otherwise.
+    var varying: String
     /// Base64 float32: the fitted columns' coefficients (the mean, then a
     /// frequency, a cosine, and a sine per term), in `meta.fit` order.
     var fit: String
@@ -69,10 +78,26 @@ struct WebTrack {
     /// fields.
     var groupCount: Int
     var fieldCount: Int
+    /// What the track weighs on the page by part (`shapes and passes`,
+    /// `stroke and fill vertices`, `scenes`, `controls`), each as the bytes it
+    /// takes written out, split into what is stored once and what is stored
+    /// per frame, so a refusal can say whether fewer frames would help.
+    var weights: [WebWeight]
 
     /// The largest fraction of the frame count a column's fit may spend on
     /// terms and still be worth more than its samples.
     static let maxTermFraction = 8
+
+    /// The most triangle vertices any frame of `recording` draws.
+    static func vertexCount(of recording: WebRecording) -> Int {
+        recording.frames.map(\.graph.vertexCount).max() ?? 0
+    }
+
+    /// Raw bytes as they weigh once base64 encoded (four characters for
+    /// every three bytes).
+    static func encoded(_ rawBytes: Int) -> Int {
+        (rawBytes + 2) / 3 * 4
+    }
 
     init(_ recording: WebRecording) {
         // Consecutive duplicates fold onto one record. A frame's scene block
@@ -159,6 +184,9 @@ struct WebTrack {
         var fittedColumns = 0
         var fitTerms = 0
         var sampledColumns = 0
+        // Raw bytes by part, before base64: the shapes (with the quads, the
+        // fields, the pass rows) and the vertices, each stored once or per frame.
+        var shapesOnce = 0, shapesPerFrame = 0, verticesOnce = 0, verticesPerFrame = 0
 
         if stable, let first = uniques.first {
             // The shapes, the quads, and the rows as floats; the vertices, the
@@ -181,6 +209,9 @@ struct WebTrack {
                 if f < p { vertexPositions.append(first.vector[i]) }
                 else { vertexBase.append(Self.quantize(first.vector[i], in: fieldRanges[f - p])) }
             }
+            shapesOnce += base.count * 4
+            verticesOnce += vertexPositions.count * 4 + vertexBase.count * 2
+            func isVertexColumn(_ column: Int) -> Bool { column >= vo && column < po }
             var moving: [Int] = []
             for column in first.vector.indices where uniques.contains(where: { $0.vector[column] != first.vector[column] }) {
                 moving.append(column)
@@ -214,8 +245,13 @@ struct WebTrack {
                     }
                     fittedColumns += 1
                     fitTerms += f.terms.count
+                    let fitBytes = (1 + 3 * f.terms.count) * 4
+                    if isVertexColumn(column) { verticesOnce += fitBytes } else { shapesOnce += fitBytes }
                 } else {
                     sampled.append(column)
+                    // Its samples per frame, its range and index once.
+                    if isVertexColumn(column) { verticesPerFrame += 2 * uniques.count; verticesOnce += 12 }
+                    else { shapesPerFrame += 2 * uniques.count; shapesOnce += 12 }
                 }
             }
             sampledColumns = sampled.count
@@ -233,7 +269,7 @@ struct WebTrack {
             meta["stable"] = true
             meta["count"] = first.graph.instanceCount
             meta["vranges"] = vertexRanges
-            meta["varying"] = sampled
+            self.varying = Self.base64(sampled.map { UInt32($0) })
             meta["fit"] = fitIndex
             meta["drive"] = drives
             meta["graph"] = first.graph.meta
@@ -269,6 +305,8 @@ struct WebTrack {
             if !any { fieldRanges = [(Float, Float)](repeating: (0, 0), count: fields) }
             for c in fieldRanges.indices where fieldRanges[c].0 > fieldRanges[c].1 { fieldRanges[c] = (0, 0) }
             for (lo, hi) in fieldRanges { ranges.append(lo); ranges.append(hi) }
+            shapesOnce += fields * 8
+            self.varying = ""
             var offsets: [Int] = []
             var positionOffsets: [Int] = []
             var lengths: [Int] = []
@@ -283,8 +321,12 @@ struct WebTrack {
                     if isPosition(i, u.graph) { vertexPositions.append(u.vector[i]) }
                     else { samples.append(Self.quantize(u.vector[i], in: fieldRanges[field(i, u.graph)])) }
                 }
+                let vertexFloats = u.graph.paramOffset - u.graph.vertexOffset
+                verticesPerFrame += vertexFloats / v * (p * 4 + (v - p) * 2)
+                shapesPerFrame += u.graph.vertexOffset * 2
                 paramOffsets.append(extra.count)
                 extra.append(contentsOf: u.vector[u.graph.paramOffset...])
+                shapesPerFrame += (u.vector.count - u.graph.paramOffset) * 4
                 if let gi = graphs.firstIndex(of: u.graph) { graphOf.append(gi) }
                 else { graphs.append(u.graph); graphOf.append(graphs.count - 1) }
             }
@@ -296,7 +338,7 @@ struct WebTrack {
             meta["graphs"] = graphs.map(\.meta)
             meta["graphOf"] = graphOf
         }
-        meta["ranges"] = ranges
+        self.ranges = Self.base64(ranges)
         // The formulas travel only when a column reads one live; the page then
         // evaluates every formula, since one may read another.
         meta["formulas"] = drives.isEmpty ? [] : recording.formulas.map(\.meta)
@@ -334,6 +376,13 @@ struct WebTrack {
         meta["axes"] = axesMeta
         self.axisData = Self.base64(axisFloats)
         self.wiredColumns = wired
+        var weights = [
+            WebWeight(name: "shapes and passes", once: Self.encoded(shapesOnce), perFrame: Self.encoded(shapesPerFrame)),
+            WebWeight(name: "stroke and fill vertices", once: Self.encoded(verticesOnce), perFrame: Self.encoded(verticesPerFrame)),
+        ]
+        if !sceneFloats.isEmpty { weights.append(WebWeight(name: "scenes", once: 0, perFrame: Self.encoded(sceneFloats.count * 4))) }
+        if !axisFloats.isEmpty { weights.append(WebWeight(name: "controls", once: Self.encoded(axisFloats.count * 4), perFrame: 0)) }
+        self.weights = weights.filter { $0.bytes > 0 }
 
         self.drivenColumns = drivenColumns
         self.fittedColumns = fittedColumns
@@ -446,6 +495,33 @@ struct WebTrack {
             withUnsafeBytes(of: &bits) { data.append(contentsOf: $0) }
         }
         return data.base64EncodedString()
+    }
+
+    /// Little-endian uint32 bytes, base64.
+    static func base64(_ values: [UInt32]) -> String {
+        var data = Data(capacity: values.count * 4)
+        for v in values {
+            var bits = v.littleEndian
+            withUnsafeBytes(of: &bits) { data.append(contentsOf: $0) }
+        }
+        return data.base64EncodedString()
+    }
+
+    /// The float32 values a base64 string of them holds (the tests read a
+    /// track back through it).
+    static func floats(_ base64: String) -> [Float] {
+        guard let data = Data(base64Encoded: base64) else { return [] }
+        return data.withUnsafeBytes { raw in
+            (0 ..< raw.count / 4).map { Float(bitPattern: UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: $0 * 4, as: UInt32.self))) }
+        }
+    }
+
+    /// The uint32 values a base64 string of them holds.
+    static func ints(_ base64: String) -> [UInt32] {
+        guard let data = Data(base64Encoded: base64) else { return [] }
+        return data.withUnsafeBytes { raw in
+            (0 ..< raw.count / 4).map { UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: $0 * 4, as: UInt32.self)) }
+        }
     }
 
     /// Little-endian uint16 bytes, base64.

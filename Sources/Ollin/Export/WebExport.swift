@@ -131,6 +131,166 @@ public struct WebExportRefusal: Error, CustomStringConvertible, Equatable {
     }
 }
 
+/// One part of a page's weight: what it is, how many bytes of the page it
+/// takes (as written, base64 and all), and how much of that a longer
+/// recording would grow, so a refusal can say whether fewer frames would
+/// help. The parts of a page sum to the page.
+struct WebWeight: Equatable {
+    /// `shapes`, `vertices`, `scenes`, `controls`, `pictures`, `atlas pages`,
+    /// or `shaders and player`.
+    var name: String
+    /// Bytes stored once for the whole track.
+    var once: Int
+    /// Bytes stored per recorded frame, over every frame.
+    var perFrame: Int
+    var bytes: Int { once + perFrame }
+    /// Whether recording fewer frames would take most of this part away.
+    var growsWithFrames: Bool { perFrame > once }
+}
+
+/// The least a page can weigh, worked out frame by frame as a recording
+/// runs, from what the frames seen so far must put on it whatever the
+/// packing does: the first frame's vertices and shapes travel once (a stable
+/// cast's base, or the first record of a changing one); once the cast has
+/// changed, every frame that differs from the one before travels whole;
+/// every picture travels; and, on a recording that is not a lap and drives
+/// nothing by formula, a column that has moved once is sampled in every
+/// unique frame at two bytes, so the columns seen moving so far cost that
+/// over the frames so far. (A lap may fit a moving column to a few sines and
+/// a formula may carry one for nothing, so there those columns are left
+/// out, and the page is checked once assembled.) A drawing dense enough is
+/// refused at its first frame, and a moving one within its first few, before
+/// the recording holds the frames the page would never get.
+struct WebWeightBound {
+    /// Whether a moving column is sure to be sampled per frame.
+    var samplesMovingColumns: Bool
+    private var first: WebFrame?
+    private var moved: [Bool] = []
+    private var movingColumns = 0
+    private var uniqueFrames = 0
+    private var changing = false
+    private var onceBytes = 0
+    private var perFrameBytes = 0
+    private var pictureBytes = 0
+    private var fullestVertices = 0
+
+    init(samplesMovingColumns: Bool = false) {
+        self.samplesMovingColumns = samplesMovingColumns
+    }
+
+    /// What the moving columns of a stable cast have cost so far: their
+    /// samples over the unique frames, and each one's range and index.
+    private var movingBytes: Int {
+        changing || !samplesMovingColumns ? 0 : WebTrack.encoded(movingColumns * (2 * uniqueFrames + 12))
+    }
+
+    var bytes: Int { onceBytes + perFrameBytes + movingBytes + pictureBytes }
+
+    mutating func add(_ frame: WebFrame, previous: WebFrame?, pictureBytes pictures: Int) {
+        fullestVertices = max(fullestVertices, frame.graph.vertexCount)
+        pictureBytes = WebTrack.encoded(pictures)
+        let v = WebVertex.floats, p = WebVertex.positionFloats
+        guard let first else {
+            self.first = frame
+            uniqueFrames = 1
+            moved = [Bool](repeating: false, count: frame.vector.count)
+            onceBytes = WebTrack.encoded(frame.graph.vertexCount * (p * 4 + (v - p) * 2) + frame.graph.vertexOffset * 4)
+            return
+        }
+        let unique = previous.map { $0.vector != frame.vector || $0.graph != frame.graph } ?? true
+        if unique { uniqueFrames += 1 }
+        if !changing, frame.graph != first.graph || frame.vector.count != first.vector.count { changing = true; moved = [] }
+        if changing {
+            if unique {
+                perFrameBytes += WebTrack.encoded(frame.graph.vertexCount * (p * 4 + (v - p) * 2) + frame.graph.vertexOffset * 2)
+            }
+        } else if samplesMovingColumns, unique {
+            for i in moved.indices where !moved[i] && frame.vector[i] != first.vector[i] {
+                moved[i] = true
+                movingColumns += 1
+            }
+        }
+    }
+
+    func refusal(maxBytes: Int, seen: Int, of total: Int) -> WebWeightRefusal {
+        let vertexBytes = onceBytes + perFrameBytes + movingBytes
+        if pictureBytes > vertexBytes {
+            return WebWeightRefusal(bytes: bytes, maxBytes: maxBytes, heaviest: "pictures", heaviestBytes: pictureBytes,
+                                    growsWithFrames: true, detail: "one per frame the picture changed", seen: (seen, total))
+        }
+        var detail = "\(fullestVertices) vertices in the fullest frame"
+        if !changing, movingColumns > 0 { detail += ", \(movingColumns) columns moving" }
+        return WebWeightRefusal(bytes: bytes, maxBytes: maxBytes, heaviest: "stroke and fill vertices",
+                                heaviestBytes: vertexBytes, growsWithFrames: perFrameBytes + movingBytes > onceBytes,
+                                detail: detail, seen: (seen, total))
+    }
+}
+
+/// Why a page was not written: it would weigh more than the export allows.
+/// A page past the budget is a page a browser struggles to open and a host
+/// refuses to serve, so the exporter stops instead and says what made it
+/// heavy, whether recording fewer frames would help, that the sketch exports
+/// as video, and the flag that writes the page anyway.
+public struct WebWeightRefusal: Error, CustomStringConvertible, Equatable {
+    /// What the page would have weighed, in bytes.
+    public var bytes: Int
+    /// The most the export allowed, in bytes.
+    public var maxBytes: Int
+    /// The heaviest part of the page (`vertices`, `shapes`, `pictures`, ...)
+    /// and its bytes.
+    public var heaviest: String
+    public var heaviestBytes: Int
+    /// Whether the heaviest part is stored per recorded frame, so fewer frames
+    /// (a lower `--fps`, a shorter `--seconds`) would take most of it away.
+    public var growsWithFrames: Bool
+    /// What the heaviest part holds, for the message: the vertex count of the
+    /// fullest frame, the picture count, the frame count.
+    public var detail: String
+    /// When the refusal came during the recording, the recorded frames it had
+    /// seen and the frames asked for: `bytes` is then what the page would
+    /// weigh at least, from what those frames alone put on it. A drawing
+    /// dense enough is refused at its first frame, before the recording
+    /// takes the memory the rest would.
+    public var seen: (frames: Int, of: Int)?
+
+    public static func == (a: WebWeightRefusal, b: WebWeightRefusal) -> Bool {
+        a.bytes == b.bytes && a.maxBytes == b.maxBytes && a.heaviest == b.heaviest && a.heaviestBytes == b.heaviestBytes
+            && a.growsWithFrames == b.growsWithFrames && a.detail == b.detail
+            && a.seen?.frames == b.seen?.frames && a.seen?.of == b.seen?.of
+    }
+
+    public var description: String {
+        let mb = Double(1024 * 1024)
+        let weight = String(format: "%.1f MB", Double(bytes) / mb)
+        let allowed = Self.megabytes(maxBytes)
+        let heavy = String(format: "%.1f MB", Double(heaviestBytes) / mb)
+        var out: String
+        if let seen {
+            out = "the page would weigh at least \(weight) (by frame \(seen.frames) of \(seen.of)), past the \(allowed) allowed; \(heavy) of it is \(heaviest)"
+        } else {
+            out = "the page would weigh \(weight), past the \(allowed) allowed; \(heavy) of it is \(heaviest)"
+        }
+        if !detail.isEmpty { out += " (\(detail))" }
+        if growsWithFrames {
+            out += ", stored for every recorded frame: record fewer frames (--fps 10, or a shorter --seconds), or export the sketch as video instead (--export-video)"
+        } else {
+            out += ", which travels once, so fewer frames would not help: export the sketch as video instead (--export-video)"
+        }
+        if seen != nil {
+            out += "; --max-page-size 0 lifts the limit and writes the page anyway"
+        } else {
+            let anyway = Int((Double(bytes) / mb).rounded(.up)) + 1
+            out += "; --max-page-size \(anyway) writes the page anyway"
+        }
+        return out
+    }
+
+    static func megabytes(_ bytes: Int) -> String {
+        let mb = Double(bytes) / Double(1024 * 1024)
+        return mb == mb.rounded() ? "\(Int(mb)) MB" : String(format: "%.1f MB", mb)
+    }
+}
+
 /// A defect in the page's own shaders: the framework's shader text no longer
 /// crosses to GLSL. Never the sketch's fault, so it is reported apart from a
 /// refusal.
@@ -153,6 +313,7 @@ extension OllinApp {
     /// none is given) so the page can offer them as controls (`webControls`).
     static func recordWebFrames(of sketch: Sketch, frames: Int, fps: Double,
                                 skipSeconds: Double = 0, controls: Bool = true,
+                                maxBytes: Int? = nil,
                                 remake: (() -> Sketch)? = nil) throws -> WebRecording {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
@@ -178,8 +339,10 @@ extension OllinApp {
         var constants: [String: Double] = [:]
         var mouse: (x: Double, y: Double) = (0, 0)
         let recorder = WebGraphRecorder()
+        let loops = sketch.loopDuration.map { abs($0 * fps - Double(frames)) < 0.5 } ?? false
         let recorded = try runWebFrames(sketch, frames: frames, fps: fps, skip: skip,
-                                        width: size.width, height: size.height, recorder: recorder) { k in
+                                        width: size.width, height: size.height, recorder: recorder,
+                                        maxBytes: maxBytes, samplesMovingColumns: !loops && formulas.isEmpty) { k in
             if k == skip {
                 constants = webConstants(of: sketch)
                 for f in formulas { constants.removeValue(forKey: f.name) }
@@ -189,7 +352,6 @@ extension OllinApp {
                 series[i].append(Float(webFormulaValue(named: f.name, in: handles) ?? 0))
             }
         }
-        let loops = sketch.loopDuration.map { abs($0 * fps - Double(frames)) < 0.5 } ?? false
         var recording = WebRecording(name: String(describing: type(of: sketch)),
                                      width: size.width, height: size.height, rate: fps,
                                      frames: recorded, loops: loops,
@@ -222,10 +384,17 @@ extension OllinApp {
     /// after the skip through `recorder`, calling `each` with the frame's
     /// index after every recorded draw. The baseline and every probe run
     /// through here, so a probe sees the frames the baseline saw.
+    ///
+    /// With `maxBytes`, the page is bounded from below as the frames come in
+    /// (`WebWeightBound`) and the recording stops with a `WebWeightRefusal`
+    /// the moment the bound passes it: a dense drawing is refused at its
+    /// first frame, before the frames it would never use take their memory.
     static func runWebFrames(_ sketch: Sketch, frames: Int, fps: Double, skip: Int, width: Int, height: Int,
-                             recorder: WebGraphRecorder, each: (Int) -> Void = { _ in }) throws -> [WebFrame] {
+                             recorder: WebGraphRecorder, maxBytes: Int? = nil, samplesMovingColumns: Bool = false,
+                             each: (Int) -> Void = { _ in }) throws -> [WebFrame] {
         var recorded: [WebFrame] = []
         recorded.reserveCapacity(frames)
+        var bound = WebWeightBound(samplesMovingColumns: samplesMovingColumns)
         for k in 0 ..< (skip + frames) {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
             sketch.performDraw()
@@ -242,6 +411,13 @@ extension OllinApp {
             }
             each(k)
             recorded.append(try recorder.capture(sketch.drawer, frame: k - skip, width: width, height: height))
+            if let maxBytes {
+                bound.add(recorded[recorded.count - 1], previous: recorded.count > 1 ? recorded[recorded.count - 2] : nil,
+                          pictureBytes: recorder.pictures.reduce(0) { $0 + $1.data.count })
+                if bound.bytes > maxBytes {
+                    throw bound.refusal(maxBytes: maxBytes, seen: recorded.count, of: frames)
+                }
+            }
         }
         return recorded
     }
@@ -1404,10 +1580,52 @@ extension OllinApp {
     /// recording offers any and `panel` allows it; the inline fragment never
     /// draws a panel, since the page around it owns the layout, and reaches
     /// the controls through the handle instead.
-    static func webPage(of recording: WebRecording, form: WebPageForm, panel: Bool = true) throws -> String {
+    ///
+    /// `maxBytes` is the most the page may weigh; past it the page is not
+    /// returned and a `WebWeightRefusal` says what made it heavy. `nil` lifts
+    /// the limit.
+    static func webPage(of recording: WebRecording, form: WebPageForm, panel: Bool = true,
+                        maxBytes: Int? = nil) throws -> String {
         let showsPanel = panel && form == .standalone && !recording.controls.isEmpty
-        let fragment = try webInlineFragment(of: recording, panel: showsPanel)
-        guard form == .standalone else { return fragment }
+        // The wrapper's own bytes count toward the page, and are known before
+        // the fragment exists.
+        let wrapper = form == .standalone ? webStandalonePage(around: "", of: recording, showsPanel: showsPanel).utf8.count : 0
+        let (fragment, _) = try webInlineFragment(of: recording, panel: showsPanel, maxBytes: maxBytes, wrapperBytes: wrapper)
+        return form == .standalone ? webStandalonePage(around: fragment, of: recording, showsPanel: showsPanel) : fragment
+    }
+
+    /// The refusal for a page past its budget: the heaviest part, whether it
+    /// grows with the frame count, and what it holds.
+    static func webWeightRefusal(of recording: WebRecording, weights: [WebWeight], pageBytes: Int, maxBytes: Int) -> WebWeightRefusal {
+        // The shaders and the player are what is left of the page once the
+        // track and the assets are counted.
+        var parts = weights
+        let counted = parts.reduce(0) { $0 + $1.bytes }
+        parts.append(WebWeight(name: "the shaders and the player", once: max(0, pageBytes - counted), perFrame: 0))
+        let heaviest = parts.max { $0.bytes < $1.bytes } ?? parts[0]
+        let frames = "\(recording.frames.count) frame\(recording.frames.count == 1 ? "" : "s")"
+        let track = WebTrack.vertexCount(of: recording)
+        var detail = ""
+        switch heaviest.name {
+        case "stroke and fill vertices":
+            detail = "\(track) vertices in the fullest frame, \(frames)"
+        case "shapes and passes":
+            detail = "\(recording.frames.first?.graph.instanceCount ?? 0) shapes in the first frame, \(frames)"
+        case "scenes":
+            detail = "one scene block per frame, \(frames)"
+        case "pictures":
+            detail = "\(recording.pictures.count) picture\(recording.pictures.count == 1 ? "" : "s")"
+        case "atlas pages":
+            detail = "\(recording.atlases.count) page\(recording.atlases.count == 1 ? "" : "s")"
+        default:
+            break
+        }
+        return WebWeightRefusal(bytes: pageBytes, maxBytes: maxBytes, heaviest: heaviest.name,
+                                heaviestBytes: heaviest.bytes, growsWithFrames: heaviest.growsWithFrames, detail: detail, seen: nil)
+    }
+
+    /// The whole file around the inline fragment.
+    private static func webStandalonePage(around fragment: String, of recording: WebRecording, showsPanel: Bool) -> String {
         let paper = recording.frames.first?.clear ?? SIMD3<Float>(0, 0, 0)
         let ratio = formatted(Double(recording.width) / Double(recording.height))
         // With a panel, the canvas leaves room for it and the panel's text
@@ -1443,7 +1661,12 @@ extension OllinApp {
 
     /// The canvas and its script: the player, the page's shaders, and the track.
     /// `panel` has the script build the controls under the canvas.
-    static func webInlineFragment(of recording: WebRecording, panel: Bool = false) throws -> String {
+    ///
+    /// With `maxBytes`, the page's weight (the fragment plus `wrapperBytes`)
+    /// is checked before the text is assembled, since a page past the limit
+    /// is never built: the slots' sizes say what the fill would come to.
+    static func webInlineFragment(of recording: WebRecording, panel: Bool = false,
+                                  maxBytes: Int? = nil, wrapperBytes: Int = 0) throws -> (String, [WebWeight]) {
         var rows: [String: Int] = [:]
         for frame in recording.frames {
             for (name, r) in frame.graph.fragmentRows { rows[name] = max(rows[name] ?? 0, r) }
@@ -1455,61 +1678,79 @@ extension OllinApp {
         let label = recording.description.isEmpty
             ? "\(recording.name), a sketch made with Ollin"
             : recording.description
-        var script = WebPlayer.script
-        script = script.replacingOccurrences(of: "@META@", with: track.meta)
-        script = script.replacingOccurrences(of: "@STREAM@", with: track.stream)
-        script = script.replacingOccurrences(of: "@BASE@", with: track.base)
-        script = script.replacingOccurrences(of: "@VBASE@", with: track.vertexBase)
-        script = script.replacingOccurrences(of: "@VPOS@", with: track.vertexPositions)
-        script = script.replacingOccurrences(of: "@FIT@", with: track.fit)
-        script = script.replacingOccurrences(of: "@EXTRA@", with: track.extra)
-        script = script.replacingOccurrences(of: "@SCENE@", with: track.scene)
-        script = script.replacingOccurrences(of: "@AXES@", with: track.axisData)
-        script = script.replacingOccurrences(of: "@PANEL@", with: panel ? "true" : "false")
-        script = script.replacingOccurrences(of: "@HELPERS@", with: FormulaJS.helpers)
-        script = script.replacingOccurrences(of: "@GROUP_VS@", with: jsString(shaders.groupVertex))
-        script = script.replacingOccurrences(of: "@GROUP_FS@", with: jsString(shaders.groupFragment))
-        script = script.replacingOccurrences(of: "@FIELD_VS@", with: jsString(shaders.fieldVertex))
-        script = script.replacingOccurrences(of: "@FIELD_FS@", with: jsString(shaders.fieldFragment))
-        script = script.replacingOccurrences(of: "@UPSAMPLE_FS@", with: jsString(shaders.upsampleFragment))
+        // The slots hold the track, which can run to hundreds of megabytes, so
+        // they are filled in one pass: a substitution per slot is a copy of the
+        // whole page per slot, minutes on a page that size.
+        var slots: [String: String] = [:]
+        slots["META"] = track.meta
+        slots["STREAM"] = track.stream
+        slots["BASE"] = track.base
+        slots["VBASE"] = track.vertexBase
+        slots["VPOS"] = track.vertexPositions
+        slots["FIT"] = track.fit
+        slots["EXTRA"] = track.extra
+        slots["RANGES"] = track.ranges
+        slots["VARYING"] = track.varying
+        slots["SCENE"] = track.scene
+        slots["AXES"] = track.axisData
+        slots["PANEL"] = panel ? "true" : "false"
+        slots["HELPERS"] = FormulaJS.helpers
+        slots["GROUP_VS"] = jsString(shaders.groupVertex)
+        slots["GROUP_FS"] = jsString(shaders.groupFragment)
+        slots["FIELD_VS"] = jsString(shaders.fieldVertex)
+        slots["FIELD_FS"] = jsString(shaders.fieldFragment)
+        slots["UPSAMPLE_FS"] = jsString(shaders.upsampleFragment)
         let lut = recording.brdfLUT.isEmpty ? "[0, \"\"]"
             : "[\(WebBRDFLUT.size), \"\(WebTrack.base64(recording.brdfLUT))\"]"
-        script = script.replacingOccurrences(of: "@BRDF@", with: lut)
-        script = script.replacingOccurrences(of: "@SDF_VS@", with: jsString(shaders.sdfVertex))
-        script = script.replacingOccurrences(of: "@SDF_FS@", with: jsString(shaders.sdfFragment))
-        script = script.replacingOccurrences(of: "@PRESENT_VS@", with: jsString(shaders.presentVertex))
-        script = script.replacingOccurrences(of: "@PRESENT_FS@", with: jsString(shaders.presentFragment))
-        script = script.replacingOccurrences(of: "@IMAGE_VS@", with: jsString(shaders.imageVertex))
-        script = script.replacingOccurrences(of: "@IMAGE_FS@", with: jsString(shaders.imageFragment))
-        script = script.replacingOccurrences(of: "@GLYPH_FS@", with: jsString(shaders.glyphFragment))
-        script = script.replacingOccurrences(of: "@TRI_VS@", with: jsString(shaders.triangleVertex))
-        script = script.replacingOccurrences(of: "@TRI_FS@", with: jsString(shaders.triangleFragment))
-        script = script.replacingOccurrences(of: "@FRINGE_FS@", with: jsString(shaders.fringeFragment))
-        script = script.replacingOccurrences(of: "@FX_VS@", with: jsString(shaders.effectVertex))
-        script = script.replacingOccurrences(of: "@BLUR_FS@", with: jsString(WebShaders.blurFragment))
+        slots["BRDF"] = lut
+        slots["SDF_VS"] = jsString(shaders.sdfVertex)
+        slots["SDF_FS"] = jsString(shaders.sdfFragment)
+        slots["PRESENT_VS"] = jsString(shaders.presentVertex)
+        slots["PRESENT_FS"] = jsString(shaders.presentFragment)
+        slots["IMAGE_VS"] = jsString(shaders.imageVertex)
+        slots["IMAGE_FS"] = jsString(shaders.imageFragment)
+        slots["GLYPH_FS"] = jsString(shaders.glyphFragment)
+        slots["TRI_VS"] = jsString(shaders.triangleVertex)
+        slots["TRI_FS"] = jsString(shaders.triangleFragment)
+        slots["FRINGE_FS"] = jsString(shaders.fringeFragment)
+        slots["FX_VS"] = jsString(shaders.effectVertex)
+        slots["BLUR_FS"] = jsString(WebShaders.blurFragment)
         let effectEntries = shaders.effects.keys.sorted().map { "\(jsString($0)): \(jsString(shaders.effects[$0]!))" }
-        script = script.replacingOccurrences(of: "@FX@", with: "{" + effectEntries.joined(separator: ",\n") + "}")
-        script = script.replacingOccurrences(of: "@USERS@", with: "[" + shaders.users.map(jsString).joined(separator: ",\n") + "]")
+        slots["FX"] = "{" + effectEntries.joined(separator: ",\n") + "}"
+        slots["USERS"] = "[" + shaders.users.map(jsString).joined(separator: ",\n") + "]"
         let tables = recording.tables.map { table -> String in
             let flat = table.flatMap { [$0.x, $0.y, $0.z, $0.w] }
             return "[\(table.count), \"\(WebTrack.base64(flat))\"]"
         }
-        script = script.replacingOccurrences(of: "@TABLES@", with: "[" + tables.joined(separator: ",") + "]")
+        slots["TABLES"] = "[" + tables.joined(separator: ",") + "]"
         // The assets: each picture as its file's bytes or a PNG, each atlas page
         // as a gray PNG with the page size and the rows it holds, and the
         // gradient strip's rows as raw texels (a few kilobytes at most).
         let pictures = recording.pictures.map { "[\(jsString($0.mime)), \"\($0.data.base64EncodedString())\"]" }
-        script = script.replacingOccurrences(of: "@PICTURES@", with: "[" + pictures.joined(separator: ",\n") + "]")
+        slots["PICTURES"] = "[" + pictures.joined(separator: ",\n") + "]"
         let atlases = recording.atlases.map { "[\"\($0.png.base64EncodedString())\", \($0.size), \($0.rows)]" }
-        script = script.replacingOccurrences(of: "@ATLASES@", with: "[" + atlases.joined(separator: ",\n") + "]")
+        slots["ATLASES"] = "[" + atlases.joined(separator: ",\n") + "]"
         let strip = Data(recording.gradientRows.joined()).base64EncodedString()
-        script = script.replacingOccurrences(of: "@STRIP@", with: "[\(recording.gradientRows.count), \(BakedGradient.width), \"\(strip)\"]")
-        return """
-        <canvas class="ollin-sketch" width="\(recording.width)" height="\(recording.height)" role="img" aria-label="\(htmlEscaped(label))"></canvas>
-        <script>
-        \(script)
-        </script>
-        """
+        slots["STRIP"] = "[\(recording.gradientRows.count), \(BakedGradient.width), \"\(strip)\"]"
+        // The assets' weight beside the track's. A picture per version is what
+        // a repainted picture costs, so pictures outnumbering half the frames
+        // count as per-frame.
+        var weights = track.weights
+        let pictureBytes = pictures.reduce(0) { $0 + $1.utf8.count }
+        if pictureBytes > 0 {
+            let perFrame = recording.pictures.count * 2 > track.uniqueFrames
+            weights.append(WebWeight(name: "pictures", once: perFrame ? 0 : pictureBytes, perFrame: perFrame ? pictureBytes : 0))
+        }
+        let atlasBytes = atlases.reduce(0) { $0 + $1.utf8.count }
+        if atlasBytes > 0 { weights.append(WebWeight(name: "atlas pages", once: atlasBytes, perFrame: 0)) }
+        let prefix = "<canvas class=\"ollin-sketch\" width=\"\(recording.width)\" height=\"\(recording.height)\" role=\"img\" aria-label=\"\(htmlEscaped(label))\"></canvas>\n<script>\n"
+        let suffix = "\n</script>"
+        let pageBytes = prefix.utf8.count + WebPlayer.filledCount(WebPlayer.script, with: slots) + suffix.utf8.count + wrapperBytes
+        if let maxBytes, pageBytes > maxBytes {
+            throw webWeightRefusal(of: recording, weights: weights, pageBytes: pageBytes, maxBytes: maxBytes)
+        }
+        let script = WebPlayer.filled(WebPlayer.script, with: slots)
+        return (prefix + script + suffix, weights)
     }
 
     private static func htmlEscaped(_ s: String) -> String {
@@ -1574,6 +1815,51 @@ extension OllinApp {
 /// the canvas (`canvas.ollin`, also `window.ollin`) plays, pauses, seeks, and
 /// shows one frame.
 enum WebPlayer {
+    /// `template` with each `@NAME@` slot replaced by `values[NAME]`, in one
+    /// pass over the template's bytes: a slot is an `@`, upper-case letters,
+    /// digits, or underscores, and a closing `@`; any other `@` and a slot
+    /// with no value are copied through. The values are never scanned, so one
+    /// holding a slot's spelling stays as it is.
+    static func filled(_ template: String, with values: [String: String]) -> String {
+        var out = ""
+        out.reserveCapacity(filledCount(template, with: values))
+        let bytes = Array(template.utf8)
+        var literalStart = 0
+        for slot in slots(in: bytes) where values[slot.name] != nil {
+            out += String(decoding: bytes[literalStart ..< slot.range.lowerBound], as: UTF8.self)
+            out += values[slot.name]!
+            literalStart = slot.range.upperBound
+        }
+        out += String(decoding: bytes[literalStart...], as: UTF8.self)
+        return out
+    }
+
+    /// The bytes `filled` would come to, without building it.
+    static func filledCount(_ template: String, with values: [String: String]) -> Int {
+        var count = template.utf8.count
+        for slot in slots(in: Array(template.utf8)) {
+            guard let value = values[slot.name] else { continue }
+            count += value.utf8.count - slot.range.count
+        }
+        return count
+    }
+
+    /// The slots in `bytes`: each `@NAME@` with the byte range it spans.
+    private static func slots(in bytes: [UInt8]) -> [(name: String, range: Range<Int>)] {
+        var found: [(name: String, range: Range<Int>)] = []
+        var i = 0
+        while i < bytes.count {
+            guard bytes[i] == UInt8(ascii: "@") else { i += 1; continue }
+            var j = i + 1
+            while j < bytes.count, bytes[j] == UInt8(ascii: "_") || (bytes[j] >= UInt8(ascii: "A") && bytes[j] <= UInt8(ascii: "Z"))
+                    || (bytes[j] >= UInt8(ascii: "0") && bytes[j] <= UInt8(ascii: "9")) { j += 1 }
+            guard j > i + 1, j < bytes.count, bytes[j] == UInt8(ascii: "@") else { i += 1; continue }
+            found.append((String(decoding: bytes[(i + 1) ..< j], as: UTF8.self), i ..< j + 1))
+            i = j + 1
+        }
+        return found
+    }
+
     static let script = #"""
     (function () {
       var script = document.currentScript;
@@ -1587,6 +1873,8 @@ enum WebPlayer {
       var VPOS = "@VPOS@";
       var FIT = "@FIT@";
       var EXTRA = "@EXTRA@";
+      var RANGES = "@RANGES@";
+      var VARYING = "@VARYING@";
       var SCENE = "@SCENE@";
       var AXES = "@AXES@";
       var PANEL = @PANEL@;
@@ -1631,7 +1919,10 @@ enum WebPlayer {
       }
       function floats(b64) { var b = bytes(b64); return new Float32Array(b.buffer, 0, b.length >> 2); }
       function shorts(b64) { var b = bytes(b64); return new Uint16Array(b.buffer, 0, b.length >> 1); }
+      function ints(b64) { var b = bytes(b64); return new Uint32Array(b.buffer, 0, b.length >> 2); }
       var stream = shorts(STREAM);
+      var rangeData = floats(RANGES);
+      var varying = ints(VARYING);
       var base = floats(BASE);
       var vertexBase = shorts(VBASE);
       var vertexPositions = floats(VPOS);
@@ -2090,7 +2381,7 @@ enum WebPlayer {
 
       // Sampled values sit inside their column's range as 16-bit positions.
       var lows = [], scales = [];
-      for (var r = 0; r < D.ranges.length; r += 2) { lows.push(D.ranges[r]); scales.push((D.ranges[r + 1] - D.ranges[r]) / 65535); }
+      for (var r = 0; r < rangeData.length; r += 2) { lows.push(rangeData[r]); scales.push((rangeData[r + 1] - rangeData[r]) / 65535); }
       // A fitted column: its mean, then a frequency, a cosine, and a sine per term.
       var fits = D.fit || [], fitOffsets = [], fitOffset = 0;
       for (var f = 0; f < fits.length; f++) { fitOffsets.push(fitOffset); fitOffset += 1 + 3 * fits[f][1]; }
@@ -2243,7 +2534,7 @@ enum WebPlayer {
             for (var vf = 0; vf < VS; vf++) scratch[at + P + vf] = vlows[vf] + vertexBase[vx * VS + vf] * vscales[vf];
           }
           var u2 = ref((index + 1) % D.frames);
-          var v = D.varying, n = v.length, off = u * n, off2 = u2 * n;
+          var v = varying, n = v.length, off = u * n, off2 = u2 * n;
           for (var i = 0; i < n; i++) {
             var a = lows[i] + stream[off + i] * scales[i];
             if (fraction > 0 && u2 !== u) { var b = lows[i] + stream[off2 + i] * scales[i]; a += (b - a) * fraction; }
@@ -2961,28 +3252,42 @@ public extension OllinApp {
     ///
     /// Throws a `WebExportRefusal` naming the first call the page cannot carry
     /// (a clip, a live texture drawn as an image, 3D) and the frame it was met
-    /// at; nothing partial is written.
+    /// at, or a `WebWeightRefusal` when the page would weigh more than
+    /// `maxBytes` (`maxWebPageBytes` unless said otherwise; `nil` lifts the
+    /// limit); nothing partial is written.
     static func web(of sketch: Sketch, frames: Int, fps: Double = 30, skipSeconds: Double = 0,
                     form: WebPageForm = .standalone, controls: Bool = true,
+                    maxBytes: Int? = OllinApp.maxWebPageBytes,
                     remake: (() -> Sketch)? = nil) throws -> String {
         let recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                            controls: controls, remake: remake)
-        return try webPage(of: recording, form: form, panel: controls)
+                                            controls: controls, maxBytes: maxBytes, remake: remake)
+        return try webPage(of: recording, form: form, panel: controls, maxBytes: maxBytes)
     }
+
+    /// The most a page may weigh unless an export says otherwise: 25 MB, the
+    /// largest file the static hosts a page is put on will serve, and about
+    /// what a phone opens in a few seconds. A page past it is refused with
+    /// what made it heavy; `--max-page-size` raises or lifts the limit.
+    static let maxWebPageBytes = 25 * 1024 * 1024
 
     /// Record `sketch` and write the page to `path`; the basis for the
     /// `--export-web` flag. A refusal is printed and the process exits nonzero,
     /// so a build step that runs the exporter sees it fail.
     static func exportWeb(_ sketch: Sketch, to path: String, frames: Int, fps: Double = 30,
                           skipSeconds: Double = 0, form: WebPageForm = .standalone,
-                          controls: Bool = true, remake: (() -> Sketch)? = nil) {
+                          controls: Bool = true, maxBytes: Int? = OllinApp.maxWebPageBytes,
+                          remake: (() -> Sketch)? = nil) {
         let recording: WebRecording
         let page: String
         do {
             recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                            controls: controls, remake: remake)
-            page = try webPage(of: recording, form: form, panel: controls)
+                                            controls: controls, maxBytes: maxBytes, remake: remake)
+            page = try webPage(of: recording, form: form, panel: controls, maxBytes: maxBytes)
         } catch let refusal as WebExportRefusal {
+            fflush(stdout)
+            FileHandle.standardError.write(Data("Ollin: --export-web stopped: \(refusal).\n".utf8))
+            exit(1)
+        } catch let refusal as WebWeightRefusal {
             fflush(stdout)
             FileHandle.standardError.write(Data("Ollin: --export-web stopped: \(refusal).\n".utf8))
             exit(1)

@@ -3209,12 +3209,14 @@ public extension OllinApp {
                                  slowMotion: slowMotion)
             return true
         }
-        // `--export-web <path> [--frames N | --seconds S] [--fps F] [--skip S] [--inline]`
-        // records what the sketch draws over a duration and writes a page that
-        // plays it back in a browser, then exits. With no length given, a sketch
-        // that declares `loopDuration` records one lap, which the page wraps
-        // without a seam. `--inline` writes the fragment (the canvas plus one
-        // script block) for a page of your own instead of a whole file.
+        // `--export-web <path> [--frames N | --seconds S] [--fps F] [--skip S] [--inline]
+        // [--no-controls] [--max-page-size MB]` records what the sketch draws over
+        // a duration and writes a page that plays it back in a browser, then
+        // exits. With no length given, a sketch that declares `loopDuration`
+        // records one lap, which the page wraps without a seam. `--inline`
+        // writes the fragment (the canvas plus one script block) for a page of
+        // your own instead of a whole file. A page past 25 MB is refused with
+        // what made it heavy; `--max-page-size` raises the limit, and `0` lifts it.
         if let i = args.firstIndex(of: "--export-web"), i + 1 < args.count {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
@@ -3231,13 +3233,17 @@ public extension OllinApp {
             // `--no-controls` leaves the parameters at their recorded values:
             // no probe, no panel, no handle onto them.
             let controls = !args.contains("--no-controls")
+            var maxBytes: Int? = OllinApp.maxWebPageBytes
+            if let megabytes = value("--max-page-size").flatMap(Double.init) {
+                maxBytes = megabytes > 0 ? Int(megabytes * 1024 * 1024) : nil
+            }
             let sketch = make()
             if frames <= 0, let lap = sketch.loopDuration, lap > 0 {
                 frames = Int((lap * fps).rounded())
             }
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-web <path> (--frames N | --seconds S, or a sketch that declares loopDuration) [--fps F] [--skip S] [--inline] [--no-controls]\n".utf8))
+                    "usage: --export-web <path> (--frames N | --seconds S, or a sketch that declares loopDuration) [--fps F] [--skip S] [--inline] [--no-controls] [--max-page-size MB]\n".utf8))
                 return true
             }
             // The probe records fresh sketches made the way this one was (the
@@ -3246,7 +3252,7 @@ public extension OllinApp {
             // here, so the factory never outlives the call.
             withoutActuallyEscaping(makeSketch) { factory in
                 OllinApp.exportWeb(sketch, to: args[i + 1], frames: frames, fps: fps, skipSeconds: skip, form: form,
-                                   controls: controls, remake: {
+                                   controls: controls, maxBytes: maxBytes, remake: {
                     let fresh = factory()
                     if let replayTake { replayTake.install(on: fresh) }
                     if let seedOverride { fresh.seed(seedOverride) }

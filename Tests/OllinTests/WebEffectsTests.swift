@@ -307,7 +307,7 @@ import OllinWebGate
         // that moves, so the cast is stable and that column samples.
         let track = WebTrack(recording)
         #expect(track.stable)
-        #expect(track.meta.contains("\"varying\":[\(WebQuad.floats + 3)]"))
+        #expect(WebTrack.ints(track.varying) == [UInt32(WebQuad.floats + 3)])
         #expect(track.meta.contains("\"graph\":{"))
         #expect(track.meta.contains("\"f\":\"ollin_gen_cellular\""))
         #expect(track.passCount == 1)

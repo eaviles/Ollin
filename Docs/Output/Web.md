@@ -25,6 +25,7 @@ The sketch keeps its source in Swift. The page holds a canvas, the shaders, and 
 - [Motion that stays live](#motion-that-stays-live) - a parameter driven by a formula crosses as the formula
 - [Parameters as controls](#parameters-as-controls) - a parameter the page can carry becomes a control under the canvas, and a handle for a page of your own
 - [What the page weighs](#what-the-page-weighs) - what is worked out, what is fitted, what streams
+- [The weight limit](#the-weight-limit) - the 25 MB a page may weigh, what the refusal says, and the flag past it
 
 ---
 
@@ -45,8 +46,9 @@ swift run OllinLive MySketches/Ring.swift --export-web ring.html --inline
 | `--skip S` | run the sketch for `S` seconds before the first recorded frame. |
 | `--inline` | write the fragment for a page of your own instead of a whole file (see [the two forms](#the-two-forms)). |
 | `--no-controls` | leave the parameters at their recorded values: no probe, no panel, and no handle onto them (see [parameters as controls](#parameters-as-controls)). |
+| `--max-page-size MB` | the most the page may weigh, 25 MB unless said otherwise; `0` lifts the limit (see [the weight limit](#the-weight-limit)). |
 
-`--seed`, `--param`, `--replay`, and `--automation` apply as on every export. In code, `OllinApp.web(of:frames:fps:skipSeconds:form:controls:)` returns the page as a string, and `OllinApp.exportWeb(_:to:frames:fps:skipSeconds:form:controls:)` writes it and reports the size.
+`--seed`, `--param`, `--replay`, and `--automation` apply as on every export. In code, `OllinApp.web(of:frames:fps:skipSeconds:form:controls:maxBytes:)` returns the page as a string, and `OllinApp.exportWeb(_:to:frames:fps:skipSeconds:form:controls:maxBytes:)` writes it and reports the size.
 
 ### What crosses
 
@@ -185,12 +187,43 @@ canvas.ollin.set('radius', 140);
 
 ### What the page weighs
 
-Each shape is 30 numbers per frame, and four things keep that small. A frame whose shapes are the previous frame's is stored once, so a still costs one frame however long it is recorded. When the cast is stable, the columns that never change (colors, a fixed transform, a stroke weight) are stored once as the base, in float32. Only the moving ones travel. A moving column wired to a formula travels as nothing at all. A moving column of a lap (a track recorded from `loopDuration`) is fitted to the sines it is made of. A motion written as sines with whole cycle counts per lap, the ordinary looping sketch, fits exactly in as many terms as it has sines. The page evaluates those at any time, so the motion between the recorded frames is the true one rather than a straight line. What fits nothing short travels as 16-bit samples, each within one part in 65,535 of its column's range, interpolated between frames.
+Each shape is 30 numbers per frame, and four things keep that small. A frame whose shapes are the previous frame's is stored once, so a still costs one frame however long it is recorded. When the cast is stable, the columns that never change (colors, a fixed transform, a stroke weight) are stored once as the base, in float32. Only the moving ones travel. A moving column wired to a formula travels as nothing at all. A moving column of a lap (a track recorded from `loopDuration`) is fitted to the sines it is made of. A motion written as sines with whole cycle counts per lap, the ordinary looping sketch, fits exactly in as many terms as it has sines. The page evaluates those at any time, so the motion between the recorded frames is the true one rather than a straight line. What fits nothing short travels as 16-bit samples, each within one part in 65,535 of its column's range, interpolated between frames. A sampled column's range and its index travel as binary beside its samples, twelve bytes a column.
 
-A stroke or a fill weighs its vertices, seven numbers each. A stroke's bands run to a few dozen vertices a segment, so a dense line drawing is where a page gets heavy. The vertices of a still, or of what never moves in a drawing, travel once: each position exact, the coverage and color as 16-bit samples. Only the vertices that move travel as columns, fitted or sampled like a shape's. Measured on the sixty-one pattern examples that draw strokes and fills: a third are under 1 MB, the median is about 3 MB, and a dense line drawing runs to tens or hundreds of megabytes (a guilloche of 3.4 million vertices is 325 MB), about 36 times what the same frame weighs as SVG. A page that heavy is what the [weight budget](../../ROADMAP.md#new-output-surfaces) ahead is for; until it lands, a dense drawing is a video export.
+A stroke or a fill weighs its vertices, seven numbers each. A stroke's bands run to a few dozen vertices a segment, so a dense line drawing is where a page gets heavy. The vertices of a still, or of what never moves in a drawing, travel once: each position exact, the coverage and color as 16-bit samples. Only the vertices that move travel as columns, fitted or sampled like a shape's. Measured on the sixty-one pattern examples that draw strokes and fills: a third are under 1 MB, the median is about 3 MB, and a dense line drawing runs to hundreds of megabytes over six seconds (a tiling of 152,000 vertices whose every vertex moves is 398 MB, a guilloche of 3.4 million vertices weighs 78 MB before its second frame). A page that heavy is refused with what made it heavy: see [the weight limit](#the-weight-limit).
 
 A picture weighs its file, or its PNG, once, base64 in the page (a third more than the bytes). An atlas page weighs its packed rows as an 8-bit PNG. The wall of body text in the `Text/TextVolume` example carries its whole page in 9 KB. A gradient weighs its row, a kilobyte. A picture whose pixels change every frame weighs one PNG per version, which is what makes a sketch that repaints its picture each frame heavy. Measured on the twenty-nine text and image examples: the pages run from 157 KB to 11 MB with a median under 1 MB, every one matching the Mac.
 
 A control weighs its slopes, packed like a moving column, plus the page's controls code. The ring's two colors add four kilobytes.
 
 When it finishes, the exporter prints the file size, what stayed live, what fitted, what sampled, the fullest frame's vertex count, the pictures and atlas pages it carries, the parameters live as controls, and the parameters left at their recorded values with the reason for each. Measured on the ring of twenty-eight circles the site opens on: its sixty-second lap fits whole, every moving column to a few sines, and the page is 83 KB whether recorded at 10 fps or at 30. Most of that is the shaders and the player. The breathing circle for six seconds at 30 fps, not a lap, samples its radius: 75 KB. The effects examples run 98 to 165 KB for the same reason: a page carries only the fragments its frames run, and a filter's numbers add a few floats a frame. The rate still matters for a track that samples. The page interpolates, so a slow motion looks the same recorded at 10 fps as at 60 and weighs a sixth as much. A host serves the page compressed, and the encoding is shaped for that.
+
+### The weight limit
+
+A page may weigh 25 MB. That is about the largest file the static hosts a page gets put on will serve, and what a phone opens in a few seconds. Past it, nothing is written. The exporter says what the page would have weighed and which part of it is heaviest. It says whether that part is stored for every recorded frame, so that a lower `--fps` or a shorter `--seconds` would take most of it away, or travels once, so that it would not. It points at the video export, and it names the `--max-page-size` that writes the page anyway:
+
+```
+Ollin: --export-web stopped: the page would weigh 398.4 MB, past the 25 MB allowed; 398.3 MB of it is stroke and fill vertices (152346 vertices in the fullest frame, 180 frames), stored for every recorded frame: record fewer frames (--fps 10, or a shorter --seconds), or export the sketch as video instead (--export-video); --max-page-size 400 writes the page anyway.
+```
+
+The parts are the shapes and passes, the stroke and fill vertices, the scenes of raymarched fields, the controls, the pictures, the atlas pages, and the shaders and the player. A picture counts as per-frame when the recording holds about one per frame, which is what a repainted picture costs. `--max-page-size 100` allows 100 MB and `--max-page-size 0` lifts the limit. In code, `maxBytes:` on `OllinApp.web(of:)` and `exportWeb` does the same, and past it they throw a `WebWeightRefusal` carrying the numbers.
+
+A drawing dense enough is refused before the recording is done. As the frames come in, the exporter keeps the least the page can weigh from what it has seen. The first frame's vertices travel once whatever else happens. A picture travels. A cast that has changed stores every frame that differs from the one before. On a recording that is not a lap and drives nothing by formula, every column that has moved once is sampled in every frame from then on. The moment that bound passes the limit the recording stops, with the frame it stopped at:
+
+```
+Ollin: --export-web stopped: the page would weigh at least 34.2 MB (by frame 2 of 180), past the 25 MB allowed; 34.2 MB of it is stroke and fill vertices (537600 vertices in the fullest frame, 1074078 columns moving), stored for every recorded frame: record fewer frames (--fps 10, or a shorter --seconds), or export the sketch as video instead (--export-video); --max-page-size 0 lifts the limit and writes the page anyway.
+```
+
+A lap, or a sketch with a formula on a parameter, may fit or carry its moving columns for much less than a sample a frame. There those columns are left out of the bound, and the page is weighed once assembled. Either way the weight is worked out from the parts before the page's text exists, so a refusal never builds it.
+
+Measured on the six heaviest pattern examples at six seconds and 30 fps, each refused in under a second:
+
+| Example | Refused | The page, at least | Vertices a frame | A frame as SVG |
+|---|---|---|---|---|
+| `Patterns/Penrose` (every vertex moves) | frame 5 | 27 MB (398 MB whole) | 152,000 | 149 KB |
+| `Patterns/Roses` (every vertex moves) | frame 2 | 34 MB (521 MB whole) | 538,000 | 181 KB |
+| `Patterns/Spirograph` (every vertex moves) | frame 2 | 68 MB | 1,064,000 | 361 KB |
+| `Patterns/Kleinian` (still) | frame 1 | 74 MB | 3,219,000 | 1.2 MB |
+| `Patterns/Guilloche` (still) | frame 1 | 78 MB | 3,387,000 | 1.2 MB |
+| `Patterns/ParametricLSystem` (still) | frame 1 | 223 MB | 9,760,000 | 12.5 MB |
+
+The last column measures the one thing that would bring these pages under the limit: a stroke as the points and the style the sketch gave, expanded on the page rather than on the Mac. Vertices weigh 15 to 70 times what the points do. The [design notes](../../DESIGN-NOTES.md#new-output-surfaces) carry what that option would cost.

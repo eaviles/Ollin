@@ -333,7 +333,7 @@ import OllinWebGate
         // Nothing moves, so nothing streams: the base holds the two shapes.
         #expect(track.stream.isEmpty)
         #expect(!track.base.isEmpty)
-        #expect(track.meta.contains("\"varying\":[]"))
+        #expect(track.varying.isEmpty)
         #expect(track.meta.contains("\"count\":2"))
     }
 
@@ -342,7 +342,7 @@ import OllinWebGate
         let track = WebTrack(recording)
         #expect(track.stable)
         // Only the radius (size.x and size.y) changes from frame to frame.
-        #expect(track.meta.contains("\"varying\":[8,9]"))
+        #expect(WebTrack.ints(track.varying) == [8, 9])
         #expect(track.meta.contains("\"stable\":true"))
         // Every frame is its own record, so the frame map is not written.
         #expect(!track.meta.contains("\"refs\""))
@@ -359,7 +359,10 @@ import OllinWebGate
         #expect(track.base.isEmpty)
         // 14 instances of `n` fields, two bytes each, base64.
         #expect(track.stream.count == (14 * n * 2 + 2) / 3 * 4)
-        #expect(track.meta.contains("\"ranges\":["))
+        #expect(track.varying.isEmpty)
+        // A changing cast's ranges are one per field of every record kind.
+        #expect(WebTrack.floats(track.ranges).count == 2 * (WebInstance.floats + WebQuad.floats + WebGroup.floats
+                                                             + WebNode.floats + WebField.floats + WebNode3D.floats + WebVertex.floats))
     }
 
     @Test func aSampledColumnStaysWithinItsRange() throws {
@@ -370,8 +373,7 @@ import OllinWebGate
         #expect(track.sampledColumns == 2)
         let values = recording.frames.map { Double($0.instances[8]) }
         let lo = values.min()!, hi = values.max()!
-        let meta = try #require(try JSONSerialization.jsonObject(with: Data(track.meta.utf8)) as? [String: Any])
-        let ranges = try #require(meta["ranges"] as? [Double])
+        let ranges = WebTrack.floats(track.ranges).map(Double.init)
         #expect(ranges.count == 4)
         #expect(abs(ranges[0] - lo) < 1e-5 && abs(ranges[1] - hi) < 1e-5, "\(ranges)")
         let step = (hi - lo) / 65535
@@ -421,6 +423,157 @@ import OllinWebGate
             background(.white)
             if let image = Live.image { drawImage(image, 10, 10, 100, 100) }
         }
+    }
+
+    // MARK: The budget
+
+    /// A dense line whose points move every frame: a stable cast whose vertex
+    /// columns all move, sampled for every recorded frame.
+    class Scribble: Sketch {
+        override var canvasSize: CanvasSize { .square(240) }
+        override func draw() {
+            background(.white)
+            stroke(.black)
+            strokeWeight(2)
+            var points: [Vector2] = []
+            for i in 0 ..< 400 {
+                let t = Double(i) * 0.05
+                points.append(Vector2(20 + Double(i) * 0.5, 120 + sin(t + Double(frameCount) * 0.3) * 80))
+            }
+            drawPolyline(points)
+        }
+    }
+
+    /// The scribble as a lap, so its moving columns may fit and the page is
+    /// weighed once assembled.
+    final class LoopingScribble: Scribble {
+        override var loopDuration: Double? { 40 / 30 }
+    }
+
+    /// The same line, still: one recorded frame, its vertices stored once.
+    final class Etching: Sketch {
+        override var canvasSize: CanvasSize { .square(240) }
+        override func draw() {
+            background(.white)
+            stroke(.black)
+            strokeWeight(2)
+            var points: [Vector2] = []
+            for i in 0 ..< 4000 {
+                let t = Double(i) * 0.01
+                points.append(Vector2(20 + Double(i) * 0.05, 120 + sin(t * 7) * 80))
+            }
+            drawPolyline(points)
+        }
+    }
+
+    @Test func aPagePastItsBudgetIsRefusedWithWhatMadeItHeavy() throws {
+        let scribble = try OllinApp.recordWebFrames(of: Scribble(), frames: 40, fps: 30)
+        let page = try OllinApp.webPage(of: scribble, form: .inline)
+        let refusal = try #require(throws: WebWeightRefusal.self) {
+            try OllinApp.webPage(of: scribble, form: .inline, maxBytes: 4096)
+        }
+        #expect(refusal.bytes == page.utf8.count)
+        #expect(refusal.maxBytes == 4096)
+        // The vertices of a cast that changes every frame outweigh the shaders
+        // and the player, and fewer frames would take most of them away.
+        #expect(refusal.heaviest == "stroke and fill vertices")
+        #expect(refusal.growsWithFrames)
+        #expect(refusal.heaviestBytes > page.utf8.count / 2)
+        #expect(refusal.detail.contains("40 frames"))
+        #expect(refusal.description.contains("--fps 10"))
+        #expect(refusal.description.contains("--export-video"))
+        // The flag the message names writes the page.
+        let anyway = try #require(refusal.description.firstMatch(of: /--max-page-size (\d+)/).flatMap { Int($0.1) })
+        #expect(try OllinApp.webPage(of: scribble, form: .inline, maxBytes: anyway * 1024 * 1024) == page)
+        // A still drawing's vertices travel once, so the refusal says fewer
+        // frames would not help.
+        let etching = try OllinApp.recordWebFrames(of: Etching(), frames: 8, fps: 30)
+        let still = try #require(throws: WebWeightRefusal.self) {
+            try OllinApp.webPage(of: etching, form: .inline, maxBytes: 4096)
+        }
+        #expect(still.heaviest == "stroke and fill vertices")
+        #expect(!still.growsWithFrames)
+        #expect(still.description.contains("would not help"))
+        #expect(!still.description.contains("--fps 10"))
+        // No limit writes anything; the default lets an ordinary sketch through.
+        #expect(try OllinApp.webPage(of: etching, form: .inline, maxBytes: nil).utf8.count > 4096)
+        #expect(try OllinApp.web(of: Hello(), frames: 4).utf8.count < OllinApp.maxWebPageBytes)
+    }
+
+    @Test func aDenseDrawingIsRefusedAtItsFirstFrame() throws {
+        // The still line's vertices travel once whatever the packing does, so
+        // the recording stops at frame 1 with a lower bound, before the other
+        // frames are drawn.
+        let early = try #require(throws: WebWeightRefusal.self) {
+            try OllinApp.recordWebFrames(of: Etching(), frames: 8, fps: 30, maxBytes: 4096)
+        }
+        #expect(early.seen?.frames == 1 && early.seen?.of == 8)
+        #expect(early.heaviest == "stroke and fill vertices")
+        #expect(!early.growsWithFrames)
+        #expect(early.description.contains("at least") && early.description.contains("by frame 1 of 8"))
+        #expect(early.description.contains("--max-page-size 0 lifts the limit"))
+        // The bound never overstates: the etching's page is heavier than it.
+        let etching = try OllinApp.recordWebFrames(of: Etching(), frames: 8, fps: 30)
+        #expect(early.bytes < (try OllinApp.webPage(of: etching, form: .inline).utf8.count))
+        // A moving line on a plain recording is sampled per frame for every
+        // column that has moved, so it is refused within its first frames
+        // with the columns counted; the same line as a lap may fit those
+        // columns, so it is weighed once assembled, with the exact weight.
+        // (The first frame alone is 400 KB; each frame after it adds the
+        // samples of its 30,000 moving columns.)
+        let soon = try #require(throws: WebWeightRefusal.self) {
+            try OllinApp.recordWebFrames(of: Scribble(), frames: 40, fps: 30, controls: false, maxBytes: 1_500_000)
+        }
+        let seen = try #require(soon.seen)
+        #expect(seen.frames > 1 && seen.frames < 40 && seen.of == 40)
+        #expect(soon.growsWithFrames && soon.detail.contains("columns moving"))
+        let lap = try OllinApp.recordWebFrames(of: LoopingScribble(), frames: 40, fps: 30, controls: false)
+        #expect(lap.loops)
+        let page = try OllinApp.webPage(of: lap, form: .inline)
+        let late = try #require(throws: WebWeightRefusal.self) {
+            try OllinApp.webPage(of: lap, form: .inline, maxBytes: page.utf8.count / 2)
+        }
+        #expect(late.seen == nil)
+        #expect(late.bytes == page.utf8.count)
+        let whole = try #require(throws: WebWeightRefusal.self) {
+            try OllinApp.web(of: LoopingScribble(), frames: 40, fps: 30, form: .inline, controls: false, maxBytes: page.utf8.count / 2)
+        }
+        #expect(whole.seen == nil)
+    }
+
+    @Test func theWeightsCountThePageByPart() throws {
+        // A sketch of shapes alone has no vertex part; what is not the track is
+        // the shaders and the player.
+        let hello = try OllinApp.recordWebFrames(of: Hello(), frames: 4, fps: 30)
+        let (fragment, weights) = try OllinApp.webInlineFragment(of: hello)
+        #expect(weights.map(\.name) == ["shapes and passes"])
+        #expect(weights.reduce(0) { $0 + $1.bytes } < fragment.utf8.count)
+        let refusal = OllinApp.webWeightRefusal(of: hello, weights: weights, pageBytes: fragment.utf8.count, maxBytes: 1)
+        #expect(refusal.heaviest == "the shaders and the player")
+        #expect(!refusal.growsWithFrames)
+        // A moving line's vertices are mostly per frame over a recording of
+        // any length (the first frame and each column's range travel once); a
+        // still's are all once.
+        let scribble = try OllinApp.recordWebFrames(of: Scribble(), frames: 40, fps: 30)
+        let moving = try #require(WebTrack(scribble).weights.first { $0.name == "stroke and fill vertices" })
+        #expect(moving.once > 0 && moving.perFrame > moving.once)
+        let etching = try OllinApp.recordWebFrames(of: Etching(), frames: 8, fps: 30)
+        let fixed = try #require(WebTrack(etching).weights.first { $0.name == "stroke and fill vertices" })
+        #expect(fixed.perFrame == 0 && fixed.once > 0)
+        // The parts are base64 as written: the vertex part is the two vertex
+        // strings' length.
+        let track = WebTrack(etching)
+        #expect(fixed.once == track.vertexPositions.utf8.count + track.vertexBase.utf8.count)
+    }
+
+    @Test func theSlotsFillInOnePass() {
+        let template = "a @X@ b @NONE@ c @ d @X@@Y@ e @x@ f @_Z9@"
+        let filled = WebPlayer.filled(template, with: ["X": "1", "Y": "@X@", "_Z9": "z"])
+        // A slot with no value, a lone `@`, and a lower-case name are copied
+        // through; a value holding a slot's spelling is never scanned.
+        #expect(filled == "a 1 b @NONE@ c @ d 1@X@ e @x@ f z")
+        #expect(WebPlayer.filled("@A@", with: ["A": ""]).isEmpty)
+        #expect(WebPlayer.filled("no slots", with: ["A": "1"]) == "no slots")
     }
 
     // MARK: The page
