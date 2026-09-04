@@ -23,6 +23,7 @@ The sketch keeps its source in Swift. The page holds a canvas, the shaders, and 
 - [The two forms](#the-two-forms) - one self-contained file, or a fragment for a page of your own
 - [Playing back](#playing-back) - the handle on the canvas, interpolation, loops, reduced motion
 - [Motion that stays live](#motion-that-stays-live) - a parameter driven by a formula crosses as the formula
+- [Parameters as controls](#parameters-as-controls) - a parameter the page can carry becomes a control under the canvas, and a handle for a page of your own
 - [What the page weighs](#what-the-page-weighs) - what is worked out, what is fitted, what streams
 
 ---
@@ -43,8 +44,9 @@ swift run OllinLive MySketches/Ring.swift --export-web ring.html --inline
 | `--fps F` | the recorded frames per second of the sketch's own time, 30 by default. The page interpolates between them, so a slow, smooth motion records well at 10 or 15. |
 | `--skip S` | run the sketch for `S` seconds before the first recorded frame. |
 | `--inline` | write the fragment for a page of your own instead of a whole file (see [the two forms](#the-two-forms)). |
+| `--no-controls` | leave the parameters at their recorded values: no probe, no panel, and no handle onto them (see [parameters as controls](#parameters-as-controls)). |
 
-`--seed`, `--param`, `--replay`, and `--automation` apply as on every export. In code, `OllinApp.web(of:frames:fps:skipSeconds:form:)` returns the page as a string, and `OllinApp.exportWeb(_:to:frames:fps:skipSeconds:form:)` writes it and reports the size.
+`--seed`, `--param`, `--replay`, and `--automation` apply as on every export. In code, `OllinApp.web(of:frames:fps:skipSeconds:form:controls:)` returns the page as a string, and `OllinApp.exportWeb(_:to:frames:fps:skipSeconds:form:controls:)` writes it and reports the size.
 
 ### What crosses
 
@@ -121,6 +123,9 @@ The script leaves a handle on the canvas, `canvas.ollin` (and `window.ollin` for
 | `frames`, `rate`, `duration`, `loops` | what was recorded |
 | `playing`, `time` | where it is |
 | `ready` | a promise that resolves once every picture and atlas page is decoded, when the first frame draws (the canvas shows the sketch's paper until then) |
+| `params` | the parameters the page offers as controls, each with its kind and the parts it takes (see [parameters as controls](#parameters-as-controls)) |
+| `get(name)`, `set(name, value)` | read or move a parameter, or one part of it (`set('ink.red', 0.5)`) |
+| `reset()` | every parameter back to its recorded value |
 
 The page needs WebGL2, which every current browser has. It composites in linear light like the Mac, in a half-float intermediate where the browser renders to one. The present pass encodes to the canvas with the same dither.
 
@@ -145,7 +150,38 @@ override func draw() {
 
 The recorder keeps the formula's value at every frame beside the shapes. A shape column that turns out to be a straight function of it (the radius here, or a position that adds an offset to it) is wired to the formula instead of being stored. The page carries the formula as JavaScript and works those columns out every frame from its own clock and pointer. So `time`, `frame`, `width`, `height`, `mouseX`, and `mouseY` mean on the page what they mean in the sketch, and a formula that reads the pointer follows it live. The parameter's range and step apply on the page as they do on the Mac. A formula that reads another driven parameter is evaluated after it, as on the Mac. One that reads a noise field stays a recorded value, since the page has no copy of the field.
 
-A column the sketch computes in Swift from the parameter in some other way (squared, say) is not wired, and travels as the next section describes.
+A column the sketch computes in Swift from the parameter in some other way (squared, say) is not wired, and travels as [the weight section](#what-the-page-weighs) describes.
+
+### Parameters as controls
+
+A sketch's `@Param`s cross as controls. When the recording is done, the exporter probes each one. It makes a fresh sketch, sets the parameter to a few other values inside its range, records the same frames again, and looks at every number that moved. A number that moves along a line in the parameter at every frame is wired. Its slope per frame is kept the way a moving column is kept, as one number when the slope never changes, as the sines of a lap, or as a sample per frame. A parameter whose every effect wires is offered on the page. The standalone page lays the controls out under the canvas, grouped as the sketch grouped them. A number gets a slider, an integer a stepper, a switch a checkbox, a color a well, and a point or a pair of ends a field per part. Moving one moves the picture the way the Mac would have drawn it at that setting, which is measured against `--param` at the same values.
+
+```swift
+@Param(0 ... 200) var radius = 60.0
+@Param var ink: Color = .black
+@Param var paper: Color = .white
+
+override func draw() {
+    background(paper)
+    noFill()
+    stroke(ink)
+    drawCircle(width / 2, height / 2, radius)
+}
+```
+
+Here the radius wires straight, the ink reaches the stroke's color as it is, and the paper reaches the clear through its linear-light value, which the probe finds on its own. A shader's `params` and a filter's numbers are columns like any other, so a parameter a shader reads is a control too. A parameter a [formula](#motion-that-stays-live) reads as a constant moves the formula's result live.
+
+What the probe cannot wire stays at its recorded value, and the exporter names it and says why. A count of shapes, or a switch that adds one, changes what is drawn. A radius the sketch squares moves a number some other way than along a line. Two parameters multiplied together act together. The probe catches that by moving every wired parameter at once and checking that the picture moved by the sum of what each did alone. A menu, a piece of text, and a swatch strip have no control on the page. A parameter a formula drives, and one nothing reads, are left out too, and so is every parameter of a sketch that draws differently on each run. A parameter that empties the picture at one end of its range, a radius of zero, is fitted inside that end and still offered.
+
+The inline form never draws a panel, since the page around it owns the layout. It carries the same parameters through the handle, so a page can set the sketch's colors to its own theme.
+
+```js
+canvas.ollin.set('paper', '#111111');
+canvas.ollin.set('ink', { red: 1, green: 1, blue: 1, alpha: 0.8 });
+canvas.ollin.set('radius', 140);
+```
+
+`--no-controls` leaves the parameters at their recorded values and skips the probe. The probe records the sketch once more per setting, three settings a part. A sketch with many parameters takes a few times as long to export as it took to record.
 
 ### What the page weighs
 
@@ -155,4 +191,6 @@ A stroke or a fill weighs its vertices, seven numbers each. A stroke's bands run
 
 A picture weighs its file, or its PNG, once, base64 in the page (a third more than the bytes). An atlas page weighs its packed rows as an 8-bit PNG. The wall of body text in the `Text/TextVolume` example carries its whole page in 9 KB. A gradient weighs its row, a kilobyte. A picture whose pixels change every frame weighs one PNG per version, which is what makes a sketch that repaints its picture each frame heavy. Measured on the twenty-nine text and image examples: the pages run from 157 KB to 11 MB with a median under 1 MB, every one matching the Mac.
 
-When it finishes, the exporter prints the file size, what stayed live, what fitted, what sampled, the fullest frame's vertex count, and the pictures and atlas pages it carries. Measured on the ring of twenty-eight circles the site opens on: its sixty-second lap fits whole, every moving column to a few sines, and the page is 83 KB whether recorded at 10 fps or at 30. Most of that is the shaders and the player. The breathing circle for six seconds at 30 fps, not a lap, samples its radius: 75 KB. The effects examples run 98 to 165 KB for the same reason: a page carries only the fragments its frames run, and a filter's numbers add a few floats a frame. The rate still matters for a track that samples. The page interpolates, so a slow motion looks the same recorded at 10 fps as at 60 and weighs a sixth as much. A host serves the page compressed, and the encoding is shaped for that.
+A control weighs its slopes, packed like a moving column, plus the page's controls code. The ring's two colors add four kilobytes.
+
+When it finishes, the exporter prints the file size, what stayed live, what fitted, what sampled, the fullest frame's vertex count, the pictures and atlas pages it carries, the parameters live as controls, and the parameters left at their recorded values with the reason for each. Measured on the ring of twenty-eight circles the site opens on: its sixty-second lap fits whole, every moving column to a few sines, and the page is 83 KB whether recorded at 10 fps or at 30. Most of that is the shaders and the player. The breathing circle for six seconds at 30 fps, not a lap, samples its radius: 75 KB. The effects examples run 98 to 165 KB for the same reason: a page carries only the fragments its frames run, and a filter's numbers add a few floats a frame. The rate still matters for a track that samples. The page interpolates, so a slow motion looks the same recorded at 10 fps as at 60 and weighs a sixth as much. A host serves the page compressed, and the encoding is shaped for that.

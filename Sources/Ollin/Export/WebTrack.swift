@@ -47,6 +47,12 @@ struct WebTrack {
     /// field (`WebGraphRecorder.sceneBlock`), whole and exact, at `meta.sceneOffsets`
     /// with `meta.sceneLengths`; empty when no frame does.
     var scene: String
+    /// The controls' axes: each wired column's slopes, packed like a moving
+    /// column (one number when they never change, the sines of a lap, or a
+    /// sample per frame), as float32 base64.
+    var axisData: String
+    /// How many columns the controls move between them.
+    var wiredColumns: Int
     var uniqueFrames: Int
     var stable: Bool
     /// Columns worked out live from a parameter's formula.
@@ -302,6 +308,32 @@ struct WebTrack {
             meta["sceneOffsets"] = sceneOffsets
             meta["sceneLengths"] = sceneLengths
         }
+        // The controls and their axes. A column a formula already carries live
+        // is left to the formula when the formula reads the axis, since the
+        // page then moves it through the formula's own value.
+        var axisFloats: [Float] = []
+        var axesMeta: [[String: Any]] = []
+        var drivenBy: [Int: Int] = [:]
+        for d in drives { drivenBy[Int(d[0])] = Int(d[1]) }
+        let closure = Self.formulaClosure(recording.formulas)
+        var wired = 0
+        for axis in recording.axes {
+            var cols: [[Any]] = []
+            for column in axis.columns {
+                if column.region == .vector, let f = drivenBy[column.index], f < closure.count,
+                   closure[f].contains(axis.name) { continue }
+                let offset = axisFloats.count
+                let (mode, count) = Self.packSlopes(column.slopes, into: &axisFloats,
+                                                    fit: stable && recording.loops && recording.frames.count >= 4)
+                cols.append([column.region.rawValue, column.index, column.transform, mode, offset, count])
+                wired += 1
+            }
+            axesMeta.append(["c": axis.control, "name": axis.name, "base": axis.base, "cols": cols])
+        }
+        meta["controls"] = recording.controls.map(\.meta)
+        meta["axes"] = axesMeta
+        self.axisData = Self.base64(axisFloats)
+        self.wiredColumns = wired
 
         self.drivenColumns = drivenColumns
         self.fittedColumns = fittedColumns
@@ -320,6 +352,50 @@ struct WebTrack {
         self.extra = Self.base64(extra)
         let json = (try? JSONSerialization.data(withJSONObject: meta, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data()
         self.meta = String(decoding: json, as: UTF8.self).replacingOccurrences(of: "<", with: "\\u003C")
+    }
+
+    /// One axis column's slopes packed onto `data`: mode 0 is one number for a
+    /// slope that never changes, mode 1 the mean and `count` sine terms of a
+    /// lap (frequency, cosine, sine each), mode 2 a sample per frame.
+    static func packSlopes(_ slopes: [Float], into data: inout [Float], fit: Bool) -> (mode: Int, count: Int) {
+        guard let first = slopes.first else { data.append(0); return (0, 1) }
+        let scale = max(abs(first), 1e-6)
+        if slopes.allSatisfy({ abs($0 - first) <= scale * 1e-6 }) {
+            data.append(first)
+            return (0, 1)
+        }
+        if fit {
+            let signal = slopes.map(Double.init)
+            let lo = signal.min() ?? 0, hi = signal.max() ?? 0
+            if let f = FourierFit.fit(signal, tolerance: max((hi - lo) * 1e-4, 1e-7),
+                                      maxTerms: max(1, slopes.count / maxTermFraction)) {
+                data.append(Float(f.mean))
+                for term in f.terms {
+                    data.append(Float(term.frequency))
+                    data.append(Float(term.cosine))
+                    data.append(Float(term.sine))
+                }
+                return (1, f.terms.count)
+            }
+        }
+        data.append(contentsOf: slopes)
+        return (2, slopes.count)
+    }
+
+    /// For each formula, every name it reads, through the other formulas it reads.
+    static func formulaClosure(_ formulas: [WebFormula]) -> [Set<String>] {
+        var byName: [String: Int] = [:]
+        for (i, f) in formulas.enumerated() where byName[f.name] == nil { byName[f.name] = i }
+        return formulas.indices.map { i in
+            var seen: Set<String> = []
+            var stack = formulas[i].reads
+            while let name = stack.popLast() {
+                guard !seen.contains(name) else { continue }
+                seen.insert(name)
+                if let j = byName[name] { stack += formulas[j].reads }
+            }
+            return seen
+        }
     }
 
     /// The formula whose values `signal` is an affine image of, within

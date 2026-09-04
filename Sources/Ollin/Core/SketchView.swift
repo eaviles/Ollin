@@ -3228,16 +3228,32 @@ public extension OllinApp {
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
             let skip = value("--skip").flatMap(Double.init) ?? 0
             let form: WebPageForm = args.contains("--inline") ? .inline : .standalone
+            // `--no-controls` leaves the parameters at their recorded values:
+            // no probe, no panel, no handle onto them.
+            let controls = !args.contains("--no-controls")
             let sketch = make()
             if frames <= 0, let lap = sketch.loopDuration, lap > 0 {
                 frames = Int((lap * fps).rounded())
             }
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-web <path> (--frames N | --seconds S, or a sketch that declares loopDuration) [--fps F] [--skip S] [--inline]\n".utf8))
+                    "usage: --export-web <path> (--frames N | --seconds S, or a sketch that declares loopDuration) [--fps F] [--skip S] [--inline] [--no-controls]\n".utf8))
                 return true
             }
-            OllinApp.exportWeb(sketch, to: args[i + 1], frames: frames, fps: fps, skipSeconds: skip, form: form)
+            // The probe records fresh sketches made the way this one was (the
+            // seed, a replayed take, and the automation applied), so a control
+            // is measured against the same run. The export runs to completion
+            // here, so the factory never outlives the call.
+            withoutActuallyEscaping(makeSketch) { factory in
+                OllinApp.exportWeb(sketch, to: args[i + 1], frames: frames, fps: fps, skipSeconds: skip, form: form,
+                                   controls: controls, remake: {
+                    let fresh = factory()
+                    if let replayTake { replayTake.install(on: fresh) }
+                    if let seedOverride { fresh.seed(seedOverride) }
+                    installAutomation(args, on: fresh)
+                    return fresh
+                })
+            }
             return true
         }
         // `--export-spatial <path.mov> (--frames N | --seconds S) [--fps F] [--skip S]

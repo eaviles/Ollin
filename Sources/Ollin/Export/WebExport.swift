@@ -105,6 +105,12 @@ struct WebRecording {
     /// The split-sum table (`WebBRDFLUT`) when a field wears a physically-based
     /// finish; empty otherwise.
     var brdfLUT: [UInt16] = []
+    /// The parameters the page offers as controls, the axes that carry them,
+    /// and the parameters left at their recorded values with the reason
+    /// (`WebControls.swift`).
+    var controls: [WebControl] = []
+    var axes: [WebAxis] = []
+    var leftOut: [WebLeftOut] = []
 
     var duration: Double { Double(frames.count) / rate }
     /// Whether any frame carries state from the one before it.
@@ -142,9 +148,12 @@ extension OllinApp {
     /// `draw()` advanced frame by frame at `fps`) and record what the renderer
     /// received each frame. Never touches Metal, so the page holds nothing
     /// GPU-specific. `skipSeconds` runs the sketch that long before the first
-    /// recorded frame.
+    /// recorded frame. With `controls`, the sketch's parameters are then probed
+    /// on fresh sketches from `remake` (a new instance of the same class when
+    /// none is given) so the page can offer them as controls (`webControls`).
     static func recordWebFrames(of sketch: Sketch, frames: Int, fps: Double,
-                                skipSeconds: Double = 0) throws -> WebRecording {
+                                skipSeconds: Double = 0, controls: Bool = true,
+                                remake: (() -> Sketch)? = nil) throws -> WebRecording {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         let size = sketch.canvasSize
@@ -156,30 +165,21 @@ extension OllinApp {
         let skip = max(0, Int((skipSeconds * fps).rounded()))
         // A parameter driven by a formula crosses as the formula (see
         // `WebFormula`); its value each frame is what a shape column is
-        // matched against.
+        // matched against. Every parameter's value as the run starts is what
+        // a control on the page starts at.
         let formulas = webFormulas(of: sketch)
         var handles: [String: ParamHandle] = [:]
-        for handle in sketch.parameters() { handles[handle.name] = handle }
+        var baseValues: [String: ParamStored] = [:]
+        for handle in sketch.parameters() {
+            handles[handle.name] = handle
+            if baseValues[handle.name] == nil { baseValues[handle.name] = handle.param.stored }
+        }
         var series = [[Float]](repeating: [], count: formulas.count)
         var constants: [String: Double] = [:]
         var mouse: (x: Double, y: Double) = (0, 0)
-        var recorded: [WebFrame] = []
-        recorded.reserveCapacity(frames)
         let recorder = WebGraphRecorder()
-        for k in 0 ..< (skip + frames) {
-            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
-            sketch.performDraw()
-            if k < skip {
-                // The page cannot replay a pile it never saw, nor a state it
-                // never stepped.
-                if sketch.drawer.accumulates {
-                    throw WebExportRefusal(call: "--skip on a sketch that accumulates (noClear)", frame: 0)
-                }
-                if sketch.drawer.usesFeedback {
-                    throw WebExportRefusal(call: "--skip on a sketch with a feedback layer or a simulation", frame: 0)
-                }
-                continue
-            }
+        let recorded = try runWebFrames(sketch, frames: frames, fps: fps, skip: skip,
+                                        width: size.width, height: size.height, recorder: recorder) { k in
             if k == skip {
                 constants = webConstants(of: sketch)
                 for f in formulas { constants.removeValue(forKey: f.name) }
@@ -188,8 +188,6 @@ extension OllinApp {
             for (i, f) in formulas.enumerated() {
                 series[i].append(Float(webFormulaValue(named: f.name, in: handles) ?? 0))
             }
-            recorded.append(try recorder.capture(sketch.drawer, frame: k - skip,
-                                                 width: size.width, height: size.height))
         }
         let loops = sketch.loopDuration.map { abs($0 * fps - Double(frames)) < 0.5 } ?? false
         var recording = WebRecording(name: String(describing: type(of: sketch)),
@@ -209,7 +207,43 @@ extension OllinApp {
         recording.atlases = try recorder.finish(frame: max(0, frames - 1))
         recording.gradientRows = recorder.gradientRows
         if recorder.usesPhysicallyBasedField { recording.brdfLUT = WebBRDFLUT.shared }
+        if controls {
+            let probed = webControls(of: sketch, baseValues: baseValues, baseline: recorded, frames: frames,
+                                     fps: fps, skip: skip, width: size.width, height: size.height,
+                                     remake: remake ?? { type(of: sketch).init() })
+            recording.controls = probed.controls
+            recording.axes = probed.axes
+            recording.leftOut = probed.leftOut
+        }
         return recording
+    }
+
+    /// Drive `sketch` for `skip + frames` frames at `fps` and record the frames
+    /// after the skip through `recorder`, calling `each` with the frame's
+    /// index after every recorded draw. The baseline and every probe run
+    /// through here, so a probe sees the frames the baseline saw.
+    static func runWebFrames(_ sketch: Sketch, frames: Int, fps: Double, skip: Int, width: Int, height: Int,
+                             recorder: WebGraphRecorder, each: (Int) -> Void = { _ in }) throws -> [WebFrame] {
+        var recorded: [WebFrame] = []
+        recorded.reserveCapacity(frames)
+        for k in 0 ..< (skip + frames) {
+            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+            sketch.performDraw()
+            if k < skip {
+                // The page cannot replay a pile it never saw, nor a state it
+                // never stepped.
+                if sketch.drawer.accumulates {
+                    throw WebExportRefusal(call: "--skip on a sketch that accumulates (noClear)", frame: 0)
+                }
+                if sketch.drawer.usesFeedback {
+                    throw WebExportRefusal(call: "--skip on a sketch with a feedback layer or a simulation", frame: 0)
+                }
+                continue
+            }
+            each(k)
+            recorded.append(try recorder.capture(sketch.drawer, frame: k - skip, width: width, height: height))
+        }
+        return recorded
     }
 
     /// One frame's data, read off the drawer after `performDraw()`.
@@ -1366,11 +1400,26 @@ public enum WebPageForm: String, Sendable {
 extension OllinApp {
     /// The page text for a recording, in either form. The inline fragment is the
     /// whole of what the standalone page wraps, so the two draw the same pixels.
-    static func webPage(of recording: WebRecording, form: WebPageForm) throws -> String {
-        let fragment = try webInlineFragment(of: recording)
+    /// The standalone page lays the controls out under the canvas when the
+    /// recording offers any and `panel` allows it; the inline fragment never
+    /// draws a panel, since the page around it owns the layout, and reaches
+    /// the controls through the handle instead.
+    static func webPage(of recording: WebRecording, form: WebPageForm, panel: Bool = true) throws -> String {
+        let showsPanel = panel && form == .standalone && !recording.controls.isEmpty
+        let fragment = try webInlineFragment(of: recording, panel: showsPanel)
         guard form == .standalone else { return fragment }
         let paper = recording.frames.first?.clear ?? SIMD3<Float>(0, 0, 0)
-        let ratio = Double(recording.width) / Double(recording.height)
+        let ratio = formatted(Double(recording.width) / Double(recording.height))
+        // With a panel, the canvas leaves room for it and the panel's text
+        // reads against the paper.
+        let luminance = 0.2126 * paper.x + 0.7152 * paper.y + 0.0722 * paper.z
+        let ink = luminance > 0.18 ? "#1d1d1f" : "#e8e8ed"
+        let layout = showsPanel
+            ? "body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }\n"
+                + "canvas.ollin-sketch { width: min(100vw, calc((100vh - var(--ollin-panel, 0px)) * \(ratio))); height: auto; }\n"
+                + ".ollin-controls { color: \(ink); }"
+            : "body { display: flex; align-items: center; justify-content: center; }\n"
+                + "canvas.ollin-sketch { width: min(100vw, calc(100vh * \(ratio))); height: auto; }"
         return """
         <!DOCTYPE html>
         <html lang="en">
@@ -1381,8 +1430,7 @@ extension OllinApp {
         <title>\(htmlEscaped(recording.name))</title>
         <style>
         html, body { margin: 0; height: 100%; background: \(cssColor(linear: paper)); }
-        body { display: flex; align-items: center; justify-content: center; }
-        canvas.ollin-sketch { width: min(100vw, calc(100vh * \(formatted(ratio)))); height: auto; }
+        \(layout)
         </style>
         </head>
         <body>
@@ -1394,7 +1442,8 @@ extension OllinApp {
     }
 
     /// The canvas and its script: the player, the page's shaders, and the track.
-    static func webInlineFragment(of recording: WebRecording) throws -> String {
+    /// `panel` has the script build the controls under the canvas.
+    static func webInlineFragment(of recording: WebRecording, panel: Bool = false) throws -> String {
         var rows: [String: Int] = [:]
         for frame in recording.frames {
             for (name, r) in frame.graph.fragmentRows { rows[name] = max(rows[name] ?? 0, r) }
@@ -1415,6 +1464,8 @@ extension OllinApp {
         script = script.replacingOccurrences(of: "@FIT@", with: track.fit)
         script = script.replacingOccurrences(of: "@EXTRA@", with: track.extra)
         script = script.replacingOccurrences(of: "@SCENE@", with: track.scene)
+        script = script.replacingOccurrences(of: "@AXES@", with: track.axisData)
+        script = script.replacingOccurrences(of: "@PANEL@", with: panel ? "true" : "false")
         script = script.replacingOccurrences(of: "@HELPERS@", with: FormulaJS.helpers)
         script = script.replacingOccurrences(of: "@GROUP_VS@", with: jsString(shaders.groupVertex))
         script = script.replacingOccurrences(of: "@GROUP_FS@", with: jsString(shaders.groupFragment))
@@ -1537,6 +1588,8 @@ enum WebPlayer {
       var FIT = "@FIT@";
       var EXTRA = "@EXTRA@";
       var SCENE = "@SCENE@";
+      var AXES = "@AXES@";
+      var PANEL = @PANEL@;
       var SDF_VS = @SDF_VS@;
       var SDF_FS = @SDF_FS@;
       var PRESENT_VS = @PRESENT_VS@;
@@ -1585,6 +1638,7 @@ enum WebPlayer {
       var fitData = floats(FIT);
       var extra = floats(EXTRA);
       var sceneFloats = floats(SCENE);
+      var axisData = floats(AXES);
 
       var gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false,
                                              premultipliedAlpha: false, preserveDrawingBuffer: true });
@@ -2054,6 +2108,58 @@ enum WebPlayer {
         }
       });
 
+      // The controls: each part of a parameter the probe could wire is an axis
+      // whose columns move by slope × (value − base) at every frame, the slope
+      // one number, the sines of a lap, or a sample per frame; a color reaches
+      // the clear through its linear-light value. A formula reads a control's
+      // value under the parameter's name.
+      var controls = D.controls || [], axes = D.axes || [];
+      var values = new Float64Array(axes.length);
+      for (var ai = 0; ai < axes.length; ai++) values[ai] = axes[ai].base;
+      var axisRegions = [false, false, false];
+      for (var ar = 0; ar < axes.length; ar++) for (var ac = 0; ac < axes[ar].cols.length; ac++) axisRegions[axes[ar].cols[ac][0]] = true;
+      function lin(c) { c = Math.min(Math.max(c, 0), 1); return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+      function slopeAt(col, kf, index, fraction) {
+        var mode = col[3], off = col[4], n = col[5];
+        if (mode === 0) return axisData[off];
+        if (mode === 1) {
+          var w = 2 * Math.PI * kf / D.frames, s = axisData[off];
+          for (var q = 0; q < n; q++) { var m = axisData[off + 1 + q * 3]; s += axisData[off + 2 + q * 3] * Math.cos(w * m) + axisData[off + 3 + q * 3] * Math.sin(w * m); }
+          return s;
+        }
+        var s0 = axisData[off + index];
+        if (fraction > 0 && D.stable) { var s1 = axisData[off + (index + 1) % D.frames]; return s0 + (s1 - s0) * fraction; }
+        return s0;
+      }
+      function applyAxes(region, target, count, kf, index, fraction) {
+        if (!axisRegions[region]) return;
+        for (var a = 0; a < axes.length; a++) {
+          var ax = axes[a], v = values[a];
+          if (v === ax.base) continue;
+          var d0 = v - ax.base, d1 = lin(v) - lin(ax.base);
+          for (var c = 0; c < ax.cols.length; c++) {
+            var col = ax.cols[c];
+            if (col[0] !== region || col[1] >= count) continue;
+            target[col[1]] += slopeAt(col, kf, index, fraction) * (col[2] === 1 ? d1 : d0);
+          }
+        }
+      }
+      var factScratch = new Float32Array(4);
+      function clearAt(index, fraction) {
+        var c = clearOf(index);
+        if (!axisRegions[2] || !c || !c.length) return c;
+        factScratch[0] = c[0]; factScratch[1] = c[1]; factScratch[2] = c[2]; factScratch[3] = 0;
+        applyAxes(2, factScratch, 3, index + fraction, index, fraction);
+        return [Math.max(0, factScratch[0]), Math.max(0, factScratch[1]), Math.max(0, factScratch[2])];
+      }
+      function exposureAt(index, fraction) {
+        var e = exposureOf(index);
+        if (!axisRegions[2]) return e;
+        factScratch[0] = 0; factScratch[1] = 0; factScratch[2] = 0; factScratch[3] = e;
+        applyAxes(2, factScratch, 4, index + fraction, index, fraction);
+        return factScratch[3];
+      }
+
       // The sketch's clock at fractional frame `kf`, and the automation's
       // position on it.
       function sketchTime(kf) { return (kf + D.frameOffset) / D.rate; }
@@ -2071,6 +2177,7 @@ enum WebPlayer {
       // and the driven values already worked out this frame.
       function evaluateFormulas(kf) {
         var v = Object.assign({}, D.constants);
+        for (var a = 0; a < axes.length; a++) v[axes[a].name] = values[a];
         v.time = clockPosition(kf);
         v.frame = Math.floor(kf) + D.frameOffset + 1;
         v.width = W;
@@ -2097,6 +2204,14 @@ enum WebPlayer {
       // next (the camera and the lights slide between records), or null.
       var sceneScratch = null;
       function sceneAt(index, fraction) {
+        var s = sceneBase(index, fraction);
+        if (!s || !axisRegions[1]) return s;
+        var moved = new Float32Array(s.length);
+        moved.set(s);
+        applyAxes(1, moved, moved.length, index + fraction, index, fraction);
+        return moved;
+      }
+      function sceneBase(index, fraction) {
         if (!D.sceneOffsets) return null;
         var u = ref(index), len = D.sceneLengths[u];
         if (!len) return null;
@@ -2148,6 +2263,7 @@ enum WebPlayer {
             evaluateFormulas(kf);
             for (var d = 0; d < drives.length; d++) { var dr = drives[d]; scratch[dr[0]] = dr[2] * formulaValues[dr[1]] + dr[3]; }
           }
+          applyAxes(0, scratch, po + D.graph.params, kf, index, fraction);
           return;
         }
         // Every frame its own record: the shapes, quads, and vertices as 16-bit
@@ -2168,6 +2284,7 @@ enum WebPlayer {
         }
         var pstart = D.paramOffsets[u];
         for (var e2 = 0; e2 < g.params; e2++) scratch[count + e2] = extra[pstart + e2];
+        applyAxes(0, scratch, count + g.params, index + fraction, index, fraction);
       }
 
       // The blend factors under each mode, as the Mac's pipelines set them: a
@@ -2523,7 +2640,7 @@ enum WebPlayer {
         }
         // The canvas (with the frame's scene when it marches fields), then the
         // whole-frame filters through a spare pair.
-        var clear = clearOf(index);
+        var clear = clearAt(index, fraction);
         drawItems(g.canvas, main, W, H, clear.length ? clear : null, results, previous, g, g.fields ? sceneAt(index, fraction) : null);
         var shown = main;
         for (var pi = 0; pi < g.post.length; pi++) {
@@ -2540,7 +2657,7 @@ enum WebPlayer {
         gl.bindTexture(gl.TEXTURE_2D, shown.tex);
         gl.uniform1i(pSrc, 0);
         gl.uniform2f(pViewport, W, H);
-        gl.uniform1f(pExposure, exposureOf(index));
+        gl.uniform1f(pExposure, exposureAt(index, fraction));
         gl.uniform1i(pToneMap, toneOf(index));
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
@@ -2612,6 +2729,196 @@ enum WebPlayer {
         if (document.hidden) { if (player.playing) { player.pause(); resume = true; } }
         else if (resume) { resume = false; player.play(); }
       });
+
+      // Setting a parameter from the page: `set(name, value)` takes a number,
+      // a boolean, a color as '#rrggbb', '#rrggbbaa', {red, green, blue, alpha}
+      // or [r, g, b, a] in 0…1, a point as {x, y} or [x, y], a pair of ends as
+      // {lower, upper} or [lower, upper], or one part by name ('ink.red', 0.5).
+      // A value outside the parameter's range lands on its edge, as on the Mac.
+      var started = false, inputs = {};
+      function controlNamed(name) { for (var i = 0; i < controls.length; i++) if (controls[i].name === name) return controls[i]; return null; }
+      function partOf(c, part) { for (var i = 0; i < c.parts.length; i++) if (c.parts[i].name === part) return c.parts[i]; return null; }
+      function partValue(c, p) { return p && p.axis >= 0 ? values[p.axis] : (p ? p.value : undefined); }
+      function setPart(c, p, x) {
+        if (!p || p.axis < 0) return;
+        x = Number(x);
+        if (x !== x) return;
+        if (p.lo !== undefined) x = Math.min(Math.max(x, p.lo), p.hi);
+        if (c.kind === 'integer' || c.kind === 'toggle') x = Math.round(x);
+        else if (p.step > 0 && p.lo !== undefined) x = Math.min(p.hi, p.lo + Math.round((x - p.lo) / p.step) * p.step);
+        if (c.kind === 'range') {
+          // A pair of ends stays ordered, as on the Mac.
+          if (p.name === 'lower') x = Math.min(x, partValue(c, partOf(c, 'upper')));
+          else x = Math.max(x, partValue(c, partOf(c, 'lower')));
+        }
+        values[p.axis] = x;
+      }
+      function hex2(x) { var h = Math.round(Math.min(Math.max(x, 0), 1) * 255).toString(16); return h.length < 2 ? '0' + h : h; }
+      function colorOf(c) {
+        var r = partValue(c, partOf(c, 'red')), g = partValue(c, partOf(c, 'green')), b = partValue(c, partOf(c, 'blue')), a = partValue(c, partOf(c, 'alpha'));
+        return { red: r, green: g, blue: b, alpha: a, hex: '#' + hex2(r) + hex2(g) + hex2(b) };
+      }
+      function parseColor(v) {
+        if (typeof v === 'string') {
+          var s = v.replace('#', '');
+          if (s.length === 3 || s.length === 4) s = s.split('').map(function (ch) { return ch + ch; }).join('');
+          if (s.length !== 6 && s.length !== 8) return null;
+          var out = { red: parseInt(s.slice(0, 2), 16) / 255, green: parseInt(s.slice(2, 4), 16) / 255, blue: parseInt(s.slice(4, 6), 16) / 255 };
+          if (s.length === 8) out.alpha = parseInt(s.slice(6, 8), 16) / 255;
+          return out;
+        }
+        if (Array.isArray(v)) return { red: v[0], green: v[1], blue: v[2], alpha: v[3] };
+        return v || null;
+      }
+      function redraw() {
+        if (!started) return;
+        if (sequential) shown = -1;
+        if (!player.playing) show(player.time);
+      }
+      function syncPanel() { for (var key in inputs) inputs[key].sync(); }
+      player.params = controls.map(function (c) {
+        return { name: c.name, label: c.label, group: c.group || null, kind: c.kind,
+                 parts: c.parts.filter(function (p) { return p.axis >= 0; }).map(function (p) { return { name: p.name, min: p.lo, max: p.hi, step: p.step }; }) };
+      });
+      player.get = function (name) {
+        var dot = name.indexOf('.');
+        if (dot > 0) { var c0 = controlNamed(name.slice(0, dot)); return c0 ? partValue(c0, partOf(c0, name.slice(dot + 1))) : undefined; }
+        var c = controlNamed(name);
+        if (!c) return undefined;
+        switch (c.kind) {
+          case 'number': case 'integer': return partValue(c, c.parts[0]);
+          case 'toggle': return partValue(c, c.parts[0]) !== 0;
+          case 'color': { var k = colorOf(c); return { red: k.red, green: k.green, blue: k.blue, alpha: k.alpha }; }
+          default: { var o = {}; for (var i = 0; i < c.parts.length; i++) o[c.parts[i].name] = partValue(c, c.parts[i]); return o; }
+        }
+      };
+      player.set = function (name, value) {
+        var dot = name.indexOf('.');
+        if (dot > 0) { var c0 = controlNamed(name.slice(0, dot)); if (c0) { setPart(c0, partOf(c0, name.slice(dot + 1)), value); syncPanel(); redraw(); } return; }
+        var c = controlNamed(name);
+        if (!c) return;
+        switch (c.kind) {
+          case 'number': case 'integer': setPart(c, c.parts[0], value); break;
+          case 'toggle': setPart(c, c.parts[0], value ? 1 : 0); break;
+          case 'color': {
+            var k = parseColor(value);
+            if (!k) return;
+            for (var i = 0; i < c.parts.length; i++) if (k[c.parts[i].name] !== undefined) setPart(c, c.parts[i], k[c.parts[i].name]);
+            break;
+          }
+          default: {
+            var o = value || {};
+            if (Array.isArray(value)) { o = {}; for (var j = 0; j < c.parts.length; j++) o[c.parts[j].name] = value[j]; }
+            for (var i2 = 0; i2 < c.parts.length; i2++) if (o[c.parts[i2].name] !== undefined) setPart(c, c.parts[i2], o[c.parts[i2].name]);
+          }
+        }
+        syncPanel();
+        redraw();
+      };
+      player.reset = function () { for (var a = 0; a < axes.length; a++) values[a] = axes[a].base; syncPanel(); redraw(); };
+
+      // The panel under the canvas, in the standalone page: a row per
+      // parameter, grouped as the sketch grouped them, as wide as the canvas.
+      var panel = null;
+      function fmt(x, p) {
+        var span = p.hi - p.lo;
+        var d = p.step > 0 ? Math.max(0, Math.ceil(-Math.log10(p.step) - 1e-9)) : (span >= 100 ? 0 : (span >= 10 ? 1 : 2));
+        return Number(x).toFixed(d);
+      }
+      function fitPanel() {
+        document.documentElement.style.setProperty('--ollin-panel', (panel.offsetHeight + 28) + 'px');
+        var rect = canvas.getBoundingClientRect();
+        if (rect.width > 0) panel.style.width = rect.width + 'px';
+      }
+      function addInputs(c, row) {
+        var kind = c.kind;
+        function attach(p, input, out) {
+          function sync() {
+            var v = values[p.axis];
+            if (kind === 'toggle') input.checked = v !== 0;
+            else if (input.type === 'number') input.value = kind === 'integer' ? String(Math.round(v)) : fmt(v, p);
+            else input.value = v;
+            if (out) out.value = fmt(v, p);
+          }
+          input.addEventListener('input', function () {
+            setPart(c, p, kind === 'toggle' ? (input.checked ? 1 : 0) : input.value);
+            syncPanel();
+            redraw();
+          });
+          inputs[c.name + '.' + p.name] = { sync: sync };
+          sync();
+        }
+        if (kind === 'color') {
+          var well = document.createElement('input');
+          well.type = 'color';
+          well.addEventListener('input', function () {
+            var k = parseColor(well.value);
+            for (var j = 0; j < c.parts.length; j++) if (k[c.parts[j].name] !== undefined) setPart(c, c.parts[j], k[c.parts[j].name]);
+            syncPanel();
+            redraw();
+          });
+          inputs[c.name + '.well'] = { sync: function () { well.value = colorOf(c).hex; } };
+          well.value = colorOf(c).hex;
+          row.appendChild(well);
+        }
+        for (var i = 0; i < c.parts.length; i++) {
+          var p = c.parts[i];
+          if (p.axis < 0) continue;
+          if (kind === 'color' && p.name !== 'alpha') continue;
+          var input = document.createElement('input'), out = null;
+          if (kind === 'toggle') {
+            input.type = 'checkbox';
+          } else if (kind === 'number' || kind === 'color') {
+            input.type = 'range';
+            input.min = p.lo; input.max = p.hi; input.step = p.step > 0 ? p.step : 'any';
+            out = document.createElement('output');
+            if (kind === 'color') { var tag = document.createElement('span'); tag.className = 'part'; tag.textContent = 'alpha'; row.appendChild(tag); }
+          } else {
+            input.type = 'number';
+            if (p.lo !== undefined) { input.min = p.lo; input.max = p.hi; }
+            input.step = p.step > 0 ? p.step : (kind === 'integer' ? 1 : 'any');
+            if (p.name) { var tag2 = document.createElement('span'); tag2.className = 'part'; tag2.textContent = p.name; row.appendChild(tag2); }
+          }
+          row.appendChild(input);
+          if (out) row.appendChild(out);
+          attach(p, input, out);
+        }
+      }
+      function buildPanel() {
+        var style = document.createElement('style');
+        style.textContent = '.ollin-controls{font:13px/1.4 -apple-system,system-ui,sans-serif;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 14px;align-items:center;box-sizing:border-box;padding:4px 8px;margin:0}'
+          + '.ollin-controls h4{grid-column:1/-1;margin:10px 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.55}'
+          + '.ollin-controls label{text-align:right;opacity:.8;white-space:nowrap}'
+          + '.ollin-controls .row{display:flex;gap:8px;align-items:center;min-width:0}'
+          + '.ollin-controls input[type=range]{flex:1;min-width:80px;margin:0;accent-color:currentColor}'
+          + '.ollin-controls input[type=number]{width:5.5em;font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:6px;padding:2px 6px;opacity:.85}'
+          + '.ollin-controls input[type=color]{width:34px;height:24px;padding:0;border:none;background:transparent}'
+          + '.ollin-controls input[type=checkbox]{accent-color:currentColor}'
+          + '.ollin-controls output{min-width:3.5em;text-align:right;font-variant-numeric:tabular-nums;opacity:.75}'
+          + '.ollin-controls .part{font-size:11px;opacity:.55}';
+        document.head.appendChild(style);
+        panel = document.createElement('form');
+        panel.className = 'ollin-controls';
+        panel.addEventListener('submit', function (ev) { ev.preventDefault(); });
+        var lastGroup = null;
+        for (var i = 0; i < controls.length; i++) {
+          var c = controls[i], group = c.group || null;
+          if (group !== lastGroup && group) { var h = document.createElement('h4'); h.textContent = group; panel.appendChild(h); }
+          lastGroup = group;
+          var label = document.createElement('label');
+          label.textContent = c.label;
+          panel.appendChild(label);
+          var row = document.createElement('div');
+          row.className = 'row';
+          panel.appendChild(row);
+          addInputs(c, row);
+        }
+        canvas.insertAdjacentElement('afterend', panel);
+        fitPanel();
+        window.addEventListener('resize', fitPanel);
+      }
+      if (PANEL && controls.length) buildPanel();
+
       canvas.ollin = player;
       window.ollin = player;
 
@@ -2621,6 +2928,7 @@ enum WebPlayer {
       // sees that frame, still; `pause()` before the start holds it too.
       var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       function start() {
+        started = true;
         show(0);
         if (!still && player.autoplay) player.play();
       }
@@ -2655,21 +2963,25 @@ public extension OllinApp {
     /// (a clip, a live texture drawn as an image, 3D) and the frame it was met
     /// at; nothing partial is written.
     static func web(of sketch: Sketch, frames: Int, fps: Double = 30, skipSeconds: Double = 0,
-                    form: WebPageForm = .standalone) throws -> String {
-        let recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds)
-        return try webPage(of: recording, form: form)
+                    form: WebPageForm = .standalone, controls: Bool = true,
+                    remake: (() -> Sketch)? = nil) throws -> String {
+        let recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
+                                            controls: controls, remake: remake)
+        return try webPage(of: recording, form: form, panel: controls)
     }
 
     /// Record `sketch` and write the page to `path`; the basis for the
     /// `--export-web` flag. A refusal is printed and the process exits nonzero,
     /// so a build step that runs the exporter sees it fail.
     static func exportWeb(_ sketch: Sketch, to path: String, frames: Int, fps: Double = 30,
-                          skipSeconds: Double = 0, form: WebPageForm = .standalone) {
+                          skipSeconds: Double = 0, form: WebPageForm = .standalone,
+                          controls: Bool = true, remake: (() -> Sketch)? = nil) {
         let recording: WebRecording
         let page: String
         do {
-            recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds)
-            page = try webPage(of: recording, form: form)
+            recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
+                                            controls: controls, remake: remake)
+            page = try webPage(of: recording, form: form, panel: controls)
         } catch let refusal as WebExportRefusal {
             fflush(stdout)
             FileHandle.standardError.write(Data("Ollin: --export-web stopped: \(refusal).\n".utf8))
@@ -2698,6 +3010,13 @@ public extension OllinApp {
         if track.vertexCount > 0 { live.append("\(track.vertexCount) triangle vertices in the fullest frame") }
         if track.groupCount > 0 { live.append("\(track.groupCount) composed field\(track.groupCount == 1 ? "" : "s") a frame") }
         if track.fieldCount > 0 { live.append("\(track.fieldCount) raymarched field\(track.fieldCount == 1 ? "" : "s") a frame") }
+        if !recording.controls.isEmpty {
+            let names = recording.controls.map(\.name).joined(separator: ", ")
+            live.append("\(recording.controls.count) parameter\(recording.controls.count == 1 ? "" : "s") live as controls (\(names); \(track.wiredColumns) columns wired)")
+        }
+        if !recording.leftOut.isEmpty {
+            live.append("left at their recorded values: " + recording.leftOut.map { "\($0.name) (\($0.reason))" }.joined(separator: ", "))
+        }
         let assetBytes = recording.pictures.reduce(0) { $0 + $1.data.count } + recording.atlases.reduce(0) { $0 + $1.png.count }
         if assetBytes > 0 {
             var assets: [String] = []
