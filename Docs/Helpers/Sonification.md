@@ -1,10 +1,10 @@
 # Sonification
 
-Numbers read out as notes.
+Sonification reads numbers out as notes.
 
-A column of a table, a line across a terrain, a row of a picture: any series becomes something to listen to by spreading its values over a range of pitch. Snapped through a [`Scale`](Composition.md#scale) the reading stays in key, so data can be music rather than only a signal.
+You can listen to any series: a column of a table, a line across a terrain, or a row of a picture. Sonification spreads the values of the series over a range of pitch. When you snap the reading through a [`Scale`](Composition.md#scale), it stays in key, so the data can be music rather than only a signal.
 
-It is also how a drawing reaches someone who is not looking at it. A sketch that plots a column can read the same column out loud from the same numbers, with no second copy of the data.
+It is also a way for a drawing to reach someone who is not looking at it. A sketch that plots a column can read that column out loud from the same numbers, so there is no second copy of the data.
 
 ```swift
 import OllinAudio
@@ -21,13 +21,13 @@ override func draw() {
 }
 ```
 
-Like everything else in the [composition](Composition.md) tier it answers a step number and owns no clock, so the same reading can be driven by `time`, by a detected beat, or by a `TempoClock` following a drum machine.
+Like everything else in the [composition](Composition.md) tier, a reading answers a step number and has no clock of its own. So the same reading can be driven by `time`, by a detected beat, or by a `TempoClock` that follows a drum machine.
 
 ---
 
 ## What it reads
 
-Four sources, each one call.
+There are four sources, and each one is a single call.
 
 ```swift
 Sonification(numbers)                                  // a series in hand
@@ -42,9 +42,9 @@ Sonification(picture, row: 200)                        // a row of a picture
 | `[Double]` | the numbers, in order |
 | `Table` | one column, in row order. Cells that are not numbers are dropped, so a gap is a note that is not played rather than a note at zero |
 | `Heightfield` | one `row:` left to right, one `column:` top to bottom, or a straight line at any angle through `from:to:count:` in normalized coordinates |
-| `Image` | one `row:` or `column:` as brightness, weighed the way the eye weighs it, so a pure blue reads far darker than a green of the same numeric size |
+| `Image` | one `row:` or `column:` as brightness. The brightness is weighted the way the eye weights it, so a pure blue reads far darker than a green of the same numeric size |
 
-A picture living on the GPU has no pixels to read on this side and gives an empty reading; call `snapshot()` first.
+A picture that lives on the GPU has no pixels to read on this side, so it gives an empty reading. Call `snapshot()` first.
 
 ---
 
@@ -61,11 +61,11 @@ Sonification(numbers,
 
 | Setting | What it does |
 |---|---|
-| `in scale:` | the notes the reading may land on. Omit it and every semitone between the ends is available |
-| `pitches:` | the span the data is spread over. Three octaves by default: wide enough to hear a shape in, not so wide the top is shrill |
+| `in scale:` | the notes the reading may land on. If you omit it, every semitone between the ends is available |
+| `pitches:` | the span the data is spread over. The default is three octaves, which is wide enough to hear a shape in and not so wide that the top is shrill |
 | `bounds:` | which values land at the ends. See below |
-| `polarity:` | `.positive` is more-is-higher, which is what a listener expects of a quantity. `.negative` is the right way round for a size, since a small thing is the one that rings high |
-| `noteLength:` | how long each note lasts, **in beats**. The tempo joins when it is played |
+| `polarity:` | `.positive` means a larger value is a higher note, which is what a listener expects of a quantity. `.negative` is the right way round for a size, because a small thing is the one that sounds high |
+| `noteLength:` | how long each note lasts, **in beats**. The tempo is applied when the note is played |
 
 ### Where the ends go
 
@@ -75,9 +75,9 @@ Sonification(numbers,
 .fixed(0 ... 100)           // a range you name, whatever the data does
 ```
 
-`.robust` is the one to reach for with real measurements. One bad sensor reading at a thousand times the scale of everything else will otherwise flatten the entire series into a single note. `.fixed` is what makes two readings comparable with each other: the same value lands on the same note in both.
+Use `.robust` with real measurements. Otherwise one bad sensor reading at a thousand times the scale of everything else flattens the entire series into a single note. Use `.fixed` to make two readings comparable with each other, because the same value then lands on the same note in both.
 
-Values outside the range are held at the ends rather than running off into an inaudible pitch.
+A value outside the range is held at the end of the range, so it does not run off into an inaudible pitch.
 
 ---
 
@@ -88,11 +88,11 @@ Values outside the range are held at the ends rather than running off into an in
 | `count` / `isEmpty` | how many notes there are |
 | `sonification[step]` | the `Note` at a step, or nil past the end |
 | `note(at:)` | the same, spelled out |
-| `notes()` | the whole reading at once, for a phrase to hold on to |
+| `notes()` | the whole reading at once, so a phrase can hold on to it |
 | `pitch(for: value)` | where any one value lands, whether or not it is in the data |
 | `values` / `valueDomain` | the numbers as read, and the two that land at the ends |
 
-`pitch(for:)` is what puts something else on the same footing as the reading: a threshold, an average, the value under the mouse.
+Use `pitch(for:)` to place another value, such as a threshold, an average, or the value under the mouse, on the same scale as the reading.
 
 ---
 
@@ -103,7 +103,7 @@ let sealevel = reading.reference(at: 0.5)
 marker.play(sealevel, tempo: tempo)     // under the reading, every bar
 ```
 
-Without one, a listener has to have absolute pitch to know what any note means. With one, a reading is heard as above or below something, which is the whole difference between a sound and a measurement. It is the grid line of an ordinary chart.
+Without a reference note, a listener needs absolute pitch to know what any note means. With one, a listener hears each note as above or below the reference note. That is what makes the reading a measurement rather than only a sound. The reference note does the job of a grid line on an ordinary chart.
 
 ---
 
@@ -115,9 +115,9 @@ A second series can be read out as loudness alongside the first.
 let reading = Sonification(depth, in: scale).amplified(by: confidence)
 ```
 
-The two are lined up by position, so entry 3 of one is heard at the same moment as entry 3 of the other. With nothing given, every note plays at full level.
+The two series are lined up by position, so entry 3 of one is heard at the same moment as entry 3 of the other. If you give no second series, every note plays at full level.
 
-Loudness is the weaker of the two dimensions and deliberately does nothing unless asked. How loud something sounds depends on how high it is as well as how strong it is, so a series read out on loudness alone is read out through a distortion. Reach for pitch first, and use `amplified(by:)` for a *second* series rather than to say the same thing twice.
+Loudness is the weaker of the two dimensions, and it deliberately does nothing unless you ask for it. How loud a note sounds depends on its pitch as well as its strength. That means a series read out on loudness alone is heard through a distortion. Use pitch first, and use `amplified(by:)` for a *second* series rather than to say the same thing twice.
 
 ---
 
@@ -125,16 +125,16 @@ Loudness is the weaker of the two dimensions and deliberately does nothing unles
 
 Two choices are worth knowing about, because both are easy to get wrong and neither is what you would write first.
 
-**Pitch is spread evenly in semitones, not in hertz.** Hearing is logarithmic: the step from 220 Hz to 440 and the step from 440 to 880 sound like the same distance, though one is twice the size of the other. A series spread evenly in hertz crushes its whole bottom half into a few notes at the low end.
+**Pitch is spread evenly in semitones, not in hertz.** Hearing is logarithmic. For example, the step from 220 Hz to 440 Hz and the step from 440 Hz to 880 Hz sound like the same distance. In hertz, the second step is twice the size of the first. So a series spread evenly in hertz crushes its whole bottom half into a few notes at the low end.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/Sonification-dark.jpg">
   <img src="../../Guide/Images/29-MakingSound/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the low half bunches against the top two octaves, and again snapped so every mark lands on a line of the scale" width="880">
 </picture>
 
-**Loudness is spread evenly in decibels**, for the same reason, between a floor and full level rather than between silence and full.
+**Loudness is spread evenly in decibels**, for the same reason. The span runs between a floor and full level, not between silence and full level.
 
-Both are the units these things are heard in, which is why the mapping is linear once it is in them.
+Semitones and decibels are the units pitch and loudness are heard in, which is why the mapping is linear once it is expressed in them.
 
 ---
 
@@ -145,4 +145,4 @@ Both are the units these things are heard in, which is why the mapping is linear
 - [Data](Data.md) - `loadTable` and the `Table` a column is read from
 - [Terrain](../Generators/Terrain.md) - the `Heightfield` a profile is read from
 
-The example is `Examples/Audio/Sonification`: a line across a landscape, drawn and read out at once.
+The example is `Examples/Audio/Sonification`. It draws a line across a landscape and reads it out at the same time.

@@ -4,9 +4,9 @@
 
 ## Variations
 
-A seeded sketch is a *generator*: one number decides which of its many possible pieces you're looking at. Ollin gives that number a name, `variation`, shows it while the sketch runs, embeds it in every export, and hands you the tools to explore the space it indexes: step to the next seed, roll a random one, proof a whole range as a contact sheet, then re-render the keeper at full resolution.
+A seeded sketch is a *generator*. One number decides which of its many possible pieces you are looking at. Ollin names that number `variation`. It shows the number while the sketch runs and embeds it in every export. It also gives you tools to explore the other pieces the same sketch can produce. You can step to the next seed, roll a random one, or proof a whole range as a contact sheet. Once you find a piece you want to keep, you re-render it at full resolution.
 
-Nothing here changes what a sketch draws. It changes how you find the one you want to keep.
+Nothing on this page changes what a sketch draws. These tools change only how you find the piece you want to keep.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/SeedSheet-dark.jpg">
@@ -26,7 +26,7 @@ Nothing here changes what a sketch draws. It changes how you find the one you wa
 
 ### Every sketch has a variation
 
-When a sketch is created it rolls one number, its `variation`, and seeds both `random()` and `noise()` from it. So an unseeded sketch still looks different every run, the way it always has, but that run is no longer lost: the number that produced it is readable.
+When a sketch is created, it rolls one number, its `variation`, and seeds both `random()` and `noise()` from it. So an unseeded sketch still looks different on every run. The number that produced a run is readable, so you can go back to that run later.
 
 ```swift
 override func draw() {
@@ -34,9 +34,9 @@ override func draw() {
 }
 ```
 
-The number is small on purpose (1 through 99,999), so it's easy to read off the screen, say out loud, and type back in.
+The number is small on purpose (1 through 99,999), so it is easy to read off the screen, say out loud, and type back in.
 
-Because both generators start from it, every export records it as a single `seed` in its [reproduction recipe](../Output/Export.md#reproducibility-metadata):
+Because both generators start from that number, every export records it as a single `seed` in its [reproduction recipe](../Output/Export.md#reproducibility-metadata):
 
 ```json
 {"tool":"Ollin","seed":27157,"git":"d146303","frame":0,"fps":60}
@@ -52,13 +52,13 @@ override func setup() {
 }
 ```
 
-A sketch that does this reproduces one piece forever, which is what you want once you've found the composition you're after. Leave it out and the sketch keeps rolling.
+A sketch that does this always reproduces the same piece. Use `seed(_:)` once you have found a composition you want to keep. Leave the call out and the sketch keeps rolling a new variation on every run.
 
-`randomSeed(_:)` and `noiseSeed(_:)` still reseed one generator each without claiming the whole run, so `variation` keeps naming the seed the sketch was born on.
+`randomSeed(_:)` and `noiseSeed(_:)` still reseed one generator each. Neither call changes the seed for the whole run, so `variation` still names the seed the sketch started with.
 
 ### Exploring while the sketch runs
 
-Every host that shows an inspector (the live host's sidebar, the performance host, the examples gallery, and the standalone `⌘/` panel) shows a **Variation** card:
+Every host with an inspector has a **Variation** card. That covers the live host's sidebar, the performance host, the examples gallery, and the standalone `⌘/` panel:
 
 ```
 ┌──────────────────────────────────────┐
@@ -70,13 +70,13 @@ Every host that shows an inspector (the live host's sidebar, the performance hos
 - `⚄` rolls a random one.
 - Click the number to type a seed and jump straight to it.
 
-Each move restarts the sketch in place at that seed: `setup()` runs again, the clock returns to zero, and any accumulated canvas is cleared, while your `@Param` parameter values stay exactly where you left them. In the live host, a seed you navigated to **carries across a hot reload**, the same way a tuned parameter does, so editing the code doesn't reshuffle the composition you were working on.
+Each move restarts the sketch in place at that seed. That means `setup()` runs again, the clock returns to zero, and any accumulated canvas is cleared. Your `@Param` parameter values, however, do not change. In the live host, a seed you navigated to **carries across a hot reload**, the same way a tuned parameter does. So editing the code does not reshuffle the composition you were working on.
 
-A sketch that pins its own seed in `setup()` reproduces that one variation no matter what the card says. That's by design: the sketch's own decision wins.
+A sketch that pins its own seed in `setup()` reproduces that one variation no matter what the card says. This is deliberate, because the seed set in the code takes priority over the card.
 
 ### Contact sheets: proof a whole range
 
-The reason to have seeds at all is to cull them. `--export-grid` renders one frame at each of a run of seeds and tiles them into a single labeled proof sheet:
+Seeds are most useful when you look through many variations and keep the few you want. `--export-grid` renders one frame at each seed in a consecutive range of seeds, then tiles those frames into a single labeled proof sheet:
 
 ```sh
 swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25
@@ -97,9 +97,9 @@ swift run --package-path Examples Example-Randomness-Variations --export-grid sh
   <img src="../../Guide/Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring-of-petals piece under a different seed, each with its own colored wash" width="680">
 </picture>
 
-Each tile is a fresh instance of the sketch, seeded before `setup()` runs, so a stateful sketch can't leak from one tile into the next. The sheet's own PNG carries the seed list in its recipe.
+Each tile is a fresh instance of the sketch, seeded before `setup()` runs, so state from one tile cannot leak into the next. The sheet's own PNG carries the seed list in its recipe.
 
-The same thing from code, when you're driving the render yourself:
+You can do the same from code when you drive the render yourself:
 
 ```swift
 OllinApp.exportContactSheet({ MySketch() }, to: "sheet.png", seeds: Array(1...25))
@@ -110,7 +110,7 @@ let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 9
 
 ### Re-rendering a keeper
 
-`--seed N` reseeds the sketch before `setup()` on **every** export path, so a variation you found on a sheet or in the inspector comes back at full resolution, as a video, or as vector art:
+`--seed N` reseeds the sketch before `setup()` on **every** export path. So a variation you found on a sheet or in the inspector comes back at full resolution, as a video, or as vector art:
 
 ```sh
 swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10
@@ -118,11 +118,11 @@ swift run --package-path Examples Example-Randomness-Variations --export-svg kee
 swift run --package-path Examples Example-Randomness-Variations --export-video keeper.mp4 --seconds 6 --seed 10
 ```
 
-Same seed, same pixels, every time. That's the whole loop: roll a sheet, pick a keeper, render it big.
+The same seed gives the same pixels every time. The loop is to roll a sheet, pick a keeper, and render it at full size.
 
 ### Writing a sketch worth exploring
 
-A sketch rewards seed exploration when the seed decides *composition*, not just jitter. The practical rule: make the choices that matter in `setup()`, where the seeded generators run once, and let `draw()` animate what `setup()` decided.
+Seed exploration is worthwhile when the seed decides *composition*, not just jitter. The practical rule is to make the choices that matter in `setup()`, where the seeded generators run once. Then let `draw()` animate what `setup()` decided.
 
 ```swift
 override func setup() {
@@ -132,9 +132,9 @@ override func setup() {
 }
 ```
 
-Now every seed is a different piece rather than the same piece slightly shaken. Compare `Examples/Randomness/Variations` (a whole composition per seed) with `Examples/Randomness/RandomBand` (the same band, re-jittered).
+Now every seed is a different piece rather than the same piece with a small jitter. Compare `Examples/Randomness/Variations` (a whole composition per seed) with `Examples/Randomness/RandomBand` (the same band, re-jittered).
 
-Because [`random`](../Generators/Random.md) and [`noise`](../Generators/Noise.md) are both seeded from `variation`, anything built on them (the scatter helpers, `poissonDisk`, the L-systems, flow fields, packing, boids) rides along automatically.
+[`random`](../Generators/Random.md) and [`noise`](../Generators/Noise.md) are both seeded from `variation`. So anything built on them (the scatter helpers, `poissonDisk`, the L-systems, flow fields, packing, boids) follows the seed automatically.
 
 ### See also
 

@@ -4,9 +4,9 @@
 
 ## Blue noise
 
-Plain [`random`](./Random.md) scatter clumps, so some points land almost on top of each other while elsewhere gaps open up. **Blue-noise** (Poisson-disk) sampling fixes that by laying down points spread *evenly but organically*, with **no two closer than a radius** and no visible clustering. It's the distribution behind natural-looking stippling, object scatter, and the even seed sets the [Voronoi](../Drawing/Voronoi.md) and packing paths like to consume.
+A plain [`random`](./Random.md) scatter clumps, so some points land almost on top of each other while gaps open up elsewhere. A **blue-noise** (Poisson-disk) scatter places the points *evenly but organically* instead, with **no two closer than a radius** and no visible clustering. It is the distribution behind natural-looking stippling and object scatter, and it gives the [Voronoi](../Drawing/Voronoi.md) and packing paths the even seed sets they prefer.
 
-`poissonDisk` is Bridson's dart-throwing sampler, and it's driven by the seedable `random`, so the same [`seed`](./Random.md#seed) always lays the points down the same way.
+`poissonDisk` is Bridson's dart-throwing sampler. It runs on the seedable `random`, so the same [`seed`](./Random.md#seed) always places the points the same way.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/ScatterCompare-dark.jpg">
@@ -30,7 +30,7 @@ poissonDisk(in bounds: Rectangle? = nil,
             maxCount: Int? = nil) -> [Vector2]
 ```
 
-A blue-noise scatter of `bounds` (the whole canvas by default), with points spread evenly and no two closer than `radius`. The number of points follows from `radius` and the area rather than being requested directly (halving the radius roughly quadruples the points). Pass `maxCount` to stop once enough have landed. `candidates` is how many darts are thrown around each point before it's retired (Bridson's `k`, 30 by default, and more is slightly tighter and slower).
+Returns a blue-noise scatter of `bounds`, which is the whole canvas by default. The points are spread evenly, and no two are closer than `radius`. You do not ask for a number of points. That number follows from `radius` and the area, so halving the radius roughly quadruples the points. Pass `maxCount` to stop once enough points have landed. `candidates` is how many darts are thrown around each point before it is retired. That is Bridson's `k`, 30 by default, and a higher value packs the points slightly tighter and runs slower.
 
 ```swift
 seed(9)
@@ -39,13 +39,13 @@ noStroke(); fill(.black)
 drawPoints(dots, size: 4)
 ```
 
-Because the layout is a pure function of the seed, compute it once and hold it (in a stored property) rather than every frame, then animate something visual (a dot's size, its color) so the field moves without the points jumping. See the `BlueNoise` example.
+The layout is a pure function of the seed. Compute it once and keep it in a stored property rather than recomputing it every frame. Then animate something visual, such as a dot's size or its color, so the field moves without the points jumping. See the `BlueNoise` example.
 
 <a name="feeding"></a>
 
 #### Feeding the tessellators
 
-The output is an ordinary `[Vector2]`, so it drops straight into [`voronoi`](../Drawing/Voronoi.md) or `delaunay`. Blue-noise sites give strikingly uniform cells with **no Lloyd relaxation needed**, since the even spacing is already there:
+The output is an ordinary `[Vector2]`, so it goes straight into [`voronoi`](../Drawing/Voronoi.md) or `delaunay`. The spacing is already even, so blue-noise sites give very uniform cells with **no Lloyd relaxation needed**:
 
 ```swift
 seed(9)
@@ -60,7 +60,7 @@ for (i, cell) in voronoi(sites).cells.enumerated() {
 
 #### Standalone (outside a sketch)
 
-The `Sketch` method is sugar over a free function that takes any random source, so geometry code outside a sketch can sample reproducibly too. Hand it a seeded [`SplitMix64`](./Random.md), Ollin's PRNG:
+The `Sketch` method wraps a free function that takes any random source, so geometry code outside a sketch can sample reproducibly too. Pass it a seeded [`SplitMix64`](./Random.md), which is Ollin's PRNG:
 
 ```swift
 var rng = SplitMix64(seed: 9)

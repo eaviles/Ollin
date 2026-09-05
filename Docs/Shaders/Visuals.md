@@ -4,7 +4,7 @@
 
 ## Visual chains
 
-Compose animated imagery by **chaining**: start from a source, warp it, color it, and mix chains into one another. A `Visual` is a value describing the whole expression, and however deep it grows it compiles into a **single GPU pass**, so combining is essentially free.
+You compose animated imagery by **chaining**: start from a source, warp it, color it, and mix chains into one another. A `Visual` is a value that describes the whole expression. The chain compiles into a **single GPU pass** however deep it grows, so combining costs almost nothing.
 
 ```swift
 override func draw() {
@@ -22,7 +22,7 @@ override func draw() {
   <img src="../../Guide/Images/17-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
 </picture>
 
-Everything moves by default (sources drift with time), and every number can animate per frame, `.rotated(time * 0.2)`, a beat-driven amount, an [`@Param`](../Helpers/Parameters.md) parameter, without recompiling anything: the chain's *structure* decides the shader (compiled once, cached), while its *numbers* travel in a uniform buffer.
+Everything moves by default, because sources drift with time. Every number can also change per frame without recompiling anything: `.rotated(time * 0.2)`, an amount driven by a beat, or an [`@Param`](../Helpers/Parameters.md) parameter. This works because the chain's *structure* decides the shader, which is compiled once and cached, while its *numbers* travel in a uniform buffer.
 
 ### Contents
 
@@ -37,7 +37,7 @@ Everything moves by default (sources drift with time), and every number can anim
 
 ### Sources
 
-Every chain starts at a source, built as a static factory:
+Every chain starts at a source, and each source is a static factory:
 
 ```swift
 .oscillator(frequency: 40, speed: 2, colorShift: 0)   // sine bands, drifting; colorShift fringes the channels
@@ -49,11 +49,11 @@ Every chain starts at a source, built as a static factory:
 .layer(target)                        // read a RenderTarget (see below)
 ```
 
-`.noise` is signed (-1…1) so displacement driven by it wobbles about zero; chain `.brightness(0.5)` to *view* it as a mid-gray cloud.
+`.noise` is signed (-1…1), so a displacement driven by it wobbles about zero. To *view* the noise as a mid-gray cloud, chain `.brightness(0.5)`.
 
 ### Coordinate transforms
 
-These warp *where* the chain beneath them samples, so they compose the way transforms read: `.rotated(a).repeated(x: 3)` tiles the rotated image.
+These transforms warp *where* the chain beneath them samples. They compose in the order you read them, so `.rotated(a).repeated(x: 3)` tiles the rotated image.
 
 ```swift
 .rotated(0.4)                         // radians about the center; .rotated(0.1, speed: 0.5) spins on its own
@@ -64,11 +64,11 @@ These warp *where* the chain beneath them samples, so they compose the way trans
 .scrolled(x: 0.25, speedX: 0.1)       // slide, drifting per second, wrapping at the edges
 ```
 
-Coordinates are aspect-corrected: shapes stay round, rotation stays angle-true, and pattern cells stay square at any canvas size.
+Coordinates are aspect-corrected, so shapes stay round, rotation keeps its true angle, and pattern cells stay square at any canvas size.
 
 ### Color adjustments
 
-These rewrite the color a chain produced, after sampling:
+These adjustments change the color a chain produced, after the chain has sampled:
 
 ```swift
 .brightness(0.2)     .contrast(1.6)      .saturation(2)      .inverted()
@@ -81,11 +81,11 @@ These rewrite the color a chain produced, after sampling:
 .channel(.red, scale: 1, offset: 0)      // broadcast one channel (or .luminance) as grayscale
 ```
 
-`.channel` is the adapter between a colorful chain and a clean scalar signal; sharpen a modulation by feeding it `.channel(.luminance)` of the driver.
+`.channel` turns a colorful chain into a scalar signal. So when a modulation needs a sharper driver, pass it `.channel(.luminance)` of that driver.
 
 ### Combining two chains
 
-Any chain can plug into any other; the combine ops blend their colors per pixel:
+Any chain can plug into any other. The combine ops blend the colors of the two chains per pixel:
 
 ```swift
 a.blended(with: b)                    // b over a by b's alpha (BlendMode .normal)
@@ -95,11 +95,11 @@ a.differenced(with: b)                // absolute per-channel difference
 a.masked(by: b)                       // keep a where b reads bright and opaque
 ```
 
-`amount` on `.blended` fades the whole effect, so a blend can ride a beat or a parameter.
+`amount` on `.blended` fades the whole effect, so a beat or a parameter can drive a blend.
 
 ### Modulation: color drives coordinates
 
-The signature move: one chain's *color* perturbs another chain's *sampling coordinate*, per pixel. Any signal can patch into any input.
+In modulation, one chain's *color* moves another chain's *sampling coordinate*, per pixel. Any chain can act as the driver, and any of the inputs below can take one.
 
 ```swift
 .displaced(by: .noise(scale: 3), amount: 0.1)      // the general form: red/green push x/y
@@ -109,11 +109,11 @@ The signature move: one chain's *color* perturbs another chain's *sampling coord
 .kaleidoscope(by: driver, segments: 4, amount: 0.1)    // the fold radius warps organically
 ```
 
-The driver is itself a full chain, so a source displaced by `.layer(feed).channel(.luminance)` melts under a live image you drew into the `feed` layer.
+The driver is itself a full chain, so a source displaced by `.layer(feed).channel(.luminance)` warps according to the live image you drew into the `feed` layer.
 
 ### Reading layers, images, and feedback
 
-`.layer(_:)` reads a [`RenderTarget`](../Drawing/Effects.md), anything you drew, generated, or filtered, sampling it wherever the (possibly warped) coordinate lands, wrapping at the edges:
+`.layer(_:)` reads a [`RenderTarget`](../Drawing/Effects.md), which can hold anything you drew, generated, or filtered. It samples the target wherever the coordinate lands, warped or not, and wraps at the edges:
 
 ```swift
 let scene = makeRenderTarget()
@@ -121,9 +121,9 @@ withTarget(scene) { /* draw anything */ }
 drawVisual(.layer(scene).kaleidoscope(8).hueShifted(time * 0.1))
 ```
 
-A chain may read up to **two distinct layers** (extras sample as transparent black); to mix more, flatten a sub-chain with `generate(_:)` and read that.
+A chain may read up to **two distinct layers**, so any layer past the second samples as transparent black. To mix more than two, flatten a sub-chain with `generate(_:)` and read the result.
 
-`.layer(_ feedback:)` reads a [`Feedback`](../Drawing/Effects.md#makefeedbackscale-and-withfeedback__) layer's **previous frame**, which is the video-feedback loop:
+`.layer(_ feedback:)` reads the **previous frame** of a [`Feedback`](../Drawing/Effects.md#makefeedbackscale-and-withfeedback__) layer, which is how you build a video-feedback loop:
 
 ```swift
 var trail: Feedback!
@@ -148,14 +148,14 @@ drawVisual(chain)                     // fill the canvas (honors transform, tint
 let layer = generate(chain)           // realize as a RenderTarget instead
 ```
 
-`generate(_:)` hands the chain back as a layer, so chains interleave freely with the rest of the effect graph: filter one (`generate(chain).filtered(.bloom())`), feed one to a combine, or read one from another chain.
+`generate(_:)` returns the chain as a layer, so you can use it anywhere else in the effect graph. You can filter that layer (`generate(chain).filtered(.bloom())`), feed it to a combine, or read it from another chain.
 
 ### How it renders
 
-- The whole chain, drivers and all, compiles to **one fragment shader** and runs as one pass; there are no intermediate layers inside a chain.
-- The generated source depends only on the chain's **structure**. Identical structures share one cached pipeline, so a chain rebuilt every `draw()` (the normal pattern) costs a hash lookup, and animating values costs nothing. Changing the structure (adding a step, switching a `BlendMode`) compiles once more.
-- Values ride the shader params buffer (64 floats). A chain carrying more animatable numbers than that still renders, the extras bake into the source as constants, but changing *those* recompiles; a one-time note says so.
-- Colors are straight (non-premultiplied) sRGB inside a chain, like a user [`Shader`](./Shaders.md)'s, and composite back into Ollin's linear-light pipeline when drawn.
-- The ops are plain shader-library functions (the `visual` module of the [shader library](./ShaderLibrary.md)), so a hand-written `Shader` can call them too.
+- The whole chain, drivers included, compiles to **one fragment shader** and runs as one pass. There are no intermediate layers inside a chain.
+- The generated source depends only on the chain's **structure**. Identical structures share one cached pipeline. So a chain rebuilt every `draw()`, which is the normal pattern, costs one hash lookup, and animating its values costs nothing. Changing the structure, for example adding a step or switching a `BlendMode`, triggers one new compile.
+- Values travel in the shader params buffer, which holds 64 floats. A chain with more animatable numbers than that still renders, because the extras are baked into the source as constants. Changing *those* numbers recompiles, and Ollin prints a note once to tell you.
+- Inside a chain, colors are straight (non-premultiplied) sRGB, the same as in a user [`Shader`](./Shaders.md). When drawn, they composite back into Ollin's linear-light pipeline.
+- The ops are plain shader-library functions in the `visual` module of the [shader library](./ShaderLibrary.md), so a hand-written `Shader` can call them too.
 
-Examples: `swift run --package-path Examples Example-Shaders-VisualSynth` (one deep chain, played), and `Example-Shaders-VisualCatalog` (every family on a switchable contact sheet, each tile labeled with the calls it makes).
+Two examples show chains in use. `swift run --package-path Examples Example-Shaders-VisualSynth` plays one deep chain. `Example-Shaders-VisualCatalog` shows every family on a switchable contact sheet, and each tile is labeled with the calls it makes.

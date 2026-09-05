@@ -4,9 +4,9 @@
 
 ## Serial
 
-The classic physical-computing loop. A microcontroller (an Arduino, a Feather, an ESP32, most anything with a USB plug) shows up on the Mac as a serial device. A sketch reads the sensor values it prints and writes lines back to drive servos and LEDs. It lives in a separate library so the drawing core stays free of IOKit. Add `import OllinSerial` alongside `import Ollin` to reach it.
+Serial is the classic physical-computing loop. A microcontroller shows up on the Mac as a serial device. That covers an Arduino, a Feather, an ESP32, and most anything with a USB plug. Your sketch reads the sensor values the board prints, and it writes lines back to drive servos and LEDs. Serial lives in a separate library, so the drawing core stays free of IOKit. Add `import OllinSerial` alongside `import Ollin` to reach it.
 
-Devices are discovered through IOKit and driven through POSIX termios, so nothing is vendored. Framing stays at text lines and raw bytes, one sensor value per line being the classic shape. Higher protocols layer on top in sketch code or an [extension](../Tools/Extensions.md).
+Ollin finds devices through IOKit and drives them through POSIX termios, so it vendors no third-party code. The framing stays at text lines and raw bytes, and the classic shape is one sensor value per line. Any higher protocol goes on top of that, in sketch code or in an [extension](../Tools/Extensions.md).
 
 ```swift
 import Ollin
@@ -31,7 +31,7 @@ final class Dial: Sketch {
 
 - [Finding a device](#finding-a-device) - list what's plugged in, or match by name
 - [Opening, and staying open](#opening-and-staying-open) - reconnection is the default
-- [Reading](#reading) - the latest value, or every line since last frame
+- [Reading](#reading) - the latest value, or every line since the last frame
 - [Binding to a `@Param`](#binding-to-a-param) - a sensor drives a parameter
 - [Writing](#writing) - lines and bytes back to the board
 - [Testing without hardware](#testing-without-hardware) - the loopback and monitor examples
@@ -46,7 +46,7 @@ SerialDevice.path   // "/dev/cu.usbmodem101": what a port opens
 SerialDevice.name   // "Feather M4", or the path's tail when USB has no name
 ```
 
-`availableDevices()` lists every serial device on the Mac right now, USB devices sorted first, since those are almost always the ones a sketch wants. The built-in Bluetooth ports come along too; ignore them. Construct a port from a device, from its path, or, usually the most convenient, from a match:
+`availableDevices()` lists every serial device on the Mac right now. USB devices are sorted first, because those are almost always the ones a sketch wants. The built-in Bluetooth ports appear in the list too, and you can ignore them. You build a port from a device, from its path, or from a match, and the match is usually the most convenient form:
 
 ```swift
 SerialPort(matching: "usbmodem", baudRate: 9600)   // first device whose name or path contains it
@@ -54,7 +54,7 @@ SerialPort(device: devices[0], baudRate: 115200)
 SerialPort(path: "/dev/cu.usbmodem101")            // baudRate defaults to 9600
 ```
 
-The match is case-insensitive and re-runs on every connection attempt, which is what makes it the convenient form. The board can be plugged in after the sketch launches. One that re-enumerates under a new device number after a replug is still found. The `baudRate` must agree with what the board's firmware sets; USB-native boards ignore it entirely, so when in doubt leave the default.
+The match is case-insensitive, and it runs again on every connection attempt. That is what makes it convenient, because you can plug the board in after the sketch launches. A board that re-enumerates under a new device number after a replug is still found. The `baudRate` must agree with what the board's firmware sets. USB-native boards ignore it entirely, so leave the default when you are unsure.
 
 <a name="opening-and-staying-open"></a>
 
@@ -66,9 +66,9 @@ func close()     // stops reading and stops reconnecting
 var isOpen: Bool
 ```
 
-`open()` returns immediately and keeps at it: a device that is missing, busy, or unplugged later is simply waited for. The port reconnects on its own the moment the device comes back. A cable bump or a firmware re-flash mid-performance heals without a restart. `isOpen` says where things stand, so a sketch can draw a waiting state.
+`open()` returns immediately and then keeps trying. A device that is missing, busy, or unplugged later is simply waited for. The port reconnects on its own the moment the device comes back. A cable bump or a firmware re-flash in the middle of a performance therefore recovers without a restart. `isOpen` tells you where things stand, so a sketch can draw a waiting state.
 
-The port holds the device exclusively, since two readers on one port each get half the bytes. So uploading new firmware needs the port free: `close()` first, or quit the sketch. The reconnection loop makes the reopen half automatic if you only `close()` for the upload.
+The port holds the device exclusively, because two readers on one port would each get half the bytes. Uploading new firmware therefore needs the port free, so call `close()` first or quit the sketch. If you only `close()` for the upload, the reconnection loop reopens the port for you afterwards.
 
 <a name="reading"></a>
 
@@ -87,21 +87,21 @@ func lines() -> [String]
 func bytes() -> [UInt8]         // the raw stream, for binary protocols
 ```
 
-Bytes arrive on a background queue while the sketch reads on the main thread. Everything shared is held behind locks, so the reads are safe from `draw()`.
+Bytes arrive on a background queue while the sketch reads on the main thread. Locks guard everything the two share, so these reads are safe to call from `draw()`.
 
-**The latest value**, for a continuous sensor. Firmware that prints one number per line (`Serial.println(analogRead(A0))` and friends) reads directly:
+**The latest value** suits a continuous sensor. Firmware that prints one number per line, such as `Serial.println(analogRead(A0))` and similar calls, reads directly:
 
 ```swift
 let level = serial.number(default: 0) / 1023
 ```
 
-**The event queue**, for discrete things. `lines()` hands you every complete line received since the last call, in arrival order, and clears the queue. Call it once per frame:
+**The event queue** suits discrete things. `lines()` returns every complete line received since the last call, in arrival order, and then clears the queue. Call it once per frame:
 
 ```swift
 for line in serial.lines() where line == "pressed" { spawnRipple() }
 ```
 
-Line endings are tolerated in every convention a device might use: LF, CRLF, or bare CR all end a line. A line split across reads still comes out whole. For a device that speaks a binary framing instead, `bytes()` drains the raw stream. It is independent of `lines()`, so draining one leaves the other alone.
+Ollin accepts every line-ending convention a device might use, so LF, CRLF, and a bare CR all end a line. A line split across two reads still comes out whole. For a device that uses a binary framing instead, `bytes()` drains the raw stream. That stream is independent of `lines()`, so draining one leaves the other alone.
 
 <a name="binding-to-a-param"></a>
 
@@ -112,7 +112,7 @@ func bind(to param: Param<Double>, from input: ClosedRange<Double> = 0...1023)
 func unbind()
 ```
 
-The third way to read is to wire the stream straight onto a [`@Param`](../Helpers/Parameters.md). A sensor then drives the same parameter a live-inspector slider does. Each line that parses as a number is mapped from `input` into the parameter's own range and assigned. The default input range is the classic 10-bit analog read:
+The third way to read is to wire the stream straight onto a [`@Param`](../Helpers/Parameters.md). A sensor then drives the same parameter that a slider in the live inspector drives. Every line that parses as a number is mapped from `input` into the parameter's own range, then assigned to it. The default input range is the classic 10-bit analog read:
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -124,7 +124,7 @@ override func setup() {
 }
 ```
 
-A bound parameter updates on its own as lines arrive. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
+A bound parameter updates on its own as lines arrive. You can still change the same parameter from the inspector slider and from code, and whichever moved most recently wins.
 
 <a name="writing"></a>
 
@@ -136,23 +136,23 @@ func writeLine(_ text: String)   // text plus a newline
 func write(_ bytes: [UInt8])     // raw bytes
 ```
 
-Writes go out on the port's background queue, so a frame never waits on the wire. `writeLine` uses the same framing `lines()` reads on the way in, which is the shape most firmware parses:
+Writes go out on the port's background queue, so a frame never waits on the wire. `writeLine` uses the same framing that `lines()` reads on the way in, and that is the shape most firmware parses:
 
 ```swift
 serial.writeLine("led:on")
 serial.writeLine("servo:\(Int(angle))")
 ```
 
-Bytes sent while the device is away are dropped rather than queued. A board that just reconnected wants current values, not a replay of everything it missed.
+Bytes you send while the device is away are dropped rather than queued. A board that has just reconnected needs current values, not a replay of everything it missed.
 
 <a name="testing-without-hardware"></a>
 
 ### Testing without hardware
 
-You can exercise the whole loop with nothing but the Mac in front of you. The **SerialLoopback** example (`Examples/Integration/SerialLoopback`) runs both ends of the wire itself. A tiny fake device (one side of a pty pair) prints a sensor value thirty times a second. A `SerialPort` opens the other side exactly the way it would open a real board. The trace you see is drawn from what arrives over the port. Clicking writes a line back that flips the wave, so the write path is visible too.
+You can run the whole loop with nothing but the Mac in front of you. The **SerialLoopback** example (`Examples/Integration/SerialLoopback`) runs both ends of the wire itself. A small fake device, one side of a pty pair, prints a sensor value thirty times a second. A `SerialPort` opens the other side exactly the way it would open a real board. The sketch draws its trace from what arrives over that port. Clicking writes a line back that flips the wave, so you can see the write path too.
 
-With a real board, the **SerialMonitor** example (`Examples/Integration/SerialMonitor`) lists every serial device live, opens the first USB one it finds, and scrolls whatever the board prints. A numeric line also fills a value bar. Plug in, watch the lines, and you know exactly what your sketch will read.
+With a real board, use the **SerialMonitor** example (`Examples/Integration/SerialMonitor`). It lists every serial device and keeps that list up to date, opens the first USB device it finds, and scrolls whatever the board prints. A numeric line also fills a value bar. Plug the board in and watch the lines, and you will know exactly what your sketch will read.
 
 ---
 
-See the **SerialLoopback** example for the full loop with no hardware, and **SerialMonitor** to discover what a real board sends.
+See the **SerialLoopback** example for the full loop with no hardware, and the **SerialMonitor** example to find out what a real board sends.

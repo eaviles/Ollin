@@ -4,18 +4,18 @@
 
 ## Physics
 
-Let motion come from simulation instead of hand-tuned numbers. Physics lives in a separate library so the drawing core carries no extra weight, so add `import OllinPhysics` alongside `import Ollin` to reach it.
+Physics lets motion come from a simulation instead of from hand-tuned numbers. The physics code lives in a separate library, so the drawing core does not carry it. To use it, add `import OllinPhysics` beside `import Ollin`.
 
-The model is lightweight and creative rather than a game engine. A [`World`](#world) holds [`Particle`](#particle)s (point masses) and the [`Spring`](#spring)s between them, you set the global rules (gravity, an optional container, whether particles collide), and you step it once a frame. It's tuned for "a few hundred bodies that feel right", not exact physical accuracy.
+The model is lightweight and made for creative work. It is not a game engine. A [`World`](#world) holds [`Particle`](#particle)s (point masses) and the [`Spring`](#spring)s between them. You set the global rules (gravity, an optional container, whether particles collide), and then you step the world once a frame. The model is tuned for a few hundred bodies that move well, not for exact physical accuracy.
 
-The same `World` also holds a second kind of body. [`Particle`](#particle)/[`Spring`](#spring) is the **soft** side, a Verlet solver good at cloth, chains, and squishy blobs. [`Body`](#rigid-bodies) is the **rigid** side, real rigid bodies that have an orientation, rotate, rest in stable stacks, and link with joints, for the cases the soft model can't reach (a toppling tower, a swinging pendulum). The rigid side is backed by [Box2D](https://box2d.org), and both share the world's gravity, walls, and per-frame `step`, so you can use either or both. Skip ahead to [Rigid bodies](#rigid-bodies) if that's what you're after. (This page is the 2D world; rigid bodies inside the 3D scene are their own [`World3D`](Physics3D.md).)
+The same `World` also holds a second kind of body. On the **soft** side, [`Particle`](#particle) and [`Spring`](#spring) form a Verlet solver, which is good at cloth, chains, and soft blobs. On the **rigid** side, a [`Body`](#rigid-bodies) is a rigid body. It has an orientation, it rotates, it rests in stable stacks, and it links to other bodies with joints. That covers the cases the soft model cannot handle, such as a toppling tower or a swinging pendulum. The rigid side is backed by [Box2D](https://box2d.org). Both sides share the world's gravity, walls, and per-frame `advance(by:)`, so you can use either one or both. Skip ahead to [Rigid bodies](#rigid-bodies) if that is what you need. This page covers the 2D world. Rigid bodies inside the 3D scene have their own [`World3D`](Physics3D.md).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/SoftVsRigid-dark.jpg">
   <img src="../../Guide/Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting in an angular jumble, corners intact" width="680">
 </picture>
 
-The usual shape is to build the world once in `setup()`, then `step` it and draw from its particles in `draw()`.
+The usual pattern is to build the world once in `setup()`. Then, in `draw()`, you call `advance(by:)` and draw from its particles.
 
 ```swift
 import Ollin
@@ -44,11 +44,11 @@ final class Drops: Sketch {
 }
 ```
 
-Gravity pulls the discs down, the walls catch them, and `collisions` keeps them from overlapping, so they pile up.
+Gravity pulls the discs down, the walls stop them, and `collisions` keeps them from overlapping, so they pile up.
 
 ### Contents
 
-- [World](#world) - the simulation, its bodies, rules, and the per-frame `step`
+- [World](#world) - the simulation, its bodies, rules, and the per-frame `advance(by:)`
 - [Particle](#particle) - a point mass, with position, velocity, mass, and pinning
 - [Spring](#spring) - a distance link between two particles (cloth, chains, soft bodies)
 - [Rigid bodies](#rigid-bodies) - `Body`, colliders, surface properties, and joints (the Box2D side)
@@ -63,7 +63,7 @@ Gravity pulls the discs down, the walls catch them, and `collisions` keeps them 
 let world = World()
 ```
 
-The container for everything. You add particles and springs to it, set its rules, and call `advance(by:)` each frame.
+A `World` is the container for everything. You add particles and springs to it, set its rules, and call `advance(by:)` each frame.
 
 **Building it**
 
@@ -80,7 +80,7 @@ var particles: [Particle] { get }
 var springs: [Spring] { get }
 ```
 
-`addParticle` returns the [`Particle`](#particle) so you can pin it, push it, or wire it into a spring. A `radius` of `0` (the default) makes a non-colliding point, and a positive radius collides as a disk. `connect` links two particles with a [`Spring`](#spring), defaulting its rest length to their current spacing.
+`addParticle` returns the new [`Particle`](#particle), so you can pin it, push it, or connect it to a spring. A `radius` of `0` (the default) makes a point that does not collide. A positive radius makes the particle collide as a disk. `connect` links two particles with a [`Spring`](#spring). By default the spring's rest length is the distance between the two particles at that moment.
 
 **The rules**
 
@@ -94,11 +94,11 @@ var iterations: Int = 8                  // relaxation passes per step
 var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 ```
 
-- **`gravity`** is a constant acceleration on every unpinned particle. Set `.zero` for a weightless, free-floating field.
-- **`drag`** stands in for air friction, where `0` conserves motion (things drift forever) and a small value bleeds energy so things settle.
-- **`bounds`** keeps particles inside a rectangle, accounting for each one's `radius`, and `bounce` is how much speed they keep off a wall (`0` sticks, `1` is lossless).
-- **`collisions`** turns on disk-vs-disk separation, broad-phased through a spatial hash so it scales to thousands of bodies. It's off by default, because a cloth doesn't want its own points colliding and it costs a per-frame pass, so you opt in for packings and piles. Points with `radius == 0` never collide.
-- **`iterations`** is how hard the solver works to hold springs and collisions together. More makes stiff stacks and tight packings firmer, at a linear cost.
+- **`gravity`** is a constant acceleration on every unpinned particle. Set it to `.zero` for a weightless field where everything floats freely.
+- **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle.
+- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `bounce` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing.
+- **`collisions`** turns on disk-against-disk separation. The broad phase runs through a spatial hash, so it scales to thousands of bodies. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide.
+- **`iterations`** is how many relaxation passes the solver runs to hold springs and collisions together. More passes make stiff stacks and tight packings firmer, and the cost grows linearly with the count.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/ForceAccumulation-dark.jpg">
@@ -111,7 +111,7 @@ var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 func advance(by dt: Double)
 ```
 
-Advance the simulation by `dt` seconds, passing `deltaTime`. A `dt` of `0` (a paused or first frame) does nothing, and a large one is clamped to `maxTimestep` so a stutter or a window drag doesn't launch everything off-screen.
+`advance(by:)` moves the simulation forward by `dt` seconds. Pass `deltaTime`. A `dt` of `0` (a paused frame or the first frame) does nothing. A large `dt` is clamped to `maxTimestep`, so a stutter or a window drag does not throw everything off the screen.
 
 <a name="particle"></a>
 
@@ -121,7 +121,7 @@ Advance the simulation by `dt` seconds, passing `deltaTime`. A `dt` of `0` (a pa
 let p = world.addParticle(at: Vector2(540, 200), radius: 24)
 ```
 
-A point mass, the body the world moves. You usually make one with `World.addParticle`, then read its `position` to draw.
+A `Particle` is a point mass. It is the body the world moves. You usually make one with `World.addParticle`, and then you read its `position` to draw it.
 
 ```swift
 var position: Vector2          // where it is now
@@ -138,14 +138,14 @@ func place(at point: Vector2)       // teleport without imparting velocity
 @discardableResult func unpin() -> Particle
 ```
 
-Motion is **Verlet**, so a particle doesn't store a velocity, it keeps its previous position, and the velocity is the gap between the two. That's why there are two ways to move one. `place(at:)` teleports it (moving the previous position along with it, so no velocity is imparted), while `push(_:)` *adds* velocity by nudging the previous position. To throw a particle, place it and then push it.
+Motion is **Verlet**. A particle does not store a velocity. Instead it keeps its previous position, and the velocity is the difference between the two positions. That is why there are two ways to move a particle. `place(at:)` teleports the particle and moves the previous position with it, so it adds no velocity. `push(_:)` *adds* velocity by moving the previous position. To throw a particle, place it and then push it.
 
 ```swift
 p.place(at: Vector2(100, 100))   // set it down, still
 p.push(Vector2(8, 0))            // now flick it to the right
 ```
 
-`pin()` anchors a particle, so gravity and springs no longer move it, though it still acts on whatever it's connected to. It's how you hang a cloth from its top edge or fix a pivot. `userData` lets you attach a color, an index, or any per-body state without a parallel array.
+`pin()` anchors a particle, so gravity and springs no longer move it. It still acts on whatever it is connected to. This is how you hang a cloth from its top edge or hold a pivot in place. `userData` lets you attach a color, an index, or any other per-body state to the particle, so you do not need a parallel array.
 
 <a name="spring"></a>
 
@@ -156,7 +156,7 @@ let s = world.connect(a, b)        // holds their current distance
 s.stiffness = 0.4                  // springy instead of rigid
 ```
 
-A link that tries to hold two particles a fixed distance apart, whether a cloth thread, a chain segment, or a soft-body strut.
+A `Spring` is a link that tries to hold two particles at a fixed distance from each other. It can stand for a cloth thread, a chain segment, or a soft-body strut.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/11-ForcesAndPhysics/SpringRestLength-dark.jpg">
@@ -171,13 +171,13 @@ var stiffness: Double      // 0…1; 1 is a rigid stick, less gives
 var strain: Double { get } // signed: 0 at rest, + stretched, − compressed
 ```
 
-With `stiffness` at `1` the link behaves like a rigid stick, and lowering it makes the link give, springing back over a few frames. `strain` reads how far it's stretched right now, as a signed fraction of its rest length (0 at rest, positive stretched, negative compressed), which is handy for tinting a cloth by stress.
+With `stiffness` at `1` the link behaves like a rigid stick. A lower value lets the link give and spring back over a few frames. `strain` reports how far the link is stretched right now, as a signed fraction of its rest length. It is 0 at rest, positive when stretched, and negative when compressed. You can use it to color a cloth by stress.
 
 <a name="rigid-bodies"></a>
 
 ### Rigid bodies
 
-Where a [`Particle`](#particle) is a soft point with no orientation, a [`Body`](#body) is a proper rigid body. It has an `angle`, spins, rests in stable stacks, and bounces off other bodies with real contact response. It's what you reach for when the soft model can't do the job, like a tower of blocks that topples, a hinged chain, or a pile of tumbling shapes. The rigid side is backed by [Box2D](https://box2d.org), wrapped behind Ollin's own types and measured in sketch points.
+A [`Particle`](#particle) is a soft point with no orientation. A [`Body`](#body) is a rigid body. It has an `angle`, it spins, it rests in stable stacks, and it bounces off other bodies with a contact response. Use it when the soft model cannot do the job. Examples include a tower of blocks that topples, a hinged chain, and a pile of tumbling shapes. The rigid side is backed by [Box2D](https://box2d.org). Box2D is wrapped behind Ollin's own types, and the rigid side is measured in sketch points.
 
 ```swift
 import Ollin
@@ -210,7 +210,7 @@ final class Tower: Sketch {
 }
 ```
 
-The pattern is the same as particles, so build in `setup()`, then `step` and draw from `world.bodies` in `draw()`. Each body's look is yours to hang off `userData` (its color, its drawn size), then drawn from its `position` and `angle`.
+The pattern is the same as for particles. You build the world in `setup()`, and then in `draw()` you call `advance(by:)` and draw from `world.bodies`. You can keep each body's look, its color and its drawn size, in `userData`, and then draw it from its `position` and `angle`.
 
 **Adding bodies**
 
@@ -223,8 +223,8 @@ func addBody(_ collider: Collider, at position: Vector2,
 var bodies: [Body] { get }
 ```
 
-- **`collider`** is the body's shape (below). **`kind`** is `.dynamic` (moved by forces, the default), `.static` (immovable, for walls, ground, or a hinge anchor), or `.kinematic` (moved only by a velocity you set).
-- **`density`** sets the mass (heavier bodies shove lighter ones), **`friction`** is surface grip (`0` slick … `1` grippy), and **`restitution`** is bounciness `0…1`, defaulting to the world's `bounce`.
+- **`collider`** is the body's shape (described below). **`kind`** is how the body moves. `.dynamic` (the default) is moved by forces. `.static` never moves, so use it for walls, the ground, or a hinge anchor. `.kinematic` moves only by a velocity you set.
+- **`density`** sets the mass, so heavier bodies push lighter ones. **`friction`** is surface grip, from `0` (slippery) to `1` (grippy). **`restitution`** is bounciness, `0…1`. It defaults to the world's `bounce`.
 
 **Colliders**
 
@@ -237,7 +237,7 @@ enum Collider {
 }
 ```
 
-Geometry is given in body-local points (centered on the body's origin), and the body's `position` and `angle` place it. A `.polygon` is made convex for you (its convex hull is taken), so concave input is rounded out rather than rejected.
+Geometry is given in body-local points, centered on the body's origin. The body's `position` and `angle` then place it in the world. A `.polygon` is made convex for you by taking its convex hull, so a concave outline is expanded to that hull rather than rejected.
 
 **The Body**
 
@@ -255,21 +255,21 @@ func applyImpulse(_ impulse: Vector2) // instant kick (a hit, a launch)
 func applyTorque(_ torque: Double)    // spin it
 ```
 
-See the `Forces` example for all three in one windy yard, next to a `.kinematic` sweeper that nothing can stop and a pinned cloth tinted by `Spring.strain`.
+The `Forces` example shows all three calls in one windy yard. It also has a `.kinematic` sweeper that other bodies cannot stop, and a pinned cloth colored by `Spring.strain`.
 
 **Shared rules and units**
 
-The rigid side reads the same `gravity`, `bounds` (as walls), `bounce` (wall and default contact restitution), and `drag` (as body damping) you already set, and rides the same `advance(by:)`. One parameter is its own:
+The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. It applies `bounce` to the walls and as the default contact restitution, and it damps bodies with `drag`. It also runs on the same `advance(by:)`. One parameter belongs to the rigid side alone:
 
 ```swift
 var pixelsPerMeter: Double = 100
 ```
 
-Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pixelsPerMeter` bridges that to sketch points, and the default of 100 puts a 100-point shape at 1 m, right in its sweet spot, so you keep thinking in points. (The Verlet particle side works in points directly and ignores this.)
+Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pixelsPerMeter` converts between meters and sketch points. The default of 100 puts a 100-point shape at 1 m, which is well inside that range, so you can keep thinking in points. The Verlet particle side works in points directly and ignores this value.
 
 **Joints**
 
-Link two bodies with a constraint, or grab one with the cursor:
+You can link two bodies with a constraint, or grab one body with the cursor:
 
 ```swift
 @discardableResult
@@ -286,7 +286,7 @@ enum JointKind {
 }
 ```
 
-`revolute` is the workhorse, so chain it down a line of links for a rope or pendulum, and anchor the first to a `.static` body to hang it. `distance` holds two anchors a fixed span apart, softening to a spring below `stiffness: 1`. `grab` returns a [`Joint`](#joint) you steer by setting its `target` each frame (point it at the cursor) and `remove()` to let go:
+`revolute` is the most common joint. Repeat it down a line of links for a rope or a pendulum, and anchor the first link to a `.static` body to hang it. `distance` holds two anchors at a fixed distance from each other. Below `stiffness: 1` it softens into a spring. `grab` returns a [`Joint`](#joint). You steer the joint by setting its `target` each frame (for example to the cursor), and you call `remove()` to let go:
 
 ```swift
 let held = world.grab(body, at: Vector2(mouseX, mouseY))
@@ -296,7 +296,7 @@ held.target = Vector2(mouseX, mouseY)
 held.remove()
 ```
 
-See the `RigidBodies` and `Chain` examples for the whole thing: a toppling pyramid knocked into a pile of mixed shapes, and grabbable swinging chains. The `Joints` example is the four cases side by side, one small rig each, every one hung from a `.static` anchor and grabbable with the cursor.
+See the `RigidBodies` and `Chain` examples for complete sketches. The first is a toppling pyramid knocked into a pile of mixed shapes, and the second is a set of swinging chains you can grab. The `Joints` example shows the four joint kinds side by side, with one small rig for each. Every rig hangs from a `.static` anchor, and you can grab each one with the cursor.
 
 <a name="body"></a>
 <a name="collider"></a>
@@ -306,13 +306,13 @@ See the `RigidBodies` and `Chain` examples for the whole thing: a toppling pyram
 
 ### How the solver works
 
-Each `step` integrates every particle forward (time-corrected Verlet, so a wandering frame rate doesn't change how fast things move), then runs a handful of **relaxation** passes that pull springs back toward their length, push overlapping disks apart, and keep everything inside `bounds`. Because every constraint is solved by nudging *positions*, the velocity follows for free. A bounce, a spring's recoil, and a collision all just move points, and the implicit Verlet velocity carries the result into the next frame. It's the approach behind cloth and soft-body demos the web over. `Particle` is the one place Ollin reaches for reference semantics rather than value types, so a spring or a collision can move the same shared point in place.
+Each step first integrates every particle forward. The integration is time-corrected Verlet, so an uneven frame rate does not change how fast things move. The step then runs a few **relaxation** passes. Each pass pulls springs back toward their length, pushes overlapping disks apart, and keeps everything inside `bounds`. Every constraint is solved by moving *positions*, so the velocity follows on its own. A bounce, a spring's recoil, and a collision all only move points, and the implicit Verlet velocity carries the result into the next frame. Many cloth and soft-body demos on the web use the same approach. `Particle` is the one place where Ollin uses reference semantics instead of value types. That lets a spring or a collision move the same shared point in place.
 
 <a name="soft-bodies"></a>
 
 ### Soft bodies
 
-A squishy blob is a small composition: a hub particle, spokes out to a ring of rim particles, and springs around the rim. Slack spokes let it deform, the rim springs keep it roughly round, and giving the rim particles a radius (with `world.particlesCollide = true`) stops blobs passing through each other.
+A soft blob is built from three parts: a hub particle, spokes out to a ring of rim particles, and springs around the rim. Loose spokes let the blob deform. The rim springs keep it roughly round. Give the rim particles a radius and set `world.particlesCollide = true`, and then blobs no longer pass through each other.
 
 ```swift
 func makeBlob(at center: Vector2, radius: Double) -> [Particle] {
@@ -335,10 +335,10 @@ func makeBlob(at center: Vector2, radius: Double) -> [Particle] {
 }
 ```
 
-Draw the rim as a smooth filled outline and you have a wobbling jelly:
+Draw the rim as a smooth filled outline, and you have a wobbling jelly:
 
 ```swift
 drawCurve(rim.map(\.position), closed: true)
 ```
 
-See the `Blobs` and `Packing` examples for the whole thing.
+See the `Blobs` and `Packing` examples for complete sketches.

@@ -4,7 +4,7 @@
 
 ## Canvas, size, and export
 
-A sketch is drawn once but seen at more than one size: a preview window that fits your screen, and a fixed-resolution export. Write a sketch relative to the canvas and it holds up at any size. This page covers `scale`, the `canvasSize` export presets, and the preview window.
+You draw a sketch once, but it is seen at more than one size. There is a preview window that fits your screen, and there is a fixed-resolution export. If you write the sketch relative to the canvas, it holds up at either size. This page covers `scale`, the `canvasSize` export presets, and the preview window.
 
 ### Example
 
@@ -32,14 +32,14 @@ override func draw() {
 
 ### Resolution independence
 
-Coordinates are in **logical points**, with a top-left origin and y increasing downward (the same as p5, Processing, and OPENRNDR). Inside `draw()`, `width` and `height` are the canvas size in those points.
+Coordinates are in **logical points**. The origin is the top-left corner and y increases downward, the same as in p5, Processing, and OPENRNDR. Inside `draw()`, `width` and `height` are the canvas size in those points.
 
 To keep a piece looking the same at every size, write it relative to the canvas instead of in fixed pixels. Two tools cover that:
 
-- **`scale`** grows and shrinks with the canvas, so multiplying a feature size by it holds that size's proportion at any canvas size. Pick the size you'd want on a roughly 1000-point canvas and multiply: a `12 * scale` dot, a `375 * scale` radius.
-- **`width` / `height` fractions** suit layout: `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, [`shortSide`](#shortSide)` * 0.125` for an inset. For *positions*, [`uv(u, v)`](#uv) states the same fractions as one point: `uv(0.5, 0.75)` instead of `Vector2(width * 0.5, height * 0.75)`.
+- **`scale`** grows and shrinks with the canvas, so a size multiplied by it keeps its proportion at any canvas size. Pick the size you would want on a canvas of about 1000 points, then multiply: a `12 * scale` dot, a `375 * scale` radius.
+- **`width` / `height` fractions** suit layout, such as `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, and [`shortSide`](#shortSide)` * 0.125` for an inset. For *positions*, [`uv(u, v)`](#uv) states the same fractions as a single point, so you write `uv(0.5, 0.75)` instead of `Vector2(width * 0.5, height * 0.75)`.
 
-A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, and the same call lands somewhere else once the canvas changes. Reach for `scale` and fractions instead.
+A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, because the same call lands somewhere else once the canvas changes. Use `scale` and fractions instead.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/01-HelloOllin/NormalizedPlacement-dark.jpg">
@@ -54,7 +54,7 @@ A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, and the s
 scale: Double
 ```
 
-A read-only factor that grows and shrinks with the canvas; multiply sizes by it so a sketch holds its proportions at any size. (Distinct from the `scale(_:)` transform in [Drawing](../Drawing/Drawing.md), which scales the coordinate system.)
+A read-only factor that grows and shrinks with the canvas. Multiply your sizes by it so a sketch holds its proportions at any size. This is not the `scale(_:)` transform in [Drawing](../Drawing/Drawing.md), which scales the coordinate system.
 
 ```swift
 drawCircle(width / 2, height / 2, 120 * scale)
@@ -70,9 +70,9 @@ shortSide: Double
 longSide: Double
 ```
 
-The two canvas edges by length: `shortSide` is `min(width, height)`, `longSide`
-its partner. The short side is the length that decides how big something can be
-and still fit whichever way the canvas turns, so `shortSide * 0.4` sizes a
+These are the two canvas edges by length. `shortSide` is `min(width, height)`,
+and `longSide` is the other one. The short side decides how big something can
+be and still fit whichever way the canvas turns, so `shortSide * 0.4` sizes a
 centerpiece the same on a square, a wide, and a tall canvas.
 
 ```swift
@@ -80,18 +80,19 @@ drawCircle(center: center, radius: shortSide * 0.4)
 let margin = shortSide * 0.08
 ```
 
-(`scale` above is the same quantity divided by 1000, for holding a size's
-proportion; `shortSide` is for stating the fraction directly.)
+`scale` above is the same quantity divided by 1000, and you use it to hold a
+size's proportion. Use `shortSide` when you want to state the fraction
+directly.
 
 <a name="canvasSize"></a>
 
 ### Export size
 
-`canvasSize` is the resolution a sketch renders and exports at, in whole pixels (a canvas is an integer grid). Its type is `CanvasSize`, and it defaults to `.square1080` (1080×1080), a 1:1 square. Override it on a subclass with one of the named presets below (`override var canvasSize: CanvasSize { .uhd4K }`):
+`canvasSize` is the resolution a sketch renders and exports at, in whole pixels, because a canvas is an integer grid. Its type is `CanvasSize`, and it defaults to `.square1080`, a 1:1 square of 1080×1080. Override it on a subclass with one of the named presets below, as in `override var canvasSize: CanvasSize { .uhd4K }`:
 
 | Constant | Pixels | Aspect | Good for |
 |---|---|---|---|
-| `.square1080` | 1080 × 1080 | 1:1 | the default; square social and feed posts |
+| `.square1080` | 1080 × 1080 | 1:1 | the default, for square social and feed posts |
 | `.square1440` | 1440 × 1440 | 1:1 | a larger square |
 | `.square2160` | 2160 × 2160 | 1:1 | a 4K-class square master |
 | `.hd720` | 1280 × 720 | 16:9 | 720p / HD |
@@ -107,11 +108,11 @@ proportion; `shortSide` is for stating the fraction directly.)
 | `.a4` | 595 × 842 | 1:√2 | ISO A4 paper (210×297 mm), for PDF export |
 | `.a5` | 420 × 595 | 1:√2 | ISO A5 paper (148×210 mm), for PDF export |
 
-The paper presets are sized in PDF points (72 per inch) and come portrait like the physical sheet: [PDF export](../Output/Export.md#vector-pdf) maps one canvas pixel to one point, so a sketch on `.a4` exports as a true A4 page, and the vector geometry prints sharp at any resolution. When the *raster* export needs print resolution too, add `.dpi(_:)`: `.a4.dpi(300)` renders and `--export`s at 2479×3508 pixels (300 dots per inch) while `--export-pdf` still writes the page at exactly A4, the pixel geometry scaled back onto it. It works on any size (the size it's called on is taken as the 72-dpi page), and `.dpi(72)` is the identity.
+The paper presets are sized in PDF points, 72 per inch, and they come portrait like the physical sheet. The [PDF export](../Output/Export.md#vector-pdf) maps one canvas pixel to one point, so a sketch on `.a4` exports as a true A4 page. The vector geometry then prints sharp at any resolution. When the *raster* export needs print resolution too, add `.dpi(_:)`. Writing `.a4.dpi(300)` renders and `--export`s at 2479×3508 pixels, which is 300 dots per inch. With that in place, `--export-pdf` still writes the page at exactly A4, and the pixel geometry is scaled back onto it. It works on any size, and the size it is called on is taken as the 72-dpi page. Calling `.dpi(72)` changes nothing.
 
-Use `.portrait` / `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840 and `.a4.landscape` is 842×595, and the flips compose with `.dpi(_:)` in either order. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine. `--export-sequence <dir> --frames N` renders a deterministic numbered PNG sequence (fixed timestep, so it's reproducible and assembles into a smooth video; see [Sketch ▸ Running a sketch](../Core/Sketch.md#running-a-sketch)).
+Use `.portrait` and `.landscape` to flip any preset's orientation, so `.uhd4K.portrait` is 2160×3840 and `.a4.landscape` is 842×595. The flips compose with `.dpi(_:)` in either order. Headless `--export` always renders at `canvasSize`, so a sketch produces the same pixels on any machine. The `--export-sequence <dir> --frames N` flags render a deterministic numbered PNG sequence at a fixed timestep, so it is reproducible and assembles into a smooth video. See [Sketch ▸ Running a sketch](../Core/Sketch.md#running-a-sketch).
 
-For a custom size, override `canvasSize` with `.square(_)` (a square) or `.size(_, _)` (any rectangle):
+For a custom size, override `canvasSize` with `.square(_)` for a square or `.size(_, _)` for any rectangle:
 
 ```swift
 final class MySketch: Sketch {
@@ -134,35 +135,35 @@ final class MySketch: Sketch {
   <img src="../../Guide/Images/01-HelloOllin/CanvasVsWindow.jpg" alt="A large dark square labeled as the canvas at 1080 by 1080 pixels, with its corners marked as (0,0) and (1080,1080), and a smaller window containing exactly the same picture scaled down, joined by lines labeled scaled to fit" width="680">
 </picture>
 
-The on-screen window does not have to match `canvasSize`; a 1080² (or 4K) sketch would overflow a laptop. `windowMode` controls the window, relative to `canvasSize`:
+The on-screen window does not have to match `canvasSize`, because a 1080² or 4K sketch would overflow a laptop screen. `windowMode` sets the window size relative to `canvasSize`:
 
-- **`.auto`** (the default) opens at 1:1 when the screen has room for the full `canvasSize`, and steps down to the largest clean fraction (¾, ½, …) that fits otherwise, so it always fits. A 1080² sketch opens at 1080 on a roomy or external display, and at ¾ (810pt) on a 14"/16" laptop.
-- **`.fixed(_)`** pins an explicit fraction of `canvasSize` and ignores the screen: `.fixed(0.5)` is always half size, `.fixed(1)` always 1:1.
-- **`.resizable`** opens a freely resizable window (at the auto-fit size) and lets the canvas follow it live, for sketches designed for the screen rather than a fixed export. Draw with `scale` / `width` / `height` and the piece adapts as you drag the window.
+- **`.auto`** is the default. It opens at 1:1 when the screen has room for the full `canvasSize`. Otherwise it steps down to the largest clean fraction that fits (¾, ½, …), so the window always fits. A 1080² sketch opens at 1080 on a large or external display, and at ¾ (810pt) on a 14"/16" laptop.
+- **`.fixed(_)`** pins an explicit fraction of `canvasSize` and ignores the screen, so `.fixed(0.5)` is always half size and `.fixed(1)` is always 1:1.
+- **`.resizable`** opens a freely resizable window at the auto-fit size, and the canvas follows it live. Use it for sketches made for the screen rather than for a fixed export. Draw with `scale`, `width`, and `height`, and the piece adapts as you drag the window.
 
 ```swift
 override var windowMode: WindowMode { .fixed(0.5) }   // always half of canvasSize
 ```
 
-`.auto` and `.fixed` lock the window, while `.resizable` does not. (Resizing applies to the standalone `swift run` window. The examples gallery and live host show the sketch at the auto-fit size with a collapsible sidebar.)
+`.auto` and `.fixed` lock the window, and `.resizable` does not. Resizing applies to the standalone `swift run` window. The examples gallery and the live host show the sketch at the auto-fit size with a collapsible sidebar.
 
-Either way, a sketch written with `scale` composes the same at the preview size and the export size, so what you see while iterating matches the exported frame. That is what keeps the export dependable for video and Instagram.
+In either mode, a sketch written with `scale` composes the same at the preview size and at the export size. What you see while you work therefore matches the exported frame, so the export stays dependable for video and for Instagram.
 
 <a name="stats-overlay"></a>
 
 ### The performance panel
 
-When a sketch feels slow, **View ▸ Show Inspector** (⌘/) opens a floating panel beside the sketch window: frame rate, the CPU time spent building a frame, the geometry the frame emitted (vertices, SDF shapes, point-cloud splats, and GPU particles), the clock, and the canvas size, with a slider for each of the sketch's `@Param` parameters below. Toggle it back off the same way.
+When a sketch feels slow, choose **View ▸ Show Inspector** (⌘/). That opens a floating panel beside the sketch window. It reports the frame rate, the CPU time spent building a frame, the clock, and the canvas size. It also counts the geometry the frame emitted: vertices, SDF shapes, point-cloud splats, and GPU particles. Below those, it shows a slider for each of the sketch's `@Param` parameters. Choose the same command again to hide the panel.
 
-It's a separate utility window, not in-canvas drawing, so it never appears in an exported frame, since `--export` renders only the canvas. The CPU time is the cost of building a frame on the draw thread, the first thing to climb when a sketch gets heavy, and it reads far lower in a release build (`swift run -c release`) than the default debug build.
+The panel is a separate utility window, not drawing inside the canvas, so it never appears in an exported frame. That is because `--export` renders only the canvas. The CPU time is the cost of building a frame on the draw thread. It is the first number to climb when a sketch gets heavy. It reads far lower in a release build (`swift run -c release`) than in the default debug build.
 
-The live host (`OllinLive`) shows the same readout in its own inspector sidebar, so there it's built into the window.
+The live host (`OllinLive`) shows the same readout in its own inspector sidebar, so there the readout is built into the window.
 
 <a name="retina"></a>
 
 ### Retina and pixel density
 
-The preview is crisp on Retina displays with nothing to switch on: it renders at the screen's native pixel density. Export renders directly at `canvasSize`, so a 1080² export is exactly 1080×1080 pixels.
+The preview is crisp on Retina displays and there is nothing to switch on, because it renders at the screen's native pixel density. Export renders directly at `canvasSize`, so a 1080² export is exactly 1080×1080 pixels.
 
 <a name="uv"></a>
 
@@ -172,11 +173,11 @@ The preview is crisp on Retina displays with nothing to switch on: it renders at
 func uv(_ u: Double, _ v: Double) -> Vector2
 ```
 
-The canvas point at normalized coordinates: `uv(0, 0)` is the top-left corner, `uv(1, 1)` the bottom-right, `uv(0.5, 0.5)` the center. A layout stated as proportions never reads `width`/`height`, and it's the same 0…1, top-left space per-pixel shader code sees. Values outside 0…1 land off-canvas proportionally (nothing clamps).
+This returns the canvas point at normalized coordinates. `uv(0, 0)` is the top-left corner, `uv(1, 1)` the bottom-right, and `uv(0.5, 0.5)` the center. A layout stated as proportions never reads `width` or `height`, and it uses the same 0…1 top-left space that per-pixel shader code sees. Values outside 0…1 land off the canvas in proportion, so nothing clamps.
 
 ```swift
 drawCircle(center: uv(0.5, 0.25), radius: 40 * scale)      // top-center
 drawPolygon([uv(0, 0.66), uv(1, 0.66), uv(1, 1), uv(0, 1)]) // the lower third
 ```
 
-The same mapping exists on any [`Rectangle`](../Drawing/Geometry.md) as `point(u:v:)`, with `uv(of:)` as its inverse: `bounds.uv(of: Vector2(mouseX, mouseY))` reads the mouse as canvas fractions. The [`Basic/NormalizedCoordinates`](../../Examples/Basic/NormalizedCoordinates/Sketch.swift) example composes a whole scene this way.
+The same mapping exists on any [`Rectangle`](../Drawing/Geometry.md) as `point(u:v:)`, and `uv(of:)` is its inverse. Reading `bounds.uv(of: Vector2(mouseX, mouseY))` gives you the mouse position as canvas fractions. The [`Basic/NormalizedCoordinates`](../../Examples/Basic/NormalizedCoordinates/Sketch.swift) example composes a whole scene this way.

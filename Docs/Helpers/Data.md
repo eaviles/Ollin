@@ -4,9 +4,9 @@
 
 ## Data
 
-Read a CSV, a TSV, or a JSON file and draw from it. Both loaders are load-once material: call them in `setup()`, keep the result in a property, and read it in `draw()`.
+Read a CSV, a TSV, or a JSON file and draw from it. You load both of them once, so call them in `setup()`, keep the result in a property, and read it in `draw()`.
 
-Neither one throws. A file that can't be read, or that holds nothing usable, comes back `nil`, so a missing asset or a bad download shows up as an empty sketch you can report rather than a crash.
+Neither loader throws. A file that can't be read, or that holds nothing usable, comes back `nil`. A missing asset or a bad download then shows up as an empty sketch you can report, not as a crash.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/DataAsMaterial-dark.jpg">
@@ -37,7 +37,7 @@ func loadTable(resource: String, withExtension ext: String? = "csv", in bundle: 
                format: TableFormat = .auto, hasHeader: Bool? = nil) -> Table?
 ```
 
-Read a delimited file. The `resource:` form is the one to use for a file sitting beside the sketch; pass `.module` for the sketch's own bundle, which has no default because a default would resolve to Ollin's bundle rather than yours.
+Read a delimited file. Use the `resource:` form for a file that sits beside the sketch. Pass `.module` for the sketch's own bundle. That parameter has no default, because a default would resolve to Ollin's bundle rather than yours.
 
 ```swift
 final class Readings: Sketch {
@@ -60,7 +60,7 @@ final class Readings: Sketch {
 }
 ```
 
-A URL works too, including a network one, but reading it blocks until it arrives, which is why `setup()` is the place for it.
+A URL works too, including a network one. Reading it blocks until the file arrives, so `setup()` is the place for it.
 
 <a name="Table"></a>
 
@@ -75,7 +75,7 @@ struct Table {
 
 A `Table` is also a collection of its rows, so `table.count`, `table[0]`, `for row in table`, `table.enumerated()`, `filter`, and `map` all work directly.
 
-Every cell is text, because that is what the file holds. A row converts one when you ask for it that way.
+Every cell is text, because that is what the file holds. A row converts a cell to another type when you ask for that type.
 
 <a name="rows"></a>
 
@@ -91,9 +91,9 @@ row.color("tint")       // Color?, from a hex string like #ff8800
 row.cells               // [String], the row as the file has it
 ```
 
-Each has an `at position:` twin for a headerless file: `row.number(at: 1)`.
+Each of these has a matching `at position:` form for a headerless file, such as `row.number(at: 1)`.
 
-Everything answers `nil` rather than a stand-in when the column isn't there, the row stops before it, or the cell isn't the thing you asked for. An empty cell is not a zero, so a gap in a file reads as a gap and your sketch decides what to do about it:
+Every one of them answers `nil` rather than a stand-in value. That happens when the column isn't there, when the row stops before it, or when the cell isn't the thing you asked for. An empty cell is not a zero, so a gap in a file reads as a gap. Your sketch decides what to do about it:
 
 ```swift
 guard let lat = row.number("lat"), let lon = row.number("lon") else { continue }
@@ -108,9 +108,9 @@ table.column("city")     // [String], one per row, in row order
 table.numbers("pop")     // [Double]
 ```
 
-`column(_:)` returns one entry per row, so it lines up with `rows`; a row that stops before the column contributes an empty string.
+`column(_:)` returns one entry per row, so it lines up with `rows`. A row that stops before the column contributes an empty string.
 
-`numbers(_:)` drops cells that aren't numbers, which makes it the form for reading a column as a *series*, typically to find the range to draw against:
+`numbers(_:)` drops cells that aren't numbers. Use it to read a column as a *series*, usually to find the range you draw against:
 
 ```swift
 let highs = table.numbers("high")
@@ -123,7 +123,7 @@ When rows have to stay lined up with each other, read each row's cells instead.
 
 ### How a file is read
 
-Parsing follows the published CSV description. A cell wrapped in double quotes may hold the separator, line breaks, and doubled quotes standing for one:
+Parsing follows the published CSV description. A cell wrapped in double quotes can hold the separator, line breaks, and doubled quotes, where two quotes stand for one:
 
 ```csv
 month,note
@@ -131,24 +131,24 @@ Feb,"the ""thaw"" week"
 May,"long, mild evenings"
 ```
 
-Around that it is forgiving, because files in the wild are. All of these read without complaint: a byte-order mark at the front (a spreadsheet writes one, and left in place it would join the first column's name invisibly), any mix of line endings, blank lines, a missing final newline, and rows of uneven length. An unquoted cell has its surrounding spaces trimmed, so `a, b` reads as `b`; quote a cell to keep them. A backslash is not an escape here, only a doubled quote is.
+Around that rule, parsing is forgiving, because real files are untidy. All of these read without complaint: a byte-order mark, any mix of line endings, blank lines, a missing final newline, and rows of uneven length. A spreadsheet writes that mark at the front of a file, and left in place it would join the first column's name invisibly. An unquoted cell has its surrounding spaces trimmed, so `a, b` reads as `b`. Quote a cell to keep the spaces. A backslash is not an escape here, only a doubled quote is.
 
-Two things are guessed when you don't say, and saying overrides the guess.
+Two things are guessed when you don't state them, and stating one overrides its guess.
 
-**The separator.** `.auto` counts commas, tabs, semicolons, and pipes on the first line, outside quotes, and takes the most frequent. Name it with `format:` when a file is unusual enough that the count goes wrong:
+**The separator.** `.auto` counts commas, tabs, semicolons, and pipes on the first line, outside quotes, then takes the most frequent one. Name the separator with `format:` when a file is unusual enough for that count to go wrong:
 
 ```swift
 loadTable("odd.txt", format: .tsv)
 loadTable("odd.txt", format: .delimited("|"))
 ```
 
-**Whether the first row names the columns.** A first row holding no numbers is a header; one holding a number is data. That is the whole rule, and it is what a person reads too. A file of names with no header is the case it gets wrong, so say which:
+**Whether the first row names the columns.** A first row that holds no numbers is a header, and one that holds a number is data. That is the whole rule, and it is what a person reads too. The rule gets a file of names with no header wrong, so say which you have:
 
 ```swift
 loadTable("names.csv", hasHeader: false)   // no header row; read cells by position
 ```
 
-Read headerless, `columns` is empty and cells come back by position: `row[0]`.
+When a file is read headerless, `columns` is empty and cells come back by position, as in `row[0]`.
 
 <a name="loadJSON"></a>
 
@@ -160,7 +160,7 @@ func loadJSON(_ url: URL) -> JSON?
 func loadJSON(resource: String, withExtension ext: String? = "json", in bundle: Bundle) -> JSON?
 ```
 
-Read a JSON document. Same shape as `loadTable`, same rules: call it in `setup()`, pass `.module` for your own bundle, and expect `nil` when there is nothing to read.
+Read a JSON document. It has the same shape and the same rules as `loadTable`. Call it in `setup()`, pass `.module` for your own bundle, and expect `nil` when there is nothing to read.
 
 ```swift
 override func setup() {
@@ -185,7 +185,7 @@ Nothing is decoded into a type first, so the shape of the document is the shape 
 
 ### Reaching through a document
 
-Reach in by name or by index, then ask for the kind you want at the end:
+Step in by name or by index, then ask for the kind of value you want at the end:
 
 ```swift
 json["points"][0]["name"].text
@@ -205,7 +205,7 @@ json.survey.title.text          // the same, written as properties
 .isNull     // true for a null, and for a key that isn't there
 ```
 
-**A key that isn't there answers null rather than stopping**, and so does every step after it. That is what makes a whole path safe to write in one line, and it is why `.array` is not optional: a loop over a key that isn't there runs zero times instead of needing a check first.
+**A key that isn't there answers null rather than stopping**, and so does every step after it. That is what makes a whole path safe to write in one line. It is also why `.array` is not optional. A loop over a key that isn't there runs zero times, so you need no check first.
 
 ```swift
 for point in json["points"].array {
@@ -216,13 +216,13 @@ for point in json["points"].array {
 }
 ```
 
-A missing key and a written null are the same thing here. If your document distinguishes them, check for the key in `.object` directly.
+A missing key and a written null are the same thing here. If your document treats them differently, look for the key in `.object` directly.
 
 <a name="codable"></a>
 
 ### When you want a type instead
 
-`JSON` is deliberately small: it is for reading a document to draw from, once. When a document has a shape worth naming, and especially when you want it validated, Foundation's `Codable` is still there and is the better tool:
+`JSON` is deliberately small, because it is for reading a document once and drawing from it. When a document has a shape worth naming, and especially when you want it validated, Foundation's `Codable` is still there and is the better tool:
 
 ```swift
 struct Station: Decodable { let name: String; let weight: Double }
@@ -239,18 +239,18 @@ let stations = try JSONDecoder().decode([Station].self, from: Data(contentsOf: u
 sketchResource(_ name: String, in folder: String = "Models", from: String = #filePath) -> String?
 ```
 
-A file kept in a folder beside (or above) the sketch resolves by walking up from the sketch's own source file: `sketchResource("net.mlmodel")` finds the nearest `Models` folder on the way up and answers the file's path inside it, or `nil` when there is none. The current directory is wherever the sketch was launched from, so a path relative to it breaks the moment the sketch runs from somewhere else; the source file stays put. It is a free function, so a `static let` can call it. Leave `from` alone, since it defaults to the caller's own file.
+This finds a file kept in a folder beside the sketch, or above it, by walking up from the sketch's own source file. `sketchResource("net.mlmodel")` finds the nearest `Models` folder on the way up and answers the file's path inside it. It answers `nil` when it finds none. The current directory is wherever the sketch was launched from, so a path relative to it breaks once the sketch runs from somewhere else. The source file stays put. It is a free function, so a `static let` can call it. Leave `from` alone, because it defaults to the caller's own file.
 
 ```swift
 static let modelPath = sketchResource("StyleTransfer.mlmodel")
 let dataPath = sketchResource("quakes.csv", in: "Data")
 ```
 
-(For a file bundled *into a target*, keep using `Bundle.module` and the loaders' `resource:in:` forms; this is for the loose folder-next-to-the-sketch arrangement.)
+For a file bundled *into a target*, keep using `Bundle.module` and the loaders' `resource:in:` forms. `sketchResource` is for the loose folder that sits next to the sketch.
 
 ### See also
 
-- [`Images`](../Drawing/Images.md) - `loadImage`, the same load-in-`setup()` shape for pictures
+- [`Images`](../Drawing/Images.md) - `loadImage`, which loads a picture in `setup()` the same way
 - [`SVG`](../Drawing/SVG.md) - `loadSVG`, for vector artwork
 - [`Color`](../Drawing/Color.md) - palette import, which reads hex, CSV, JSON, and swatch files as colors
 - [`Parameters`](./Parameters.md) - `@Param` parameters, for values you tune rather than load

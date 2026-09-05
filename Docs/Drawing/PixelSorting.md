@@ -4,7 +4,7 @@
 
 ## Pixel sorting
 
-**`Image.pixelSorted`** rearranges runs of an image's own pixels along rows or columns, sorted by brightness, hue, or saturation. Nothing is invented or recolored. The pixels just change places, which is what gives the technique its molten, streaked reading. The technique was invented by Kim Asendorf, and the interval model here is his. A brightness window decides which stretches of pixels form a sortable run, so shadows and highlights hold their ground while the midtones pour.
+**`Image.pixelSorted`** rearranges runs of an image's own pixels along its rows or columns, sorted by brightness, hue, or saturation. It invents nothing and recolors nothing, so the pixels only change places. That is what gives the result its molten, streaked look. Kim Asendorf invented the technique, and the interval model used here is his. A brightness window decides which stretches of pixels form a sortable run. That keeps the shadows and the highlights where they are, and lets the midtones flow.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/SortedPixels-dark.jpg">
@@ -28,13 +28,13 @@ image.pixelSorted(_ direction: PixelSortDirection = .vertical,
                   reversed: Bool = false) -> Image
 ```
 
-A copy of the image with threshold-bounded runs sorted along `direction` (`.vertical` streaks fall, `.horizontal` streaks pour sideways). Pixels whose brightness falls inside `threshold` form the runs. Each run reorders by `key`, ascending, or descending with `reversed`. The keys are `.brightness`, `.hue`, and `.saturation`. Widen the window to `0...1` to sort whole rows or columns.
+The call returns a copy of the image, with the runs that the threshold bounds sorted along `direction`. With `.vertical` the streaks fall, and with `.horizontal` they run sideways. Pixels whose brightness falls inside `threshold` form the runs. Each run is reordered by `key`, ascending by default, or descending when you pass `reversed: true`. The keys are `.brightness`, `.hue`, and `.saturation`. Widen the window to `0...1` to sort whole rows or columns.
 
 ```swift
 let melted = picture.pixelSorted(.vertical, threshold: 0.2 ... 0.75)
 ```
 
-The classic treatment sorts twice, once per axis:
+The classic treatment sorts the image twice, once along each axis:
 
 ```swift
 let glitched = picture.pixelSorted(.vertical).pixelSorted(.horizontal)
@@ -44,20 +44,20 @@ let glitched = picture.pixelSorted(.vertical).pixelSorted(.horizontal)
 
 #### Getting the classic looks
 
-- **Falling curtains.** `.vertical` with a midtone window. If a smooth gradient barely changes, that's because it was already sorted. Add `reversed: true` to invert it dramatically, or sort by `.hue` so the order comes from somewhere else.
-- **Jagged teeth.** The signature comb edge comes from run boundaries landing differently in every column. Texture drives it: grain, clouds, stars, anything that breaks the window at varying heights. A perfectly clean gradient sorts invisibly.
-- **Protected features.** Anything outside the window never moves. Keep the window's floor above your shadows and its ceiling below your highlights and the composition's anchors survive the melt.
-- **Color chaos.** `by: .hue` inside a wide window reorders by the color wheel. Sorting `by: .saturation` pushes gray toward one end and vivid toward the other.
+- **Falling curtains.** Use `.vertical` with a midtone window. If a smooth gradient barely changes, that is because it was already sorted. Add `reversed: true` to turn that order around, or sort by `.hue` so the order comes from another property.
+- **Jagged teeth.** The comb edge comes from the run boundaries landing at a different place in every column. Texture is what drives it, so look for grain, clouds, stars, or anything else that breaks the window at varying heights. A perfectly clean gradient sorts with no visible change.
+- **Protected features.** A pixel outside the window never moves. Keep the window's floor above your shadows and its ceiling below your highlights, and the anchors of the composition survive the sort.
+- **Color chaos.** Passing `by: .hue` inside a wide window reorders the pixels by the color wheel. Sorting `by: .saturation` pushes the gray pixels toward one end of the run and the vivid ones toward the other.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **It's CPU work at full resolution.** A one-off sort of a big image is `setup()` work. For a sorted image every frame, keep the source a few hundred pixels on a side and draw it scaled up.
-- **Deterministic.** The same image and parameters produce the same result, byte for byte, with position breaking ties. Sorted images are snapshot- and recipe-safe.
-- **Alpha rides its pixel.** A translucent pixel moves with its transparency attached. Brightness reads the straight, un-premultiplied color, and a fully transparent pixel reads as black.
-- **Texture-backed images return themselves unchanged**, because they hold no CPU pixels. Read a video frame through its `snapshot()` first.
+- **The sort runs on the CPU at full resolution.** Sort a big image once, in `setup()`. If you need a sorted image on every frame, keep the source a few hundred pixels on a side and draw it scaled up.
+- **The result is deterministic.** The same image and the same parameters produce the same result, byte for byte, and position breaks ties. That makes a sorted image safe to use in a snapshot test and in a recipe.
+- **Alpha moves with its pixel.** A translucent pixel keeps its transparency when it moves. Brightness is read from the straight, un-premultiplied color, and a fully transparent pixel reads as black.
+- **A texture-backed image returns itself unchanged**, because it holds no CPU pixels. Read a video frame through its `snapshot()` first.
 
 ---
 
-Related: [`Images`](./Images.md) (the `Image` type and pixel access), [`Glyph mosaic`](./GlyphMosaic.md) and [`Single line`](../Generators/SingleLine.md) (the other image-as-input renderings), [`Dithering`](./Color.md#dithering) (a different rearrangement of tone), [`Effects`](./Effects.md) (GPU filters, for per-frame full-canvas work).
+Related: [`Images`](./Images.md) (the `Image` type and pixel access), [`Glyph mosaic`](./GlyphMosaic.md) and [`Single line`](../Generators/SingleLine.md) (the other renderings that take an image as input), [`Dithering`](./Color.md#dithering) (another way to rearrange tone), [`Effects`](./Effects.md) (GPU filters, for full-canvas work on every frame).

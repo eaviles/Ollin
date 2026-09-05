@@ -4,9 +4,9 @@
 
 ## DMX
 
-Drive stage lights from `draw()`. DMX is the 512-channels-per-universe protocol behind theatrical dimmers, LED pars, and moving heads. It travels over ordinary Ethernet as **Art-Net** or **sACN** (ANSI E1.31), the two wire protocols lighting nodes and consoles speak. A sketch fills a universe of channels every frame and puts it on the network. An [`LEDMap`](#ledmap) goes further and sends the canvas's own pixels to LED strips and matrices. The same machinery in reverse lets a lighting console drive a sketch. It lives in a separate library so the drawing core stays free of networking. Add `import OllinDMX` alongside `import Ollin` to reach it.
+Drive stage lights from `draw()`. DMX is the protocol behind theatrical dimmers, LED pars, and moving heads, and it carries 512 channels per universe. On a network it travels over ordinary Ethernet as **Art-Net** or **sACN** (ANSI E1.31). Those are the two wire protocols that lighting nodes and consoles speak. A sketch fills a universe of channels every frame and puts it on the network. An [`LEDMap`](#ledmap) goes further and sends the canvas's own pixels to LED strips and matrices. The same path in reverse lets a lighting console drive a sketch. The DMX code lives in a separate library, so the drawing core stays free of networking. Add `import OllinDMX` beside `import Ollin` to reach it.
 
-Both wire formats are written from their published specifications over Apple's `Network.framework`, so nothing is vendored. Those specifications are the Art-Net 4 protocol document and ANSI E1.31-2018. Art-Net™ Designed by and Copyright Artistic Licence.
+Both wire formats are written from their published specifications on top of Apple's `Network.framework`, so nothing is vendored. Those specifications are the Art-Net 4 protocol document and ANSI E1.31-2018. Art-Net™ Designed by and Copyright Artistic Licence.
 
 ```swift
 import Ollin
@@ -24,7 +24,7 @@ final class Chase: Sketch {
 }
 ```
 
-The usual shape is to make the sender (or receiver) once, then fill and send a `DMXUniverse` in `draw()`. Send every frame at the display rate. The sender handles the wire cadence the specs ask for on its own.
+The usual pattern is to make the sender (or receiver) once, then fill and send a `DMXUniverse` in `draw()`. Send every frame at the display rate. The sender handles the packet timing that the specs ask for, so you do not have to.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/LampsAndBytes-dark.jpg">
@@ -36,7 +36,7 @@ The usual shape is to make the sender (or receiver) once, then fill and send a `
 - [DMXUniverse](#dmxuniverse) - the 512-channel value you fill and send
 - [DMXFixture](#dmxfixture) - patch by name instead of raw channel numbers
 - [DMXSender](#dmxsender) - put universes on the wire, Art-Net or sACN
-- [LEDMap](#ledmap) - the canvas itself onto LED strips and matrices
+- [LEDMap](#ledmap) - send the canvas's own pixels to LED strips and matrices
 - [DMXReceiver](#dmxreceiver) - let a console drive the sketch
 - [Binding to a `@Param`](#binding-to-a-param) - a console fader as a parameter
 - [Testing without hardware](#testing-without-hardware) - loopback and monitors
@@ -53,9 +53,9 @@ rig.set(10, color: .red)             // channels 10, 11, 12 = R, G, B
 rig.clear()                          // all dark
 ```
 
-A `DMXUniverse` is a plain value of 512 bytes, one per channel. The channels are numbered 1 to 512, the way every console and fixture manual numbers them. Reading outside that range returns 0. Writing outside it does nothing, so an off-by-one never traps mid-performance.
+A `DMXUniverse` is a plain value of 512 bytes, one byte per channel. The channels are numbered 1 to 512, which is how every console and fixture manual numbers them. Reading a channel outside that range returns 0. Writing outside it does nothing, so an off-by-one error never crashes the sketch during a performance.
 
-`set(_:level:)` takes the 0…1 range the rest of a sketch already works in and scales it to the wire's 0…255. `set(_:color:)` lays a `Color`'s red, green, and blue across three consecutive channels, and `color(_:)` reads three back.
+`set(_:level:)` takes a level in the 0…1 range that the rest of a sketch already works in and scales it to the wire's 0…255. `set(_:color:)` writes a `Color`'s red, green, and blue to three consecutive channels, and `color(_:)` reads three channels back as a `Color`.
 
 <a name="dmxfixture"></a>
 
@@ -71,9 +71,9 @@ rig.set(wash, color: .white, dimmer: 0.5)        // dimmer on its dimmer channel
 rig.set(head, .pan, level: 0.25)                 // one role directly
 ```
 
-A fixture is a start address plus the ordered roles of its channels. Spell those roles from the fixture manual's channel-mode table. They are `.dimmer`, `.red`, `.green`, `.blue`, `.white`, `.amber`, `.uv`, `.pan`, `.tilt`, `.strobe`, and `.unused` for slots the sketch doesn't drive. The presets cover the common pars (`.dimmer`, `.rgb`, `.rgbw`, `.drgb` at an address). `nextAddress` patches the next fixture right behind the last one.
+A fixture is a start address plus the roles of its channels, in order. Take those roles from the channel-mode table in the fixture's manual. The roles are `.dimmer`, `.red`, `.green`, `.blue`, `.white`, `.amber`, `.uv`, `.pan`, `.tilt`, `.strobe`, and `.unused` for a slot the sketch does not drive. The presets cover the common pars: `.dimmer`, `.rgb`, `.rgbw`, and `.drgb`, each at an address. `nextAddress` places the next fixture directly after the last one.
 
-`set(_:color:dimmer:)` writes a color through the layout. On an RGBW fixture the shared part of the color moves to the white channel. That is the classic split. A pale wash then uses the white emitter, instead of faking it with all three colors. A fixture with a `.dimmer` channel takes `dimmer` there. A fixture without one gets its color scaled instead, so `dimmer` means brightness either way.
+`set(_:color:dimmer:)` writes a color through the fixture's layout. On an RGBW fixture the part shared by red, green, and blue moves to the white channel, which is the classic RGBW split. A pale wash then comes from the white emitter instead of from all three color emitters at once. A fixture with a `.dimmer` channel takes the `dimmer` value on that channel. A fixture without one has its color scaled by `dimmer` instead, so `dimmer` means brightness either way.
 
 <a name="dmxsender"></a>
 
@@ -93,13 +93,13 @@ var priority: Int                        // sACN source priority 0…200, 100 by
 var maxRate: Double                  // transmit ceiling, 44 packets/s per universe
 ```
 
-The zero-config form is plain `DMXSender()`. sACN multicasts each universe to its standard group address. Any sACN node on the network that listens to that universe picks it up, with no addressing at all. Art-Net 4 sends DMX unicast, so there the node's IP is the one thing to name. Universe numbers run 1 to 63999 on sACN. On Art-Net the number is the 15-bit port-address, 1 to 32767, which packs the net, sub-net, and universe switches together.
+Plain `DMXSender()` needs no configuration. It uses sACN, which multicasts each universe to that universe's standard group address. Any sACN node on the network that listens to that universe picks it up, so you name no address at all. Art-Net 4 sends DMX as unicast, so there the node's IP address is the one thing you name. The two protocols also number universes differently. On sACN the numbers run 1 to 63999. On Art-Net the universe number is the 15-bit port-address, 1 to 32767, which packs the net, sub-net, and universe switches into one number.
 
-Call `send` every frame with whatever the sketch computed. The sender takes care of the wire cadence both specs ask for. Changed data goes out immediately, capped at `maxRate` to match what a DMX gateway can physically output. Unchanged data is re-sent a few times, so a receiver that missed a packet still converges. After that a keep-alive goes out every ~0.9 s, so nodes know the source is alive. Sequence numbers, sACN's source identity (CID), and priorities are handled for you.
+Call `send` every frame with whatever the sketch computed. The sender handles the packet timing that both specs ask for. Changed data goes out at once, capped at `maxRate` so the sender never exceeds what a DMX gateway can output. Unchanged data is re-sent a few times, so a receiver that missed one packet still reaches the same values. After that, a keep-alive packet goes out about every 0.9 s, so nodes know the source is still there. The sender also handles sequence numbers, sACN's source identity (the CID), and priorities.
 
-`close()` on an sACN sender says goodbye first. It sends three stream-terminated packets per universe, which is the standard's clean ending. Receivers then drop the look immediately instead of waiting out a timeout.
+`close()` on an sACN sender ends each stream cleanly before it shuts the connection. It sends three stream-terminated packets per universe, which is the ending the standard defines. Receivers then drop that source's output at once instead of waiting for a timeout.
 
-Sending to hardware on the local network makes macOS ask for **Local Network** permission once. The permission is attributed to the launching terminal, because a `swift run` sketch has no bundle identity of its own. Screen recording behaves the same way. Loopback to `127.0.0.1` needs nothing.
+The first time a sketch sends to hardware on the local network, macOS asks for **Local Network** permission, and it asks only once. The permission is attributed to the terminal that launched the sketch, because a `swift run` sketch has no bundle identity of its own. Permission for screen recording is attributed the same way, and for the same reason. Loopback to `127.0.0.1` needs no permission.
 
 <a name="ledmap"></a>
 
@@ -117,7 +117,7 @@ override func setup() {
 }
 ```
 
-An `LEDMap` sends regions of the canvas to addressable LEDs. Lay strips and matrices over the picture, register the map as an extension, and draw normally. Every frame it samples the *rendered* pixels under each LED on the GPU. That sampling is a small compute pass over a few hundred points, not a full-frame readback. It then sends the pixels as universes through its `DMXSender`, whose pacer keeps the wire cadence polite. The byte sent is the display byte. What you see at that pixel is what the lamp is told.
+An `LEDMap` sends regions of the canvas to addressable LEDs. You lay strips and matrices over the picture, register the map as an extension, and draw as usual. Every frame, the map samples the *rendered* pixels under each LED on the GPU. That sampling is a small compute pass over a few hundred points, not a readback of the full frame. The map then sends the sampled pixels as universes through its `DMXSender`, and the sender keeps the packet timing within the specs. The byte sent is the display byte, so the lamp gets the same value you see at that pixel.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/LEDWall-dark.jpg">
@@ -140,17 +140,17 @@ var colors: [Color]                  // what each LED read last frame
 var universes: [Int]                 // every universe the map writes
 ```
 
-Each call puts the LEDs somewhere different.
+Each call places its LEDs in a different way.
 
-- A **strip** spaces its LEDs evenly *by walked length* along the polyline, endpoints included, so corners don't bunch them. `closed: true` spaces them around the loop instead, for an LED ring. `addStrip(from:to:)` is the straight-run shorthand.
-- A **matrix** reads one LED per cell, at the cell's center, in straight rows from the top left. `serpentine: true` reverses every other row, for a zigzag-wired panel addressed directly. The default is straight, because a pixel controller usually knows the panel's wiring and expects straight rows on the wire.
-- `addPoints` maps loose lamps at arbitrary positions, in the order given.
+- A **strip** spaces its LEDs evenly by the distance walked along the polyline, endpoints included, so a corner does not bunch them. `closed: true` spaces them around the closed loop instead, which suits an LED ring. `addStrip(from:to:)` is the shorthand for a straight run.
+- A **matrix** reads one LED per cell, at the center of the cell, in straight rows from the top left. `serpentine: true` reverses every other row, which suits a zigzag-wired panel that you address directly. The default is straight rows, because a pixel controller usually knows the panel's wiring and expects straight rows on the wire.
+- `addPoints` maps loose lamps at any positions you give, in the order you give them.
 
-Each LED averages a small patch of canvas around its point, **in linear light**. A patch half black and half white therefore reads as the gray that actually looks halfway. The default `sampleRadius` is the patch the LED stands for. That is half the LED spacing on a strip, and half the cell on a matrix, kept between 1 and 32 pixels. Pass an explicit radius to override it.
+Each LED averages a small patch of the canvas around its point, **in linear light**. So a patch that is half black and half white reads as the gray that looks halfway to the eye. The default `sampleRadius` covers the patch the LED stands for. That is half the LED spacing on a strip, and half the cell on a matrix, kept between 1 and 32 pixels. Pass an explicit radius to override it.
 
-On the wire, universes pack **whole LEDs**. An LED's channels never straddle a universe boundary, so 170 RGB pixels (or 128 RGBW) fill a universe. The straddle channels stay dark, and a longer run continues on the next universe number up. That is the layout pixel controllers expect, so patch the controller to the numbers `universes` reports. Per-LED channels follow `layout`, and colors land through the fixture path. An `[.red, .green, .blue, .white]` layout gets the RGBW white split, and `brightness` scales the light either way. The returned `Fixture` tells you where everything landed. It carries its `positions` and its `universes`. It also carries `address(ofLED:)`, which reads one LED back off the wire, and the example's drawn preview uses that.
+On the wire, a universe holds **whole LEDs** only. An LED's channels never cross a universe boundary, so 170 RGB pixels (or 128 RGBW) fill a universe. The channels left over at the end of a universe stay dark, and a longer run continues on the next universe number. That is the layout pixel controllers expect, so patch the controller to the numbers that `universes` reports. The channels of each LED follow `layout`, and colors are written through the fixture path. So an `[.red, .green, .blue, .white]` layout gets the RGBW white split, and `brightness` scales the light for RGB and RGBW layouts alike. The returned `Fixture` tells you where everything landed. It carries its `positions` and its `universes`. It also carries `address(ofLED:)`, which reads one LED back off the wire, and the drawn preview in the LEDMapping example uses that.
 
-The map drives lights, so it is live-only. A headless export renders no frames to a window and sends nothing, the same way frame-sharing sits out an export. The **LEDMapping** example (`Examples/Integration/LEDMapping`) runs the whole path on loopback. It lights a drawn strip and panel from what a receiver reads back.
+The map drives lights, so it runs only in a live window. A headless export renders no frames to a window, so the map sends nothing. Frame-sharing behaves the same way in an export. The **LEDMapping** example (`Examples/Integration/LEDMapping`) runs the whole path on loopback. It lights a drawn strip and panel from what a receiver reads back.
 
 <a name="dmxreceiver"></a>
 
@@ -170,7 +170,7 @@ func color(_ channel: Int, universe: Int = 1) -> Color     // three channels
 func universeNumbers() -> [Int]                                   // what's been heard
 ```
 
-The receiver turns the sketch into a fixture. A lighting console, or another sketch, fades a channel, and `draw()` reads it like any other input. DMX carries continuous levels rather than events, so the read surface gives the latest value only. Read it fresh each frame.
+The receiver lets the sketch act as a fixture. A lighting console, or another sketch, fades a channel, and `draw()` reads that channel like any other input. DMX carries continuous levels rather than events, so the read methods give the latest value only. Read it again each frame.
 
 ```swift
 let dmx = DMXReceiver()
@@ -182,14 +182,14 @@ override func draw() {
 }
 ```
 
-Consoles usually multicast sACN. Pass the universes you care about to `start(universes:)`, and the receiver joins their standard groups. Plain `start()` hears unicast aimed at this Mac's IP, which is all loopback needs.
+Consoles usually multicast sACN. Pass the universes you want to `start(universes:)`, and the receiver joins their standard multicast groups. Plain `start()` hears only unicast sent to this Mac's IP address, which is all that loopback needs.
 
-The standard's receiver rules are applied for you.
+The receiver applies the standard's rules for you.
 
-- When several sources drive one universe, the highest priority wins.
-- Out-of-order stragglers are dropped by sequence number.
-- Preview-flagged data and alternate START codes are ignored.
-- A source's stream-terminated goodbye clears its universe.
+- When several sources drive one universe, the source with the highest priority wins.
+- Packets that arrive out of order are dropped by their sequence number.
+- The receiver ignores data flagged as preview and packets with an alternate START code.
+- A source's stream-terminated packet clears that source's universe.
 
 <a name="binding-to-a-param"></a>
 
@@ -200,7 +200,7 @@ func bind(channel: Int, universe: Int = 1, to param: Param<Double>)
 func unbind(channel: Int, universe: Int = 1)
 ```
 
-Wire a channel straight onto a [`@Param`](../Helpers/Parameters.md), so a console fader drives the same parameter a live-inspector slider does. Each arriving value is mapped from the wire's 0…255 into the parameter's own range:
+Bind a channel directly to a [`@Param`](../Helpers/Parameters.md), so a console fader drives the same parameter that a slider in the live inspector does. Each arriving value is mapped from the wire's 0…255 into the parameter's own range:
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -211,20 +211,20 @@ override func setup() {
 }
 ```
 
-A bound parameter updates on its own as data arrives. The same parameter still works from the inspector and from code, and whichever moved most recently wins.
+A bound parameter updates on its own as data arrives. The same parameter still works from the inspector and from code, and the most recent change wins, whichever source made it.
 
 <a name="testing-without-hardware"></a>
 
 ### Testing without hardware
 
-You can exercise the whole path with nothing but the Mac in front of you. Run both ends on `127.0.0.1`. The **DMXLoopback** example (`Examples/Integration/DMXLoopback`) does exactly that. It fills universe 1 with a color chase for a row of RGB pars and sends it to itself as sACN. It then lights the drawn stage from what the receiver reads back, so the picture is the round trip itself.
+You can test the whole path on your Mac alone. Run both ends on `127.0.0.1`. The **DMXLoopback** example (`Examples/Integration/DMXLoopback`) does exactly that. It fills universe 1 with a color chase for a row of RGB pars and sends it to itself as sACN. It then lights the drawn stage from what the receiver reads back, so the picture shows the whole round trip.
 
-To reach real hardware, swap the loopback sender for `DMXSender()` (multicast), or point it at your node's IP. Patch the fixtures at the addresses your rig uses, and the same universe drives real lights. Free sACN and Art-Net monitor apps, such as sACNView and DMX-Workshop, show every universe on the wire. That is the quickest way to confirm what a sketch is emitting.
+To reach real hardware, replace the loopback sender with `DMXSender()` (multicast), or point it at your node's IP address. Patch the fixtures at the addresses your rig uses, and the same universe then drives real lights. Free sACN and Art-Net monitor apps, such as sACNView and DMX-Workshop, show every universe on the wire. That is a quick way to confirm what a sketch is sending.
 
-The library covers the streaming level, and no more. That means ArtDmx output and input on the Art-Net side, and E1.31 data packets on the sACN side. Art-Net's discovery layer (ArtPoll/ArtPollReply) is out of scope for now. So are sACN's universe discovery and synchronization packets, and RDM. A node that needs only a stream of universes works without any of it, and nearly all of them do.
+The library covers the streaming level only. That means ArtDmx output and input on the Art-Net side, and E1.31 data packets on the sACN side. Art-Net's discovery layer (ArtPoll/ArtPollReply) is out of scope for now. sACN's universe discovery packets, its synchronization packets, and RDM are also out of scope. A node that needs only a stream of universes works without any of those, and nearly all nodes need only that.
 
 ---
 
 Credits: this implementation is written from the published specifications. Art-Net™ Designed by and Copyright Artistic Licence. sACN is ANSI E1.31, published by ESTA's Technical Standards Program.
 
-See the **DMXLoopback** example for a self-contained send-and-receive sketch. It needs no console or hardware to run. See **LEDMapping** for the canvas sampled onto a drawn strip and panel the same way.
+See the **DMXLoopback** example for a self-contained sketch that sends and receives. It needs no console or hardware to run. See **LEDMapping** for the canvas sampled onto a drawn strip and panel in the same way.

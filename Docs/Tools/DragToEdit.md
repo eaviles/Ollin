@@ -4,19 +4,19 @@
 
 # Dragging a shape
 
-Placing something by eye through numbers is slow. You type `drawCircle(200, 300, 40)`, look, change 300 to 280, look again. The picture is right in front of you, and the only way to touch it is to guess a number.
+Placing a shape by eye through numbers is slow. You type `drawCircle(200, 300, 40)`, look at it, change 300 to 280, then look again. The picture is right in front of you, but the only way to change it is to guess another number.
 
-Under [OllinLive](../../README.md#live-reload), you can move it with the pointer instead. Hold Command over the window: the shape under the pointer is outlined, and the line that drew it is named above the outline. Drag it where you want it and let go. The two numbers in that line become the numbers you dragged to, in your own file. The watcher sees the save and reloads the sketch, so the shape is already where you left it. Press `⌘]` or `⌘[` instead, and the shape's line moves past its neighbor's, so it draws in front or behind.
+Under [OllinLive](../../README.md#live-reload) you can move the shape with the pointer instead. Hold Command over the window, and the shape under the pointer is outlined with the line that drew it named above the outline. Drag the shape where you want it and let go. The two numbers in that line become the numbers you dragged to, written into your own file. The watcher sees the save and reloads the sketch, so the shape is already where you left it. Press `⌘]` or `⌘[` instead, and the shape's line moves past its neighbor's line, so the shape draws in front or behind.
 
 ```sh
 swift run OllinLive Examples/Live/DragToEdit/Sketch.swift
 ```
 
-The file is the only thing that changes. Nothing is held in the window that the text does not say. That is why the shape stays put across a reload, why the change rides in your next commit, and why undo is your editor's own undo.
+The file is the only thing that changes, because the window holds nothing that the text does not say. So the shape stays put across a reload, and the change goes into your next commit. Undo is your editor's own undo.
 
 ## Three things to take hold of
 
-Holding Command outlines the shape and puts its handles on it. Which handles appear depends on what the line itself says:
+Holding Command outlines the shape and puts its handles on it. Which handles you get depends on what the line itself says:
 
 | Take hold of | What moves | Which shapes offer it |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ Holding Command outlines the shape and puts its handles on it. Which handles app
 | the knob above it | which way it faces | a shape with two ends, or one with its own angles |
 | `⌘]` and `⌘[` | which shape is on top | any shape, while it is outlined |
 
-A corner is a small square on the outline. The knob is a small circle standing clear above the top edge, so the two never read as the same thing.
+A corner is a small square on the outline. The knob is a small circle above the top edge, set clear of it so that the two never look the same.
 
 ```swift
 drawCircle(200, 300, 40)     // the shape moves, four corners resize, no knob
@@ -36,7 +36,7 @@ drawArc(300, 300, 100, 100, start: 0, stop: 1.5)   // corners and a knob
 
 ## What it writes
 
-Only the numbers the gesture is about, and nothing else on the line:
+A gesture writes only the numbers it is about, and nothing else on the line:
 
 ```swift
 drawCircle(200, 300, 40)      // before
@@ -44,13 +44,13 @@ drawCircle(313, 286, 40)      // after a drag right and up
 drawCircle(200, 300, 60)      // after a corner pulled out instead
 ```
 
-Your spacing, your comments, and the rest of the arguments are untouched. Each number is replaced where it stands, rather than the line being written out again.
+Your spacing, your comments, and the rest of the arguments stay as they are. Each number is replaced where it stands, so the line is never written out again.
 
-A number written whole stays whole. A drag that lands a shape at 313.4 writes 313, so round numbers stay round, and a drag under half a point changes nothing. A number written with a fraction keeps as many decimals as you gave it: `200.25` moved by ten becomes `210.25`. An angle is the one exception. It is written to at least three decimals, because a whole radian is most of a quarter turn.
+A number written whole stays whole. A drag that lands a shape at 313.4 writes 313, so round numbers stay round. A drag of less than half a point changes nothing. A number written with a fraction keeps as many decimals as you gave it, so `200.25` moved by ten becomes `210.25`. An angle is the one exception, because a whole radian is most of a quarter turn. An angle is written to at least three decimals.
 
 ## Moving it
 
-Any shape placed by plain numbers. That is the whole analytic family (circles, ellipses, rectangles, triangles, rings, stars, arcs, the novelty shapes) and lines. Both forms work, positional and labeled:
+You can move any shape placed by plain numbers. That covers the whole analytic family (circles, ellipses, rectangles, triangles, rings, stars, arcs, the novelty shapes) and lines as well. Both argument forms work, positional and labeled:
 
 ```swift
 drawCircle(200, 300, 40)                          // the two numbers move
@@ -59,26 +59,26 @@ drawLine(100, 100, 300, 100)                      // both ends move together
 drawRect(corner: Vector2(40, 40), width: 200, height: 100)
 ```
 
-A shape with two ends (a line, an oriented box, an uneven capsule) moves as one thing. Both ends take the same step, so the shape travels rather than stretches.
+A shape with two ends (a line, an oriented box, an uneven capsule) moves as one piece. Both ends take the same step, so the shape travels instead of stretching.
 
 ## Resizing it
 
-A corner changes the size numbers and leaves the position numbers where they are. The shape therefore grows from wherever its call says it stands: a circle from its middle, a rectangle written `drawRect(x, y, width, height)` from its top-left corner.
+A corner changes the size numbers and leaves the position numbers where they are. The shape therefore grows from wherever its call says it stands. A circle grows from its middle, and a rectangle written `drawRect(x, y, width, height)` grows from its top-left corner.
 
 ```swift
 drawRect(10, 20, 300, 120, cornerRadius: 8)   // before
 drawRect(10, 20, 600, 60, cornerRadius: 8)    // after the bottom-right corner
 ```
 
-That corner is also why a rectangle written that way offers three handles and not four. The one standing on the corner that places it has nothing to scale.
+That corner is also why a rectangle written that way offers three handles and not four. A handle on the corner that places the rectangle would have nothing to scale.
 
-Sizes that belong together scale together. A star's two radii keep their proportion, and a moon keeps its shape. A width and a height each follow their own side of the drag, so a rectangle or an ellipse can be stretched one way.
+Sizes that belong together scale together. A star's two radii keep their proportion, and a moon keeps its shape. A width and a height each follow their own side of the drag, so you can stretch a rectangle or an ellipse one way.
 
-Two things are deliberately left alone: a corner radius, and a count such as `sides:` or `points:`. Neither is a size, and scaling them would change the shape rather than its measurements. One drag also cannot take a shape below a twentieth of what it was. A corner pulled through the middle still leaves something to grab.
+Two values are left alone on purpose: a corner radius, and a count such as `sides:` or `points:`. Neither one is a size, so scaling it would change the shape itself rather than its measurements. One drag also cannot take a shape below a twentieth of what it was. So a corner pulled through the middle still leaves something to grab.
 
 ## Turning it
 
-The knob swings the shape about its own middle. What it writes depends on what the line says about the shape's direction:
+The knob turns the shape around its own middle. What that writes depends on what the line says about the shape's direction:
 
 ```swift
 drawLine(0, 0, 100, 0)          // before
@@ -88,11 +88,11 @@ drawArc(300, 300, 100, 100, start: 0, stop: 1.5)          // before
 drawArc(300, 300, 100, 100, start: 0.500, stop: 2.000)    // after half a radian
 ```
 
-A shape with two ends turns by moving those ends. A shape that carries its own angles turns by moving those. A circle offers no knob at all. Nothing on its line says which way it faces: its direction lives in a `rotate` further up, which this does not touch.
+A shape with two ends turns by moving those ends. A shape that carries its own angles turns by changing those angles. A circle offers no knob at all, because nothing on its line says which way it faces. Its direction comes from a `rotate` further up, and a drag does not touch that.
 
 ## Putting it in front, or behind
 
-A shape drawn later lands on top, so which shape covers which is the order of the calls in the file. With a shape outlined, `⌘]` brings it one shape forward and `⌘[` sends it one shape back; with Shift held, `⌘⇧]` and `⌘⇧[` take it all the way to the front or the back of its block. Nothing on the line changes. The line changes place.
+A shape drawn later lands on top, so the order of the calls in the file decides which shape covers which. With a shape outlined, `⌘]` brings it one shape forward and `⌘[` sends it one shape back. Hold Shift as well, and `⌘⇧]` and `⌘⇧[` take it all the way to the front or the back of its block. Nothing on the line changes, because only the line's place in the file changes.
 
 ```swift
 fill(.black)
@@ -113,16 +113,16 @@ fill(.red)
 drawRect(500, 500, 40, 40)
 ```
 
-The ink went with it. A `fill`, `stroke`, or `strokeWeight` set for the shape is said again where the shape lands, the ink the shapes after it were drawn with is put back after it, and an ink line left with nothing to color is removed. So the picture changes only in which shape is in front. Send it back and the file is exactly what it was. A comment on the shape's own line, or directly above it, travels with it.
+The ink moved with the shape. A `fill`, `stroke`, or `strokeWeight` set for that shape is written again where the shape lands. The ink that the shapes after it were drawn with is put back after it. An ink line left with nothing to color is removed. So the picture changes only in which shape is in front. Send the shape back and the file is exactly what it was. A comment on the shape's own line, or directly above it, travels with it.
 
-A shape that was drawn with the ink the sketch starts with, having set none, has that written out where it lands (`fill(.white)`, `stroke(.black)`, `strokeWeight(1)`), which is the same picture said explicitly.
+A shape may set no ink of its own and draw with the ink the sketch starts with. That starting ink is then written out where the shape lands (`fill(.white)`, `stroke(.black)`, `strokeWeight(1)`). The picture is the same, only said explicitly.
 
 Two things stop a move, and each says so:
 
-- **Anything between the two shapes that is not ink.** A `translate`, a `let`, a `withState { }`, a call the scanner does not know: moving past it could change more than the order, so the move is refused and names it. *`Sketch.swift:9` cannot move past `translate(10, 10)`, which is not ink.* A move all the way to the front stops at the first such line and says how far it got.
-- **Ink nobody can read off the block.** A `strokeCap` set between the two shapes, with nothing above saying what the moved shape's cap was, has no value the move can write, so it refuses rather than guess.
+- **Anything between the two shapes that is not ink.** That includes a `translate`, a `let`, and a `withState { }`. It also includes a call the scanner does not know. Moving past one of these could change more than the order, so the move is refused. A move all the way to the front stops at the first such line and says how far it got. The message names the line: *`Sketch.swift:9` cannot move past `translate(10, 10)`, which is not ink.*
+- **Ink nobody can read off the block.** A `strokeCap` may be set between the two shapes. If nothing above it says what the moved shape's cap was, the move has no value to write. It is refused rather than guessed at.
 
-A shape moves among the shapes in its own block. One inside a `withState { }` moves among the calls in that block, and never out of it.
+A shape moves among the shapes in its own block. A shape inside a `withState { }` moves among the calls in that block, and never out of it.
 
 ## A coordinate that is a parameter
 
@@ -134,11 +134,11 @@ A coordinate can be a parameter's name rather than a number:
 drawCircle(sunX, 120, 40)
 ```
 
-There is no number on that line to write, so the drag sets the parameter instead, exactly as the inspector row would. The value it lands on is kept across a reload, the way any tuned parameter is. The file is left as you wrote it, and nothing recompiles, so it is the quickest of the three.
+There is no number on that line to write, so the drag sets the parameter instead, exactly as the inspector row would. The value it lands on is kept across a reload, the way any tuned parameter is. The file is left as you wrote it and nothing recompiles, so this is the quickest of the three.
 
-The name has to be the one the frame actually drew with. A local variable sharing a parameter's name holds a different value. The drag is refused rather than turning the wrong thing.
+The name has to be the one the frame actually drew with. A local variable that shares a parameter's name holds a different value, so the drag is refused rather than changing the wrong thing.
 
-Mixing works. In `drawCircle(sunX, 120, 40)` the drag turns `sunX` and writes `120` in the same gesture.
+The two can mix. In `drawCircle(sunX, 120, 40)` one drag sets `sunX` and writes `120` at the same time.
 
 ## What cannot, and why it says so
 
@@ -148,15 +148,19 @@ A calculation is not a number, so there is nothing to write:
 drawCircle(width / 2, 500, 30)
 ```
 
-Dragging that one says `Sketch.swift:10 places this shape with width / 2, so there is no number to move.` The same goes for a point built somewhere else, and a shape drawn from a file the host is not watching. Each message names what stands where the number would have to be. That is usually enough to decide whether to write a number there instead.
+Dragging that shape gives you this message: `Sketch.swift:10 places this shape with width / 2, so there is no number to move.`
+
+The same goes for a point built somewhere else, and for a shape drawn from a file the host is not watching. Each message names what stands where the number would have to be. That is usually enough to decide whether to write a number there instead.
 
 Text, images, paths, `Shape`s, and the point-cloud and mesh families cannot be dragged at all. They are placed by a value or a whole path, not by two numbers on the call.
 
-This is the rule, and it is worth saying plainly: **a number can be dragged, a parameter can be set, a calculation can be neither.** A sketch that computes everything is not a sketch this helps with, and that is fine. Reach for it while you are laying something out by hand.
+The rule is short: **a number can be dragged, a parameter can be set, a calculation can be neither.**
+
+So a sketch that computes everything is not a sketch this helps with, and that is fine. Use it while you are laying something out by hand.
 
 ## Inside a transform
 
-The numbers on the call are read in the frame the call drew in, so that is the frame a drag is measured in:
+The numbers on the call are read in the frame the call drew in, so a drag is measured in that same frame:
 
 ```swift
 withState {
@@ -166,16 +170,16 @@ withState {
 }
 ```
 
-The shape follows the pointer either way. What changes is the arithmetic behind it, which is exactly what you would have done by hand. A resize is a ratio rather than a distance, so it reads the same at any scale. A turn is measured in the frame's own direction.
+The shape follows the pointer either way, and only the arithmetic behind it changes. That arithmetic is exactly what you would have done by hand. A resize is a ratio rather than a distance, so it works out the same at any scale. A turn is measured in the frame's own direction.
 
 ## What it does not do
 
-Moving, resizing, turning, and reordering, on one shape at a time. Several cannot be picked at once, and the performance host has none of this. See the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
+You get moving, resizing, turning, and reordering, on one shape at a time. You cannot pick several shapes at once, and the performance host has none of this. See the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
 
-A parameter set in the inspector goes back into the file by the same scanner, from a button rather than a drag. See [saving what you changed](../Helpers/Parameters.md#saving).
+A parameter set in the inspector goes back into the file through the same scanner, from a button rather than a drag. See [saving what you changed](../Helpers/Parameters.md#saving).
 
 ## See also
 
-- [Live reload](../../README.md#live-reload), the host this rides in
+- [Live reload](../../README.md#live-reload), the host this runs in
 - [Parameters](../Helpers/Parameters.md), the other way to change a sketch while it runs
 - [Single-file sketches](./SingleFile.md), the loose `.swift` file this works on too

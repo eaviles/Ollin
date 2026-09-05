@@ -4,19 +4,20 @@
 
 ## Measured distance fields
 
-Draw something into a layer, then ask every pixel in it two questions. How far away is the
-nearest edge, and which way is it? `Filter.distanceField` answers both at once, on the GPU,
-for a whole layer at a time.
+Draw something into a layer, then measure two things at every pixel in it. The first is the
+distance to the nearest edge, and the second is the direction toward that edge.
+`Filter.distanceField` measures both at once, on the GPU, for a whole layer at a time.
 
-This is the other half of the [SDF combinators](Combinators.md). There you *write* a
-distance field with arithmetic and draw the shape it describes. Here you *measure* one back
-out of a picture, whatever drew it: a circle, a stroked path, a glyph, a photograph's alpha,
-a frame of video. The result is an ordinary layer, so it filters and combines like any other.
+This filter is the other half of the [SDF combinators](Combinators.md). With combinators you
+write a distance field with arithmetic, then draw the shape it describes. Here you measure a
+field back out of a picture instead, whatever drew it: a circle, a stroked path, a glyph, a
+photograph's alpha, or a frame of video. The result is an ordinary layer, so it filters and
+combines like any other layer.
 
-A distance field is worth having because so many effects are one line of arithmetic once you
-have it. Growing and shrinking a shape, outlining it at any offset, drawing its contour lines,
-finding which shape is nearest, softening a shadow by distance: each of those is a question
-about distance, and none of them is easy without one.
+A measured field turns many effects into one line of arithmetic. You can grow or shrink a
+shape, outline it at any offset, draw its contour lines, find which shape is nearest, or
+soften a shadow by distance. Each of those needs to know a distance, and none of them is easy
+to answer without a field.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-LayersAndEffects/MeasuredField-dark.jpg">
@@ -53,7 +54,8 @@ override func draw() {
 }
 ```
 
-Two calls: one measures the field, one reads it back as something you can look at.
+That is two calls. The first measures the field, and the second reads it back as a picture
+you can look at.
 
 <a name="what-it-holds"></a>
 
@@ -63,7 +65,7 @@ The measured layer carries numbers rather than a color. Its channels are:
 
 | Channel | What it holds |
 |---|---|
-| red | The distance in pixels to the nearest edge. Negative **inside** the shape, positive outside. |
+| red | The distance in pixels to the nearest edge. The value is negative **inside** the shape and positive outside. |
 | green, blue | The unit direction from this pixel toward that nearest edge. |
 | alpha | 1. |
 
@@ -73,9 +75,10 @@ The two answers fit together:
     nearest edge point  =  pixel + direction * abs(distance)
 ```
 
-so a sketch that wants to know what was drawn at the nearest edge can go and look. That is
-what makes the direction worth keeping: a field that held only distance would have to be
-measured again the first time anything asked which way.
+A sketch can therefore work out where the nearest edge is, then read what was drawn at that
+point. That is why the field keeps the direction as well as the distance. A field that held
+only the distance would have to be measured a second time as soon as something asked which
+way.
 
 Distances are in canvas pixels, the same unit `drawCircle(x, y, 180)` uses.
 
@@ -83,8 +86,8 @@ Distances are in canvas pixels, the same unit `drawCircle(x, y, 180)` uses.
 
 ### Reading it back as a picture
 
-`Filter.fieldMap` turns a measured field into something visible: the signed distance mapped
-through a color ramp across a window given in pixels.
+`Filter.fieldMap` turns a measured field into a picture. It maps the signed distance through
+a color ramp, over a window that you give in pixels.
 
 ```swift
 let field = marks.filtered(.distanceField())
@@ -96,28 +99,28 @@ field.filtered(.fieldMap(.turbo, from: -200, to: 200))
 field.filtered(.fieldMap(rings, from: 0, to: 40, repeating: true))
 ```
 
-Because the window is in pixels and the ramp is yours, the same call does the work of several
-separate effects. A ramp that turns over at one distance grows the shape (or shrinks it, at a
-negative distance):
+You choose both the window and the ramp, so this one call does the work of several separate
+effects. A ramp that turns over at one distance grows the shape, and a negative distance
+shrinks it instead:
 
 ```swift
 // Everything within 26 pixels of a mark, filled: the shapes grown, and merged where they meet.
 field.filtered(.fieldMap(Ramp([ink, .clear]), from: 26, to: 27.5))
 ```
 
-A ramp that is dark in a narrow band draws an outline at a chosen offset, and a window one
+A ramp that is dark in a narrow band draws an outline at the offset you choose. A window one
 pixel wide keeps that outline smooth-edged rather than jagged.
 
 <a name="in-a-shader"></a>
 
 ### Reading it in a shader
 
-A [user shader](../Shaders/Shaders.md) reads the field with `sampleRaw`, which hands back the
-layer's stored values untouched. The ordinary `sample` reads a layer as a color, and a
-distance in pixels is not one.
+A [user shader](../Shaders/Shaders.md) reads the field with `sampleRaw`, which returns the
+layer's stored values untouched. Use it rather than the ordinary `sample`, because `sample`
+reads a layer as a color and a distance in pixels is not a color.
 
-This is the shader behind a Voronoi diagram keyed to a picture. Every pixel walks to its
-nearest edge and brings back the color it finds there, so each mark paints the region that is
+The shader below builds a Voronoi diagram keyed to a picture. Every pixel steps to its
+nearest edge and reads the color it finds there, so each mark colors the region that is
 closer to it than to any other mark:
 
 ```metal
@@ -138,59 +141,59 @@ Run it as a combine, with the field as the base and the drawn marks as the secon
 let cells = field.combined(with: marks, .shader(Shader(nearestMark)))
 ```
 
-The `…Raw` pair exists for both variants: `sampleRaw` for the one-input filter form, and
-`sampleAuxRaw` beside it for a combine whose *second* input is also data.
+There is a `…Raw` reader for both forms. `sampleRaw` covers the one-input filter form, and
+`sampleAuxRaw` covers a combine whose second input is also data.
 
 <a name="the-shape"></a>
 
 ### What counts as the shape
 
-The edge is the place where the layer crosses a threshold, and `from` chooses which value is
-being cut:
+The edge is the place where the layer crosses a threshold. The `from` parameter chooses which
+value that threshold cuts:
 
 ```swift
 marks.filtered(.distanceField(from: .alpha, threshold: 0.5))     // the default
 marks.filtered(.distanceField(from: .luminance, threshold: 0.4)) // for a layer with no transparency
 ```
 
-`.alpha` is the coverage a shape was drawn with, which is what you want when the layer holds
-marks on nothing. `.luminance`, `.red`, `.green` and `.blue` suit a layer that is opaque
+`.alpha` is the coverage a shape was drawn with, so use it when the layer holds marks on an
+empty background. Use `.luminance`, `.red`, `.green` or `.blue` for a layer that is opaque
 everywhere, such as a photograph or a frame of video.
 
-The crossing is found *between* pixels rather than at their centers: where two neighboring
-pixels fall on either side of the threshold, the edge sits at the fraction of the way across
-where the value would reach it. An antialiased shape is therefore measured to a fraction of a
-pixel, and growing a shape by 20.5 pixels really does put its edge half a pixel outside where
+The crossing is found between pixels rather than at their centers. Where two neighboring
+pixels fall on either side of the threshold, the edge sits at the point across that gap where
+the value would reach the threshold. An antialiased shape is therefore measured to a fraction
+of a pixel. Growing a shape by 20.5 pixels does put its edge half a pixel outside where
 growing by 20 puts it.
 
 <a name="how-far"></a>
 
 ### How far to measure
 
-By default the field is measured everywhere: every pixel finds its nearest edge however far
-away it is. `maxDistance` says you only care about a band:
+By default the field is measured everywhere, so every pixel finds its nearest edge however
+far away it is. Pass `maxDistance` when you only care about a band:
 
 ```swift
 marks.filtered(.distanceField(maxDistance: 64))
 ```
 
-Past that distance the field reads flat, with a zero direction, which says "nothing within
-reach" rather than pointing somewhere untrue.
+Past that distance the field reads flat and the direction is zero. A zero direction means
+that nothing is within reach, rather than pointing somewhere untrue.
 
-It is also the speed parameter. The measurement costs one pass per doubling of the distance it has
-to carry, so a short answer is a genuinely shorter piece of work. On an M2 at 1080 square, a
-field measured over the whole canvas costs about 4.9 ms of GPU time, and one capped at 64
-pixels about 2.9 ms.
+`maxDistance` is also the speed control. The measurement costs one pass per doubling of the
+distance it has to carry, so a shorter distance is genuinely less work. On an M2 at 1080
+square, a field measured over the whole canvas costs about 4.9 ms of GPU time, and one capped
+at 64 pixels costs about 2.9 ms.
 
 <a name="how-it-works"></a>
 
 ### How it works
 
-The measurement is the jump-flooding algorithm (Rong & Tan, 2006), with the extra opening
+The measurement uses the jump-flooding algorithm (Rong & Tan, 2006), with the extra opening
 pass of their 1+JFA variant (2007). Every pixel that sits on an edge starts out holding the
-position of that edge. Then the layer is swept a number of times, and on each sweep a pixel
-looks at eight neighbors a fixed step away and keeps whichever edge position is nearest to
-it. The step starts at about half the layer and halves every sweep down to one, so an edge
+position of that edge. The layer is then swept a number of times. On each sweep a pixel looks
+at eight neighbors a fixed step away, and it keeps whichever edge position is nearest to it.
+The step starts at about half the layer and halves on every sweep down to one, so an edge
 reaches the far corner in about a dozen sweeps rather than a thousand:
 
 ```
@@ -198,14 +201,14 @@ reaches the far corner in about a dozen sweeps rather than a thousand:
     step 512       step 256       step 128     …       step 1
 ```
 
-The result is approximate, in that a small number of pixels end up holding an edge slightly
+The result is approximate, because a small number of pixels end up holding an edge slightly
 farther away than their true nearest one. The published error rate is very low, and the
-opening pass lowers it further. Ollin's implementation is written from those papers and
-credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+opening pass lowers it further. Ollin's implementation is written from those papers, and it
+is credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
 
 ---
 
 See also [SDF combinators](Combinators.md) for the field you write rather than measure,
-[Effects](Effects.md) for the layer and filter substrate this is built on, [Shaders](../Shaders/Shaders.md)
+[Effects](Effects.md) for the layers and filters this is built on, [Shaders](../Shaders/Shaders.md)
 for the user-shader seam, and [Voronoi & Delaunay](Voronoi.md) for the same partition built
-as vector geometry from points instead of measured from a picture.
+as vector geometry from points, rather than measured from a picture.

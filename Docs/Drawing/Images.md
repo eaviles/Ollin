@@ -4,9 +4,9 @@
 
 ## Images
 
-Load a raster image and draw it onto the canvas. An image decodes once on the CPU, then uploads to the GPU the first time it is drawn. It reads anything Apple does through ImageIO, which is PNG, JPEG, HEIC, TIFF, and GIF. From then on it is a textured quad like any other shape. It rides the [transform stack](../Drawing/Drawing.md#translate), and composites in draw order with the rest of your drawing.
+Load a raster image and draw it onto the canvas. An image decodes once on the CPU, then uploads to the GPU the first time it is drawn. Ollin reads the formats Apple reads through ImageIO, including PNG, JPEG, HEIC, TIFF, and GIF. After the upload the image is a textured quad like any other shape. It follows the [transform stack](../Drawing/Drawing.md#translate) and composites in draw order with the rest of your drawing.
 
-The typical shape is to load in `setup()`, keep the result in a property, and draw it in `draw()`. Decoding a file every frame is wasteful, and the image holds its GPU texture for as long as you hold the image.
+The usual pattern is to load the image in `setup()`, keep the result in a property, and draw it in `draw()`. Do it that way because decoding a file every frame is wasteful. The image keeps its GPU texture for as long as you hold it, so one load is enough.
 
 ```swift
 final class Photo: Sketch {
@@ -43,13 +43,13 @@ loadImage(_ path: String) -> Image?
 loadImage(_ url: URL) -> Image?
 ```
 
-Decode an image file. Returns `nil` if the file can't be read or decoded, so unwrap it (or `guard let`) before drawing. Call it in `setup()`.
+Decode an image file. The call returns `nil` if the file cannot be read or decoded, so unwrap the result (or `guard let` it) before drawing. Call it in `setup()`.
 
 ```swift
 photo = loadImage("/Users/me/Pictures/leaf.png")
 ```
 
-`loadImage` is sugar over [`Image(contentsOf:)`](#image). Reach for the initializer directly when you have a `URL`, raw `Data`, or a bundled resource.
+`loadImage` is a shorthand for [`Image(contentsOf:)`](#image). Use the initializer directly when you have a `URL`, raw `Data`, or a bundled resource.
 
 <a name="drawimage"></a>
 
@@ -62,7 +62,7 @@ drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: D
 drawImage(_ image: Image, in rect: Rectangle)
 ```
 
-Draw `image` with its top-left corner at `(x, y)`, or at a `Vector2` you already hold (`corner:`, the same anchor label `drawRect` uses). The first two forms use the image's native pixel size, and the scalar box form stretches it to fill a `width`×`height` box. The [`Rectangle`](../Drawing/Geometry.md#rectangle) form does the same with a value you can pass around.
+Draw `image` with its top-left corner at `(x, y)`. You can also pass a `Vector2` you already hold as `corner:`, the same anchor label `drawRect` uses. The first two forms draw the image at its native pixel size. The scalar box form stretches it to fill a `width`×`height` box, and the [`Rectangle`](../Drawing/Geometry.md#rectangle) form does the same with a value you can pass around.
 
 ```swift
 drawImage(logo, 40, 40)                       // native size, top-left at (40, 40)
@@ -70,7 +70,7 @@ drawImage(logo, 40, 40, 200, 200)             // scaled into a 200×200 box
 drawImage(logo, in: Rectangle(center: c, width: 200, height: 200))
 ```
 
-The image rides the transform stack, so `translate` / `rotate` / `scale` move and warp it, pivoting wherever you've set the origin:
+The image follows the transform stack, so `translate` / `rotate` / `scale` move and warp it. The pivot is wherever you have set the origin:
 
 ```swift
 withState {
@@ -80,9 +80,9 @@ withState {
 }
 ```
 
-Because it's recorded in call order with everything else, a shape drawn after `drawImage` paints over it, and one drawn before sits behind it.
+The image is recorded in call order with everything else. So a shape drawn after `drawImage` paints over it, and one drawn before sits behind it.
 
-**Drawn smaller than it is**, a loaded image reads through its own smaller copies (a mip chain). A photograph at a quarter size is then a quarter-size photograph, not a quarter of its pixels picked out. The copies are averaged in linear light, so the tone holds. Drawn at its own size or larger nothing changes. Pixels the sketch wrote itself through [`image[x, y]`](#pixels) keep the single level they uploaded with. The full story is under [textures](../3D/3D.md#texture-filtering).
+**Drawn smaller than its own size.** A loaded image keeps a set of smaller copies of itself, called a mip chain. When you draw the image smaller than its own size, Ollin samples those copies. So a photograph drawn at a quarter of its size still shows the whole photograph, not one pixel in four picked out of the original. The copies are averaged in linear light, so the tone does not shift. When you draw the image at its own size or larger, nothing changes. Pixels the sketch wrote itself through [`image[x, y]`](#pixels) keep the single level they uploaded with. The details are under [textures](../3D/3D.md#texture-filtering).
 
 <a name="fit"></a>
 
@@ -93,7 +93,7 @@ drawImage(_ image: Image, in rect: Rectangle, fit: ImageFit)
 drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double, fit: ImageFit)
 ```
 
-A picture and the box you have for it are rarely the same shape, and `fit` says what to do about it:
+A picture and the box you draw it into are rarely the same shape. `fit` says what to do about the difference:
 
 | `ImageFit` | What it does | What it costs |
 |---|---|---|
@@ -111,13 +111,13 @@ drawImage(photo, in: panel, fit: .cover)      // fills the panel, edges lost
 drawImage(photo, in: panel, fit: .contain)    // all of it, the panel showing above and below
 ```
 
-`.stretch` is what the plain `drawImage(_:in:)` has always done, so it is the default and nothing changes for code that does not ask.
+`.stretch` is what the plain `drawImage(_:in:)` has always done, so it is the default. Code that does not pass `fit` draws as before.
 
-A round shape in the picture is the fastest way to see which one you have. `.stretch` turns it into an ellipse, and the other two leave it round.
+A round shape in the picture is the quickest way to tell the three apart. `.stretch` turns it into an ellipse, and the other two leave it round.
 
-`.cover` costs nothing extra to draw. The quad reads a smaller part of the picture rather than being clipped, so a covered picture is still one quad and one texture read.
+`.cover` costs nothing extra to draw. The quad reads a smaller part of the picture instead of being clipped, so a covered picture is still one quad and one texture read.
 
-The same arithmetic is on `Rectangle` when you want the box rather than the drawing: [`Rectangle(fitting:in:)`](Geometry.md#rectangle) is `.contain`'s box and `Rectangle(covering:in:)` is `.cover`'s. Both keep the shape and both stay centered; the first sits inside the container and the second runs past it.
+`Rectangle` offers the same arithmetic when you want the box rather than the drawing. Call [`Rectangle(fitting:in:)`](Geometry.md#rectangle) for the box `.contain` uses, and `Rectangle(covering:in:)` for the box `.cover` uses. Both keep the picture's proportions and both stay centered, but the first sits inside the container and the second runs past it.
 
 Worked example: [`Images/Fit`](../../Examples/Images/Fit/Sketch.swift).
 
@@ -130,7 +130,7 @@ tint(_ color: Color)
 noTint()
 ```
 
-Tint every following `drawImage` by multiplying each texel by `color`, so the RGB recolors the image and the alpha fades it. White at full alpha is the default, which leaves the image unchanged. `noTint()` returns to drawing images as-is.
+`tint` multiplies each texel of every following `drawImage` by `color`. The RGB recolors the image, and the alpha fades it. The default is white at full alpha, which leaves the image unchanged. `noTint()` returns to that default, so images draw as they are.
 
 ```swift
 tint(Color(red: 1, green: 0.7, blue: 0.3))        // warm wash
@@ -142,7 +142,7 @@ drawImage(photo, 0, 0)
 noTint()                                          // back to unchanged
 ```
 
-Tint is drawing state like `fill` and `stroke`, so [`withState { }`](../Drawing/Drawing.md#withstate) saves and restores it. You can tint one image without leaking the wash onto the next. It only multiplies as the image is drawn, and it never edits the image's stored pixels. So [reading them back](#pixels) always returns the original colors.
+Tint is drawing state like `fill` and `stroke`, so [`withState { }`](../Drawing/Drawing.md#withstate) saves and restores it. That lets you tint one image without the color carrying over to the next. The tint multiplies only as the image is drawn and never edits the image's stored pixels, so [reading them back](#pixels) always returns the original colors.
 
 ```swift
 withState {
@@ -164,11 +164,11 @@ Image(width: Int, height: Int, color: Color = .clear)
 Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 ```
 
-`Image` is the typed value `drawImage` takes. It's a reference type, so it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image. Every image reports its pixel `width` / `height` as `Int`s, and its `size` as the same pair in a `Vector2`. That is ready for the geometry helpers, so `Rectangle(fitting: image.size, in: bounds)` letterboxes it.
+`Image` is the typed value `drawImage` takes. It is a reference type that owns a GPU texture, so it is identified by the object itself, not by its contents. The failable initializers return `nil` when the bytes are not a decodable image. Every image reports its pixel `width` / `height` as `Int`s, and its `size` as the same pair in a `Vector2`. The `Vector2` form works with the geometry helpers, so `Rectangle(fitting: image.size, in: bounds)` letterboxes the image.
 
-`Image(width:height:color:)` makes a blank `width`×`height` image filled with `color`, which is transparent by default. So you can [author one from scratch](#pixels) pixel by pixel, rather than loading a file.
+`Image(width:height:color:)` makes a blank `width`×`height` image filled with `color`, which is transparent by default. You can then [author it from scratch](#pixels) pixel by pixel instead of loading a file.
 
-`Image(width:height:premultipliedRGBA:)` wraps pixels you've already produced in bulk: `width × height × 4` RGBA bytes, premultiplied alpha, rows top to bottom. The buffer becomes the image's own pixels with no decode or conversion, because the GPU texture uploads straight from it. That is the fast lane for per-frame generated images. Returns `nil` when the byte count doesn't match the dimensions.
+`Image(width:height:premultipliedRGBA:)` wraps pixels you have already produced in bulk: `width × height × 4` RGBA bytes with premultiplied alpha, rows top to bottom. The buffer becomes the image's own pixels with no decode or conversion, because the GPU texture uploads straight from it. That makes it the fast path for images you generate every frame. The initializer returns `nil` when the byte count does not match the dimensions.
 
 Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose, because a default argument would resolve to *Ollin's* bundle and never yours. So pass `.module` from the target that bundles the file:
 
@@ -176,29 +176,29 @@ Load a bundled asset with the `resource:` initializer. `in:` has no default on p
 let texture = Image(resource: "paper", withExtension: "png", in: .module)
 ```
 
-`Image(cgImage:)` wraps an image you already have in memory. That can be a `CGImage` you rendered yourself, decoded elsewhere, or built procedurally, so anything that can produce a `CGImage` becomes drawable.
+`Image(cgImage:)` wraps a `CGImage` you already have in memory. It can be one you rendered yourself, decoded elsewhere, or built procedurally, so anything that produces a `CGImage` becomes drawable.
 
-**Transparency works.** A PNG's alpha is respected, so transparent regions let what's behind show through and the edges composite cleanly.
+**Transparency works.** Ollin honors a PNG's alpha channel, so transparent regions show what is behind them, and the edges composite cleanly.
 
 <a name="pixels"></a>
 
 ### Pixels
 
-Read or write a single pixel through the subscript. `(0, 0)` is the top-left corner, and coordinates run to `(width - 1, height - 1)`.
+The subscript reads or writes a single pixel. `(0, 0)` is the top-left corner, and coordinates run to `(width - 1, height - 1)`.
 
 ```swift
 let c = image[x, y]          // read a pixel's Color (a get)
 image[x, y] = .red           // write one (a set)
 ```
 
-Out-of-range access is forgiving, so a stray index never crashes a loop. Reading off the edge returns `.clear`, and writing off the edge does nothing.
+An out-of-range access does not crash, so a stray index cannot break a loop. Reading off the edge returns `.clear`, and writing off the edge does nothing.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/PixelSampling-dark.jpg">
   <img src="../../Guide/Images/09-Pictures/PixelSampling.jpg" alt="Left, a small sunset image; right, the same image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
 </picture>
 
-Pair a write with the blank initializer to author an image from scratch. Make a transparent canvas, paint it, then draw it:
+Pair the subscript write with the blank initializer to author an image from scratch. Make a transparent image, paint it pixel by pixel, then draw it:
 
 ```swift
 final class PixelArt: Sketch {
@@ -222,8 +222,8 @@ final class PixelArt: Sketch {
 }
 ```
 
-A write shows on the next `drawImage`, where the GPU texture rebuilds from the edited pixels. So author in `setup()` when you can, rather than rewriting the whole image every frame. Reading is cheap once the first access has decoded the pixels.
+A write shows on the next `drawImage`, because the GPU texture rebuilds from the edited pixels at that point. That rebuild is why you should author in `setup()` when you can, rather than rewriting the whole image every frame. Reading is cheap once the first access has decoded the pixels.
 
-Colors pass through the image's premultiplied storage, so round-tripping a translucent color can shift it by a step of `1/255`. Reading is independent of [`tint`](#tint), so a get returns the stored color, never the tinted one.
+Colors pass through the image's premultiplied storage, so a translucent color that is written and then read back can shift by a step of `1/255`. Reading ignores [`tint`](#tint), so a get returns the stored color, never the tinted one.
 
-See the **PixelField** example for authoring a field with `set`, sampling it back with `get`, and an animated `tint` over the top.
+The **PixelField** example authors a field with `set`, samples it back with `get`, and animates a `tint` on top of it.

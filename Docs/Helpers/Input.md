@@ -4,7 +4,7 @@
 
 ## Input
 
-Pointer and keyboard input live on the sketch as plain properties and overridable methods.
+Pointer and keyboard input are plain properties and overridable methods on the sketch.
 
 ### Contents
 
@@ -28,7 +28,7 @@ mouseX: Double
 mouseY: Double
 ```
 
-The cursor position in sketch coordinates (points, top-left origin, y-down). They are seeded from the cursor's actual position when the window opens. So a mouse-driven sketch is alive on the first frame, instead of reading (0, 0) until the first move. After that they track the pointer as it moves over the canvas.
+The cursor position in sketch coordinates (points, top-left origin, y-down). When the window opens, both values start from the cursor's actual position. So a mouse-driven sketch responds on the first frame instead of reading (0, 0) until the first move. After that they follow the pointer as it moves over the canvas.
 
 ```swift
 override func draw() {
@@ -38,7 +38,7 @@ override func draw() {
 }
 ```
 
-Two calls put the mouse into coordinates of their own for a while: [`withViewBox`](../Drawing/Drawing.md#viewbox) for the length of its block, and [`viewControl`](../Drawing/Drawing.md#viewcontrol) for the rest of the frame. That is what keeps a piece written for the whole canvas working when it is not looking at the whole canvas. In both, `mouseX` and `mouseY` read the content the pointer is over rather than the glass it is on. The pointer itself is restored before the next frame.
+Two calls remap the mouse into their own coordinates. One is [`withViewBox`](../Drawing/Drawing.md#viewbox), which does it for the length of its block. The other is [`viewControl`](../Drawing/Drawing.md#viewcontrol), which does it for the rest of the frame. The remap keeps a piece written for the whole canvas working when the view is not the whole canvas. In both cases, `mouseX` and `mouseY` give the position in the content under the pointer, not the position on the screen. The pointer values are restored before the next frame.
 
 <a name="mousePoint"></a>
 
@@ -49,7 +49,7 @@ mouse: Vector2
 previousMouse: Vector2
 ```
 
-The same cursor as one point, the form the geometry calls take directly, and where it was when the previous frame drew.
+`mouse` is the same cursor position as one point. The geometry calls take a point directly, so you can pass it without unpacking it. `previousMouse` is where the cursor was when the previous frame drew.
 
 ```swift
 drawLine(previousMouse, mouse)          // ink follows the pointer
@@ -57,7 +57,7 @@ let speed = (mouse - previousMouse).length
 if circle.contains(mouse) { … }
 ```
 
-`mouse - previousMouse` is this frame's drag, so motion needs no bookkeeping of your own. On the first frame `previousMouse` equals `mouse`, so the first delta is zero rather than a jump from the corner. `previousMouse` holds the canvas-space position the window reported; the coordinate remaps above apply to `mouse` for their frame and never land in it.
+`mouse - previousMouse` is this frame's drag, so you do not need to track the motion yourself. On the first frame `previousMouse` equals `mouse`, so the first delta is zero rather than a jump from the corner. `previousMouse` holds the canvas-space position the window reported. The coordinate remaps above apply to `mouse` for their frame, so they never change `previousMouse`.
 
 <a name="mouseIsPressed"></a>
 
@@ -67,7 +67,7 @@ if circle.contains(mouse) { … }
 mouseIsPressed: Bool
 ```
 
-Whether a mouse button is currently held over the canvas. It's the polling counterpart to the one-shot hooks below, mirroring `keyIsPressed`. Poll it in `draw()` for anything that should continue as long as the button is down, such as dragging, painting, or steering. `mouseX`/`mouseY` keep updating through the drag.
+Whether a mouse button is currently held over the canvas. It is the polling counterpart to the one-shot hooks below, and it works the same way as `keyIsPressed`. Poll it in `draw()` for anything that should continue while the button is down, such as dragging, painting, or steering. `mouseX`/`mouseY` keep updating through the drag.
 
 ```swift
 override func draw() {
@@ -86,7 +86,7 @@ mousePressed()
 mouseReleased()
 ```
 
-Override to respond to a click. Each fires once per press or release, and `mouseX`/`mouseY` hold the event's location. Use `mousePressed()` to regenerate an otherwise-static sketch on demand. `mouseReleased()` is the natural moment to act on a finished drag or stroke, and the `DigitReader` example classifies its drawing there.
+Override these to respond to a click. Each fires once per press or release, and `mouseX`/`mouseY` hold the event's location. Use `mousePressed()` to regenerate an otherwise static sketch on demand. Use `mouseReleased()` to act on a finished drag or stroke. The `DigitReader` example classifies its drawing in `mouseReleased()`.
 
 ```swift
 override func mousePressed() {
@@ -103,9 +103,9 @@ pressure: Double            // 0...1, 0 when nothing is held
 pressureIsAvailable: Bool   // whether this device can measure it at all
 ```
 
-How hard the pointer is being pressed. On a pressure-sensing device (a Force Touch trackpad, a pen tablet) it varies continuously through a press. On a device that cannot measure pressure it is simply `1` while a button is down. A pressure-driven sketch still works, at one level.
+How hard the pointer is pressed. On a pressure-sensing device (a Force Touch trackpad, a pen tablet) the value varies continuously through a press. On a device that cannot measure pressure the value is `1` while a button is down. A pressure-driven sketch still works there, but only at that single level.
 
-`pressureIsAvailable` says which you have. It is `false` until the first press tells us, because the answer comes from the event rather than the machine. So read it in `mousePressed()` rather than `setup()`:
+`pressureIsAvailable` tells you which kind of device you have. The answer comes from the event, not from the machine, so it is `false` until the first press. Read it in `mousePressed()` rather than in `setup()`:
 
 ```swift
 override func mousePressed() {
@@ -113,7 +113,7 @@ override func mousePressed() {
 }
 ```
 
-Ollin asks the trackpad for the drawing gesture, which is a single stage over the full range. A press reads as a smooth amount, and no force-click fires look-up mid-stroke. See [Marks](../Drawing/Marks.md) for the brush that reads it.
+Ollin asks the trackpad for the drawing gesture, which is a single stage over the full range. A press therefore reads as a smooth amount, and no force-click fires look-up in the middle of a stroke. See [Marks](../Drawing/Marks.md) for the brush that reads pressure.
 
 <a name="key"></a>
 
@@ -125,7 +125,7 @@ keyCode: KeyCode?
 keyIsPressed: Bool
 ```
 
-The most recent key event, split in two. A key that produces a character arrives as `key`. A letter, a digit, punctuation, or the space bar reads as `"a"`, `"5"`, or `" "`. A key with no useful character arrives as `keyCode` instead, so you match a named value rather than a magic number. An arrow or a function key reads as `.leftArrow`, `.return`, `.escape`, or `.function(1)`. Exactly one of the two is set for a given event, and the other is `nil`. Both are set on press *and* release, so the hooks below can read which key fired.
+The most recent key event, split into two properties. A key that produces a character arrives as `key`, so a letter, a digit, punctuation, or the space bar reads as `"a"`, `"5"`, or `" "`. A key with no useful character arrives as `keyCode` instead, so you match a named value rather than a magic number. That means an arrow or a function key reads as `.leftArrow`, `.return`, `.escape`, or `.function(1)`. Exactly one of the two is set for a given event, and the other is `nil`. Both are set on press *and* release, so the hooks below can read which key fired.
 
 `keyIsPressed` is `true` whenever any key is held.
 
@@ -137,7 +137,7 @@ override func draw() {
 }
 ```
 
-The named keys are `upArrow` / `downArrow` / `leftArrow` / `rightArrow`, `return`, `enter`, `tab`, `escape`, `delete`, `forwardDelete`, `home` / `end` / `pageUp` / `pageDown`, and `function(_:)`. `return` is the main Return key and `enter` is the keypad one, `delete` is Backspace, and `F1` is `.function(1)`.
+The named keys are `upArrow` / `downArrow` / `leftArrow` / `rightArrow`, `return`, `enter`, `tab`, `escape`, `delete`, `forwardDelete`, `home` / `end` / `pageUp` / `pageDown`, and `function(_:)`. `return` is the main Return key, and `enter` is the keypad one. `delete` is Backspace, and `F1` is `.function(1)`.
 
 <a name="keyPressed"></a>
 
@@ -148,7 +148,7 @@ keyPressed()
 keyReleased()
 ```
 
-Override to respond to keys. Each fires once per physical press or release, since auto-repeat doesn't re-fire `keyPressed()`, and `key`/`keyCode` hold the key that fired. For continuous response while a key is *held* (steering, movement), poll `isKeyDown(_:)` in `draw()` instead, because the hooks are for discrete actions.
+Override these to respond to keys. Each fires once per physical press or release, and auto-repeat does not fire `keyPressed()` again. `key`/`keyCode` hold the key that fired. The hooks are for discrete actions, so for a continuous response while a key is *held* (steering, movement), poll `isKeyDown(_:)` in `draw()` instead.
 
 ```swift
 override func keyPressed() {
@@ -166,7 +166,7 @@ isKeyDown(_ character: Character) -> Bool
 isKeyDown(_ code: KeyCode) -> Bool
 ```
 
-Whether a specific key is currently held. It's the polling counterpart to the one-shot `keyPressed()` hook, for movement that should continue as long as a key is down. Call it from `draw()`.
+Whether a specific key is currently held. It is the polling counterpart to the one-shot `keyPressed()` hook, for movement that should continue while a key is down. Call it from `draw()`.
 
 ```swift
 override func draw() {
@@ -185,21 +185,21 @@ The character form is case-sensitive, so `isKeyDown("w")` and `isKeyDown("W")` d
 moveAxis: Vector2
 ```
 
-The held movement keys as one direction: WASD and the arrows, each axis in `-1...1`, in canvas orientation (up is `(0, -1)`, right `(1, 0)`). Opposite keys held together cancel to zero.
+The held movement keys (WASD and the arrows) as one direction. Each axis is in `-1...1`, in canvas orientation, so up is `(0, -1)` and right is `(1, 0)`. Opposite keys held together cancel to zero.
 
 ```swift
 position += moveAxis * speed * deltaTime
 ```
 
-A 3D sketch reads the same value and maps y onto its own forward; canvas up meaning "ahead" is the usual choice, so `-moveAxis.y` is the throttle.
+A 3D sketch reads the same value and maps y onto its own forward direction. The usual choice is for canvas up to mean "ahead", so `-moveAxis.y` is the throttle.
 
 <a name="keyboardFocus"></a>
 
 ### Keyboard focus in the hosts
 
-A window that *is* the sketch hands the sketch the keyboard the moment it opens. That covers a standalone `swift run` and the live host, so all of the above works with no click first. The examples gallery is different, because its example list keeps the keyboard, so the arrow keys navigate examples. A sketch that reads keys shows a small **"Click the sketch to use the keyboard"** prompt over the canvas. Clicking the sketch gives it the keys, and clicking back in the list returns them.
+A window that *is* the sketch gives the sketch the keyboard as soon as it opens. That covers a standalone `swift run` and the live host, so everything above works with no click first. The examples gallery is different. Its example list keeps the keyboard, so the arrow keys navigate the examples. In the gallery, a sketch that reads keys shows a small **"Click the sketch to use the keyboard"** prompt over the canvas. Clicking the sketch gives it the keys, and clicking back in the example list returns them.
 
-When you embed `SketchView` in your own SwiftUI app, the same policy is the `keyboardFocus:` parameter. `.automatic` claims the keys on appear, and it is the default. `.onClick` leaves them to the rest of the window until the canvas is clicked. `showsKeyboardHint:` floats that same prompt for sketches that want keys:
+When you embed `SketchView` in your own SwiftUI app, the `keyboardFocus:` parameter sets the same policy. `.automatic` is the default, and it claims the keys when the view appears. `.onClick` leaves the keys to the rest of the window until the canvas is clicked. `showsKeyboardHint:` shows that same prompt for sketches that want keys:
 
 ```swift
 SketchView(sketch, keyboardFocus: .onClick, showsKeyboardHint: true)

@@ -4,11 +4,11 @@
 
 ## Live
 
-Sketches that show off OllinLive features.
+Sketches that show OllinLive features.
 
 | Example | What it shows |
 |---|---|
-| [DragToEdit](DragToEdit/Sketch.swift) | Command-drag a shape in the window and the numbers in this file change; `⌘]` and `⌘[` move its line past its neighbor's |
-| [Parameters](Parameters/Sketch.swift) | the typed `@Param` family in grouped inspector cards under OllinLive |
+| [DragToEdit](DragToEdit/Sketch.swift) | Command-drag a shape in the window, and the numbers in this file change. `⌘]` and `⌘[` move the shape's line past its neighbor's line |
+| [Parameters](Parameters/Sketch.swift) | the typed `@Param` family, shown in grouped inspector cards under OllinLive |
 
-Run one from this `Examples/` directory with `swift run Example-Live-<Name>`, e.g. `swift run Example-Live-Parameters`. Or run it under live reload, from the repo root: `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.
+To run one, go to the `Examples/` directory and run `swift run Example-Live-<Name>`, for example `swift run Example-Live-Parameters`. To run it under live reload instead, go to the repo root and run `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.

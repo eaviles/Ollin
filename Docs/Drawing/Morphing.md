@@ -4,7 +4,7 @@
 
 ## Shape morphing
 
-Tween one `Shape` into another. A `ShapeMorph` works out, once, which point of the first outline becomes which point of the second. After that, reading the in-between at any fraction is a straight blend. Every in-between is a real vector `Shape`. Fill it, stroke it, run it through the [booleans](./Geometry.md), [hatch it](../Output/Export.md#hatching-solid-fills-for-a-pen-plotter), or export it. That is what makes the morph plotter-friendly rather than a pixel effect.
+Tween one `Shape` into another. A `ShapeMorph` works out once which point of the first outline becomes which point of the second. After that, reading the in-between at any fraction is a straight blend. Every in-between is a vector `Shape`, so you can fill it, stroke it, run it through the [booleans](./Geometry.md), [hatch it](../Output/Export.md#hatching-solid-fills-for-a-pen-plotter), or export it. That is why a morph runs on a pen plotter instead of being a pixel effect.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MorphSteps-dark.jpg">
@@ -31,7 +31,7 @@ override func draw() {
 }
 ```
 
-There is no randomness anywhere. The same pair of shapes always morphs the same way, and a fixed frame reproduces exactly. A there-and-back cycle, or a closed chain of morphs, declared as [`loopDuration`](../Core/Sketch.md#loopDuration) exports seamlessly with `--export-loop`.
+Nothing in a morph is random. The same pair of shapes always morphs the same way, so a given frame reproduces exactly. Declare a there-and-back cycle, or a closed chain of morphs, as [`loopDuration`](../Core/Sketch.md#loopDuration), and it exports seamlessly with `--export-loop`.
 
 ### Contents
 
@@ -48,9 +48,9 @@ There is no randomness anywhere. The same pair of shapes always morphs the same 
 ShapeMorph(from: Shape, to: Shape, spacing: Double? = nil)
 ```
 
-Build it in `setup()` (or whenever the pair changes) and keep the value, because the correspondence work happens here, which keeps the per-frame read cheap. `from` and `to` are stored untouched, and the reads at `0` and `1` return them verbatim.
+Build it in `setup()`, or whenever the pair changes, and keep the value. The correspondence work happens once, right there, which is what keeps the per-frame read cheap. `from` and `to` are stored untouched, so a read at `0` or `1` gives them back unchanged.
 
-`spacing` bounds how far apart correspondence points may sit along either outline. Left `nil`, it derives from each outline's own length, taking 1/128 of it. That spreads the added points at matching fractions along both sides of a pair, which suits most shapes. Pass a smaller spacing when a long straight edge must follow a tightly curved partner more faithfully. Extra points are only ever *added* along segments, so every original corner survives. The point count is capped, so a tiny spacing cannot run away.
+`spacing` limits how far apart correspondence points may sit along either outline. Left `nil`, it comes from each outline's own length, taking 1/128 of it. That spreads the added points at matching fractions along both sides of a pair, which suits most shapes. Pass a smaller spacing when a long straight edge has to follow a tightly curved partner more closely. Extra points are only ever *added* along segments, so every original corner survives. The point count is capped, so a tiny spacing cannot run away.
 
 <a name="reading"></a>
 
@@ -60,7 +60,7 @@ Build it in `setup()` (or whenever the pair changes) and keep the value, because
 morph.shape(at: t) -> Shape
 ```
 
-`t` runs `0...1` and clamps. `0` and `1` are the exact originals, and everything between is the pointwise blend. Shape the timing outside the read. Pass an [`Easing`](../Helpers/Animation.md) of your phase, `pingPong(over:)` for there-and-back, or a [`Timeline`](../Helpers/Animation.md#timeline)'s progress.
+`t` runs `0...1` and clamps. `0` and `1` give back the exact originals, and every value between them gives the pointwise blend. Set the timing outside the read. You can pass an [`Easing`](../Helpers/Animation.md) of your phase, `pingPong(over:)` for there-and-back, or a [`Timeline`](../Helpers/Animation.md#timeline)'s progress.
 
 When the two shapes fill by different [winding rules](./Geometry.md), the in-betweens use `from`'s rule up to the halfway mark and `to`'s after it.
 
@@ -68,15 +68,15 @@ When the two shapes fill by different [winding rules](./Geometry.md), the in-bet
 
 #### How the matching works
 
-Contours pair up first: closed outlines with closed outlines, open line-work with open line-work. The largest pairs with the largest, measured by enclosed area for closed contours and walked length for open ones. Each remaining contour takes the unused partner whose center sits nearest. Then, per pair:
+Contours pair up first, closed outlines with closed outlines and open line-work with open line-work. The largest pairs with the largest, measured by enclosed area for closed contours and by walked length for open ones. Each remaining contour takes the unused partner whose center is nearest. Each pair is then prepared like this:
 
-- Both sides get the same number of points, added along segments longer than the spacing, so corners are kept, not resampled away.
-- Windings are lined up (a clockwise outline never blends toward a counter-clockwise one, which would fold through itself halfway).
-- For closed contours, the starting point of one ring rotates to wherever the total travel is shortest. For open ones, the direction flips if that travels less.
+- Both sides get the same number of points. The added points go on segments longer than the spacing, so corners are kept rather than resampled away.
+- Windings are lined up, so a clockwise outline never blends toward a counter-clockwise one. That pairing would fold the shape through itself halfway.
+- For a closed contour, the starting point of one ring rotates to wherever the total travel is shortest. For an open contour, the direction flips if that travels less.
 
-A contour with no partner scales down to its own center, or grows out of one. Shapes with different contour counts cross-fade instead of popping. That includes holes, so morph a disc into a donut and the hole grows from the middle.
+A contour with no partner scales down to its own center, or grows out of it. Shapes with different contour counts cross-fade instead of popping. Holes count as contours here, so when you morph a disc into a donut the hole grows from the middle.
 
-Two limits worth knowing. A closed contour never pairs with an open one, and the leftover rule above handles the mix. The correspondence is by outline distance rather than by meaning, so morphing one hand into another does not know a thumb from a finger. When a morph reads muddled, add a `spacing`, or split the shape and morph the parts separately.
+There are two limits worth knowing. First, a closed contour never pairs with an open one, so the leftover rule above handles the mix. Second, the correspondence follows outline distance rather than meaning, so a morph from one hand to another does not know a thumb from a finger. When a morph looks muddled, add a `spacing`, or split the shape and morph the parts separately.
 
 <a name="tweening"></a>
 
@@ -90,7 +90,7 @@ let tween = Timeline(star).to(blob, in: 2).hold(for: 1).to(star, in: 2)
 drawShape(tween.value)
 ```
 
-The conveniences rebuild the correspondence on each read, which is fine for simple outlines. When the shapes are heavy (a dense SVG, a glyph), hold a `ShapeMorph` and read `shape(at:)` instead. The same trade holds for the one-off form:
+These conveniences rebuild the correspondence on every read, which is fine for simple outlines. When the shapes are heavy, such as a dense SVG or a glyph, hold a `ShapeMorph` and read `shape(at:)` instead. The one-off form below rebuilds it on every call in the same way:
 
 ```swift
 star.morphed(toward: blob, 0.5)            // one blended shape, no held state
