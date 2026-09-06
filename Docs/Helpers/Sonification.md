@@ -27,7 +27,7 @@ Like everything else in the [composition](Composition.md) tier, a reading answer
 
 ## What it reads
 
-There are four sources, and each one is a single call.
+There are four kinds of source, and each is a single call. A heightfield takes more than one, because a line across it can run along a row or at any angle.
 
 ```swift
 Sonification(numbers)                                  // a series in hand

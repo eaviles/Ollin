@@ -462,7 +462,7 @@ func detect(in: Image, at: [Vector2], avoiding: [Vector2] = []) async throws -> 
 
 `PointSegmenter` lifts **whatever you point at**. `SubjectSegmenter` decides for itself what stands out. This one takes direction: give it one point, and it segments the thing under that point, whatever that thing is. A click picks the mug, not the person holding it. It uses a promptable-segmentation model in three parts. `Scripts/fetch-models.sh` fetches the parts, and they are never committed. Hand the three files to the initializer.
 
-`pick(at:in:)` takes the point in canvas coordinates and the rectangle the frame is drawn in, the same `fittedRect` you drew it into. It answers asynchronously. It freezes the current frame and encodes that frame once, which takes about 0.2 s, and then the mask decodes in milliseconds. `pick` keeps the previous answer until the new one arrives, and `isWorking` tells you one is on the way. A refinement reuses the frozen frame's encoding, so it also arrives in milliseconds. `include(_:in:)` adds a point the mask must also cover. `exclude(_:in:)` adds a point the mask must not cover, so a shift-click can remove a stray region. The model proposes three readings of every prompt (the part, the whole, and the group), and the best-scored one wins. `Pick.score` is that confidence.
+`pick(at:in:)` takes the point in canvas coordinates and the rectangle the frame is drawn in, the same `fittedRectangle(in:)` you drew it into. It answers asynchronously. It freezes the current frame and encodes that frame once, which takes about 0.2 s, and then the mask decodes in milliseconds. `pick` keeps the previous answer until the new one arrives, and `isWorking` tells you one is on the way. A refinement reuses the frozen frame's encoding, so it also arrives in milliseconds. `include(_:in:)` adds a point the mask must also cover. `exclude(_:in:)` adds a point the mask must not cover, so a shift-click can remove a stray region. The model proposes three readings of every prompt (the part, the whole, and the group), and the best-scored one wins. `Pick.score` is that confidence.
 
 `Pick` carries the same frame-aligned `matte` and `cutout` pair the other segmenters publish. It also carries `bounds(in:)`, the picked thing's box mapped into the rectangle you name. The still-image `detect(in:at:avoiding:)` takes its points in image pixel coordinates, and it returns `nil` when the prompt matches nothing.
 
@@ -564,10 +564,10 @@ A `DetectedBarcode` carries a `payload`, a `symbology`, a `confidence`, and `cor
 TextRecognizer(_ source: any FrameSource, quality: Quality = .fast)
 var lines: [DetectedText] { get }
 var text: String { get }            // all lines joined
-static func detect(in: Image, level: Level = .accurate) async throws -> [DetectedText]
+static func detect(in: Image, quality: Quality = .accurate) async throws -> [DetectedText]
 ```
 
-`TextRecognizer` reads text from the feed with Apple's OCR, the same engine behind Live Text, so it covers the same languages. Each line comes back with its text and its position. `level` trades speed for thoroughness: `.fast` keeps up with a live feed, while `.accurate` reads more and is the default for still images.
+`TextRecognizer` reads text from the feed with Apple's OCR, the same engine behind Live Text, so it covers the same languages. Each line comes back with its text and its position. `quality` trades speed for thoroughness: `.fast` keeps up with a live feed, while `.accurate` reads more and is the default for still images.
 
 ```swift
 let camera = Camera()
@@ -1053,6 +1053,8 @@ Two things are particular to it. The first is that the depth is *relative*: near
 The model runs on the GPU, at about 70 ms a frame on an M2. So a sketch gets about fourteen depth readings a second, while the picture keeps its own frame rate. Frames are read squashed to the model's landscape input, so a portrait source is analyzed a little stretched. There is no still-image mode, because a video model has nothing to say about one picture, and `ModelTracker` covers that case.
 
 The model is not downloaded but **built**. Nobody publishes a Core ML version of it, so `Scripts/fetch-models.sh` makes one on your Mac from the published checkpoint. That is a one-time step of a few minutes, and it needs a Python from 3.10 to 3.13 (`brew install python@3.13`). The converter, `Scripts/convert-video-depth.py`, checks its work against the upstream code before it writes the package. The small checkpoint is Apache-2.0. The larger ones are licensed for non-commercial use only, so the script never fetches them. The converter accepts them by hand, for work of your own under those terms. Loading and availability behave like `ModelTracker`'s, and the model needs Apple silicon. `Examples/Vision/DepthContours` draws the depth as contour lines. A parameter swaps in the single-image model, so you can watch the lines crawl and then hold still.
+
+<a name="depthclip"></a>
 
 ### DepthClip
 

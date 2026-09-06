@@ -8,7 +8,7 @@
 
 This guide teaches creative coding from zero, using [Ollin](../README.md). You write small programs called sketches that draw, move, and react. Along the way you learn the techniques the field is built on: randomness, noise, forces, flocks, shaders, simulation, and 3D. Each chapter teaches a few ideas through short runnable steps, and it ends with a finished piece you made yourself.
 
-<img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of drifting, breathing circles: the [Chapter 1](01-HelloOllin.md) piece" width="560">
+<img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of drifting, breathing circles, the piece built in Chapter 1" width="560">
 
 **Who it's for.** Anyone who can program a little, in any language. You don't need to know Swift, because the guide teaches what you need as it comes up, and [Appendix A](A-JustEnoughSwift.md) is a primer. You don't need a background in math, graphics, or shaders either. If you can write a loop and a function, you can start.
 

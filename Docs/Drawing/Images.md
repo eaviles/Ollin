@@ -158,7 +158,7 @@ withState {
 ```swift
 Image(contentsOf url: URL)
 Image(data: Data)
-Image(resource name: String, extension ext: String?, in bundle: Bundle)
+Image(resource name: String, withExtension ext: String?, in bundle: Bundle)
 Image(cgImage: CGImage)
 Image(width: Int, height: Int, color: Color = .clear)
 Image(width: Int, height: Int, premultipliedRGBA: [UInt8])

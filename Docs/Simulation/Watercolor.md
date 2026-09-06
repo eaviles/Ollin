@@ -44,7 +44,7 @@ override func draw() {
 <a id="painting"></a>
 ### Painting into the field
 
-A `WatercolorField` is a persistent [`SimField`](../Drawing/Effects.md#simfield). Make it once in `setup()` with `watercolor(...)` and keep a reference to it. To paint, draw as usual inside a `withField(paint) { }` block. Each color channel of a mark maps onto the field's palette.
+A `WatercolorField` is a persistent [`SimField`](../Drawing/Effects.md#simfield). Make it once in `setup()` with `watercolor(...)` and keep a reference to it. The sketch method comes two ways. `watercolor(pigments:scale:)` takes the palette directly, and `watercolor(_:scale:)` takes a whole `Sim.watercolor(...)` when you want the other parameters too. The first is shorthand for the second. To paint, draw as usual inside a `withField(paint) { }` block. Each color channel of a mark maps onto the field's palette.
 
 - **red** is the first pigment, **green** the second, and **blue** the third.
 - **alpha is water**. It wets the paper and adds the pressure that makes paint move.

@@ -29,7 +29,7 @@ final class Pulse: Sketch {
 ### Contents
 
 - [Permission, and the first run](#permission) - the one thing to know before anything works
-- [Finding a device](#finding-a-device) - scanning the room, and the three ways to name a device
+- [Finding a device](#finding-a-device) - scanning the room, and the ways to name a device
 - [Connecting, and staying connected](#connecting) - waiting is the default
 - [Reading](#reading) - the latest value, or every arrival since the last frame
 - [Values and their formats](#values) - the bytes mean nothing until a characteristic says what they are

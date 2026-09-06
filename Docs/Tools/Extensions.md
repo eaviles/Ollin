@@ -32,7 +32,7 @@ cd ollinx-halftone
 swift test
 ```
 
-The `--seam` flag picks what the starter is built on. The four seams are the four sections below, and `ollin new --list` prints them.
+The `--seam` flag picks what the starter is built on. The four seams are `drawCall`, `filter`, `frameSource`, and `lifecycle`, which are the first four sections below. `ollin new --list` prints them. The sections after those are things you can build without a starter.
 
 ```sh
 ollin new Vignette --kind extension --seam filter

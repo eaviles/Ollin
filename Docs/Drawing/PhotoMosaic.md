@@ -86,7 +86,7 @@ for tile in mosaic.tiles {
 
 #### Practical notes
 
-- **The target needs range.** A target that is mostly one flat dark color takes the one nearest picture and repeats it everywhere. A target whose colors vary across the frame uses more of the library, and `uses(of:)` says how many pictures were used.
+- **The target needs range.** A target that is mostly one flat dark color takes the one nearest picture and repeats it everywhere. A target whose colors vary across the frame uses more of the library. `uses(of:)` returns one use count per picture, so counting its non-zero entries tells you how many of the library got used.
 - **The library needs range too**, across the same colors the target has. Spread the pictures over those colors, rather than over colors that look good together.
 - **Cell count against library size** decides how the mosaic reads. More cells means a better likeness and more repeats. Fewer cells means every cell is legible.
 - `fit: .cover` crops each picture to its cell, which keeps proportions. `.stretch` uses every pixel and squashes the picture to fit the cell.

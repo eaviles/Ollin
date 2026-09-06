@@ -271,7 +271,7 @@ Installation(projection: .init(visibleRegion: Rectangle(x: 0.4, y: 0, width: 0.6
                                blend: Insets(left: 0.2)))
 ```
 
-`shows` is the part of the canvas this machine carries, in fractions of the canvas. `blend` is how far the fade reaches in from each edge, in the same fractions.
+`visibleRegion` is the part of the canvas this machine carries, in fractions of the canvas. `blend` is how far the fade reaches in from each edge, in the same fractions.
 
 The units are the same on purpose. Both machines are told about the same fifth of the same canvas. So both machines compute the same fade across the same part of the wall, and the two fades add up to exactly one coat.
 
@@ -326,7 +326,7 @@ Installation(displays: .parts([
 
 A display past the end of the list stays dark. A declaration past the end of the displays is ignored.
 
-You can combine the two. A machine that carries part of a longer wall divides that part between its own displays. So four projectors on two machines is two declarations of two parts each. `shows` on the machine's own `projection` is the region it carries, and the wall divides that region rather than the whole canvas.
+You can combine the two. A machine that carries part of a longer wall divides that part between its own displays. So four projectors on two machines is two declarations of two parts each. `visibleRegion` on the machine's own `projection` is the region it carries, and the wall divides that region rather than the whole canvas.
 
 #### Lining up a wall
 

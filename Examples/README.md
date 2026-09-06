@@ -69,7 +69,7 @@ The example list is on the left, grouped like the folders, with a filter bar at 
 ### Adding an example
 
 1. Create `Examples/<Category>/<Name>/Sketch.swift` with an `@main final class <Name>: Sketch { … }`. You do not need an `OllinApp.run(...)` line, because `Sketch.main()` starts the sketch for you.
-2. Add a matching `.executableTarget(name: "Example-<Category>-<Name>", dependencies: ["Ollin"], path: "Examples/<Category>/<Name>")` in `Package.swift`.
+2. Add one line, `example("<Category>/<Name>")`, to the targets list in `Examples/Package.swift`. The helper derives the target name from the folder path, so the two cannot drift apart. A sketch that needs a satellite library passes it as the second argument, and co-located assets go in `resources:`.
 3. Add a row to the category's `README.md`. A new category also needs its own `README.md` and a row in the table above.
 
 By convention, a feature is not done until it has an example, and every example must compile. If a sketch is awkward to write, treat that as a sign that the API needs work, not the example.

@@ -7,7 +7,7 @@
 A 3D sketch draws a scene, and an exported frame is a flat picture of that scene. A USDZ export sends the scene itself instead of a picture. The model opens in Quick Look from the Finder or from a message. In AR it stands on a real table, and you can add it to a visionOS app or open it in Reality Composer. The [fabrication](./Fabrication.md) writers send a single mesh to a printer, and the [vector exporters](./Export.md#vector-svg) send a flat frame to a plotter. This exporter is the three-dimensional counterpart of both.
 
 ```sh
-swift run Example-3D-Geometry-Solids --export-usdz piece.usdz
+swift run --package-path Examples Example-3D-Geometry-Solids --export-usdz piece.usdz
 ```
 
 That one command is the whole export. It opens no window and uses no GPU. The sketch runs headlessly up to the frame you name, and its 3D draw calls are collected into a model.
@@ -30,7 +30,7 @@ scene.write(to: "piece.usdz")
 saveScene(scene, to: "piece.usdz")            // the same, from inside a sketch
 ```
 
-`OllinApp.spatialScene(of:frame:)` is the step between the two. It returns an ordinary [`Scene`](../3D/Scenes.md), the same kind `loadScene` gives you. So you can read a recorded frame, edit it, draw it again with `drawScene`, or write it later.
+`OllinApp.spatialScene(of:frame:fps:)` is the step between the two. It returns an ordinary [`Scene`](../3D/Scenes.md), the same kind `loadScene` gives you. So you can read a recorded frame, edit it, draw it again with `drawScene`, or write it later.
 
 ```swift
 var scene = OllinApp.spatialScene(of: sketch, frame: 120)
@@ -122,7 +122,7 @@ A `.usdz` is a ZIP archive with extra rules. Nothing in it is compressed, and th
 A model sends the geometry and lets a viewer walk around it. **Spatial video** sends the motion instead, recorded from two eyes at once. That is the only way an animation reads as three-dimensional in a headset. The file uses the same format Apple's platforms record and play: stereo MV-HEVC, with metadata that describes the rig that shot it.
 
 ```sh
-swift run Example-3D-Geometry-SpatialVideo --export-spatial piece.mov --seconds 8
+swift run --package-path Examples Example-3D-Geometry-SpatialVideo --export-spatial piece.mov --seconds 8
 ```
 
 Each frame is drawn **once** and rendered twice, from two cameras a short distance apart. That distinction matters, because drawing twice would roll the sketch's randomness twice and step every simulation twice. The simulations that are documented as not reproducing frame for frame would then give the two eyes different worlds. With one draw and two renders, both eyes see the same instant.
@@ -148,7 +148,7 @@ override var stereoGeometry: StereoGeometry {
 }
 ```
 
-You can leave either number out and let Ollin derive it. You can also override either one per export (`--interocular X`, `--convergence D`) without changing the other. `StereoGeometry.resolved(for:)` returns the final values for a given camera. So a sketch can show the spacing it will export with. It can also scale from the derived value:
+You can leave either number out and let Ollin derive it. You can also override either one per export (`--interocular X`, `--convergence D`) without changing the other. `StereoGeometry.resolved(for:aspect:)` returns the final values for a given camera. So a sketch can show the spacing it will export with. It can also scale from the derived value:
 
 ```swift
 let spacing = StereoGeometry.automatic.resolved(for: shot).interocular

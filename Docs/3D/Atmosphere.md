@@ -120,7 +120,7 @@ Four things are not fogged, by design. Fog is a property of the 3D air, so **2D 
 <a id="notes"></a>
 ### Notes
 
-- Both calls are per-frame state, like the lights, so set them in `draw()`. The quality setting persists, like `shadowQuality`.
+- All three calls are per-frame state, like the lights, so set them in `draw()`. The quality setting persists, like `shadowQuality`.
 - Fog does not need lights. An unlit (`noLights()`) scene still fogs. Only the beams need lights.
 - The air's wash stops at the camera's `far` plane. If a distant scene cuts off in an odd way, raise `far`.
 - A frame that draws no geometry at all skips rendering entirely, air included. So beams need at least one mesh in the frame, and a floor is enough.

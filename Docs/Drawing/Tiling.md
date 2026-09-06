@@ -45,7 +45,7 @@ A hex grid costs you something a square grid gives you for free, since its cells
 
 - `distance(from:to:)` counts steps between neighbors, so cells at equal distances form true concentric rings. A square grid cannot produce that honeycomb falloff.
 - `neighbors(of:)` returns the adjacent cells, up to six of them, and `ring(around:radius:)` walks the cells at an exact distance.
-- `cell(at: point)` picks the exact hexagon under a point, so one call turns a mouse position into a hexagon. `cell(q:r:)` looks a cell up by its axial address.
+- `cell(at: point)` picks the exact hexagon under a point, so one call turns a mouse position into a hexagon. `cell(q:r:)` looks a cell up by its axial address, and `cell(column:row:)` by its row and column.
 
 ```swift
 let focus = hexes.cell(at: Vector2(mouseX, mouseY)) ?? hexes.cell(column: 6, row: 5)

@@ -23,7 +23,7 @@ A sketch run is a performance. Four things drive it: the seed the run started fr
 Add `--record-take <file>` to any windowed run:
 
 ```sh
-swift run Example-Basic-HelloCircle --record-take take.json
+swift run --package-path Examples Example-Basic-HelloCircle --record-take take.json
 ollin Dots.swift --record-take take.json        # a loose file, in the live host
 ```
 
@@ -45,7 +45,7 @@ That is everything that drives a deterministic sketch. Play the same file into a
 ### Replaying in the window
 
 ```sh
-swift run Example-Basic-HelloCircle --replay take.json
+swift run --package-path Examples Example-Basic-HelloCircle --replay take.json
 ollin Dots.swift --replay take.json
 ```
 

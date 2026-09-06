@@ -30,7 +30,7 @@ final class Player: Sketch {
 
 - [Loading](#loading) - from a path, URL, or bundled resource
 - [Playback](#playback) - play, pause, loop, seek, rate, volume
-- [Drawing frames](#drawing-frames) - `drawFrame`, `frame`, `fittedRect`, `size`
+- [Drawing frames](#drawing-frames) - `drawFrame`, `frame`, `fittedRectangle`, `size`
 - [Pixels and analysis](#pixels-and-analysis) - live trackers, the soundtrack analyzed, and `snapshot()` for CPU access
 - [Notes](#notes) - formats, audio, exporting, and the Metal device
 

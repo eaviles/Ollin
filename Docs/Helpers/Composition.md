@@ -133,7 +133,7 @@ synth.play(scale.snap(Pitch(40 + mouseY / 12)))
 
 `degree(nearest:)` answers the same question the other way round, returning the degree nearest a pitch. `pitches(_:from:)` returns a run of pitches.
 
-`chord(on:notes:spacing:)` builds a chord out of the scale itself, by taking every other note:
+`chord(on:noteCount:spacing:)` builds a chord out of the scale itself, by taking every other note:
 
 ```swift
 scale.chord(on: 0)          // a triad on the root
@@ -197,7 +197,7 @@ The text is Roman numerals `I` to `VII`, separated by any other characters. Uppe
 | `root(at:)` | its root, for a bass line underneath |
 | `chord(at:)` | the `Chord` itself, for a progression written as symbols. Nil for one written as degrees |
 | `count` | how many chords before it repeats |
-| `notes` / `spacing` | `notes` is three or four, and a `spacing` of two degrees is the usual stack of thirds |
+| `noteCount` / `spacing` | `noteCount` is three or four, and a `spacing` of two degrees is the usual stack of thirds |
 | `transposed(by:)` / `rotated(by:)` | the same progression elsewhere, or starting elsewhere |
 
 The cycle wraps, so a step number can climb forever.

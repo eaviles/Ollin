@@ -16,6 +16,7 @@ There are two kinds of scene to composite against. One is a **3D-camera** scene,
 
 - [Placing 2D at a world depth](#depth) - `depth(at:)`, `noDepth()` (a 3D-camera scene)
 - [Projecting a world point to the canvas](#project) - `project`
+- [From the canvas back into the world](#cameraRay) - `cameraRay(through:)`
 - [Billboards](#billboard) - `withBillboard(at:)`
 - [A depth-map scene](#scene) - `drawDepthScene`, `depth(_:)` (a depth feed)
 - [A metric depth scene](#metric) - `Camera3D.intrinsic`, `drawDepthScene(_:)` (true meters)

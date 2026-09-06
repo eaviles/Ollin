@@ -316,11 +316,11 @@ p5.js, OPENRNDR, and openFrameworks run everywhere. Ollin runs only on Apple har
 
 Ollin sits directly on Metal, so the rendering limit is whatever the GPU can do. It stays native, so the rest of the platform is within reach. Vision on the Neural Engine is already here, and so are an iPhone's depth sensors feeding a sketch that the Mac renders. Meanwhile, visionOS and AR are still ahead. The core is built to grow into those things rather than be retrofitted for them.
 
-The same trade rules out a browser version. The web has no Metal, so a web build would need a second, lesser renderer on WebGPU. You share a piece by exporting it (video, GIF, USDZ, SVG, PDF), not by running Ollin in a tab.
+The same trade rules out a browser version. The web has no Metal, so a web build would need a second, lesser renderer on WebGPU. You share a piece by exporting it, not by running Ollin in a tab. The formats are video, GIF, USDZ, SVG, PDF, and a recorded web page.
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md). It lists what's planned, what's being explored, and the best first contributions. The engineering thinking behind each item is in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The next milestone is version 1.0.0, the first tagged release, and the roadmap's [Toward 1.0](ROADMAP.md#toward-10) section tracks what it waits on. Further ahead: more of the iPhone sensor array, more of the 3D mode, more generative geometry, and more of the sound layer. Then new input and output surfaces, editor tooling, learning materials, a third-party extension ecosystem, and a sketch that runs on the phone and in Swift Playgrounds. Eventually visionOS and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md). It lists what's planned, what's being explored, and the best first contributions. The engineering thinking behind each item is in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The next milestone is version 1.0.0, the first tagged release, and the roadmap's [Toward 1.0](ROADMAP.md#toward-10) section tracks what it waits on. Further ahead: more of the iPhone sensor array, more of the 3D mode, more generative geometry, and more of the sound layer. Then new input and output surfaces, editor tooling, learning materials, a third-party extension ecosystem, and a sketch you can write in Swift Playgrounds. Eventually visionOS and AR.
 
 ## Built with AI
 

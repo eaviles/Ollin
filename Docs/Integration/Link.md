@@ -21,8 +21,10 @@ final class OnTheBeat: Sketch {
 
     override func draw() {
         let throb = 1 + 0.2 * link.beat                 // snaps on each beat, decays
-        drawCircle(width / 2, height / 2, 120 * throb * scale)
+        translate(width / 2, height / 2)
         rotate(link.progress(over: 8) * .tau)           // one turn every 8 beats
+        drawCircle(0, 0, 120 * throb * scale)
+        drawLine(0, 0, 120 * throb * scale, 0)          // a hand, so the turn shows
     }
 }
 ```
@@ -125,7 +127,7 @@ Three mechanisms run the session, and all of them are automatic:
 Run the example twice, in two terminals:
 
 ```sh
-swift run Example-Integration-Tempo
+swift run --package-path Examples Example-Integration-Tempo
 ```
 
 The two windows find each other over loopback, settle on one tempo, and light the same bar dot at the same moment. Adjust the BPM parameter in one window and both follow. Quit one window and the other keeps the beat without a break. Anything else that speaks Link joins the same way, on this machine or on the same network.

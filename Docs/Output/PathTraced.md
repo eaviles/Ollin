@@ -7,9 +7,9 @@
 Tune the scene live, then render it offline. `--path-traced` switches the still, sequence, and video exports to an offline path tracer. Instead of rasterizing, the tracer follows light paths through the 3D scene. It spends seconds per frame on a look the live pipeline cannot reach inside a frame budget. The sketch itself does not change, so the live window stays the fast raster preview and the flag renders the finished frame.
 
 ```sh
-swift run Example-3D-Effects-PathTraced                                # tune live
-swift run Example-3D-Effects-PathTraced --export out.png --path-traced 512
-swift run Example-3D-Effects-PathTraced --export-video out.mp4 --seconds 4 --path-traced 256
+swift run --package-path Examples Example-3D-Effects-PathTraced                                # tune live
+swift run --package-path Examples Example-3D-Effects-PathTraced --export out.png --path-traced 512
+swift run --package-path Examples Example-3D-Effects-PathTraced --export-video out.mp4 --seconds 4 --path-traced 256
 ```
 
 The number is how many light paths each pixel traces. More samples make a smoother image, and the cost grows in proportion to the count. Check the timings before you start a long render. On an M2 at 1080x1080 the example scene takes 83 s at 512 and 157 s at 1024. At 2048 it takes 296 s, and at 4096 it takes 589 s.
@@ -73,8 +73,8 @@ The filter measures its own strength instead of taking a setting. The tracer rec
 The filter also does not trade the picture for smoothness. The example scene was measured against an 8192-sample render, and the filtered frame sits closer to it than the raw frame at every count tried. At 64 samples the error falls from 17.6 to 9.1, and at 2048 it falls from 5.5 to 3.9. Counted in samples, 64 filtered samples land where about 240 raw ones would, and 2048 filtered ones land where about 4000 would. That saves five minutes of tracing on an M2.
 
 ```sh
-swift run Example-3D-Effects-PathTraced --export out.png --path-traced 64            # the raw estimate
-swift run Example-3D-Effects-PathTraced --export out.png --path-traced 64 --denoise  # filtered
+swift run --package-path Examples Example-3D-Effects-PathTraced --export out.png --path-traced 64            # the raw estimate
+swift run --package-path Examples Example-3D-Effects-PathTraced --export out.png --path-traced 64 --denoise  # filtered
 ```
 
 On a sequence the filter steadies the picture rather than making it flicker. It runs on each frame by itself, but most of what separates two consecutive raw frames is grain, so filtering brings them closer together. On the example scene's moving camera at 48 samples, the difference between one frame and the next falls from 2.85 to 1.21.

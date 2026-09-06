@@ -144,7 +144,7 @@ var camera: Record3DCamera?    // .trueDepth (front), .lidar (rear), or .unknown
 func pointCloud(minConfidence:depthRange:step:pointSize:) -> PointCloud?
 ```
 
-You can detect **which camera is streaming**, and it is worth acting on, because the two cameras behave differently. `camera`, and also `RGBDFrame.camera`, reports `.trueDepth` or `.lidar`. The value is inferred from the depth grid. The front TrueDepth camera streams a dense 640×480 map, and the rear LiDAR streams a sparse 256×192 one. No iPhone pairs them the other way, so the resolution identifies the camera.
+You can detect **which camera is streaming**, and it is worth acting on, because the two cameras behave differently. `camera`, and also `RGBDFrame.camera`, reports `.trueDepth` or `.lidar`, or `.unknown` when the grid matches neither. It is `nil` before the first frame. The value is inferred from the depth grid. The front TrueDepth camera streams a dense 640×480 map, and the rear LiDAR streams a sparse 256×192 one. No iPhone pairs them the other way, so the resolution identifies the camera.
 
 Tune for whichever camera you get. The **front** camera is short-range and noisy past a meter. So set `depthRange` to a narrow band, around `0.2...1.2`, and require `.high` confidence, which suits a face up close. The **rear LiDAR** reaches across a room, so open the range to several meters at `.medium`. The live example switches its settings on `frame.camera` and shows the detected camera in its caption.
 

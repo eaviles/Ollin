@@ -7,7 +7,7 @@
 You can export a sketch's line work as a program that a machine runs directly. G-code is the language that pen plotters, laser cutters, and CNC routers read. A G-code program consists of rapids, feed moves, and a few mode words. The [SVG export](./Export.md#vector-svg) hands your drawing to a machine's own tooling. This export skips that tooling and writes the moves itself.
 
 ```sh
-swift run Example-Export-Toolpath --export-gcode plot.gcode
+swift run --package-path Examples Example-Export-Toolpath --export-gcode plot.gcode
 ```
 
 The same export from code, with the full parameters:
@@ -70,10 +70,10 @@ plan.program        // the G-code text
 Every sketch and example takes the flag directly:
 
 ```sh
-swift run Example-X --export-gcode out.gcode                        # pen plotter, 150 mm wide
-swift run Example-X --export-gcode out.gcode --gcode-machine laser
-swift run Example-X --export-gcode out.gcode --gcode-machine mill --gcode-width 80 --gcode-margin 5
-swift run Example-X --export-gcode out.gcode --hatch --hatch-spacing 6
+swift run --package-path Examples Example-X --export-gcode out.gcode                        # pen plotter, 150 mm wide
+swift run --package-path Examples Example-X --export-gcode out.gcode --gcode-machine laser
+swift run --package-path Examples Example-X --export-gcode out.gcode --gcode-machine mill --gcode-width 80 --gcode-margin 5
+swift run --package-path Examples Example-X --export-gcode out.gcode --hatch --hatch-spacing 6
 ```
 
 `--gcode-machine` picks a profile with its defaults. The finer parameters live in the API. `--hatch`, `--cross-hatch`, `--hatch-spacing`, and `--hatch-angle` work the same way as they do for SVG.

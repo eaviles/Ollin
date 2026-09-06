@@ -160,7 +160,7 @@ sketch.automation = try Automation.load(from: url)
 The `--automation <file>` flag attaches a file to a standalone run or to any export:
 
 ```sh
-swift run Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
+swift run --package-path Examples Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
 ```
 
 A file is loaded before `setup()` runs. So when the sketch also writes a track for the same parameter, the sketch's track replaces the one from the file. Ollin refuses a file written in a *newer* format than this version understands, rather than guessing at what it means. An older file still reads, because each layout so far has only added to the one before it.

@@ -77,7 +77,7 @@ lyndonWords(symbols: Int, maxLength: Int) -> [[Int]]
 The result is every Lyndon word up to `maxLength`, in dictionary order. A Lyndon word is a run that is strictly smaller than every rotation of itself. So it is the one representative of a necklace that has no repeat in it.
 
 ```swift
-lyndonWords(symbols: 2, maxLength: 3)   // 0, 001, 011, 1
+lyndonWords(symbols: 2, maxLength: 3)   // 0, 001, 01, 011, 1
 ```
 
 Lyndon words are the pieces the de Bruijn sequence is made of. Take the words whose length divides the window, keep them in order, and lay them end to end. The result is the de Bruijn sequence. On their own, the words list the patterns of a given length that differ from each other, rather than the same pattern rotated. That makes them a ready set of motifs.

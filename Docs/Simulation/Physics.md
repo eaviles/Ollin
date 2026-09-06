@@ -44,7 +44,7 @@ final class Drops: Sketch {
 }
 ```
 
-Gravity pulls the discs down, the walls stop them, and `collisions` keeps them from overlapping, so they pile up.
+Gravity pulls the discs down, the walls stop them, and `particlesCollide` keeps them from overlapping, so they pile up.
 
 ### Contents
 
@@ -89,15 +89,15 @@ var gravity: Vector2 = Vector2(0, 980)   // points per second², y-down
 var drag: Double = 0.01                  // velocity damping, 0…1
 var bounds: Rectangle?                   // optional container; nil lets bodies leave
 var restitution: Double = 0.5            // how much speed survives a hit, 0…1
-var collisions: Bool = false             // push particles apart as solid disks
+var particlesCollide: Bool = false       // push particles apart as solid disks
 var iterations: Int = 8                  // relaxation passes per step
 var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 ```
 
 - **`gravity`** is a constant acceleration on every unpinned particle. Set it to `.zero` for a weightless field where everything floats freely.
 - **`drag`** stands in for air friction. At `0` motion is conserved, so things drift forever. A small value removes energy, so things settle.
-- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `bounce` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing.
-- **`collisions`** turns on disk-against-disk separation. The broad phase runs through a spatial hash, so it scales to thousands of bodies. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide.
+- **`bounds`** keeps particles inside a rectangle, and it accounts for each particle's `radius`. `restitution` then sets how much speed a particle keeps when it hits a wall. At `0` the particle sticks, and at `1` it loses nothing.
+- **`particlesCollide`** turns on disk-against-disk separation. The broad phase runs through a spatial hash, so it scales to thousands of bodies. It is off by default for two reasons. A cloth should not have its own points collide, and the check costs a pass every frame. Turn it on for packings and piles. Points with `radius == 0` never collide.
 - **`iterations`** is how many relaxation passes the solver runs to hold springs and collisions together. More passes make stiff stacks and tight packings firmer, and the cost grows linearly with the count.
 
 <picture>
@@ -224,7 +224,9 @@ var bodies: [Body] { get }
 ```
 
 - **`collider`** is the body's shape (described below). **`kind`** is how the body moves. `.dynamic` (the default) is moved by forces. `.static` never moves, so use it for walls, the ground, or a hinge anchor. `.kinematic` moves only by a velocity you set.
-- **`density`** sets the mass, so heavier bodies push lighter ones. **`friction`** is surface grip, from `0` (slippery) to `1` (grippy). **`restitution`** is bounciness, `0…1`. It defaults to the world's `bounce`.
+- **`density`** sets the mass, so heavier bodies push lighter ones. **`friction`** is surface grip, from `0` (slippery) to `1` (grippy). **`restitution`** is bounciness, `0…1`. It defaults to the world's `restitution`.
+
+<a name="collider"></a>
 
 **Colliders**
 
@@ -238,6 +240,8 @@ enum Collider {
 ```
 
 Geometry is given in body-local points, centered on the body's origin. The body's `position` and `angle` then place it in the world. A `.polygon` is made convex for you by taking its convex hull, so a concave outline is expanded to that hull rather than rejected.
+
+<a name="body"></a>
 
 **The Body**
 
@@ -259,13 +263,15 @@ The `Forces` example shows all three calls in one windy yard. It also has a `.ki
 
 **Shared rules and units**
 
-The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. It applies `bounce` to the walls and as the default contact restitution, and it damps bodies with `drag`. It also runs on the same `advance(by:)`. One parameter belongs to the rigid side alone:
+The rigid side reads the settings you already made on the world. It takes `gravity` unchanged and uses `bounds` as walls. It applies `restitution` to the walls and as the default contact restitution, and it damps bodies with `drag`. It also runs on the same `advance(by:)`. One parameter belongs to the rigid side alone:
 
 ```swift
 var pixelsPerMeter: Double = 100
 ```
 
 Box2D works in meters and behaves best for objects roughly 0.1 to 10 m. `pixelsPerMeter` converts between meters and sketch points. The default of 100 puts a 100-point shape at 1 m, which is well inside that range, so you can keep thinking in points. The Verlet particle side works in points directly and ignores this value.
+
+<a name="joint"></a>
 
 **Joints**
 
@@ -297,10 +303,6 @@ held.remove()
 ```
 
 See the `RigidBodies` and `Chain` examples for complete sketches. The first is a toppling pyramid knocked into a pile of mixed shapes, and the second is a set of swinging chains you can grab. The `Joints` example shows the four joint kinds side by side, with one small rig for each. Every rig hangs from a `.static` anchor, and you can grab each one with the cursor.
-
-<a name="body"></a>
-<a name="collider"></a>
-<a name="joint"></a>
 
 <a name="how-the-solver-works"></a>
 

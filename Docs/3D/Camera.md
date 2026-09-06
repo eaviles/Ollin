@@ -109,7 +109,7 @@ As with `cameraControl()`, the `target` / `radius` / `elevation` / `fieldOfView`
 <a id="catalog"></a>
 ### The move catalog
 
-`CameraMove` is a value type, and you build one with a static factory. The finite moves ease over a duration and then hold. The cyclic moves run continuously.
+`CameraMove` is a value type, and you build one with a static factory. The finite moves ease over a duration and then hold. The cyclic moves run continuously. One move is a hybrid, running continuously along one axis while easing along another.
 
 | Move | Kind | The shot |
 | --- | --- | --- |

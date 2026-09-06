@@ -78,7 +78,7 @@ Four presets give you a starting point: `.calm`, `.breeze` (the default), `.swel
 <a id="the-field"></a>
 ### The field
 
-`oceanField` returns an `OceanField`, which is one frame of the sea. Building it is per-frame
+`makeOceanField` returns an `OceanField`, which is one frame of the sea. Building it is per-frame
 work, like a generator, so call it in `draw()`.
 
 ```swift

@@ -216,7 +216,7 @@ The **Tempo** example (`Examples/Integration/Tempo`) shows this with no hardware
 
 ```swift
 MIDIOutput(name: String = "Ollin")
-func open(to match: String? = nil) throws     // a hardware destination (first matching name)
+func open(matching: String? = nil) throws     // a hardware destination (first matching name)
 func openVirtual(named: String? = nil) throws  // a virtual source other apps receive from
 var destinations: [MIDIEndpoint]
 func send(_ message: MIDIMessage)

@@ -45,7 +45,7 @@ The split comes from how recognition works. The recognizer guesses early and cor
 
 <img src="../../Guide/Images/28-SoundAndControl/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
 
-So there are two reads:
+So there are three reads:
 
 | Read | What it is | What it is for |
 | --- | --- | --- |
@@ -114,7 +114,7 @@ You can set `threshold` while the classifier runs.
 
 The built-in classifier knows 303 everyday sounds, and `labels` lists all of them. Among them are speech, laughter, applause, `clapping`, `finger_snapping`, dogs and cats and birds and insects, instruments by family and by name, weather and water and fire, vehicles and sirens, doors and taps and keyboards, `knock`, `beep`, `click`, `glass_breaking`, and `silence`.
 
-Two things about it are worth knowing. First, it always guesses, so read `top` and apply a `threshold` rather than trusting every small number. `"music"` in particular turns up faintly under almost any sound. Second, it judges a **window** of audio at a time (`windowDuration`, 1.5 seconds by default, and adjustable). A short sound is therefore named a fraction of a second after it happens. A shorter window reacts sooner but judges on less audio. Measured against synthesized tones and taps, 1 second is a poor setting and 1.5 is a good one.
+Two things about it are worth knowing. First, it always guesses, so read `topClassification` and apply a threshold rather than trusting every small number. `"music"` in particular turns up faintly under almost any sound. Second, it judges a **window** of audio at a time (`windowDuration`, 1.5 seconds by default, and adjustable). A short sound is therefore named a fraction of a second after it happens. A shorter window reacts sooner but judges on less audio. Measured against synthesized tones and taps, 1 second is a poor setting and 1.5 is a good one.
 
 ### Your own model
 

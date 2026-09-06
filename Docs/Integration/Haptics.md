@@ -32,7 +32,7 @@ final class Bouncer: Sketch {
 - [Composing](#composing) - end to end, layered, moved, repeated, scaled, reversed
 - [Playing it](#playing-it) - `playHaptic`, the volume parameter, and stopping
 - [What is on the other end](#what-is-on-the-other-end) - an engine, a trackpad, or nothing
-- [How a pattern reaches a trackpad](#how-a-pattern-reaches-a-trackpad) - the plan, and the three rules in it
+- [How a pattern reaches a trackpad](#how-a-pattern-reaches-a-trackpad) - the plan, and the four rules in it
 - [What is not here yet](#what-is-not-here-yet) - rumble, and the phone
 
 <a name="writing-a-pattern"></a>
