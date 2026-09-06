@@ -1,4 +1,7 @@
+import CoreGraphics
 import Foundation
+import ImageIO
+import OllinWebGate
 import Testing
 @testable import OllinReference
 
@@ -131,7 +134,11 @@ struct SiteTests {
                 checked += 1
             }
             if Self.prose(of: html).contains("](") {
-                leftovers.append(url.path.replacingOccurrences(of: output.path + "/", with: ""))
+                // Both sides resolved, since a temporary directory walks out
+                // with a `/private` in front of it and a plain prefix strip
+                // then matches nothing, leaving the page unnamed in the failure.
+                let root = output.resolvingSymlinksInPath().path + "/"
+                leftovers.append(url.resolvingSymlinksInPath().path.replacingOccurrences(of: root, with: ""))
             }
             if let range = html.range(of: "<title>") {
                 let title = html[range.upperBound...].prefix { $0 != "<" }
@@ -142,9 +149,15 @@ struct SiteTests {
         #expect(dead.isEmpty, "dead: \(dead.prefix(10).joined(separator: "; ")) (\(dead.count))")
         #expect(leftovers.isEmpty, "markdown left in: \(leftovers.prefix(10).joined(separator: ", "))")
 
-        // The front page opens on the hero, and a chapter opens on its trail.
+        // The front page opens on the hero with the ring in it, and a chapter
+        // opens on its trail.
         let home = try String(contentsOf: output.appendingPathComponent("index.html"), encoding: .utf8)
         #expect(home.contains("class=\"hero\""))
+        #expect(home.contains("<div class=\"hero-canvas\" aria-hidden=\"true\">"), "the front page opens without its ring")
+        #expect(home.contains("<canvas class=\"ollin-sketch\""))
+        #expect(home.contains("player.set('paper'"))
+        #expect(!home.contains("site.js"), "the ring plays from the page itself, not a deferred file")
+        #expect(report.notes.isEmpty, "\(report.notes.joined(separator: "; "))")
         #expect(home.contains("<link rel=\"canonical\" href=\"https://ollin.example/\">"))
         let chapter = try String(contentsOf: output.appendingPathComponent("guide/02-color.html"), encoding: .utf8)
         #expect(chapter.contains("class=\"trail\""))
@@ -155,17 +168,157 @@ struct SiteTests {
         #expect(example.contains("Example-Basic-HelloCircle"))
     }
 
+    // MARK: - The front page's ring
+
+    @Test("The ring is the sketch's own web page, recorded whole")
+    func ringIsTheRecordedPage() {
+        let fragment = SiteHero.fragment
+        #expect(!fragment.isEmpty, "Sources/OllinReference/SiteHero.swift holds no recording; run Scripts/site-hero.sh")
+        #expect(fragment.hasPrefix("<canvas class=\"ollin-sketch\" width=\"1080\" height=\"1080\""))
+        #expect(fragment.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("</script>"))
+        #expect(fragment.contains("<script>"))
+        // The panel's own styling travels with the player whether or not a
+        // panel is built, so what says the front page draws none is the flag
+        // the inline form bakes in, not the absence of the word.
+        #expect(fragment.contains("var PANEL = false"), "the inline form draws no panel")
+    }
+
+    /// The front page's hero, as the site writes it, inside a page that carries
+    /// the site's own colors and reports what the ring did.
+    static func heroProbe(bg: String, text: String) -> String {
+        let root = URL(fileURLWithPath: "/nowhere")
+        let builder = SiteBuilder(root: root)
+        var markdown = "# Ollin\n\n**A line.**\n"
+        let page = SiteBuilder.Page(repoPath: "README.md", sitePath: "index.html", kind: .home, title: "Ollin", summary: "")
+        let hero = builder.homeHero(&markdown, page: page, plan: SiteBuilder.Plan())
+        return """
+        <!doctype html><html><head><style>:root { --bg: \(bg); --text: \(text); }</style></head><body>
+        \(hero)
+        <pre id="r0">PENDING</pre>
+        <script>
+        (function () {
+          var out = document.getElementById('r0');
+          try {
+            var canvas = document.querySelector('.hero-canvas canvas');
+            var player = canvas && canvas.ollin;
+            if (!player) { out.textContent = 'FAIL no player'; return; }
+            player.pause();
+            var names = player.params.map(function (p) { return p.name; }).join(',');
+            player.showFrame(0);
+            var themed = canvas.toDataURL('image/png');
+            player.reset();
+            player.showFrame(0);
+            var recorded = canvas.toDataURL('image/png');
+            out.textContent = names + '\\n' + themed + '\\n' + recorded;
+          } catch (e) { out.textContent = 'FAIL ' + e; }
+        })();
+        </script>
+        </body></html>
+        """
+    }
+
+    @Test("The ring plays in a browser, in the page's paper and ink",
+          .enabled("a browser with WebGL2 is needed") { await HeadlessBrowser.hasWebGL2() })
+    func ringFollowsTheSite() async throws {
+        try #require(!SiteHero.fragment.isEmpty, "Sources/OllinReference/SiteHero.swift holds no recording; run Scripts/site-hero.sh")
+        // The dark scheme's own values, where the recorded black on white is
+        // the wrong way round and the difference cannot be missed.
+        let dom = try await HeadlessBrowser.dom(of: Self.heroProbe(bg: "#0e0d0d", text: "#f0eeee"))
+        let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
+        let lines = report.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        try #require(lines.count == 3, "\(report.prefix(300))")
+
+        let names = lines[0].split(separator: ",").map(String.init)
+        #expect(names.contains("ink") && names.contains("paper"), "controls: \(names)")
+
+        let themed = try Self.rgba(fromDataURL: lines[1])
+        let recorded = try Self.rgba(fromDataURL: lines[2])
+        try #require(themed.width == 1080 && themed.height == 1080)
+
+        // The corner is paper: the page's in the themed picture, the recorded
+        // white before it. The ring is ink: something light on the dark paper,
+        // something dark on the white.
+        let corner = themed.pixel(5, 5)
+        #expect(abs(corner.r - 14) <= 3 && abs(corner.g - 13) <= 3 && abs(corner.b - 13) <= 3, "themed corner \(corner)")
+        let recordedCorner = recorded.pixel(5, 5)
+        #expect(recordedCorner.r >= 250 && recordedCorner.g >= 250 && recordedCorner.b >= 250, "recorded corner \(recordedCorner)")
+        #expect(themed.brightest() > 100, "no ink on the themed ring: brightest \(themed.brightest())")
+        #expect(recorded.darkest() < 200, "no ink on the recorded ring: darkest \(recorded.darkest())")
+    }
+
+    struct Pixels {
+        var width: Int
+        var height: Int
+        var bytes: [UInt8]
+        func pixel(_ x: Int, _ y: Int) -> (r: Int, g: Int, b: Int) {
+            let i = (y * width + x) * 4
+            return (Int(bytes[i]), Int(bytes[i + 1]), Int(bytes[i + 2]))
+        }
+        func brightest() -> Int {
+            var best = 0
+            for i in stride(from: 0, to: bytes.count, by: 4) { best = max(best, Int(bytes[i]), Int(bytes[i + 1]), Int(bytes[i + 2])) }
+            return best
+        }
+        func darkest() -> Int {
+            var best = 255
+            for i in stride(from: 0, to: bytes.count, by: 4) { best = min(best, Int(bytes[i]), Int(bytes[i + 1]), Int(bytes[i + 2])) }
+            return best
+        }
+    }
+
+    /// The pixels of a PNG data URL the page wrote, as RGBA bytes.
+    static func rgba(fromDataURL report: String) throws -> Pixels {
+        let prefix = "data:image/png;base64,"
+        try #require(report.hasPrefix(prefix), "\(report.prefix(200))")
+        let data = try #require(Data(base64Encoded: String(report.dropFirst(prefix.count))))
+        let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+        let image = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let w = image.width, h = image.height
+        var bytes = [UInt8](repeating: 0, count: w * h * 4)
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        try bytes.withUnsafeMutableBytes { raw in
+            let context = try #require(CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8,
+                                                 bytesPerRow: w * 4, space: space,
+                                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        }
+        return Pixels(width: w, height: h, bytes: bytes)
+    }
+
     /// The page's text alone: no code (which keeps its own spelling), no
     /// tags, and none of their attributes.
+    /// A script is skipped whole beside code, since a script is not prose and
+    /// the front page carries one: the ring's recorded page, whose shaders
+    /// spell an array as `vec2[6](…)`, and those two characters are what an
+    /// unrendered markdown link looks like.
+    ///
+    /// One pass, keeping the text and stepping over everything else. Cutting a
+    /// range at a time instead rereads and recopies the whole page on every
+    /// tag, which the front page's recorded ring made plain: the same walk
+    /// went from seven minutes to longer than the suite was willing to wait.
     static func prose(of html: String) -> String {
-        var text = html
-        for (open, close) in [("<pre", "</pre>"), ("<code", "</code>")] {
-            while let start = text.range(of: open), let end = text.range(of: close, range: start.upperBound ..< text.endIndex) {
-                text.removeSubrange(start.lowerBound ..< end.upperBound)
+        let blocks = [("<script", "</script>"), ("<pre", "</pre>"), ("<code", "</code>")]
+        var text = ""
+        text.reserveCapacity(html.count)
+        var index = html.startIndex
+        while index < html.endIndex {
+            guard html[index] == "<" else {
+                text.append(html[index])
+                index = html.index(after: index)
+                continue
             }
-        }
-        while let start = text.firstIndex(of: "<"), let end = text[start...].firstIndex(of: ">") {
-            text.removeSubrange(start ... end)
+            let rest = html[index...]
+            if let block = blocks.first(where: { rest.hasPrefix($0.0) }) {
+                // An unclosed block runs to the end of the page, as it does in
+                // a browser.
+                index = html.range(of: block.1, range: index ..< html.endIndex)?.upperBound ?? html.endIndex
+                continue
+            }
+            if let close = rest.firstIndex(of: ">") {
+                index = html.index(after: close)
+            } else {
+                index = html.endIndex
+            }
         }
         return text
     }

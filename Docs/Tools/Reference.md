@@ -122,7 +122,7 @@ ollin site                 # writes the site into .build/site
 ollin site ~/Desktop/ollin # or into a folder you name
 ```
 
-Open the folder's `index.html`. The README is the front page. The Guide has its chapter list beside it, and the reference is grouped the way its index groups it. Every example has a page of its own with its source. Every picture the pages show is copied in. A figure with a dark variant follows your system setting, and so does the site.
+Open the folder's `index.html`. The README is the front page, and it opens on the ring of breathing circles: the `Examples/Web/BreathingRing` sketch, exported as [its own web page](../Output/Web.md) and played by that page's player, with its ink and paper set to the site's own colors. The site opens on a sketch drawn the way the framework draws it. The Guide has its chapter list beside it, and the reference is grouped the way its index groups it. Every example has a page of its own with its source. Every picture the pages show is copied in. A figure with a dark variant follows your system setting, and so does the site.
 
 The site is a lens on the same files, not a second copy. A page's prose arrives exactly as the file spells it, and its links point at the same neighbors they do on GitHub. A link at something the site does not render, such as a source file or a folder of figures, points at that file on GitHub instead. Paths mirror the repository in lower case, so `Docs/Drawing/Color.md` is `docs/drawing/color.html`.
 
