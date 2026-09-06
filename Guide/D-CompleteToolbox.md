@@ -173,6 +173,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Apollonian gasket | A circle filled with an endless foam of kissing circles | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Aperiodic tilings | Penrose kites/darts and rhombs with matching-rule arcs, Wang edge-matching quilts, girih star patterns over any polygons, and the spectre (the einstein) | [Ch 7](07-Tiles.md) | [Aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) |
 | Hyperbolic tiling | Any {p,q} tessellation of the Poincaré disk, with a parity checkerboard, depth rings, and a panning viewpoint | [Ch 7](07-Tiles.md) | [Hyperbolic tiling](../Docs/Drawing/HyperbolicTiling.md) |
+| Parquet deformations | A tiling whose tile changes shape as you read across it, the geometry carried on the lattice's shared edges so nothing comes apart | [Ch 7](07-Tiles.md) | [Parquet deformations](../Docs/Drawing/ParquetDeformation.md) |
 | Fractals | IFS chaos games, fractal flames, the Buddhabrot density plate, circle-inversion lace, and Kleinian limit-set curves | [Ch 18](18-IteratedForms.md) | [Fractals](../Docs/Generators/Fractals.md) |
 | L-systems | Grammar rewriting walked by a turtle: ferns, trees, lichens | [Ch 13](13-GrowingThings.md) | [LSystem](../Docs/Generators/LSystem.md) |
 | Wave Function Collapse | Socketed tiles solved by constraint propagation | [Ch 13](13-GrowingThings.md) | [WaveFunctionCollapse](../Docs/Generators/WaveFunctionCollapse.md) |
