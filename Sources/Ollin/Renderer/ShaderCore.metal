@@ -156,9 +156,9 @@ fragment float4 ollin_fringe_fragment(FringeVertexOut in [[stage_in]]) {
 //
 // One pipeline samples a 2D texture over a quad whose four corners arrive already
 // transformed into sketch space (the CTM is applied on the CPU, like the solid
-// path). The texture comes from MTKTextureLoader, which keeps the CGImage's
-// premultiplied alpha, so the image pipeline blends premultiplied (source factor
-// .one) — see makePipeline in MetalRenderer.
+// path). The texture is uploaded by hand from a premultiplied bitmap (see
+// Image.texture(for:)), so the image pipeline blends premultiplied (source
+// factor .one); see makePipeline in MetalRenderer.
 
 struct ImageOut {
     float4 position [[position]];

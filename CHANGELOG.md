@@ -38,6 +38,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A picture could park the whole run.** An image's texture was built through the synchronous MetalKit loader, which decodes on a dispatch worker and waits on its own semaphore; with every worker already blocked, as a busy test run manages, the main thread waited forever, which is what the CI watchdog sampled on 2026-09-06 (three failed Build runs in five). Textures are now decoded on the calling thread and their mip chains blitted on a command buffer, so no worker is needed. The pixels are unchanged: the whole snapshot suite and the figure probe compare clean.
 - **A translucent PNG composites at its own alpha.** ImageIO decodes a PNG with alpha straight, and the image pipeline blends premultiplied, so a translucent pixel of a loaded PNG drew too bright; the texture is now premultiplied on upload, as an image painted in memory already was.
 
 - The Accumulation and HDR pages described a sum on a `noClear` canvas plus a tone map as the basis of the sandpainting look and left out the divide by the number of passes; both now describe the running mean and point at `Accumulator` and `Filter.develop`.
