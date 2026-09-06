@@ -4,7 +4,7 @@
 
 ## Animation
 
-Motion is the default in Ollin, so most movement comes from a term in `draw()` that reads `time`. Sometimes you want a value to *ease* between states instead of snapping or moving at a constant rate. Two pieces cover that. The `Easing` curves shape a `0...1` progress, and `@Eased` is a value that eases toward whatever you assign it. When the value comes from a noisy live signal rather than a target you set, `@Smoothed` cleans it up as it arrives.
+Motion is the default in Ollin, so most movement comes from a term in `draw()` that reads `time`. Sometimes you want a value to *ease* between states instead of snapping or moving at a constant rate. The `Easing` curves shape a `0...1` progress, and `@Eased` is a value that eases toward whatever you assign it. When the value comes from a noisy live signal rather than a target you set, `@Smoothed` cleans it up as it arrives. `@Sprung` gives the approach momentum, and a `Timeline` runs a whole sequence of eased values on the clock.
 
 ### Contents
 

@@ -36,7 +36,7 @@ final class Scan: Sketch {
 - [Frames and point clouds](#frames-and-point-clouds) - `pointCloud(at:)`, `frame(at:)`, the options
 - [Live streaming over USB](#live-usb) - `Record3DDevice`, a tethered phone as a real-time feed
 - [Intrinsics and coordinates](#intrinsics-and-coordinates) - `CameraIntrinsics`, the camera-space convention
-- [Notes](#notes) - the `.r3d` format, depth grids, and capturing
+- [Notes](#notes) - the `.r3d` format, depth grids, the USB stream, capturing, and the wider sensor stream
 
 <a name="loading"></a>
 

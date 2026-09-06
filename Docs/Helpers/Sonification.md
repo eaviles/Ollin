@@ -56,7 +56,7 @@ Sonification(numbers,
              pitches: "C3"..."C6",             // the span it is spread over
              bounds: .robust(ignoring: 0.05),  // how the ends are decided
              polarity: .positive,              // which way round
-             noteLength: 0.25)                     // beats per note
+             noteLength: 0.25)                 // beats per note
 ```
 
 | Setting | What it does |

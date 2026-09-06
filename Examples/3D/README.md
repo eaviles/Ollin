@@ -50,7 +50,7 @@ This group covers meshes, point clouds, and the 3D transform stack.
 
 ### Physics
 
-This group covers rigid bodies inside the scene. A Jolt-backed `World3D` is stepped each frame
+This group covers bodies inside the scene, rigid and soft: stacks and joints, cloth, rope, and floating. A Jolt-backed `World3D` is stepped each frame
 (`import OllinPhysics`), and every body is drawn from its pose with `withBody`.
 See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 
@@ -90,7 +90,7 @@ This group covers driving the view: interactive control, cinematic moves, and sn
 
 ### Materials
 
-This group covers what surfaces are made of, from stylized finishes to physically-based metal.
+This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, and the map set that varies any of them per pixel.
 
 | Sketch | What it shows |
 | --- | --- |

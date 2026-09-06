@@ -7,7 +7,7 @@
 A 3D sketch draws a scene, and an exported frame is a flat picture of that scene. A USDZ export sends the scene itself instead of a picture. The model opens in Quick Look from the Finder or from a message. In AR it stands on a real table, and you can add it to a visionOS app or open it in Reality Composer. The [fabrication](./Fabrication.md) writers send a single mesh to a printer, and the [vector exporters](./Export.md#vector-svg) send a flat frame to a plotter. This exporter is the three-dimensional counterpart of both.
 
 ```sh
-swift run --package-path Examples Example-3D-Geometry-Solids --export-usdz piece.usdz
+swift run --package-path Examples Example-3D-Geometry-SpatialExport --export-usdz piece.usdz
 ```
 
 That one command is the whole export. It opens no window and uses no GPU. The sketch runs headlessly up to the frame you name, and its 3D draw calls are collected into a model.

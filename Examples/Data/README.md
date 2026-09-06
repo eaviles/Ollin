@@ -13,6 +13,6 @@ These sketches draw from data. The first two read a file once in `setup()`, and 
 | [Quakes](Quakes/Sketch.swift) | a day of earthquakes read live and re-read again and again: the sketch rebuilds only when the answer changed, keeps the last good list through a failure, and writes what went wrong on the canvas |
 | [Edits](Edits/Sketch.swift) | edits to the world's encyclopedia drawn as rain: one connection held open with a `PushFeed`, one drop the moment somebody saves a page, sized by the bytes changed and colored by growth or removal |
 
-The data in the first two sketches is invented. Quakes reads live from the public feed of the United States Geological Survey. Copy how each sketch reads its data, not the numbers.
+The data in the first two sketches is invented. Quakes reads live from the public feed of the United States Geological Survey, and Edits from the Wikimedia Foundation's public stream of recent changes. Copy how each sketch reads its data, not the numbers.
 
-See [`Docs/Helpers/Data.md`](../../Docs/Helpers/Data.md) for `loadTable` and `loadJSON`, and [`Docs/Helpers/LiveData.md`](../../Docs/Helpers/LiveData.md) for `DataFeed`.
+See [`Docs/Helpers/Data.md`](../../Docs/Helpers/Data.md) for `loadTable` and `loadJSON`, and [`Docs/Helpers/LiveData.md`](../../Docs/Helpers/LiveData.md) for `DataFeed` and `PushFeed`.

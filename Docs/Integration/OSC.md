@@ -29,7 +29,7 @@ final class Wired: Sketch {
         // read a fader coming in, send the cursor out
         let level = in_.number("/fader1", default: 0)
         out.send("/cursor", .float(Float(mouseX / width)))
-        drawCircle(width / 2, height / 2, (40 + Double(level) * 300) * scale)
+        drawCircle(width / 2, height / 2, (40 + level * 300) * scale)
     }
 }
 ```
@@ -38,7 +38,7 @@ final class Wired: Sketch {
 
 - [OSCMessage & arguments](#oscmessage--arguments) - the value you send and receive
 - [OSCSender](#oscsender) - send messages and bundles
-- [OSCReceiver](#oscreceiver) - read incoming messages three ways
+- [OSCReceiver](#oscreceiver) - read incoming messages two ways, or bind an address to a parameter
 - [Binding to a `@Param`](#binding-to-a-param) - drive a parameter from an address
 - [Bundles & time tags](#bundles--time-tags) - group messages
 - [Testing without hardware](#testing-without-hardware) - loopback, monitors, and TouchOSC

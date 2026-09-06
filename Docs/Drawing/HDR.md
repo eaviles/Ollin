@@ -49,7 +49,7 @@ override func draw() {
 <a id="exposure"></a>
 ### exposure
 
-`exposure` scales the whole image *before* the tone map, like the brightness dial on a camera. Turn it up to bring faint accumulation into view. Turn it down when a scene saturates:
+`exposure` scales the whole image *before* the tone map, like the brightness dial on a camera. It defaults to 1 whichever curve you name, so `toneMap(.aces)` leaves the brightness where it was. Turn it up to bring faint accumulation into view. Turn it down when a scene saturates:
 
 ```swift
 toneMap(.aces, exposure: 2.0)   // brighter, more of the scene pushed up the curve
