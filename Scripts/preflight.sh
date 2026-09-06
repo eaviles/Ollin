@@ -159,7 +159,11 @@ fi
 # to every reader that could be fooled by it. Suspending instead of blocking is
 # exactly what let PushFeedTests hand its export to SessionRecorderTests and
 # fail it on CI (2026-09-01).
-parked=$(grep -rn 'DispatchSemaphore\|\.wait(' Tests/ 2>/dev/null \
+# `downloadBlocking` is the same park one call down: it waits on a semaphore for
+# a worker's task, which is right on the main thread (the export path) and wrong
+# in a test body (the other parked thread in every CI wedge sample, 2026-09-06).
+# A test wants the cache's `download(_:)`, which suspends instead.
+parked=$(grep -rn 'DispatchSemaphore\|\.wait(\|downloadBlocking(' Tests/ 2>/dev/null \
     | grep -v '^Tests/OllinTests/HeadlessFlagSupport.swift:')
 if [[ -n "$parked" ]]; then
     echo "preflight: a test parks a thread; hop with 'await MainActor.run' instead:" >&2

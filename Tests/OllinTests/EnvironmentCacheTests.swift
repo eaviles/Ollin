@@ -34,7 +34,12 @@ import os
         #expect(EnvironmentCache.displayName(for: URL(fileURLWithPath: "/tmp/not-a-hash-name.exr")) == "not-a-hash-name.exr")
     }
 
-    @Test func downloadFetchesOnceThenServesFromCache() throws {
+    // Both download tests go through the `async` form and suspend. The blocking
+    // form is for the export path's main thread; called from a test body it parks
+    // one of the pool's few workers, which is what put this suite in every sample
+    // of the CI wedge (2026-09-06), and preflight now refuses it under Tests/.
+
+    @Test func downloadFetchesOnceThenServesFromCache() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let cache = EnvironmentCache(cacheDirectory: dir)
@@ -47,21 +52,21 @@ import os
         cache.fetch = { _ in fetchCount.withLock { $0 += 1 }; return canned }
 
         #expect(cache.cachedFile(for: url) == nil)                 // not cached yet
-        let file = try #require(cache.downloadBlocking(url))       // downloads (mock)
+        let file = try #require(await cache.download(url))        // downloads (mock)
         #expect(FileManager.default.fileExists(atPath: file.path))
         #expect(try Data(contentsOf: file) == canned)             // the canned bytes landed
         #expect(cache.cachedFile(for: url) == file)               // now a cache hit
-        _ = cache.downloadBlocking(url)                           // second call
+        _ = await cache.download(url)                             // second call
         #expect(fetchCount.withLock { $0 } == 1)                  // served from cache, no second fetch
     }
 
-    @Test func downloadRejectsNonImageBodies() throws {
+    @Test func downloadRejectsNonImageBodies() async throws {
         let dir = tempDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let cache = EnvironmentCache(cacheDirectory: dir)
         let url = URL(string: "https://example.com/missing_4k.exr")!
         cache.fetch = { _ in Data("<html>404 not found</html>".utf8) }
-        #expect(cache.downloadBlocking(url) == nil)   // rejected...
+        #expect(await cache.download(url) == nil)     // rejected...
         #expect(cache.cachedFile(for: url) == nil)    // ...and nothing poisoned the cache
     }
 

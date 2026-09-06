@@ -2410,7 +2410,14 @@ The download cache is `EnvironmentCache`
 it; no network in CI). A `.remote(url:fallbackResource:)` source resolves in
 the renderer: cached goes straight to bake; export **blocks** on the download
 so exported art is always full-resolution; live kicks it off and shows the
-bundled-1K placeholder (or the neutral sky) until it lands. The fetch prints
+bundled-1K placeholder (or the neutral sky) until it lands. The blocking form
+(`downloadBlocking`) parks the calling thread on a semaphore until a worker's
+task lands the file, which is right on the export path's main thread and wrong
+anywhere `async`: from a test body it held one of the pool's few workers, and
+was the other parked thread in every sample of the 2026-09-06 CI wedge. An
+`async` caller uses `download(_:)`, which suspends instead; both forms and the
+live kick-off share one download body, and `Scripts/preflight.sh` refuses the
+blocking call under `Tests/`. The fetch prints
 throttled byte/percent progress and then a decoding note to the terminal, via a
 classic `URLSessionDownloadTask` on a delegate session, because the async
 `download(from:delegate:)` convenience does not deliver the `didWriteData`
