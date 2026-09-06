@@ -76,7 +76,7 @@ poster-3-yellow.png              3/3  Yellow  22% ink
 poster-preview.png               overprint preview
 ```
 
-Every file carries a white margin band. The band holds **registration targets** at the four corners and the layer's label along the bottom, both drawn in full ink on every layer. Each drum prints its own targets, so when the crosses stack cleanly on paper, the print is in register. `--no-marks` writes the bare canvas instead.
+Every file carries a white margin band, the composite preview included. The band holds **registration targets** at the four corners and the file's own label along the bottom, both drawn in full ink. The band extends the canvas, so the artwork is never drawn over. Each drum prints its own targets, so when the crosses stack cleanly on paper, the print is in register. `--no-marks` writes the bare canvas instead.
 
 The remaining flags control the details of the export. `--inks` overrides the declared set by catalog name. `--paper` tints the stock, as a hex value. `--screen dither|halftone` pre-screens the masters, and `--pitch` sets the halftone cell in pixels. `--seed` and `--render-quality` work as they do on every export path. Each PNG embeds the standard [reproduction recipe](Export.md) plus the ink list.
 

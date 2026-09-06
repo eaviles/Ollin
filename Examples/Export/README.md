@@ -4,7 +4,7 @@
 
 ## Export
 
-These examples get a sketch out of the window. They save the rendered frame as a raster image, and they serialize the draw calls behind that frame to vector paths for a pen plotter. See the [Export reference](../../Docs/Output/Export.md).
+These examples get a sketch out of the window, four ways. They save the rendered frame as a raster image. They serialize the draw calls behind that frame to vector paths for a pen plotter, with hatching where a fill has to become line work. They plan those paths as a G-code toolpath for a machine, and draw the plan so you can see the route first. They also record a run as it plays, picture and sound together. See the [Export reference](../../Docs/Output/Export.md).
 
 | Example | What it shows |
 |---|---|

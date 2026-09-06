@@ -267,7 +267,7 @@ let degree = melody.next() ?? 0
 synth.play(scale[degree])
 ```
 
-It works over any hashable type, so degrees, `Pitch`es, chord qualities, and step counts all fit.
+It works over any hashable type, so degrees, `Pitch`es, chord qualities, and step counts all fit. There is a one-line form too. `MarkovChain(learning:order:seed:loops:)` builds the chain and learns the sequence in one step, which is what the example at the end of this page uses.
 
 `order` is how far back it looks. At order 1, each element is chosen from what followed the one before it. At order 2, it looks at the last two elements, which tracks the source more closely and invents less. When it has never seen the current context, it falls back to a shorter one. If that fails too, it falls back to how often each element appeared at all, so it always has an answer.
 

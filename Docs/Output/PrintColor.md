@@ -90,7 +90,7 @@ plates.peakTotalInk                              // 2.89 means 289% ink at the h
 plates.averageTotalInk
 ```
 
-**Total area coverage** is the sum of all four ink coverages at one spot. A shop asks for that number, and a screen never shows it. 400% means every ink is solid on the same square millimeter. Sheet-fed presses accept around 300%, and newsprint's limit is closer to 240%. Ollin reports the number rather than enforcing it, because the fix is in the artwork. On *screened* plates the same figures count overlapping dots instead of continuous coverage, so read them from the unscreened separation.
+**Total area coverage** is the sum of every ink's coverage at one spot. A shop asks for that number, and a screen never shows it. Its ceiling is 100% per ink, so a four-ink press tops out at 400%, which is every ink solid on the same square millimeter. A profile with more inks tops out higher. Sheet-fed presses accept around 300%, and newsprint's limit is closer to 240%. Ollin reports the number rather than enforcing it, because the fix is in the artwork. On *screened* plates the same figures count overlapping dots instead of continuous coverage, so read them from the unscreened separation.
 
 The plates screen in the same way as the spot-ink masters, at the conventional four-color angles:
 
