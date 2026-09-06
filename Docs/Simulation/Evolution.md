@@ -160,7 +160,7 @@ That is the wheel-of-fortune method. A genome's share of the next generation's p
 <a id="genome"></a>
 ### Genomes
 
-A `Genome` is a list of numbers between 0 and 1 that your sketch reads as whatever it likes. Nothing in the genome knows what its numbers mean. That is what lets one be mutated and mated without the framework knowing what is being evolved.
+A `Genome` is a list of numbers between 0 and 1 that your sketch reads as whatever it likes. That range is `Population`'s alone. The GPU `Evolution` tier above holds steering impulses instead, and those run `-1...1`. Nothing in the genome knows what its numbers mean. That is what lets one be mutated and mated without the framework knowing what is being evolved.
 
 ```swift
 let radius = g.value(0, in: 20 ... 180)                   // a Double in a range

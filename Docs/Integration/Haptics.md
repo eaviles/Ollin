@@ -33,7 +33,7 @@ final class Bouncer: Sketch {
 - [Playing it](#playing-it) - `playHaptic`, the volume parameter, and stopping
 - [What is on the other end](#what-is-on-the-other-end) - an engine, a trackpad, or nothing
 - [How a pattern reaches a trackpad](#how-a-pattern-reaches-a-trackpad) - the plan, and the four rules in it
-- [What is not here yet](#what-is-not-here-yet) - rumble, and the phone
+- [What is not here yet](#what-is-not-here-yet) - rumble, and the iPhone and iPad
 
 <a name="writing-a-pattern"></a>
 
@@ -149,7 +149,7 @@ There are two kinds of hardware. The difference matters because it changes what 
 | A hum | felt as one sustained buzz | felt as a fast run of knocks |
 | A fade | follows the system envelope, so it arrives about right, but not to the millisecond | thins the run of knocks |
 
-A Mac today is the `.trackpad` case. Its Force Touch trackpad is reached through the window system, which offers three fixed feelings and one strength. The haptic engine reports that a Mac supports no haptic hardware. The trackpad also actuates only while the button is held. A knock asked for during a plain pointer move is accepted, but nobody feels it. So ask for touch inside a drag, as the ridges example does. `.engine` is the phone and pad case. The code for it is here and checked, and it waits on those platforms.
+A Mac today is the `.trackpad` case. Its Force Touch trackpad is reached through the window system, which offers three fixed feelings and one strength. The haptic engine reports that a Mac supports no haptic hardware. The trackpad also actuates only while the button is held. A knock asked for during a plain pointer move is accepted, but nobody feels it. So ask for touch inside a drag, as the ridges example does. `.engine` is the iPhone and iPad case. The code for it is here and checked, and it waits on those platforms.
 
 Read `hapticHardware` when a piece should play a different pattern on each kind. A piece built on strength alone feels flat on a trackpad, so give it fewer, crisper marks there instead.
 
@@ -178,5 +178,5 @@ The plan is a pure function of the pattern, so a sketch can draw it. [`HapticRid
 
 ### What is not here yet
 
-- **Rumble on a game controller.** A pad's motors are an output of the same kind. They belong here rather than with [reading the pad](Controller.md). They need hardware to write against.
-- **The phone and the pad.** Their engines play the `.engine` path above. That path is written and checked as far as it can be checked without one. It waits on those platforms rather than on this library.
+- **Rumble on a game controller.** A game controller's motors are an output of the same kind. They belong here rather than with [reading a game controller](Controller.md). They need hardware to write against.
+- **The iPhone and the iPad.** Their engines play the `.engine` path above. That path is written and checked as far as it can be checked without one. It waits on those platforms rather than on this library.

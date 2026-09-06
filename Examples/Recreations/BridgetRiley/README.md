@@ -11,7 +11,8 @@ The **"Fragments" (1965)** were her first prints. They are a series of black-and
 Learn more:
 
 - [Bridget Riley on Wikipedia](https://en.wikipedia.org/wiki/Bridget_Riley)
-- [*Untitled (Fragment 1)* from *Fragments*, 1965 (MoMA)](https://www.moma.org/collection/works/99701)
+- [*Untitled (Fragment 3)* from *Fragments*, 1965 (MoMA)](https://www.moma.org/collection/works/459901), the print recreated here
+- [The whole *Fragments* series, 1965 (MoMA)](https://www.moma.org/collection/works/series/467447)
 - [*Current*, 1964 (MoMA)](https://www.moma.org/collection/works/79547)
 
 ### Recreations here

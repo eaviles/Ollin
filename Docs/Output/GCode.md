@@ -30,7 +30,7 @@ GCode(.laser(power: 0.6, passes: 2), width: 150)       // 60% power, cut twice
 GCode(.mill(depth: 3, depthPerPass: 0.5), width: 150)  // six passes per path
 ```
 
-- **`.plotter`** lifts the pen between paths. By default it moves a Z axis, which most pen machines read as a virtual pen lift. A machine that drives its pen with a servo takes `.servo(up:down:)` instead. The two numbers are written as the spindle power word. A short pause follows, so the servo lands before the head moves.
+- **`.plotter`** lifts the pen between paths. By default it moves a Z axis, which most pen machines read as a virtual pen lift. A machine that drives its pen with a servo takes `.servo(up:down:)` instead. The two numbers are written as the S word, the same word a laser uses for power. A short pause follows, so the servo lands before the head moves.
 - **`.laser`** writes power as the S word, scaled by `powerScale` (1000 on most hobby controllers). Travels are rapids, and a laser controller fires only during feed moves, so the beam is off between paths without any extra command. `mode: .dynamic` scales power with the actual head speed, so corners do not scorch. `.constant` holds the power steady. `passes` repeats each path in place, which lets you cut through in several light passes.
 - **`.mill`** cuts `depth` millimeters into the stock, at most `depthPerPass` per lap. Travels happen at `safeHeight` above the stock. Plunges use `plungeFeed` and cuts use `feed`. A closed loop plunges deeper on each lap without retracting.
 
