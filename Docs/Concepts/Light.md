@@ -35,7 +35,7 @@ There is one deliberate exception. Ollin remaps the *coverage* of a thin stroke 
 
 ### Read next
 
-- [`HDR & tone-mapping`](../Drawing/HDR.md) - the float pipeline and the tone-map curves, with the looks they make.
+- [`HDR & tone mapping`](../Drawing/HDR.md) - the float pipeline and the tone-map curves, with the looks they make.
 - [`Color`](../Drawing/Color.md) - the `Color` type, OKLab mixing, ramps, palettes, and colormaps.
 - [`Wide gamut & HDR output`](../Drawing/ColorOutput.md) - P3 on screen, highlights past white, HDR video and stills.
 - [Guide, Chapter 2](../../Guide/02-Color.md) - color taught as a chapter, with the same idea in pictures.

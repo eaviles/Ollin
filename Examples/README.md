@@ -29,7 +29,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Patterns](Patterns/) | generative patterns: grids, tessellations, rule-based repetition |
 | [Physics](Physics/) | simulated motion (`import OllinPhysics`) |
 | [Randomness](Randomness/) | `random`, `noise`, and scatter |
-| [Rendering](Rendering/) | how the frame composites: blending, accumulation, HDR tone-mapping, sandpainting |
+| [Rendering](Rendering/) | how the frame composites: blending, accumulation, HDR tone mapping, sandpainting |
 | [Shaders](Shaders/) | writing your own GPU code: user shaders inline and from files, and fluent `Visual` chains |
 | [Shapes](Shapes/) | the shape-drawing vocabulary: primitives, stroke and hollow modes, booleans, and SDF combinators |
 | [Simulation](Simulation/) | systems evolving on the GPU: sim fields (`simField`), artificial life, particle fluids and soft bodies |

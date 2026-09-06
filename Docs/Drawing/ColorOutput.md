@@ -117,6 +117,6 @@ PNG is still the deeper file in one way. It writes 16 bits a channel where HEIC 
 
 ### See also
 
-- [`HDR & tone-mapping`](./HDR.md) - the float pipeline underneath, and the curves that map it down
+- [`HDR & tone mapping`](./HDR.md) - the float pipeline underneath, and the curves that map it down
 - [`Color`](./Color.md) - the `Color` type, the OKLab family, ramps and palettes
 - [`Export`](../Output/Export.md) - every export flag, and what each one writes

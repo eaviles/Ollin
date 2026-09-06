@@ -386,6 +386,6 @@ fill(Colormap.magma.color(at: t))
 fill(Colormap.viridis.color(cycling: time / 8))   // wrap instead of clamping
 ```
 
-`color(cycling:)` treats the map as a cycle. `t` wraps by whole laps instead of clamping, so a growing value, such as an angle or the clock, runs through the map forever. A [`Palette`](#palette)'s `color(at:)` already wraps this way. Most colormaps end nowhere near where they begin, so each lap still shows a seam at the wrap. For a seamless ring, use [`CosinePalette`](#cosinepalette).
+`color(cycling:)` treats the map as a cycle. `t` wraps by whole laps instead of clamping, so a growing value, such as an angle or the clock, runs through the map forever. A [`Palette`](#palette)'s integer subscript already wraps this way, though its `color(at:)` clamps. Most colormaps end nowhere near where they begin, so each lap still shows a seam at the wrap. For a seamless ring, use [`CosinePalette`](#cosinepalette).
 
 There are eight cases: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `rocket`, and `mako`. The `Colormaps` example shows all eight. The data origins (matplotlib, Google, seaborn) are credited under [Influences & attribution](../../ATTRIBUTION.md#color).

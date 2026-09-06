@@ -107,7 +107,7 @@ Everything the solid lit path does applies to a copy. That means `fill` and per-
 
 Copies also reach the ray-traced passes, whichever of the three forms placed them. They show in a ray-traced reflection. They cast a ray-traced point or area shadow, and they bounce light in global illumination. They are in the [path-traced export](../Output/PathTraced.md) too. In that export they shadow, mirror, and bleed color like the meshes they copy, with the finish of their own draw. Each copy carries its own placement and its own `color` there. A copy costs a matrix rather than a triangle list, so a field of copies is cheap to trace.
 
-A list hands its placements straight to the traced scene. The other two forms never hand a placement to the CPU at all. The compute-buffer form keeps its matrices in a buffer a kernel writes, and a field holds more copies than the CPU can read each frame. For both, the CPU reserves the slots, because it knows the count, and a kernel fills them from the same placements the draw reads.
+A list hands its placements straight to the traced scene. The compute-buffer form never hands one to the CPU at all, because its matrices live in a buffer a kernel writes. A field builds its placements on the CPU once, then culls them on the GPU, so the CPU never re-reads them per frame. For both, the CPU reserves the slots, because it knows the count, and a kernel fills them from the same placements the draw reads.
 
 Traced copies are not free in the way drawn copies are, because the traced scene is rebuilt every frame. Each copy in it costs roughly two microseconds of GPU time on an M2, whatever placed it. A few thousand copies is comfortable. A few hundred thousand would use the whole frame there, which is why a field carries a budget:
 
@@ -132,5 +132,5 @@ The following do not apply to a copy yet, by design. Each one arrives with a lat
 - Spatial export records the `[MeshInstance]` form as one mesh per placement, exactly like a loop of `drawMesh` calls. The GPU-buffer form cannot be exported, because the placements live on the GPU, and it says so once.
 - SVG export skips meshes entirely, instanced or not, because a shaded solid has no vector outline.
 - A `MeshField` exports spatially like a loop of `drawMesh` calls, because its placements stay on the CPU for exactly this purpose. The list above, of what does not apply to a copy yet, applies to fields too.
-- The [`InstancedMesh`](../../Examples/Rendering/InstancedMesh/Sketch.swift) example draws 12,000 pillars on a wave, with a parameter that switches between the instanced path and a per-copy `drawMesh` loop. The cost difference shows live in the inspector.
+- The [`InstancedMesh`](../../Examples/Rendering/InstancedMesh/Sketch.swift) example draws 12,400 pillars on a wave, with a parameter that switches between the instanced path and a per-copy `drawMesh` loop. The cost difference shows live in the inspector.
 - The [`MeshField`](../../Examples/Rendering/MeshField/Sketch.swift) example scatters 240,000 solids across a foggy plain and flies through them, with a parameter that turns the culling off. The picture stays the same, but the frame rate does not.

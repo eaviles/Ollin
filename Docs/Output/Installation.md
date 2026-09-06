@@ -28,6 +28,7 @@ Command-Q still quits, whatever the piece covers, because the menu bar is hidden
 | `restarts` | Whether a run that ends badly is started again. Off until you ask for it. See [getting back up on its own](#getting-back-up-on-its-own). |
 | `schedule` | The hours the piece is on screen, and the named parts of the day it can behave differently in. None until you ask for it. See [keeping hours](#keeping-hours). |
 | `projection` | How the picture is shaped to fit the surface it is projected onto, and how it fades into the picture from the machine beside it. See [fitting the wall](#fitting-the-wall). |
+| `displays` | Which displays this machine puts the piece on, and what each one carries. One display until you ask for more. See [several displays, one machine](#several-displays-one-machine). |
 
 To change any part, build an `Installation` by hand. Any value you build counts as running, and `.off` is the only value that does not.
 

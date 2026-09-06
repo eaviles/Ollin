@@ -194,4 +194,4 @@ and credits it in [`ATTRIBUTION.md`](../../ATTRIBUTION.md). The credit covers th
 
 See also [Effects](Effects.md) for the layer and combine substrate this is built on,
 [Measured distance fields](DistanceFields.md) for the field the rays march against, and
-[HDR & tone-mapping](HDR.md) for what happens to light brighter than white.
+[HDR & tone mapping](HDR.md) for what happens to light brighter than white.

@@ -42,6 +42,6 @@ Overlapping marks, transparency, and blend modes all work on the canvas directly
 ### Read next
 
 - [`Layered effects`](../Drawing/Effects.md) - the full surface: targets, the filter catalog, combines, generators, feedback, simulation fields, and `compose { }`.
-- [`HDR & tone-mapping`](../Drawing/HDR.md) - the linear-float space a layer holds its color in.
+- [`HDR & tone mapping`](../Drawing/HDR.md) - the linear-float space a layer holds its color in.
 - [The frame](./Frame.md) - why the canvas cannot be read while you draw.
 - [Guide, Chapter 16](../../Guide/16-LayersAndEffects.md) - layers and effects taught as a chapter.

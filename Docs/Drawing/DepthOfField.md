@@ -132,4 +132,4 @@ The `Rendering/DepthOfField` example is exactly that pipeline, over nine closed 
 
 ---
 
-#### <sup>[Accumulation](./Accumulation.md) · [HDR & tone-mapping](./HDR.md) · [Compute & GPU particles](../Shaders/Compute.md) · [3D](../3D/3D.md)</sup>
+#### <sup>[Accumulation](./Accumulation.md) · [HDR & tone mapping](./HDR.md) · [Compute & GPU particles](../Shaders/Compute.md) · [3D](../3D/3D.md)</sup>

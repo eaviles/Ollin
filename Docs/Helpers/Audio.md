@@ -157,6 +157,11 @@ var smoothing: Float                        // response damping, 0...1
 
 `spectrum` has `fftSize / 2` bins. Each bin spans `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but not normalized, so scale them as you like for drawing. You can also use [`bands`](#bands-and-beats) below, which does that shaping for you. `waveform` is a rolling window of the most recent `fftSize` samples, oldest first. That means a scope trace drawn from it stays continuous, no matter how the audio arrives in chunks. `smoothing` trades responsiveness for steadiness: 0 is raw and jittery, and a value near 1 is heavily damped. You can change it live.
 
+```swift
+let lows = tone.bass
+let kick = tone.magnitude(in: 40...120)     // a tighter band
+```
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/Anatomy-dark.jpg">
   <img src="../../Guide/Images/28-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
@@ -205,11 +210,6 @@ The whole beat surface runs on the *sample clock*, so positions are counted in s
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/BeatTimeline-dark.jpg">
   <img src="../../Guide/Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
 </picture>
-
-```swift
-let lows = tone.bass
-let kick = tone.magnitude(in: 40...120)     // a tighter band
-```
 
 <a name="audioanalyzer"></a>
 

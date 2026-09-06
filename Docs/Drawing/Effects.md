@@ -829,4 +829,4 @@ They interleave with `.post(_:)` in call order. An aside can carry filters of it
 
 ---
 
-#### <sup>[Drawing](../Drawing/Drawing.md) · [HDR & tone-mapping](../Drawing/HDR.md) · [Images](../Drawing/Images.md) · [Accumulation](../Drawing/Accumulation.md)</sup>
+#### <sup>[Drawing](../Drawing/Drawing.md) · [HDR & tone mapping](../Drawing/HDR.md) · [Images](../Drawing/Images.md) · [Accumulation](../Drawing/Accumulation.md)</sup>

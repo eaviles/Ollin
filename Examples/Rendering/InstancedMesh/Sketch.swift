@@ -1,10 +1,10 @@
 import Ollin
 
-/// A field of 12,000 pillars from ONE mesh and ONE draw call. Each copy is a
+/// A field of 12,400 pillars from ONE mesh and ONE draw call. Each copy is a
 /// `MeshInstance`: a position, a rotation, a scale, and a tint. The mesh's
 /// vertices upload once; the GPU places every copy, so the whole field costs
 /// about what a single box costs the CPU. The pillars ride a traveling wave
-/// (the instance list is rebuilt each frame, which is just 12,000 small
+/// (the instance list is rebuilt each frame, which is just 12,400 small
 /// structs), they shade like any solid mesh, and they drop real shadows onto
 /// the floor.
 ///
@@ -91,6 +91,6 @@ final class InstancedMesh: Sketch {
             }
         }
 
-        drawCaption("Instanced meshes: 12,000 pillars, one draw call")
+        drawCaption("Instanced meshes: 12,400 pillars, one draw call")
     }
 }

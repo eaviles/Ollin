@@ -1,8 +1,8 @@
-#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Drawing](./README.md) → `HDR & tone-mapping`</sup>
+#### <sup>[Ollin](../../README.md) → [Documentation](../README.md) → [Drawing](./README.md) → `HDR & tone mapping`</sup>
 
 ---
 
-## HDR & tone-mapping
+## HDR & tone mapping
 
 Ollin composites every frame in a **linear, high-precision floating-point** buffer, then maps it to the screen in a final pass. That gives you two things:
 

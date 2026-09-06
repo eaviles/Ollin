@@ -91,5 +91,5 @@ A [`symmetry(_:)`](./Drawing.md#symmetry) set inside the block folds the content
 
 - **Record in `setup()`.** The point of a batch is to make it once and keep it. Recording inside `draw()` works, but it repeats the recording every frame, which is the work the batch exists to avoid.
 - **The inspector's per-frame counts drop to zero** for retained content. Those counters show what the frame *records*, and a replayed batch records nothing, so the counters report the saving directly.
-- **A live layer freezes when recorded.** A `drawImage` of a live source records that texture as it stands when the batch is *drawn*. A render target's `.image` and a video frame both count as live sources. The recording does not repeat the per-frame layer work, so keep live layers outside it.
+- **A live layer is read when the batch is drawn, not when it is recorded.** A `drawImage` of a live source records a reference to it, so the replay shows that source as it stands at draw time. A render target's `.image` and a video frame both count as live sources. What the recording does not carry is the layer's own per-frame work, so keep that outside the batch.
 - **Variations and reload re-record on their own.** `setup()` runs again on a seed change or a live reload. The batches then rebuild with the new content, and the old GPU buffers are released with the old handles.
