@@ -19,7 +19,7 @@ enum SiteHero {
       var canvas = script ? script.previousElementSibling : null;
       while (canvas && canvas.tagName !== 'CANVAS') canvas = canvas.previousElementSibling;
       if (!canvas) return;
-      var D = {"accumulates":false,"axes":[{"base":0,"c":0,"cols":[[0,14,0,0,0,1],[0,44,0,0,1,1],[0,74,0,0,2,1],[0,104,0,0,3,1],[0,134,0,0,4,1],[0,164,0,0,5,1],[0,194,0,0,6,1],[0,224,0,0,7,1],[0,254,0,0,8,1],[0,284,0,0,9,1],[0,314,0,0,10,1],[0,344,0,0,11,1],[0,374,0,0,12,1],[0,404,0,0,13,1],[0,434,0,0,14,1],[0,464,0,0,15,1],[0,494,0,0,16,1],[0,524,0,0,17,1],[0,554,0,0,18,1],[0,584,0,0,19,1],[0,614,0,0,20,1],[0,644,0,0,21,1],[0,674,0,0,22,1],[0,704,0,0,23,1],[0,734,0,0,24,1],[0,764,0,0,25,1],[0,794,0,0,26,1],[0,824,0,0,27,1]],"name":"ink.red"},{"base":0,"c":0,"cols":[[0,15,0,0,28,1],[0,45,0,0,29,1],[0,75,0,0,30,1],[0,105,0,0,31,1],[0,135,0,0,32,1],[0,165,0,0,33,1],[0,195,0,0,34,1],[0,225,0,0,35,1],[0,255,0,0,36,1],[0,285,0,0,37,1],[0,315,0,0,38,1],[0,345,0,0,39,1],[0,375,0,0,40,1],[0,405,0,0,41,1],[0,435,0,0,42,1],[0,465,0,0,43,1],[0,495,0,0,44,1],[0,525,0,0,45,1],[0,555,0,0,46,1],[0,585,0,0,47,1],[0,615,0,0,48,1],[0,645,0,0,49,1],[0,675,0,0,50,1],[0,705,0,0,51,1],[0,735,0,0,52,1],[0,765,0,0,53,1],[0,795,0,0,54,1],[0,825,0,0,55,1]],"name":"ink.green"},{"base":0,"c":0,"cols":[[0,16,0,0,56,1],[0,46,0,0,57,1],[0,76,0,0,58,1],[0,106,0,0,59,1],[0,136,0,0,60,1],[0,166,0,0,61,1],[0,196,0,0,62,1],[0,226,0,0,63,1],[0,256,0,0,64,1],[0,286,0,0,65,1],[0,316,0,0,66,1],[0,346,0,0,67,1],[0,376,0,0,68,1],[0,406,0,0,69,1],[0,436,0,0,70,1],[0,466,0,0,71,1],[0,496,0,0,72,1],[0,526,0,0,73,1],[0,556,0,0,74,1],[0,586,0,0,75,1],[0,616,0,0,76,1],[0,646,0,0,77,1],[0,676,0,0,78,1],[0,706,0,0,79,1],[0,736,0,0,80,1],[0,766,0,0,81,1],[0,796,0,0,82,1],[0,826,0,0,83,1]],"name":"ink.blue"},{"base":1,"c":0,"cols":[[0,17,0,1,84,1],[0,47,0,1,88,1],[0,77,0,1,92,1],[0,107,0,1,96,1],[0,137,0,1,100,1],[0,167,0,1,104,1],[0,197,0,1,108,1],[0,227,0,1,112,1],[0,257,0,1,116,1],[0,287,0,1,120,1],[0,317,0,1,124,1],[0,347,0,1,128,1],[0,377,0,1,132,1],[0,407,0,1,136,1],[0,437,0,1,140,1],[0,467,0,1,144,1],[0,497,0,1,148,1],[0,527,0,1,152,1],[0,557,0,1,156,1],[0,587,0,1,160,1],[0,617,0,1,164,1],[0,647,0,1,168,1],[0,677,0,1,172,1],[0,707,0,1,176,1],[0,737,0,1,180,1],[0,767,0,1,184,1],[0,797,0,1,188,1],[0,827,0,1,192,1]],"name":"ink.alpha"},{"base":1,"c":1,"cols":[[2,0,1,0,196,1]],"name":"paper.red"},{"base":1,"c":1,"cols":[[2,1,1,0,197,1]],"name":"paper.green"},{"base":1,"c":1,"cols":[[2,2,1,0,198,1]],"name":"paper.blue"}],"clear":[1,1,1],"constants":{},"controls":[{"kind":"color","label":"Ink","name":"ink","parts":[{"axis":0,"hi":1,"lo":0,"name":"red","value":0},{"axis":1,"hi":1,"lo":0,"name":"green","value":0},{"axis":2,"hi":1,"lo":0,"name":"blue","value":0},{"axis":3,"hi":1,"lo":0,"name":"alpha","value":1}]},{"kind":"color","label":"Paper","name":"paper","parts":[{"axis":4,"hi":1,"lo":0,"name":"red","value":1},{"axis":5,"hi":1,"lo":0,"name":"green","value":1},{"axis":6,"hi":1,"lo":0,"name":"blue","value":1},{"axis":-1,"hi":1,"lo":0,"name":"alpha","value":1}]}],"count":28,"drive":[],"exposure":1,"fit":[[6,3],[7,3],[8,1],[9,1],[17,1],[36,3],[37,3],[38,1],[39,1],[47,1],[66,3],[67,3],[68,1],[69,1],[77,1],[96,3],[97,3],[98,1],[99,1],[107,1],[126,3],[127,3],[128,1],[129,1],[137,1],[156,3],[157,3],[158,1],[159,1],[167,1],[186,3],[187,3],[188,1],[189,1],[197,1],[216,3],[217,3],[218,1],[219,1],[227,1],[246,3],[247,3],[248,1],[249,1],[257,1],[276,3],[277,3],[278,1],[279,1],[287,1],[306,3],[307,3],[308,1],[309,1],[317,1],[336,3],[337,3],[338,1],[339,1],[347,1],[366,3],[367,3],[368,1],[369,1],[377,1],[396,3],[397,3],[398,1],[399,1],[407,1],[426,3],[427,3],[428,1],[429,1],[437,1],[456,3],[457,3],[458,1],[459,1],[467,1],[486,3],[487,3],[488,1],[489,1],[497,1],[516,3],[517,3],[518,1],[519,1],[527,1],[546,3],[547,3],[548,1],[549,1],[557,1],[576,3],[577,3],[578,1],[579,1],[587,1],[606,3],[607,3],[608,1],[609,1],[617,1],[636,3],[637,3],[638,1],[639,1],[647,1],[666,3],[667,3],[668,1],[669,1],[677,1],[696,3],[697,3],[698,1],[699,1],[707,1],[726,3],[727,3],[728,1],[729,1],[737,1],[756,3],[757,3],[758,1],[759,1],[767,1],[786,3],[787,3],[788,1],[789,1],[797,1],[816,3],[817,3],[818,1],[819,1],[827,1]],"formulas":[],"frameOffset":0,"frames":1800,"graph":{"canvas":[["s",0,28,0]],"fields":0,"groups":0,"instances":28,"layers":[],"nodes":0,"nodes3d":0,"params":0,"post":[],"quads":0,"vertices":0},"height":1080,"loops":true,"mouse":[0,0],"msaa":false,"rate":30,"recipe":"{\"tool\":\"Ollin\",\"seed\":1,\"params\":{\"ink\":[0,0,0,1],\"paper\":[1,1,1,1]},\"frame\":0,\"fps\":30}","stable":true,"stateful":false,"tone":0,"vranges":[0,0,0,0,0,0,0,0,0,0],"width":1080};
+      var D = {"accumulates":false,"axes":[{"base":0,"c":0,"cols":[[0,14,0,0,0,1],[0,44,0,0,1,1],[0,74,0,0,2,1],[0,104,0,0,3,1],[0,134,0,0,4,1],[0,164,0,0,5,1],[0,194,0,0,6,1],[0,224,0,0,7,1],[0,254,0,0,8,1],[0,284,0,0,9,1],[0,314,0,0,10,1],[0,344,0,0,11,1],[0,374,0,0,12,1],[0,404,0,0,13,1],[0,434,0,0,14,1],[0,464,0,0,15,1],[0,494,0,0,16,1],[0,524,0,0,17,1],[0,554,0,0,18,1],[0,584,0,0,19,1],[0,614,0,0,20,1],[0,644,0,0,21,1],[0,674,0,0,22,1],[0,704,0,0,23,1],[0,734,0,0,24,1],[0,764,0,0,25,1],[0,794,0,0,26,1],[0,824,0,0,27,1]],"name":"ink.red"},{"base":0,"c":0,"cols":[[0,15,0,0,28,1],[0,45,0,0,29,1],[0,75,0,0,30,1],[0,105,0,0,31,1],[0,135,0,0,32,1],[0,165,0,0,33,1],[0,195,0,0,34,1],[0,225,0,0,35,1],[0,255,0,0,36,1],[0,285,0,0,37,1],[0,315,0,0,38,1],[0,345,0,0,39,1],[0,375,0,0,40,1],[0,405,0,0,41,1],[0,435,0,0,42,1],[0,465,0,0,43,1],[0,495,0,0,44,1],[0,525,0,0,45,1],[0,555,0,0,46,1],[0,585,0,0,47,1],[0,615,0,0,48,1],[0,645,0,0,49,1],[0,675,0,0,50,1],[0,705,0,0,51,1],[0,735,0,0,52,1],[0,765,0,0,53,1],[0,795,0,0,54,1],[0,825,0,0,55,1]],"name":"ink.green"},{"base":0,"c":0,"cols":[[0,16,0,0,56,1],[0,46,0,0,57,1],[0,76,0,0,58,1],[0,106,0,0,59,1],[0,136,0,0,60,1],[0,166,0,0,61,1],[0,196,0,0,62,1],[0,226,0,0,63,1],[0,256,0,0,64,1],[0,286,0,0,65,1],[0,316,0,0,66,1],[0,346,0,0,67,1],[0,376,0,0,68,1],[0,406,0,0,69,1],[0,436,0,0,70,1],[0,466,0,0,71,1],[0,496,0,0,72,1],[0,526,0,0,73,1],[0,556,0,0,74,1],[0,586,0,0,75,1],[0,616,0,0,76,1],[0,646,0,0,77,1],[0,676,0,0,78,1],[0,706,0,0,79,1],[0,736,0,0,80,1],[0,766,0,0,81,1],[0,796,0,0,82,1],[0,826,0,0,83,1]],"name":"ink.blue"},{"base":1,"c":0,"cols":[[0,17,0,1,84,1],[0,47,0,1,88,1],[0,77,0,1,92,1],[0,107,0,1,96,1],[0,137,0,1,100,1],[0,167,0,1,104,1],[0,197,0,1,108,1],[0,227,0,1,112,1],[0,257,0,1,116,1],[0,287,0,1,120,1],[0,317,0,1,124,1],[0,347,0,1,128,1],[0,377,0,1,132,1],[0,407,0,1,136,1],[0,437,0,1,140,1],[0,467,0,1,144,1],[0,497,0,1,148,1],[0,527,0,1,152,1],[0,557,0,1,156,1],[0,587,0,1,160,1],[0,617,0,1,164,1],[0,647,0,1,168,1],[0,677,0,1,172,1],[0,707,0,1,176,1],[0,737,0,1,180,1],[0,767,0,1,184,1],[0,797,0,1,188,1],[0,827,0,1,192,1]],"name":"ink.alpha"},{"base":1,"c":1,"cols":[[2,0,1,0,196,1]],"name":"paper.red"},{"base":1,"c":1,"cols":[[2,1,1,0,197,1]],"name":"paper.green"},{"base":1,"c":1,"cols":[[2,2,1,0,198,1]],"name":"paper.blue"}],"clear":[1,1,1],"constants":{},"controls":[{"kind":"color","label":"Ink","name":"ink","parts":[{"axis":0,"hi":1,"lo":0,"name":"red","value":0},{"axis":1,"hi":1,"lo":0,"name":"green","value":0},{"axis":2,"hi":1,"lo":0,"name":"blue","value":0},{"axis":3,"hi":1,"lo":0,"name":"alpha","value":1}]},{"kind":"color","label":"Paper","name":"paper","parts":[{"axis":4,"hi":1,"lo":0,"name":"red","value":1},{"axis":5,"hi":1,"lo":0,"name":"green","value":1},{"axis":6,"hi":1,"lo":0,"name":"blue","value":1},{"axis":-1,"hi":1,"lo":0,"name":"alpha","value":1}]}],"count":28,"drive":[],"exposure":1,"fit":[[6,3],[7,3],[8,1],[9,1],[17,1],[36,3],[37,3],[38,1],[39,1],[47,1],[66,3],[67,3],[68,1],[69,1],[77,1],[96,3],[97,3],[98,1],[99,1],[107,1],[126,3],[127,3],[128,1],[129,1],[137,1],[156,3],[157,3],[158,1],[159,1],[167,1],[186,3],[187,3],[188,1],[189,1],[197,1],[216,3],[217,3],[218,1],[219,1],[227,1],[246,3],[247,3],[248,1],[249,1],[257,1],[276,3],[277,3],[278,1],[279,1],[287,1],[306,3],[307,3],[308,1],[309,1],[317,1],[336,3],[337,3],[338,1],[339,1],[347,1],[366,3],[367,3],[368,1],[369,1],[377,1],[396,3],[397,3],[398,1],[399,1],[407,1],[426,3],[427,3],[428,1],[429,1],[437,1],[456,3],[457,3],[458,1],[459,1],[467,1],[486,3],[487,3],[488,1],[489,1],[497,1],[516,3],[517,3],[518,1],[519,1],[527,1],[546,3],[547,3],[548,1],[549,1],[557,1],[576,3],[577,3],[578,1],[579,1],[587,1],[606,3],[607,3],[608,1],[609,1],[617,1],[636,3],[637,3],[638,1],[639,1],[647,1],[666,3],[667,3],[668,1],[669,1],[677,1],[696,3],[697,3],[698,1],[699,1],[707,1],[726,3],[727,3],[728,1],[729,1],[737,1],[756,3],[757,3],[758,1],[759,1],[767,1],[786,3],[787,3],[788,1],[789,1],[797,1],[816,3],[817,3],[818,1],[819,1],[827,1]],"formulas":[],"frameOffset":0,"frames":1800,"graph":{"canvas":[["s",0,28,0]],"fields":0,"groups":0,"instances":28,"layers":[],"nodes":0,"nodes3d":0,"params":0,"post":[],"quads":0,"sources":0,"vertices":0},"height":1080,"loops":true,"mouse":[0,0],"msaa":false,"rate":30,"recipe":"{\"tool\":\"Ollin\",\"seed\":1,\"params\":{\"ink\":[0,0,0,1],\"paper\":[1,1,1,1]},\"frame\":0,\"fps\":30}","stable":true,"stateful":false,"tone":0,"vranges":[0,0,0,0,0,0,0,0,0,0],"width":1080};
       var STREAM = "";
       var BASE = "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";
       var VBASE = "";
@@ -55,6 +55,13 @@ enum SiteHero {
       var ATLASES = [];
       var STRIP = [0, 256, ""];
       var BRDF = [0, ""];
+      // The expander (empty unless the track carries strokes or fills as
+      // points) is the framework's own stroke and fill expander compiled to
+      // WebAssembly. It includes libtess2 by Mikko Mononen, derived from the
+      // SGI OpenGL Sample Implementation: Copyright (C) [dates of first
+      // publication] Silicon Graphics, Inc., under the SGI Free Software
+      // License B, Version 2.0 (http://oss.sgi.com/projects/FreeB/).
+      var EXPANDER = "";
       var Fx = {
       T: function (x) { return x === x && x !== 0; },
       M: function (a, b) { return b === 0 ? NaN : a - b * Math.floor(a / b); },
@@ -496,6 +503,33 @@ enum SiteHero {
           gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
         }));
       });
+      // The stroke and fill expander, when the track carries strokes or fills
+      // as their points: the framework's own expander compiled to
+      // WebAssembly, instantiated once; a source item hands it the records and
+      // draws what comes back. It asks the system for nothing but a random
+      // seed, which it never reads. The module is small, so it is compiled
+      // synchronously and the first frame never waits on it (a pending
+      // compile holds nothing, so a page dumped at its load event could show
+      // its strokes missing); a browser that refuses a synchronous compile
+      // gets the asynchronous one, and the first frame waits.
+      var expander = null;
+      if (EXPANDER && typeof WebAssembly !== 'undefined') {
+        var wasi = { random_get: function () { return 0; } };
+        var wasiProxy = typeof Proxy === 'function'
+          ? new Proxy(wasi, { get: function (t, p) { return t[p] || function () { return 0; }; } }) : wasi;
+        var imports = { wasi_snapshot_preview1: wasiProxy };
+        var adopt = function (instance) {
+          var x = instance.exports;
+          if (x._initialize) x._initialize();
+          expander = { memory: x.memory, input: x.ollin_input, expand: x.ollin_expand, output: x.ollin_output };
+        };
+        var module = bytes(EXPANDER).buffer;
+        try {
+          adopt(new WebAssembly.Instance(new WebAssembly.Module(module), imports));
+        } catch (e) {
+          pending.push(WebAssembly.instantiate(module, imports).then(function (r) { adopt(r.instance); }));
+        }
+      }
       // The lookup strips, uploaded once.
       var tables = TABLES.map(function (t) {
         var tex = gl.createTexture();
@@ -660,7 +694,8 @@ enum SiteHero {
       function nodeOffset(g) { return groupOffset(g) + (g.groups || 0) * G; }
       function fieldOffset(g) { return nodeOffset(g) + (g.nodes || 0) * NF; }
       function node3DOffset(g) { return fieldOffset(g) + (g.fields || 0) * FF; }
-      function vertexOffset(g) { return node3DOffset(g) + (g.nodes3d || 0) * N3; }
+      function sourceOffset(g) { return node3DOffset(g) + (g.nodes3d || 0) * N3; }
+      function vertexOffset(g) { return sourceOffset(g) + (g.sources || 0); }
       function paramOffset(g) { return vertexOffset(g) + g.vertices * V; }
       // The scene block of frame `index`, moved `fraction` of the way to the
       // next (the camera and the lights slide between records), or null.
@@ -731,16 +766,17 @@ enum SiteHero {
         // Every frame its own record: the shapes, quads, and vertices as 16-bit
         // samples by field, the parameter rows as floats.
         var g = graphOf(index);
-        var si = D.offsets[u], pi = D.positionOffsets[u], vo2 = vertexOffset(g), count = paramOffset(g);
+        var si = D.offsets[u], pi = D.positionOffsets[u], so2 = sourceOffset(g), vo2 = vertexOffset(g), count = paramOffset(g);
         var go = groupOffset(g), no = nodeOffset(g), fo = fieldOffset(g), n3o = node3DOffset(g);
         for (var k = 0; k < count; k++) {
-          if (k >= vo2 && (k - vo2) % V < P) { scratch[k] = vertexPositions[pi++]; continue; }
+          // A stroke or a fill as its points, and a vertex's position, travel exact.
+          if ((k >= so2 && k < vo2) || (k >= vo2 && (k - vo2) % V < P)) { scratch[k] = vertexPositions[pi++]; continue; }
           var c;
           if (k < go) c = k < g.instances * F ? (k % F) : F + (k - g.instances * F) % Q;
           else if (k < no) c = F + Q + (k - go) % G;
           else if (k < fo) c = F + Q + G + (k - no) % NF;
           else if (k < n3o) c = F + Q + G + NF + (k - fo) % FF;
-          else if (k < vo2) c = F + Q + G + NF + FF + (k - n3o) % N3;
+          else if (k < so2) c = F + Q + G + NF + FF + (k - n3o) % N3;
           else c = F + Q + G + NF + FF + N3 + (k - vo2) % V;
           scratch[k] = lows[c] + stream[si++] * scales[c];
         }
@@ -794,6 +830,66 @@ enum SiteHero {
         gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(vo + start * V, vo + (start + count) * V), gl.DYNAMIC_DRAW);
         gl.drawArrays(gl.TRIANGLES, 0, count);
         gl.bindVertexArray(null);
+      }
+      // The strokes (`isFringe`) or fills an item carries as their points: the
+      // records at `item[1]` of the source region, `item[2]` floats of them,
+      // expanded by the expander into the vertices the Mac drew and kept per
+      // item until the records move, so a still expands once and a moving
+      // drawing once a frame. Nothing draws until the expander has loaded.
+      var sourceCache = new Map(), drawTick = 0;
+      function drawSources(item, isFringe, blend, w, h, so, flip) {
+        if (!expander) return;
+        var start = item[1], floats = item[2];
+        var src = scratch.subarray(so + start, so + start + floats);
+        var entry = sourceCache.get(item);
+        if (entry) entry.tick = drawTick;
+        var same = !!entry && entry.floats.length === floats;
+        if (same) { for (var i = 0; i < floats; i++) { if (entry.floats[i] !== src[i]) { same = false; break; } } }
+        if (!same) {
+          if (!entry) {
+            entry = { floats: new Float32Array(floats), buffer: gl.createBuffer(), vao: gl.createVertexArray(), count: 0, tick: drawTick };
+            gl.bindVertexArray(entry.vao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+            for (var t = 0; t < tlayout.length; t++) {
+              gl.enableVertexAttribArray(t);
+              gl.vertexAttribPointer(t, tlayout[t][0], gl.FLOAT, false, V * 4, tlayout[t][1]);
+            }
+            gl.bindVertexArray(null);
+            sourceCache.set(item, entry);
+          }
+          if (entry.floats.length !== floats) entry.floats = new Float32Array(floats);
+          entry.floats.set(src);
+          var ptr = expander.input(floats);
+          new Float32Array(expander.memory.buffer, ptr, floats).set(src);
+          var count = expander.expand(floats);
+          if (count < 0) { entry.count = 0; return; }
+          var out = new Float32Array(expander.memory.buffer, expander.output(), count * V);
+          gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+          gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+          entry.count = count;
+        }
+        if (!entry.count) return;
+        var e = triangleProgram(isFringe);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        setBlend(blend, true);
+        gl.bindVertexArray(entry.vao);
+        gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+        gl.bindVertexArray(null);
+      }
+      // An item's vertices stay for as long as the item is drawn: a stable
+      // cast's items recur every frame and keep theirs, a changing cast's are
+      // let go once the frame has moved past them, so a long recording holds
+      // one frame's expansion at a time rather than every frame's.
+      function sweepSources() {
+        sourceCache.forEach(function (entry, item) {
+          if (entry.tick === drawTick) return;
+          gl.deleteBuffer(entry.buffer);
+          gl.deleteVertexArray(entry.vao);
+          sourceCache.delete(item);
+        });
+        drawTick++;
       }
       // `count` textured quads from quad `quad`: a layer's (its rows turned
       // over, premultiplied), a picture's (as uploaded, premultiplied), or the
@@ -940,11 +1036,12 @@ enum SiteHero {
         gl.viewport(0, 0, surface.w, surface.h);
         if (clear && clear.length) { gl.clearColor(clear[0], clear[1], clear[2], clear.length > 3 ? clear[3] : 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
         if (sc) { gl.depthMask(true); gl.clear(gl.DEPTH_BUFFER_BIT); }
-        var vo = vertexOffset(g), flip = ms ? -1 : 1, reduced = false;
+        var vo = vertexOffset(g), so = sourceOffset(g), flip = ms ? -1 : 1, reduced = false;
         for (var i = 0; i < items.length; i++) {
           var item = items[i];
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
+          if (item[0] === 'x') { drawSources(item, item[4] === 1, item[5] || 0, w, h, so, flip); continue; }
           if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
           if (item[0] === 'f') {
             if (!sc) continue;
@@ -1122,6 +1219,7 @@ enum SiteHero {
         gl.uniform1f(pExposure, exposureAt(index, fraction));
         gl.uniform1i(pToneMap, toneOf(index));
         gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (sourceCache.size) sweepSources();
       }
 
       var player = { canvas: canvas, frames: D.frames, rate: D.rate, duration: D.frames / D.rate,

@@ -417,6 +417,8 @@ extension OllinApp {
                                           skip: Int, settings: [(name: String, part: String, value: Double, isBoolean: Bool)]) throws -> [WebFrame] {
         let probe = remake()
         probe.setCanvasSize(width: Double(width), height: Double(height))
+        probe.drawer.recordsWebSources = true
+        defer { probe.drawer.recordsWebSources = false }
         probe.runSetup()
         var handles: [String: ParamHandle] = [:]
         for handle in probe.parameters() where handles[handle.name] == nil { handles[handle.name] = handle }

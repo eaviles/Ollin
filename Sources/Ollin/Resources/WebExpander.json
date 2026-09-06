@@ -1,0 +1,6 @@
+{
+  "toolchain": "Apple Swift version 6.3.3 (swift-6.3.3-RELEASE)",
+  "sdk": "swift-6.3.3-RELEASE_wasm-embedded",
+  "sources": "e9567c5862395f2d1a076d7929a5d59301c601aef08f24349ce52e2e823e12d3",
+  "bytes": 72622
+}

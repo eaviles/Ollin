@@ -377,6 +377,17 @@ let package = Package(
             exclude: ["LICENSE.txt", "README.md"],
             publicHeadersPath: "Include"
         ),
+        // The stroke and fill expander the renderer and the web page share: the
+        // fringe expander's geometry, the convex fan, the tessellator's glue,
+        // and the record a stroke or a fill travels in on the page. Plain Swift
+        // over the C tessellator with nothing from Foundation, because the same
+        // files compile to WebAssembly as the page's player part
+        // (Scripts/build-web-expander.sh), which is what lets a stroke cross as
+        // its points and still land where the Mac put it.
+        .target(
+            name: "OllinExpander",
+            dependencies: ["CLibtess2"]
+        ),
         // Vendored Hosek-Wilkie analytic sky model (RGB path): Lukas Hosek and
         // Alexander Wilkie's coefficient dataset + configuration code, the model
         // behind the procedural-sky environment (`Environment.sky`). Bundled
@@ -748,7 +759,9 @@ let package = Package(
                            "CSpectralData",
                            // The web export cuts the page's shaders from the framework's
                            // own Metal text through the Metal-to-GLSL rewriter.
-                           "OllinShaderText"],
+                           "OllinShaderText",
+                           // The stroke and fill expander, shared with the web page.
+                           "OllinExpander"],
             // Declaring the `.metal` files as resources makes SwiftPM copy them
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary reads and concatenates (ShaderCore
@@ -803,7 +816,13 @@ let package = Package(
                 // PIZ so ImageIO decodes them). CC0; per-file provenance + credits in the
                 // resource LICENSE file and THIRD-PARTY-NOTICES.md.
                 .copy("Resources/Environments"),
-                .copy("Resources/LTC")
+                .copy("Resources/LTC"),
+                // The stroke and fill expander compiled to WebAssembly, the
+                // player part a web page carries when its strokes and fills
+                // travel as points, with the manifest naming the toolchain and
+                // the sources it was built from (Scripts/build-web-expander.sh).
+                .copy("Resources/WebExpander.wasm"),
+                .copy("Resources/WebExpander.json")
             ]
         ),
         // The runnable example sketches are their own package, in Examples/.
@@ -821,7 +840,7 @@ let package = Package(
         .testTarget(
             name: "OllinTests",
             dependencies: ["Ollin", "COllinShaders", "OllinProjects", "OllinSceneImport",
-                           "OllinShaderText", "OllinWebGate"],
+                           "OllinShaderText", "OllinWebGate", "OllinExpander"],
             resources: [.copy("References")]
         ),
         // DSP correctness for the audio analyzer: feed synthesized signals and

@@ -1,4 +1,5 @@
 import Foundation
+import OllinExpander
 import simd
 import COllinShaders
 
@@ -21,15 +22,22 @@ struct WebGraph: Hashable {
     /// composed 2D fields of `WebGroup.floats` over `nodeCount` instructions of
     /// `WebNode.floats`, then `fieldCount` raymarched 3D fields of
     /// `WebField.floats` over `node3DCount` instructions of `WebNode3D.floats`,
-    /// then `vertexCount` triangle vertices of `WebVertex.floats` (last among
-    /// the records, since the track carries their positions apart), then
-    /// `paramFloats`.
+    /// then `sourceFloats` of strokes and fills as their points
+    /// (`WebSourceLayout` records, back to back), then `vertexCount` triangle
+    /// vertices of `WebVertex.floats` (last among the records, since the track
+    /// carries their positions apart), then `paramFloats`.
     var instanceCount: Int
     var quadCount: Int
     var groupCount: Int = 0
     var nodeCount: Int = 0
     var fieldCount: Int = 0
     var node3DCount: Int = 0
+    var sourceFloats: Int = 0
+    /// The columns of the source region that name a record's shape rather
+    /// than its motion (its kind, its flags, its count, a fill's contour
+    /// lengths), relative to the region; part of the graph, so two frames
+    /// whose records are laid out differently are two casts.
+    var sourceStructure: [Int] = []
     var vertexCount: Int
     var paramFloats: Int
 
@@ -39,11 +47,36 @@ struct WebGraph: Hashable {
     var nodeOffset: Int { groupOffset + groupCount * WebGroup.floats }
     var fieldOffset: Int { nodeOffset + nodeCount * WebNode.floats }
     var node3DOffset: Int { fieldOffset + fieldCount * WebField.floats }
-    var vertexOffset: Int { node3DOffset + node3DCount * WebNode3D.floats }
+    var sourceOffset: Int { node3DOffset + node3DCount * WebNode3D.floats }
+    var vertexOffset: Int { sourceOffset + sourceFloats }
     var paramOffset: Int { vertexOffset + vertexCount * WebVertex.floats }
 
-    /// Whether any surface draws triangles this frame.
-    var hasTriangles: Bool { draws { if case .triangles = $0 { return true } else { return false } } }
+    /// Whether any surface draws triangles this frame, as vertices or as the
+    /// points the page expands.
+    var hasTriangles: Bool {
+        draws { item in
+            switch item {
+            case .triangles, .sources: return true
+            default: return false
+            }
+        }
+    }
+
+    /// How many strokes and fills the frame carries as their points.
+    var sourceCount: Int {
+        var n = 0
+        func count(_ items: [WebDrawItem]) {
+            for item in items { if case let .sources(_, _, c, _, _) = item { n += c } }
+        }
+        count(canvas)
+        for layer in layers {
+            switch layer.kind {
+            case let .geometry(_, items), let .feedback(_, items), let .sim(_, _, items): count(items)
+            default: break
+            }
+        }
+        return n
+    }
 
     /// Whether the canvas marches a 3D field this frame, so the page keeps a
     /// depth buffer on it (the fields occlude one another through it, as the
@@ -68,6 +101,7 @@ struct WebGraph: Hashable {
         for i in 0 ..< node3DCount {
             for c in WebNode3D.structuralColumns { columns.append(node3DOffset + i * WebNode3D.floats + c) }
         }
+        for c in sourceStructure { columns.append(sourceOffset + c) }
         return columns
     }
 
@@ -79,7 +113,7 @@ struct WebGraph: Hashable {
     var needsMultisampling: Bool {
         draws { item in
             switch item {
-            case .triangles, .image: return true
+            case .triangles, .sources, .image: return true
             default: return false
             }
         }
@@ -147,6 +181,10 @@ enum WebDrawItem: Hashable {
     /// fill's triangles, or, with `fringe`, a stroke's edge-expanded bands with
     /// the AA coverage riding each vertex; under a blend mode.
     case triangles(start: Int, count: Int, fringe: Bool, blend: Int)
+    /// `count` strokes (`fringe`) or fills as their points and styles: the
+    /// records at float `start` of the source region, `floats` long, which
+    /// the page expands into the vertices the Mac drew.
+    case sources(start: Int, floats: Int, count: Int, fringe: Bool, blend: Int)
     /// A layer or a picture composited as `count` textured quads (six vertices
     /// each, from quad `quad`; more than one when symmetry replicated the
     /// draw), under a blend mode (`WebBlend`).
@@ -498,6 +536,7 @@ final class WebGraphRecorder {
         var nodes3D: [Float] = []
         var vertexCount = 0
         var vertices: [Float] = []
+        var sources: [Float] = []
         var params: [Float] = []
 
         // The layers, in the order the renderer fills them: generators, drawn
@@ -602,6 +641,62 @@ final class WebGraphRecorder {
             WebField.append(f, nodeStart: local, fillRow: fillRow, into: &fields)
             fieldCount += 1
         }
+        /// Appends the vertices `[from, to)` of `list`, placed by `transform`,
+        /// as a vertex item, or nothing for an empty run.
+        func appendVertices(_ list: [OllinVertex], from: Int, to: Int, transform: matrix_float3x3?,
+                            fringe: Bool, blend: Int) -> WebDrawItem? {
+            guard to > from else { return nil }
+            let start = vertexCount
+            for vertex in list[from ..< to] {
+                var placed = vertex
+                if let t = transform {
+                    let p = t * SIMD3<Float>(vertex.position.x, vertex.position.y, 1)
+                    placed.position = SIMD2<Float>(p.x, p.y)
+                }
+                WebVertex.append(placed, into: &vertices)
+                vertexCount += 1
+            }
+            return .triangles(start: start, count: vertexCount - start, fringe: fringe, blend: blend)
+        }
+        /// The items of one triangle or fringe run `[from, to)` over `list`:
+        /// the strokes and fills the drawer kept as their points (`recorded`,
+        /// in vertex order) travel as source records, consecutive ones in one
+        /// item, and whatever between them was expanded by a path that keeps
+        /// no source (a glyph's outline, a fill under a gradient) travels as
+        /// its vertices, in the order it was drawn.
+        func appendRun(_ list: [OllinVertex], from: Int, to: Int, recorded: [WebSource],
+                       transform: matrix_float3x3?, fringe: Bool, blend: Int, into items: inout [WebDrawItem]) {
+            // The first record inside the run, by binary search on the sorted starts.
+            var lo = 0, hi = recorded.count
+            while lo < hi {
+                let mid = (lo + hi) / 2
+                if recorded[mid].vertexRange.lowerBound < from { lo = mid + 1 } else { hi = mid }
+            }
+            var at = from
+            var index = lo
+            while index < recorded.count, recorded[index].vertexRange.lowerBound < to {
+                let source = recorded[index]
+                index += 1
+                let range = source.vertexRange
+                guard range.lowerBound >= at, range.upperBound <= to, !range.isEmpty else { continue }
+                if let item = appendVertices(list, from: at, to: range.lowerBound, transform: transform,
+                                             fringe: fringe, blend: blend) {
+                    items.append(item)
+                }
+                let offset = sources.count
+                source.encode(into: &sources, under: transform)
+                if case let .sources(start, floats, count, f, b)? = items.last, f == fringe, b == blend, start + floats == offset {
+                    items[items.count - 1] = .sources(start: start, floats: sources.count - start, count: count + 1,
+                                                      fringe: fringe, blend: blend)
+                } else {
+                    items.append(.sources(start: offset, floats: sources.count - offset, count: 1, fringe: fringe, blend: blend))
+                }
+                at = range.upperBound
+            }
+            if let item = appendVertices(list, from: at, to: to, transform: transform, fringe: fringe, blend: blend) {
+                items.append(item)
+            }
+        }
         func items(for surface: RenderTarget?) throws -> [WebDrawItem] {
             var items: [WebDrawItem] = []
             for (i, batch) in batches.enumerated() where batch.target === surface {
@@ -618,18 +713,12 @@ final class WebGraphRecorder {
                     }
                     if instanceCount > start { items.append(.shapes(start: start, count: instanceCount - start, blend: blend)) }
                 case .triangles, .fringe:
-                    // A fill's triangles or a stroke's fringe bands: the run the
-                    // renderer would draw, vertex for vertex.
+                    // A fill's triangles or a stroke's fringe bands: the strokes
+                    // and fills as their points where the drawer kept them, the
+                    // rest of the run vertex for vertex.
                     let end = nextStart(i, \.vertexStart, end: drawer.vertices.count)
-                    let start = vertexCount
-                    for vertex in drawer.vertices[batch.vertexStart ..< end] {
-                        WebVertex.append(vertex, into: &vertices)
-                        vertexCount += 1
-                    }
-                    if vertexCount > start {
-                        items.append(.triangles(start: start, count: vertexCount - start,
-                                                fringe: batch.kind == .fringe, blend: blend))
-                    }
+                    appendRun(drawer.vertices, from: batch.vertexStart, to: end, recorded: drawer.webSources,
+                              transform: nil, fringe: batch.kind == .fringe, blend: blend, into: &items)
                 case .retained:
                     // A recording of shapes, strokes, and fills replays as its
                     // own runs, the draw-time transform composed onto each shape's
@@ -662,21 +751,12 @@ final class WebGraphRecorder {
                                 items.append(.shapes(start: start, count: instanceCount - start, blend: runBlend))
                             }
                         case .triangles, .fringe:
+                            // The recording's strokes and fills as their points
+                            // under the draw-time transform, the rest as vertices.
                             let end = next?.vertexStart ?? recording.vertices.count
-                            let start = vertexCount
-                            for vertex in recording.vertices[run.vertexStart ..< end] {
-                                var placed = vertex
-                                if let t = batch.retainedTransform {
-                                    let p = t * SIMD3<Float>(vertex.position.x, vertex.position.y, 1)
-                                    placed.position = SIMD2<Float>(p.x, p.y)
-                                }
-                                WebVertex.append(placed, into: &vertices)
-                                vertexCount += 1
-                            }
-                            if vertexCount > start {
-                                items.append(.triangles(start: start, count: vertexCount - start,
-                                                        fringe: run.kind == .fringe, blend: runBlend))
-                            }
+                            appendRun(recording.vertices, from: run.vertexStart, to: end, recorded: recording.webSources,
+                                      transform: batch.retainedTransform, fringe: run.kind == .fringe,
+                                      blend: runBlend, into: &items)
                         case .image:
                             guard let image = run.image else { continue }
                             let end = next?.imageStart ?? recording.imageVertices.count
@@ -932,12 +1012,17 @@ final class WebGraphRecorder {
         vector.append(contentsOf: nodes)
         vector.append(contentsOf: fields)
         vector.append(contentsOf: nodes3D)
+        vector.append(contentsOf: sources)
         vector.append(contentsOf: vertices)
         vector.append(contentsOf: params)
+        guard let structure = sources.withUnsafeBufferPointer({ WebSourceLayout.structure(of: $0) }) else {
+            throw refuse("a stroke or a fill whose record the page could not read")
+        }
         let graph = WebGraph(layers: layers, canvas: canvas, frameFilters: frameFilters,
                              instanceCount: instanceCount, quadCount: quadCount,
                              groupCount: groupCount, nodeCount: nodeCount,
                              fieldCount: fieldCount, node3DCount: node3DCount,
+                             sourceFloats: sources.count, sourceStructure: structure.columns,
                              vertexCount: vertexCount, paramFloats: params.count)
 
         // The ordinary frame clears to the background; an accumulating one only
@@ -1087,6 +1172,7 @@ extension WebGraph {
                 switch item {
                 case let .shapes(start, count, blend): return ["s", start, count, blend]
                 case let .triangles(start, count, fringe, blend): return ["t", start, count, fringe ? 1 : 0, blend]
+                case let .sources(start, floats, count, fringe, blend): return ["x", start, floats, count, fringe ? 1 : 0, blend]
                 case let .image(source, quad, count, blend):
                     switch source {
                     case .layer(let i): return ["i", i, quad, blend, count]
@@ -1138,7 +1224,8 @@ extension WebGraph {
         }
         return ["layers": layers, "canvas": items(canvas), "post": frameFilters.map(pass),
                 "instances": instanceCount, "quads": quadCount, "groups": groupCount, "nodes": nodeCount,
-                "fields": fieldCount, "nodes3d": node3DCount, "vertices": vertexCount, "params": paramFloats]
+                "fields": fieldCount, "nodes3d": node3DCount, "sources": sourceFloats,
+                "vertices": vertexCount, "params": paramFloats]
     }
 
     /// Every framework fragment the graph runs, with the most rows any pass

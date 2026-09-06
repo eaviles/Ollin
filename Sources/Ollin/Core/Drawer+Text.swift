@@ -2,6 +2,7 @@
 // stroke), the glyph-atlas path, per-glyph and on-path layout, box wrap, and
 // the text metrics surface.
 
+import OllinExpander
 import Foundation
 import simd
 import COllinShaders
@@ -1028,10 +1029,17 @@ extension Drawer {
             let p0 = points[0].simd2
             let c0 = vp.color(at: points[0])
             replicated {
-                for i in 1..<(points.count - 1) {    // fan from the first vertex
+                let start = vertices.count
+                // The fan from the first vertex, in the shared expander's order.
+                FillExpander.fan(count: points.count) { _, b, c in
                     emit(p0, color: c0)
-                    emit(points[i].simd2, color: vp.color(at: points[i]))
-                    emit(points[i + 1].simd2, color: vp.color(at: points[i + 1]))
+                    emit(points[b].simd2, color: vp.color(at: points[b]))
+                    emit(points[c].simd2, color: vp.color(at: points[c]))
+                }
+                if recordsWebSources, case .solid(let c) = vp {
+                    webSources.append(WebSource(kind: .fan(color: c), points: points.map { Point2D($0.x, $0.y) },
+                                                transform: transformIsIdentity ? nil : transform,
+                                                vertexRange: start ..< vertices.count))
                 }
             }
         }
@@ -1068,10 +1076,20 @@ extension Drawer {
             let vp = vertexPaint(fill, anchor: Drawer.boundsCenter(shape.contours.flatMap(\.points)))
             let triangles = shape.triangulatedFill()
             replicated {
+                let start = vertices.count
                 for i in stride(from: 0, to: triangles.count - 2, by: 3) {
                     emit(triangles[i].simd2, color: vp.color(at: triangles[i]))
                     emit(triangles[i + 1].simd2, color: vp.color(at: triangles[i + 1]))
                     emit(triangles[i + 2].simd2, color: vp.color(at: triangles[i + 2]))
+                }
+                if recordsWebSources, case .solid(let c) = vp {
+                    // The contours the tessellator was given, in its order.
+                    let fillable = shape.fillableContours
+                    webSources.append(WebSource(kind: .tessellated(lengths: fillable.map(\.points.count),
+                                                                   nonZero: shape.winding == .nonZero, color: c),
+                                                points: fillable.flatMap { $0.points.map { Point2D($0.x, $0.y) } },
+                                                transform: transformIsIdentity ? nil : transform,
+                                                vertexRange: start ..< vertices.count))
                 }
             }
         }

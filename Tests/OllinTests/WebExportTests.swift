@@ -427,7 +427,7 @@ import OllinWebGate
 
     // MARK: The budget
 
-    /// A dense line whose points move every frame: a stable cast whose vertex
+    /// A dense line whose points move every frame: a stable cast whose point
     /// columns all move, sampled for every recorded frame.
     class Scribble: Sketch {
         override var canvasSize: CanvasSize { .square(240) }
@@ -436,9 +436,9 @@ import OllinWebGate
             stroke(.black)
             strokeWeight(2)
             var points: [Vector2] = []
-            for i in 0 ..< 400 {
-                let t = Double(i) * 0.05
-                points.append(Vector2(20 + Double(i) * 0.5, 120 + sin(t + Double(frameCount) * 0.3) * 80))
+            for i in 0 ..< 4000 {
+                let t = Double(i) * 0.005
+                points.append(Vector2(20 + Double(i) * 0.05, 120 + sin(t + Double(frameCount) * 0.3) * 80))
             }
             drawPolyline(points)
         }
@@ -450,7 +450,8 @@ import OllinWebGate
         override var loopDuration: Double? { 40 / 30 }
     }
 
-    /// The same line, still: one recorded frame, its vertices stored once.
+    /// The same kind of line, still and denser: one recorded frame, its
+    /// points stored once.
     final class Etching: Sketch {
         override var canvasSize: CanvasSize { .square(240) }
         override func draw() {
@@ -458,9 +459,9 @@ import OllinWebGate
             stroke(.black)
             strokeWeight(2)
             var points: [Vector2] = []
-            for i in 0 ..< 4000 {
-                let t = Double(i) * 0.01
-                points.append(Vector2(20 + Double(i) * 0.05, 120 + sin(t * 7) * 80))
+            for i in 0 ..< 20000 {
+                let t = Double(i) * 0.002
+                points.append(Vector2(20 + Double(i) * 0.01, 120 + sin(t * 7) * 80))
             }
             drawPolyline(points)
         }
@@ -474,24 +475,25 @@ import OllinWebGate
         }
         #expect(refusal.bytes == page.utf8.count)
         #expect(refusal.maxBytes == 4096)
-        // The vertices of a cast that changes every frame outweigh the shaders
-        // and the player, and fewer frames would take most of them away.
-        #expect(refusal.heaviest == "stroke and fill vertices")
+        // The points of a line that moves every frame outweigh the shaders,
+        // the player, and the expander, and fewer frames would take most of
+        // them away.
+        #expect(refusal.heaviest == "strokes and fills as points")
         #expect(refusal.growsWithFrames)
-        #expect(refusal.heaviestBytes > page.utf8.count / 2)
+        #expect(refusal.heaviestBytes > page.utf8.count / 3)
         #expect(refusal.detail.contains("40 frames"))
         #expect(refusal.description.contains("--fps 10"))
         #expect(refusal.description.contains("--export-video"))
         // The flag the message names writes the page.
         let anyway = try #require(refusal.description.firstMatch(of: /--max-page-size (\d+)/).flatMap { Int($0.1) })
         #expect(try OllinApp.webPage(of: scribble, form: .inline, maxBytes: anyway * 1024 * 1024) == page)
-        // A still drawing's vertices travel once, so the refusal says fewer
+        // A still drawing's points travel once, so the refusal says fewer
         // frames would not help.
         let etching = try OllinApp.recordWebFrames(of: Etching(), frames: 8, fps: 30)
         let still = try #require(throws: WebWeightRefusal.self) {
             try OllinApp.webPage(of: etching, form: .inline, maxBytes: 4096)
         }
-        #expect(still.heaviest == "stroke and fill vertices")
+        #expect(still.heaviest == "strokes and fills as points")
         #expect(!still.growsWithFrames)
         #expect(still.description.contains("would not help"))
         #expect(!still.description.contains("--fps 10"))
@@ -501,14 +503,14 @@ import OllinWebGate
     }
 
     @Test func aDenseDrawingIsRefusedAtItsFirstFrame() throws {
-        // The still line's vertices travel once whatever the packing does, so
+        // The still line's points travel once whatever the packing does, so
         // the recording stops at frame 1 with a lower bound, before the other
         // frames are drawn.
         let early = try #require(throws: WebWeightRefusal.self) {
             try OllinApp.recordWebFrames(of: Etching(), frames: 8, fps: 30, maxBytes: 4096)
         }
         #expect(early.seen?.frames == 1 && early.seen?.of == 8)
-        #expect(early.heaviest == "stroke and fill vertices")
+        #expect(early.heaviest == "strokes and fills as points")
         #expect(!early.growsWithFrames)
         #expect(early.description.contains("at least") && early.description.contains("by frame 1 of 8"))
         #expect(early.description.contains("--max-page-size 0 lifts the limit"))
@@ -519,10 +521,10 @@ import OllinWebGate
         // column that has moved, so it is refused within its first frames
         // with the columns counted; the same line as a lap may fit those
         // columns, so it is weighed once assembled, with the exact weight.
-        // (The first frame alone is 400 KB; each frame after it adds the
-        // samples of its 30,000 moving columns.)
+        // (The first frame with the expander is about 140 KB; each frame
+        // after it adds the samples of its 4,000 moving columns.)
         let soon = try #require(throws: WebWeightRefusal.self) {
-            try OllinApp.recordWebFrames(of: Scribble(), frames: 40, fps: 30, controls: false, maxBytes: 1_500_000)
+            try OllinApp.recordWebFrames(of: Scribble(), frames: 40, fps: 30, controls: false, maxBytes: 400_000)
         }
         let seen = try #require(soon.seen)
         #expect(seen.frames > 1 && seen.frames < 40 && seen.of == 40)
@@ -551,19 +553,19 @@ import OllinWebGate
         let refusal = OllinApp.webWeightRefusal(of: hello, weights: weights, pageBytes: fragment.utf8.count, maxBytes: 1)
         #expect(refusal.heaviest == "the shaders and the player")
         #expect(!refusal.growsWithFrames)
-        // A moving line's vertices are mostly per frame over a recording of
+        // A moving line's points are mostly per frame over a recording of
         // any length (the first frame and each column's range travel once); a
         // still's are all once.
         let scribble = try OllinApp.recordWebFrames(of: Scribble(), frames: 40, fps: 30)
-        let moving = try #require(WebTrack(scribble).weights.first { $0.name == "stroke and fill vertices" })
+        let moving = try #require(WebTrack(scribble).weights.first { $0.name == "strokes and fills as points" })
         #expect(moving.once > 0 && moving.perFrame > moving.once)
         let etching = try OllinApp.recordWebFrames(of: Etching(), frames: 8, fps: 30)
-        let fixed = try #require(WebTrack(etching).weights.first { $0.name == "stroke and fill vertices" })
+        let fixed = try #require(WebTrack(etching).weights.first { $0.name == "strokes and fills as points" })
         #expect(fixed.perFrame == 0 && fixed.once > 0)
-        // The parts are base64 as written: the vertex part is the two vertex
-        // strings' length.
+        // The parts are base64 as written: a still's points are the whole of
+        // its base.
         let track = WebTrack(etching)
-        #expect(fixed.once == track.vertexPositions.utf8.count + track.vertexBase.utf8.count)
+        #expect(fixed.once == track.base.utf8.count)
     }
 
     @Test func theSlotsFillInOnePass() {

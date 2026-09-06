@@ -388,12 +388,37 @@ closed (`Patterns/Streamlines`, M2 release, 1080²: 6.18 to 5.55 ms/frame).
 curvatures, since the defect is a few pixels in a million and any whole-frame
 mean difference averages it away.
 
+#### The expander is a module the web page shares
+
+The geometry stage of the expander (the ribbons, the joins, the caps, the
+shared inner crossing, the round-cap step count) is `StrokeExpander.expand`
+in the `OllinExpander` target, beside the convex fan and the tessellator glue
+(`FillExpander`) and the record layout a stroke travels in on a web page
+(`WebSourceLayout` / `WebSourceExpander`). `Drawer` keeps the measuring half
+(dropping repeats, subdividing for a gradient or a profile, the fringe width,
+the half-width and the color per point) and hands the expander plain
+`Point2D`s; the move was proven byte-identical on a dump of 40,000 vertices
+across every join, cap, weight, transform, gradient, profile, and symmetry
+fold. The module is plain Swift over the C tessellator with nothing from
+Foundation, because `Scripts/build-web-expander.sh` compiles the same files
+with Embedded Swift to `wasm32-unknown-wasip1` (the swift.org toolchain and
+its `_wasm-embedded` SDK; 73 KB, `--strip-all`, libtess2's `setjmp` shimmed to
+a trap) and commits the result as `Resources/WebExpander.wasm` with a manifest
+naming the sources' hash. A web page whose strokes travel as points carries
+that module and expands them with it, so the page's vertices are the Mac's
+own code's; `WebSourceTests` runs the same decoder on the Mac against the
+drawer's vertices and checks the manifest's hash against the sources, so an
+expander edit without a rebuild fails a test rather than shipping a page that
+expands differently. The rest of the web export's mechanism is in
+`CAPABILITIES.md` under *A sketch as a web page*.
+
 ### Fills and the triangulator
 
 The vector `Shape`/`Contour` type (concave polygons, holes) fills via vendored
 libtess2 (the GLU tessellator lineage), wrapped in `Shape.triangulatedFill()`
-(`ShapeTriangulator.swift`, `import CLibtess2`) and drawn by `drawShape` on
-the triangle path. The fill rule is a per-`Shape` `winding: FillWinding`
+(`ShapeTriangulator.swift`, forwarding to `FillExpander.triangulate` in the
+shared `OllinExpander` module) and drawn by `drawShape` on the triangle
+path. The fill rule is a per-`Shape` `winding: FillWinding`
 (`.evenOdd` default, where nested contours become holes and direction does not
 matter, or `.nonZero`), mapped to `TESS_WINDING_ODD`/`TESS_WINDING_NONZERO`.
 Convex shapes (circle, rect, ellipse, convex `drawPolygon`) keep the direct

@@ -5,11 +5,14 @@ import OllinWebGate
 @testable import Ollin
 
 /// The triangle door of the web page: a stroke's fringe bands and a fill's
-/// triangles cross as the vertices the renderer would have drawn, under the
-/// Mac's blend modes, and the page rasterizes them through a multisampled
-/// buffer as the Mac does. The recorder is checked on its own (what a run
-/// holds, how a recording replays under its transform, how the track packs the
-/// vertices), then the page against the Mac in the shared browser gate.
+/// triangles cross under the Mac's blend modes, and the page rasterizes them
+/// through a multisampled buffer as the Mac does. A stroke or a fill the
+/// drawer kept as its points travels that way (`WebSourceTests`); what came
+/// from a path that keeps no source, an outline glyph's fill or stroke,
+/// travels as the vertices the renderer would have drawn. The recorder is
+/// checked on its own (what a run holds, how a recording replays under its
+/// transform, how the track packs the vertices), then the page against the
+/// Mac in the shared browser gate.
 @Suite @MainActor struct WebTriangleTests {
 
     // MARK: Fixtures
@@ -54,14 +57,15 @@ import OllinWebGate
         }
     }
 
-    /// Outline text, which fills through the triangle path.
+    /// Outline text, which fills through the triangle path and keeps its
+    /// vertices; the caption moves with the clock, so some of them move.
     final class Captioned: Sketch {
         override var canvasSize: CanvasSize { .square(160) }
         override func draw() {
             background(.white)
             fill(.black)
             textSize(48)
-            drawText("Ag", 20, 100)
+            drawText("Ag", 20 + sin(time) * 6, 100)
         }
     }
 
@@ -140,15 +144,28 @@ import OllinWebGate
         }
     }
 
+    /// A caption count that grows from frame to frame: a changing cast of
+    /// vertices.
+    final class Lettering: Sketch {
+        override var canvasSize: CanvasSize { .square(160) }
+        override func draw() {
+            background(.white)
+            fill(.black)
+            textSize(20)
+            for i in 0 ..< frameCount { drawText("ab", 10, 24 + Double(i) * 24) }
+        }
+    }
+
     // MARK: The recorder
 
-    @Test func strokesAndFillsCrossAsTheirVertices() throws {
+    @Test func strokesAndFillsCrossInCallOrder() throws {
         let sketch = Drawn()
         let recording = try OllinApp.recordWebFrames(of: sketch, frames: 3, fps: 30)
         let frame = recording.frames[2]
-        // The last recorded frame's vertices are the ones the drawer still holds.
-        #expect(frame.graph.vertexCount == sketch.drawer.vertices.count)
-        #expect(frame.graph.vertexCount > 100)
+        // Every stroke and fill here came through a path that keeps its
+        // points, so the frame carries records and no vertices.
+        #expect(frame.graph.vertexCount == 0)
+        #expect(frame.graph.sourceFloats > 0)
         #expect(frame.graph.instanceCount == 0 && frame.graph.quadCount == 0)
         #expect(frame.vector.count == frame.graph.vectorCount)
         #expect(frame.graph.hasTriangles)
@@ -156,26 +173,29 @@ import OllinWebGate
         // fill (no fringe), then the holed shape's fill and its outline.
         var kinds: [Bool] = []
         for item in frame.graph.canvas {
-            guard case let .triangles(_, count, fringe, blend) = item else { Issue.record("\(item)"); continue }
-            #expect(count > 0 && blend == 0)
+            guard case let .sources(_, floats, count, fringe, blend) = item else { Issue.record("\(item)"); continue }
+            #expect(floats > 0 && count > 0 && blend == 0)
             kinds.append(fringe)
         }
         #expect(kinds == [true, false, true])
-        // A vertex on the wire is the drawer's, field for field.
-        let v = sketch.drawer.vertices[0]
-        let onWire = Array(frame.vector[frame.graph.vertexOffset ..< frame.graph.vertexOffset + WebVertex.floats])
-        #expect(onWire == [v.position.x, v.position.y, v.aa.x, v.color.x, v.color.y, v.color.z, v.color.w])
         // The moving vertex is the polyline's second point, so the frames differ.
         #expect(recording.frames[0].vector != recording.frames[2].vector)
         #expect(recording.frames[0].graph == recording.frames[2].graph)
     }
 
-    @Test func outlineTextCrossesAsItsFills() throws {
-        let recording = try OllinApp.recordWebFrames(of: Captioned(), frames: 1, fps: 30)
-        let g = recording.frames[0].graph
-        #expect(g.vertexCount > 0)
+    @Test func outlineTextCrossesAsItsFillsVertexForVertex() throws {
+        let sketch = Captioned()
+        let recording = try OllinApp.recordWebFrames(of: sketch, frames: 1, fps: 30)
+        let frame = recording.frames[0]
+        let g = frame.graph
+        // The glyph fills are the drawer's vertices, field for field.
+        #expect(g.vertexCount == sketch.drawer.vertices.count)
+        #expect(g.vertexCount > 100 && g.sourceFloats == 0)
         #expect(g.canvas.count == 1)
         if case let .triangles(_, _, fringe, _) = g.canvas[0] { #expect(!fringe) } else { Issue.record("\(g.canvas)") }
+        let v = sketch.drawer.vertices[0]
+        let onWire = Array(frame.vector[g.vertexOffset ..< g.vertexOffset + WebVertex.floats])
+        #expect(onWire == [v.position.x, v.position.y, v.aa.x, v.color.x, v.color.y, v.color.z, v.color.w])
     }
 
     @Test func aBlendModeCrossesOnShapesAndStrokes() throws {
@@ -184,7 +204,7 @@ import OllinWebGate
         var blends: [Int] = []
         for item in g.canvas {
             switch item {
-            case let .triangles(_, _, _, blend), let .shapes(_, _, blend): blends.append(blend)
+            case let .sources(_, _, _, _, blend), let .triangles(_, _, _, blend), let .shapes(_, _, blend): blends.append(blend)
             default: Issue.record("\(item)")
             }
         }
@@ -198,31 +218,31 @@ import OllinWebGate
         let recording = try OllinApp.recordWebFrames(of: sketch, frames: 2, fps: 30)
         let frame = recording.frames[1]
         let batch = try #require(sketch.batch)
-        #expect(frame.graph.vertexCount == batch.vertices.count)
+        #expect(batch.webSources.count == 3 && frame.graph.vertexCount == 0)
         #expect(frame.graph.instanceCount == 1)
         // The runs replay in the recording's order: the lines, the fill, the circle.
         var order: [String] = []
         for item in frame.graph.canvas {
             switch item {
-            case let .triangles(_, _, fringe, _): order.append(fringe ? "stroke" : "fill")
+            case let .sources(_, _, _, fringe, _): order.append(fringe ? "stroke" : "fill")
             case .shapes: order.append("shape")
             default: order.append("?")
             }
         }
         #expect(order == ["stroke", "fill", "shape"])
-        // A recorded vertex lands where the draw-time transform puts it: the
-        // batch was made about the origin, so the first vertex turned by the
-        // frame's angle sits 80 points in from the corner.
+        // A record expands to where the draw-time transform puts it: the batch
+        // was made about the origin, so its first vertex turned by the frame's
+        // angle sits 80 points in from the corner.
         let angle = Float(2 * 0.1)   // frameCount is 2 on the second recorded frame
         let v = batch.vertices[0].position
         let expected = SIMD2<Float>(80 + v.x * cos(angle) - v.y * sin(angle), 80 + v.x * sin(angle) + v.y * cos(angle))
-        let vo = frame.graph.vertexOffset
-        #expect(abs(frame.vector[vo] - expected.x) < 1e-3 && abs(frame.vector[vo + 1] - expected.y) < 1e-3,
-                "\(frame.vector[vo]), \(frame.vector[vo + 1]) against \(expected)")
+        let first = try #require(WebSourceTests.expanded(frame).first)
+        #expect(abs(first.x - expected.x) < 1e-3 && abs(first.y - expected.y) < 1e-3,
+                "\(first.x), \(first.y) against \(expected)")
     }
 
     @Test func theTrackPacksTheVerticesOfAStableCastAsSamples() throws {
-        let recording = try OllinApp.recordWebFrames(of: Drawn(), frames: 6, fps: 30)
+        let recording = try OllinApp.recordWebFrames(of: Captioned(), frames: 6, fps: 30)
         let track = WebTrack(recording)
         #expect(track.stable)
         let g = recording.frames[0].graph
@@ -249,7 +269,7 @@ import OllinWebGate
     }
 
     @Test func aChangingCastStoresItsVerticesByField() throws {
-        let recording = try OllinApp.recordWebFrames(of: Growing(), frames: 3, fps: 30)
+        let recording = try OllinApp.recordWebFrames(of: Lettering(), frames: 3, fps: 30)
         let track = WebTrack(recording)
         #expect(!track.stable)
         #expect(track.base.isEmpty && track.vertexBase.isEmpty)

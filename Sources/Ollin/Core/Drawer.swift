@@ -1072,6 +1072,7 @@ final class Drawer {
         var savedGroups: [SDFGroupInstance] = []
         var savedNodes: [SDFNode] = []
         var savedBatches: [GeometryBatch] = []
+        var savedSources: [WebSource] = []
         var savedRows: [[UInt8]] = []
         var savedRowIndex: [Ramp: Int] = [:]
         swap(&savedVertices, &vertices)
@@ -1082,6 +1083,7 @@ final class Drawer {
         swap(&savedGroups, &sdfGroups)
         swap(&savedNodes, &sdfNodes)
         swap(&savedBatches, &batches)
+        swap(&savedSources, &webSources)
         swap(&savedRows, &gradientRows)
         swap(&savedRowIndex, &gradientRowIndex)
         // Neutralize the recording context: batch bookkeeping, the target/clip
@@ -1111,7 +1113,8 @@ final class Drawer {
         let recorded = Batch(vertices: vertices, sdfInstances: sdfInstances,
                              imageVertices: imageVertices, glyphVertices: glyphVertices,
                              points: points, sdfGroups: sdfGroups, sdfNodes: sdfNodes,
-                             gradientRows: gradientRows, innerBatches: batches)
+                             gradientRows: gradientRows, innerBatches: batches,
+                             webSources: webSources)
         vertices = savedVertices
         sdfInstances = savedSDF
         imageVertices = savedImage
@@ -1120,6 +1123,7 @@ final class Drawer {
         sdfGroups = savedGroups
         sdfNodes = savedNodes
         batches = savedBatches
+        webSources = savedSources
         gradientRows = savedRows
         gradientRowIndex = savedRowIndex
         targetStack = savedTargets
@@ -1183,6 +1187,14 @@ final class Drawer {
     /// instead of being encoded for the GPU (see SpatialExport.swift). The
     /// three-dimensional sibling of `svgRecorder`, with the same lifecycle.
     var spatialRecorder: SpatialRecorder?
+
+    /// While a web recording is on, every stroke and fill the triangle paths
+    /// expand is also kept as the points and the style it came from
+    /// (`WebSource`, beside the vertices it became), so the page can carry
+    /// those and expand them itself. Off on the live path, where it costs one
+    /// Boolean per stroke. The web recorder owns the lifecycle.
+    var recordsWebSources = false
+    var webSources: [WebSource] = []
 
     // MARK: Gradient rows
 
@@ -1838,6 +1850,7 @@ final class Drawer {
         sdf3DGroups.removeAll(keepingCapacity: true)
         sdf3DNodes.removeAll(keepingCapacity: true)
         batches.removeAll(keepingCapacity: true)
+        webSources.removeAll(keepingCapacity: true)
         currentKind = nil
         currentBatchDepth = nil
         hasDepthScene = false   // background wipes the recorded scene quad too
@@ -3795,6 +3808,7 @@ final class Drawer {
         combineGroupModel = nil
         warnedMeshInCombine = false
         batches.removeAll(keepingCapacity: true)
+        webSources.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
         // Keep last frame's camera for the motion-blur velocity fill before the
@@ -4018,11 +4032,29 @@ final class Drawer {
         let vertexStart = vertices.count
         let imageStart = imageVertices.count
         let glyphStart = glyphVertices.count
+        let sourceStart = webSources.count
         body()
         isReplicating = false
+        let vertexEnd = vertices.count
         Drawer.replicate(&vertices, from: vertexStart, folds: folds)
         Drawer.replicate(&imageVertices, from: imageStart, folds: folds)
         Drawer.replicate(&glyphVertices, from: glyphStart, folds: folds)
+        // A source the body recorded has a copy per fold too: the same points
+        // under the fold composed onto its transform, covering the vertices the
+        // copy above appended for it.
+        if recordsWebSources, webSources.count > sourceStart {
+            let recorded = Array(webSources[sourceStart...])
+            let span = vertexEnd - vertexStart
+            for (k, fold) in folds.dropFirst().enumerated() {
+                let shift = (k + 1) * span
+                for source in recorded {
+                    var copy = source
+                    copy.transform = fold * (source.transform ?? matrix_identity_float3x3)
+                    copy.vertexRange = (source.vertexRange.lowerBound + shift) ..< (source.vertexRange.upperBound + shift)
+                    webSources.append(copy)
+                }
+            }
+        }
     }
 
     /// Append a fold-transformed copy of `array[start...]` per remaining fold

@@ -29,6 +29,10 @@
 #   changed
 #       -> Scripts/site-hero.sh (the site's front-page ring is the sketch's
 #          recorded web page, committed as source; any of those moves it)
+#   the expander's sources changed (Sources/OllinExpander, the wasm entry,
+#   the vendored tessellator)
+#       -> Scripts/build-web-expander.sh --check (the committed WebAssembly
+#          resource must have been built from these sources)
 #   always
 #       -> the em-dash and invisible-character net over the added diff lines
 #   --milestone adds
@@ -115,6 +119,18 @@ if [[ -n "$hero" || $milestone -eq 1 ]]; then
     run "site-hero" Scripts/site-hero.sh
 else
     skip "site-hero" "no change to the ring sketch, the web exporter, or the shaders it carries"
+fi
+
+# The page's expander: the shared expander module compiled to WebAssembly and
+# committed as a resource with a hash of the sources it was built from. An
+# edit to those sources without a rebuild would ship a page that expands its
+# strokes differently from the Mac, so the check fails until
+# Scripts/build-web-expander.sh has run (it needs the swift.org toolchain).
+expander=$(grep -E '^(Sources/OllinExpander/|Scripts/web-expander/|External/CLibtess2/|Scripts/build-web-expander\.sh$)' <<<"$changed")
+if [[ -n "$expander" || $milestone -eq 1 ]]; then
+    run "web-expander --check" Scripts/build-web-expander.sh --check
+else
+    skip "web-expander" "no change to the expander's sources"
 fi
 
 # The iOS build: nothing else compiles the framework for the phone, so a

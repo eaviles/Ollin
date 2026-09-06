@@ -3,6 +3,7 @@
 // the SDF-combinator scoped blocks. One extension of the recorder; the state
 // it appends into lives with the type in Drawer.swift.
 
+import OllinExpander
 import Foundation
 import simd
 import COllinShaders
@@ -1252,25 +1253,32 @@ extension Drawer {
             // conic the SDF arc evaluates.
             let vp = vertexPaint(fill, anchor: center)
             replicated {
+                let start = vertices.count
                 switch mode {
                 case .open, .chord:
                     // Circular segment: convex, so a fan from the first point fills it.
                     let p0 = pts[0].simd2
                     let c0 = vp.color(at: pts[0])
-                    for i in 1..<(pts.count - 1) {
+                    FillExpander.fan(count: pts.count) { _, b, c in
                         emit(p0, color: c0)
-                        emit(pts[i].simd2, color: vp.color(at: pts[i]))
-                        emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
+                        emit(pts[b].simd2, color: vp.color(at: pts[b]))
+                        emit(pts[c].simd2, color: vp.color(at: pts[c]))
                     }
                 case .pie:
-                    // Wedge: fan from the center.
+                    // Wedge: the fan of the polygon that starts at the center.
                     let cc = center.simd2
                     let centerColor = vp.color(at: center)
-                    for i in 0..<(pts.count - 1) {
+                    FillExpander.fan(count: pts.count + 1) { _, b, c in
                         emit(cc, color: centerColor)
-                        emit(pts[i].simd2, color: vp.color(at: pts[i]))
-                        emit(pts[i + 1].simd2, color: vp.color(at: pts[i + 1]))
+                        emit(pts[b - 1].simd2, color: vp.color(at: pts[b - 1]))
+                        emit(pts[c - 1].simd2, color: vp.color(at: pts[c - 1]))
                     }
+                }
+                if recordsWebSources, case .solid(let c) = vp {
+                    let fanned = mode == .pie ? [center] + pts : pts
+                    webSources.append(WebSource(kind: .fan(color: c), points: fanned.map { Point2D($0.x, $0.y) },
+                                                transform: transformIsIdentity ? nil : transform,
+                                                vertexRange: start ..< vertices.count))
                 }
             }
         }

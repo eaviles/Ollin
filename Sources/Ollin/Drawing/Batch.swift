@@ -62,6 +62,10 @@ public final class Batch {
     let sdfNodes: [SDFNode]
     let gradientRows: [[UInt8]]
     let innerBatches: [GeometryBatch]
+    /// The strokes and fills as the points they were expanded from, when the
+    /// batch was made while a web recording was on (`Drawer.recordsWebSources`);
+    /// empty otherwise.
+    let webSources: [WebSource]
 
     /// The vector capture, recorded instead of GPU geometry when the whole run is
     /// a vector export (`OllinApp.isVectorExporting`); `drawBatch` splices these
@@ -79,7 +83,8 @@ public final class Batch {
          imageVertices: [OllinImageVertex] = [], glyphVertices: [OllinImageVertex] = [],
          points: [OllinPoint] = [], sdfGroups: [SDFGroupInstance] = [],
          sdfNodes: [SDFNode] = [], gradientRows: [[UInt8]] = [],
-         innerBatches: [GeometryBatch] = [], svgCommands: [SVGCommand] = []) {
+         innerBatches: [GeometryBatch] = [], webSources: [WebSource] = [],
+         svgCommands: [SVGCommand] = []) {
         self.vertices = vertices
         self.sdfInstances = sdfInstances
         self.imageVertices = imageVertices
@@ -89,6 +94,7 @@ public final class Batch {
         self.sdfNodes = sdfNodes
         self.gradientRows = gradientRows
         self.innerBatches = innerBatches
+        self.webSources = webSources
         self.svgCommands = svgCommands
     }
 

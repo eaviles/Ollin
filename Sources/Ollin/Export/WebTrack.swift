@@ -74,6 +74,8 @@ struct WebTrack {
     var passCount: Int
     /// The most triangle vertices any frame draws.
     var vertexCount: Int
+    /// The most strokes and fills any frame carries as their points.
+    var sourceCount: Int
     /// The most composed 2D fields any frame draws, and the most raymarched 3D
     /// fields.
     var groupCount: Int
@@ -91,6 +93,11 @@ struct WebTrack {
     /// The most triangle vertices any frame of `recording` draws.
     static func vertexCount(of recording: WebRecording) -> Int {
         recording.frames.map(\.graph.vertexCount).max() ?? 0
+    }
+
+    /// The most strokes and fills any frame of `recording` carries as points.
+    static func sourceCount(of recording: WebRecording) -> Int {
+        recording.frames.map(\.graph.sourceCount).max() ?? 0
     }
 
     /// Raw bytes as they weigh once base64 encoded (four characters for
@@ -187,6 +194,7 @@ struct WebTrack {
         // Raw bytes by part, before base64: the shapes (with the quads, the
         // fields, the pass rows) and the vertices, each stored once or per frame.
         var shapesOnce = 0, shapesPerFrame = 0, verticesOnce = 0, verticesPerFrame = 0
+        var sourcesOnce = 0, sourcesPerFrame = 0
 
         if stable, let first = uniques.first {
             // The shapes, the quads, and the rows as floats; the vertices, the
@@ -209,9 +217,12 @@ struct WebTrack {
                 if f < p { vertexPositions.append(first.vector[i]) }
                 else { vertexBase.append(Self.quantize(first.vector[i], in: fieldRanges[f - p])) }
             }
-            shapesOnce += base.count * 4
+            // The strokes and fills as points sit inside the base, in float32.
+            sourcesOnce += first.graph.sourceFloats * 4
+            shapesOnce += (base.count - first.graph.sourceFloats) * 4
             verticesOnce += vertexPositions.count * 4 + vertexBase.count * 2
             func isVertexColumn(_ column: Int) -> Bool { column >= vo && column < po }
+            func isSourceColumn(_ column: Int) -> Bool { column >= first.graph.sourceOffset && column < vo }
             var moving: [Int] = []
             for column in first.vector.indices where uniques.contains(where: { $0.vector[column] != first.vector[column] }) {
                 moving.append(column)
@@ -246,11 +257,14 @@ struct WebTrack {
                     fittedColumns += 1
                     fitTerms += f.terms.count
                     let fitBytes = (1 + 3 * f.terms.count) * 4
-                    if isVertexColumn(column) { verticesOnce += fitBytes } else { shapesOnce += fitBytes }
+                    if isVertexColumn(column) { verticesOnce += fitBytes }
+                    else if isSourceColumn(column) { sourcesOnce += fitBytes }
+                    else { shapesOnce += fitBytes }
                 } else {
                     sampled.append(column)
                     // Its samples per frame, its range and index once.
                     if isVertexColumn(column) { verticesPerFrame += 2 * uniques.count; verticesOnce += 12 }
+                    else if isSourceColumn(column) { sourcesPerFrame += 2 * uniques.count; sourcesOnce += 12 }
                     else { shapesPerFrame += 2 * uniques.count; shapesOnce += 12 }
                 }
             }
@@ -276,8 +290,8 @@ struct WebTrack {
         } else {
             // Every shape, quad, field, instruction, and vertex of every unique
             // frame, each field inside the range it spans across the whole
-            // track, but a vertex's position, which travels exact; the
-            // parameter rows whole.
+            // track, but a vertex's position and a stroke or a fill as its
+            // points, which travel exact; the parameter rows whole.
             let q = WebQuad.floats, v = WebVertex.floats, p = WebVertex.positionFloats
             let gf = WebGroup.floats, nf = WebNode.floats, ff = WebField.floats, n3 = WebNode3D.floats
             let fields = n + q + gf + nf + ff + n3 + v
@@ -291,12 +305,12 @@ struct WebTrack {
                 if i < g.vertexOffset { return n + q + gf + nf + ff + (i - g.node3DOffset) % n3 }
                 return n + q + gf + nf + ff + n3 + (i - g.vertexOffset) % v
             }
-            func isPosition(_ i: Int, _ g: WebGraph) -> Bool {
-                i >= g.vertexOffset && (i - g.vertexOffset) % v < p
+            func isExact(_ i: Int, _ g: WebGraph) -> Bool {
+                (i >= g.sourceOffset && i < g.vertexOffset) || (i >= g.vertexOffset && (i - g.vertexOffset) % v < p)
             }
             var any = false
             for u in uniques {
-                for i in 0 ..< u.graph.paramOffset where !isPosition(i, u.graph) {
+                for i in 0 ..< u.graph.paramOffset where !isExact(i, u.graph) {
                     let c = field(i, u.graph)
                     fieldRanges[c] = (min(fieldRanges[c].0, u.vector[i]), max(fieldRanges[c].1, u.vector[i]))
                     any = true
@@ -318,12 +332,13 @@ struct WebTrack {
                 positionOffsets.append(vertexPositions.count)
                 lengths.append(u.vector.count)
                 for i in 0 ..< u.graph.paramOffset {
-                    if isPosition(i, u.graph) { vertexPositions.append(u.vector[i]) }
+                    if isExact(i, u.graph) { vertexPositions.append(u.vector[i]) }
                     else { samples.append(Self.quantize(u.vector[i], in: fieldRanges[field(i, u.graph)])) }
                 }
                 let vertexFloats = u.graph.paramOffset - u.graph.vertexOffset
                 verticesPerFrame += vertexFloats / v * (p * 4 + (v - p) * 2)
-                shapesPerFrame += u.graph.vertexOffset * 2
+                sourcesPerFrame += u.graph.sourceFloats * 4
+                shapesPerFrame += u.graph.sourceOffset * 2
                 paramOffsets.append(extra.count)
                 extra.append(contentsOf: u.vector[u.graph.paramOffset...])
                 shapesPerFrame += (u.vector.count - u.graph.paramOffset) * 4
@@ -379,6 +394,7 @@ struct WebTrack {
         var weights = [
             WebWeight(name: "shapes and passes", once: Self.encoded(shapesOnce), perFrame: Self.encoded(shapesPerFrame)),
             WebWeight(name: "stroke and fill vertices", once: Self.encoded(verticesOnce), perFrame: Self.encoded(verticesPerFrame)),
+            WebWeight(name: "strokes and fills as points", once: Self.encoded(sourcesOnce), perFrame: Self.encoded(sourcesPerFrame)),
         ]
         if !sceneFloats.isEmpty { weights.append(WebWeight(name: "scenes", once: 0, perFrame: Self.encoded(sceneFloats.count * 4))) }
         if !axisFloats.isEmpty { weights.append(WebWeight(name: "controls", once: Self.encoded(axisFloats.count * 4), perFrame: 0)) }
@@ -390,6 +406,7 @@ struct WebTrack {
         self.fitTerms = fitTerms
         self.passCount = uniques.first.map { $0.graph.layers.count + $0.graph.frameFilters.count } ?? 0
         self.vertexCount = uniques.map(\.graph.vertexCount).max() ?? 0
+        self.sourceCount = uniques.map(\.graph.sourceCount).max() ?? 0
         self.groupCount = uniques.map(\.graph.groupCount).max() ?? 0
         self.fieldCount = uniques.map(\.graph.fieldCount).max() ?? 0
         self.scene = Self.base64(sceneFloats)

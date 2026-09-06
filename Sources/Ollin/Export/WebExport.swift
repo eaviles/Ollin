@@ -17,8 +17,9 @@ struct WebFrame: Equatable {
     /// the previous frame left (an accumulating sketch).
     var clear: SIMD3<Float>?
     /// Shapes (`WebInstance.floats` each), then quads (`WebQuad.floats` each),
-    /// then vertices (`WebVertex.floats` each), then parameter rows, laid out
-    /// as `graph` says.
+    /// then the fields and their programs, then strokes and fills as their
+    /// points (`WebSourceLayout` records), then vertices (`WebVertex.floats`
+    /// each), then parameter rows, laid out as `graph` says.
     var vector: [Float]
     var graph: WebGraph
     var toneMapMode: Int
@@ -173,6 +174,16 @@ struct WebWeightBound {
     private var perFrameBytes = 0
     private var pictureBytes = 0
     private var fullestVertices = 0
+    /// What the strokes and fills as points have cost, inside the totals
+    /// above, and how many the fullest frame carries, so a refusal can name
+    /// them apart from the vertices.
+    private var sourceBytes = 0
+    private var fullestSources = 0
+    /// How many of the moving columns are a stroke's or a fill's points.
+    private var movingSourceColumns = 0
+    /// The expander, once, from the first frame that carries a stroke or a
+    /// fill as points.
+    private var expanderBytes = 0
 
     init(samplesMovingColumns: Bool = false) {
         self.samplesMovingColumns = samplesMovingColumns
@@ -184,17 +195,29 @@ struct WebWeightBound {
         changing || !samplesMovingColumns ? 0 : WebTrack.encoded(movingColumns * (2 * uniqueFrames + 12))
     }
 
-    var bytes: Int { onceBytes + perFrameBytes + movingBytes + pictureBytes }
+    /// The part of `movingBytes` that is a stroke's or a fill's points.
+    private var movingSourceBytes: Int {
+        changing || !samplesMovingColumns ? 0 : WebTrack.encoded(movingSourceColumns * (2 * uniqueFrames + 12))
+    }
+
+    var bytes: Int { onceBytes + perFrameBytes + movingBytes + pictureBytes + expanderBytes }
 
     mutating func add(_ frame: WebFrame, previous: WebFrame?, pictureBytes pictures: Int) {
-        fullestVertices = max(fullestVertices, frame.graph.vertexCount)
+        let g = frame.graph
+        fullestVertices = max(fullestVertices, g.vertexCount)
+        fullestSources = max(fullestSources, g.sourceCount)
         pictureBytes = WebTrack.encoded(pictures)
         let v = WebVertex.floats, p = WebVertex.positionFloats
         guard let first else {
             self.first = frame
             uniqueFrames = 1
             moved = [Bool](repeating: false, count: frame.vector.count)
-            onceBytes = WebTrack.encoded(frame.graph.vertexCount * (p * 4 + (v - p) * 2) + frame.graph.vertexOffset * 4)
+            // The vertices' positions exact and the rest as samples; the
+            // shapes, the rows, and the strokes and fills as points in float32.
+            onceBytes = WebTrack.encoded(g.vertexCount * (p * 4 + (v - p) * 2) + g.vertexOffset * 4)
+            sourceBytes = WebTrack.encoded(g.sourceFloats * 4)
+            // The expander travels with the first stroke or fill as points.
+            if g.sourceFloats > 0 { expanderBytes = WebExpanderResource.pageBytes }
             return
         }
         let unique = previous.map { $0.vector != frame.vector || $0.graph != frame.graph } ?? true
@@ -202,27 +225,38 @@ struct WebWeightBound {
         if !changing, frame.graph != first.graph || frame.vector.count != first.vector.count { changing = true; moved = [] }
         if changing {
             if unique {
-                perFrameBytes += WebTrack.encoded(frame.graph.vertexCount * (p * 4 + (v - p) * 2) + frame.graph.vertexOffset * 2)
+                perFrameBytes += WebTrack.encoded(g.vertexCount * (p * 4 + (v - p) * 2) + g.sourceOffset * 2 + g.sourceFloats * 4)
+                sourceBytes += WebTrack.encoded(g.sourceFloats * 4)
             }
         } else if samplesMovingColumns, unique {
+            let so = first.graph.sourceOffset, vo = first.graph.vertexOffset
             for i in moved.indices where !moved[i] && frame.vector[i] != first.vector[i] {
                 moved[i] = true
                 movingColumns += 1
+                if i >= so && i < vo { movingSourceColumns += 1 }
             }
         }
     }
 
     func refusal(maxBytes: Int, seen: Int, of total: Int) -> WebWeightRefusal {
-        let vertexBytes = onceBytes + perFrameBytes + movingBytes
-        if pictureBytes > vertexBytes {
-            return WebWeightRefusal(bytes: bytes, maxBytes: maxBytes, heaviest: "pictures", heaviestBytes: pictureBytes,
-                                    growsWithFrames: true, detail: "one per frame the picture changed", seen: (seen, total))
-        }
-        var detail = "\(fullestVertices) vertices in the fullest frame"
-        if !changing, movingColumns > 0 { detail += ", \(movingColumns) columns moving" }
-        return WebWeightRefusal(bytes: bytes, maxBytes: maxBytes, heaviest: "stroke and fill vertices",
-                                heaviestBytes: vertexBytes, growsWithFrames: perFrameBytes + movingBytes > onceBytes,
-                                detail: detail, seen: (seen, total))
+        // The parts so far: the vertices, the strokes and fills as points, the
+        // pictures, and the expander. The heaviest names the refusal.
+        let pointBytes = sourceBytes + movingSourceBytes
+        let vertexBytes = onceBytes + perFrameBytes + movingBytes - pointBytes
+        let movingVertices = movingColumns - movingSourceColumns
+        let moving = !changing && movingVertices > 0 ? ", \(movingVertices) columns moving" : ""
+        let movingPoints = !changing && movingSourceColumns > 0 ? ", \(movingSourceColumns) columns moving" : ""
+        let grows = perFrameBytes + movingBytes > onceBytes
+        var parts: [(name: String, bytes: Int, grows: Bool, detail: String)] = [
+            ("stroke and fill vertices", vertexBytes, grows, "\(fullestVertices) vertices in the fullest frame\(moving)"),
+            ("strokes and fills as points", pointBytes, grows, "\(fullestSources) strokes and fills as points in the fullest frame\(movingPoints)"),
+            ("pictures", pictureBytes, true, "one per frame the picture changed"),
+            ("the stroke expander", expanderBytes, false, "the expander travels once"),
+        ]
+        parts.sort { $0.bytes > $1.bytes }
+        let heaviest = parts[0]
+        return WebWeightRefusal(bytes: bytes, maxBytes: maxBytes, heaviest: heaviest.name, heaviestBytes: heaviest.bytes,
+                                growsWithFrames: heaviest.grows, detail: heaviest.detail, seen: (seen, total))
     }
 }
 
@@ -301,6 +335,15 @@ struct WebShaderError: Error, CustomStringConvertible {
     }
 }
 
+/// The framework's resources hold no expander for the page, so a stroke or a
+/// fill as its points has nothing to expand it: a broken checkout, never the
+/// sketch's doing.
+struct WebExpanderMissing: Error, CustomStringConvertible {
+    var description: String {
+        "the page's expander (WebExpander.wasm) is missing from the framework's resources; run Scripts/build-web-expander.sh"
+    }
+}
+
 // MARK: - Recording
 
 extension OllinApp {
@@ -319,6 +362,10 @@ extension OllinApp {
         defer { isRenderingHeadless = false }
         let size = sketch.canvasSize
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
+        // Every stroke and fill is kept as its points from here on, a batch
+        // made in `setup()` included.
+        sketch.drawer.recordsWebSources = true
+        defer { sketch.drawer.recordsWebSources = false }
         sketch.runSetup()
         guard sketch.colorOutput == .standard else {
             throw WebExportRefusal(call: "colorOutput \(sketch.colorOutput) (wide gamut and HDR output)", frame: 0)
@@ -394,6 +441,7 @@ extension OllinApp {
                              each: (Int) -> Void = { _ in }) throws -> [WebFrame] {
         var recorded: [WebFrame] = []
         recorded.reserveCapacity(frames)
+        sketch.drawer.recordsWebSources = true
         var bound = WebWeightBound(samplesMovingColumns: samplesMovingColumns)
         for k in 0 ..< (skip + frames) {
             sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
@@ -454,6 +502,40 @@ extension OllinApp {
 /// (the composed field's arithmetic, the raymarcher's distance functions), and
 /// the four effect segments (the tone-map curve, the filters, the combines, the
 /// simulations, the patterns). A page carries only what its frames run.
+/// The stroke and fill expander compiled to WebAssembly, read once from the
+/// resource bundle: `WebExpander.wasm`, built by `Scripts/build-web-expander.sh`
+/// from the `OllinExpander` module the renderer's own strokes and fills go
+/// through, beside a manifest naming the toolchain and a hash of the sources.
+/// It is the player part a page carries when its strokes and fills travel as
+/// points, and it travels only then.
+enum WebExpanderResource {
+    static let data: Data = {
+        guard let url = OllinResources.bundle.url(forResource: "WebExpander", withExtension: "wasm") else { return Data() }
+        return (try? Data(contentsOf: url)) ?? Data()
+    }()
+
+    /// The module as the page carries it.
+    static let base64: String = data.base64EncodedString()
+
+    /// What it weighs on the page, quotes included.
+    static var pageBytes: Int { base64.utf8.count + 2 }
+
+    /// The manifest beside the module.
+    struct Manifest: Codable, Sendable {
+        var toolchain: String
+        var sdk: String
+        /// The SHA-256 of the sources it was built from, in the script's order.
+        var sources: String
+        var bytes: Int
+    }
+
+    static let manifest: Manifest? = {
+        guard let url = OllinResources.bundle.url(forResource: "WebExpander", withExtension: "json"),
+              let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Manifest.self, from: data)
+    }()
+}
+
 enum WebShaderSources {
     static let text: String = {
         ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "ShaderRaymarch",
@@ -1609,6 +1691,8 @@ extension OllinApp {
         switch heaviest.name {
         case "stroke and fill vertices":
             detail = "\(track) vertices in the fullest frame, \(frames)"
+        case "strokes and fills as points":
+            detail = "\(WebTrack.sourceCount(of: recording)) strokes and fills as points in the fullest frame, \(frames)"
         case "shapes and passes":
             detail = "\(recording.frames.first?.graph.instanceCount ?? 0) shapes in the first frame, \(frames)"
         case "scenes":
@@ -1694,6 +1778,10 @@ extension OllinApp {
         slots["SCENE"] = track.scene
         slots["AXES"] = track.axisData
         slots["PANEL"] = panel ? "true" : "false"
+        // The expander, when any frame carries a stroke or a fill as its points.
+        let expands = recording.frames.contains { $0.graph.sourceFloats > 0 }
+        if expands, WebExpanderResource.data.isEmpty { throw WebExpanderMissing() }
+        slots["EXPANDER"] = expands ? "\"\(WebExpanderResource.base64)\"" : "\"\""
         slots["HELPERS"] = FormulaJS.helpers
         slots["GROUP_VS"] = jsString(shaders.groupVertex)
         slots["GROUP_FS"] = jsString(shaders.groupFragment)
@@ -1743,6 +1831,7 @@ extension OllinApp {
         }
         let atlasBytes = atlases.reduce(0) { $0 + $1.utf8.count }
         if atlasBytes > 0 { weights.append(WebWeight(name: "atlas pages", once: atlasBytes, perFrame: 0)) }
+        if expands { weights.append(WebWeight(name: "the stroke expander", once: WebExpanderResource.pageBytes, perFrame: 0)) }
         let prefix = "<canvas class=\"ollin-sketch\" width=\"\(recording.width)\" height=\"\(recording.height)\" role=\"img\" aria-label=\"\(htmlEscaped(label))\"></canvas>\n<script>\n"
         let suffix = "\n</script>"
         let pageBytes = prefix.utf8.count + WebPlayer.filledCount(WebPlayer.script, with: slots) + suffix.utf8.count + wrapperBytes
@@ -1902,6 +1991,13 @@ enum WebPlayer {
       var ATLASES = @ATLASES@;
       var STRIP = @STRIP@;
       var BRDF = @BRDF@;
+      // The expander (empty unless the track carries strokes or fills as
+      // points) is the framework's own stroke and fill expander compiled to
+      // WebAssembly. It includes libtess2 by Mikko Mononen, derived from the
+      // SGI OpenGL Sample Implementation: Copyright (C) [dates of first
+      // publication] Silicon Graphics, Inc., under the SGI Free Software
+      // License B, Version 2.0 (http://oss.sgi.com/projects/FreeB/).
+      var EXPANDER = @EXPANDER@;
       @HELPERS@
       var F = 30, Q = 48, V = 7, G = 26, NF = 16, FF = 36, N3 = 16;
       var W = D.width, H = D.height;
@@ -2325,6 +2421,33 @@ enum WebPlayer {
           gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
         }));
       });
+      // The stroke and fill expander, when the track carries strokes or fills
+      // as their points: the framework's own expander compiled to
+      // WebAssembly, instantiated once; a source item hands it the records and
+      // draws what comes back. It asks the system for nothing but a random
+      // seed, which it never reads. The module is small, so it is compiled
+      // synchronously and the first frame never waits on it (a pending
+      // compile holds nothing, so a page dumped at its load event could show
+      // its strokes missing); a browser that refuses a synchronous compile
+      // gets the asynchronous one, and the first frame waits.
+      var expander = null;
+      if (EXPANDER && typeof WebAssembly !== 'undefined') {
+        var wasi = { random_get: function () { return 0; } };
+        var wasiProxy = typeof Proxy === 'function'
+          ? new Proxy(wasi, { get: function (t, p) { return t[p] || function () { return 0; }; } }) : wasi;
+        var imports = { wasi_snapshot_preview1: wasiProxy };
+        var adopt = function (instance) {
+          var x = instance.exports;
+          if (x._initialize) x._initialize();
+          expander = { memory: x.memory, input: x.ollin_input, expand: x.ollin_expand, output: x.ollin_output };
+        };
+        var module = bytes(EXPANDER).buffer;
+        try {
+          adopt(new WebAssembly.Instance(new WebAssembly.Module(module), imports));
+        } catch (e) {
+          pending.push(WebAssembly.instantiate(module, imports).then(function (r) { adopt(r.instance); }));
+        }
+      }
       // The lookup strips, uploaded once.
       var tables = TABLES.map(function (t) {
         var tex = gl.createTexture();
@@ -2489,7 +2612,8 @@ enum WebPlayer {
       function nodeOffset(g) { return groupOffset(g) + (g.groups || 0) * G; }
       function fieldOffset(g) { return nodeOffset(g) + (g.nodes || 0) * NF; }
       function node3DOffset(g) { return fieldOffset(g) + (g.fields || 0) * FF; }
-      function vertexOffset(g) { return node3DOffset(g) + (g.nodes3d || 0) * N3; }
+      function sourceOffset(g) { return node3DOffset(g) + (g.nodes3d || 0) * N3; }
+      function vertexOffset(g) { return sourceOffset(g) + (g.sources || 0); }
       function paramOffset(g) { return vertexOffset(g) + g.vertices * V; }
       // The scene block of frame `index`, moved `fraction` of the way to the
       // next (the camera and the lights slide between records), or null.
@@ -2560,16 +2684,17 @@ enum WebPlayer {
         // Every frame its own record: the shapes, quads, and vertices as 16-bit
         // samples by field, the parameter rows as floats.
         var g = graphOf(index);
-        var si = D.offsets[u], pi = D.positionOffsets[u], vo2 = vertexOffset(g), count = paramOffset(g);
+        var si = D.offsets[u], pi = D.positionOffsets[u], so2 = sourceOffset(g), vo2 = vertexOffset(g), count = paramOffset(g);
         var go = groupOffset(g), no = nodeOffset(g), fo = fieldOffset(g), n3o = node3DOffset(g);
         for (var k = 0; k < count; k++) {
-          if (k >= vo2 && (k - vo2) % V < P) { scratch[k] = vertexPositions[pi++]; continue; }
+          // A stroke or a fill as its points, and a vertex's position, travel exact.
+          if ((k >= so2 && k < vo2) || (k >= vo2 && (k - vo2) % V < P)) { scratch[k] = vertexPositions[pi++]; continue; }
           var c;
           if (k < go) c = k < g.instances * F ? (k % F) : F + (k - g.instances * F) % Q;
           else if (k < no) c = F + Q + (k - go) % G;
           else if (k < fo) c = F + Q + G + (k - no) % NF;
           else if (k < n3o) c = F + Q + G + NF + (k - fo) % FF;
-          else if (k < vo2) c = F + Q + G + NF + FF + (k - n3o) % N3;
+          else if (k < so2) c = F + Q + G + NF + FF + (k - n3o) % N3;
           else c = F + Q + G + NF + FF + N3 + (k - vo2) % V;
           scratch[k] = lows[c] + stream[si++] * scales[c];
         }
@@ -2623,6 +2748,66 @@ enum WebPlayer {
         gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(vo + start * V, vo + (start + count) * V), gl.DYNAMIC_DRAW);
         gl.drawArrays(gl.TRIANGLES, 0, count);
         gl.bindVertexArray(null);
+      }
+      // The strokes (`isFringe`) or fills an item carries as their points: the
+      // records at `item[1]` of the source region, `item[2]` floats of them,
+      // expanded by the expander into the vertices the Mac drew and kept per
+      // item until the records move, so a still expands once and a moving
+      // drawing once a frame. Nothing draws until the expander has loaded.
+      var sourceCache = new Map(), drawTick = 0;
+      function drawSources(item, isFringe, blend, w, h, so, flip) {
+        if (!expander) return;
+        var start = item[1], floats = item[2];
+        var src = scratch.subarray(so + start, so + start + floats);
+        var entry = sourceCache.get(item);
+        if (entry) entry.tick = drawTick;
+        var same = !!entry && entry.floats.length === floats;
+        if (same) { for (var i = 0; i < floats; i++) { if (entry.floats[i] !== src[i]) { same = false; break; } } }
+        if (!same) {
+          if (!entry) {
+            entry = { floats: new Float32Array(floats), buffer: gl.createBuffer(), vao: gl.createVertexArray(), count: 0, tick: drawTick };
+            gl.bindVertexArray(entry.vao);
+            gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+            for (var t = 0; t < tlayout.length; t++) {
+              gl.enableVertexAttribArray(t);
+              gl.vertexAttribPointer(t, tlayout[t][0], gl.FLOAT, false, V * 4, tlayout[t][1]);
+            }
+            gl.bindVertexArray(null);
+            sourceCache.set(item, entry);
+          }
+          if (entry.floats.length !== floats) entry.floats = new Float32Array(floats);
+          entry.floats.set(src);
+          var ptr = expander.input(floats);
+          new Float32Array(expander.memory.buffer, ptr, floats).set(src);
+          var count = expander.expand(floats);
+          if (count < 0) { entry.count = 0; return; }
+          var out = new Float32Array(expander.memory.buffer, expander.output(), count * V);
+          gl.bindBuffer(gl.ARRAY_BUFFER, entry.buffer);
+          gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+          entry.count = count;
+        }
+        if (!entry.count) return;
+        var e = triangleProgram(isFringe);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        setBlend(blend, true);
+        gl.bindVertexArray(entry.vao);
+        gl.drawArrays(gl.TRIANGLES, 0, entry.count);
+        gl.bindVertexArray(null);
+      }
+      // An item's vertices stay for as long as the item is drawn: a stable
+      // cast's items recur every frame and keep theirs, a changing cast's are
+      // let go once the frame has moved past them, so a long recording holds
+      // one frame's expansion at a time rather than every frame's.
+      function sweepSources() {
+        sourceCache.forEach(function (entry, item) {
+          if (entry.tick === drawTick) return;
+          gl.deleteBuffer(entry.buffer);
+          gl.deleteVertexArray(entry.vao);
+          sourceCache.delete(item);
+        });
+        drawTick++;
       }
       // `count` textured quads from quad `quad`: a layer's (its rows turned
       // over, premultiplied), a picture's (as uploaded, premultiplied), or the
@@ -2769,11 +2954,12 @@ enum WebPlayer {
         gl.viewport(0, 0, surface.w, surface.h);
         if (clear && clear.length) { gl.clearColor(clear[0], clear[1], clear[2], clear.length > 3 ? clear[3] : 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
         if (sc) { gl.depthMask(true); gl.clear(gl.DEPTH_BUFFER_BIT); }
-        var vo = vertexOffset(g), flip = ms ? -1 : 1, reduced = false;
+        var vo = vertexOffset(g), so = sourceOffset(g), flip = ms ? -1 : 1, reduced = false;
         for (var i = 0; i < items.length; i++) {
           var item = items[i];
           if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
           if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
+          if (item[0] === 'x') { drawSources(item, item[4] === 1, item[5] || 0, w, h, so, flip); continue; }
           if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
           if (item[0] === 'f') {
             if (!sc) continue;
@@ -2951,6 +3137,7 @@ enum WebPlayer {
         gl.uniform1f(pExposure, exposureAt(index, fraction));
         gl.uniform1i(pToneMap, toneOf(index));
         gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (sourceCache.size) sweepSources();
       }
 
       var player = { canvas: canvas, frames: D.frames, rate: D.rate, duration: D.frames / D.rate,
@@ -3312,6 +3499,7 @@ public extension OllinApp {
         if track.sampledColumns > 0 || !track.stable { live.append(track.stable ? "\(track.sampledColumns) columns sampled" : "every frame sampled") }
         let passes = track.passCount
         if passes > 0 { live.append("\(passes) shader passes a frame") }
+        if track.sourceCount > 0 { live.append("\(track.sourceCount) strokes and fills as points in the fullest frame, expanded on the page") }
         if track.vertexCount > 0 { live.append("\(track.vertexCount) triangle vertices in the fullest frame") }
         if track.groupCount > 0 { live.append("\(track.groupCount) composed field\(track.groupCount == 1 ? "" : "s") a frame") }
         if track.fieldCount > 0 { live.append("\(track.fieldCount) raymarched field\(track.fieldCount == 1 ? "" : "s") a frame") }
