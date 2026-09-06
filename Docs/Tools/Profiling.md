@@ -4,9 +4,9 @@
 
 ## Profiling
 
-Ollin sits on a GPU core, so a sketch can draw a great deal before it slows down. When one does slow down, the question is which half of the frame is to blame. The inspector answers it. The cell grid ends with three counts, and two bars sit under it. Together they say where the frame went.
+Ollin renders on the GPU, so a sketch can draw a great deal before it slows down. When a sketch does slow down, you need to know which half of the frame, the CPU or the GPU, is taking the time. The inspector shows this. Its cell grid ends with three counts, and two bars sit under the grid. Together, the counts and the bars show where the frame time went.
 
-Open the inspector with **⌘/** (standalone), or read it in the sidebar of OllinLive, the gallery, and the live-coding host. Every host shows the same card.
+In a standalone sketch, open the inspector with **⌘/**. In OllinLive, the gallery, and the live-coding host, the inspector is in the sidebar. Every host shows the same card.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/CostRow-dark.jpg">
@@ -26,26 +26,26 @@ Open the inspector with **⌘/** (standalone), or read it in the sidebar of Olli
 <a name="the-two-bars"></a>
 ### The two bars
 
-The **CPU** bar is your `draw()` plus the encode that turns it into GPU commands. Tessellation lives here, and it is the first thing to grow in an immediate-mode renderer. The **GPU** bar is what the device spent on the frame, taken from its own timestamps.
+The **CPU** bar is the time spent in your `draw()` plus the time spent encoding it into GPU commands. Tessellation is part of this time, and in an immediate-mode renderer it is the first cost to grow. The **GPU** bar is the time the device spent on the frame, read from the device's own timestamps.
 
-Both bars are drawn against the same scale, which is the frame's own period. At 60 frames a second that scale is 16.7 ms. So the longer bar is the bottleneck, and two short bars mean the sketch has room to spare.
+Both bars use the same scale: the period of one frame. At 60 frames a second, that period is 16.7 ms. So the longer bar is the bottleneck, and two short bars mean the sketch has time to spare.
 
-The two are deliberately not stacked into one bar. The CPU builds frame N while the GPU still draws frame N-1, so the two times overlap rather than add up. A stacked bar would suggest a total that does not exist.
+The two bars are not stacked into one, on purpose. The CPU builds frame N while the GPU is still drawing frame N-1, so the two times overlap instead of adding up. One stacked bar would suggest a total that does not exist.
 
-Hover either bar for the detail. The CPU tooltip splits the number into drawing and encoding, and it names the time spent waiting for the display. That wait is headroom rather than work, so a large wait is good news.
+Hover over either bar for the detail. The CPU tooltip splits its number into drawing time and encoding time, and it also shows the time spent waiting for the display. That wait is spare time, not work, so a large wait means the sketch has headroom.
 
-One caveat on the GPU number. It is measured on the frame the device just finished, which is a frame or two behind. It is smoothed for display, so the lag is invisible unless a sketch changes cost suddenly.
+The GPU number has one caveat. It is measured on the frame the device has just finished, which is a frame or two behind the one being built. The number is smoothed for display, so you only notice the lag when a sketch changes cost suddenly.
 
 <a name="the-three-counts"></a>
 ### The three counts
 
-- **Draws** is the draw calls the frame issued. Hover it for the breakdown by path: instanced SDF shapes, fill and stroke vertices, mesh vertices, glyphs, images, fields, point splats, particles, and compute dispatches.
-- **Passes** is the render passes the frame encoded. The canvas and the present are always two of them. Every effects layer, filter, shadow map, and probe bake adds its own.
-- **Batches** is the runs the drawer recorded. A run breaks whenever the pipeline, blend mode, texture, or clip level changes.
+- **Draws** is the number of draw calls the frame issued. Hover over it for the breakdown by path. The paths are instanced SDF shapes, fill and stroke vertices, mesh vertices, glyphs, images, fields, point splats, particles, and compute dispatches.
+- **Passes** is the number of render passes the frame encoded. The canvas and the present are always two of them, and every effects layer, filter, shadow map, and probe bake adds its own pass.
+- **Batches** is the number of runs the drawer recorded. A run ends, and a new one starts, whenever the pipeline, blend mode, texture, or clip level changes.
 
-The relationship between batches and shapes is the useful one. Ten thousand circles in one batch cost one draw call. Ten circles that each change the blend mode cost ten.
+The ratio of batches to shapes is the useful number. Ten thousand circles in one batch cost one draw call, but ten circles that each change the blend mode cost ten draw calls.
 
-A first frame reads higher than the ones after it. Some setup happens once and is then cached for the life of the window.
+The first frame reads higher than the frames after it, because some setup happens once and is then cached for the life of the window.
 
 <a name="what-to-do-about-a-slow-frame"></a>
 ### What to do about a slow frame
@@ -54,43 +54,43 @@ Read the bars first, then act on the longer one.
 
 **The CPU bar is longer.** The frame is spending its time building geometry.
 
-- Check the draws tooltip for a large vertex count. Fills and strokes are tessellated on the CPU, while the closed shapes in the [SDF catalog](../Drawing/Drawing.md) are one instance each.
-- Static geometry belongs in a [retained batch](../Drawing/Batches.md). It is recorded once and replayed from GPU memory after that.
-- A high batch count against few shapes means state is changing per shape. Group the shapes that share a blend mode, a texture, or a clip.
+- Check the draws tooltip for a large vertex count. Fills and strokes are tessellated on the CPU, but each closed shape in the [SDF catalog](../Drawing/Drawing.md) is one instance.
+- Put static geometry in a [retained batch](../Drawing/Batches.md). A batch is recorded once and then replayed from GPU memory on every later frame.
+- A high batch count with few shapes means the state changes for each shape. Group together the shapes that share a blend mode, a texture, or a clip.
 
 **The GPU bar is longer.** The frame is spending its time shading pixels.
 
-- Look at the pass count. A long [filter chain](../Drawing/Effects.md) is passes over the whole canvas, and each one is fill rate.
-- An effects layer can render at a fraction of the canvas. Pass `scale:` to `makeRenderTarget(scale:)` for anything soft, such as a blur or a glow.
-- In 3D, shadows, reflections, and global illumination each add passes. The [3D pages](../3D/3D.md) name the cost of each.
+- Look at the pass count. A long [filter chain](../Drawing/Effects.md) is a series of passes over the whole canvas, and each pass costs fill rate.
+- An effects layer can render at a fraction of the canvas size. Pass `scale:` to `makeRenderTarget(scale:)` for any soft effect, such as a blur or a glow.
+- In 3D, shadows, reflections, and global illumination each add passes of their own. The [3D pages](../3D/3D.md) give the cost of each one.
 
-**Both bars are short and the frame rate is still low.** Something outside the drawing is holding the frame up. A file read or a heavy `setup()` in the middle of `draw()` will do it.
+**Both bars are short and the frame rate is still low.** Something outside the drawing is holding up the frame. A file read or a heavy `setup()` call in the middle of `draw()` will do it.
 
 <a name="capturing-a-frame-for-xcode"></a>
 ### Capturing a frame for Xcode
 
-When the answer is "the GPU, but which pass", hand the frame to Metal's own debugger:
+When the GPU bar is longer and you need to know which pass is slow, hand the frame to Metal's own debugger:
 
 ```swift
 if frameCount == 120 { captureGPUFrame() }        // or: captureGPUFrame(to: "slow.gputrace")
 ```
 
-The frame you ask from is the frame you get. The request is taken between your `draw()` and the render it feeds. Ollin writes a `.gputrace` file, which opens in Xcode with per-pass timings, the pipeline state, and every bound resource.
+The captured frame is the same frame you call `captureGPUFrame()` from, because the request is taken between your `draw()` and the render that follows it. Ollin writes a `.gputrace` file. That file opens in Xcode and shows per-pass timings, the pipeline state, and every bound resource.
 
-**Metal refuses to capture unless the process asks for it at launch.** Run the sketch with the capture flag set:
+**Metal does not capture unless the process asks for it at launch.** Run the sketch with the capture flag set:
 
 ```sh
 MTL_CAPTURE_ENABLED=1 ollin MySketch.swift
 ```
 
-Without it, the sketch prints that line and carries on drawing. The host menu has the same thing as an action: **View ▸ Capture GPU Frame (⌘⇧G)** captures the next frame.
+Without the flag, the sketch prints the command line above and keeps drawing. The host menu offers the same capture as an action. **View ▸ Capture GPU Frame (⌘⇧G)** captures the next frame.
 
-Either way, Ollin prints the frame's passes in order beside the file path. That list alone often answers the question, and it needs no Xcode.
+Either way, Ollin prints the frame's passes in order next to the file path. That list alone often answers the question, and you do not need to open Xcode to read it.
 
 <a name="reading-the-numbers-from-code"></a>
 ### Reading the numbers from code
 
-The same numbers reach a sketch through the [extension seam](../Core/Sketch.md#extensions). `FrameInfo` carries a `FrameProfile`, so an extension can log a frame, watch for a threshold, or draw its own readout:
+A sketch can read the same numbers through the [extension seam](../Core/Sketch.md#extensions). `FrameInfo` carries a `FrameProfile`, so an extension can log a frame, watch for a threshold, or draw its own readout:
 
 ```swift
 final class SlowFrameLog: SketchExtension {
@@ -102,9 +102,9 @@ final class SlowFrameLog: SketchExtension {
 }
 ```
 
-`FrameProfile` holds the four times (`cpuDrawMS`, `cpuEncodeMS`, `gpuMS`, `waitMS`), the submitted work (`drawCalls`, `passes`, `computeDispatches`, `batches`), and the geometry each path drew. `cpuMS` adds the two CPU times. `tessellatedVertices` adds every vertex the CPU built this frame.
+`FrameProfile` holds three groups of values. The first group is the four times (`cpuDrawMS`, `cpuEncodeMS`, `gpuMS`, `waitMS`). The second is the submitted work (`drawCalls`, `passes`, `computeDispatches`, `batches`), and the third is the geometry each path drew. `cpuMS` is the sum of the two CPU times, and `tessellatedVertices` is the sum of every vertex the CPU built this frame.
 
-The counts follow what was really drawn rather than what was recorded. A batch the renderer skipped is not counted.
+The counts reflect what was drawn, not what was recorded, so a batch the renderer skipped does not appear in them.
 
 ---
 

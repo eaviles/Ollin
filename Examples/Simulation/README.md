@@ -4,28 +4,28 @@
 
 ## Simulation
 
-Systems that evolve on the GPU each frame: the built-in `Sim` field catalog (stateful textures you draw into to seed or force; see the [Layered effects reference](../../Docs/Drawing/Effects.md)), the [artificial-life](../../Docs/Simulation/ArtificialLife.md) particle systems, and the [particle fluids & soft bodies](../../Docs/Simulation/Fluids.md). Distinct from [Physics](../Physics/) (CPU rigid and soft bodies) and [Compute](../Compute/) (raw kernels over buffers and textures).
+These examples run systems that change on the GPU each frame. They cover three areas: the built-in `Sim` field catalog, the [artificial-life](../../Docs/Simulation/ArtificialLife.md) particle systems, and the [particle fluids & soft bodies](../../Docs/Simulation/Fluids.md). A `Sim` field is a stateful texture that you draw into to seed or force it; see the [Layered effects reference](../../Docs/Drawing/Effects.md). This folder is separate from [Physics](../Physics/), which covers CPU rigid and soft bodies, and from [Compute](../Compute/), which covers raw kernels over buffers and textures.
 
 | Example | What it shows |
 |---|---|
-| [GrayScott](GrayScott/Sketch.swift) | a Gray-Scott reaction-diffusion field evolving on the GPU (`makeSimField(.reactionDiffusion(...))`) |
-| [Automata](Automata/Sketch.swift) | eight classic cellular automata behind one rule picker: Game of Life, Brian's Brain, Griffeath's cyclic automaton, an excitable medium, the hodgepodge machine, the Abelian sandpile, Lenia, and falling sand, each with its own ramp, seeding recipe, and parameters; drag to paint, hold a key to erase (`makeSimField(...)`) |
-| [LifeQuilt](LifeQuilt/Sketch.swift) | the classic life rules stepped by hand on the CPU and quilted from triangular wedges colored by a radial cosine palette, the by-hand contrast to the GPU rules in Automata (`drawTriangle`, SDF) |
-| [MultiScaleTuring](MultiScaleTuring/Sketch.swift) | McCabe's multi-scale Turing patterns: five scales competing per pixel, self-organizing from noise into diatom-like relief, foldable into a rosette (`makeSimField(.multiScaleTuring(...))`) |
-| [Fluid](Fluid/Sketch.swift) | a real-time incompressible fluid carrying colour, drag to swirl (`makeSimField(.fluid(...))`) |
-| [SelfWarp](SelfWarp/Sketch.swift) | the picture dragging its own history: orbiting orbs smeared into ribbons along their measured motion, drag to paint with a wake (`makeSimField(.selfWarp(...))`) |
-| [Ripples](Ripples/Sketch.swift) | a rain-swept water surface: the 2D wave equation shaded as liquid, click to drop (`makeSimField(.ripples(...))`) |
-| [Watercolor](Watercolor/Sketch.swift) | wet paint on rough paper: a scripted wash, wet-in-wet charge, backrun bloom, and glaze you can take over with the mouse (`watercolor(pigments:)`) |
-| [ParticleLife](ParticleLife/Sketch.swift) | attraction/repulsion matrices growing membranes, chasers, and worms (`makeParticleLife(...)`) |
-| [PrimordialParticles](PrimordialParticles/Sketch.swift) | one turning rule growing dividing cells (`makePrimordialParticles(...)`) |
-| [Physarum](Physarum/Sketch.swift) | slime-mold agents growing branching trail networks (`makePhysarum(...)`) |
-| [ParticleFluid](ParticleFluid/Sketch.swift) | a box of water made of particles, dam break to splash to pool, drag to grab (`makeParticleFluid(...)`) |
-| [SoftBodies](SoftBodies/Sketch.swift) | shape-matched jelly blobs tumbling into a pile, drag to knead (`makeSoftBodies(...)`) |
-| [Swarm](Swarm/Sketch.swift) | steering at scale: 30,000 creatures deciding where to go from the same short list of urges, worked out on the GPU, so the same weights make a flock, a crowd, or a drifting cloud (`makeSwarm(...)`) |
-| [SwarmChemistry](SwarmChemistry/Sketch.swift) | every particle carries its own copy of the rule it moves by, and on contact one copy overwrites the other: a recipe spreads because the particles holding it keep meeting others and winning |
-| [ParticleLenia](ParticleLenia/Sketch.swift) | no force law at all: an energy field, and particles walking downhill on it, with a ring-shaped kernel reading how crowded each one is |
-| [Attractor](Attractor/Sketch.swift) | a strange attractor as moving material rather than a still curve: a million particles integrating the same velocity field on the GPU, pulled onto the shape and then streaming along it |
-| [Evolution](Evolution/Sketch.swift) | thirty thousand attempts at one journey, none of which knows the route: a genome is a list of pushes, whoever lands nearest is likelier to be a parent, and the route is found in a dozen generations |
-| [Breeding](Breeding/Sketch.swift) | evolution with nobody keeping score: sixteen ornaments drawn from eight numbers each, and the only thing deciding who has children is which ones you liked looking at |
+| [GrayScott](GrayScott/Sketch.swift) | a Gray-Scott reaction-diffusion field that evolves on the GPU (`makeSimField(.reactionDiffusion(...))`) |
+| [Automata](Automata/Sketch.swift) | eight classic cellular automata under one rule picker: Game of Life, Brian's Brain, Griffeath's cyclic automaton, an excitable medium, the hodgepodge machine, the Abelian sandpile, Lenia, and falling sand. Each one has its own ramp, seeding recipe, and parameters. Drag to paint, and hold a key to erase (`makeSimField(...)`) |
+| [LifeQuilt](LifeQuilt/Sketch.swift) | the classic life rules stepped by hand on the CPU and drawn as a quilt of triangular wedges, colored by a radial cosine palette. It is the by-hand counterpart to the GPU rules in Automata (`drawTriangle`, SDF) |
+| [MultiScaleTuring](MultiScaleTuring/Sketch.swift) | McCabe's multi-scale Turing patterns: five scales compete at each pixel and organize themselves from noise into a relief that looks like a diatom. You can fold the result into a rosette (`makeSimField(.multiScaleTuring(...))`) |
+| [Fluid](Fluid/Sketch.swift) | a real-time incompressible fluid that carries color. Drag to swirl it (`makeSimField(.fluid(...))`) |
+| [SelfWarp](SelfWarp/Sketch.swift) | the picture warps its own earlier frames: orbiting orbs smear into ribbons along their measured motion. Drag to paint with a wake (`makeSimField(.selfWarp(...))`) |
+| [Ripples](Ripples/Sketch.swift) | a water surface under rain: the 2D wave equation shaded as liquid. Click to add a drop (`makeSimField(.ripples(...))`) |
+| [Watercolor](Watercolor/Sketch.swift) | wet paint on rough paper: a scripted wash, a wet-in-wet charge, a backrun bloom, and a glaze. You can take over from the script with the mouse (`watercolor(pigments:)`) |
+| [ParticleLife](ParticleLife/Sketch.swift) | attraction and repulsion matrices that grow membranes, chasers, and worms (`makeParticleLife(...)`) |
+| [PrimordialParticles](PrimordialParticles/Sketch.swift) | one turning rule that grows cells, and the cells divide (`makePrimordialParticles(...)`) |
+| [Physarum](Physarum/Sketch.swift) | slime-mold agents that grow branching trail networks (`makePhysarum(...)`) |
+| [ParticleFluid](ParticleFluid/Sketch.swift) | a box of water made of particles. It starts as a dam break, splashes, then settles into a pool. Drag to grab it (`makeParticleFluid(...)`) |
+| [SoftBodies](SoftBodies/Sketch.swift) | shape-matched jelly blobs that tumble into a pile. Drag to knead them (`makeSoftBodies(...)`) |
+| [Swarm](Swarm/Sketch.swift) | steering at scale: 30,000 creatures decide where to go from the same short list of urges, and the GPU works it out. Because the list is shared, the same weights make a flock, a crowd, or a drifting cloud (`makeSwarm(...)`) |
+| [SwarmChemistry](SwarmChemistry/Sketch.swift) | every particle carries its own copy of the rule it moves by. When two particles touch, one copy overwrites the other, so a recipe spreads when the particles that hold it keep meeting others and winning |
+| [ParticleLenia](ParticleLenia/Sketch.swift) | no force law at all. Instead there is an energy field, and the particles walk downhill on it. A ring-shaped kernel measures how crowded each particle is |
+| [Attractor](Attractor/Sketch.swift) | a strange attractor as moving material rather than a still curve. A million particles integrate the same velocity field on the GPU. They are pulled onto the shape and then stream along it |
+| [Evolution](Evolution/Sketch.swift) | thirty thousand attempts at one journey, and none of them knows the route. A genome is a list of pushes. Whoever lands nearest is more likely to become a parent, so the route is found in a dozen generations |
+| [Breeding](Breeding/Sketch.swift) | evolution with nobody keeping score. Sixteen ornaments are each drawn from eight numbers, and the only thing that decides which ones have children is which ones you liked looking at |
 
 Run one with `swift run Example-Simulation-<Name>`, e.g. `swift run Example-Simulation-ParticleFluid`.

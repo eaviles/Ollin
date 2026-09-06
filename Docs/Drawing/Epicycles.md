@@ -4,7 +4,7 @@
 
 ## Fourier epicycles
 
-Rebuild any closed outline as a **chain of spinning circles**. The discrete Fourier transform reads evenly spaced samples of a contour as points in the plane and rewrites them as a sum of circular motions, where each term is a circle of fixed radius spinning a whole number of turns per lap. Chain the circles tip to tail, biggest first, and the last tip re-draws the outline. Keep only the first few and it draws a smooth phantom of it. That is the whole trick, and it works on *any* closed contour: an [imported SVG](./SVG.md), a glyph from [`textToShapes`](./Text.md), points you computed.
+Rebuild any closed outline as a **chain of spinning circles**. The discrete Fourier transform reads evenly spaced samples of a contour as points in the plane. It rewrites those points as a sum of circular motions. Each term is a circle of fixed radius, and it spins a whole number of turns per lap. Chain the circles tip to tail, biggest first, and the last tip re-draws the outline. Keep only the first few circles and that tip draws a smooth, loose version of the outline instead. This works on any closed contour, so the input can be an [imported SVG](./SVG.md), a glyph from [`textToShapes`](./Text.md), or points you computed yourself.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/EpicycleTerms-dark.jpg">
@@ -30,7 +30,7 @@ override func draw() {
 }
 ```
 
-Everything is deterministic (there is no randomness in the transform), so a fixed frame reproduces exactly, and one traced lap is inherently a perfect loop, so declaring the lap as [`loopDuration`](../Core/Sketch.md#loopDuration) lets `--export-loop` render a seamless cycle.
+The transform has no randomness in it, so everything here is deterministic and a fixed frame reproduces exactly. One traced lap is also a perfect loop on its own. Declare the lap as [`loopDuration`](../Core/Sketch.md#loopDuration), and `--export-loop` then renders a seamless cycle.
 
 ### Contents
 
@@ -48,9 +48,9 @@ Epicycles(_ contour: Contour, samples: Int = 256)
 Epicycles(points: [Vector2])
 ```
 
-The contour form resamples the outline to `samples` points an even walked-length apart first (the transform assumes even spacing, and a raw glyph or SVG outline arrives dense on curves and sparse on straights), then runs the transform. An open contour is closed across its ends. The `points:` form skips the resampling for points that are already even.
+The contour form first resamples the outline to `samples` points an even walked-length apart, then runs the transform. It resamples because the transform assumes even spacing, and a raw glyph or SVG outline arrives dense on curves and sparse on straights. An open contour is closed across its ends. The `points:` form skips the resampling, so use it when your points are already evenly spaced.
 
-The result holds a fixed `center` (the samples' average position) and `terms`, the rotating circles sorted largest first:
+The result holds a fixed `center` and a list of `terms`. The `center` is the average position of the samples, and `terms` holds the rotating circles sorted largest first:
 
 ```swift
 struct Epicycles.Term {
@@ -60,7 +60,7 @@ struct Epicycles.Term {
 }
 ```
 
-The transform is the plain O(n²) DFT, run once at construction, and at the default 256 samples it is a sub-millisecond cost paid in `setup()`. Build the chain there and keep the value, because truncating it later costs nothing (see [terms](#terms)).
+The transform is the plain O(n²) DFT, and it runs once at construction. At the default 256 samples that costs under a millisecond, paid in `setup()`. Build the chain there and keep the value, because truncating it later costs nothing (see [terms](#terms)).
 
 <a name="reading"></a>
 
@@ -72,11 +72,11 @@ epicycles.joints(at: t, terms: 64) -> [Vector2]  // center, tips..., traced poin
 epicycles.path(samples: 512, terms: 64) -> Contour
 ```
 
-`t` is the lap phase, `0...1`, one full trace per unit, so a looping sketch passes `loopProgress(over:)` straight in. It also wraps, so `point(at: -0.3)` equals `point(at: 0.7)`, which makes fixed-length trails that reach behind the lap start a one-liner.
+`t` is the lap phase and runs `0...1`, one full trace per unit, so a looping sketch can pass `loopProgress(over:)` straight in. The phase also wraps, so `point(at: -0.3)` equals `point(at: 0.7)`. Because the phase wraps, you can write a fixed-length trail that reaches behind the lap start in one line.
 
-`joints` is the chain itself: the fixed `center`, then each kept circle's tip in order. Joint `i` is the center of circle `i` (its radius is `terms[i].amplitude`), and the last joint equals `point(at:terms:)`. `path` samples a whole lap into a closed `Contour`, ready for `drawShape`, the [booleans](./Geometry.md), or [hatching](../Output/Export.md#hatching-solid-fills-for-a-pen-plotter).
+`joints` returns the chain itself: the fixed `center`, then each kept circle's tip in order. Joint `i` is the center of circle `i`, and that circle's radius is `terms[i].amplitude`. The last joint equals `point(at:terms:)`. `path` samples a whole lap into a closed `Contour`, ready for `drawShape`, the [booleans](./Geometry.md), or [hatching](../Output/Export.md#hatching-solid-fills-for-a-pen-plotter).
 
-With every term kept, the reconstruction is exact at the sample phases: `point(at: i / n)` lands back on input sample `i`.
+When you keep every term, the reconstruction is exact at the sample phases, so `point(at: i / n)` lands back on input sample `i`.
 
 <a name="drawing"></a>
 
@@ -86,13 +86,13 @@ With every term kept, the reconstruction is exact at the sample phases: `point(a
 drawEpicycles(_ epicycles: Epicycles, at: t, terms: 64)
 ```
 
-This draws the classic construction in one call. Each kept circle appears as an unfilled outline in the current `stroke`, with a spoke from its center to the next joint. The current fill is untouched. For the trail the pen leaves behind, sample `point(at:terms:)` over recent phases and draw the polyline yourself (the `Motion/Epicycles` example fades one as it goes).
+This draws the classic construction in one call. Each kept circle appears as an unfilled outline in the current `stroke`, with a spoke from its center to the next joint. The current fill is untouched. To draw the trail behind the traced point, sample `point(at:terms:)` over recent phases and draw the polyline yourself. The `Motion/Epicycles` example fades that trail as the traced point moves.
 
 <a name="terms"></a>
 
 #### Terms, detail, and ringing
 
-Every read method takes `terms:`, a prefix count of the largest circles. Because the terms are amplitude-sorted, `terms: k` is always the best `k`-circle approximation, so one built chain serves every level of detail. Put the count on a [`@Param`](../Helpers/Parameters.md) parameter and scrub it live. A handful of terms gives a soft, dreamy phantom, more terms sharpen it, and near-full terms trace the outline exactly. Around sharp corners a truncated chain overshoots in small ripples (the transform's ringing), which reads as a wobble near the corner. Raise `terms:` or soften the corner if it bothers the piece.
+Every read method takes `terms:`, the number of circles to keep from the front of the list. The terms are sorted by amplitude, so `terms: k` is always the best `k`-circle approximation, and one built chain serves every level of detail. Put the count on a [`@Param`](../Helpers/Parameters.md) parameter and scrub it live. A few terms give a soft, loose shape, more terms sharpen it, and a near-full count traces the outline exactly. Around a sharp corner a truncated chain overshoots in small ripples. That overshoot is the transform's ringing, and it reads as a wobble near the corner. Raise `terms:` or soften the corner if that wobble bothers the piece.
 
 ---
 

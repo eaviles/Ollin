@@ -4,14 +4,14 @@
 
 ## Shadow art
 
-**`shadowArt`** carves the solid that throws the shadows you ask for: one shape from the front, another from the side, a third from above.
+**`shadowArt`** carves a solid that throws the shadows you ask for. You give it one shape for the front, another for the side, and a third for above.
 
 ```swift
 let art = shadowArt(fromFront: ring, fromSide: cross, resolution: 56)
 drawMesh(art.mesh)
 ```
 
-The reasoning is one line. A lit point casts its shadow along the light's direction, so a point can only be part of the solid if it lands inside the shadow in *every* direction it is lit from. Keep exactly those points:
+A lit point casts its shadow along the direction of the light. A point can therefore belong to the solid only if it lands inside the shadow in *every* direction it is lit from. Keep exactly those points:
 
 ```
    front says:  a ring        every voxel is kept only where all of the
@@ -20,7 +20,7 @@ The reasoning is one line. A lit point casts its shadow along the light's direct
    what is left is neither    cut where they cross
 ```
 
-What is left is the **visual hull**: the largest solid that could cast them.
+What is left is the **visual hull**, the largest solid that could cast those shadows.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-SculptingWithFields/TwoShadowsOneSolid-dark.jpg">
@@ -47,13 +47,13 @@ shadowArt(fromFront front: Image? = nil,
           in bounds: Box3? = nil) -> ShadowArt
 ```
 
-Each picture is read as a silhouette: **bright means solid** (a white shape on black), and `threshold` is where the line falls. `inverted` reads dark as solid instead, which is what a scanned drawing looks like.
+Each picture is read as a silhouette, and **bright means solid**, which means a white shape on a black background. `threshold` sets where that brightness cutoff falls. Set `inverted` to read dark as solid instead, which is the usual case for a scanned drawing.
 
 - `front` is the shadow cast along z, seen looking at the xy face.
 - `side` is the shadow cast along x, seen looking at the zy face.
 - `above` is the shadow cast along y, seen looking at the xz face.
 
-A side left out places no constraint at all, so **one picture alone gives a prism**. The cost is the cube of `resolution`, and the default two-unit cube about the origin can be replaced with any box.
+A side you leave out places no constraint, so **one picture alone gives a prism**. The cost is the cube of `resolution`. The bounds default to a two-unit cube around the origin, and you can pass any box instead.
 
 <a name="reading"></a>
 
@@ -73,19 +73,21 @@ struct ShadowArt {
 }
 ```
 
-`boxes` is the blocky reading, one cube per voxel, and `mesh` is the surface, built by marching the occupancy field so the skin steps over the voxels rather than guessing at a smooth shape behind them.
+`boxes` is the blocky reading, one cube per voxel. `mesh` is the surface, built by marching the occupancy field. The surface therefore steps over the voxels rather than approximating a smooth shape behind them.
 
-**`shadow(from:)` is the important one.** It hands back what the carved solid actually throws, which is the honest thing to compare with what was asked for.
+**`shadow(from:)` reports what the carved solid actually throws.** Compare its result against the shadow you asked for.
 
 <a name="limits"></a>
 
 #### What can and cannot be cast
 
-**The shadows thrown are never larger than the ones asked for, and can be smaller.** The catch is that two views share an axis. The front and the side are seen from either end of the same vertical, so a row that is empty in one empties it in the other: no solid can throw a shadow where nothing is lit.
+**The shadows thrown are never larger than the ones asked for, and can be smaller.**
 
-- **Two silhouettes come out exact when they are solid in the same rows.** That is why the classic circle-and-square works, and why a shape reaching further down than its partner has its bottom cut off.
-- **Three agree far less often.** A point of one shadow may have nothing behind it that survives the other two, and then that part of the shadow is simply not cast. The famous three-letter sculptures are designed around this, not in spite of it.
-- Compare `shadow(from:)` against the silhouette you handed in, and where they differ, the one that is true is the one thrown.
+The reason is that the front view and the side view share the same vertical axis, so their rows line up. A row that is empty in one view is therefore empty in the other, because no solid throws a shadow where nothing is lit.
+
+- **Two silhouettes come out exact when they are solid in the same rows.** That is why the classic circle-and-square works. It is also why a shape that reaches further down than the other silhouette has its bottom cut off.
+- **Three agree far less often.** A point of one shadow may have nothing behind it that survives the other two. That part of the shadow is then not cast. The three-letter sculptures are designed around this limit.
+- Compare `shadow(from:)` against the silhouette you passed in. Where the two differ, the thrown shadow is the one you get.
 
 Example: `3D/Geometry/ShadowArt`. Guide: [Chapter 26](../../Guide/26-SculptingWithFields.md).
 
@@ -93,10 +95,10 @@ Example: `3D/Geometry/ShadowArt`. Guide: [Chapter 26](../../Guide/26-SculptingWi
 
 #### Where this comes from
 
-Carving a solid down to what its silhouettes allow is **shape from silhouette**, and the result is the visual hull named by Aldo Laurentini ("How Far 3D Shapes Can Be Understood from 2D Silhouettes", *IEEE PAMI* 16/2, 1994). Sculptures built to throw two or three chosen shadows are older, and the computational version was set out by Niloy Mitra and Mark Pauly ("Shadow Art", *SIGGRAPH Asia* 2009). See [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+Carving a solid down to what its silhouettes allow is **shape from silhouette**. The result is the visual hull, named by Aldo Laurentini ("How Far 3D Shapes Can Be Understood from 2D Silhouettes", *IEEE PAMI* 16/2, 1994). Sculptures built to throw two or three chosen shadows are older. Niloy Mitra and Mark Pauly set out the computational version ("Shadow Art", *SIGGRAPH Asia* 2009). See [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
 
 #### Go deeper
 
 - [Isosurfaces and metaballs](./Isosurface.md): the marching that turns the carved voxels into a surface
-- [3D](../3D/3D.md): drawing the mesh, lighting it, and casting its shadows for real
-- [Fabrication export](../Output/Fabrication.md): sending the solid to a printer, which is where a shadow sculpture wants to end up
+- [3D](../3D/3D.md): drawing the mesh, lighting it, and casting real shadows from it
+- [Fabrication export](../Output/Fabrication.md): sending the solid to a printer, the usual last step for a shadow sculpture

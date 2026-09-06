@@ -4,13 +4,13 @@
 
 ## Input
 
-Mouse- and keyboard-driven sketches.
+Sketches driven by the mouse and the keyboard.
 
 | Example | What it shows |
 |---|---|
-| [PanAndZoom](PanAndZoom/Sketch.swift) | a generated chart with more in it than one screen shows: drag to pan, scroll to zoom, with place names set at four units that are a smudge at the opening view and crisp four notches in (`viewControl`, `viewZoom`) |
-| [RepelGrid](RepelGrid/Sketch.swift) | a grid of dots that flee the cursor (`mouseX`/`mouseY`) |
-| [Keys](Keys/Sketch.swift) | steer a dot with WASD and the arrows folded into one `moveAxis` read, space to recolor (`keyPressed`), any release flashes a ring (`keyReleased`) |
-| [Drag](Drag/Sketch.swift) | grab, drag, and fling balls: the press and release hooks, the `mouse - previousMouse` per-frame delta drawn as a stretch arrow, and a release velocity averaged over the last few frames |
+| [PanAndZoom](PanAndZoom/Sketch.swift) | a generated chart that holds more than one screen shows, so you drag to pan and scroll to zoom. The place names are set at a text size of four units, six for the larger places, which reads as a smudge at the opening view and is crisp four zoom steps in (`viewControl`, `viewZoom`) |
+| [RepelGrid](RepelGrid/Sketch.swift) | a grid of dots that move away from the cursor (`mouseX`/`mouseY`) |
+| [Keys](Keys/Sketch.swift) | steer a dot with WASD or the arrow keys, both read through one `moveAxis` call. Space changes the color (`keyPressed`), and releasing any key flashes a ring (`keyReleased`) |
+| [Drag](Drag/Sketch.swift) | grab, drag, and throw balls. It uses the press and release hooks, draws the per-frame `mouse - previousMouse` delta as a stretch arrow, and averages the release velocity over the last few frames |
 
-Run one with `swift run Example-Input-<Name>`, e.g. `swift run Example-Input-RepelGrid`.
+Run one with `swift run Example-Input-<Name>`, for example `swift run Example-Input-RepelGrid`.

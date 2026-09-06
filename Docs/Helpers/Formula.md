@@ -4,14 +4,14 @@
 
 ## A number written as a rule
 
-A `Formula` is a small piece of arithmetic read from a string and worked out as often as you like:
+A `Formula` is a small piece of arithmetic read from a string. You can evaluate it as often as you like:
 
 ```swift
 let wobble = try Formula("120 + sin(time * 2) * 40")
 let radius = wobble.value(["time": time])
 ```
 
-That matters because a string arrives at runtime and Swift source does not. A parameter can be driven by a rule you typed. A file can carry the rule instead of a list of numbers. An editing surface can hand a person a field to type in. It is the same arithmetic you would write in `draw()`, spelled the same way, only later.
+This matters because a string can arrive at runtime, and Swift source cannot. So you can drive a parameter with a rule you typed. A file can carry the rule instead of a list of numbers. An editing surface can give you a field to type in. The arithmetic is the same as what you would write in `draw()`, and you spell it the same way. The difference is that Ollin reads it later, at runtime.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ParameterAsARule-dark.jpg">
@@ -51,15 +51,15 @@ final class Ring: Sketch {
 }
 ```
 
-A formula answers a plain number, so three kinds of parameter take one: a `Double`, an `Int` (rounded), and a `Bool` (on for anything but zero).
+A formula returns a plain number. So three kinds of parameter can take one: a `Double`, an `Int`, and a `Bool`. An `Int` parameter rounds the number, and a `Bool` parameter is on for any value but zero.
 
-A parameter under a formula is a [track](../Core/Automation.md) like any keyed one. `loops`, `speed`, `start`, and `length` shape it the same way, it travels in the same file, and every export renders it frame for frame.
+A parameter under a formula is a [track](../Core/Automation.md), the same as a keyed one. `loops`, `speed`, `start`, and `length` shape it the same way. Ollin saves it in the same file as a keyed track, and every export renders it frame for frame.
 
-The [Formula example](../../Examples/Motion/Formula/Sketch.swift) drives six parameters this way and prints the text driving each one under the ring.
+The [Formula example](../../Examples/Motion/Formula/Sketch.swift) drives six parameters this way. It prints the text that drives each one under the ring.
 
 ### A parameter of more than one number
 
-A point holds two numbers, a color holds four, a pair of ends holds two more. Each part takes its own rule, named where you write it:
+A point holds two numbers, a color holds four, and a pair of ends holds two. Each part can take its own rule. You name the part where you write the rule:
 
 ```swift
 final class Card: Sketch {
@@ -76,14 +76,14 @@ final class Card: Sketch {
 }
 ```
 
-**A part with no rule is left alone.** The frame above changes size while its `x` and `y` stay where the hand put them, and the hand can still move them while the size plays. That is the reason to write a rule for one part rather than for the whole parameter.
+**A part with no rule is left alone.** The frame above changes size, but its `x` and `y` stay where you put them. You can still drag them while the size keeps changing. This is why you write a rule for one part rather than for the whole parameter.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ParameterParts-dark.jpg">
   <img src="../../Guide/Images/31-SharingAndPerforming/ParameterParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the parameter's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
 </picture>
 
-**One part of a parameter is a name too**, spelled `parameter.part`, so `"frame.x + frame.width / 2"` reads this frame's rectangle. The name works whether keys carry that part or another rule works it out.
+**One part of a parameter is also a name**, spelled `parameter.part`. So `"frame.x + frame.width / 2"` reads the rectangle of this frame. The name works whether keys set that part or another rule computes it.
 
 | Parameter | Parts |
 | --- | --- |
@@ -94,32 +94,32 @@ final class Card: Sketch {
 | `Insets` | `top`, `right`, `bottom`, `left` |
 | `ClosedRange<Double>` | `lower`, `upper` |
 
-Three things are worth knowing before you write one:
+Know three things before you write one:
 
 - **One call carries the whole parameter**, so a second call replaces the first. Give every part in one call.
-- **A pair of ends stays ordered.** A `lower` that climbs past `upper` lifts it along, which is what the two-thumb slider does under a hand.
-- **A color's parts are the sRGB numbers in `0...1`, and nothing holds them there**, because a color parameter carries no range of its own. Write `saturate(...)` in the rule where you want one. Every other parameter keeps its own range, exactly as it does when a hand drags the field.
+- **A pair of ends stays ordered.** When `lower` climbs past `upper`, it pushes `upper` up with it. The two-thumb slider does the same when you drag it.
+- **Nothing holds a color's parts in `0...1`.** The parts are the sRGB numbers. Nothing keeps them inside that range, because a color parameter has no range of its own. Write `saturate(...)` in the rule where you want one. Every other parameter keeps its own range, exactly as it does when you drag the field.
 
-A part cannot name its own parameter. An `x` worked out from the same point's `y` never settles on one frame, so that parameter is reported and left alone, the way a ring of parameters is.
+A part cannot name its own parameter. An `x` computed from the `y` of the same point never settles on one frame. So Ollin reports that parameter and leaves it alone, the same way it treats a ring of parameters.
 
-The [FormulaParts example](../../Examples/Motion/FormulaParts/Sketch.swift) drives four such parameters and prints the rule driving each part.
+The [FormulaParts example](../../Examples/Motion/FormulaParts/Sketch.swift) drives four such parameters and prints the rule that drives each part.
 
 ### What a formula can read
 
 | Name | What it holds |
 | --- | --- |
-| `time` | Where the automation stands, in seconds. With no `speed` or `start` set, that is the sketch clock. |
+| `time` | The position of the automation, in seconds. With no `speed` or `start` set, this is the sketch clock. |
 | `frame` | The number of the frame about to be drawn, the same number `frameCount` reads inside `draw()`. |
-| `width`, `height` | The canvas, in pixels. |
-| `mouseX`, `mouseY` | The pointer. |
+| `width`, `height` | The canvas size, in pixels. |
+| `mouseX`, `mouseY` | The pointer position. |
 | any parameter's name | Any `@Param` on the sketch that is a number or a switch. A switch reads as `1` or `0`. |
 | `parameter.part` | One part of a parameter that holds more than one number: `center.x`, `tint.alpha`, `span.lower`. |
 
-The names in the table win over a parameter spelled the same way, so `time` always means the clock.
+A name in the table takes priority over a parameter spelled the same way, so `time` always means the clock.
 
-**A parameter worked out from another lands on the same frame.** The parameter named is always set first, whatever order the tracks sit in, so `drive($edge, "radius / 22")` reads *this* frame's radius. That is what keeps a formula a plain function of the clock. The same moment gives the same picture at any frame rate, which is what lets a 30-a-second export match the window.
+**A parameter computed from another one lands on the same frame.** The named parameter is always set first, whatever order the tracks are in. So `drive($edge, "radius / 22")` reads the radius of *this* frame. This keeps a formula a plain function of the clock, so the same moment gives the same picture at any frame rate. That is what lets an export at 30 frames a second match the window.
 
-Two parameters that name each other cannot settle that way, and neither can a parameter that names itself (`"n + 1"`). Such a ring is reported and left alone rather than played at a value that would depend on the frame rate. For a value that builds on itself, keep a plain property and step it in `draw()`.
+Two parameters that name each other cannot settle that way. A parameter that names itself (`"n + 1"`) cannot settle either. Ollin reports such a ring and leaves it alone, because playing it would give a value that depends on the frame rate. For a value that builds on itself, keep a plain property and step it in `draw()`.
 
 ### The vocabulary
 
@@ -127,7 +127,7 @@ Two parameters that name each other cannot settle that way, and neither can a pa
 
 **Constants.** `pi`, `tau`, `e`.
 
-**Operators**, loosest first: `||`, `&&`, then `==` `!=`, then `<` `<=` `>` `>=`, then `+` `-`, then `*` `/` `%`, then a leading `-` or `!`, and `^` tightest of all. A comparison answers `1` or `0`, and `&&` / `||` stop as soon as the answer is settled.
+**Operators**, loosest first: `||`, `&&`, then `==` `!=`, then `<` `<=` `>` `>=`, then `+` `-`, then `*` `/` `%`. A leading `-` or `!` binds tighter than all of those, and `^` binds tightest of all. A comparison returns `1` or `0`. `&&` and `||` stop as soon as the answer is known.
 
 **Functions.**
 
@@ -139,21 +139,21 @@ Two parameters that name each other cannot settle that way, and neither can a pa
 | Picking | `min(a, b, ...)` `max(a, b, ...)` `if(condition, then, else)` |
 | Texture | `noise(x[, y, z])` in `0...1`, `signedNoise(x[, y, z])` in `-1...1` |
 
-The shaping names are spelled and ordered exactly like [the framework's own](Math.md) and like the shader library's. The same line reads the same in all three places.
+The shaping names use the same spelling and the same argument order as [the framework's own](Math.md) and as the shader library's. So the same line reads the same in all three places.
 
-`noise` reads the sketch's own field, so `noiseSeed()` reproduces a wandering parameter the way it reproduces a drawn one. There is deliberately no `random`: a formula answers the same number for the same moment, which is what makes a directed run render twice the same.
+`noise` reads the sketch's own noise field, so `noiseSeed()` reproduces a wandering parameter the same way it reproduces a drawn one. There is no `random`, by design, because a formula returns the same number for the same moment. That is what makes a directed run render the same twice.
 
-`if` picks its branch before working it out, so the branch not taken never runs.
+`if` picks its branch before evaluating it, so the branch not taken never runs.
 
 ### Two rules that surprise people
 
-**`^` binds tighter than a minus sign.** `-2^2` is `-4`, and `2^3^2` is `2^9`. That is what a calculator does. (Ollin's *other* small language, the one a [parametric L-system](../Generators/LSystem.md) writes its productions in, binds the minus tighter, because the published formalism says so. Neither is a mistake, and the two do not have to agree.)
+**`^` binds tighter than a minus sign.** `-2^2` is `-4`, and `2^3^2` is `2^9`. A calculator does the same. Ollin has one *other* small language, the one that writes the productions of a [parametric L-system](../Generators/LSystem.md). That language binds the minus tighter, because the published formalism says so. Neither is a mistake, and the two do not have to agree.
 
-**`%` wraps rather than reflects.** `-1 % 3` is `2`, not `-1`. The remainder floors, which is what makes a wrapping phase continuous through zero, and it agrees with `fract` and with the shader spelling. Swift's own `%` answers `-1`; this one deliberately does not.
+**`%` wraps rather than reflects.** `-1 % 3` is `2`, not `-1`. The remainder floors, which keeps a wrapping phase continuous through zero. It also agrees with `fract` and with the shader spelling. Swift's own `%` returns `-1`. This one does not, by design.
 
 ### Using one on its own
 
-Nothing about `Formula` needs a parameter. Read one and evaluate it wherever you like:
+A `Formula` does not need a parameter. Read one from a string and evaluate it wherever you like:
 
 ```swift
 let f = try Formula("a * 2 + b")
@@ -162,20 +162,20 @@ f.value(["a": 3, "b": 1])        // 7
 f.value([3, 1])                  // 7, by position, which skips the lookup
 ```
 
-Left to itself a formula names its own variables, so nothing is refused for being unknown. Where the names *are* known ahead of time, say so and a misspelling is refused instead:
+By default a formula collects its own variable names, so it treats no name as unknown. When you know the names ahead of time, pass them in, and `Formula` rejects a misspelled name instead:
 
 ```swift
 try Formula("sin(tine)", variables: ["time"])
 // FormulaError: 'tine' is not a value or a function; the values here are time (at character 5)
 ```
 
-`usesNoise` says whether it will read a field, and `value(_:noise:)` takes one (`sketch.noiseField()` hands over the sketch's own).
+`usesNoise` reports whether the formula reads a noise field. `value(_:noise:)` takes one, and `sketch.noiseField()` returns the sketch's own field.
 
 ### When the text is wrong
 
-`Formula` throws a `FormulaError` carrying a message and the `offset` of the character it stopped at, so a surface can point at the spot.
+`Formula` throws a `FormulaError` that carries a message and the `offset` of the character where reading stopped. An editing surface can use the offset to point at the spot.
 
-`drive(_:_:)` does not throw. It reports the problem on standard error and leaves the parameter alone. A typo costs that one parameter rather than the sketch, which is what a live edit wants. It also says so when a formula names something nothing supplies, since that would otherwise read as zero every frame and draw something almost right. To handle the error yourself, build the formula with `try` and pass it instead:
+`drive(_:_:)` does not throw. It reports the problem on standard error and leaves the parameter alone. So a typo breaks that one parameter rather than the whole sketch, which is what you want while you edit live. It also reports a formula that names a value nothing supplies. Without that report, the name would read as zero on every frame, and the sketch would draw something almost right. To handle the error yourself, build the formula with `try` and pass it in instead:
 
 ```swift
 drive($radius, try Formula("190 + sin(time) * 80"))
@@ -183,16 +183,16 @@ drive($radius, try Formula("190 + sin(time) * 80"))
 
 ### How it sits beside the rest
 
-- **[Keyframed parameters](../Core/Automation.md).** The same track, filled a different way: keys say where a parameter *is* at a few moments, a formula says what it *is* at every moment. One automation holds both kinds, and a file carries the formula as the text it was written as, so a person can edit it there.
-- **[Parameters](Parameters.md).** A parameter under a formula goes back on it at the next frame, so dragging its slider reads as a nudge. Take the formula off (`automation = nil`) to tune by hand.
-- **[Math](Math.md).** The Swift side of the same vocabulary, for a value worked out in `draw()` rather than typed as text.
-- **[Replay](../Core/Replay.md).** A run recorded with `--record-take` writes down the values the formulas held, so a take replays the performance with or without them.
+- **[Keyframed parameters](../Core/Automation.md).** It is the same track, filled a different way. Keys say where a parameter *is* at a few moments, and a formula says what it *is* at every moment. One automation holds both kinds. A file stores the formula as the text you wrote, so you can edit it there.
+- **[Parameters](Parameters.md).** A parameter under a formula returns to the formula on the next frame, so dragging its slider changes it only until then. Remove the formula (`automation = nil`) to tune by hand.
+- **[Math](Math.md).** The Swift side of the same vocabulary, for a value computed in `draw()` rather than typed as text.
+- **[Replay](../Core/Replay.md).** A run recorded with `--record-take` saves the values the formulas produced, so a take replays the performance with or without the formulas.
 
 ---
 
 ### See also
 
-- [`Automation`](../Core/Automation.md) - the track a formula fills, and the file both kinds travel in
+- [`Automation`](../Core/Automation.md) - the track a formula fills, and the file that stores both kinds
 - [`Parameters`](Parameters.md) - the `@Param` parameters a formula drives
 - [`Math`](Math.md) - `map`, `lerp`, and the shaping scalars, spelled the same way
 - [`Noise`](../Generators/Noise.md) - the field `noise()` reads, and the seed that reproduces it

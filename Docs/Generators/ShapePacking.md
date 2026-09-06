@@ -4,9 +4,9 @@
 
 ## Shape packing
 
-Fill a region with arbitrary shapes that grow until they touch, the way [circle packing](./Packing.md) fills it with circles. `packShapes` grows each shape until it meets its neighbors' **outlines** (not just their bounding circles), so small shapes nestle right into the concave gaps a star's notches or a triangle's edges leave. Big shapes land first and progressively smaller ones fill the space between them, each a random pick from a bag, rotated and scaled to fit.
+Fill a region with any shapes you like. Each shape grows until it touches its neighbors, the way [circle packing](./Packing.md) fills a region with circles. The difference is that `packShapes` grows each shape until it meets its neighbors' **outlines**, not just their bounding circles. That is why a small shape settles into the concave gaps left by a star's notches or a triangle's edges. `packShapes` places the big shapes first, then fills the space between them with progressively smaller ones. Each shape is a random pick from a bag, rotated and scaled to fit.
 
-The output is `[Shape]`, so it feeds fills, strokes, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export. A run is a pure function of the [`seed`](./Random.md#seed).
+The output is `[Shape]`, so you can pass it to fills, strokes, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export. A run depends only on the [`seed`](./Random.md#seed), so the same seed always gives the same packing.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/ShapePacking-dark.jpg">
@@ -31,7 +31,7 @@ packShapes(_ shapes: [Shape], in bounds: Rectangle? = nil,
            scale: Double = 1) -> [Shape]
 ```
 
-Pack up to `count` shapes into `bounds` (the canvas by default). `minRadius` is the smallest shape to place (by bounding-circle radius) and `maxRadius` is a cap. `padding` opens a gap between shapes. `rotation` is the range in radians each shape is randomly turned within, so `0 ... 0` leaves them upright. `scale` is how much of its bounding circle a shape fills, with `1` touching and anything less leaving a margin.
+Pack up to `count` shapes into `bounds`, which is the canvas by default. `minRadius` is the smallest shape to place, measured by bounding-circle radius, and `maxRadius` caps the largest. `padding` opens a gap between shapes. `rotation` is a range of angles in radians. `packShapes` turns each shape by a random angle from that range, so `0 ... 0` leaves every shape upright. `scale` is how much of its bounding circle a shape fills. At `1` the shape touches the circle, and anything less leaves a margin.
 
 ```swift
 seed(4)
@@ -41,13 +41,13 @@ for shape in packShapes(bag, count: 500, minRadius: 6, maxRadius: 120, padding: 
 }
 ```
 
-Compute the packing once and hold it (in a stored property), then animate something visual (each shape's color) so it moves without the shapes jumping.
+Compute the packing once and hold it in a stored property. Then animate something visual, such as each shape's color, so the drawing moves without the shapes jumping.
 
 <a name="continuous"></a>
 
 #### Continuous packing (animated)
 
-`packShapes` fills the region in one call. `ContinuousPacking` is the same engine held open. You `step()` it each frame so the packing *fills in over time*, and because big gaps fill first, each new shape is smaller than the last, densifying from a few large shapes to a scatter of tiny ones.
+`packShapes` fills the region in one call. `ContinuousPacking` runs the same packing, but it stays open across frames. You call `step()` on it each frame, so the packing *fills in over time*. Big gaps fill first, so each new shape is smaller than the last. The region therefore grows denser over time, from a few large shapes to a scatter of tiny ones.
 
 ```swift
 ContinuousPacking(shapes: [Shape] = [], in: Rectangle, seed: UInt64 = 0,
@@ -56,7 +56,7 @@ ContinuousPacking(shapes: [Shape] = [], in: Rectangle, seed: UInt64 = 0,
                   attemptsPerStep: Int = 10)
 ```
 
-Pair it with accumulation (`noClear()`). A placed shape never moves, so each frame draws only the *new* shapes (`packer.count` grows), and the per-frame cost stays flat however full it gets.
+Pair it with accumulation by calling `noClear()`. A placed shape never moves, so each frame draws only the *new* shapes. Those are the ones added since the last frame, which you find from the growth in `packer.count`. The per-frame cost stays flat no matter how full the region gets.
 
 ```swift
 let packer = ContinuousPacking(shapes: bag, in: bounds, seed: 4,
@@ -78,7 +78,7 @@ Pass an empty bag to pack plain circles instead, then read `packer.circles`. See
 
 #### From a set of points
 
-To place *one* shape at each of a set of points (a scatter rather than a dense fill), use the `around:` form. Each shape's bounding circle grows to touch the nearest other point, so a [blue-noise](./BlueNoise.md) set makes an even, non-overlapping scatter.
+Use the `around:` form to place *one* shape at each of a set of points, which gives you a scatter rather than a dense fill. Each shape's bounding circle grows until it touches the nearest other point, so a [blue-noise](./BlueNoise.md) set makes an even scatter with no overlaps.
 
 ```swift
 seed(7)
@@ -90,7 +90,7 @@ for shape in packShapes(bag, around: sites, padding: 4) { fill(.white); drawShap
 
 #### Building the shape bag
 
-Any `Shape` works, so the bag is yours: regular polygons, stars, glyphs from [`textToShapes`](../Drawing/Text.md), booleans of other shapes. A shape's position and size are set by the packing, so build each at any convenient size around the origin. Here is a regular polygon or star:
+Any `Shape` works, so you decide what goes in the bag. You can use regular polygons, stars, glyphs from [`textToShapes`](../Drawing/Text.md), and booleans of other shapes. The packing sets each shape's position and size, so build each one at any convenient size around the origin. This function returns a regular polygon or a star:
 
 ```swift
 func polygon(_ sides: Int, star: Bool = false) -> Shape {
@@ -108,4 +108,4 @@ let bag = [polygon(3), polygon(4), polygon(6), polygon(5, star: true)]
 
 ---
 
-Related: [`Circle packing`](./Packing.md) (the round case, and its parameters), [`Blue noise`](./BlueNoise.md) (the even point set the `around:` form scatters over), [`Geometry`](../Drawing/Geometry.md) (the `Shape` type and the booleans the output feeds).
+Related: [`Circle packing`](./Packing.md) (the round case and its parameters), [`Blue noise`](./BlueNoise.md) (the even point set the `around:` form scatters over), and [`Geometry`](../Drawing/Geometry.md) (the `Shape` type, and the booleans the output feeds).

@@ -4,7 +4,7 @@
 
 ## Isosurfaces and metaballs
 
-The 3D reading of a contour line. **`isosurface`** takes any scalar field over space and builds the skin where that field crosses a level. It hands back a `Mesh` you draw, light, and export like any other. **`Metaballs`** is the field worth reaching for first: soft spheres whose values add, so they bulge toward each other and fuse.
+An isosurface is a contour line in three dimensions. The **`isosurface`** function takes any scalar field over space and builds the skin where that field crosses a level. It returns a `Mesh`, so you draw, light, and export it like any other mesh. **`Metaballs`** is the field to start with. It holds soft spheres whose values add, so the spheres bulge toward each other and fuse.
 
 ```swift
 var blobs = Metaballs()
@@ -13,7 +13,7 @@ blobs.add(at: Vector3(40 * sin(time), 0, 0), radius: 40)
 drawMesh(blobs.mesh())
 ```
 
-This is the volumetric sibling of [isolines](Isolines.md). There, a field over the plane traced out closed curves. Here, a field over space encloses a solid.
+This is the same idea as [isolines](Isolines.md), one dimension up. There, a field over the plane traces closed curves. Here, a field over space encloses a solid.
 
 <img src="../../Guide/Images/26-SculptingWithFields/FieldToMesh.jpg" alt="Two panels: a chain of three pale blobs fused by smooth necks, and the same form again as a light blue wireframe showing the triangles it is made of" width="680">
 
@@ -37,25 +37,25 @@ field.add(at: other, radius: 30, strength: 1.4)
 let mesh = field.mesh(resolution: 56)
 ```
 
-`radius` is the size the ball reads at **on its own**, so one lone ball meshes to a sphere of exactly that radius. Bring a second within reach and the two fields add. The value in the gap lifts above what either makes there alone, the surface swells across it, and the pair fuses into one skin. Pull them apart and the bridge necks down and snaps.
+`radius` is the size a ball has **on its own**, so a single ball meshes to a sphere of exactly that radius. Bring a second ball within reach and the two fields add together. The value in the gap then rises above what either ball makes there alone. The surface swells across the gap, so the pair fuses into one skin. Pull the two apart and the bridge between them thins and breaks.
 
-Three parameters shape the merging:
+Three parameters control the merging:
 
 | Parameter | Effect |
 |---|---|
-| `level` | The value the surface is drawn at. Lower fattens every ball and makes them merge from further apart. Raise it and they thin and separate. |
-| `strength` | How hard one ball pushes. Above `1` it swells and reaches further. A **negative** value carves into its neighbors instead of joining them. |
-| `radius` | The ball's own size, and with it how far its influence carries. |
+| `level` | The field value the surface is drawn at. A lower value fattens every ball and makes the balls merge from further apart. A higher value thins them and keeps them separate. |
+| `strength` | How strongly one ball pushes. Above `1` the ball swells and reaches further. A **negative** value carves into its neighbors instead of joining them. |
+| `radius` | The ball's own size, which also sets how far its influence carries. |
 
-A ball's influence stops at a finite distance rather than trailing off forever. A ball on the far side of the scene therefore costs nothing, and the field has an exact extent. `mesh(resolution:)` uses that. It takes the box from the balls themselves and pads it, so the surface always closes instead of being clipped.
+A ball's influence stops at a finite distance instead of trailing off forever. A ball on the far side of the scene therefore costs nothing, and the field has an exact extent. `mesh(resolution:)` uses that extent. It takes the box from the balls themselves and pads it, so the surface always closes instead of being clipped.
 
-`value(at:)` reads the raw field, and `bounds` reports the box, for sketches that want to drive something else with it.
+`value(at:)` reads the raw field and `bounds` reports the box, so a sketch can drive something else with them.
 
 <a name="fields"></a>
 
 #### Any field at all
 
-`isosurface` doesn't care where the numbers come from:
+`isosurface` works with numbers from any source:
 
 ```swift
 let box = Box3(min: Vector3(-100, -100, -100), max: Vector3(100, 100, 100))
@@ -72,15 +72,15 @@ let gyroid = isosurface(at: 0, in: box, resolution: 96) { p in
 }
 ```
 
-Anything that returns one number per point works: a distance function, a physics field, an accumulated density, a sampled volume.
+Anything that returns one number per point works, such as a distance function, a physics field, an accumulated density, or a sampled volume.
 
 <a name="resolution"></a>
 
 #### Resolution and cost
 
-`resolution` is how many cells fit across the **longest** side of the box, and the cells stay cubic. A long thin box therefore gets proportionally fewer across its short sides, rather than stretched ones. Cost is cubic in that number. Doubling it is eight times the field samples and roughly four times the triangles.
+`resolution` is how many cells fit across the **longest** side of the box, and the cells stay cubic. A long thin box therefore gets proportionally fewer cells across its short sides, rather than stretched ones. Cost grows with the cube of that number. Doubling it takes eight times as many field samples and roughly four times as many triangles.
 
-The defaults are chosen so a modest field rebuilds every frame comfortably. Past about 96, march once in `setup()` and keep the mesh, the way [terrain](Terrain.md) does.
+The defaults are chosen so that a modest field rebuilds every frame comfortably. Past about 96, march once in `setup()` and keep the mesh, the way [terrain](Terrain.md) does.
 
 <a name="inside"></a>
 
@@ -88,34 +88,34 @@ The defaults are chosen so a modest field rebuilds every frame comfortably. Past
 
 **The surface encloses the region where the field is greater than `level`.** Normals point out of that region, and the triangles wind to match.
 
-Signed distance functions run the other way (negative inside), so negate one to mesh it:
+A signed distance function runs the other way, because it is negative inside. Negate it to mesh it:
 
 ```swift
 isosurface(at: 0, in: box) { -myDistanceFunction($0) }
 ```
 
-Getting this backwards gives an inside-out mesh. It still draws, but it lights as if lit from within.
+If you get this backwards, the mesh comes out inside out. It still draws, but it lights as if the light came from inside it.
 
 <a name="march"></a>
 
 #### How the march works
 
-Marching cubes walks a grid of cubes over the box. Each corner is either inside the surface or outside it. Wherever an edge joins one of each, the surface crosses that edge, and interpolating the two values says where. Those crossings get stitched into triangles, one cube at a time.
+Marching cubes walks a grid of cubes over the box. Each corner of a cube is either inside the surface or outside it. Where an edge joins one inside corner to one outside corner, the surface crosses that edge. Interpolating the two corner values says where the crossing sits. Ollin then stitches those crossings into triangles, one cube at a time.
 
-The wrinkle is that some corner arrangements can be stitched more than one way. If two neighboring cubes pick differently, the surface tears open along the face between them. Ollin settles each shared face by reading the four values on that face alone. Both cubes therefore reach the same answer, and the seam always closes. Vertices are welded across cubes, and their normals come from the field's own gradient. A smooth field therefore gives a smooth surface with no shading facets.
+Some corner arrangements can be stitched in more than one way. If two neighboring cubes pick differently, the surface tears open along the face between them. Ollin settles each shared face by reading the four values on that face alone. Both cubes therefore reach the same answer, and the seam always closes. Ollin also welds vertices across cubes and takes their normals from the field's own gradient. A smooth field then gives a smooth surface with no shading facets.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **The mesh is watertight** wherever the surface stays inside `bounds`. Where it runs out through a wall it is left open, the same way a contour that leaves its rectangle comes back open. `Metaballs.mesh()` pads its box so this doesn't happen.
-- **It's deterministic.** The same field and the same arguments give the same mesh, vertex for vertex, so an animated blob exports frame-accurate.
-- **No texture coordinates.** There's no natural parameterization of a blob, so the mesh carries none. Use a [material](../3D/3D.md) rather than a texture.
-- **A moving field is CPU work**, unlike the [raymarched fields](../Drawing/Combinators.md), which shade on the GPU but produce no geometry. Reach for a mesh when you need real geometry, to light with shadows, to export, or to hand to something else. Reach for a raymarched field when you just want it on screen.
+- **The mesh is watertight** wherever the surface stays inside `bounds`. Where the surface runs out through a wall, the mesh is left open there. A contour that leaves its rectangle comes back open in the same way. `Metaballs.mesh()` pads its box so that this doesn't happen.
+- **It's deterministic.** The same field and the same arguments give the same mesh, vertex for vertex, so an animated blob's export is frame-accurate.
+- **No texture coordinates.** A blob has no natural parameterization, so the mesh carries none. Use a [material](../3D/3D.md) rather than a texture.
+- **A moving field is CPU work.** The [raymarched fields](../Drawing/Combinators.md) shade on the GPU instead, but they produce no geometry. Use a mesh when you need real geometry, to light with shadows, to export, or to hand to something else. Use a raymarched field when you only want it on screen.
 
 ### See also
 
 - [Isolines](Isolines.md), the same idea one dimension down.
-- [Terrain](Terrain.md), the other generator that emits a `Mesh`.
+- [Terrain](Terrain.md), the other generator that returns a `Mesh`.
 - [3D mode](../3D/3D.md), for drawing, lighting, and materials.
 - [SDF combinators](../Drawing/Combinators.md), for fields shaded directly on the GPU.

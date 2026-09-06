@@ -4,10 +4,10 @@
 
 ## Circle packing
 
-Fill a region with circles that grow until they touch but never overlap, the classic generative-art motif. Two ways to produce a packing are built in, and both are **reproducible**, so seeding a run always lays the circles down the same way.
+Circle packing fills a region with circles that grow until they touch, and that never overlap. It is a classic generative-art motif. Two ways to produce a packing are built in, and both are **reproducible**, so a seeded run always lays the circles down the same way.
 
-- **Grow-to-touch** (`packCircles`): each circle grows to the largest it can be without hitting a neighbor or the bounds. `packCircles(count:)` scatters its own seed points and fills the gaps between big circles with progressively smaller ones, giving the dense, varied look. `packCircles(around:)` grows a circle at each point you hand it, and a [blue-noise](./BlueNoise.md) set makes an even foam.
-- **Front relaxation** (`relaxCircles`): start from circles that overlap and push every overlapping pair apart until none do, holding their radii fixed. It's the way to settle a set you sized yourself.
+- **Grow-to-touch**, `packCircles`: each circle grows to the largest it can be without hitting a neighbor or the bounds. `packCircles(count:)` scatters its own seed points, then fills the gaps between the big circles with progressively smaller ones, which gives the dense, varied look. `packCircles(around:)` grows a circle at each point you hand it, and a [blue-noise](./BlueNoise.md) set makes an even foam.
+- **Front relaxation**, `relaxCircles`: start from circles that overlap, then push every overlapping pair apart until none of them overlap. The radii stay fixed. Use it to settle a set you sized yourself.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/PackingMechanisms-dark.jpg">
@@ -41,7 +41,7 @@ packCircles(in bounds: Rectangle? = nil,
             attemptsPerCircle: Int = 30) -> [Circle]
 ```
 
-A dense packing of `bounds`, the whole canvas by default. It scatters up to `count` seed points and grows a circle at each to the largest radius that clears every circle already placed, so big circles land first and smaller ones fill the gaps. `count` is a target rather than a guarantee, because packing gets harder as the region fills, so a run stops once `count` circles are placed *or* it has thrown its dart budget (`count * attemptsPerCircle`) without room for more. A circle smaller than `minRadius` is never placed, `maxRadius` caps how large one may grow, and `padding` opens a gap between neighbors.
+This returns a dense packing of `bounds`, which is the whole canvas by default. It scatters up to `count` seed points. At each point it grows a circle to the largest radius that clears every circle already placed. So big circles land first, and smaller ones fill the gaps. `count` is a target rather than a guarantee, because packing gets harder as the region fills. A run stops once `count` circles are placed, or once it has thrown its dart budget (`count * attemptsPerCircle`) without finding room for more. A circle smaller than `minRadius` is never placed, `maxRadius` caps how large one may grow, and `padding` opens a gap between neighbors.
 
 ```swift
 seed(11)
@@ -50,7 +50,7 @@ noStroke(); fill(.white)
 drawCircles(packed)
 ```
 
-Because the layout is a pure function of the seed, compute it once and hold it (in a stored property) rather than every frame, then animate something visual (a circle's color, a small wobble) so the pack breathes without the circles jumping. See the `CirclePacking` example.
+The layout is a pure function of the seed, so compute it once and hold it in a stored property rather than packing every frame. Then animate something visual, such as a circle's color or a small wobble. That way the pack keeps moving and the circles never jump. See the `CirclePacking` example.
 
 <a name="around"></a>
 
@@ -64,7 +64,7 @@ packCircles(around sites: [Vector2],
             padding: Double = 0) -> [Circle]
 ```
 
-Grow a circle at each of `sites` until it just touches its nearest neighbor (or the bounds). Because two circles growing at the same rate meet exactly halfway, each radius is simply half the distance to the nearest other point (less half the `padding`). It needs no random source, so it reads straight off the points. Feed it a [blue-noise](./BlueNoise.md) set for an even, gap-free foam.
+This grows a circle at each of `sites` until it just touches its nearest neighbor, or the bounds. Two circles growing at the same rate meet exactly halfway. Each radius is therefore half the distance to the nearest other point, less half the `padding`. The call needs no random source, because it reads the radii straight off the points. Feed it a [blue-noise](./BlueNoise.md) set for an even, gap-free foam.
 
 ```swift
 seed(7)
@@ -84,7 +84,7 @@ relaxCircles(_ circles: [Circle],
              padding: Double = 0) -> [Circle]
 ```
 
-Push overlapping circles apart until none overlap, holding each radius fixed. Each pass nudges every overlapping pair away by half their overlap, then slides any circle poking past the bounds back inside. A few iterations settle most sets, and a heavily overlapping one wants more. It is the sibling of Voronoi's [`lloyd`](../Drawing/Voronoi.md) for circles you sized yourself, so pick your radii and let relaxation resolve the collisions.
+This pushes overlapping circles apart until none of them overlap, and each radius stays fixed. Each pass moves every overlapping pair apart by half their overlap, then slides any circle that pokes past the bounds back inside. A few iterations settle most sets, and a heavily overlapping one needs more. For circles you sized yourself, it is the counterpart of Voronoi's [`lloyd`](../Drawing/Voronoi.md), so pick your radii and let relaxation resolve the collisions.
 
 ```swift
 seed(3)
@@ -97,7 +97,7 @@ drawCircles(relaxCircles(sized, iterations: 40, padding: 2))
 
 #### Standalone (outside a sketch)
 
-The `Sketch` methods are sugar over free functions. `packCircles(count:)` takes any random source, so geometry code outside a sketch can pack reproducibly too (hand it a seeded [`SplitMix64`](./Random.md)). `packCircles(around:)` and `relaxCircles` are deterministic and take none.
+The `Sketch` methods are sugar over free functions. `packCircles(count:)` takes any random source, so geometry code outside a sketch can pack reproducibly too. Hand it a seeded [`SplitMix64`](./Random.md). `packCircles(around:)` and `relaxCircles` are deterministic, so they take no random source.
 
 ```swift
 var rng = SplitMix64(seed: 11)

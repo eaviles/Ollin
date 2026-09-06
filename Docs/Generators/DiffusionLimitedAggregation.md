@@ -4,14 +4,14 @@
 
 ## Diffusion-limited aggregation
 
-**Diffusion-limited aggregation** (DLA) grows the branching, dendritic clusters of frost, coral, and mineral deposits. Random walkers drift in from far away and freeze the moment they touch the cluster. Tips catch walkers before hollows ever see one, so arms grow wispy and gaps stay open. The shape is really the physics of the arrival order.
+**Diffusion-limited aggregation** (DLA) grows the branching, dendritic clusters you see in frost, coral, and mineral deposits. Random walkers drift in from far away, and each one freezes the moment it touches the cluster. A tip catches a walker before a hollow ever sees one, so the arms grow wispy and the gaps stay open. The shape comes from the order in which the walkers arrive.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/FrozenWalkers-dark.jpg">
   <img src="../../Guide/Images/13-GrowingThings/FrozenWalkers.jpg" alt="Two panels: left, a gray wandering path drifts in from the corner and ends at an orange dot marked frozen on the edge of a small ink cluster; right, a dendritic cluster of eight hundred dots with wispy arms and open hollows" width="680">
 </picture>
 
-`DiffusionLimitedAggregation` is a stateful stepper you hold. `step()` walks one particle until it sticks, and `step(_:)` grows a batch per frame. It's seeded, so the same seed freezes the same cluster.
+`DiffusionLimitedAggregation` is a stateful stepper that you hold on to between frames. `step()` walks one particle until it sticks, and `step(_:)` grows a batch of them, which is what you call each frame. The stepper is seeded, so the same seed freezes the same cluster.
 
 ```swift
 let cluster = DiffusionLimitedAggregation(seeds: [center], seed: 7)
@@ -41,19 +41,19 @@ DiffusionLimitedAggregation(seeds: [Vector2], particleRadius: Double = 4,
                             maxParticles: Int = 20000, seed: UInt64 = 0)
 ```
 
-`seeds` are the frozen starting particles, and their arrangement decides the shape. One center point grows a radial snowflake. A row of points along the bottom edge grows frost creeping up, and a ring grows inward and outward at once. `stickiness` is the density parameter. At `1` a walker freezes on first contact, giving wispy, open fingers. Lower values let walkers slide deeper into the cluster before freezing, so it grows denser and rounder. `bounds` cages the walkers, and growth that reaches the cage crawls along it.
+`seeds` are the frozen starting particles, and their arrangement decides the shape. One center point grows a radial snowflake. A row of points along the bottom edge grows frost that creeps up, and a ring grows inward and outward at once. `stickiness` is the density parameter. At `1` a walker freezes on first contact, which gives wispy, open fingers. A lower value lets walkers slide deeper into the cluster before they freeze, so the cluster grows denser and rounder. `bounds` keeps the walkers inside a rectangle, and growth that reaches that edge crawls along it.
 
 <a name="growing"></a>
 
 #### Growing it
 
-`step()` releases one walker and returns the new particle's index. It returns `nil` when the cluster hits `maxParticles`. `step(_:)` grows a batch, which is the usual per-frame call, and a dozen per frame reads as steady growth. The walker mechanics are handled internally and tuned off `particleRadius`. There is a spawn circle just outside the cluster, a far-drift respawn, long strides while far, and fine diffusion steps near.
+`step()` releases one walker and returns the index of the new particle. It returns `nil` once the cluster reaches `maxParticles`. `step(_:)` grows a batch, and that is the call you usually make each frame. A dozen particles per frame reads as steady growth. Ollin handles the walker mechanics for you and tunes them from `particleRadius`. A walker spawns on a circle just outside the cluster, and it respawns if it drifts far away. It takes long strides while it is far from the cluster, then switches to fine diffusion steps once it is near.
 
 <a name="drawing"></a>
 
 #### Drawing it
 
-`positions` is the frozen cluster for `drawCircles`. Each `Particle` also records the `parent` it stuck to. `segments` therefore gives the branching skeleton as line pairs, ready for stroking or SVG export, the dendrite as pen-plotter line-work. Arrival order is meaningful too, since `particles[i]` froze `i`-th. Tinting by index paints the growth history as rings, as the `Patterns/Dendrite` example does.
+`positions` is the frozen cluster, ready to pass to `drawCircles`. Each `Particle` also records the `parent` it stuck to, so `segments` gives you the branching skeleton as line pairs. Those pairs are ready for stroking or for SVG export, which turns the dendrite into pen-plotter line-work. Arrival order is meaningful too, because `particles[i]` froze `i`-th. Tinting by index paints the growth history as rings, as the `Patterns/Dendrite` example does.
 
 ---
 

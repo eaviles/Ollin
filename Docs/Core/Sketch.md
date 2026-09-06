@@ -4,7 +4,7 @@
 
 ## Sketch
 
-A sketch is a subclass of `Sketch`. Override `setup()` and `draw()`, call the bare drawing functions, and the loop runs `draw()` continuously at the display's refresh rate, so motion is the default. Useful temporal state (`time`, `frameCount`, …) is ready with no setup.
+A sketch is a subclass of `Sketch`. You override `setup()` and `draw()`, then call the bare drawing functions inside them. The loop runs `draw()` continuously at the display's refresh rate, so motion is the default. Temporal state such as `time` and `frameCount` is ready to read with no setup.
 
 ### Example
 
@@ -30,7 +30,7 @@ final class HelloCircle: Sketch {
 - [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`, `loopDuration`, `installation`
 - [Running a sketch](#running-a-sketch)
 
-Canvas sizing, `scale`, export resolution, and the preview window have their own page: [Canvas](../Core/Canvas.md).
+Canvas sizing, `scale`, export resolution, and the preview window have their own page, [Canvas](../Core/Canvas.md).
 
 <a name="lifecycle"></a>
 
@@ -46,7 +46,7 @@ Override these on your subclass.
 setup()
 ```
 
-Called once, after the canvas size is known, before the first `draw()`. Optional.
+Ollin calls this once, after the canvas size is known and before the first `draw()`. Overriding it is optional.
 
 ```swift
 override func setup() {
@@ -62,7 +62,7 @@ override func setup() {
 draw()
 ```
 
-Called every frame. Do your drawing here.
+Ollin calls this every frame. Do your drawing here.
 
 ```swift
 override func draw() {
@@ -80,7 +80,7 @@ mousePressed()
 mouseReleased()
 ```
 
-Called once each time a mouse button is pressed or released over the canvas. For continuous response while the button is *held*, poll `mouseIsPressed` in `draw()` instead. See [Input](../Helpers/Input.md).
+Ollin calls these once each time a mouse button is pressed or released over the canvas. To respond continuously while the button is *held*, poll `mouseIsPressed` in `draw()` instead. See [Input](../Helpers/Input.md).
 
 ```swift
 override func mousePressed() {
@@ -97,7 +97,7 @@ keyPressed()
 keyReleased()
 ```
 
-Called once each time a key is pressed or released; `key`/`keyCode` hold the key. For movement while a key is *held*, poll `isKeyDown(_:)` in `draw()` instead. See [Input](../Helpers/Input.md).
+Ollin calls these once each time a key is pressed or released. `key` and `keyCode` hold the key. To keep something moving while a key is *held*, poll `isKeyDown(_:)` in `draw()` instead. See [Input](../Helpers/Input.md).
 
 ```swift
 override func keyPressed() {
@@ -113,13 +113,13 @@ override func keyPressed() {
 reloaded()
 ```
 
-Called once after the live-reload host hot-swaps the sketch, right after its `setup()` (never on first launch). See [live reload](../../README.md#live-reload).
+Ollin calls this once after the live-reload host hot-swaps the sketch, right after the new sketch's `setup()`. It never runs on first launch. See [live reload](../../README.md#live-reload).
 
 <a name="temporal-state"></a>
 
 ### Temporal state
 
-Read-only, and ready in any sketch with no setup:
+These properties are read-only, and they are ready in any sketch with no setup:
 
 | Property | Type | Meaning |
 |---|---|---|
@@ -133,11 +133,12 @@ let r = 120 + sin(time) * 40            // animate against the clock
 drawCircle(width / 2, height / 2, r)
 ```
 
-A frame heavier than one display refresh drops the refreshes it cannot serve,
-rather than queueing them. `draw()` is not called for a dropped refresh, so
-`frameCount` counts only the frames drawn, and `deltaTime` reports the real gap.
-The window keeps answering the mouse while the picture runs slow, and motion
-scaled by `deltaTime` still runs at the right speed.
+When a frame takes longer than one display refresh, Ollin drops the refreshes it
+cannot serve rather than queueing them. It does not call `draw()` for a dropped
+refresh, so `frameCount` counts only the frames drawn, and `deltaTime` reports
+the real gap between them. The window keeps answering the mouse while the
+picture runs slow, and motion scaled by `deltaTime` still runs at the right
+speed.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/DeltaTime-dark.jpg">
@@ -146,7 +147,7 @@ scaled by `deltaTime` still runs at the right speed.
 
 For repeating motion on a fixed period, [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop) wrap the clock into looping `0...1` progress.
 
-Alongside the clock, `variation` (an `Int`) names the seed this run's randomness grew from. It's rolled fresh unless the sketch calls `seed(_:)`, and it's what the inspector's Variation card walks and every export's recipe records. See [Variations](./Variations.md).
+Beside the clock, the `Int` property `variation` names the seed this run's randomness came from. Ollin rolls it fresh unless the sketch calls `seed(_:)`. It is also the value the inspector's Variation card steps through, and the value every export's recipe records. See [Variations](./Variations.md).
 
 <a name="canvas"></a>
 
@@ -159,19 +160,19 @@ Alongside the clock, `variation` (an `Int`) names the seed this run's randomness
 
 | Property | Type | Meaning |
 |---|---|---|
-| `width` / `height` | `Double` | canvas size in logical points; updates live on resize |
-| `canvasOnScreen` | `Rectangle?` | where this canvas sits on the desk, in screen points; `nil` with no window |
+| `width` / `height` | `Double` | canvas size in logical points, updated live on resize |
+| `canvasOnScreen` | `Rectangle?` | where this canvas sits on the desk, in screen points, or `nil` with no window |
 | `screenFrame` | `Rectangle?` | the screen it sits on, in the same coordinates |
 
 ```swift
 drawCircle(width / 2, height / 2, min(width, height) / 4)   // centered, proportional
 ```
 
-`canvasOnScreen` is measured the way the canvas is. The origin is the top-left corner of the main screen, and y grows downward. Every window on the desk describes that desk in the same numbers. That is what lets several of them look into one world.
+`canvasOnScreen` is measured the same way the canvas is. The origin is the top-left corner of the main screen, and y grows downward. Every window on the desk reports its place in those same numbers, so several windows can show one shared world.
 
-The rectangle covers the canvas alone. A title bar or a sidebar falls outside it. It follows the window, so a drag lands in the next frame. An export has no window, and both properties read `nil` there. The `Installation/ManyWindows` example is built on the pair.
+The rectangle covers the canvas alone, so a title bar or a sidebar falls outside it. It follows the window, which means a drag shows up in the next frame. An export has no window, so both properties read `nil` there. The `Installation/ManyWindows` example is built on these two properties.
 
-To keep a sketch looking the same at every canvas size, write it relative to the canvas with `scale` and `width`/`height` fractions. That, the `canvasSize` export presets, and the preview window are all on the [Canvas](../Core/Canvas.md) page, and [Where a point is](../Concepts/Coordinates.md) puts this frame beside the others a sketch meets.
+To keep a sketch looking the same at every canvas size, write it relative to the canvas with `scale` and fractions of `width` and `height`. The [Canvas](../Core/Canvas.md) page covers that, along with the `canvasSize` export presets and the preview window. For how this coordinate frame compares with the others a sketch meets, see [Where a point is](../Concepts/Coordinates.md).
 
 <a name="loop-control"></a>
 
@@ -186,7 +187,7 @@ noLoop()
 loop()
 ```
 
-Stop or resume the continuous draw loop; `isLooping` reads the current state. Motion is on by default, so `noLoop()` is the still-image escape hatch.
+`noLoop()` stops the continuous draw loop and `loop()` resumes it. `isLooping` reads the current state. Motion is on by default, so call `noLoop()` when you want a still image.
 
 ```swift
 override func setup() {
@@ -198,7 +199,7 @@ override func setup() {
 
 ### Extensions
 
-`extend(_:)` registers a `SketchExtension`, a reusable object whose hooks the loop calls around each frame, so cross-cutting behavior (overlays, guides, recorders) lives outside `draw()`. Every hook is optional:
+`extend(_:)` registers a `SketchExtension`. That is a reusable object whose hooks the loop calls around each frame. Behavior that spans a whole sketch, such as overlays, guides, and recorders, then lives outside `draw()`. Every hook is optional:
 
 | Hook | When | For |
 |---|---|---|
@@ -223,15 +224,15 @@ final class MySketch: Sketch {
 }
 ```
 
-Extensions are per-instance, so register them in `setup()`, since a fresh instance (including each live-reload swap) starts with none. A worked example is `Examples/Basic/Guides`.
+Extensions belong to one sketch instance, so register them in `setup()`. A fresh instance starts with none, and each live-reload swap makes a fresh instance. `Examples/Basic/Guides` is a worked example.
 
-`frameRendered(_:_:)` hands over the rendered frame as a `CGImage`. Grabbing it costs a GPU→CPU readback, so it's off until an extension opts in by returning `true` from `wantsRenderedFrame` (read every frame, so capture can be armed and disarmed on the fly). `Examples/Export/Capture` saves a frame to a PNG on a keypress this way. For a one-off without a window, `OllinApp.image(of: sketch, frame:)` renders a sketch headlessly and returns the `CGImage` directly, the same capture `--export` writes to disk, and what the render-correctness snapshot tests compare against committed references.
+`frameRendered(_:_:)` hands over the rendered frame as a `CGImage`. Reading those pixels back from the GPU to the CPU costs time, so the hook stays off by default. An extension opts in by returning `true` from `wantsRenderedFrame`. Ollin reads that property every frame, so an extension can arm and disarm capture while the sketch runs. `Examples/Export/Capture` uses it to save a frame to a PNG on a keypress. For a one-off capture without a window, `OllinApp.image(of: sketch, frame:)` renders a sketch headlessly and returns the `CGImage` directly. That is the same capture `--export` writes to disk, and the one the render-correctness snapshot tests compare against committed references.
 
 <a name="configuration"></a>
 
 ### Configuration
 
-Override on your subclass to customize the window and size.
+Override these on your subclass to change the window and the size.
 
 <a name="title"></a>
 
@@ -241,7 +242,7 @@ Override on your subclass to customize the window and size.
 title: String
 ```
 
-Window title. Defaults to `"Ollin - <SketchType>"` (for example "Ollin - HelloCircle").
+The window title. It defaults to `"Ollin - <SketchType>"`, for example "Ollin - HelloCircle".
 
 ```swift
 override var title: String { "Flow field" }
@@ -257,7 +258,7 @@ canvasSize: CanvasSize
 windowMode: WindowMode
 ```
 
-The render/export resolution and how the preview window behaves. Both are documented, with the presets and modes, on the [Canvas](../Core/Canvas.md) page.
+`canvasSize` sets the resolution used to render and to export, and `windowMode` sets how the preview window behaves. The [Canvas](../Core/Canvas.md) page documents both, with the presets and the modes.
 
 ```swift
 override var canvasSize: CanvasSize { .uhd4K }        // 4K master
@@ -273,7 +274,7 @@ override var windowMode: WindowMode { .fixed(0.5) }   // preview at half size
 loopDuration: Double?
 ```
 
-The length of the sketch's loop in seconds, `nil` (the default) when it doesn't declare one. A sketch whose motion repeats exactly declares its period here, and `--export-loop` renders exactly one lap for a seamless GIF or video; see [perfect loops](../Output/Export.md#perfect-loops).
+The length of the sketch's loop in seconds. The default is `nil`, which means the sketch declares no loop. If the motion repeats exactly, declare its period here, and `--export-loop` then renders exactly one lap for a seamless GIF or video. See [perfect loops](../Output/Export.md#perfect-loops).
 
 ```swift
 override var loopDuration: Double? { 6 }   // repeats every 6 seconds
@@ -287,7 +288,7 @@ override var loopDuration: Double? { 6 }   // repeats every 6 seconds
 installation: Installation
 ```
 
-What the piece needs to run by itself for days, `.off` (the default) for a sketch at a desk. `.on` fills the screen, hides the pointer, and keeps the display awake. Add `checkpoint:` and every `@Saved` property is written down, so a relaunch resumes. Add `restarts:` and a run that crashes or stops answering is started again. Add `schedule:` for the hours the piece is on screen, and the parts of the day it reads back with `scheduledPeriod`. Add `displays:` and one canvas goes across every display the machine drives. See [running unattended](../Output/Installation.md).
+What the piece needs to run by itself for days. The default is `.off`, which suits a sketch you run at a desk. `.on` fills the screen, hides the pointer, and keeps the display awake. Add `checkpoint:` and Ollin writes down every `@Saved` property, so a relaunch resumes where the run left off. Add `restarts:` and Ollin starts the run again if it crashes or stops answering. Add `schedule:` to set the hours the piece is on screen, and the sketch reads back the parts of the day with `scheduledPeriod`. Add `displays:` and one canvas spans every display the machine drives. See [running unattended](../Output/Installation.md).
 
 ```swift
 override var installation: Installation { .on }
@@ -297,4 +298,8 @@ override var installation: Installation { .on }
 
 ### Running a sketch
 
-`OllinApp.run(MySketch())` boots a window. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run it through the host instead: `swift run OllinLive path/to/Sketch.swift` (see [live reload](../../README.md#live-reload)). Any sketch can also render headlessly: a single frame with `--export`, or a deterministic numbered PNG sequence with `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` (a fixed-timestep render that assembles into a video; `--skip` runs the sketch a while first so a stateful sketch settles before capture; see [export](../../README.md#export)). The same flags work on a loose watched file through the live host, `swift run OllinLive path/to/Sketch.swift --export-gif loop.gif --seconds 4`, which compiles the file and exports instead of opening a window; the full flag set (video, GIF, perfect loops, SVG, render quality) is in [Export](../Output/Export.md).
+`OllinApp.run(MySketch())` opens a window and runs the sketch. With `@main` on the subclass, the inherited `Sketch.main()` does that for you, so a single file is the whole program. To iterate with live reload, run the sketch through the host instead with `swift run OllinLive path/to/Sketch.swift`, described under [live reload](../../README.md#live-reload).
+
+Any sketch can also render headlessly. `--export` writes a single frame. `--export-sequence <dir> (--frames N | --seconds D) [--fps F] [--skip S]` writes a deterministic numbered PNG sequence that assembles into a video, rendered at a fixed timestep. `--skip S` runs the sketch for a while first, so a stateful sketch settles before capture. See [export](../../README.md#export).
+
+The same flags work on a loose watched file through the live host, as in `swift run OllinLive path/to/Sketch.swift --export-gif loop.gif --seconds 4`. That command compiles the file and exports instead of opening a window. The full flag set covers video, GIF, perfect loops, SVG, and render quality, and it is listed in [Export](../Output/Export.md).

@@ -1,7 +1,7 @@
 // figure: frame=0
 //
 // Guide figure (Chapter 22): a surface that grows more area than it has room
-// for. The same sphere three times: the seed it starts from, even growth
+// for. The same sphere three times: the mesh it starts from, even growth
 // folding it uniformly all over, and growth restricted to a band around the
 // equator, which ruffles into a skirt and leaves the poles smooth.
 import Ollin
@@ -9,7 +9,7 @@ import Ollin
 final class GrowingSurface: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let seed = Mesh.icosphere(radius: 0.85, subdivisions: 3)
+    let start = Mesh.icosphere(radius: 0.85, subdivisions: 3)
     lazy var even = grown(.uniform, amount: 0.5)
     lazy var rim = grown(.field { position, _ in
         1 - smoothstep(0.1, 0.5, abs(position.y))
@@ -25,8 +25,8 @@ final class GrowingSurface: Sketch {
             translate(-3.9, 0.2, 0)
             fill(Color(hex: 0xE8B24A))
             material(.matte)
-            drawMesh(seed)
-            label("the seed")
+            drawMesh(start)
+            label("the starting mesh")
         }
 
         withState {
@@ -49,7 +49,7 @@ final class GrowingSurface: Sketch {
     /// A sphere grown to a fixed step count under one driver. Seeded, so the
     /// figure renders the same form every time.
     private func grown(_ driver: GrowthDriver, amount: Double) -> Mesh {
-        let growth = MeshGrowth(mesh: seed, driver: driver, edgeLength: 0.11, seed: 4)
+        let growth = MeshGrowth(mesh: start, driver: driver, edgeLength: 0.11, seed: 4)
         growth.growthRate = amount
         growth.maxVertices = 4200
         growth.step(140)

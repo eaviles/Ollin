@@ -4,7 +4,7 @@
 
 ## De Bruijn sequences
 
-**`deBruijnSequence`** builds a cyclic run in which every possible window of a given length appears, and each appears exactly once.
+**`deBruijnSequence`** builds a cyclic run of symbols. Every possible window of a given length appears in that run, and each window appears exactly once.
 
 ```swift
 deBruijnSequence(symbols: 2, window: 3)   // 0,0,0,1,0,1,1,1
@@ -15,9 +15,9 @@ deBruijnSequence(symbols: 2, window: 3)   // 0,0,0,1,0,1,1,1
   <img src="../../Guide/Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
 </picture>
 
-That is as short as such a run can be. There are `symbols` to the power of `window` windows to fit, and each one takes a place, so the run is exactly that long.
+That run is as short as it can be. There are `symbols` to the power of `window` possible windows. Each one needs its own position in the run, so the run is exactly that long.
 
-**The point is local uniqueness.** Any few symbols in a row identify their own position. That is what a rotary encoder reads to find its angle, what a camera reads off a printed ruler, and what keeps a strip of tiles from repeating itself close up. [`DeBruijnCode`](#code) is that reading, made cheap.
+**The useful property is local uniqueness.** Any few symbols in a row identify their own position in the run. A rotary encoder uses that property to find its angle, and a camera reads it off a printed ruler. The same property keeps a strip of tiles from repeating itself close up. You get that reading from [`DeBruijnCode`](#code), which builds its table once, so each lookup is cheap.
 
 ### Contents
 
@@ -34,11 +34,11 @@ That is as short as such a run can be. There are `symbols` to the power of `wind
 deBruijnSequence(symbols: Int, window: Int) -> [Int]
 ```
 
-The run, as symbols numbered from zero. It is cyclic, so the last window wraps around to the front, and reading it means taking indices modulo its length.
+The result is the run, as symbols numbered from zero. The run is cyclic, so the last window wraps around to the front. To read it, take each index modulo its length.
 
-The one that comes back is the **smallest in dictionary order**, which is why it always opens with a row of zeros. That makes it a fixed answer rather than any valid one. The same arguments always give the same run, so a sketch built on it reproduces.
+The run that comes back is the **smallest in dictionary order**, which is why it always opens with a row of zeros. So you always get that one run, not just any run that would satisfy the rule. The same arguments always give the same run, which means a sketch built on it reproduces exactly.
 
-An empty alphabet or an empty window gives back nothing. One symbol gives back a single zero, since there is only one window and it is all zeros.
+An alphabet of zero symbols, or a window of zero, gives back an empty run. One symbol gives back a single zero, because there is only one possible window and it is all zeros.
 
 <a name="code"></a>
 
@@ -54,7 +54,7 @@ struct DeBruijnCode {
 }
 ```
 
-The sequence with the reading in the other direction. Hand it a window and it says where in the run that window sits, which is the whole use of the thing.
+`DeBruijnCode` holds the sequence and reads it in the other direction. Give it a window, and it tells you where in the run that window sits, which is what the type is for.
 
 ```swift
 let code = DeBruijnCode(symbols: 4, window: 3)   // 64 beads
@@ -62,9 +62,9 @@ code.position(of: [2, 0, 1])                     // where that triple sits
 code.window(at: 17)                              // the triple starting there
 ```
 
-`window(at:)` wraps, so any position is fair, including a negative one. `position(of:)` is nil for a run of the wrong length, or one holding a symbol the alphabet does not have. Such a run is not somewhere in the sequence. It is nowhere.
+`window(at:)` wraps, so any position is valid, including a negative one. `position(of:)` returns nil for a run of the wrong length, or for a run that holds a symbol the alphabet does not have. A run like that appears nowhere in the sequence, so there is no position to return.
 
-The table is built once, with one entry per window, so `symbols` to the power of `window` entries. Fine into the thousands, not into the millions.
+The lookup table is built once, with one entry per window, so it holds `symbols` to the power of `window` entries. That is fine for thousands of entries, but not for millions.
 
 <a name="lyndon"></a>
 
@@ -74,21 +74,21 @@ The table is built once, with one entry per window, so `symbols` to the power of
 lyndonWords(symbols: Int, maxLength: Int) -> [[Int]]
 ```
 
-Every Lyndon word up to `maxLength`, in dictionary order. A Lyndon word is a run strictly smaller than every rotation of itself, which is another way of saying it is the one representative of a necklace with no repeat in it.
+The result is every Lyndon word up to `maxLength`, in dictionary order. A Lyndon word is a run that is strictly smaller than every rotation of itself. So it is the one representative of a necklace that has no repeat in it.
 
 ```swift
-lyndonWords(symbols: 2, maxLength: 3)   // 0, 001, 011, 1
+lyndonWords(symbols: 2, maxLength: 3)   // 0, 001, 01, 011, 1
 ```
 
-They are the pieces the sequence is made of. Take the words whose length divides the window, in order, lay them end to end, and that *is* the de Bruijn sequence. On their own they catalog the patterns of a given length that are genuinely different rather than the same pattern turned round, which is what a set of motifs wants.
+Lyndon words are the pieces the de Bruijn sequence is made of. Take the words whose length divides the window, keep them in order, and lay them end to end. The result is the de Bruijn sequence. On their own, the words list the patterns of a given length that differ from each other, rather than the same pattern rotated. That makes them a ready set of motifs.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **The run is a ring, not a line.** Drawing it as a strip leaves the last few windows looking broken. Draw it around a circle, or repeat the first `window - 1` symbols at the end.
-- **Symbols are numbers, so they map onto anything**: colors, tile shapes, rotations, note names. Four symbols and a window of three gives 64 beads, which is a comfortable size for a picture.
-- **The length grows fast.** Five symbols with a window of five is 3,125, and six with six is 46,656. Choose the window from how much a reader can see at once, not from how long a run is wanted.
+- **The run is a ring, not a line.** If you draw it as a strip, the last few windows look broken. That is because they wrap around to the front. Draw it around a circle instead, or repeat the first `window - 1` symbols at the end.
+- **Symbols are numbers, so you can map them onto anything**, such as colors, tile shapes, rotations, or note names. Four symbols with a window of three gives 64 beads, which is a comfortable size for a picture.
+- **The length grows fast.** Five symbols with a window of five gives 3,125 beads, and six symbols with a window of six gives 46,656. Choose the window by how many symbols a reader can see at once, not by how long you want the run to be.
 - Nothing here touches `random`, so a sketch built on the sequence reproduces exactly.
 
 Example: `Patterns/DeBruijn`. Guide: [Chapter 6](../../Guide/06-GridsAndRepetition.md).
@@ -97,10 +97,10 @@ Example: `Patterns/DeBruijn`. Guide: [Chapter 6](../../Guide/06-GridsAndRepetiti
 
 #### Where this comes from
 
-Named for Nicolaas Govert de Bruijn, who counted the binary case in 1946. Camille Flye Sainte-Marie had done it in 1894, and Sanskrit prosodists knew the two-symbol, three-window case as the *yamātārājabhānasalagām* mnemonic long before either. The construction is the Lyndon-word concatenation of Harold Fredricksen, James Maiorana, and Irving Kessler. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+The sequences are named for Nicolaas Govert de Bruijn, who counted the binary case in 1946. Camille Flye Sainte-Marie had already counted it in 1894. Scholars of Sanskrit meter knew the two-symbol, three-window case as the *yamātārājabhānasalagām* mnemonic long before either of them. The construction is the Lyndon-word concatenation of Harold Fredricksen, James Maiorana, and Irving Kessler. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
 
 #### Go deeper
 
-- [Wave Function Collapse](./WaveFunctionCollapse.md): the other way to build a pattern under local rules, by picking rather than by counting
-- [Polyominoes](./Polyominoes.md): pieces that have to fit exactly, the other exhaustive-search generator
-- [Randomness](./Random.md): the seeded generators, and what a sequence like this is *not*
+- [Wave Function Collapse](./WaveFunctionCollapse.md): the other way to build a pattern under local rules, by picking instead of counting
+- [Polyominoes](./Polyominoes.md): pieces that have to fit exactly, the other generator built on exhaustive search
+- [Randomness](./Random.md): the seeded generators, and how a random sequence differs from this one

@@ -21,7 +21,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Layers | An off-screen picture you draw into and then read back: what one costs, and when you need one | [Ch 16](16-LayersAndEffects.md) | [Layers](../Docs/Concepts/Layers.md) |
 | What survives a frame | What carries into the next frame, and what a batch, a reload, and a checkpoint hold | [Ch 15](15-ShapesAsMaterial.md), [Ch 32](32-Installations.md) | [What survives a frame](../Docs/Concepts/Persistence.md) |
 | Why a run repeats | The seed and the fixed export clock, and the four things that break a repeat | [Ch 4](04-Randomness.md) | [Why a run repeats](../Docs/Concepts/Determinism.md) |
-| Light and color | Why the middle of a frame is linear light, and what tone-mapping and dithering do at the end of it | [Ch 16](16-LayersAndEffects.md) | [Light and color](../Docs/Concepts/Light.md) |
+| Light and color | Why the middle of a frame is linear light, and what tone mapping and dithering do at the end of it | [Ch 16](16-LayersAndEffects.md) | [Light and color](../Docs/Concepts/Light.md) |
 | Values and bare calls | The typed values under the short calls, and why the value is the half worth keeping | [Ch 10](10-Vectors.md), [Ch 15](15-ShapesAsMaterial.md) | [Values and bare calls](../Docs/Concepts/Values.md) |
 
 ## The sketch and its window

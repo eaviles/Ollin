@@ -4,9 +4,9 @@
 
 ## Keyframed parameters
 
-A [`@Param`](../Helpers/Parameters.md) gives a sketch a parameter to adjust. An `Automation` moves it for you: a value placed at one moment, another placed later, and a curve carrying the first into the second. It is the difference between tuning a piece and directing one.
+A [`@Param`](../Helpers/Parameters.md) gives a sketch a parameter you can adjust. An `Automation` moves that parameter for you. You place one value at one moment and another value later, and a curve carries the first value into the second. So you do not have to tune the parameter by hand, because the automation sets it for you as the sketch runs.
 
-Because the tracks read the sketch clock, and the exports drive that clock at a fixed step, a directed run renders exactly as it plays.
+The tracks read the sketch clock, and every export drives that clock at a fixed step. So an automated run renders exactly as it plays.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/TimelineCurve-dark.jpg">
@@ -28,7 +28,7 @@ Because the tracks read the sketch clock, and the exports drive that clock at a 
 
 ### Writing tracks in code
 
-Call `automate(_:_:)` in `setup()`, once per parameter. The closure places the keys in the parameter's own type:
+Call `automate(_:_:)` in `setup()`, once for each parameter. Inside the closure you place the keys, and each key takes a value of the parameter's own type:
 
 ```swift
 final class Breathing: Sketch {
@@ -56,13 +56,13 @@ final class Breathing: Sketch {
 }
 ```
 
-The `$radius` form hands over the parameter itself, which is how the track learns the property name. Keys may be written in any order; a track sorts them. Calling `automate` again for the same parameter replaces that parameter's track.
+The `$radius` form passes the parameter itself rather than its value, and that is how the track learns the property name. You can write the keys in any order, because a track sorts them by time. If you call `automate` again for the same parameter, the new track replaces the old one.
 
-Every frame, before the sketch draws, each track sets its parameter to the value its curve holds at the sketch clock.
+Every frame, before the sketch draws, each track reads the sketch clock and sets its parameter to the value its curve holds at that time.
 
 ### Curves
 
-A key carries the curve that *leaves* it, so the last key's curve is never read.
+A key carries the curve that *leaves* it and runs to the next key, so the curve on the last key is never read.
 
 | Curve | What it does |
 |---|---|
@@ -78,25 +78,25 @@ A key carries the curve that *leaves* it, so the last key's curve is never read.
   <img src="../../Guide/Images/31-SharingAndPerforming/ParameterOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the parameter holds there" width="680">
 </picture>
 
-The Bezier is the editable one: the handles bend the clock as well as the value, which is how a curve drawn by hand behaves. The handles' `x` stays inside `0...1` so the curve reads left to right; `y` may travel outside it, which overshoots and comes back.
+The Bezier is the curve you shape yourself. Its two handles change the timing as well as the value, the same way a curve you draw by hand does. The `x` of each handle stays inside `0...1`, so the curve always reads from left to right. The `y` may go outside that range, and then the value overshoots and comes back.
 
 ```swift
 track.key(at: 0, 40, curve: .bezier(x1: 0.85, y1: 0, x2: 0.15, y2: 1))   // a hard snap
 ```
 
-`track.hold(at:_:)` is the short way to write a key that holds.
+`track.hold(at:_:)` is a shorter way to write a key whose curve is `.hold`.
 
 ### What blends, and what steps
 
-Numbers, colors, points, rectangles, insets, and ranges have values in between two settings, so they travel along the curve. Colors take the even path a fade wants (the same one [`Color.mix`](../Drawing/Color.md) takes).
+Numbers, colors, points, rectangles, insets, and ranges have values in between any two settings, so they travel along the curve. Colors blend along the same even path that [`Color.mix`](../Drawing/Color.md) uses, so a fade between two keys stays even from end to end.
 
-A switch, a menu choice, and a piece of text have nothing in between. They *step* instead, holding the setting they left until the next key takes over. Two keys of different kinds hold as well, which is what a parameter that changed type leaves behind.
+A switch, a menu choice, and a piece of text have no values in between. So they *step* instead, and the parameter holds the setting of the key it left until the next key takes over. Two keys of different kinds step in the same way, which happens when a parameter changed its type after its keys were written.
 
-Outside a track's own span, the track is a constant: the first key's value before it, the last key's value after it.
+Outside its own span, a track is a constant. Before the first key it holds the first key's value, and after the last key it holds the last key's value.
 
 ### How a pass plays
 
-The automation reads the clock as `start + time * speed`:
+The automation reads its position from the sketch clock as `start + time * speed`:
 
 ```swift
 automation?.speed = 2                       // twice as fast
@@ -106,7 +106,7 @@ automation?.speed = -1                      // and run it backwards,
 automation?.start = automation?.duration ?? 0   // starting from the end
 ```
 
-`duration` is the last key of the longest track, unless `length` says otherwise. With `loops` off, a pass simply holds its last key when it runs out.
+`duration` is the time of the last key on the longest track, unless `length` sets a different value. With `loops` off, a pass holds its last key once it runs past the end.
 
 ### Reading a track back
 
@@ -118,25 +118,25 @@ if case .number(let value)? = automation?.track(named: "radius")?.value(at: 1.5)
 }
 ```
 
-`value(of:at:)` does the same from a sketch time rather than a position, applying `speed`, `start`, and the loop. The [Automation example](../../Examples/Motion/Automation/Sketch.swift) plots each of its own tracks under the stage this way.
+`value(of:at:)` does the same, but it takes a sketch time rather than a position, so it applies `speed`, `start`, and the loop first. The [Automation example](../../Examples/Motion/Automation/Sketch.swift) uses this to plot each of its own tracks under the stage.
 
 ### A track that is a rule
 
-Keys say where a parameter *is* at a few moments. A [`Formula`](../Helpers/Formula.md) says what it *is* at every moment, read from text rather than from Swift source:
+Keys set a parameter's value at a few moments. A [`Formula`](../Helpers/Formula.md) sets it at every moment, and you write that rule as text rather than as Swift source:
 
 ```swift
 drive($radius, "190 + sin(time * tau / 6) * 80")
 ```
 
-It is the same track, so `loops`, `speed`, `start`, and `length` shape it the same way, and it travels in the same file, written down as the text itself:
+A formula fills the same kind of track, so `loops`, `speed`, `start`, and `length` shape it the same way. A formula is also saved in the same file, where it appears as the text itself:
 
 ```json
 { "name": "radius", "formula": "190 + sin(time * tau / 6) * 80" }
 ```
 
-A formula reads `time` as the position in the automation, plus `frame`, the canvas, the pointer, and the sketch's other number and switch parameters by name. The whole vocabulary, and the two rules worth knowing before you type one, are on the [`Formula`](../Helpers/Formula.md) page.
+Inside a formula, `time` is the position in the automation. A formula can also read `frame`, the canvas, the pointer, and the sketch's other number and switch parameters by name. The [`Formula`](../Helpers/Formula.md) page lists the whole vocabulary and the two rules to know before you type one.
 
-A parameter that holds more than one number takes one rule for each part, and a part with no rule is left alone:
+A parameter that holds more than one number takes one rule for each part. A part with no rule is left alone:
 
 ```swift
 drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
@@ -146,7 +146,7 @@ drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
 { "name": "eye", "parts": { "x": "frame.x + frame.width / 2", "y": "height / 2" } }
 ```
 
-`Automation.parts(of:)` names the parts a stored value carries. `Automation.applying(_:to:)` puts worked-out numbers back into one, which is how a track of parts becomes a whole value again. See [a parameter of more than one number](../Helpers/Formula.md#a-parameter-of-more-than-one-number).
+`Automation.parts(of:)` names the parts that a stored value carries. `Automation.applying(_:to:)` puts the worked-out numbers back into a stored value, and that is how a track of parts becomes a whole value again. See [a parameter of more than one number](../Helpers/Formula.md#a-parameter-of-more-than-one-number).
 
 ### The file
 
@@ -157,29 +157,29 @@ try automation?.write(to: url)
 sketch.automation = try Automation.load(from: url)
 ```
 
-`--automation <file>` attaches one to a standalone run or to any export:
+The `--automation <file>` flag attaches a file to a standalone run or to any export:
 
 ```sh
-swift run Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
+swift run --package-path Examples Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
 ```
 
-A file arrives before `setup()`, so a sketch that also writes a track for the same parameter wins. A file written for a *newer* format than this Ollin reads is refused rather than guessed at; an older one still reads, because each layout so far has only added to the one before it.
+A file is loaded before `setup()` runs. So when the sketch also writes a track for the same parameter, the sketch's track replaces the one from the file. Ollin refuses a file written in a *newer* format than this version understands, rather than guessing at what it means. An older file still reads, because each layout so far has only added to the one before it.
 
-The flag is read by standalone runs, by every export path, and by OllinLive, which also looks for the sketch's sibling file (`Sketch.automation.json` beside `Sketch.swift`) when no flag names one. The live host re-installs the file's tracks across every reload, and its [timeline panel](../Tools/Timeline.md) edits them by hand and writes back to the same file.
+Standalone runs, every export path, and OllinLive all read the flag. When no flag names a file, OllinLive also looks for the sketch's sibling file, `Sketch.automation.json` beside `Sketch.swift`. The live host installs the file's tracks again after every reload. Its [timeline panel](../Tools/Timeline.md) lets you edit those tracks by hand and writes them back to the same file.
 
 ### How it sits beside the rest
 
-- **Smoothing.** An automated parameter is set, not eased into, so a `@Param` carrying `smoothing:` does not glide twice. The curve is the glide.
-- **The inspector.** A parameter under a track goes back on its curve at the next frame, so dragging its slider reads as a nudge rather than a change. Take the track off (`automation = nil`) to tune by hand.
-- **Takes.** A run recorded with [`--record-take`](Replay.md) writes down the values the curves held, so the take replays the performance with or without the automation attached.
-- **Exports.** Every export flag drives the clock at a fixed step, so an automated piece renders frame for frame. `--export-video --seconds` decides how many passes are in the file.
+- **Smoothing.** A track sets its parameter directly rather than easing it in. So a `@Param` that carries `smoothing:` does not glide twice, because the curve already does the easing.
+- **The inspector.** A parameter under a track returns to its curve at the next frame. So dragging its slider only nudges the value for a frame instead of changing it. To tune by hand, take the track off with `automation = nil`.
+- **Takes.** A run recorded with [`--record-take`](Replay.md) writes down the values the curves held. So the take replays the same run whether or not the automation is attached.
+- **Exports.** Every export flag drives the clock at a fixed step, so an automated piece renders frame for frame. `--export-video --seconds` decides how many passes the file holds.
 
 ---
 
 ### See also
 
 - [`Parameters`](../Helpers/Parameters.md) - the `@Param` parameters themselves, and the controls that edit them by hand
-- [`Replay`](Replay.md) - a run written down as it happened, the sibling format keyed the same way
+- [`Replay`](Replay.md) - a run written down as it happened, in a sibling file format that keys its values by parameter name
 - [`Export`](../Output/Export.md) - the flags an automated run renders through, `--automation` among them
 - [`Formula`](../Helpers/Formula.md) - the other way to fill a track: a rule worked out every frame, read from text
 - [`Animation`](../Helpers/Animation.md) - `Timeline`, the in-code sibling that sequences one value rather than a sketch's parameters

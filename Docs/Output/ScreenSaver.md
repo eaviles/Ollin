@@ -4,14 +4,14 @@
 
 ## A sketch as the machine's screen saver
 
-The window is one place a sketch can live. The system is another. A screen saver puts the work where it is seen without anybody opening anything. On your own machine when you step away, and on somebody else's after you hand it over.
+A sketch can run in a window, or it can run as the system's screen saver. A screen saver shows the work without anybody opening anything. It runs on your own machine when you step away, and on somebody else's after you hand it over.
 
 ```sh
 ollin new Ripple --kind screen-saver
 cd Ripple && ./build.sh --install
 ```
 
-Then open System Settings, go to Screen Saver, and pick it out of the list. That is the whole path.
+Then open System Settings, go to Screen Saver, and pick it from the list. There is nothing else to do.
 
 ### What you get
 
@@ -30,7 +30,7 @@ Ripple/
   <img src="../../Guide/Images/32-Installations/LivingInTheSystem.jpg" alt="A diagram in two columns: on the left, three stacked cards for the files inside Ripple.saver, with an arrow joining the NSPrincipalClass line in the property list to the matching @objc name in the code; on the right, two wide black screens showing a drawing filling one edge to edge and sitting square in the middle of the other" width="680">
 </picture>
 
-`SaverView.swift` is the whole of the wiring:
+`SaverView.swift` is all the wiring there is:
 
 ```swift
 import Foundation
@@ -42,26 +42,26 @@ final class RippleSaverView: SketchSaverView {
 }
 ```
 
-`SketchSaverView` is the framework's host. It builds the canvas when the system starts the saver. It drives the frames off the display's own clock, and puts everything away when the saver is over. Overriding `makeSketch()` is all it asks of you.
+`SketchSaverView` is the framework's host. It builds the canvas when the system starts the saver. It then drives the frames from the display's own clock, and releases everything when the saver ends. The only thing you write is the `makeSketch()` override.
 
 ### The sketch is an ordinary sketch
 
-Everything you would write in a window works here. `time`, `frameCount`, `random`, the whole drawing surface, 3D, shaders, effects. Two things are different, and both come from the setting rather than from the framework.
+Everything you would write in a window works here, including `time`, `frameCount`, `random`, the whole drawing surface, 3D, shaders, and effects. Two things are different, and both come from where the sketch runs rather than from the framework.
 
-**It gets no input.** A key or a click ends a screen saver. That is the contract. A canvas that answered the click would be a canvas that ate it, leaving somebody hammering at a machine that will not come back. So the canvas stays out of the event path entirely: `mouseX`, `mouseY`, `mouseIsPressed`, and `key` hold whatever they started at.
+**It gets no input.** The system ends a screen saver on any key or click. If the canvas handled that click, the click would never reach the system. The screen saver would then not end, and the person at the machine could not get back to their work. So the canvas stays out of the event path entirely, which means `mouseX`, `mouseY`, `mouseIsPressed`, and `key` keep their starting values.
 
-**It cannot write files.** The system loads a screen saver into a sandbox that can read anything and write almost nothing. Loading is fine: pictures, fonts, meshes, and clips all open as they always did. Writing is not, so `--export`, a recorded take, and a saved checkpoint have no place in a saver. None of them makes sense in one anyway.
+**It cannot write files.** The system loads a screen saver into a sandbox where it can read anything and write almost nothing. Loading works as usual, so pictures, fonts, meshes, and clips all open. Writing does not work, so `--export`, a recorded take, and a saved checkpoint cannot be used in a saver. None of them makes sense in a screen saver anyway.
 
 ### Filling the display, or fitting it
 
-A display is almost never the shape of a canvas. Which of the two you get is the sketch's own `windowMode`, exactly as it is in a window:
+A display is almost never the same shape as a canvas. The sketch's own `windowMode` decides whether the drawing fills the display or fits inside it, exactly as it does in a window:
 
 | The sketch says | On the display |
 |---|---|
 | `windowMode` is `.resizable` | The canvas *is* the display. `width` and `height` are the screen's, and the drawing fills it. |
 | anything else | The canvas keeps its own proportions, as large as fits, centered on black. |
 
-`ollin new` writes `.resizable` into the generated sketch, because a screen saver filling the screen is what people mean by one. Take the line out and a square sketch stays square, with black either side of it.
+`ollin new` writes `.resizable` into the generated sketch, because most people expect a screen saver to fill the screen. If you remove that line, a square sketch stays square, with black on either side of it.
 
 ```swift
 final class Ripple: Sketch {
@@ -70,17 +70,17 @@ final class Ripple: Sketch {
 }
 ```
 
-A fitted canvas goes through the same present pass a projector goes through, so it is scaled once, at its own proportions, and never stretched.
+A fitted canvas goes through the same present pass as a projector. It is scaled once, keeps its own proportions, and is never stretched.
 
 ### Working on it
 
-A screen saver is a slow way to look at a change: build, install, wait. Do the work in a window, where it reloads as you save, and install when it looks right.
+A screen saver is a slow way to check a change, because every change means a build, an install, and a wait. Do the work in a window instead, where the sketch reloads as you save, and install it when it looks right.
 
 ```sh
 ollin Sources/Ripple/Sketch.swift
 ```
 
-The file is the same file either way.
+The window and the saver run the same file.
 
 ### Building it again
 
@@ -89,24 +89,24 @@ The file is the same file either way.
 ./build.sh --install    # build it and put it on this machine
 ```
 
-The script builds the package, wraps the binary in the `.saver` folder, copies the framework's own files in beside it, and signs the result. Installing copies it to `~/Library/Screen Savers` and tells the host process to let go of the old one, so the next preview is the new build.
+The script builds the package and wraps the binary in the `.saver` folder. It copies the framework's own files in beside the binary, then signs the result. With `--install`, it also copies the saver to `~/Library/Screen Savers` and tells the host process to release the old one. The next preview then shows the new build.
 
-Three details in there are worth knowing, because each is a way a saver fails quietly:
+Three details of that process matter, because each one is a way a saver fails without an error:
 
-- **The framework's files travel inside the saver.** Shader segments, fonts, and tables are looked for beside the running program, and the running program belongs to the system, not to you. So they are copied into the saver's own `Resources`.
+- **The framework's files go inside the saver.** Ollin looks for its shader segments, fonts, and tables beside the running program. In a saver, the running program belongs to the system, not to you. So the script copies those files into the saver's own `Resources`.
 - **It has to be signed.** The system refuses to load an unsigned plug-in. The script signs it for this machine.
-- **The name in `Info.plist` and the `@objc` name have to match.** They are the only link between the two files. A mismatch installs, appears in the list, and shows the wrong thing or nothing at all.
+- **The name in `Info.plist` and the `@objc` name have to match.** That name is the only link between the two files. A saver with a mismatch still installs and appears in the list, but it shows the wrong thing or nothing at all.
 
 ### Giving it to somebody else
 
-The signature `build.sh` applies is good on the machine that made it. Another Mac will refuse it. For that the saver needs a Developer ID signature and a trip through notarization, the same as any app you hand out:
+The signature `build.sh` applies is valid only on the machine that made it, so another Mac will refuse it. To run there, the saver needs a Developer ID signature and notarization, the same as any app you hand out:
 
 ```sh
 codesign --force --sign "Developer ID Application: Your Name (TEAMID)" \
     --timestamp --options runtime Ripple.saver
 ```
 
-Notarizing wants the saver inside a container, so put it in a `.zip` or a `.dmg`, submit that, and staple the result back onto the bundle:
+Notarization needs the saver inside a container. Put it in a `.zip` or a `.dmg`, submit that, and staple the result back onto the bundle:
 
 ```sh
 xcrun notarytool submit Ripple.zip --keychain-profile "AC" --wait
@@ -117,13 +117,13 @@ Then anybody can drop it into `~/Library/Screen Savers`.
 
 ### Several displays
 
-The system builds one saver for each display, so each screen runs its own copy of your sketch from its own first frame. They do not share a clock and they are not in step. A piece that has to line up across two screens is an [installation](./Installation.md) rather than a screen saver. That one is built for a wall, with the displays laid out and the picture fitted across them.
+The system creates one saver for each display, so each screen runs its own copy of your sketch from its own first frame. The copies do not share a clock, so they are not in step. A piece that has to line up across two screens should be an [installation](./Installation.md) rather than a screen saver. An installation is built for a wall, with the displays laid out and the picture fitted across them.
 
 ---
 
 ## See also
 
 - [Installation](./Installation.md) - the other way a piece runs unattended, for a wall rather than a desk
-- [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, this one among them
-- [Single-file sketches](../Tools/SingleFile.md) - the smallest thing that is a whole sketch
-- [Export](./Export.md) - leaving with a picture instead
+- [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, including this one
+- [Single-file sketches](../Tools/SingleFile.md) - one loose file as a whole sketch
+- [Export](./Export.md) - rendering a picture to a file instead

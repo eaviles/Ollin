@@ -4,13 +4,13 @@
 
 ## Points on a surface
 
-Scattering points over a mesh: trees on an island, moss on a rock, roots for hair, a point cloud made from geometry. `surfacePoints` covers the **skin** evenly, which is not the same as covering the **vertex list** evenly.
+Scatter points over a mesh to place trees on an island, moss on a rock, roots for hair, or a point cloud made from geometry. `surfacePoints` spreads the points evenly over the **skin** of the mesh, which is not the same as spreading them evenly over the **vertex list**.
 
-The difference is the whole feature. A mesh puts vertices where its *shape* needs them, so a flat wall carries four and a rounded corner carries hundreds. Points picked from that list crowd the corner and leave the wall bare. Shuffling does not help, because the list itself is the wrong thing to draw from.
+That difference is what the feature is for. A mesh puts vertices where its *shape* needs them, so a flat wall carries four and a rounded corner carries hundreds. Points picked from that list crowd the corner and leave the wall bare. Shuffling the list does not help, because the list itself is the wrong thing to draw from.
 
 <img src="../../Guide/Images/23-Landscapes/ScatteredSpots.jpg" alt="Three dark blue globes side by side, each wearing the same number of small green cone trees: the first crowded at the poles with a bare middle and trees standing in pairs, the second clumped with visible clearings, the third spread evenly all over" width="640">
 
-Every point comes back as a `SurfaceSample`. It knows more than the spot: the direction the surface faces there, the texture coordinate, and the triangle it landed on.
+Every point comes back as a `SurfaceSample`. A sample holds more than the position. It also carries the direction the surface faces there, the texture coordinate, and the triangle the point landed on.
 
 ### Contents
 
@@ -31,7 +31,7 @@ surfacePoints(on mesh: Mesh,
               scatter: SurfaceScatter = .blueNoise) -> [SurfaceSample]
 ```
 
-`count` points scattered over `mesh`, in proportion to area. A triangle twice the size of its neighbor receives about twice as many, whatever either one cost in vertices. Driven by the seeded [`random`](./Random.md), so [`seed`](./Random.md#seed) makes the layout repeat.
+Returns `count` points scattered over `mesh` in proportion to area. A triangle twice the size of its neighbor receives about twice as many points, whatever either one cost in vertices. The scatter draws from the seeded [`random`](./Random.md), so [`seed`](./Random.md#seed) makes the layout repeat.
 
 ```swift
 seed(3)
@@ -41,16 +41,16 @@ drawMesh(tree, instances: spots.map {
 })
 ```
 
-Two spreads:
+The `scatter` argument takes one of two spreads:
 
 | `scatter` | What it does | When |
 |---|---|---|
-| `.blueNoise` (default) | Keeps neighbors apart, so nothing clumps and nothing leaves a hole | Props, roots, stipple, anything the eye reads as *placed* |
-| `.random` | Each point independent of the ones before it | Splatter, thrown seed, and any case where clumping is the look |
+| `.blueNoise` (default) | Keeps neighbors apart, so nothing clumps and nothing leaves a hole | Props, roots, stipple, and anything the eye reads as *placed* |
+| `.random` | Each point is independent of the ones before it | Splatter, thrown seed, and any case where clumping is the look |
 
-`.blueNoise` draws several times `count` candidates and thins the crowded ones out, so it costs a few times what `.random` costs. **Ask for the count you want** rather than trimming the result yourself. The thinning is what makes the spacing even, and cutting the list afterward undoes it.
+`.blueNoise` draws several times `count` candidates and thins out the crowded ones, so it costs a few times what `.random` costs. Ask for **the count you want** rather than trimming the result yourself. The thinning is what makes the spacing even, so cutting the list afterward undoes it.
 
-The mesh is read in place. Nothing is welded or rebuilt first, so two triangles meeting at a seam are simply two triangles. A triangle with no area never receives a point.
+The mesh is read as it is. Nothing is welded or rebuilt first, so two triangles that meet at a seam stay two separate triangles. A triangle with no area never receives a point.
 
 <a name="spacing"></a>
 
@@ -62,13 +62,13 @@ surfacePoints(on mesh: Mesh,
               scatter: SurfaceScatter = .blueNoise) -> [SurfaceSample]
 ```
 
-The same scatter asked the other way around, the way [`poissonDisk`](./BlueNoise.md) takes a radius. State the distance you want between neighbors, and the count follows from the surface area. Useful when the mesh changes size or resolution and the *density* is what should stay put.
+This is the same scatter asked the other way around, the way [`poissonDisk`](./BlueNoise.md) takes a radius. You state the distance you want between neighbors, and the count follows from the surface area. Use it when the mesh changes size or resolution and the *density* is what should stay the same.
 
 ```swift
 let roots = surfacePoints(on: scalp, spacing: 0.01)   // a strand every centimeter
 ```
 
-Under `.random` the spacing only decides how many points are drawn, since a plain draw keeps no distance from anything.
+Under `.random` the spacing only decides how many points are drawn, because a plain draw keeps no distance between points.
 
 <a name="sample"></a>
 
@@ -84,9 +84,9 @@ struct SurfaceSample {
 }
 ```
 
-`normal` is blended from the mesh's vertex normals when it carries them, and taken from the triangle's winding when it does not. `uv` is `Vector2.zero` on a mesh with no texture coordinates.
+`normal` is blended from the mesh's vertex normals when the mesh carries them, and taken from the triangle's winding when it does not. `uv` is `Vector2.zero` on a mesh with no texture coordinates.
 
-`triangle` and `barycentric` are there to blend anything else the mesh holds per vertex. A per-vertex color, for instance:
+`triangle` and `barycentric` let you blend anything else the mesh holds per vertex. A per-vertex color, for example:
 
 ```swift
 let i = spot.triangle * 3
@@ -97,7 +97,7 @@ let w = spot.barycentric
 let tint = Color.mix(Color.mix(a, b, w.y / max(w.x + w.y, 1e-9)), c, t: w.z)
 ```
 
-They are also how a scatter is filtered by something the surface already knows. Keep the spots facing up, and only those:
+They also let you filter a scatter by something the surface already knows. This keeps only the spots that face up:
 
 ```swift
 let flat = surfacePoints(on: terrain, count: 800).filter { $0.normal.y > 0.8 }
@@ -111,7 +111,7 @@ let flat = surfacePoints(on: terrain, count: 800).filter { $0.normal.y > 0.8 }
 func alignment(spin: Double = 0) -> Vector3
 ```
 
-The turn that points a mesh's own **+y** along the sample's normal, given as the angles a [`MeshInstance`](../3D/Instancing.md) takes. `spin` turns it about that direction afterward, which is what keeps a scattered field from reading as a field of clones.
+Returns the turn that points a mesh's own **+y** along the sample's normal, as the angles a [`MeshInstance`](../3D/Instancing.md) takes. `spin` then turns the mesh about that direction, which keeps a scattered field from reading as a field of clones.
 
 ```swift
 drawMesh(tree, instances: spots.map {
@@ -121,7 +121,7 @@ drawMesh(tree, instances: spots.map {
 })
 ```
 
-A mesh built about its middle sits half-buried, so lift it along the normal by half its height:
+A mesh built around its own middle sits half-buried, so lift it along the normal by half its height:
 
 ```swift
 MeshInstance(position: $0.position + $0.normal * 0.15, rotation: $0.alignment())
@@ -135,7 +135,7 @@ MeshInstance(position: $0.position + $0.normal * 0.15, rotation: $0.alignment())
 mesh.surfaceArea -> Double
 ```
 
-Every triangle's area added up, in the square of the mesh's own units. It is what turns a spacing into a count, and it is worth reading directly when a scatter should hold a **density** rather than a count:
+This is every triangle's area added up, in the square of the mesh's own units. It is what turns a spacing into a count. Read it directly when a scatter should hold a **density** rather than a count:
 
 ```swift
 let trees = surfacePoints(on: island, count: Int(island.surfaceArea * 12))
@@ -145,7 +145,7 @@ let trees = surfacePoints(on: island, count: Int(island.surfaceArea * 12))
 
 #### Standalone (outside a sketch)
 
-The `Sketch` methods are sugar over free functions that take any random source, so geometry code outside a sketch can scatter reproducibly too:
+The `Sketch` methods are sugar over free functions that take any random source. That means geometry code outside a sketch can scatter reproducibly too:
 
 ```swift
 var rng = SplitMix64(seed: 7)

@@ -4,14 +4,14 @@
 
 ## Spanning tree
 
-**`spanningTree`** connects a set of points with the shortest total line work that still reaches every one of them. That is the minimum spanning tree, the branching sibling of the [single line](./SingleLine.md). [Stipple](./Stippling.md) a picture, span the dots, and the tree reads as the picture drawn in veins: trunks along the darks, capillaries feathering into the shading. Where the tour meanders, the tree branches, so the same dots come out organic rather than labyrinthine. The technique is the minimum-spanning-tree halftoning of Inoue and Urahama, from the same family as TSP art.
+**`spanningTree`** connects a set of points with the shortest total line work that still reaches every one of them. That shape is the minimum spanning tree, the branching sibling of the [single line](./SingleLine.md). When you [stipple](./Stippling.md) a picture and span the dots, the tree reads as the picture drawn in veins. Trunks follow the darks, and fine twigs feather into the shading. A tour meanders through the same dots, but the tree branches instead, so the result looks organic rather than maze-like. The technique is the minimum-spanning-tree halftoning of Inoue and Urahama, from the same family as TSP art.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/SpanningTreeVeins-dark.jpg">
   <img src="../Images/SpanningTreeVeins.jpg" alt="The same clustered dots twice: alone on the left, and joined on the right by an orange minimum spanning tree, trunks where the dots crowd and twigs feathering outward, with no loops anywhere" width="680">
 </picture>
 
-The result comes back as a handful of open `Contour` chains that together draw every tree edge exactly once. It therefore feeds `drawPolyline`, [hatching and SVG export](../Output/Export.md), and anything else a polyline feeds. Each chain is one pen-down stroke on a plotter.
+The result is a handful of open `Contour` chains, and together they draw every tree edge exactly once. You can pass them to `drawPolyline`, to [hatching and SVG export](../Output/Export.md), and to anything else that takes a polyline. On a plotter, each chain is one pen-down stroke.
 
 ### Contents
 
@@ -31,7 +31,7 @@ spanningTree(of image: Image,
              cutoff: Double = 0.85) -> [Contour]
 ```
 
-The one-call form: stipple `image` with `count` dots, then join them by the minimum spanning tree. The image is stretched over `bounds`, which is the whole canvas by default. Pass a `Rectangle(fitting:in:)` of the image's size to keep its aspect. Driven by the seeded `random`, so [`seed`](./Random.md#seed) reproduces the drawing exactly.
+This is the one-call form. It stipples `image` with `count` dots, then joins those dots with the minimum spanning tree. The image is stretched over `bounds`, which is the whole canvas by default. To keep the image's aspect, pass a `Rectangle(fitting:in:)` of the image's size. The dots come from the seeded `random`, so the same [`seed`](./Random.md#seed) reproduces the drawing exactly.
 
 ```swift
 let veins = spanningTree(of: picture, points: 4000, in: frame)
@@ -40,7 +40,7 @@ stroke(.black)
 for chain in veins { drawPolyline(chain.points) }
 ```
 
-`cutoff` works exactly as in `singleLine(of:points:)`: pixels lighter than it place no dots, so light regions stay genuinely empty instead of collecting stray twigs.
+`cutoff` works the same way as in `singleLine(of:points:)`. Pixels lighter than the cutoff place no dots, so light regions stay empty instead of collecting stray twigs.
 
 <a name="points"></a>
 
@@ -50,24 +50,24 @@ for chain in veins { drawPolyline(chain.points) }
 spanningTree(through points: [Vector2]) -> [Contour]
 ```
 
-The tree itself, over any points: a stipple, a [blue-noise scatter](./BlueNoise.md), attractor orbits, cluster centers. The tree is exact, built on the [Delaunay triangulation](../Drawing/Voronoi.md), which always contains it. The chain decomposition is minimal at one chain per pair of odd-degree vertices. A plotter therefore spends no more pen lifts than the branching demands.
+This form builds the tree over any points you already have, such as a stipple, a [blue-noise scatter](./BlueNoise.md), attractor orbits, or cluster centers. The tree is exact, because it is built on the [Delaunay triangulation](../Drawing/Voronoi.md), which always contains it. The chain decomposition is minimal, at one chain per pair of odd-degree vertices. A plotter therefore spends no more pen lifts than the branching demands.
 
 ```swift
 let tree = spanningTree(through: dots)
 for chain in tree { drawPolyline(chain.points) }
 ```
 
-Deterministic given the points, and pure CPU: comfortable at tens of thousands of points.
+The result is deterministic for a given set of points. The work is pure CPU, and it stays comfortable at tens of thousands of points.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **Span once, hold the chains.** The build is `setup()` work. Animate the reveal by drawing chains in their plotting order, not by rebuilding.
-- **Tour or tree is a mood choice.** The same stipple renders both ways. `singleLine` gives the engraved, maze-like meander, and `spanningTree` gives the organic, vascular reading. The tree is also the shorter drawing, always.
-- **Density is the vein structure.** The tree invents trunks where dots crowd, so tonal contrast in the source is what makes the branching legible. A soft gray image gives an even thicket.
-- **Chains are yours to style.** Each `Contour` is an independent stroke: vary weight by chain length for trunk-and-twig weighting, or feed the long ones to `drawCurve` for a rounded reading.
+- **Span once, then keep the chains.** The build belongs in `setup()`. To animate the reveal, draw the chains in their plotting order rather than rebuilding the tree.
+- **Tour or tree is a choice of look.** The same stipple renders both ways. `singleLine` gives an engraved, maze-like meander, and `spanningTree` gives an organic, vein-like one. The tree is always the shorter drawing.
+- **Density shapes the veins.** The tree grows trunks where dots crowd, so tonal contrast in the source is what makes the branching legible. A soft gray image gives an even thicket.
+- **The chains are yours to style.** Each `Contour` is an independent stroke. Vary the stroke weight by chain length to weight trunks against twigs, or pass the long chains to `drawCurve` for a rounded look.
 
 ---
 
-Related: [`Single line`](./SingleLine.md) (the touring sibling), [`Stippling`](./Stippling.md) (the placement half), [`Voronoi & Delaunay`](../Drawing/Voronoi.md) (the triangulation underneath), [`Export`](../Output/Export.md) (SVG and the plotter path).
+Related: [`Single line`](./SingleLine.md) (the touring sibling), [`Stippling`](./Stippling.md) (where the dots come from), [`Voronoi & Delaunay`](../Drawing/Voronoi.md) (the triangulation underneath), [`Export`](../Output/Export.md) (SVG and the plotter path).

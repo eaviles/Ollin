@@ -4,9 +4,9 @@
 
 ## Steering behaviors
 
-A **steering creature** moves with lifelike intent from one simple move: aim at full speed toward what you want, subtract the velocity you already have, and cap the turn. Every behavior is that move with a different idea of "what you want", so behaviors compose: weight the forces, sum them, and the creature balances its urges (Reynolds' autonomous-steering model, the single-creature side of [flocking](./Boids.md)).
+A **steering creature** moves as if it had intent, and one simple move is all that takes. Aim at full speed toward what you want, subtract the velocity you already have, then cap the turn. Every behavior is that same move with a different idea of what you want, so behaviors combine. Scale each force, add them together, and the creature balances the things it wants. This is Reynolds' autonomous-steering model, the single-creature side of [flocking](./Boids.md).
 
-`Vehicle` is a stateful creature you hold: each behavior method returns a force, `applyForce(_:)` accumulates the ones you choose, and `step()` moves. It's deterministic given its `seed` (only `wander` draws random numbers), so a seeded creature retraces the same path.
+`Vehicle` is a creature you hold on to, and it keeps its own state. Each behavior method returns a force, `applyForce(_:)` adds up the ones you choose, and `step()` moves the creature. A `Vehicle` is deterministic for a given `seed`, because only `wander` draws random numbers, so a seeded creature retraces the same path.
 
 ```swift
 let creature = Vehicle(at: center, seed: 1)
@@ -36,7 +36,7 @@ Vehicle(at: Vector2, velocity: Vector2 = .zero,
         maxSpeed: Double = 3, maxForce: Double = 0.12, seed: UInt64 = 0)
 ```
 
-`maxSpeed` is the top speed; `maxForce` caps how sharply the creature can turn per step (low is smooth and sluggish, high snaps). The primitive is public:
+`maxSpeed` is the top speed. `maxForce` caps how sharply the creature can turn on each step, so a low value turns smoothly and slowly, and a high value snaps around. The steering move itself is public:
 
 ```swift
 creature.steer(toward: direction)   // aim at maxSpeed along direction, minus velocity, capped
@@ -47,13 +47,13 @@ creature.steer(toward: direction)   // aim at maxSpeed along direction, minus ve
   <img src="../../Guide/Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
 </picture>
 
-`position`, `velocity`, and `heading` are the live state you draw however you like; `drawVehicle(_:size:)` draws a triangle pointing along the heading with the current `fill`.
+`position`, `velocity`, and `heading` are the live state, and you can draw them however you like. `drawVehicle(_:size:)` draws a triangle that points along the heading, using the current `fill`.
 
 <a name="behaviors"></a>
 
 #### The behaviors
 
-Each returns a force to pass to `applyForce(_:)`, scaled if you want it stronger or weaker:
+Each behavior returns a force to pass to `applyForce(_:)`, and you scale that force to make it stronger or weaker.
 
 | Behavior | What the creature wants |
 | --- | --- |
@@ -62,15 +62,15 @@ Each returns a force to pass to `applyForce(_:)`, scaled if you want it stronger
 | `arrive(at:slowingRadius:)` | reach the target and *stop there* (speed ramps down inside the radius) |
 | `pursue(_:velocity:)` / `pursue(_ other:)` | intercept a moving target by aiming where it will be |
 | `evade(_:velocity:)` / `evade(_ other:)` | escape a moving threat by fleeing where it will be |
-| `wander(radius:distance:jitter:)` | roam aimlessly (a jittered point on a circle projected ahead) |
+| `wander(radius:distance:jitter:)` | roam with no target, by seeking a jittered point on a circle projected ahead |
 | `follow(_ field:)` | move along a [`FlowField`](./FlowField.md) |
-| `follow(path:radius:lookAhead:closed:)` | stay on a path corridor (below) |
-| `separate(from:radius:)` | keep personal space from other vehicles |
+| `follow(path:radius:lookAhead:closed:)` | stay inside a corridor along a path, described below |
+| `separate(from:radius:)` | keep some space from the other vehicles |
 | `contain(in:margin:)` | stay inside a rectangle (pushed back near the edges) |
 
 <img src="../../Guide/Images/12-FlocksAndSwarms/ChaseDot.jpg" alt="Two curved trails sweep toward a white ring on a dark canvas. The teal trail bends in and stops at the ring; the coral trail swings past it and back through it in a line, its creature caught mid-swing" width="560">
 
-`wander` is the one seeded behavior: small `jitter` drifts in long arcs, large is twitchy. Give each creature its own seed or they wander in lockstep.
+`wander` is the one behavior that uses the seed. A small `jitter` drifts in long arcs, and a large one is twitchy. Give each creature its own seed, or they all wander the same way at the same time.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/12-FlocksAndSwarms/WanderCircle-dark.jpg">
@@ -85,13 +85,13 @@ Each returns a force to pass to `applyForce(_:)`, scaled if you want it stronger
 creature.follow(path: points, radius: 20, lookAhead: 50, closed: false)
 ```
 
-The creature predicts its position `lookAhead` ahead; if the prediction strays more than `radius` off the polyline, it seeks a point further *along* the path, so it rejoins downstream instead of cutting straight back. Inside the corridor no force is returned. Pass `closed: true` for a loop (the walk-ahead wraps through the seam). Streamlines from a [flow field](./FlowField.md), a `Contour`'s points, or any point list work as the path.
+The creature predicts its own position `lookAhead` ahead of where it is now. If that prediction strays more than `radius` off the polyline, the creature seeks a point further *along* the path. It rejoins the path ahead of itself, instead of cutting straight back. While the prediction stays inside the corridor, the behavior returns no force. Pass `closed: true` for a loop, and the walk ahead then wraps through the seam. The path can be streamlines from a [flow field](./FlowField.md), the points of a `Contour`, or any list of points.
 
 <a name="combining"></a>
 
 #### Combining behaviors
 
-Weight by scaling each force, and let the caps resolve the conflict:
+Scale each force to give it a weight, and let the caps resolve the conflict between them:
 
 ```swift
 creature.applyForce(creature.follow(path: loop, closed: true))
@@ -100,8 +100,8 @@ creature.applyForce(creature.evade(threat) * 2)
 creature.step()
 ```
 
-For a whole flock with neighbor rules (separation, alignment, cohesion) use [`Boids`](./Boids.md), which runs the same steering move over a spatial hash; `Vehicle` is for the handful of creatures whose individual behavior you choreograph. See the `Motion/Steering` example (a path troop, wanderers, and a pursuer).
+For a whole flock with neighbor rules (separation, alignment, cohesion), use [`Boids`](./Boids.md), which runs the same steering move over a spatial hash. `Vehicle` is for the handful of creatures whose behavior you direct one by one. See the `Motion/Steering` example, which has a path troop, wanderers, and a pursuer.
 
 ---
 
-Related: [`Flocking (boids)`](./Boids.md) (the flock-scale sibling), [`Flow fields`](./FlowField.md) (fields a creature can follow), [`Physics`](../Simulation/Physics.md) (force-driven motion with collisions).
+Related: [`Flocking (boids)`](./Boids.md) (the same steering at flock scale), [`Flow fields`](./FlowField.md) (fields a creature can follow), [`Physics`](../Simulation/Physics.md) (force-driven motion with collisions).

@@ -4,7 +4,7 @@
 
 ## Flow fields
 
-A **flow field** gives a direction at every point of the plane. Trace *streamlines* through it (curves that follow the flow) or *advect* particles and strokes along it. The direction comes from an `angle` function, so a field can be built from noise, a formula, or anything you like, and streamlines are ordinary point lists, so they feed stroking, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.
+A **flow field** gives a direction at every point of the plane. You can trace *streamlines* through it, which are curves that follow the flow, or *advect* particles and strokes along it. The direction comes from an `angle` function, so you can build a field from noise, from a formula, or from anything else you write. Streamlines are ordinary point lists, so they feed stroking, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.
 
 <img src="../../Guide/Images/14-FieldsAndFlow/Compass.jpg" alt="A grid of small pale needles on a dark canvas, each tipped with a gold dot, their directions changing smoothly across the canvas so currents and swirls show in the pattern" width="560">
 
@@ -18,24 +18,24 @@ A **flow field** gives a direction at every point of the plane. Trace *streamlin
 
 #### Building a field
 
-The `flowField` and `curlField` sketch sugar build a field from the seeded Perlin noise; both are reproducible under [`seed`](./Random.md#seed).
+The `flowField` and `curlField` sketch sugar build a field from the seeded Perlin noise. Both are reproducible under [`seed`](./Random.md#seed).
 
 ```swift
 flowField(scale: Double = 0.002, turns: Double = 1, z: Double = 0) -> FlowField
 curlField(scale: Double = 0.003, z: Double = 0) -> FlowField
 ```
 
-- `flowField` maps the noise to an angle (smaller `scale` is smoother, `turns` widens the range of directions).
-- `curlField` points along the divergence-free *curl* of the noise, so streamlines read as smooth, sourceless swirls.
-- `z` is the noise slice; animate it for a field that drifts over time.
+- `flowField` maps the noise to an angle. A smaller `scale` gives a smoother field, and `turns` widens the range of directions.
+- `curlField` points along the divergence-free *curl* of the noise, so its streamlines are smooth, sourceless swirls.
+- `z` is the noise slice. Animate it for a field that drifts over time.
 
-Or build one from your own angle function:
+You can also build a field from your own angle function:
 
 ```swift
 let field = FlowField { p in atan2(p.y - 540, p.x - 540) + .pi / 2 }   // a vortex around the center
 ```
 
-Because `flowField`/`curlField` capture the sketch's noise, trace streamlines from the field and hold *those* rather than storing the field itself.
+`flowField` and `curlField` capture the sketch's noise, so trace streamlines from the field and hold *those* rather than storing the field itself.
 
 <a name="streamlines"></a>
 
@@ -47,14 +47,14 @@ field.streamlines(from seeds: [Vector2], stepLength: Double = 4, steps: Int = 20
                   bounds: Rectangle? = nil, separation: Double? = nil) -> [[Vector2]]
 ```
 
-`streamline` steps through a seed point both forward and backward (so the seed sits in the middle of the curve), stopping after `steps` each way or when it leaves `bounds`. `streamlines` traces one from each seed.
+`streamline` steps through a seed point both forward and backward, so the seed sits in the middle of the curve. It stops after `steps` in each direction, or earlier if the curve leaves `bounds`. `streamlines` traces one curve from each seed.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/14-FieldsAndFlow/TraceSteps-dark.jpg">
   <img src="../../Guide/Images/14-FieldsAndFlow/TraceSteps.jpg" alt="A paper diagram of faint field needles with one walk drawn through them: an orange start dot, then black dots connected by arrows stepping along the flow, following a faint fine line traced through the same field" width="680">
 </picture>
 
-Pass a `separation` and the lines are traced **evenly spaced**: a line stops when it comes within `separation` of one already traced, and seeds too close to an existing line are skipped, so the curves fan out without crossing (the flow-field look). Seed it densely (a [blue-noise](./BlueNoise.md) set works well) and let the separation thin it out.
+Pass a `separation` and the lines are traced **evenly spaced**. A line stops when it comes within `separation` of one already traced, and a seed too close to an existing line is skipped. The curves then fan out without crossing, which is the flow-field look. Seed the field densely, with a [blue-noise](./BlueNoise.md) set for example, and let the separation thin it out.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/14-FieldsAndFlow/EvenSpacing-dark.jpg">
@@ -71,7 +71,7 @@ for line in field.streamlines(from: seeds, stepLength: 4, steps: 220, bounds: bo
 }
 ```
 
-Trace once and hold the lines; animate their color or width to move without re-tracing. See the `Streamlines` example.
+Trace the lines once and hold them. You can then animate their color or width to get motion without tracing again. See the `Streamlines` example.
 
 <a name="advect"></a>
 
@@ -81,7 +81,7 @@ Trace once and hold the lines; animate their color or width to move without re-t
 field.advected(_ points: [Vector2], stepLength: Double = 2) -> [Vector2]
 ```
 
-Step a set of points one move along the field each frame, for particles or strokes drifting through the flow. Paired with accumulation (`noClear()`), the trails paint the field over time:
+`advected` steps a set of points one move along the field. Call it each frame for particles or strokes drifting through the flow. Pair it with accumulation (`noClear()`) and the trails paint the field over time:
 
 ```swift
 override func setup() { noClear() }
@@ -95,4 +95,4 @@ override func draw() {
 
 ---
 
-Related: [`Noise`](./Noise.md) (the Perlin and curl noise the fields are built from), [`Blue noise`](./BlueNoise.md) (the even seed set streamlines fan out from), [`Geometry`](../Drawing/Geometry.md) (the shape booleans and stroking the lines feed).
+Related: [`Noise`](./Noise.md) (the Perlin and curl noise the fields are built from), [`Blue noise`](./BlueNoise.md) (the even seed set the streamlines fan out from), [`Geometry`](../Drawing/Geometry.md) (the shape booleans and stroking the lines feed).

@@ -4,9 +4,9 @@
 
 ## Voronoi & Delaunay
 
-Tessellation turns a set of points into vector geometry. A **Delaunay triangulation** connects the points into well-shaped (un-slivery) triangles. Its dual, a **Voronoi diagram**, partitions the canvas into one convex cell per point, where a cell is every place closer to its point than to any other, the "stochastic crystallization" look. Both produce ordinary `Shape`s, so the cells and triangles fill, stroke, offset, hatch, and export like anything you draw by hand.
+Tessellation turns a set of points into vector geometry. A **Delaunay triangulation** connects the points into well-shaped triangles, with no slivers. Its dual is a **Voronoi diagram**, which splits the canvas into one convex cell per point. A cell holds every place that is closer to its own point than to any other, which gives the "stochastic crystallization" look. Both produce ordinary `Shape`s, so the cells and triangles fill, stroke, offset, hatch, and export like anything you draw by hand.
 
-Everything here is driven by the seedable [`random`](../Generators/Random.md)/[`noise`](../Generators/Noise.md) helpers, so the same seed always yields the same tessellation.
+Everything here runs on the seedable [`random`](../Generators/Random.md) and [`noise`](../Generators/Noise.md) helpers, so the same seed always gives the same tessellation.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/Duals-dark.jpg">
@@ -42,7 +42,7 @@ override func draw() {
 }
 ```
 
-`canvasRectangle` is the whole canvas as a `Rectangle`, the default clip region. `voronoi(_:in:)` and the value types below are the typed core, and the `draw*` calls are sugar over them.
+`canvasRectangle` is the whole canvas as a `Rectangle`, and it is the default clip region. `voronoi(_:in:)` and the value types below are the typed core, and the `draw*` calls are sugar over them.
 
 <a name="voronoi"></a>
 
@@ -61,10 +61,10 @@ let v = voronoi(sites, in: region) // clipped to a Rectangle you choose
 | `cell(_ i: Int) -> Shape` | The cell for site `i`. |
 | `sites: [Vector2]` | The sites, in input order. |
 | `bounds: Rectangle` | The rectangle every cell is clipped to. |
-| `centroid(_ i: Int) -> Vector2` | The area-weighted centroid of cell `i` (where Lloyd relaxation would move the site). |
-| `relaxed(iterations:) -> [Vector2]` | Lloyd relaxation (see below). |
+| `centroid(_ i: Int) -> Vector2` | The area-weighted centroid of cell `i`, which is where Lloyd relaxation would move the site. |
+| `relaxed(iterations:) -> [Vector2]` | Lloyd relaxation, described below. |
 
-Because cells are 1:1 with sites, you can carry data alongside the sites and look it up by index while drawing:
+Because cells match sites one for one, you can carry data alongside the sites and look it up by index while drawing:
 
 ```swift
 let cells = voronoi(sites).cells
@@ -74,7 +74,7 @@ for (i, cell) in cells.enumerated() {
 }
 ```
 
-Every cell is **clipped to `bounds`**, so the cells at the edge of the field get finite shapes rather than running off to infinity. Sites are taken exactly as given (no clustering), so keep them inside `bounds` for cells that cover the canvas.
+Every cell is **clipped to `bounds`**, so a cell at the edge of the field is a finite shape rather than an infinite one. Sites are taken exactly as given, with no clustering, so keep them inside `bounds` if you want the cells to cover the canvas.
 
 To draw all cells in the current `fill`/`stroke` in one call:
 
@@ -87,7 +87,7 @@ drawVoronoi(sites)            // or drawVoronoi(sites, in: region)
 
 ### Lloyd relaxation
 
-Raw random sites clump and leave gaps. **Lloyd's algorithm** evens them out by moving each site to its cell's centroid and re-tessellating, repeatedly, converging toward a calm, organic ("centroidal") spacing.
+Raw random sites clump and leave gaps. **Lloyd's algorithm** evens them out. It moves each site to its cell's centroid, tessellates again, and repeats, converging toward a calm, organic spacing that is called "centroidal".
 
 ```swift
 let scattered = (0..<120).map { _ in randomVector(in: canvasRectangle) }
@@ -95,7 +95,7 @@ let even = lloyd(scattered, iterations: 6)   // sugar
 let even = voronoi(scattered).relaxed(iterations: 6)   // equivalent
 ```
 
-`lloyd(_:in:iterations:)` returns the relaxed sites, so feed them into `voronoi(...)`, keep iterating, or animate them. A few iterations is usually enough, and more keeps smoothing toward a honeycomb.
+`lloyd(_:in:iterations:)` returns the relaxed sites, so you can feed them into `voronoi(...)`, keep iterating, or animate them. A few iterations is usually enough, and more iterations keep smoothing the layout toward a honeycomb.
 
 <a name="power"></a>
 
@@ -119,13 +119,13 @@ struct PowerDiagram {
 }
 ```
 
-A Voronoi cell holds every place closer to its site than to any other. A **power** cell holds every place whose *power* is least, where power is the squared distance less a weight the site carries. That single change gives every site a dial, and it is the diagram to reach for when the things being divided have sizes.
+A Voronoi cell holds every place closer to its site than to any other. A **power** cell holds every place whose *power* is least, where power is the squared distance less a weight the site carries. That one change gives every site a value you can tune, so reach for a power diagram when the things being divided have sizes.
 
-Two properties survive the change and one is new. The boundary between two cells is still a straight line, so the cells are still convex polygons and they still tile the region exactly. What is new is that **a site can lose everything**: a small circle sitting inside a large one gets no cell at all, which a plain Voronoi diagram can never do. Its `cells` entry is an empty `Shape`, and drawing it draws nothing.
+Two properties survive the change, and one behavior is new. The boundary between two cells is still a straight line, so the cells are still convex polygons and they still tile the region exactly. The new behavior is that **a site can lose everything**. A small circle sitting inside a large one gets no cell at all, which a plain Voronoi diagram can never do. Its `cells` entry is then an empty `Shape`, and drawing it draws nothing.
 
-The weight is not a radius and not an importance, and only the *differences* between weights matter. Adding the same amount to every weight leaves the diagram exactly where it was.
+The weight is not a radius, and it is not an importance. Only the *differences* between weights matter, so adding the same amount to every weight leaves the diagram exactly where it was.
 
-**Weighting a circle by the square of its radius is the case worth knowing.** The power of a point on the circle is then zero, so a circle that touches no other lies entirely inside its own cell. That is what makes the diagram the right partition for a set of circles of different sizes: cell boundaries fall where two circles would meet if they grew, rather than halfway between their centers.
+**Weighting a circle by the square of its radius is the case worth knowing**. The power of a point on the circle is then zero, so a circle that touches no other lies entirely inside its own cell. That makes the diagram the right partition for a set of circles of different sizes. Cell boundaries fall where two circles would meet if they grew, rather than halfway between their centers.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/WeightedTerritories-dark.jpg">
@@ -141,13 +141,13 @@ for (index, cell) in diagram.cells.enumerated() {
 }
 ```
 
-Every cell is cut out with one half-plane per other site, so the cost grows with the square of the site count. A few hundred sites is comfortable, a few thousand is not. `site(owning:)` answers from the sites themselves rather than from the polygons, so it is exact and works outside `bounds` too.
+Every cell is cut out with one half-plane per other site, so the cost grows with the square of the site count. A few hundred sites is comfortable, and a few thousand is not. `site(owning:)` answers from the sites themselves rather than from the polygons, so it is exact, and it works outside `bounds` too.
 
 <a name="delaunay"></a>
 
 ### Delaunay
 
-`delaunay(_ points:)` (or `Delaunay(points)`) returns the triangulation, the well-shaped triangle mesh through the points, and what the Voronoi diagram is the dual of.
+`delaunay(_ points:)`, or `Delaunay(points)`, returns the triangulation. That is the well-shaped triangle mesh through the points, and the Voronoi diagram is its dual.
 
 ```swift
 let mesh = delaunay(points)
@@ -162,19 +162,19 @@ let cells = mesh.voronoi(bounds: canvasRectangle).cells   // the dual diagram
 | `points: [Vector2]` | The input points, in order. |
 | `triangles: [Triangle]` | The triangles (see [`Triangle`](#triangle)). |
 | `triangleShapes: [Shape]` | Each triangle as a fillable `Shape`. |
-| `indices: [Int]` | Triangle corners as a flat list of indices into `points`, three per triangle, in a canonical deterministic order (each triple leads with its smallest index; the list is sorted). |
-| `neighbors(of i: Int) -> [Int]` | The points sharing an edge with point `i`. |
+| `indices: [Int]` | Triangle corners as a flat list of indices into `points`, three per triangle, in a canonical deterministic order. Each triple leads with its smallest index, and the list is sorted. |
+| `neighbors(of i: Int) -> [Int]` | The points that share an edge with point `i`. |
 | `voronoi(bounds:) -> Voronoi` | The dual Voronoi diagram, clipped to `bounds`. |
 
-`drawDelaunay(points)` draws the mesh in the current `fill`/`stroke` (`noFill()` for a wireframe).
+`drawDelaunay(points)` draws the mesh in the current `fill`/`stroke`. Call `noFill()` first for a wireframe.
 
-Computed with the Bowyer-Watson incremental algorithm. Exactly coincident points are skipped during insertion (they don't corrupt the mesh), and fully collinear inputs simply produce no triangles. It's tuned for creative-coding scale, hundreds to a few thousand points, recomputed every frame.
+Ollin computes the triangulation with the Bowyer-Watson incremental algorithm. Points that coincide exactly are skipped during insertion, so they do not corrupt the mesh, and inputs that are fully collinear produce no triangles. The implementation is tuned for creative-coding scale, which is hundreds to a few thousand points, recomputed every frame.
 
 <a name="triangle"></a>
 
 ### Triangle
 
-The unit a `Delaunay` is made of, useful on its own.
+A `Triangle` is the unit a `Delaunay` is made of, and it is useful on its own.
 
 | Member | Meaning |
 | --- | --- |
@@ -182,7 +182,7 @@ The unit a `Delaunay` is made of, useful on its own.
 | `points: [Vector2]` | The corners, in order. |
 | `centroid: Vector2` | The average of the corners. |
 | `area: Double` | Unsigned area. |
-| `circumcircle: Circle` | The circle through all three corners; its center is a Voronoi vertex. |
+| `circumcircle: Circle` | The circle through all three corners. Its center is a Voronoi vertex. |
 | `circumcenter: Vector2` | The center of the `circumcircle`. |
 | `contour: Contour` / `shape: Shape` | The triangle as fillable geometry. |
 
@@ -194,4 +194,4 @@ fill(.black); drawShape(t.shape)
 
 ---
 
-See also [`Geometry`](../Drawing/Geometry.md) for the `Shape`/`Contour` types these produce (and the shape booleans and offsetting that consume them), and [`Random`](../Generators/Random.md)/[`Noise`](../Generators/Noise.md) for seeding the sites.
+See also [`Geometry`](../Drawing/Geometry.md) for the `Shape` and `Contour` types these produce, along with the shape booleans and offsetting that consume them. See [`Random`](../Generators/Random.md) and [`Noise`](../Generators/Noise.md) for seeding the sites.

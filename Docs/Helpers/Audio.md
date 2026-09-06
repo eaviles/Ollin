@@ -4,11 +4,11 @@
 
 ## Audio
 
-Make a sketch react to sound, and make a little sound of its own. Audio lives in a separate library so the drawing core stays free of `AVFoundation`. Add `import OllinAudio` alongside `import Ollin` to reach it.
+This library lets a sketch react to sound, and it can also produce a small sound of its own. Audio lives in a separate library so the drawing core stays free of `AVFoundation`. Add `import OllinAudio` beside `import Ollin` to use it.
 
-There are two sides. **Analysis** turns a stream of audio (the microphone, a file, or a generated tone) into a few values you read in `draw()`: an overall `amplitude`, a frequency `spectrum`, and band queries (`bass`/`mid`/`treble`). **Generation** is a modest oscillator (`Tone`) for audible feedback and self-contained demos. Both are sugar over one typed core, the [`AudioAnalyzer`](#audioanalyzer).
+There are two sides, **analysis** and **generation**. Analysis turns a stream of audio into a few values you read in `draw()`. The stream can be the microphone, a file, or a generated tone. The values are an overall `amplitude`, a frequency `spectrum`, and the band queries `bass`/`mid`/`treble`. Generation is a small oscillator, `Tone`, for audible feedback and self-contained demos. Both sides are a convenience layer over one typed core, the [`AudioAnalyzer`](#audioanalyzer).
 
-The usual shape is to make a source in `setup()`, keep it in a property, and read its values in `draw()`.
+The usual pattern is to create a source in `setup()`, keep it in a property, and read its values in `draw()`.
 
 ```swift
 import Ollin
@@ -49,14 +49,14 @@ func stop()
 var isRunning: Bool        // true while the mic is capturing
 ```
 
-Live audio from the system's default input. Call `start()` once (usually in `setup()`), then read the [audio values](#reading-audio) in `draw()`.
+`AudioInput` captures live audio from the system's default input. Call `start()` once, usually in `setup()`, then read the [audio values](#reading-audio) in `draw()`.
 
 ```swift
 let mic = AudioInput()
 override func setup() { try? mic.start() }
 ```
 
-Capturing the microphone needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, the level reads as silence. (On a packaged app, include a microphone-usage description; from `swift run` the system prompts on first use.)
+Capturing the microphone needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, the level reads as silence. A packaged app must include a microphone-usage description. Under `swift run`, the system prompts on first use instead.
 
 <a name="audioplayer"></a>
 
@@ -73,7 +73,7 @@ var loops: Bool
 var isPlaying: Bool
 ```
 
-Plays an audio file and analyzes it as it sounds, so you react to recorded music or a field recording the same way you react to the microphone. Decodes the formats AVFoundation reads (`.m4a`/AAC, `.mp3`, `.wav`, `.aiff`, `.caf`, …).
+`AudioPlayer` plays an audio file and analyzes it as it sounds. That lets you react to recorded music or a field recording the same way you react to the microphone. It decodes the formats AVFoundation reads (`.m4a`/AAC, `.mp3`, `.wav`, `.aiff`, `.caf`, …).
 
 ```swift
 let song = try AudioPlayer(path: "/path/to/track.m4a")
@@ -86,9 +86,9 @@ override func draw() {
 }
 ```
 
-A bundled audio file follows the same provenance rules as any asset, so use one whose license permits redistribution, and credit it. Loading from a resource can't default the bundle to `.module` (that would resolve to Ollin's bundle, not yours), so pass your bundle explicitly.
+A bundled audio file follows the same provenance rules as any asset, so use one whose license permits redistribution, and credit it. Loading from a resource cannot default the bundle to `.module`, because that would resolve to Ollin's bundle rather than yours. Pass your bundle explicitly.
 
-Under a headless export ([Export](../Output/Export.md)) nothing audibly plays, so the player follows the export clock instead of the live engine. Each exported frame advances a sample playhead through the decoded file and feeds that slice to the analyzer. Exported frame `k` reads the file's analysis at `k / fps` seconds after `play()` (wrapped by `loops`), identically on every run, so an audio-reactive sketch exports the same video twice. Create the player by the end of `setup()` (a stored property, the usual place), or the per-frame advance never finds it.
+Under a headless export ([Export](../Output/Export.md)) nothing audibly plays, so the player follows the export clock instead of the live engine. Each exported frame advances a sample playhead through the decoded file and feeds that slice to the analyzer. Exported frame `k` reads the file's analysis at `k / fps` seconds after `play()`, wrapped by `loops`. The result is identical on every run, so two exports of an audio-reactive sketch produce the same video. Create the player by the end of `setup()`, usually as a stored property, or the per-frame advance never finds it.
 
 <a name="tone"></a>
 
@@ -105,7 +105,7 @@ var waveform: Waveform     // .sine, .triangle, .sawtooth, .square
 var isPlaying: Bool        // true while the tone is sounding
 ```
 
-A single oscillator that synthesizes a tone you can hear and, because it feeds the same analyzer, also read back. It's enough for audible feedback and self-contained audio-reactive demos, short of a full synthesizer. `frequency`, `amplitude`, and `waveform` are all settable from `draw()`.
+`Tone` is a single oscillator that synthesizes a tone you can hear. It feeds the same analyzer, so you can also read the tone back. It is enough for audible feedback and self-contained audio-reactive demos, but it is not a full synthesizer. `frequency`, `amplitude`, and `waveform` are all settable from `draw()`. Its `smoothing` defaults to 0.5 rather than the input sources' 0.8, because a generated tone carries no room noise to damp. The lighter setting costs nothing in steadiness. It lets the readings follow the sketch's own level changes in about 90 ms instead of about 250 ms.
 
 ```swift
 let tone = Tone(frequency: 220, waveform: .sine)
@@ -124,7 +124,7 @@ Soundtrack(of: any AudioTapSource, fftSize: Int = 1024, smoothing: Float = 0.8)
 func detach()
 ```
 
-Analyzes the sound of any *tappable* source. Today that means a playing video, since `VideoPlayer` (from [`OllinVideo`](../Video/Video.md)) conforms to the core `AudioTapSource` seam, so a sketch can react to the soundtrack of the footage it's drawing:
+`Soundtrack` analyzes the sound of any *tappable* source. Today that means a playing video, because `VideoPlayer` (from [`OllinVideo`](../Video/Video.md)) conforms to the core `AudioTapSource` seam. A sketch can therefore react to the soundtrack of the footage it is drawing:
 
 ```swift
 let player = try VideoPlayer(path: "/path/to/clip.mp4")
@@ -136,13 +136,13 @@ override func draw() {
 }
 ```
 
-The analysis hears the source's sound itself, before volume shaping, so `volume = 0` keeps it reacting in silence. Two caveats are worth knowing. A hard `isMuted = true` stops the source's audio processing altogether (prefer `volume = 0`), and a headless export reads as silence, since nothing audibly plays there ([`AudioPlayer`](#audioplayer), which decodes its own file, is the source that stays deterministic under export). There is one consumer per source, so creating a second `Soundtrack` of the same player replaces the first, and `detach()` releases the slot.
+The analysis hears the source's own sound, before volume shaping, so `volume = 0` keeps it reacting in silence. Two caveats apply. First, a hard `isMuted = true` stops the source's audio processing altogether, so prefer `volume = 0`. Second, a headless export reads as silence, because nothing audibly plays there. When you need an analysis that stays deterministic under export, use [`AudioPlayer`](#audioplayer), which decodes its own file. There is one consumer per source, so creating a second `Soundtrack` of the same player replaces the first. Call `detach()` to release the slot.
 
 <a name="reading-audio"></a>
 
 ### Reading audio
 
-Every source exposes the same read surface (it forwards to its [`AudioAnalyzer`](#audioanalyzer)):
+Every source exposes the same read surface, which forwards to its [`AudioAnalyzer`](#audioanalyzer):
 
 ```swift
 var amplitude: Float                       // smoothed overall loudness, ~0...1
@@ -155,7 +155,12 @@ func magnitude(in range: ClosedRange<Double>) -> Float   // average over a Hz ra
 var smoothing: Float                        // response damping, 0...1
 ```
 
-`spectrum` has `fftSize / 2` bins, each spanning `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but unnormalized, so scale them to taste for drawing, or reach for [`bands`](#bands-and-beats) below, which does that shaping for you. `waveform` is a rolling window of the most recent `fftSize` samples, oldest first, so a scope trace drawn from it stays continuous no matter how the audio arrives in chunks. `smoothing` (0 = raw and twitchy, near 1 = heavily damped) trades responsiveness for steadiness and can be changed live.
+`spectrum` has `fftSize / 2` bins. Each bin spans `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but not normalized, so scale them as you like for drawing. You can also use [`bands`](#bands-and-beats) below, which does that shaping for you. `waveform` is a rolling window of the most recent `fftSize` samples, oldest first. That means a scope trace drawn from it stays continuous, no matter how the audio arrives in chunks. `smoothing` trades responsiveness for steadiness: 0 is raw and jittery, and a value near 1 is heavily damped. You can change it live.
+
+```swift
+let lows = tone.bass
+let kick = tone.magnitude(in: 40...120)     // a tighter band
+```
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/Anatomy-dark.jpg">
@@ -176,7 +181,7 @@ var beat: Float                        // a 0...1 pulse that hits 1 on a beat an
 var beatSensitivity: Float             // onset threshold; higher = fewer beats (default 1.5)
 ```
 
-**`bands(count)`** is the spectrum shaped for drawing, giving `count` bars spread *logarithmically* (the way pitch is heard, so low notes aren't crammed into a few bins), each normalized to roughly `0...1` by an adaptive gain and smoothed with a fast-attack / slow-release envelope. A bar height is then just a map to pixels, with no hand-tuned gain. Call it once per frame with a fixed `count`.
+**`bands(count)`** is the spectrum shaped for drawing. It gives `count` bars spread *logarithmically*, which is the way pitch is heard, so low notes are not crammed into a few bins. Each bar is normalized to roughly `0...1` by an adaptive gain and smoothed with a fast-attack / slow-release envelope. Turning a level into a bar height is then only a scale to pixels, with no hand-tuned gain. Call it once per frame with a fixed `count`.
 
 ```swift
 for (i, level) in source.bands(48).enumerated() {
@@ -185,45 +190,40 @@ for (i, level) in source.bands(48).enumerated() {
 }
 ```
 
-**Beats** come from spectral-flux onset detection, meaning a sudden broadband rise like a drum hit or a plucked string. The easiest use is `beat`, a ready-made pulse:
+**Beats** come from spectral-flux onset detection. An onset is a sudden broadband rise, like a drum hit or a plucked string. The easiest use is `beat`, a ready-made pulse:
 
 ```swift
 drawCircle(width / 2, height / 2, (40 + Double(source.beat) * 200) * scale)   // throbs on the beat
 ```
 
-…or fire something exactly once per beat by watching `beatCount`:
+You can also fire something exactly once per beat by watching `beatCount`:
 
 ```swift
 if source.beatCount > lastBeat { lastBeat = source.beatCount; spawnRipple() }
 ```
 
-Raise `beatSensitivity` if it triggers too eagerly, lower it if it misses beats. The threshold is an absolute margin over the flux's own recent average, on a loudness-invariant scale, so quiet and loud material behave alike and steady material (a held chord, a drone) doesn't drift into false triggers. Beats are gated by a short refractory period, so a single hit won't double-fire.
+Raise `beatSensitivity` if it triggers too often, and lower it if it misses beats. The threshold is an absolute margin over the flux's own recent average, on a loudness-invariant scale. Because of that, quiet and loud material behave alike, and steady material (a held chord, a drone) does not produce false triggers. Beats are gated by a short refractory period, so a single hit does not fire twice.
 
-The whole beat surface runs on the *sample clock*, so positions are counted in samples of audio, which means the same recording always beats at the same places, `timeSinceBeat` holds still while no audio arrives, and detection is testable without hardware.
+The whole beat surface runs on the *sample clock*, so positions are counted in samples of audio. That means the same recording always beats at the same places, `timeSinceBeat` does not advance while no audio arrives, and detection is testable without hardware.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/BeatTimeline-dark.jpg">
   <img src="../../Guide/Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
 </picture>
 
-```swift
-let lows = tone.bass
-let kick = tone.magnitude(in: 40...120)     // a tighter band
-```
-
 <a name="audioanalyzer"></a>
 
 ### AudioAnalyzer
 
-This is the DSP behind every source. It windows incoming samples, runs a real FFT (Accelerate / vDSP), and publishes the values above. You rarely construct one directly, since the sources own theirs and expose it as `.analyzer`, but it's public so the read surface and `smoothing` are reachable, and so you can feed it samples from a source of your own:
+`AudioAnalyzer` is the DSP behind every source. It windows incoming samples, runs a real FFT (Accelerate / vDSP), and publishes the values above. You rarely construct one directly, because each source owns its own and exposes it as `.analyzer`. It is public for two reasons. The read surface and `smoothing` stay reachable, and you can feed it samples from a source of your own:
 
 ```swift
 let analyzer = AudioAnalyzer(fftSize: 2048, sampleRate: 48000)
 analyzer.process(samples: ptr, count: n)    // or process(_ buffer: AVAudioPCMBuffer)
 ```
 
-Samples arrive on the audio thread while a sketch reads on the main thread, and the analyzer is internally locked, so the reads are safe from anywhere.
+Samples arrive on the audio thread while a sketch reads on the main thread. The analyzer is internally locked, so the reads are safe from anywhere.
 
 ---
 
-See the **Spectrum** example (`Examples/Audio/Spectrum`) for a self-contained, generate-then-analyze sketch, where a `Tone` glides in pitch and its harmonics drive a ring of spectrum bars.
+See the **Spectrum** example (`Examples/Audio/Spectrum`) for a self-contained sketch that generates a sound and then analyzes it. There a `Tone` glides in pitch, and its harmonics drive a ring of spectrum bars.

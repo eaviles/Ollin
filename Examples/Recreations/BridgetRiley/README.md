@@ -4,14 +4,15 @@
 
 ## Bridget Riley
 
-**Bridget Riley** (b. 1931) is a British painter and a central figure of **Op art**, best known for the black-and-white work of the 1960s, in which precise geometry produces vivid optical movement and shimmer. In 1965 her work featured in MoMA's landmark exhibition *The Responsive Eye*, which propelled Op art to international attention.
+**Bridget Riley** (b. 1931) is a British painter and a central figure of **Op art**. She is best known for her black-and-white work of the 1960s, in which precise geometry produces vivid optical movement and shimmer. In 1965 her work was shown in MoMA's landmark exhibition *The Responsive Eye*, which brought Op art to international attention.
 
-The **"Fragments" (1965)** were her first prints: a series of black-and-white screenprints on **Plexiglas** (printed at Kelpra Studio, London; published by the Robert Fraser Gallery), *"composed of horizontal lines bent at altering angles across the picture surface"*, the chevron motif recreated here. **"Current" (1964)** is one of her best-known black-and-white paintings: the whole board filled with closely spaced parallel lines that undulate, the wavelength tightening toward the center so the surface seems to ripple.
+The **"Fragments" (1965)** were her first prints. They are a series of black-and-white screenprints on **Plexiglas**, printed at Kelpra Studio, London, and published by the Robert Fraser Gallery. The series is *"composed of horizontal lines bent at altering angles across the picture surface"*. That chevron motif is the one recreated here. **"Current" (1964)** is one of her best-known black-and-white paintings. The whole board is filled with closely spaced parallel lines that undulate. The wavelength tightens toward the center, so the surface seems to ripple.
 
 Learn more:
 
 - [Bridget Riley on Wikipedia](https://en.wikipedia.org/wiki/Bridget_Riley)
-- [*Untitled (Fragment 1)* from *Fragments*, 1965 (MoMA)](https://www.moma.org/collection/works/99701)
+- [*Untitled (Fragment 3)* from *Fragments*, 1965 (MoMA)](https://www.moma.org/collection/works/459901), the print recreated here
+- [The whole *Fragments* series, 1965 (MoMA)](https://www.moma.org/collection/works/series/467447)
 - [*Current*, 1964 (MoMA)](https://www.moma.org/collection/works/79547)
 
 ### Recreations here

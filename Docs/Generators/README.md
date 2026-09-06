@@ -6,50 +6,50 @@
 
 - [`Random`](./Random.md) - `random`, `randomGaussian`, and the `randomVector`/`ring` scatter helpers
 - [`Noise`](./Noise.md) - Perlin `noise`, `signedNoise`, and `curlNoise` flow fields
-- [`Blue noise`](./BlueNoise.md) - `poissonDisk`, an even-but-organic scatter with no clumps or gaps (Poisson-disk sampling)
-- [`Low-discrepancy sampling`](./LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream: growing the count only adds points, never moves them
-- [`Points on a surface`](./SurfaceSampling.md) - `surfacePoints`, points scattered over a mesh's skin rather than its vertex list, evenly spaced by default, each carrying the normal, texture coordinate, and triangle it landed on
-- [`Stippling`](./Stippling.md) - `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling), or any density function
-- [`De Bruijn sequences`](./DeBruijn.md) - `deBruijnSequence` + `DeBruijnCode`, a cyclic run holding every window of a given length exactly once, so a glimpse of a few symbols says where it came from
-- [`Ford circles`](./FordCircles.md) - `fordCircles`, a circle for every fraction that touches its neighbors and overlaps nothing, over `fareySequence` and the exact `Fraction` type
-- [`Shadow art`](./ShadowArt.md) - `shadowArt`, the solid carved so that it throws the silhouettes you ask for, with the shadows it really casts to compare against
-- [`Polyominoes`](./Polyominoes.md) - `Polyomino` + `tilePolyominoes`, the twelve pentominoes and an exact-cover search that fits a bag of pieces into a region, or says no fit exists
-- [`Ulam spiral`](./UlamSpiral.md) - `ulamSpiral`, the whole numbers written in a square spiral so a test on them becomes a picture, with the primes falling on diagonals
+- [`Blue noise`](./BlueNoise.md) - `poissonDisk`, Poisson-disk sampling: a scatter that is even but still looks natural, with no clumps and no gaps
+- [`Low-discrepancy sampling`](./LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream, so raising the count adds points without moving the ones already placed
+- [`Points on a surface`](./SurfaceSampling.md) - `surfacePoints`, points scattered over the surface of a mesh rather than over its vertex list. They are evenly spaced by default, and each point carries the normal, the texture coordinate, and the triangle it landed on
+- [`Stippling`](./Stippling.md) - `stipple`, weighted-Voronoi stippling: dots packed to reproduce the tone of an image, or any density function
+- [`De Bruijn sequences`](./DeBruijn.md) - `deBruijnSequence` + `DeBruijnCode`, a cyclic sequence that holds every window of a given length exactly once. That means a few symbols in a row tell you where in the sequence they came from
+- [`Ford circles`](./FordCircles.md) - `fordCircles`, one circle for every fraction, each touching its neighbors and overlapping nothing, built over `fareySequence` and the exact `Fraction` type
+- [`Shadow art`](./ShadowArt.md) - `shadowArt`, a solid carved so that it casts the silhouettes you ask for. It also returns the shadows it actually casts, so you can compare them
+- [`Polyominoes`](./Polyominoes.md) - `Polyomino` + `tilePolyominoes`, the twelve pentominoes and an exact-cover search. The search fits a set of pieces into a region, or reports that no fit exists
+- [`Ulam spiral`](./UlamSpiral.md) - `ulamSpiral`, the whole numbers laid out in a square spiral, so a test on the numbers becomes a picture. The primes, for example, fall on diagonals
 - [`Fractals`](./Fractals.md) - `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
-- [`Chaotic maps & bifurcation`](./Bifurcation.md) - `IteratedMap`, the one-dimensional route to chaos: logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or a density image, and Lyapunov exponents
-- [`Single line`](./SingleLine.md) - `singleLine`, one continuous tour through an image's stipple (TSP art), a plotter-friendly `Contour`
-- [`Ant colony`](./AntColony.md) - `AntColony`, a pheromone-trail colony condensing a web of possibilities onto a short tour, the search itself the picture
-- [`Spanning tree`](./SpanningTree.md) - `spanningTree`, the minimum spanning tree of an image's stipple: the branching, vein-like sibling of the single line
-- [`String art`](./StringArt.md) - `StringArt`, one continuous thread wound over rim pins until the crossings reproduce a picture (a stateful stepper)
-- [`Percolation`](./Percolation.md) - `Percolation`, site-percolation clusters over a seeded grid: largest-first labeling, the spanning cluster, cell rectangles and traced boundary loops
-- [`Isolines`](./Isolines.md) - `isolines`, level curves of any scalar field or an image's tone by marching squares, from metaball outlines to contour maps
-- [`Isosurfaces`](./Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`: soft spheres that fuse, noise volumes, gyroids
-- [`Subdivision surfaces`](./SubdivisionSurfaces.md) - `mesh.subdivided`, a low-poly control cage refined into a smooth solid by the Catmull-Clark or Loop rules, with welding and open-edge handling built in
-- [`Mesh growth`](./MeshGrowth.md) - `MeshGrowth` / `MeshReactionDiffusion`, a surface that grows more area than it has room for and folds: brain coral, branching coral, a ruffled leaf margin
-- [`Hulls`](./Hulls.md) - `concaveHull` / `alphaShape`, the tighter answers to "what shape are these points?": one gulf-hugging simple polygon, or the scatter's true footprint with islands and holes
-- [`Medial axis`](./MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, every point carrying its inscribed-disk radius
-- [`Straight skeleton`](./StraightSkeleton.md) - `straightSkeleton`, the shrinking-boundary ridge network with faces and exact mitered insets (`inset(by:)`)
-- [`Force-directed layout`](./ForceLayout.md) - `ForceLayout`, a graph untangling itself: repulsion between all nodes, attraction along edges, cooling to an even web you can grow, pin, and drag
-- [`Marbling`](./Marbling.md) - `Marbling` / `drawMarbling`, paper marbling in closed form: drops, tines, combs, and swirls raking vector ink outlines into feathered papers
-- [`Watercolor`](./Watercolor.md) - `Watercolor` / `drawWatercolor`, watercolor pigment from recursively deformed polygons stacked as translucent layers
-- [`Chladni figures`](./Chladni.md) - `chladni`, a ringing plate's standing-wave field in closed form, plus the `.chladni` generator's sand and wave readings and the mode-by-pitch audio join
-- [`Billiards`](./Billiards.md) - `Billiard`: a ball bouncing forever in a circle, an ellipse, a polygon, or a stadium, with posts standing in it; the path comes back as geometry, and the room decides whether it draws a pattern or fills the floor
-- [`Drainage`](./Drainage.md) - `Drainage`: rivers worked out from a `Heightfield` rather than drawn, with hollows filled so water always has a way out, flow per cell, the network above a threshold as strokable reaches, Strahler ordering, and basins
-- [`Terrain`](./Terrain.md) - `Heightfield`, landscapes from noise or `diamondSquare`, weathered by droplet hydraulic and thermal erosion, emitted as terrain meshes, heightmaps, and contours
-- [`Random walks`](./Walks.md) - `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time: the local tangle, the cluster-and-leap, and the never-crossing single stroke
+- [`Chaotic maps & bifurcation`](./Bifurcation.md) - `IteratedMap`, the one-dimensional route to chaos. It covers the logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or as a density image, and Lyapunov exponents
+- [`Single line`](./SingleLine.md) - `singleLine`, TSP art: one continuous tour through the stipple of an image, returned as a `Contour` that suits a plotter
+- [`Ant colony`](./AntColony.md) - `AntColony`, a colony that lays pheromone trails and narrows a web of possible routes down to a short tour. The picture is the search itself, not only the tour it finds
+- [`Spanning tree`](./SpanningTree.md) - `spanningTree`, the minimum spanning tree of the stipple of an image, the branching, vein-like counterpart of the single line
+- [`String art`](./StringArt.md) - `StringArt`, one continuous thread wound around pins on a rim until its crossings reproduce a picture (a stateful stepper)
+- [`Percolation`](./Percolation.md) - `Percolation`, site-percolation clusters over a seeded grid, with largest-first labeling, the spanning cluster, cell rectangles, and traced boundary loops
+- [`Isolines`](./Isolines.md) - `isolines`, marching squares over any scalar field or the tone of an image, giving level curves from metaball outlines to contour maps
+- [`Isosurfaces`](./Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`. This gives soft spheres that fuse, noise volumes, and gyroids
+- [`Subdivision surfaces`](./SubdivisionSurfaces.md) - `mesh.subdivided`, a low-poly control cage refined into a smooth solid by the Catmull-Clark or Loop rules. Welding and open-edge handling are built in
+- [`Mesh growth`](./MeshGrowth.md) - `MeshGrowth` / `MeshReactionDiffusion`, a surface that grows more area than it has room for, so it folds. The results include brain coral, branching coral, and a ruffled leaf margin
+- [`Hulls`](./Hulls.md) - `concaveHull` / `alphaShape`, the tighter answers to the question "what shape are these points?". The first returns one simple polygon that follows the inlets, and the second returns the true footprint of the scatter, islands and holes included
+- [`Medial axis`](./MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, where every point carries the radius of its inscribed disk
+- [`Straight skeleton`](./StraightSkeleton.md) - `straightSkeleton`, the ridge network that a shrinking boundary traces, with faces and exact mitered insets (`inset(by:)`)
+- [`Force-directed layout`](./ForceLayout.md) - `ForceLayout`, a graph that untangles itself. Every node repels every other node, and each edge pulls its ends together. The layout cools into an even web that you can grow, pin, and drag
+- [`Marbling`](./Marbling.md) - `Marbling` / `drawMarbling`, paper marbling in closed form, where drops, tines, combs, and swirls rake vector ink outlines into feathered papers
+- [`Watercolor`](./Watercolor.md) - `Watercolor` / `drawWatercolor`, watercolor pigment made from recursively deformed polygons, stacked as translucent layers
+- [`Chladni figures`](./Chladni.md) - `chladni`, the standing-wave field of a ringing plate in closed form. The `.chladni` generator adds sand and wave readings, and an audio join picks the mode by pitch
+- [`Billiards`](./Billiards.md) - `Billiard`, a ball that bounces forever inside a circle, an ellipse, a polygon, or a stadium, with posts standing in the room. The path comes back as geometry, and the shape of the room decides whether the path draws a pattern or fills the floor
+- [`Drainage`](./Drainage.md) - `Drainage`, rivers computed from a `Heightfield` rather than drawn. Hollows are filled so water always has a way out. You get the flow per cell, the network above a threshold as strokable reaches, Strahler ordering, and basins
+- [`Terrain`](./Terrain.md) - `Heightfield`, landscapes built from noise or `diamondSquare`, weathered by droplet hydraulic erosion and thermal erosion, and output as terrain meshes, heightmaps, and contours
+- [`Random walks`](./Walks.md) - `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time. In that order, they give a local tangle, clusters joined by long leaps, and a single stroke that never crosses itself
 - [`Circle packing`](./Packing.md) - `packCircles` and `relaxCircles`, filling a region with non-overlapping circles that grow until they touch
-- [`Shape grammars`](./ShapeGrammar.md) - `ShapeGrammar`, a design written as rules over labeled shapes: the balanced cut behind the ice-ray lattices, splits for a building front, insets that become bars, and nested turned copies
-- [`L-systems`](./LSystem.md) - `drawLSystem` and a preset catalog: a rewriting grammar walked by a turtle into fractal curves and branching plants, symbolic or parametric (symbols carrying numbers, for fractional lengths, delays, and tapering width)
+- [`Shape grammars`](./ShapeGrammar.md) - `ShapeGrammar`, a design written as rules over labeled shapes. The rules include the balanced cut behind ice-ray lattices, splits for a building front, insets that become bars, and nested turned copies
+- [`L-systems`](./LSystem.md) - `drawLSystem` and a preset catalog. A turtle walks a rewriting grammar into fractal curves and branching plants. The grammar can be symbolic or parametric (symbols that carry numbers, for fractional lengths, delays, and tapering width)
 - [`Differential growth`](./DifferentialGrowth.md) - `DifferentialGrowth`, a line of nodes that grows and folds into organic, brain-coral structure (a stateful stepper)
 - [`Meander`](./Meander.md) - `Meander`, a river centerline that migrates by curvature, cutting off oxbow lakes and recording scars (a stateful stepper)
-- [`Wave Function Collapse`](./WaveFunctionCollapse.md) - `wfc`, filling a grid so every neighbor is legal, from a tileset you declare or from the patches of an example picture (constraint-solved tile layouts, texture synthesis)
-- [`Cellular automata`](./CellularAutomata.md) - `elementaryCA`/`totalisticCA` rule-by-number row stacks, and `Turmite` walkers (Langton's ant and friends) painting a wrapped grid
+- [`Wave Function Collapse`](./WaveFunctionCollapse.md) - `wfc`, constraint-solved tile layouts and texture synthesis. It fills a grid so every neighbor is legal, from a tileset you declare or from the patches of an example picture
+- [`Cellular automata`](./CellularAutomata.md) - `elementaryCA`/`totalisticCA`, row stacks driven by a rule number, and `Turmite` walkers (Langton's ant and its relatives) that paint a wrapped grid
 - [`Shape packing`](./ShapePacking.md) - `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
-- [`Flow fields`](./FlowField.md) - `FlowField`, tracing streamlines through a direction field (the flow-field look) and advecting particles along it
-- [`Flocking`](./Boids.md) - `Boids`, a flock steering by separation/alignment/cohesion into emergent flocking motion
-- [`Pursuit`](./Pursuit.md) - `Pursuit`, runners that head straight at each other and leave logarithmic spirals: the ring of mice, and a quarry that runs straight (a stateful stepper)
-- [`Steering`](./Steering.md) - `Vehicle`, a creature moved by composable steering forces (seek, flee, arrive, pursue, wander, follow a path or flow field)
+- [`Flow fields`](./FlowField.md) - `FlowField`, streamlines traced through a direction field (the flow-field look), and particles carried along the same field
+- [`Flocking`](./Boids.md) - `Boids`, a flock that steers by separation, alignment, and cohesion into emergent flocking motion
+- [`Pursuit`](./Pursuit.md) - `Pursuit`, runners that head straight at each other and trace logarithmic spirals. It covers the ring of mice and a chase after a quarry that runs straight (a stateful stepper)
+- [`Steering`](./Steering.md) - `Vehicle`, a creature moved by steering forces you can combine (seek, flee, arrive, pursue, wander, follow a path or flow field)
 - [`Space colonization`](./SpaceColonization.md) - `SpaceColonization`, branching growth (veins, roots, trees) toward scattered attraction points (a stateful stepper)
-- [`Diffusion-limited aggregation`](./DiffusionLimitedAggregation.md) - `DiffusionLimitedAggregation`, dendritic clusters frozen out of random walkers (frost and coral, a stateful stepper)
-- [`Dielectric breakdown`](./DielectricBreakdown.md) - `DielectricBreakdown`, lightning grown where the solved electric field is strongest, the `eta` exponent sweeping furry bush to sparse Lichtenberg arc
-- [`Crack growth`](./CrackGrowth.md) - `CrackGrowth`, perpendicular cracks subdividing the plane into city-block cells, each dragging a one-sided watercolor wash (a stateful stepper)
+- [`Diffusion-limited aggregation`](./DiffusionLimitedAggregation.md) - `DiffusionLimitedAggregation`, branching, tree-like clusters that grow as random walkers freeze onto them, for frost and coral (a stateful stepper)
+- [`Dielectric breakdown`](./DielectricBreakdown.md) - `DielectricBreakdown`, lightning grown where the solved electric field is strongest. The `eta` exponent moves the result from a dense bush to a sparse Lichtenberg arc
+- [`Crack growth`](./CrackGrowth.md) - `CrackGrowth`, cracks that meet at right angles and divide the plane into city-block cells. Each crack drags a one-sided watercolor wash (a stateful stepper)

@@ -4,15 +4,15 @@
 
 ## Strange attractors & chaotic maps
 
-A strange attractor is the shape a chaotic system settles onto. It is a bounded path that never repeats, and it traces wispy, layered forms like the Lorenz butterfly or the Clifford filigree. Ollin gives you two flavors, and both hand back plain points you draw however you like.
+A strange attractor is the shape a chaotic system settles onto. It is a bounded path that never repeats. You see that thin, layered form in the Lorenz butterfly and in the fine threads of a Clifford map. Ollin gives you two kinds of attractor, continuous and discrete, and both return plain points that you draw however you like. A third type, `AttractorFlow`, runs the continuous systems on the GPU.
 
-- **`StrangeAttractor`** is a *continuous* system, a velocity field integrated over time with fourth-order Runge-Kutta. Its orbit is a `[Vector3]`, so it rides the [point-cloud](../3D/3D.md) path through the camera. Lorenz, Rössler, Aizawa, and friends.
-- **`ChaoticMap`** is a *discrete* iterated map, a `[Vector2]` orbit you plot as a scatter of points (prettiest accumulated additively into a density field). Clifford, Peter de Jong, Hénon, Gumowski-Mira, Ikeda, hopalong.
-- **`AttractorFlow`** runs the same continuous systems on the GPU with a million particles riding the field at once, so the shape arrives as moving material rather than a still curve.
+- **`StrangeAttractor`** is a *continuous* system: a velocity field integrated over time with fourth-order Runge-Kutta. Its orbit is a `[Vector3]`, so it draws through the [point-cloud](../3D/3D.md) path and the camera. The built-in systems include Lorenz, Rössler, and Aizawa.
+- **`ChaoticMap`** is a *discrete* iterated map. Its orbit is a `[Vector2]` that you plot as a scatter of points, and it looks best accumulated additively into a density field. The built-in maps are Clifford, Peter de Jong, Hénon, Gumowski-Mira, Ikeda, and hopalong.
+- **`AttractorFlow`** runs the same continuous systems on the GPU, with a million particles moving through the field at once. The shape then appears as moving material rather than a still curve.
 
-The family's one-dimensional members (the logistic map and friends, with their bifurcation diagrams, cobwebs, and Lyapunov exponents) live in [`IteratedMap`](../Generators/Bifurcation.md).
+The one-dimensional members of the family live in [`IteratedMap`](../Generators/Bifurcation.md). That page covers the logistic map and its relatives, with their bifurcation diagrams, cobwebs, and Lyapunov exponents.
 
-Each orbit is a pure function of its starting point and parameters, so a run always reproduces. Pick a system from the built-in factories, or supply your own rule.
+Each orbit is a pure function of its starting point and parameters, so a run always reproduces. You pick a system from the built-in factories, or you supply your own rule.
 
 ### Contents
 
@@ -28,7 +28,7 @@ Each orbit is a pure function of its starting point and parameters, so a run alw
 
 ### Quick start
 
-A Lorenz attractor, integrated once and orbited by the camera:
+This sketch integrates a Lorenz attractor once and lets the camera orbit it:
 
 ```swift
 var cloud = PointCloud()
@@ -45,7 +45,7 @@ override func draw() {
 }
 ```
 
-A 2D Clifford map accumulated into a glowing density field:
+This sketch accumulates a 2D Clifford map into a glowing density field:
 
 ```swift
 override func setup() { noClear(); noStroke() }   // pile onto a persistent canvas
@@ -70,7 +70,7 @@ override func draw() {
 
 ### StrangeAttractor (continuous)
 
-A continuous system is its **velocity field**. At a phase-space point it returns the instantaneous rate of change `(dx, dy, dz)/dt`. `orbit(count:settle:)` integrates that field from `start` with fixed-step fourth-order Runge-Kutta. It drops `settle` warmup steps first, so the path has reached the attractor before you collect points.
+A continuous system is defined by its **velocity field**. Given a point in phase space, the field returns the instantaneous rate of change `(dx, dy, dz)/dt`. `orbit(count:settle:)` integrates that field from `start` with fixed-step fourth-order Runge-Kutta. It drops `settle` warmup steps first, so the path has reached the attractor before you collect points.
 
 ```swift
 let path = StrangeAttractor.lorenz().orbit(count: 100_000, settle: 1000)
@@ -79,11 +79,11 @@ let path = StrangeAttractor.lorenz().orbit(count: 100_000, settle: 1000)
 | Member | Meaning |
 | --- | --- |
 | `orbit(count:settle:) -> [Vector3]` | The trajectory: `count` points after `settle` warmup steps. |
-| `derivative: (Vector3) -> Vector3` | The velocity field. Sample it for the orbit speed (color by `derivative(p).length`). |
+| `derivative: (Vector3) -> Vector3` | The velocity field. Sample it to get the orbit speed, for example to color by `derivative(p).length`. |
 | `start: Vector3` | The initial condition. |
 | `step: Double` | The integration time step. |
 
-The built-in systems, each from its published equations with its classic parameters (override any of them):
+Each built-in system uses its published equations with its classic parameters, and you can override any parameter:
 
 | Factory | Shape |
 | --- | --- |
@@ -96,13 +96,13 @@ The built-in systems, each from its published equations with its classic paramet
 | `.chen(alpha:beta:delta:)` | A tightly wound double scroll. |
 | `.fourWing(a:b:c:)` | Four lobes meeting at the center. |
 
-The orbits live in their own units (Lorenz spans roughly ±25), so center and scale them for the camera, as the [`3D/StrangeAttractor`](../../Examples/3D/Geometry/StrangeAttractor) example does.
+The orbits are in their own units (Lorenz spans roughly ±25), so center and scale them for the camera. The [`3D/StrangeAttractor`](../../Examples/3D/Geometry/StrangeAttractor) example shows how.
 
 <a name="map"></a>
 
 ### ChaoticMap (discrete)
 
-A discrete map is its **iteration rule**, the next point given the current one. `orbit(count:settle:)` just iterates it from `start`. The output stays bounded (the trigonometric maps within roughly ±2 on each axis), so translate and scale it onto the canvas.
+A discrete map is defined by its **iteration rule**, which gives the next point from the current one. `orbit(count:settle:)` iterates that rule from `start`. The output stays bounded (the trigonometric maps stay within roughly ±2 on each axis), so translate and scale it onto the canvas.
 
 ```swift
 let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200_000)
@@ -111,7 +111,7 @@ let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200
 | Member | Meaning |
 | --- | --- |
 | `orbit(count:settle:) -> [Vector2]` | The orbit: `count` points after `settle` warmup steps. |
-| `next: (Vector2) -> Vector2` | The iteration rule (call it to continue one long orbit across frames). |
+| `next: (Vector2) -> Vector2` | The iteration rule. Call it to continue one long orbit across frames. |
 | `start: Vector2` | The starting point. |
 
 | Factory | Form |
@@ -123,7 +123,7 @@ let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200
 | `.ikeda(u:)` | A spin by `t = 0.4 - 6/(1 + x² + y²)`: `1 + u·(x·cos t - y·sin t)`, `u·(x·sin t + y·cos t)`. |
 | `.hopalong(a:b:c:)` | `y - sgn(x)·√\|b·x - c\|`, `a - x`. |
 
-The constants reshape these maps completely, so nudge them to explore. They look their best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)) so repeated visits brighten into filaments. Each has its own character. Gumowski-Mira wanders a near-conservative sea of islands into many-petaled filigree: `mu` picks the blossom, and the *starting point* picks which structure the orbit wanders. The long transient is the picture, so plot it with no `settle`. The richest plates layer several orbits from different seeded starts. Ikeda folds everything into one swirl, within roughly `[-0.4, 1.7] × [-2.2, 0.9]` at the default `u = 0.9`. Hopalong hops around nested rings that keep widening as the orbit runs. Its reach grows slowly with `count`: roughly ±4 after a million steps at the defaults.
+The constants change these maps completely, so adjust them to explore. The maps look best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)), because repeated visits to a pixel then brighten into filaments. Each map has its own character. Gumowski-Mira moves through a near-conservative field of islands and forms a shape with many petals. `mu` picks which petal shape you get, and the *starting point* picks which structure the orbit moves through. The long transient is the picture, so plot it with no `settle`. For a denser picture, layer several orbits from different seeded starting points. Ikeda folds everything into one swirl, which stays within roughly `[-0.4, 1.7] × [-2.2, 0.9]` at the default `u = 0.9`. Hopalong moves around nested rings that keep widening as the orbit runs. Its reach grows slowly with `count`, to roughly ±4 after a million steps at the defaults.
 
 <img src="../../Guide/Images/18-IteratedForms/Plates.jpg" alt="Four glowing pale-blue density plates on near-black: two Clifford attractors above and two de Jong attractors below, each a folded translucent form like an X-ray of smoke" width="560">
 
@@ -131,20 +131,20 @@ The constants reshape these maps completely, so nudge them to explore. They look
 
 ### Drawing sugar
 
-For the common cases there are one-call draw verbs, using the current `fill`:
+For the common cases there are one-call draw verbs. They use the current `fill`:
 
 ```swift
 drawAttractor(.lorenz())            // a point cloud through the camera (needs a `camera`)
 drawAttractor(.clifford())          // a 2D scatter at the current `pointSize`
 ```
 
-`drawAttractor(_ attractor: StrangeAttractor, count:settle:size:)` builds and draws a uniform-color `PointCloud`. For per-point color (by speed or position), build the cloud yourself from `attractor.orbit(...)`. `drawAttractor(_ map: ChaoticMap, count:settle:)` plots the orbit in the map's own coordinate space, so `translate`/`scale` it onto the canvas.
+`drawAttractor(_ attractor: StrangeAttractor, count:settle:size:)` builds and draws a `PointCloud` in one color. If you want per-point color, by speed or by position, build the cloud yourself from `attractor.orbit(...)`. `drawAttractor(_ map: ChaoticMap, count:settle:)` plots the orbit in the map's own coordinate space, so use `translate` and `scale` to place it on the canvas.
 
 <a name="custom"></a>
 
 ### Your own system
 
-Both types take a closure, so any first-order system or iterated map drops in:
+Both types take a closure, so you can supply any first-order system or iterated map:
 
 ```swift
 // A custom continuous system.
@@ -163,7 +163,7 @@ let mine = ChaoticMap(start: .zero) { p in
 
 ### A million at once: `AttractorFlow`
 
-`StrangeAttractor` integrates **one** orbit and hands you the points. `AttractorFlow` runs the same field on the GPU under a million particles at once, each on its own trajectory, stepped every frame. Instead of a curve you get the attractor as material: dense where the orbit dwells, thin where it hurries, and visibly flowing along itself.
+`StrangeAttractor` integrates **one** orbit and returns the points. `AttractorFlow` runs the same field on the GPU for a million particles at once. Each particle follows its own trajectory, and the flow steps all of them every frame. You see the attractor as a volume of particles rather than as a single curve. It is dense where the orbit moves slowly, thin where the orbit moves fast, and you can see it flowing along itself.
 
 <img src="../../Guide/Images/23-Landscapes/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
 
@@ -184,33 +184,33 @@ override func draw() {
 }
 ```
 
-A flow is 3D and rides the camera, so `drawParticles` is a no-op without one. Measured on an M2 at 1080², a million particles step and draw at 55 fps, with 0.2 ms of CPU per frame.
+A flow is 3D and draws through the camera, so `drawParticles` does nothing without one. Measured on an M2 at 1080², a million particles step and draw at 55 fps, with 0.2 ms of CPU per frame.
 
-**It sizes and paces itself.** At build the flow integrates one CPU orbit of the same system, and reads everything else off it. Aizawa's whole shape is a unit and a half across, and Lorenz spans fifty. Both open framed, lit, and moving at a sensible speed, with no per-system numbers in your sketch:
+**It sizes and paces itself.** The flow integrates one CPU orbit of the same system when it is built. It measures everything else from that orbit. The systems differ widely in scale, because Aizawa's whole shape is a unit and a half across while Lorenz spans fifty. Both are framed, lit, and moving at a sensible speed from the first frame, and your sketch needs no per-system numbers:
 
 | Property | What it is |
 | --- | --- |
 | `center: Vector3` | The middle of the attractor. Point a camera here. |
 | `extent: Double` | How far it reaches. A camera radius of about `extent * 3` frames it. |
 
-Both are percentiles of the orbit rather than its outright extremes. Several of these systems take rare long excursions, so a maximum keeps growing the longer you watch. The four-wing's reach measures 2.0 over 120,000 points and 3.5 over 400,000. A percentile settles instead.
+Both are percentiles of the orbit rather than its extremes. Several of these systems take rare long excursions, so a maximum keeps growing the longer you watch. For example, the four-wing's reach measures 2.0 over 120,000 points and 3.5 over 400,000. A percentile settles to a stable value instead.
 
 | Parameter | Meaning |
 | --- | --- |
-| `system: AttractorSystem` | Which field. Settable live: the flow re-measures and the particles flow into the new shape. |
-| `speed: Double` | Pace, as a multiple of the measured one (1 crosses the attractor about once a second). |
+| `system: AttractorSystem` | Which field. You can set it live: the flow measures the new system and the particles flow into the new shape. |
+| `speed: Double` | Pace, as a multiple of the measured one. At 1, a particle crosses the attractor about once a second. |
 | `size: Double?` | Splat diameter in world units. `nil` derives one from `extent`. |
 | `colors: [Color]` | The speed ramp, up to eight stops. |
-| `opacity: Double` | How much light one particle contributes. Low, so density reads as tone. |
+| `opacity: Double` | How much light one particle contributes. It is low, so density reads as tone. |
 | `maxSubsteps: Int` | The most Runge-Kutta steps one frame may take. |
 
-**Color is speed, brightness is density.** A particle's color comes from how fast it is moving, and that is what shows the structure. You see the fast outer sweeps against the slow, crowded core. The default stops shift hue and hold their brightness roughly level on purpose, because drawn additively the *brightness* already means density. A ramp that also ran dark to light would put two different facts on one channel. A slow crowded region would then come out looking like a fast empty one.
+**Color is speed, brightness is density.** A particle's color comes from how fast it is moving. That is what shows the structure, because you see the fast outer sweeps against the slow, crowded core. The default stops shift hue and hold their brightness roughly level on purpose, because in additive drawing the *brightness* already means density. A ramp that also ran from dark to light would put two different facts on one channel. A slow crowded region would then look like a fast empty one.
 
-**Particles start on the attractor**, sampled from a settled orbit and nudged off it by a hair. The nudge is what matters. Exactly on the orbit, every particle rides the same trajectory forever. The picture can only ever be that one curve with dots sliding along it. A hair off it, chaos separates them into a million trajectories within a few laps. Starting them in a box instead would mean watching them fall onto the shape first. How long that takes is the system's own contraction rate. It is a fraction of a second for Lorenz, and a minute of watching nothing for Aizawa.
+**Particles start on the attractor.** They are sampled from a settled orbit and then moved a tiny distance off it. That small offset matters. Without it, every particle would sit exactly on the orbit and follow the same trajectory forever. The picture could then only be that one curve with dots sliding along it. Because the particles start a tiny distance off the orbit, chaos separates them into a million trajectories within a few laps. If they started in a box instead, you would watch them fall onto the shape first. How long that takes depends on the system's own contraction rate. It is a fraction of a second for Lorenz, and a minute of watching nothing for Aizawa.
 
-**The step never outruns the system.** Each frame advances `speed` worth of the system's own time. That time is split into fourth-order Runge-Kutta steps. It takes as many as it needs to keep every step at or under the one the system was published at. Ask for more pace than `maxSubsteps` allows and the flow runs slower than asked, rather than taking a coarser step. A step past that one is a different system. A particle can leave the neighborhood altogether, which wild constants can cause. It is dropped back into the middle rather than flying off, so a stray can never streak the frame.
+**The step never outruns the system.** Each frame advances the system's own time by an amount set by `speed`. That time is split into fourth-order Runge-Kutta steps. The flow takes as many steps as it needs, so that no step is larger than the published step for that system. If you ask for more pace than `maxSubsteps` allows, the flow runs slower than asked rather than taking a coarser step. It does that because a coarser step would no longer integrate the same system faithfully. A particle can also leave the neighborhood of the attractor altogether, and extreme constants can cause that. Such a particle is dropped back into the middle rather than flying off, so a stray can never streak the frame.
 
-**Reproducibility** works as it does everywhere on this GPU path. A flow repeats on one machine, but it is not promised frame-exact across GPUs, and there is no pixel snapshot of one. Every system also answers `.attractor`, the CPU `StrangeAttractor` twin with the same constants, for a still plot or a measurement beside the moving one.
+**Reproducibility** works as it does everywhere on this GPU path. A flow repeats on one machine, but it is not promised to be frame-exact across GPUs, and there is no pixel snapshot of one. Every system also has an `.attractor` property, which is the CPU `StrangeAttractor` with the same constants. Use it for a still plot or a measurement beside the moving one.
 
 See the [`Simulation/Attractor`](../../Examples/Simulation/Attractor) example.
 
@@ -218,7 +218,7 @@ See the [`Simulation/Attractor`](../../Examples/Simulation/Attractor) example.
 
 ### The systems in a shader of your own
 
-The velocity fields and the Runge-Kutta step are part of the [shader library](../Shaders/ShaderLibrary.md). They are spliced into every compute kernel and user shader. So a sketch can ride a chaotic system in a kernel it wrote itself:
+The velocity fields and the Runge-Kutta step are part of the [shader library](../Shaders/ShaderLibrary.md), which is spliced into every compute kernel and user shader. So a sketch can run a chaotic system in a kernel of its own:
 
 ```swift
 lazy var motes = Particles(count: 500_000, step: """
@@ -230,8 +230,8 @@ lazy var motes = Particles(count: 500_000, step: """
 """)
 ```
 
-`OLLIN_RK4_STEP(state, h, derivative)` advances a `float3` one step. `derivative` is an expression in the sample point `_p`, which is how a system's constants reach it. Metal has no function pointers here, so this is a macro like the neighbor iteration. Beside the eight flows sit the six maps: `ollin_clifford`, `ollin_de_jong`, `ollin_henon`, `ollin_gumowski_mira`, `ollin_ikeda`, and `ollin_hopalong`. A map returns the next point outright and needs no integration.
+`OLLIN_RK4_STEP(state, h, derivative)` advances a `float3` by one step. `derivative` is an expression written in terms of the sample point `_p`, which is how a system's constants reach it. Metal has no function pointers here, so this is a macro. Along with the eight velocity fields, the library has the six maps: `ollin_clifford`, `ollin_de_jong`, `ollin_henon`, `ollin_gumowski_mira`, `ollin_ikeda`, and `ollin_hopalong`. A map returns the next point directly and needs no integration.
 
 ---
 
-See also [`Chaotic maps & bifurcation`](../Generators/Bifurcation.md) for the one-dimensional members of this family (`IteratedMap`: the logistic route to chaos, bifurcation diagrams, cobwebs, Lyapunov exponents), [`3D`](../3D/3D.md) for the `PointCloud` and camera the continuous orbits ride, [`Accumulation`](Accumulation.md) and [`HDR`](HDR.md) for the additive density build-up the 2D maps want, [`Compute`](../Shaders/Compute.md) for the GPU particle path `AttractorFlow` runs on, and [`Voronoi`](Voronoi.md)/[`Grid`](Geometry.md) for the other geometry helpers.
+See also [`Chaotic maps & bifurcation`](../Generators/Bifurcation.md) for the one-dimensional members of this family (`IteratedMap`: the logistic route to chaos, bifurcation diagrams, cobwebs, Lyapunov exponents). The [`3D`](../3D/3D.md) page covers the `PointCloud` and the camera that the continuous orbits draw through. The [`Accumulation`](Accumulation.md) and [`HDR`](HDR.md) pages cover the additive density build-up the 2D maps want. The [`Compute`](../Shaders/Compute.md) page covers the GPU particle path that `AttractorFlow` runs on. The [`Voronoi`](Voronoi.md) and [`Grid`](Geometry.md) pages cover the other geometry helpers.

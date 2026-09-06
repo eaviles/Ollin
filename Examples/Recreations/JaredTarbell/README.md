@@ -4,9 +4,9 @@
 
 ## Jared Tarbell
 
-**Jared Tarbell** is an American generative artist and programmer from New Mexico, and a co-founder of Etsy. On **complexification.net** (2003) he published a gallery of algorithmic works that became one of the touchstones of early generative art. His pieces grow from simple local rules run at scale: thousands of small marks that aggregate into cities, sand paintings, and swarms.
+**Jared Tarbell** is an American generative artist and programmer from New Mexico, and a co-founder of Etsy. On **complexification.net** (2003) he published a gallery of algorithmic works that became one of the reference points of early generative art. His pieces grow from simple local rules run at scale, so thousands of small marks build up into cities, sand paintings, and swarms.
 
-**"Substrate" (2003)** is his best-known work. Straight cracks race across the plane, stop where they meet an older crack, and restart perpendicular to the existing pattern. The surface subdivides into blocks, like the street map of an unplanned city. A translucent wash he calls a *sand painter* shades the open space beside each line, in colors sampled from a painting.
+**"Substrate" (2003)** is his best-known work. Straight cracks move across the plane and stop where they meet an older crack. A new crack then starts at a right angle to the existing pattern. As this repeats, the surface divides into blocks, like the street map of an unplanned city. A translucent wash he calls a *sand painter* shades the open space beside each line, in colors sampled from a painting.
 
 Learn more:
 
@@ -15,7 +15,7 @@ Learn more:
 
 ### Recreations here
 
-- [**Substrate**](Substrate/): a city grown from colliding cracks, each dragging a sand-grain wash across the open space beside it, after Tarbell's *Substrate* (2003). Click to grow a fresh city from the next seed. The technique lives in the framework as [`CrackGrowth`](../../../Docs/Generators/CrackGrowth.md).
+- [**Substrate**](Substrate/): a city grown from colliding cracks, after Tarbell's *Substrate* (2003). Each crack drags a sand-grain wash across the open space beside it. Click to grow a fresh city from the next seed. The framework provides the technique as [`CrackGrowth`](../../../Docs/Generators/CrackGrowth.md).
 
   ```sh
   swift run Example-Recreations-JaredTarbell-Substrate

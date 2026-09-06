@@ -4,7 +4,7 @@
 
 ## Random
 
-`random` is seedable and lives on the sketch, so two sketches never share hidden global state. By default the seed is entropy-based (an unseeded sketch differs each run); seed for a reproducible image. It's Ollin's own generator (SplitMix64), so a seed reproduces Ollin's output rather than p5's. The smooth, coherent counterpart is [Noise](../Generators/Noise.md).
+`random` is seedable and lives on the sketch, so two sketches never share hidden global state. The seed is entropy-based by default, so an unseeded sketch differs each run. Set a seed when you want a reproducible image. The generator is Ollin's own (SplitMix64), so a seed reproduces Ollin's output rather than p5's. For smooth, coherent values instead, see [Noise](../Generators/Noise.md).
 
 ### Contents
 
@@ -29,14 +29,14 @@ random(_ max: Double) -> Double
 random(_ min: Double, _ max: Double) -> Double
 ```
 
-A uniform random `Double`: in `0..<1`, in `0..<max`, or between `min` and `max` (order-independent).
+A uniform random `Double`, in `0..<1`, in `0..<max`, or between `min` and `max`. The two-bound form is order-independent, so it takes the bounds either way round.
 
 ```swift
 let y = 400 + random(-100, 100)        // jitter around 400
 if random() < 0.2 { /* runs about a fifth of the time */ }
 ```
 
-One gotcha for seeded sketches: a zero-width range short-circuits, so `random(a, a)` returns `a` *without consuming a roll*. If a parameter or an animated value scales a jitter amount that can reach exactly zero, write the jitter as a scaled unit roll, `random(-1, 1) * amount`, not `random(-amount, amount)`: the first always draws, so the seeded sequence (and the piece's whole pattern of later rolls) stays stable as `amount` crosses zero.
+A zero-width range short-circuits, so `random(a, a)` returns `a` *without consuming a roll*. That matters in a seeded sketch. A parameter or an animated value can scale a jitter amount down to exactly zero. In that case, write the jitter as a scaled unit roll, `random(-1, 1) * amount`, and not `random(-amount, amount)`. The unit roll always draws, so the seeded sequence stays stable as `amount` crosses zero. The piece's whole pattern of later rolls stays stable with it.
 
 <a name="randomGaussian"></a>
 
@@ -47,7 +47,7 @@ randomGaussian() -> Double
 randomGaussian(mean: Double, deviation: Double) -> Double
 ```
 
-A normally distributed random `Double` (Marsaglia polar method): standard normal, or with the given mean and standard deviation. Reads as more natural scatter than the flat spread of `random`. About 68 percent of samples land within one deviation of the mean, and about 95 percent within two. See the `Gaussian` example.
+A normally distributed random `Double`, computed with the Marsaglia polar method. The first form is standard normal, and the second takes a mean and a standard deviation. The scatter reads as more natural than the flat spread of `random`. About 68 percent of samples land within one deviation of the mean, and about 95 percent within two. See the `Gaussian` example.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/UniformVsGaussian-dark.jpg">
@@ -67,7 +67,7 @@ drawCircle(x, height / 2, 4)
 randomVector(in rect: Rectangle) -> Vector2
 ```
 
-A random point inside `rect`, each coordinate uniform within its bounds.
+A random point inside `rect`. Each coordinate is uniform within its own bounds.
 
 ```swift
 let p = randomVector(in: Rectangle(x: 0, y: 0, width: width, height: height))
@@ -82,7 +82,7 @@ drawCircle(center: p, radius: 3)
 ring(innerRadius: Double, outerRadius: Double) -> Vector2
 ```
 
-A random point in the ring between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
+A random point in the ring between the two radii. The ring is centered on the origin, so add a center to place it elsewhere. See the `Ring` example.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/RandomRing-dark.jpg">
@@ -106,7 +106,7 @@ randomChoice<T>(_ choices: [T]) -> T
 randomChoice<T>(_ choices: [T], weights: [Double]) -> T
 ```
 
-A random element of `choices`: each equally likely, or biased by `weights`. The everyday palette pick, without indexing arithmetic. Weights are one per choice, non-negative, in any scale (they need not sum to 1); a choice weighted 0 is never picked. `choices` must not be empty. Seeded like everything `random`, so `randomSeed` makes the picks reproducible.
+A random element of `choices`. Without `weights` each element is equally likely, and with them the pick is biased. This is the everyday way to pick from a palette, with no indexing arithmetic to write. Pass one weight per choice. A weight must be non-negative and can be in any scale, so the weights need not sum to 1. A choice weighted 0 is never picked, and `choices` must not be empty. The picks are seeded like everything `random`, so `randomSeed` makes them reproducible.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/Choices-dark.jpg">
@@ -127,7 +127,7 @@ let move = randomChoice(["up", "down", "hold"], weights: [1, 1, 4])
 shuffled<T>(_ array: [T]) -> [T]
 ```
 
-The elements of `array` in a random order, drawn from the sketch's seeded generator, so a seeded shuffle reproduces run to run. (An array's own `shuffled()` rolls the system's dice instead and differs every run.)
+The elements of `array` in a random order. The order comes from the sketch's seeded generator, so a seeded shuffle reproduces run to run. An array's own `shuffled()` uses the system's generator instead, so it differs every run.
 
 ```swift
 randomSeed(9)
@@ -144,7 +144,7 @@ let order = shuffled(palette)   // the same reordering every run
 randomSeed(_ seed: Int)
 ```
 
-Seed the generator behind `random*` for reproducible runs. The same seed yields the same sequence. To reseed `noise` as well, see [`seed`](#seed).
+Seed the generator behind `random*` so a run reproduces. The same seed gives the same sequence. To reseed `noise` as well, see [`seed`](#seed).
 
 ```swift
 randomSeed(42)   // same scatter every run
@@ -158,13 +158,13 @@ randomSeed(42)   // same scatter every run
 seed(_ seed: Int)
 ```
 
-Seed *both* `random` and `noise` from one value, locking the whole sketch's randomness so it reproduces exactly, so reach for this when one seed should fully determine a piece. Use `randomSeed` or [`noiseSeed`](../Generators/Noise.md#noiseSeed) to reseed only one.
+Seed *both* `random` and `noise` from one value. That locks the whole sketch's randomness, so the sketch reproduces exactly. Use it when one seed should fully determine a piece. To reseed only one of the two, use `randomSeed` or [`noiseSeed`](../Generators/Noise.md#noiseSeed).
 
 ```swift
 seed(7)   // random and noise both reproducible
 ```
 
-This is also what sets the sketch's `variation`, the seed the run grew from. Every sketch is born on one (rolled fresh unless you call `seed`), reads it back as `variation`, records it in every export's recipe, and can be walked through it from the inspector's Variation card or rendered at any seed with `--seed N`. See [Variations](../Core/Variations.md).
+`seed` also sets the sketch's `variation`, the seed the run grew from. Every sketch starts on one, rolled fresh unless you call `seed`, and the sketch reads it back as `variation`. Every export records it in its recipe. You can step through variations from the inspector's Variation card, or render at any seed with `--seed N`. See [Variations](../Core/Variations.md).
 
 ```swift
 override func draw() {

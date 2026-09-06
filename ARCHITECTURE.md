@@ -446,7 +446,7 @@ Three pieces keep tones from shifting, each a real bug when missed:
 
 A triangular-PDF **dither** (a pure function of pixel position, so renders
 stay reproducible) is applied in `finalizeColor`, which runs **in the present
-pass** (the single 8-bit quantization point, after tone-mapping the resolved
+pass** (the single 8-bit quantization point, after tone mapping the resolved
 float frame), breaking the banding smooth gradients otherwise show. The image
 fragment skips the dither: its source pixels are premultiplied, and it outputs
 premultiplied linear straight into the float target.

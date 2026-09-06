@@ -4,7 +4,7 @@
 
 ## Halftone
 
-**`drawHalftone`** rebuilds an image as the classic print dot screen. Round dots sit on a grid rotated to the traditional 45 degrees. Each one is sized so its ink area matches the tone under its cell. It is how newspapers and screen prints have carried photographs for a century, and the vector counterpart of the raster screening the [print separations](../Output/PrintSeparations.md) use. Because the sizing is area-exact, tone survives the screen. A 30 percent gray becomes dots covering 30 percent of their cells. Shadows grow dots that overrun their cells and merge into the traditional checkered diamonds.
+**`drawHalftone`** rebuilds an image as the classic print dot screen. Round dots sit on a grid rotated to the traditional 45 degrees. Each dot is sized so its ink area matches the tone under its cell. Newspapers and screen prints have carried photographs this way for a century. It is the vector counterpart of the raster screening that [print separations](../Output/PrintSeparations.md) use. Because the sizing is area-exact, tone survives the screen, so a 30 percent gray becomes dots that cover 30 percent of their cells. In the shadows the dots overrun their cells and merge into the traditional checkered diamonds.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/HalftoneScreen-dark.jpg">
@@ -31,7 +31,7 @@ drawHalftone(_ image: Image,
              colored: Bool = false)
 ```
 
-Draws the screen in one call. `pitch` is the cell spacing in canvas units, and `angle` the screen rotation. The classic single-ink screen sits at 45 degrees, where the eye notices the grid least. The image keeps its aspect inside `bounds` (the whole canvas by default). Dots draw with the current `fill` and `stroke`. Setting `colored: true` tints each dot with the average color under its cell instead.
+This one call draws the whole screen. `pitch` is the cell spacing in canvas units, and `angle` is the screen rotation. The classic single-ink screen sits at 45 degrees, because that is the angle where the eye notices the grid least. The image keeps its aspect inside `bounds`, which is the whole canvas by default. Dots draw with the current `fill` and `stroke`. Set `colored: true` and each dot is tinted with the average color under its cell instead.
 
 ```swift
 fill(.black)
@@ -39,7 +39,7 @@ noStroke()
 drawHalftone(picture, pitch: 14)
 ```
 
-By default dark regions get big dots (ink on paper). `inverted: true` sizes dots by brightness instead, for light marks on a dark canvas:
+By default, dark regions get big dots, the way ink sits on paper. `inverted: true` sizes the dots by brightness instead, which gives you light marks on a dark canvas:
 
 ```swift
 background(.black)
@@ -59,7 +59,7 @@ halftone(of image: Image,
          inverted: Bool = false) -> [HalftoneDot]
 ```
 
-The screen as data, for custom drawing. Each `HalftoneDot` carries its lattice `column` and `row` in the rotated screen, its `center` on the canvas, and its area-exact `radius`. It also carries the cell's ink `coverage`, from 0 bare to 1 solid, and the average `color` underneath. Swap the mark, jitter the grid, or keep only part of the tonal range:
+This form returns the screen as data, so you can draw the marks yourself. Each `HalftoneDot` carries its lattice `column` and `row` in the rotated screen, its `center` on the canvas, and its area-exact `radius`. It also carries the cell's ink `coverage`, from 0 for bare to 1 for solid, and the average `color` underneath. With those values you can swap the mark, jitter the grid, or keep only part of the tonal range:
 
 ```swift
 for dot in halftone(of: picture, pitch: 16) {
@@ -67,28 +67,28 @@ for dot in halftone(of: picture, pitch: 16) {
 }
 ```
 
-Cells lighter than the printable minimum are omitted entirely, so highlights stay clean paper. That minimum is 2 percent coverage, the same cutoff the print separations apply. At the other end coverage above 98 percent floods the cell: the radius caps at `pitch / sqrt(2)`, the corner-reaching disk.
+Cells lighter than the printable minimum are left out, so highlights stay clean paper. That minimum is 2 percent coverage, the same cutoff the print separations apply. At the other end, coverage above 98 percent floods the cell. The radius then caps at `pitch / sqrt(2)`, the disk that reaches the cell corners.
 
 <a name="looks"></a>
 
 #### Getting the classic looks
 
-- **Newsprint.** Black fill on a warm white canvas, `pitch` 10 to 16, the default 45-degree angle. Smooth tonal ramps are where the screen shines; every step of a gradient lands on its own dot size.
-- **The inverted poster.** `inverted: true` with a pale fill on a near-black canvas reads as light emerging from dark, the screen-print negative.
-- **Pop-art color.** `colored: true` with a chunky `pitch` keeps the picture's own palette in fat discrete dots.
-- **The rosette.** Screen the same image several times at the conventional print angles of 45, 15, 75, and 0 degrees. Use one translucent ink per pass, and the overlap makes the traditional rosette instead of moire. For real spot-color work, split the image with [print separations](../Output/PrintSeparations.md) first and screen each master.
-- **Other marks.** The data form turns the screen into a layout. Draw glyphs at `radius`, rings, squares rotated by `coverage`, or anything that can scale with the tone.
+- **Newsprint.** Use a black fill on a warm white canvas, a `pitch` of 10 to 16, and the default 45-degree angle. Smooth tonal ramps suit the screen best, because every step of a gradient lands on its own dot size.
+- **The inverted poster.** Use `inverted: true` with a pale fill on a near-black canvas. It reads as light coming out of dark, the screen-print negative.
+- **Pop-art color.** Use `colored: true` with a large `pitch`. The picture keeps its own palette, in fat separate dots.
+- **The rosette.** Screen the same image several times at the conventional print angles of 45, 15, 75, and 0 degrees. Use one translucent ink per pass, so the overlap makes the traditional rosette instead of moire. For real spot-color work, split the image with [print separations](../Output/PrintSeparations.md) first, then screen each master.
+- **Other marks.** The data form turns the screen into a layout you draw yourself. Draw glyphs at `radius`, rings, squares rotated by `coverage`, or anything else that can scale with the tone.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **The dots are real geometry.** They draw as circles through the analytic SDF path, and they ride the vector exports. `--export-svg` and `--export-pdf` write each dot as a true circle, which is exactly what a pen plotter wants.
-- **CPU work at the image's resolution.** The binning pass reads every source pixel once. A few-hundred-pixel source screens comfortably every frame, and the dot pass itself is a few thousand circles.
-- **Deterministic.** The screen is a pure function of the image, pitch, angle, and bounds. No rng is consumed, so screens are snapshot- and recipe-safe.
-- **Tone is measured in linear light.** Coverage is 1 minus linear luminance, times alpha. That is the same rule stippling uses, because a dot's ink area maps to reflectance physically. Transparency carries no ink.
-- **Texture-backed images return no dots**, because they hold no CPU pixels. Read a video frame through its `snapshot()` first.
-- **For the pixel-space version** of the same look, filter a layer with `.halftone` or `.cmykHalftone` from the [effects catalog](./Effects.md). The GPU form is per-frame cheap at any resolution, but it rasterizes, so it does not feed the plotter path.
+- **The dots are real geometry.** They draw as circles through the analytic SDF path, and they carry through to the vector exports. `--export-svg` and `--export-pdf` write each dot as a true circle, which is what a pen plotter needs.
+- **CPU work at the image's resolution.** The binning pass reads every source pixel once. A source a few hundred pixels across screens comfortably every frame, and the dot pass itself draws a few thousand circles.
+- **Deterministic.** The screen is a pure function of the image, pitch, angle, and bounds. It consumes no rng, so a screen is safe in snapshots and in recipes.
+- **Tone is measured in linear light.** Coverage is 1 minus linear luminance, times alpha. Stippling uses the same rule, because a dot's ink area maps physically to reflectance. Transparency carries no ink.
+- **Texture-backed images return no dots**, because they hold no CPU pixels. To screen a video frame, read it through its `snapshot()` first.
+- **For the pixel-space version** of the same look, filter a layer with `.halftone` or `.cmykHalftone` from the [effects catalog](./Effects.md). The GPU form is cheap per frame at any resolution, but it rasterizes, so it does not feed the plotter path.
 
 ---
 

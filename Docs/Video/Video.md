@@ -4,7 +4,7 @@
 
 ## Video
 
-Play a video file into a sketch as a live image. Recorded footage becomes drawing material the same way the [camera](../Vision/Vision.md) does. Each decoded frame arrives as a GPU texture wrapped in an [`Image`](../Drawing/Images.md), so it draws with `drawImage`, rides the transform stack, and takes `tint`, all with no CPU round-trip per frame. The player is also a [frame source](../Vision/Vision.md#frame-sources), so a vision tracker attaches to it the way one attaches to a camera and analyzes the footage as it plays. Video lives in a separate library so the drawing core stays free of AVFoundation playback, so add `import OllinVideo` alongside `import Ollin` to reach it.
+Play a video file into a sketch as a live image. Recorded footage becomes drawing material in the same way the [camera](../Vision/Vision.md) does. Each decoded frame arrives as a GPU texture wrapped in an [`Image`](../Drawing/Images.md). That means you draw it with `drawImage`, it follows the transform stack, and it takes `tint`, with no CPU round-trip per frame. The player is also a [frame source](../Vision/Vision.md#frame-sources). A vision tracker attaches to it in the same way it attaches to a camera, and analyzes the footage as it plays. Video lives in a separate library, which keeps the drawing core free of AVFoundation playback. Add `import OllinVideo` beside `import Ollin` to reach it.
 
 ```swift
 import Ollin
@@ -30,7 +30,7 @@ final class Player: Sketch {
 
 - [Loading](#loading) - from a path, URL, or bundled resource
 - [Playback](#playback) - play, pause, loop, seek, rate, volume
-- [Drawing frames](#drawing-frames) - `drawFrame`, `frame`, `fittedRect`, `size`
+- [Drawing frames](#drawing-frames) - `drawFrame`, `frame`, `fittedRectangle`, `size`
 - [Pixels and analysis](#pixels-and-analysis) - live trackers, the soundtrack analyzed, and `snapshot()` for CPU access
 - [Notes](#notes) - formats, audio, exporting, and the Metal device
 
@@ -44,9 +44,9 @@ VideoPlayer(url: URL)                       // any file URL
 VideoPlayer(resource: String, withExtension: String, in: Bundle) throws
 ```
 
-`path` throws if no file exists there, and `resource` throws if the bundle doesn't contain it. Pass your own bundle as `in:`, usually `.module` for an asset declared in your target (a default here would resolve to Ollin's bundle, not yours).
+`path` throws if no file exists there, and `resource` throws if the bundle does not contain it. Pass your own bundle as `in:`, usually `.module` for an asset declared in your target. There is no default for `in:`, because a default would resolve to Ollin's bundle, not yours.
 
-The file's metadata loads in the background right after init, so `duration` and `size` are `nil` for the first moments and fill in shortly. Read them optionally in `draw()`, the way you would the first camera frame.
+The file's metadata loads in the background right after init, so `duration` and `size` are `nil` for the first moments and fill in shortly. Read them as optionals in `draw()`, in the same way you would read the first camera frame.
 
 <a name="playback"></a>
 
@@ -67,7 +67,7 @@ var duration: Double?        // seconds, once metadata loads
 var currentTime: Double      // seconds from the start
 ```
 
-Set `loops = true` before `play()` for the usual creative-coding loop. `rate` changes take effect immediately while playing, so `0.25` is slow motion and `2` is double speed.
+Set `loops = true` before `play()` for the usual creative-coding loop. A change to `rate` takes effect at once while the video plays, so `0.25` is slow motion and `2` is double speed.
 
 <a name="drawing-frames"></a>
 
@@ -84,11 +84,11 @@ func drawFrame(_ feed: some VideoFeed, in container: Rectangle? = nil,
                waiting: String? = nil) -> Rectangle?
 ```
 
-`drawFrame(player)` is the one-call draw. It letterboxes the current frame into the canvas (or `container`) and returns the rectangle it landed in, showing a standard "Waiting for video…" notice (override it with `waiting:`) until the first frame decodes. It works on any `VideoFeed`, the core protocol `VideoPlayer` and the vision `Camera` share, so a player drops in anywhere a camera does.
+`drawFrame(player)` draws the video in one call. It letterboxes the current frame into the canvas, or into `container` when you pass one, and returns the rectangle the frame landed in. Until the first frame decodes, it shows a standard "Waiting for video…" notice. Pass `waiting:` to replace that text. It works on any `VideoFeed`, the core protocol that `VideoPlayer` and the vision `Camera` share. So you can use a player anywhere a camera works.
 
-Working from the typed pieces instead, `frame` is the current video frame, ready for `drawImage`. It's `nil` until the first frame decodes, and after that it always returns a frame. Between video frames (your sketch usually draws faster than the video's frame rate) you get the same one again, so there's never a gap. The image wraps the decoder's texture directly, which is what keeps per-frame cost near zero.
+When you work from the typed pieces instead, `frame` is the current video frame, ready for `drawImage`. It is `nil` until the first frame decodes, and after that it always returns a frame. Your sketch usually draws faster than the video's frame rate, so between video frames you get the same frame again. That means there is never a gap. The image wraps the decoder's texture directly, which is what keeps the cost per frame near zero.
 
-`fittedRectangle(in:)` letterboxes the video into a rectangle without stretching, typically `bounds` for a full-canvas draw:
+`fittedRectangle(in:)` letterboxes the video into a rectangle without stretching it. For a full-canvas draw, that rectangle is usually `bounds`:
 
 ```text
 bounds (1080×1080)                 a 16:9 video, fitted
@@ -101,26 +101,26 @@ bounds (1080×1080)                 a 16:9 video, fitted
 └───────────────────┘              └───────────────────┘
 ```
 
-Draw any overlays into the same rectangle so they line up with the picture.
+Draw any overlays into the same rectangle, so that they line up with the picture.
 
 <a name="pixels-and-analysis"></a>
 
 ### Pixels and analysis
 
-For **live analysis**, attach a [vision tracker](../Vision/Vision.md) directly. `VideoPlayer` is a [frame source](../Vision/Vision.md#frame-sources), so every tracker takes it where it takes a camera and analyzes the footage as it plays (decoded frames are handed to the analyzer off the GPU path, so drawing stays texture-fast):
+For **live analysis**, attach a [vision tracker](../Vision/Vision.md) directly. `VideoPlayer` is a [frame source](../Vision/Vision.md#frame-sources), so every tracker accepts it where it accepts a camera, and analyzes the footage as it plays. Decoded frames reach the analyzer off the GPU path, so drawing stays as fast as a texture draw:
 
 ```swift
 let player = try VideoPlayer(path: "/path/to/clip.mp4")
 lazy var contours = ContourDetector(player)   // traces the clip as it plays
 ```
 
-For **depth over a recording**, [`DepthClip`](../Vision/Vision.md#depthclip) reads the whole file ahead of time instead and answers by clip time. That is what makes it hold under an export, where a live tracker reads nothing.
+For **depth over a recording**, use [`DepthClip`](../Vision/Vision.md#depthclip) instead. It reads the whole file ahead of time and answers by clip time. Because of that, it keeps working under an export, where a live tracker reads nothing.
 
 ```swift
 func snapshot() -> Image?
 ```
 
-For **one-shot pixel access**, `frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) are inert. When you need the pixels, whether for sampling colors or for feeding a tracker's still-image `detect(in:)`, take a `snapshot()`, which is a CPU-backed copy of the current frame that supports all of them. It costs a GPU→CPU copy, so take one when needed (every few frames is plenty) rather than unconditionally.
+For **one-shot pixel access**, `frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) do nothing. When you need the pixels, take a `snapshot()`. That is a CPU-backed copy of the current frame, and it supports all of those paths. Use it to sample colors, or to feed a tracker's still-image `detect(in:)`. A snapshot costs a GPU→CPU copy, so take one only when you need it, not on every frame. Every few frames is plenty.
 
 ```swift
 // OCR over a paused frame:
@@ -129,7 +129,7 @@ if let still = player.snapshot() {
 }
 ```
 
-For **the soundtrack**, the player is an audio-tap source the same way it's a frame source. Hand it to [`Soundtrack`](../Helpers/Audio.md#soundtrack) (from `OllinAudio`) and the clip's own audio drives the full analyzer surface (`amplitude`, `spectrum`, `bands`, beats) as it plays:
+For **the soundtrack**, the player is an audio-tap source, in the same way that it is a frame source. Hand it to [`Soundtrack`](../Helpers/Audio.md#soundtrack) from `OllinAudio`, and the clip's own audio drives the full analyzer surface (`amplitude`, `spectrum`, `bands`, beats) as it plays:
 
 ```swift
 let player = try VideoPlayer(path: "/path/to/clip.mp4")
@@ -140,15 +140,15 @@ override func draw() {
 }
 ```
 
-The analysis hears the soundtrack itself, before volume shaping, so `volume = 0` keeps the visuals reacting in silence. `isMuted = true` is the exception, because a hard mute stops audio processing, and the analysis with it.
+The analysis reads the soundtrack itself, before volume shaping, so `volume = 0` keeps the visuals reacting in silence. `isMuted = true` is the exception, because a hard mute stops audio processing and stops the analysis with it.
 
 <a name="notes"></a>
 
 ### Notes
 
-- **Formats.** Whatever AVFoundation reads: H.264 and HEVC in `.mp4`/`.m4v`, and ProRes in `.mov`.
-- **Audio.** The file's audio track plays automatically through the system output, and `volume` and `isMuted` control it. To *react* to it, analyze it with [`Soundtrack`](#pixels-and-analysis).
-- **Metal device.** Frame textures are created on the system's default Metal device, which is the device the sketch renders on for any single-GPU Mac.
-- **Headless export.** The offline exporters (`--export`, `--export-sequence`, `--export-video`, `--export-gif`) drive the sketch clock at a fixed timestep with no live window, so the player switches to a deterministic decode that follows that clock. Frame `k` of an export always shows the clip at `k / fps` seconds after `play()` (scaled by `rate`, wrapped by `loops`), and re-exporting reproduces it exactly. Create the player by the end of `setup()`, as a stored property in the usual place, rather than lazily mid-run, or the export clock never reaches it. Two things stay live-only by nature. A `Soundtrack` reads silence during an export, since nothing audibly plays, and an [`AudioPlayer`](../Helpers/Audio.md#audioplayer) over an audio file is the export-deterministic way to react to sound. A vision tracker attached to the player also analyzes nothing, because its frames pump on the live clock. For depth, [`DepthClip`](../Vision/Vision.md#depthclip) reads the whole file ahead of time and is exact under the export clock.
+- **Formats.** The player reads whatever AVFoundation reads: H.264 and HEVC in `.mp4`/`.m4v`, and ProRes in `.mov`.
+- **Audio.** The file's audio track plays automatically through the system output, and `volume` and `isMuted` control it. To *react* to the audio, analyze it with [`Soundtrack`](#pixels-and-analysis).
+- **Metal device.** Frame textures are created on the system's default Metal device. On any single-GPU Mac, that is the device the sketch renders on.
+- **Headless export.** The offline exporters (`--export`, `--export-sequence`, `--export-video`, `--export-gif`) drive the sketch clock at a fixed timestep, with no live window. So the player switches to a deterministic decode that follows that clock. Frame `k` of an export always shows the clip at `k / fps` seconds after `play()`, scaled by `rate` and wrapped by `loops`. A second export reproduces it exactly. Create the player by the end of `setup()`, as a stored property in the usual place. Do not create it lazily mid-run, because then the export clock never reaches it. Two things stay live-only. A `Soundtrack` reads silence during an export, because nothing audibly plays. To react to sound in an export, use an [`AudioPlayer`](../Helpers/Audio.md#audioplayer) over an audio file, which is deterministic under the export clock. A vision tracker attached to the player also analyzes nothing, because its frames arrive on the live clock. For depth, [`DepthClip`](../Vision/Vision.md#depthclip) reads the whole file ahead of time, so it is exact under the export clock.
 
-The runnable examples are [`Examples/Video/VideoPlayback`](../../Examples/Video/VideoPlayback/Sketch.swift), which loops a bundled clip of the *Voladores de Papantla* (the Totonac pole-flying ritual, *Danza de los Voladores*) and draws playback progress over it, [`Examples/Vision/ContourTrace`](../../Examples/Vision/ContourTrace/Sketch.swift), which runs a contour tracker over a clip handed to it on launch, and [`Examples/Video/SoundReactive`](../../Examples/Video/SoundReactive/Sketch.swift), which draws spectrum bars and a beat ring driven by its clip's own soundtrack.
+There are three runnable examples. The first, [`Examples/Video/VideoPlayback`](../../Examples/Video/VideoPlayback/Sketch.swift), loops a bundled clip of the *Voladores de Papantla* (the Totonac pole-flying ritual, *Danza de los Voladores*). It draws playback progress over the clip. The second, [`Examples/Vision/ContourTrace`](../../Examples/Vision/ContourTrace/Sketch.swift), runs a contour tracker over a clip handed to it on launch. The third, [`Examples/Video/SoundReactive`](../../Examples/Video/SoundReactive/Sketch.swift), draws spectrum bars and a beat ring driven by its clip's own soundtrack.

@@ -4,9 +4,9 @@
 
 ## Drawing
 
-One of p5's strengths is that you can learn its whole drawing surface in an afternoon. Ollin keeps its surface small and the names familiar. Call these bare inside `draw()`, and they forward to the `Drawer`.
+One of p5's strengths is that you can learn its whole drawing surface in an afternoon. Ollin keeps its own surface small and its names familiar for the same reason. You call these methods bare inside `draw()`, and they forward to the `Drawer`.
 
-The point and rectangle types these calls take (`Vector2`, `Rectangle`) are documented in [Geometry](../Drawing/Geometry.md), and `Color` is in [Color](../Drawing/Color.md).
+These calls take the point and rectangle types `Vector2` and `Rectangle`, which are documented in [Geometry](../Drawing/Geometry.md). `Color` is documented in [Color](../Drawing/Color.md).
 
 ### Contents
 
@@ -45,7 +45,7 @@ fill(_ paint: Paint)
 noFill()
 ```
 
-Set the fill for filled shapes, either a flat color or a gradient, or turn fill off.
+Set the paint used by filled shapes, either a flat color or a gradient. `noFill()` turns the fill off.
 
 ```swift
 fill(.red)
@@ -68,7 +68,7 @@ stroke(_ paint: Paint)
 noStroke()
 ```
 
-Set the outline paint, either a flat color or a gradient, or turn the outline off. An `.alongPath` gradient runs start → end along lines, curves, and stroked paths (see [Color → Gradient paint](../Drawing/Color.md#gradient)).
+Set the outline paint, either a flat color or a gradient. `noStroke()` turns the outline off. An `.alongPath` gradient runs from start to end along lines, curves, and stroked paths (see [Color → Gradient paint](../Drawing/Color.md#gradient)).
 
 ```swift
 stroke(.black)
@@ -102,7 +102,7 @@ drawCircle(width / 2, height / 2, 120)
 strokeAlign(_ align: StrokeAlign)   // .center (default), .inside, .outside
 ```
 
-Where the stroke sits relative to a shape's outline. The default `.center` straddles the edge, half the weight inside and half outside, which is what p5 and Processing do. `.inside` keeps the whole stroke within the shape, so its footprint doesn't change as the weight grows, which is handy for tiled grids where an outward border would overlap its neighbors. `.outside` puts the stroke entirely beyond the edge. This is state, like `strokeWeight`, so it holds until changed.
+Where the stroke sits relative to a shape's outline. The default, `.center`, straddles the edge with half the weight inside and half outside, which is what p5 and Processing do. `.inside` keeps the whole stroke within the shape, so the footprint does not change as the weight grows. That helps in tiled grids, where an outward border would overlap its neighbors. `.outside` puts the stroke entirely beyond the edge. This is state, like `strokeWeight`, so it holds until you change it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/StrokeAnatomy-dark.jpg">
@@ -115,7 +115,7 @@ strokeAlign(.inside)
 drawCircle(width / 2, height / 2, 120)   // outline grows inward; radius-120 footprint kept
 ```
 
-It applies to the analytic shapes (circles, ellipses, rectangles, the polygon and star family, and the rest of the SDF catalog), where the inset or outset is a geometrically exact offset of the outline. Shapes with no inside and outside keep a centered stroke, which covers lines, point markers, the open `drawArc`, and the tessellated `drawPolyline` / `drawPolygon` / `drawShape`. With `hollow`, the band already has two edges to stroke, so alignment doesn't apply there.
+It applies to the analytic shapes: circles, ellipses, rectangles, the polygon and star family, and the rest of the SDF catalog. For those, the inset or outset is a geometrically exact offset of the outline. Shapes with no inside and outside keep a centered stroke. That covers lines, point markers, the open `drawArc`, and the tessellated `drawPolyline` / `drawPolygon` / `drawShape`. With `hollow`, the band already has two edges to stroke, so alignment does not apply there.
 
 <a name="strokeJoin"></a>
 
@@ -125,14 +125,14 @@ It applies to the analytic shapes (circles, ellipses, rectangles, the polygon an
 strokeJoin(_ join: StrokeJoin)   // .miter (default), .bevel, .round
 ```
 
-How a stroked path turns its corners. `.miter` extends the two outer edges until they meet at a sharp point, which is what keeps a chevron or a star's tips crisp, and it falls back to a flat bevel when a corner is acute enough that the point would shoot out into a long spike. `.bevel` always cuts the corner off with a straight edge, and `.round` fills it with an arc for a smooth bend. This is state, like `strokeWeight`, so it holds until changed.
+How a stroked path turns its corners. `.miter` extends the two outer edges until they meet at a sharp point, which keeps a chevron or a star's tips crisp. When a corner is acute enough that the point would run out into a long spike, `.miter` falls back to a flat bevel. `.bevel` always cuts the corner off with a straight edge, and `.round` fills it with an arc for a smooth bend. This is state, like `strokeWeight`, so it holds until you change it.
 
 ```swift
 stroke(.black); strokeWeight(20); strokeJoin(.round)
 drawPolyline([Vector2(120, 360), Vector2(540, 120), Vector2(960, 360)])   // a rounded peak
 ```
 
-It applies to the stroked paths with interior corners: `drawPolyline`, the `drawPolygon` outline, `drawShape` contours, and the flattened `drawBezier`. The analytic SDF shapes draw their own outlines, and `drawLine` is a single segment, so those have no joins to style.
+It applies to the stroked paths with interior corners: `drawPolyline`, the `drawPolygon` outline, `drawShape` contours, and the flattened `drawBezier`. The analytic SDF shapes draw their own outlines, and `drawLine` is a single segment, so neither has a join to style.
 
 <a name="strokeCap"></a>
 
@@ -142,14 +142,14 @@ It applies to the stroked paths with interior corners: `drawPolyline`, the `draw
 strokeCap(_ cap: StrokeCap)   // .butt (default), .round, .square
 ```
 
-How the open ends of a stroked path are finished. `.butt` ends the stroke flat at the endpoint, so its footprint stops exactly where the path does. `.round` adds a half-disk over each end (a rounded tip), and `.square` adds a flat extension half the stroke weight past the endpoint, so both `.round` and `.square` reach beyond the path's end by half the weight. This is state, like `strokeWeight`, so it holds until changed.
+How the open ends of a stroked path are finished. `.butt` ends the stroke flat at the endpoint, so its footprint stops exactly where the path does. `.round` adds a half-disk over each end, a rounded tip. `.square` adds a flat extension past the endpoint, half the stroke weight long. Both `.round` and `.square` therefore reach half the weight beyond the path's end. This is state, like `strokeWeight`, so it holds until you change it.
 
 ```swift
 stroke(.black); strokeWeight(24); strokeCap(.round)
 drawPolyline([Vector2(300, 540), Vector2(780, 540)])   // rounded tips past each end
 ```
 
-It applies to the open stroked paths: `drawLine`, `drawBezier`, `drawPolyline`, and any open `drawShape` contour. Closed outlines (the `drawPolygon` outline, a closed contour) have no ends to cap.
+It applies to the open stroked paths: `drawLine`, `drawBezier`, `drawPolyline`, and any open `drawShape` contour. Closed outlines have no ends to cap, which covers the `drawPolygon` outline and any closed contour.
 
 <a name="strokeProfile"></a>
 
@@ -161,17 +161,17 @@ strokeProfile { t in ... }                      // width by hand, over the path 
 noStrokeProfile()
 ```
 
-How the stroke width varies as the path travels, which is the difference between a drawn line and a made mark. A profile is a *multiplier*, not a width: `strokeWeight` still says how fat the mark gets, and the profile says what fraction of that it uses at each point. This is state, like `strokeWeight`, so it holds until changed, and `withState { }` saves and restores it.
+How the stroke width varies as the path travels, which is the difference between a drawn line and a made mark. A profile is a multiplier, not a width. `strokeWeight` still sets how wide the mark gets, and the profile sets what fraction of that width it uses at each point. This is state, like `strokeWeight`, so it holds until you change it, and `withState { }` saves and restores it.
 
 The named profiles cover the common marks:
 
 | Profile | The mark |
 | --- | --- |
 | `.uniform` | One width the whole way. The default. |
-| `.taper(start:end:)` | Thin at the ends, full in the middle: a brush pressed down and lifted. `start` and `end` are the multipliers *at* the two ends, both `0` by default, so `.taper(start: 1)` keeps a blunt start and lifts off at the end. |
+| `.taper(start:end:)` | Thin at the ends and full in the middle, like a brush pressed down and lifted. `start` and `end` are the multipliers at the two ends, both `0` by default, so `.taper(start: 1)` keeps a blunt start and lifts off at the end. |
 | `.ramp(from:to:)` | A straight wedge from one width to another. |
-| `.nib(angle:thinness:)` | A flat calligraphy pen held at `angle`: the mark is fattest where the path runs across the nib and a hairline where it runs along it. `thinness` is how much width the thinnest direction keeps. |
-| `.values([...])` | Evenly spaced multipliers along the path, interpolated between: a width curve by hand, or one recorded from an input. |
+| `.nib(angle:thinness:)` | A flat calligraphy pen held at `angle`. The mark is widest where the path runs across the nib, and a hairline where it runs along it. `thinness` is how much width the thinnest direction keeps. |
+| `.values([...])` | Evenly spaced multipliers along the path, interpolated between them. Use it for a width curve you write by hand, or one recorded from an input. |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MarkWidth-dark.jpg">
@@ -184,16 +184,16 @@ strokeProfile(.taper())
 drawBezier(Vector2(120, 700), Vector2(540, 120), Vector2(960, 700))   // thin, fat, thin
 ```
 
-It applies wherever a path is expanded into a stroke: `drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, and the outlines of `drawShape` and `drawPolygon`. The analytic shapes (`drawCircle`, `drawRect`, `drawStar`, and the rest of the SDF catalog) carry a single width by construction, so they keep drawing at `strokeWeight` and say so once on the console.
+It applies wherever a path is expanded into a stroke: `drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, and the outlines of `drawShape` and `drawPolygon`. The analytic shapes carry a single width by construction. That means `drawCircle`, `drawRect`, `drawStar`, and the rest of the SDF catalog keep drawing at `strokeWeight` and say so once on the console.
 
 Two things to know:
 
-- **Width is read at every point of the path**, from `0` at the start to `1` at the end, measured along the path's own length. A path with only a handful of points changes width in visible steps, so sample a curve densely enough for the profile to have somewhere to go. Long segments are split automatically, but the profile can only follow the points it is given.
-- **A closure profile runs where the stroke is expanded**, not on the sketch, so it can't reach `time` or a `@Param` directly. Copy what it needs into a local first (`let clock = time`) and capture that. The named profiles take their animation as an argument, so `.nib(angle: time)` needs nothing special.
+- **Width is read at every point of the path**, as a fraction from `0` at the start to `1` at the end. The fraction is measured along the path's own length. A path with only a handful of points changes width in visible steps. Sample a curve densely enough for the profile to have somewhere to go. Long segments are split automatically, but the profile can only follow the points it is given.
+- **A closure profile runs where the stroke is expanded**, not on the sketch, so it cannot reach `time` or a `@Param` directly. Copy what it needs into a local first, as in `let clock = time`, and capture that. The named profiles take their animation as an argument, so `.nib(angle: time)` needs nothing special.
 
-A profiled stroke stays vector on the way out: `--export-svg` and `--export-pdf` write the region the mark covers as a filled outline rather than a stroked path with one width, so a plotted or printed mark matches the screen. See [Export](../Output/Export.md).
+A profiled stroke stays vector on the way out. `--export-svg` and `--export-pdf` write the region the mark covers as a filled outline, not as a stroked path with one width. A plotted or printed mark then matches the screen. See [Export](../Output/Export.md).
 
-A profile shapes a stroke by *where you are* along a finished path. For a mark being drawn right now, where there is no finished path to take a fraction of, see [Marks](Marks.md): a `StrokeMark` measures how fast the pointer is traveling and how hard it is pressed, and drives width and opacity from that. The two multiply, so a dynamic mark can still take a profiled lift-off.
+A profile shapes a stroke by where you are along a finished path. A mark being drawn right now has no finished path to take a fraction of, so see [Marks](Marks.md) instead. A `StrokeMark` measures how fast the pointer is traveling and how hard it is pressed, then drives width and opacity from that. The two multiply, so a dynamic mark can still take a profiled lift-off.
 
 <a name="hollow"></a>
 
@@ -204,7 +204,7 @@ hollow(_ width: Double)
 solid()
 ```
 
-Draw region shapes (circle, rect, star, triangle, heart, …) as a constant-width band hugging their outline instead of a solid interior, which is what `drawRing` is to a circle, applied to every shape. The `fill` color paints the band, and an active `stroke` borders *both* of its edges, so you can frame a hollow shape in a second color (something a stroke alone can't do, since that would be the only band). `width` is the band thickness, centered on the edge. This is state, like `fill` and `stroke`, and `solid()` returns to filled shapes. Points, lines, and `drawRing` (already a band) ignore it.
+Draw region shapes (circle, rect, star, triangle, heart, …) as a constant-width band along their outline instead of a solid interior. It is what `drawRing` is to a circle, applied to every shape. The `fill` color paints the band, and an active `stroke` borders both of its edges. That lets you frame a hollow shape in a second color. A stroke alone cannot do that, because it would be the only band. `width` is the band thickness, centered on the edge. This is state, like `fill` and `stroke`, and `solid()` returns to filled shapes. Points, lines, and `drawRing`, which is already a band, ignore it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/HollowBand-dark.jpg">
@@ -228,7 +228,7 @@ solid()                                                // back to solid fills
 pointSize(_ size: Double)
 ```
 
-Diameter of a [`drawPoint`](#point) dot, in points. This is state, like `strokeWeight`, so set it once and it holds, with a per-call override on `drawPoint`.
+Diameter of a [`drawPoint`](#point) dot, in points. This is state, like `strokeWeight`, so set it once and it holds. `drawPoint` takes a per-call override.
 
 ```swift
 pointSize(4)
@@ -243,7 +243,7 @@ drawPoint(width / 2, height / 2)
 pointMarker(_ marker: PointMarker)
 ```
 
-The glyph [`drawPoint`](#point) stamps: `.circle` (the default), `.square`, `.diamond`, `.cross` (a plus, `+`), or `.x` (a diagonal cross, `✕`). This is state, like `pointSize`, so set it once and it holds. Every marker is sized by its on-screen diameter, so the footprint stays the same when you switch glyphs, and all take the current `fill` color (they ignore stroke).
+The glyph [`drawPoint`](#point) stamps: `.circle`, `.square`, `.diamond`, `.cross`, or `.x`. The default is `.circle`, `.cross` is a plus sign, and `.x` is a diagonal cross. This is state, like `pointSize`, so set it once and it holds. Every marker is sized by its on-screen diameter, so the footprint stays the same when you switch glyphs. Every marker takes the current `fill` color and ignores stroke.
 
 ```swift
 pointMarker(.cross)
@@ -259,7 +259,7 @@ for p in cloud { drawPoint(at: p) }          // a scatter of plus signs
 blendMode(_ mode: BlendMode)   // .normal (default), .add, .subtract, .multiply, .screen, .lightest, .darkest
 ```
 
-How following shapes combine with what's already on the canvas. The default, `.normal`, lays each shape over the previous ones (a translucent shape shows what's beneath). The other modes *combine* the new color with the destination. The headline is `.add`, which **sums colors as light**, so overlapping marks brighten toward white instead of the topmost one winning. That additive accumulation is what light-field and particle sketches want, and it is what the "sandpainting" depth of field in [`Rendering/DepthOfField`](../../Examples/Rendering/DepthOfField/Sketch.swift) is built from.
+How following shapes combine with what is already on the canvas. The default, `.normal`, lays each shape over the previous ones, so a translucent shape shows what is beneath. The other modes combine the new color with the destination. The main one is `.add`, which **sums colors as light**, so overlapping marks brighten toward white instead of the topmost one winning. Light-field and particle sketches want that additive accumulation, and the "sandpainting" depth of field in [`Rendering/DepthOfField`](../../Examples/Rendering/DepthOfField/Sketch.swift) is built from it.
 
 ```swift
 blendMode(.add)                          // overlaps brighten, best on a dark background
@@ -270,11 +270,11 @@ for p in particles {
 }
 ```
 
-The modes: `.add` (sum as light, lightens), `.screen` (also lightens, softer), `.multiply` (stacked ink, darkens), `.subtract` (darkens by removing light), `.lightest` / `.darkest` (keep the lighter or darker of the two, channel by channel). It applies to every primitive, including the SDF shapes, the tessellated paths, images, and text. Like other style, it's saved and restored by [`withState { }`](#isolated), so you can scope an additive field and leave the rest of the frame normal.
+`.add` sums as light and lightens. `.screen` also lightens, more softly. `.multiply` stacks ink and darkens. `.subtract` darkens by removing light. `.lightest` and `.darkest` keep the lighter or the darker of the two colors, channel by channel. Blend mode applies to every primitive, including the SDF shapes, the tessellated paths, images, and text. Like other style, it is saved and restored by [`withState { }`](#isolated). You can scope an additive field that way and leave the rest of the frame normal.
 
-One known limit: under `.darkest`, the analytic shapes (`drawCircle`, `drawRect`, and the rest of the SDF catalog) darken their whole covering rectangle, not just the shape, because the GPU's min blend can't ignore a quad's empty pixels. Until that's fixed, draw `.darkest` shapes on the triangle path (`drawPolygon` with a many-sided outline) or through a layer mask.
+One known limit affects `.darkest`. The analytic shapes darken their whole covering rectangle, not just the shape, and that covers `drawCircle`, `drawRect`, and the rest of the SDF catalog. The reason is that the GPU's min blend cannot ignore a quad's empty pixels. Until that is fixed, draw `.darkest` shapes on the triangle path, using `drawPolygon` with a many-sided outline, or draw them through a layer mask.
 
-Because the canvas blends in linear light (the gamma-correct pipeline), `.add` sums physically, so two half-bright lights make a full-bright one. Set against a dark background it reads as glowing accumulation. See `Examples/Rendering/ToneMapping` (its flat `.normal` mode is the control case).
+The canvas blends in linear light, the gamma-correct pipeline, so `.add` sums physically and two half-bright lights make a full-bright one. Against a dark background that reads as glowing accumulation. See `Examples/Rendering/ToneMapping`, where the flat `.normal` mode is the control case.
 
 ### Basic shapes
 
@@ -294,7 +294,7 @@ drawPoint(_ p: Vector2)
 drawPoint(_ p: Vector2, size: Double)
 ```
 
-A filled marker in the current `fill` color (it ignores stroke, so `noFill()` draws nothing). The glyph is the current [`pointMarker`](#pointMarker), a round dot by default. `size` is the on-screen *diameter*, and without it the current [`pointSize`](#pointSize) is used. Each point is a single SDF instance, so a field of thousands stays cheap.
+A filled marker in the current `fill` color. It ignores stroke, so `noFill()` draws nothing. The glyph is the current [`pointMarker`](#pointMarker), a round dot by default. `size` is the on-screen diameter, and without it the marker uses the current [`pointSize`](#pointSize). Each point is a single SDF instance, so a field of thousands stays cheap.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawPoint-dark.jpg">
@@ -309,7 +309,7 @@ drawPoint(width / 2, height / 2, 12)     // one bigger dot
 ```
 
 > [!TIP]
-> **Sizes go all the way down.** Round points, circles, lines, and shape *outlines* stay smooth at sub-pixel sizes. A dot, a line, or a [`strokeWeight`](#strokeWeight) thinner than a pixel fades by *ink* instead of popping in, snapping to a 1px floor, or flickering as it moves. A field of tiny points, a hairline `drawLine`, or a barely visible rectangle outline reads as a soft, even wash rather than hard speckle, so draw at whatever size and stroke weight the piece wants, down to a fraction of a pixel.
+> **Sizes go all the way down.** Round points, circles, lines, and shape outlines stay smooth at sub-pixel sizes. A dot, a line, or a [`strokeWeight`](#strokeWeight) thinner than a pixel fades by ink. It does not pop in, snap to a 1px floor, or flicker as it moves. A field of tiny points, a hairline `drawLine`, or a barely visible rectangle outline reads as a soft, even wash rather than hard speckle. Draw at whatever size and stroke weight the piece wants, down to a fraction of a pixel.
 
 <a name="line"></a>
 
@@ -320,7 +320,7 @@ drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double)
 drawLine(_ a: Vector2, _ b: Vector2)
 ```
 
-A stroked line segment between two points. It honors [`strokeCap`](#strokeCap) (butt by default) and takes solid, translucent, or gradient stroke paint. Rendered through the high-quality stroke path (edge-expanded triangles plus a ~1px anti-aliasing fringe), so it stays crisp and even at any angle and resolution, down to sub-pixel widths.
+A stroked line segment between two points. It honors [`strokeCap`](#strokeCap), which is butt by default, and takes solid, translucent, or gradient stroke paint. It renders through the high-quality stroke path, which expands the edges into triangles and adds a ~1px anti-aliasing fringe. The line therefore stays crisp and even at any angle and resolution, down to sub-pixel widths.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawLine-dark.jpg">
@@ -342,7 +342,7 @@ drawArrow(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
           headLength: Double? = nil, headWidth: Double? = nil)
 ```
 
-An arrow: a stroked shaft ending in a solid triangular head whose tip is exactly `to`. The whole mark, head included, takes the current [`stroke`](#stroke), so one `stroke(...)` colors it. [`strokeWeight`](#strokeWeight) thickens the shaft, and head measurements left to themselves scale with it. A diagram's pointer, a vector field's glyph, a force made visible.
+An arrow, drawn as a stroked shaft ending in a solid triangular head whose tip is exactly `to`. The whole mark, head included, takes the current [`stroke`](#stroke), so one `stroke(...)` call colors it. Use [`strokeWeight`](#strokeWeight) to thicken the shaft, and head measurements you leave out scale with it. Use it for a diagram's pointer, a vector field's glyph, or a force made visible.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawArrow-dark.jpg">
@@ -356,7 +356,7 @@ drawArrow(from: center, to: mouse)
 drawArrow(from: p, to: p + force, headLength: 12)
 ```
 
-The shaft stops at the head's base, so translucent arrows lay one even coat of ink. See the [`Shapes/Arrows`](../../Examples/Shapes/Arrows/Sketch.swift) example, whose translucent ring is that property drawn.
+The shaft stops at the head's base, so translucent arrows lay one even coat of ink. The translucent ring in the [`Shapes/Arrows`](../../Examples/Shapes/Arrows/Sketch.swift) example shows that.
 
 <a name="circle"></a>
 
@@ -368,7 +368,7 @@ drawCircle(center: Vector2, radius: Double)
 drawCircle(_ circle: Circle)
 ```
 
-A circle, by scalar center (positional `x, y, radius`), a `Vector2` `center:`, or a [`Circle`](../Drawing/Geometry.md#circle) value.
+A circle. Give it a scalar center (positional `x, y, radius`), a `Vector2` `center:`, or a [`Circle`](../Drawing/Geometry.md#circle) value.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCircle-dark.jpg">
@@ -392,7 +392,7 @@ drawEllipse(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double)
 drawEllipse(center: Vector2, radiusX: Double, radiusY: Double)
 ```
 
-An ellipse, by scalar center (positional `x, y, rx, ry`) or a `Vector2` `center:`. As with `drawCircle`, the size is given as *radii* (`rx`, `ry`), not diameters, so equal radii draw a circle.
+An ellipse. Give it a scalar center (positional `x, y, rx, ry`) or a `Vector2` `center:`. As with `drawCircle`, you give the size as radii (`rx`, `ry`), not diameters, so equal radii draw a circle.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawEllipse-dark.jpg">
@@ -415,7 +415,7 @@ drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 
 drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0)
 ```
 
-A rectangle, anchored by its top-left corner or its center (the center form matches p5's `rectMode(CENTER)`), or from a `Rectangle` value. `cornerRadius` rounds the corners, clamped to half the shorter side, and the default `0` is a sharp rectangle.
+A rectangle, anchored by its top-left corner or by its center, or built from a `Rectangle` value. The center form matches p5's `rectMode(CENTER)`. `cornerRadius` rounds the corners and is clamped to half the shorter side. The default of `0` is a sharp rectangle.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRect-dark.jpg">
@@ -437,7 +437,7 @@ drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double)
 drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double)
 ```
 
-A rectangle placed by its two centerline endpoints `a` and `b` with the given `thickness` across it, so it draws a thick bar between two points with square (not round) ends. Where `drawRect` is axis-aligned and you'd rotate it about its own center, this is positioned by *both* of its ends, so connecting a pair of moving points (a linkage, a truss, an edge between nodes) is one call with no trigonometry. It's a filled region, taking `fill`, an outline `stroke`, `strokeAlign`, and `hollow`, where `drawLine` is a stroke with no interior. A zero-length bar (`a == b`) or a non-positive thickness draws nothing.
+A rectangle placed by its two centerline endpoints `a` and `b`, with the given `thickness` across it. It draws a thick bar between two points with square ends, not round ones. `drawRect` is axis-aligned, and you would rotate it about its own center. This shape is placed by both of its ends instead. Connecting a pair of moving points, such as a linkage, a truss, or an edge between nodes, then takes one call and no trigonometry. It is a filled region, so it takes `fill`, an outline `stroke`, `strokeAlign`, and `hollow`, while `drawLine` is a stroke with no interior. A zero-length bar (`a == b`) or a non-positive thickness draws nothing.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawOrientedBox-dark.jpg">
@@ -463,7 +463,7 @@ drawTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2)
 drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ x3: Double, _ y3: Double)
 ```
 
-A triangle, in three forms. The three-argument form is an **equilateral** triangle *centered* at `(x, y)`, point-up, with circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius), so rotating it spins it about that center. The four-argument form is an **isosceles** triangle whose *apex* (tip) is at `(x, y)`, opening toward +y (downward) by `height` with the given `base` width, so rotating it sweeps it about the apex. The **three-point** form places the corners directly, so any triangle is one call (the corners may be in any winding order, and a zero-area triangle draws nothing). All three are analytic SDF shapes, crisp at any size and effectively free per triangle, and they honor `strokeAlign` and `hollow`. Aim them with the transform stack.
+A triangle, in three forms. The three-argument form is an **equilateral** triangle centered at `(x, y)`, point-up, with circumradius `radius`. That radius is the center-to-vertex distance, like `drawCircle`'s radius, so rotating the triangle spins it about that center. The four-argument form is an **isosceles** triangle whose apex (tip) is at `(x, y)`. It opens toward +y (downward) by `height` with the given `base` width, so rotating it sweeps it about the apex. The **three-point** form places the corners directly, so any triangle is one call. The corners may be in any winding order, and a zero-area triangle draws nothing. All three are analytic SDF shapes, crisp at any size and effectively free per triangle, and they honor `strokeAlign` and `hollow`. Aim them with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawTriangle-dark.jpg">
@@ -486,9 +486,9 @@ drawArc(_ x: Double, _ y: Double, _ radiusX: Double, _ radiusY: Double, start: D
 drawArc(center: Vector2, radiusX: Double, radiusY: Double, start: Double, stop: Double, mode: ArcMode = .open)
 ```
 
-An elliptical arc sweeping from `start` to `stop` (radians, measured from the positive x-axis and increasing clockwise). `mode` decides how the ends close, which sets both the stroked outline and the filled region:
+An elliptical arc sweeping from `start` to `stop`. The angles are in radians, measured from the positive x-axis and increasing clockwise. `mode` decides how the ends close, which sets both the stroked outline and the filled region:
 
-- `.open` strokes the curve only, and a fill paints the segment cut off by the (un-stroked) chord.
+- `.open` strokes the curve only. A fill paints the segment cut off by the chord, and the chord itself is not stroked.
 - `.chord` closes with a straight chord between the endpoints, so the stroke traces it and the fill is that segment.
 - `.pie` closes through the center like a pie slice, so the stroke traces both radii and the fill is the wedge.
 
@@ -513,14 +513,14 @@ drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2)
 drawBezier(_ x1: Double, _ y1: Double, _ cx: Double, _ cy: Double, _ x2: Double, _ y2: Double)
 ```
 
-A **quadratic** Bézier curve, stroked from `start` to `end` and bending toward the single control point `control`. It takes the current `stroke` paint (solid, translucent, or gradient) and `strokeWeight` (a curve has no interior, so there's no fill), and honors [`strokeCap`](#strokeCap) on its ends (butt by default). The curve flattens to a polyline and renders through the high-quality stroke path (edge-expanded triangles plus a ~1px anti-aliasing fringe), so it stays crisp and even at any angle and resolution, down to sub-pixel widths.
+A **quadratic** Bézier curve, stroked from `start` to `end` and bending toward the single control point `control`. It takes the current `stroke` paint, which may be solid, translucent, or gradient, and the current `strokeWeight`. A curve has no interior, so there is no fill. It honors [`strokeCap`](#strokeCap) on its ends, butt by default. The curve flattens to a polyline and renders through the high-quality stroke path, which expands the edges into triangles and adds a ~1px anti-aliasing fringe. It stays crisp and even at any angle and resolution, down to sub-pixel widths.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawBezier-dark.jpg">
   <img src="../Images/DrawBezier.jpg" alt="One thick curve from a dotted start to a dotted end, bending up toward an orange control point above it, the two straight control legs ghosted behind the stroke, labeled leaned toward, never reached" width="680">
 </picture>
 
-For a **cubic** curve (two control points) or a chain of joined curves, sample the curve into a `Shape` contour and use `drawShape`, which takes any number of points and can be filled.
+For a **cubic** curve (two control points) or a chain of joined curves, sample the curve into a `Shape` contour and use `drawShape`. That call takes any number of points and can be filled.
 
 ```swift
 stroke(.black); strokeWeight(4)
@@ -538,7 +538,7 @@ drawNgon(_ x: Double, _ y: Double, _ radius: Double, sides: Int)
 drawNgon(center: Vector2, radius: Double, sides: Int)
 ```
 
-A regular polygon centered at `(x, y)` with `sides` equal-length edges (3 or more) and circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius), one vertex pointing up. It's an analytic SDF shape, crisp at any size and effectively free per shape, and you rotate it about its center with the transform stack. For an arbitrary, non-regular polygon, use `drawPolygon`.
+A regular polygon centered at `(x, y)`, with `sides` equal-length edges (3 or more) and one vertex pointing up. `radius` is the circumradius, the center-to-vertex distance, like `drawCircle`'s radius. It is an analytic SDF shape, crisp at any size and effectively free per shape. Rotate it about its center with the transform stack. For an arbitrary, non-regular polygon, use `drawPolygon`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawNgon-dark.jpg">
@@ -550,7 +550,7 @@ drawNgon(width / 2, height / 2, 120, sides: 6)            // a hexagon
 withState { translate(300, 300); rotate(time); drawNgon(0, 0, 90, sides: 5) }  // a spinning pentagon
 ```
 
-The polygons people name often have convenience helpers (`drawPentagon`, `drawHexagon`, `drawHeptagon`, `drawOctagon`), each just `drawNgon` with its side count fixed, the way `drawCircle` reads better than an equal-radii `drawEllipse`. They take the same `(x, y, radius)` and `(center:, radius:)` forms. For any other side count, reach for `drawNgon`.
+The polygons people name often have their own helpers: `drawPentagon`, `drawHexagon`, `drawHeptagon`, and `drawOctagon`. Each one is `drawNgon` with its side count fixed, the way `drawCircle` reads better than an equal-radii `drawEllipse`. They take the same `(x, y, radius)` and `(center:, radius:)` forms. For any other side count, use `drawNgon`.
 
 ```swift
 drawHexagon(width / 2, height / 2, 120)                   // same as drawNgon(…, sides: 6)
@@ -566,7 +566,7 @@ drawStar(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double,
 drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int)
 ```
 
-A star centered at `(x, y)` with `points` tips (3 or more), alternating between `outerRadius` (the tips) and `innerRadius` (the valleys), one tip pointing up. `innerRadius` runs `0...outerRadius`, and smaller is spikier. At the apothem the points flatten into a regular polygon's edges, which is exactly how `drawNgon` is built. It's an analytic SDF shape, crisp at any size and effectively free, and you rotate it about its center with the transform stack.
+A star centered at `(x, y)` with `points` tips (3 or more) and one tip pointing up. The outline alternates between `outerRadius` at the tips and `innerRadius` at the valleys. `innerRadius` runs `0...outerRadius`, and a smaller value is spikier. At the apothem the points flatten into a regular polygon's edges, which is exactly how `drawNgon` is built. It is an analytic SDF shape, crisp at any size and effectively free. Rotate it about its center with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawStar-dark.jpg">
@@ -587,7 +587,7 @@ drawRhombus(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerR
 drawRhombus(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0)
 ```
 
-A rhombus (diamond) centered at `(x, y)`, `width` by `height` (the full diagonals), with a vertex at each end of those diagonals. `cornerRadius` rounds the corners while keeping the footprint, so push it up and the diamond rounds toward a circle. It's an analytic SDF shape, crisp at any size, and you rotate it about its center with the transform stack.
+A rhombus (diamond) centered at `(x, y)`, `width` by `height`. Those two measurements are the full diagonals, and there is a vertex at each end of them. `cornerRadius` rounds the corners while keeping the footprint, so a large value rounds the diamond toward a circle. It is an analytic SDF shape, crisp at any size. Rotate it about its center with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRhombus-dark.jpg">
@@ -608,7 +608,7 @@ drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRa
 drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0)
 ```
 
-A vesica, meaning a pointed lens formed by the overlap of two circles, centered at `(x, y)` and `width` by `height`. The two tips lie along the longer axis, so a tall lens points up and down while a wide one points left and right. `cornerRadius` rounds the tips (and slightly enlarges the lens, like `drawMoon`), easing it toward an ellipse. It's an analytic SDF shape, so rotate it with the transform stack for in-between angles.
+A vesica, meaning a pointed lens formed by the overlap of two circles, centered at `(x, y)` and `width` by `height`. The two tips lie along the longer axis, so a tall lens points up and down while a wide one points left and right. `cornerRadius` rounds the tips and eases the lens toward an ellipse. It also enlarges the lens slightly, as it does in `drawMoon`. It is an analytic SDF shape, so rotate it with the transform stack for in-between angles.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawVesica-dark.jpg">
@@ -629,7 +629,7 @@ drawOrientedVesica(_ a: Vector2, _ b: Vector2, width: Double)
 drawOrientedVesica(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, width: Double)
 ```
 
-A vesica placed by its two tip points `a` and `b`, bulging to `width` across the middle. It's the oriented analog of `drawVesica`, the way [`drawOrientedBox`](#orientedbox) is to `drawRect`. Because both tips are placed rather than a center plus a rotation, spanning a moving pair of points takes one call with no trigonometry. It's a filled region, so `fill`, an outline `stroke`, `strokeAlign`, and `hollow` all apply. `width` is the full waist width, so keep it below the tip distance for a lens, or equal to it for a circle. A zero-length span (`a == b`) or a non-positive width draws nothing.
+A vesica placed by its two tip points `a` and `b`, bulging to `width` across the middle. It is the oriented version of `drawVesica`, the way [`drawOrientedBox`](#orientedbox) is the oriented version of `drawRect`. You place both tips rather than a center plus a rotation, so spanning a moving pair of points takes one call with no trigonometry. It is a filled region, so `fill`, an outline `stroke`, `strokeAlign`, and `hollow` all apply. `width` is the full waist width. Keep it below the tip distance for a lens, or equal to the tip distance for a circle. A zero-length span (`a == b`) or a non-positive width draws nothing.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawOrientedVesica-dark.jpg">
@@ -651,7 +651,7 @@ drawMoon(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double,
 drawMoon(center: Vector2, outerRadius: Double, innerRadius: Double, offset: Double, cornerRadius: Double = 0)
 ```
 
-A crescent moon at `(x, y)`, drawn as the disk of `outerRadius` with a disk of `innerRadius` removed, the cut disk shifted `offset` toward +x. Keep `innerRadius` near `outerRadius` with a modest `offset` for a classic crescent, since a larger `offset` opens it toward a half-moon. `cornerRadius` rounds the two cusps. It's an analytic SDF shape, so rotate it with the transform stack to face the crescent any direction.
+A crescent moon at `(x, y)`, drawn as the disk of `outerRadius` with a disk of `innerRadius` removed. The cut disk is shifted `offset` toward +x. For a classic crescent, keep `innerRadius` near `outerRadius` and the `offset` modest, because a larger `offset` opens the shape toward a half-moon. `cornerRadius` rounds the two cusps. It is an analytic SDF shape, so rotate it with the transform stack to face the crescent any direction.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawMoon-dark.jpg">
@@ -672,7 +672,7 @@ drawCross(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double, corne
 drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Double = 0)
 ```
 
-A plus-sign cross centered at `(x, y)`, spanning `length` tip-to-tip on both axes with arms `thickness` wide. `cornerRadius` rounds the outer corners (the inner notches stay sharp), the usual rounded-plus look. It's an analytic SDF shape, so rotate it 45° with the transform stack for an ✕.
+A plus-sign cross centered at `(x, y)`, spanning `length` tip-to-tip on both axes, with arms `thickness` wide. `cornerRadius` rounds the outer corners for the usual rounded-plus look, and the inner notches stay sharp. It is an analytic SDF shape, so rotate it 45° with the transform stack for an ✕.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCross-dark.jpg">
@@ -693,7 +693,7 @@ drawRing(_ x: Double, _ y: Double, _ innerRadius: Double, _ outerRadius: Double)
 drawRing(center: Vector2, innerRadius: Double, outerRadius: Double)
 ```
 
-A filled ring centered at `(x, y)`, between `innerRadius` and `outerRadius`. It takes the current `fill`, not stroke, so for two outlined circles instead, draw `drawCircle` twice with `noFill`. It's an analytic SDF shape, crisp at any size.
+A filled ring centered at `(x, y)`, between `innerRadius` and `outerRadius`. It takes the current `fill`, not the stroke. For two outlined circles instead, call `drawCircle` twice with `noFill`. It is an analytic SDF shape, crisp at any size.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRing-dark.jpg">
@@ -714,7 +714,7 @@ drawTrapezoid(_ x: Double, _ y: Double, _ topWidth: Double, _ bottomWidth: Doubl
 drawTrapezoid(center: Vector2, topWidth: Double, bottomWidth: Double, height: Double)
 ```
 
-An isosceles trapezoid centered at `(x, y)`, `topWidth` across the top edge and `bottomWidth` across the bottom, `height` tall. Equal widths give a rectangle, and a zero width gives a triangle. It's an analytic SDF shape, crisp at any size, and you rotate it about its center with the transform stack.
+An isosceles trapezoid centered at `(x, y)`, `topWidth` across the top edge and `bottomWidth` across the bottom, `height` tall. Equal widths give a rectangle, and a zero width gives a triangle. It is an analytic SDF shape, crisp at any size. Rotate it about its center with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawTrapezoid-dark.jpg">
@@ -735,7 +735,7 @@ drawParallelogram(_ x: Double, _ y: Double, _ width: Double, _ height: Double, _
 drawParallelogram(center: Vector2, width: Double, height: Double, skew: Double)
 ```
 
-A parallelogram centered at `(x, y)`, `width` wide and `height` tall, with the top edge sheared `skew` points along +x relative to the bottom (`0` is a rectangle, negative leans the other way). It's an analytic SDF shape, and you rotate it about its center with the transform stack.
+A parallelogram centered at `(x, y)`, `width` wide and `height` tall. The top edge is sheared `skew` points along +x relative to the bottom. A `skew` of `0` is a rectangle, and a negative value leans the other way. It is an analytic SDF shape. Rotate it about its center with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawParallelogram-dark.jpg">
@@ -756,7 +756,7 @@ drawEgg(_ x: Double, _ y: Double, _ bottomRadius: Double, _ topRadius: Double)
 drawEgg(center: Vector2, bottomRadius: Double, topRadius: Double)
 ```
 
-An egg centered at `(x, y)`, drawn as a circle of `bottomRadius` at the fat lower end tapering to a rounded tip of `topRadius` at the top, pointing up. `bottomRadius` must be at least `topRadius` (equal gives a circle). It's an analytic SDF shape, and you rotate it about its center with the transform stack to tip it over.
+An egg centered at `(x, y)` and pointing up. It is drawn as a circle of `bottomRadius` at the fat lower end, tapering to a rounded tip of `topRadius` at the top. `bottomRadius` must be at least `topRadius`, and equal radii give a circle. It is an analytic SDF shape. Rotate it about its center with the transform stack to tip it over.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawEgg-dark.jpg">
@@ -777,11 +777,11 @@ drawHeart(_ x: Double, _ y: Double, _ size: Double)
 drawHeart(center: Vector2, size: Double)
 ```
 
-A heart centered at `(x, y)`, `size` points wide (a touch shorter than it is wide), lobes up and point down. It's an analytic SDF shape, so rotate it with the transform stack (180° points it up, 45° tips it like a playing-card suit).
+A heart centered at `(x, y)`, `size` points wide, with the lobes up and the point down. It is a little shorter than it is wide. It is an analytic SDF shape, so rotate it with the transform stack: 180° points it up, and 45° tips it like a playing-card suit.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawHeart-dark.jpg">
-  <img src="../Images/DrawHeart.jpg" alt="Three hearts on their marked centers: lobes up and point down as drawn, pointed up by a half turn, and tipped like a playing-card suit by a quarter turn" width="680">
+  <img src="../Images/DrawHeart.jpg" alt="Three hearts on their marked centers: lobes up and point down as drawn, pointed up by a half turn, and tipped like a playing-card suit by an eighth of a turn" width="680">
 </picture>
 
 ```swift
@@ -798,7 +798,7 @@ drawCutDisk(_ x: Double, _ y: Double, _ radius: Double, _ cut: Double)
 drawCutDisk(center: Vector2, radius: Double, cut: Double)
 ```
 
-A disk of `radius` centered at `(x, y)` with a straight horizontal slice removed, giving a dome with the flat edge down and the bulge up. `cut` (in `-radius...radius`) is the signed offset of the flat edge from the center, where `0` is a half disk, positive raises the cut toward the dome and keeps a smaller cap, and negative keeps more than half. It's an analytic SDF shape, so rotate it with the transform stack to aim the flat edge.
+A disk of `radius` centered at `(x, y)` with a straight horizontal slice removed. The result is a dome with the flat edge down and the bulge up. `cut` is the signed offset of the flat edge from the center, in `-radius...radius`. At `0` you get a half disk. A positive `cut` raises the flat edge toward the dome and keeps a smaller cap, and a negative one keeps more than half. It is an analytic SDF shape, so rotate it with the transform stack to aim the flat edge.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCutDisk-dark.jpg">
@@ -819,7 +819,7 @@ drawUnevenCapsule(_ a: Vector2, _ b: Vector2, _ ra: Double, _ rb: Double)
 drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: Double, _ rb: Double)
 ```
 
-A tapered capsule, a round-capped bar with unequal end radii, running from `a` (radius `ra`) to `b` (radius `rb`) and taking fill and stroke like a shape. The end-to-end distance must be at least `|ra − rb|`, otherwise the smaller cap is swallowed. It's an analytic SDF shape, crisp at any size.
+A tapered capsule, meaning a round-capped bar with unequal end radii. It runs from `a`, with radius `ra`, to `b`, with radius `rb`, and it takes fill and stroke like any shape. The end-to-end distance must be at least `|ra − rb|`, or the smaller cap is swallowed. It is an analytic SDF shape, crisp at any size.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawUnevenCapsule-dark.jpg">
@@ -833,7 +833,7 @@ drawUnevenCapsule(300, 540, 780, 540, 70, 70)                     // equal radii
 
 ### Novelty shapes
 
-These are less-common analytic forms, including curves, cut-outs, and a couple of pure doodles. They ride the same instanced-SDF path as everything above, so they stay crisp at any size, cost effectively nothing, and rotate through the transform stack.
+These are less-common analytic forms, including curves, cut-outs, and a couple of pure doodles. They use the same instanced-SDF path as everything above, so they stay crisp at any size, cost effectively nothing, and rotate through the transform stack.
 
 <a name="horseshoe"></a>
 
@@ -844,7 +844,7 @@ drawHorseshoe(_ x: Double, _ y: Double, _ radius: Double, _ thickness: Double, g
 drawHorseshoe(center: Vector2, radius: Double, thickness: Double, gap: Double)
 ```
 
-A horseshoe, meaning a thick arc with a gap, centered at `(x, y)`. It's a band at mid-radius `radius`, `thickness` thick, with an opening that spans `gap` radians (the full angular gap, so a smaller `gap` is more nearly a closed ring). Rotate it with the transform stack to aim the opening.
+A horseshoe, meaning a thick arc with a gap, centered at `(x, y)`. It is a band at mid-radius `radius`, `thickness` thick, with an opening that spans `gap` radians. `gap` is the full angular gap, so a smaller `gap` is more nearly a closed ring. Rotate it with the transform stack to aim the opening.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawHorseshoe-dark.jpg">
@@ -865,7 +865,7 @@ drawParabola(_ x: Double, _ y: Double, _ width: Double, _ height: Double)
 drawParabola(center: Vector2, width: Double, height: Double)
 ```
 
-A filled parabolic arch centered at `(x, y)`, `width` across the flat base and `height` tall, the curve peaking at the top. It's an exact parabola, with no tessellation. Rotate it with the transform stack.
+A filled parabolic arch centered at `(x, y)`, `width` across the flat base and `height` tall, with the curve peaking at the top. It is an exact parabola, with no tessellation. Rotate it with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawParabola-dark.jpg">
@@ -885,7 +885,7 @@ drawRoundedX(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double)
 drawRoundedX(center: Vector2, length: Double, thickness: Double)
 ```
 
-An X (saltire) centered at `(x, y)`, `length` tip-to-tip along each axis, with round-capped arms `thickness` wide. It's `drawCross` turned 45°, but with rounded ends. Rotate it with the transform stack.
+An X (saltire) centered at `(x, y)`, `length` tip-to-tip along each axis, with round-capped arms `thickness` wide. It is `drawCross` turned 45°, with rounded ends. Rotate it with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRoundedX-dark.jpg">
@@ -905,7 +905,7 @@ drawBlobbyCross(_ x: Double, _ y: Double, _ radius: Double, blobbiness: Double =
 drawBlobbyCross(center: Vector2, radius: Double, blobbiness: Double = 0.5)
 ```
 
-A four-armed cross with concave, inward-curving sides, its tips reaching `radius` along each axis. `blobbiness` (`0...1`) sets how pinched the waist is, so larger is more bulbous and smaller is spikier. Rotate it with the transform stack (45° gives a diagonal four-point pinwheel).
+A four-armed cross with concave, inward-curving sides, its tips reaching `radius` along each axis. `blobbiness`, in `0...1`, sets how pinched the waist is, so a larger value is more bulbous and a smaller one is spikier. Rotate it with the transform stack, where 45° gives a diagonal four-point pinwheel.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawBlobbyCross-dark.jpg">
@@ -926,7 +926,7 @@ drawTunnel(_ x: Double, _ y: Double, _ width: Double, _ height: Double)
 drawTunnel(center: Vector2, width: Double, height: Double)
 ```
 
-A tunnel or archway centered at `(x, y)`, with vertical walls and a flat base under a semicircular top, `width` wide and `height` tall overall. The arch radius is half the width, so `height` must be at least `width / 2`. Rotate it with the transform stack to aim the opening.
+A tunnel or archway centered at `(x, y)`, `width` wide and `height` tall overall. It has vertical walls and a flat base under a semicircular top. The arch radius is half the width, so `height` must be at least `width / 2`. Rotate it with the transform stack to aim the opening.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawTunnel-dark.jpg">
@@ -946,7 +946,7 @@ drawStairs(_ x: Double, _ y: Double, _ stepWidth: Double, _ stepHeight: Double, 
 drawStairs(center: Vector2, stepWidth: Double, stepHeight: Double, steps: Int)
 ```
 
-A staircase centered at `(x, y)`, with `steps` steps ascending to the right, each `stepWidth` wide and `stepHeight` tall. The whole flight spans `stepWidth · steps` by `stepHeight · steps`. Rotate it with the transform stack.
+A staircase centered at `(x, y)`, with `steps` steps ascending to the right, each one `stepWidth` wide and `stepHeight` tall. The whole flight spans `stepWidth · steps` by `stepHeight · steps`. Rotate it with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawStairs-dark.jpg">
@@ -966,7 +966,7 @@ drawCoolS(_ x: Double, _ y: Double, _ size: Double)
 drawCoolS(center: Vector2, size: Double)
 ```
 
-The hand-drawn "S" off the back of every school notebook, centered at `(x, y)`, `size` points tall, drawn as its filled silhouette. Add a stroke to trace its outline, or rotate it with the transform stack.
+The hand-drawn "S" off the back of every school notebook, centered at `(x, y)` and `size` points tall, drawn as its filled silhouette. Add a stroke to trace its outline, or rotate it with the transform stack.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCoolS-dark.jpg">
@@ -987,7 +987,7 @@ drawCoolS(width / 2, height / 2, 360)                          // the doodle, fi
 drawPolyline(_ points: [Vector2], closed: Bool = false)
 ```
 
-A connected path through `points`, stroked. It's open by default, and `closed: true` joins it back to its first point. Its corners (including a closed path's seam) follow [strokeJoin](#strokeJoin), and its open ends follow [strokeCap](#strokeCap).
+A connected path through `points`, stroked. It is open by default, and `closed: true` joins it back to its first point. Its corners follow [strokeJoin](#strokeJoin), including a closed path's seam, and its open ends follow [strokeCap](#strokeCap).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawPolyline-dark.jpg">
@@ -1010,7 +1010,7 @@ drawPolyline(wave)
 drawPolygon(_ points: [Vector2])
 ```
 
-A filled convex polygon through `points` (plus a stroked outline). The fan fill is convex-only, so for concave outlines or holes, use `drawShape`.
+A filled convex polygon through `points`, plus a stroked outline. The fan fill works only on convex shapes, so use `drawShape` for concave outlines or holes.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawPolygon-dark.jpg">
@@ -1031,7 +1031,7 @@ drawPolygon(triangle)
 drawShape(_ shape: Shape)
 ```
 
-A vector [`Shape`](../Drawing/Geometry.md#shape), which is a filled region that may be **concave** and may have **holes**, plus a stroked outline of each contour. The fill is triangulated with even-odd winding, so nested contours become holes, and open contours are stroke-only.
+A vector [`Shape`](../Drawing/Geometry.md#shape), which is a filled region that may be **concave** and may have **holes**, plus a stroked outline of each contour. The fill is triangulated with even-odd winding, so nested contours become holes. Open contours are stroked but not filled.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawShape-dark.jpg">
@@ -1046,7 +1046,7 @@ fill(.black)
 drawShape(Shape(outer: outer, holes: [hole]))
 ```
 
-There's also a closure form that builds a curved or straight outline inline with a [`Path`](../Drawing/Geometry.md#path). Trace it with the pen methods (`move`, `line`, `curve`, `quadCurve`, `cubicCurve`, `close`), and it fills (if closed) and strokes like any `Shape`:
+There is also a closure form that builds a curved or straight outline inline with a [`Path`](../Drawing/Geometry.md#path). Trace it with the pen methods `move`, `line`, `curve`, `quadCurve`, `cubicCurve`, and `close`. It then strokes like any `Shape`, and it fills too if you close it:
 
 ```swift
 drawShape { p in
@@ -1066,7 +1066,7 @@ drawShape { p in
 drawCurve(_ points: [Vector2], closed: Bool = false)
 ```
 
-A **smooth curve through `points`**, a Catmull-Rom spline that passes through each point with tangents derived from its neighbors, so you draw a "wiggle" straight from a list of points with no control points to place. `closed: false` (the default) is an open, stroked line, and `closed: true` makes a closed, fillable loop. It's sugar over [`Path`](../Drawing/Geometry.md#path) + `curve(to:)`.
+A **smooth curve through `points`**. It is a Catmull-Rom spline that passes through each point, with tangents derived from its neighbors. You draw a "wiggle" straight from a list of points, with no control points to place. `closed: false`, the default, is an open stroked line, and `closed: true` makes a closed, fillable loop. It is sugar over [`Path`](../Drawing/Geometry.md#path) plus `curve(to:)`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCurve-dark.jpg">
@@ -1094,7 +1094,7 @@ drawPoints(_ points: [Vector2], size: Double)
 drawRects(_ rectangles: [Rectangle], cornerRadius: Double = 0)
 ```
 
-These are collection-call sugar, where one Swift call draws a whole array. The current `fill`, `stroke`, and transform apply to every shape in the array, so reach for them when the shapes share a style, as a point cloud, a scatter, or a grid does. Each shape is still its own instanced quad, so a batch costs the same as the loop it replaces. It's the call site that gets shorter, not the GPU work.
+These are collection-call sugar, where one Swift call draws a whole array. The current `fill`, `stroke`, and transform apply to every shape in the array. Use them when the shapes share a style, as a point cloud, a scatter, or a grid does. Each shape is still its own instanced quad, so a batch costs the same as the loop it replaces. The call site gets shorter, not the GPU work.
 
 ```swift
 let seeds = (0..<800).map { i -> Circle in
@@ -1110,11 +1110,11 @@ withState {
 }
 ```
 
-To vary the style per shape, giving each a different color or radius, drop back to the single-shape call in a loop (`for c in circles { fill(...); drawCircle(c) }`). The batch forms are for when one style covers the whole array.
+To vary the style per shape, giving each its own color or radius, use the single-shape call in a loop, as in `for c in circles { fill(...); drawCircle(c) }`. The batch forms are for when one style covers the whole array.
 
 ### Transforms and state
 
-Transforms move, turn, and stretch the **coordinate system**, not the shapes you've already drawn, so every draw call *after* one is measured in the new frame. They stack (each builds on the previous), and they reset every frame, so `draw()` always starts from the top-left origin. Wrap them in [`withState { }`](#isolated) to keep a transform local. Order matters: `translate` then `rotate` moves out and spins in place (a top), while `rotate` then `translate` moves along the already-tilted axes (an orbit).
+Transforms move, turn, and stretch the **coordinate system**, not the shapes you have already drawn. Every draw call after one is measured in the new frame. They stack, so each builds on the previous one, and they reset every frame, so `draw()` always starts from the top-left origin. Wrap them in [`withState { }`](#isolated) to keep a transform local. Order matters. `translate` then `rotate` moves out and spins in place, like a top, while `rotate` then `translate` moves along the already-tilted axes, like an orbit.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/TransformSteps-dark.jpg">
@@ -1145,7 +1145,7 @@ drawCircle(0, 0, 60)
 rotate(_ radians: Double)
 ```
 
-Rotate the coordinate system (clockwise, since y is down).
+Rotate the coordinate system. The turn is clockwise, because y points down.
 
 ```swift
 translate(width / 2, height / 2)
@@ -1162,7 +1162,7 @@ scale(_ amount: Double)
 scale(_ x: Double, _ y: Double)
 ```
 
-Scale the coordinate system, uniformly or per axis. (This is the transform, distinct from the read-only `scale` property in [Canvas](../Core/Canvas.md).)
+Scale the coordinate system, uniformly or per axis. This is the transform, which is not the read-only `scale` property in [Canvas](../Core/Canvas.md).
 
 ```swift
 translate(width / 2, height / 2)
@@ -1179,14 +1179,14 @@ symmetry(_ folds: Int, mirrored: Bool = false)
 noSymmetry()
 ```
 
-Replicate everything drawn next into `folds` copies rotated evenly around the current origin, which is the kaleidoscope, or mandala, mode. Draw one wedge and the folds complete the picture. `mirrored: true` adds a reflected copy per fold (mirrored across the local x-axis), the classic kaleidoscope's doubled symmetry.
+Replicate everything drawn next into `folds` copies, rotated evenly around the current origin. This is the kaleidoscope, or mandala, mode. Draw one wedge and the folds complete the picture. `mirrored: true` adds a reflected copy per fold, mirrored across the local x-axis, which is the classic kaleidoscope's doubled symmetry.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/Kaleidoscope-dark.jpg">
   <img src="../../Guide/Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
 </picture>
 
-The fold pivot and the mirror axis are the origin and x-axis *at the call*, so `translate` first to place the center, and `rotate` to aim the seam. Transforms applied after `symmetry` compose inside every fold, so an orbiting shape orbits in all of them at once. It's drawing state like `fill`, so it stays on until `noSymmetry()`, and `withState { }` restores it.
+The fold pivot and the mirror axis are the origin and x-axis as they stand at the call. Call `translate` first to place the center, and `rotate` to aim the seam. Transforms applied after `symmetry` compose inside every fold, so an orbiting shape orbits in all of them at once. This is drawing state like `fill`, so it stays on until `noSymmetry()`, and `withState { }` restores it.
 
 ```swift
 translate(width / 2, height / 2)   // fold around the canvas center
@@ -1196,7 +1196,7 @@ noSymmetry()
 drawCircle(0, 0, 26)               // the center medallion, drawn once
 ```
 
-Replication covers all 2D drawing (shapes, strokes, images, text, SDF fields) and rides into SVG export, while 3D geometry and GPU particles are untouched. Each copy is real geometry, so `folds` also multiplies the drawing cost, exactly as the equivalent loop would. See the [`Patterns/Kaleidoscope`](../../Examples/Patterns/Kaleidoscope/Sketch.swift) example.
+Replication covers all 2D drawing: shapes, strokes, images, text, and SDF fields. It also carries into SVG export, while 3D geometry and GPU particles are left untouched. Each copy is real geometry, so `folds` multiplies the drawing cost as well, exactly as the equivalent loop would. See the [`Patterns/Kaleidoscope`](../../Examples/Patterns/Kaleidoscope/Sketch.swift) example.
 
 <a name="clip"></a>
 
@@ -1208,14 +1208,14 @@ withClip(_ rect: Rectangle, _ body: () -> Void)
 withClip(_ circle: Circle, _ body: () -> Void)
 ```
 
-Run `body` with drawing confined to the region. It's a stencil mask, so everything drawn inside the block (fills, strokes, images, text, even 3D geometry) lands only where the region covers, and the previous clip is restored when the block ends. Any vector `Shape` works, holes and concavity included, and its `winding` rule is honored. Open contours don't fill, so a shape with no fillable region clips everything out. Nested clips intersect: a `withClip` block inside another draws only where both regions overlap.
+Run `body` with drawing confined to the region. It is a stencil mask, so everything drawn inside the block lands only where the region covers. That includes fills, strokes, images, text, and even 3D geometry. The previous clip is restored when the block ends. Any vector `Shape` works, holes and concavity included, and its `winding` rule is honored. Open contours do not fill, so a shape with no fillable region clips everything out. Nested clips intersect, so a `withClip` block inside another draws only where both regions overlap.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/ClipRegions-dark.jpg">
   <img src="../../Guide/Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
 </picture>
 
-The region is fixed where the current transform places it at the call, like a drawn fill, so transforms inside the block move the *drawing*, not the clip. Like `withState` (and `layer { }`), any drawing state the block changes is restored on exit. The clip edge anti-aliases at MSAA resolution, and the region rides into [SVG export](../Output/Export.md) as a native `<clipPath>`.
+The current transform fixes the region where it stands at the call, like a drawn fill. Transforms inside the block therefore move the drawing, not the clip. As with `withState` and `layer { }`, any drawing state the block changes is restored on exit. The clip edge anti-aliases at MSAA resolution, and the region carries into [SVG export](../Output/Export.md) as a native `<clipPath>`.
 
 ```swift
 translate(width / 2, height / 2)
@@ -1228,7 +1228,7 @@ withClip(Circle(x: 0, y: 0, radius: 300)) {
 drawCircle(0, 0, 12)                        // after the block: unclipped
 ```
 
-Clipping is scoped to the current drawing surface, so a `layer { }` opened inside a clip block starts unclipped (clip inside the layer's own block instead). For masking a whole layer with soft edges or an image matte, reach for [`masked(by:)`](Effects.md) in the effects tier. `withClip` is the cheaper, geometric tool for "keep this drawing inside that region" mid-frame. See the [`Shapes/Clipping`](../../Examples/Shapes/Clipping/Sketch.swift) example.
+Clipping is scoped to the current drawing surface, so a `layer { }` opened inside a clip block starts unclipped. Clip inside the layer's own block instead. To mask a whole layer with soft edges or an image matte, use [`masked(by:)`](Effects.md) in the effects tier. `withClip` is the cheaper, geometric tool for keeping mid-frame drawing inside a region. See the [`Shapes/Clipping`](../../Examples/Shapes/Clipping/Sketch.swift) example.
 
 <a name="viewbox"></a>
 
@@ -1238,7 +1238,7 @@ Clipping is scoped to the current drawing surface, so a `layer { }` opened insid
 withViewBox(_ rect: Rectangle, fit: ImageFit = .contain, _ body: () -> Void)
 ```
 
-Run `body` inside `rect` as if that rectangle were the whole canvas. Drawing is clipped to it and the coordinates are remapped, so `0...width` and `0...height` land on the box. That is how one window shows several versions of a piece at once.
+Run `body` inside `rect` as if that rectangle were the whole canvas. Drawing is clipped to it, and the coordinates are remapped, so `0...width` and `0...height` land on the box. That is how one window shows several versions of a piece at once.
 
 ```swift
 for (i, cell) in grid(columns: 3, rows: 2, padding: 40, gutter: 24).cells.enumerated() {
@@ -1251,14 +1251,14 @@ for (i, cell) in grid(columns: 3, rows: 2, padding: 40, gutter: 24).cells.enumer
 
 The block needs no changes to run in a box, and two things are remapped to keep that true:
 
-- **`background(_:)` fills this box's own canvas** rather than setting the frame's clear color. The clear color belongs to the whole frame and to every other box on it, so a box wiping it would take the others with it.
+- **`background(_:)` fills this box's own canvas** rather than setting the frame's clear color. The clear color belongs to the whole frame and to every other box on it. A box that wiped it would take the others with it.
 - **The mouse arrives in the box's coordinates**, so an interactive piece works in each box independently. A pointer outside the box reads proportionally outside `0...width`, the way [`Rectangle.point(u:v:)`](Geometry.md#rectangle) does.
 
-Both are restored on exit, and boxes nest: a box inside a box composes both mappings, and the clips intersect.
+Both are restored on exit, and boxes nest. A box inside a box composes both mappings, and the clips intersect.
 
-`fit` says what happens when the box is not the canvas's shape, and means exactly what it means for a picture (see [`ImageFit`](Images.md#fit)): `.contain` puts the whole virtual canvas inside and leaves the box showing along two edges, `.cover` fills the box and crops what runs past, `.stretch` squashes to fit. A box of the canvas's own shape gets the same answer from all three.
+`fit` says what happens when the box is not the canvas's shape. It means the same thing here as it does for a picture (see [`ImageFit`](Images.md#fit)). `.contain` puts the whole virtual canvas inside and leaves the box showing along two edges. `.cover` fills the box and crops what runs past. `.stretch` squashes to fit. A box of the canvas's own shape gets the same answer from all three.
 
-What does **not** change is `width` and `height`, on purpose: the code inside believes it has the whole canvas, which is what lets you hand an unmodified piece to a box. One thing follows from that, and it is worth knowing before you lay out a sheet. The virtual canvas has the *sketch's* shape, not the box's. Boxes shaped like the canvas are therefore the case where nothing is letterboxed. Labels and frames are best drawn outside the block, in canvas coordinates, so they keep one size while the pieces are scaled down. See the [`Rendering/ViewBoxes`](../../Examples/Rendering/ViewBoxes/Sketch.swift) example.
+`width` and `height` do **not** change, on purpose. The code inside believes it has the whole canvas, which is what lets you hand an unmodified piece to a box. One thing follows from that, and it is worth knowing before you lay out a sheet. The virtual canvas has the sketch's shape, not the box's. Boxes shaped like the canvas are therefore the case where nothing is letterboxed. Draw labels and frames outside the block, in canvas coordinates, so they keep one size while the pieces are scaled down. See the [`Rendering/ViewBoxes`](../../Examples/Rendering/ViewBoxes/Sketch.swift) example.
 
 <a name="viewcontrol"></a>
 
@@ -1268,7 +1268,7 @@ What does **not** change is `width` and `height`, on purpose: the code inside be
 viewControl(center: Vector2? = nil, zoom: Double = 1, in range: ClosedRange<Double> = 0.05...50)
 ```
 
-Hand the view of the canvas to whoever is watching: drag to pan, scroll to zoom. Call it once each `draw()`, before the drawing it should move. It is the 2D counterpart of [`cameraControl()`](../3D/Camera.md#control), and opt-in the same way: a sketch that never calls it never pays.
+Hand the view of the canvas to whoever is watching, so they can drag to pan and scroll to zoom. Call it once each `draw()`, before the drawing it should move. It is the 2D counterpart of [`cameraControl()`](../3D/Camera.md#control), and it is opt-in the same way. A sketch that never calls it never pays for it.
 
 ```swift
 override func draw() {
@@ -1278,20 +1278,20 @@ override func draw() {
 }
 ```
 
-What it leaves in force is a plain transform, so everything drawn after it moves together and anything drawn *before* it stays put. That is where a fixed backdrop belongs. For a HUD that has to be drawn last, wrap the call and the piece in a `withState { }` block and draw the HUD after it.
+It leaves a plain transform in force, so everything drawn after it moves together and anything drawn before it stays put. That is where a fixed backdrop belongs. For a HUD that has to be drawn last, wrap the call and the piece in a `withState { }` block, then draw the HUD after it.
 
-`center` and `zoom` frame the *opening* view and are applied on the first call only, so passing them every frame does not fight the dragging. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel can take it. `viewCenter` and `viewZoom` report where the view is, and `resetView()` puts it back to its opening framing, which is what a reset key would call.
+`center` and `zoom` frame the opening view, and they apply on the first call only. Passing them every frame therefore does not fight the dragging. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel can take it. `viewCenter` and `viewZoom` report where the view is. `resetView()` puts it back to its opening framing, which is what a reset key would call.
 
 | Gesture | Action |
 | --- | --- |
-| Drag | Pan (the content follows the pointer exactly) |
-| Scroll | Zoom about the pointer (what you point at stays under it) |
+| Drag | Pan, and the content follows the pointer exactly |
+| Scroll | Zoom about the pointer, so what you point at stays under it |
 
-Neither gesture is damped, unlike the 3D camera. An orbit gains from a little inertia; a flat plane under a finger does not.
+Neither gesture is damped, unlike the 3D camera. An orbit gains from a little inertia, and a flat plane under a finger does not.
 
-The mouse is remapped into the coordinates now on screen for the rest of the frame, so `drawCircle(mouseX, mouseY, 20)` lands under the pointer at any zoom and hit-testing keeps working. The pointer itself is restored before the next frame, so the remap never compounds. (It lasts the frame rather than the block, so a `withState { }` around the call does not put it back.)
+The mouse is remapped into the coordinates now on screen for the rest of the frame. That means `drawCircle(mouseX, mouseY, 20)` lands under the pointer at any zoom, and hit-testing keeps working. The pointer itself is restored before the next frame, so the remap never compounds. The remap lasts the frame rather than the block, so a `withState { }` around the call does not put it back.
 
-Zooming costs nothing in fidelity, because the drawing is vector. Text set at four units is a smudge at the opening view and crisp four notches in, with nothing re-rendered to get there. See the [`Input/PanAndZoom`](../../Examples/Input/PanAndZoom/Sketch.swift) example.
+Zooming costs nothing in fidelity, because the drawing is vector. Text set at four units is a smudge at the opening view and crisp four notches in, and nothing is re-rendered to get there. See the [`Input/PanAndZoom`](../../Examples/Input/PanAndZoom/Sketch.swift) example.
 
 <a name="isolated"></a>
 
@@ -1303,7 +1303,7 @@ withState(at position: Vector2, rotation: Double = 0, scale: Double = 1, _ body:
 withState(at position: Vector3, _ body: () -> Void)
 ```
 
-Run `body` with the current transform and style saved, then restored. This is the scoped form of `pushState`/`popState`, and the one to reach for: the changes stay inside the braces, like scribbling on a sheet laid over your drawing and then lifting it off.
+Run `body` with the current transform and style saved, then restored. This is the scoped form of `pushState`/`popState`, and the one to use. The changes stay inside the braces, like scribbling on a sheet laid over your drawing and then lifting it off.
 
 ```swift
 withState {
@@ -1315,7 +1315,7 @@ withState {
 // transform and fill are back to what they were
 ```
 
-The `at:` form builds the placement in, collapsing the most common block, "move there, turn, draw", to its one interesting line. Inside it the origin sits at `position`, so draw around `.zero`:
+The `at:` form builds the placement in, so the common block of "move there, turn, draw" collapses to its one interesting line. Inside it the origin sits at `position`, so draw around `.zero`:
 
 ```swift
 withState(at: p, rotation: a) {
@@ -1323,7 +1323,7 @@ withState(at: p, rotation: a) {
 }
 ```
 
-The moves apply in the fixed order translate, rotate, scale; for any other order, write the block out. The `Vector3` form is the same idea for placing a mesh in space.
+The moves apply in the fixed order translate, rotate, scale. For any other order, write the block out. The `Vector3` form is the same idea for placing a mesh in space.
 
 <a name="push"></a>
 
