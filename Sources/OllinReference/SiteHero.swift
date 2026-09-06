@@ -10,6 +10,1404 @@
 // reruns the script on any of those so the rewrite lands in the same commit.
 
 enum SiteHero {
-    /// The fragment, empty until the script has recorded it on a Mac.
-    static let fragment = ""
+    /// The fragment, as the exporter wrote it.
+    static let fragment = ##"""
+    <canvas class="ollin-sketch" width="1080" height="1080" role="img" aria-label="BreathingRing, a sketch made with Ollin"></canvas>
+    <script>
+    (function () {
+      var script = document.currentScript;
+      var canvas = script ? script.previousElementSibling : null;
+      while (canvas && canvas.tagName !== 'CANVAS') canvas = canvas.previousElementSibling;
+      if (!canvas) return;
+      var D = {"accumulates":false,"axes":[{"base":0,"c":0,"cols":[[0,14,0,0,0,1],[0,44,0,0,1,1],[0,74,0,0,2,1],[0,104,0,0,3,1],[0,134,0,0,4,1],[0,164,0,0,5,1],[0,194,0,0,6,1],[0,224,0,0,7,1],[0,254,0,0,8,1],[0,284,0,0,9,1],[0,314,0,0,10,1],[0,344,0,0,11,1],[0,374,0,0,12,1],[0,404,0,0,13,1],[0,434,0,0,14,1],[0,464,0,0,15,1],[0,494,0,0,16,1],[0,524,0,0,17,1],[0,554,0,0,18,1],[0,584,0,0,19,1],[0,614,0,0,20,1],[0,644,0,0,21,1],[0,674,0,0,22,1],[0,704,0,0,23,1],[0,734,0,0,24,1],[0,764,0,0,25,1],[0,794,0,0,26,1],[0,824,0,0,27,1]],"name":"ink.red"},{"base":0,"c":0,"cols":[[0,15,0,0,28,1],[0,45,0,0,29,1],[0,75,0,0,30,1],[0,105,0,0,31,1],[0,135,0,0,32,1],[0,165,0,0,33,1],[0,195,0,0,34,1],[0,225,0,0,35,1],[0,255,0,0,36,1],[0,285,0,0,37,1],[0,315,0,0,38,1],[0,345,0,0,39,1],[0,375,0,0,40,1],[0,405,0,0,41,1],[0,435,0,0,42,1],[0,465,0,0,43,1],[0,495,0,0,44,1],[0,525,0,0,45,1],[0,555,0,0,46,1],[0,585,0,0,47,1],[0,615,0,0,48,1],[0,645,0,0,49,1],[0,675,0,0,50,1],[0,705,0,0,51,1],[0,735,0,0,52,1],[0,765,0,0,53,1],[0,795,0,0,54,1],[0,825,0,0,55,1]],"name":"ink.green"},{"base":0,"c":0,"cols":[[0,16,0,0,56,1],[0,46,0,0,57,1],[0,76,0,0,58,1],[0,106,0,0,59,1],[0,136,0,0,60,1],[0,166,0,0,61,1],[0,196,0,0,62,1],[0,226,0,0,63,1],[0,256,0,0,64,1],[0,286,0,0,65,1],[0,316,0,0,66,1],[0,346,0,0,67,1],[0,376,0,0,68,1],[0,406,0,0,69,1],[0,436,0,0,70,1],[0,466,0,0,71,1],[0,496,0,0,72,1],[0,526,0,0,73,1],[0,556,0,0,74,1],[0,586,0,0,75,1],[0,616,0,0,76,1],[0,646,0,0,77,1],[0,676,0,0,78,1],[0,706,0,0,79,1],[0,736,0,0,80,1],[0,766,0,0,81,1],[0,796,0,0,82,1],[0,826,0,0,83,1]],"name":"ink.blue"},{"base":1,"c":0,"cols":[[0,17,0,1,84,1],[0,47,0,1,88,1],[0,77,0,1,92,1],[0,107,0,1,96,1],[0,137,0,1,100,1],[0,167,0,1,104,1],[0,197,0,1,108,1],[0,227,0,1,112,1],[0,257,0,1,116,1],[0,287,0,1,120,1],[0,317,0,1,124,1],[0,347,0,1,128,1],[0,377,0,1,132,1],[0,407,0,1,136,1],[0,437,0,1,140,1],[0,467,0,1,144,1],[0,497,0,1,148,1],[0,527,0,1,152,1],[0,557,0,1,156,1],[0,587,0,1,160,1],[0,617,0,1,164,1],[0,647,0,1,168,1],[0,677,0,1,172,1],[0,707,0,1,176,1],[0,737,0,1,180,1],[0,767,0,1,184,1],[0,797,0,1,188,1],[0,827,0,1,192,1]],"name":"ink.alpha"},{"base":1,"c":1,"cols":[[2,0,1,0,196,1]],"name":"paper.red"},{"base":1,"c":1,"cols":[[2,1,1,0,197,1]],"name":"paper.green"},{"base":1,"c":1,"cols":[[2,2,1,0,198,1]],"name":"paper.blue"}],"clear":[1,1,1],"constants":{},"controls":[{"kind":"color","label":"Ink","name":"ink","parts":[{"axis":0,"hi":1,"lo":0,"name":"red","value":0},{"axis":1,"hi":1,"lo":0,"name":"green","value":0},{"axis":2,"hi":1,"lo":0,"name":"blue","value":0},{"axis":3,"hi":1,"lo":0,"name":"alpha","value":1}]},{"kind":"color","label":"Paper","name":"paper","parts":[{"axis":4,"hi":1,"lo":0,"name":"red","value":1},{"axis":5,"hi":1,"lo":0,"name":"green","value":1},{"axis":6,"hi":1,"lo":0,"name":"blue","value":1},{"axis":-1,"hi":1,"lo":0,"name":"alpha","value":1}]}],"count":28,"drive":[],"exposure":1,"fit":[[6,3],[7,3],[8,1],[9,1],[17,1],[36,3],[37,3],[38,1],[39,1],[47,1],[66,3],[67,3],[68,1],[69,1],[77,1],[96,3],[97,3],[98,1],[99,1],[107,1],[126,3],[127,3],[128,1],[129,1],[137,1],[156,3],[157,3],[158,1],[159,1],[167,1],[186,3],[187,3],[188,1],[189,1],[197,1],[216,3],[217,3],[218,1],[219,1],[227,1],[246,3],[247,3],[248,1],[249,1],[257,1],[276,3],[277,3],[278,1],[279,1],[287,1],[306,3],[307,3],[308,1],[309,1],[317,1],[336,3],[337,3],[338,1],[339,1],[347,1],[366,3],[367,3],[368,1],[369,1],[377,1],[396,3],[397,3],[398,1],[399,1],[407,1],[426,3],[427,3],[428,1],[429,1],[437,1],[456,3],[457,3],[458,1],[459,1],[467,1],[486,3],[487,3],[488,1],[489,1],[497,1],[516,3],[517,3],[518,1],[519,1],[527,1],[546,3],[547,3],[548,1],[549,1],[557,1],[576,3],[577,3],[578,1],[579,1],[587,1],[606,3],[607,3],[608,1],[609,1],[617,1],[636,3],[637,3],[638,1],[639,1],[647,1],[666,3],[667,3],[668,1],[669,1],[677,1],[696,3],[697,3],[698,1],[699,1],[707,1],[726,3],[727,3],[728,1],[729,1],[737,1],[756,3],[757,3],[758,1],[759,1],[767,1],[786,3],[787,3],[788,1],[789,1],[797,1],[816,3],[817,3],[818,1],[819,1],[827,1]],"formulas":[],"frameOffset":0,"frames":1800,"graph":{"canvas":[["s",0,28,0]],"fields":0,"groups":0,"instances":28,"layers":[],"nodes":0,"nodes3d":0,"params":0,"post":[],"quads":0,"vertices":0},"height":1080,"loops":true,"mouse":[0,0],"msaa":false,"rate":30,"recipe":"{\"tool\":\"Ollin\",\"seed\":1,\"params\":{\"ink\":[0,0,0,1],\"paper\":[1,1,1,1]},\"frame\":0,\"fps\":30}","stable":true,"stateful":false,"tone":0,"vranges":[0,0,0,0,0,0,0,0,0,0],"width":1080};
+      var STREAM = "";
+      var BASE = "AACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAABYRAAAB0RxPXZCcT12QgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApXI8+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAtBJcRNlqGkSyl5xCspecQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADMXMU+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAMeNSRKSLK0S2TKhCtkyoQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACvJO4+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAANrxCRCGjNkT1oJZC9aCWQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADEt/8+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAACwM2RHfzQUT/I2ZC/yNmQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACEyPU+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAyeIqRI+EUUQLfilCC34pQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACbxdI+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAU3caRF1JXETIvx5CyL8eQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB5QZ8+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAHRBeiWUSQ5UxCkOVMQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQsk8+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA6nXsQwx5UES/9opCv/aKQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB/dOg9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAApKbLQzzjS0RKLaVCSi2lQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAYU9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAa+KkQ8bnSETiCqRC4gqkQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYY409AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA55WFQ7lkPURfTIhCX0yIQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAjf89AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA/114Q1ocKkRL+EdCS/hHQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD1xV8+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAmp14Q2ygF0Qibh1CIm4dQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABTl6c+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAvaRkQwAAB0SToyxCk6MsQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADsXNk+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA5PxNQ8jh50PotGtC6LRrQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAtBPk+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAPA1kQwbjwkPUz5hC1M+YQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjzf4+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA3iGSQwM4q0OYdqhCmHaoQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1Tek+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA4hKxQ2R5mUNcoZpCXKGaQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxx70+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA/A/JQwizfUOanXBCmp1wQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAd5YY+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA+WznQ1/9SUO+oC9CvqAvQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC1KSQ+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAAAAHRNkPRkM6jhxCOo4cQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACTFbE9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAnkYYRP08bUPozENC6MxDQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADSxHU9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAQ3InRL8/h0P464VC+OuFQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL/7I9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAlZk5RHIZj0Nj66JCY+uiQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABC1yU+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA2kBLRLsjoUOkCaZCpAmmQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC244c+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAAycNSRPcGxUOqP41Cqj+NQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIsL4+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAACAPwAAAAAAAAAA9mFRRJgL7EPYV1FC2FdRQgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD25ek+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAzcwsQAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+      var VBASE = "";
+      var VPOS = "";
+      var FIT = "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";
+      var EXTRA = "";
+      var RANGES = "";
+      var VARYING = "";
+      var SCENE = "";
+      var AXES = "AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AACAPwAAgD8AAIA/KVyPPgAAEEGF6zEkrkdhPilcjz4AABBBjQLYPamzRT4pXI8+AAAQQQyRPT5JcPM9KVyPPgAAEEE2t2A+ifh+PClcjz4AABBBtthMPsZ/u70pXI8+AAAQQeXSBj5MezS+KVyPPgAAEEEGVf48iAZfvilcjz4AABBBhAyevQj3Ur4pXI8+AAAQQRJ+Kr66QBO+KVyPPgAAEEHON1y+y/M9vSlcjz4AABBBxgZYvhmdfz0pXI8+AAAQQbLxHr4tph8+KVyPPgAAEEFyyXu9ok5YPilcjz4AABBBU9lBPXMBXD4pXI8+AAAQQYUBFD7P1ik+KVyPPgAAEEEJUFM+FS6cPSlcjz4AABBB9OFePu0cA70pXI8+AAAQQRjiMz4Knwe+KVyPPgAAEEEhr7k9akJNvilcjz4AABBBu3CHvJikYL4pXI8+AAAQQTkd9b2qBj2+KVyPPgAAEEGILUa+B0LWvSlcjz4AABBBHkdhvrM8fzopXI8+AAAQQcw4Rb7/wdk9KVyPPgAAEEEgwvG9eho+Pilcjz4AABBBUg5vvLTIYD4pXI8+AAAQQXpPvT37bUw+KVyPPgAAEEGZEzU+EwYGPgAAgD8AAIA/AACAPw==";
+      var PANEL = false;
+      var SDF_VS = "#version 300 es\nprecision highp float;\nprecision highp int;\nlayout(location = 0) in vec2 aT0;\nlayout(location = 1) in vec2 aT1;\nlayout(location = 2) in vec2 aT2;\nlayout(location = 3) in vec4 aCenterSize;\nlayout(location = 4) in vec4 aFill;\nlayout(location = 5) in vec4 aStroke;\nlayout(location = 6) in vec4 aP01;\nlayout(location = 7) in vec4 aP2WE;\nlayout(location = 8) in vec2 aBandShape;\nlayout(location = 9) in vec2 aRows;\nuniform vec2 viewport;\nuniform float ollin_flip;\nout vec2 vLocal;\nout vec2 vSize;\nout vec4 vFill;\nout vec4 vStroke;\nout vec2 vP0;\nout vec2 vP1;\nout vec2 vP2;\nout float vStrokeWidth;\nout float vExtra;\nout float vBand;\nout float vFillRow;\nout float vStrokeRow;\nflat out uint vShape;\nflat out uint vAlign;\nflat out uint vFillKind;\nflat out uint vStrokeKind;\nvoid main() {\n    vec2 corners[6] = vec2[6](vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),\n                              vec2(-1.0, -1.0), vec2(1.0, 1.0), vec2(-1.0, 1.0));\n    uint tag = uint(aBandShape.y + 0.5);\n    uint align = (tag >> 8u) & 3u;\n    float strokeWidth = aP2WE.z;\n    float outset = (align == 2u) ? strokeWidth * 0.5 : 0.0;\n    vec2 size = aCenterSize.zw;\n    vec2 extent = size + aBandShape.x * 0.5 + strokeWidth * 0.5 + outset + 2.0;\n    vec2 local = corners[gl_VertexID] * extent;\n    vec2 q = aCenterSize.xy + local;\n    vec2 sketch = aT0 * q.x + aT1 * q.y + aT2;\n    gl_Position = vec4((sketch.x / viewport.x) * 2.0 - 1.0, (1.0 - (sketch.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);\n    vLocal = local;\n    vSize = size;\n    vFill = aFill;\n    vStroke = aStroke;\n    vP0 = aP01.xy;\n    vP1 = aP01.zw;\n    vP2 = aP2WE.xy;\n    vStrokeWidth = strokeWidth;\n    vExtra = aP2WE.w;\n    vBand = aBandShape.x;\n    vFillRow = aRows.x;\n    vStrokeRow = aRows.y;\n    vShape = tag & 255u;\n    vAlign = align;\n    vFillKind = (tag >> 10u) & 3u;\n    vStrokeKind = (tag >> 12u) & 3u;\n}";
+      var SDF_FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n\nbool ollin_gt(float a, float b) { return a > b; }\nbool ollin_gt(int a, int b) { return a > b; }\nbvec2 ollin_gt(vec2 a, vec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(vec2 a, float b) { return greaterThan(a, vec2(b)); }\nbvec2 ollin_gt(float a, vec2 b) { return greaterThan(vec2(a), b); }\nbvec2 ollin_gt(ivec2 a, ivec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(ivec2 a, int b) { return greaterThan(a, ivec2(b)); }\nbvec2 ollin_gt(int a, ivec2 b) { return greaterThan(ivec2(a), b); }\nbvec3 ollin_gt(vec3 a, vec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(vec3 a, float b) { return greaterThan(a, vec3(b)); }\nbvec3 ollin_gt(float a, vec3 b) { return greaterThan(vec3(a), b); }\nbvec3 ollin_gt(ivec3 a, ivec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(ivec3 a, int b) { return greaterThan(a, ivec3(b)); }\nbvec3 ollin_gt(int a, ivec3 b) { return greaterThan(ivec3(a), b); }\nbvec4 ollin_gt(vec4 a, vec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(vec4 a, float b) { return greaterThan(a, vec4(b)); }\nbvec4 ollin_gt(float a, vec4 b) { return greaterThan(vec4(a), b); }\nbvec4 ollin_gt(ivec4 a, ivec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(ivec4 a, int b) { return greaterThan(a, ivec4(b)); }\nbvec4 ollin_gt(int a, ivec4 b) { return greaterThan(ivec4(a), b); }\n\nfloat ollin_select(float a, float b, bool c) { return c ? b : a; }\nvec2 ollin_select(vec2 a, vec2 b, bvec2 c) { return mix(a, b, c); }\nvec3 ollin_select(vec3 a, vec3 b, bvec3 c) { return mix(a, b, c); }\nvec4 ollin_select(vec4 a, vec4 b, bvec4 c) { return mix(a, b, c); }\nint ollin_select(int a, int b, bool c) { return c ? b : a; }\nivec2 ollin_select(ivec2 a, ivec2 b, bvec2 c) { return ivec2(c.x ? b.x : a.x, c.y ? b.y : a.y); }\nivec3 ollin_select(ivec3 a, ivec3 b, bvec3 c) { return ivec3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z); }\nivec4 ollin_select(ivec4 a, ivec4 b, bvec4 c) { return ivec4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z, c.w ? b.w : a.w); }\n\n// OLLIN_LIB_BEGIN base\n// MARK: - Color management\n//\n// The render targets composite in linear light, so colors are linearized before\n// blending and encoded back to sRGB at the end. These two conversions are the\n// foundation the whole pipeline (and any user shader's color math) leans on.\n\nvec3 srgbToLinear(vec3 c) {\n    vec3 lo = c * (1.0 / 12.92);\n    vec3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), vec3(2.4));\n    return ollin_select(lo, hi, ollin_gt(c, 0.04045));\n}\n\nvec3 linearToSrgb(vec3 c) {\n    c = clamp(c, 0.0, 1.0);\n    vec3 lo = c * 12.92;\n    vec3 hi = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;\n    return ollin_select(lo, hi, ollin_gt(c, 0.0031308));\n}\n\n// Remap geometric anti-aliasing coverage to the alpha that, blended in linear\n// light over a light ground, lands at the perceptual darkness the coverage\n// implies. Used for strokes and small dots so a thin mark reads evenly dark at\n// any angle (a linear-light blend would make a partially covered dark pixel read\n// too light). It only touches partial coverage: perceptualCoverage(1) == 1 and\n// perceptualCoverage(0) == 0, and never a shape's own fill/stroke alpha.\nfloat perceptualCoverage(float c) {\n    return 1.0 - srgbToLinear(vec3(1.0 - c)).x;\n}\n\n// Linear-light luminance (Rec. 709), the value tone and stylize math keys on.\n// The internal name stays here because the always-spliced sections and the\n// framework's own segments read it; the public `luma` lives under `color`, so a\n// shader that asks for a narrower library can define a `luma` of its own.\nfloat ollin_luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }\n\n// Un-premultiply / re-premultiply: a color op acts on straight color, but a\n// composited layer stays premultiplied. Matters only where alpha \x3C 1; an opaque\n// frame is byte-unchanged.\nvec3 ollin_unpremul(vec4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }\nvec4 ollin_premul(vec3 rgb, float a) { return vec4(rgb * a, a); }\n\n// Rotate a 2D coordinate by `a` radians. The internal name stays here because the\n// segments read it; the public `rotate2D` lives under `domain`, beside the other\n// operators that move the point a field is evaluated at.\nvec2 ollin_rot2(vec2 p, float a) {\n    float c = cos(a), s = sin(a);\n    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);\n}\n\n// A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer\n// signed, while almost everything they drive (a mix, a brightness, a size)\n// wants the unsigned form, so the pair is worth a name here as well as on the\n// sketch side.\nfloat unipolar(float v) { return v * 0.5 + 0.5; }\nvec2 unipolar(vec2 v) { return v * 0.5 + 0.5; }\nvec3 unipolar(vec3 v) { return v * 0.5 + 0.5; }\nvec4 unipolar(vec4 v) { return v * 0.5 + 0.5; }\nfloat bipolar(float v) { return v * 2.0 - 1.0; }\nvec2 bipolar(vec2 v) { return v * 2.0 - 1.0; }\nvec3 bipolar(vec3 v) { return v * 2.0 - 1.0; }\nvec4 bipolar(vec4 v) { return v * 2.0 - 1.0; }\n// OLLIN_LIB_END base\n\n// OLLIN_LIB_BEGIN sdf\n// MARK: - SDF helpers\n//\n// The smooth-minimum that melts two signed-distance fields over a radius `k`\n// (k -> 0 reduces to a hard min), followed by the 2D primitive distance functions\n// (ellipse/box/segment/star/... the catalog the framework's own shapes use, shared\n// with user shaders). Distances are in local units; a caller turns them into ~1px\n// coverage with fwidth.\nfloat smin(float a, float b, float k) {\n    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);\n    return mix(b, a, h) - k * h * (1.0 - h);\n}\n\n// MARK: SDF primitives (from the published 2D distance functions, implemented\n// from the technique). Distances are in local sketch units; the fragment turns\n// them into ~1px anti-aliased coverage with fwidth.\n\n// Approximate ellipse SDF — exact for a circle (ab.x == ab.y).\nfloat sdEllipse(vec2 p, vec2 ab) {\n    ab = max(ab, vec2(1e-4));\n    float k1 = length(p / ab);\n    float k2 = length(p / (ab * ab));\n    return (k2 > 0.0) ? k1 * (k1 - 1.0) / k2 : -min(ab.x, ab.y);\n}\n\n// Rounded box of half-extent b and corner radius r.\nfloat sdRoundBox(vec2 p, vec2 b, float r) {\n    vec2 q = abs(p) - b + r;\n    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;\n}\n\n// Oriented box: the rectangle whose centerline runs from `a` to `b` with full\n// width (thickness) `th`. `a`/`b` arrive relative to the shape center, so their\n// midpoint is the origin. The plane is rotated into the box's own frame (x along\n// the centerline, y across it), then it's an axis-aligned box. Exact signed\n// distance, negative inside.\nfloat sdOrientedBox(vec2 p, vec2 a, vec2 b, float th) {\n    vec2 ba = b - a;\n    float l = length(ba);\n    vec2 d = ba / l;\n    vec2 q = p - (a + b) * 0.5;\n    q = vec2(dot(q, d), dot(q, vec2(-d.y, d.x)));\n    q = abs(q) - vec2(l, th) * 0.5;\n    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);\n}\n\n// Distance to the segment a–b; a capsule of radius r is this minus r (round caps).\nfloat sdSegment(vec2 p, vec2 a, vec2 b) {\n    vec2 pa = p - a, ba = b - a;\n    float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);\n    return length(pa - ba * h);\n}\n\n// Pie (filled wedge) of radius r, symmetric about +Y, opening to a half-aperture\n// whose (sin, cos) is `sc`. Negative inside the wedge.\nfloat sdPie(vec2 p, vec2 sc, float r) {\n    p.x = abs(p.x);\n    float l = length(p) - r;\n    float m = length(p - sc * clamp(dot(p, sc), 0.0, r));\n    return max(l, m * sign(sc.y * p.x - sc.x * p.y));\n}\n\n// Thick arc band: a slice of the circle of radius `ra`, half-thickness `rb`,\n// symmetric about +Y over a half-aperture `sc` = (sin, cos), with round ends.\nfloat sdArc(vec2 p, vec2 sc, float ra, float rb) {\n    p.x = abs(p.x);\n    return ((sc.y * p.x > sc.x * p.y) ? length(p - sc * ra) : abs(length(p) - ra)) - rb;\n}\n\n// Isosceles triangle: apex at the origin, base of half-width q.x centered at\n// y = q.y (it opens toward +Y). Symmetric about x = 0. Exact signed distance,\n// negative inside. An equilateral triangle is the special case q = (r*√3/2, r*3/2).\nfloat sdTriangleIsosceles(vec2 p, vec2 q) {\n    p.x = abs(p.x);\n    vec2 a = p - q * clamp(dot(p, q) / dot(q, q), 0.0, 1.0);\n    vec2 b = p - q * vec2(clamp(p.x / q.x, 0.0, 1.0), 1.0);\n    float k = sign(q.y);\n    float d = min(dot(a, a), dot(b, b));\n    float s = max(k * (p.x * q.y - p.y * q.x), k * (p.y - q.y));\n    return sqrt(d) * sign(s);\n}\n\n// Regular polygon / star of circumradius `r` with one vertex along +Y. `acs` =\n// (cos, sin) of the half-sector angle `an` (= π / point-count); `ecs` = (cos, sin)\n// of the edge angle the inner radius sets (a star's \"pointiness\"; π/2 straightens\n// the points into a regular polygon's edges); `an` is that half-sector angle.\n// The plane folds into one half-sector, then it's the distance to the single\n// tip→valley edge. Exact signed distance, negative inside. The Drawer encodes a\n// regular n-gon as the star whose inner radius is the apothem.\nfloat sdStar(vec2 p, float r, vec2 acs, vec2 ecs, float an) {\n    // Fold into the half-sector. GLSL's mod returns 0..2*an; Metal's fmod truncates\n    // toward zero, so spell out the floor form to get the same wrap.\n    float a = atan(p.x, p.y);\n    float twoAn = 2.0 * an;\n    float bn = (a - twoAn * floor(a / twoAn)) - an;\n    p = length(p) * vec2(cos(bn), abs(sin(bn)));\n    p -= r * acs;\n    p += ecs * clamp(-dot(p, ecs), 0.0, r * acs.y / ecs.y);\n    return length(p) * sign(p.x);\n}\n\nfloat ndot(vec2 a, vec2 b) { return a.x * b.x - a.y * b.y; }\n\n// Rhombus (a diamond) with axis half-extents `b`: vertices at (±b.x, 0) and\n// (0, ±b.y). Exact signed distance, negative inside.\nfloat sdRhombus(vec2 p, vec2 b) {\n    p = abs(p);\n    float h = clamp(ndot(b - 2.0 * p, b) / dot(b, b), -1.0, 1.0);\n    float d = length(p - 0.5 * b * vec2(1.0 - h, 1.0 + h));\n    return d * sign(p.x * b.y + p.y * b.x - b.x * b.y);\n}\n\n// Plus sign (+): a cross of arm half-length `b.x` and arm half-width `b.y`\n// (with b.x >= b.y), corner rounding `r`. Reaches ±b.x on both axes.\nfloat sdCross(vec2 p, vec2 b, float r) {\n    p = abs(p);\n    p = (p.y > p.x) ? p.yx : p.xy;\n    vec2 q = p - b;\n    float k = max(q.y, q.x);\n    vec2 w = (k > 0.0) ? q : vec2(b.y - p.x, -k);\n    return sign(k) * length(max(w, 0.0)) + r;\n}\n\n// Vesica (a pointed lens): the two tips lie on the y-axis at (0, ±a) where\n// a = sqrt(r*r - d*d), and the waist half-width is r - d. `r` is the radius of\n// the two generating circles, centered at (±d, 0). Exact signed distance,\n// negative inside.\nfloat sdVesica(vec2 p, float r, float d) {\n    p = abs(p);\n    float b = sqrt(r * r - d * d);\n    return ((p.y - b) * d > p.x * b)\n        ? length(p - vec2(0.0, b)) * sign(d)\n        : length(p - vec2(-d, 0.0)) - r;\n}\n\n// Oriented vesica: the pointed lens whose two tips are at `a` and `b`, bulging to\n// a waist half-width `w` across the middle. `a`/`b` arrive relative to the shape\n// center, so their midpoint is the origin. The plane is rotated into the lens's\n// own frame, then it's the canonical vesica. Exact signed distance, negative\n// inside.\nfloat sdOrientedVesica(vec2 p, vec2 a, vec2 b, float w) {\n    w = max(w, 1e-4);\n    float r = 0.5 * length(b - a);\n    float d = 0.5 * (r * r - w * w) / w;\n    vec2 v = (b - a) / r;\n    vec2 pc = p - (a + b) * 0.5;\n    vec2 q = 0.5 * abs(vec2(v.y * pc.x - v.x * pc.y, v.x * pc.x + v.y * pc.y));\n    vec3 h = (r * q.x \x3C d * (q.y - r)) ? vec3(0.0, r, 0.0) : vec3(-d, 0.0, d + w);\n    return length(q - h.xy) - h.z;\n}\n\n// Crescent moon: the disk of radius `ra` at the origin with the disk of radius\n// `rb` subtracted, the latter centered at (d, 0). Symmetric about the x-axis,\n// opening toward +x. Exact signed distance, negative inside.\nfloat sdMoon(vec2 p, float d, float ra, float rb) {\n    p.y = abs(p.y);\n    float a = (ra * ra - rb * rb + d * d) / (2.0 * d);\n    float b = sqrt(max(ra * ra - a * a, 0.0));\n    if (d * (p.x * b - p.y * a) > d * d * max(b - p.y, 0.0)) {\n        return length(p - vec2(a, b));\n    }\n    return max(length(p) - ra, -(length(p - vec2(d, 0.0)) - rb));\n}\n\nfloat dot2(vec2 v) { return dot(v, v); }\n\n// Isosceles trapezoid symmetric about the y-axis, spanning y in [-he, he], with\n// half-width r1 at y = -he and r2 at y = +he. Exact signed distance, negative\n// inside. r1 == r2 is a rectangle; r2 == 0 is a triangle.\nfloat sdTrapezoid(vec2 p, float r1, float r2, float he) {\n    vec2 k1 = vec2(r2, he);\n    vec2 k2 = vec2(r2 - r1, 2.0 * he);\n    p.x = abs(p.x);\n    vec2 ca = vec2(p.x - min(p.x, (p.y \x3C 0.0) ? r1 : r2), abs(p.y) - he);\n    vec2 cb = p - k1 + k2 * clamp(dot(k1 - p, k2) / dot2(k2), 0.0, 1.0);\n    float s = (cb.x \x3C 0.0 && ca.y \x3C 0.0) ? -1.0 : 1.0;\n    return s * sqrt(min(dot2(ca), dot2(cb)));\n}\n\n// Parallelogram: base half-width `wi`, half-height `he`, top edge sheared `sk`\n// along x relative to the bottom. 180°-symmetric about the center. Exact signed\n// distance, negative inside.\nfloat sdParallelogram(vec2 p, float wi, float he, float sk) {\n    vec2 e = vec2(sk, he);\n    p = (p.y \x3C 0.0) ? -p : p;\n    vec2 w = p - e; w.x -= clamp(w.x, -wi, wi);\n    vec2 d = vec2(dot(w, w), -w.y);\n    float s = p.x * e.y - p.y * e.x;\n    p = (s \x3C 0.0) ? -p : p;\n    vec2 v = p - vec2(wi, 0.0);\n    v -= e * clamp(dot(v, e) / dot2(e), -1.0, 1.0);\n    d = min(d, vec2(dot(v, v), wi * he - abs(s)));\n    return sqrt(d.x) * sign(-d.y);\n}\n\n// Egg: a circle of radius `ra` at the origin tapering to a rounded tip of radius\n// `rb` above it (ra >= rb). Native orientation points +y. Exact signed distance,\n// negative inside.\nfloat sdEgg(vec2 p, float ra, float rb) {\n    const float k = 1.7320508;   // sqrt(3)\n    p.x = abs(p.x);\n    float r = ra - rb;\n    return ((p.y \x3C 0.0)           ? length(vec2(p.x, p.y))           - r :\n            (k * (p.x + r) \x3C p.y) ? length(vec2(p.x, p.y - k * r))       :\n                                    length(vec2(p.x + r, p.y))       - 2.0 * r) - rb;\n}\n\n// Heart fitting the unit box (width ~1.2036, height ~1.0985): the point sits near\n// (0, 0), the two lobes peak near y = 1.1. Native orientation points +y (lobes\n// up). Signed distance, negative inside (very close to exact near the boundary).\nfloat sdHeart(vec2 p) {\n    p.x = abs(p.x);\n    if (p.y + p.x > 1.0) {\n        return sqrt(dot2(p - vec2(0.25, 0.75))) - 0.35355339;   // sqrt(2)/4\n    }\n    return sqrt(min(dot2(p - vec2(0.0, 1.0)),\n                    dot2(p - 0.5 * max(p.x + p.y, 0.0)))) * sign(p.x - p.y);\n}\n\n// Disk of radius `r` with a straight cut at y = h (-r \x3C h \x3C r): keeps the part\n// with y \x3C= h. Exact signed distance, negative inside.\nfloat sdCutDisk(vec2 p, float r, float h) {\n    float w = sqrt(r * r - h * h);\n    p.x = abs(p.x);\n    float s = max((h - r) * p.x * p.x + w * w * (h + r - 2.0 * p.y), h * p.x - w * p.y);\n    return (s \x3C 0.0) ? length(p) - r :\n           (p.x \x3C w) ? h - p.y :\n                       length(p - vec2(w, h));\n}\n\n// Uneven capsule: the convex hull of a circle of radius `r1` at the origin and a\n// circle of radius `r2` at (0, h) — a tapered, round-capped bar along +y. Exact\n// signed distance, negative inside. Needs h >= |r1 - r2|.\nfloat sdUnevenCapsule(vec2 p, float r1, float r2, float h) {\n    p.x = abs(p.x);\n    float b = (r1 - r2) / h;\n    float a = sqrt(1.0 - b * b);\n    float k = dot(p, vec2(-b, a));\n    if (k \x3C 0.0)   return length(p) - r1;\n    if (k > a * h) return length(p - vec2(0.0, h)) - r2;\n    return dot(p, vec2(a, b)) - r1;\n}\n\n// Horseshoe (a thick arc with a gap): a band at mid-radius `r`, half-thickness\n// `w.y`, with end caps of tangential half-length `w.x`, opening downward. `c` is\n// the (cos, sin) of the half-angle from straight up to where the band starts.\n// Exact signed distance, negative inside.\nfloat sdHorseshoe(vec2 p, vec2 c, float r, vec2 w) {\n    p.x = abs(p.x);\n    float l = length(p);\n    p = mat2(vec2(-c.x, c.y), vec2(c.y, c.x)) * p;\n    p = vec2((p.y > 0.0 || p.x > 0.0) ? p.x : l * sign(-c.x),\n               (p.x > 0.0) ? p.y : l);\n    p = vec2(p.x, abs(p.y - r)) - w;\n    return length(max(p, 0.0)) + min(0.0, max(p.x, p.y));\n}\n\n// Parabola segment: the region under the parabola through (±wi, 0) peaking at\n// (0, he), measured to the curve (the open base is clipped by the caller). The\n// sign is negative below the curve. Native orientation peaks toward +y.\nfloat sdParabolaSegment(vec2 pos, float wi, float he) {\n    pos.x = abs(pos.x);\n    float ik = wi * wi / he;\n    float p = ik * (he - pos.y - 0.5 * ik) / 3.0;\n    float q = pos.x * ik * ik / 4.0;\n    float h = q * q - p * p * p;\n    float x;\n    if (h > 0.0) { float r = pow(q + sqrt(h), 1.0 / 3.0); x = r + p / r; }\n    else         { float r = sqrt(p); x = 2.0 * r * cos(acos(q / (p * r)) / 3.0); }\n    x = min(x, wi);\n    return length(pos - vec2(x, he - x * x / ik)) * sign(ik * (pos.y - he) + pos.x * pos.x);\n}\n\n// Rounded X (saltire): two crossed bars of half-width `r` reaching `w` along the\n// diagonal, with round ends. Exact signed distance, negative inside.\nfloat sdRoundedX(vec2 p, float w, float r) {\n    p = abs(p);\n    return length(p - min(p.x + p.y, w) * 0.5) - r;\n}\n\n// Blobby cross: a four-armed cross with concave, inward-curving sides, `he`\n// setting how pinched the waist is. Tips reach ~±1 along the axes. Signed\n// distance, negative inside (very close to exact near the boundary).\nfloat sdBlobbyCross(vec2 pos, float he) {\n    pos = abs(pos);\n    pos = vec2(abs(pos.x - pos.y), 1.0 - pos.x - pos.y) / sqrt(2.0);\n    float p = (he - pos.y - 0.25 / he) / (6.0 * he);\n    float q = pos.x / (he * he * 16.0);\n    float h = q * q - p * p * p;\n    float x;\n    if (h > 0.0) { float r = sqrt(h); x = pow(q + r, 1.0 / 3.0) - pow(abs(q - r), 1.0 / 3.0) * sign(r - q); }\n    else         { float r = sqrt(p); x = 2.0 * r * cos(acos(q / (p * r)) / 3.0); }\n    x = min(x, sqrt(2.0) / 2.0);\n    vec2 z = vec2(x, he * (1.0 - 2.0 * x * x)) - pos;\n    return length(z) * sign(z.y);\n}\n\n// Tunnel / archway: vertical walls and a flat base under a semicircular top of\n// radius `wh.x`, the walls `wh.y` tall. Native rounded top toward +y. Exact\n// signed distance, negative inside.\nfloat sdTunnel(vec2 p, vec2 wh) {\n    p.x = abs(p.x); p.y = -p.y;\n    vec2 q = p - wh;\n    float d1 = dot2(vec2(max(q.x, 0.0), q.y));\n    q.x = (p.y > 0.0) ? q.x : length(p) - wh.x;\n    float d2 = dot2(vec2(q.x, max(q.y, 0.0)));\n    float d = sqrt(min(d1, d2));\n    return (max(q.x, q.y) \x3C 0.0) ? -d : d;\n}\n\n// Staircase of `n` steps, each `wh.x` wide and `wh.y` tall, rising from the origin\n// toward +x/+y. The filled region is the solid under the step profile. Exact\n// signed distance, negative inside.\nfloat sdStairs(vec2 p, vec2 wh, float n) {\n    vec2 ba = wh * n;\n    float d = min(dot2(p - vec2(clamp(p.x, 0.0, ba.x), 0.0)),\n                  dot2(p - vec2(ba.x, clamp(p.y, 0.0, ba.y))));\n    float s = sign(max(-p.y, p.x - ba.x));\n    float dia = length(wh);\n    p = mat2(vec2(wh.x, -wh.y), vec2(wh.y, wh.x)) * p / dia;\n    float id = clamp(round(p.x / dia), 0.0, n - 1.0);\n    p.x = p.x - id * dia;\n    p = mat2(vec2(wh.x, wh.y), vec2(-wh.y, wh.x)) * p / dia;\n    float hh = wh.y / 2.0;\n    p.y -= hh;\n    if (p.y > hh * sign(p.x)) s = 1.0;\n    p = (id \x3C 0.5 || p.x > 0.0) ? p : -p;\n    d = min(d, dot2(p - vec2(0.0, clamp(p.y, -hh, hh))));\n    d = min(d, dot2(p - vec2(clamp(p.x, 0.0, wh.x), hh)));\n    return sqrt(d) * s;\n}\n\n// The iconic hand-drawn \"S\", fit to roughly the unit box (180°-symmetric). Signed\n// distance, negative inside.\nfloat sdCoolS(vec2 p) {\n    float six = (p.y \x3C 0.0) ? -p.x : p.x;\n    p.x = abs(p.x);\n    p.y = abs(p.y) - 0.2;\n    float rex = p.x - min(round(p.x / 0.4), 0.4);\n    float aby = abs(p.y - 0.2) - 0.6;\n    float d = dot2(vec2(six, -p.y) - clamp(0.5 * (six - p.y), 0.0, 0.2));\n    d = min(d, dot2(vec2(p.x, -aby) - clamp(0.5 * (p.x - aby), 0.0, 0.4)));\n    d = min(d, dot2(vec2(rex, p.y - clamp(p.y, 0.0, 0.4))));\n    float s = 2.0 * p.x + aby + abs(aby + 0.4) - 0.4;\n    return sqrt(d) * sign(s);\n}\n\n// General triangle through three arbitrary corners `a`, `b`, `c` (any winding).\n// Exact signed distance, negative inside.\nfloat sdTriangle(vec2 p, vec2 a, vec2 b, vec2 c) {\n    vec2 e0 = b - a, e1 = c - b, e2 = a - c;\n    vec2 v0 = p - a, v1 = p - b, v2 = p - c;\n    vec2 pq0 = v0 - e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0);\n    vec2 pq1 = v1 - e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0);\n    vec2 pq2 = v2 - e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0);\n    float s = sign(e0.x * e2.y - e0.y * e2.x);\n    vec2 d = min(min(vec2(dot(pq0, pq0), s * (v0.x * e0.y - v0.y * e0.x)),\n                       vec2(dot(pq1, pq1), s * (v1.x * e1.y - v1.y * e1.x))),\n                       vec2(dot(pq2, pq2), s * (v2.x * e2.y - v2.y * e2.x)));\n    return -sqrt(d.x) * sign(d.y);\n}\n\n// Unsigned distance to the quadratic Bézier curve with control points A, B, C\n// (B is the off-curve handle). The cubic that locates the nearest parameter has\n// one or three real roots; both branches are handled. Stroked by thresholding\n// this distance against the half-width (round caps fall out of the unsigned\n// form). `outT` returns the curve parameter of the nearest point — the\n// along-path coordinate a gradient stroke samples.\nfloat sdBezier(vec2 pos, vec2 A, vec2 B, vec2 C, inout float outT) {\n    vec2 a = B - A;\n    vec2 b = A - 2.0 * B + C;\n    vec2 c = a * 2.0;\n    vec2 d = A - pos;\n    // Collinear control points collapse `b` to zero (the curve is a straight\n    // line); fall back to the segment A–C so 1/dot(b,b) can't blow up to NaN.\n    if (dot(b, b) \x3C 1e-4) {\n        vec2 pa = pos - A, ba = C - A;\n        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);\n        outT = h;\n        return length(pa - ba * h);\n    }\n    float kk = 1.0 / dot(b, b);\n    float kx = kk * dot(a, b);\n    float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;\n    float kz = kk * dot(d, a);\n    float res = 0.0;\n    float p = ky - kx * kx;\n    float q = kx * (2.0 * kx * kx - 3.0 * ky) + kz;\n    float h = q * q + 4.0 * p * p * p;\n    if (h >= 0.0) {\n        h = sqrt(h);\n        vec2 x = (vec2(h, -h) - q) / 2.0;\n        vec2 uv = sign(x) * pow(abs(x), vec2(1.0 / 3.0));\n        float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);\n        res = dot2(d + (c + b * t) * t);\n        outT = t;\n    } else {\n        float z = sqrt(-p);\n        float v = acos(q / (p * z * 2.0)) / 3.0;\n        float m = cos(v);\n        float n = sin(v) * 1.7320508;\n        vec3 t = clamp(vec3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);\n        float resX = dot2(d + (c + b * t.x) * t.x);\n        float resY = dot2(d + (c + b * t.y) * t.y);\n        res = min(resX, resY);\n        outT = (resX \x3C= resY) ? t.x : t.y;\n    }\n    return sqrt(res);\n}\n// OLLIN_LIB_END sdf\n\n// OLLIN_LIB_BEGIN shapes\n// Coverage for a stroke band of half-width `hw` straddling an outline. `t` is the\n// unsigned distance to the band centerline (|d - strokeBias|) and `px` the\n// screen-space footprint. A band wider than ~1px is a plain smoothstep edge; a\n// sub-pixel-thin band keeps a ~1px footprint and scales its alpha by the width\n// ratio (the ink-conserving trick capsuleCoverage uses for thin lines), so an\n// outline thinner than a pixel fades by ink instead of thinning to nothing,\n// honoring widths from 0 up. The result is remapped to perceptual coverage so the\n// conserved ink reads evenly dark (see perceptualCoverage).\nfloat strokeBandCoverage(float t, float hw, float px) {\n    float hwE = max(hw, 0.5 * px);                          // keep a >= ~½px band on screen\n    float band = 1.0 - smoothstep(hwE - px, hwE + px, t);\n    return perceptualCoverage(band * min(hw / hwE, 1.0));   // ratio \x3C 1 only when floored\n}\n\n// Fill + stroke coverage for a shape whose boundary is the zero level set of a\n// region SDF `d`: fill the inside (d \x3C 0), stroke a band of half-width `hw`\n// straddling the boundary. `fwidth(d)` keeps the falloff ~1px under any\n// transform. Used by every region-style shape (ellipse, box, pie, chord).\n//\n// The fill ramp is inside-biased — full coverage up to the geometric edge\n// (d \x3C= 0) with the AA halo only *outside* it — so two abutting fills (a tiled\n// grid of rects, gradient bands) meet at full coverage and leave no seam. A\n// centered ramp would put both edges at ~50% on the shared line and bleed the\n// background through. The stroke band stays centered (strokes don't tile).\n// `strokeBias` shifts the stroke band off the edge for alignment: 0 centers it on\n// the outline (band |d| \x3C hw), -hw pulls it fully inside (d in [-2hw, 0]), +hw\n// pushes it fully outside (d in [0, 2hw]). The fill always stops at the edge.\nvoid regionCoverage(float d, float hw, float strokeWidth, float strokeBias,\n                           inout float fillCov, inout float strokeCov) {\n    float aa = max(fwidth(d), 1e-5);\n    // The fill stays linear so abutting fills meet seamlessly; the stroke band is a\n    // mark, so strokeBandCoverage gives it perceptual, ink-conserving coverage. A\n    // thin outline reads evenly dark at any angle and fades by ink below ~1px instead\n    // of beading or vanishing.\n    fillCov = 1.0 - smoothstep(0.0, aa, d);\n    strokeCov = (strokeWidth > 0.0) ? strokeBandCoverage(abs(d - strokeBias), hw, aa) : 0.0;\n}\n\n// `regionCoverage` with optional hollow mode: when `bandWidth` > 0 the region's\n// interior is turned into a constant-width band hugging its boundary (opOnion,\n// `abs(d) - bandWidth/2`, the same trick the ring uses) before coverage is\n// computed — so the fill paints the band and a stroke borders both of its edges.\n// `bandWidth` == 0 is the ordinary solid fill.\nvoid regionFill(float d, float bandWidth, float hw, float strokeWidth, float strokeBias,\n                       inout float fillCov, inout float strokeCov) {\n    // A hollow band already has two edges for the stroke to border, so alignment\n    // doesn't apply — keep its stroke centered on both rims.\n    if (bandWidth > 0.0) { d = abs(d) - bandWidth * 0.5; strokeBias = 0.0; }\n    regionCoverage(d, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n}\n\n// Disk (ellipse / circle / point) coverage with sub-pixel area conservation.\n// Unlike the inside-biased region ramp, a disk smaller than ~1px keeps a ~1px\n// screen footprint (so it can't fall between sample points and flicker) while\n// its alpha is scaled by the true/clamped *area* — total ink is conserved, so a\n// shrinking dot fades smoothly to nothing with no minimum-size floor. Disks\n// never tile edge-to-edge, so the region fills' seam-avoiding inside bias isn't\n// needed; a centered ramp gives crisp AA at any normal size. `px` is the pixel\n// footprint in local units (`fwidth`), so this holds under any transform. The\n// conserved coverage is remapped to perceptual alpha (see perceptualCoverage) so a\n// small dot reads as dark as its area warrants instead of washing out in linear.\nvoid diskCoverage(vec2 p, vec2 ab, float hw, float strokeWidth, float strokeBias,\n                         inout float fillCov, inout float strokeCov) {\n    float px = max(fwidth(sdEllipse(p, ab)), 1e-5);\n    vec2 abE = max(ab, 0.5 * px);                      // keep >= ~½px radius on screen\n    float d = sdEllipse(p, abE);\n    float areaScale = (ab.x * ab.y) / (abE.x * abE.y);   // \x3C 1 only when enlarged\n    fillCov = perceptualCoverage(clamp(0.5 - d / px, 0.0, 1.0) * areaScale);\n    strokeCov = (strokeWidth > 0.0) ? strokeBandCoverage(abs(d - strokeBias), hw, px) : 0.0;\n}\n\n// Coverage for a thin round-capped stroke (line / quadratic curve): `s` is the\n// unsigned distance to the centerline, `hw` the half-weight. The footprint is the\n// L2 gradient length, not fwidth: this is a unit-gradient distance field, so\n// length(grad) is the true per-pixel step at any orientation, where fwidth's L1\n// norm overshoots by up to sqrt(2) at 45 degrees and would fade a ~1px diagonal\n// line as if it were sub-pixel. A sub-pixel-thin stroke keeps a ~1px footprint\n// and scales by the width ratio (ink per unit length is proportional to width),\n// so it fades smoothly from n to 0 with no minimum-width floor; the result is then\n// remapped to perceptual coverage so the conserved ink reads evenly dark.\nfloat capsuleCoverage(float s, float hw) {\n    float px = max(length(vec2(dFdx(s), dFdy(s))), 1e-5);\n    float hwE = max(hw, 0.5 * px);\n    float c = clamp(0.5 - (s - hwE) / px, 0.0, 1.0) * min(hw / hwE, 1.0);\n    return perceptualCoverage(c);\n}\n\n// Signed distance for the *closed region* shapes — every SDFShape except the open\n// marks (capsule/line, the open/chord/pie arcs, the Bézier stroke), which have no\n// interior to fill. This is the SDF-combinator VM's leaf evaluator\n// (ShaderCombinator.metal): given a shape tag + the generic slots (read per shape\n// exactly as SDFShape encodes them), it returns the signed distance at local point\n// `p`. It mirrors the per-shape param decoding (Y-flips, recentering, insets) in\n// ollin_sdf_coverage's region cases below; they are kept in sync deliberately, so a\n// new region shape must be added in *both* places (here for combinators, the\n// coverage switch for the single-shape draw).\nfloat ollin_sdf_distance(uint shape, vec2 p, vec2 size,\n                                vec2 param0, vec2 param1, vec2 param2, float extra) {\n    switch (shape) {\n    case 1u:     // rounded box\n        return sdRoundBox(p, size, extra);\n    case 6u:     // isosceles triangle: apex at center, size = (base/2, height)\n        return sdTriangleIsosceles(p, size);\n    case 7u:     // regular polygon / star: size.x = outer radius. sdStar's native\n                 // vertex points +Y (down in y-down space), so mirror Y.\n        return sdStar(vec2(p.x, -p.y), size.x, param0, param1, extra);\n    case 8u: {   // point marker: size = (h, h); extra = kind; param0.x = arm half-width\n        float h = size.x;\n        float t = param0.x;\n        uint kind = uint(extra + 0.5);\n        if (kind == 0u) {          // square: side 2h\n            return sdRoundBox(p, size, 0.0);\n        } else if (kind == 1u) {   // diamond: a rhombus with diagonal 2h\n            return sdRhombus(p, size);\n        } else if (kind == 2u) {   // cross (+): arms reach ±h, half-width t\n            return sdCross(p, vec2(h, t), 0.0);\n        }                          // x (✕): the sharp cross (+) rotated 45°\n        const float k = 0.70710678;\n        vec2 q = vec2((p.x - p.y) * k, (p.x + p.y) * k);\n        return sdCross(q, vec2(h * 1.41421356 - t, t), 0.0);\n    }\n    case 9u: {   // rhombus (diamond): inset by r and round by r to keep the footprint\n        float r = extra;\n        return sdRhombus(p, max(size - r, vec2(1e-4))) - r;\n    }\n    case 10u: {  // vesica (pointed lens): param1.x flags a horizontal lens\n        vec2 q = (param1.x > 0.5) ? p.yx : p.xy;\n        return sdVesica(q, param0.x, param0.y) - extra;\n    }\n    case 11u:    // moon (crescent)\n        return sdMoon(p, param1.x, param0.x, param0.y) - extra;\n    case 12u: {  // cross (plus): union of two rounded boxes (sharp inner notches)\n        float L = size.x, w = param0.x, r = extra;\n        return min(sdRoundBox(p, vec2(L, w), r), sdRoundBox(p, vec2(w, L), r));\n    }\n    case 13u:    // ring (filled annulus): the disk SDF turned into a band (opOnion)\n        return abs(length(p) - param0.x) - param0.y;\n    case 14u:    // trapezoid (symmetric in y)\n        return sdTrapezoid(p, param0.x, param0.y, size.y);\n    case 15u:    // parallelogram: flip Y so a positive skew leans the top edge +x\n        return sdParallelogram(vec2(p.x, -p.y), param0.x, size.y, extra);\n    case 16u: {  // egg: flip Y (fat end down) and recenter on the quad\n        float ra = param0.x, rb = param0.y;\n        float A = 1.7320508 * (ra - rb) + rb;\n        float yc = (A - ra) * 0.5;\n        return sdEgg(vec2(p.x, -p.y + yc), ra, rb);\n    }\n    case 17u: {  // heart: flip Y (lobes up) and recenter (unit center at y = 0.5538)\n        float s = param0.x;\n        vec2 u = vec2(p.x, -p.y) / s + vec2(0.0, 0.5538);\n        return sdHeart(u) * s;\n    }\n    case 18u:    // cut disk: flip Y so the flat edge faces down\n        return sdCutDisk(vec2(p.x, -p.y), param0.x, param0.y);\n    case 19u: {  // uneven capsule: param1 = (cos, sin) into the axis frame; shift r1 end to origin\n        vec2 q = vec2(p.x * param1.x - p.y * param1.y,\n                          p.x * param1.y + p.y * param1.x);\n        q.y += extra * 0.5;\n        return sdUnevenCapsule(q, param0.x, param0.y, extra);\n    }\n    case 20u:    // horseshoe: flip Y so the opening faces down\n        return sdHorseshoe(vec2(p.x, -p.y), param0, extra, param1);\n    case 21u: {  // parabola arch: flip Y so the curve peaks up; clip the open base\n        float wi = param0.x, he = param0.y;\n        vec2 u = vec2(p.x, he * 0.5 - p.y);\n        return max(sdParabolaSegment(u, wi, he), -u.y);\n    }\n    case 22u:    // rounded X\n        return sdRoundedX(p, param0.x, extra);\n    case 23u: {  // blobby cross: evaluate the unit shape and rescale the distance\n        float s = param0.x, he = param0.y;\n        return sdBlobbyCross(p / s, he) * s;\n    }\n    case 24u: {  // tunnel / archway: recenter and flip Y so the rounded top faces up\n        vec2 wh = param0;\n        float yc = (wh.x - wh.y) * 0.5;\n        return sdTunnel(vec2(p.x, yc - p.y), wh);\n    }\n    case 25u: {  // staircase: recenter and flip Y so it ascends upward to the right\n        vec2 wh = param0;\n        float n = extra;\n        float bx = wh.x * n, by = wh.y * n;\n        vec2 u = vec2(p.x + bx * 0.5, by * 0.5 - p.y);\n        return sdStairs(u, wh, n);\n    }\n    case 26u: {  // cool S: 180°-symmetric, so no Y flip needed\n        float s = param0.x;\n        return sdCoolS(p / s) * s;\n    }\n    case 27u:    // general triangle: param0/param1/param2 = the three corners\n        return sdTriangle(p, param0, param1, param2);\n    case 29u:    // oriented box: param0/param1 = centerline endpoints; extra = thickness\n        return sdOrientedBox(p, param0, param1, extra);\n    case 30u:    // oriented vesica: param0/param1 = tip endpoints; extra = waist half-width\n        return sdOrientedVesica(p, param0, param1, extra);\n    default:     // 0: ellipse / circle\n        return sdEllipse(p, size);\n    }\n}\n\n// Fill and stroke coverage of one analytic shape at the local point `p`, read\n// from the instance's generic slots exactly as the vertex stage hands them over\n// (`shape` is the low byte of the tag, `align` its alignment bits). `pathT` is the\n// along-path coordinate a gradient paint may ask for: region shapes sweep once\n// around their center (0 at 12 o'clock, clockwise, computed only when\n// `wantsPathT`), and the capsule and Bezier overwrite it with their true path\n// parameter. The single-shape fragment calls this, and so does the page a sketch\n// exports to (where it crosses to GLSL by the shader rewriter), so the shapes\n// draw from one text in both places.\nvoid ollin_sdf_coverage(uint shape, uint align, vec2 p, vec2 size,\n                               vec2 param0, vec2 param1, vec2 param2,\n                               float strokeWidth, float extra, float bandWidth,\n                               bool wantsPathT,\n                               inout float fillCov, inout float strokeCov,\n                               inout float pathT) {\n    float hw = strokeWidth * 0.5;\n    // Stroke alignment: shift the stroke band inside (-hw) or outside (+hw) the\n    // edge, or leave it centered (0). d is negative inside, positive outside.\n    float strokeBias = (align == 1u) ? -hw : (align == 2u) ? hw : 0.0;\n    fillCov = 0.0;\n    strokeCov = 0.0;\n    pathT = 0.0;\n    if (wantsPathT) {\n        pathT = fract(atan(p.x, -p.y) * (1.0 / 6.283185307179586));\n    }\n\n    switch (shape) {\n    case 1u:     // rounded box\n        regionFill(sdRoundBox(p, size, extra), bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    case 6u:     // isosceles triangle: apex at center, size = (base/2, height)\n        // Region coverage (inside-biased), so abutting triangles — the rotated\n        // wedges that tile a cell — meet at full coverage and leave no seam.\n        regionFill(sdTriangleIsosceles(p, size), bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    case 7u: {   // regular polygon / star: size.x = outer radius (= AABB extent)\n        // sdStar's native vertex points along +Y, which is *down* in y-down space;\n        // mirror Y so a vertex points up. Region coverage like the triangle/box.\n        float d = sdStar(vec2(p.x, -p.y), size.x, param0, param1, extra);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 8u: {   // point marker: size = (h, h); extra = kind; param0.x = arm half-width\n        float h = size.x;\n        float t = param0.x;\n        uint kind = uint(extra + 0.5);\n        float d;\n        if (kind == 0u) {          // square: side 2h\n            d = sdRoundBox(p, size, 0.0);\n        } else if (kind == 1u) {   // diamond: a rhombus with diagonal 2h\n            d = sdRhombus(p, size);\n        } else if (kind == 2u) {   // cross (+): arms reach ±h, half-width t\n            d = sdCross(p, vec2(h, t), 0.0);\n        } else {                   // x (✕): the sharp cross (+) rotated 45°\n            const float k = 0.70710678;   // cos 45° = sin 45°\n            vec2 q = vec2((p.x - p.y) * k, (p.x + p.y) * k);\n            d = sdCross(q, vec2(h * 1.41421356 - t, t), 0.0);   // arm length set so the X still spans 2h\n        }\n        // Region coverage (fill-only — strokeWidth is 0 on the point path).\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 2u: {   // capsule (a line): solid fill in fillColor, round caps\n        // Centered AA keeps the line ~strokeWidth wide (it doesn't tile, so the\n        // inside bias the region fills use isn't needed here). param0 is the\n        // half-segment vector; extra is the cap radius (half the weight). A\n        // sub-pixel width keeps a ~1px footprint and scales alpha linearly by the\n        // width ratio (a line's ink per unit length ∝ width), so a thin line\n        // fades smoothly instead of vanishing or snapping to 1px.\n        // Area-conserving coverage via the L2 gradient footprint (orientation-\n        // invariant — see capsuleCoverage). param0 = half-segment vector; extra =\n        // cap radius (half the weight). The segment math is inlined (same form\n        // as sdSegment) so the closest-point parameter doubles as the line's\n        // along-path coordinate for a gradient stroke.\n        vec2 pa = p + param0;             // p - a, with a = -param0\n        vec2 ba = param0 * 2.0;           // b - a\n        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-12), 0.0, 1.0);\n        float s = length(pa - ba * h);\n        pathT = h;\n        fillCov = capsuleCoverage(s, extra);\n        break;\n    }\n    case 3u:     // arc, open\n    case 4u:     // arc, chord\n    case 5u: {   // arc, pie\n        // Rotate the local point so the arc's bisector points to +Y (param1 =\n        // (cos, sin) of the rotation), then evaluate in that canonical frame.\n        // param0 = (sin, cos) of the half-aperture; size.x = radius.\n        vec2 q = vec2(p.x * param1.x - p.y * param1.y,\n                          p.x * param1.y + p.y * param1.x);\n        float ra = size.x;\n        vec2 sc = param0;\n        if (shape == 5u) {\n            // pie: filled wedge; the stroke band traces its whole outline (the\n            // two radii and the arc).\n            regionCoverage(sdPie(q, sc, ra), hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        } else {\n            // chord & open share the circular-segment region for the fill: inside\n            // the disk and on the arc side of the chord (the chord lies at\n            // q.y = ra * sc.y, the line through the two arc endpoints).\n            float dSeg = max(length(q) - ra, ra * sc.y - q.y);\n            if (shape == 4u) {\n                // chord: the stroke traces the segment outline (curve + chord).\n                regionCoverage(dSeg, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n            } else {\n                // open: fill the segment, but stroke only the curve via the\n                // thick-arc band, so the chord stays open (matches ArcMode.open).\n                float aa = max(fwidth(dSeg), 1e-5);\n                fillCov = 1.0 - smoothstep(0.0, aa, dSeg);\n                if (strokeWidth > 0.0) {\n                    float dArc = sdArc(q, sc, ra, hw);\n                    float aaA = max(fwidth(dArc), 1e-5);\n                    strokeCov = 1.0 - smoothstep(0.0, aaA, dArc);\n                }\n            }\n        }\n        break;\n    }\n    case 9u: {   // rhombus (diamond): size = (w/2, h/2) AABB; extra = corner radius.\n        // Inset the core by r and round by r, so the rounded shape keeps the\n        // (w, h) footprint (its tips still reach the size box). Region coverage\n        // (inside-biased) so a tiled diamond grid leaves no seam.\n        float r = extra;\n        float d = sdRhombus(p, max(size - r, vec2(1e-4))) - r;\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 10u: {  // vesica (pointed lens): param0 = (circle radius, center offset);\n                 // param1.x = 1 for a horizontal lens; extra = corner radius (rounds\n                 // the tips). The builder insets so rounding keeps the footprint.\n        vec2 q = (param1.x > 0.5) ? p.yx : p.xy;\n        float d = sdVesica(q, param0.x, param0.y) - extra;\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 11u: {  // moon (crescent): param0 = (outer radius, inner radius);\n                 // param1.x = offset; extra = corner radius (rounds the cusps).\n        float d = sdMoon(p, param1.x, param0.x, param0.y) - extra;\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 12u: {  // cross (plus): size.x = arm half-length (AABB); param0.x = arm\n                 // half-width; extra = corner radius. Union of two rounded boxes,\n                 // so the outer corners round (radius r) and the inner notches stay\n                 // sharp — the usual rounded-plus look.\n        float L = size.x;\n        float w = param0.x;\n        float r = extra;\n        float d = min(sdRoundBox(p, vec2(L, w), r), sdRoundBox(p, vec2(w, L), r));\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 13u: {  // ring (filled annulus): param0 = (mid radius, half thickness).\n                 // The disk SDF turned into a band (opOnion); fill only.\n        float d = abs(length(p) - param0.x) - param0.y;\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 14u: {  // trapezoid: param0 = (top half-width, bottom half-width);\n                 // size.y = half-height. Symmetric in y, so no flip needed.\n        float d = sdTrapezoid(p, param0.x, param0.y, size.y);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 15u: {  // parallelogram: param0.x = base half-width; size.y = half-height;\n                 // extra = skew. Flip Y so a positive skew leans the top edge +x.\n        float d = sdParallelogram(vec2(p.x, -p.y), param0.x, size.y, extra);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 16u: {  // egg: param0 = (bottom radius ra, top radius rb), ra >= rb.\n                 // Flip Y (fat end down) and recenter on the quad: the native\n                 // shape spans y in [-ra, A] with A the apex, center yc.\n        float ra = param0.x, rb = param0.y;\n        float A = 1.7320508 * (ra - rb) + rb;\n        float yc = (A - ra) * 0.5;\n        float d = sdEgg(vec2(p.x, -p.y + yc), ra, rb);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 17u: {  // heart: param0.x = unit->local scale. Flip Y (lobes up) and\n                 // recenter (the unit heart's center sits at y = 0.5538).\n        float s = param0.x;\n        vec2 u = vec2(p.x, -p.y) / s + vec2(0.0, 0.5538);\n        float d = sdHeart(u) * s;\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 18u: {  // cut disk: param0 = (radius, cut height h). Flip Y so the flat\n                 // edge faces down (-y) and the dome bulges up; a positive cut\n                 // raises the chord toward the dome, keeping a smaller cap.\n        float d = sdCutDisk(vec2(p.x, -p.y), param0.x, param0.y);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 19u: {  // uneven capsule: param0 = (r1, r2); param1 = (cos, sin) of the\n                 // rotation into the capsule's axis frame (+y from a to b);\n                 // extra = end-to-end length. Shift the r1 end to the orig\n        vec2 q = vec2(p.x * param1.x - p.y * param1.y,\n                          p.x * param1.y + p.y * param1.x);\n        q.y += extra * 0.5;\n        float d = sdUnevenCapsule(q, param0.x, param0.y, extra);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 20u: {  // horseshoe: param0 = (cos, sin) half-gap; param1 = (cap half-len,\n                 // half-thick); extra = mid radius. Flip Y so the opening faces down.\n        float d = sdHorseshoe(vec2(p.x, -p.y), param0, extra, param1);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 21u: {  // parabola arch: param0 = (top half-width wi, height he). Flip Y so\n                 // the curve peaks up; clip the open base with the y >= 0 half-plane.\n        float wi = param0.x, he = param0.y;\n        vec2 u = vec2(p.x, he * 0.5 - p.y);\n        float d = max(sdParabolaSegment(u, wi, he), -u.y);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 22u: {  // rounded X: param0.x = arm reach w; extra = arm half-width r.\n        float d = sdRoundedX(p, param0.x, extra);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 23u: {  // blobby cross: param0 = (scale s, blobbiness he). Evaluate the\n                 // unit shape and rescale the distance.\n        float s = param0.x, he = param0.y;\n        float d = sdBlobbyCross(p / s, he) * s;\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 24u: {  // tunnel / archway: param0 = (half-width wh.x, wall height wh.y).\n                 // Recenter on the quad and flip Y so the rounded top faces up.\n        vec2 wh = param0;\n        float yc = (wh.x - wh.y) * 0.5;\n        float d = sdTunnel(vec2(p.x, yc - p.y), wh);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 25u: {  // staircase: param0 = (step width, step height); extra = step count.\n                 // Recenter on the quad and flip Y so it ascends upward to the right.\n        vec2 wh = param0;\n        float n = extra;\n        float bx = wh.x * n, by = wh.y * n;\n        vec2 u = vec2(p.x + bx * 0.5, by * 0.5 - p.y);\n        float d = sdStairs(u, wh, n);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 26u: {  // cool S: param0.x = scale. 180°-symmetric, so no Y flip needed.\n        float s = param0.x;\n        float d = sdCoolS(p / s) * s;\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 27u: {  // general triangle: param0/param1/param2 = the three corners,\n                 // relative to center. Region coverage like the isosceles form.\n        float d = sdTriangle(p, param0, param1, param2);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 28u: {  // quadratic Bézier stroke: param0/param1/param2 = (start, control,\n                 // end) relative to center; extra = half stroke width; fill = stroke\n                 // color. Stroke-only (a curve has no interior), so it uses the\n                 // capsule's centered, area-conserving fade rather than regionFill —\n                 // a sub-pixel-thin curve fades by width instead of vanishing.\n        float t = 0.0;\n        float s = sdBezier(p, param0, param1, param2, t);\n        pathT = t;\n        fillCov = capsuleCoverage(s, extra);   // same coverage as the line\n        break;\n    }\n    case 29u: {  // oriented box: param0/param1 = centerline endpoints (rel. center);\n                 // extra = thickness. Region coverage like the rounded box.\n        float d = sdOrientedBox(p, param0, param1, extra);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    case 30u: {  // oriented vesica: param0/param1 = tip endpoints (rel. center);\n                 // extra = waist half-width. Region coverage like the vesica.\n        float d = sdOrientedVesica(p, param0, param1, extra);\n        regionFill(d, bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        break;\n    }\n    default:     // 0: ellipse / circle / point\n        // Solid disks use area-conserving coverage (smooth sub-pixel dots); a\n        // hollow disk is an elliptical ring, so onion the ellipse SDF instead.\n        if (bandWidth > 0.0) {\n            regionFill(sdEllipse(p, size), bandWidth, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        } else {\n            diskCoverage(p, size, hw, strokeWidth, strokeBias, fillCov, strokeCov);\n        }\n        break;\n    }\n}\n// OLLIN_LIB_END shapes\n\nuniform sampler2D gradients;\nvec4 resolvePaint(vec4 slot, uint kind, float row, vec2 p, float pathT) {\n    if (kind == 0u) { return vec4(srgbToLinear(slot.rgb), slot.a); }\n    float t;\n    if (kind == 1u) {\n        vec2 d = slot.zw - slot.xy;\n        t = dot(p - slot.xy, d) / max(dot(d, d), 1e-12);\n    } else if (kind == 2u) {\n        t = length(p - slot.xy) / max(slot.z, 1e-6);\n    } else {\n        t = pathT;\n    }\n    vec2 size = vec2(textureSize(gradients, 0));\n    float u = (clamp(t, 0.0, 1.0) * (size.x - 1.0) + 0.5) / size.x;\n    float v = (row + 0.5) / size.y;\n    return texture(gradients, vec2(u, v));\n}in vec2 vLocal;\nin vec2 vSize;\nin vec4 vFill;\nin vec4 vStroke;\nin vec2 vP0;\nin vec2 vP1;\nin vec2 vP2;\nin float vStrokeWidth;\nin float vExtra;\nin float vBand;\nin float vFillRow;\nin float vStrokeRow;\nflat in uint vShape;\nflat in uint vAlign;\nflat in uint vFillKind;\nflat in uint vStrokeKind;\nout vec4 fragColor;\nvoid main() {\n    float fillCov = 0.0;\n    float strokeCov = 0.0;\n    float pathT = 0.0;\n    ollin_sdf_coverage(vShape, vAlign, vLocal, vSize, vP0, vP1, vP2,\n                       vStrokeWidth, vExtra, vBand, vFillKind == 3u || vStrokeKind == 3u,\n                       fillCov, strokeCov, pathT);\n    vec4 fillPaint = resolvePaint(vFill, vFillKind, vFillRow, vLocal, pathT);\n    vec4 strokePaint = resolvePaint(vStroke, vStrokeKind, vStrokeRow, vLocal, pathT);\n    float fillA = fillPaint.a * fillCov;\n    float strokeA = strokePaint.a * strokeCov;\n    vec3 premul = strokePaint.rgb * strokeA + fillPaint.rgb * fillA * (1.0 - strokeA);\n    float a = strokeA + fillA * (1.0 - strokeA);\n    if (a \x3C= 0.0) { fragColor = vec4(0.0); return; }\n    fragColor = vec4(premul / a, a);\n}";
+      var PRESENT_VS = "#version 300 es\nprecision highp float;\nout vec2 uv;\nvoid main() {\n    vec2 p = vec2(float((gl_VertexID \x3C\x3C 1) & 2), float(gl_VertexID & 2));\n    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n    uv = p;\n}";
+      var PRESENT_FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n\nbool ollin_gt(float a, float b) { return a > b; }\nbool ollin_gt(int a, int b) { return a > b; }\nbvec2 ollin_gt(vec2 a, vec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(vec2 a, float b) { return greaterThan(a, vec2(b)); }\nbvec2 ollin_gt(float a, vec2 b) { return greaterThan(vec2(a), b); }\nbvec2 ollin_gt(ivec2 a, ivec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(ivec2 a, int b) { return greaterThan(a, ivec2(b)); }\nbvec2 ollin_gt(int a, ivec2 b) { return greaterThan(ivec2(a), b); }\nbvec3 ollin_gt(vec3 a, vec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(vec3 a, float b) { return greaterThan(a, vec3(b)); }\nbvec3 ollin_gt(float a, vec3 b) { return greaterThan(vec3(a), b); }\nbvec3 ollin_gt(ivec3 a, ivec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(ivec3 a, int b) { return greaterThan(a, ivec3(b)); }\nbvec3 ollin_gt(int a, ivec3 b) { return greaterThan(ivec3(a), b); }\nbvec4 ollin_gt(vec4 a, vec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(vec4 a, float b) { return greaterThan(a, vec4(b)); }\nbvec4 ollin_gt(float a, vec4 b) { return greaterThan(vec4(a), b); }\nbvec4 ollin_gt(ivec4 a, ivec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(ivec4 a, int b) { return greaterThan(a, ivec4(b)); }\nbvec4 ollin_gt(int a, ivec4 b) { return greaterThan(ivec4(a), b); }\n\nfloat ollin_select(float a, float b, bool c) { return c ? b : a; }\nvec2 ollin_select(vec2 a, vec2 b, bvec2 c) { return mix(a, b, c); }\nvec3 ollin_select(vec3 a, vec3 b, bvec3 c) { return mix(a, b, c); }\nvec4 ollin_select(vec4 a, vec4 b, bvec4 c) { return mix(a, b, c); }\nint ollin_select(int a, int b, bool c) { return c ? b : a; }\nivec2 ollin_select(ivec2 a, ivec2 b, bvec2 c) { return ivec2(c.x ? b.x : a.x, c.y ? b.y : a.y); }\nivec3 ollin_select(ivec3 a, ivec3 b, bvec3 c) { return ivec3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z); }\nivec4 ollin_select(ivec4 a, ivec4 b, bvec4 c) { return ivec4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z, c.w ? b.w : a.w); }\n\n// OLLIN_LIB_BEGIN base\n// MARK: - Color management\n//\n// The render targets composite in linear light, so colors are linearized before\n// blending and encoded back to sRGB at the end. These two conversions are the\n// foundation the whole pipeline (and any user shader's color math) leans on.\n\nvec3 srgbToLinear(vec3 c) {\n    vec3 lo = c * (1.0 / 12.92);\n    vec3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), vec3(2.4));\n    return ollin_select(lo, hi, ollin_gt(c, 0.04045));\n}\n\nvec3 linearToSrgb(vec3 c) {\n    c = clamp(c, 0.0, 1.0);\n    vec3 lo = c * 12.92;\n    vec3 hi = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;\n    return ollin_select(lo, hi, ollin_gt(c, 0.0031308));\n}\n\n// Remap geometric anti-aliasing coverage to the alpha that, blended in linear\n// light over a light ground, lands at the perceptual darkness the coverage\n// implies. Used for strokes and small dots so a thin mark reads evenly dark at\n// any angle (a linear-light blend would make a partially covered dark pixel read\n// too light). It only touches partial coverage: perceptualCoverage(1) == 1 and\n// perceptualCoverage(0) == 0, and never a shape's own fill/stroke alpha.\nfloat perceptualCoverage(float c) {\n    return 1.0 - srgbToLinear(vec3(1.0 - c)).x;\n}\n\n// Linear-light luminance (Rec. 709), the value tone and stylize math keys on.\n// The internal name stays here because the always-spliced sections and the\n// framework's own segments read it; the public `luma` lives under `color`, so a\n// shader that asks for a narrower library can define a `luma` of its own.\nfloat ollin_luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }\n\n// Un-premultiply / re-premultiply: a color op acts on straight color, but a\n// composited layer stays premultiplied. Matters only where alpha \x3C 1; an opaque\n// frame is byte-unchanged.\nvec3 ollin_unpremul(vec4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }\nvec4 ollin_premul(vec3 rgb, float a) { return vec4(rgb * a, a); }\n\n// Rotate a 2D coordinate by `a` radians. The internal name stays here because the\n// segments read it; the public `rotate2D` lives under `domain`, beside the other\n// operators that move the point a field is evaluated at.\nvec2 ollin_rot2(vec2 p, float a) {\n    float c = cos(a), s = sin(a);\n    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);\n}\n\n// A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer\n// signed, while almost everything they drive (a mix, a brightness, a size)\n// wants the unsigned form, so the pair is worth a name here as well as on the\n// sketch side.\nfloat unipolar(float v) { return v * 0.5 + 0.5; }\nvec2 unipolar(vec2 v) { return v * 0.5 + 0.5; }\nvec3 unipolar(vec3 v) { return v * 0.5 + 0.5; }\nvec4 unipolar(vec4 v) { return v * 0.5 + 0.5; }\nfloat bipolar(float v) { return v * 2.0 - 1.0; }\nvec2 bipolar(vec2 v) { return v * 2.0 - 1.0; }\nvec3 bipolar(vec3 v) { return v * 2.0 - 1.0; }\nvec4 bipolar(vec4 v) { return v * 2.0 - 1.0; }\n// OLLIN_LIB_END base\n\n// OLLIN_LIB_BEGIN hash\n// MARK: - Hashing\n//\n// Texture-free pseudo-random hashes (a few fract/dot rounds), plus a hash-driven\n// disc sampler. The naming follows the common convention hashNM: N output\n// channels from an M-component seed.\n\n// 1 channel from a float seed, in [0, 1).\nfloat hash11(float p) {\n    p = fract(p * 0.1031);\n    p *= p + 33.33;\n    p *= p + p;\n    return fract(p);\n}\n\n// 1 channel from a float2 seed, in [0, 1).\nfloat hash12(vec2 p) {\n    vec3 p3 = fract(vec3(p.xyx) * 0.1031);\n    p3 += dot(p3, p3.yzx + 33.33);\n    return fract((p3.x + p3.y) * p3.z);\n}\n\n// 1 channel from a float3 seed, in [0, 1).\nfloat hash13(vec3 p3) {\n    p3 = fract(p3 * 0.1031);\n    p3 += dot(p3, p3.zyx + 31.32);\n    return fract((p3.x + p3.y) * p3.z);\n}\n\n// 2 channels from a float2 seed, each in [0, 1).\nvec2 hash22(vec2 p) {\n    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));\n    p3 += dot(p3, p3.yzx + 33.33);\n    return fract((p3.xx + p3.yz) * p3.zy);\n}\n\n// 3 channels from a float3 seed, each in [0, 1).\nvec3 hash33(vec3 p3) {\n    p3 = fract(p3 * vec3(0.1031, 0.1030, 0.0973));\n    p3 += dot(p3, p3.yxz + 33.33);\n    return fract((p3.xxy + p3.yxx) * p3.zyx);\n}\n\n// A point in the unit disc, uniform over its *area* (radius via sqrt so samples\n// don't bunch at the center), the right scatter for energy-conserving bokeh.\n// `seed` is any per-sample value to decorrelate the draws.\nvec2 discSample(vec2 seed) {\n    vec2 h = hash22(seed);\n    float r = sqrt(h.x);\n    float a = h.y * 6.28318530718;\n    return vec2(cos(a), sin(a)) * r;\n}\n\n// A point in the unit ball, uniform over its *volume* (radius via the cube root,\n// direction uniform over the sphere), the three-dimensional counterpart of\n// discSample: the scatter a depth-of-field lens applies to a sample in camera\n// space, where a point out of focus lands anywhere in a ball rather than a disc.\n// `seed` is any per-sample value to decorrelate the draws.\nvec3 ballSample(vec3 seed) {\n    vec3 h = hash33(seed);\n    float r = pow(h.x, 1.0 / 3.0);\n    float cosTheta = h.y * 2.0 - 1.0;\n    float sinTheta = sqrt(max(1.0 - cosTheta * cosTheta, 0.0));\n    float phi = h.z * 6.28318530718;\n    return vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta) * r;\n}\n// OLLIN_LIB_END hash\n\n// OLLIN_LIB_BEGIN present\n// Triangular-PDF dither in [-1, 1]: the difference of two uniform samples, the\n// right noise shape for de-banding a quantizer.\nfloat ditherTriangle(vec2 fragCoord) {\n    return hash12(fragCoord) - hash12(fragCoord + 17.0);\n}\n\n// Apply ~1 LSB of dither to a linear straight-alpha color in 8-bit sRGB output\n// space, returning linear (the sRGB target re-encodes, so the round-trip lands\n// the dither exactly where the quantization happens).\nvec4 finalizeColor(vec4 linearColor, vec2 fragCoord) {\n    vec3 enc = linearToSrgb(linearColor.rgb);\n    enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0);\n    return vec4(srgbToLinear(enc), linearColor.a);\n}\n\n// OLLIN_LIB_END present\n\n// OLLIN_LIB_BEGIN present\n// ACES filmic tone-map (Krzysztof Narkowicz's fitted curve, written from the\n// published approximation): rolls highlights off smoothly instead of clipping.\nvec3 toneMapACES(vec3 x) {\n    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;\n    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);\n}\n\n// OLLIN_LIB_END present\n\nuniform sampler2D src;\nuniform vec2 viewport;\nuniform float exposure;\nuniform int toneMapMode;\nin vec2 uv;\nout vec4 fragColor;\nvoid main() {\n    vec3 c = texture(src, uv).rgb * exposure;\n    if (toneMapMode == 1) {\n        c = c / (1.0 + c);\n    } else if (toneMapMode == 2) {\n        c = toneMapACES(c);\n    }\n    vec2 fragCoord = vec2(gl_FragCoord.x, viewport.y - gl_FragCoord.y);\n    vec3 enc = linearToSrgb(c);\n    enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0);\n    fragColor = vec4(enc, 1.0);\n}";
+      var IMAGE_VS = "#version 300 es\nprecision highp float;\nlayout(location = 0) in vec2 aPosition;\nlayout(location = 1) in vec2 aUV;\nlayout(location = 2) in vec4 aTint;\nuniform vec2 viewport;\nuniform float ollin_flip;\nout vec2 vUV;\nout vec4 vTint;\nvoid main() {\n    gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);\n    vUV = aUV;\n    vTint = aTint;\n}";
+      var IMAGE_FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n\nbool ollin_gt(float a, float b) { return a > b; }\nbool ollin_gt(int a, int b) { return a > b; }\nbvec2 ollin_gt(vec2 a, vec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(vec2 a, float b) { return greaterThan(a, vec2(b)); }\nbvec2 ollin_gt(float a, vec2 b) { return greaterThan(vec2(a), b); }\nbvec2 ollin_gt(ivec2 a, ivec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(ivec2 a, int b) { return greaterThan(a, ivec2(b)); }\nbvec2 ollin_gt(int a, ivec2 b) { return greaterThan(ivec2(a), b); }\nbvec3 ollin_gt(vec3 a, vec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(vec3 a, float b) { return greaterThan(a, vec3(b)); }\nbvec3 ollin_gt(float a, vec3 b) { return greaterThan(vec3(a), b); }\nbvec3 ollin_gt(ivec3 a, ivec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(ivec3 a, int b) { return greaterThan(a, ivec3(b)); }\nbvec3 ollin_gt(int a, ivec3 b) { return greaterThan(ivec3(a), b); }\nbvec4 ollin_gt(vec4 a, vec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(vec4 a, float b) { return greaterThan(a, vec4(b)); }\nbvec4 ollin_gt(float a, vec4 b) { return greaterThan(vec4(a), b); }\nbvec4 ollin_gt(ivec4 a, ivec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(ivec4 a, int b) { return greaterThan(a, ivec4(b)); }\nbvec4 ollin_gt(int a, ivec4 b) { return greaterThan(ivec4(a), b); }\n\nfloat ollin_select(float a, float b, bool c) { return c ? b : a; }\nvec2 ollin_select(vec2 a, vec2 b, bvec2 c) { return mix(a, b, c); }\nvec3 ollin_select(vec3 a, vec3 b, bvec3 c) { return mix(a, b, c); }\nvec4 ollin_select(vec4 a, vec4 b, bvec4 c) { return mix(a, b, c); }\nint ollin_select(int a, int b, bool c) { return c ? b : a; }\nivec2 ollin_select(ivec2 a, ivec2 b, bvec2 c) { return ivec2(c.x ? b.x : a.x, c.y ? b.y : a.y); }\nivec3 ollin_select(ivec3 a, ivec3 b, bvec3 c) { return ivec3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z); }\nivec4 ollin_select(ivec4 a, ivec4 b, bvec4 c) { return ivec4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z, c.w ? b.w : a.w); }\n\n// OLLIN_LIB_BEGIN base\n// MARK: - Color management\n//\n// The render targets composite in linear light, so colors are linearized before\n// blending and encoded back to sRGB at the end. These two conversions are the\n// foundation the whole pipeline (and any user shader's color math) leans on.\n\nvec3 srgbToLinear(vec3 c) {\n    vec3 lo = c * (1.0 / 12.92);\n    vec3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), vec3(2.4));\n    return ollin_select(lo, hi, ollin_gt(c, 0.04045));\n}\n\nvec3 linearToSrgb(vec3 c) {\n    c = clamp(c, 0.0, 1.0);\n    vec3 lo = c * 12.92;\n    vec3 hi = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;\n    return ollin_select(lo, hi, ollin_gt(c, 0.0031308));\n}\n\n// Remap geometric anti-aliasing coverage to the alpha that, blended in linear\n// light over a light ground, lands at the perceptual darkness the coverage\n// implies. Used for strokes and small dots so a thin mark reads evenly dark at\n// any angle (a linear-light blend would make a partially covered dark pixel read\n// too light). It only touches partial coverage: perceptualCoverage(1) == 1 and\n// perceptualCoverage(0) == 0, and never a shape's own fill/stroke alpha.\nfloat perceptualCoverage(float c) {\n    return 1.0 - srgbToLinear(vec3(1.0 - c)).x;\n}\n\n// Linear-light luminance (Rec. 709), the value tone and stylize math keys on.\n// The internal name stays here because the always-spliced sections and the\n// framework's own segments read it; the public `luma` lives under `color`, so a\n// shader that asks for a narrower library can define a `luma` of its own.\nfloat ollin_luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }\n\n// Un-premultiply / re-premultiply: a color op acts on straight color, but a\n// composited layer stays premultiplied. Matters only where alpha \x3C 1; an opaque\n// frame is byte-unchanged.\nvec3 ollin_unpremul(vec4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }\nvec4 ollin_premul(vec3 rgb, float a) { return vec4(rgb * a, a); }\n\n// Rotate a 2D coordinate by `a` radians. The internal name stays here because the\n// segments read it; the public `rotate2D` lives under `domain`, beside the other\n// operators that move the point a field is evaluated at.\nvec2 ollin_rot2(vec2 p, float a) {\n    float c = cos(a), s = sin(a);\n    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);\n}\n\n// A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer\n// signed, while almost everything they drive (a mix, a brightness, a size)\n// wants the unsigned form, so the pair is worth a name here as well as on the\n// sketch side.\nfloat unipolar(float v) { return v * 0.5 + 0.5; }\nvec2 unipolar(vec2 v) { return v * 0.5 + 0.5; }\nvec3 unipolar(vec3 v) { return v * 0.5 + 0.5; }\nvec4 unipolar(vec4 v) { return v * 0.5 + 0.5; }\nfloat bipolar(float v) { return v * 2.0 - 1.0; }\nvec2 bipolar(vec2 v) { return v * 2.0 - 1.0; }\nvec3 bipolar(vec3 v) { return v * 2.0 - 1.0; }\nvec4 bipolar(vec4 v) { return v * 2.0 - 1.0; }\n// OLLIN_LIB_END base\n\nuniform sampler2D tex;\nuniform float vflip;\nin vec2 vUV;\nin vec4 vTint;\nout vec4 fragColor;\nvoid main() {\n    vec4 c = texture(tex, vec2(vUV.x, mix(vUV.y, 1.0 - vUV.y, vflip)));\n    c.rgb *= srgbToLinear(vTint.rgb);\n    c *= vTint.a;\n    fragColor = c;\n}";
+      var GLYPH_FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n\nbool ollin_gt(float a, float b) { return a > b; }\nbool ollin_gt(int a, int b) { return a > b; }\nbvec2 ollin_gt(vec2 a, vec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(vec2 a, float b) { return greaterThan(a, vec2(b)); }\nbvec2 ollin_gt(float a, vec2 b) { return greaterThan(vec2(a), b); }\nbvec2 ollin_gt(ivec2 a, ivec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(ivec2 a, int b) { return greaterThan(a, ivec2(b)); }\nbvec2 ollin_gt(int a, ivec2 b) { return greaterThan(ivec2(a), b); }\nbvec3 ollin_gt(vec3 a, vec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(vec3 a, float b) { return greaterThan(a, vec3(b)); }\nbvec3 ollin_gt(float a, vec3 b) { return greaterThan(vec3(a), b); }\nbvec3 ollin_gt(ivec3 a, ivec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(ivec3 a, int b) { return greaterThan(a, ivec3(b)); }\nbvec3 ollin_gt(int a, ivec3 b) { return greaterThan(ivec3(a), b); }\nbvec4 ollin_gt(vec4 a, vec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(vec4 a, float b) { return greaterThan(a, vec4(b)); }\nbvec4 ollin_gt(float a, vec4 b) { return greaterThan(vec4(a), b); }\nbvec4 ollin_gt(ivec4 a, ivec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(ivec4 a, int b) { return greaterThan(a, ivec4(b)); }\nbvec4 ollin_gt(int a, ivec4 b) { return greaterThan(ivec4(a), b); }\n\nfloat ollin_select(float a, float b, bool c) { return c ? b : a; }\nvec2 ollin_select(vec2 a, vec2 b, bvec2 c) { return mix(a, b, c); }\nvec3 ollin_select(vec3 a, vec3 b, bvec3 c) { return mix(a, b, c); }\nvec4 ollin_select(vec4 a, vec4 b, bvec4 c) { return mix(a, b, c); }\nint ollin_select(int a, int b, bool c) { return c ? b : a; }\nivec2 ollin_select(ivec2 a, ivec2 b, bvec2 c) { return ivec2(c.x ? b.x : a.x, c.y ? b.y : a.y); }\nivec3 ollin_select(ivec3 a, ivec3 b, bvec3 c) { return ivec3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z); }\nivec4 ollin_select(ivec4 a, ivec4 b, bvec4 c) { return ivec4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z, c.w ? b.w : a.w); }\n\n// OLLIN_LIB_BEGIN base\n// MARK: - Color management\n//\n// The render targets composite in linear light, so colors are linearized before\n// blending and encoded back to sRGB at the end. These two conversions are the\n// foundation the whole pipeline (and any user shader's color math) leans on.\n\nvec3 srgbToLinear(vec3 c) {\n    vec3 lo = c * (1.0 / 12.92);\n    vec3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), vec3(2.4));\n    return ollin_select(lo, hi, ollin_gt(c, 0.04045));\n}\n\nvec3 linearToSrgb(vec3 c) {\n    c = clamp(c, 0.0, 1.0);\n    vec3 lo = c * 12.92;\n    vec3 hi = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;\n    return ollin_select(lo, hi, ollin_gt(c, 0.0031308));\n}\n\n// Remap geometric anti-aliasing coverage to the alpha that, blended in linear\n// light over a light ground, lands at the perceptual darkness the coverage\n// implies. Used for strokes and small dots so a thin mark reads evenly dark at\n// any angle (a linear-light blend would make a partially covered dark pixel read\n// too light). It only touches partial coverage: perceptualCoverage(1) == 1 and\n// perceptualCoverage(0) == 0, and never a shape's own fill/stroke alpha.\nfloat perceptualCoverage(float c) {\n    return 1.0 - srgbToLinear(vec3(1.0 - c)).x;\n}\n\n// Linear-light luminance (Rec. 709), the value tone and stylize math keys on.\n// The internal name stays here because the always-spliced sections and the\n// framework's own segments read it; the public `luma` lives under `color`, so a\n// shader that asks for a narrower library can define a `luma` of its own.\nfloat ollin_luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }\n\n// Un-premultiply / re-premultiply: a color op acts on straight color, but a\n// composited layer stays premultiplied. Matters only where alpha \x3C 1; an opaque\n// frame is byte-unchanged.\nvec3 ollin_unpremul(vec4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }\nvec4 ollin_premul(vec3 rgb, float a) { return vec4(rgb * a, a); }\n\n// Rotate a 2D coordinate by `a` radians. The internal name stays here because the\n// segments read it; the public `rotate2D` lives under `domain`, beside the other\n// operators that move the point a field is evaluated at.\nvec2 ollin_rot2(vec2 p, float a) {\n    float c = cos(a), s = sin(a);\n    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);\n}\n\n// A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer\n// signed, while almost everything they drive (a mix, a brightness, a size)\n// wants the unsigned form, so the pair is worth a name here as well as on the\n// sketch side.\nfloat unipolar(float v) { return v * 0.5 + 0.5; }\nvec2 unipolar(vec2 v) { return v * 0.5 + 0.5; }\nvec3 unipolar(vec3 v) { return v * 0.5 + 0.5; }\nvec4 unipolar(vec4 v) { return v * 0.5 + 0.5; }\nfloat bipolar(float v) { return v * 2.0 - 1.0; }\nvec2 bipolar(vec2 v) { return v * 2.0 - 1.0; }\nvec3 bipolar(vec3 v) { return v * 2.0 - 1.0; }\nvec4 bipolar(vec4 v) { return v * 2.0 - 1.0; }\n// OLLIN_LIB_END base\n\nuniform sampler2D atlas;\nin vec2 vUV;\nin vec4 vTint;\nout vec4 fragColor;\nvoid main() {\n    float sd = texture(atlas, vUV).r;\n    float d = sd - 0.5;\n    float aa = fwidth(d);\n    float cov = (aa > 0.0) ? smoothstep(-aa, aa, d) : step(0.0, d);\n    cov = perceptualCoverage(clamp(cov, 0.0, 1.0));\n    fragColor = vec4(srgbToLinear(vTint.rgb), vTint.a * cov);\n}";
+      var TRI_VS = "#version 300 es\nprecision highp float;\nlayout(location = 0) in vec2 aPosition;\nlayout(location = 1) in float aCoverage;\nlayout(location = 2) in vec4 aColor;\nuniform vec2 viewport;\nuniform float ollin_flip;\nout vec4 vColor;\nout float vCoverage;\nvoid main() {\n    gl_Position = vec4((aPosition.x / viewport.x) * 2.0 - 1.0, (1.0 - (aPosition.y / viewport.y) * 2.0) * ollin_flip, 0.0, 1.0);\n    vColor = aColor;\n    vCoverage = aCoverage;\n}";
+      var TRI_FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n\nbool ollin_gt(float a, float b) { return a > b; }\nbool ollin_gt(int a, int b) { return a > b; }\nbvec2 ollin_gt(vec2 a, vec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(vec2 a, float b) { return greaterThan(a, vec2(b)); }\nbvec2 ollin_gt(float a, vec2 b) { return greaterThan(vec2(a), b); }\nbvec2 ollin_gt(ivec2 a, ivec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(ivec2 a, int b) { return greaterThan(a, ivec2(b)); }\nbvec2 ollin_gt(int a, ivec2 b) { return greaterThan(ivec2(a), b); }\nbvec3 ollin_gt(vec3 a, vec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(vec3 a, float b) { return greaterThan(a, vec3(b)); }\nbvec3 ollin_gt(float a, vec3 b) { return greaterThan(vec3(a), b); }\nbvec3 ollin_gt(ivec3 a, ivec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(ivec3 a, int b) { return greaterThan(a, ivec3(b)); }\nbvec3 ollin_gt(int a, ivec3 b) { return greaterThan(ivec3(a), b); }\nbvec4 ollin_gt(vec4 a, vec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(vec4 a, float b) { return greaterThan(a, vec4(b)); }\nbvec4 ollin_gt(float a, vec4 b) { return greaterThan(vec4(a), b); }\nbvec4 ollin_gt(ivec4 a, ivec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(ivec4 a, int b) { return greaterThan(a, ivec4(b)); }\nbvec4 ollin_gt(int a, ivec4 b) { return greaterThan(ivec4(a), b); }\n\nfloat ollin_select(float a, float b, bool c) { return c ? b : a; }\nvec2 ollin_select(vec2 a, vec2 b, bvec2 c) { return mix(a, b, c); }\nvec3 ollin_select(vec3 a, vec3 b, bvec3 c) { return mix(a, b, c); }\nvec4 ollin_select(vec4 a, vec4 b, bvec4 c) { return mix(a, b, c); }\nint ollin_select(int a, int b, bool c) { return c ? b : a; }\nivec2 ollin_select(ivec2 a, ivec2 b, bvec2 c) { return ivec2(c.x ? b.x : a.x, c.y ? b.y : a.y); }\nivec3 ollin_select(ivec3 a, ivec3 b, bvec3 c) { return ivec3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z); }\nivec4 ollin_select(ivec4 a, ivec4 b, bvec4 c) { return ivec4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z, c.w ? b.w : a.w); }\n\n// OLLIN_LIB_BEGIN base\n// MARK: - Color management\n//\n// The render targets composite in linear light, so colors are linearized before\n// blending and encoded back to sRGB at the end. These two conversions are the\n// foundation the whole pipeline (and any user shader's color math) leans on.\n\nvec3 srgbToLinear(vec3 c) {\n    vec3 lo = c * (1.0 / 12.92);\n    vec3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), vec3(2.4));\n    return ollin_select(lo, hi, ollin_gt(c, 0.04045));\n}\n\nvec3 linearToSrgb(vec3 c) {\n    c = clamp(c, 0.0, 1.0);\n    vec3 lo = c * 12.92;\n    vec3 hi = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;\n    return ollin_select(lo, hi, ollin_gt(c, 0.0031308));\n}\n\n// Remap geometric anti-aliasing coverage to the alpha that, blended in linear\n// light over a light ground, lands at the perceptual darkness the coverage\n// implies. Used for strokes and small dots so a thin mark reads evenly dark at\n// any angle (a linear-light blend would make a partially covered dark pixel read\n// too light). It only touches partial coverage: perceptualCoverage(1) == 1 and\n// perceptualCoverage(0) == 0, and never a shape's own fill/stroke alpha.\nfloat perceptualCoverage(float c) {\n    return 1.0 - srgbToLinear(vec3(1.0 - c)).x;\n}\n\n// Linear-light luminance (Rec. 709), the value tone and stylize math keys on.\n// The internal name stays here because the always-spliced sections and the\n// framework's own segments read it; the public `luma` lives under `color`, so a\n// shader that asks for a narrower library can define a `luma` of its own.\nfloat ollin_luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }\n\n// Un-premultiply / re-premultiply: a color op acts on straight color, but a\n// composited layer stays premultiplied. Matters only where alpha \x3C 1; an opaque\n// frame is byte-unchanged.\nvec3 ollin_unpremul(vec4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }\nvec4 ollin_premul(vec3 rgb, float a) { return vec4(rgb * a, a); }\n\n// Rotate a 2D coordinate by `a` radians. The internal name stays here because the\n// segments read it; the public `rotate2D` lives under `domain`, beside the other\n// operators that move the point a field is evaluated at.\nvec2 ollin_rot2(vec2 p, float a) {\n    float c = cos(a), s = sin(a);\n    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);\n}\n\n// A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer\n// signed, while almost everything they drive (a mix, a brightness, a size)\n// wants the unsigned form, so the pair is worth a name here as well as on the\n// sketch side.\nfloat unipolar(float v) { return v * 0.5 + 0.5; }\nvec2 unipolar(vec2 v) { return v * 0.5 + 0.5; }\nvec3 unipolar(vec3 v) { return v * 0.5 + 0.5; }\nvec4 unipolar(vec4 v) { return v * 0.5 + 0.5; }\nfloat bipolar(float v) { return v * 2.0 - 1.0; }\nvec2 bipolar(vec2 v) { return v * 2.0 - 1.0; }\nvec3 bipolar(vec3 v) { return v * 2.0 - 1.0; }\nvec4 bipolar(vec4 v) { return v * 2.0 - 1.0; }\n// OLLIN_LIB_END base\n\nin vec4 vColor;\nin float vCoverage;\nout vec4 fragColor;\nvoid main() {\n    fragColor = vec4(srgbToLinear(vColor.rgb), vColor.a);\n}";
+      var FRINGE_FS = "#version 300 es\nprecision highp float;\nprecision highp int;\n\nbool ollin_gt(float a, float b) { return a > b; }\nbool ollin_gt(int a, int b) { return a > b; }\nbvec2 ollin_gt(vec2 a, vec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(vec2 a, float b) { return greaterThan(a, vec2(b)); }\nbvec2 ollin_gt(float a, vec2 b) { return greaterThan(vec2(a), b); }\nbvec2 ollin_gt(ivec2 a, ivec2 b) { return greaterThan(a, b); }\nbvec2 ollin_gt(ivec2 a, int b) { return greaterThan(a, ivec2(b)); }\nbvec2 ollin_gt(int a, ivec2 b) { return greaterThan(ivec2(a), b); }\nbvec3 ollin_gt(vec3 a, vec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(vec3 a, float b) { return greaterThan(a, vec3(b)); }\nbvec3 ollin_gt(float a, vec3 b) { return greaterThan(vec3(a), b); }\nbvec3 ollin_gt(ivec3 a, ivec3 b) { return greaterThan(a, b); }\nbvec3 ollin_gt(ivec3 a, int b) { return greaterThan(a, ivec3(b)); }\nbvec3 ollin_gt(int a, ivec3 b) { return greaterThan(ivec3(a), b); }\nbvec4 ollin_gt(vec4 a, vec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(vec4 a, float b) { return greaterThan(a, vec4(b)); }\nbvec4 ollin_gt(float a, vec4 b) { return greaterThan(vec4(a), b); }\nbvec4 ollin_gt(ivec4 a, ivec4 b) { return greaterThan(a, b); }\nbvec4 ollin_gt(ivec4 a, int b) { return greaterThan(a, ivec4(b)); }\nbvec4 ollin_gt(int a, ivec4 b) { return greaterThan(ivec4(a), b); }\n\nfloat ollin_select(float a, float b, bool c) { return c ? b : a; }\nvec2 ollin_select(vec2 a, vec2 b, bvec2 c) { return mix(a, b, c); }\nvec3 ollin_select(vec3 a, vec3 b, bvec3 c) { return mix(a, b, c); }\nvec4 ollin_select(vec4 a, vec4 b, bvec4 c) { return mix(a, b, c); }\nint ollin_select(int a, int b, bool c) { return c ? b : a; }\nivec2 ollin_select(ivec2 a, ivec2 b, bvec2 c) { return ivec2(c.x ? b.x : a.x, c.y ? b.y : a.y); }\nivec3 ollin_select(ivec3 a, ivec3 b, bvec3 c) { return ivec3(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z); }\nivec4 ollin_select(ivec4 a, ivec4 b, bvec4 c) { return ivec4(c.x ? b.x : a.x, c.y ? b.y : a.y, c.z ? b.z : a.z, c.w ? b.w : a.w); }\n\n// OLLIN_LIB_BEGIN base\n// MARK: - Color management\n//\n// The render targets composite in linear light, so colors are linearized before\n// blending and encoded back to sRGB at the end. These two conversions are the\n// foundation the whole pipeline (and any user shader's color math) leans on.\n\nvec3 srgbToLinear(vec3 c) {\n    vec3 lo = c * (1.0 / 12.92);\n    vec3 hi = pow(max((c + 0.055) * (1.0 / 1.055), 0.0), vec3(2.4));\n    return ollin_select(lo, hi, ollin_gt(c, 0.04045));\n}\n\nvec3 linearToSrgb(vec3 c) {\n    c = clamp(c, 0.0, 1.0);\n    vec3 lo = c * 12.92;\n    vec3 hi = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;\n    return ollin_select(lo, hi, ollin_gt(c, 0.0031308));\n}\n\n// Remap geometric anti-aliasing coverage to the alpha that, blended in linear\n// light over a light ground, lands at the perceptual darkness the coverage\n// implies. Used for strokes and small dots so a thin mark reads evenly dark at\n// any angle (a linear-light blend would make a partially covered dark pixel read\n// too light). It only touches partial coverage: perceptualCoverage(1) == 1 and\n// perceptualCoverage(0) == 0, and never a shape's own fill/stroke alpha.\nfloat perceptualCoverage(float c) {\n    return 1.0 - srgbToLinear(vec3(1.0 - c)).x;\n}\n\n// Linear-light luminance (Rec. 709), the value tone and stylize math keys on.\n// The internal name stays here because the always-spliced sections and the\n// framework's own segments read it; the public `luma` lives under `color`, so a\n// shader that asks for a narrower library can define a `luma` of its own.\nfloat ollin_luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }\n\n// Un-premultiply / re-premultiply: a color op acts on straight color, but a\n// composited layer stays premultiplied. Matters only where alpha \x3C 1; an opaque\n// frame is byte-unchanged.\nvec3 ollin_unpremul(vec4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }\nvec4 ollin_premul(vec3 rgb, float a) { return vec4(rgb * a, a); }\n\n// Rotate a 2D coordinate by `a` radians. The internal name stays here because the\n// segments read it; the public `rotate2D` lives under `domain`, beside the other\n// operators that move the point a field is evaluated at.\nvec2 ollin_rot2(vec2 p, float a) {\n    float c = cos(a), s = sin(a);\n    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);\n}\n\n// A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer\n// signed, while almost everything they drive (a mix, a brightness, a size)\n// wants the unsigned form, so the pair is worth a name here as well as on the\n// sketch side.\nfloat unipolar(float v) { return v * 0.5 + 0.5; }\nvec2 unipolar(vec2 v) { return v * 0.5 + 0.5; }\nvec3 unipolar(vec3 v) { return v * 0.5 + 0.5; }\nvec4 unipolar(vec4 v) { return v * 0.5 + 0.5; }\nfloat bipolar(float v) { return v * 2.0 - 1.0; }\nvec2 bipolar(vec2 v) { return v * 2.0 - 1.0; }\nvec3 bipolar(vec3 v) { return v * 2.0 - 1.0; }\nvec4 bipolar(vec4 v) { return v * 2.0 - 1.0; }\n// OLLIN_LIB_END base\n\nin vec4 vColor;\nin float vCoverage;\nout vec4 fragColor;\nvoid main() {\n    float a = vColor.a * perceptualCoverage(clamp(vCoverage, 0.0, 1.0));\n    fragColor = vec4(srgbToLinear(vColor.rgb), a);\n}";
+      var GROUP_VS = "";
+      var GROUP_FS = "";
+      var FIELD_VS = "";
+      var FIELD_FS = "";
+      var UPSAMPLE_FS = "";
+      var FX_VS = "#version 300 es\nprecision highp float;\nout vec2 uv;\nvoid main() {\n    vec2 p = vec2(float((gl_VertexID \x3C\x3C 1) & 2), float(gl_VertexID & 2));\n    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);\n    uv = vec2(p.x, 1.0 - p.y);\n}";
+      var BLUR_FS = "#version 300 es\nprecision highp float;\nuniform sampler2D src;\nuniform vec2 step;\nuniform float sigma;\nin vec2 uv;\nout vec4 fragColor;\nvoid main() {\n    vec2 q = vec2(uv.x, 1.0 - uv.y);\n    int radius = int(ceil(sigma * 3.5));\n    float twoSigma2 = 2.0 * sigma * sigma;\n    vec4 sum = texture(src, q);\n    float weight = 1.0;\n    for (int i = 1; i \x3C= radius; i++) {\n        float w = exp(-float(i * i) / twoSigma2);\n        vec2 d = step * float(i);\n        sum += (texture(src, q + d) + texture(src, q - d)) * w;\n        weight += 2.0 * w;\n    }\n    fragColor = sum / weight;\n}";
+      var FX = {};
+      var USERS = [];
+      var TABLES = [];
+      var PICTURES = [];
+      var ATLASES = [];
+      var STRIP = [0, 256, ""];
+      var BRDF = [0, ""];
+      var Fx = {
+      T: function (x) { return x === x && x !== 0; },
+      M: function (a, b) { return b === 0 ? NaN : a - b * Math.floor(a / b); },
+      round: function (x) { return x < 0 ? -Math.round(-x) : Math.round(x); },
+      sign: function (x) { return x > 0 ? 1 : (x < 0 ? -1 : 0); },
+      fract: function (x) { return x - Math.floor(x); },
+      sat: function (x) { return Math.min(Math.max(x, 0), 1); },
+      clamp: function (x, lo, hi) { return Math.min(Math.max(x, lo), hi); },
+      ss: function (e0, e1, x) { var t = Math.min(Math.max((x - e0) / (e1 - e0), 0), 1); return t * t * (3 - 2 * t); },
+      map: function (x, a, b, c, d) { return c + (d - c) * ((x - a) / (b - a)); },
+      param: function (x, f) {
+        if (f.lo !== undefined) {
+          x = Math.min(Math.max(x, f.lo), f.hi);
+          if (f.step > 0) { x = f.lo + Fx.round((x - f.lo) / f.step) * f.step; x = Math.min(x, f.hi); }
+        }
+        if (f.integer) x = Fx.round(x);
+        return x;
+      }
+    };
+      var F = 30, Q = 48, V = 7, G = 26, NF = 16, FF = 36, N3 = 16;
+      var W = D.width, H = D.height;
+      function ref(index) { return D.refs ? D.refs[index] : index; }
+      function clearOf(index) { return D.clears ? D.clears[index] : D.clear; }
+      function toneOf(index) { return D.tones ? D.tones[index] : D.tone; }
+      function exposureOf(index) { return D.exposures ? D.exposures[index] : D.exposure; }
+      function graphOf(index) { return D.graph ? D.graph : D.graphs[D.graphOf[ref(index)]]; }
+
+      function bytes(b64) {
+        if (!b64) return new Uint8Array(0);
+        var s = atob(b64), n = s.length, out = new Uint8Array(n);
+        for (var i = 0; i < n; i++) out[i] = s.charCodeAt(i);
+        return out;
+      }
+      function floats(b64) { var b = bytes(b64); return new Float32Array(b.buffer, 0, b.length >> 2); }
+      function shorts(b64) { var b = bytes(b64); return new Uint16Array(b.buffer, 0, b.length >> 1); }
+      function ints(b64) { var b = bytes(b64); return new Uint32Array(b.buffer, 0, b.length >> 2); }
+      var stream = shorts(STREAM);
+      var rangeData = floats(RANGES);
+      var varying = ints(VARYING);
+      var base = floats(BASE);
+      var vertexBase = shorts(VBASE);
+      var vertexPositions = floats(VPOS);
+      var fitData = floats(FIT);
+      var extra = floats(EXTRA);
+      var sceneFloats = floats(SCENE);
+      var axisData = floats(AXES);
+
+      var gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false,
+                                             premultipliedAlpha: false, preserveDrawingBuffer: true });
+      if (!gl) { canvas.setAttribute('title', 'This picture needs WebGL2.'); return; }
+      canvas.width = W; canvas.height = H;
+
+      function shader(type, source) {
+        var s = gl.createShader(type);
+        gl.shaderSource(s, source);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error('Ollin page shader: ' + gl.getShaderInfoLog(s));
+        return s;
+      }
+      function program(vs, fs) {
+        var p = gl.createProgram();
+        gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
+        gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
+        gl.linkProgram(p);
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('Ollin page program: ' + gl.getProgramInfoLog(p));
+        return p;
+      }
+      var sdf = program(SDF_VS, SDF_FS);
+      var present = program(PRESENT_VS, PRESENT_FS);
+      var uViewport = gl.getUniformLocation(sdf, 'viewport');
+      var uFlip = gl.getUniformLocation(sdf, 'ollin_flip');
+      var pSrc = gl.getUniformLocation(present, 'src');
+      var pViewport = gl.getUniformLocation(present, 'viewport');
+      var pExposure = gl.getUniformLocation(present, 'exposure');
+      var pToneMap = gl.getUniformLocation(present, 'toneMapMode');
+      var image = null, iViewport, iTex, iFlip, iFlipV;
+      function imageProgram() {
+        if (image) return image;
+        image = program(IMAGE_VS, IMAGE_FS);
+        iViewport = gl.getUniformLocation(image, 'viewport');
+        iTex = gl.getUniformLocation(image, 'tex');
+        iFlip = gl.getUniformLocation(image, 'ollin_flip');
+        iFlipV = gl.getUniformLocation(image, 'vflip');
+        return image;
+      }
+      // Atlas text: the image quad's vertex stage under the glyph fragment.
+      var glyph = null, gViewport, gAtlas, gFlip;
+      function glyphProgram() {
+        if (glyph) return glyph;
+        glyph = program(IMAGE_VS, GLYPH_FS);
+        gViewport = gl.getUniformLocation(glyph, 'viewport');
+        gAtlas = gl.getUniformLocation(glyph, 'atlas');
+        gFlip = gl.getUniformLocation(glyph, 'ollin_flip');
+        return glyph;
+      }
+      // The triangle path's two programs, built when a frame first draws a fill
+      // or a stroke.
+      var solid = null, fringe = null;
+      function triangleProgram(isFringe) {
+        if (isFringe) {
+          if (!fringe) { var pf = program(TRI_VS, FRINGE_FS); fringe = { p: pf, viewport: gl.getUniformLocation(pf, 'viewport'), flip: gl.getUniformLocation(pf, 'ollin_flip') }; }
+          return fringe;
+        }
+        if (!solid) { var ps = program(TRI_VS, TRI_FS); solid = { p: ps, viewport: gl.getUniformLocation(ps, 'viewport'), flip: gl.getUniformLocation(ps, 'ollin_flip') }; }
+        return solid;
+      }
+      // The node programs of the frame's fields, one field at a time, in a
+      // uniform block (four rows a node, 256 nodes at most, the recorder's own cap).
+      var nodeUBO = null;
+      function nodeBuffer() {
+        if (nodeUBO) return nodeUBO;
+        nodeUBO = gl.createBuffer();
+        gl.bindBuffer(gl.UNIFORM_BUFFER, nodeUBO);
+        gl.bufferData(gl.UNIFORM_BUFFER, 16384, gl.DYNAMIC_DRAW);
+        gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, nodeUBO);
+        return nodeUBO;
+      }
+      function uploadNodes(view) {
+        gl.bindBuffer(gl.UNIFORM_BUFFER, nodeBuffer());
+        gl.bufferSubData(gl.UNIFORM_BUFFER, 0, view);
+      }
+      function bindNodes(p) {
+        var bi = gl.getUniformBlockIndex(p, 'Nodes');
+        if (bi !== 4294967295) gl.uniformBlockBinding(p, bi, 0);
+      }
+      // A composed 2D field: the covering quad under the VM fragment.
+      var groupP = null;
+      function groupProgram() {
+        if (groupP) return groupP;
+        var p = program(GROUP_VS, GROUP_FS);
+        bindNodes(p);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        groupP = { p: p, viewport: u('viewport'), flip: u('ollin_flip'), group: u('group'), gradients: u('gradients') };
+        return groupP;
+      }
+      // A raymarched 3D field: the fullscreen march, and the upsample of a
+      // reduced-resolution one.
+      var fieldP = null, upP = null;
+      function fieldProgram() {
+        if (fieldP) return fieldP;
+        var p = program(FIELD_VS, FIELD_FS);
+        bindNodes(p);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        fieldP = { p: p, flip: u('ollin_flip'), field: u('field'), view: u('uView'), proj: u('uProj'), invVP: u('uInvVP'),
+                   viewportSteps: u('uViewportSteps'), scale: u('uScale'), ambient: u('uAmbient'), eye: u('uEye'),
+                   counts: u('uCounts'), lights: u('uLights'), casters: u('uCasters'), material: u('uMaterial'),
+                   gradients: u('gradients'), brdf: u('brdfLUT') };
+        return fieldP;
+      }
+      function upsampleProgram() {
+        if (upP) return upP;
+        var p = program(FIELD_VS, UPSAMPLE_FS);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        upP = { p: p, color: u('halfColor'), depth: u('halfDepth'), region: u('region'), flip: u('ollin_flip') };
+        return upP;
+      }
+      // One program per framework fragment and per user shader, built on first use.
+      var fxPrograms = {};
+      function fxProgram(name) {
+        var entry = fxPrograms[name];
+        if (entry) return entry;
+        var source = FX[name];
+        if (!source) throw new Error('Ollin page: no fragment ' + name);
+        var p = program(FX_VS, source);
+        entry = { p: p, viewport: gl.getUniformLocation(p, 'ollin_viewport'),
+                  params: gl.getUniformLocation(p, 'params'), textures: [] };
+        var count = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+        // The samplers, in the order the fragment bound them: the translation
+        // names them and the recorder binds inputs in that same order.
+        for (var i = 0; i < count; i++) {
+          var info = gl.getActiveUniform(p, i);
+          if (info.type === gl.SAMPLER_2D) entry.textures.push({ name: info.name, loc: gl.getUniformLocation(p, info.name) });
+        }
+        fxPrograms[name] = entry;
+        return entry;
+      }
+      var blur = null, bSrc, bStep, bSigma;
+      function blurProgram() {
+        if (blur) return blur;
+        blur = program(FX_VS, BLUR_FS);
+        bSrc = gl.getUniformLocation(blur, 'src');
+        bStep = gl.getUniformLocation(blur, 'step');
+        bSigma = gl.getUniformLocation(blur, 'sigma');
+        return blur;
+      }
+      // A separable Gaussian over `sigma`, one pass each way through a spare surface.
+      function runBlur(input, sigma, out) {
+        var p = blurProgram();
+        var mid = acquire(out.w, out.h);
+        var passes = [[input, mid, 1 / out.w, 0], [mid.tex, out, 0, 1 / out.h]];
+        for (var i = 0; i < 2; i++) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, passes[i][1].fbo);
+          gl.viewport(0, 0, out.w, out.h);
+          gl.disable(gl.BLEND);
+          gl.useProgram(p);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, passes[i][0]);
+          gl.uniform1i(bSrc, 0);
+          gl.uniform2f(bStep, passes[i][2], passes[i][3]);
+          gl.uniform1f(bSigma, sigma);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+      }
+      // The two passes the page owns: the blur, and the bloom as bright pass,
+      // blur, and add-back.
+      function runOwned(name, input, rows, out) {
+        if (name === 'ollin_web_blur') { runBlur(input, rows[0], out); return; }
+        var bright = acquire(out.w, out.h), blurred = acquire(out.w, out.h);
+        runFragment('ollin_fx_brightpass', [input], [rows[1], 0, 0, 0], bright);
+        runBlur(bright.tex, rows[0], blurred);
+        runFragment('ollin_fx_bloom_combine', [input, blurred.tex], [rows[2], 0, 0, 0], out);
+      }
+      var userPrograms = [];
+      function userProgram(index) {
+        var entry = userPrograms[index];
+        if (entry) return entry;
+        var p = program(FX_VS, USERS[index]);
+        function u(n) { return gl.getUniformLocation(p, n); }
+        entry = { p: p, viewport: u('ollin_viewport'), src0: u('ollin_src0'), src1: u('ollin_src1'),
+                  resolution: u('ollin_resolution'), mouse: u('ollin_mouse'), time: u('ollin_time'),
+                  dt: u('ollin_dt'), frame: u('ollin_frame'), paramCount: u('ollin_paramCount'),
+                  params: u('ollin_params') };
+        userPrograms[index] = entry;
+        return entry;
+      }
+
+      // Textures: the canvas intermediate, a pool of per-frame layers by size,
+      // and the persistent pairs a feedback layer or a simulation keeps.
+      var floatOK = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+      gl.getExtension('OES_texture_float_linear');
+      var format = floatOK ? gl.RGBA16F : gl.RGBA8;
+      function makeSurface(w, h) {
+        var tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, format, w, h);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        var fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+        var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return { tex: tex, fbo: fbo, w: w, h: h, ok: ok };
+      }
+      var main = makeSurface(W, H);
+      if (!main.ok) { format = gl.RGBA8; main = makeSurface(W, H); }
+      // A drawn surface's multisampled buffer, four samples like the Mac's
+      // canvas, made once per surface and resolved into its texture after each
+      // fill. A surface that persists (the canvas, a feedback pair) keeps its
+      // samples, so an accumulating canvas loads them as the Mac's does. The
+      // items are rasterized into it upright in the GPU's own texture space
+      // (the page otherwise keeps its pictures bottom-up), because the sample
+      // pattern is fixed in that space and a mirrored picture meets it
+      // mirrored: a diagonal edge then differs from the Mac's by a sample or
+      // two, where an upright one matches to a level. The resolve turns the
+      // picture back over on its way into the surface's texture.
+      var MSAA = !!D.msaa;
+      var samples = MSAA ? Math.min(4, gl.getParameter(gl.MAX_SAMPLES)) : 0;
+      if (samples < 2) MSAA = false;
+      function multisampled(s) {
+        if (s.ms !== undefined) return s.ms;
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, format, s.w, s.h);
+        var fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rb);
+        var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        s.ms = ok ? { rb: rb, fbo: fbo } : null;
+        return s.ms;
+      }
+      // The resolve lands in a plain surface of the same size first (a
+      // multisampled read allows no flip), then flips into the texture.
+      var upright = {};
+      function resolve(s) {
+        var key = s.w + 'x' + s.h;
+        var mid = upright[key] || (upright[key] = makeSurface(s.w, s.h));
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, s.ms.fbo);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, mid.fbo);
+        gl.blitFramebuffer(0, 0, s.w, s.h, 0, 0, s.w, s.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, mid.fbo);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, s.fbo);
+        gl.blitFramebuffer(0, 0, s.w, s.h, 0, s.h, s.w, 0, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
+      // A depth buffer on a surface that marches 3D fields, so the fields
+      // occlude one another through it as the Mac's do; one on the
+      // multisampled buffer when the surface has one.
+      function ensureDepth(s) {
+        if (s.depthRB) return;
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, s.w, s.h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        s.depthRB = rb;
+      }
+      function ensureDepthMS(ms, s) {
+        if (!ms || ms.depthRB) return;
+        var rb = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+        gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT24, s.w, s.h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, ms.fbo);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rb);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        ms.depthRB = rb;
+      }
+      // The reduced-resolution march's target, by size: a surface with a depth
+      // texture the upsample reads back.
+      var halfSurfaces = {};
+      function halfSurface(w, h) {
+        var key = w + 'x' + h;
+        if (halfSurfaces[key]) return halfSurfaces[key];
+        var s = makeSurface(w, h);
+        var dt = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, dt);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, w, h);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, dt, 0);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        s.depthTex = dt;
+        halfSurfaces[key] = s;
+        return s;
+      }
+      var pool = [], used = [];
+      function acquire(w, h) {
+        for (var i = 0; i < pool.length; i++) {
+          if (pool[i].w === w && pool[i].h === h) { var s = pool.splice(i, 1)[0]; used.push(s); return s; }
+        }
+        var made = makeSurface(w, h);
+        used.push(made);
+        return made;
+      }
+      function releaseAll() { while (used.length) pool.push(used.pop()); }
+      var persistent = {};
+      function slot(key, w, h, rest, seedFill) {
+        var s = persistent[key];
+        if (s && s.w === w && s.h === h) return s;
+        s = { a: makeSurface(w, h), b: makeSurface(w, h), w: w, h: h, flipped: false, age: 0 };
+        var fills = [s.a, s.b];
+        for (var i = 0; i < 2; i++) {
+          if (seedFill && seedFill.length) {
+            runFragment('ollin_sim_state_seed', [], [1 / w, 1 / h, 0, 0, seedFill[0], seedFill[1], 0, 0], fills[i]);
+          } else {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fills[i].fbo);
+            gl.clearColor(rest[0], rest[1], rest[2], rest[3]);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+          }
+        }
+        persistent[key] = s;
+        return s;
+      }
+      function clearSurface(s, c) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
+        gl.viewport(0, 0, s.w, s.h);
+        gl.clearColor(c[0], c[1], c[2], c.length > 3 ? c[3] : 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+      var blank = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, blank);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+      function clampLinear(tex) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+      // The gradient strip: one row per ramp the shapes read, sRGB texels the
+      // sampler decodes to linear, as the Mac's strip is.
+      var strip = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, strip);
+      if (STRIP[0] > 0) gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, STRIP[1], STRIP[0], 0, gl.RGBA, gl.UNSIGNED_BYTE, bytes(STRIP[2]));
+      else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+      clampLinear(strip);
+      var uGradients = gl.getUniformLocation(sdf, 'gradients');
+      // The split-sum table a physically-based field prices its energy against,
+      // half floats as the Mac stores them.
+      var brdf = null;
+      if (BRDF[0] > 0) {
+        brdf = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, brdf);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, BRDF[0], BRDF[0], 0, gl.RG, gl.HALF_FLOAT, shorts(BRDF[1]));
+        clampLinear(brdf);
+      }
+      // The pictures and the atlas pages, decoded by the browser (which is
+      // asynchronous, so the first frame waits on `ready`). Each is loaded
+      // through an image element from a data URL: a picture in flight that way
+      // holds the document's load event, which is what a headless dump waits
+      // for (a bitmap decode holds nothing, and the dump beat it one time in
+      // three), and the upload flags apply to an image element where a bitmap
+      // ignores them. A picture is read raw (no color conversion, no
+      // orientation) and premultiplied on upload into an sRGB texture with its
+      // smaller levels, the way the Mac holds it; an atlas page lands at the
+      // top of a page-sized texture, since the glyph quads address the whole
+      // page.
+      function decode(b64, mime) {
+        return new Promise(function (resolve, reject) {
+          var img = new Image();
+          img.style.imageOrientation = 'none';
+          img.onload = function () { resolve(img); };
+          img.onerror = function () { reject(new Error('Ollin page: a picture did not decode')); };
+          img.src = 'data:' + mime + ';base64,' + b64;
+        });
+      }
+      var pictures = [], atlases = [], pending = [];
+      PICTURES.forEach(function (p, i) {
+        var tex = gl.createTexture();
+        pictures[i] = tex;
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+        clampLinear(tex);
+        pending.push(decode(p[1], p[0]).then(function (img) {
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, gl.RGBA, gl.UNSIGNED_BYTE, img);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+          gl.generateMipmap(gl.TEXTURE_2D);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        }));
+      });
+      ATLASES.forEach(function (a, i) {
+        var tex = gl.createTexture();
+        atlases[i] = tex;
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, a[1], a[1]);
+        clampLinear(tex);
+        pending.push(decode(a[0], 'image/png').then(function (img) {
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+          gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        }));
+      });
+      // The lookup strips, uploaded once.
+      var tables = TABLES.map(function (t) {
+        var tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, t[0], 1, 0, gl.RGBA, gl.FLOAT, floats(t[1]));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        return tex;
+      });
+
+      // One instance record per shape, the same 30 floats the recorder wrote.
+      var vao = gl.createVertexArray();
+      var vbo = gl.createBuffer();
+      gl.bindVertexArray(vao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      var layout = [[2, 0], [2, 8], [2, 16], [4, 24], [4, 40], [4, 56], [4, 72], [4, 88], [2, 104], [2, 112]];
+      for (var a = 0; a < layout.length; a++) {
+        gl.enableVertexAttribArray(a);
+        gl.vertexAttribPointer(a, layout[a][0], gl.FLOAT, false, F * 4, layout[a][1]);
+        gl.vertexAttribDivisor(a, 1);
+      }
+      gl.bindVertexArray(null);
+      // Six vertices per image quad: position, uv, tint.
+      var qvao = gl.createVertexArray();
+      var qvbo = gl.createBuffer();
+      gl.bindVertexArray(qvao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, qvbo);
+      var qlayout = [[2, 0], [2, 8], [4, 16]];
+      for (var b = 0; b < qlayout.length; b++) {
+        gl.enableVertexAttribArray(b);
+        gl.vertexAttribPointer(b, qlayout[b][0], gl.FLOAT, false, 32, qlayout[b][1]);
+      }
+      gl.bindVertexArray(null);
+      // One triangle vertex: position, coverage, color, the seven floats the
+      // recorder wrote.
+      var tvao = gl.createVertexArray();
+      var tvbo = gl.createBuffer();
+      gl.bindVertexArray(tvao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, tvbo);
+      var tlayout = [[2, 0], [1, 8], [4, 12]];
+      for (var t = 0; t < tlayout.length; t++) {
+        gl.enableVertexAttribArray(t);
+        gl.vertexAttribPointer(t, tlayout[t][0], gl.FLOAT, false, V * 4, tlayout[t][1]);
+      }
+      gl.bindVertexArray(null);
+      // A vertex's position travels exact; its coverage and color sit inside
+      // their field's range as 16-bit positions.
+      var P = 2, VS = V - P;
+      var vlows = [], vscales = [];
+      var vranges = D.vranges || [];
+      for (var vr = 0; vr < vranges.length; vr += 2) { vlows.push(vranges[vr]); vscales.push((vranges[vr + 1] - vranges[vr]) / 65535); }
+
+      // Sampled values sit inside their column's range as 16-bit positions.
+      var lows = [], scales = [];
+      for (var r = 0; r < rangeData.length; r += 2) { lows.push(rangeData[r]); scales.push((rangeData[r + 1] - rangeData[r]) / 65535); }
+      // A fitted column: its mean, then a frequency, a cosine, and a sine per term.
+      var fits = D.fit || [], fitOffsets = [], fitOffset = 0;
+      for (var f = 0; f < fits.length; f++) { fitOffsets.push(fitOffset); fitOffset += 1 + 3 * fits[f][1]; }
+      // A live column: a parameter's formula, evaluated here on the clock and the pointer.
+      var formulas = D.formulas || [], evaluators = [];
+      for (var e = 0; e < formulas.length; e++) evaluators.push(new Function('v', 'Fx', 'return ' + formulas[e].js + ';'));
+      var drives = D.drive || [];
+      var formulaValues = new Float64Array(formulas.length);
+      var mouse = { x: D.mouse[0], y: D.mouse[1] };
+      canvas.addEventListener('pointermove', function (ev) {
+        var rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          mouse.x = (ev.clientX - rect.left) * W / rect.width;
+          mouse.y = (ev.clientY - rect.top) * H / rect.height;
+        }
+      });
+
+      // The controls: each part of a parameter the probe could wire is an axis
+      // whose columns move by slope × (value − base) at every frame, the slope
+      // one number, the sines of a lap, or a sample per frame; a color reaches
+      // the clear through its linear-light value. A formula reads a control's
+      // value under the parameter's name.
+      var controls = D.controls || [], axes = D.axes || [];
+      var values = new Float64Array(axes.length);
+      for (var ai = 0; ai < axes.length; ai++) values[ai] = axes[ai].base;
+      var axisRegions = [false, false, false];
+      for (var ar = 0; ar < axes.length; ar++) for (var ac = 0; ac < axes[ar].cols.length; ac++) axisRegions[axes[ar].cols[ac][0]] = true;
+      function lin(c) { c = Math.min(Math.max(c, 0), 1); return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+      function slopeAt(col, kf, index, fraction) {
+        var mode = col[3], off = col[4], n = col[5];
+        if (mode === 0) return axisData[off];
+        if (mode === 1) {
+          var w = 2 * Math.PI * kf / D.frames, s = axisData[off];
+          for (var q = 0; q < n; q++) { var m = axisData[off + 1 + q * 3]; s += axisData[off + 2 + q * 3] * Math.cos(w * m) + axisData[off + 3 + q * 3] * Math.sin(w * m); }
+          return s;
+        }
+        var s0 = axisData[off + index];
+        if (fraction > 0 && D.stable) { var s1 = axisData[off + (index + 1) % D.frames]; return s0 + (s1 - s0) * fraction; }
+        return s0;
+      }
+      function applyAxes(region, target, count, kf, index, fraction) {
+        if (!axisRegions[region]) return;
+        for (var a = 0; a < axes.length; a++) {
+          var ax = axes[a], v = values[a];
+          if (v === ax.base) continue;
+          var d0 = v - ax.base, d1 = lin(v) - lin(ax.base);
+          for (var c = 0; c < ax.cols.length; c++) {
+            var col = ax.cols[c];
+            if (col[0] !== region || col[1] >= count) continue;
+            target[col[1]] += slopeAt(col, kf, index, fraction) * (col[2] === 1 ? d1 : d0);
+          }
+        }
+      }
+      var factScratch = new Float32Array(4);
+      function clearAt(index, fraction) {
+        var c = clearOf(index);
+        if (!axisRegions[2] || !c || !c.length) return c;
+        factScratch[0] = c[0]; factScratch[1] = c[1]; factScratch[2] = c[2]; factScratch[3] = 0;
+        applyAxes(2, factScratch, 3, index + fraction, index, fraction);
+        return [Math.max(0, factScratch[0]), Math.max(0, factScratch[1]), Math.max(0, factScratch[2])];
+      }
+      function exposureAt(index, fraction) {
+        var e = exposureOf(index);
+        if (!axisRegions[2]) return e;
+        factScratch[0] = 0; factScratch[1] = 0; factScratch[2] = 0; factScratch[3] = e;
+        applyAxes(2, factScratch, 4, index + fraction, index, fraction);
+        return factScratch[3];
+      }
+
+      // The sketch's clock at fractional frame `kf`, and the automation's
+      // position on it.
+      function sketchTime(kf) { return (kf + D.frameOffset) / D.rate; }
+      function clockPosition(kf) {
+        var t = sketchTime(kf);
+        var position = t, c = D.clock;
+        if (c) {
+          position = c.start + t * c.speed;
+          if (c.loops && c.duration > 0) { position = position % c.duration; if (position < 0) position += c.duration; }
+        }
+        return position;
+      }
+      // Every formula at fractional frame `kf`, in the order the Mac evaluates
+      // them: a formula reads the clock, the canvas, the pointer, the constants,
+      // and the driven values already worked out this frame.
+      function evaluateFormulas(kf) {
+        var v = Object.assign({}, D.constants);
+        for (var a = 0; a < axes.length; a++) v[axes[a].name] = values[a];
+        v.time = clockPosition(kf);
+        v.frame = Math.floor(kf) + D.frameOffset + 1;
+        v.width = W;
+        v.height = H;
+        v.mouseX = mouse.x;
+        v.mouseY = mouse.y;
+        for (var i = 0; i < formulas.length; i++) {
+          var x = Fx.param(evaluators[i](v, Fx), formulas[i]);
+          v[formulas[i].name] = x;
+          formulaValues[i] = x;
+        }
+      }
+
+      var maxLength = D.stable ? base.length + vertexBase.length + vertexPositions.length : (D.lengths.length ? Math.max.apply(null, D.lengths) : 0);
+      var scratch = new Float32Array(Math.max(1, maxLength));
+      // Where each region of a graph's vector starts.
+      function groupOffset(g) { return g.instances * F + g.quads * Q; }
+      function nodeOffset(g) { return groupOffset(g) + (g.groups || 0) * G; }
+      function fieldOffset(g) { return nodeOffset(g) + (g.nodes || 0) * NF; }
+      function node3DOffset(g) { return fieldOffset(g) + (g.fields || 0) * FF; }
+      function vertexOffset(g) { return node3DOffset(g) + (g.nodes3d || 0) * N3; }
+      function paramOffset(g) { return vertexOffset(g) + g.vertices * V; }
+      // The scene block of frame `index`, moved `fraction` of the way to the
+      // next (the camera and the lights slide between records), or null.
+      var sceneScratch = null;
+      function sceneAt(index, fraction) {
+        var s = sceneBase(index, fraction);
+        if (!s || !axisRegions[1]) return s;
+        var moved = new Float32Array(s.length);
+        moved.set(s);
+        applyAxes(1, moved, moved.length, index + fraction, index, fraction);
+        return moved;
+      }
+      function sceneBase(index, fraction) {
+        if (!D.sceneOffsets) return null;
+        var u = ref(index), len = D.sceneLengths[u];
+        if (!len) return null;
+        var a = sceneFloats.subarray(D.sceneOffsets[u], D.sceneOffsets[u] + len);
+        if (fraction > 0 && D.stable) {
+          var u2 = ref((index + 1) % D.frames);
+          if (u2 !== u && D.sceneLengths[u2] === len) {
+            var b = sceneFloats.subarray(D.sceneOffsets[u2], D.sceneOffsets[u2] + len);
+            if (!sceneScratch || sceneScratch.length < len) sceneScratch = new Float32Array(len);
+            for (var i = 0; i < len; i++) sceneScratch[i] = a[i] + (b[i] - a[i]) * fraction;
+            return sceneScratch.subarray(0, len);
+          }
+        }
+        return a;
+      }
+
+      // The frame's whole vector at frame `index`, moved `fraction` of the way
+      // to the next: the shapes, the quads, the vertices, and the parameter rows.
+      function assemble(index, fraction) {
+        var u = ref(index);
+        if (D.stable) {
+          var vo = vertexOffset(D.graph), po = paramOffset(D.graph);
+          scratch.set(base.subarray(0, vo), 0);
+          if (base.length > vo) scratch.set(base.subarray(vo), po);
+          for (var vx = 0; vx < D.graph.vertices; vx++) {
+            var at = vo + vx * V;
+            scratch[at] = vertexPositions[vx * P];
+            scratch[at + 1] = vertexPositions[vx * P + 1];
+            for (var vf = 0; vf < VS; vf++) scratch[at + P + vf] = vlows[vf] + vertexBase[vx * VS + vf] * vscales[vf];
+          }
+          var u2 = ref((index + 1) % D.frames);
+          var v = varying, n = v.length, off = u * n, off2 = u2 * n;
+          for (var i = 0; i < n; i++) {
+            var a = lows[i] + stream[off + i] * scales[i];
+            if (fraction > 0 && u2 !== u) { var b = lows[i] + stream[off2 + i] * scales[i]; a += (b - a) * fraction; }
+            scratch[v[i]] = a;
+          }
+          var kf = index + fraction;
+          var w = 2 * Math.PI * kf / D.frames;
+          for (var j = 0; j < fits.length; j++) {
+            var p = fitOffsets[j], terms = fits[j][1], value = fitData[p];
+            for (var q = 0; q < terms; q++) {
+              var m = fitData[p + 1 + q * 3];
+              value += fitData[p + 2 + q * 3] * Math.cos(w * m) + fitData[p + 3 + q * 3] * Math.sin(w * m);
+            }
+            scratch[fits[j][0]] = value;
+          }
+          if (drives.length) {
+            evaluateFormulas(kf);
+            for (var d = 0; d < drives.length; d++) { var dr = drives[d]; scratch[dr[0]] = dr[2] * formulaValues[dr[1]] + dr[3]; }
+          }
+          applyAxes(0, scratch, po + D.graph.params, kf, index, fraction);
+          return;
+        }
+        // Every frame its own record: the shapes, quads, and vertices as 16-bit
+        // samples by field, the parameter rows as floats.
+        var g = graphOf(index);
+        var si = D.offsets[u], pi = D.positionOffsets[u], vo2 = vertexOffset(g), count = paramOffset(g);
+        var go = groupOffset(g), no = nodeOffset(g), fo = fieldOffset(g), n3o = node3DOffset(g);
+        for (var k = 0; k < count; k++) {
+          if (k >= vo2 && (k - vo2) % V < P) { scratch[k] = vertexPositions[pi++]; continue; }
+          var c;
+          if (k < go) c = k < g.instances * F ? (k % F) : F + (k - g.instances * F) % Q;
+          else if (k < no) c = F + Q + (k - go) % G;
+          else if (k < fo) c = F + Q + G + (k - no) % NF;
+          else if (k < n3o) c = F + Q + G + NF + (k - fo) % FF;
+          else if (k < vo2) c = F + Q + G + NF + FF + (k - n3o) % N3;
+          else c = F + Q + G + NF + FF + N3 + (k - vo2) % V;
+          scratch[k] = lows[c] + stream[si++] * scales[c];
+        }
+        var pstart = D.paramOffsets[u];
+        for (var e2 = 0; e2 < g.params; e2++) scratch[count + e2] = extra[pstart + e2];
+        applyAxes(0, scratch, count + g.params, index + fraction, index, fraction);
+      }
+
+      // The blend factors under each mode, as the Mac's pipelines set them: a
+      // straight-alpha fragment (a shape, a fill, a stroke) scales by its own
+      // alpha, a premultiplied one (an image) by one.
+      function setBlend(mode, straight) {
+        gl.enable(gl.BLEND);
+        var src = straight ? gl.SRC_ALPHA : gl.ONE;
+        switch (mode) {
+          case 1: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          case 2: gl.blendEquationSeparate(gl.FUNC_REVERSE_SUBTRACT, gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          case 3: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 4: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(gl.ONE_MINUS_DST_COLOR, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA); break;
+          case 5: gl.blendEquation(gl.MAX); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          case 6: gl.blendEquation(gl.MIN); gl.blendFuncSeparate(src, gl.ONE, gl.ONE, gl.ONE); break;
+          default: gl.blendEquation(gl.FUNC_ADD); gl.blendFuncSeparate(src, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        }
+      }
+      // The shapes at instance `start`, `count` of them, drawn into the bound
+      // surface at logical size `w` by `h`.
+      function drawShapes(start, count, blend, w, h, flip) {
+        gl.useProgram(sdf);
+        gl.uniform2f(uViewport, w, h);
+        gl.uniform1f(uFlip, flip);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, strip);
+        gl.uniform1i(uGradients, 0);
+        setBlend(blend, true);
+        gl.bindVertexArray(vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(start * F, (start + count) * F), gl.DYNAMIC_DRAW);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+        gl.bindVertexArray(null);
+      }
+      // The triangle vertices at `start`, `count` of them, a fill's or, with
+      // `isFringe`, a stroke's, drawn into the bound surface.
+      function drawTriangles(start, count, isFringe, blend, w, h, vo, flip) {
+        var e = triangleProgram(isFringe);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        setBlend(blend, true);
+        gl.bindVertexArray(tvao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, tvbo);
+        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(vo + start * V, vo + (start + count) * V), gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, count);
+        gl.bindVertexArray(null);
+      }
+      // `count` textured quads from quad `quad`: a layer's (its rows turned
+      // over, premultiplied), a picture's (as uploaded, premultiplied), or the
+      // glyphs of atlas text (the glyph fragment, straight alpha).
+      function drawQuads(quad, count, tex, blend, kind, w, h, quadOffset, flip) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        if (kind === 'glyph') {
+          gl.useProgram(glyphProgram());
+          gl.uniform2f(gViewport, w, h);
+          gl.uniform1f(gFlip, flip);
+          gl.uniform1i(gAtlas, 0);
+          setBlend(blend, true);
+        } else {
+          gl.useProgram(imageProgram());
+          gl.uniform2f(iViewport, w, h);
+          gl.uniform1f(iFlip, flip);
+          gl.uniform1f(iFlipV, kind === 'layer' ? 1 : 0);
+          gl.uniform1i(iTex, 0);
+          setBlend(blend, false);
+        }
+        gl.bindVertexArray(qvao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, qvbo);
+        var at = quadOffset + quad * Q;
+        gl.bufferData(gl.ARRAY_BUFFER, scratch.subarray(at, at + count * Q), gl.DYNAMIC_DRAW);
+        gl.drawArrays(gl.TRIANGLES, 0, count * 6);
+        gl.bindVertexArray(null);
+      }
+      // The composed fields at group `start`, `count` of them, each its own draw:
+      // the group's rows as uniforms, its program in the node block.
+      var groupRows = new Float32Array(28);
+      function drawGroups(start, count, blend, w, h, flip, g) {
+        var e = groupProgram();
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, w, h);
+        gl.uniform1f(e.flip, flip);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, strip);
+        gl.uniform1i(e.gradients, 0);
+        setBlend(blend, true);
+        gl.bindVertexArray(null);
+        var go = groupOffset(g), no = nodeOffset(g);
+        for (var j = 0; j < count; j++) {
+          var at = go + (start + j) * G;
+          groupRows.set(scratch.subarray(at, at + G));
+          gl.uniform4fv(e.group, groupRows);
+          var ns = Math.round(scratch[at + 20]), nc = Math.round(scratch[at + 21]);
+          uploadNodes(scratch.subarray(no + ns * NF, no + (ns + nc) * NF));
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+      }
+      // The scene block as the field program's uniforms: the camera, the march
+      // budget with the scale this pass traces at, the lights, the casters.
+      var lightRows = new Float32Array(160), casterRows = new Float32Array(16);
+      function setScene(e, sc, scale) {
+        gl.uniformMatrix4fv(e.view, false, sc.subarray(0, 16));
+        gl.uniformMatrix4fv(e.proj, false, sc.subarray(16, 32));
+        gl.uniformMatrix4fv(e.invVP, false, sc.subarray(32, 48));
+        gl.uniform4fv(e.viewportSteps, sc.subarray(48, 52));
+        gl.uniform4f(e.scale, scale, sc[53], sc[54], sc[55]);
+        gl.uniform4fv(e.ambient, sc.subarray(56, 60));
+        gl.uniform4fv(e.eye, sc.subarray(60, 64));
+        gl.uniform4fv(e.counts, sc.subarray(64, 68));
+        var n = Math.min(8, Math.round(sc[64])), nc = Math.min(4, Math.round(sc[65]));
+        lightRows.fill(0); casterRows.fill(0);
+        lightRows.set(sc.subarray(68, 68 + n * 20));
+        casterRows.set(sc.subarray(68 + n * 20, 68 + n * 20 + nc * 4));
+        gl.uniform4fv(e.lights, lightRows);
+        gl.uniform4fv(e.casters, casterRows);
+      }
+      // The fields of one item, marched into the bound target under the depth
+      // test, the finish's rows as uniforms, each field's program in the node block.
+      function drawFields(item, w, h, flip, g, sc, scale) {
+        var e = fieldProgram();
+        gl.useProgram(e.p);
+        setScene(e, sc, scale);
+        gl.uniform1f(e.flip, flip);
+        var po = paramOffset(g) + item[4];
+        gl.uniform4fv(e.material, scratch.subarray(po, po + 36));
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, strip);
+        gl.uniform1i(e.gradients, 0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, brdf || blank);
+        gl.uniform1i(e.brdf, 1);
+        setBlend(item[3] || 0, true);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.depthMask(true);
+        gl.bindVertexArray(null);
+        var fo = fieldOffset(g), n3o = node3DOffset(g);
+        for (var j = 0; j < item[2]; j++) {
+          var at = fo + (item[1] + j) * FF;
+          gl.uniform4fv(e.field, scratch.subarray(at, at + FF));
+          var ns = Math.round(scratch[at + 28]), nc = Math.round(scratch[at + 29]);
+          uploadNodes(scratch.subarray(n3o + ns * N3, n3o + (ns + nc) * N3));
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+        gl.disable(gl.DEPTH_TEST);
+      }
+      // A reduced-resolution march: every field of the surface into a smaller
+      // target at the scene's scale (the Mac's coverage-adaptive fraction),
+      // then upsampled onto the target once, its depth re-emitted.
+      function drawFieldsReduced(items, target, w, h, flip, g, sc) {
+        var scale = sc[52], hw = Math.max(1, Math.round(sc[53])), hh = Math.max(1, Math.round(sc[54]));
+        var half = halfSurface(hw, hh);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, half.fbo);
+        gl.viewport(0, 0, hw, hh);
+        gl.clearColor(0, 0, 0, 0);
+        gl.depthMask(true);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        for (var i = 0; i < items.length; i++) {
+          if (items[i][0] === 'f') drawFields(items[i], w, h, 1, g, sc, scale);
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        gl.viewport(0, 0, target.w, target.h);
+        var e = upsampleProgram();
+        gl.useProgram(e.p);
+        gl.uniform1f(e.flip, flip);
+        gl.uniform4f(e.region, 1, 1, (hw - 0.5) / hw, (hh - 0.5) / hh);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, half.tex);
+        gl.uniform1i(e.color, 0);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, half.depthTex);
+        gl.uniform1i(e.depth, 1);
+        setBlend(0, false);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.depthMask(true);
+        gl.bindVertexArray(null);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.disable(gl.DEPTH_TEST);
+      }
+      // The items of one surface, in call order, into `surface` (its logical
+      // size is the layer's, its raster the surface's). `results` holds each
+      // layer's texture this frame; `previous` the fronts of the feedback layers;
+      // `sc` the frame's scene block when the surface marches 3D fields.
+      function drawItems(items, surface, w, h, clear, results, previous, g, sc) {
+        var ms = MSAA ? multisampled(surface) : null;
+        var target = ms ? { fbo: ms.fbo, w: surface.w, h: surface.h } : surface;
+        if (sc) { ensureDepth(surface); ensureDepthMS(ms, surface); }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        gl.viewport(0, 0, surface.w, surface.h);
+        if (clear && clear.length) { gl.clearColor(clear[0], clear[1], clear[2], clear.length > 3 ? clear[3] : 1.0); gl.clear(gl.COLOR_BUFFER_BIT); }
+        if (sc) { gl.depthMask(true); gl.clear(gl.DEPTH_BUFFER_BIT); }
+        var vo = vertexOffset(g), flip = ms ? -1 : 1, reduced = false;
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          if (item[0] === 's') { drawShapes(item[1], item[2], item[3] || 0, w, h, flip); continue; }
+          if (item[0] === 't') { drawTriangles(item[1], item[2], item[3] === 1, item[4] || 0, w, h, vo, flip); continue; }
+          if (item[0] === 'g') { drawGroups(item[1], item[2], item[3] || 0, w, h, flip, g); continue; }
+          if (item[0] === 'f') {
+            if (!sc) continue;
+            if (sc[52] < 1.0) {
+              if (reduced) continue;
+              reduced = true;
+              drawFieldsReduced(items, target, w, h, flip, g, sc);
+            } else {
+              drawFields(item, w, h, flip, g, sc, 1.0);
+            }
+            continue;
+          }
+          var count = item[4] || 1, qo = g.instances * F;
+          if (item[0] === 'a') { drawQuads(item[2], count, atlases[item[1]] || blank, item[3] || 0, 'glyph', w, h, qo, flip); continue; }
+          if (item[0] === 'm') { drawQuads(item[2], count, pictures[item[1]] || blank, item[3] || 0, 'picture', w, h, qo, flip); continue; }
+          var tex = item[0] === 'p' ? (previous[item[1]] || blank) : (results[item[1]] || blank);
+          drawQuads(item[2], count, tex, item[3] || 0, 'layer', w, h, qo, flip);
+        }
+        gl.disable(gl.BLEND);
+        if (ms) resolve(surface);
+      }
+      // One fullscreen pass of a framework fragment into `out`: the inputs bound
+      // in order, the rows at `params`.
+      function runFragment(name, inputs, rows, out) {
+        var e = fxProgram(name);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo);
+        gl.viewport(0, 0, out.w, out.h);
+        gl.disable(gl.BLEND);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, out.w, out.h);
+        for (var i = 0; i < e.textures.length; i++) {
+          gl.activeTexture(gl.TEXTURE0 + i);
+          gl.bindTexture(gl.TEXTURE_2D, inputs[i] || blank);
+          gl.uniform1i(e.textures[i].loc, i);
+        }
+        if (e.params) gl.uniform4fv(e.params, rows);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      function rowsOf(node, g) {
+        var start = paramOffset(g) + node.p;
+        return scratch.subarray(start, start + node.r * 4);
+      }
+      function resolveInputs(list, results) {
+        var out = [];
+        for (var i = 0; i < list.length; i++) out.push(list[i][0] === 't' ? tables[list[i][1]] : (results[list[i][1]] || blank));
+        return out;
+      }
+      function runUser(layer, out, results, kf, g) {
+        var e = userProgram(layer.shader);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, out.fbo);
+        gl.viewport(0, 0, out.w, out.h);
+        gl.disable(gl.BLEND);
+        gl.useProgram(e.p);
+        gl.uniform2f(e.viewport, out.w, out.h);
+        for (var i = 0; i < layer.inputs.length; i++) {
+          gl.activeTexture(gl.TEXTURE0 + i);
+          gl.bindTexture(gl.TEXTURE_2D, results[layer.inputs[i]] || blank);
+          gl.uniform1i(i === 0 ? e.src0 : e.src1, i);
+        }
+        gl.uniform2f(e.resolution, out.w, out.h);
+        gl.uniform2f(e.mouse, mouse.x, mouse.y);
+        gl.uniform1f(e.time, sketchTime(kf));
+        gl.uniform1f(e.dt, 1 / D.rate);
+        gl.uniform1ui(e.frame, Math.floor(kf) + D.frameOffset + 1);
+        gl.uniform1ui(e.paramCount, layer.count || 0);
+        var rows = new Float32Array(64);
+        var start = paramOffset(g) + layer.p;
+        for (var r = 0; r < layer.r * 4; r++) rows[r] = scratch[start + r];
+        gl.uniform4fv(e.params, rows);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      // A simulation field: the seed marks drawn, laid onto the front state by
+      // the inject, the step run its substeps, the last one into the back.
+      function runSim(layer, results, previous, g, index) {
+        var s = slot(layer.k, layer.pw, layer.ph, layer.sim.rest, layer.sim.seed);
+        var front = s.flipped ? s.b : s.a, back = s.flipped ? s.a : s.b;
+        var seed = acquire(layer.pw, layer.ph);
+        drawItems(layer.items, seed, layer.w, layer.h, layer.clear, results, previous, g);
+        var texel = [1 / layer.pw, 1 / layer.ph, 0, 0];
+        var own = rowsOf({ p: layer.sim.p, r: layer.sim.r }, g);
+        var rows = new Float32Array(4 + own.length);
+        rows.set(texel, 0); rows.set(own, 4);
+        var s0 = acquire(layer.pw, layer.ph), s1 = acquire(layer.pw, layer.ph);
+        runFragment(layer.sim.inject, [front.tex, seed.tex], rows, s0);
+        var step = layer.sim.step, extraTex = [];
+        if (layer.sim.modStep !== undefined) { step = layer.sim.modStep; extraTex = [results[layer.sim.mod] || blank]; }
+        var read = s0, n = layer.sim.n;
+        for (var i = 0; i < n; i++) {
+          var write = (i === n - 1) ? back : (read === s0 ? s1 : s0);
+          rows[2] = i; rows[3] = s.age;
+          runFragment(step, [read.tex].concat(extraTex), rows, write);
+          read = write;
+        }
+        s.age += 1;
+        s.flipped = !s.flipped;
+        return back.tex;
+      }
+
+      function draw(index, fraction) {
+        assemble(index, fraction);
+        var g = graphOf(index);
+        var kf = index + fraction;
+        var results = [], previous = [];
+        releaseAll();
+        for (var li = 0; li < g.layers.length; li++) {
+          var layer = g.layers[li];
+          var out;
+          switch (layer.t) {
+            case 'g':
+              out = acquire(layer.pw, layer.ph);
+              drawItems(layer.items, out, layer.w, layer.h, layer.clear, results, previous, g);
+              results[li] = out.tex;
+              break;
+            case 'gen':
+              out = acquire(layer.pw, layer.ph);
+              runFragment(layer.pass.f, resolveInputs(layer.pass.in, results), rowsOf(layer.pass, g), out);
+              results[li] = out.tex;
+              break;
+            case 'fx':
+            case 'cx': {
+              out = acquire(layer.pw, layer.ph);
+              if (layer.pass.f.indexOf('ollin_web_') === 0) {
+                runOwned(layer.pass.f, results[layer.input] || blank, rowsOf(layer.pass, g), out);
+                results[li] = out.tex;
+                break;
+              }
+              var ins = layer.t === 'fx' ? [results[layer.input]] : [results[layer.base], results[layer.aux]];
+              var bound = [];
+              for (var k = 0; k < layer.pass.in.length; k++) {
+                var inp = layer.pass.in[k];
+                bound.push(inp[0] === 't' ? tables[inp[1]] : (ins[inp[1]] || blank));
+              }
+              runFragment(layer.pass.f, bound, rowsOf(layer.pass, g), out);
+              results[li] = out.tex;
+              break;
+            }
+            case 'u':
+              out = acquire(layer.pw, layer.ph);
+              runUser(layer, out, results, kf, g);
+              results[li] = out.tex;
+              break;
+            case 'fb': {
+              var s = slot(layer.k, layer.pw, layer.ph, [0, 0, 0, 0], null);
+              var front = s.flipped ? s.b : s.a, back = s.flipped ? s.a : s.b;
+              previous[li] = front.tex;
+              drawItems(layer.items, back, layer.w, layer.h, layer.clear, results, previous, g);
+              results[li] = back.tex;
+              s.flipped = !s.flipped;
+              break;
+            }
+            case 'sim':
+              results[li] = runSim(layer, results, previous, g, index);
+              break;
+          }
+        }
+        // The canvas (with the frame's scene when it marches fields), then the
+        // whole-frame filters through a spare pair.
+        var clear = clearAt(index, fraction);
+        drawItems(g.canvas, main, W, H, clear.length ? clear : null, results, previous, g, g.fields ? sceneAt(index, fraction) : null);
+        var shown = main;
+        for (var pi = 0; pi < g.post.length; pi++) {
+          var target = acquire(W, H);
+          if (g.post[pi].f.indexOf('ollin_web_') === 0) runOwned(g.post[pi].f, shown.tex, rowsOf(g.post[pi], g), target);
+          else runFragment(g.post[pi].f, [shown.tex].concat(resolveInputs(g.post[pi].in.slice(1), results)), rowsOf(g.post[pi], g), target);
+          shown = target;
+        }
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+        gl.disable(gl.BLEND);
+        gl.useProgram(present);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, shown.tex);
+        gl.uniform1i(pSrc, 0);
+        gl.uniform2f(pViewport, W, H);
+        gl.uniform1f(pExposure, exposureAt(index, fraction));
+        gl.uniform1i(pToneMap, toneOf(index));
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+
+      var player = { canvas: canvas, frames: D.frames, rate: D.rate, duration: D.frames / D.rate,
+                     loops: D.loops, playing: false, time: 0, autoplay: true };
+      var shown = -1;
+      var sequential = D.accumulates || D.stateful;
+
+      // Show frame `index`, moved `fraction` toward the next. An accumulating
+      // or stateful track draws every frame between the last shown and this
+      // one, in order, since each one builds on the last.
+      function showAt(index, fraction) {
+        if (sequential) {
+          if (shown < 0 || index < shown) {
+            persistent = {};
+            for (var k = 0; k <= index; k++) draw(k, 0);
+          } else {
+            var k2 = shown; while (k2 !== index) { k2 = (k2 + 1) % D.frames; draw(k2, 0); }
+          }
+          shown = index;
+          return;
+        }
+        draw(index, fraction);
+        shown = index;
+      }
+      // Show the picture at `t` seconds of the track.
+      function show(t) {
+        player.time = t;
+        var pos = Math.max(0, t) * D.rate;
+        var i = Math.floor(pos), f = pos - i;
+        if (f > 0.999999) { i += 1; f = 0; } else if (f < 0.000001) { f = 0; }
+        i = i % D.frames;
+        if (!D.loops && i === D.frames - 1) f = 0;
+        if (!D.stable) f = 0;
+        showAt(i, f);
+      }
+
+      var last = null, raf = 0;
+      function tick(now) {
+        if (!player.playing) return;
+        if (last === null) last = now;
+        var dt = Math.min(0.25, (now - last) / 1000);
+        last = now;
+        show(player.time + dt);
+        raf = requestAnimationFrame(tick);
+      }
+      player.play = function () {
+        if (player.playing || (D.frames < 2 && !drives.length)) return;
+        player.playing = true;
+        last = null;
+        raf = requestAnimationFrame(tick);
+      };
+      player.pause = function () {
+        player.playing = false;
+        player.autoplay = false;
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        last = null;
+      };
+      player.seek = function (t) { show(t); };
+      player.showFrame = function (i) {
+        var n = D.frames, index = ((i % n) + n) % n;
+        player.time = index / D.rate;
+        showAt(index, 0);
+      };
+      var resume = false;
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { if (player.playing) { player.pause(); resume = true; } }
+        else if (resume) { resume = false; player.play(); }
+      });
+
+      // Setting a parameter from the page: `set(name, value)` takes a number,
+      // a boolean, a color as '#rrggbb', '#rrggbbaa', {red, green, blue, alpha}
+      // or [r, g, b, a] in 0…1, a point as {x, y} or [x, y], a pair of ends as
+      // {lower, upper} or [lower, upper], or one part by name ('ink.red', 0.5).
+      // A value outside the parameter's range lands on its edge, as on the Mac.
+      var started = false, inputs = {};
+      function controlNamed(name) { for (var i = 0; i < controls.length; i++) if (controls[i].name === name) return controls[i]; return null; }
+      function partOf(c, part) { for (var i = 0; i < c.parts.length; i++) if (c.parts[i].name === part) return c.parts[i]; return null; }
+      function partValue(c, p) { return p && p.axis >= 0 ? values[p.axis] : (p ? p.value : undefined); }
+      function setPart(c, p, x) {
+        if (!p || p.axis < 0) return;
+        x = Number(x);
+        if (x !== x) return;
+        if (p.lo !== undefined) x = Math.min(Math.max(x, p.lo), p.hi);
+        if (c.kind === 'integer' || c.kind === 'toggle') x = Math.round(x);
+        else if (p.step > 0 && p.lo !== undefined) x = Math.min(p.hi, p.lo + Math.round((x - p.lo) / p.step) * p.step);
+        if (c.kind === 'range') {
+          // A pair of ends stays ordered, as on the Mac.
+          if (p.name === 'lower') x = Math.min(x, partValue(c, partOf(c, 'upper')));
+          else x = Math.max(x, partValue(c, partOf(c, 'lower')));
+        }
+        values[p.axis] = x;
+      }
+      function hex2(x) { var h = Math.round(Math.min(Math.max(x, 0), 1) * 255).toString(16); return h.length < 2 ? '0' + h : h; }
+      function colorOf(c) {
+        var r = partValue(c, partOf(c, 'red')), g = partValue(c, partOf(c, 'green')), b = partValue(c, partOf(c, 'blue')), a = partValue(c, partOf(c, 'alpha'));
+        return { red: r, green: g, blue: b, alpha: a, hex: '#' + hex2(r) + hex2(g) + hex2(b) };
+      }
+      function parseColor(v) {
+        if (typeof v === 'string') {
+          var s = v.replace('#', '');
+          if (s.length === 3 || s.length === 4) s = s.split('').map(function (ch) { return ch + ch; }).join('');
+          if (s.length !== 6 && s.length !== 8) return null;
+          var out = { red: parseInt(s.slice(0, 2), 16) / 255, green: parseInt(s.slice(2, 4), 16) / 255, blue: parseInt(s.slice(4, 6), 16) / 255 };
+          if (s.length === 8) out.alpha = parseInt(s.slice(6, 8), 16) / 255;
+          return out;
+        }
+        if (Array.isArray(v)) return { red: v[0], green: v[1], blue: v[2], alpha: v[3] };
+        return v || null;
+      }
+      function redraw() {
+        if (!started) return;
+        if (sequential) shown = -1;
+        if (!player.playing) show(player.time);
+      }
+      function syncPanel() { for (var key in inputs) inputs[key].sync(); }
+      player.params = controls.map(function (c) {
+        return { name: c.name, label: c.label, group: c.group || null, kind: c.kind,
+                 parts: c.parts.filter(function (p) { return p.axis >= 0; }).map(function (p) { return { name: p.name, min: p.lo, max: p.hi, step: p.step }; }) };
+      });
+      player.get = function (name) {
+        var dot = name.indexOf('.');
+        if (dot > 0) { var c0 = controlNamed(name.slice(0, dot)); return c0 ? partValue(c0, partOf(c0, name.slice(dot + 1))) : undefined; }
+        var c = controlNamed(name);
+        if (!c) return undefined;
+        switch (c.kind) {
+          case 'number': case 'integer': return partValue(c, c.parts[0]);
+          case 'toggle': return partValue(c, c.parts[0]) !== 0;
+          case 'color': { var k = colorOf(c); return { red: k.red, green: k.green, blue: k.blue, alpha: k.alpha }; }
+          default: { var o = {}; for (var i = 0; i < c.parts.length; i++) o[c.parts[i].name] = partValue(c, c.parts[i]); return o; }
+        }
+      };
+      player.set = function (name, value) {
+        var dot = name.indexOf('.');
+        if (dot > 0) { var c0 = controlNamed(name.slice(0, dot)); if (c0) { setPart(c0, partOf(c0, name.slice(dot + 1)), value); syncPanel(); redraw(); } return; }
+        var c = controlNamed(name);
+        if (!c) return;
+        switch (c.kind) {
+          case 'number': case 'integer': setPart(c, c.parts[0], value); break;
+          case 'toggle': setPart(c, c.parts[0], value ? 1 : 0); break;
+          case 'color': {
+            var k = parseColor(value);
+            if (!k) return;
+            for (var i = 0; i < c.parts.length; i++) if (k[c.parts[i].name] !== undefined) setPart(c, c.parts[i], k[c.parts[i].name]);
+            break;
+          }
+          default: {
+            var o = value || {};
+            if (Array.isArray(value)) { o = {}; for (var j = 0; j < c.parts.length; j++) o[c.parts[j].name] = value[j]; }
+            for (var i2 = 0; i2 < c.parts.length; i2++) if (o[c.parts[i2].name] !== undefined) setPart(c, c.parts[i2], o[c.parts[i2].name]);
+          }
+        }
+        syncPanel();
+        redraw();
+      };
+      player.reset = function () { for (var a = 0; a < axes.length; a++) values[a] = axes[a].base; syncPanel(); redraw(); };
+
+      // The panel under the canvas, in the standalone page: a row per
+      // parameter, grouped as the sketch grouped them, as wide as the canvas.
+      var panel = null;
+      function fmt(x, p) {
+        var span = p.hi - p.lo;
+        var d = p.step > 0 ? Math.max(0, Math.ceil(-Math.log10(p.step) - 1e-9)) : (span >= 100 ? 0 : (span >= 10 ? 1 : 2));
+        return Number(x).toFixed(d);
+      }
+      function fitPanel() {
+        document.documentElement.style.setProperty('--ollin-panel', (panel.offsetHeight + 28) + 'px');
+        var rect = canvas.getBoundingClientRect();
+        if (rect.width > 0) panel.style.width = rect.width + 'px';
+      }
+      function addInputs(c, row) {
+        var kind = c.kind;
+        function attach(p, input, out) {
+          function sync() {
+            var v = values[p.axis];
+            if (kind === 'toggle') input.checked = v !== 0;
+            else if (input.type === 'number') input.value = kind === 'integer' ? String(Math.round(v)) : fmt(v, p);
+            else input.value = v;
+            if (out) out.value = fmt(v, p);
+          }
+          input.addEventListener('input', function () {
+            setPart(c, p, kind === 'toggle' ? (input.checked ? 1 : 0) : input.value);
+            syncPanel();
+            redraw();
+          });
+          inputs[c.name + '.' + p.name] = { sync: sync };
+          sync();
+        }
+        if (kind === 'color') {
+          var well = document.createElement('input');
+          well.type = 'color';
+          well.addEventListener('input', function () {
+            var k = parseColor(well.value);
+            for (var j = 0; j < c.parts.length; j++) if (k[c.parts[j].name] !== undefined) setPart(c, c.parts[j], k[c.parts[j].name]);
+            syncPanel();
+            redraw();
+          });
+          inputs[c.name + '.well'] = { sync: function () { well.value = colorOf(c).hex; } };
+          well.value = colorOf(c).hex;
+          row.appendChild(well);
+        }
+        for (var i = 0; i < c.parts.length; i++) {
+          var p = c.parts[i];
+          if (p.axis < 0) continue;
+          if (kind === 'color' && p.name !== 'alpha') continue;
+          var input = document.createElement('input'), out = null;
+          if (kind === 'toggle') {
+            input.type = 'checkbox';
+          } else if (kind === 'number' || kind === 'color') {
+            input.type = 'range';
+            input.min = p.lo; input.max = p.hi; input.step = p.step > 0 ? p.step : 'any';
+            out = document.createElement('output');
+            if (kind === 'color') { var tag = document.createElement('span'); tag.className = 'part'; tag.textContent = 'alpha'; row.appendChild(tag); }
+          } else {
+            input.type = 'number';
+            if (p.lo !== undefined) { input.min = p.lo; input.max = p.hi; }
+            input.step = p.step > 0 ? p.step : (kind === 'integer' ? 1 : 'any');
+            if (p.name) { var tag2 = document.createElement('span'); tag2.className = 'part'; tag2.textContent = p.name; row.appendChild(tag2); }
+          }
+          row.appendChild(input);
+          if (out) row.appendChild(out);
+          attach(p, input, out);
+        }
+      }
+      function buildPanel() {
+        var style = document.createElement('style');
+        style.textContent = '.ollin-controls{font:13px/1.4 -apple-system,system-ui,sans-serif;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 14px;align-items:center;box-sizing:border-box;padding:4px 8px;margin:0}'
+          + '.ollin-controls h4{grid-column:1/-1;margin:10px 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.55}'
+          + '.ollin-controls label{text-align:right;opacity:.8;white-space:nowrap}'
+          + '.ollin-controls .row{display:flex;gap:8px;align-items:center;min-width:0}'
+          + '.ollin-controls input[type=range]{flex:1;min-width:80px;margin:0;accent-color:currentColor}'
+          + '.ollin-controls input[type=number]{width:5.5em;font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:6px;padding:2px 6px;opacity:.85}'
+          + '.ollin-controls input[type=color]{width:34px;height:24px;padding:0;border:none;background:transparent}'
+          + '.ollin-controls input[type=checkbox]{accent-color:currentColor}'
+          + '.ollin-controls output{min-width:3.5em;text-align:right;font-variant-numeric:tabular-nums;opacity:.75}'
+          + '.ollin-controls .part{font-size:11px;opacity:.55}';
+        document.head.appendChild(style);
+        panel = document.createElement('form');
+        panel.className = 'ollin-controls';
+        panel.addEventListener('submit', function (ev) { ev.preventDefault(); });
+        var lastGroup = null;
+        for (var i = 0; i < controls.length; i++) {
+          var c = controls[i], group = c.group || null;
+          if (group !== lastGroup && group) { var h = document.createElement('h4'); h.textContent = group; panel.appendChild(h); }
+          lastGroup = group;
+          var label = document.createElement('label');
+          label.textContent = c.label;
+          panel.appendChild(label);
+          var row = document.createElement('div');
+          row.className = 'row';
+          panel.appendChild(row);
+          addInputs(c, row);
+        }
+        canvas.insertAdjacentElement('afterend', panel);
+        fitPanel();
+        window.addEventListener('resize', fitPanel);
+      }
+      if (PANEL && controls.length) buildPanel();
+
+      canvas.ollin = player;
+      window.ollin = player;
+
+      // The first frame, once every picture and page is decoded; a page with
+      // none draws it at once. Until then the canvas shows the first frame's paper,
+      // so nothing flashes black. A reader who asked the system for less motion
+      // sees that frame, still; `pause()` before the start holds it too.
+      var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      function start() {
+        started = true;
+        show(0);
+        if (!still && player.autoplay) player.play();
+      }
+      if (pending.length) {
+        var paper = clearOf(0);
+        if (paper.length) {
+          var enc = function (v) { return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; };
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.clearColor(enc(paper[0]), enc(paper[1]), enc(paper[2]), 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+        player.ready = Promise.all(pending).then(start);
+      } else {
+        player.ready = Promise.resolve();
+        start();
+      }
+    })();
+    </script>
+    """##
 }

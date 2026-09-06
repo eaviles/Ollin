@@ -134,7 +134,11 @@ struct SiteTests {
                 checked += 1
             }
             if Self.prose(of: html).contains("](") {
-                leftovers.append(url.path.replacingOccurrences(of: output.path + "/", with: ""))
+                // Both sides resolved, since a temporary directory walks out
+                // with a `/private` in front of it and a plain prefix strip
+                // then matches nothing, leaving the page unnamed in the failure.
+                let root = output.resolvingSymlinksInPath().path + "/"
+                leftovers.append(url.resolvingSymlinksInPath().path.replacingOccurrences(of: root, with: ""))
             }
             if let range = html.range(of: "<title>") {
                 let title = html[range.upperBound...].prefix { $0 != "<" }
@@ -173,7 +177,10 @@ struct SiteTests {
         #expect(fragment.hasPrefix("<canvas class=\"ollin-sketch\" width=\"1080\" height=\"1080\""))
         #expect(fragment.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("</script>"))
         #expect(fragment.contains("<script>"))
-        #expect(!fragment.contains("ollin-controls"), "the inline form draws no panel")
+        // The panel's own styling travels with the player whether or not a
+        // panel is built, so what says the front page draws none is the flag
+        // the inline form bakes in, not the absence of the word.
+        #expect(fragment.contains("var PANEL = false"), "the inline form draws no panel")
     }
 
     /// The front page's hero, as the site writes it, inside a page that carries
@@ -280,15 +287,38 @@ struct SiteTests {
 
     /// The page's text alone: no code (which keeps its own spelling), no
     /// tags, and none of their attributes.
+    /// A script is skipped whole beside code, since a script is not prose and
+    /// the front page carries one: the ring's recorded page, whose shaders
+    /// spell an array as `vec2[6](…)`, and those two characters are what an
+    /// unrendered markdown link looks like.
+    ///
+    /// One pass, keeping the text and stepping over everything else. Cutting a
+    /// range at a time instead rereads and recopies the whole page on every
+    /// tag, which the front page's recorded ring made plain: the same walk
+    /// went from seven minutes to longer than the suite was willing to wait.
     static func prose(of html: String) -> String {
-        var text = html
-        for (open, close) in [("<pre", "</pre>"), ("<code", "</code>")] {
-            while let start = text.range(of: open), let end = text.range(of: close, range: start.upperBound ..< text.endIndex) {
-                text.removeSubrange(start.lowerBound ..< end.upperBound)
+        let blocks = [("<script", "</script>"), ("<pre", "</pre>"), ("<code", "</code>")]
+        var text = ""
+        text.reserveCapacity(html.count)
+        var index = html.startIndex
+        while index < html.endIndex {
+            guard html[index] == "<" else {
+                text.append(html[index])
+                index = html.index(after: index)
+                continue
             }
-        }
-        while let start = text.firstIndex(of: "<"), let end = text[start...].firstIndex(of: ">") {
-            text.removeSubrange(start ... end)
+            let rest = html[index...]
+            if let block = blocks.first(where: { rest.hasPrefix($0.0) }) {
+                // An unclosed block runs to the end of the page, as it does in
+                // a browser.
+                index = html.range(of: block.1, range: index ..< html.endIndex)?.upperBound ?? html.endIndex
+                continue
+            }
+            if let close = rest.firstIndex(of: ">") {
+                index = html.index(after: close)
+            } else {
+                index = html.endIndex
+            }
         }
         return text
     }

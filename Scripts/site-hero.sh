@@ -28,13 +28,33 @@ trap 'rm -rf "$work"' EXIT
 page="$work/hero.html"
 
 echo "site-hero: recording Examples/Web/BreathingRing as its inline page"
-swift run --package-path Examples Example-Web-BreathingRing --export-web "$page" --inline || exit 1
+# `--seed` is what makes two recordings the same file: an unseeded run draws a
+# fresh seed and stamps it in the page's recipe, so the bytes moved every time
+# even though the ring is identical. The ring reads no randomness, so which
+# seed it is does not matter, only that it is always the same one.
+swift run --package-path Examples Example-Web-BreathingRing --export-web "$page" --inline --seed 1 || exit 1
 if [[ ! -s "$page" ]]; then
     echo "site-hero: nothing was written to $page" >&2
     exit 1
 fi
 if ! grep -q '^<canvas class="ollin-sketch"' "$page"; then
     echo "site-hero: $page does not open on the sketch's canvas" >&2
+    exit 1
+fi
+
+# The page's recipe says how the ring was made, and one of its fields is the
+# commit the export ran at. That field is about the machine rather than the
+# sketch, and it moves on every commit, so keeping it would rewrite this
+# recording each time the repository moved and put the working tree's state on
+# a public page. The rest of the recipe stays: the tool, the pinned seed, and
+# the parameter values are what reproduce the ring. Nothing on the page reads
+# any of it.
+if ! sed -i '' 's/,\\"git\\":\\"[^\\]*\\"//' "$page"; then
+    echo "site-hero: could not take the commit out of the page's recipe" >&2
+    exit 1
+fi
+if grep -q '\\"git\\":' "$page"; then
+    echo "site-hero: the page still carries a commit in its recipe" >&2
     exit 1
 fi
 
@@ -63,8 +83,16 @@ enum SiteHero {
     /// The fragment, as the exporter wrote it.
 EOF
     printf '    static let fragment = %s"""\n' "$hashes"
-    # Indented under the closing delimiter, which Swift strips back out.
-    sed 's/^/    /' "$page"
+    # Indented under the closing delimiter, which Swift strips back out. The
+    # exporter ends the page without a trailing newline, and Swift wants the
+    # closing delimiter alone on its line, so supply the newline when the page
+    # does not. Command substitution eats a trailing newline, so an empty
+    # capture here means the last byte already was one.
+    # Only a line with something on it is indented. A blank one indented is a
+    # line of trailing spaces, which the formatter refuses, and Swift takes an
+    # empty line in a multi-line literal as it is.
+    sed 's/^./    &/' "$page"
+    [[ -n "$(tail -c 1 "$page")" ]] && printf '\n'
     printf '    """%s\n}\n' "$hashes"
 } >"$target.tmp" || exit 1
 mv "$target.tmp" "$target" || exit 1

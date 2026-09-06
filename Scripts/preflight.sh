@@ -129,11 +129,14 @@ fi
 # The em-dash and invisible-character net over added lines, for text written
 # through heredocs or scripts that the editing hooks never saw. CLAUDE.md and
 # CAPABILITIES.md are agent-facing and exempt; External/ is other people's
-# code. The pattern is built from UTF-8 octal escapes (em dash, zero-width
+# code; SiteHero.swift is nobody's prose, being the ring's recorded page, which
+# carries the framework's own shader comments through the translation verbatim.
+# The pattern is built from UTF-8 octal escapes (em dash, zero-width
 # space, zero-width non-joiner, zero-width joiner, BOM) so this file stays
 # clean under its own rule.
 banned="$(printf '\342\200\224|\342\200\213|\342\200\214|\342\200\215|\357\273\277')"
 net=$(git diff HEAD -- . ':(exclude)CLAUDE.md' ':(exclude)CAPABILITIES.md' ':(exclude)External' \
+    ':(exclude)Sources/OllinReference/SiteHero.swift' \
     | grep -nE "^\+.*($banned)")
 if [[ -n "$net" ]]; then
     echo "preflight: em dash or invisible character in added lines:" >&2
