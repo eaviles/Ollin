@@ -98,39 +98,63 @@ final class EnvironmentCache: @unchecked Sendable {
         let file = cacheFile(for: url), dir = cacheDirectory, fetch = self.fetch
         let inFlight = self.inFlight, failures = self.failures
         Task.detached {
-            do {
-                _ = try await EnvironmentCache.store(url, to: file, in: dir, fetch: fetch)
+            if await EnvironmentCache.download(url, to: file, in: dir, fetch: fetch,
+                                               onFailure: "retrying in \(Int(EnvironmentCache.retryInterval))s") != nil {
                 failures.withLock { _ = $0.removeValue(forKey: url) }
-            } catch {
+            } else {
                 failures.withLock { $0[url] = Date() }
-                print("Ollin: downloading \(url.lastPathComponent) failed (\(error.ollinBriefDescription)); "
-                    + "retrying in \(Int(EnvironmentCache.retryInterval))s")
             }
             inFlight.withLock { _ = $0.remove(url) }
         }
     }
 
-    /// Download synchronously (for the headless/export path, so exported art gets the high-res
-    /// version rather than the placeholder). Returns the cached file, or nil on failure.
+    /// Download and wait for the file: the cached file if it is already there, else the
+    /// file once it has landed, else nil when the download failed (the failure is printed,
+    /// since a silent one is a silent quality downgrade). The form to call from an `async`
+    /// body: it suspends rather than parking the thread it runs on.
+    func download(_ url: URL) async -> URL? {
+        if let cached = cachedFile(for: url) { return cached }
+        return await EnvironmentCache.download(url, to: cacheFile(for: url), in: cacheDirectory, fetch: fetch,
+                                               onFailure: "rendering with the placeholder environment")
+    }
+
+    /// `download(_:)` for a synchronous caller: the export path, so exported art gets the
+    /// high-resolution version rather than the placeholder.
+    ///
+    /// This parks the calling thread until the file lands, so call it only from a thread
+    /// that is not a Swift concurrency worker: the main thread, or a real `Thread` driving
+    /// a headless render, which is what the export paths are. From an `async` body, a test
+    /// body included, call `download(_:)` instead; parking a worker there holds one of the
+    /// pool's few threads, and a run with enough of those parked at once stops resuming
+    /// anything (2026-09-06: this call from a test body was the other parked thread in
+    /// every sample of the CI wedge). `Scripts/preflight.sh` refuses it under Tests/.
     func downloadBlocking(_ url: URL) -> URL? {
         if let cached = cachedFile(for: url) { return cached }
         let file = cacheFile(for: url), dir = cacheDirectory, fetch = self.fetch
         let result = OSAllocatedUnfairLock<URL?>(initialState: nil)
         let sema = DispatchSemaphore(value: 0)
         Task.detached {
-            do {
-                let r = try await EnvironmentCache.store(url, to: file, in: dir, fetch: fetch)
-                result.withLock { $0 = r }
-            } catch {
-                // The caller falls back to the placeholder; say why, or a failed export
-                // download is a silent quality downgrade.
-                print("Ollin: downloading \(url.lastPathComponent) failed (\(error.ollinBriefDescription)); "
-                    + "rendering with the placeholder environment")
-            }
+            let r = await EnvironmentCache.download(url, to: file, in: dir, fetch: fetch,
+                                                    onFailure: "rendering with the placeholder environment")
+            result.withLock { $0 = r }
             sema.signal()
         }
         sema.wait()
         return result.withLock { $0 }
+    }
+
+    /// The one download body both forms and the background kick-off share: store the bytes,
+    /// or print why that failed with what happens next (`onFailure`) and answer nil. Static
+    /// so the task captures no non-Sendable state.
+    private static func download(_ url: URL, to file: URL, in dir: URL,
+                                 fetch: @Sendable (URL) async throws -> Data,
+                                 onFailure: String) async -> URL? {
+        do {
+            return try await store(url, to: file, in: dir, fetch: fetch)
+        } catch {
+            print("Ollin: downloading \(url.lastPathComponent) failed (\(error.ollinBriefDescription)); \(onFailure)")
+            return nil
+        }
     }
 
     /// Fetch a URL's bytes and write them to the cache file (atomically). Static so the

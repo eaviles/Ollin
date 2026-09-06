@@ -38,6 +38,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A test parked a worker on the environment download.** The remote-HDRI cache had only a blocking download, right on the export path's main thread and wrong from a test body, where it held one of the concurrency pool's few threads; it was the other parked thread in every sample of the CI wedge. The cache now has an `async` `download(_:)` that suspends instead, the tests use it, and preflight refuses the blocking form under Tests.
 - **A picture could park the whole run.** An image's texture was built through the synchronous MetalKit loader, which decodes on a dispatch worker and waits on its own semaphore; with every worker already blocked, as a busy test run manages, the main thread waited forever, which is what the CI watchdog sampled on 2026-09-06 (three failed Build runs in five). Textures are now decoded on the calling thread and their mip chains blitted on a command buffer, so no worker is needed. The pixels are unchanged: the whole snapshot suite and the figure probe compare clean.
 - **A translucent PNG composites at its own alpha.** ImageIO decodes a PNG with alpha straight, and the image pipeline blends premultiplied, so a translucent pixel of a loaded PNG drew too bright; the texture is now premultiplied on upload, as an image painted in memory already was.
 
