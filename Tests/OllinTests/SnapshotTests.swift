@@ -580,6 +580,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("hyperbolic-tiling",
                  note: "Two Poincaré disks: a {5,4} checkerboard panned off center (left) and a {7,3} depth fade (right). Pins the central tile's derived vertex radius, the reflection expansion and its dedup, the parity two-coloring closing around every vertex, the panning motion, and the geodesic arc flattening. No rng and no time, so it is deterministic.",
                  make: { HyperbolicTilingScene() }),
+    SnapshotCase("parquet-deformation",
+                 note: "One sheet of tiles running from a plain square on the left to an interlocking key on the right, filled by the amount each tile was built at with the line-work over it. Pins the shared-edge construction (the tiling stays crack-free the whole way across, which is only true because both tiles beside an edge read one curve), the arc-length blend reproducing the named profiles at each end, and the placement of a profile onto its edge. No rng and no time, so it is deterministic.",
+                 make: { ParquetDeformationScene() }),
     SnapshotCase("circle-packing",
                  note: "Circle packing, both grow-to-touch flavors: a self-seeding gap-filling pack in the top half (big circles first, smaller ones filling the gaps) and a blue-noise foam in the bottom half (a circle grown at each Poisson-disk point until it touches its nearest neighbor). Pins that circles never overlap and land the same way. Seeded, no time, so the layout is deterministic.",
                  make: { CirclePackingScene() }),
@@ -4278,6 +4281,35 @@ private final class HyperbolicTilingScene: Sketch {
         strokeWeight(1)
         for tile in hyperbolicTiling(sides: 7, meeting: 3, in: right, minEdge: 1.5) {
             drawPolyline(tile.points, closed: true)
+        }
+    }
+}
+
+/// A parquet deformation across the whole sheet: the tile leaves as a plain
+/// square and arrives as an interlocking key, and nothing comes apart on the
+/// way. Pins the shared-edge construction, the arc-length blend, and the
+/// placement of a profile onto its edge. No rng and no `time`, so it's
+/// deterministic.
+private final class ParquetDeformationScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14110F))
+
+        let field = Rectangle(x: 10, y: 40, width: 236, height: 176)
+        let sheet = ParquetDeformation(grid: Grid(in: field, columns: 12, rows: 9),
+                                       from: .wave(count: 1, depth: 0.22),
+                                       to: .tooth(depth: 0.3, width: 0.42))
+        noStroke()
+        for tile in sheet.tiles {
+            fill(Color.mix(Color(hex: 0x2E5E6B), Color(hex: 0xE0A33C), tile.amount))
+            drawShape(tile.shape)
+        }
+        stroke(Color(hex: 0xF4EFE6))
+        strokeWeight(0.8)
+        strokeJoin(.round)
+        for edge in sheet.edges {
+            drawPolyline(edge.points, closed: false)
         }
     }
 }

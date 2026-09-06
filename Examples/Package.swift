@@ -465,6 +465,7 @@ let package = Package(
         example("Patterns/Wavefront"),
         example("Patterns/Truchet"),
         example("Patterns/Hitomezashi"),
+        example("Patterns/ParquetDeformation"),
         example("Patterns/Kolam"),
         example("Patterns/Knotwork"),
         example("Patterns/Pursuit"),

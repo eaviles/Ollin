@@ -1025,10 +1025,12 @@ let package = Package(
         // The reference in the terminal: the page catalog, the markdown
         // renderer, the lookup, the search, and the example listing. Text in,
         // text out, and it reads the repository's own Docs and Examples
-        // folders, so a page that stops rendering is caught here.
+        // folders, so a page that stops rendering is caught here. The browser
+        // gate plays the site's front-page ring, and skips itself where no
+        // browser gives WebGL2.
         .testTarget(
             name: "OllinReferenceTests",
-            dependencies: ["OllinReference"]
+            dependencies: ["OllinReference", "OllinWebGate"]
         ),
         // Editing a sketch's own source from the window it runs in: the scanner
         // that finds one draw call's numbers and writes the new ones. Text in,

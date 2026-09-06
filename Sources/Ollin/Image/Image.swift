@@ -2,7 +2,6 @@ import Foundation
 import CoreGraphics
 import ImageIO
 import Metal
-import MetalKit
 
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
@@ -290,37 +289,21 @@ public final class Image {
         // After a pixel write (or for a blank image authored in memory), upload the
         // edited buffer; otherwise upload the original decode unchanged.
         let source = (pixelsModified ? bufferBackedCGImage() : nil) ?? cgImage
-        let loader = MTKTextureLoader(device: device)
-        // `.SRGB: true` makes the texture sRGB, so the GPU decodes each sample to
-        // linear on read — matching the renderer's linear-light blending, where
-        // the shaders also linearize the solid colors drawn beside the image.
-        // `.generateMipmaps` builds the smaller levels the sampler reads when a
-        // texture lands on fewer pixels than it has (a floor running to the
-        // horizon, a picture drawn small). Each level averages in *linear* light
-        // because the format is sRGB, which is the light the renderer blends in.
-        let options: [MTKTextureLoader.Option: Any] = [
-            .SRGB: true,
-            .generateMipmaps: NSNumber(value: true),
-            .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
-            .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
-        ]
-        guard var texture = try? loader.newTexture(cgImage: source, options: options) else {
+        // Built by hand, never through the synchronous MetalKit loader. That
+        // loader decodes on a dispatch worker and parks the caller on its own
+        // semaphore until the worker runs; when every worker is already parked
+        // (a test run with several blocking calls in flight), the main thread
+        // waits forever, which is what the CI watchdog sampled on 2026-09-06.
+        // Decoding here on the calling thread and blitting the mip chain on a
+        // command buffer needs no worker at all. The hand path also settles two
+        // things the loader got wrong for some sources: a context-made image
+        // came back in a linear format holding sRGB bytes (everything washed out
+        // lighter), and a straight-alpha PNG stayed straight while the pipeline
+        // blends premultiplied (a translucent pixel drew too bright). The sRGB
+        // format decodes each sample to linear on read, matching the renderer's
+        // linear-light blending, and each mip level averages in that light.
+        guard let texture = Image.sRGBTexture(from: source, on: device) else {
             return nil
-        }
-        // The loader honors `.SRGB` only for ImageIO-backed sources: a CGImage
-        // made by a bitmap context (a pixel-authored image, a camera frame, any
-        // CG drawing) comes back in a *linear* pixel format holding the same
-        // sRGB-encoded bytes, so sampling skips the decode and everything washes
-        // out lighter. When that happens, rebuild the texture by hand in the
-        // sRGB format. The loader also keeps a straight-alpha source straight
-        // (ImageIO decodes a PNG with alpha that way), while the image pipeline
-        // blends premultiplied, so a straight texture draws a translucent pixel
-        // too bright; the rebuild draws through a premultiplied context, which
-        // premultiplies too.
-        let straight = source.alphaInfo == .last || source.alphaInfo == .first
-        if straight || (texture.pixelFormat != .bgra8Unorm_srgb && texture.pixelFormat != .rgba8Unorm_srgb),
-           let rebuilt = Image.sRGBTexture(from: source, on: device) {
-            texture = rebuilt
         }
         cachedTexture = texture
         cachedDeviceID = id
@@ -354,23 +337,16 @@ public final class Image {
         }
 
         let source = (pixelsModified ? bufferBackedCGImage() : nil) ?? cgImage
-        let loader = MTKTextureLoader(device: device)
-        // `.SRGB: false` asks for the raw-bytes format. Unlike the color path,
-        // a context-made CGImage needs no self-heal here: the loader's linear
-        // format holding the file's bytes is exactly the data read we want.
-        let options: [MTKTextureLoader.Option: Any] = [
-            .SRGB: false,
-            // A value map needs its own mip chain as much as a color one: without
-            // it a normal map keeps flickering at a distance the base color has
-            // stopped flickering at, which reads as sparkle. The levels average
-            // the stored values (no sRGB decode, the format is linear), and the
-            // fragment renormalizes the bent normal, so a shortened average
-            // direction stays a direction.
-            .generateMipmaps: NSNumber(value: true),
-            .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
-            .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
-        ]
-        guard let texture = try? loader.newTexture(cgImage: source, options: options) else {
+        // By hand, for the reason the color path gives: the synchronous loader
+        // can park the main thread forever under a busy dispatch pool. The bytes
+        // go in as they are, into the linear format, so a value reads back as
+        // the value that was stored. A value map needs its own mip chain as
+        // much as a color one: without it a normal map keeps flickering at a
+        // distance the base color has stopped flickering at, which reads as
+        // sparkle. The levels average the stored values (no sRGB decode), and
+        // the fragment renormalizes the bent normal, so a shortened average
+        // direction stays a direction.
+        guard let texture = Image.linearTexture(from: source, on: device) else {
             return nil
         }
         cachedLinearTexture = texture
@@ -423,8 +399,8 @@ public final class Image {
 
     /// Upload `source` as a `.bgra8Unorm_srgb` texture by hand: draw it into a
     /// premultiplied BGRA sRGB bitmap (the byte layout the texture stores) and
-    /// copy the rows in. The fallback for sources `MTKTextureLoader` won't give
-    /// an sRGB texture for.
+    /// copy the rows in. The one way a color image reaches the GPU; see
+    /// `texture(for:)` for why the MetalKit loader is not used.
     private static func sRGBTexture(from source: CGImage, on device: MTLDevice) -> MTLTexture? {
         let width = source.width, height = source.height
         let bytesPerRow = width * 4
@@ -449,9 +425,39 @@ public final class Image {
         return texture
     }
 
-    /// Fill a hand-built texture's smaller levels. `MTKTextureLoader` runs this
-    /// blit itself for the textures it makes; a texture uploaded by hand asks for
-    /// it. An sRGB format averages each level in linear light (a black-and-white
+    /// Upload `source` as a `.rgba8Unorm` texture by hand: draw it into an RGBA
+    /// bitmap in the image's *own* color space, so no conversion touches the
+    /// stored values, and copy the rows in. The data twin of
+    /// `sRGBTexture(from:on:)`, with a mip chain for the reason
+    /// `linearTexture(for:)` gives. A source in a space that is not RGB (gray,
+    /// indexed) draws through device RGB instead, since a 32-bit RGBA context
+    /// needs an RGB space to draw into.
+    private static func linearTexture(from source: CGImage, on device: MTLDevice) -> MTLTexture? {
+        let width = source.width, height = source.height
+        let bytesPerRow = width * 4
+        let own = source.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
+        let space = own ?? CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(data: nil, width: width, height: height,
+                                      bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: space,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                                          | CGBitmapInfo.byteOrder32Big.rawValue),
+              let bytes = context.data else { return nil }
+        context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm, width: width, height: height, mipmapped: true)
+        descriptor.usage = .shaderRead
+        descriptor.storageMode = ollinUploadStorageMode
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
+                        withBytes: bytes, bytesPerRow: bytesPerRow)
+        Image.fillSmallerLevels(of: texture, on: device)
+        return texture
+    }
+
+    /// Fill a hand-built texture's smaller levels. The MetalKit loader used to
+    /// run this blit itself for the textures it made; every texture is uploaded
+    /// by hand now, and asks for it here. An sRGB format averages each level in linear light (a black-and-white
     /// checker comes back 188, not 128), so a level agrees with the light the
     /// renderer blends in.
     private static func fillSmallerLevels(of texture: MTLTexture, on device: MTLDevice) {

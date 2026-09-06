@@ -115,6 +115,8 @@ The inline form (`--inline`) is the same canvas and the same script block with n
 
 Paste the two elements together wherever the picture belongs, and style the canvas as you would any other. The script finds the canvas just ahead of it, so several pictures can share one page. The canvas's `aria-label` is the [description the sketch gives of itself](../Helpers/Accessibility.md), or else its name.
 
+The framework's own site is a page of that kind. The ring it opens on is `Examples/Web/BreathingRing` in this form, pasted into the front page with its ink and paper set through the handle to the page's colors (see [the site](../Tools/Reference.md#in-a-browser)).
+
 ### Playing back
 
 The page starts playing on load and wraps at the end of the track. A sketch that declared `loopDuration` and recorded one lap wraps without a seam. Any other track wraps with whatever jump its first and last frames make. When every frame draws the same set of shapes, which is the ordinary animation, the page interpolates between the recorded frames. The motion then stays smooth at any refresh rate and at any recorded rate. When the set changes from frame to frame, the page steps from one frame to the next.
