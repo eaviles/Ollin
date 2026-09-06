@@ -105,7 +105,7 @@ var waveform: Waveform     // .sine, .triangle, .sawtooth, .square
 var isPlaying: Bool        // true while the tone is sounding
 ```
 
-`Tone` is a single oscillator that synthesizes a tone you can hear. It feeds the same analyzer, so you can also read the tone back. It is enough for audible feedback and self-contained audio-reactive demos, but it is not a full synthesizer. `frequency`, `amplitude`, and `waveform` are all settable from `draw()`.
+`Tone` is a single oscillator that synthesizes a tone you can hear. It feeds the same analyzer, so you can also read the tone back. It is enough for audible feedback and self-contained audio-reactive demos, but it is not a full synthesizer. `frequency`, `amplitude`, and `waveform` are all settable from `draw()`. Its `smoothing` defaults to 0.5 rather than the input sources' 0.8, because a generated tone carries no room noise to damp. The lighter setting costs nothing in steadiness. It lets the readings follow the sketch's own level changes in about 90 ms instead of about 250 ms.
 
 ```swift
 let tone = Tone(frequency: 220, waveform: .sine)

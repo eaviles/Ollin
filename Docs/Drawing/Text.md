@@ -109,7 +109,7 @@ textFont(_ font: OutlineFont)
 textFont(_ font: StrokeFont)
 ```
 
-Set the active font. It can be a bitmap (pixel-grid) face, an outline (`.ttf`/`.otf`) face, or a stroke (single-line) face. The default is `OutlineFont.systemMedium`, and `textFont(OutlineFont.systemMedium)` switches back to it. Use `textFont(BitmapFont.builtIn)` for the bundled Cozette pixel font. Like the other drawing state, the active font is part of the [push/pop stack](../Drawing/Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, and [Stroke fonts](#strokefont) for single-line type.
+Set the active font. It can be a bitmap face on a pixel grid, an outline face from a `.ttf` or `.otf` file, or a stroke face drawn as single lines. The default is `OutlineFont.systemMedium`, and `textFont(OutlineFont.systemMedium)` switches back to it. Use `textFont(BitmapFont.builtIn)` for the bundled Cozette pixel font. Like the other drawing state, the active font is part of the [push/pop stack](../Drawing/Drawing.md#withstate), so `withState { textFont(custom); … }` restores the previous font automatically on exit. See [BitmapFont](#bitmapfont) to load or build a bitmap font, [Outline fonts](#outlinefont) for a `.ttf`/`.otf`, and [Stroke fonts](#strokefont) for single-line type.
 
 <a name="textsize"></a>
 

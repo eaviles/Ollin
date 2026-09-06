@@ -13,6 +13,8 @@ By default, bright cells get dense glyphs. That reads as light marks on a dark c
   <img src="../../Guide/Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
 </picture>
 
+The right panel is [`drawHalftone`](./Halftone.md), which answers the same question with one dot per cell, grown to cover the cell's share of ink.
+
 ### Contents
 
 - [drawGlyphMosaic](#draw)

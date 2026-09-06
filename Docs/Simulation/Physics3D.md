@@ -454,7 +454,7 @@ ball.touching                   // everything it is in contact with right now
 ball.isTouching(floor)
 ```
 
-The floor from `world.ground` is a body too, but it is not one of the bodies in `bodies`. Nothing added it, and a drawing loop should not have to skip a 1000-unit slab. It answers to `world.groundBody`, so you can recognise a landing:
+The floor from `world.ground` is a body too, but it is not one of the bodies in `bodies`. Nothing added it, and a drawing loop should not have to skip a 1000-unit slab. It answers to `world.groundBody`, so you can recognize a landing:
 
 ```swift
 if contact.other(than: ball) === world.groundBody { thud() }

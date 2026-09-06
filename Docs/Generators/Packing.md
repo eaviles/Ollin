@@ -6,8 +6,8 @@
 
 Circle packing fills a region with circles that grow until they touch, and that never overlap. It is a classic generative-art motif. Two ways to produce a packing are built in, and both are **reproducible**, so a seeded run always lays the circles down the same way.
 
-- **Grow-to-touch** (`packCircles`): each circle grows to the largest it can be without hitting a neighbor or the bounds. `packCircles(count:)` scatters its own seed points, then fills the gaps between the big circles with progressively smaller ones, which gives the dense, varied look. `packCircles(around:)` grows a circle at each point you hand it, and a [blue-noise](./BlueNoise.md) set makes an even foam.
-- **Front relaxation** (`relaxCircles`): start from circles that overlap, then push every overlapping pair apart until none of them overlap. The radii stay fixed. Use it to settle a set you sized yourself.
+- **Grow-to-touch**, `packCircles`: each circle grows to the largest it can be without hitting a neighbor or the bounds. `packCircles(count:)` scatters its own seed points, then fills the gaps between the big circles with progressively smaller ones, which gives the dense, varied look. `packCircles(around:)` grows a circle at each point you hand it, and a [blue-noise](./BlueNoise.md) set makes an even foam.
+- **Front relaxation**, `relaxCircles`: start from circles that overlap, then push every overlapping pair apart until none of them overlap. The radii stay fixed. Use it to settle a set you sized yourself.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/PackingMechanisms-dark.jpg">

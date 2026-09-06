@@ -10,8 +10,10 @@ The output is a plain `Contour`, so it works with `drawPolyline`, `drawCurve` fo
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/PictureAsLines-dark.jpg">
-  <img src="../../Guide/Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into branching tree chains" width="680">
+  <img src="../../Guide/Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into the branching chains of a spanning tree" width="680">
 </picture>
+
+The third panel joins the same dots with [`spanningTree`](./SpanningTree.md) instead. It links every dot by the shortest set of edges and breaks the result into a few branching chains, so the picture reads as veins rather than as one maze.
 
 ### Contents
 

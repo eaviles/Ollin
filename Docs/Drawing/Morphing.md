@@ -26,7 +26,7 @@ override func setup() {
 
 override func draw() {
     background(.white)
-    fill(.black)
+    fill(.orange)
     drawShape(morph.shape(at: pingPong(over: 6)))   // there and back every 6 s
 }
 ```

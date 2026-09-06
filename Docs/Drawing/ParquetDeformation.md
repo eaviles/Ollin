@@ -118,7 +118,7 @@ for tile in sheet.tiles {
 
 ### Where this comes from
 
-The form is William S. Huff's. He set it as a design exercise in his basic-design studio from the 1960s on, and Douglas Hofstadter gave it a wider audience in his *Scientific American* column of July 1983, collected in *Metamagical Themas*. The computational treatment follows Craig S. Kaplan's Bridges papers, which read a deformation as a curve interpolated across a tiling rather than as a drawing made by hand. Implemented from the published technique, credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+The form is William S. Huff's. He set it as a design exercise in his basic-design studio from the 1960s on. Douglas Hofstadter gave it a wider audience in his *Scientific American* column of July 1983, collected in *Metamagical Themas*. The computational treatment follows Craig S. Kaplan's Bridges papers, which read a deformation as a curve interpolated across a tiling rather than as a drawing made by hand. Implemented from the published technique, credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
 
 ### Go deeper
 

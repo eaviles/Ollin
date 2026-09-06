@@ -354,7 +354,7 @@ override func draw() {
 }
 ```
 
-A query kernel takes its buffers in a fixed order: `reading` at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, the `OllinSpatialGrid` at 5, then your own buffers at 6 and up. `ParticleLife` binds its interaction matrix at 6. The scatter's within-cell order is set by a GPU atomic race. A query that *sums* over neighbors, a force for example, is therefore reproducible only up to float rounding. The neighbor *set*, and any count of it, is order-independent. See `Examples/Compute/NeighborSearch`.
+A query kernel takes its buffers in a fixed order. `reading` is at 0, `writing` at 1, `sortedIndices` at 2, `cellStart` at 3, `cellCount` at 4, and the `OllinSpatialGrid` at 5. Your own buffers follow at 6 and up. `ParticleLife` binds its interaction matrix at 6. The scatter's within-cell order is set by a GPU atomic race. A query that *sums* over neighbors, a force for example, is therefore reproducible only up to float rounding. The neighbor *set*, and any count of it, is order-independent. See `Examples/Compute/NeighborSearch`.
 
 <a id="notes"></a>
 ### Notes

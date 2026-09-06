@@ -243,7 +243,7 @@ drawPoint(width / 2, height / 2)
 pointMarker(_ marker: PointMarker)
 ```
 
-The glyph [`drawPoint`](#point) stamps: `.circle` (the default), `.square`, `.diamond`, `.cross` (a plus, `+`), or `.x` (a diagonal cross, `✕`). This is state, like `pointSize`, so set it once and it holds. Every marker is sized by its on-screen diameter, so the footprint stays the same when you switch glyphs. Every marker takes the current `fill` color and ignores stroke.
+The glyph [`drawPoint`](#point) stamps: `.circle`, `.square`, `.diamond`, `.cross`, or `.x`. The default is `.circle`, `.cross` is a plus sign, and `.x` is a diagonal cross. This is state, like `pointSize`, so set it once and it holds. Every marker is sized by its on-screen diameter, so the footprint stays the same when you switch glyphs. Every marker takes the current `fill` color and ignores stroke.
 
 ```swift
 pointMarker(.cross)
@@ -270,7 +270,7 @@ for p in particles {
 }
 ```
 
-The modes are `.add` (sum as light, lightens), `.screen` (also lightens, softer), `.multiply` (stacked ink, darkens), and `.subtract` (darkens by removing light). `.lightest` and `.darkest` keep the lighter or the darker of the two colors, channel by channel. Blend mode applies to every primitive, including the SDF shapes, the tessellated paths, images, and text. Like other style, it is saved and restored by [`withState { }`](#isolated). You can scope an additive field that way and leave the rest of the frame normal.
+`.add` sums as light and lightens. `.screen` also lightens, more softly. `.multiply` stacks ink and darkens. `.subtract` darkens by removing light. `.lightest` and `.darkest` keep the lighter or the darker of the two colors, channel by channel. Blend mode applies to every primitive, including the SDF shapes, the tessellated paths, images, and text. Like other style, it is saved and restored by [`withState { }`](#isolated). You can scope an additive field that way and leave the rest of the frame normal.
 
 One known limit affects `.darkest`. The analytic shapes darken their whole covering rectangle, not just the shape, and that covers `drawCircle`, `drawRect`, and the rest of the SDF catalog. The reason is that the GPU's min blend cannot ignore a quad's empty pixels. Until that is fixed, draw `.darkest` shapes on the triangle path, using `drawPolygon` with a many-sided outline, or draw them through a layer mask.
 
@@ -781,7 +781,7 @@ A heart centered at `(x, y)`, `size` points wide, with the lobes up and the poin
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawHeart-dark.jpg">
-  <img src="../Images/DrawHeart.jpg" alt="Three hearts on their marked centers: lobes up and point down as drawn, pointed up by a half turn, and tipped like a playing-card suit by a quarter turn" width="680">
+  <img src="../Images/DrawHeart.jpg" alt="Three hearts on their marked centers: lobes up and point down as drawn, pointed up by a half turn, and tipped like a playing-card suit by an eighth of a turn" width="680">
 </picture>
 
 ```swift

@@ -4,7 +4,7 @@
 
 ## A sketch as a web page
 
-`--export-web` records what a sketch draws over a duration and writes a page that plays the recording back in a browser. It works like a video export. The sketch runs on the Mac, and the page is a file you can put anywhere. The page draws with the framework's own shaders, translated from Metal to GLSL. Those are the shape shader, the stroke and fill pipelines, and the fragment behind every effect the sketch used. So a frame on the page matches the frame the Mac would have shown, to within the few levels measured in [strokes and fills on the page](#strokes-and-fills-on-the-page) and the sections after it.
+`--export-web` records what a sketch draws over a duration and writes a page that plays the recording back in a browser. It works like a video export. The sketch runs on the Mac, and the page is a file you can put anywhere. The page draws with the framework's own shaders, translated from Metal to GLSL. Those are the shape shader, the stroke and fill pipelines, and the fragment behind every effect the sketch used. So a frame on the page matches the frame the Mac would have shown. The difference is the few levels measured in [strokes and fills on the page](#strokes-and-fills-on-the-page) and the sections after it.
 
 ```sh
 swift run --package-path Examples Example-Web-BreathingRing --export-web ring.html

@@ -112,7 +112,7 @@ You can set `threshold` while the classifier runs.
 
 ### The vocabulary
 
-The built-in classifier knows 303 everyday sounds, and `labels` lists all of them. Among them are speech, laughter, applause, `clapping`, `finger_snapping`, dogs and cats and birds and insects, instruments by family and by name, weather and water and fire, vehicles and sirens, doors and taps and keyboards, `knock`, `beep`, `click`, `glass_breaking`, and `silence`.
+The built-in classifier knows 303 everyday sounds, and `labels` lists all of them. Among them are speech, laughter, applause, `clapping`, and `finger_snapping`. It covers dogs, cats, birds, and insects, and instruments by family and by name. It also covers weather, water, and fire, vehicles and sirens, and doors, taps, and keyboards, plus `knock`, `beep`, `click`, `glass_breaking`, and `silence`.
 
 Two things about it are worth knowing. First, it always guesses, so read `topClassification` and apply a threshold rather than trusting every small number. `"music"` in particular turns up faintly under almost any sound. Second, it judges a **window** of audio at a time (`windowDuration`, 1.5 seconds by default, and adjustable). A short sound is therefore named a fraction of a second after it happens. A shorter window reacts sooner but judges on less audio. Measured against synthesized tones and taps, 1 second is a poor setting and 1.5 is a good one.
 
