@@ -1,18 +1,14 @@
 import Foundation
 
-/// The site's own look: one stylesheet, one small script, one icon.
+/// The site's own look: one stylesheet and one small script.
 ///
 /// Kept as text inside the target rather than as resources so the command
 /// stays one binary with nothing to find at run time. The design is system
 /// type, hairline rules, and generous space, in a light scheme and a dark one
 /// that follow the reader's own setting, so the figures' dark variants, the
-/// front page's ring, and the chrome switch together.
+/// front page's ring, the mark, and the chrome switch together. The mark and
+/// the favicon are the logo's own files, read from the checkout (`SiteLogo`).
 enum SiteStyle {
-
-    /// The placeholder mark until the logo lands: a plain circle.
-    static let favicon = """
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#1d1d1f" stroke-width="7"/><style>@media (prefers-color-scheme: dark) { circle { stroke: #f0eeee; } }</style></svg>
-    """
 
     static let css = """
     /* Ollin · site */
@@ -109,7 +105,7 @@ enum SiteStyle {
     .bar-inner { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad); height: 100%; display: flex; align-items: center; gap: 1.5rem; }
     .wordmark { display: inline-flex; align-items: center; gap: 0.6rem; color: var(--text); font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
     .wordmark:hover { text-decoration: none; }
-    .mark { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid currentColor; }
+    .mark { width: 22px; height: 22px; flex: none; }
     .sections { margin-left: auto; display: flex; align-items: stretch; height: 100%; gap: 0.25rem; }
     .sections a { position: relative; display: inline-flex; align-items: center; padding: 0 0.85rem; color: var(--text-2); font-size: 14px; font-weight: 500; letter-spacing: -0.005em; transition: color 150ms var(--ease); }
     .sections a:hover { color: var(--text); text-decoration: none; }
@@ -190,6 +186,7 @@ enum SiteStyle {
     .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); align-items: center; gap: 3rem; padding: clamp(3rem, 8vw, 6rem) 0 clamp(2rem, 5vw, 4rem); }
     .eyebrow { font-size: 15px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); margin-bottom: 1rem; }
     .hero h1 { font-size: clamp(36px, 5vw, 60px); line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 1.75rem; }
+    .logo { width: 56px; height: 56px; margin: 0 0 1.25rem -4px; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .button { display: inline-flex; align-items: center; padding: 0.7rem 1.25rem; border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 500; font-size: 15px; transition: transform 300ms var(--ease), opacity 150ms; }
     .button:hover { text-decoration: none; transform: translateY(-1px); opacity: 0.9; }

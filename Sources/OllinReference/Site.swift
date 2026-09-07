@@ -96,12 +96,18 @@ public struct SiteBuilder {
         var examples: [String: Page] = [:]
         var docsGroups: [(name: String, topics: [String])] = []
         var exampleCategories: [(name: String, path: String)] = []
+        /// The small form of the logo for the bar, inlined in the page's ink.
+        var mark = ""
+        /// The full mark for the front page, inlined the same way.
+        var logo = ""
     }
 
     /// The pages the site will hold, with their titles read ahead of time so
     /// every sidebar can name every neighbor.
     func plan() -> Plan {
         var plan = Plan()
+        plan.mark = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.favicon), id: "mark-eye", className: "mark")
+        plan.logo = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.mark), id: "logo-eye", className: "logo")
 
         func add(_ repoPath: String, _ kind: Page.Kind, title: String? = nil, summary: String = "") {
             let url = root.appendingPathComponent(repoPath)
@@ -254,7 +260,18 @@ public struct SiteBuilder {
         }
 
         try write(SiteStyle.css, to: output.appendingPathComponent("assets/site.css"))
-        try write(SiteStyle.favicon, to: output.appendingPathComponent("favicon.svg"))
+        let favicon = root.appendingPathComponent(SiteLogo.favicon)
+        if manager.fileExists(atPath: favicon.path) {
+            try write(String(contentsOf: favicon, encoding: .utf8), to: output.appendingPathComponent("favicon.svg"))
+        } else {
+            report.notes.append("the site has no favicon: \(SiteLogo.favicon) is not in the checkout")
+        }
+        if plan.mark.isEmpty {
+            report.notes.append("the bar has no mark: \(SiteLogo.favicon) is not in the checkout")
+        }
+        if plan.logo.isEmpty {
+            report.notes.append("the front page has no mark: \(SiteLogo.mark) is not in the checkout")
+        }
         try write("", to: output.appendingPathComponent(".nojekyll"))
         if let domain { try write(domain + "\n", to: output.appendingPathComponent("CNAME")) }
 
@@ -300,9 +317,12 @@ public struct SiteBuilder {
     static let tagline = "A Metal-rendered creative-coding framework for Swift on Apple platforms."
 
     /// The front page's opening, lifted off the README and set as the hero:
-    /// the title and the one bold line under it, beside the ring. The README's
-    /// prose follows exactly as written; only these two lines are placed
-    /// differently.
+    /// the mark the README opens with, the title, and the one bold line under
+    /// it, beside the ring. The README's prose follows exactly as written;
+    /// only these lines are placed differently. The mark is drawn from the
+    /// logo's own file in the page's ink (`Plan.logo`) rather than copied as
+    /// the README's picture, and it appears only when the README opens with
+    /// one, so the front page shows what the README shows.
     ///
     /// The ring is `Examples/Web/BreathingRing` played by its own web page: the
     /// inline fragment the exporter wrote for it, verbatim, then the site's
@@ -314,6 +334,16 @@ public struct SiteBuilder {
     func homeHero(_ markdown: inout String, page: Page, plan: Plan) -> String {
         var lines = markdown.components(separatedBy: "\n")
         var tagline = Self.tagline
+        var opensWithMark = false
+        if let heading = lines.firstIndex(where: { $0.hasPrefix("# ") }) {
+            // A picture before the title (the logo) is the hero's to place.
+            let above = lines[..<heading].map { $0.trimmingCharacters(in: .whitespaces) }
+            if above.contains(where: { $0.hasPrefix("<picture") || $0.hasPrefix("<img") }),
+               above.allSatisfy({ $0.isEmpty || HTML.isRawBlock($0) }) {
+                opensWithMark = true
+                lines.removeSubrange(..<heading)
+            }
+        }
         if let heading = lines.firstIndex(where: { $0.hasPrefix("# ") }) {
             lines.remove(at: heading)
             if let bold = lines[heading...].firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }),
@@ -340,10 +370,11 @@ public struct SiteBuilder {
 
         """
 
+        let mark = opensWithMark && !plan.logo.isEmpty ? plan.logo + "\n" : ""
         return """
         <section class="hero">
           <div class="hero-text">
-            <p class="eyebrow">Ollin</p>
+            \(mark)<p class="eyebrow">Ollin</p>
             <h1>\(HTML.escape(tagline))</h1>
             <p class="hero-actions"><a class="button" href="\(guide)">Start with the Guide</a><a class="button quiet" href="\(HTML.escape(repository))" rel="noopener">View on GitHub</a></p>
           </div>
@@ -504,7 +535,7 @@ public struct SiteBuilder {
         let nav = """
         <header class="bar">
           <div class="bar-inner">
-            <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home"><span class="mark" aria-hidden="true"></span><span class="name">Ollin</span></a>
+            <a class="wordmark" href="\(asset("index.html"))" aria-label="Ollin home">\(plan.mark)<span class="name">Ollin</span></a>
             <nav class="sections" aria-label="Sections">
               \(navItem("Guide", .guide, "guide/index.html"))
               \(navItem("Reference", .docs, "docs/index.html"))
