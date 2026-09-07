@@ -36,6 +36,12 @@ public struct Generator: Sendable {
         /// (cells / borders / mosaic), feature points wandering with `phase`.
         case cellular(scale: Double, jitter: Double, style: CellularStyle,
                       foreground: SIMD4<Float>, background: SIMD4<Float>, phase: Double)
+        /// Gabor noise: sparse Gabor convolution, the spectrum designed by
+        /// `wavelength` (pixels), `bandwidth`, `angle`, and `spread`; `impulses`
+        /// per kernel, waves sliding with `phase` (periodic over 2π).
+        case gaborNoise(wavelength: Double, bandwidth: Double, angle: Double, spread: Double,
+                        impulses: Int, phase: Double, seed: Int,
+                        foreground: SIMD4<Float>, background: SIMD4<Float>)
         /// A user-supplied `Shader` run as a source layer (it reads no input).
         case shader(Shader)
 
@@ -207,6 +213,38 @@ public struct Generator: Sendable {
                                   style: style,
                                   foreground: foreground.linearRGBA,
                                   background: background.linearRGBA, phase: phase))
+    }
+
+    /// Gabor noise: a noise whose spectrum you design instead of inherit.
+    /// Every kernel is a small Gaussian blob carrying a cosine wave, scattered
+    /// at random and summed, so the field has one principal `wavelength` (in
+    /// pixels) and, when `spread` is small, one direction: brushed metal, wood
+    /// grain, straw, silk, and the striped and rippled textures no `noise`
+    /// octave stack can reach. `bandwidth` is the width of the band around
+    /// that wavelength as a fraction of it: 0.2 is nearly a pure wave, with
+    /// long interference patterns, 1 is blobby and close to ordinary noise.
+    /// `angle` is the wave direction (0 oscillates along x, so the stripes
+    /// stand vertical), and `spread` how far each kernel's own direction may
+    /// wander from it: 0 is one direction, π (the default) every direction,
+    /// the isotropic field. `impulses` is how many kernels overlap at any
+    /// point (the quality dial; 32 is smooth, 8 shows the kernels). `phase`
+    /// slides every wave along its own direction, periodic over 2π, so
+    /// `phase: loopProgress(over: 8) * .tau` loops seamlessly. `seed` picks
+    /// the field. The kernels are filtered for a one-pixel footprint, so a
+    /// wavelength driven toward two pixels fades to gray instead of aliasing.
+    /// The CPU `gaborNoise(x, y, ...)` reads the same field at the same pixel,
+    /// so a sketch can place marks where the GPU painted light.
+    public static func gaborNoise(wavelength: Double = 32, bandwidth: Double = 0.5,
+                                  angle: Double = 0, spread: Double = .pi,
+                                  impulses: Int = 32, phase: Double = 0, seed: Int = 0,
+                                  foreground: Color = .white,
+                                  background: Color = .black) -> Generator {
+        Generator(kind: .gaborNoise(wavelength: max(1, wavelength),
+                                    bandwidth: min(max(bandwidth, 0.05), 4),
+                                    angle: angle, spread: min(max(spread, 0), .pi),
+                                    impulses: min(max(impulses, 1), 128), phase: phase, seed: seed,
+                                    foreground: foreground.linearRGBA,
+                                    background: background.linearRGBA))
     }
 
     /// A user-supplied `Shader` as a procedural source layer: it reads no input and

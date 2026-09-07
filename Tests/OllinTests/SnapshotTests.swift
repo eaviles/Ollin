@@ -207,6 +207,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("noise-toolkit",
                  note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp parameter on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
                  make: { NoiseToolkitScene() }),
+    SnapshotCase("gabor-noise",
+                 note: "The Gabor noise generator tiled 2x2 at a fixed phase (no time, no random): the isotropic field, one direction at pi/4 with no spread, a narrow band (0.2) with a little spread in two colors, and a wide band (1.0). Pins the sparse Gabor convolution (the per-cell Poisson impulse counts and the congruential draws), the spectral parameters, the closed-form pixel filter, the three-sigma normalization, the phase slide, and the seed.",
+                 make: { GaborNoiseScene() }),
     SnapshotCase("chladni",
                  note: "The Chladni generator tiled 2x2 at fixed phases (no time, no random): the sand style at the default mode, at a higher mode with full grain, and at a fractional (morphing) mode, plus the wave style mid-swing. Pins the standing-wave field, the Gaussian sand gather + speckle threshold and its phase re-throw, the wave color swing, and each tile generating at its own size.",
                  make: { ChladniScene() }),
@@ -7731,6 +7734,39 @@ private final class NoiseToolkitScene: Sketch {
         drawImage(generate(.cellular(scale: 5, style: .mosaic,
                                      foreground: Color(hex: 0x55D6BE),
                                      background: Color(hex: 0x12161F), phase: phase),
+                           width: w, height: h).image,
+                  in: tile(1, 1))
+    }
+}
+
+/// The Gabor noise generator at a fixed phase (no time/random): isotropic, one
+/// direction, a narrow band in color, and a wide band, each tile at its own size.
+private final class GaborNoiseScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 126, h = 126
+        let phase = 0.35 * Double.tau
+        let tile: (Int, Int) -> Rectangle = { col, row in
+            Rectangle(x: 1 + Double(col) * 128, y: 1 + Double(row) * 128,
+                      width: Double(w), height: Double(h))
+        }
+        drawImage(generate(.gaborNoise(wavelength: 12, phase: phase, seed: 4),
+                           width: w, height: h).image,
+                  in: tile(0, 0))
+        drawImage(generate(.gaborNoise(wavelength: 12, angle: .pi / 4, spread: 0, phase: phase, seed: 4),
+                           width: w, height: h).image,
+                  in: tile(1, 0))
+        drawImage(generate(.gaborNoise(wavelength: 12, bandwidth: 0.2, angle: 0, spread: 0.3,
+                                       phase: phase, seed: 4,
+                                       foreground: Color(hex: 0xF2C14E),
+                                       background: Color(hex: 0x1B1F2A)),
+                           width: w, height: h).image,
+                  in: tile(0, 1))
+        drawImage(generate(.gaborNoise(wavelength: 12, bandwidth: 1, impulses: 16, phase: phase, seed: 9,
+                                       foreground: Color(hex: 0x55D6BE),
+                                       background: Color(hex: 0x12161F)),
                            width: w, height: h).image,
                   in: tile(1, 1))
     }

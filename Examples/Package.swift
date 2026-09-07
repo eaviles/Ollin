@@ -151,6 +151,7 @@ let package = Package(
         example("Effects/SummedArea"),
         example("Effects/GeneratorCatalog"),
         example("Effects/Cellular"),
+        example("Effects/GaborNoise"),
         // Two washes combined twice: linear light beside pigment mixing, where
         // yellow over blue goes green rather than gray.
         example("Effects/PigmentMix"),

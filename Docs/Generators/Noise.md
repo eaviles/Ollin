@@ -23,6 +23,7 @@ Perlin `noise` is coherent, which means nearby inputs give nearby outputs. That 
 - [worley](#worley)
 - [ridgedFbm / turbulence](#ridgedFbm)
 - [warpedFbm](#warpedFbm)
+- [gaborNoise](#gaborNoise)
 - [Choosing a scale](#scale)
 - [noiseSeed](#noiseSeed)
 - [seed](#seed)
@@ -256,6 +257,44 @@ let calm = warpedFbm(x * 0.004, y * 0.004, warp: 0.4)
 ```
 
 The same look has two GPU spellings. `generate(.noise(scale: 3, warp: 1))` fills a layer with it (see [Effects](../Drawing/Effects.md)), and the [shader library](../Shaders/ShaderLibrary.md)'s `warpedFbm(p, warp)` runs it per pixel. The `DomainWarp` example opens the recipe up so you can color its intermediate displacements.
+
+<a name="gaborNoise"></a>
+
+#### gaborNoise
+
+```swift
+gaborNoise(_ x: Double, _ y: Double, wavelength: Double = 32, bandwidth: Double = 0.5,
+           angle: Double = 0, spread: Double = .pi, impulses: Int = 32,
+           phase: Double = 0, seed: Int = 0) -> Double
+GaborNoise(wavelength:bandwidth:angle:spread:impulses:phase:seed:)   // the value type
+    .value(_ x, _ y) / .value(at: Vector2) -> Double                 // 0...1
+    .signedValue(_ x, _ y) -> Double                                  // -1...1
+```
+
+Gabor noise. Every field above is built from the same kind of bump. Its grain runs every way at once, and its scale is a blur of scales. Gabor noise is built from small Gaussian blobs that each carry a cosine wave, scattered at random and summed. That gives you the spectrum to design. One principal `wavelength`, a band of a chosen width around it, and one direction or a range of them.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/05-Noise/NoiseWithADirection-dark.jpg">
+  <img src="../../Guide/Images/05-Noise/NoiseWithADirection.jpg" alt="Three panels of Gabor noise at one wavelength: an even ripple field in every direction, diagonal stripes with the spread at zero, and long interfering waves at a narrow bandwidth" width="680">
+</picture>
+
+- `wavelength` is the wave period in pixels. The coordinates are pixels too, not the scaled-down inputs the other fields take.
+- `bandwidth` is the width of the band around that wavelength, as a fraction of it. `0.2` is nearly a pure wave and runs long interference patterns; `1` is blobby and close to ordinary noise. The kernel radius is `wavelength / bandwidth`.
+- `angle` is the wave direction in radians. `0` oscillates along x, so the stripes stand vertical.
+- `spread` is how far each kernel's own direction may wander from `angle`. `0` is one direction, `.pi` (the default) every direction, the isotropic field.
+- `impulses` is how many kernels overlap at any point, the quality dial. `32` is smooth; `8` shows the kernels.
+- `phase` slides every wave along its own direction and is periodic over 2π.
+- `seed` picks the field. Unlike the others, this one is not pinned by `noiseSeed`: the seed is a parameter so the CPU and GPU forms stay one field.
+
+The result fills `0...1`, three standard deviations mapped onto the range, so a rare peak clips. It is the same field `generate(.gaborNoise(...))` paints (see [Effects](../Drawing/Effects.md)). With the same parameters, `gaborNoise(x, y)` is the value at pixel `(x, y)`. So a sketch can place marks where the GPU painted light. Sampling many points a frame? Build one `GaborNoise` and ask it, so the kernel is set up once. The kernels are filtered for a one-pixel footprint, so a wavelength driven toward two pixels fades to gray instead of aliasing.
+
+```swift
+let grain = gaborNoise(x, y, wavelength: 20, angle: .pi / 2, spread: 0.1)   // wood grain
+let field = GaborNoise(wavelength: 24, bandwidth: 0.3, seed: 7)            // once, then
+let n = field.value(x, y)                                                   // per point
+```
+
+The [shader library](../Shaders/ShaderLibrary.md)'s `gaborNoise(p, wavelength, bandwidth, ...)` runs the same field inside a shader of your own. The `GaborNoise` example dots the crests the generator painted.
 
 <a name="scale"></a>
 

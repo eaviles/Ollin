@@ -2315,3 +2315,17 @@ fragment float4 ollin_gen_cellular(PresentOut in [[stage_in]],
     }
     return mix(params[3], params[2], t);
 }
+
+// gaborNoise: sparse Gabor convolution (see `gaborNoise` in the library).
+// params[0] = (wavelength in pixels, bandwidth, angle, spread), params[1] =
+// (impulses per kernel, phase, seed), params[2] = the layer's pixel size, so
+// the field is measured in pixels and the CPU `gaborNoise` reads the same
+// value at the same pixel. params[3] foreground, params[4] background.
+fragment float4 ollin_gen_gabor(PresentOut in [[stage_in]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 p = in.uv * params[2].xy;
+    OllinGabor g = ollin_gabor_setup(params[0].x, params[0].y, params[0].z, params[0].w,
+                                     params[1].x, params[1].y, uint(params[1].z));
+    float t = clamp(0.5 + 0.5 * ollin_gabor_sum(g, p) * g.norm, 0.0, 1.0);
+    return mix(params[4], params[3], t);
+}

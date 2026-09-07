@@ -46,7 +46,7 @@ final class GeneratorCatalog_Example: Sketch {
         let columns: Int
         switch family {
         case .basic:
-            let (cols, w, h) = sheetCell(for: 4)
+            let (cols, w, h) = sheetCell(for: 5)
             columns = cols
             items = [
                 ("checkers", (generate(.checkers(scale: s * 2, foreground: Color(hex: 0xF2C14E),
@@ -60,6 +60,12 @@ final class GeneratorCatalog_Example: Sketch {
                                          background: Color(hex: 0x1B1F2A)),
                                    width: w, height: h), nil)),
                 ("noise", (generate(.noise(scale: s, sharpness: 0), width: w, height: h), nil)),
+                ("gaborNoise", (generate(.gaborNoise(wavelength: 120 / s, bandwidth: 0.3,
+                                                     angle: t * 0.2, spread: 0.2,
+                                                     phase: t * 2, seed: 3,
+                                                     foreground: Color(hex: 0xF2E8DC),
+                                                     background: Color(hex: 0x1B1F2A)),
+                                         width: w, height: h), nil)),
             ]
         case .design:
             let (cols, w, h) = sheetCell(for: 9)

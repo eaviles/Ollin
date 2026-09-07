@@ -52,7 +52,7 @@ struct WebFragmentTranslatorTests {
         "ollin_gen_dot_orbit", "ollin_gen_grain_gradient", "ollin_gen_pulsing_border",
         "ollin_gen_god_rays", "ollin_gen_quasicrystal", "ollin_gen_moire", "ollin_gen_gyroid",
         "ollin_gen_phyllotaxis", "ollin_gen_hexpulse", "ollin_gen_chladni", "ollin_gen_escape",
-        "ollin_gen_orbittrap", "ollin_gen_domain",
+        "ollin_gen_orbittrap", "ollin_gen_domain", "ollin_gen_gabor",
         // Simulations: the injects and the steps of the single-field sims.
         "ollin_sim_inject", "ollin_sim_inject_height", "ollin_sim_inject_sand",
         "ollin_sim_inject_grains", "ollin_sim_inject_excite", "ollin_sim_inject_brain",

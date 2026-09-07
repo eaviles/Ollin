@@ -87,7 +87,8 @@ extension MetalRenderer {
             guard let out = acquireFilterTexture(width: target.pixelWidth,
                                                  height: target.pixelHeight, pooled: pooled) else { continue }
             encodeGenerator(generator, output: out,
-                            width: target.pixelWidth, height: target.pixelHeight, into: cb)
+                            width: target.pixelWidth, height: target.pixelHeight,
+                            scale: target.scale, into: cb)
             target.texture = out
         }
         // Ocean fields: like a generator, a source layer nothing else has to be
@@ -1953,7 +1954,8 @@ extension MetalRenderer {
     /// Fill a generator's layer: one fullscreen fragment pass that reads no input,
     /// just its parameters. `aspect` lets the fragment keep cells square.
     private func encodeGenerator(_ generator: Generator, output: MTLTexture,
-                                 width: Int, height: Int, into cb: MTLCommandBuffer) {
+                                 width: Int, height: Int, scale: Double,
+                                 into cb: MTLCommandBuffer) {
         if case let .shader(shader) = generator.kind {
             encodeUserShader(shader, variant: .generator, inputs: [], output: output,
                              width: width, height: height, into: cb)
@@ -1961,7 +1963,7 @@ extension MetalRenderer {
         }
         // Every pattern is one fragment pass described as data (the same
         // description the web recorder writes down).
-        guard let pass = generator.pass(width: width, height: height) else { return }
+        guard let pass = generator.pass(width: width, height: height, scale: scale) else { return }
         encodeEffectFragment(pass.fragment, inputs: [], output: output, params: pass.params, into: cb)
     }
 

@@ -920,7 +920,7 @@ final class WebGraphRecorder {
                 if case let .shader(shader) = generator.kind {
                     let (si, r) = try userIndex(shader, variant: 0)
                     layer.kind = .user(shader: si, inputs: [], paramOffset: r.offset, paramRows: r.rows)
-                } else if let pass = generator.pass(width: pw, height: ph) {
+                } else if let pass = generator.pass(width: pw, height: ph, scale: target.scale) {
                     layer.kind = .generator(node(pass))
                 } else {
                     throw refuse("a generator the page cannot carry")

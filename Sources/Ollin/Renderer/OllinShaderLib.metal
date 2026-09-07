@@ -415,6 +415,129 @@ static inline float chladni(float2 p, float m, float n, float a, float b) {
 static inline float chladni(float2 p, float m, float n) {
     return chladni(p, m, n, 1.0, -1.0);
 }
+
+// Gabor noise: sparse convolution with Gabor kernels, a noise whose power
+// spectrum is designed rather than inherited. Each impulse of a Poisson field
+// carries one Gabor kernel (a Gaussian envelope times a cosine wave), so the
+// spectrum is a ring at the principal frequency, as thin as `bandwidth` asks,
+// and pinned to one direction when `spread` is small. Coordinates are pixels:
+// `wavelength` is the wave period in pixels, `bandwidth` its spectral width as
+// a fraction of the frequency (the kernel radius is wavelength / bandwidth),
+// `angle` the wave direction (0 oscillates along x, so the stripes stand
+// vertical), `spread` how far each kernel's own direction may wander from it
+// (pi is every direction, the isotropic field), `impulses` the kernel count
+// per kernel area (the quality dial), `phase` slides every wave along its own
+// direction (periodic over 2pi), and `seed` picks the field. The kernel is
+// filtered for a one-pixel footprint, so a wavelength shrinking toward two
+// pixels fades to gray instead of aliasing. Reads about [0, 1] (three
+// standard deviations mapped onto the range). Mirrors the CPU `gaborNoise`.
+struct OllinGabor {
+    float radius;          // kernel radius, which is also the cell size (pixels)
+    float density;         // mean impulses per cell
+    float a, f, k;         // the filtered kernel: envelope width, frequency, gain
+    float norm;            // 1 / (3 sigma) of the unfiltered noise
+    float angle, spread, phase;
+    uint seed;
+};
+
+// The Borosh-Niederreiter multiplicative congruential step; the state stays
+// odd, so the sequence never collapses.
+static inline float ollin_gabor_uniform(thread uint &x) {
+    x *= 3039177861u;
+    return float(x) * 2.3283064365386963e-10;
+}
+
+// One well-mixed seed per cell, made odd for the generator above.
+static inline uint ollin_gabor_cell_seed(int i, int j, uint seed) {
+    uint h = (uint(i + 1073741824) * 0x9E3779B1u) ^ (uint(j + 1073741824) * 0x85EBCA77u)
+           ^ (seed * 0xC2B2AE3Du);
+    h ^= h >> 16; h *= 0x7FEB352Du; h ^= h >> 15; h *= 0x846CA68Bu; h ^= h >> 16;
+    return h | 1u;
+}
+
+static inline OllinGabor ollin_gabor_setup(float wavelength, float bandwidth, float angle,
+                                           float spread, float impulses, float phase,
+                                           uint seed) {
+    OllinGabor g;
+    float f0 = 1.0 / max(wavelength, 1.0);
+    float a0 = clamp(bandwidth, 0.05, 4.0) * f0;
+    float n = clamp(impulses, 1.0, 128.0);
+    g.radius = 1.0 / a0;
+    g.density = n / M_PI_F;
+    // The pixel footprint, a Gaussian of sigma 0.5 px, applied in the frequency
+    // domain: the product of two Gaussians is a Gaussian, so the filtered kernel
+    // is again a Gabor kernel, with a narrower band, a lower frequency, and less
+    // gain. Aliasing becomes a fade.
+    const float s2 = 0.25;
+    float aa = a0 * a0;
+    float a1sq = 1.0 / (1.0 / aa + 2.0 * M_PI_F * s2);
+    g.a = sqrt(a1sq);
+    g.f = f0 / (1.0 + 2.0 * M_PI_F * s2 * aa);
+    g.k = (a1sq / aa) * exp(-0.5 * f0 * f0 / (1.0 / (4.0 * M_PI_F * M_PI_F * s2) + aa / (2.0 * M_PI_F)));
+    // Variance of the unfiltered noise: impulse density times E[w^2] (1/3 for
+    // weights uniform on [-1, 1]) times the kernel's squared integral,
+    // (1 + exp(-2 pi f0^2 / a0^2)) / (4 a0^2). With the density n / (pi r^2)
+    // and r = 1 / a0, the widths cancel.
+    float variance = n * (1.0 + exp(-2.0 * M_PI_F * f0 * f0 / aa)) / (12.0 * M_PI_F);
+    g.norm = 1.0 / (3.0 * sqrt(variance));
+    g.angle = angle; g.spread = clamp(spread, 0.0, M_PI_F); g.phase = phase; g.seed = seed;
+    return g;
+}
+
+// The sum over one cell's impulses; `local` is the point in that cell's own
+// unit square (it may lie outside it, up to one cell away).
+static inline float ollin_gabor_cell(OllinGabor g, int i, int j, float2 local) {
+    uint x = ollin_gabor_cell_seed(i, j, g.seed);
+    // Knuth's small-mean Poisson draw for the impulse count, bounded so a
+    // freak cell cannot stall the fragment.
+    float limit = exp(-g.density);
+    float t = ollin_gabor_uniform(x);
+    int count = 0;
+    while (t > limit && count < 48) { count += 1; t *= ollin_gabor_uniform(x); }
+    float sum = 0.0;
+    for (int m = 0; m < count; m++) {
+        float2 center = float2(ollin_gabor_uniform(x), ollin_gabor_uniform(x));
+        float w = ollin_gabor_uniform(x) * 2.0 - 1.0;
+        float omega = g.angle + g.spread * (ollin_gabor_uniform(x) * 2.0 - 1.0);
+        float2 d = local - center;
+        if (dot(d, d) < 1.0) {
+            float2 px = d * g.radius;
+            float envelope = g.k * exp(-M_PI_F * g.a * g.a * dot(px, px));
+            float wave = cos(2.0 * M_PI_F * g.f * (px.x * cos(omega) + px.y * sin(omega)) + g.phase);
+            sum += w * envelope * wave;
+        }
+    }
+    return sum;
+}
+
+// The noise at pixel `p`, the nine cells around it summed.
+static inline float ollin_gabor_sum(OllinGabor g, float2 p) {
+    float2 q = p / g.radius;
+    float2 cell = floor(q), frac = q - cell;
+    int i = int(cell.x), j = int(cell.y);
+    float sum = 0.0;
+    for (int dj = -1; dj <= 1; dj++) {
+        for (int di = -1; di <= 1; di++) {
+            sum += ollin_gabor_cell(g, i + di, j + dj, frac - float2(di, dj));
+        }
+    }
+    return sum;
+}
+
+static inline float gaborNoise(float2 p, float wavelength, float bandwidth, float angle,
+                               float spread, float impulses, float phase, uint seed) {
+    OllinGabor g = ollin_gabor_setup(wavelength, bandwidth, angle, spread, impulses, phase, seed);
+    return clamp(0.5 + 0.5 * ollin_gabor_sum(g, p) * g.norm, 0.0, 1.0);
+}
+// The short form: one wave direction with a little wander, 32 impulses, seed 0.
+static inline float gaborNoise(float2 p, float wavelength, float bandwidth, float angle,
+                               float spread) {
+    return gaborNoise(p, wavelength, bandwidth, angle, spread, 32.0, 0.0, 0u);
+}
+// Isotropic: every direction at once.
+static inline float gaborNoise(float2 p, float wavelength, float bandwidth) {
+    return gaborNoise(p, wavelength, bandwidth, 0.0, M_PI_F, 32.0, 0.0, 0u);
+}
 // OLLIN_LIB_END noise
 
 // OLLIN_LIB_BEGIN color

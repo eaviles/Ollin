@@ -175,6 +175,21 @@ The `feature:` argument picks the reading. `.border` asks how much farther the *
 let marble = warpedFbm(x * 0.004, y * 0.004)
 ```
 
+**`gaborNoise` lets you say which way.** Every field so far is built from the same kind of bump. Its grain runs every way at once, and its scale is a blur of scales. Gabor noise is built differently. It scatters small blobs across the plane, each one carrying a cosine wave, and adds them up. The sum has one principal wavelength, a band of a chosen width around it, and, if you ask, one direction. That is the spectrum designed instead of inherited. It reaches the textures the other fields can't: brushed metal, wood grain, straw, silk, and water rippled by a wind from one side.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseWithADirection-dark.jpg">
+  <img src="Images/05-Noise/NoiseWithADirection.jpg" alt="Three panels of Gabor noise at one wavelength: an even ripple field in every direction, diagonal stripes with the spread at zero, and long interfering waves at a narrow bandwidth" width="680">
+</picture>
+
+```swift
+let ripple = gaborNoise(x, y, wavelength: 24)                              // every direction
+let grain = gaborNoise(x, y, wavelength: 24, angle: .pi / 2, spread: 0)    // one direction
+let silk = gaborNoise(x, y, wavelength: 24, bandwidth: 0.2, spread: 0.3)   // long waves
+```
+
+Three things are different about this one, and each is a small freedom. The coordinates are pixels, not the scaled-down inputs the other fields take. That is because `wavelength:` is in pixels and says how far apart the waves sit. `angle:` is the direction the waves travel in, so at 0 they run along x and the stripes stand vertical. `spread:` is how far each blob's own direction may stray from it. `bandwidth:` is the width of the band. Narrow it and the waves run long and start to interfere with each other, the way ripples do. And the seed is a parameter rather than something `noiseSeed` pins. That is because the same field lives on the GPU as `generate(.gaborNoise(...))`, which fills a whole layer in one call. Give both the same numbers and they compute the same picture. So a sketch can paint a field and then place marks by reading it, with no trip back from the GPU. The `GaborNoise` example does exactly that, dotting the crests.
+
 That's the whole tour. You won't need most of these most days, since `noise` and `fbm` do the daily work. But when a sketch wants stone instead of clouds, or a skyline instead of hills, the right field is one call away, and every habit transfers: zoom parameter, seeding, far-apart rows, `loop:`.
 
 ## Putting it together: a meadow in the wind

@@ -354,6 +354,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Generators/Random.md` | Ch 4 | taught |
 | `Generators/Noise.md` (noise, signedNoise, loop:, fbm, curlNoise) | Ch 5; curl in Ch 14/16 | taught |
 | Noise toolkit (simplexNoise, worley, ridgedFbm/turbulence, warpedFbm; the `.cellular` generator + `.noise` warp parameter; `Generators/Noise.md`) | Ch 5 (shader-lib mirror named in Ch 17) | taught (the family toured with two figures in Ch 5; feature:/jitter: and warp: explained; GPU legs pointed to the Cellular/DomainWarp examples) |
+| Gabor noise (`gaborNoise(x, y, ...)` + the `GaborNoise` value type, the `.gaborNoise` generator, the shader-library `gaborNoise`; `Generators/Noise.md` § gaborNoise, `Drawing/Effects.md`) | Ch 5 | taught (a section with the NoiseWithADirection figure in Ch 5; wavelength/bandwidth/angle/spread explained, pixels and the seed called out, the CPU-GPU parity pointed to the GaborNoise example) |
 | Tiling noise (`tilingNoise`, `signedTilingNoise`, `tilingFbm`, `signedTilingFbm`; `Generators/Noise.md#tiling`) | Ch 22 (taught where triplanar needs it) | taught (a section in the triplanar part of Ch 22 with the swap rule, and the chapter's Bench payoff wears it) |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 7 | taught |

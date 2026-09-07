@@ -314,7 +314,7 @@ extension Combine {
 extension Generator {
     /// The fragment pass that fills a layer of `width` by `height` pixels with
     /// this pattern; `nil` for a user shader, which the renderer compiles itself.
-    func pass(width: Int, height: Int) -> EffectPass? {
+    func pass(width: Int, height: Int, scale: Double = 1) -> EffectPass? {
         let aspect = Float(width) / Float(max(1, height))
         func pass(_ fragment: String, _ params: [SIMD4<Float>]) -> EffectPass {
             EffectPass(fragment: fragment, inputs: [], params: params)
@@ -335,6 +335,15 @@ extension Generator {
             return pass("ollin_gen_cellular",
                         [SIMD4(Float(scale), Float(jitter), aspect, Float(phase)),
                          SIMD4(style.rawIndex, 0, 0, 0), fg, bg])
+        case let .gaborNoise(wavelength, bandwidth, angle, spread, impulses, phase, seed, fg, bg):
+            // Measured in pixels, so the wavelength scales with the layer (a
+            // 2x export keeps the picture) and the CPU form reads the same
+            // field at the same point. The seed rides as a plain integer in a
+            // float (24 bits is every seed a sketch hands out).
+            return pass("ollin_gen_gabor",
+                        [SIMD4(Float(wavelength * scale), Float(bandwidth), Float(angle), Float(spread)),
+                         SIMD4(Float(impulses), Float(phase), Float(GaborNoise.seedBits(seed)), 0),
+                         SIMD4(Float(width), Float(height), 0, 0), fg, bg])
 
         // Design patterns. Each packs its scalars into leading rows and appends
         // the palette as trailing color rows the fragment indexes past them.
