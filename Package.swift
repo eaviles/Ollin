@@ -46,7 +46,6 @@ enum Satellite: String, CaseIterable {
     case controller = "OllinController"
     case haptics = "OllinHaptics"
     case bluetooth = "OllinBluetooth"
-    case assist = "OllinAssist"
 
     var dependency: Target.Dependency { .byName(name: rawValue) }
 }
@@ -110,13 +109,6 @@ let package = Package(
         // Built on CoreBluetooth. Kept out of `Ollin` so the drawing core stays
         // free of it, and free of the permission it asks for.
         .library(name: "OllinBluetooth", targets: ["OllinBluetooth"]),
-        // Assist as a satellite library: `import OllinAssist` to move a sketch's
-        // parameters toward a look described in words, on the machine's own
-        // language model. It operates the typed `@Param` registry and never
-        // writes source, the line the README draws for AI in Ollin. Kept out of
-        // `Ollin` so the drawing core stays free of the Foundation Models
-        // framework, and so a sketch that never asks for it never links it.
-        .library(name: "OllinAssist", targets: ["OllinAssist"]),
         // Remote as a satellite library: `import OllinRemote` to serve the
         // sketch's `@Param` parameters to a phone or a second machine on the local
         // network, for tuning an installation from in front of it. Kept out of
@@ -750,17 +742,6 @@ let package = Package(
             name: "OllinBluetooth",
             dependencies: ["Ollin"]
         ),
-        // Assist: the words-to-parameters tuner over the machine's own language
-        // model. The model sees the parameters (label, range, current value)
-        // and answers with values under a schema built from them; the answer is
-        // read against each parameter's kind and written through the control's
-        // own path, so nothing here reaches the sketch's code. A satellite so
-        // the core stays free of Foundation Models. Depends on Ollin for the
-        // parameter registry.
-        .target(
-            name: "OllinAssist",
-            dependencies: ["Ollin"]
-        ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
@@ -1018,14 +999,6 @@ let package = Package(
         .testTarget(
             name: "OllinBluetoothTests",
             dependencies: ["Ollin", "OllinBluetooth"]
-        ),
-        // Assist correctness, without the model: the request built from a sketch's
-        // parameters, the prompt text, a reply read against every kind (clamped,
-        // rounded, matched, parsed), the undo, and the schema the on-device model
-        // answers under. One live ask runs only where Apple Intelligence is on.
-        .testTarget(
-            name: "OllinAssistTests",
-            dependencies: ["Ollin", "OllinAssist"]
         ),
         // Record3D decode correctness: synthesizes a tiny `.r3d` in memory (a ZIP
         // of metadata + one JPEG + one LZFSE depth/confidence buffer) and checks

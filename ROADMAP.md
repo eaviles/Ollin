@@ -117,14 +117,12 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 
 ## Authoring and editor tooling
 
-**Later.** This section covers the editing experiences the live-reload core makes possible, and where Ollin draws its line on AI. The public stance already holds (the README's "It's a tool for making art … Ollin is not a generative-art model"). It extends to any AI *feature*: **AI is a tool for operating the framework, never an author of sketches**. Helping wire a generator, suggest a filter, or move parameters toward a look is in scope. Generating a whole sketch or its imagery from a prompt is deliberately out. Within that line:
+**Later.** This section covers the editing experiences the live-reload core makes possible, and where Ollin draws its line on AI: nowhere in the work. The README says it ("It's a tool for making art … Ollin is not a generative-art model"), and it extends to any AI *feature*: **AI helped build the framework, and it plays no part in what you make with it.** Not as the author of a sketch, and not at the controls either, because in generative art the parameters are the work. A palette, a density, a speed chosen by hand is the hand. Models that read the world (the [perception tier](Docs/Vision/Vision.md), depth, listening) are input, like a camera, and stay. Within that line:
 
 - **A visual node editor** over the effect, SDF-combinator, and shader graphs. It lives in the live host and round-trips to Swift source.
 - **The drag on the performance stage.** The performance host's editor buffer becomes a second place the same drag can write.
 - **Deeper live-coding evaluation.** Per-block evaluation and sub-second turnaround on small edits for the OllinLiveCoding performance host. This refines its evaluate-on-command loop. MIDI/OSC mapping of the host's own performance surface belongs here too.
 - **A field that takes a rule.** The inspector row for a parameter takes its rule as typed text. That way a rule is written where the parameter is set, rather than only in the sketch or the automation file. The row also points at where the text went wrong, because `FormulaError` carries the character offset for exactly that.
-- **AI at the controls, on the effect graph.** Wire and parameterize a generator, or suggest a filter, as operations on the typed effect graph that the node editor also presents. The artist composes the sketch.
-- **On-device ML as a material.** Apple-silicon models that a sketch invokes deliberately, the way it invokes a noise function. Uses include semantic parameter control, neural style as a `Filter`, and segmentation-driven generators. Image generation from a text prompt is the one to weigh most carefully against the stance above. If it ships, it is an optional material the artist composes with, never the framework making the piece.
 
 See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 
@@ -150,7 +148,6 @@ See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
 These are lower-confidence ideas, kept on record but deliberately not near-term. Each is plausible on the platform, but it is speculative enough that it should not crowd the planned work above. This section is distinct from [On the horizon](#on-the-horizon), which holds the platform-gated later legs (visionOS, AR), not uncertain ones.
 
-- **Text-to-image as a material.** On-device diffusion that a sketch could invoke as an optional, labeled material. This is the one to weigh hardest against the AI boundary, because it sits closest to the contested use. So it lives here rather than in the planned [authoring tier](#authoring-and-editor-tooling). See the AI stance stated there.
 - **SharePlay co-creation.** Two people tune one sketch together over a FaceTime call. The shape is settled. A GroupActivities transport sits behind the room's transport seam and carries the wire it already speaks (parameters, seed, the shared clock). The sketch is bundled as an app and installed on both Macs, because the `com.apple.developer.group-session` entitlement applies to apps only. Tuning is all it covers. An edit to the sketch is a rebuild on both ends, so co-editing code never travels over the call. It waits on three gates, in order. The first is a public repository, because the other person must be able to get the app. The second is a verified real-signing run for the app kind. The third is demand. See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
 
 ## On the horizon

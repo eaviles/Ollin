@@ -25,8 +25,7 @@ struct InspectorPanel: View {
                                        onChange: { name, value in
                                            session.recordParam(name, value)
                                        },
-                                       save: session.saveAction,
-                                       tune: session.tuneAction)
+                                       save: session.saveAction)
                 }
                 .endsTypingOnBackgroundTap()
             }
