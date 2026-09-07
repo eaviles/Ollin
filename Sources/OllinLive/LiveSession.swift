@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import Ollin
+import OllinAssist
 import OllinRuntime
 
 /// Host-owned state for the live session: it owns the watcher, reacts to file
@@ -218,6 +219,13 @@ final class LiveSession {
     /// reload the way tuned parameters do.
     func recordSeed(_ seed: Int) {
         core.recordSeed(seed)
+    }
+
+    /// The inspector's "describe a look" row over this Mac's own model, or `nil`
+    /// where the machine has none. It reads the session's parameters on each
+    /// ask, so a reload's fresh handles are the ones that move.
+    var tuneAction: ParamTuneAction? {
+        ParamTuneAction.onDevice(sketchName: fileName) { [weak self] in self?.params ?? [] }
     }
 
     /// The inspector's save action: put the parameters the user turned into the

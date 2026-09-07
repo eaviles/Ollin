@@ -26,6 +26,7 @@ final class Pulse: Sketch {
 - [Groups and icons](#groups)
 - [Show-rules: parameters that come and go](#show-rules)
 - [Where the controls appear](#controls)
+- [A look in words](#look)
 - [Saving what you turned](#saving)
 - [Scrubbing values](#scrubbing)
 - [Smoothing](#smoothing)
@@ -172,6 +173,12 @@ Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `
 A standalone run of an example shows the same controls in the inspector panel, under View ▸ Show Inspector (⌘/). The examples gallery shows them in its right sidebar.
 
 Headless export never opens an inspector, so a render uses the defaults written in code. Once a tuned value is right, [save it into the declaration](#saving).
+
+<a name="look"></a>
+
+### A look in words
+
+Above the Save button, the inspector has a field that reads **Describe a look**. Type "warmer, and fewer rings", press Return, and the parameters those words concern move inside their ranges, on this Mac's own language model. The line under the field names each move, and **Undo** puts them back. A parameter moved this way counts as one you turned, so Save writes it. The field is there only on a Mac with Apple Intelligence on, and a sketch can ask from code with `tuneParameters(toward:)`. [Tuning toward a look](./Tuning.md) has the whole of it, including what the model is told and how well it works.
 
 <a name="saving"></a>
 

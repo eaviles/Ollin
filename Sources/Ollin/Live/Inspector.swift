@@ -736,6 +736,37 @@ public struct ParamSaveAction {
     }
 }
 
+/// The inspector's "describe a look" row: a few words go in, the parameters
+/// they concern move, and one line under the field says which, with Undo beside
+/// it while the moves stand. A host supplies it, since the model that answers
+/// lives outside the core (`OllinAssist`, over the machine's own language
+/// model), so a surface without one shows no field, and a machine without the
+/// model shows none either.
+public struct ParamTuneAction {
+    /// Take the words, move the parameters, and hand back what to show. It runs
+    /// on the main thread, where the field is submitted and the parameters are
+    /// read; the wait for the answer is the `async`.
+    public let perform: @MainActor (String) async -> ParamTuneOutcome
+
+    public init(perform: @escaping @MainActor (String) async -> ParamTuneOutcome) {
+        self.perform = perform
+    }
+}
+
+/// What one ask came to: the line to show under the field, and the way back
+/// when something moved.
+public struct ParamTuneOutcome {
+    /// What moved and from where, or why nothing did.
+    public let message: String
+    /// Put every moved parameter back, or `nil` when nothing moved.
+    public let undo: (@MainActor () -> Void)?
+
+    public init(message: String, undo: (@MainActor () -> Void)? = nil) {
+        self.message = message
+        self.undo = undo
+    }
+}
+
 /// What a folded group remembers: whether a sketch's disclosure section was
 /// left open. Only a group the user has toggled writes a key, so an untouched
 /// one keeps its declared start (closed). Package-visible so tests can drive
@@ -771,6 +802,7 @@ public struct ParametersListView: View {
     let parameters: [ParamHandle]
     let onChange: (String, ParamStored) -> Void
     let save: ParamSaveAction?
+    let tune: ParamTuneAction?
     /// The identity folded-group state is remembered under (the name the host's
     /// monitor card shows), or `nil` to remember nothing between runs.
     let sketchName: String?
@@ -786,15 +818,23 @@ public struct ParametersListView: View {
     /// What the last save said, kept until the next one: a refusal names the
     /// parameter it could not write, which is worth reading twice.
     @State private var saveMessage: String?
+    /// The words in the "describe a look" field, the line the last ask left, and
+    /// the way back while its moves stand.
+    @State private var look = ""
+    @State private var tuneMessage: String?
+    @State private var tuneUndo: (@MainActor () -> Void)?
+    @State private var isTuning = false
 
     public init(parameters: [ParamHandle],
                 sketchName: String? = nil,
                 onChange: @escaping (String, ParamStored) -> Void = { _, _ in },
-                save: ParamSaveAction? = nil) {
+                save: ParamSaveAction? = nil,
+                tune: ParamTuneAction? = nil) {
         self.parameters = parameters
         self.sketchName = sketchName
         self.onChange = onChange
         self.save = save
+        self.tune = tune
         _hiddenIDs = State(initialValue: Self.hiddenIDs(in: parameters))
         _openFoldedGroups = State(initialValue: Self.rememberedOpenGroups(in: parameters, sketch: sketchName))
     }
@@ -863,6 +903,7 @@ public struct ParametersListView: View {
                         section(title: group.title) { card(for: group.handles) }
                     }
                 }
+                if let tune { tuneRow(tune) }
                 if let save { saveRow(save) }
             }
             // The visibility poll, on the rows' own 100ms sync-pull cadence.
@@ -989,6 +1030,120 @@ public struct ParametersListView: View {
         .padding(.top, 12)
         .padding(.horizontal, 12)
         .overlay(alignment: .top) { Hairline(palette: palette) }
+    }
+
+    /// The "describe a look" row, above the save button: a field for a few
+    /// words, sent on Return or the arrow, and one line under it saying what
+    /// moved, with Undo beside it while the moves stand. Every parameter the ask
+    /// moved is reported through `onChange`, so a host records it as turned
+    /// and the save button writes it like a value dragged by hand.
+    private func tuneRow(_ tune: ParamTuneAction) -> some View {
+        let words = look.trimmingCharacters(in: .whitespacesAndNewlines)
+        return VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                TextField("Describe a look", text: $look)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .disabled(isTuning)
+                    .onSubmit { runTune(tune) }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+                if isTuning {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 22)
+                } else {
+                    Button { runTune(tune) } label: {
+                        SwiftUI.Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 17))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(words.isEmpty ? palette.textTertiary : OllinInspector.accent)
+                    .disabled(words.isEmpty)
+                    .frame(width: 22)
+                    .help("Move the parameters these words concern, on this Mac's own model. Undo puts them back.")
+                }
+            }
+            if let tuneMessage {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(tuneMessage)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(palette.textTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let tuneUndo {
+                        Button("Undo") {
+                            tuneUndo()
+                            self.tuneUndo = nil
+                            self.tuneMessage = "Put back where they were."
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(OllinInspector.accent)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.top, 12)
+        .padding(.horizontal, 12)
+        .overlay(alignment: .top) { Hairline(palette: palette) }
+    }
+
+    /// Send the field's words, then report every parameter the answer moved (and,
+    /// on Undo, every one it moved back) through `onChange`.
+    private func runTune(_ tune: ParamTuneAction) {
+        let words = look.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !words.isEmpty, !isTuning else { return }
+        isTuning = true
+        tuneUndo = nil
+        let handles = parameters
+        let before = Self.storedValues(of: handles)
+        Task { @MainActor in
+            let outcome = await tune.perform(words)
+            finishTune(outcome, handles: handles, before: before)
+        }
+    }
+
+    /// What happens once the answer is in: the moves are reported, the line
+    /// shown, and the way back kept while the moves stand.
+    private func finishTune(_ outcome: ParamTuneOutcome, handles: [ParamHandle],
+                            before: [String: ParamStored]) {
+        let after = Self.storedValues(of: handles)
+        report(from: before, to: after)
+        tuneMessage = outcome.message
+        if let undo = outcome.undo {
+            let back: @MainActor () -> Void = {
+                undo()
+                report(from: after, to: Self.storedValues(of: handles))
+            }
+            tuneUndo = back
+        } else {
+            tuneUndo = nil
+        }
+        isTuning = false
+    }
+
+    /// Tell the host about every parameter whose value differs between two snapshots.
+    private func report(from before: [String: ParamStored], to after: [String: ParamStored]) {
+        for name in Self.moved(from: before, to: after) {
+            if let value = after[name] { onChange(name, value) }
+        }
+    }
+
+    /// Every parameter's stored value by name, the snapshot the ask is diffed against.
+    package nonisolated static func storedValues(of handles: [ParamHandle]) -> [String: ParamStored] {
+        Dictionary(handles.map { ($0.name, $0.param.stored) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// The names whose value differs between two snapshots, in the order of `after`'s
+    /// keys sorted, so a report reads the same way twice.
+    package nonisolated static func moved(from before: [String: ParamStored],
+                                          to after: [String: ParamStored]) -> [String] {
+        after.keys.sorted().filter { before[$0] != after[$0] }
     }
 
     private var emptyState: some View {

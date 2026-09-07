@@ -50,6 +50,7 @@ enum Satellite: String, CaseIterable {
     case controller = "OllinController"
     case haptics = "OllinHaptics"
     case bluetooth = "OllinBluetooth"
+    case assist = "OllinAssist"
 
     var dependency: Target.Dependency { .product(name: rawValue, package: "Ollin") }
 }
@@ -361,6 +362,7 @@ let package = Package(
         example("Motion/Petals"),
         example("Live/DragToEdit"),
         example("Live/Parameters"),
+        example("Live/DescribedLook", [.assist]),
         example("Motion/Trail"),
         example("Motion/Steering"),
         example("Motion/PerfectLoop"),

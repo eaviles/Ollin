@@ -2,6 +2,7 @@ import AppKit
 import Observation
 import UniformTypeIdentifiers
 import Ollin
+import OllinAssist
 import OllinRuntime
 
 /// The performance host's state: the shared `SketchSession` hot-swap engine
@@ -217,6 +218,13 @@ final class PerformanceSession {
     }
 
     // MARK: - Parameters back into the code
+
+    /// The inspector's "describe a look" row over this Mac's own model, or `nil`
+    /// where the machine has none. A move lands in the running sketch the way a
+    /// dragged slider does; the code on stage changes only through Save.
+    var tuneAction: ParamTuneAction? {
+        ParamTuneAction.onDevice(sketchName: displayName) { [weak self] in self?.core.params ?? [] }
+    }
 
     /// The inspector's save action. Here it writes the *buffer*, not the file:
     /// the buffer is what the audience is reading and what ⌘↩ evaluates, and ⌘S

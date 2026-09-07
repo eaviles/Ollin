@@ -159,7 +159,7 @@ That form is deterministic, which is the same promise the seed made in [Chapter 
 
 ## Parameters from anywhere
 
-The hands come next. Since [Chapter 1](01-HelloOllin.md) you've tuned sketches with `@Param` parameters in the inspector. The news here is that the inspector is only one of the hands that can hold those parameters.
+The hands come next. Since [Chapter 1](01-HelloOllin.md) you've tuned sketches with `@Param` parameters in the inspector, and asked for a look in words through the field above Save. The news here is that the inspector is only one of the hands that can hold those parameters.
 
 **MIDI** is the protocol music hardware has spoken since 1983. Knob boxes, fader banks, pad grids, and keyboards all speak it. A controller sends small messages, and `OllinMIDI` reads them. A knob is a *control change* carrying a number `0...127`, and a pad is a *note* with a velocity:
 

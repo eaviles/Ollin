@@ -123,7 +123,7 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 - **The drag on the performance stage.** The performance host's editor buffer becomes a second place the same drag can write.
 - **Deeper live-coding evaluation.** Per-block evaluation and sub-second turnaround on small edits for the OllinLiveCoding performance host. This refines its evaluate-on-command loop. MIDI/OSC mapping of the host's own performance surface belongs here too.
 - **A field that takes a rule.** The inspector row for a parameter takes its rule as typed text. That way a rule is written where the parameter is set, rather than only in the sketch or the automation file. The row also points at where the text went wrong, because `FormulaError` carries the character offset for exactly that.
-- **AI at the controls.** Drive the parameters, wire and parameterize generators, and tune toward a described look. All of these are operations on the typed `@Param` and effect graph, and the artist composes the sketch.
+- **AI at the controls, on the effect graph.** Wire and parameterize a generator, or suggest a filter, as operations on the typed effect graph that the node editor also presents. The artist composes the sketch.
 - **On-device ML as a material.** Apple-silicon models that a sketch invokes deliberately, the way it invokes a noise function. Uses include semantic parameter control, neural style as a `Filter`, and segmentation-driven generators. Image generation from a text prompt is the one to weigh most carefully against the stance above. If it ships, it is an optional material the artist composes with, never the framework making the piece.
 
 See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).

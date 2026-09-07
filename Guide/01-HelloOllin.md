@@ -426,6 +426,19 @@ The same limit as the drag applies, for the same reason. A default the sketch wo
 
 The line under the button says so and names what stands there. Write a number in its place if you want the parameter to reach it.
 
+## Asking for a look
+
+There is one more way to move the sliders, and it is words. Above the Save button sits a field that reads **Describe a look**. Type "bigger and warmer" and press Return. Two seconds later the radius is up and the tint has gone toward orange. The line under the field says exactly that: which parameters moved, from what, to what. **Undo** beside it puts them back.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/LookToParameters-dark.jpg">
+  <img src="Images/01-HelloOllin/LookToParameters.jpg" alt="Two inspector panels. On the left a field holding the words bigger and warmer above a Radius slider at 120 and a purple Tint swatch. On the right the same field after Return: the slider stands at 180, the swatch is orange, both values in the accent, and a line under them reads Moved Radius from 120 to 180 and Tint from #8000FF to #FF4500, with Undo beside it." width="880">
+</picture>
+
+The words go to your Mac's own language model, so nothing leaves the machine. What the model gets is your parameters, each with its label, its range, and what it holds now, and what it gives back is values. It never sees your code and never writes any. A value it names is held to the range you declared. It lands through the same path a dragged slider uses, so a parameter you turned by phrase saves like one you turned by hand.
+
+The model is small, and it likes a phrase that names what it means. "Fewer rings" and "as big as it goes" land every time. A vaguer phrase gets a guess, and now and then a parameter you never mentioned moves along with the one you did. That is what the line under the field is for: read it, keep what is right, and Undo the rest. The field is there only on a Mac with Apple Intelligence turned on. A sketch can ask in code too, with `tuneParameters(toward:)`. The [DescribedLook example](../Examples/Live/DescribedLook/Sketch.swift) does that with a phrase typed over the picture.
+
 ## Where this comes from
 
 The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org) (Casey Reas and Ben Fry, 2001), the project that made creative coding a field, and it continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. What Ollin does differently is leave motion on by default, turning around the usual arrangement where animation is something you opt into. The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 31](31-SharingAndPerforming.md).
@@ -441,6 +454,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
 - [The reference offline](../Docs/Tools/Reference.md): `ollin docs` and `ollin examples` in full, including one section of a page, the search across everything, and what happens in a pipe.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
+- [Tuning toward a look](../Docs/Helpers/Tuning.md): the field above Save in full, what the model is told and what it never sees, how well it works, `tuneParameters(toward:)` from code, and the line AI keeps to in Ollin.
 - [Parameters](../Docs/Helpers/Parameters.md): the full parameter family (toggles, menus, pads, and friends), grouping parameters into cards (with an advanced group folded behind a disclosure row), icons, smoothing, saving a tuned set back into the code, and driving parameters from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language met properly, every construct these sketches lean on taught in order. [The Swift quick reference](../Docs/Swift.md) is its terse sibling, for whenever a single construct felt mysterious.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping).

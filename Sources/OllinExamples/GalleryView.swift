@@ -1,5 +1,6 @@
 import SwiftUI
 import Ollin
+import OllinAssist
 import OllinRuntime
 
 /// The gallery window: the example list on the left, the running sketch in the
@@ -978,7 +979,8 @@ private struct InspectorSidebar: View {
                                     ?? example.category),
                             stats: stats)
                         VariationCardView(stats: stats)
-                        ParametersListView(parameters: sketch.parameters(), sketchName: example.name)
+                        ParametersListView(parameters: sketch.parameters(), sketchName: example.name,
+                                           tune: .onDevice(sketchName: example.name) { sketch.parameters() })
                     }
                     .endsTypingOnBackgroundTap()
                 }

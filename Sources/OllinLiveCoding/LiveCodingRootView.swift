@@ -162,7 +162,8 @@ struct LiveCodingRootView: View {
                                        onChange: { name, value in
                                            session.core.recordParam(name, value)
                                        },
-                                       save: session.saveAction)
+                                       save: session.saveAction,
+                                       tune: session.tuneAction)
                 }
                 .endsTypingOnBackgroundTap()
             }
