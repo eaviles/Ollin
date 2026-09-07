@@ -523,6 +523,7 @@ let package = Package(
         example("Shapes/Brushes"),
         example("Shapes/StrokeProfiles"),
         example("Shapes/DashedStrokes"),
+        example("Shapes/HobbySpline"),
         example("Shapes/Brushwork"),
         example("Motion/Mandala"),
         example("Text/HelloText"),

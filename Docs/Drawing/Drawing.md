@@ -1105,10 +1105,12 @@ drawShape { p in
 #### drawCurve
 
 ```swift
-drawCurve(_ points: [Vector2], closed: Bool = false)
+drawCurve(_ points: [Vector2], closed: Bool = false, spline: Spline = .catmullRom)
 ```
 
-A **smooth curve through `points`**. It is a Catmull-Rom spline that passes through each point, with tangents derived from its neighbors. You draw a "wiggle" straight from a list of points, with no control points to place. `closed: false`, the default, is an open stroked line, and `closed: true` makes a closed, fillable loop. It is sugar over [`Path`](../Drawing/Geometry.md#path) plus `curve(to:)`.
+A **smooth curve through `points`**. By default it is a Catmull-Rom spline that passes through each point, with tangents derived from its neighbors. You draw a "wiggle" straight from a list of points, with no control points to place. `closed: false`, the default, is an open stroked line, and `closed: true` makes a closed, fillable loop. It is sugar over `Shape(curveThrough:closed:spline:)`.
+
+`spline: .hobby` fits the whole run at once, so the bend flows evenly from point to point. The default flattens between far-apart points and swells between close ones. `.hobby(tension:curl:)` tunes the fit. The typed form, with the Béziers it chose, is [`HobbySpline`](../Drawing/Geometry.md#hobby).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCurve-dark.jpg">

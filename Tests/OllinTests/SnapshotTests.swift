@@ -129,6 +129,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { RaymarchedSDF3DEnvironmentScene() }),
     SnapshotCase("curved-paths", note: "Curved Path fills and strokes.",
                  make: { CurvedPaths() }),
+    SnapshotCase("hobby-spline",
+                 note: "The same points threaded by the default spline (gray) and by Hobby's fit (black), a closed loop under the fit filled with the default outline over it, and a tension-2 fit through a zigzag from the typed value. Pins the fit's control points, the closed seam, and the `spline:` mode reaching the same curve as `HobbySpline`.",
+                 make: { HobbySplines() }),
     SnapshotCase("stroke-joins-caps", note: "strokeJoin / strokeCap on the fringe stroke path.",
                  make: { StrokeJoinsCaps() }),
     SnapshotCase("stroke-profiles", note: "strokeProfile width profiles on the fringe stroke path.",
@@ -6288,6 +6291,37 @@ private final class CurvedPaths: Sketch {
         stroke(.black); strokeWeight(4)
         drawCurve([Vector2(25, 228), Vector2(80, 200), Vector2(130, 236),
                    Vector2(180, 200), Vector2(232, 230)])
+    }
+}
+
+/// Hobby's spline beside the default one on the same points, open and closed,
+/// plus a tightened fit from the typed value. Static, so it's deterministic
+/// at frame 0.
+private final class HobbySplines: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        // An open run with two points close together and a wide gap after them.
+        let run = [Vector2(20, 70), Vector2(60, 30), Vector2(80, 28), Vector2(160, 90),
+                   Vector2(200, 40), Vector2(236, 60)]
+        noFill(); strokeCap(.round)
+        stroke(Color(white: 0.7)); strokeWeight(3)
+        drawCurve(run)
+        stroke(.black); strokeWeight(3)
+        drawCurve(run, spline: .hobby)
+        // A closed loop under the fit, filled, with the default outline over it.
+        let loop = [Vector2(40, 130), Vector2(110, 118), Vector2(150, 160), Vector2(120, 225),
+                    Vector2(50, 230), Vector2(24, 175)]
+        fill(Color(red: 0.2, green: 0.6, blue: 0.9)); stroke(.black); strokeWeight(3)
+        drawCurve(loop, closed: true, spline: .hobby)
+        noFill(); stroke(Color(red: 0.9, green: 0.3, blue: 0.2)); strokeWeight(2)
+        drawCurve(loop, closed: true)
+        // A tightened fit through a zigzag, from the typed value.
+        let zig = [Vector2(170, 130), Vector2(236, 150), Vector2(170, 180), Vector2(236, 210),
+                   Vector2(170, 236)]
+        stroke(.black); strokeWeight(2)
+        drawShape(HobbySpline(through: zig, tension: 2).shape)
     }
 }
 

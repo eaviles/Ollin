@@ -30,6 +30,7 @@
   - [Stroke as shape](#shape-stroked)
 - [Convex hull](#convex-hull)
 - [Path](#path)
+- [HobbySpline](#hobby)
 
 <a name="vector2"></a>
 
@@ -421,7 +422,7 @@ One connected path, an ordered run of points, either open (a stroked path) or cl
 
 ```swift
 Contour(_ points: [Vector2], closed: Bool = true)
-Contour(curveThrough points: [Vector2], closed: Bool = true)   // smooth curve through the points
+Contour(curveThrough points: [Vector2], closed: Bool = true, spline: Spline = .catmullRom)   // smooth curve through the points
 
 var length: Double              // distance along the segments (closed: plus the return leg)
 func point(at t: Double) -> Vector2   // the point a fraction t (0...1) along, by walked length
@@ -443,7 +444,7 @@ A fillable region of one or more `Contour`s. Unlike a convex `drawPolygon`, a `S
 Shape(_ points: [Vector2], closed: Bool = true)   // a single contour
 Shape(outer: [Vector2], holes: [[Vector2]])        // an outer boundary with holes
 Shape(contours: [Contour])                         // explicit contours
-Shape(curveThrough: [Vector2], closed: Bool = true)  // a single smooth-curved contour
+Shape(curveThrough: [Vector2], closed: Bool = true, spline: Spline = .catmullRom)  // a single smooth-curved contour
 ```
 
 ```swift
@@ -591,3 +592,27 @@ drawShape(blob.shape)
 ```
 
 The drawing-side sugar, `drawShape { p in … }` and `drawCurve`, is in [Drawing](../Drawing/Drawing.md#shape).
+
+<a name="hobby"></a>
+
+### `HobbySpline`
+
+The curve `drawCurve(points, spline: .hobby)` draws, as a value. Hobby's method fits one cubic Bézier per gap and solves all the control points together. The bend then flows evenly through every point instead of being set by its two neighbors alone. Four points on a circle come out as that circle.
+
+```swift
+HobbySpline(through: [Vector2], closed: Bool = false, tension: Double = 1, curl: Double = 1,
+            startDirection: Vector2? = nil, endDirection: Vector2? = nil)
+
+var segments: [HobbySpline.Segment]   // the Béziers: start, control1, control2, end
+var path: Path                        // the same curve as a Path of cubic curves
+var contour: Contour                  // sampled to points
+var shape: Shape                      // ready for drawShape
+
+Spline.catmullRom                     // the default: tangents from the neighbors
+Spline.hobby                          // Hobby's fit at its natural tension and curl
+Spline.hobby(tension: 1, curl: 1)     // tuned
+```
+
+`tension` pulls the control points toward the chords. A value of 1 is the natural fit, 2 hugs the straight lines between the points, and values run from 0.75 up. `curl` shapes the two ends of an open curve. The default of 1 gives an end the same bend as the point after it, and 0 lets it run straight out. A closed curve has no ends, so `curl` does nothing there. `startDirection` and `endDirection` pin the direction an open curve leaves and arrives in, and need not be unit length. Consecutive repeated points are dropped, and two points make a straight line. A `Segment` answers `point(at:)` and `direction(at:)` along itself.
+
+`spline:` is the same choice on [`drawCurve`](../Drawing/Drawing.md#curve), `Contour(curveThrough:)`, and `Shape(curveThrough:)`. A `Path`'s `curve(to:)` runs stay on the default spline.

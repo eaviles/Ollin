@@ -50,6 +50,25 @@ final class Leaf: Sketch {
 
 A cubic curve bends from one point to the next, steered by two control points it leans toward but never touches. Two of them, mirrored, make the leaf. The vein uses the friendlier `drawCurve`, which threads a smooth curve *through* the points you give it, no control points to manage. One honest gotcha, learned the honest way. A fill needs a *closed* contour, and ending a path back where it started isn't enough. Forget `p.close()` and the leaf silently refuses to fill, leaving only the vein.
 
+### A curve that reads as drawn: Hobby's spline
+
+`drawCurve` decides its curve one point at a time. At each point it takes a direction from the two neighbors, and that is all it knows. Space the points evenly and the result looks fine. Put two points close together and a third far away, and the curve swells at the near pair and runs flat across the gap.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/HobbyFit-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/HobbyFit.jpg" alt="Three panels of the same six dots, two of them close together: joined by straight segments, threaded by the default curve, which bulges at the close pair and flattens after it, and threaded by Hobby's fit, which bends evenly through every dot" width="680">
+</picture>
+
+The right panel asks for a different fit. `spline: .hobby` solves every direction at once, so the bend arriving at a point matches the bend leaving it. This is John Hobby's spline, the curve inside the METAFONT and MetaPost typesetting programs. It is close to what a practiced hand draws through a few dots. Four dots on a circle come out as that circle.
+
+```swift
+drawCurve(dots, spline: .hobby)                       // the natural fit
+drawCurve(dots, spline: .hobby(tension: 2))           // pulled toward the straight lines
+drawCurve(dots, closed: true, spline: .hobby)         // a loop you can fill
+```
+
+Two settings shape it. `tension` pulls the curve toward the straight lines between the points, with 1 as the natural fit and 2 hugging them. `curl` says how the ends of an open curve bend: 1 gives an end the same bend as its neighbor, and 0 lets it run straight out. When you want the Béziers themselves, `HobbySpline(through:)` is the typed form. Its `segments` are the cubic curves the fit chose, control points included, and its `path` is the same curve as a `Path`.
+
 ### Curves you can write down
 
 The leaf was drawn by hand, one control point at a time. Some outlines don't need that, because somebody already found the formula, and the formula is shorter than the drawing. Nine of them come with Ollin, all deterministic and none of them touching randomness.

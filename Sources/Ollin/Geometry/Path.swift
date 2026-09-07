@@ -238,18 +238,61 @@ enum CurveSampling {
     }
 }
 
+/// Which curve threads a list of points when you ask for a smooth curve
+/// through them (`drawCurve`, `Contour(curveThrough:)`, `Shape(curveThrough:)`).
+///
+/// - `.catmullRom` sets each point's tangent from its two neighbors and
+///   nothing else. Local and cheap, the default, and the one `Path.curve(to:)`
+///   runs use.
+/// - `.hobby` fits the whole run at once so the bend flows evenly from point
+///   to point, the curve a practiced hand draws through a few dots. The typed
+///   form is `HobbySpline`, which also hands back the Béziers themselves;
+///   `.hobby(tension:curl:)` tunes it.
+public struct Spline: Equatable, Sendable {
+    enum Kind: Equatable, Sendable {
+        case catmullRom
+        case hobby(tension: Double, curl: Double)
+    }
+    let kind: Kind
+
+    /// Tangents from the neighbors, one point at a time.
+    public static let catmullRom = Spline(kind: .catmullRom)
+
+    /// Hobby's fit at its natural tension and curl.
+    public static let hobby = Spline(kind: .hobby(tension: 1, curl: 1))
+
+    /// Hobby's fit with the control points pulled in by `tension` (from 0.75
+    /// up; 1 is natural, 2 hugs the chords) and the ends of an open curve bent
+    /// by `curl` (1 matches the neighbor's bend, 0 runs straight out).
+    public static func hobby(tension: Double = 1, curl: Double = 1) -> Spline {
+        Spline(kind: .hobby(tension: tension, curl: curl))
+    }
+
+    /// The curve through `points`, flattened to a polyline that starts on the
+    /// first point. A closed run leaves out the sample that lands back on it.
+    func sampled(through points: [Vector2], closed: Bool) -> [Vector2] {
+        switch kind {
+        case .catmullRom:
+            return CurveSampling.catmullRom(through: points, closed: closed)
+        case .hobby(let tension, let curl):
+            return HobbySpline(through: points, closed: closed, tension: tension, curl: curl).sampledPoints()
+        }
+    }
+}
+
 public extension Contour {
-    /// A smooth contour passing through `points` (a Catmull-Rom spline). Closed
-    /// loops wrap for seamless smoothness; open ones clamp their ends.
-    init(curveThrough points: [Vector2], closed: Bool = true) {
-        self.init(CurveSampling.catmullRom(through: points, closed: closed), closed: closed)
+    /// A smooth contour passing through `points`. Closed loops wrap for
+    /// seamless smoothness; open ones clamp their ends. `spline` picks the
+    /// curve: `.catmullRom` (the default) or `.hobby`.
+    init(curveThrough points: [Vector2], closed: Bool = true, spline: Spline = .catmullRom) {
+        self.init(spline.sampled(through: points, closed: closed), closed: closed)
     }
 }
 
 public extension Shape {
     /// A single-contour shape whose outline is a smooth curve through `points`
-    /// (see `Contour(curveThrough:closed:)`).
-    init(curveThrough points: [Vector2], closed: Bool = true) {
-        self.init(contours: [Contour(curveThrough: points, closed: closed)])
+    /// (see `Contour(curveThrough:closed:spline:)`).
+    init(curveThrough points: [Vector2], closed: Bool = true, spline: Spline = .catmullRom) {
+        self.init(contours: [Contour(curveThrough: points, closed: closed, spline: spline)])
     }
 }

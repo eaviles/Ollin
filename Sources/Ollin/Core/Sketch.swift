@@ -3000,13 +3000,15 @@ open class Sketch {
         drawer.drawShape(path.shape)
     }
 
-    /// A smooth curve through `points` — a Catmull-Rom spline that passes through
-    /// each point with tangents derived from its neighbors. `closed: false` (the
-    /// default) draws an open, stroked "wiggle"; `closed: true` makes a closed,
-    /// fillable loop. Sugar over `Path` + `curve(to:)`.
-    public func drawCurve(_ points: [Vector2], closed: Bool = false) {
+    /// A smooth curve through `points`. By default a Catmull-Rom spline that
+    /// passes through each point with tangents derived from its neighbors;
+    /// `spline: .hobby` fits the whole run at once so the bend flows evenly
+    /// (see `HobbySpline`). `closed: false` (the default) draws an open,
+    /// stroked "wiggle"; `closed: true` makes a closed, fillable loop. Sugar
+    /// over `Shape(curveThrough:closed:spline:)`.
+    public func drawCurve(_ points: [Vector2], closed: Bool = false, spline: Spline = .catmullRom) {
         guard points.count >= 2 else { return }
-        drawer.drawShape(Shape(curveThrough: points, closed: closed))
+        drawer.drawShape(Shape(curveThrough: points, closed: closed, spline: spline))
     }
     public func drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0) {
         drawer.drawRect(rectangle, cornerRadius: cornerRadius)

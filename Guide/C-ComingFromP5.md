@@ -84,7 +84,7 @@ Geometry calls wear a `draw` prefix, and circular things take radii where p5 tak
 | `endShape()` left open | `drawPolyline([Vector2])` | |
 | `arc(x, y, w, h, start, stop, PIE)` | `drawArc(x, y, rx, ry, start: a, stop: b, mode: .pie)` | same angles (radians, clockwise from 3 o'clock); `.open` / `.chord` / `.pie` |
 | `bezier(…)` (cubic) | `drawShape { }` with `cubicCurve(to:control1:control2:)` | `drawBezier(…)` exists but is quadratic: one control point |
-| `curveVertex(…)` splines | `drawCurve([Vector2], closed: true)` | a smooth curve through the points |
+| `curveVertex(…)` splines | `drawCurve([Vector2], closed: true)` | a smooth curve through the points; `spline: .hobby` for a fit that bends evenly |
 | `rectMode(CENTER)` | `drawRect(center: p, width: w, height: h)` | anchors are labels on the call, never a sticky mode |
 
 The catalog runs well past p5's. It holds stars, rings, hearts, n-gons, and a few dozen more, all listed in [Drawing](../Docs/Drawing/Drawing.md).
