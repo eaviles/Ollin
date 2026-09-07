@@ -161,7 +161,15 @@ package struct PhoneProject: Sendable, Equatable {
         for asset in assets {
             let name = (asset as NSString).lastPathComponent
             sources += "      - path: \(yamlQuoted(Self.sketchLink + "/" + name))\n"
-            sources += "        buildPhase: resources\n"
+            if name.lowercased().hasSuffix(".metal") {
+                // Xcode runs its build rules over the resources phase too, and
+                // compiles a Metal file there into a library the framework
+                // never reads; a copy-files phase only copies, so the shader
+                // reaches the phone as the source the framework compiles.
+                sources += "        buildPhase:\n          copyFiles:\n            destination: resources\n"
+            } else {
+                sources += "        buildPhase: resources\n"
+            }
         }
         var dependencies = "      - package: Ollin\n        product: Ollin\n"
         for satellite in satellites {

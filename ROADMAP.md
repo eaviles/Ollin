@@ -103,7 +103,6 @@ A sketch renders through one view on either window system. `Apps/OllinSketchApp`
 
 - **Swift Playgrounds App Projects.** The Swift Playgrounds app has App Projects (`.swiftpm`). They are the closest Swift gets to the p5.js onboarding of "open the editor and type, watch it move". The same package shape embeds a sketch in any SwiftUI app. An App Project is a Swift package, so the [project generator](Docs/Tools/ProjectGenerator.md) can write one as a kind of its own. It is the one app-shaped kind that needs no Xcode project and no signing team. Two questions gate it, in order. The first is whether the Playgrounds app's own bundled toolchain builds the framework's platform floor at all. The second is how the package dependency arrives. It arrives by git URL there, so the tablet waits on the repository being public. The Mac app is the place to verify against a local checkout first. [Design notes.](DESIGN-NOTES.md#swift-playgrounds-and-ios)
 - **The keyboard on a tablet.** A hardware keyboard feeds the same key path a desk sketch reads, through the UIKit press events. So a keyboard-driven sketch is portable too.
-- **The generator's app kind.** `ollin new --kind ios-app` emits the xcodegen shape the reference project uses. The signing team is the one question it has to ask that no other kind does.
 
 See the [design notes](DESIGN-NOTES.md#swift-playgrounds-and-ios).
 

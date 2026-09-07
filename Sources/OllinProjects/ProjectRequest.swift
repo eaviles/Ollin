@@ -27,6 +27,10 @@ public struct ProjectRequest: Sendable {
     /// The package the sketch will join, when the caller has already found it.
     /// Left nil, the generator looks for the nearest one itself.
     public var packageHost: PackageHost?
+    /// The Apple Developer team an app for a device is signed under. Only an
+    /// app kind reads it, and it may be left nil: Xcode then asks for the
+    /// team the first time the project is opened.
+    public var team: String?
     /// The folder the project is created *in*.
     public var destination: URL
     /// How the generated manifest reaches the framework.
@@ -44,6 +48,7 @@ public struct ProjectRequest: Sendable {
         threeD: ThreeDRecipe? = nil,
         seam: ExtensionSeam? = nil,
         packageHost: PackageHost? = nil,
+        team: String? = nil,
         destination: URL,
         framework: FrameworkSource
     ) {
@@ -58,6 +63,7 @@ public struct ProjectRequest: Sendable {
         self.threeD = threeD
         self.seam = seam
         self.packageHost = packageHost
+        self.team = team
         self.destination = destination
         self.framework = framework
     }
@@ -134,6 +140,19 @@ public enum FrameworkSource: Sendable, Hashable {
 
     /// The newest tagged release. Bump when a new minor is tagged.
     public static let latestRelease = "0.1.0"
+
+    /// The `packages:` entry this source becomes in an Xcode project spec,
+    /// indented to sit under the package's name. The path form is absolute,
+    /// which the spec tool takes as it is; the remote form pins the minor the
+    /// way the manifest entry does.
+    public var projectSpecEntry: String {
+        switch self {
+        case .localPath(let url):
+            return "    path: \"\(url.path.replacingOccurrences(of: "\"", with: "\\\""))\""
+        case .remote(let url, let version):
+            return "    url: \(url)\n    minorVersion: \"\(version)\""
+        }
+    }
 
     /// The `dependencies:` entry this source becomes.
     public var manifestEntry: String {

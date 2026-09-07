@@ -77,13 +77,13 @@ struct ProjectGeneratorTests {
     @Test("A gated kind is refused, carrying its reason")
     func refusesGatedKind() {
         var wanted = request(name: "Thing")
-        wanted.kind = .iOSApp
+        wanted.kind = .visionOSApp
         #expect(throws: ProjectGeneratorError.self) {
             _ = try ProjectGenerator.plan(wanted)
         }
         // The message is the whole point of gating rather than omitting.
-        let error = ProjectGeneratorError.kindUnavailable(.iOSApp)
-        #expect(error.description.contains("Xcode project"))
+        let error = ProjectGeneratorError.kindUnavailable(.visionOSApp)
+        #expect(error.description.contains("visionOS"))
     }
 
     @Test("A single file is one executable file carrying the interpreter line")

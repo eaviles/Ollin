@@ -23,6 +23,10 @@ struct GeneratorView: View {
     @AppStorage("generator.destination") private var destinationPath = ""
     @AppStorage("generator.sidebarShown") private var sidebarShown = true
     @AppStorage("generator.inspectorShown") private var inspectorShown = true
+    /// The Apple Developer team an app for a device is signed under. Asked
+    /// only for that kind, and remembered, since it is the same team every
+    /// time. Empty means Xcode asks.
+    @AppStorage("generator.signingTeam") private var signingTeam = ""
 
     @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
@@ -208,6 +212,7 @@ struct GeneratorView: View {
     }
 
     private var isExtension: Bool { kind.id == ProjectKind.extensionPackage.id }
+    private var isPhoneApp: Bool { kind.id == ProjectKind.iOSApp.id }
 
     private var trailingChrome: some View {
         HStack(spacing: 12) {
@@ -734,6 +739,23 @@ struct GeneratorView: View {
                         }
                     }
 
+                    // The one question an app for a device asks that no other
+                    // kind does. It can stay empty: Xcode asks for the team the
+                    // first time the project is run, and the README says so.
+                    if isPhoneApp {
+                        field("Signing team") {
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("", text: $signingTeam, prompt: Text("ABCDE12345"))
+                                    .textFieldStyle(.roundedBorder)
+                                    .onChange(of: signingTeam) { _, _ in outcome = nil }
+                                Text("Your Apple Developer team, for signing onto the phone. Leave it empty and Xcode asks.")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+
                     // A library declares no canvas and links nothing but the
                     // framework, so neither question is asked for one.
                     if !isExtension {
@@ -924,6 +946,9 @@ struct GeneratorView: View {
         if isExtension {
             return "A library, not a sketch: nothing runs, and the README says what to fix before anyone else can install it. Create refuses rather than overwriting."
         }
+        if isPhoneApp {
+            return "An Xcode project spec, not a package: xcodegen writes the project, and Xcode puts it on the phone. Create refuses rather than overwriting."
+        }
         return example == nil
             ? "Nothing is written until you press Create, and Create refuses rather than overwriting."
             : "Copied from the example and declared, so it runs before you change a line. The header comment travels with it."
@@ -980,6 +1005,8 @@ struct GeneratorView: View {
             threeD: threeD,
             seam: isExtension ? seam : nil,
             packageHost: host,
+            team: isPhoneApp && !signingTeam.trimmingCharacters(in: .whitespaces).isEmpty
+                ? signingTeam.trimmingCharacters(in: .whitespaces) : nil,
             destination: destination,
             framework: .localPath(Self.frameworkRoot())
         )

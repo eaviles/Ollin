@@ -47,6 +47,13 @@ enum OllinNewCommand {
         let seamName = arguments.takeValue("--seam")
         let destinationPath = arguments.takeValue("--in")
         let frameworkPath = arguments.takeValue("--framework-path")
+        // The signing team, for an app bound for a device: the flag, then the
+        // same variable `ollin phone` reads, else nothing, and the project
+        // says so. Never the reference app's team from the checkout: that is
+        // somebody's own, and a project handed out under it would fail to
+        // sign for anyone else.
+        let teamFlag = arguments.takeValue("--team")
+        let team = teamFlag ?? ProcessInfo.processInfo.environment["OLLIN_TEAM"]
 
         if let unknown = arguments.rest.first(where: { $0.hasPrefix("--") }) {
             fail("unknown flag \(unknown). Run `ollin new --list` to see what is available.")
@@ -240,8 +247,12 @@ enum OllinNewCommand {
             name: name, kind: kind, template: template, example: example,
             importedShader: importedShader, importedScene: importedScene,
             capabilities: capabilities, canvas: canvas, threeD: threeD, seam: seam,
-            packageHost: host, destination: destination, framework: framework
+            packageHost: host, team: (team?.isEmpty == false) ? team : nil,
+            destination: destination, framework: framework
         )
+        if teamFlag != nil, kind.id != ProjectKind.iOSApp.id {
+            fail("--team signs an app onto a device, so it needs --kind ios-app.")
+        }
 
         do {
             let project = try ProjectGenerator.plan(request)
@@ -366,6 +377,7 @@ enum OllinNewCommand {
                ollin new <name> --kind wallpaper      the desktop wallpaper, live
                ollin new <name> --kind menu-bar       a small live strip in the menu bar
                ollin new <name> --kind extension      a library other sketches import
+               ollin new <name> --kind ios-app        an app for the phone and the tablet
                ollin new --list              every kind, template, seam, and extra
                ollin new --examples          every example that can be started from
 
@@ -384,6 +396,8 @@ enum OllinNewCommand {
                                  --kind extension (default: draw-call)
           --with <a,b>           extra libraries and folders to wire in
           --canvas <id>          the canvas size to declare
+          --team <id>            the Apple Developer team an iOS app is signed under
+                                 (default: OLLIN_TEAM, else Xcode asks)
           --in <dir>             where to put it (default: here)
           --remote               point the manifest at the published framework rather than this folder
           --framework-path <dir> point it at a particular copy of the framework

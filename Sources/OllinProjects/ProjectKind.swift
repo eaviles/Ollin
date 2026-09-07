@@ -21,16 +21,17 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
     /// A windowed program does. A plug-in does not, because the program that
     /// loads it has an entry point already and a second one is at best dead
     /// weight; and neither does a piece whose program is a wrapper file beside
-    /// the sketch (the wallpaper and menu-bar kinds), where a second `@main`
-    /// would refuse to build. It is the one thing that changes the sketch file
+    /// the sketch (the wallpaper, menu-bar, and phone kinds), where a second
+    /// `@main` would refuse to build. It is the one thing that changes the sketch file
     /// rather than the files around it, which is why it rides the kind instead
     /// of being asked about later.
     public let carriesEntryPoint: Bool
     /// Whether a sketch of this kind is drawn onto whatever it is put on, rather
     /// than into a window sized to the canvas.
     ///
-    /// A screen saver and the wallpaper take a whole display, and the menu-bar
-    /// strip is the same fact at a smaller size. The sketch is written to suit:
+    /// A screen saver and the wallpaper take a whole display, the menu-bar
+    /// strip is the same fact at a smaller size, and a phone's screen is the
+    /// canvas of an app on it. The sketch is written to suit:
     /// it declares its window mode as `.resizable`, so `width` and `height` are
     /// the surface's. Data rather than a code path, because it is the same fact
     /// for every kind that has no window of its own.
@@ -120,11 +121,21 @@ extension ProjectKind {
         availability: .available
     )
 
+    /// A sketch wrapped as an app for the phone and the tablet.
+    ///
+    /// An app is installed onto a device rather than run from the command
+    /// line, so this kind writes an Xcode project spec rather than a package:
+    /// the sketch, a host that puts it in a `SketchView` and owns the entry
+    /// point, the property list, and the spec that ties them to the
+    /// framework. The one question it asks that no other kind does is the
+    /// signing team, and it can be left for Xcode to ask.
     public static let iOSApp = ProjectKind(
         id: "ios-app",
         title: "iPhone and iPad app",
         summary: "A sketch wrapped as an app for the phone and the tablet, with touch and the device sensors as input.",
-        availability: .waiting(on: "an Xcode project to write: an app is installed onto a device rather than run from the command line, so this kind emits a project and a signing team rather than a package")
+        availability: .available,
+        carriesEntryPoint: false,
+        fillsTheDisplay: true
     )
 
     public static let visionOSApp = ProjectKind(

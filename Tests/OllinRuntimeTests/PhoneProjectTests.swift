@@ -75,6 +75,20 @@ struct PhoneProjectTests {
         #expect(plan.assets.map { ($0 as NSString).lastPathComponent } == ["loop.wav", "photo.JPG", "shade.metal"])
     }
 
+    /// Xcode runs its build rules over the resources phase too, so a `.metal`
+    /// put there is compiled into a library the framework never reads (the
+    /// shader's source is what it compiles at run time); a copy-files phase
+    /// only copies. The generator's own build test proves it on a real iOS
+    /// build; this pins the spec the tether writes.
+    @Test func aShaderSiblingIsCopiedNeverCompiled() throws {
+        let folder = (sketchPath as NSString).deletingLastPathComponent
+        let siblings = ["shade.metal", "photo.png"].map { (folder as NSString).appendingPathComponent($0) }
+        let spec = try plan("class Waves: Sketch {}", siblings: siblings).projectSpec
+        #expect(spec.contains("- path: \"Sketch/shade.metal\"\n        buildPhase:\n          copyFiles:\n            destination: resources"))
+        #expect(!spec.contains("shade.metal\"\n        buildPhase: resources"))
+        #expect(spec.contains("- path: \"Sketch/photo.png\"\n        buildPhase: resources"))
+    }
+
     // MARK: What gets written
 
     @Test func theSpecNamesEverythingThroughTheTwoLinks() throws {

@@ -11,6 +11,13 @@ private let buildsBundles = ProcessInfo.processInfo.environment["OLLIN_BUNDLE_BU
 private let bundlesSkipped: Comment =
     "the signed-bundle builds run on the milestone pass; Scripts/test.sh milestone"
 
+/// Whether xcodegen is on this machine. A phone app is an Xcode project spec,
+/// so without the tool there is nothing to build; the test then reports
+/// itself skipped and says why, rather than passing quietly.
+private let xcodegenInstalled: Bool = {
+    ["/opt/homebrew/bin/xcodegen", "/usr/local/bin/xcodegen"].contains { FileManager.default.isExecutableFile(atPath: $0) }
+}()
+
 /// The check that matters most: what comes out of the generator has to build.
 ///
 /// A scaffold that does not compile is worse than no scaffold, and none of the
@@ -443,6 +450,70 @@ struct GeneratedProjectBuildTests {
                 "the bundled binary rendered nothing")
     }
 
+    /// The phone kind is the one whose output no Mac build can check: an Xcode
+    /// project spec, compiled for iOS. Three things only a real build proves.
+    /// The host and the sketch agree (the sketch has lost its entry point; a
+    /// stray `@main` refuses to build beside the host's). The framework and
+    /// the wired satellites link for the phone at all. And the shader reaches
+    /// the bundle as a *file*: Xcode runs its build rules over the resources
+    /// phase too, so a `.metal` put there is compiled into a library, and the
+    /// framework, which reads a shader's source at run time, finds nothing.
+    /// The copy-files phase the spec names is what this test pins.
+    ///
+    /// Built for the generic iOS destination with signing off, so it needs no
+    /// device and no team, in the derived-data folder the tether's own build
+    /// test keeps under `.build`, so the framework compiles for the phone cold
+    /// once ever rather than once per suite. Waited on asynchronously so the
+    /// suite's time limit can act on a wedged build.
+    @Test("A generated phone app builds for iOS and carries its shader as a file",
+          .enabled(if: xcodegenInstalled, "xcodegen is not installed"))
+    func aGeneratedPhoneAppBuildsForIOS() async throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Waves",
+            kind: .iOSApp,
+            template: .motion,
+            capabilities: [.shaders, .images, .audio],
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let generated = try await Self.runDetached(["xcodegen", "generate", "--quiet"], in: project.root)
+        #expect(generated.status == 0, Comment(rawValue: generated.output))
+
+        let derivedData = repository.appendingPathComponent(".build/PhoneProjectBuild/DerivedData")
+        let build = try await Self.runDetached([
+            "xcodebuild",
+            "-project", project.root.appendingPathComponent("Waves.xcodeproj").path,
+            "-scheme", "Waves",
+            "-destination", "generic/platform=iOS",
+            "-derivedDataPath", derivedData.path,
+            "CODE_SIGNING_ALLOWED=NO",
+            "-quiet", "build",
+        ], in: project.root)
+        let errors = build.output.split(separator: "\n").filter { $0.contains("error:") }.joined(separator: "\n")
+        #expect(build.status == 0, Comment(rawValue: errors.isEmpty ? String(build.output.suffix(2000)) : errors))
+
+        let app = derivedData.appendingPathComponent("Build/Products/Debug-iphoneos/Waves.app")
+        #expect(FileManager.default.fileExists(atPath: app.appendingPathComponent("Waves").path),
+                "no app came out of the build")
+        // The framework's own files travel inside the app, as they do on the Mac.
+        #expect(FileManager.default.fileExists(atPath: app.appendingPathComponent("Ollin_Ollin.bundle").path),
+                "the framework's resources did not travel with the app")
+        // The shader, as the text the framework compiles, not as a library.
+        let shader = app.appendingPathComponent("effect.metal")
+        let text = (try? String(contentsOf: shader, encoding: .utf8)) ?? ""
+        #expect(text.contains("float4 shade("), "the shader did not reach the bundle as a file")
+        // The folder's contents, flat at the bundle root where a lookup finds them.
+        #expect(FileManager.default.fileExists(atPath: app.appendingPathComponent("Images.md").path),
+                "the asset folder did not land flat in the bundle")
+    }
+
     /// The wallpaper kind splits the program in two, a sketch with no entry
     /// point and a wrapper carrying it, and only a build proves the two files
     /// agree (a stray `@main` on the sketch refuses to compile beside the
@@ -667,6 +738,45 @@ struct GeneratedProjectBuildTests {
     static func swiftTest(in directory: URL) throws -> (succeeded: Bool, output: String) {
         try run(["swift", "test", "--package-path", directory.path,
                  "--scratch-path", scratchDirectory.path])
+    }
+
+    /// Runs `command` in `directory`, waited on through its termination
+    /// handler so no thread is parked, with its output in a file rather than a
+    /// pipe so a child that outlives it holds nothing open. Cancelling the
+    /// task (the suite's time limit) terminates the process, which is what
+    /// resumes the wait. The shape `PhoneProjectBuildTests` uses.
+    static func runDetached(_ command: [String], in directory: URL) async throws -> (status: Int32, output: String) {
+        let output = directory.appendingPathComponent("\(command[0])-\(UUID().uuidString).log")
+        guard FileManager.default.createFile(atPath: output.path, contents: nil) else {
+            return (127, "could not create \(output.path)")
+        }
+        let handle = try FileHandle(forWritingTo: output)
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = command
+        process.currentDirectoryURL = directory
+        process.standardOutput = handle
+        process.standardError = handle
+
+        let status: Int32 = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                process.terminationHandler = { finished in
+                    continuation.resume(returning: finished.terminationStatus)
+                }
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        } onCancel: {
+            if process.isRunning { process.terminate() }
+        }
+        try? handle.close()
+        let text = (try? String(contentsOf: output, encoding: .utf8)) ?? ""
+        return (status, text)
     }
 
     static func run(_ arguments: [String]) throws -> (succeeded: Bool, output: String) {

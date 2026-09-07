@@ -74,7 +74,16 @@ The signing team comes from the `--team` flag first, then from `OLLIN_TEAM` in t
 
 ### In an app of your own
 
-The command writes an app around the sketch. `Apps/OllinSketchApp` in the checkout is built the same way, by hand. It is an Xcode project with the framework as a local package, plus a host that puts the sketch in a `SketchView`.
+The command writes a throwaway app around the sketch, under the caches folder. For an app you keep and hand out, the [project generator](ProjectGenerator.md) writes the same shape as a project of its own:
+
+```sh
+ollin new Rings --kind ios-app --team ABCDE12345
+cd Rings && xcodegen generate && open Rings.xcodeproj
+```
+
+The folder holds the sketch, a host that owns the entry point, the property list, and the `project.yml` the Xcode project is written from. The `.xcodeproj` is never edited by hand and is not kept in git. Leave the team off and Xcode asks for it the first time you press Run, but what Xcode writes is lost when the project is generated again, so the README says to put it into `project.yml`. Every template fits, and so does any example that stays off the Mac-only libraries: a capability that lives on the Mac (Syphon, screen capture, the virtual camera, the phone link) is refused with its reason. A `.metal` file beside the sketch rides through a copy-files phase, because the resources phase would compile it into a library the framework never reads. The generator window offers the same kind from its menu, with a field for the team.
+
+`Apps/OllinSketchApp` in the checkout is the same shape, written by hand. It is an Xcode project with the framework as a local package, plus a host that puts the sketch in a `SketchView`.
 
 ```swift
 import SwiftUI

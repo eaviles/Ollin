@@ -34,6 +34,7 @@ public enum ProjectGenerator {
         case ProjectKind.screenSaver.id: return planScreenSaver(request)
         case ProjectKind.wallpaper.id:   return planWallpaper(request)
         case ProjectKind.menuBar.id:     return planMenuBar(request)
+        case ProjectKind.iOSApp.id:      return try planIOSApp(request)
         default:
             throw ProjectGeneratorError.kindUnavailable(request.kind)
         }
@@ -288,8 +289,8 @@ public enum ProjectGenerator {
     /// needs to declare them. Shared by every kind that puts a sketch in a
     /// target of its own, since what a sketch carries does not depend on what
     /// the target is finally built into.
-    private static func sketchFiles(_ request: ProjectRequest,
-                                    sourceDir: String) -> ([GeneratedFile], [String]) {
+    static func sketchFiles(_ request: ProjectRequest,
+                            sourceDir: String) -> ([GeneratedFile], [String]) {
         var files: [GeneratedFile] = []
         var resources: [String] = []
 
@@ -1621,6 +1622,10 @@ public enum ProjectGeneratorError: Error, CustomStringConvertible, Equatable {
     case fileExists(URL)
     case noPackageHere(URL)
     case packageDoesNotLinkOllin(PackageHost)
+    /// A capability wired into a project bound for a device wraps a service
+    /// that lives on the Mac. Named with its reason, so the refusal reads as a
+    /// fact about the platform rather than a failure of the build.
+    case staysOnTheDesk(Capability, ProjectKind)
 
     public var description: String {
         switch self {
@@ -1637,6 +1642,8 @@ public enum ProjectGeneratorError: Error, CustomStringConvertible, Equatable {
             return "no Package.swift at or above \(url.path), so there is nothing to add the sketch to."
         case .packageDoesNotLinkOllin(let host):
             return "\(host.name) does not depend on Ollin yet, so a target added to it could not import the framework. Add the dependency, or make a self-contained project instead."
+        case .staysOnTheDesk(let capability, let kind):
+            return "\(capability.title) stays on the Mac (\(capability.staysOnTheDesk ?? "it has no counterpart on a device")), so it cannot be wired into a project bound for a device (\(kind.title))."
         }
     }
 }

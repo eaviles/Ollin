@@ -28,7 +28,7 @@ Almost nothing.
 
 ## Build and run
 
-The quick way, from the checkout: `ollin phone Sources/TouchRings.swift` writes this same shape around the sketch, builds and installs it, and installs it again on every save. See [the sketch on the phone](../../Docs/Tools/OnThePhone.md). By hand:
+The quick way, from the checkout: `ollin phone Sources/TouchRings.swift` writes this same shape around the sketch, builds and installs it, and installs it again on every save. See [the sketch on the phone](../../Docs/Tools/OnThePhone.md). For a project of your own in this shape, `ollin new <Name> --kind ios-app` writes one; see [the project generator](../../Docs/Tools/ProjectGenerator.md). By hand:
 
 The framework arrives as a local package dependency, so a change to Ollin is
 picked up by the next build with nothing to publish.

@@ -7,6 +7,7 @@ ollin new MyPiece                                  # a folder that builds and ru
 ollin new MyPiece --template shader --with audio   # wired for a shader and the microphone
 ollin new MyPiece --from Basic/HelloCircle          # start from an example, material and all
 ollin new Dots.swift                               # one loose file, nothing around it
+ollin new Rings --kind ios-app                     # an app for the phone and the tablet
 ollin new                                          # one loose file, named by the next serial
 ollin new --list                                   # every kind, template, and extra
 ollin generate                                     # the same choices, in a window
@@ -28,8 +29,9 @@ A **kind** is the sort of thing the generator makes for you.
 | `wallpaper` | A sketch that runs as the [desktop wallpaper](../Output/Wallpaper.md), drawn across every display behind the icons. |
 | `menu-bar` | A sketch that runs as a small live strip [in the menu bar](../Output/MenuBar.md), beside the clock all day. |
 | `extension` | A library that other people's sketches import, named and laid out by the [shared convention](Extensions.md). |
+| `ios-app` | A sketch wrapped as an app for [the phone and the tablet](OnThePhone.md#in-an-app-of-your-own): an Xcode project spec rather than a package, with the signing team as its one extra question. |
 
-`ollin new --list` shows more kinds than these. The rest are an iPhone app, a Vision app, and an AR effect, and each one carries the reason it is not ready. They are named rather than hidden, because they show where this goes. Each waits on the work for its platform, not on the generator.
+`ollin new --list` shows more kinds than these. The rest are a Vision app and an AR effect, and each one carries the reason it is not ready. They are named rather than hidden, because they show where this goes. Each waits on the work for its platform, not on the generator.
 
 A name that ends in `.swift` asks for one loose file, and any other name makes a folder. That is the only difference in how you ask.
 
@@ -192,6 +194,7 @@ The path form is the right default on a machine that has the framework, because 
 | `--with <a,b>` | Extra libraries and folders. |
 | `--canvas <id>` | The canvas size to declare (`a4`, `fhd1080`, `vertical1080`, and the rest). |
 | `--seam <id>` | What an extension package is built on, with `--kind extension`. Defaults to `draw-call`. |
+| `--team <id>` | The Apple Developer team an iOS app is signed under, with `--kind ios-app`. Defaults to `OLLIN_TEAM`; left off, Xcode asks. |
 | `--in <dir>` | Where to put it. Defaults to the current folder. |
 | `--remote` | Point the manifest at the published framework. |
 | `--framework-path <dir>` | Point it at a particular copy of the framework. |

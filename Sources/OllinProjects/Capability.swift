@@ -19,6 +19,11 @@ public struct Capability: Sendable, Hashable, Identifiable {
     public let assetFolders: [AssetFolder]
     /// The first call, as a comment inside `setup()`. Empty for none.
     public let starterHint: String
+    /// Why this capability cannot reach a phone, or nil when it can. A few
+    /// wrap a service that lives on the Mac (a camera extension, Syphon, the
+    /// displays, the Mac end of the phone link), so a project bound for a
+    /// device refuses them with the reason rather than failing inside a build.
+    public let staysOnTheDesk: String?
 
     public struct AssetFolder: Sendable, Hashable {
         public let name: String
@@ -38,7 +43,8 @@ public struct Capability: Sendable, Hashable, Identifiable {
         summary: String,
         module: String? = nil,
         assetFolders: [AssetFolder] = [],
-        starterHint: String = ""
+        starterHint: String = "",
+        staysOnTheDesk: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -46,6 +52,7 @@ public struct Capability: Sendable, Hashable, Identifiable {
         self.module = module
         self.assetFolders = assetFolders
         self.starterHint = starterHint
+        self.staysOnTheDesk = staysOnTheDesk
     }
 }
 
@@ -173,7 +180,8 @@ extension Capability {
         title: "Syphon",
         summary: "Share every rendered frame with other apps on the machine.",
         module: "OllinSyphon",
-        starterHint: "publishSyphon(name: \"My Sketch\")"
+        starterHint: "publishSyphon(name: \"My Sketch\")",
+        staysOnTheDesk: "Syphon shares frames between Mac apps"
     )
 
     public static let controller = Capability(
@@ -189,7 +197,8 @@ extension Capability {
         title: "Screen capture",
         summary: "Any display, app, or window as a live feed.",
         module: "OllinScreen",
-        starterHint: "let screen = ScreenCapture(.mainDisplay)"
+        starterHint: "let screen = ScreenCapture(.mainDisplay)",
+        staysOnTheDesk: "screen capture reads the Mac's displays"
     )
 
     public static let virtualCamera = Capability(
@@ -197,7 +206,8 @@ extension Capability {
         title: "Virtual camera",
         summary: "Publish the canvas as a system camera every webcam app can read.",
         module: "OllinCamera",
-        starterHint: "publishVirtualCamera()"
+        starterHint: "publishVirtualCamera()",
+        staysOnTheDesk: "a virtual camera is a Mac camera extension"
     )
 
     public static let phone = Capability(
@@ -205,7 +215,8 @@ extension Capability {
         title: "iPhone sensors",
         summary: "A tethered phone's depth, body, face, segmentation, and motion.",
         module: "OllinPhone",
-        starterHint: "let phone = PhoneDevice()"
+        starterHint: "let phone = PhoneDevice()",
+        staysOnTheDesk: "the phone link runs on the Mac end of the cable"
     )
 
     public static let record3D = Capability(
@@ -213,7 +224,8 @@ extension Capability {
         title: "RGBD recordings",
         summary: "A recorded depth clip or a tethered phone's live depth stream.",
         module: "OllinRecord3D",
-        starterHint: "let recording = try? Record3DRecording(path: path)"
+        starterHint: "let recording = try? Record3DRecording(path: path)",
+        staysOnTheDesk: "the phone link runs on the Mac end of the cable"
     )
 
     /// Every capability, in the order a list should show them: the material a

@@ -85,5 +85,6 @@ Before you send an app anywhere, change `CFBundleIdentifier` in `Info.plist` fro
 
 - [Installation](./Installation.md) - running unattended on a wall, once the app is on the machine
 - [Screen saver](./ScreenSaver.md) - the other double-clickable form a sketch can take
+- [The sketch on the phone](../Tools/OnThePhone.md#in-an-app-of-your-own) - the same idea for an iPhone or iPad, written by `ollin new --kind ios-app`
 - [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, this one among them
 - [Export](./Export.md) - leaving with a picture instead of an app
