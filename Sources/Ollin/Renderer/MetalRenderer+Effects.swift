@@ -649,6 +649,36 @@ extension MetalRenderer {
                                  into: cb)
             return output
 
+        case let .brushwork(radius, stretch, sharpness):
+            // Three passes: the structure tensor of the color; that tensor blurred, so
+            // the direction and anisotropy at every texel are its neighborhood's; and
+            // the sector filter over the layer, its brush shaped by both.
+            guard let tensor = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let smoothed = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
+            encodeEffectFragment("ollin_fx_brushwork_tensor", inputs: [input], output: tensor,
+                                 params: [SIMD4(texel.x, texel.y, 0, 0)], into: cb)
+            let blur = MPSImageGaussianBlur(device: device, sigma: 2)
+            blur.edgeMode = .clamp
+            blur.encode(commandBuffer: cb, sourceTexture: tensor, destinationTexture: smoothed)
+            // The stretch is the brush's aspect ratio at full anisotropy, so the
+            // technique's own tuning parameter is 1 / (sqrt(stretch) - 1); a stretch of
+            // 1 is a round brush whatever the tensor says.
+            let alpha = stretch > 1.0001 ? 1 / (stretch.squareRoot() - 1) : 1e6
+            // The sector polynomials: the sectors overlap by one texel at the center of
+            // a brush whose minor axis is at least half the radius (zeta = 2 / r), and
+            // at their sides by the amount that puts the zero crossing midway between
+            // one sector width and two (eta at 3π / 2N, with N = 8 sectors).
+            let zeta = 2 / radius
+            let gamma = 3 * Double.pi / 16
+            let eta = (zeta + cos(gamma)) / (sin(gamma) * sin(gamma))
+            encodeEffectFragment("ollin_fx_brushwork", inputs: [input, smoothed], output: output,
+                                 params: [SIMD4(texel.x, texel.y, Float(radius), Float(alpha)),
+                                          SIMD4(Float(sharpness), Float(zeta), Float(eta), 0)],
+                                 into: cb)
+            return output
+
         // Every single-pass filter was encoded from its `singlePass` description
         // above; the list stays exhaustive so a new kind must choose a side.
         case .colorGrade, .invert, .posterize, .threshold, .sepia, .colorVision, .duotone,

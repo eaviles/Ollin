@@ -177,6 +177,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-xdog",
                  note: "The flow-based difference of Gaussians over a fixed still life: the default ink on paper, the same with no flow, the layer itself, and pale ink on dark paper under a hard cut and a long flow. Pins the four passes (the structure tensor, its blur, the difference across the flow, the gather along it), the footprint-averaged cut at softness 0, and the paper the picture is read over.",
                  make: { EffectsXDoG() }),
+    SnapshotCase("effects-brushwork",
+                 note: "The anisotropic Kuwahara filter over the same fixed still life as effects-xdog: the default brush, the same brush held round (stretch 1), the layer itself, and a broad hard brush (radius 10, stretch 8, sharpness 16). Pins the three passes (the color structure tensor, its blur, the sector filter), the stretch following the tensor's direction, and the sharpness exponent on the sector spread.",
+                 make: { EffectsBrushwork() }),
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
@@ -6808,7 +6811,7 @@ private final class EffectsXDoG: Sketch {
     override func draw() {
         background(Color(white: 0.05))
         let scene = makeRenderTarget(scale: 0.5)
-        withTarget(scene) { paint() }
+        withTarget(scene) { paintEffectsStillLife() }
         // A half-scale layer's image is canvas-sized, so each tile names its quarter.
         func tile(_ col: Int, _ row: Int) -> Rectangle {
             Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
@@ -6820,8 +6823,12 @@ private final class EffectsXDoG: Sketch {
                                        foreground: Color(hex: 0xF3EBDD),
                                        background: Color(hex: 0x1B1040))).image, in: tile(1, 1))
     }
+}
 
-    private func paint() {
+/// The still life the effects snapshots share: a table against a wall, a jug, and
+/// three balls lit from the upper left, in the layer's own coordinates.
+private extension Sketch {
+    func paintEffectsStillLife() {
         noStroke()
         let horizon = height * 0.62
         fill(.linear(from: Vector2(0, 0), to: Vector2(0, horizon),
@@ -6845,6 +6852,42 @@ private final class EffectsXDoG: Sketch {
                          Ramp([Color(hex: 0xFFF6E8), tint, Color(hex: 0x14161E)])))
             drawCircle(center: center, radius: r)
         }
+    }
+}
+
+/// The anisotropic Kuwahara filter over the same still life as `EffectsXDoG`, under
+/// a fine diagonal hatch so the brush has grain to flatten: the default brush, the
+/// brush held round, the layer itself, and a broad hard brush. Deterministic (no
+/// time/random), so it pins the three passes (the color tensor, its blur, the
+/// sector filter), the stretch along the tensor's direction, and the sharpness
+/// exponent.
+private final class EffectsBrushwork: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let scene = makeRenderTarget(scale: 0.5)
+        withTarget(scene) {
+            paintEffectsStillLife()
+            // A fixed hatch, one way in shadow and the other in light, over everything.
+            strokeWeight(1)
+            stroke(Color(white: 0, alpha: 0.35))
+            for i in stride(from: -Int(height), to: Int(width), by: 5) {
+                drawLine(Double(i), 0, Double(i) + height, height)
+            }
+            stroke(Color(white: 1, alpha: 0.3))
+            for i in stride(from: 0, to: Int(width + height), by: 7) {
+                drawLine(Double(i), 0, Double(i) - height, height)
+            }
+        }
+        func tile(_ col: Int, _ row: Int) -> Rectangle {
+            Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
+        }
+        drawImage(scene.filtered(.brushwork()).image, in: tile(0, 0))
+        drawImage(scene.filtered(.brushwork(stretch: 1)).image, in: tile(1, 0))
+        drawImage(scene.image, in: tile(0, 1))
+        drawImage(scene.filtered(.brushwork(radius: 10, stretch: 8, sharpness: 16)).image,
+                  in: tile(1, 1))
     }
 }
 

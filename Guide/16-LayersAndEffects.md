@@ -87,6 +87,25 @@ The part that makes the lines read as drawn rather than detected is the flow. Be
 
 The dials: `radius` is the line scale in pixels, and `sharpening` how far the edges are pushed over the tone. `threshold` is where paper turns to ink, and `softness` the ramp under that cut. At 0 the cut is a hard two-tone print. The default of 0.2 keeps a gray wash below the threshold, which is the look the technique is known for. `foreground` and `background` are the ink and the paper. The filter reads the picture as the brightness a display would show. An edge in a shadow then counts as much as one in the light. Empty space on a transparent layer reads as paper rather than ink, so a shape drawn alone gets an outline and nothing else. [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) puts every dial on a parameter over a still life with a moving lamp.
 
+### Paint that follows the picture: brushwork
+
+A second stylize filter turns the layer into a painting rather than a drawing. `.brushwork()` lays the picture on as paint. Detail flattens into patches, edges stay crisp, and the patches run along the picture's own contours.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Brushwork-dark.jpg">
+  <img src="Images/16-LayersAndEffects/Brushwork.jpg" alt="Two panels: a small hillside of grass blades under a sky with a cloud, and the same layer painted as brushwork, each blade widened into a stroke that follows its bend and the sky flattened into soft patches" width="680">
+</picture>
+
+```swift
+drawImage(scene.filtered(.brushwork()).image, 0, 0)
+```
+
+Underneath is a brush divided into eight overlapping sectors, like slices of a pie. For each pixel the filter takes the average color of every sector and measures how much each one varies. The flattest sectors win. So a pixel beside an edge takes its color from the sectors on its own side, and the edge never smears. Away from any edge every sector is much the same, and the pixel becomes a broad average. That is what flattens detail into patches.
+
+The part that makes the patches read as strokes is the shape of the brush. The filter first works out which way the picture runs at each pixel, from the same structure tensor `xdog` follows. Where there is a clear direction, the brush is drawn out along it and squeezed across it. At most it is four times as long as it is wide. Along a blade of grass the patch is a stroke along the blade. In a flat sky the brush stays round. `stretch` is the most an edge can draw the brush out. Set it to 1 and the brush is always round, which is worth doing once. The picture turns into square dabs.
+
+The dials: `radius` is the brush size in pixels, and the cost grows with its square. `sharpness` is how decisively the flattest sector wins. Higher is flatter and more poster-like. At 0 every sector counts alike, and the filter is only a soft blur. The picture is read as the colors a display shows over white paper. Empty space on a transparent layer counts as paper, and the result keeps the layer's alpha. [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) paints a hillside in a breeze with every dial on a parameter.
+
 ## Filters that read the layer as something else
 
 Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those are worth meeting individually, because what you feed them matters more than the parameters.
@@ -813,7 +832,7 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (a still life as pen and ink), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (a still life as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (a hillside painted as brushwork, every dial on a parameter), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---
 

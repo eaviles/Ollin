@@ -270,6 +270,11 @@ public struct Filter: Sendable {
         /// response is gathered (px), painted `foreground` over `background`.
         case xdog(radius: Double, sharpening: Double, threshold: Double, softness: Double,
                   flow: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
+        /// The anisotropic Kuwahara filter: paint patches drawn out along the picture's
+        /// own flow. `radius` is the brush size (px), `stretch` the most a patch is drawn
+        /// out along an edge (an aspect ratio; 1 keeps every patch round), `sharpness`
+        /// how decisively the flattest patch wins (the exponent on its spread).
+        case brushwork(radius: Double, stretch: Double, sharpness: Double)
         /// 3×3 median: replace each pixel with the per-channel median of its neighborhood
         /// (removes speckle while keeping edges).
         case median
@@ -825,6 +830,27 @@ public struct Filter: Sendable {
                            threshold: threshold, softness: max(0, softness),
                            flow: min(max(flow, 0), 16),
                            foreground: foreground.linearRGBA, background: background.linearRGBA))
+    }
+
+    /// Brushwork: the picture as paint laid on in patches that follow its own flow.
+    /// Each pixel becomes the average of the flattest of eight overlapping sectors of
+    /// a brush around it, so detail flattens into patches while edges stay crisp. The
+    /// brush is an ellipse drawn out along whatever edge runs through the pixel, so
+    /// the patches read as strokes along the picture's contours rather than square
+    /// dabs (`.oilPaint` is the plain, square-quadrant ancestor). `radius` is the
+    /// brush size in pixels. `stretch` is the most the brush is elongated along an
+    /// edge, as an aspect ratio: 1 keeps it round, and the default of 4 is the
+    /// technique's own tuning. `sharpness` is how decisively the flattest sector wins
+    /// over the others: higher is flatter and more poster-like, and 0 blends every
+    /// sector alike, which is only a soft blur. The picture is read as the colors a
+    /// display shows over white paper, so empty space on a transparent layer counts
+    /// as paper, and the result keeps the layer's own alpha. The cost grows with the
+    /// square of `radius`, which is capped at 12.
+    public static func brushwork(radius: Double = 6, stretch: Double = 4,
+                                 sharpness: Double = 8) -> Filter {
+        Filter(kind: .brushwork(radius: min(max(radius, 1), 12),
+                                stretch: min(max(stretch, 1), 16),
+                                sharpness: min(max(sharpness, 0), 16)))
     }
 
     public static func median() -> Filter { Filter(kind: .median) }

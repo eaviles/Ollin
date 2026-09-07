@@ -1293,6 +1293,125 @@ fragment float4 ollin_fx_xdog_along(PresentOut in [[stage_in]],
     return ollin_premul(c.rgb, c.a);
 }
 
+// brushwork: the anisotropic Kuwahara filter, paint patches drawn out along the
+// picture's own flow. Written from the technique.
+
+// brushwork, pass 1: the structure tensor of the color. Each channel's Sobel gradient
+// is taken over the layer read as a display shows it over white paper (so empty space
+// is paper and an edge in a shadow counts as much as one in the light), and the three
+// are summed as one outer product (E = fx·fx, F = fx·fy, G = fy·fy), with the gradient
+// scaled to one texel so the numbers stay inside a half float (params[0].xy = texel).
+static inline float3 ollin_brushwork_read(texture2d<float> src, sampler samp, float2 uv) {
+    float4 s = src.sample(samp, uv, level(0.0));
+    return linearToSrgb(saturate(s.rgb + (1.0 - s.a)));
+}
+
+fragment float4 ollin_fx_brushwork_tensor(PresentOut in [[stage_in]],
+                                          texture2d<float> src [[texture(0)]],
+                                          sampler samp [[sampler(0)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float3 c00 = ollin_brushwork_read(src, samp, in.uv + t * float2(-1, -1));
+    float3 c10 = ollin_brushwork_read(src, samp, in.uv + t * float2( 0, -1));
+    float3 c20 = ollin_brushwork_read(src, samp, in.uv + t * float2( 1, -1));
+    float3 c01 = ollin_brushwork_read(src, samp, in.uv + t * float2(-1,  0));
+    float3 c21 = ollin_brushwork_read(src, samp, in.uv + t * float2( 1,  0));
+    float3 c02 = ollin_brushwork_read(src, samp, in.uv + t * float2(-1,  1));
+    float3 c12 = ollin_brushwork_read(src, samp, in.uv + t * float2( 0,  1));
+    float3 c22 = ollin_brushwork_read(src, samp, in.uv + t * float2( 1,  1));
+    float3 gx = ((c20 + 2.0 * c21 + c22) - (c00 + 2.0 * c01 + c02)) * 0.125;
+    float3 gy = ((c02 + 2.0 * c12 + c22) - (c00 + 2.0 * c10 + c20)) * 0.125;
+    return float4(dot(gx, gx), dot(gx, gy), dot(gy, gy), 1.0);
+}
+
+// brushwork, pass 2: the filter over the layer and the smoothed tensor. The tensor's
+// eigenvalues give the edge direction and an anisotropy A from 0 (flat) to 1 (one
+// clear edge). The brush is an ellipse of radius r drawn out to r·(α+A)/α along the
+// edge and squeezed to r·α/(α+A) across it, mapped onto the unit disc and cut into
+// eight overlapping sectors by the polynomial weights [(x + ζ) − η·y²]₊² under a
+// Gaussian of sigma 0.4, normalized at each tap so the sectors partition the Gaussian.
+// Each sector gathers a weighted mean and variance, and the pixel is the means blended
+// by 1/(1 + s^q), the spread s on the 8-bit scale the technique quotes, so the flattest
+// sector wins by the exponent q. The means are of the premultiplied linear color, so
+// the result composites right; the variance is of the display color over paper
+// (params[0].xy = texel, .z = r, .w = α; params[1].x = q, .y = ζ, .z = η).
+fragment float4 ollin_fx_brushwork(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   texture2d<float> tensor [[texture(1)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float r = params[0].z, alpha = params[0].w;
+    float q = params[1].x, zeta = params[1].y, eta = params[1].z;
+
+    float3 g = tensor.sample(samp, in.uv, level(0.0)).xyz;
+    float E = g.x, F = g.y, G = g.z;
+    float root = sqrt(max((E - G) * (E - G) + 4.0 * F * F, 0.0));
+    float l1 = 0.5 * (E + G + root), l2 = 0.5 * (E + G - root);
+    float A = (l1 + l2) > 1e-12 ? clamp((l1 - l2) / (l1 + l2), 0.0, 1.0) : 0.0;
+    float2 along = ollin_xdog_tangent(g);
+    float2 across = float2(-along.y, along.x);
+    float a = r * (alpha + A) / alpha;
+    float b = r * alpha / (alpha + A);
+    // The ellipse's bounding box in texels: the reach of a·along and b·across per axis.
+    int maxX = int(ceil(sqrt(a * a * along.x * along.x + b * b * across.x * across.x)));
+    int maxY = int(ceil(sqrt(a * a * along.y * along.y + b * b * across.y * across.y)));
+
+    float4 m[8];
+    float3 e1[8], e2[8];
+    float wsum[8];
+    for (int k = 0; k < 8; k++) { m[k] = 0.0; e1[k] = 0.0; e2[k] = 0.0; wsum[k] = 0.0; }
+
+    for (int j = -maxY; j <= maxY; j++) {
+        for (int i = -maxX; i <= maxX; i++) {
+            float2 d = float2(i, j);
+            float2 v = float2(dot(d, along) / a, dot(d, across) / b);
+            float vv = dot(v, v);
+            if (vv > 1.0) { continue; }
+            float4 c = src.sample(samp, in.uv + d * texel, level(0.0));
+            float3 e = linearToSrgb(saturate(c.rgb + (1.0 - c.a)));
+            float w[8];
+            float z;
+            float vxx = zeta - eta * v.x * v.x;
+            float vyy = zeta - eta * v.y * v.y;
+            z = max(0.0,  v.y + vxx); w[0] = z * z;
+            z = max(0.0, -v.x + vyy); w[2] = z * z;
+            z = max(0.0, -v.y + vxx); w[4] = z * z;
+            z = max(0.0,  v.x + vyy); w[6] = z * z;
+            float2 u = 0.70710678 * float2(v.x - v.y, v.x + v.y);
+            vxx = zeta - eta * u.x * u.x;
+            vyy = zeta - eta * u.y * u.y;
+            z = max(0.0,  u.y + vxx); w[1] = z * z;
+            z = max(0.0, -u.x + vyy); w[3] = z * z;
+            z = max(0.0, -u.y + vxx); w[5] = z * z;
+            z = max(0.0,  u.x + vyy); w[7] = z * z;
+            float sum = w[0] + w[1] + w[2] + w[3] + w[4] + w[5] + w[6] + w[7];
+            float gauss = exp(-3.125 * vv) / max(sum, 1e-8);
+            for (int k = 0; k < 8; k++) {
+                float wk = w[k] * gauss;
+                m[k] += c * wk;
+                e1[k] += e * wk;
+                e2[k] += e * e * wk;
+                wsum[k] += wk;
+            }
+        }
+    }
+
+    float4 out = 0.0;
+    float total = 0.0;
+    for (int k = 0; k < 8; k++) {
+        if (wsum[k] <= 1e-8) { continue; }
+        float inv = 1.0 / wsum[k];
+        float3 mean = e1[k] * inv;
+        float3 var = max(e2[k] * inv - mean * mean, 0.0);
+        float spread = 255.0 * sqrt(var.r + var.g + var.b);
+        float ak = 1.0 / (1.0 + pow(spread, q));
+        out += m[k] * inv * ak;
+        total += ak;
+    }
+    return total > 0.0 ? out / total : src.sample(samp, in.uv, level(0.0));
+}
+
 // 3×3 median via a min/max sorting network (written from the technique), per-channel,
 // so speckle drops while edges hold (params: texel.xy).
 #define OLLIN_S2(a, b) { float3 _t = a; a = min(a, b); b = max(_t, b); }

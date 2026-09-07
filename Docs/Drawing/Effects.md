@@ -185,6 +185,7 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.lineScreen(scale:softness:angle:foreground:background:)`** a brightness-driven line screen. Each cell paints a centered bar whose width tracks that cell's brightness, in `foreground` over `background`.
 - **`.emboss(amount:angle:)`** light the luminance slope along `angle` as a gray relief, like stamped metal.
 - **`.oilPaint(radius:)`** the Kuwahara region filter. It flattens detail into oil-paint patches while keeping edges crisp. `radius` is the brush size in pixels, so bigger is broader and costs more.
+- **`.brushwork(radius:stretch:sharpness:)`** the picture as paint laid on in patches that follow its own flow, the anisotropic Kuwahara filter. Each pixel becomes the average of the flattest of eight overlapping sectors of a brush around it, so detail flattens into patches while edges stay crisp. The brush is an ellipse drawn out along whatever edge runs through the pixel. So the patches read as strokes along the picture's contours rather than the square dabs of `.oilPaint`. `radius` is the brush size in pixels, and the cost grows with its square. `stretch` is the most the brush is elongated along an edge, as an aspect ratio. 1 keeps it round, and the default of 4 is the technique's own tuning. `sharpness` is how decisively the flattest sector wins. Higher is flatter and more poster-like, and 0 blends every sector alike, which is only a soft blur. The picture is read as the colors a display shows over white paper, so empty space on a transparent layer counts as paper, and the result keeps the layer's alpha. It runs as three passes, which the [web page](../Output/Web.md) export does not carry. See `Examples/Effects/Brushwork`.
 - **`.crosshatch(scale:foreground:background:)`** pencil shading, drawn as layered diagonal strokes that thicken as the image darkens.
 - **`.toon(levels:edges:)`** cel shading. It flattens the layer into `levels` brightness bands and inks the Sobel edges over them.
 - **`.xdog(radius:sharpening:threshold:softness:flow:foreground:background:)`** the picture as pen and ink. A line goes where the picture has an edge, solid ink where it is dark, and the rest is left as paper, in `foreground` over `background`. Two blurs of the brightness are subtracted, the smaller one `radius` pixels wide and the other 1.6 times that. The difference is pushed over the tone by `sharpening`, and the result is cut at `threshold`: paper above it, ink below, through a ramp `softness` wide. A softness of 0 is a hard two-tone print, and the default of 0.2 keeps a gray wash under the cut, which is the look the technique is known for.
@@ -205,6 +206,7 @@ layer.filtered(.vibrance(amount: 0.6))
 ```swift
 layer.filtered(.halftone(scale: 48))
 layer.filtered(.oilPaint(radius: 5))
+layer.filtered(.brushwork(radius: 8))
 layer.filtered(.toon(levels: 5))
 layer.filtered(.xdog(flow: 6, foreground: .black, background: Color(hex: 0xF3EBDD)))
 layer.filtered(.lineScreen(scale: 60, angle: .pi / 6))
