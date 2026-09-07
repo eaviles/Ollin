@@ -30,6 +30,9 @@ final class PerformanceSession {
     /// letterbox preserves, or fill-the-window for `.resizable` sketches.
     private(set) var stageAspect: Double = 1
     private(set) var stageFillsWindow = false
+    /// The canvas the stage shows, in the sketch's own points, which is what
+    /// a shape's outline over the stage is measured in.
+    private(set) var stageCanvas = CGSize(width: 1080, height: 1080)
     private(set) var title = "OllinLiveCoding"
     /// Recovered buffer text offered after a crash (`nil` when none pending).
     private(set) var recoveryAvailable: String?
@@ -41,6 +44,12 @@ final class PerformanceSession {
     @ObservationIgnored weak var window: NSWindow?
     @ObservationIgnored private var didStart = false
     @ObservationIgnored private var autosaveTimer: Timer?
+    /// The text the sketch on stage was built from. A shape's site names a
+    /// line of that text, so it is the only text a drag may edit.
+    @ObservationIgnored private var sourceOnStage: String?
+    /// Where the crash net lives; the real support folder unless a headless
+    /// test hands over a scratch one.
+    @ObservationIgnored private let supportDirectory: URL
 
     var displayName: String { fileURL?.lastPathComponent ?? "Untitled" }
 
@@ -64,15 +73,17 @@ final class PerformanceSession {
     /// the support folder for an untitled buffer (the loader needs a path for
     /// the class regex, the asset `Bundle`, and the diagnostic file name).
     private var effectivePath: String {
-        fileURL?.path ?? Self.supportDirectory.appendingPathComponent("Untitled.swift").path
+        fileURL?.path ?? supportDirectory.appendingPathComponent("Untitled.swift").path
     }
 
     /// How the buffer compiles; see `SketchLoader.Optimization`.
     @ObservationIgnored private let optimization: SketchLoader.Optimization
 
-    init(fileURL: URL?, optimization: SketchLoader.Optimization = .speed) {
+    init(fileURL: URL?, optimization: SketchLoader.Optimization = .speed,
+         supportDirectory: URL = PerformanceSession.defaultSupportDirectory) {
         self.fileURL = fileURL
         self.optimization = optimization
+        self.supportDirectory = supportDirectory
     }
 
     /// Called once from the root view's `.task`: load the document (or the
@@ -93,7 +104,7 @@ final class PerformanceSession {
         // Offer recovery only for *this* document: an untitled buffer's crash
         // net must not overwrite a file the next launch opened (a real early
         // miss: restoring replaced an opened sketch with old untitled work).
-        if let recovered = try? String(contentsOf: Self.recoveryFile, encoding: .utf8),
+        if let recovered = try? String(contentsOf: recoveryFile, encoding: .utf8),
            recovered != text,
            recoveryOrigin() == fileURL?.path {
             recoveryAvailable = recovered
@@ -119,6 +130,7 @@ final class PerformanceSession {
         let loader = SketchLoader(sketchPath: effectivePath, optimization: optimization)
         core.evaluate(loader, input: .source(text), keepClock: fresh ? false : nil) { [weak self] sketch in
             guard let self else { return }
+            self.sourceOnStage = text
             self.diagnostics = []
             self.editor.setDiagnostics([])
             self.evaluateCount += 1
@@ -163,6 +175,7 @@ final class PerformanceSession {
     }
 
     private func updateStage(for sketch: Sketch) {
+        stageCanvas = sketch.canvasSize.cgSize
         if case .resizable = sketch.windowMode {
             stageFillsWindow = true
             stageAspect = 1
@@ -314,16 +327,16 @@ final class PerformanceSession {
     private func autosave(_ text: String? = nil) {
         let content = text ?? editor.text()
         try? FileManager.default.createDirectory(
-            at: Self.supportDirectory, withIntermediateDirectories: true)
-        try? content.write(to: Self.recoveryFile, atomically: true, encoding: .utf8)
+            at: supportDirectory, withIntermediateDirectories: true)
+        try? content.write(to: recoveryFile, atomically: true, encoding: .utf8)
         // Which document the net belongs to ("" = untitled), so the next
         // launch offers it only to the same one.
-        try? (fileURL?.path ?? "").write(to: Self.recoveryOriginFile, atomically: true, encoding: .utf8)
+        try? (fileURL?.path ?? "").write(to: recoveryOriginFile, atomically: true, encoding: .utf8)
     }
 
     /// The document the recovery buffer belonged to (`nil` path spelled "").
     private func recoveryOrigin() -> String? {
-        guard let origin = try? String(contentsOf: Self.recoveryOriginFile, encoding: .utf8) else {
+        guard let origin = try? String(contentsOf: recoveryOriginFile, encoding: .utf8) else {
             return nil
         }
         return origin.isEmpty ? nil : origin
@@ -343,20 +356,63 @@ final class PerformanceSession {
     }
 
     private func clearRecovery() {
-        try? FileManager.default.removeItem(at: Self.recoveryFile)
-        try? FileManager.default.removeItem(at: Self.recoveryOriginFile)
+        try? FileManager.default.removeItem(at: recoveryFile)
+        try? FileManager.default.removeItem(at: recoveryOriginFile)
     }
 
-    private static var supportDirectory: URL {
+    static var defaultSupportDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("OllinLiveCoding")
     }
 
-    private static var recoveryFile: URL {
+    private var recoveryFile: URL {
         supportDirectory.appendingPathComponent("recovery.swift")
     }
 
-    private static var recoveryOriginFile: URL {
+    private var recoveryOriginFile: URL {
         supportDirectory.appendingPathComponent("recovery-origin.txt")
+    }
+}
+
+// MARK: - Dragging a shape on the stage
+
+/// The buffer is the source: a Command-drag on the stage rewrites the code
+/// the room is reading and evaluates it, the way ⌘↩ would. ⌘S is still the
+/// only thing that writes the file, and the editor's own undo takes a drag
+/// back.
+extension PerformanceSession: ShapeDragHost {
+    var currentSketch: Sketch? { core.currentSketch }
+
+    var sourceName: String { (effectivePath as NSString).lastPathComponent }
+
+    /// The buffer, when it is the text the stage was built from. A shape's
+    /// site names a line of that text, so an edit is only honest against it:
+    /// typing above the line would have moved the site, and a drag while the
+    /// last one is still compiling would add to numbers the stage has not
+    /// shown yet.
+    func readSource() throws -> String {
+        let text = editor.text()
+        guard text == sourceOnStage else {
+            if core.phase == .compiling {
+                throw ShapeDragRefusal(
+                    "The stage is still being built from the last change. Drag again when it lands.")
+            }
+            throw ShapeDragRefusal(
+                "The code has changed since the stage was built from it. "
+                + "Evaluate it (Command-Return), then drag.")
+        }
+        return text
+    }
+
+    /// The edit goes into the buffer as an ordinary edit, so it marks the
+    /// document and one undo step takes it back, and then the buffer is
+    /// evaluated, which is what puts the shape where the drag left it.
+    func writeSource(_ text: String) throws {
+        editor.replaceBuffer(with: text)
+        evaluate()
+    }
+
+    func recordParam(_ name: String, _ value: ParamStored) {
+        core.recordParam(name, value)
     }
 }

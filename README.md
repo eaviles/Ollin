@@ -204,7 +204,7 @@ swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
 
 The window never closes. If an edit doesn't compile, the error prints and the old sketch keeps running.
 
-Hold Command over the window, and Ollin outlines the shape under the pointer, names the line that drew it, and puts handles on it. You can then [drag the shape](Docs/Tools/DragToEdit.md) to move it, pull a corner to resize it, or turn the knob above it to rotate it. Each of those writes the new numbers into that line. `⌘]` or `⌘[` moves the line itself past its neighbor's line, so the shape draws in front of or behind that neighbor. Laying something out by eye is then no longer a matter of guessing at coordinates.
+Hold Command over the window, and Ollin outlines the shape under the pointer, names the line that drew it, and puts handles on it. You can then [drag the shape](Docs/Tools/DragToEdit.md) to move it, pull a corner to resize it, or turn the knob above it to rotate it. Each of those writes the new numbers into that line. `⌘]` or `⌘[` moves the line itself past its neighbor's line, so the shape draws in front of or behind that neighbor. Laying something out by eye is then no longer a matter of guessing at coordinates. The performance host has the same drag, and there it rewrites the code on the stage and evaluates it.
 
 Each reload starts the sketch fresh by default. `--keep-clock` carries `time` and `frameCount` across the reload, so an animation doesn't jump back to the start. There is also a `reloaded()` hook.
 

@@ -27,6 +27,7 @@ OllinLiveCoding sits beside `OllinLive` rather than replacing it. OllinLive watc
 - [Errors during a set](#errors-during-a-set) - the diagnostics strip
 - [Files, saving, and recovery](#files-saving-and-recovery) - evaluate never saves
 - [Performance chrome](#performance-chrome) - hide code, fullscreen, the inspector
+- [Dragging a shape on the stage](#dragging-a-shape-on-the-stage) - Command-drag through the code
 - [Keyboard reference](#keyboard-reference)
 
 ---
@@ -67,6 +68,12 @@ Assets that sit beside the `.swift` file, such as an image or a `.metal` file, r
 - The **Camera menu** (⌘0-⌘8) works on any 3D sketch, the same as it does in the other hosts.
 - **Record (⌘⇧R)** keeps the set as a movie, with both the picture and the sketch's own sound, written in real time to `~/Movies/Ollin/`. A red chip on the stage counts the take, a toast names the file when it is saved, and the recording continues through every evaluation. See [Recording](../Output/Recording.md).
 
+### Dragging a shape on the stage
+
+Hold Command over the stage, and the shape under the pointer is outlined through the text, with the line that drew it named above the outline. Drag the shape to move it, pull a corner to resize it, or turn the knob above it, and the numbers on that line change in the code on the stage. The host evaluates the buffer for you, the way ⌘↩ does, so the shape stays where you left it after the swap. With a shape outlined, `⌘]` and `⌘[` move its line past its neighbor's, so it draws in front or behind. Nothing here writes the file, so ⌘S still decides what reaches the disk, and ⌘Z in the editor takes a drag back.
+
+The drag edits the text the stage was built from and nothing else. If you have typed since the last evaluation, a drag asks you to evaluate first rather than guess where the line went. See [Dragging a shape](./DragToEdit.md) for what each handle writes and what it refuses.
+
 ### Keyboard reference
 
 | Keys | Action |
@@ -76,6 +83,8 @@ Assets that sit beside the `.swift` file, such as an image or a `.metal` file, r
 | ⌘N / ⌘O | New untitled buffer / open a sketch file |
 | ⌘S / ⌘⇧S | Save / save as |
 | ⌃⇧H | Hide or show the code |
+| ⌘-drag on the stage | Move the shape under the pointer, a corner to resize it, the knob to turn it; the code changes and evaluates |
+| ⌘] / ⌘[ | Bring the outlined shape forward or send it back (Shift: all the way) |
 | ⌘⇧R | Start or stop recording the set |
 | ⌃⌘F | Enter or leave fullscreen |
 | ⌘+ / ⌘− | Bigger / smaller code |

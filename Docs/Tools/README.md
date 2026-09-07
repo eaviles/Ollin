@@ -12,7 +12,7 @@
 - [`Checking a shader`](./ShaderCheck.md) - `ollin check`: compile a `.metal` file on this machine's GPU. It reports the errors at your own line, what kind of shader it is, and the parameters it reads
 - [`Bringing a scene over`](./SceneImport.md) - `ollin new --from-scene`: write a glTF or USD scene out as the sketch that draws it
 - [`Writing an extension`](./Extensions.md) - `ollin new --kind extension`: a library that other sketches import, the `ollinx-` naming convention, and the seams to build on
-- [`Dragging a shape`](./DragToEdit.md) - Command-drag a shape in the live window, and the numbers that place it change in your own file
+- [`Dragging a shape`](./DragToEdit.md) - Command-drag a shape in the live window or on the performance stage, and the numbers that place it change in your own code
 - [`The parameter timeline`](./Timeline.md) - OllinLive's timeline panel: one lane per automated parameter, and a playhead over the sketch clock. You place keys from the inspector's diamonds and drag them by hand, and the panel round-trips to the automation file
 - [`The reference offline`](./Reference.md) - `ollin docs` and `ollin examples`: read these pages and every example sketch in the terminal, from the checkout you build against
 - [`Profiling`](./Profiling.md) - the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode

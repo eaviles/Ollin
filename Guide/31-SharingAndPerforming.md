@@ -671,6 +671,8 @@ The loop is different from the live-reload host you've used since [Chapter 1](01
 
 Evaluation never writes your file (⌘S does), so you can riff as recklessly as the room deserves and keep only what worked.
 
+The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on the stage too, through the code. Hold Command, and the shape under the pointer is outlined over the text. Drag it, pull a corner, or turn the knob, and the numbers change in the code the room is reading. The host evaluates that for you, so the shape stays where you left it and the clock carries. If you have typed since the last evaluation, the host asks you to evaluate first rather than guess which line moved.
+
 ## Keeping the take
 
 Every exporter in this chapter re-renders. That is their gift: a fixed clock, the same file every run, nothing left to chance. A performance is the opposite kind of thing. The parameter you rode, the evaluation that landed at the right moment, the note that answered the room: none of it happens twice. An export remembers the sketch; a recording remembers the night.

@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Ollin
+import OllinRuntime
 
 /// The performance window: the sketch letterboxed on a black stage, the code
 /// riding over it as translucent text, and the transient chrome (status chip,
@@ -14,6 +15,17 @@ struct LiveCodingRootView: View {
     static let backdropKey = "ollin.livecoding.backdrop"
 
     let session: PerformanceSession
+    /// The shape drag over the stage, the same one the live host runs; here it
+    /// writes the buffer and evaluates it.
+    @State private var shapeDrag: ShapeDragController
+    /// The stage's frame on screen, which the letterbox decides and the
+    /// outline over it is measured against.
+    @State private var stageSize = CGSize.zero
+
+    init(session: PerformanceSession) {
+        self.session = session
+        _shapeDrag = State(initialValue: ShapeDragController(session: session, hostName: "OllinLiveCoding"))
+    }
 
     @AppStorage(Self.sidebarShownKey) private var sidebarShown = false
     @AppStorage(Self.codeHiddenKey) private var codeHidden = false
@@ -83,21 +95,35 @@ struct LiveCodingRootView: View {
                            keyboardFocus: .onClick) { runner in
                     session.core.attach(runner)
                 }
+                .draggingShapes(with: shapeDrag)
                 // The letterbox must live here in layout: the canvas view
                 // stretches to whatever frame it's given (and maps the mouse by
                 // its bounds), so preserving the sketch's aspect at this level
                 // keeps both rendering and mouse coordinates exact.
                 .aspectRatio(session.stageFillsWindow ? nil : session.stageAspect,
                              contentMode: .fit)
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { stageSize = $0 }
             }
 
             // Hidden by opacity, never by structure: tearing the editor out of
-            // the hierarchy would destroy the buffer and its undo stack.
+            // the hierarchy would destroy the buffer and its undo stack. Code
+            // the drag is reaching through takes no clicks either: while the
+            // modifier is held the stage under it has the pointer, so a shape
+            // can be taken hold of through the text.
             CodeEditorView(controller: session.editor,
                            fontSize: fontSize,
                            backdropOpacity: backdrop)
                 .opacity(codeHidden ? 0 : 1)
-                .allowsHitTesting(!codeHidden)
+                .allowsHitTesting(!codeHidden && !shapeDrag.isArmed)
+
+            // Above the code, not under it: the outline of the shape a
+            // Command-drag is about to move has to read through the text. A
+            // sibling of the canvas, never ink, so it cannot reach an export
+            // or a recording.
+            if session.core.sketch != nil {
+                ShapeDragOverlay(controller: shapeDrag, canvas: session.stageCanvas,
+                                 display: stageSize)
+            }
         }
         .overlay(alignment: .topTrailing) {
             VStack(alignment: .trailing, spacing: 8) {

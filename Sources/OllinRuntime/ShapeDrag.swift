@@ -1,74 +1,97 @@
-// Dragging a shape in the window and having the file change.
+// Dragging a shape on the canvas and having its source change.
 //
 // The framework says which shape the pointer is over, which line drew it, and
 // where its handles are (`SourcePick`); the rewriter turns a distance into new
 // numbers in the text (`SourceEdit`). This is what joins them: it holds the
-// drag, writes the file, and lets the watcher do what it already does with any
-// other save.
+// drag and hands the edited text to the host, which puts it wherever its
+// source lives. Under the live host that is the file, and the watcher reloads
+// it like any other save; on the performance stage it is the editor's buffer,
+// and the host evaluates it.
 //
-// Nothing here reaches into the sketch's memory to move anything. The file is
+// Nothing here reaches into the sketch's memory to move anything. The text is
 // the only thing that changes, which is why the shape stays where the drag
 // left it after a reload, and why undo is the editor's own undo. The one
-// exception is a coordinate written as a parameter's name, which adjusts that parameter
-// instead: there is no number on the line to write, and the parameter is where the
-// value lives.
+// exception is a coordinate written as a parameter's name, which adjusts that
+// parameter instead: there is no number on the line to write, and the
+// parameter is where the value lives.
 
 import AppKit
 import Foundation
 import Observation
 import Ollin
-import OllinRuntime
 import SwiftUI
 
-/// What the dragger needs from the session around it: the sketch running right
-/// now, the file it was compiled from, and somewhere to record a parameter it turns.
-/// A protocol so the headless `--dragtest` can drive the whole controller
-/// without a window.
+/// What the dragger needs from the host around it: the sketch running right
+/// now, the text it was built from, wherever that text lives, and somewhere
+/// to record a parameter it turns. A protocol so both live hosts share one
+/// controller, and so a headless test can drive the whole of it without a
+/// window.
 @MainActor
-protocol ShapeDragHost: AnyObject {
+package protocol ShapeDragHost: AnyObject {
     var currentSketch: Sketch? { get }
-    var sourcePath: String { get }
+    /// The name the source goes by (`Sketch.swift`). A shape's site is matched
+    /// by that name and never by a path, since a live compile builds from a
+    /// copy.
+    var sourceName: String { get }
+    /// The text the sketch on stage was built from, as it stands now. A host
+    /// that cannot hand it over throws a `ShapeDragRefusal` saying why.
+    func readSource() throws -> String
+    /// Put the edited text where the source lives: the file, or the editor's
+    /// buffer. What follows (a reload, an evaluation) is the host's to do.
+    func writeSource(_ text: String) throws
     func recordParam(_ name: String, _ value: ParamStored)
 }
 
-extension LiveSession: ShapeDragHost {}
+/// Why a host would not hand its source over or take an edit, in one sentence
+/// for the person at the pointer.
+package struct ShapeDragRefusal: Error {
+    package let sentence: String
+    package init(_ sentence: String) { self.sentence = sentence }
+}
 
-/// The live host's shape dragger: hold Command to see what the pointer is
+/// The live hosts' shape dragger: hold Command to see what the pointer is
 /// over, drag the shape to move it, a corner to resize it, or the knob above it
-/// to turn it, and the numbers in the `.swift` file change. With the shape
-/// outlined, `⌘]` and `⌘[` move its line past the neighboring shape's, and
-/// with Shift held all the way to the front or the back.
+/// to turn it, and the numbers in the source change. With the shape outlined,
+/// `⌘]` and `⌘[` move its line past the neighboring shape's, and with Shift
+/// held all the way to the front or the back.
 @MainActor
 @Observable
-final class ShapeDragController: ShapeDragging {
+package final class ShapeDragController: ShapeDragging {
 
     /// Which of the three things a press started.
-    enum Gesture: Equatable {
+    package enum Gesture: Equatable {
         case move
         case resize(SourceHandle)
         case turn(SourceHandle)
     }
 
     /// The shape under the pointer, as a closed outline in canvas points.
-    private(set) var outline: [Vector2] = []
+    package private(set) var outline: [Vector2] = []
     /// Where the drag would leave the shape, while one is under way.
-    private(set) var preview: [Vector2] = []
+    package private(set) var preview: [Vector2] = []
     /// What can be taken hold of on that shape, in canvas points.
-    private(set) var handles: [SourceHandle] = []
+    package private(set) var handles: [SourceHandle] = []
     /// The handle under the pointer right now, if any.
-    private(set) var handleUnderPointer: SourceHandle?
+    package private(set) var handleUnderPointer: SourceHandle?
     /// `Sketch.swift:42`, the place the shape was written.
-    private(set) var label: String?
+    package private(set) var label: String?
     /// How far the shape has been dragged so far, in canvas points.
-    private(set) var offset = Vector2.zero
-    private(set) var isDragging = false
+    package private(set) var offset = Vector2.zero
+    package private(set) var isDragging = false
     /// Why the last drag could not be written, in one sentence.
-    private(set) var note: String?
+    package private(set) var note: String?
+    /// Whether the modifier is held (or a drag is under way), which is when
+    /// the running sketch records where each shape was written. A host whose
+    /// pointer is usually somebody else's, the editor over the stage, reads
+    /// this to let the pointer through to the canvas.
+    package private(set) var isArmed = false
 
     /// How near a handle the pointer has to be, in canvas points.
-    static let grabRadius = 11.0
+    package static let grabRadius = 11.0
 
     @ObservationIgnored private let session: any ShapeDragHost
+    /// The host's name, for what it prints when a drag lands.
+    @ObservationIgnored private let hostName: String
     @ObservationIgnored private var pick: SourcePick?
     @ObservationIgnored private var hovered: SourcePick?
     @ObservationIgnored private var gesture = Gesture.move
@@ -77,13 +100,14 @@ final class ShapeDragController: ShapeDragging {
     @ObservationIgnored private var angle = 0.0
     @ObservationIgnored private var noteHide: Task<Void, Never>?
 
-    init(session: any ShapeDragHost) {
+    package init(session: any ShapeDragHost, hostName: String = "Ollin") {
         self.session = session
+        self.hostName = hostName
     }
 
     // MARK: What the canvas tells it
 
-    func modifierChanged(held: Bool, at canvasPoint: Vector2?) {
+    package func modifierChanged(held: Bool, at canvasPoint: Vector2?) {
         arm(held || isDragging)
         guard held else {
             if !isDragging { clear() }
@@ -92,7 +116,7 @@ final class ShapeDragController: ShapeDragging {
         if let canvasPoint { pointerHovered(at: canvasPoint) }
     }
 
-    func pointerHovered(at canvasPoint: Vector2) {
+    package func pointerHovered(at canvasPoint: Vector2) {
         guard let sketch = session.currentSketch else { return }
         // A reload brings a new sketch that is not recording yet; arming it
         // here means the next frame answers, which is the next few
@@ -115,7 +139,7 @@ final class ShapeDragController: ShapeDragging {
         show(found)
     }
 
-    func dragBegan(at canvasPoint: Vector2) -> Bool {
+    package func dragBegan(at canvasPoint: Vector2) -> Bool {
         guard let sketch = session.currentSketch else { return false }
         guard sketch.tracksSourceSites else { arm(true); return false }
         // A handle of the shape already outlined takes the press first.
@@ -131,7 +155,7 @@ final class ShapeDragController: ShapeDragging {
         return true
     }
 
-    func dragMoved(to canvasPoint: Vector2) {
+    package func dragMoved(to canvasPoint: Vector2) {
         guard isDragging, let pick else { return }
         offset = canvasPoint - start
         switch gesture {
@@ -146,7 +170,7 @@ final class ShapeDragController: ShapeDragging {
         }
     }
 
-    func dragEnded() {
+    package func dragEnded() {
         isDragging = false
         let landed = preview
         defer { offset = .zero; preview = []; factor = Vector2(1, 1); angle = 0; pick = nil }
@@ -180,16 +204,16 @@ final class ShapeDragController: ShapeDragging {
         }
     }
 
-    func reorderHovered(_ step: SourceReorderStep) -> Bool {
+    package func reorderHovered(_ step: SourceReorderStep) -> Bool {
         guard let hovered, !isDragging else { return false }
         guard let source = read(hovered) else { return true }
         do {
             let moved = try SourceEdit.reordering(source.text, line: hovered.site.line,
                                                   column: hovered.site.column, by: step)
-            try moved.text.write(toFile: source.path, atomically: true, encoding: .utf8)
+            try session.writeSource(moved.text)
             let way = (step == .forward || step == .toFront) ? "forward" : "back"
             let count = moved.steps == 1 ? "one shape" : "\(moved.steps) shapes"
-            print("OllinLive: moved the shape at \(source.name):\(hovered.site.line) \(way) past \(count) ✓")
+            print("\(hostName): moved the shape at \(source.name):\(hovered.site.line) \(way) past \(count) ✓")
             if let stopped = moved.stoppedBy {
                 say("Moved \(way) past \(count), then stopped at \(stopped).")
             }
@@ -197,6 +221,8 @@ final class ShapeDragController: ShapeDragging {
             label = "\(source.name):\(moved.line)"
         } catch let failure as SourceEdit.Failure {
             say(Self.sentence(for: failure, at: hovered.site.line, in: source.name))
+        } catch let refusal as ShapeDragRefusal {
+            say(refusal.sentence)
         } catch {
             say("Could not write \(source.name): \(error.localizedDescription)")
         }
@@ -205,9 +231,10 @@ final class ShapeDragController: ShapeDragging {
 
     // MARK: Writing it down
 
-    /// Put the new text in the file, and say whether anything changed. The
-    /// watcher sees the save and reloads the sketch, which is the same path any
-    /// other edit takes.
+    /// Hand the new text to the host, and say whether anything changed. The
+    /// live host saves it and its watcher reloads the sketch, the same path any
+    /// other edit takes; the performance host puts it in the buffer and
+    /// evaluates.
     @discardableResult
     private func write(_ pick: SourcePick, _ change: (String) throws -> String) -> Bool {
         guard let source = read(pick) else { return false }
@@ -215,11 +242,13 @@ final class ShapeDragController: ShapeDragging {
             let edited = try change(source.text)
             // A drag too small to change a whole number writes nothing at all.
             guard edited != source.text else { return false }
-            try edited.write(toFile: source.path, atomically: true, encoding: .utf8)
-            print("OllinLive: changed the shape at \(source.name):\(pick.site.line) ✓")
+            try session.writeSource(edited)
+            print("\(hostName): changed the shape at \(source.name):\(pick.site.line) ✓")
             return true
         } catch let failure as SourceEdit.Failure {
             say(Self.sentence(for: failure, at: pick.site.line, in: source.name))
+        } catch let refusal as ShapeDragRefusal {
+            say(refusal.sentence)
         } catch {
             say("Could not write \(source.name): \(error.localizedDescription)")
         }
@@ -249,32 +278,37 @@ final class ShapeDragController: ShapeDragging {
             }
             for named in plan.names { setParameter(named, pick: pick) }
             guard plan.text != source.text else { return !plan.names.isEmpty }
-            try plan.text.write(toFile: source.path, atomically: true, encoding: .utf8)
-            print("OllinLive: moved the shape at \(source.name):\(pick.site.line) ✓")
+            try session.writeSource(plan.text)
+            print("\(hostName): moved the shape at \(source.name):\(pick.site.line) ✓")
             return true
         } catch let failure as SourceEdit.Failure {
             say(Self.sentence(for: failure, at: pick.site.line, in: source.name))
+        } catch let refusal as ShapeDragRefusal {
+            say(refusal.sentence)
         } catch {
             say("Could not write \(source.name): \(error.localizedDescription)")
         }
         return false
     }
 
-    /// The file the shape was written in, when this host owns it.
-    private func read(_ pick: SourcePick) -> (path: String, name: String, text: String)? {
-        let path = session.sourcePath
-        let name = (path as NSString).lastPathComponent
+    /// The source the shape was written in, when this host owns it and can
+    /// hand it over right now.
+    private func read(_ pick: SourcePick) -> (name: String, text: String)? {
+        let name = session.sourceName
         guard pick.site.fileName == name else {
             // A shape drawn from another file (a helper, or the framework's own
             // drawing) has numbers this host does not own.
             say("That shape is drawn in \(pick.site.fileName), not in \(name).")
             return nil
         }
-        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
+        do {
+            return (name, try session.readSource())
+        } catch let refusal as ShapeDragRefusal {
+            say(refusal.sentence)
+        } catch {
             say("Could not read \(name).")
-            return nil
         }
-        return (path, name, text)
+        return nil
     }
 
     // MARK: A coordinate that is a parameter
@@ -298,14 +332,14 @@ final class ShapeDragController: ShapeDragging {
         guard let (handle, slider) = parameter(named, pick: pick) else { return }
         slider.write(slider.read() + named.delta)
         session.recordParam(handle.name, handle.param.stored)
-        print("OllinLive: turned \(handle.name) to "
+        print("\(hostName): turned \(handle.name) to "
             + SourceEdit.written(slider.read(), fractionDigits: 2) + " ✓")
     }
 
     /// What to tell someone whose drag went nowhere. Each one names the thing
     /// standing where a number would have to be, because that is the only way
     /// to see why the shape did not move.
-    static func sentence(for failure: SourceEdit.Failure, at line: Int, in file: String) -> String {
+    package static func sentence(for failure: SourceEdit.Failure, at line: Int, in file: String) -> String {
         switch failure {
         case .computed(let argument), .notAPoint(let argument):
             return "\(file):\(line) places this shape with \(argument), so there is no number to move."
@@ -334,6 +368,7 @@ final class ShapeDragController: ShapeDragging {
     /// resting state, so a sketch nobody is editing pays nothing for this.
     private func arm(_ on: Bool) {
         session.currentSketch?.tracksSourceSites = on
+        isArmed = on
     }
 
     private func begin(_ found: SourcePick, _ gesture: Gesture, at canvasPoint: Vector2) {
@@ -366,7 +401,7 @@ final class ShapeDragController: ShapeDragging {
 
     private func say(_ message: String) {
         note = message
-        FileHandle.standardError.write(Data("OllinLive: \(message)\n".utf8))
+        FileHandle.standardError.write(Data("\(hostName): \(message)\n".utf8))
         noteHide?.cancel()
         noteHide = Task { [weak self] in
             try? await Task.sleep(for: .seconds(4))
@@ -379,15 +414,21 @@ final class ShapeDragController: ShapeDragging {
 /// What a Command-drag looks like: the shape under the pointer outlined where
 /// it stands, its handles on the corners and above it, and, while it is being
 /// dragged, a second outline where it would land. A SwiftUI sibling of the
-/// canvas, never drawn into it, so it cannot reach an export.
-struct ShapeDragOverlay: View {
+/// canvas, never drawn into it, so it cannot reach an export or a recording.
+package struct ShapeDragOverlay: View {
     let controller: ShapeDragController
     /// The sketch's own size, which the outline is measured in.
     let canvas: CGSize
     /// The size the canvas is shown at, which may be smaller.
     let display: CGSize
 
-    var body: some View {
+    package init(controller: ShapeDragController, canvas: CGSize, display: CGSize) {
+        self.controller = controller
+        self.canvas = canvas
+        self.display = display
+    }
+
+    package var body: some View {
         ZStack(alignment: .topLeading) {
             if !controller.outline.isEmpty {
                 let scale = CGSize(width: display.width / max(canvas.width, 1),

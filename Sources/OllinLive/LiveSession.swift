@@ -93,7 +93,7 @@ final class LiveSession {
     var fileName: String { (sketchPath as NSString).lastPathComponent }
 
     /// The watched file itself, which is also the file a dragged shape is
-    /// written back into (see `ShapeDragController`).
+    /// written back into (see `ShapeDragHost` below).
     var sourcePath: String { sketchPath }
 
     /// The sketch running right now. Unlike `sketch`, which mounts the view,
@@ -364,5 +364,21 @@ final class LiveSession {
             FileHandle.standardError.write(
                 Data("OllinLive: shader reload skipped (kept running)\n\(error)\n".utf8))
         }
+    }
+}
+
+// MARK: - Dragging a shape
+
+/// The file is the source: a drag reads it as it stands and writes it back,
+/// and the watcher reloads the sketch like any other save.
+extension LiveSession: ShapeDragHost {
+    var sourceName: String { fileName }
+
+    func readSource() throws -> String {
+        try String(contentsOfFile: sourcePath, encoding: .utf8)
+    }
+
+    func writeSource(_ text: String) throws {
+        try text.write(toFile: sourcePath, atomically: true, encoding: .utf8)
     }
 }

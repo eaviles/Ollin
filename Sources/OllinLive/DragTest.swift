@@ -199,7 +199,7 @@ enum DragTest {
         // writes. This is the host half, with no window in the way.
         print("OllinLive dragtest: the same gesture, through the controller …")
         let host = StubHost(sketch: restore(), path: file)
-        let controller = ShapeDragController(session: host)
+        let controller = ShapeDragController(session: host, hostName: "OllinLive")
 
         controller.modifierChanged(held: true, at: Vector2(200, 200))
         check(!controller.outline.isEmpty, "holding the modifier should outline the shape")
@@ -330,6 +330,13 @@ enum DragTest {
         init(sketch: Sketch, path: String) {
             self.currentSketch = sketch
             self.sourcePath = path
+        }
+        var sourceName: String { (sourcePath as NSString).lastPathComponent }
+        func readSource() throws -> String {
+            try String(contentsOfFile: sourcePath, encoding: .utf8)
+        }
+        func writeSource(_ text: String) throws {
+            try text.write(toFile: sourcePath, atomically: true, encoding: .utf8)
         }
         func recordParam(_ name: String, _ value: ParamStored) { recorded[name] = value }
     }

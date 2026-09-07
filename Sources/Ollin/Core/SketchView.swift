@@ -1459,17 +1459,20 @@ final class OllinMTKView: MTKView {
         if !pressureStreamLive { reportPressure(event) }
     }
     override func mouseDown(with event: NSEvent) {
-        // A click reclaims keyboard focus (e.g. after a click on an inspector
-        // control moved first responder away), so the canvas keeps the keys.
-        window?.makeFirstResponder(self)
         // A host that can edit the sketch's source takes the modified press,
         // and only if there is a shape under it; the sketch never sees that
-        // one, so a drag that moves a circle can't also paint with it.
+        // one, so a drag that moves a circle can't also paint with it. It is
+        // taken before the keys change hands: on the performance stage the
+        // editor holds them, and a drag on the stage is no reason to take
+        // them away.
         if let dragger = shapeDragging, event.modifierFlags.contains(Self.shapeDragModifier),
            let point = canvasPoint(event.locationInWindow), dragger.dragBegan(at: point) {
             draggingShape = true
             return
         }
+        // A click reclaims keyboard focus (e.g. after a click on an inspector
+        // control moved first responder away), so the canvas keeps the keys.
+        window?.makeFirstResponder(self)
         // The hosting layer's gesture recognizers install their own deep-click
         // pressure configuration, which takes precedence over the view property
         // for the press that is starting: re-claim the drawing gesture for this
@@ -1548,14 +1551,21 @@ final class OllinMTKView: MTKView {
     /// flags onto Ollin's platform-neutral set.
     override func flagsChanged(with event: NSEvent) {
         sketch?.setModifiers(ModifierKeys(event.modifierFlags))
-        // Holding the modifier is what arms shape dragging: the sketch starts
-        // recording where each shape was written, so the next frame can say
-        // what the pointer is over. Letting go puts that cost away again.
-        if let dragger = shapeDragging {
-            let held = event.modifierFlags.contains(Self.shapeDragModifier)
-            let pointer = window.flatMap { canvasPoint($0.mouseLocationOutsideOfEventStream) }
-            dragger.modifierChanged(held: held, at: pointer)
-        }
+        // The dragger hears about the modifier through the monitor installed
+        // in `viewDidMoveToWindow`, which sees the event whether or not this
+        // view holds the keys; this override stands in only where no window
+        // has installed one.
+        if modifierMonitor == nil { armShapeDrag(for: event) }
+    }
+
+    /// Holding the modifier is what arms shape dragging: the sketch starts
+    /// recording where each shape was written, so the next frame can say
+    /// what the pointer is over. Letting go puts that cost away again.
+    private func armShapeDrag(for event: NSEvent) {
+        guard let dragger = shapeDragging else { return }
+        let held = event.modifierFlags.contains(Self.shapeDragModifier)
+        let pointer = window.flatMap { canvasPoint($0.mouseLocationOutsideOfEventStream) }
+        dragger.modifierChanged(held: held, at: pointer)
     }
 
     // MARK: Dragging a shape back into the source
@@ -1593,6 +1603,13 @@ final class OllinMTKView: MTKView {
     /// the same value harmlessly.
     private var pressureMonitor: Any?
 
+    /// A modifier change goes to whoever holds the keys, and on the
+    /// performance stage that is the editor riding over the canvas, so the
+    /// shape drag would never arm through `flagsChanged` there. This monitor
+    /// sees every modifier change in the key window before it is dispatched,
+    /// and hands it to the dragger when a host has installed one.
+    private var modifierMonitor: Any?
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if pressureMonitor == nil {
@@ -1601,6 +1618,13 @@ final class OllinMTKView: MTKView {
                       self.sketch?.mouseIsPressed == true else { return event }
                 self.pressureStreamLive = true
                 self.reportPressure(event)
+                return event
+            }
+        }
+        if modifierMonitor == nil {
+            modifierMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+                guard let self, let window = self.window, window.isKeyWindow else { return event }
+                self.armShapeDrag(for: event)
                 return event
             }
         }
@@ -1630,6 +1654,10 @@ final class OllinMTKView: MTKView {
         if newWindow == nil, let pressureMonitor {
             NSEvent.removeMonitor(pressureMonitor)
             self.pressureMonitor = nil
+        }
+        if newWindow == nil, let modifierMonitor {
+            NSEvent.removeMonitor(modifierMonitor)
+            self.modifierMonitor = nil
         }
     }
 

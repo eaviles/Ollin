@@ -6,7 +6,7 @@
 
 Placing a shape by eye through numbers is slow. You type `drawCircle(200, 300, 40)`, look at it, change 300 to 280, then look again. The picture is right in front of you, but the only way to change it is to guess another number.
 
-Under [OllinLive](../../README.md#live-reload) you can move the shape with the pointer instead. Hold Command over the window, and the shape under the pointer is outlined with the line that drew it named above the outline. Drag the shape where you want it and let go. The two numbers in that line become the numbers you dragged to, written into your own file. The watcher sees the save and reloads the sketch, so the shape is already where you left it. Press `⌘]` or `⌘[` instead, and the shape's line moves past its neighbor's line, so the shape draws in front or behind.
+Under [OllinLive](../../README.md#live-reload) you can move the shape with the pointer instead. Hold Command over the window, and the shape under the pointer is outlined with the line that drew it named above the outline. Drag the shape where you want it and let go. The two numbers in that line become the numbers you dragged to, written into your own file. The watcher sees the save and reloads the sketch, so the shape is already where you left it. Press `⌘]` or `⌘[` instead, and the shape's line moves past its neighbor's line, so the shape draws in front or behind. The performance host has the same drag, and there it writes the code on the stage. See [On the performance stage](#on-the-performance-stage).
 
 ```sh
 swift run OllinLive Examples/Live/DragToEdit/Sketch.swift
@@ -172,14 +172,21 @@ withState {
 
 The shape follows the pointer either way, and only the arithmetic behind it changes. That arithmetic is exactly what you would have done by hand. A resize is a ratio rather than a distance, so it works out the same at any scale. A turn is measured in the frame's own direction.
 
+## On the performance stage
+
+[OllinLiveCoding](./LiveCoding.md) has the same drag, and there the code shares the stage with the shape. Hold Command over the stage, and the outline shows through the text. Drag the shape, pull a corner, or turn the knob, and the numbers change in the code the room is reading rather than in a file. The host then evaluates the buffer the way ⌘↩ does, so after the swap the shape is where you left it and the clock carries. `⌘]` and `⌘[` work the same way. ⌘S is still the only thing that writes the file, and the editor's own undo (⌘Z) takes a drag back.
+
+A drag edits a line of the text the stage was built from, so the host only edits that text. If you have typed since the last evaluation, it says so rather than guessing where the line went: *The code has changed since the stage was built from it. Evaluate it (Command-Return), then drag.* While a drag's own evaluation is still compiling, a second drag is asked to wait the same way, so a drag never adds to numbers the stage has not shown yet.
+
 ## What it does not do
 
-You get moving, resizing, turning, and reordering, on one shape at a time. You cannot pick several shapes at once, and the performance host has none of this. See the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
+You get moving, resizing, turning, and reordering, on one shape at a time. You cannot pick several shapes at once. See the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
 
 A parameter set in the inspector goes back into the file through the same scanner, from a button rather than a drag. See [saving what you changed](../Helpers/Parameters.md#saving).
 
 ## See also
 
 - [Live reload](../../README.md#live-reload), the host this runs in
+- [Live coding](./LiveCoding.md), the performance host, where the drag writes the code on the stage
 - [Parameters](../Helpers/Parameters.md), the other way to change a sketch while it runs
 - [Single-file sketches](./SingleFile.md), the loose `.swift` file this works on too

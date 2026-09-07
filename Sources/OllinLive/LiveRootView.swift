@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Ollin
+import OllinRuntime
 
 /// Shared chrome tokens for the live host.
 private enum LiveChrome {
@@ -47,7 +48,7 @@ struct LiveRootView: View {
 
     init(session: LiveSession) {
         self.session = session
-        _shapeDrag = State(initialValue: ShapeDragController(session: session))
+        _shapeDrag = State(initialValue: ShapeDragController(session: session, hostName: "OllinLive"))
     }
 
     /// Briefly shown after a successful hot reload.
