@@ -23,9 +23,12 @@ extension Drawer {
             svgRecord(.ellipse(center: Vector2(x, y), radiusX: radius, radiusY: radius), fill: fillPaint, stroke: strokePaint)
             return
         }
-        appendSDF(shape: .ellipse, center: Vector2(x, y),
-                  size: SIMD2<Float>(Float(radius), Float(radius)),
-                  fill: fillPaint, stroke: strokePaint)
+        withDashedOutline(circleOutline(radiusX: radius, radiusY: radius, at: Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendSDF(shape: .ellipse, center: Vector2(x, y),
+                      size: SIMD2<Float>(Float(radius), Float(radius)),
+                      fill: fillPaint, stroke: strokePaint)
+        }
     }
 
     /// The same circle, given as a `Circle` value.
@@ -43,9 +46,38 @@ extension Drawer {
             svgRecord(.ellipse(center: Vector2(x, y), radiusX: radiusX, radiusY: radiusY), fill: fillPaint, stroke: strokePaint)
             return
         }
-        appendSDF(shape: .ellipse, center: Vector2(x, y),
-                  size: SIMD2<Float>(Float(radiusX), Float(radiusY)),
-                  fill: fillPaint, stroke: strokePaint)
+        withDashedOutline(circleOutline(radiusX: radiusX, radiusY: radiusY, at: Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendSDF(shape: .ellipse, center: Vector2(x, y),
+                      size: SIMD2<Float>(Float(radiusX), Float(radiusY)),
+                      fill: fillPaint, stroke: strokePaint)
+        }
+    }
+
+    /// Draw an analytic shape with its outline handed to the stroked path while
+    /// a dash is on. `body` draws the shape with the stroke cleared, so its fill
+    /// stays the instance it always was, and `outline` (in user space, closed)
+    /// is then expanded like a polygon's, where the pattern can lay along it.
+    /// With no dash on, `body` runs as it is and the outline is never built.
+    func withDashedOutline(_ outline: @autoclosure () -> [Vector2], anchor: Vector2,
+                           _ body: () -> Void) {
+        guard let dash = strokeDashPattern, !dash.isSolid,
+              let stroke = strokePaint, strokeWidth > 0 else {
+            body()
+            return
+        }
+        let saved = strokePaint
+        strokePaint = nil
+        body()
+        strokePaint = saved
+        appendFringeStroke(outline(), closed: true, paint: vertexPaint(stroke, anchor: anchor))
+    }
+
+    /// A circle or ellipse outline placed at `c`, sampled as finely as the arc
+    /// path samples one of that size, so a dashed ring stays round.
+    func circleOutline(radiusX: Double, radiusY: Double, at c: Vector2) -> [Vector2] {
+        svgOffset(SDFOutline.ellipse(radiusX: radiusX, radiusY: radiusY,
+                                     segments: circleSegments(for: max(radiusX, radiusY))), c)
     }
 
     /// A filled marker at `(x, y)`. `size` is the on-screen *diameter* (points); the
@@ -109,9 +141,12 @@ extension Drawer {
         let halfBase = radius * 0.8660254037844386         // radius * √3/2
         // Anchor the centroid at (x, y); the apex (the SDF origin) sits `radius`
         // above it (the centroid is ⅓ of the height up from the base).
-        appendSDF(shape: .triangle, center: Vector2(x, y - radius),
-                  size: SIMD2<Float>(Float(halfBase), Float(height)),
-                  fill: fillPaint, stroke: strokePaint)
+        withDashedOutline(svgOffset(SDFOutline.triangleEquilateral(radius: radius), Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendSDF(shape: .triangle, center: Vector2(x, y - radius),
+                      size: SIMD2<Float>(Float(halfBase), Float(height)),
+                      fill: fillPaint, stroke: strokePaint)
+        }
     }
 
     /// An isosceles triangle whose apex (tip) is at `(x, y)`, opening toward +y
@@ -128,9 +163,12 @@ extension Drawer {
                       fill: fillPaint, stroke: strokePaint)
             return
         }
-        appendSDF(shape: .triangle, center: Vector2(x, y),
-                  size: SIMD2<Float>(Float(base / 2), Float(height)),
-                  fill: fillPaint, stroke: strokePaint)
+        withDashedOutline(svgOffset(SDFOutline.triangleIsosceles(base: base, height: height), Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendSDF(shape: .triangle, center: Vector2(x, y),
+                      size: SIMD2<Float>(Float(base / 2), Float(height)),
+                      fill: fillPaint, stroke: strokePaint)
+        }
     }
 
     /// A triangle through three arbitrary corners `a`, `b`, `c` (any winding). Unlike
@@ -151,10 +189,12 @@ extension Drawer {
         }
         let center = (lo + hi) / 2
         let half = (hi - lo) / 2
-        appendSDF(shape: .triangle3, center: center,
-                  size: SIMD2<Float>(Float(half.x), Float(half.y)),
-                  fill: fillPaint, stroke: strokePaint,
-                  param0: (a - center).simd2, param1: (b - center).simd2, param2: (c - center).simd2)
+        withDashedOutline([a, b, c], anchor: center) {
+            appendSDF(shape: .triangle3, center: center,
+                      size: SIMD2<Float>(Float(half.x), Float(half.y)),
+                      fill: fillPaint, stroke: strokePaint,
+                      param0: (a - center).simd2, param1: (b - center).simd2, param2: (c - center).simd2)
+        }
     }
 
     /// A triangle through three corners given as scalar coordinates, the
@@ -215,8 +255,11 @@ extension Drawer {
         }
         // A regular polygon is the special case of a star whose inner radius is the
         // apothem (the edge midpoints), which straightens the points into edges.
-        appendStar(center: Vector2(x, y), outer: radius,
-                   inner: radius * cos(.pi / Double(sides)), points: sides)
+        withDashedOutline(svgOffset(SDFOutline.ngon(radius: radius, sides: sides), Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendStar(center: Vector2(x, y), outer: radius,
+                       inner: radius * cos(.pi / Double(sides)), points: sides)
+        }
     }
 
     /// Named regular polygons — sugar over `drawNgon` with a fixed side count, the
@@ -241,7 +284,10 @@ extension Drawer {
                       fill: fillPaint, stroke: strokePaint)
             return
         }
-        appendStar(center: Vector2(x, y), outer: outerRadius, inner: innerRadius, points: points)
+        withDashedOutline(svgOffset(SDFOutline.star(outer: outerRadius, inner: innerRadius, points: points), Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendStar(center: Vector2(x, y), outer: outerRadius, inner: innerRadius, points: points)
+        }
     }
 
     /// A rhombus (diamond) centered at `(x, y)`, `width` wide and `height` tall
@@ -371,10 +417,13 @@ extension Drawer {
             return
         }
         let halfMax = max(topWidth, bottomWidth) / 2
-        appendSDF(shape: .trapezoid, center: Vector2(x, y),
-                  size: SIMD2<Float>(Float(halfMax), Float(height / 2)),
-                  fill: fillPaint, stroke: strokePaint,
-                  param0: SIMD2<Float>(Float(topWidth / 2), Float(bottomWidth / 2)))
+        withDashedOutline(svgOffset(SDFOutline.trapezoid(topWidth: topWidth, bottomWidth: bottomWidth, height: height), Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendSDF(shape: .trapezoid, center: Vector2(x, y),
+                      size: SIMD2<Float>(Float(halfMax), Float(height / 2)),
+                      fill: fillPaint, stroke: strokePaint,
+                      param0: SIMD2<Float>(Float(topWidth / 2), Float(bottomWidth / 2)))
+        }
     }
 
     /// A parallelogram centered at `(x, y)`, `width` wide and `height` tall, with the
@@ -387,10 +436,13 @@ extension Drawer {
                       fill: fillPaint, stroke: strokePaint)
             return
         }
-        appendSDF(shape: .parallelogram, center: Vector2(x, y),
-                  size: SIMD2<Float>(Float(width / 2 + abs(skew)), Float(height / 2)),
-                  fill: fillPaint, stroke: strokePaint, extra: Float(skew),
-                  param0: SIMD2<Float>(Float(width / 2), 0))
+        withDashedOutline(svgOffset(SDFOutline.parallelogram(width: width, height: height, skew: skew), Vector2(x, y)),
+                          anchor: Vector2(x, y)) {
+            appendSDF(shape: .parallelogram, center: Vector2(x, y),
+                      size: SIMD2<Float>(Float(width / 2 + abs(skew)), Float(height / 2)),
+                      fill: fillPaint, stroke: strokePaint, extra: Float(skew),
+                      param0: SIMD2<Float>(Float(width / 2), 0))
+        }
     }
 
     /// An egg centered at `(x, y)`: a circle of `bottomRadius` at the fat lower end
@@ -728,6 +780,12 @@ extension Drawer {
         // band the fragment evaluates, with no path to walk laying stamps along.
         if hasStroke, strokeBrushShape != nil {
             noteOnce("strokeBrush(_:) applies to stroked paths (drawLine / drawBezier / drawPolyline / drawCurve / drawShape outlines); \(shape) draws its outline as a continuous stroke.")
+        }
+        // A dash needs a path to lay along too. The shapes with a polygonal
+        // outline hand it over before reaching here (`withDashedOutline`); the
+        // rest of the catalog keeps its continuous band and says so once.
+        if hasStroke, let dash = strokeDashPattern, !dash.isSolid {
+            noteOnce("strokeDash(_:) applies to stroked paths and to the circle, ellipse, rect, triangle, ngon, star, trapezoid, and parallelogram outlines; \(shape) draws its outline as a continuous stroke.")
         }
         // Hollow mode applies only to region shapes the fragment can onion; the
         // round-dot point path shares the `.ellipse` tag, so it opts out here.
@@ -1417,8 +1475,12 @@ extension Drawer {
                       fill: fillPaint, stroke: strokePaint)
             return
         }
-        appendSDF(shape: .box, center: rect.center,
-                  size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
-                  fill: fillPaint, stroke: strokePaint, extra: Float(r))
+        withDashedOutline(SDFOutline.roundedRect(corner: Vector2(rect.x, rect.y), width: rect.width,
+                                                 height: rect.height, radius: r),
+                          anchor: rect.center) {
+            appendSDF(shape: .box, center: rect.center,
+                      size: SIMD2<Float>(Float(rect.width / 2), Float(rect.height / 2)),
+                      fill: fillPaint, stroke: strokePaint, extra: Float(r))
+        }
     }
 }

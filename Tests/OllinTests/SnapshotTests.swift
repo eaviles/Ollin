@@ -135,6 +135,8 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  make: { StrokeProfilesScene() }),
     SnapshotCase("brushes", note: "strokeBrush stamps: tips, spacing, jitter, scatter, and a taper.",
                  make: { BrushesScene() }),
+    SnapshotCase("dashed-strokes", note: "strokeDash on the fringe path, a profile across the gaps, and the analytic outlines that hand over.",
+                 make: { DashedStrokesScene() }),
     SnapshotCase("bitmap-text", note: "The bitmap font specimen.",
                  make: { TextSpecimen() }),
     SnapshotCase("tinted-image", note: "A tinted textured-quad image.",
@@ -6363,6 +6365,60 @@ private final class BrushesScene: Sketch {
         strokeBrush(Brush(.square, spacing: 1.1, angle: .fixed(.pi / 4), seed: 4))
         drawPolyline([Vector2(30, 226), Vector2(120, 240), Vector2(210, 226)], closed: true)
         noStrokeBrush()
+    }
+}
+
+/// `strokeDash` on the fringe path and on the analytic outlines that hand over:
+/// a pattern and the same pattern slid by a phase, dots under round caps, a
+/// pattern crossing a closed polygon's seam, a ramp read across the gaps, and a
+/// dashed circle, filled rounded rectangle, star, hexagon, and triangle beside
+/// the continuous band a traced shape keeps.
+private final class DashedStrokesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.white)
+        noFill()
+        stroke(.black); strokeWeight(4); strokeCap(.butt)
+
+        // A zigzag under one pattern, then the same slid a quarter period.
+        let zig = [Vector2(16, 30), Vector2(64, 14), Vector2(112, 30),
+                   Vector2(160, 14), Vector2(208, 30), Vector2(240, 18)]
+        strokeDash([14, 6])
+        drawPolyline(zig)
+        strokeDash([14, 6], phase: 5)
+        drawPolyline(zig.map { $0 + Vector2(0, 26) })
+
+        // Dots: zero-length dashes under round caps.
+        strokeCap(.round); strokeWeight(6)
+        strokeDash(.dots(spacing: 12))
+        drawPolyline([Vector2(16, 82), Vector2(240, 82)])
+
+        // A closed polygon whose pattern crosses the seam at its first corner.
+        strokeCap(.butt); strokeWeight(5); strokeJoin(.miter)
+        strokeDash([40, 12], phase: -20)
+        drawPolyline([Vector2(20, 104), Vector2(84, 104), Vector2(84, 160), Vector2(20, 160)], closed: true)
+
+        // A ramp read across the gaps: fat at the start, thin at the end.
+        strokeWeight(14)
+        strokeProfile(.ramp(from: 1, to: 0.1))
+        strokeDash([22, 10])
+        drawPolyline([Vector2(104, 112), Vector2(240, 112)])
+        noStrokeProfile()
+
+        // The analytic shapes that hand their outline over, a rounded
+        // rectangle's fill staying whole under its dashed outline, and a heart
+        // that keeps its continuous band.
+        strokeWeight(3)
+        strokeDash([10, 6])
+        drawCircle(130, 150, 22)
+        fill(Color(white: 0.85))
+        drawRect(Rectangle(x: 164, y: 128, width: 60, height: 44), cornerRadius: 10)
+        noFill()
+        drawStar(52, 214, 30, 14, points: 5)
+        drawHexagon(120, 214, 26)
+        drawTriangle(172, 196, 24)
+        drawHeart(228, 212, 40)
     }
 }
 

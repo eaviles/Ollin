@@ -95,6 +95,40 @@ enum SDFOutline {
         }
     }
 
+    /// A closed ellipse outline, `segments` points around, starting at +x. The
+    /// outline a dashed circle or ellipse strokes, on screen and in a file.
+    static func ellipse(radiusX: Double, radiusY: Double, segments: Int = 64) -> [Vector2] {
+        let count = max(3, segments)
+        return (0..<count).map { k in
+            let a = 2 * Double.pi * Double(k) / Double(count)
+            return Vector2(radiusX * cos(a), radiusY * sin(a))
+        }
+    }
+
+    /// A rectangle outline from its corner, with the corners rounded when
+    /// `radius` is positive (clamped to half the shorter side). Unlike the rest of
+    /// this file it is already in user space, since a rectangle is placed by its
+    /// corner. The outline starts at the top edge, and the outline a dashed
+    /// rectangle strokes and the fill a hatched one covers both come from here.
+    static func roundedRect(corner: Vector2, width w: Double, height h: Double, radius r: Double) -> [Vector2] {
+        let x0 = corner.x, y0 = corner.y, x1 = corner.x + w, y1 = corner.y + h
+        let rr = min(r, min(w, h) / 2)
+        guard rr > 0 else { return [Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)] }
+        let seg = 8
+        func arc(cx: Double, cy: Double, from: Double, to: Double) -> [Vector2] {
+            (0...seg).map { k -> Vector2 in
+                let a = from + (to - from) * Double(k) / Double(seg)
+                return Vector2(cx + cos(a) * rr, cy + sin(a) * rr)
+            }
+        }
+        var pts: [Vector2] = []
+        pts += arc(cx: x1 - rr, cy: y0 + rr, from: -.pi / 2, to: 0)        // top-right
+        pts += arc(cx: x1 - rr, cy: y1 - rr, from: 0, to: .pi / 2)         // bottom-right
+        pts += arc(cx: x0 + rr, cy: y1 - rr, from: .pi / 2, to: .pi)       // bottom-left
+        pts += arc(cx: x0 + rr, cy: y0 + rr, from: .pi, to: 3 * .pi / 2)   // top-left
+        return pts
+    }
+
     // MARK: Point markers (exact)
 
     static func markerSquare(_ h: Double) -> [Vector2] {

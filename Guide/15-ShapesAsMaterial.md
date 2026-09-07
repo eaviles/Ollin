@@ -393,6 +393,33 @@ strokeProfile(.taper())
 
 And each stamp is a real shape rather than a stretch of ribbon. So `--export-svg` writes every one of them as a circle or a polygon a plotter can follow. `Examples/Shapes/Brushes` has the family side by side.
 
+### A line with gaps: strokeDash
+
+The last of the stroke tools is the plainest. `strokeDash` cuts the ribbon into dashes:
+
+```swift
+strokeWeight(11)
+strokeDash([18, 10])
+drawPolyline(curve)
+```
+
+The list is dash, gap, dash, gap, in the same units as the path, and it repeats. It is drawing state like the rest, and `noStrokeDash()` puts the whole line back. Every dash is a little stroke of its own, so `strokeCap` finishes both ends of each one. That is what makes a dotted line one more line. `.dots(spacing:)` lays down dashes of length zero, and under `strokeCap(.round)` each of those is a dot.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/DashPatterns-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/DashPatterns.jpg" alt="The same S-curve dashed three ways at one stroke weight: an even dash, a row of dots, and a taper whose dashes shrink together toward both ends" width="680">
+</picture>
+
+The third panel is the one to notice. The taper from earlier in the chapter is still reading its place on the whole path. So the dashes shrink together toward the ends, rather than each one tapering on its own. The cut happens before any of the other tools see the path, which is why they compose. A brush stamps each dash and skips the gaps, and a gradient runs on through them.
+
+A pattern also has a `phase`, how far it has slid along the path. Give it the clock and the dashes walk:
+
+```swift
+strokeDash([18, 10], phase: time * 60)
+```
+
+That is the marching outline every selection tool draws, and it costs one argument. The analytic shapes join in while a dash is on. `drawCircle`, `drawRect`, `drawStar`, and the other polygonal ones hand their outline over to the path stroke, so a dashed ring is `strokeDash` followed by `drawCircle`. On the way out, `--export-svg` writes every dash as its own subpath, so a plotter lifts the pen in every gap. `Examples/Shapes/DashedStrokes` has the family moving.
+
 ## Scatters and territories
 
 Here the material turns from single outlines to populations. Points that spread themselves evenly come first, because nearly everything after them wants a well-mannered scatter to work on.
@@ -831,6 +858,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Clothoid](../Docs/Drawing/Clothoid.md): the four numbers, the easement, the single curve that fits two points and two headings, corner rounding, and driving a chain by distance.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
+- [Dashed strokes](../Docs/Drawing/Drawing.md#strokeDash): the pattern and its phase, dots from zero-length dashes, what the cut does to a profile, a brush, and a gradient, which shapes hand their outline over, and what vector export writes.
 - [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing parameters do, building a mark without a pointer, and what survives vector export.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.

@@ -10,7 +10,7 @@ These calls take the point and rectangle types `Vector2` and `Rectangle`, which 
 
 ### Contents
 
-- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [strokeProfile](#strokeProfile), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker), [blendMode](#blendMode)
+- **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [strokeProfile](#strokeProfile), [strokeDash](#strokeDash), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker), [blendMode](#blendMode)
 - **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawArrow](#arrow), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawOrientedBox](#orientedbox), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawOrientedVesica](#orientedvesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
@@ -194,6 +194,48 @@ Two things to know:
 A profiled stroke stays vector on the way out. `--export-svg` and `--export-pdf` write the region the mark covers as a filled outline, not as a stroked path with one width. A plotted or printed mark then matches the screen. See [Export](../Output/Export.md).
 
 A profile shapes a stroke by where you are along a finished path. A mark being drawn right now has no finished path to take a fraction of, so see [Marks](Marks.md) instead. A `StrokeMark` measures how fast the pointer is traveling and how hard it is pressed, then drives width and opacity from that. The two multiply, so a dynamic mark can still take a profiled lift-off.
+
+<a name="strokeDash"></a>
+
+#### strokeDash / noStrokeDash
+
+```swift
+strokeDash(_ lengths: [Double], phase: Double = 0)   // dash, gap, dash, gap, in points along the path
+strokeDash(_ dash: StrokeDash)                       // .dashes(_:gap:), .dots(spacing:), or a pattern of your own
+noStrokeDash()
+```
+
+Cut every stroke into dashes. The lengths alternate dash and gap, measured along the path in its own units, so `scale` scales the dashes along with the weight. An odd count repeats itself, the way SVG reads one, so `[8, 4, 2]` is `[8, 4, 2, 8, 4, 2]`. This is state, like `strokeWeight`, so it holds until you change it, and `withState { }` saves and restores it.
+
+```swift
+stroke(.black); strokeWeight(4)
+strokeDash([12, 8])
+drawPolyline(points)                     // 12 on, 8 off, along the whole path
+strokeDash([12, 8], phase: time * 60)    // the same, marching forward
+```
+
+`phase` slides the pattern along the path. A positive phase carries the dashes forward, so a phase that grows with `time` is a marching outline, and a phase of one period (the sum of the lengths) brings the pattern back to where it started.
+
+Every dash is a stroke of its own. [`strokeCap`](#strokeCap) finishes both ends of each one, and a corner inside a dash keeps its [`strokeJoin`](#strokeJoin). That is what makes a dotted line one more line. `.dots(spacing:)` lays down zero-length dashes, which are round dots under `strokeCap(.round)`, squares under `.square`, and nothing at all under `.butt`.
+
+```swift
+strokeCap(.round); strokeWeight(6)
+strokeDash(.dots(spacing: 12))
+drawCurve(points)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/DashPatterns-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/DashPatterns.jpg" alt="The same S-curve dashed three ways at one stroke weight: an even dash, a row of dots, and a taper whose dashes shrink together toward both ends" width="680">
+</picture>
+
+The cut happens before the path is expanded, so the other stroke tools keep working on the whole path rather than on each dash. A [`strokeProfile`](#strokeProfile) reads its place on the whole, so a taper tapers across the gaps instead of starting over at every dash. A [brush](Marks.md#brushes) stamps each dash and skips the gaps. An along-path gradient runs on through them. On a closed path the pattern starts at the first point and runs the closing segment too, and a dash that crosses that seam is one dash, so the corner there is still a corner.
+
+It applies wherever a path is expanded into a stroke: `drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, `drawArc`, the outlines of `drawShape` and `drawPolygon`, and stroked text. While a dash is on, `drawCircle`, `drawEllipse`, `drawRect`, `drawTriangle`, `drawNgon`, `drawStar`, `drawTrapezoid`, and `drawParallelogram` hand their outline to that same path, so they dash too, and a profile or a brush reaches them for as long as they do. The rest of the analytic catalog keeps its continuous outline and says so once on the console. A pattern too fine for its path (more than twenty thousand dashes on one stroke) draws the path whole and says so too.
+
+`StrokeDash` is a plain value: `lengths` and `phase`, plus `period` and `isSolid` for a pattern that leaves the path whole. `Contour.dashed(_:)` and `Shape.dashed(_:)` make the same cut as geometry, handing back the dashes as open contours to draw, offset, or export however you like.
+
+A dashed stroke stays vector on the way out. `--export-svg`, `--export-pdf`, and the G-code writer carry every dash as a subpath of its own, so a plotter lifts the pen at each gap and lays down exactly the dashes the screen showed, and a filled shape under a dashed outline keeps its fill whole. See [Export](../Output/Export.md).
 
 <a name="hollow"></a>
 

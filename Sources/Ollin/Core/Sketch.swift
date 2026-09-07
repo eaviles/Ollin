@@ -2438,6 +2438,29 @@ open class Sketch {
     public func strokeBrush(_ brush: Brush) { drawer.strokeBrush(brush) }
     /// Return to a continuous stroke (the default), undoing `strokeBrush(_:)`.
     public func noStrokeBrush() { drawer.noStrokeBrush() }
+    /// Cut every stroke into dashes: `strokeDash([12, 8])` lays 12-point dashes
+    /// with 8-point gaps along the path, and `strokeDash(.dots(spacing: 10))`
+    /// under `strokeCap(.round)` lays dots. The lengths are in the path's own
+    /// units, so `scale` scales them with the weight, and an odd count repeats
+    /// itself. `phase` slides the pattern along the path; a positive phase
+    /// carries the dashes forward, so `strokeDash([12, 8], phase: time * 60)`
+    /// marches them.
+    ///
+    /// Each dash takes `strokeCap` at its ends and keeps `strokeJoin` at a
+    /// corner inside it, while a profile, a brush, and an along-path gradient
+    /// read their place on the whole path. Applies to the stroked paths
+    /// (`drawLine`, `drawBezier`, `drawPolyline`, `drawCurve`, `drawArc`, and
+    /// the `drawShape` / `drawPolygon` outlines) and, while a dash is on, to
+    /// `drawCircle`, `drawEllipse`, `drawRect`, `drawTriangle`, `drawNgon`, and
+    /// `drawStar`, whose outlines then go the same way; the rest of the analytic
+    /// shapes keep a continuous outline. See `StrokeDash`.
+    public func strokeDash(_ dash: StrokeDash) { drawer.strokeDash(dash) }
+    /// The same, from the dash and gap lengths: `strokeDash([12, 8])`.
+    public func strokeDash(_ lengths: [Double], phase: Double = 0) {
+        drawer.strokeDash(StrokeDash(lengths, phase: phase))
+    }
+    /// Return to a whole stroke (the default), undoing `strokeDash(_:)`.
+    public func noStrokeDash() { drawer.noStrokeDash() }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
     public func drawPoint(_ x: Double, _ y: Double,

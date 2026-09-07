@@ -28,15 +28,26 @@ extension Drawer {
     /// tip is itself stroked cannot recurse.
     func appendBrushStamps(_ points: [Vector2], closed: Bool, brush: Brush) {
         guard let paint = strokePaint, strokeWidth > 0 else { return }
+        // A dash cuts the path into runs first, and each run is stamped on its
+        // own, reading its width and opacity where it sits on the whole path.
+        for run in strokeRuns(points, closed: closed) {
+            appendBrushStamps(run, brush: brush, paint: paint)
+        }
+    }
+
+    private func appendBrushStamps(_ run: StrokeRun, brush: Brush, paint: Paint) {
+        let place = Drawer.fractionMap(run)
         let stamps = Brush.stamps(
-            along: points, closed: closed, brush: brush,
+            along: run.points, closed: run.closed, brush: brush,
             width: { t in
-                self.strokeProfileShape.isUniform
+                let t = place(t)
+                return self.strokeProfileShape.isUniform
                     ? self.strokeWidth
                     : self.strokeWidth * max(self.strokeProfileShape(t), 0)
             },
             opacity: { t in
-                self.strokeOpacityShape.isUniform ? 1 : max(self.strokeOpacityShape(t), 0)
+                let t = place(t)
+                return self.strokeOpacityShape.isUniform ? 1 : max(self.strokeOpacityShape(t), 0)
             })
         guard !stamps.isEmpty else { return }
 

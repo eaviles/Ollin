@@ -162,7 +162,7 @@ func fillContours(_ geometry: SVGGeometry) -> (contours: [[Vector2]], winding: F
         }
         return ([pts], .evenOdd)
     case let .rect(corner, w, h, r):
-        return ([roundedRect(corner: corner, width: w, height: h, radius: r)], .evenOdd)
+        return ([SDFOutline.roundedRect(corner: corner, width: w, height: h, radius: r)], .evenOdd)
     case let .polygon(points):
         return points.count >= 3 ? ([points], .evenOdd) : nil
     case let .path(shape):
@@ -171,26 +171,6 @@ func fillContours(_ geometry: SVGGeometry) -> (contours: [[Vector2]], winding: F
     case .line, .quad, .polyline:
         return nil
     }
-}
-
-/// A rectangle contour, with quarter-arc corners when `radius > 0`.
-private func roundedRect(corner: Vector2, width w: Double, height h: Double, radius r: Double) -> [Vector2] {
-    let x0 = corner.x, y0 = corner.y, x1 = corner.x + w, y1 = corner.y + h
-    let rr = min(r, min(w, h) / 2)
-    guard rr > 0 else { return [Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)] }
-    let seg = 8
-    func arc(cx: Double, cy: Double, from: Double, to: Double) -> [Vector2] {
-        (0...seg).map { k -> Vector2 in
-            let a = from + (to - from) * Double(k) / Double(seg)
-            return Vector2(cx + cos(a) * rr, cy + sin(a) * rr)
-        }
-    }
-    var pts: [Vector2] = []
-    pts += arc(cx: x1 - rr, cy: y0 + rr, from: -.pi / 2, to: 0)        // top-right
-    pts += arc(cx: x1 - rr, cy: y1 - rr, from: 0, to: .pi / 2)         // bottom-right
-    pts += arc(cx: x0 + rr, cy: y1 - rr, from: .pi / 2, to: .pi)       // bottom-left
-    pts += arc(cx: x0 + rr, cy: y0 + rr, from: .pi, to: 3 * .pi / 2)   // top-left
-    return pts
 }
 
 /// Hatch spacing scaled by a fill's tone: darker and more opaque fills hatch

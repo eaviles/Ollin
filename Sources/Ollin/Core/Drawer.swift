@@ -275,6 +275,10 @@ final class Drawer {
     // strokeBrush). `nil` is the ribbon, so every stroke that does not ask for a
     // brush takes exactly the path it always did.
     var strokeBrushShape: Brush?
+    // A dash pattern cut along a path before it is expanded (see strokeDash).
+    // `nil` is the whole path, so every stroke that does not ask for a dash
+    // takes exactly the path it always did.
+    var strokeDashPattern: StrokeDash?
     var currentMaterial = Material()    // 3D mesh surface finish (shading model + specular/rim/subsurface/iridescence); see material(_:)
     private var wireframeEnabled = false        // 3D mesh: draw triangle edges only (see wireframe)
     private var currentMatcap: Image?           // 3D mesh: a matcap sphere texture replacing the lit look (see matcap(_:))
@@ -1673,6 +1677,41 @@ final class Drawer {
     func svgRecord(_ geometry: SVGGeometry, fill: Paint?, stroke: Paint?) {
         guard svgRecorder != nil else { return }
         let visibleStroke = (stroke != nil && strokeWidth > 0) ? stroke : nil
+        // A dash is cut along the path here, the same cut the screen draws, so
+        // the file carries every dash as a subpath of its own: a plotter lifts
+        // the pen at each gap. The fill, if any, stays the shape it was, and a
+        // width profile over the dashes reads its place on the whole path.
+        if let visibleStroke, let dash = strokeDashPattern, !dash.isSolid,
+           let paths = geometry.strokePaths ?? analyticOutlines(of: geometry) {
+            if fill != nil { svgAppend(geometry, fill: fill, stroke: nil) }
+            var dashes: [Contour] = []
+            var outlines: [Contour] = []
+            for (points, isClosed) in paths {
+                guard let pieces = dashCut(points, closed: isClosed) else {
+                    if let outline = variableStrokeOutline(points, closed: isClosed) {
+                        outlines.append(contentsOf: outline.contours)
+                    } else {
+                        dashes.append(Contour(points, closed: isClosed))
+                    }
+                    continue
+                }
+                for piece in pieces {
+                    if let outline = variableStrokeOutline(piece.points, closed: false,
+                                                           fractions: piece.fractions) {
+                        outlines.append(contentsOf: outline.contours)
+                    } else {
+                        dashes.append(Contour(piece.points, closed: false))
+                    }
+                }
+            }
+            if !dashes.isEmpty {
+                svgAppend(.path(Shape(contours: dashes, winding: .evenOdd)), fill: nil, stroke: visibleStroke)
+            }
+            if !outlines.isEmpty {
+                svgAppend(.path(Shape(contours: outlines, winding: .nonZero)), fill: visibleStroke, stroke: nil)
+            }
+            return
+        }
         // A width profile has no single `stroke-width` to ride on, so the stroke
         // exports as the region it covers: a filled outline, still vector and still
         // true to size. The fill, if any, stays the shape it was.
@@ -1710,6 +1749,23 @@ final class Drawer {
     /// Shift origin-centered outline points into user space around `c`.
     func svgOffset(_ points: [Vector2], _ c: Vector2) -> [Vector2] {
         points.map { $0 + c }
+    }
+
+    /// The outline of an analytic element as a path for a dash to lay along:
+    /// the same points the screen strokes for it while a dash is on, so the
+    /// exported dashes fall where the rendered ones do. `nil` for anything that
+    /// already carries its stroke paths.
+    private func analyticOutlines(of geometry: SVGGeometry) -> [(points: [Vector2], closed: Bool)]? {
+        switch geometry {
+        case let .ellipse(center, rx, ry):
+            let outline = SDFOutline.ellipse(radiusX: rx, radiusY: ry,
+                                             segments: circleSegments(for: max(rx, ry)))
+            return [(svgOffset(outline, center), true)]
+        case let .rect(corner, w, h, r):
+            return [(SDFOutline.roundedRect(corner: corner, width: w, height: h, radius: r), true)]
+        default:
+            return nil
+        }
     }
 
     /// Record a marching-squares traced outline, loops already in user space. A
@@ -1774,6 +1830,7 @@ final class Drawer {
         var strokeProfileShape: StrokeProfile
         var strokeOpacityShape: StrokeProfile
         var strokeBrushShape: Brush?
+        var strokeDashPattern: StrokeDash?
         var currentMaterial: Material
         var wireframeEnabled: Bool
         var currentMatcap: Image?
@@ -1980,6 +2037,17 @@ final class Drawer {
     /// Return to a continuous stroke (the default).
     func noStrokeBrush() { strokeBrushShape = nil }
 
+    /// Cut every stroked path into dashes (see `StrokeDash`). The pattern is cut
+    /// along the path before it is expanded, so each dash takes the caps and a
+    /// corner inside one keeps its join, while a profile, a brush, and an
+    /// along-path gradient still read their place on the whole path. Affects
+    /// the stroked paths; the analytic shapes with a polygonal outline hand it
+    /// over while a dash is on, and the rest keep their continuous outline.
+    func strokeDash(_ dash: StrokeDash) { strokeDashPattern = dash }
+
+    /// Return to a whole stroke (the default).
+    func noStrokeDash() { strokeDashPattern = nil }
+
     /// The half-width at each point of a path, or `nil` when the stroke is the
     /// plain constant-width kind. `points` is the path as it will be expanded
     /// (already flattened and de-duplicated); `closed` wraps the last segment back
@@ -1989,8 +2057,14 @@ final class Drawer {
     /// keeps the joins simple: the two segments meeting at a corner agree on the
     /// width there, so a corner is still the constant-width corner problem, solved
     /// at the local width.
-    func strokeHalfWidths(for points: [Vector2], closed: Bool) -> [Double]? {
+    ///
+    /// `fractions`, when given, is where each point sits on the whole path this
+    /// one was cut from (a dash of it), so the profile keeps reading the whole
+    /// rather than starting over at every dash.
+    func strokeHalfWidths(for points: [Vector2], closed: Bool,
+                          fractions: [Double]? = nil) -> [Double]? {
         guard !strokeProfileShape.isUniform, points.count >= 2 else { return nil }
+        let fractions = fractions?.count == points.count ? fractions : nil
         let n = points.count
         var cum = [Double](repeating: 0, count: n)
         for i in 1..<n { cum[i] = cum[i - 1] + (points[i] - points[i - 1]).length }
@@ -2007,7 +2081,8 @@ final class Drawer {
             let d = points[next] - points[prev]
             let len = d.length
             let dir = len > 1e-9 ? d / len : Vector2(1, 0)
-            return hw * strokeProfileShape(cum[i] * invTotal, direction: dir)
+            let t = fractions?[i] ?? cum[i] * invTotal
+            return hw * strokeProfileShape(t, direction: dir)
         }
     }
 
@@ -4105,6 +4180,7 @@ final class Drawer {
                                      strokeProfileShape: strokeProfileShape,
                                      strokeOpacityShape: strokeOpacityShape,
                                      strokeBrushShape: strokeBrushShape,
+                                     strokeDashPattern: strokeDashPattern,
                                      currentMaterial: currentMaterial,
                                      wireframeEnabled: wireframeEnabled,
                                      currentMatcap: currentMatcap,
@@ -4140,6 +4216,7 @@ final class Drawer {
         strokeProfileShape = s.strokeProfileShape
         strokeOpacityShape = s.strokeOpacityShape
         strokeBrushShape = s.strokeBrushShape
+        strokeDashPattern = s.strokeDashPattern
         currentMaterial = s.currentMaterial
         wireframeEnabled = s.wireframeEnabled
         currentMatcap = s.currentMatcap

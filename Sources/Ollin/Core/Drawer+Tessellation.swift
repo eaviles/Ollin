@@ -178,24 +178,33 @@ extension Drawer {
             appendBrushStamps(points, closed: closed, brush: brush)
             return
         }
+        // A dash cuts the path into runs first. Each run expands on its own, with
+        // the caps at its ends, and reads its place on the whole path, so a
+        // profile or an along-path gradient runs on across the gaps. With no dash
+        // on, the one run is the path itself, untouched.
+        let runs = strokeRuns(points, closed: closed)
         // Emits only fringe vertices into one `.fringe` batch, so symmetry can
         // replicate the whole expansion as a range copy (see `replicated`).
-        replicated { appendFringeStrokeSingle(points, closed: closed, paint: paint) }
+        replicated {
+            for run in runs {
+                appendFringeStrokeSingle(run.points, closed: run.closed, paint: paint,
+                                         fractions: run.fractions)
+            }
+        }
     }
 
-    private func appendFringeStrokeSingle(_ points: [Vector2], closed: Bool, paint: VertexPaint) {
+    private func appendFringeStrokeSingle(_ points: [Vector2], closed: Bool, paint: VertexPaint,
+                                          fractions: [Double]? = nil) {
         // Drop repeated points (a zero-length segment has no direction) and a
         // closed loop's closing duplicate, so every join is well-defined.
-        var pts: [Vector2] = []
-        for p in points where (pts.last.map { ($0 - p).length > 1e-9 } ?? true) { pts.append(p) }
-        if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 { pts.removeLast() }
+        var (pts, ts) = Drawer.deduplicated(points, fractions: fractions, closed: closed)
         // A gradient varies along the run, so split long segments first (like the
         // tessellated path): the per-vertex color samples the baked LUT densely
         // instead of interpolating straight through its stops. A width profile
         // varies along the run the same way, and is sampled per vertex, so it wants
         // the same split. Plain solid strokes are untouched, geometry unchanged.
         if paint.isGradient || !strokeProfileShape.isUniform || !strokeOpacityShape.isUniform {
-            pts = Drawer.subdivided(pts, closed: closed, maxLength: 12)
+            (pts, ts) = Drawer.subdivided(pts, fractions: ts, closed: closed, maxLength: 12)
         }
         let n = pts.count
         guard n >= 2 else { return }
@@ -204,7 +213,7 @@ extension Drawer {
         let miterLimit = 8.0
         // Half-width per path vertex. A uniform stroke keeps one constant, which is
         // what makes its geometry and coverage identical to the pre-profile path.
-        let profiled = strokeHalfWidths(for: pts, closed: closed)
+        let profiled = strokeHalfWidths(for: pts, closed: closed, fractions: ts)
         let hws = profiled ?? [Double](repeating: strokeWidth / 2, count: n)
 
         // Per-vertex paint color (rgb + the paint's own alpha). Along-path reads the
@@ -222,7 +231,7 @@ extension Drawer {
             var total = cum[n - 1]
             if closed { total += (pts[0] - pts[n - 1]).length }
             for i in 0..<n {
-                let t = total > 0 ? cum[i] / total : 0
+                let t = ts?[i] ?? (total > 0 ? cum[i] / total : 0)
                 var color = paint.color(at: pts[i], pathT: t)
                 // The paint's own alpha stays whole and the recorded opacity scales
                 // it, so a translucent brush and a faint moment multiply the way a
@@ -454,14 +463,13 @@ extension Drawer {
     /// exported document has no anti-aliasing to carry, so the outline is the true
     /// edge. Both are built from the same per-vertex half-widths, so what a plotter
     /// or a PDF draws is the mark the screen showed.
-    func variableStrokeOutline(_ points: [Vector2], closed: Bool) -> Shape? {
+    func variableStrokeOutline(_ points: [Vector2], closed: Bool,
+                               fractions: [Double]? = nil) -> Shape? {
         guard !strokeProfileShape.isUniform, strokeWidth > 0 else { return nil }
-        var pts: [Vector2] = []
-        for p in points where (pts.last.map { ($0 - p).length > 1e-9 } ?? true) { pts.append(p) }
-        if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 { pts.removeLast() }
-        pts = Drawer.subdivided(pts, closed: closed, maxLength: 12)
+        var (pts, ts) = Drawer.deduplicated(points, fractions: fractions, closed: closed)
+        (pts, ts) = Drawer.subdivided(pts, fractions: ts, closed: closed, maxLength: 12)
         let n = pts.count
-        guard n >= 2, let hws = strokeHalfWidths(for: pts, closed: closed) else { return nil }
+        guard n >= 2, let hws = strokeHalfWidths(for: pts, closed: closed, fractions: ts) else { return nil }
 
         var contours: [Contour] = []
         /// Add one piece of the outline, wound counter-clockwise so every piece
@@ -576,6 +584,120 @@ extension Drawer {
         }
         if !closed { out.append(pts[pts.count - 1]) }
         return out
+    }
+
+    /// `subdivided(_:closed:maxLength:)` with `fractions` (where each point sits
+    /// on the whole path a dash cut this one from) interpolated onto the points
+    /// it inserts, so a profile read per vertex keeps its place.
+    static func subdivided(_ pts: [Vector2], fractions: [Double]?, closed: Bool,
+                           maxLength: Double) -> ([Vector2], [Double]?) {
+        guard let fractions, fractions.count == pts.count, pts.count >= 2 else {
+            return (subdivided(pts, closed: closed, maxLength: maxLength), nil)
+        }
+        var out: [Vector2] = []
+        var outT: [Double] = []
+        out.reserveCapacity(pts.count)
+        outT.reserveCapacity(pts.count)
+        let segments = closed ? pts.count : pts.count - 1
+        for i in 0..<segments {
+            let j = (i + 1) % pts.count
+            let a = pts[i], b = pts[j]
+            let ta = fractions[i], tb = fractions[j]
+            out.append(a)
+            outT.append(ta)
+            let pieces = Int(((b - a).length / maxLength).rounded(.up))
+            if pieces > 1 {
+                for k in 1..<pieces {
+                    let f = Double(k) / Double(pieces)
+                    out.append(a + (b - a) * f)
+                    outT.append(ta + (tb - ta) * f)
+                }
+            }
+        }
+        if !closed {
+            out.append(pts[pts.count - 1])
+            outT.append(fractions[pts.count - 1])
+        }
+        return (out, outT)
+    }
+
+    /// `points` with repeated points and a closed loop's closing duplicate
+    /// dropped (a zero-length segment has no direction), and `fractions`, when
+    /// given for every point, kept in step with them.
+    static func deduplicated(_ points: [Vector2], fractions: [Double]?,
+                             closed: Bool) -> ([Vector2], [Double]?) {
+        let keeps = fractions?.count == points.count
+        var pts: [Vector2] = []
+        var ts: [Double] = []
+        for (k, p) in points.enumerated() where (pts.last.map { ($0 - p).length > 1e-9 } ?? true) {
+            pts.append(p)
+            if keeps, let fractions { ts.append(fractions[k]) }
+        }
+        if closed, pts.count > 1, (pts[0] - pts[pts.count - 1]).length <= 1e-9 {
+            pts.removeLast()
+            if keeps { ts.removeLast() }
+        }
+        return (pts, keeps ? ts : nil)
+    }
+
+    // MARK: Dashes
+
+    /// One stretch of a path the stroke expander takes at a time: the whole
+    /// path, or one dash of it. `fractions` says where each point sits on the
+    /// whole path, as a fraction of its length, for a dash; `nil` is the whole.
+    struct StrokeRun {
+        var points: [Vector2]
+        var closed: Bool
+        var fractions: [Double]?
+    }
+
+    /// The path as the runs the current dash cuts it into, or the path itself
+    /// as one run when no dash is on or the pattern leaves it whole.
+    func strokeRuns(_ points: [Vector2], closed: Bool) -> [StrokeRun] {
+        guard let pieces = dashCut(points, closed: closed) else {
+            return [StrokeRun(points: points, closed: closed, fractions: nil)]
+        }
+        return pieces.map { StrokeRun(points: $0.points, closed: false, fractions: $0.fractions) }
+    }
+
+    /// The pieces the current dash leaves along `points`, or `nil` when no dash
+    /// is on, the pattern leaves the path whole, or the pattern is so fine over
+    /// this path that cutting it would cost more than the rest of the frame
+    /// (tens of thousands of dashes on one path read as a solid line anyway).
+    func dashCut(_ points: [Vector2], closed: Bool) -> [StrokeDash.Piece]? {
+        guard let dash = strokeDashPattern, !dash.isSolid else { return nil }
+        let length = Contour(points, closed: closed).length
+        if dash.dashCount(along: length) > Drawer.maxDashesPerPath {
+            noteOnce("strokeDash(_:) would cut more than \(Drawer.maxDashesPerPath) dashes along one path (a period of \(dash.period) over \(Int(length)) points); the path draws whole.")
+            return nil
+        }
+        return dash.cut(points, closed: closed)
+    }
+
+    /// The most dashes one path is cut into before it draws whole instead.
+    static let maxDashesPerPath = 20_000
+
+    /// A map from a run's own fraction (`0` at its start, `1` at its end, by
+    /// length) to its place on the whole path, piecewise linear over the run's
+    /// points; the identity for a run that is the whole path. What a brush
+    /// reads its width and opacity through, so the stamps on a dash keep the
+    /// profile's place.
+    static func fractionMap(_ run: StrokeRun) -> (Double) -> Double {
+        guard let f = run.fractions, f.count == run.points.count, run.points.count >= 2 else {
+            return { $0 }
+        }
+        var cum = [Double](repeating: 0, count: f.count)
+        for i in 1..<f.count { cum[i] = cum[i - 1] + (run.points[i] - run.points[i - 1]).length }
+        let total = cum[cum.count - 1]
+        guard total > 0 else { return { _ in f[0] } }
+        return { t in
+            let s = min(max(t, 0), 1) * total
+            var i = 0
+            while i < cum.count - 2 && cum[i + 1] < s { i += 1 }
+            let len = cum[i + 1] - cum[i]
+            let k = len > 0 ? (s - cum[i]) / len : 0
+            return f[i] + (f[i + 1] - f[i]) * k
+        }
     }
 
     /// Finish one open end of a stroked path per `strokeCap`. `outward` is the
