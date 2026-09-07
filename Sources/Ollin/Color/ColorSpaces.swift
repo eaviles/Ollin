@@ -201,6 +201,46 @@ public struct OKHSL: Equatable, Sendable {
     }
 }
 
+// MARK: - Derived colors
+
+// Each helper works in OKLCH, so a step in lightness is a step the eye sees as
+// one step, hue and chroma stay where they were, and the only thing the gamut
+// map may take away is chroma the screen cannot show at the new lightness.
+public extension Color {
+    /// A lighter version of the color, its perceived lightness raised by
+    /// `amount` (OKLab units, where black is 0 and white is 1), hue and chroma
+    /// held, alpha kept. A color that runs out of room clamps at white, and a
+    /// vivid color near the top loses chroma the screen cannot show there.
+    ///
+    /// ```swift
+    /// fill(ink.lighter())            // one step up, a tenth of the way to white
+    /// stroke(ink.darker(by: 0.25))   // a quarter of the way to black
+    /// ```
+    func lighter(by amount: Double = 0.1) -> Color {
+        let lch = OKLCH(self)
+        let l = min(max(lch.l + amount, 0), 1)
+        return Color(OKLCH(l: l, c: lch.c, h: lch.h), alpha: alpha)
+    }
+
+    /// A darker version of the color, its perceived lightness lowered by
+    /// `amount` (OKLab units), hue and chroma held, alpha kept. The mirror of
+    /// `lighter(by:)`, so `c.lighter(by: x).darker(by: x)` gives `c` back
+    /// whenever both steps stay in the gamut.
+    func darker(by amount: Double = 0.1) -> Color {
+        lighter(by: -amount)
+    }
+
+    /// The color's complement: the opposite hue at the same perceived
+    /// lightness and chroma, so the pair reads as the same weight on the page.
+    /// A gray has no opposite and comes back unchanged. The same color
+    /// `Palette.complementary(of:)` puts beside the base.
+    var complement: Color {
+        let lch = OKLCH(self)
+        guard lch.c > 0 else { return self }
+        return Color(OKLCH(l: lch.l, c: lch.c, h: lch.h + 0.5), alpha: alpha)
+    }
+}
+
 // MARK: - Color from the OKLab family
 
 public extension Color {

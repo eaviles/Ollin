@@ -197,4 +197,62 @@ struct ColorSpaceTests {
         let back = Color.mix(c, c, 0.5, in: .hsb)
         #expect(close(back, c, 1e-9))
     }
+
+    // MARK: Derived colors
+
+    @Test func lighterMovesLightnessAloneByTheAmount() {
+        let ink = Color(hex: 0x4060A0)
+        let up = ink.lighter(by: 0.1)
+        let a = OKLCH(ink)
+        let b = OKLCH(up)
+        #expect(close(b.l, a.l + 0.1, 1e-6))
+        #expect(close(b.c, a.c, 1e-6))
+        #expect(close(b.h, a.h, 1e-6))
+        #expect(inGamut(up))
+        // The default step is a tenth of the way to white.
+        #expect(close(ink.lighter(), up))
+    }
+
+    @Test func darkerUndoesLighterInsideTheGamut() {
+        let ink = Color(hex: 0x8A5030, alpha: 0.4)
+        #expect(close(ink.lighter(by: 0.15).darker(by: 0.15), ink, 1e-6))
+        #expect(close(OKLCH(ink.darker(by: 0.2)).l, OKLCH(ink).l - 0.2, 1e-6))
+        // Alpha rides along untouched.
+        #expect(ink.lighter().alpha == 0.4)
+        #expect(ink.darker().alpha == 0.4)
+        #expect(ink.complement.alpha == 0.4)
+    }
+
+    @Test func theEndsClampAndAVividColorFadesToWhite() {
+        #expect(close(Color.white.lighter(), .white, 1e-6))
+        #expect(close(Color.black.darker(), .black, 1e-6))
+        // Past the top nothing is left but white: the gamut map takes the
+        // chroma the screen cannot show at lightness 1.
+        #expect(close(Color.red.lighter(by: 1), .white, 1e-4))
+        #expect(close(Color.blue.darker(by: 1), .black, 1e-4))
+        // A gray stays a gray, the exact same on all three channels.
+        let g = Color.gray.lighter(by: 0.2)
+        #expect(close(g.red, g.green, 1e-9) && close(g.green, g.blue, 1e-9))
+        #expect(OKLab(g).l > OKLab(Color.gray).l)
+    }
+
+    @Test func complementIsTheOppositeHueAtTheSameWeight() {
+        let base = Color(OKLCH(l: 0.62, c: 0.1, h: 0.13))
+        let a = OKLCH(base)
+        let b = OKLCH(base.complement)
+        var turn = (b.h - a.h).truncatingRemainder(dividingBy: 1)
+        if turn < 0 { turn += 1 }
+        #expect(close(turn, 0.5, 1e-6))
+        #expect(close(b.l, a.l, 1e-6))
+        #expect(close(b.c, a.c, 1e-6))
+        // Twice around is home again, and a gray has no opposite.
+        #expect(close(base.complement.complement, base, 1e-6))
+        #expect(Color.gray.complement == .gray)
+        #expect(Color.white.complement == .white)
+    }
+
+    @Test func complementMatchesThePaletteHarmony() {
+        let base = Color(hex: 0xC03050)
+        #expect(close(Palette.complementary(of: base)[1], base.complement, 1e-9))
+    }
 }

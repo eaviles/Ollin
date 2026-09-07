@@ -76,7 +76,7 @@ fill(Color.mix(Color(hex: 0x2050C8), Color(hex: 0xFFC800), sin(time) * 0.5 + 0.5
 
 The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into the `0...1` that `t` wants, so the circle breathes between the two colors. That squeeze is worth remembering, and [Chapter 3](03-MotionAndTime.md) turns it into a proper tool with a name.
 
-The same perceptual model comes in two more shapes worth knowing about. **OKLCH** turns OKLab into dials for lightness, chroma, and hue, so nudging a hue leaves the lightness alone, and mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** guarantees that everything you ask for is actually displayable, which makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked. Here's the trick this chapter likes it for, which is hues that genuinely match in weight.
+The same perceptual model comes in two more shapes worth knowing about. **OKLCH** turns OKLab into dials for lightness, chroma, and hue, so nudging a hue leaves the lightness alone, and mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** guarantees that everything you ask for is actually displayable, which makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked. Three everyday moves come ready-made on top of OKLCH. `ink.lighter()` and `ink.darker(by: 0.25)` step a color's lightness while its hue stays put. `ink.complement` is the opposite hue at the same weight. So a shadow, a highlight, and an accent can all come from the one color you chose. Here's the trick this chapter likes it for, which is hues that genuinely match in weight.
 
 ```swift
 for i in 0..<12 {

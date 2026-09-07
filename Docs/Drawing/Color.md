@@ -92,6 +92,15 @@ fill(ink.withAlpha(0.3))                  // a translucent version of a held col
 let size = cell * image[x, y].luminance   // marks scaled by perceived brightness
 ```
 
+**Three derived colors** come from the same held color. `lighter(by:)` and `darker(by:)` move its perceived lightness by an amount in OKLab units, where black is 0 and white is 1. The default step is a tenth. Hue and chroma stay where they were. The only thing the screen may take away is chroma it cannot show at the new lightness. A vivid red pushed all the way up ends at white. `complement` is the opposite hue at the same lightness and chroma, the color `Palette.complementary(of:)` puts beside the base. A gray has no opposite and comes back unchanged. All three keep the alpha.
+
+```swift
+stroke(ink.darker(by: 0.25))              // a quarter of the way to black, same hue
+fill(ink.lighter())                       // one step up
+drawCircle(x, y, r)
+fill(ink.complement)                      // the opposite hue at the same weight
+```
+
 <a name="oklab"></a>
 
 ### OKLab, OKLCH, OKHSL
@@ -119,7 +128,7 @@ for i in 0..<12 {
 
 var lch = OKLCH(brand)
 lch.h += 0.5                 // the complementary hue, same lightness and chroma
-let complement = Color(lch)
+let complement = Color(lch)  // or, in one word, brand.complement
 ```
 
 <a name="mixing"></a>
