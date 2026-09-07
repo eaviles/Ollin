@@ -121,6 +121,47 @@ A few kinds take a `style:` when the default control is not the right fit:
 
 `ParamValue` is public, so you can conform your own type. The conformance provides the clamp, the `ParamStored` round-trip, and the `ParamControl` the type edits with. The control must be one of the existing kinds, because the inspector takes no custom rows. So a custom type appears as a slider, a menu, fields, and so on. The conformance is a mapping from your type onto the closest built-in control. `ParamOption` covers the common case, which is any `CaseIterable` enum, and `ParamChoices` covers the named-catalog case. Both take almost no work. Write a full `ParamValue` conformance only when a wrapped scalar or compound type needs to be a parameter.
 
+A full conformance names its constraints type, and the wrapper takes that payload under `constraints:`. An opacity held as a fraction maps onto the slider through the numeric constraints the framework already has, so its clamp is `Double`'s:
+
+```swift
+struct Opacity: ParamValue {
+    var fraction: Double
+    init(_ fraction: Double) { self.fraction = fraction }
+
+    typealias Constraints = ParamNumericConstraints<Double>
+
+    static func clamped(_ value: Opacity, by constraints: Constraints) -> Opacity {
+        Opacity(Double.clamped(value.fraction, by: constraints))
+    }
+    static func stored(_ value: Opacity) -> ParamStored { .number(value.fraction) }
+    static func restored(_ stored: ParamStored) -> Opacity? {
+        guard case .number(let fraction) = stored else { return nil }
+        return Opacity(fraction)
+    }
+    static func control(for param: Param<Opacity>) -> ParamControl {
+        .slider(.init(range: param.constraints.range, step: param.constraints.step,
+                      read: { param.wrappedValue.fraction },
+                      write: { param.wrappedValue = Opacity($0) }))
+    }
+}
+
+@Param(constraints: .init(range: 0...1)) var veil = Opacity(0.5)
+@Param("Fade", constraints: .init(range: 0...1, step: 0.25)) var fade = Opacity(1)
+```
+
+A type whose `Constraints` is `Void` needs no payload, so `@Param var caption = Caption("hello")` is the whole declaration. The `constraints:` form is the primitive. To read `@Param(0...1)` for your type too, put a short initializer over it in an extension of `Param`, the way the built-in kinds do:
+
+```swift
+extension Param where Value == Opacity {
+    convenience init(wrappedValue: Opacity, _ range: ClosedRange<Double>,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue: wrappedValue, constraints: .init(range: range), icon: icon, group: group)
+    }
+}
+```
+
+From there your type is one more kind. The inspector shows the control the conformance chose, the value persists across reloads through its `ParamStored` payload, and `--param` reads text against that payload. Smoothing stays with `Double`. The save button writes the payload's literal into the file. It keeps a wrapper around that literal, so `Opacity(0.5)` comes back as `Opacity(0.75)`. A default that wraps more than one plain value has no single place for the tuned one. That parameter is refused by name, the way a computed default is.
+
 <a name="groups"></a>
 
 ### Groups and icons

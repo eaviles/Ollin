@@ -43,6 +43,10 @@ package enum ParamWrite {
         /// a menu choice can reach this (a curve built from a closure carries a
         /// serial of its own rather than a member name).
         case unnamed(String)
+        /// The default is a call around more than one plain value, so the tuned
+        /// value has no one place to go inside it. `text` is what stands there
+        /// (`Tempo(120, beatsPerBar: 3)`).
+        case wrapped(String)
     }
 
     /// One parameter that could not be written, and why.
@@ -124,6 +128,8 @@ package enum ParamWrite {
             return "\(refusal.name) is set to \(text), so there is no value to replace."
         case .unnamed(let text):
             return "\(refusal.name) is set to \(text), which has no name to write down."
+        case .wrapped(let text):
+            return "\(refusal.name) is set to \(text), and the value has no one place to go inside it."
         }
     }
 
@@ -339,6 +345,22 @@ package enum ParamWrite {
     /// The text to stand in for `existing`, or why the value cannot be written.
     private static func replacement(for stored: ParamStored,
                                     existing: String) -> Swift.Result<String, Reason> {
+        // A default of a type of your own is a call around one literal,
+        // `Opacity(0.5)` or `Caption("hello")`, and what its payload writes is the
+        // bare literal. Put over the whole call that leaves `= 0.75`, which
+        // compiles only for a type that takes a literal, so the wrapper stays and
+        // the literal inside it moves. A call around anything else has no one
+        // place for the value, and the parameter says so instead of dropping
+        // what the author wrote beside it.
+        if let wrapper = wrapper(around: existing) {
+            switch stored {
+            case .number, .boolean, .text:
+                guard let literal = wrapper.literal else { return .failure(.wrapped(existing)) }
+                return replacement(for: stored, existing: literal).map { wrapper.open + $0 + wrapper.close }
+            default:
+                break
+            }
+        }
         switch stored {
         case .number(let value):
             // A default written whole stays whole while the value is whole, so
@@ -393,6 +415,53 @@ package enum ParamWrite {
     private static func isIdentifier(_ name: String) -> Bool {
         guard let first = name.first, first.isLetter || first == "_" else { return false }
         return name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
+    }
+
+    /// A default read as a call around its argument: `open` is `Opacity(`,
+    /// `close` is `)`, and `literal` is what stands between them when that is
+    /// one plain literal (a number, `true`/`false`, or one quoted string).
+    private struct Wrapper {
+        let open: String
+        let close: String
+        let literal: String?
+    }
+
+    /// `existing` as a call to a type-like name and nothing else, or `nil` when
+    /// it is anything else. Spaces inside the brackets stay where they were.
+    private static func wrapper(around existing: String) -> Wrapper? {
+        guard existing.hasSuffix(")"), let paren = existing.firstIndex(of: "(") else { return nil }
+        let name = existing[..<paren]
+        guard let first = name.first, first.isUppercase,
+              name.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." })
+        else { return nil }
+        let inside = String(existing[existing.index(after: paren)..<existing.index(before: existing.endIndex)])
+        let core = inside.trimmingCharacters(in: .whitespaces)
+        let open = String(existing[...paren]) + inside.prefix(while: { $0 == " " })
+        let close = String(inside.reversed().prefix(while: { $0 == " " })) + ")"
+        return Wrapper(open: open, close: close, literal: isOneLiteral(core) ? core : nil)
+    }
+
+    /// Whether `text` is one plain literal: a number with at most one point, the
+    /// word `true` or `false`, or one quoted string and nothing after it.
+    private static func isOneLiteral(_ text: String) -> Bool {
+        if text == "true" || text == "false" { return true }
+        if text.hasPrefix("\"") {
+            let bytes = Array(text.utf8)
+            return bytes.count >= 2 && SourceEdit.endOfString(bytes, from: 0) == bytes.count
+        }
+        var digits = text[...]
+        if digits.first == "-" { digits = digits.dropFirst() }
+        guard let first = digits.first, first.isNumber, digits.last != "." else { return false }
+        var seenPoint = false
+        for character in digits {
+            if character == "." {
+                guard !seenPoint else { return false }
+                seenPoint = true
+            } else if !(character.isNumber || character == "_") {
+                return false
+            }
+        }
+        return true
     }
 
     /// A `Double` written so it stays a `Double`: always a decimal point, and

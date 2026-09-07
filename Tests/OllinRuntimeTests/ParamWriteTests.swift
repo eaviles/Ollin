@@ -177,6 +177,51 @@ struct ParamWriteTests {
                                     + "(position: 0.5, color: Color(red: 1, green: 1, blue: 1))], in: .oklch)"))
     }
 
+    // MARK: A type of your own
+
+    /// A type of your own wraps one literal, `Opacity(0.5)`, and what its payload
+    /// writes is the bare literal. Written over the whole call it would leave
+    /// `= 0.75`, which compiles only for a type that takes a literal, so the
+    /// wrapper stays and the literal inside it moves.
+    @Test func aWrappedLiteralKeepsItsWrapper() {
+        let number = written("@Param(constraints: .init(range: 0...1)) var veil = Opacity(0.5)",
+                             ("veil", .number(0.75)))
+        #expect(number.text.hasSuffix("= Opacity(0.75)"))
+        #expect(number.written == ["veil"])
+        let whole = written("@Param(40...240) var tempo = Tempo(120)", ("tempo", .number(96)))
+        #expect(whole.text.hasSuffix("= Tempo(96)"))                    // whole stays whole
+        let pointed = written("@Param(0...1) var glow = Opacity(1.0)", ("glow", .number(1)))
+        #expect(pointed.text.hasSuffix("= Opacity(1.0)"))              // a point stays a point
+        let text = written(#"@Param var caption = Caption("hello")"#, ("caption", .text("later")))
+        #expect(text.text.hasSuffix(#"= Caption("later")"#))
+        let flag = written("@Param var lit = Flag(true)", ("lit", .boolean(false)))
+        #expect(flag.text.hasSuffix("= Flag(false)"))
+        let spaced = written("@Param(0...1) var veil = Opacity( 0.5 )", ("veil", .number(0.25)))
+        #expect(spaced.text.hasSuffix("= Opacity( 0.25 )"))
+    }
+
+    /// A call around more than one plain value has no one place for the tuned
+    /// one, so the parameter is refused by name rather than rewritten into a
+    /// line that drops what the author wrote beside it.
+    @Test func aWrapperAroundMoreThanOneValueIsRefused() {
+        let result = written("@Param(40...240) var tempo = Tempo(120, beatsPerBar: 3)",
+                             ("tempo", .number(96)))
+        #expect(result.written.isEmpty)
+        #expect(result.refused == [.init(name: "tempo", reason: .wrapped("Tempo(120, beatsPerBar: 3)"))])
+        #expect(ParamWrite.sentence(for: result.refused[0], in: "Sketch.swift")
+                    == "tempo is set to Tempo(120, beatsPerBar: 3), and the value has no one place to go inside it.")
+    }
+
+    /// The kinds that write a whole call of their own are not wrapped literals:
+    /// a color or a vector default is replaced as it always was.
+    @Test func aKindThatWritesItsOwnCallIsUntouchedByTheRule() {
+        #expect(written("@Param var tint = Color(red: 1, green: 0, blue: 0)",
+                        ("tint", .color(red: 0, green: 0, blue: 1, alpha: 1)))
+                    .text.hasSuffix("= Color(red: 0, green: 0, blue: 1)"))
+        #expect(written("@Param(x: 0...9, y: 0...9) var at = Vector2(1, 2)", ("at", .vector(x: 3, y: 4)))
+                    .text.hasSuffix("= Vector2(3, 4)"))
+    }
+
     // MARK: What it refuses, and says
 
     /// The destination is a value written down. A default the sketch works out

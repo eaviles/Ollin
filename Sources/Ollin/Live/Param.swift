@@ -384,8 +384,11 @@ public struct ParamNumericConstraints<Number: Comparable & Sendable>: Sendable {
 /// A value a `@Param` can hold. Each kind carries its own constraint payload
 /// (a numeric range, or nothing), knows how to clamp to it, round-trips through
 /// `ParamStored` for host persistence, and describes the inspector control that
-/// edits it. The built-in kinds are `Double`, `Int`, `Bool`, `Color`, and any
-/// enum conforming to `ParamOption`.
+/// edits it. The built-in kinds cover the numbers, `Bool`, `Color`, the geometry
+/// values, text, palettes and ramps, and any enum conforming to `ParamOption`.
+/// A type of your own conforms the same way and is wrapped through
+/// `Param.init(wrappedValue:constraints:icon:group:)`, or the bare form when
+/// its `Constraints` is `Void`.
 public protocol ParamValue: Equatable, Sendable {
     associatedtype Constraints: Sendable
     static func clamped(_ value: Self, by constraints: Constraints) -> Self
@@ -1436,6 +1439,44 @@ public extension Param where Value == String {
     }
 
     convenience init(wrappedValue: String, _ label: String, icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+}
+
+// MARK: A kind of your own
+
+public extension Param {
+    /// A parameter of a type of your own, wrapped with the constraints its
+    /// `ParamValue` conformance names. This is the primitive every kind stands
+    /// on: the built-in kinds put a shorter spelling over it (`@Param(0...1)`
+    /// for a `Double`), and a conformance of yours can do the same in an
+    /// extension of `Param` where `Value` is your type.
+    ///
+    /// ```swift
+    /// @Param(constraints: .init(range: 0...1)) var veil = Opacity(0.5)
+    /// @Param("Fade", constraints: .init(range: 0...1, step: 0.25)) var fade = Opacity(1)
+    /// ```
+    ///
+    /// Smoothing stays with `Double`; a type of your own snaps.
+    convenience init(wrappedValue: Value, constraints: Value.Constraints,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: nil, constraints: constraints, smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Value, _ label: String, constraints: Value.Constraints,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: label, constraints: constraints, smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value.Constraints == Void {
+    /// A parameter of a type of your own that needs no constraints, so the
+    /// declaration is the bare `@Param var caption = Caption("hello")`.
+    convenience init(wrappedValue: Value, icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: nil, constraints: (), smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Value, _ label: String, icon: String? = nil, group: ParamGroup? = nil) {
         self.init(wrappedValue, label: label, constraints: (), smoothing: nil, icon: icon, group: group)
     }
 }

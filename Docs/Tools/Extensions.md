@@ -151,7 +151,7 @@ Extensions belong to one sketch instance. Every live reload starts a fresh sketc
 
 ### A type the inspector can drive
 
-`@Param` turns a property into a parameter in the live inspector. Conform your own type to `ParamValue`, and a property of that type gets a parameter too. Your type maps onto a control that already exists.
+`@Param` turns a property into a parameter in the live inspector. Conform your own type to `ParamValue`, and a property of that type gets a parameter too. Your type maps onto a control that already exists, and the wrapper takes the constraints your conformance names under `constraints:`. The [parameters page](../Helpers/Parameters.md#your-own-types) has a worked conformance.
 
 For an enum, `ParamOption` is the short way. Conform to it and to `CaseIterable`, give each case a label, and the inspector shows a menu.
 
