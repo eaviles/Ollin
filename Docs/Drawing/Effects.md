@@ -187,6 +187,9 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.oilPaint(radius:)`** the Kuwahara region filter. It flattens detail into oil-paint patches while keeping edges crisp. `radius` is the brush size in pixels, so bigger is broader and costs more.
 - **`.crosshatch(scale:foreground:background:)`** pencil shading, drawn as layered diagonal strokes that thicken as the image darkens.
 - **`.toon(levels:edges:)`** cel shading. It flattens the layer into `levels` brightness bands and inks the Sobel edges over them.
+- **`.xdog(radius:sharpening:threshold:softness:flow:foreground:background:)`** the picture as pen and ink. A line goes where the picture has an edge, solid ink where it is dark, and the rest is left as paper, in `foreground` over `background`. Two blurs of the brightness are subtracted, the smaller one `radius` pixels wide and the other 1.6 times that. The difference is pushed over the tone by `sharpening`, and the result is cut at `threshold`: paper above it, ink below, through a ramp `softness` wide. A softness of 0 is a hard two-tone print, and the default of 0.2 keeps a gray wash under the cut, which is the look the technique is known for.
+
+  The blur is taken across each edge, and its response is gathered `flow` pixels along it, following the edge's own direction. That is what makes the lines run continuous rather than breaking into speckle. `flow: 0` leaves that out, which is worth an A/B on a noisy picture. The picture is read as its perceptual brightness over the paper. So `threshold` is on the 0…1 scale a display shows, and an edge in a shadow counts as much as one in the light. Empty space on a transparent layer reads as paper rather than ink. A transparent `background` counts as white for that reading and stays transparent in the result. It runs as four passes, which the [web page](../Output/Web.md) export does not carry. See `Examples/Effects/InkDrawing`.
 - **`.median()`** a 3×3 median, knocking out speckle and stray pixels while keeping edges sharp.
 - **`.contour(levels:intensity:)`** dark iso-brightness lines (one every `1/levels` of the range), turning tone into a topographic map.
 - **`.cmykHalftone(scale:)`** separate into cyan/magenta/yellow/black and screen each as rotated dots at the classic print angles, for the color-process look.
@@ -203,6 +206,7 @@ layer.filtered(.vibrance(amount: 0.6))
 layer.filtered(.halftone(scale: 48))
 layer.filtered(.oilPaint(radius: 5))
 layer.filtered(.toon(levels: 5))
+layer.filtered(.xdog(flow: 6, foreground: .black, background: Color(hex: 0xF3EBDD)))
 layer.filtered(.lineScreen(scale: 60, angle: .pi / 6))
 layer.filtered(.iridescence(amount: 0.85, shift: time * 0.2))
 layer.filtered(.glitter(phase: time * 2)).filtered(.bloom(threshold: 0.8))

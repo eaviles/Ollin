@@ -1146,6 +1146,153 @@ fragment float4 ollin_fx_toon(PresentOut in [[stage_in]],
     return ollin_premul(clamp(c * edge, 0.0, 1.0), s.a);
 }
 
+// MARK: - XDoG (the flow-based extended difference of Gaussians, written from the technique)
+//
+// Three fragments and a blur make the filter. The first writes the structure tensor of
+// the brightness; the renderer blurs it, so that the direction read at a texel is the
+// direction of its neighborhood; the second takes a difference of Gaussians as a
+// one-dimensional filter across that direction; the third gathers the response along it
+// and cuts the result into ink and paper.
+
+// The brightness one tap reads: the layer over the paper (its premultiplied color plus
+// what the paper shows through), encoded the way a display shows it. The thresholds
+// are quoted on that scale, and an edge in a shadow should count as much as one in the
+// light, which a linear reading does not give.
+static inline float ollin_xdog_luma(texture2d<float> src, sampler samp, float2 uv, float paper) {
+    float4 s = src.sample(samp, uv, level(0.0));
+    float l = ollin_luma(s.rgb) + (1.0 - s.a) * paper;
+    return linearToSrgb(float3(l)).x;
+}
+
+// The edge tangent at one texel of the smoothed tensor (E, F, G in rgb): the
+// perpendicular of the major eigenvector, which points across the edge. That vector
+// has two spellings, and each vanishes for one axis-aligned edge (the first when the
+// edge runs down, the second when it runs across), so the one that cannot is picked
+// by which diagonal term is larger. A flat texel has no direction of its own and
+// takes a fixed one, so a walk through it still moves.
+static inline float2 ollin_xdog_tangent(float3 g) {
+    float E = g.x, F = g.y, G = g.z;
+    float root = sqrt(max((E - G) * (E - G) + 4.0 * F * F, 0.0));
+    float lambda1 = 0.5 * (E + G + root);
+    float2 v = E >= G ? float2(lambda1 - G, F) : float2(F, lambda1 - E);
+    float len = length(v);
+    return len > 1e-6 ? float2(-v.y, v.x) / len : float2(0.0, 1.0);
+}
+
+// xdog, pass 1: the structure tensor of the brightness, the Sobel gradient's outer
+// product (E = gx², F = gx gy, G = gy²), with the gradient scaled to one texel so the
+// numbers stay inside a half float (params[0].xy = texel size, .z = paper brightness).
+fragment float4 ollin_fx_xdog_tensor(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float paper = params[0].z;
+    float l00 = ollin_xdog_luma(src, samp, in.uv + t * float2(-1, -1), paper);
+    float l10 = ollin_xdog_luma(src, samp, in.uv + t * float2( 0, -1), paper);
+    float l20 = ollin_xdog_luma(src, samp, in.uv + t * float2( 1, -1), paper);
+    float l01 = ollin_xdog_luma(src, samp, in.uv + t * float2(-1,  0), paper);
+    float l21 = ollin_xdog_luma(src, samp, in.uv + t * float2( 1,  0), paper);
+    float l02 = ollin_xdog_luma(src, samp, in.uv + t * float2(-1,  1), paper);
+    float l12 = ollin_xdog_luma(src, samp, in.uv + t * float2( 0,  1), paper);
+    float l22 = ollin_xdog_luma(src, samp, in.uv + t * float2( 1,  1), paper);
+    float gx = ((l20 + 2.0 * l21 + l22) - (l00 + 2.0 * l01 + l02)) * 0.125;
+    float gy = ((l02 + 2.0 * l12 + l22) - (l00 + 2.0 * l10 + l20)) * 0.125;
+    return float4(gx * gx, gx * gy, gy * gy, 1.0);
+}
+
+// xdog, pass 2: the difference of Gaussians as a one-dimensional filter across the
+// edge, along the gradient direction the smoothed tensor gives (params[0].xy = texel
+// size, .z = the smaller sigma, .w = the sharpening p; params[1].x = paper brightness).
+// Each step advances one texel along the direction's longer axis, the two Gaussians
+// are normalized over the taps they reached, and the result is the brightness pushed
+// by p times their difference: (1 + p) G_σ - p G_kσ with k = 1.6, the ratio at which a
+// difference of Gaussians best stands in for the Laplacian of one. The tangent rides
+// along in gb, so the next pass reads one texture.
+fragment float4 ollin_fx_xdog_across(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     texture2d<float> tensor [[texture(1)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float sigmaE = params[0].z, p = params[0].w;
+    float paper = params[1].x;
+    float sigmaR = 1.6 * sigmaE;
+    float2 tangent = ollin_xdog_tangent(tensor.sample(samp, in.uv, level(0.0)).xyz);
+    float2 n = float2(tangent.y, -tangent.x);
+    float2 nabs = abs(n);
+    float ds = 1.0 / max(max(nabs.x, nabs.y), 1e-4);
+    float twoE = 2.0 * sigmaE * sigmaE, twoR = 2.0 * sigmaR * sigmaR;
+    float halfWidth = 3.0 * sigmaR;
+    float2 sum = float2(ollin_xdog_luma(src, samp, in.uv, paper));
+    float2 norm = float2(1.0);
+    for (int i = 1; i <= 64; i += 1) {
+        float d = float(i) * ds;
+        if (d > halfWidth) { break; }
+        float2 w = float2(exp(-d * d / twoE), exp(-d * d / twoR));
+        float2 offset = n * d * texel;
+        float c = ollin_xdog_luma(src, samp, in.uv + offset, paper)
+                + ollin_xdog_luma(src, samp, in.uv - offset, paper);
+        sum += w * c;
+        norm += 2.0 * w;
+    }
+    sum /= norm;
+    float s = (1.0 + p) * sum.x - p * sum.y;
+    return float4(s, tangent, 1.0);
+}
+
+// The running integral of the cut, so a pixel can average it over its own footprint:
+// below the threshold the cut is 1 + tanh((x - threshold) / s), whose integral is
+// s ln(1 + e^(2 (x - threshold) / s)); at and above it the cut is 1. A softness of
+// zero is the plain step, whose integral is the distance past the threshold.
+static inline float ollin_xdog_cut_integral(float x, float threshold, float s) {
+    float y = x - threshold;
+    if (s <= 0.0) { return max(y, 0.0); }
+    return y < 0.0 ? s * log(1.0 + exp(2.0 * y / s)) : s * 0.6931471806 + y;
+}
+
+// xdog, pass 3: the response gathered along the edge, walked both ways from the pixel
+// in one-texel steps that follow the tangent stored beside it (the walk keeps its
+// heading where the stored sign flips, since a tangent has none of its own), each
+// step weighted by a Gaussian of params[0].z texels. Then the cut: paper (1) at and
+// above the threshold params[0].w, and 1 + tanh((u - threshold) / softness) below it,
+// a hard step when params[1].x is zero. The cut is averaged over the pixel's own
+// footprint (the response's screen-space derivative), which is what keeps a hard
+// step anti-aliased and leaves a ramp wider than a pixel exactly as written. Painted
+// foreground (params[2]) over background (params[3]).
+fragment float4 ollin_fx_xdog_along(PresentOut in [[stage_in]],
+                                    texture2d<float> response [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float sigmaM = params[0].z, threshold = params[0].w;
+    float softness = params[1].x;
+    float sum = response.sample(samp, in.uv, level(0.0)).x;
+    float norm = 1.0;
+    int steps = int(ceil(3.0 * sigmaM));
+    float twoM = 2.0 * sigmaM * sigmaM;
+    for (int way = -1; way <= 1; way += 2) {
+        float2 p = in.uv;
+        float2 heading = float2(0.0);
+        for (int i = 1; i <= steps; i += 1) {
+            float2 d = response.sample(samp, p, level(0.0)).yz;
+            if (dot(d, heading) < 0.0) { d = -d; }
+            p += d * texel * float(way);
+            if (any(p < 0.0) || any(p > 1.0)) { break; }
+            float w = exp(-float(i * i) / twoM);
+            sum += w * response.sample(samp, p, level(0.0)).x;
+            norm += w;
+            heading = d;
+        }
+    }
+    float u = sum / norm;
+    float footprint = max(fwidth(u), 1e-5);
+    float v = (ollin_xdog_cut_integral(u + 0.5 * footprint, threshold, softness)
+             - ollin_xdog_cut_integral(u - 0.5 * footprint, threshold, softness)) / footprint;
+    float4 c = mix(params[2], params[3], clamp(v, 0.0, 1.0));
+    return ollin_premul(c.rgb, c.a);
+}
+
 // 3×3 median via a min/max sorting network (written from the technique), per-channel,
 // so speckle drops while edges hold (params: texel.xy).
 #define OLLIN_S2(a, b) { float3 _t = a; a = min(a, b); b = max(_t, b); }

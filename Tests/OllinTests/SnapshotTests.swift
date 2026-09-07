@@ -174,6 +174,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-antialias",
                  note: "The post-process anti-aliasing pass over a shader-written layer, split down the middle: the raw staircase left of the divider, the same layer filtered right of it. Pins the fragment's early return on a flat pixel, both arms of the runs-across / runs-down test (the wheel carries edges at every angle) and the tie-break under it, the pair tap the edge walk measures against, and the dispatch.",
                  make: { EffectsAntialias() }),
+    SnapshotCase("effects-xdog",
+                 note: "The flow-based difference of Gaussians over a fixed still life: the default ink on paper, the same with no flow, the layer itself, and pale ink on dark paper under a hard cut and a long flow. Pins the four passes (the structure tensor, its blur, the difference across the flow, the gather along it), the footprint-averaged cut at softness 0, and the paper the picture is read over.",
+                 make: { EffectsXDoG() }),
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
@@ -6786,6 +6789,58 @@ private final class EffectsFilters: Sketch {
         for (i, filter) in filters.enumerated() {
             let x = Double(i % 3) * 85, y = Double(i / 3) * 128
             drawImage(scene.filtered(filter).image, in: Rectangle(x: x, y: y, width: 85, height: 128))
+        }
+    }
+}
+
+/// The flow-based difference of Gaussians over one fixed still life, four ways: the
+/// default black ink on white paper, the same with the flow left out, the layer
+/// itself, and a bolder line in pale ink on dark paper under a hard cut and a long
+/// flow. Deterministic (no time/random), so it pins the four passes (the tensor, its
+/// blur, the difference across the flow, the gather along it), the footprint-averaged
+/// cut, and the paper the picture is read over.
+private final class EffectsXDoG: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let scene = makeRenderTarget(scale: 0.5)
+        withTarget(scene) { paint() }
+        // A half-scale layer's image is canvas-sized, so each tile names its quarter.
+        func tile(_ col: Int, _ row: Int) -> Rectangle {
+            Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
+        }
+        drawImage(scene.filtered(.xdog()).image, in: tile(0, 0))
+        drawImage(scene.filtered(.xdog(flow: 0)).image, in: tile(1, 0))
+        drawImage(scene.image, in: tile(0, 1))
+        drawImage(scene.filtered(.xdog(radius: 3, threshold: 0.45, softness: 0, flow: 8,
+                                       foreground: Color(hex: 0xF3EBDD),
+                                       background: Color(hex: 0x1B1040))).image, in: tile(1, 1))
+    }
+
+    private func paint() {
+        noStroke()
+        let horizon = height * 0.62
+        fill(.linear(from: Vector2(0, 0), to: Vector2(0, horizon),
+                     Ramp([Color(hex: 0xD8D0C2), Color(hex: 0x8F8677)])))
+        drawRect(0, 0, width, horizon)
+        fill(.linear(from: Vector2(0, horizon), to: Vector2(0, height),
+                     Ramp([Color(hex: 0x7A5A3C), Color(hex: 0x2A1D14)])))
+        drawRect(0, horizon, width, height - horizon)
+        fill(.linear(from: Vector2(width * 0.1, 0), to: Vector2(width * 0.23, 0),
+                     Ramp([Color(hex: 0xDDEBF0), Color(hex: 0x6B8E9F), Color(hex: 0x2A2430)])))
+        drawRect(width * 0.1, height * 0.28, width * 0.13, height * 0.4)
+        let lamp = Vector2(width * 0.2, height * 0.1)
+        let balls: [(Vector2, Double, Color)] = [
+            (Vector2(width * 0.4, height * 0.58), height * 0.2, Color(hex: 0xC94B3F)),
+            (Vector2(width * 0.6, height * 0.66), height * 0.14, Color(hex: 0x3F86C9)),
+            (Vector2(width * 0.79, height * 0.56), height * 0.24, Color(hex: 0xE0B34A)),
+        ]
+        for (center, r, tint) in balls {
+            let hot = center + (lamp - center).normalized * (r * 0.5)
+            fill(.radial(center: hot, radius: r * 1.45,
+                         Ramp([Color(hex: 0xFFF6E8), tint, Color(hex: 0x14161E)])))
+            drawCircle(center: center, radius: r)
         }
     }
 }

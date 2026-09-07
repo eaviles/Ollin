@@ -262,6 +262,14 @@ public struct Filter: Sendable {
         case crosshatch(scale: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
         /// Cel shading: quantize luminance into `levels` bands and ink `edges` (Sobel) over them.
         case toon(levels: Double, edges: Double)
+        /// The flow-based extended difference of Gaussians: the picture as ink lines
+        /// and fills over paper. `radius` is the line scale (the smaller Gaussian's
+        /// sigma, px), `sharpening` how far the edge term is pushed over the tone,
+        /// `threshold` the perceptual brightness the cut sits at, `softness` the width
+        /// of the ramp under it (0 = a hard step), `flow` how far along an edge the
+        /// response is gathered (px), painted `foreground` over `background`.
+        case xdog(radius: Double, sharpening: Double, threshold: Double, softness: Double,
+                  flow: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
         /// 3×3 median: replace each pixel with the per-channel median of its neighborhood
         /// (removes speckle while keeping edges).
         case median
@@ -792,6 +800,33 @@ public struct Filter: Sendable {
 
     /// Median: replace each pixel with the median of its 3×3 neighborhood, knocking out
     /// speckle and stray pixels while leaving edges sharp.
+    /// XDoG: the picture as a pen-and-ink drawing. A line goes where the picture has
+    /// an edge, solid ink where it is dark, and the rest is left as paper, in
+    /// `foreground` over `background`. Underneath, two blurs of the brightness are
+    /// subtracted (the smaller one `radius` pixels wide, the other 1.6 times that),
+    /// the difference is pushed over the tone by `sharpening`, and the result is cut
+    /// at `threshold`: paper above it, ink below, through a ramp `softness` wide (0 is
+    /// a hard step). The blur is taken across each edge and its response gathered
+    /// `flow` pixels along it, following the edge's own direction, which is what
+    /// makes the lines run continuous rather than break into speckle; `flow: 0`
+    /// leaves that out.
+    ///
+    /// The picture is read as its perceptual brightness over the paper, so an edge in
+    /// a shadow counts as much as one in the light, `threshold` is quoted on the
+    /// 0…1 scale a display shows, and empty space on a transparent layer reads as
+    /// paper rather than as ink (a transparent `background` counts as white paper for
+    /// that reading and stays transparent in the result). Bigger `radius` draws
+    /// bolder lines at a cost that grows with it; it is capped at 12.
+    public static func xdog(radius: Double = 2, sharpening: Double = 20,
+                            threshold: Double = 0.3, softness: Double = 0.2,
+                            flow: Double = 3,
+                            foreground: Color = .black, background: Color = .white) -> Filter {
+        Filter(kind: .xdog(radius: min(max(radius, 0.5), 12), sharpening: max(0, sharpening),
+                           threshold: threshold, softness: max(0, softness),
+                           flow: min(max(flow, 0), 16),
+                           foreground: foreground.linearRGBA, background: background.linearRGBA))
+    }
+
     public static func median() -> Filter { Filter(kind: .median) }
 
     /// Contour: draw dark iso-brightness lines (a contour every `1/levels` of the range)

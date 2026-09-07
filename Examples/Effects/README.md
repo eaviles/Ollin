@@ -10,6 +10,7 @@ These examples show layered effects. You draw into off-screen layers, filter the
 |---|---|
 | [Layers](Layers/Sketch.swift) | layered effects written both ways: the imperative `makeRenderTarget` + `filtered` + `drawImage` path and the `compose { }` DSL produce the same frame, and a parameter switches between them |
 | [FilterCatalog](FilterCatalog/Sketch.swift) | the whole `Filter` catalog on one contact sheet: a segmented parameter switches between the blur, color & tone, stylize & optical, retro, distortion, and design families |
+| [InkDrawing](InkDrawing/Sketch.swift) | a still life drawn as pen and ink: the flow-based difference of Gaussians, with the line scale, the cut and its softness, and the flow along each edge on parameters (`.xdog`) |
 | [Antialias](Antialias/Sketch.swift) | the stair-steps in a shader-written layer, smoothed from the image alone and shown split-screen beside the raw layer (`.antialias`) |
 | [Relight](Relight/Sketch.swift) | a layer read as a height map and lit as an embossed physical material: matte, metal, glass, sand, and liquid (`.relight`) |
 | [Glitter](Glitter/Sketch.swift) | iridescent and glittering shapes: the thin-film `.iridescence` sheen and the sparkle-fleck `.glitter` filter, applied per shape with `compose { }` |

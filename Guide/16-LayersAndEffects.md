@@ -68,6 +68,25 @@ The one to meet properly is **bloom**, because it's the chapter's workhorse. `.b
 
 A few notes for the road. Filters are values you pass around, so a `[Filter]` array or a `@Param`-driven choice works the way you'd hope. `postProcess(.bloom())` applies a filter to the whole finished frame with no layer needed. That is the quick way to glow everything.
 
+### A line where there is an edge: xdog
+
+One filter in the stylize family deserves a closer look, because it turns a picture into a drawing rather than adjusting it. `.xdog()` draws the layer as pen and ink. A line goes wherever the picture has an edge, solid ink goes where the picture is dark, and everything else is left as paper.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/InkLines-dark.jpg">
+  <img src="Images/16-LayersAndEffects/InkLines.jpg" alt="Two panels: a small still life of a jug and three shaded balls on a table, and the same layer drawn as pen and ink, with a line along every edge and solid ink on the shadow side of each ball" width="680">
+</picture>
+
+```swift
+drawImage(scene.filtered(.xdog()).image, 0, 0)
+```
+
+Underneath is a difference of two blurs. Blur the brightness a little, then blur it a little more. The two agree everywhere except at an edge, where the wider blur reaches across and the narrower one does not. Subtracting them leaves the edges. The filter pushes that difference hard over the picture's own tone, then cuts the result at a threshold: paper above it, ink below. The cut is what puts solid ink into the shadows. A dark region sits under the threshold on its own, with no edge needed.
+
+The part that makes the lines read as drawn rather than detected is the flow. Before the blur is taken, the filter works out which way each edge runs. It then takes the blur *across* that direction and gathers the response *along* it. A line then runs the length of its edge instead of breaking into the speckle a plain edge detector leaves on a noisy picture. `flow` is how far along the edge it gathers. Setting it to 0 turns that off, which is worth doing once to see what it buys.
+
+The dials: `radius` is the line scale in pixels, and `sharpening` how far the edges are pushed over the tone. `threshold` is where paper turns to ink, and `softness` the ramp under that cut. At 0 the cut is a hard two-tone print. The default of 0.2 keeps a gray wash below the threshold, which is the look the technique is known for. `foreground` and `background` are the ink and the paper. The filter reads the picture as the brightness a display would show. An edge in a shadow then counts as much as one in the light. Empty space on a transparent layer reads as paper rather than ink, so a shape drawn alone gets an outline and nothing else. [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) puts every dial on a parameter over a still life with a moving lamp.
+
 ## Filters that read the layer as something else
 
 Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those are worth meeting individually, because what you feed them matters more than the parameters.
@@ -794,7 +813,7 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (a still life as pen and ink), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---
 

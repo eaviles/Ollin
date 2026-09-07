@@ -115,6 +115,7 @@ let package = Package(
         example("Effects/Defocus"),
         example("Rendering/Accumulation"),
         example("Effects/FilterCatalog"),
+        example("Effects/InkDrawing"),
         example("Effects/Antialias"),
         example("Effects/Relight"),
         example("Effects/Glitter"),

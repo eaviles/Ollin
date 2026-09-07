@@ -620,6 +620,34 @@ extension MetalRenderer {
             return pass("ollin_fx_adaptive_threshold", [sat, input],
                         [f(max(1, (side / 2).rounded()), bias, invert ? 1 : 0, 0)])
 
+        case let .xdog(radius, sharpening, threshold, softness, flow, foreground, background):
+            // Four passes: the structure tensor of the brightness; that tensor blurred,
+            // so the direction at every texel is its neighborhood's; the difference of
+            // Gaussians taken across that direction; and the response gathered along
+            // it, then cut into ink and paper. The paper the picture is read over is
+            // the background's brightness, with a transparent background counting as
+            // white, so empty space never reads as ink.
+            guard let tensor = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let smoothed = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let response = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
+            let paperLuma = background.x * 0.2126 + background.y * 0.7152 + background.z * 0.0722
+            let paper = paperLuma * background.w + (1 - background.w)
+            encodeEffectFragment("ollin_fx_xdog_tensor", inputs: [input], output: tensor,
+                                 params: [SIMD4(texel.x, texel.y, paper, 0)], into: cb)
+            let blur = MPSImageGaussianBlur(device: device, sigma: 2)
+            blur.edgeMode = .clamp
+            blur.encode(commandBuffer: cb, sourceTexture: tensor, destinationTexture: smoothed)
+            encodeEffectFragment("ollin_fx_xdog_across", inputs: [input, smoothed], output: response,
+                                 params: [SIMD4(texel.x, texel.y, Float(radius), Float(sharpening)),
+                                          SIMD4(paper, 0, 0, 0)], into: cb)
+            encodeEffectFragment("ollin_fx_xdog_along", inputs: [response], output: output,
+                                 params: [SIMD4(texel.x, texel.y, Float(flow), Float(threshold)),
+                                          SIMD4(Float(softness), 0, 0, 0), foreground, background],
+                                 into: cb)
+            return output
+
         // Every single-pass filter was encoded from its `singlePass` description
         // above; the list stays exhaustive so a new kind must choose a side.
         case .colorGrade, .invert, .posterize, .threshold, .sepia, .colorVision, .duotone,
