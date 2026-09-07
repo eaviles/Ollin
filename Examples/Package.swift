@@ -93,6 +93,7 @@ let package = Package(
         example("Export/VectorExport"),
         example("Export/Hatching"),
         example("Export/Toolpath"),
+        example("Export/Embroidery"),
         example("Installation/Unattended"),
         example("Installation/Watched"),
         example("Installation/Hours"),

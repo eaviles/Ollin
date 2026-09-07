@@ -3554,7 +3554,8 @@ public extension OllinApp {
         let svgFlag = args.firstIndex(of: "--export-svg")
         let pdfFlag = args.firstIndex(of: "--export-pdf")
         let gcodeFlag = args.firstIndex(of: "--export-gcode")
-        if svgFlag != nil || pdfFlag != nil || gcodeFlag != nil {
+        let embroideryFlag = args.firstIndex(of: "--export-embroidery")
+        if svgFlag != nil || pdfFlag != nil || gcodeFlag != nil || embroideryFlag != nil {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
@@ -3592,9 +3593,22 @@ public extension OllinApp {
                                      frame: frame, hatching: hatching)
                 handled = true
             }
+            if let i = embroideryFlag, i + 1 < args.count {
+                // `--export-embroidery <path.dst>` writes the frame as the stitches an
+                // embroidery machine sews (`--embroidery-width MM`, `--embroidery-margin MM`,
+                // `--stitch-length MM`, `--fill-spacing MM`, with 0 sewing fills as outlines).
+                let width = value("--embroidery-width").flatMap(Double.init) ?? 100
+                let margin = value("--embroidery-margin").flatMap(Double.init) ?? 0
+                let stitch = value("--stitch-length").flatMap(Double.init) ?? 2.5
+                let spacing = value("--fill-spacing").flatMap(Double.init) ?? 0.4
+                let settings = Embroidery(width: width, margin: margin, stitchLength: stitch,
+                                          fillSpacing: spacing > 0 ? spacing : nil)
+                OllinApp.exportEmbroidery(make(), to: args[i + 1], settings: settings, frame: frame)
+                handled = true
+            }
             if !handled {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> | --export-gcode <path.gcode> [--frame N] [--gcode-machine plotter|laser|mill] [--gcode-width MM] [--gcode-margin MM] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
+                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> | --export-gcode <path.gcode> | --export-embroidery <path.dst> [--frame N] [--gcode-machine plotter|laser|mill] [--gcode-width MM] [--gcode-margin MM] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
             }
             return true
         }

@@ -15,6 +15,7 @@
 - [`Menu bar`](./MenuBar.md) - run a sketch as a small live strip among the menu bar's status items. It sits beside the clock for the whole working day
 - [`Fabrication`](./Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`G-code`](./GCode.md) - write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly. Ollin orders the paths to keep travel short
+- [`Embroidery`](./Embroidery.md) - write a frame as the stitches an embroidery machine sews: a `.dst` file, with strokes as running stitch, fills as rows, and each color as its own thread in draw order
 - [`Print separations`](./PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks
 - [`Print color`](./PrintColor.md) - soft-proof a canvas against a press profile and flag the colors that ink cannot reach. It also splits the canvas into process-color plates, with their total-ink figures
 - [`Spatial`](./Spatial.md) - write a 3D frame or a `Scene` as USDZ. You can open a piece in that format in Quick Look, send it in a message, and place it on a real table in AR

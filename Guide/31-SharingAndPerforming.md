@@ -185,6 +185,27 @@ The exporter plans the route before it writes a move. Open paths whose ends touc
 
 The planner is public. `GCode.toolpath(_:in:)` returns the route as plain contours, with the drawn and travel lengths measured in millimeters. The `Export/Toolpath` example draws its own route and walks a pen along it at machine speed. One habit applies to a program from any tool: give it a dry run first, pen out, laser disarmed, cutter above the stock. [G-code](../Docs/Output/GCode.md) has the three machine profiles and every parameter.
 
+## Thread instead of ink: embroidery
+
+An embroidery machine is a plotter that sews. It moves a hoop under a needle, and every move ends with the needle going down. Ollin writes a frame as those moves, in the `.dst` file nearly every machine reads.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/StitchPlan-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/StitchPlan.jpg" alt="Two panels: a green leaf with pale veins drawn as contours, and the same leaf as its stitches, a dot at every needle penetration along the outline and the veins, rows of stitches filling the leaf, and thin hops where the thread is carried between paths" width="680">
+</picture>
+
+```swift
+OllinApp.exportEmbroidery(sketch, to: "leaf.dst", settings: Embroidery(width: 100))
+```
+
+```sh
+swift run --package-path Examples Example-Export-Embroidery --export-embroidery leaf.dst
+```
+
+Three things change on the way from pixels to thread. A stroke becomes a running stitch: penetrations along the line, no farther apart than `stitchLength`, with every corner hit exactly. A fill becomes rows of running stitch across it, `fillSpacing` apart and connected end to end, so the thread stays down. And every color becomes a thread of its own, in the order you drew them. A `.dst` holds no colors, only stitches, jumps, and the stops between threads, so you load each thread as the machine asks for it. What you drew later is sewn later, and lies on top.
+
+The width is yours to give, as it is for G-code, because a hoop has real millimeters. Between two paths the thread is sewn across when the hop is within the pitch, and carried over in a jump when it is not. The planner reorders the paths within each thread to keep those jumps short. The plan is public, so a sketch can draw its own stitches before anything runs, which is what the figure does. [`Docs/Output/Embroidery.md`](../Docs/Output/Embroidery.md) has the parameters and the things to check before you sew.
+
 ## Drawing with light: a show laser
 
 A laser draws with one moving dot. Two mirrors steer the beam. A fixed clock decides how often they are told where to point, and at each of those points the beam is lit or dark. Nothing in a laser holds a picture. What you see is one dot going round a loop fast enough that your eye keeps the whole shape.
@@ -891,6 +912,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Recording](../Docs/Output/Recording.md): recording a live run in real time, what the sound modes hear, and how a take survives an evaluation.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
+- [Embroidery](../Docs/Output/Embroidery.md): a frame as the stitches a machine sews, with strokes as running stitch, fills as rows, and each color as its own thread.
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.

@@ -12,6 +12,7 @@ These examples get a sketch out of the window, four ways. They save the rendered
 | [VectorExport](VectorExport/Sketch.swift) | SVG export: the shape catalog serialized to vector paths (`--export-svg`) |
 | [Hatching](Hatching/Sketch.swift) | filled shapes shaded as pen line work for a plotter (`--export-svg --hatch`) |
 | [Toolpath](Toolpath/Sketch.swift) | the machine's route before anything moves: `GCode.toolpath(_:in:)` plans the line work, and the sketch draws that plan, with the paths in plot order, the pen-up travels between them, and a pen that moves along the route at machine speed |
+| [Embroidery](Embroidery/Sketch.swift) | the stitches before the machine sews them: a leaf composed as contours, planned with `Embroidery.stitches(_:in:)`, and drawn as its plan, with a dot at every penetration, the thread between them, the jumps, and a needle walking the plan at machine speed (`--export-embroidery`) |
 | [Record](Record/Sketch.swift) | a run recorded as it plays: **R** starts and stops a real-time take of picture and sound together, and the take is stamped with the wall clock, so a slow frame lasts longer instead of stretching time |
 
 Run one with `swift run Example-Export-<Name>`, for example `swift run Example-Export-VectorExport`.
