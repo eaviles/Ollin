@@ -18,7 +18,7 @@ final class MusicBox: Sketch {
     let air = Synth(.breath, polyphony: 4)
 
     let steps = 16
-    let tempo = 96.0
+    let tempo: Tempo = 96
     var counter = StepCounter(perBeat: 4)
     var motif = MarkovChain<Int>(seed: 4)
 
@@ -60,7 +60,7 @@ final class MusicBox: Sketch {
         let mid = Rhythm(5, in: steps)
         let high = Rhythm(2, in: steps)
 
-        let beats = time * tempo / 60
+        let beats = tempo.beats(at: time)
         for step in counter.steps(upTo: beats) {
             let at = Double(step) / 4
             if low[step] {
@@ -85,7 +85,7 @@ final class MusicBox: Sketch {
 
     func play(_ synth: Synth, _ pitch: Pitch, at beat: Double, beats: Double,
               voice: Int, velocity: Double) {
-        synth.play(pitch, velocity: velocity, for: beats * 60 / tempo)
+        synth.play(pitch, velocity: velocity, for: tempo.seconds(beats: beats))
         score.append(Played(beat: beat, pitch: pitch.midi, beats: beats,
                             voice: voice, velocity: velocity))
     }

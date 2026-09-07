@@ -27,7 +27,7 @@ import OllinAudio
 @main
 final class OwnSampler: Sketch {
 
-    @Param(40 ... 120, icon: "metronome", group: "Playing") var tempo = 60.0
+    @Param(40 ... 120, icon: "metronome", group: "Playing") var tempo: Tempo = 60
     @Param(0 ... 1, icon: "speaker.wave.2", group: "Playing") var velocityFeel = 0.5
 
     /// The loop region the generator wrote into Hum.sfz, for the drawing.
@@ -100,12 +100,12 @@ final class OwnSampler: Sketch {
 
         // A slow line with long notes, because the loop is only audible on a
         // note that outlasts its half-second recording.
-        for step in counter.steps(upTo: time * tempo / 60) {
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
             let shape = [0, 4, 7, 5, 9, 7, 11, 4]
             let pitch = scale5[shape[step % shape.count]]
             playing = pitch
             synth.play(pitch, velocity: 0.6 + 0.3 * sin(Double(step) * 1.3),
-                       for: 3.4 * 60 / tempo)
+                       for: tempo.seconds(beats: 3.4))
             sounding = instrument.recordingIndex(for: Int(pitch.midi.rounded())) ?? -1
             if sounding >= 0, sounding < lit.count { lit[sounding] = 1 }
         }

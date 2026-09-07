@@ -25,7 +25,7 @@ final class Sonify: Sketch {
     // Named `mode` rather than `key`, which is the keyboard's on a `Sketch`.
     @Param(icon: "waveform", group: "Reading") var source = Source.terrain
     @Param(icon: "music.note", group: "Reading") var mode = Scale.Mode.minorPentatonic
-    @Param(40 ... 160, icon: "metronome", group: "Reading") var tempo = 96.0
+    @Param(40 ... 160, icon: "metronome", group: "Reading") var tempo: Tempo = 96
     @Param(icon: "arrow.up.arrow.down", group: "Reading") var moreIsHigher = true
 
     let synth = Synth(.pluck, polyphony: 12)
@@ -64,10 +64,10 @@ final class Sonify: Sketch {
         switch source {
         case .terrain:
             reading = Sonification(land, row: 32, in: scale,
-                                   pitches: "A2"..."A5", noteLength: 0.5)
+                                   pitches: "A2"..."A5", noteLength: .eighth)
         case .picture:
             reading = Sonification(picture, row: 32, in: scale,
-                                   pitches: "A2"..."A5", noteLength: 0.5)
+                                   pitches: "A2"..."A5", noteLength: .eighth)
         }
         if !moreIsHigher { reading = reading.inverted() }
         lit = [Double](repeating: 0, count: reading.count)
@@ -81,7 +81,7 @@ final class Sonify: Sketch {
             rebuild()
         }
 
-        for step in counter.steps(upTo: time * tempo / 60) {
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
             let index = step % max(1, reading.count)
             playhead = index
             if index < lit.count { lit[index] = 1 }

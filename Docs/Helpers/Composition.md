@@ -16,12 +16,13 @@ final class Loop: Sketch {
     let synth = Synth(.pluck)
     let rhythm = Rhythm(5, in: 16)          // five strikes, evenly spread
     let scale = Scale(.minorPentatonic, root: "A3")
+    let tempo: Tempo = 120
     var counter = StepCounter(perBeat: 4)
 
     override func draw() {
         background(.black)
-        for step in counter.steps(upTo: time * 2) {      // 120 beats a minute
-            if rhythm[step] { synth.play(scale[step % 5], for: 0.2) }
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
+            if rhythm[step] { synth.play(scale[step % 5], for: tempo.seconds(of: .eighth)) }
         }
     }
 }
@@ -30,6 +31,7 @@ final class Loop: Sketch {
 ### Contents
 
 - [StepCounter](#stepcounter) - musical time in, step numbers out
+- [Tempo and note lengths](#tempo-and-note-lengths) - seconds into beats, and a note's length back into seconds
 - [Rhythm](#rhythm) - a cycle of strikes, spread as evenly as the numbers allow
 - [Scale](#scale) - whole numbers in, notes in key out
 - [Chord](#chord) - notes meant to sound together
@@ -56,7 +58,7 @@ for step in counter.steps(upTo: beats) { … }
 
 It returns a range rather than one step, because at any real tempo a frame is longer than a step. A step whose moment fell inside the frame still has to be played. The first call always includes step 0, so a pattern starts on the downbeat.
 
-The sketch decides where `beats` comes from. That is deliberate, and it is why the counter works with any clock. Use `time * tempo / 60` to run from the sketch clock, or `clock.beats` from a [`TempoClock`](../Integration/MIDI.md#tempo-sync-tempoclock) to run from a drum machine's clock. A number you advance yourself works too. Nothing in this tier knows what a second is.
+The sketch decides where `beats` comes from. That is deliberate, and it is why the counter works with any clock. Use `tempo.beats(at: time)`, with a [`Tempo`](#tempo-and-note-lengths), to run from the sketch clock, or `clock.beats` from a [`TempoClock`](../Integration/MIDI.md#tempo-sync-tempoclock) to run from a drum machine's clock. A number you advance yourself works too. Nothing in this tier but the tempo knows what a second is.
 
 There are two behaviors to know about:
 
@@ -64,6 +66,40 @@ There are two behaviors to know about:
 - **Time jumping a long way**, after a stall or a window dragged onto another display, makes the counter skip ahead. The counter does not empty the whole pattern into one frame. `maxCatchUp` sets how far it catches up, sixteen steps by default.
 
 `reset(to:)` moves the counter without reporting the steps in between.
+
+---
+
+### Tempo and note lengths
+
+A `Tempo` is beats per minute, with how many beats make a bar. It is the one value on this page that knows what a second is, so it does the two conversions everything else leaves out:
+
+```swift
+let tempo: Tempo = 104                  // or Tempo(104, beatsPerBar: 3)
+
+tempo.beats(at: time)                   // seconds in, beats out: what a StepCounter wants
+tempo.seconds(of: .eighth)              // a note length in, seconds out: what `play(for:)` wants
+tempo.seconds(beats: 1.5)               // any count of beats
+tempo.seconds(bars: 8)                  // eight bars, for a `loopDuration`
+tempo.secondsPerBeat                    // 0.577 at 104
+tempo.bars(at: time)                    // where the music is, in bars
+```
+
+A `NoteLength` is a length in beats, where a beat is a quarter note. The names are the ones on a stave, and two properties derive the rest:
+
+| Length | Beats |
+|---|---|
+| `.whole` | 4 |
+| `.half` | 2 |
+| `.quarter` | 1 |
+| `.eighth` | 0.5 |
+| `.sixteenth` | 0.25 |
+| `.thirtySecond` | 0.125 |
+| `.quarter.dotted` | 1.5, the dot after a note |
+| `.eighth.triplet` | a third, three in the time of two |
+
+A plain number stands in for either type, so `tempo: 120` and `length: 0.5` read as they always did, and `NoteLength(beats: 1.1)` holds a length no name covers. `length.seconds(at: tempo)` is the same conversion from the other side, and `.quarter * 3` or `.quarter + .eighth` build a longer one.
+
+Both are parameters. `@Param(60...160) var tempo: Tempo = 104` is a slider in beats per minute. A [MIDI](../Integration/MIDI.md#binding-to-a-param) knob or an [OSC](../Integration/OSC.md#binding-to-a-param) address binds to it the way it binds to a number. The beats per bar stay what the declaration gave them. `@Param var length: NoteLength = .eighth` is a menu of the named lengths.
 
 ---
 
@@ -368,11 +404,11 @@ There are three things to know about it:
 A `Note` is a pitch with its loudness and length attached, for when all three were decided together.
 
 ```swift
-let note = Note(scale[3], velocity: 0.9, length: 0.5)   // half a beat
+let note = Note(scale[3], velocity: 0.9, length: .eighth)   // half a beat
 synth.play(note, tempo: 120)
 ```
 
-Its length is in beats, not seconds, because nothing in this tier knows how fast the music is going. The tempo is supplied when the note is played.
+Its length is a [`NoteLength`](#tempo-and-note-lengths), in beats, because nothing in this tier knows how fast the music is going. The [`Tempo`](#tempo-and-note-lengths) is supplied when the note is played, and `note.seconds(at: tempo)` is the number the synth is handed.
 
 Most sketches never need it, because the composition types deal in pitches and step numbers, and `synth.play(pitch, velocity:for:)` takes the loudness and length directly.
 
@@ -390,10 +426,11 @@ let pulse = Rhythm(3, in: 16)
 let figure = Rhythm(5, in: 16)
 let key = Scale(.minorPentatonic, root: "A2")
 var melody = MarkovChain(learning: [0, 2, 4, 2, 0, -3], seed: 4, loops: true)
+let tempo: Tempo = 104
 var counter = StepCounter(perBeat: 4)
 
 override func draw() {
-    for step in counter.steps(upTo: time * 104 / 60) {
+    for step in counter.steps(upTo: tempo.beats(at: time)) {
         if pulse[step] {
             bass.play(key[melody.next() ?? 0], for: 0.34)
         }

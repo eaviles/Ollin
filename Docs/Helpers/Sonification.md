@@ -56,7 +56,7 @@ Sonification(numbers,
              pitches: "C3"..."C6",             // the span it is spread over
              bounds: .robust(ignoring: 0.05),  // how the ends are decided
              polarity: .positive,              // which way round
-             noteLength: 0.25)                 // beats per note
+             noteLength: .sixteenth)           // how long each note lasts
 ```
 
 | Setting | What it does |
@@ -65,7 +65,7 @@ Sonification(numbers,
 | `pitches:` | the span the data is spread over. The default is three octaves, which is wide enough to hear a shape in and not so wide that the top is shrill |
 | `bounds:` | which values land at the ends. See below |
 | `polarity:` | `.positive` means a larger value is a higher note, which is what a listener expects of a quantity. `.negative` is the right way round for a size, because a small thing is the one that sounds high |
-| `noteLength:` | how long each note lasts, **in beats**. The tempo is applied when the note is played |
+| `noteLength:` | how long each note lasts, a [`NoteLength`](Composition.md#tempo-and-note-lengths) **in beats**, a sixteenth by default. The tempo is applied when the note is played |
 
 ### Where the ends go
 

@@ -112,4 +112,21 @@ struct OSCLoopbackTests {
         #expect(receiver.number("/bundle/x") == Double(Float(0.1)))
         #expect(receiver.number("/bundle/y") == Double(Float(0.9)))
     }
+
+    /// A tempo binds the way a number does, into its range in beats per
+    /// minute, and the address never touches the beats per bar.
+    @Test func bindsAddressToATempoParam() async throws {
+        let (sender, receiver) = try await makePair()
+        defer { receiver.stop(); sender.close() }
+
+        let tempo = Param(wrappedValue: Tempo(90, beatsPerBar: 3), 60...160)
+        receiver.bind("/tempo", to: tempo)   // incoming 0…1 → 60…160 bpm
+
+        let value = try await waitFor(timeout: 3.0) { () -> Tempo? in
+            sender.send("/tempo", 0.5)
+            return abs(tempo.wrappedValue.beatsPerMinute - 110) < 0.01 ? tempo.wrappedValue : nil
+        }
+        #expect(abs(value.beatsPerMinute - 110) < 0.01)
+        #expect(value.beatsPerBar == 3)
+    }
 }

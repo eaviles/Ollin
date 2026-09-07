@@ -23,6 +23,7 @@ final class Shaping: Sketch {
 
     let synth = Synth(.stab, polyphony: 6)
     let pentatonic = Scale(.minorPentatonic, root: "C3")
+    let tempo: Tempo = 96
     var counter = StepCounter(perBeat: 2)
     var built = ""
     var trace: [Double] = []
@@ -91,7 +92,7 @@ final class Shaping: Sketch {
         background(Color(hex: 0x0A0C11))
         if built != recipe { rebuild() }
 
-        for next in counter.steps(upTo: time * 96 / 60) {
+        for next in counter.steps(upTo: tempo.beats(at: time)) {
             step = next
             synth.play(pentatonic[[0, 3, 2, 4, 1, 5][next % 6]], velocity: 0.8, for: 0.45)
         }

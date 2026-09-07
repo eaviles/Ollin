@@ -391,7 +391,18 @@ public protocol ParamValue: Equatable, Sendable {
     static func clamped(_ value: Self, by constraints: Constraints) -> Self
     static func stored(_ value: Self) -> ParamStored
     static func restored(_ stored: ParamStored) -> Self?
+    /// The value a payload restores over `current`, the value the parameter
+    /// holds at the time. The default ignores `current`; a type whose payload
+    /// carries less than the value (a `Tempo` persists its beats per minute,
+    /// not its beats per bar) keeps the rest from `current`.
+    static func restored(_ stored: ParamStored, keeping current: Self) -> Self?
     static func control(for param: Param<Self>) -> ParamControl
+}
+
+public extension ParamValue {
+    static func restored(_ stored: ParamStored, keeping current: Self) -> Self? {
+        restored(stored)
+    }
 }
 
 extension Double: ParamValue {
@@ -902,6 +913,52 @@ extension Easing: ParamChoices {
     public static var paramChoices: [(name: String, value: Easing)] { Easing.all }
 }
 
+// MARK: - Tempo and note length
+
+// A tempo is a slider in beats per minute. Its payload is a plain number, so
+// every consumer of a payload (the web page's controls, the room, the remote
+// inspector, the write-back into the sketch) treats it as one; the beats per
+// bar live only in the declaration, which is why a restore keeps them from the
+// value already held.
+extension Tempo: ParamValue {
+    public typealias Constraints = ParamNumericConstraints<Double>
+
+    public static func clamped(_ value: Tempo, by constraints: Constraints) -> Tempo {
+        Tempo(Double.clamped(value.beatsPerMinute, by: constraints), beatsPerBar: value.beatsPerBar)
+    }
+
+    public static func stored(_ value: Tempo) -> ParamStored { .number(value.beatsPerMinute) }
+
+    public static func restored(_ stored: ParamStored) -> Tempo? {
+        guard case .number(let v) = stored else { return nil }
+        return Tempo(v)
+    }
+
+    public static func restored(_ stored: ParamStored, keeping current: Tempo) -> Tempo? {
+        guard case .number(let v) = stored else { return nil }
+        return Tempo(v, beatsPerBar: current.beatsPerBar)
+    }
+
+    public static func control(for param: Param<Tempo>) -> ParamControl {
+        .slider(.init(range: param.constraints.range, step: param.constraints.step,
+                      style: param.constraints.style,
+                      read: { param.wrappedValue.beatsPerMinute },
+                      write: { param.wrappedValue = Tempo($0, beatsPerBar: param.wrappedValue.beatsPerBar) }))
+    }
+}
+
+// A note length is a menu of the lengths a stave names, long to short. A
+// length off the menu (`NoteLength(beats: 1.1)`) reads as the first entry,
+// the ParamChoices rule.
+extension NoteLength: ParamChoices {
+    public static var paramChoices: [(name: String, value: NoteLength)] {
+        [("whole", .whole), ("dottedHalf", .half.dotted), ("half", .half),
+         ("dottedQuarter", .quarter.dotted), ("quarter", .quarter),
+         ("dottedEighth", .eighth.dotted), ("eighth", .eighth),
+         ("eighthTriplet", .eighth.triplet), ("sixteenth", .sixteenth)]
+    }
+}
+
 // MARK: - The wrapper
 
 /// The inspector section a parameter belongs to. A plain string literal names an
@@ -1159,6 +1216,29 @@ public extension Param where Value == Double {
     var range: ClosedRange<Double> { constraints.range }
 }
 
+public extension Param where Value == Tempo {
+    /// A `Tempo` parameter over `range`, in beats per minute: a slider, or a
+    /// value field with `style: .field`. The beats per bar stay what the
+    /// declaration gave them through every move, reload, and binding.
+    convenience init(wrappedValue: Tempo, _ range: ClosedRange<Double>, step: Double? = nil,
+                     style: ParamNumericStyle = .slider,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(range: range, step: step, style: style),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Tempo, _ label: String, _ range: ClosedRange<Double>,
+                     step: Double? = nil, style: ParamNumericStyle = .slider,
+                     icon: String? = nil, group: ParamGroup? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(range: range, step: step, style: style),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    /// The allowed range in beats per minute; the value is clamped to it. (The
+    /// mapping target for OSC and MIDI bindings.)
+    var range: ClosedRange<Double> { constraints.range }
+}
+
 public extension Param where Value == Int {
     /// An `Int` stepper over `range`, stepping by `step` (default 1).
     convenience init(wrappedValue: Int, _ range: ClosedRange<Int>, step: Int? = nil,
@@ -1390,7 +1470,7 @@ extension Param: AnyParam {
     public var control: ParamControl { Value.control(for: self) }
     public var stored: ParamStored { Value.stored(wrappedValue) }
     public func restore(_ stored: ParamStored) {
-        guard let value = Value.restored(stored) else { return }
+        guard let value = Value.restored(stored, keeping: wrappedValue) else { return }
         set(value)
     }
 }

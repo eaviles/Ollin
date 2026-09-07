@@ -78,8 +78,8 @@ public struct Sonification: Sendable, Equatable {
     public var scale: Scale?
     /// Which way round the reading goes.
     public var polarity: Polarity
-    /// How long each note lasts, in beats.
-    public var noteLength: Double
+    /// How long each note lasts, in beats. A plain number is a count of beats.
+    public var noteLength: NoteLength
 
     /// A second series read out as loudness, or nil to play everything at full
     /// level. See ``amplified(by:)``.
@@ -102,20 +102,21 @@ public struct Sonification: Sendable, Equatable {
     ///     of it is shrill.
     ///   - bounds: how the two ends of the data are decided.
     ///   - polarity: which way round the reading goes.
-    ///   - noteLength: how long each note lasts, in beats.
+    ///   - noteLength: how long each note lasts, in beats. A sixteenth, a
+///     quarter of a beat, by default.
     public init(
         _ values: [Double],
         in scale: Scale? = nil,
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        noteLength: Double = 0.25
+        noteLength: NoteLength = .sixteenth
     ) {
         self.values = values
         self.scale = scale
         self.pitches = pitches
         self.polarity = polarity
-        self.noteLength = max(0.001, noteLength)
+        self.noteLength = NoteLength(beats: max(0.001, noteLength.beats))
         self.valueDomain = Sonification.domain(of: values, by: bounds)
         self.loudness = nil
         self.loudnessDomain = 0...1
@@ -133,7 +134,7 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        noteLength: Double = 0.25
+        noteLength: NoteLength = .sixteenth
     ) {
         self.init(table.numbers(column), in: scale, pitches: pitches,
                   bounds: bounds, polarity: polarity, noteLength: noteLength)
@@ -149,7 +150,7 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        noteLength: Double = 0.25
+        noteLength: NoteLength = .sixteenth
     ) {
         let y = min(max(row, 0), field.rows - 1)
         let values = (0 ..< field.columns).map { field[$0, y] }
@@ -164,7 +165,7 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        noteLength: Double = 0.25
+        noteLength: NoteLength = .sixteenth
     ) {
         let x = min(max(column, 0), field.columns - 1)
         let values = (0 ..< field.rows).map { field[x, $0] }
@@ -182,7 +183,7 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        noteLength: Double = 0.25
+        noteLength: NoteLength = .sixteenth
     ) {
         let steps = max(2, count)
         let values = (0 ..< steps).map { index -> Double in
@@ -208,7 +209,7 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        noteLength: Double = 0.25
+        noteLength: NoteLength = .sixteenth
     ) {
         let y = min(max(row, 0), max(0, image.height - 1))
         let values = (0 ..< image.width).map { image[$0, y].luminance }
@@ -223,7 +224,7 @@ public struct Sonification: Sendable, Equatable {
         pitches: ClosedRange<Pitch> = "C3"..."C6",
         bounds: Bounds = .extremes,
         polarity: Polarity = .positive,
-        noteLength: Double = 0.25
+        noteLength: NoteLength = .sixteenth
     ) {
         let x = min(max(column, 0), max(0, image.width - 1))
         let values = (0 ..< image.height).map { image[x, $0].luminance }
@@ -360,7 +361,7 @@ public extension Synth {
     ///     synth.play(readings, step: step, tempo: tempo)
     /// }
     /// ```
-    func play(_ sonification: Sonification, step: Int, tempo: Double = 120) {
+    func play(_ sonification: Sonification, step: Int, tempo: Tempo = 120) {
         guard let note = sonification.note(at: step) else { return }
         play(note, tempo: tempo)
     }

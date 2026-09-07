@@ -24,7 +24,7 @@ import OllinAudio
 final class ChordSymbols: Sketch {
 
     @Param(icon: "text.quote", group: "Chart") var chart = "Cmaj7 Am7 Dm7 G7"
-    @Param(40 ... 120, icon: "metronome", group: "Playing") var tempo = 66.0
+    @Param(40 ... 120, icon: "metronome", group: "Playing") var tempo: Tempo = 66
 
     static let charts = [
         "Cmaj7 Am7 Dm7 G7",
@@ -74,13 +74,13 @@ final class ChordSymbols: Sketch {
         background(Color(hex: 0x0B0E14))
         if built != recipe { rebuild() }
 
-        for step in counter.steps(upTo: time * tempo / 60) {
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
             let index = step % max(1, changes.count)
             sounding = index
             if index < lit.count { lit[index] = 1 }
-            pad.play(chord: changes.pitches(at: index), velocity: 0.5, for: 2 * 60 / tempo * 1.9)
+            pad.play(chord: changes.pitches(at: index), velocity: 0.5, for: tempo.seconds(beats: 2) * 1.9)
             bass.play(changes.root(at: index).transposed(by: -12),
-                      velocity: 0.8, for: 2 * 60 / tempo * 1.7)
+                      velocity: 0.8, for: tempo.seconds(beats: 2) * 1.7)
         }
 
         drawChart()

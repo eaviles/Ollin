@@ -21,7 +21,7 @@ final class Changes: Sketch {
     @Param(icon: "music.quarternote.3", group: "Key") var mode = Scale.Mode.major
     @Param(0 ... 11, icon: "pianokeys", group: "Key") var root = 0
     @Param(3 ... 5, icon: "square.stack.3d.up", group: "Chords") var notes = 4
-    @Param(50 ... 150, icon: "metronome", group: "Chords") var tempo = 74.0
+    @Param(50 ... 150, icon: "metronome", group: "Chords") var tempo: Tempo = 74
 
     let chords = Synth(.pad, polyphony: 16)
     let bass = Synth(.bass, polyphony: 4)
@@ -56,7 +56,7 @@ final class Changes: Sketch {
         background(Color(hex: 0x0B0E14))
         if built != recipe { rebuild() }
 
-        for step in counter.steps(upTo: time * tempo / 60) {
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
             let index = step % max(1, changes.count)
             sounding = index
             if index < lit.count { lit[index] = 1 }

@@ -53,6 +53,8 @@ You declare every supported type the same way, and each one gets the matching in
 | `String` | text field | `@Param var caption = "hello"` |
 | `Palette` | strip of swatches | `@Param var inks = Palette(.red, .white, .black)` |
 | `Ramp` | gradient band with a handle per stop | `@Param var fade = Ramp([.black, .white])` |
+| `Tempo` | slider in beats per minute | `@Param(60...160) var tempo: Tempo = 104` |
+| `NoteLength` | pop-up menu of the named lengths | `@Param var length: NoteLength = .eighth` |
 | `Easing` | pop-up menu of the named curves | `@Param var curve: Easing = .easeInOut` |
 | `ParamChoices` type | pop-up menu | `@Param var mood: LightingPreset = .standard` |
 

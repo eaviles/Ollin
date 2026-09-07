@@ -53,8 +53,9 @@ public final class OSCReceiver: @unchecked Sendable {
     private let resolvedPort = OSAllocatedUnfairLock<UInt16?>(initialState: nil)
 
     private struct ParamBinding: Sendable {
-        let param: Param<Double>
         let input: ClosedRange<Double>
+        let output: ClosedRange<Double>
+        let write: @Sendable (Double) -> Void
     }
 
     private struct State: Sendable {
@@ -173,7 +174,18 @@ public final class OSCReceiver: @unchecked Sendable {
     /// osc.bind("/freq", to: $freq, from: 0...127) // a MIDI-style 0…127 fader
     /// ```
     public func bind(_ address: String, to param: Param<Double>, from input: ClosedRange<Double> = 0...1) {
-        state.withLock { $0.bindings[address] = ParamBinding(param: param, input: input) }
+        let binding = ParamBinding(input: input, output: param.range) { param.wrappedValue = $0 }
+        state.withLock { $0.bindings[address] = binding }
+    }
+
+    /// Drives a `Tempo` parameter from an incoming address, mapped into its
+    /// range in beats per minute. The beats per bar stay what the declaration
+    /// gave them.
+    public func bind(_ address: String, to param: Param<Tempo>, from input: ClosedRange<Double> = 0...1) {
+        let binding = ParamBinding(input: input, output: param.range) {
+            param.wrappedValue = Tempo($0, beatsPerBar: param.wrappedValue.beatsPerBar)
+        }
+        state.withLock { $0.bindings[address] = binding }
     }
 
     /// Removes a binding previously set with `bind(_:to:from:)`.
@@ -219,7 +231,7 @@ public final class OSCReceiver: @unchecked Sendable {
             return state.bindings[message.address]
         }
         if let binding, let raw = message.number {
-            binding.param.wrappedValue = OSCReceiver.map(raw, from: binding.input, to: binding.param.range)
+            binding.write(OSCReceiver.map(raw, from: binding.input, to: binding.output))
         }
     }
 

@@ -7,10 +7,11 @@ import Foundation
 /// and it hands back the steps that have just gone by.
 ///
 /// ```swift
+/// let tempo: Tempo = 120
 /// var counter = StepCounter(perBeat: 4)
 ///
 /// override func draw() {
-///     for step in counter.steps(upTo: time * 2) {   // 120 beats a minute
+///     for step in counter.steps(upTo: tempo.beats(at: time)) {
 ///         if rhythm[step] { synth.play(scale[step]) }
 ///     }
 /// }
@@ -19,8 +20,8 @@ import Foundation
 /// It returns a range rather than one step because a frame is longer than a
 /// step at any decent tempo, and a step that fell inside a frame still has to
 /// be played. Which is also why the beat number comes from outside: from the
-/// sketch clock, from a beat detected in the music, or from a `TempoClock`
-/// following a drum machine. This tier stays out of it.
+/// sketch clock through a `Tempo`, from a beat detected in the music, or from
+/// a `TempoClock` following a drum machine. This tier stays out of it.
 ///
 /// If time jumps a long way, because the machine stalled or the sketch was
 /// dragged somewhere else, it skips ahead to the step it landed on rather than

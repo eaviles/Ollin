@@ -30,6 +30,7 @@ final class Patching: Sketch {
     // Neither `scale` nor `key` will do: a Sketch already has both, one the
     // resolution-relative scale and one the keyboard.
     let pentatonic = Scale(.minorPentatonic, root: "C3")
+    let tempo: Tempo = 96
     var counter = StepCounter(perBeat: 2)
     var built = ""
     var trace: [Double] = []
@@ -70,7 +71,7 @@ final class Patching: Sketch {
         background(Color(hex: 0x0A0C11))
         if built != recipe { rebuild() }
 
-        for next in counter.steps(upTo: time * 96 / 60) {
+        for next in counter.steps(upTo: tempo.beats(at: time)) {
             step = next
             synth.play(pentatonic[[0, 2, 4, 3, 1, 5][next % 6]], velocity: 0.8, for: 0.5)
         }

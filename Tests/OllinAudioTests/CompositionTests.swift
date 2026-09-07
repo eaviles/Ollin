@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import Ollin
 @testable import OllinAudio
 
 /// The composition types are pure values, so they are checked by what they
@@ -448,9 +449,14 @@ import Testing
 
     @Test func aNoteReadsItsLengthInBeatsAtATempo() {
         let note = Note(60, velocity: 0.5, length: 0.5)
+        #expect(note.length == .eighth)                  // a number is a count of beats
         #expect(abs(note.seconds(at: 120) - 0.25) < 1e-12)
         #expect(abs(note.seconds(at: 60) - 0.5) < 1e-12)
+        #expect(note.seconds(at: Tempo(90, beatsPerBar: 3)) == note.seconds(at: 90))
         #expect(note.transposed(by: 12).pitch.midi == 72)
         #expect(note.transposed(by: 12).velocity == 0.5)
+        #expect(note.transposed(by: 12).length == .eighth)
+        #expect(Note(60).length == .quarter)
+        #expect(Note(60, length: .quarter.dotted).seconds(at: 120) == 0.75)
     }
 }

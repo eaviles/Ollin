@@ -88,4 +88,19 @@ struct MIDILoopbackTests {
         let value = await waitFor { parameter.wrappedValue >= 99.9 ? parameter.wrappedValue : nil }
         #expect((value ?? 0) > 99)
     }
+
+    /// A tempo binds the way a number does, into its range in beats per
+    /// minute, and the knob never touches the beats per bar.
+    @Test func bindingDrivesATempoParam() async {
+        guard let (output, input) = await makePair() else { return }   // soft-skip
+        defer { output.close(); input.stop() }
+
+        let tempo = Param(wrappedValue: Tempo(90, beatsPerBar: 3), 60...160)
+        input.bind(controlChange: 21, to: tempo.projectedValue)   // 0…127 → 60…160 bpm
+
+        output.controlChange(21, value: 127)
+        let value = await waitFor { tempo.wrappedValue.beatsPerMinute >= 159.9 ? tempo.wrappedValue : nil }
+        #expect((value?.beatsPerMinute ?? 0) > 159)
+        #expect(value?.beatsPerBar == 3)
+    }
 }

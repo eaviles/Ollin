@@ -24,7 +24,7 @@ final class WavetableSketch: Sketch {
     @Param(0 ... 1, icon: "slider.horizontal.below.rectangle", group: "Table") var position = 0.25
     @Param(-1 ... 1, icon: "arrow.left.arrow.right", group: "Scan") var sweep = 0.7
     @Param(0.02 ... 2, icon: "timer", group: "Scan") var settle = 0.6
-    @Param(60 ... 160, icon: "metronome", group: "Playing") var tempo = 92.0
+    @Param(60 ... 160, icon: "metronome", group: "Playing") var tempo: Tempo = 92
 
     let synth = Synth(polyphony: 12)
     let pentatonic = Scale(.minorPentatonic, root: "C3")
@@ -73,7 +73,7 @@ final class WavetableSketch: Sketch {
         background(Color(hex: 0x0B0D12))
         if built != recipe { rebuild() }
 
-        for next in counter.steps(upTo: time * tempo / 60) {
+        for next in counter.steps(upTo: tempo.beats(at: time)) {
             step = next
             // Degrees past the end of the scale carry on into the next
             // octave, so every other bar sits five degrees up.

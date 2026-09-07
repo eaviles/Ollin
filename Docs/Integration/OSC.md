@@ -138,6 +138,8 @@ func bind(_ address: String, to param: Param<Double>, from input: ClosedRange<Do
 func unbind(_ address: String)
 ```
 
+`to:` also takes a `Param<Tempo>`, the beats-per-minute slider a [tempo](../Helpers/Composition.md#tempo-and-note-lengths) declares, mapped into its range the same way. The beats per bar stay what the declaration gave them.
+
 The third way to read is to bind an address to a [`@Param`](../Helpers/Parameters.md) parameter. An incoming value then drives the parameter the same way a slider in the live inspector does. The receiver maps the first value of each message from the `input` range into the parameter's own range. It then clamps that value and assigns it to the parameter:
 
 ```swift

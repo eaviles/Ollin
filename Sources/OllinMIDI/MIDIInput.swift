@@ -56,8 +56,9 @@ public final class MIDIInput: @unchecked Sendable {
     private struct ControlKey: Hashable, Sendable { let channel: Int; let controller: Int }
     private struct NoteKey: Hashable, Sendable { let channel: Int; let note: Int }
     private struct ParamBinding: Sendable {
-        let param: Param<Double>
         let input: ClosedRange<Double>
+        let output: ClosedRange<Double>
+        let write: @Sendable (Double) -> Void
     }
 
     private struct State: Sendable {
@@ -212,7 +213,20 @@ public final class MIDIInput: @unchecked Sendable {
     public func bind(controlChange controller: Int, to param: Param<Double>,
                      channel: Int? = nil, from input: ClosedRange<Double> = 0...127) {
         let key = ControlKey(channel: channel ?? 0, controller: controller)
-        state.withLock { $0.bindings[key] = ParamBinding(param: param, input: input) }
+        let binding = ParamBinding(input: input, output: param.range) { param.wrappedValue = $0 }
+        state.withLock { $0.bindings[key] = binding }
+    }
+
+    /// Binds a control-change knob to a `Tempo` parameter, mapped into its
+    /// range in beats per minute. The beats per bar stay what the declaration
+    /// gave them.
+    public func bind(controlChange controller: Int, to param: Param<Tempo>,
+                     channel: Int? = nil, from input: ClosedRange<Double> = 0...127) {
+        let key = ControlKey(channel: channel ?? 0, controller: controller)
+        let binding = ParamBinding(input: input, output: param.range) {
+            param.wrappedValue = Tempo($0, beatsPerBar: param.wrappedValue.beatsPerBar)
+        }
+        state.withLock { $0.bindings[key] = binding }
     }
 
     /// Removes a binding previously set with `bind(controlChange:to:channel:from:)`.
@@ -290,7 +304,7 @@ public final class MIDIInput: @unchecked Sendable {
             return (collected, state.listeners)
         }
         for (binding, raw) in toApply {
-            binding.param.wrappedValue = MIDIInput.map(raw, from: binding.input, to: binding.param.range)
+            binding.write(MIDIInput.map(raw, from: binding.input, to: binding.output))
         }
         if !listeners.isEmpty {
             for (message, time) in messages {

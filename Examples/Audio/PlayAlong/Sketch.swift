@@ -30,7 +30,7 @@ import OllinAudio
 @main
 final class PlayAlong: Sketch {
 
-    @Param(70 ... 140, icon: "metronome", group: "Stand-in") var practiceTempo = 96.0
+    @Param(70 ... 140, icon: "metronome", group: "Stand-in") var practiceTempo: Tempo = 96
     @Param(0 ... 1, icon: "speaker.wave.2", group: "Playing") var replyLevel = 0.5
 
     let mic = AudioInput()
@@ -90,9 +90,9 @@ final class PlayAlong: Sketch {
     /// decaying burst on each beat, which is exactly the kind of arrival the
     /// onset detector listens for. Two alternating pitches keep it musical.
     private func drivePulse() {
-        let beat = time * practiceTempo / 60
+        let beat = practiceTempo.beats(at: time)
         let phase = beat - beat.rounded(.down)
-        let within = phase * 60 / practiceTempo
+        let within = practiceTempo.seconds(beats: phase)
         pulse.frequency = Int(beat) % 2 == 0 ? 220 : 165
         pulse.amplitude = within < 0.16 ? 0.22 * (1 - within / 0.16) : 0
     }

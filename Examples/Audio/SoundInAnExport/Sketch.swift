@@ -24,9 +24,9 @@ import OllinAudio
 final class SoundInAnExport: Sketch {
     override var canvasSize: CanvasSize { .square(720) }
     /// Eight bars at 96 beats a minute, so `--export-loop` closes cleanly.
-    override var loopDuration: Double? { 8 * 4 * 60 / 96 }
+    override var loopDuration: Double? { tempo.seconds(bars: 8) }
 
-    let tempo = 96.0
+    let tempo: Tempo = 96
     let steps = 16
 
     let bass = Synth(.nylon, polyphony: 6)
@@ -53,7 +53,7 @@ final class SoundInAnExport: Sketch {
     override func draw() {
         background(Color(hex: 0x0D0F14))
 
-        for step in counter.steps(upTo: time * tempo / 60) {
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
             play(step)
         }
 

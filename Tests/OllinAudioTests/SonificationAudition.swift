@@ -21,7 +21,7 @@ import Testing
     func audition() throws {
         let path = ProcessInfo.processInfo.environment["OLLIN_AUDITION"]!
         let sampleRate = 44100.0
-        let tempo = 96.0
+        let tempo: Tempo = 96
 
         // One row of a landscape. Built from a few sines rather than from noise
         // so the file is the same every time and two takes can be compared.

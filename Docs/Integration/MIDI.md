@@ -133,6 +133,8 @@ func bind(controlChange controller: Int, to param: Param<Double>,
 func unbind(controlChange controller: Int, channel: Int? = nil)
 ```
 
+`to:` also takes a `Param<Tempo>`, the beats-per-minute slider a [tempo](../Helpers/Composition.md#tempo-and-note-lengths) declares, mapped into its range the same way. The beats per bar stay what the declaration gave them.
+
 The fourth way to read is to bind a control-change knob directly to a [`@Param`](../Helpers/Parameters.md). A hardware fader then drives the same parameter that the inspector slider does. Ollin maps each incoming value from `input`, a controller's `0…127` by default, into the parameter's own range, then assigns it:
 
 ```swift

@@ -297,21 +297,31 @@ Two things fall out of the models rather than being settings. Both are the kind 
 
 A synth answers what a note sounds like. It says nothing about which notes there are, or when. That half is the composition types, and the thing they have in common is that not one of them can tell the time.
 
-Each answers a step number. Step 0, step 1, step 2, forever. Turning the sketch's clock into step numbers is one small counter's job:
+Each answers a step number. Step 0, step 1, step 2, forever. Turning the sketch's clock into step numbers is one small counter's job, and a `Tempo` says how fast that clock runs:
 
 ```swift
+let tempo: Tempo = 120
 var counter = StepCounter(perBeat: 4)
 
 override func draw() {
-    for step in counter.steps(upTo: time * 2) {     // 120 beats a minute
-        synth.play(60, for: 0.1)
+    for step in counter.steps(upTo: tempo.beats(at: time)) {
+        synth.play(60, for: tempo.seconds(of: .sixteenth))
     }
 }
 ```
 
 It hands back a range rather than a single step. At any real tempo a frame lasts longer than a step, and a step that fell inside the frame still has to be played.
 
-Keeping the clock outside is what makes the rest portable. `time * 2` today, a beat detected in whatever is playing in the room, or a drum machine's own clock arriving over the MIDI wiring of [Chapter 28](28-SoundAndControl.md). None of what follows changes.
+Keeping the clock outside is what makes the rest portable. `tempo.beats(at: time)` today, a beat detected in whatever is playing in the room, or a drum machine's own clock. That one arrives over the MIDI wiring of [Chapter 28](28-SoundAndControl.md). None of what follows changes.
+
+**`Tempo` is the one value that knows a second.** Everything else in this half of the chapter counts beats. `tempo.beats(at: time)` is `time * 120 / 60`, written once and named. The same value answers the other question, how long a note lasts. A note's length is a `NoteLength`, in beats, with the names from the stave: `.whole` down to `.thirtySecond`. `.dotted` and `.triplet` derive the rest, and `tempo.seconds(of: .quarter.dotted)` is what to hand a synth's `for:`. Put the tempo on a `@Param` and it is a slider in beats per minute. A MIDI knob or an OSC address drives it like any other number.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/NoteLengths-dark.jpg">
+  <img src="Images/29-MakingSound/NoteLengths.jpg" alt="One bar of four beats at 96 beats a minute across the top, each beat marked with the second it lands on, and under it seven rows laying the named note lengths across that bar: whole, half, quarter, eighth, sixteenth, dotted quarter, and eighth triplet, each row ending with how many seconds one of them lasts" width="680">
+</picture>
+
+Read it across. At 96 beats a minute a beat is 0.625 seconds. A whole note holds for 2.5 and a sixteenth for 0.156. Two dotted quarters leave a beat over. That is why a dotted rhythm leans. Three eighth triplets fit where two eighths did. Every width and every number in the figure is read off the two types, so the picture is what they compute.
 
 **`Rhythm` decides when.** Ask for a number of strikes over a number of steps and it spreads them as evenly as whole steps allow:
 
@@ -554,7 +564,7 @@ final class MusicBox: Sketch {
     let air = Synth(.breath, polyphony: 4)
 
     let steps = 16
-    let tempo = 96.0
+    let tempo: Tempo = 96
     var counter = StepCounter(perBeat: 4)
     var motif = MarkovChain<Int>(seed: 4)
 
@@ -596,7 +606,7 @@ final class MusicBox: Sketch {
         let mid = Rhythm(5, in: steps)
         let high = Rhythm(2, in: steps)
 
-        let beats = time * tempo / 60
+        let beats = tempo.beats(at: time)
         for step in counter.steps(upTo: beats) {
             let at = Double(step) / 4
             if low[step] {
@@ -621,7 +631,7 @@ final class MusicBox: Sketch {
 
     func play(_ synth: Synth, _ pitch: Pitch, at beat: Double, beats: Double,
               voice: Int, velocity: Double) {
-        synth.play(pitch, velocity: velocity, for: beats * 60 / tempo)
+        synth.play(pitch, velocity: velocity, for: tempo.seconds(beats: beats))
         score.append(Played(beat: beat, pitch: pitch.midi, beats: beats,
                             voice: voice, velocity: velocity))
     }
@@ -704,7 +714,7 @@ Then make it yours:
 - Change the three strike counts. `Rhythm(7, in: 16)` under the string turns the floor into something you have to count.
 - Give the bell a whole-number ratio, `3` instead of `3.47`. It stops being metal and becomes an organ pipe, and nothing else in the sketch changes.
 - Swap `Scale(.minorPentatonic, root: "A2")` for `.hirajoshi` or `.blues`. Every wandering degree stays in the new key, because that is the one thing a scale guarantees.
-- Put the tempo on a `@Param` and drag its slider while it runs.
+- Put the tempo on a `@Param`, as `@Param(60 ... 160) var tempo: Tempo = 96`, and drag its slider while it runs. A MIDI knob binds to it the same way.
 - Feed the same step number to something you draw in 3D, and let the piece move a scene rather than a score.
 
 ## Where this comes from

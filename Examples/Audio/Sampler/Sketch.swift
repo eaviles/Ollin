@@ -23,7 +23,7 @@ final class SamplerSketch: Sketch {
 
     @Param(0 ... 1, icon: "speaker.wave.2", group: "Playing") var velocityFeel = 0.7
     @Param(-12 ... 12, icon: "arrow.up.arrow.down", group: "Playing") var transpose = 0.0
-    @Param(60 ... 160, icon: "metronome", group: "Playing") var tempo = 104.0
+    @Param(60 ... 160, icon: "metronome", group: "Playing") var tempo: Tempo = 104
 
     let synth = Synth(polyphony: 12)
     let pentatonic = Scale(.minorPentatonic, root: "C3")
@@ -69,7 +69,7 @@ final class SamplerSketch: Sketch {
         background(Color(hex: 0x0B0E13))
         if built != recipe { rebuild() }
 
-        for step in counter.steps(upTo: time * tempo / 60) {
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
             let shape = [0, 2, 4, 7, 9, 7, 4, 2, 0, 4, 9, 11, 14, 11, 9, 4]
             let degree = shape[step % shape.count]
             let pitch = pentatonic[degree]

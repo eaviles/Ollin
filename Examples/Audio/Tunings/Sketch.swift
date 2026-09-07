@@ -63,7 +63,7 @@ final class Tunings: Sketch {
     }
 
     @Param(icon: "tuningfork", group: "Tuning") var choice = Choice.just
-    @Param(60 ... 180, icon: "metronome", group: "Playing") var tempo = 132.0
+    @Param(60 ... 180, icon: "metronome", group: "Playing") var tempo: Tempo = 132
 
     let pad = Synth(.pad, polyphony: 12)
     let steps = Synth(.pluck, polyphony: 8)
@@ -109,14 +109,14 @@ final class Tunings: Sketch {
         // The melody climbs the whole tuning, one degree per step, top note
         // included, so every rung on the ladder gets heard.
         let lap = tuning.degreeCount + 1
-        for step in counter.steps(upTo: time * tempo / 60) {
+        for step in counter.steps(upTo: tempo.beats(at: time)) {
             sounding = step % lap
             lit[sounding] = 1
             steps.play(tuning[sounding], velocity: 0.6, for: 0.5)
         }
         // The triad holds underneath, replayed every couple of bars.
-        for _ in chordCounter.steps(upTo: time * tempo / 60) {
-            pad.play(chord: triad, velocity: 0.5, for: 8 * 60 / tempo)
+        for _ in chordCounter.steps(upTo: tempo.beats(at: time)) {
+            pad.play(chord: triad, velocity: 0.5, for: tempo.seconds(bars: 2))
         }
 
         drawLadder()

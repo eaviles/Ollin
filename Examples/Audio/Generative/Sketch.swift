@@ -23,7 +23,7 @@ final class Generative: Sketch {
     @Param(2 ... 12, icon: "circle.grid.cross", group: "Rhythm") var bassStrikes = 3
     @Param(2 ... 12, icon: "circle.grid.cross", group: "Rhythm") var chordStrikes = 5
     @Param(2 ... 15, icon: "circle.grid.cross", group: "Rhythm") var airStrikes = 11
-    @Param(60 ... 160, icon: "metronome", group: "Rhythm") var tempo = 104.0
+    @Param(60 ... 160, icon: "metronome", group: "Rhythm") var tempo: Tempo = 104
 
     @Param(icon: "pianokeys", group: "Notes") var mode: Scale.Mode = .minorPentatonic
     @Param(icon: "music.quarternote.3", group: "Notes") var quality: Chord.Quality = .minorSeventh
@@ -69,7 +69,7 @@ final class Generative: Sketch {
 
         // The clock the whole piece runs on. Beats, not seconds: everything
         // else here counts steps.
-        let beats = time * tempo / 60
+        let beats = tempo.beats(at: time)
         for step in counter.steps(upTo: beats) {
             lastStep = step
             play(step, rings: rings, key: key)
@@ -82,7 +82,7 @@ final class Generative: Sketch {
         withState { drawNotation(rings: rings) }
 
         drawCaption("\(bassStrikes)/\(chordStrikes)/\(airStrikes) over \(steps) "
-                    + "· \(mode.optionLabel) · \(quality.optionLabel) · \(Int(tempo)) bpm",
+                    + "· \(mode.optionLabel) · \(quality.optionLabel) · \(tempo)",
                     edge: .top)
         drawCaption("Three Euclidean rhythms on one step count. The parameters change what is played, live.")
     }
