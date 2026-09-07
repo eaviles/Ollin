@@ -30,6 +30,7 @@
 - [`Medial axis`](./MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, where every point carries the radius of its inscribed disk
 - [`Straight skeleton`](./StraightSkeleton.md) - `straightSkeleton`, the ridge network that a shrinking boundary traces, with faces and exact mitered insets (`inset(by:)`)
 - [`Force-directed layout`](./ForceLayout.md) - `ForceLayout`, a graph that untangles itself. Every node repels every other node, and each edge pulls its ends together. The layout cools into an even web that you can grow, pin, and drag
+- [`Tensegrity`](./Tensegrity.md) - `Tensegrity` / `addTensegrity`, struts held apart by cables: the prism, the six-strut icosahedron, and a stacked mast, each in its balanced shape. `imbalance` checks a form of your own, and a `World3D` build lands and stands
 - [`Marbling`](./Marbling.md) - `Marbling` / `drawMarbling`, paper marbling in closed form, where drops, tines, combs, and swirls rake vector ink outlines into feathered papers
 - [`Watercolor`](./Watercolor.md) - `Watercolor` / `drawWatercolor`, watercolor pigment made from recursively deformed polygons, stacked as translucent layers
 - [`Chladni figures`](./Chladni.md) - `chladni`, the standing-wave field of a ringing plate in closed form. The `.chladni` generator adds sand and wave readings, and an audio join picks the mode by pitch

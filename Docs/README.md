@@ -132,6 +132,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Medial axis`](./Generators/MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, with every point carrying its inscribed-disk radius
 - [`Straight skeleton`](./Generators/StraightSkeleton.md) - `straightSkeleton`, the ridge network a shrinking boundary traces, with faces and exact mitered insets (`inset(by:)`). One build gives every topographic contour at once.
 - [`Force-directed layout`](./Generators/ForceLayout.md) - `ForceLayout`, a graph that untangles itself: repulsion between all nodes, attraction along edges, and cooling into an even web you can grow, pin, and drag
+- [`Tensegrity`](./Generators/Tensegrity.md) - `Tensegrity` / `addTensegrity`, struts held apart by cables: the prism, the six-strut icosahedron, and a stacked mast, each in its balanced shape, with `imbalance` to check a form of your own and a `World3D` build that lands and stands
 - [`Marbling`](./Generators/Marbling.md) - `Marbling` / `drawMarbling`, paper marbling in closed form: drops, tines, combs, and swirls rake vector ink outlines into feathered papers
 - [`Watercolor shapes`](./Generators/Watercolor.md) - `Watercolor` / `drawWatercolor`, watercolor pigment from recursively deformed polygons stacked as translucent layers
 - [`Chladni figures`](./Generators/Chladni.md) - `chladni`, a ringing plate's standing-wave field in closed form, plus the `.chladni` generator's sand and wave readings and the mode-by-pitch join to audio

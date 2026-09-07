@@ -320,6 +320,44 @@ world.ignoreCollisions(between: "gears", and: "gears")
 
 The [`3D/Physics/Contraption`](../Examples/3D/Physics/Contraption/) example is a workshop with one of each. There's that drive train, a hoist you can load, a platter allowed only to rise and spin, and a cart on a track. Drag any of it.
 
+## Standing on cables
+
+A tensegrity is a structure of struts that never touch. Cables hold them apart. Each strut pushes, the cables around it pull back just as hard, and the whole thing stands with nothing resting on anything. Kenneth Snelson built them as sculpture and Buckminster Fuller gave them the name. In the world, every part of one is a body or a joint you already know, plus one joint kind.
+
+**The one new joint.** A `.distance` joint is a rod: it holds two anchors at a fixed spacing whichever way they are pushed. A `.cable` holds them no farther apart than its length and does nothing when they come closer. That is a rope, a tether, a guy line.
+
+```swift
+world.connect(mast, kite, .cable(from: mastTop, to: kiteNose, length: 4))
+```
+
+**The geometry comes first.** `Tensegrity` is a value: nodes, struts between nodes, and cables between nodes. Three forms come ready-made in their balanced shape. `prism(struts:)` is the simplest, `n` struts between two polygons twisted against each other. `icosahedron(strutLength:)` is the six-strut ball most people picture. `tower(levels:)` stacks prisms into a mast.
+
+```swift
+let ball = Tensegrity.icosahedron(strutLength: 1.75)
+let mast = Tensegrity.tower(levels: 3, struts: 3, radius: 0.46, levelHeight: 0.95)
+```
+
+**Then it gets weight.** `addTensegrity` builds a form in the world: a capsule body per strut, a `.cable` per cable, and a `.ball` joint wherever two struts meet at a node. Set it down a little above the floor and step the world. It lands, bounces on its own cables, and stands.
+
+```swift
+let standing = world.addTensegrity(mast, at: Vector3(2.25, 0.4, 0))
+
+// each frame:
+world.advance(by: deltaTime)
+fill(.white)
+drawTensegrity(standing)
+```
+
+<img src="Images/24-WorldsWithWeight/Tensegrity.jpg" alt="Three tensegrities standing on a dark floor: an orange three-strut prism on the left, a yellow six-strut ball in the middle, and a tall teal mast of three stacked prisms on the right. Thin pale cables run between the strut tips, and no strut touches another in the first two." width="680">
+
+None of the three rests on a strut. Each stands on a few strut tips, and the cables carry everything in between. Drag any strut with `dragBodies(in:)` and the whole form follows, stretches, and rights itself when you let go.
+
+**Why a prism twists by thirty degrees.** The top polygon of a prism has to turn against the bottom one. Only one angle works: a quarter turn less half the polygon's angle. Three struts want thirty degrees, four want forty-five. `imbalance` measures this. It reads near zero for the built-in forms and well above it for `prism(twist: 0.2)`. No set of taut cables can balance those struts. Build the wrong one anyway and watch it in the world. As it settles it turns toward thirty degrees on its own, since that is the only shape where every cable is taut.
+
+**Prestress.** A real tensegrity is tightened after it is built. `prestress` does the same, making every cable a little shorter than its drawn length, two percent by default. The struts are rigid, so the cables cannot actually reach that length. They sit taut instead, and the form holds its shape through a landing. Take the prestress to zero and a hard landing can leave a cable loose.
+
+The [`3D/Physics/Tensegrity`](../Examples/3D/Physics/Tensegrity/) example drops all three forms and lets you drag them. Space drops them again.
+
 ## Keeping what settled
 
 Some arrangements you don't design, you find. A heap of stones tipped in one at a time and left to rock itself quiet is one of them. Four hundred steps of falling and leaning went into it, and there is no way to write it down as code. It only exists in the world's memory, and closing the sketch loses it.
@@ -539,6 +577,7 @@ Gears, racks, pulleys and tracks as *links between joints* rather than between b
 ## Go deeper
 
 - [3D physics](../Docs/Simulation/Physics3D.md): the whole `World3D` surface, every collider and joint kind, the query family, collision groups and layers, degrees of freedom, and [snapshots](../Docs/Simulation/Physics3D.md#snapshots) including what a saved world does and does not keep.
+- [Tensegrity](../Docs/Generators/Tensegrity.md): the three ready-made forms, `imbalance`, and everything `addTensegrity` and `Tensegrity3D` take and read back.
 - Appendix B draws the ideas the solver rests on: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stack` and `Tumble` (stacking and contact), `Rockslide` (a slope of debris), `Windmill` and `Contraption` (joints and linkages, the second much larger than the one here), `Trigger` and `Sightlines` (queries), `Sieve` and `Flotsam` (collision groups), and `Imported` (a world read out of a USD file).
 

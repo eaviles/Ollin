@@ -302,6 +302,15 @@ public enum JointKind3D {
     case distance(from: Vector3, to: Vector3, length: Double? = nil,
                   stiffness: Double = 1)
 
+    /// A cable holding the world anchors `from` (on the first body) and `to`
+    /// (on the second) no farther apart than `length`, and doing nothing when
+    /// they come closer: a tether, a tendon, the tension member of a
+    /// tensegrity. `length` defaults to their current spacing; shorter than
+    /// that, the cable starts taut and pulls the anchors together. `stiffness`
+    /// below `1` lets it stretch like a bungee.
+    case cable(from: Vector3, to: Vector3, length: Double? = nil,
+               stiffness: Double = 1)
+
     /// Lock the two bodies rigidly together at their current relative pose.
     case weld
 

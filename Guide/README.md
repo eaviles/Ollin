@@ -84,7 +84,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and materials, air you can see, meshes and their maps, and the depth buffer's own effects.
 22. **[Meshes, maps, and materials](22-Meshes.md).** Meshes loaded from a file and built from other meshes, pictures that set what a surface is, texel by texel, and finishes you set with numbers: metal and dielectric, environments as the light source, glass, coated paint, cloth, and skin.
 23. **[Landscapes and multitudes](23-Landscapes.md).** Ground grown from noise and weathered by rain, then the four ways to draw more copies of something than you could place by hand: a field of particles, instanced meshes, a world cut down to what the camera sees, and grass that is drawn without ever being built.
-24. **[Worlds with weight](24-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, and snapshots of a settled world.
+24. **[Worlds with weight](24-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, structures that stand on their own cables, and snapshots of a settled world.
 25. **[Characters, vehicles, and cloth](25-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
 26. **[Sculpting with fields](26-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
 

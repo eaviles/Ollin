@@ -68,6 +68,7 @@ Distances are the 3D scene's world units, y-up, the same units the camera uses. 
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
 - [Ropes](#ropes) - a line of particles on rigid rods, each carrying an orientation
+- [Tensegrities](#tensegrities) - struts held apart by cables, standing on their own
 - [Cloth a figure carries](#carriedcloth) - a cape on a skeleton: what is held, what hangs
 - [Water](#water) - what floats, how deep it sits, what carries it, and `buoyancyScale`
 - [Saving and loading](#snapshots) - keeping an arrangement you like, and putting it back
@@ -254,11 +255,12 @@ It walks the node tree and adds one static mesh body for each mesh node. The nod
 world.connect(door, frame, .revolute(at: hingePoint, axis: .unitY))
 world.connect(link, next, .ball(at: meetingPoint))
 world.connect(a, b, .distance(from: pa, to: pb))          // a rod; stiffness < 1 softens
+world.connect(a, b, .cable(from: pa, to: pb, length: 3))  // a rope: taut at 3, slack closer
 world.connect(a, b, .weld)                                // rigid at current pose
 world.connect(carriage, rail, .prismatic(at: p, axis: .unitX))
 ```
 
-`.ball` is the one kind that only 3D has. It is a ball-and-socket that rotates freely in every direction, which is what a hanging chain is made of. A hinge, `.revolute`, allows rotation only about its axis. Cut any joint with `joint.remove()`.
+`.cable` is `.distance`'s one-way sibling. It stops two anchors parting past its `length` and lets them come as close as they like, which is what a tether or a guy line does. A `length` shorter than the anchors' spacing starts it taut and pulls them together. `.ball` is the one kind that only 3D has. It is a ball-and-socket that rotates freely in every direction, which is what a hanging chain is made of. A hinge, `.revolute`, allows rotation only about its axis. Cut any joint with `joint.remove()`.
 
 `.swingTwist` is the ball-and-socket with limits, and it is the joint a body is made of. Give it the bone's direction. The bone may then lean away from where it started by at most `swing` radians in any direction, which traces a cone. It also rolls about itself within `twist`:
 
@@ -1119,6 +1121,22 @@ The tube `drawSoftBody(_:)` sweeps uses a twist-free frame of its own, so a rope
 **What it cannot do.** A rope does not collide with itself, so a coil passes through its own turns. It does not collide with another rope or with cloth either, which is the same limit the rest of the tier has. One thing is particular to a rope. The shape a query asks about is built from a body's *faces*, and a rope has none. So `raycast`, `sweep`, and `bodiesOverlapping` all look straight through one. `grabSoftBody(at:in:)` still finds it, by taking the particle nearest the line of sight. A rope is also one strand. There is no branching form, so a plant with several stems is several ropes.
 
 **Hair and fur are ropes.** There is no separate hair simulation, so a rope is what to use instead. It is the same Cosserat rod maths a hair solver uses, and its parameters reach hair scale. A cantilever of 8 points spaced 25 mm apart droops about a quarter of its span at `bend: 0.5`. At `bend: 0.05` it droops about four fifths of its span. Below roughly 10 mm of spacing, `bend` stops making much difference, which is the practical floor. The cost to plan around is the count. Each rope is its own body, and `World3D(maxBodies:)` defaults to 4,096, so a few thousand strands is the working range. Measured on an M2, 2,000 strands of 8 points step in about 3.3 ms, and 4,000 in about 8.6 ms. Past that, simulate a sparse set of strands and draw several interpolated strands around each one, which is how hair is usually drawn anyway.
+
+<a name="tensegrities"></a>
+
+### Tensegrities
+
+A tensegrity is a set of struts that never touch, held apart by cables. `addTensegrity` builds a [`Tensegrity`](../Generators/Tensegrity.md) in the world: a capsule body per strut, a `.cable` joint per cable, and a `.ball` joint wherever two struts share a node. Set it down a little above the floor and it lands on its own cables and stands.
+
+```swift
+let mast = world.addTensegrity(Tensegrity.tower(levels: 3), at: Vector3(0, 0.3, 0),
+                               prestress: 0.02)          // cables 2% shorter than drawn
+// each frame:
+world.advance(by: deltaTime)
+drawTensegrity(mast)
+```
+
+`prestress` tightens every cable by a fraction, the way a real one is tensioned after assembly. With none, a landing can leave a cable loose. `stiffness` below `1` lets the cables stretch. The struts are ordinary bodies, so `dragBodies(in:)` picks them up and `contacts` names them. The returned `Tensegrity3D` reads `nodes`, `cableLengths`, `isSlack(_:)`, `center`, `top`, and `bottom` live, and `remove(_:)` takes the whole structure out. A snapshot carries it and brings it back as one structure. The three ready-made forms, the balanced twist, and `imbalance` are on the [Tensegrity](../Generators/Tensegrity.md) page.
 
 <a name="carriedcloth"></a>
 

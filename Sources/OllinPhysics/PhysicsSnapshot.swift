@@ -145,8 +145,12 @@ public struct PhysicsSnapshot: Sendable, Equatable {
         return names
     }
 
-    /// The format this build writes, and the only one it reads.
-    static let version = 4
+    /// The format this build writes. It also reads the one before it, which
+    /// is this one without the trailing tensegrity section.
+    static let version = 5
+
+    /// The oldest format this build still reads.
+    static let oldestReadableVersion = 4
 
     /// The body index a joint anchored to `World3D.groundBody` carries, since
     /// the floor slab is not one of the saved bodies.
@@ -277,6 +281,14 @@ extension World3D {
         writer.u32(UInt32(savedSoft.count))
         for body in savedSoft { writer.softBody(body, in: self) }
 
+        // A tensegrity's struts and cables are already above, as bodies and
+        // joints; this names which of them make up each one, so the grouping
+        // comes back with the geometry it was built from.
+        writer.u32(UInt32(tensegrities.count))
+        for structure in tensegrities {
+            writer.tensegrity(structure, bodyIndex: index, jointPosition: position)
+        }
+
         return PhysicsSnapshot(payload: writer.data,
                                bodies: saved.count + vehicles.count,
                                joints: structural.count + links.count)
@@ -372,6 +384,15 @@ extension World3D {
             savedSoftBodies.append(try reader.softBody())
         }
 
+        // The tensegrity section was added in format 5; a file from before it
+        // simply ends here.
+        var savedTensegrities: [SavedTensegrity] = []
+        if !reader.isAtEnd {
+            for _ in 0 ..< (try reader.count()) {
+                savedTensegrities.append(try reader.tensegrity())
+            }
+        }
+
         // Everything read: now the world can be emptied.
         removeAll()
 
@@ -444,10 +465,15 @@ extension World3D {
         let restedPoses = savedBodies.map {
             Pose3D(position: $0.position, rotation: $0.rotation)
         } + savedVehicles.map(\.pose)
-        var madeJoints: [Joint3D] = []
+        // One slot per saved joint, nil where a body it named was left out, so
+        // the links and the tensegrities below can find theirs by index.
+        var madeJoints: [Joint3D?] = []
         for saved in savedJoints {
             guard let a = restored(saved.a, in: restoredBodies),
-                  let b = restored(saved.b, in: restoredBodies) else { continue }
+                  let b = restored(saved.b, in: restoredBodies) else {
+                madeJoints.append(nil)
+                continue
+            }
             // A joint's zero is the pose its two bodies were in when it was
             // made, so they stand back there while it is made and are then put
             // back where the snapshot found them. Neither move wakes them.
@@ -466,10 +492,11 @@ extension World3D {
 
         for link in savedLinks {
             let a = Int(link.0), b = Int(link.1)
-            guard madeJoints.indices.contains(a), madeJoints.indices.contains(b) else {
+            guard madeJoints.indices.contains(a), madeJoints.indices.contains(b),
+                  let first = madeJoints[a], let second = madeJoints[b] else {
                 continue
             }
-            connect(madeJoints[a], madeJoints[b], link.2)
+            connect(first, second, link.2)
         }
 
         for saved in savedCharacters {
@@ -486,6 +513,40 @@ extension World3D {
 
         for saved in savedRagdolls { restoreRagdoll(saved) }
         for saved in savedSoftBodies { restoreSoftBody(saved, resolving: resolve) }
+        for saved in savedTensegrities {
+            restoreTensegrity(saved, bodies: restoredBodies, joints: madeJoints)
+        }
+    }
+
+    /// Group restored struts and cables back into the tensegrity they made
+    /// up. Every part is already in the world; this only rebuilds the object
+    /// that reads them as one structure. A structure any of whose struts or
+    /// cables did not come back is left ungrouped rather than half-built.
+    private func restoreTensegrity(_ saved: SavedTensegrity, bodies: [Body3D?],
+                                   joints: [Joint3D?]) {
+        var struts: [Body3D] = []
+        for index in saved.strutBodies {
+            guard let body = restored(index, in: bodies) else { return }
+            struts.append(body)
+        }
+        func joint(_ index: UInt32) -> Joint3D? {
+            let i = Int(index)
+            return joints.indices.contains(i) ? joints[i] : nil
+        }
+        var cables: [Joint3D] = []
+        for index in saved.cableJoints {
+            guard let made = joint(index) else { return }
+            cables.append(made)
+        }
+        var shared: [Joint3D] = []
+        for index in saved.sharedJoints {
+            guard let made = joint(index) else { return }
+            shared.append(made)
+        }
+        register(Tensegrity3D(world: self, source: saved.source, struts: struts,
+                              cables: cables, jointsBetweenStruts: shared,
+                              cableRestLengths: saved.restLengths,
+                              anchors: saved.anchors))
     }
 
     /// Build one saved surface back. The mesh comes from the resolver, since a
@@ -873,6 +934,17 @@ private struct SavedRope {
     var rodRotations: [simd_quatd]
 }
 
+/// One tensegrity as a snapshot holds it: the geometry it was built from and
+/// which saved bodies and joints are its struts, cables, and shared nodes.
+private struct SavedTensegrity {
+    var source: Tensegrity
+    var strutBodies: [UInt32]
+    var cableJoints: [UInt32]
+    var sharedJoints: [UInt32]
+    var restLengths: [Double]
+    var anchors: [(strut: Int, offset: Vector3)]
+}
+
 /// One joint as a snapshot holds it.
 private struct SavedJoint {
     var a: UInt32
@@ -904,7 +976,8 @@ private struct SnapshotHeader {
         guard let magic = try? reader.bytes(8),
               magic.elementsEqual(Array("OLLNPHYS".utf8)),
               let version = try? reader.u32(),
-              Int(version) == PhysicsSnapshot.version,
+              Int(version) >= PhysicsSnapshot.oldestReadableVersion,
+              Int(version) <= PhysicsSnapshot.version,
               let bodies = try? reader.u32(), let joints = try? reader.u32(),
               let flags = try? reader.u8(), let length = try? reader.u32(),
               let checksum = try? reader.u64()
@@ -1183,6 +1256,8 @@ private struct SnapshotWriter {
             f64(ratio); bool(taut)
         case .allowing(let freedom, let at, let travel, let rotation)?:
             u8(8); u32(freedom.rawValue); vector(at); range(travel); range(rotation)
+        case .cable(let from, let to, let length, let stiffness)?:
+            u8(9); vector(from); vector(to); optionalDouble(length); f64(stiffness)
         case nil:
             u8(4) // unreachable: kind-less joints are filtered out before here
         }
@@ -1274,6 +1349,38 @@ private struct SnapshotWriter {
         f64(wheel.brakeTorque)
         f64(wheel.handBrakeTorque)
         f64(wheel.grip)
+    }
+
+    mutating func tensegrity(_ structure: Tensegrity3D,
+                             bodyIndex: [CJoltBodyID: UInt32],
+                             jointPosition: [ObjectIdentifier: UInt32]) {
+        let source = structure.source
+        vectors(source.nodes)
+        u32(UInt32(source.struts.count))
+        for member in source.struts { u32(UInt32(member.a)); u32(UInt32(member.b)) }
+        u32(UInt32(source.cables.count))
+        for member in source.cables { u32(UInt32(member.a)); u32(UInt32(member.b)) }
+        // A strut is always a saved body and a cable always a structural joint,
+        // so these lookups hold; the sentinel keeps a reader honest if not.
+        u32(UInt32(structure.struts.count))
+        for strut in structure.struts {
+            u32(bodyIndex[strut.id] ?? PhysicsSnapshot.groundIndex)
+        }
+        u32(UInt32(structure.cables.count))
+        for cable in structure.cables {
+            u32(jointPosition[ObjectIdentifier(cable)] ?? PhysicsSnapshot.groundIndex)
+        }
+        u32(UInt32(structure.jointsBetweenStruts.count))
+        for joint in structure.jointsBetweenStruts {
+            u32(jointPosition[ObjectIdentifier(joint)] ?? PhysicsSnapshot.groundIndex)
+        }
+        u32(UInt32(structure.cableRestLengths.count))
+        for length in structure.cableRestLengths { f64(length) }
+        u32(UInt32(structure.anchors.count))
+        for anchor in structure.anchors {
+            u32(UInt32(anchor.strut))
+            vector(anchor.offset)
+        }
     }
 
     mutating func softBody(_ body: SoftBody3D, in world: World3D) {
@@ -1409,6 +1516,10 @@ private struct SnapshotReader {
     }
 
     enum Failure: Error { case truncated, unknownTag }
+
+    /// Whether every byte has been read, which is how a section added to the
+    /// format later is told apart from a file written before it existed.
+    var isAtEnd: Bool { offset >= data.count }
 
     mutating func bytes(_ count: Int) throws -> [UInt8] {
         guard count >= 0, offset + count <= data.count else { throw Failure.truncated }
@@ -1656,6 +1767,8 @@ private struct SnapshotReader {
                                ratio: try f64(), taut: try bool())
         case 8: kind = .allowing(Freedom3D(rawValue: try u32()), at: try vector(),
                                  travel: try range(), rotation: try range())
+        case 9: kind = .cable(from: try vector(), to: try vector(),
+                              length: try optionalDouble(), stiffness: try f64())
         default: throw Failure.unknownTag
         }
         return SavedJoint(a: a, b: b, kind: kind, friction: try f64(),
@@ -1736,6 +1849,43 @@ private struct SnapshotReader {
                    suspensionFrequency: try f64(), suspensionDamping: try f64(),
                    brakeTorque: try f64(), handBrakeTorque: try f64(),
                    grip: try f64())
+    }
+
+    mutating func tensegrity() throws -> SavedTensegrity {
+        let nodes = try vectors()
+        var struts: [Tensegrity.Member] = []
+        for _ in 0 ..< (try count()) {
+            struts.append(Tensegrity.Member(Int(try u32()), Int(try u32())))
+        }
+        var cables: [Tensegrity.Member] = []
+        for _ in 0 ..< (try count()) {
+            cables.append(Tensegrity.Member(Int(try u32()), Int(try u32())))
+        }
+        for member in struts + cables where !nodes.indices.contains(member.a)
+            || !nodes.indices.contains(member.b) {
+            throw Failure.unknownTag
+        }
+        var strutBodies: [UInt32] = []
+        for _ in 0 ..< (try count()) { strutBodies.append(try u32()) }
+        var cableJoints: [UInt32] = []
+        for _ in 0 ..< (try count()) { cableJoints.append(try u32()) }
+        var sharedJoints: [UInt32] = []
+        for _ in 0 ..< (try count()) { sharedJoints.append(try u32()) }
+        var restLengths: [Double] = []
+        for _ in 0 ..< (try count()) { restLengths.append(try f64()) }
+        var anchors: [(strut: Int, offset: Vector3)] = []
+        for _ in 0 ..< (try count()) {
+            let strut = Int(try u32())
+            guard strutBodies.indices.contains(strut) else { throw Failure.unknownTag }
+            anchors.append((strut, try vector()))
+        }
+        guard anchors.count == nodes.count, restLengths.count == cableJoints.count else {
+            throw Failure.unknownTag
+        }
+        return SavedTensegrity(source: Tensegrity(nodes: nodes, struts: struts, cables: cables),
+                               strutBodies: strutBodies, cableJoints: cableJoints,
+                               sharedJoints: sharedJoints, restLengths: restLengths,
+                               anchors: anchors)
     }
 
     mutating func softBody() throws -> SavedSoftBody {

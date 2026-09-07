@@ -202,6 +202,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Rigid physics | Bodies, colliders, and joints in the same `World`: stacks, chains, machines | [Ch 11](11-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
 | Grabbing | `grab`: pick up any rigid body with the mouse | [Ch 11](11-ForcesAndPhysics.md) | [Physics](../Docs/Simulation/Physics.md) |
 | 3D physics | `World3D`: rigid bodies that stack, tumble, and swing inside the 3D scene, with joints and camera grabbing | [Ch 24](24-WorldsWithWeight.md), [Ch 25](25-CharactersAndCloth.md) | [Physics3D](../Docs/Simulation/Physics3D.md) |
+| Tensegrity | `Tensegrity` and `addTensegrity`: struts held apart by cables in their balanced forms, standing in the world on a `.cable` joint | [Ch 24](24-WorldsWithWeight.md) | [Tensegrity](../Docs/Generators/Tensegrity.md) |
 | Inverse kinematics | `IKChain`: a segmented limb that reaches for a target, or a rope dragged by its tip | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Double pendulum | `DoublePendulum`: the classic chaos machine, deterministic and wildly sensitive | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Gravity at scale | `NBody`: thousands of bodies pulling on each other, with seeded disk and cluster scenes | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |

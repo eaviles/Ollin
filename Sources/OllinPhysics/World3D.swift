@@ -108,6 +108,10 @@ public final class World3D {
     /// (one pose, one velocity, impulses) does not describe them.
     public private(set) var softBodies: [SoftBody3D] = []
 
+    /// Every `Tensegrity3D` in the world, in the order added. Their struts are
+    /// ordinary bodies and sit in `bodies` too; their cables sit in `joints`.
+    public private(set) var tensegrities: [Tensegrity3D] = []
+
     /// Every touch that started or stopped during the most recent `advance(by:)`,
     /// including bodies entering and leaving a sensor. Poll it in `draw()` the
     /// way mouse state is polled; the list is replaced by the next step, and
@@ -762,6 +766,67 @@ public final class World3D {
         softBodies.removeAll { $0 === softBody }
     }
 
+    /// Build a tensegrity in the world and return it: one capsule body per
+    /// strut, one `.cable` joint per cable, and a `.ball` joint wherever two
+    /// struts meet at a node (a `tower`'s shared polygons). The structure is
+    /// placed with its own coordinates offset by `position`, so a form whose
+    /// `bottom` is zero stands on `ground` when `position.y` is zero.
+    ///
+    /// ```swift
+    /// let mast = world.addTensegrity(Tensegrity.tower(levels: 3),
+    ///                                at: Vector3(0, 0.02, 0))
+    /// // each frame:
+    /// world.advance(by: deltaTime)
+    /// drawTensegrity(mast)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - structure: the geometry to build, in its own coordinates.
+    ///   - position: where its origin lands in the world.
+    ///   - strutRadius: the struts' thickness, capped so a strut is always
+    ///     longer than it is wide.
+    ///   - prestress: how much shorter than its drawn length each cable is
+    ///     made, as a fraction. A real tensegrity is tensioned this way; with
+    ///     none, a landing can leave a cable slack and the form loose. `0.02`
+    ///     tightens without visibly shrinking.
+    ///   - stiffness: the cables' give, `1` inextensible, less stretches.
+    ///   - density: the struts' relative mass per volume.
+    ///   - friction: the struts' surface friction, which is what keeps the
+    ///     feet from skating when it lands.
+    ///   - group: which collision group the struts join.
+    @discardableResult
+    public func addTensegrity(_ structure: Tensegrity, at position: Vector3 = .zero,
+                              strutRadius: Double = 0.04, prestress: Double = 0.02,
+                              stiffness: Double = 1, density: Double = 1,
+                              friction: Double = 0.6,
+                              group: CollisionGroup = .default) -> Tensegrity3D? {
+        guard let built = Tensegrity3D(world: self, structure: structure,
+                                       position: position, strutRadius: strutRadius,
+                                       prestress: prestress, stiffness: stiffness,
+                                       density: density, friction: friction,
+                                       group: group)
+        else {
+            noteOnce("addTensegrity needs at least one strut whose two nodes "
+                     + "are apart; nothing was added.")
+            return nil
+        }
+        tensegrities.append(built)
+        return built
+    }
+
+    /// Take in a tensegrity regrouped from parts already in the world (a
+    /// snapshot's restore).
+    func register(_ tensegrity: Tensegrity3D) {
+        tensegrities.append(tensegrity)
+    }
+
+    /// Remove a tensegrity, its struts, and its cables from the world.
+    public func remove(_ tensegrity: Tensegrity3D) {
+        for joint in tensegrity.cables + tensegrity.jointsBetweenStruts { removeJoint(joint) }
+        for strut in tensegrity.struts { remove(strut) }
+        tensegrities.removeAll { $0 === tensegrity }
+    }
+
     /// Remove a figure and every limb body it owns from the world.
     public func remove(_ ragdoll: Ragdoll3D) {
         ragdoll.destroyBackingRagdoll()
@@ -867,6 +932,23 @@ public final class World3D {
                 desc.limitMin = l
                 desc.limitMax = l
             }
+            if stiffness < 1 {
+                desc.frequency = Float(1 + max(0, stiffness) * 8) // soft … firm
+                desc.damping = 0.5
+            }
+
+        case .cable(let from, let to, let length, let stiffness):
+            // The same solver constraint as a rod, with its lower limit at
+            // zero: it stops the anchors parting past `length` and lets them
+            // come as close as they like.
+            desc.type = CJOLT_CONSTRAINT_DISTANCE
+            let pa = meters(from: from)
+            let pb = meters(from: to)
+            desc.anchorA = (pa.0, pa.1, pa.2)
+            desc.anchorB = (pb.0, pb.1, pb.2)
+            desc.hasLimits = true
+            desc.limitMin = 0
+            desc.limitMax = Float(max(length ?? from.distance(to: to), 0) / unitsPerMeter)
             if stiffness < 1 {
                 desc.frequency = Float(1 + max(0, stiffness) * 8) // soft … firm
                 desc.damping = 0.5
@@ -1065,6 +1147,9 @@ public final class World3D {
         // Soft bodies own their own body and destroy it on release.
         softBodies.removeAll()
         softBodyByID.removeAll()
+        // A tensegrity's struts are in `bodies` and its cables were in
+        // `joints`, both handled here; only the grouping goes.
+        tensegrities.removeAll()
         // Characters own their inner bodies and destroy them on release.
         characters.removeAll()
         for body in bodies { cjolt_body_destroy(handle, body.id) }

@@ -360,6 +360,27 @@ extension Sketch {
         }
     }
 
+    /// Draw a tensegrity where its struts are now: each strut as its capsule
+    /// body and each cable as a thin capsule of `cableRadius` between the live
+    /// node positions, all in the current fill and material.
+    ///
+    /// ```swift
+    /// fill(.white)
+    /// material(.metal(roughness: 0.4))
+    /// drawTensegrity(mast)
+    /// ```
+    ///
+    /// For struts and cables in different colors, draw the struts with
+    /// `drawBody(_:)` and the cables from `endpoints(of:)` yourself.
+    public func drawTensegrity(_ tensegrity: Tensegrity3D, cableRadius: Double = 0.008) {
+        for strut in tensegrity.struts { drawBody(strut) }
+        let nodes = tensegrity.nodes
+        for cable in tensegrity.source.cables {
+            drawCapsule(from: nodes[cable.a], to: nodes[cable.b], radius: cableRadius,
+                        segments: 8, rings: 3)
+        }
+    }
+
     /// Let the mouse pick up, drag, and drop the world's bodies: one call in
     /// `draw()`, replacing the grab-joint variable and the press and release
     /// overrides it needs by hand.
