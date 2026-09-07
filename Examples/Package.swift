@@ -375,6 +375,7 @@ let package = Package(
         example("Data/Places", resources: [.copy("places.json")]),
         example("Data/Quakes"),
         example("Data/Edits"),
+        example("Data/Outside"),
         example("Color/ColorVision"),
         example("Color/ColorWaves"),
         example("Color/HSBWheel"),

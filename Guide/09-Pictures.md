@@ -430,6 +430,39 @@ The rest of the work is staying connected, and the feed does all of it, the way 
 
 In a headless export, the feed waits for one message while `start()` runs, then holds it for every frame. The polled feed reads once for the same reason. The `Data/Edits` example is this section as a finished piece. The encyclopedia's edits fall as rain, each drop sized by the bytes somebody just added or took away.
 
+## The weather outside: Weather
+
+A feed can read any address, and the sky over a place is one of the addresses worth reading. A `Weather` is a `DataFeed` that already knows where to ask and what comes back, so a sketch reads the sky the way it reads a slider.
+
+<img src="Images/09-Pictures/TheWeatherOutside.jpg" alt="Two panels of the same painted sky. On the left a mostly clear afternoon: a pale blue sky, a warm sun high on the right, a few white clouds, a low line of roofs along the bottom. On the right a rainy dusk: a gray-orange sky, the sun a dim glow at the horizon, heavy clouds, and rain streaks leaning with the wind. Under each panel a line gives the hour, the condition, the temperature, and the wind" width="680">
+
+```swift
+final class Sky: Sketch {
+    private let sky = Weather(in: "Oaxaca")
+
+    override func setup() {
+        sky.start()
+    }
+
+    override func draw() {
+        background(sky.isDay == true ? Color(hex: 0x9CC4E4) : Color(hex: 0x0A1230))
+        let clouds = sky.cloudCover ?? 0
+        fill(Color(white: 1, alpha: 0.8))
+        drawCircle(center: center, radius: 60 + clouds * 200)
+    }
+}
+```
+
+Give it a place, as a latitude and longitude, or give it a name. A name is looked up once when the weather starts, and the reading then carries the place it turned out to be. The reads come in plain units: degrees, meters per second, millimeters in the last hour, and fractions of one for humidity and cloud cover. `condition` is the sky in a word (`.clear`, `.rain`, `.fog`, and so on), and `isDay` says whether the sun is up there.
+
+Everything you learned about the feed still holds. Every read is `nil` until the first answer. A failure keeps the last reading and says why in `problem`. An export reads once and holds it. One thing is different. `updateCount` counts readings rather than bytes, because the service stamps every answer with the time it was made, and a sky that has not changed is not news.
+
+The sun is the one thing a weather does not fetch. `place.sun(at: Date())` works out its `elevation` and `azimuth` from the place and the clock, with no network at all. Put the sun where the azimuth says and color the sky by the elevation, and the picture is right for the hour before the first reading arrives. The figure above is two readings drawn by the same code, a clear afternoon and a rainy dusk, each built by hand as a `Weather.Reading` so the figure needs no network either.
+
+The `Data/Outside` example is this section as a piece. It draws the sky over Mexico City, with the clouds drifting on the wind and the rain leaning with it.
+
+The conditions come from Open-Meteo, an open service with no key and a limit far above what a sketch asking every fifteen minutes needs. A piece shown commercially, or a print that carries the numbers, should read the reference page's note on where the data comes from.
+
 ## Putting it together: a picture painted with type
 
 This is the piece from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness.
@@ -553,10 +586,11 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 - [Seam carving](../Docs/Drawing/SeamCarving.md): both energies, the two masks, growing rather than shrinking, and the `SeamMap` that hands back any width at once.
 - [Data](../Docs/Helpers/Data.md): `loadTable` and `loadJSON` in full, including the separator and header guesses, the two ways a column reads back, and what a missing key does.
 - [Live data](../Docs/Helpers/LiveData.md): every parameter on `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
+- [Weather](../Docs/Helpers/Weather.md): every read on `Weather` with its unit, the whole `Reading` and how to build one by hand, the condition words and their codes, `Place.sun(at:)`, and where the data comes from.
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift), [`StringArt`](../Examples/Images/StringArt/Sketch.swift), [`SeamCarve`](../Examples/Images/SeamCarve/Sketch.swift), and [`PixelField`](../Examples/Images/PixelField/Sketch.swift) (authoring an image pixel by pixel and reading it back).
-- Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart), [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey), and [`Examples/Data/Quakes`](../Examples/Data/Quakes/Sketch.swift) (an hour of earthquakes, redrawn as the list changes).
-- Ahead of you: the sensors, meaning weather, location, and a paired Watch's heart rate, are not in the framework yet. Each needs its own permission prompt, and a feed you point at an address needs none. When they land they get a chapter of their own in Part V, beside the other things a sketch listens to.
+- Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart), [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey), [`Examples/Data/Quakes`](../Examples/Data/Quakes/Sketch.swift) (an hour of earthquakes, redrawn as the list changes), and [`Examples/Data/Outside`](../Examples/Data/Outside/Sketch.swift) (the sky over a city, drawn from a weather).
+- Ahead of you: the Mac's own location, so a weather can follow the machine, and a paired Watch's heart rate are not in the framework yet. Each needs its own permission prompt, and a feed you point at an address needs none. When they land they join the other things a sketch listens to in Part V.
 
 ---
 

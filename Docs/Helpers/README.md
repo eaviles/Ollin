@@ -11,6 +11,7 @@
 - [`Accessibility`](./Accessibility.md) - color vision simulation, a palette check, the published safe set, and the reduce-motion setting
 - [`Data`](./Data.md) - `loadTable` for CSV and TSV files, and `loadJSON` for documents whose values you look up by name and index
 - [`LiveData`](./LiveData.md) - `DataFeed` reads one address again and again, so a sketch draws the current value instead of the value it read at launch
+- [`Weather`](./Weather.md) - `Weather`, the sky over a place or a name as plain readings (temperature, clouds, wind, rain, the condition in a word), and `Place.sun(at:)` for where the sun is, with no network
 - [`Audio`](./Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources. Ollin analyzes each source into `amplitude`, `spectrum`, and band values that you read in `draw()`
 - [`Listening`](./Listening.md) - speech as a caption you can draw and phrases you can act on, and about 300 everyday sounds named as they happen. Both work from any audio source
 - [`Synthesis`](./Synthesis.md) - `Synth`, the instrument a sketch plays. It gives you notes by name or number, `Voice` presets over a shaped and filtered oscillator, and delay and reverb effects

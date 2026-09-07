@@ -91,6 +91,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Halftone | A picture as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter | [Ch 9](09-Pictures.md) | [Halftone](../Docs/Drawing/Halftone.md) |
 | Tables and JSON | `loadTable` reads a CSV or TSV with typed reads by column name; `loadJSON` reads a document by name and index | [Ch 9](09-Pictures.md) | [Data](../Docs/Helpers/Data.md) |
 | Live data | `DataFeed` reads one address over and over in the background, counting only the answers that changed | [Ch 9](09-Pictures.md) | [LiveData](../Docs/Helpers/LiveData.md) |
+| The weather outside | `Weather` reads the sky over a place or a name in plain units, and `Place.sun(at:)` puts the sun where the clock says | [Ch 9](09-Pictures.md) | [Weather](../Docs/Helpers/Weather.md) |
 | Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 
 ## Geometry you can hold

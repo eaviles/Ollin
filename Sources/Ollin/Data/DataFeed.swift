@@ -101,8 +101,20 @@ public final class DataFeed: @unchecked Sendable {
         var problem: String?
         var etag: String?
         var modified: String?
+        /// Called on the network queue after an answer that differed from the
+        /// one before has been stored, which is how a reader built over a feed
+        /// (a `Weather`) learns there is something new to parse without
+        /// polling the feed from a frame. In a headless export it runs before
+        /// `start()` returns, the same as the answer itself.
+        var onChange: (@Sendable () -> Void)?
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
+
+    /// Runs after each answer whose bytes differed, on the network queue.
+    var onChange: (@Sendable () -> Void)? {
+        get { state.withLock { $0.onChange } }
+        set { state.withLock { $0.onChange = newValue } }
+    }
 
     // MARK: Lifecycle
 
@@ -366,21 +378,24 @@ public final class DataFeed: @unchecked Sendable {
             case 200..<300:
                 let bytes = data ?? Data()
                 let read = DataFeed.read(bytes, contentType: http?.value(forHTTPHeaderField: "Content-Type"), as: content)
-                state.withLock {
+                let changed: (@Sendable () -> Void)? = state.withLock {
                     $0.waiting = false
                     $0.failures = 0
                     $0.problem = nil
                     $0.etag = http?.value(forHTTPHeaderField: "ETag")
                     $0.modified = http?.value(forHTTPHeaderField: "Last-Modified")
-                    if $0.bytes != bytes {
-                        $0.bytes = bytes
-                        $0.json = read.json
-                        $0.table = read.table
-                        $0.text = read.text
-                        $0.updates += 1
-                        $0.lastUpdate = Date()
-                    }
+                    guard $0.bytes != bytes else { return nil }
+                    $0.bytes = bytes
+                    $0.json = read.json
+                    $0.table = read.table
+                    $0.text = read.text
+                    $0.updates += 1
+                    $0.lastUpdate = Date()
+                    return $0.onChange
                 }
+                // Outside the lock: the hook reads the feed back, and it may
+                // start another feed of its own.
+                changed?()
             default:
                 state.withLock {
                     $0.waiting = false

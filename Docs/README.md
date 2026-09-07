@@ -166,6 +166,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Accessibility`](./Helpers/Accessibility.md) - see your colors as the three kinds of color vision see them, check whether a palette's colors stay apart, and read the system's reduce-motion setting
 - [`Data`](./Helpers/Data.md) - `loadTable` for CSV and TSV files (typed reads by column name) and `loadJSON` for documents you reach into by name and index
 - [`LiveData`](./Helpers/LiveData.md) - `DataFeed`, one address read over and over on a background queue, so a sketch draws what is true now. It covers conditional polling, backoff, and one fixed answer in an export.
+- [`Weather`](./Helpers/Weather.md) - `Weather`, the sky over a place or a name as plain readings (temperature, clouds, wind, rain, the condition in a word), and `Place.sun(at:)` for where the sun is, with no network
 - [`Audio`](./Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 - [`Listening`](./Helpers/Listening.md) - speech as a caption you can draw and phrases you can act on, plus about 300 everyday sounds named as they happen, over any audio source
 - [`Synthesis`](./Helpers/Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, a wavetable read by position, and delay and reverb

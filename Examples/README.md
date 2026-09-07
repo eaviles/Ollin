@@ -17,7 +17,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Basic](Basic/) | the smallest starting point |
 | [Color](Color/) | palettes, colormaps, and color over time |
 | [Compute](Compute/) | GPU compute: a million particles, and reaction-diffusion / texture simulations |
-| [Data](Data/) | drawing from a file: CSV tables and JSON documents |
+| [Data](Data/) | drawing from data: CSV tables and JSON documents, a polled feed, a pushed stream, and the weather over a city |
 | [Effects](Effects/) | layered effects: GPU filters, feedback, generators, and the `compose { }` stack |
 | [Export](Export/) | saving a sketch out: raster frame grab, vector SVG, and plotter hatching |
 | [Images](Images/) | loading, drawing, tinting, and authoring images, plus glyph mosaics, pixel sorting, single-line renderings, and slit scan |
