@@ -126,11 +126,13 @@ Open the folder's `index.html` to start reading. The README is the front page, a
 
 The site shows the same files rather than a second copy of them. A page's prose arrives exactly as the file spells it, and its links point at the same neighbors they do on GitHub. The site does not render every kind of file. A link to one it skips, such as a source file or a folder of figures, points at that file on GitHub instead. Paths mirror the repository in lower case, so `Docs/Drawing/Color.md` becomes `docs/drawing/color.html`.
 
+Every page has a search. Press `/`, or the command key with K, or the button in the bar, and type. It looks through the Guide, the reference, and the examples one section at a time. A page's title counts most, then its heading, then its first line, then the words of its prose. So `color` puts the color page first, and `kuwa` finds the brushwork filter by a word its prose uses. A typo in a longer word is forgiven, and every word you type has to match. No page takes more than three rows, and the words that matched are marked. The index is written with the site as `assets/search-index.js`, one entry per section. The matching runs in your browser through [MiniSearch](https://lucaong.github.io/minisearch/), a small open-source library. The page loads it from a content network the first time you search, pinned to one release and checked against its published hash. That is the one thing on the site that comes from outside it. A folder you opened off the disk with no connection has every page, and its search says the library did not load.
+
 `--domain ollin.art` writes the `CNAME` file for a custom domain, and it makes every page's canonical address absolute. The repository's own workflow (`.github/workflows/site.yml`) runs the same command and publishes the result to GitHub Pages.
 
 ## What it is not
 
-The command prints pages for a person to read, and nothing else. The website is the same pages for a browser, and it carries no search index either. There is no machine-readable output, and no index for another program to read. That is a decision rather than a gap. Anything that points a tool at the reference raises the question of [where the line falls](../../ROADMAP.md#a-third-party-extension-ecosystem), and that question is still open here. Printing a page somebody asked for takes no position on it.
+The command prints pages for a person to read, and nothing else. The website is the same pages for a browser. Its search index is for the page's own script: headings and first lines with the words under them, not a copy of the reference. There is no machine-readable output, and no index written for another program to read. That is a decision rather than a gap. Anything that points a tool at the reference raises the question of [where the line falls](../../ROADMAP.md#a-third-party-extension-ecosystem), and that question is still open here. Printing a page somebody asked for takes no position on it.
 
 ---
 

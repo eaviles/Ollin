@@ -22,6 +22,9 @@ public struct SiteBuilder {
         public var pages = 0
         public var examples = 0
         public var images = 0
+        /// The sections the search lists: one per heading on every page,
+        /// and one per example.
+        public var sections = 0
         /// Links and pictures that resolved to nothing in the checkout, as
         /// `page: target`. The link checker gates these; the build reports
         /// them and goes on.
@@ -259,6 +262,14 @@ public struct SiteBuilder {
             report.images += 1
         }
 
+        // The search: every section the pages rendered, the words common to
+        // more than a tenth of them dropped, as the script the page loads on
+        // the first search, beside the script that runs it.
+        let entries = SiteSearch.pruned(log.search)
+        try write(try SiteSearch.script(entries), to: output.appendingPathComponent("assets/search-index.js"))
+        try write(SiteStyle.searchScript, to: output.appendingPathComponent("assets/search.js"))
+        report.sections = entries.count
+
         try write(SiteStyle.css, to: output.appendingPathComponent("assets/site.css"))
         let favicon = root.appendingPathComponent(SiteLogo.favicon)
         if manager.fileExists(atPath: favicon.path) {
@@ -287,11 +298,12 @@ public struct SiteBuilder {
         try text.write(to: url, atomically: true, encoding: .utf8)
     }
 
-    /// What the pages asked for as they rendered: the pictures to copy, and
-    /// the targets that pointed at nothing.
+    /// What the pages asked for as they rendered: the pictures to copy, the
+    /// targets that pointed at nothing, and the sections the search lists.
     final class LinkLog {
         var images: [String: String] = [:]
         var missing: [String] = []
+        var search: [SiteSearch.Entry] = []
     }
 
     // MARK: - A markdown page
@@ -305,6 +317,7 @@ public struct SiteBuilder {
         let rendered = HTML.render(source) { target, image in
             resolve(target, image: image, from: page, plan: plan, log: log)
         }
+        log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: rendered))
         let body = hero.isEmpty
             ? "<article class=\"prose\">\n\(rendered.body)\n</article>"
             : "\(hero)\n<article class=\"prose home\">\n\(rendered.body)\n</article>"
@@ -391,6 +404,7 @@ public struct SiteBuilder {
 
     func examplePage(_ entry: ExampleEntry, page: Page, plan: Plan, log: LinkLog) -> String {
         let source = (try? String(contentsOf: entry.sketch, encoding: .utf8)) ?? ""
+        log.search.append(SiteSearch.entry(for: entry, page: page, source: source))
         let category = entry.group.split(separator: "/").map(String.init)
 
         // The trail walks the category folders, linking each level that has
@@ -532,6 +546,12 @@ public struct SiteBuilder {
             let active = page.section == section && !isHome ? " class=\"active\" aria-current=\"true\"" : ""
             return "<a href=\"\(asset(path))\"\(active)>\(label)</a>"
         }
+        // The search opens from the bar and lives in a dialog at the end of
+        // the page. Its button is hidden until the script that runs it has
+        // loaded, so a reader with no script sees no control that does
+        // nothing; the index is loaded on the first search, from the site's
+        // root, which the dialog carries as the path back up to it.
+        let siteRoot = String(asset("index.html").dropLast("index.html".count))
         let nav = """
         <header class="bar">
           <div class="bar-inner">
@@ -542,8 +562,20 @@ public struct SiteBuilder {
               \(navItem("Examples", .examples, "examples/index.html"))
               <a href="\(HTML.escape(repository))" rel="noopener">GitHub</a>
             </nav>
+            <button class="search-toggle" type="button" aria-label="Search" title="Search" hidden>\(SiteStyle.searchIcon)<span class="key" aria-hidden="true"></span></button>
           </div>
         </header>
+        """
+        let search = """
+        <dialog id="search" class="search" data-root="\(siteRoot)" aria-label="Search">
+          <div class="search-panel">
+            <form class="search-box" role="search">\(SiteStyle.searchIcon)<input type="search" placeholder="Search the Guide, the reference, and the examples" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Search" aria-controls="search-results"><kbd>esc</kbd></form>
+            <p class="search-status" aria-live="polite"></p>
+            <ul class="search-results" id="search-results"></ul>
+            <p class="search-hints"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↩</kbd> open</p>
+          </div>
+        </dialog>
+        <script src="\(asset("assets/search.js"))" defer></script>
         """
 
         let sidebar = isHome ? "" : self.sidebar(for: page, plan: plan)
@@ -576,6 +608,7 @@ public struct SiteBuilder {
         </main>
         \(rail)
         </div>
+        \(search)
         <footer class="foot">
           <div class="foot-inner">
             <p>Ollin is MIT licensed and built in public. <a href="\(HTML.escape(repository))" rel="noopener">The repository</a> holds everything on this site.</p>

@@ -184,6 +184,183 @@ struct SiteTests {
         #expect(home.components(separatedBy: "id=\"logo-eye\"").count == 2)
         #expect(home.contains("mask=\"url(#logo-eye)\""))
         #expect(!chapter.contains("class=\"logo\""), "only the front page wears the full mark")
+
+        // The search: every page carries the button, the dialog with the way
+        // back to the site's root, and the script; the index lists one entry
+        // per section and per example, each at a page the build wrote and an
+        // anchor that page carries, and it stays small enough to load on a
+        // first search.
+        for (name, page, up) in [("the front page", home, ""), ("a chapter", chapter, "../"), ("an example", example, "../../")] {
+            #expect(page.contains("<button class=\"search-toggle\" type=\"button\" aria-label=\"Search\" title=\"Search\" hidden>"), "\(name) has no search button")
+            #expect(page.contains("<dialog id=\"search\" class=\"search\" data-root=\"\(up)\" aria-label=\"Search\">"), "\(name) has no search dialog, or the wrong way up")
+            #expect(page.contains("<script src=\"\(up)assets/search.js\" defer></script>"), "\(name) does not load the search")
+        }
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("assets/search.js").path))
+        let indexText = try String(contentsOf: output.appendingPathComponent("assets/search-index.js"), encoding: .utf8)
+        #expect(report.sections > 3_000, "indexed \(report.sections) sections")
+        #expect(indexText.utf8.count < 3_000_000, "the index is \(indexText.utf8.count) bytes")
+        let entries = try Self.searchEntries(in: indexText)
+        #expect(entries.count == report.sections)
+        var ids: [String: Set<String>] = [:]
+        var broken: [String] = []
+        for entry in entries {
+            let url = entry["u"] ?? ""
+            let parts = url.split(separator: "#", maxSplits: 1).map(String.init)
+            let file = output.appendingPathComponent(parts[0])
+            guard FileManager.default.fileExists(atPath: file.path) else { broken.append(url); continue }
+            if parts.count == 2 {
+                if ids[parts[0]] == nil { ids[parts[0]] = Self.ids(in: try String(contentsOf: file, encoding: .utf8)) }
+                if ids[parts[0]]?.contains(parts[1]) != true { broken.append(url) }
+            }
+            if (entry["t"] ?? "").isEmpty { broken.append("untitled: \(url)") }
+            if !["guide", "docs", "examples", "home"].contains(entry["k"] ?? "") { broken.append("kind \(entry["k"] ?? ""): \(url)") }
+        }
+        #expect(broken.isEmpty, "search entries pointing at nothing: \(broken.prefix(10)) (\(broken.count))")
+        #expect(entries.contains { $0["u"] == "examples/basic/hellocircle.html" && $0["k"] == "examples" && $0["h"] == "Basic" })
+        #expect(entries.contains { ($0["u"] ?? "").hasPrefix("docs/drawing/color.html#") && $0["k"] == "docs" })
+        #expect(entries.contains { $0["u"] == "guide/02-color.html" && $0["h"]?.isEmpty == true && $0["k"] == "guide" && !($0["x"] ?? "").isEmpty })
+        #expect(!entries.contains { ($0["w"] ?? "").split(separator: " ").contains("the") }, "a stop word reached the index")
+    }
+
+    /// The entries the site's index script carries.
+    static func searchEntries(in script: String) throws -> [[String: String]] {
+        let prefix = "window.ollinSearchIndex = "
+        try #require(script.hasPrefix(prefix) && script.hasSuffix(";\n"), "the index is not one script setting one global")
+        let json = script.dropFirst(prefix.count).dropLast(2)
+        return try #require(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [[String: String]])
+    }
+
+    /// Every `id` on a page.
+    static func ids(in html: String) -> Set<String> {
+        var found = Set<String>()
+        var searchFrom = html.startIndex
+        while let range = html.range(of: " id=\"", range: searchFrom ..< html.endIndex) {
+            guard let close = html[range.upperBound...].firstIndex(of: "\"") else { break }
+            found.insert(String(html[range.upperBound ..< close]))
+            searchFrom = close
+        }
+        return found
+    }
+
+    // MARK: - The search in a browser
+
+    /// A page carrying the search's own script and a small index of its own,
+    /// that opens the search, types each query in turn, and reports what the
+    /// list shows for it: one line per row as `href|text|marks`, the blocks
+    /// separated by a rule.
+    static func searchProbe(queries: [String]) throws -> String {
+        let index = try SiteSearch.script([
+            SiteSearch.Entry(kind: "docs", title: "Effects", heading: "", url: "docs/effects.html",
+                             excerpt: "Filters over a layer.", words: ["blur", "sharpen"]),
+            SiteSearch.Entry(kind: "docs", title: "Effects", heading: "Brushwork", url: "docs/effects.html#brushwork",
+                             excerpt: "The layer as paint patches.", words: ["kuwahara", "anisotropic", "sectors"]),
+            SiteSearch.Entry(kind: "guide", title: "Color", heading: "", url: "guide/02-color.html",
+                             excerpt: "A color is a value.", words: ["oklab", "ramps"]),
+            SiteSearch.Entry(kind: "examples", title: "Brushwork", heading: "Effects", url: "examples/effects/brushwork.html",
+                             excerpt: "A photo as paint.", words: ["kuwahara", "painterly"]),
+        ])
+        let list = try String(decoding: JSONSerialization.data(withJSONObject: queries), as: UTF8.self)
+        return """
+        <!doctype html><html><head><meta charset="utf-8"></head><body>
+        <button class="search-toggle" type="button" hidden><span class="key"></span></button>
+        <dialog id="search" class="search" data-root="../"><div class="search-panel"><form class="search-box"><input type="search"><kbd>esc</kbd></form><p class="search-status"></p><ul class="search-results"></ul></div></dialog>
+        <script>\(index)</script>
+        <script>
+        \(SiteStyle.searchScript)
+        </script>
+        <pre id="r0">PENDING</pre>
+        <script>
+        (function () {
+          var out = document.getElementById('r0');
+          var input = document.querySelector('#search input');
+          var status = document.querySelector('.search-status');
+          var toggle = document.querySelector('.search-toggle');
+          var queries = \(list);
+          var tries = 0;
+          if (toggle.hidden) { out.textContent = 'FAIL the button stayed hidden'; return; }
+          toggle.click();
+          function poll() {
+            var text = status.textContent;
+            if (text.indexOf('did not load') >= 0) { out.textContent = 'FAIL ' + text; return; }
+            if (text.indexOf('sections') < 0) {
+              if (++tries > 600) { out.textContent = 'FAIL timeout: ' + text; return; }
+              setTimeout(poll, 25);
+              return;
+            }
+            var blocks = queries.map(function (query) {
+              input.value = query;
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              var rows = Array.prototype.map.call(document.querySelectorAll('.search-results li'), function (item) {
+                var a = item.querySelector('a');
+                var text = Array.prototype.map.call(a.children, function (span) { return span.textContent; }).join(' ');
+                return a.getAttribute('href') + '|' + text.replace(/\\s+/g, ' ').trim() + '|' + a.querySelectorAll('mark').length + (item.className === 'active' ? '|active' : '');
+              });
+              return [status.textContent].concat(rows).join('\\n');
+            });
+            out.textContent = blocks.join('\\n---\\n');
+          }
+          poll();
+        })();
+        </script>
+        </body></html>
+        """
+    }
+
+    /// Whether the library the search loads can be reached, since the probe
+    /// loads it the way a reader's browser does.
+    static func searchLibraryReachable() async -> Bool {
+        guard let url = URL(string: SiteStyle.searchLibrary) else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 10
+        guard let (_, response) = try? await URLSession.shared.data(for: request) else { return false }
+        return (response as? HTTPURLResponse)?.statusCode == 200
+    }
+
+    @Test("The search finds a section by a word of its prose, puts a page ahead of its sections, and marks what matched",
+          .enabled("a browser and the search library's network are needed") {
+              guard HeadlessBrowser.isInstalled else { return false }
+              return await Self.searchLibraryReachable()
+          })
+    func searchInABrowser() async throws {
+        // Virtual time, so the index build's small steps and the library's
+        // arrival both finish before the page is read.
+        let flags = HeadlessBrowser.baseFlags + ["--virtual-time-budget=20000"]
+        let queries = ["kuwahara", "effects", "kuwa", "colour", "kuwa colour", "nothinghere"]
+        let dom = try await HeadlessBrowser.dom(of: Self.searchProbe(queries: queries), flags: flags, timeout: 120)
+        let report = try #require(HeadlessBrowser.text(of: "r0", in: dom))
+        try #require(!report.hasPrefix("FAIL") && !report.hasPrefix("PENDING"), "\(report)")
+        let blocks = report.components(separatedBy: "\n---\n").map { $0.split(separator: "\n").map(String.init) }
+        try #require(blocks.count == queries.count, "\(report)")
+
+        // A word only the prose says finds both sections that say it, each
+        // marked nowhere (the word is not in what is shown) and the first row active.
+        let kuwahara = blocks[0]
+        #expect(kuwahara.first == "2 matches", "\(report)")
+        let found = Set(kuwahara.dropFirst().map { $0.split(separator: "|")[0] })
+        #expect(found == ["../docs/effects.html#brushwork", "../examples/effects/brushwork.html"], "\(report)")
+        #expect(kuwahara.dropFirst().first?.hasSuffix("|active") == true, "\(report)")
+
+        // A title: the page's own entry first, ahead of its section, which
+        // says the same word in the same field (only the page's own boost
+        // tells them apart), with the example whose category says the word
+        // among them; the word marked in each. The section and the example
+        // are not ordered here, since on four entries the rarity of a word
+        // in a field outweighs the field's boost.
+        let effects = blocks[1]
+        #expect(effects.first == "3 matches", "\(report)")
+        let hrefs = effects.dropFirst().map { String($0.split(separator: "|")[0]) }
+        #expect(hrefs.first == "../docs/effects.html", "\(report)")
+        #expect(Set(hrefs) == ["../docs/effects.html", "../docs/effects.html#brushwork", "../examples/effects/brushwork.html"], "\(report)")
+        #expect(effects.dropFirst().allSatisfy { $0.split(separator: "|")[2] != "0" }, "the title is not marked: \(report)")
+        #expect(effects[1].contains("Reference Effects Filters over a layer."), "\(report)")
+
+        // A prefix reaches the word, a typo in a longer word is forgiven, and
+        // every word has to match, so nothing carries both.
+        #expect(blocks[2].first == "2 matches", "\(report)")
+        #expect(blocks[3].first == "1 match" && blocks[3].dropFirst().first?.hasPrefix("../guide/02-color.html|") == true, "\(report)")
+        #expect(blocks[4].first == "Nothing matches “kuwa colour”.", "\(report)")
+        #expect(blocks[5].first == "Nothing matches “nothinghere”.", "\(report)")
     }
 
     // MARK: - The logo

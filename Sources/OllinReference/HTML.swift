@@ -27,13 +27,21 @@ public enum HTML {
         public var trail: String
         /// The headings a rail can list: level, plain text, and anchor.
         public var headings: [(level: Int, text: String, anchor: String)]
+        /// The prose under each heading as plain text, one entry more than
+        /// `headings`: the first is whatever came before any heading, and
+        /// the rest follow the headings in order. Code, figures, and raw
+        /// blocks are left out, since they are not prose. This is what the
+        /// site's search reads.
+        public var sections: [String]
 
         public init(body: String, title: String, trail: String,
-                    headings: [(level: Int, text: String, anchor: String)]) {
+                    headings: [(level: Int, text: String, anchor: String)],
+                    sections: [String] = []) {
             self.body = body
             self.title = title
             self.trail = trail
             self.headings = headings
+            self.sections = sections
         }
     }
 
@@ -62,6 +70,12 @@ public enum HTML {
         var anchors: [String: Int] = [:]
         var title: String?
         var index = 0
+        var sections = [""]
+        func note(_ markdown: String) {
+            let text = plainText(markdown)
+            guard !text.isEmpty else { return }
+            sections[sections.count - 1] += sections[sections.count - 1].isEmpty ? text : " " + text
+        }
 
         while index < lines.count {
             let line = lines[index]
@@ -87,6 +101,7 @@ public enum HTML {
                     index += 1
                 }
                 out.append(table(rows, resolve: resolve))
+                for cell in tableCells(rows) { note(cell) }
                 continue
             }
 
@@ -103,6 +118,7 @@ public enum HTML {
                 let anchor = uniqueAnchor(slug(plain), used: &anchors)
                 if title == nil, level <= 2 { title = plain }
                 headings.append((level, plain, anchor))
+                sections.append("")
                 out.append("<h\(level) id=\"\(anchor)\">\(inline(text, resolve: resolve))</h\(level)>")
                 index += 1
                 continue
@@ -123,6 +139,7 @@ public enum HTML {
                     index += 1
                 }
                 out.append(blockquote(quoted, resolve: resolve))
+                for line in quoted { note(line) }
                 continue
             }
 
@@ -133,6 +150,7 @@ public enum HTML {
                     index += 1
                 }
                 out.append(list(items, resolve: resolve))
+                for item in items { note(item.text) }
                 continue
             }
 
@@ -141,7 +159,9 @@ public enum HTML {
                 continue
             }
 
-            out.append("<p\(paragraphClass(trimmed))>\(inline(trimmed, resolve: resolve))</p>")
+            let paragraphClass = paragraphClass(trimmed)
+            out.append("<p\(paragraphClass)>\(inline(trimmed, resolve: resolve))</p>")
+            if paragraphClass.isEmpty { note(trimmed) }
             index += 1
         }
 
@@ -149,7 +169,34 @@ public enum HTML {
         return Page(body: out.joined(separator: "\n"),
                     title: title ?? "",
                     trail: trail,
-                    headings: headings)
+                    headings: headings,
+                    sections: sections)
+    }
+
+    /// Prose as text alone: markers and links reduced to their words, pictures
+    /// and tags dropped, runs of space closed up. What a section says, for an
+    /// index or an excerpt.
+    public static func plainText(_ markdown: String) -> String {
+        var text = Markdown.plain(markdown)
+        // A picture reads as its caption in the terminal; here it is not prose.
+        while let open = text.range(of: "[figure:"), let close = text[open.upperBound...].firstIndex(of: "]") {
+            text.removeSubrange(open.lowerBound ... close)
+        }
+        var kept = ""
+        kept.reserveCapacity(text.count)
+        var index = text.startIndex
+        while index < text.endIndex {
+            let character = text[index]
+            if character == "<", let next = text.index(index, offsetBy: 1, limitedBy: text.endIndex), next < text.endIndex,
+               text[next].isLetter || text[next] == "/",
+               let close = text[next...].firstIndex(of: ">") {
+                index = text.index(after: close)
+                continue
+            }
+            kept.append(character)
+            index = text.index(after: index)
+        }
+        return kept.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
 
     /// The navigation line most pages open with, taken off the top so the
@@ -353,6 +400,24 @@ public enum HTML {
             out += "</li></\(top.tag)>"
         }
         return out
+    }
+
+    /// The cells of a table's rows, the rule row dropped, as the table
+    /// renderer reads them.
+    static func tableCells(_ rows: [String]) -> [String] {
+        var cells: [String] = []
+        for row in rows {
+            var columns = row.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+            if columns.first?.trimmingCharacters(in: .whitespaces).isEmpty == true { columns.removeFirst() }
+            if columns.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { columns.removeLast() }
+            let trimmed = columns.map { $0.trimmingCharacters(in: .whitespaces) }
+            let isRule = !trimmed.isEmpty && trimmed.allSatisfy { cell in
+                !cell.isEmpty && cell.allSatisfy { $0 == "-" || $0 == ":" || $0 == " " }
+            }
+            if isRule { continue }
+            cells.append(contentsOf: trimmed)
+        }
+        return cells
     }
 
     static func table(_ rows: [String], resolve: Resolver) -> String {

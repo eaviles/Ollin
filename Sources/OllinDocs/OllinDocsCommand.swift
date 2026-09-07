@@ -74,7 +74,7 @@ struct OllinDocsCommand {
         let builder = SiteBuilder(root: root, repository: repository, branch: branch, domain: domain)
         do {
             let report = try builder.build(into: output)
-            print("\(report.pages) pages, \(report.examples) examples, \(report.images) pictures written to \(output.path)")
+            print("\(report.pages) pages, \(report.examples) examples, \(report.images) pictures, \(report.sections) searchable sections written to \(output.path)")
             if !report.missing.isEmpty {
                 print("")
                 print("\(report.missing.count) targets point at nothing in this checkout (left as written):")

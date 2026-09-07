@@ -147,6 +147,48 @@ struct HTMLTests {
         #expect(page.body == "<p>The <a href=\"#combining\">whole family</a> is here.</p>")
     }
 
+    @Test("Each heading's prose is read out plain beside it, with code and pictures left out")
+    func sectionsAsPlainText() {
+        let markdown = """
+        Before any heading.
+
+        # Title
+
+        The *opening* line, with [a link](Other.md) and `code`.
+
+        ## First
+
+        - One item
+        - Two items
+
+        > Quoted words.
+
+        ```swift
+        let hidden = 1
+        ```
+
+        ## Second
+
+        <picture><img src="x.png" alt="A figure"></picture>
+
+        | Head | Cell |
+        |---|---|
+        | `a` | b |
+
+        Plain again.
+        """
+        let page = HTML.render(markdown) { target, _ in target }
+        #expect(page.headings.count == 3)
+        #expect(page.sections.count == 4)
+        #expect(page.sections[0] == "Before any heading.")
+        #expect(page.sections[1] == "The opening line, with a link and code.")
+        #expect(page.sections[2] == "One item Two items Quoted words.")
+        #expect(page.sections[3] == "Head Cell a b Plain again.")
+        #expect(!page.sections.joined().contains("hidden"), "code is not prose")
+        #expect(!page.sections.joined().contains("figure"), "a picture is not prose")
+        #expect(HTML.plainText("**Bold** and <sup>up</sup> ![pic](p.png) 1 < 2") == "Bold and up 1 < 2")
+    }
+
     @Test("A row of badges is marked so the layout can set it small")
     func badges() {
         let source = "![a](https://img.shields.io/a) [![b](https://img.shields.io/b)](LICENSE)\n"

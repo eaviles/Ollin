@@ -230,6 +230,43 @@ enum SiteStyle {
       .sections { gap: 0; }
       .sections a { padding: 0 0.5rem; font-size: 12.5px; }
     }
+
+    /* Search: a button in the bar, a panel over the page */
+    .search-toggle { display: inline-flex; align-items: center; gap: 0.45rem; height: 30px; padding: 0 0.6rem 0 0.55rem; margin-left: 0.25rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; transition: color 150ms var(--ease), background 150ms var(--ease); }
+    .search-toggle:hover { color: var(--text); background: var(--surface-2); }
+    .search-toggle .icon { width: 15px; height: 15px; }
+    .search-toggle .key { font-size: 11.5px; color: var(--muted); letter-spacing: 0.02em; }
+    .search-toggle .key:empty { display: none; }
+    dialog.search { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: var(--text); }
+    dialog.search::backdrop { background: rgba(0, 0, 0, 0.35); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+    .search-panel { display: flex; flex-direction: column; width: min(640px, calc(100% - 2rem)); max-height: min(70dvh, 640px); margin: clamp(2rem, 10vh, 7rem) auto 0; background: var(--bg); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28); overflow: hidden; }
+    .search-box { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--border); }
+    .search-box .icon { width: 18px; height: 18px; color: var(--text-2); flex: none; }
+    .search-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 19px; letter-spacing: -0.01em; }
+    .search-box input::-webkit-search-cancel-button, .search-box input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+    .search-box input::placeholder { color: var(--muted); }
+    .search kbd { font-family: var(--font); font-size: 11px; line-height: 1; color: var(--text-2); border: 1px solid var(--border); border-radius: 6px; padding: 0.25em 0.45em; background: var(--surface); }
+    .search-status { padding: 0.6rem 1.1rem 0; font-size: 12.5px; color: var(--muted); }
+    .search-status:empty { display: none; }
+    .search-results { list-style: none; margin: 0; padding: 0.5rem; overflow-y: auto; flex: 1; scrollbar-width: thin; }
+    .search-results:empty { display: none; }
+    .search-results li a { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 0.1rem 0.9rem; padding: 0.6rem 0.75rem; border-radius: 12px; color: var(--text); font-size: 15px; line-height: 1.35; }
+    .search-results li a:hover { text-decoration: none; }
+    .search-results li.active a { background: var(--surface); }
+    .search-results .kind { grid-row: 1 / span 2; padding-top: 0.3em; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    .search-results .where { font-weight: 600; letter-spacing: -0.005em; overflow-wrap: anywhere; }
+    .search-results .where .sep { color: var(--muted); font-weight: 400; }
+    .search-results .excerpt { font-size: 13.5px; color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .search mark { background: none; color: inherit; font-weight: 700; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 0.12em; }
+    .search-hints { display: flex; align-items: center; gap: 0.4rem; padding: 0.6rem 1.1rem; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+    .search-hints kbd { margin-right: 0.15rem; }
+    @media (max-width: 860px) {
+      .search-toggle .key { display: none; }
+      .search-panel { margin-top: 1rem; max-height: calc(100dvh - 2rem); }
+      .search-results li a { grid-template-columns: minmax(0, 1fr); }
+      .search-results .kind { grid-row: auto; padding-top: 0; }
+      .search-hints { display: none; }
+    }
     """
 
     /// The front page's ring, dressed in the page's colors. The ring is the
@@ -253,4 +290,193 @@ enum SiteStyle {
       matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
     })();
     """
+
+    /// The magnifier, drawn in the page's ink, for the bar's button and the
+    /// search box.
+    static let searchIcon = """
+    <svg class="icon" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.75" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12.75 12.75 17 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    """
+
+    /// The library that does the matching, MiniSearch (MIT), pinned to one
+    /// release on a content network and checked against its published hash
+    /// on the way in, so the page runs the bytes that were reviewed and
+    /// nothing else. It is loaded on the first search rather than with the
+    /// page, so a reader who never searches never asks the network for it.
+    static let searchLibrary = "https://cdnjs.cloudflare.com/ajax/libs/minisearch/7.2.0/umd/index.min.js"
+    static let searchLibraryIntegrity = "sha512-bxNn8csqHSaI1AgYVvi4ejDdG9GfPbmth/TBcxd6J02ShNFQRqRJVPqqCvRHYV1nnvwCTeteqWuoOAeNewQ9CQ=="
+
+    /// The search, written to `assets/search.js` and loaded by every page.
+    ///
+    /// The button in the bar, `/`, or the command (or control) key with K
+    /// opens the dialog; the first time, the library and then the index come
+    /// in, and the index is built in the browser in small steps so the field
+    /// stays live while it does. A query matches by prefix (so `kuwa` finds
+    /// `kuwahara`), tolerates a typo in a longer word, and needs every word
+    /// it has, with a page's title counting most, its heading next, its first
+    /// line after that, and the words of its prose least. A page's own entry
+    /// stands ahead of its sections when both match, no page takes more than
+    /// three of the thirty rows shown, and the words that matched are marked
+    /// where they appear. Arrow keys move, return opens, escape closes; a
+    /// click on the dimmed page closes too.
+    static let searchScript = #"""
+    (() => {
+      const dialog = document.getElementById('search');
+      const toggle = document.querySelector('.search-toggle');
+      if (!dialog || !toggle || typeof dialog.showModal !== 'function') return;
+      const input = dialog.querySelector('input');
+      const status = dialog.querySelector('.search-status');
+      const list = dialog.querySelector('.search-results');
+      const root = dialog.dataset.root || '';
+      const library = '\#(searchLibrary)';
+      const integrity = '\#(searchLibraryIntegrity)';
+      const labels = { docs: 'Reference', guide: 'Guide', examples: 'Examples', home: 'Ollin' };
+      const order = { docs: 0, guide: 1, examples: 2, home: 3 };
+      const perPage = 3, atMost = 30;
+      let engine = null, count = 0, loading = false, failed = '', active = -1;
+
+      toggle.hidden = false;
+      const key = toggle.querySelector('.key');
+      const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
+      if (key) key.textContent = shortcut;
+      toggle.title = 'Search (' + shortcut + ')';
+
+      const script = (src, sri) => new Promise((resolve, reject) => {
+        const element = document.createElement('script');
+        element.src = src;
+        if (sri) { element.integrity = sri; element.crossOrigin = 'anonymous'; }
+        element.onload = () => resolve();
+        element.onerror = () => reject(new Error(src));
+        document.head.appendChild(element);
+      });
+
+      const load = async () => {
+        if (engine || loading || failed) return;
+        loading = true;
+        status.textContent = 'Loading…';
+        try {
+          if (!window.MiniSearch) await script(library, integrity);
+          if (!window.ollinSearchIndex) await script(root + 'assets/search-index.js');
+          const entries = window.ollinSearchIndex.map((entry, id) => Object.assign({ id }, entry));
+          const built = new MiniSearch({
+            fields: ['t', 'h', 'x', 'w'],
+            storeFields: ['k', 't', 'h', 'u', 'x'],
+            searchOptions: {
+              boost: { t: 6, h: 4, x: 2, w: 1 },
+              boostDocument: (id, term, fields) => (fields && fields.h === '' ? 1.25 : 1),
+              prefix: (term) => term.length >= 2,
+              fuzzy: (term) => (term.length >= 5 ? 0.2 : false),
+              combineWith: 'AND'
+            }
+          });
+          await built.addAllAsync(entries);
+          engine = built;
+          count = entries.length;
+        } catch (error) {
+          failed = String(error && error.message).indexOf('search-index') >= 0
+            ? 'The index did not load.'
+            : 'The search library did not load. It comes from a content network, so this needs a connection.';
+        }
+        loading = false;
+        render();
+      };
+
+      const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const marked = (text, terms) => {
+        text = String(text);
+        if (!terms.length) return escape(text);
+        const alternatives = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+        const pattern = new RegExp('(^|[^\\p{L}\\p{N}])(' + alternatives + ')', 'giu');
+        let out = '', last = 0;
+        for (const match of text.matchAll(pattern)) {
+          const start = match.index + match[1].length;
+          out += escape(text.slice(last, start)) + '<mark>' + escape(match[2]) + '</mark>';
+          last = start + match[2].length;
+        }
+        return out + escape(text.slice(last));
+      };
+
+      const setActive = (index) => {
+        const items = list.children;
+        if (!items.length) { active = -1; return; }
+        index = (index + items.length) % items.length;
+        if (active >= 0 && items[active]) items[active].classList.remove('active');
+        active = index;
+        items[index].classList.add('active');
+        items[index].scrollIntoView({ block: 'nearest' });
+      };
+
+      const render = () => {
+        const query = input.value.trim();
+        active = -1;
+        list.innerHTML = '';
+        if (failed) { status.textContent = failed; return; }
+        if (!engine) { if (!loading) status.textContent = ''; return; }
+        if (!query) { status.textContent = count.toLocaleString() + ' sections of the Guide, the reference, and the examples.'; return; }
+        const results = engine.search(query);
+        results.sort((a, b) => (b.score - a.score) || ((order[a.k] ?? 3) - (order[b.k] ?? 3)));
+        const taken = new Map();
+        const shown = [];
+        for (const result of results) {
+          const page = result.u.split('#')[0];
+          const had = taken.get(page) || 0;
+          if (had >= perPage) continue;
+          taken.set(page, had + 1);
+          shown.push(result);
+          if (shown.length >= atMost) break;
+        }
+        if (!shown.length) { status.textContent = 'Nothing matches “' + query + '”.'; return; }
+        status.textContent = shown.length < results.length
+          ? shown.length + ' of ' + results.length + ' matches'
+          : shown.length + (shown.length === 1 ? ' match' : ' matches');
+        list.innerHTML = shown.map((result) => {
+          // A page, then its section; for an example, its category, then its name.
+          const pair = result.k === 'examples' ? [result.h, result.t] : [result.t, result.h];
+          const where = pair[1]
+            ? marked(pair[0], result.terms) + '<span class="sep"> › </span>' + marked(pair[1], result.terms)
+            : marked(pair[0], result.terms);
+          const excerpt = result.x ? '<span class="excerpt">' + marked(result.x, result.terms) + '</span>' : '';
+          return '<li><a href="' + escape(root + result.u) + '"><span class="kind">' + (labels[result.k] || '') + '</span><span class="where">' + where + '</span>' + excerpt + '</a></li>';
+        }).join('');
+        setActive(0);
+      };
+
+      const open = () => {
+        if (dialog.open) return;
+        dialog.showModal();
+        load();
+        render();
+        input.focus();
+        input.select();
+      };
+      const close = () => { if (dialog.open) dialog.close(); };
+
+      toggle.addEventListener('click', open);
+      dialog.addEventListener('click', (event) => { if (event.target === dialog) close(); });
+      dialog.querySelector('form').addEventListener('submit', (event) => event.preventDefault());
+      input.addEventListener('input', render);
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') { event.preventDefault(); setActive(active + 1); }
+        else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(active - 1); }
+        else if (event.key === 'Enter') {
+          const link = active >= 0 && list.children[active] && list.children[active].querySelector('a');
+          if (link) { event.preventDefault(); window.location.href = link.href; }
+        }
+      });
+      list.addEventListener('mouseover', (event) => {
+        const item = event.target.closest('li');
+        if (item) setActive(Array.prototype.indexOf.call(list.children, item));
+      });
+      document.addEventListener('keydown', (event) => {
+        const element = document.activeElement;
+        const typing = element && (/^(input|textarea|select)$/i.test(element.tagName) || element.isContentEditable);
+        if ((event.key === 'k' || event.key === 'K') && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          if (dialog.open) close(); else open();
+        } else if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault();
+          open();
+        }
+      });
+    })();
+    """#
 }
