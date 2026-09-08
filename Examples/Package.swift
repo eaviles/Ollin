@@ -362,6 +362,7 @@ let package = Package(
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),
+        example("Motion/DerivedCurves"),
         example("Motion/Smoothing"),
         example("Motion/Timeline"),
         example("Motion/Orbits"),

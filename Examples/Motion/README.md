@@ -15,6 +15,7 @@ Animation driven by `time`. The draw loop runs continuously by default, so nothi
 | [DoublePendulum](DoublePendulum/Sketch.swift) | the butterfly effect: 24 `DoublePendulum`s start a ten-thousandth of a radian apart, swing together as one line, then separate into 24 unrelated motions |
 | [Easing](Easing/Sketch.swift) | four dots race to the same target flip on different `@Eased` curves (linear, ease-in, ease-out, ease-in-out), so they pull apart in flight |
 | [EasingGallery](EasingGallery/Sketch.swift) | all thirty named `Easing` curves plotted in a grid, each with a dot that follows its shape, and the back, elastic, and bounce rows overshoot their cells |
+| [DerivedCurves](DerivedCurves/Sketch.swift) | one curve picked on the inspector and the two derived from it, `reversed()` and `mirrored()`, each riding a dot on the same out-and-back trip beside a plot of its shape |
 | [EllipseField](EllipseField/Sketch.swift) | rows of white outlines in two drifting columns: whole `drawEllipse` rings on the left and chord-closed `drawArc` crescents on the right, with position, squash, and arc sweep all driven by `signedNoise` |
 | [Epicycles](Epicycles/Sketch.swift) | Fourier epicycles: a chain of spinning circles redraws an SVG whale, the term count is a parameter, and one lap takes one `loopDuration` |
 | [FlowField](FlowField/Sketch.swift) | a `curlNoise` flow field: short lines follow the divergence-free curl and drift with `time` |

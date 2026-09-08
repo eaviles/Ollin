@@ -179,6 +179,16 @@ let gentle = Easing { t in t * t * (3 - 2 * t) }   // a hand-rolled smoothstep
 
 A built-in curve carries its own name, so curves can be compared, persisted, and listed on a menu. That makes `@Param var spacing: Easing = .easeInOut` a [parameter](Parameters.md#family) like any other. The short aliases are the cubic curves themselves, so `.easeInOut == .easeInOutCubic`. A curve built from a closure equals itself and every copy of itself, and nothing else, because two closures cannot be compared.
 
+Two helpers derive a curve from another. `reversed()` runs a curve from its other end, `1 - curve(1 - t)`, so an ease-in becomes its ease-out and an ease-out its ease-in. A symmetric curve (every ease-in-out, `linear`, `smoothstep`) comes back unchanged. `mirrored()` puts the curve on the first half of the trip and its reverse on the second. That is how the catalog builds an ease-in-out from an ease-in. Mirroring an ease-out gives an out-in curve, fast at both ends and slow through the middle, which the catalog does not carry.
+
+```swift
+@Param var curve: Easing = .easeInQuad
+let out = curve.reversed()        // the same curve arriving instead of leaving
+let both = curve.mirrored()       // slow start, slow finish
+```
+
+Where the catalog already holds the result, the helper hands back the built-in. So `Easing.easeInQuad.reversed() == .easeOutQuad` and `.easeInQuad.mirrored() == .easeInOutQuad`, and the value reads by name on a menu. The back and elastic families are the one exception on the mirrored side. Their ease-in-outs were tuned with their own constants, so `easeInBack.mirrored()` is the plain construction, a curve of its own. Any other derived curve carries its origin as its identity. Two reversals of the same curve compare equal, and the curve stays off the menu like one built from a closure. The [DerivedCurves example](../../Examples/Motion/DerivedCurves/Sketch.swift) runs a picked curve beside its two derivations.
+
 <a name="catalog"></a>
 
 ### The curve catalog

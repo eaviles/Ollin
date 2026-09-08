@@ -26,9 +26,22 @@ public struct Easing: Sendable, Equatable {
     public let curve: @Sendable (Double) -> Double
 
     /// What tells one curve from another.
-    private enum Identity: Equatable, Sendable {
+    private indirect enum Identity: Equatable, Sendable {
         case named(String)
         case custom(UInt64)
+        /// A curve derived from another by `reversed()` or `mirrored()`: the
+        /// operation's name over the origin's identity, so deriving the same
+        /// thing twice gives equal values.
+        case derived(String, from: Identity)
+
+        /// A built-in's name, a derivation's path over it, `nil` under a closure.
+        var name: String? {
+            switch self {
+            case .named(let name): return name
+            case .custom: return nil
+            case .derived(let operation, let origin): return origin.name.map { "\($0).\(operation)" }
+            }
+        }
     }
     private let identity: Identity
 
@@ -50,11 +63,9 @@ public struct Easing: Sendable, Equatable {
         self.identity = .named(name)
     }
 
-    /// The name of a built-in curve, or `nil` for one built from a closure.
-    var name: String? {
-        guard case .named(let name) = identity else { return nil }
-        return name
-    }
+    /// The name of a built-in curve, or `nil` for one built from a closure. A
+    /// curve derived from a built-in reads as a path (`easeOutQuad.mirrored`).
+    var name: String? { identity.name }
 
     public static func == (lhs: Easing, rhs: Easing) -> Bool {
         lhs.identity == rhs.identity
@@ -66,6 +77,81 @@ public struct Easing: Sendable, Equatable {
     /// settle exactly on the endpoints.
     public func callAsFunction(_ t: Double) -> Double {
         curve(Swift.min(Swift.max(t, 0), 1))
+    }
+
+    // MARK: Deriving one curve from another
+
+    /// The same curve run from its other end, `1 - curve(1 - t)`: an ease-in
+    /// becomes its ease-out, an ease-out its ease-in, and a symmetric curve
+    /// (every ease-in-out, `linear`, `smoothstep`) comes back unchanged. The
+    /// catalog's ease-outs are exactly the reflected ease-ins, so reversing a
+    /// built-in hands back the built-in on the other side of its family:
+    /// `Easing.easeInQuad.reversed() == .easeOutQuad`. Any other curve gets the
+    /// reflection itself, which compares equal to another reversal of the same
+    /// curve and to nothing else.
+    public func reversed() -> Easing {
+        if let partner = catalogPartner { return partner }
+        let curve = self.curve
+        return Easing(.derived("reversed", from: identity)) { t in 1 - curve(1 - t) }
+    }
+
+    /// The curve on the first half of the trip and its reverse on the second,
+    /// squeezed into one span: `curve(2t) / 2` up to the middle, then
+    /// `1 - curve(2 - 2t) / 2`. That is how the catalog builds an ease-in-out
+    /// from an ease-in, so `Easing.easeInQuad.mirrored() == .easeInOutQuad`,
+    /// and the same holds for the sine, cubic, quartic, quintic, exponential,
+    /// circular, and bounce families. The back and elastic families are the
+    /// exception: their ease-in-outs were tuned with their own constants, so
+    /// mirroring `easeInBack` gives the plain construction, a curve of its own.
+    /// Mirroring an ease-out gives an out-in curve, fast at both ends and slow
+    /// through the middle, which the catalog does not carry.
+    public func mirrored() -> Easing {
+        if let inOut = catalogInOut { return inOut }
+        let curve = self.curve
+        return Easing(.derived("mirrored", from: identity)) { t in
+            t < 0.5 ? curve(2 * t) / 2 : 1 - curve(2 - 2 * t) / 2
+        }
+    }
+
+    /// The built-in on the other side of this built-in's family, if the
+    /// receiver is one: `easeInX` for `easeOutX` and back, and a symmetric
+    /// curve for itself. `nil` for any curve not in the catalog.
+    private var catalogPartner: Easing? {
+        guard case .named(let name) = identity else { return nil }
+        let partnerName: String
+        if name.hasPrefix("easeInOut") || name == "linear" || name == "smoothstep" {
+            return self
+        } else if name.hasPrefix("easeIn") {
+            partnerName = "easeOut" + name.dropFirst("easeIn".count)
+        } else if name.hasPrefix("easeOut") {
+            partnerName = "easeIn" + name.dropFirst("easeOut".count)
+        } else {
+            return nil
+        }
+        return Easing.all.first { $0.name == partnerName }?.value
+    }
+
+    /// The built-in ease-in-out for this built-in ease-in, when the catalog's
+    /// one is exactly the mirrored construction. Back and elastic are not: their
+    /// ease-in-outs carry their own constants, so they stay off this list and
+    /// `mirrored()` builds the curve instead.
+    private var catalogInOut: Easing? {
+        guard case .named(let name) = identity, name.hasPrefix("easeIn"),
+              !name.hasPrefix("easeInOut") else { return nil }
+        let family = name.dropFirst("easeIn".count)
+        guard Easing.mirroredFamilies.contains(String(family)) else { return nil }
+        return Easing.all.first { $0.name == "easeInOut" + family }?.value
+    }
+
+    /// The families whose ease-in-out is the mirrored ease-in to the last digit.
+    private static let mirroredFamilies: Set<String> = [
+        "Sine", "Quad", "Cubic", "Quart", "Quint", "Expo", "Circ", "Bounce",
+    ]
+
+    /// A derived curve, carrying the identity it was derived under.
+    private init(_ identity: Identity, _ curve: @escaping @Sendable (Double) -> Double) {
+        self.curve = curve
+        self.identity = identity
     }
 
     /// Constant speed, no easing.
@@ -185,11 +271,11 @@ public struct Easing: Sendable, Equatable {
 
     // MARK: Aliases & extras
 
-    /// Friendly default for "ease in" — cubic.
+    /// Friendly default for "ease in": cubic.
     public static let easeIn = easeInCubic
-    /// Friendly default for "ease out" — cubic.
+    /// Friendly default for "ease out": cubic.
     public static let easeOut = easeOutCubic
-    /// Friendly default for "ease in and out" — cubic, the classic smooth feel.
+    /// Friendly default for "ease in and out": cubic, the classic smooth feel.
     public static let easeInOut = easeInOutCubic
     /// Hermite smoothstep, a gentler S than `easeInOut`. The same curve as the
     /// bare `smoothstep(0, 1, t)`, packaged as an `Easing` for the APIs that
@@ -257,7 +343,7 @@ private func bounceOut(_ t: Double) -> Double {
 /// A value that eases toward whatever you assign it, a little each frame.
 ///
 /// Read it to get the current (animated) value; assign it to set a new target.
-/// The sketch advances it automatically every frame, so motion is the default —
+/// The sketch advances it automatically every frame, so motion is the default:
 /// there's no update step to call.
 ///
 /// ```swift
@@ -272,7 +358,7 @@ private func bounceOut(_ t: Double) -> Double {
 /// ```
 ///
 /// Assigning the value it's already heading for is a no-op, so it's safe to set
-/// the target every frame — only a *change* restarts the tween, from wherever the
+/// the target every frame. Only a *change* restarts the tween, from wherever the
 /// value currently is. The tween is timed in seconds, so it runs the same at any
 /// frame rate.
 @propertyWrapper
@@ -298,7 +384,7 @@ public final class Eased: FrameAdvancing {
         }
     }
 
-    /// The eased value itself, via `$x` — exposes the target and motion state.
+    /// The eased value itself, via `$x`, which exposes the target and motion state.
     public var projectedValue: Eased { self }
 
     /// The value currently being eased toward.

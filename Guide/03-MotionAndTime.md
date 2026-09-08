@@ -183,6 +183,15 @@ The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.m
 
 Picking a curve by reading a table is slow work, so a curve can be a parameter instead. Write `@Param var curve: Easing = .easeInOut` and the inspector shows a menu of every named curve. Try them against the motion itself and keep the one that feels right.
 
+Once a curve is a value, you can make another from it. `curve.reversed()` runs the same curve from its other end, so an ease-in becomes its ease-out. The trip that lagged and then rushed now leaps and then settles. `curve.mirrored()` puts the curve on the way out and its reverse on the way back, squeezed into one trip. That is exactly how the catalog builds its ease-in-out curves from their ease-ins. Reverse `easeInQuad` and you have `easeOutQuad`. Mirror it and you have `easeInOutQuad`. Mirror an ease-out instead and you get a curve the catalog does not carry, fast at both ends and slow through the middle.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/DerivedCurves-dark.jpg">
+  <img src="Images/03-MotionAndTime/DerivedCurves.jpg" alt="Four easing curves with spacing strips: easeInQuad, the same curve reversed into an ease-out, the same curve mirrored into an ease-in-out, and easeOutQuad mirrored into an out-in curve that is fast at both ends" width="680">
+</picture>
+
+That is the whole reason to want it. A sketch that holds one curve as a parameter can send a shape out on `curve` and bring it home on `curve.reversed()`. The pair stays matched whatever the menu picks. The [DerivedCurves example](../Examples/Motion/DerivedCurves/Sketch.swift) does exactly that with three dots on one trip.
+
 ## Values that chase, signals that shake: @Eased, @Sprung, @Smoothed
 
 The shaping functions all assume you're steering `t` yourself, which makes them the chapter's second act, curves under your hand. The third act is motion that runs itself. Three property wrappers handle the everyday cases where you'd rather not steer.
