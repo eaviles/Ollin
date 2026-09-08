@@ -73,7 +73,7 @@ override func setup() {
 }
 ```
 
-The full surface is `recorder.start(to:)`, `stop(completion:)`, `stopAndWait()`, `isRecording`, `elapsed`, and `url`. `codec` takes the same [`VideoCodec`](./Export.md#video) choices as an export, and the default is `h264`. A running sketch's recorder is reachable as `sessionRecorder`.
+The full surface is `recorder.start(to:)`, `stop(completion:)`, `stopAndWait()`, `isRecording`, `elapsed`, and `url`. `codec` takes the same [`VideoCodec`](./Export.md#video) choices as an export, and the default is `h264`. A see-through canvas (`background(.clear)`) records with its alpha through `.proRes4444` or `.hevcWithAlpha`, the two codecs that [carry one](./Export.md#transparent-output). A running sketch's recorder is reachable as `sessionRecorder`.
 
 ### What it costs, and what it cannot do yet
 

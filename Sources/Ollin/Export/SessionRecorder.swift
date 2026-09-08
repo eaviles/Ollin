@@ -495,9 +495,12 @@ private final class RecorderWriter: @unchecked Sendable {
                                    space: space,
                                    bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
                                        | CGBitmapInfo.byteOrder32Little.rawValue) {
-            context.draw(grab.image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            let rect = CGRect(x: 0, y: 0, width: width, height: height)
+            if grab.image.carriesAlpha { context.clear(rect) }
+            context.draw(grab.image, in: rect)
         }
         CVPixelBufferUnlockBaseAddress(buffer, [])
+        if grab.image.carriesAlpha { buffer.markPremultipliedAlpha() }
         let time = CMTime(value: Int64(grab.seconds * 1_000_000), timescale: 1_000_000)
         if adaptor.append(buffer, withPresentationTime: time) {
             framesWritten += 1

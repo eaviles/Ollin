@@ -4155,10 +4155,15 @@ extension MetalRenderer {
     /// - Parameter placement: the placement to fit through, for a display other
     ///   than the one being drawn in. Left out, the run's own is used, which is
     ///   the drawing display's.
+    /// - Parameter keepsAlpha: whether the frame's own coverage is written as
+    ///   the alpha, which an export or a frame grab of a see-through canvas
+    ///   wants (`Drawer.hasTransparentBackground`). The window's present is
+    ///   opaque and leaves it false, so it writes alpha 1.
     func encodePresent(from source: MTLTexture, drawer: Drawer,
                                into encoder: MTLRenderCommandEncoder,
                                projected: Bool = false,
-                               placement: ProjectionPlacement? = nil) {
+                               placement: ProjectionPlacement? = nil,
+                               keepsAlpha: Bool = false) {
         let place = projected ? (placement ?? projection) : nil
         guard let state = try? pipeline(place == nil ? .present : .presentProjected) else { return }
         encoder.setRenderPipelineState(state)
@@ -4169,7 +4174,8 @@ extension MetalRenderer {
                                            outputSpace: presentEncoding.rawValue,
                                            ceiling: max(1, presentCeiling),
                                            referenceNits: Float(ColorOutput.referenceWhiteNits),
-                                           peakNits: Float(ColorOutput.peakNits))
+                                           peakNits: Float(ColorOutput.peakNits),
+                                           keepsAlpha: keepsAlpha ? 1 : 0)
         encoder.setFragmentBytes(&present, length: MemoryLayout<OllinPresentUniforms>.stride, index: 0)
         if var fit = place?.uniforms {
             encoder.setFragmentBytes(&fit, length: MemoryLayout<OllinProjectionUniforms>.stride, index: 1)

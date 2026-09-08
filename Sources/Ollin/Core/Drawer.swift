@@ -250,6 +250,12 @@ final class Drawer {
 
     /// The clear color for the frame. `nil`-fill / `nil`-stroke mean "don't draw".
     private(set) var backgroundColor: Color = .black
+
+    /// Whether the canvas shows through where nothing was drawn: the background
+    /// has an alpha under 1 (`background(.clear)`). The window paints such a
+    /// frame over black; an export and a frame grab keep the coverage as the
+    /// image's alpha instead, so the file composites over whatever it lands on.
+    var hasTransparentBackground: Bool { backgroundColor.alpha < 1 }
     var fillPaint: Paint? = .color(.white)     // default: white fill
     var strokePaint: Paint? = .color(.black)   // default: black stroke
     /// Whether the sketch has set a stroke itself (any `stroke(...)` call; rides

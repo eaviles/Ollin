@@ -1495,6 +1495,8 @@ typedef struct {
     float ceiling;       // linear-P3 clamp: 1 = SDR white, higher = the display's headroom
     float referenceNits; // what 1.0 means in cd/m² when PQ-encoding (BT.2408 reference white)
     float peakNits;      // brightest luminance carried, in cd/m² (the mastering peak)
+    int   keepsAlpha;    // 1: write the frame's own coverage as alpha (an export or a grab of a
+                         // see-through canvas); 0: alpha 1, the window's opaque present
 } OllinPresentUniforms;
 
 // Constants for the *projected* present pass (`ollin_present_projected_fragment`

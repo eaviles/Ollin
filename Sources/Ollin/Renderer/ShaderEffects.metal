@@ -43,20 +43,55 @@ static inline float3 toneMapACES(float3 x) {
 
 // OLLIN_LIB_END present
 
-fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
-                                       texture2d<float> src [[texture(0)]],
-                                       sampler samp [[sampler(0)]],
-                                       constant OllinPresentUniforms &u [[buffer(0)]]) {
-    float3 c = src.sample(samp, in.uv).rgb * u.exposure;
+// The frame's coverage through the present. The canvas composites premultiplied
+// over its clear color, so a see-through background leaves the resolved texture
+// holding premultiplied color under a coverage alpha. A present that keeps the
+// alpha (an export or a frame grab of such a canvas) carries it out; the
+// window's present is opaque and writes 1.
+static inline float ollin_present_alpha(float4 s, constant OllinPresentUniforms &u) {
+    return u.keepsAlpha != 0 ? s.a : 1.0;
+}
+
+// Exposure and the tone map over one pixel, returning the straight color. With
+// the alpha kept, the canvas's premultiplied color is divided by its coverage
+// first, so a curve that bends the tone sees the color the sketch drew (a
+// half-covered white stays white, not gray), and the finish puts the coverage
+// back. Without it the color is read as it is, under alpha 1.
+static inline float3 ollin_present_map(float3 c, float a, constant OllinPresentUniforms &u) {
+    if (u.keepsAlpha != 0) c = a > 0.0 ? c / a : float3(0.0);
+    c *= u.exposure;
     if (u.toneMapMode == 1) {
         c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
     } else if (u.toneMapMode == 2) {
         c = toneMapACES(c);             // ACES filmic
     }
+    return c;
+}
+
+// The 8-bit encode. An opaque present is `finalizeColor` as it always was. One
+// that keeps the alpha premultiplies the *encoded* values, which is how an
+// 8-bit image with alpha is read (a reader divides the coverage back out of
+// the bytes as stored), so the straight color is encoded and dithered first
+// and the coverage applied after; a channel can then never exceed the alpha.
+static inline float4 ollin_present_finish(float3 c, float a, float2 fragCoord,
+                                          constant OllinPresentUniforms &u) {
+    if (u.keepsAlpha == 0) return finalizeColor(float4(c, 1.0), fragCoord);
+    float3 enc = linearToSrgb(c);
+    enc = clamp(enc + ditherTriangle(fragCoord) * (1.0 / 255.0), 0.0, 1.0) * a;
+    return float4(srgbToLinear(enc), a);
+}
+
+fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
+                                       texture2d<float> src [[texture(0)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant OllinPresentUniforms &u [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float a = ollin_present_alpha(s, u);
+    float3 c = ollin_present_map(s.rgb, a, u);
     // Mode 0 (clamp / SDR): finalizeColor's own clamp clips to [0, 1], so an
     // in-range frame is byte-for-byte the prior per-fragment finalize. The dither
     // is a function of the pixel coordinate, identical to the geometry path's.
-    return finalizeColor(float4(c, 1.0), in.position.xy);
+    return ollin_present_finish(c, a, in.position.xy, u);
 }
 
 // MARK: - Present: wide gamut and high dynamic range
@@ -106,12 +141,9 @@ fragment float4 ollin_present_wide_fragment(PresentOut in [[stage_in]],
                                             texture2d<float> src [[texture(0)]],
                                             sampler samp [[sampler(0)]],
                                             constant OllinPresentUniforms &u [[buffer(0)]]) {
-    float3 c = src.sample(samp, in.uv).rgb * u.exposure;
-    if (u.toneMapMode == 1) {
-        c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
-    } else if (u.toneMapMode == 2) {
-        c = toneMapACES(c);             // ACES filmic
-    }
+    float4 s = src.sample(samp, in.uv);
+    float a = ollin_present_alpha(s, u);
+    float3 c = ollin_present_map(s.rgb, a, u);
 
     if (u.outputSpace == 2) {
         // HDR video: absolute luminance in Rec. 2020, PQ-encoded. 1.0 is the
@@ -124,9 +156,11 @@ fragment float4 ollin_present_wide_fragment(PresentOut in [[stage_in]],
     // Screen: linear Display P3, clamped at what the display can actually show
     // (1.0 for a standard-range frame, the reported headroom for an extended
     // one). The negative floor is for the subtractive blend modes, which are the
-    // one way the composite can go below zero.
-    float3 wide = ollin_srgb_to_display_p3(c);
-    return float4(clamp(wide, 0.0, u.ceiling), 1.0);
+    // one way the composite can go below zero. HDR video above carries no
+    // alpha; the float readback does, as premultiplied linear P3.
+    float3 wide = clamp(ollin_srgb_to_display_p3(c), 0.0, u.ceiling);
+    if (u.keepsAlpha != 0) wide *= a;   // float components premultiply as they are
+    return float4(wide, a);
 }
 
 // MARK: - Present: fitted to the wall
@@ -199,14 +233,11 @@ fragment float4 ollin_present_projected_fragment(PresentOut in [[stage_in]],
                                                  constant OllinPresentUniforms &u [[buffer(0)]],
                                                  constant OllinProjectionUniforms &p [[buffer(1)]]) {
     float4 place = ollin_projection_at(in.uv, p);
-    float3 c = src.sample(samp, place.xy).rgb * u.exposure;
-    if (u.toneMapMode == 1) {
-        c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
-    } else if (u.toneMapMode == 2) {
-        c = toneMapACES(c);             // ACES filmic
-    }
+    float4 s = src.sample(samp, place.xy);
+    float a = ollin_present_alpha(s, u);
+    float3 c = ollin_present_map(s.rgb, a, u);
     c *= ollin_projection_weight(place, p.gammaExponent);
-    return finalizeColor(float4(c, 1.0), in.position.xy);
+    return ollin_present_finish(c, a, in.position.xy, u);
 }
 
 fragment float4 ollin_present_wide_projected_fragment(PresentOut in [[stage_in]],
@@ -215,20 +246,18 @@ fragment float4 ollin_present_wide_projected_fragment(PresentOut in [[stage_in]]
                                                       constant OllinPresentUniforms &u [[buffer(0)]],
                                                       constant OllinProjectionUniforms &p [[buffer(1)]]) {
     float4 place = ollin_projection_at(in.uv, p);
-    float3 c = src.sample(samp, place.xy).rgb * u.exposure;
-    if (u.toneMapMode == 1) {
-        c = c / (1.0 + c);
-    } else if (u.toneMapMode == 2) {
-        c = toneMapACES(c);
-    }
+    float4 s = src.sample(samp, place.xy);
+    float a = ollin_present_alpha(s, u);
+    float3 c = ollin_present_map(s.rgb, a, u);
     c *= ollin_projection_weight(place, p.gammaExponent);
 
     if (u.outputSpace == 2) {
         float3 wide = max(ollin_srgb_to_rec2020(c), 0.0);
         return float4(ollin_pq_encode(min(wide * u.referenceNits, u.peakNits)), 1.0);
     }
-    float3 wide = ollin_srgb_to_display_p3(c);
-    return float4(clamp(wide, 0.0, u.ceiling), 1.0);
+    float3 wide = clamp(ollin_srgb_to_display_p3(c), 0.0, u.ceiling);
+    if (u.keepsAlpha != 0) wide *= a;   // float components premultiply as they are
+    return float4(wide, a);
 }
 
 // MARK: - Effects filters (texture -> texture, linear-float intermediate)

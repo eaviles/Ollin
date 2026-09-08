@@ -98,6 +98,8 @@ swift run OllinLive MySketches/Finale.swift --export-gif finale.gif --seconds 4 
 
 Reach for video first, because it's almost always the right choice. The default `h264` plays everywhere. `--codec hevc` is better quality per byte when the file needs to be smaller. The two ProRes profiles are for edit timelines rather than for sharing. `--bitrate` (in Mbit/s) is the file-size dial, and a 1080-square piece looks clean around 10 to 15 in `h264`. The GIF is for the short loop. It's palette-limited and heavy per second, so keep it a few seconds and downscale with `--gif-width`. A piece where *every* pixel changes every frame defeats GIF compression entirely and balloons the file. A drifting full-canvas field is that kind of piece. [Chapter 3](03-MotionAndTime.md)'s perfectly looping phase tricks are exactly what a GIF wants.
 
+A canvas that starts with `background(.clear)` leaves its background behind. The PNG gets an alpha channel, and so does the clip when the codec carries one. `--codec proRes4444` is the one for an edit timeline, and `hevcWithAlpha` makes a file a fraction of that size. The piece then lands over a camera feed or another layer in a compositing or VJ program rather than over black. `h264` has no alpha channel, so it composites over black and the export says so. The window paints the same frame over black too, so open the file to see the cut. `Examples/Export/Cutout` is a cluster of translucent lobes drawn that way.
+
 ## Slower than it happened
 
 Some pieces move faster than the eye can follow. A collision, a burst, the half-second where the whole thing resolves. On screen you can only watch it again. In a file you can slow it down:

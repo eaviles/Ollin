@@ -16,7 +16,14 @@ import VideoToolbox
 public enum VideoCodec: String, CaseIterable, Sendable {
     case h264
     case hevc
+    /// HEVC with an alpha channel beside the picture: the codec that keeps a
+    /// see-through canvas (`background(.clear)`) see-through in a file a
+    /// compositing or VJ program layers over something else. Plays where HEVC
+    /// plays; a player that ignores the alpha shows the picture over black.
+    case hevcWithAlpha
     case proRes422
+    /// ProRes 4444 carries alpha too, losslessly: the mastering choice for a
+    /// transparent clip bound for an edit timeline.
     case proRes4444
 
     /// The CLI spelling is matched case-insensitively, so `--codec prores422`
@@ -33,6 +40,7 @@ public enum VideoCodec: String, CaseIterable, Sendable {
         switch self {
         case .h264: .h264
         case .hevc: .hevc
+        case .hevcWithAlpha: .hevcWithAlpha
         case .proRes422: .proRes422
         case .proRes4444: .proRes4444
         }
@@ -42,7 +50,40 @@ public enum VideoCodec: String, CaseIterable, Sendable {
     var requiresQuickTime: Bool {
         switch self {
         case .proRes422, .proRes4444: true
-        case .h264, .hevc: false
+        case .h264, .hevc, .hevcWithAlpha: false
+        }
+    }
+
+    /// Whether the file keeps an alpha channel. A transparent canvas exported
+    /// through any other codec is composited over black, which is what the
+    /// window shows for it too.
+    public var carriesAlpha: Bool {
+        switch self {
+        case .hevcWithAlpha, .proRes4444: true
+        case .h264, .hevc, .proRes422: false
+        }
+    }
+}
+
+extension CVPixelBuffer {
+    /// Say the buffer's color is premultiplied by its alpha, which is how the
+    /// frames are drawn, so an encoder that keeps alpha writes that into the
+    /// file and a player composites the clip as the canvas composited it.
+    func markPremultipliedAlpha() {
+        CVBufferSetAttachment(self, kCVImageBufferAlphaChannelModeKey,
+                              kCVImageBufferAlphaChannelMode_PremultipliedAlpha, .shouldPropagate)
+    }
+}
+
+extension CGImage {
+    /// Whether the image's alpha is real coverage (a transparent canvas) rather
+    /// than a skipped byte. A frame with alpha is drawn into a cleared buffer,
+    /// since a pooled pixel buffer still holds the frame it carried last.
+    var carriesAlpha: Bool {
+        switch alphaInfo {
+        case .premultipliedFirst, .premultipliedLast, .first, .last: true
+        case .none, .noneSkipFirst, .noneSkipLast, .alphaOnly: false
+        @unknown default: false
         }
     }
 }
@@ -126,6 +167,10 @@ public extension OllinApp {
         var codec = codec
         if output == .extended, codec == .h264 {
             print("Ollin: HDR needs ten bits per component, which h264 here does not carry; using hevc")
+            codec = .hevc
+        }
+        if output == .extended, codec == .hevcWithAlpha {
+            print("Ollin: an HDR clip carries no alpha channel; using hevc")
             codec = .hevc
         }
         let colorProperties: [String: Any]
@@ -275,6 +320,9 @@ public extension OllinApp {
                 guard let cgImage = frame.image else {
                     fatalError("Ollin: failed to read frame \(index) back")
                 }
+                if index == 0, frame.transparent, !codec.carriesAlpha {
+                    print("Ollin: the canvas is see-through and \(codec.rawValue) keeps no alpha channel; the file shows it over black (--codec hevcWithAlpha or proRes4444 keeps it)")
+                }
                 // A wide-gamut frame is drawn into a Display P3 buffer, so the
                 // colors it named outside sRGB survive the trip; a standard one
                 // takes the sRGB path it always did.
@@ -288,9 +336,12 @@ public extension OllinApp {
                                            space: space,
                                            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
                                                | CGBitmapInfo.byteOrder32Little.rawValue) {
-                    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+                    let rect = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+                    if cgImage.carriesAlpha { context.clear(rect) }
+                    context.draw(cgImage, in: rect)
                 }
                 CVPixelBufferUnlockBaseAddress(buffer, [])
+                if cgImage.carriesAlpha { buffer.markPremultipliedAlpha() }
             }
             let time = CMTime(value: Int64(index) * 1000, timescale: timescale)
             if !adaptor.append(buffer, withPresentationTime: time) {

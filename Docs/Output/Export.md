@@ -32,6 +32,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Path-traced render](PathTraced.md) - `--path-traced`, the offline light-tracing mode for 3D scenes (its own page)
 - [Sound](#sound) - a sketch's own music, in the file
 - [Video](#video) - `--export-video`, `OllinApp.exportVideo`
+- [Transparent output](#transparent-output) - `background(.clear)` kept as alpha in the PNG, the sequence, the GIF, and a `proRes4444` / `hevcWithAlpha` clip
 - [Spatial video](Spatial.md#spatial-video) - `--export-spatial`, a stereo pair per frame for a headset (its own page)
 - [Web page](Web.md) - `--export-web`, a page that plays what the sketch drew back in a browser, standalone or inline (its own page)
 - [Animated GIF](#animated-gif) - `--export-gif`, `OllinApp.exportGIF`
@@ -146,7 +147,7 @@ The flags:
 
 | Flag | Effect |
 |---|---|
-| `--codec h264` \| `hevc` \| `proRes422` \| `proRes4444` | the encoder (default `h264`) |
+| `--codec h264` \| `hevc` \| `hevcWithAlpha` \| `proRes422` \| `proRes4444` | the encoder (default `h264`); the last two keep an [alpha channel](#transparent-output) |
 | `--bitrate MBPS` | average bitrate in Mbit/s, the file-size control |
 | `--quality 0..1` | constant-quality rate control instead of a bitrate (Apple silicon only) |
 
@@ -159,6 +160,22 @@ Exported tracks are tagged Rec. 709, so what players show matches what the canva
 **HDR.** A sketch that declares [`colorOutput`](../Drawing/ColorOutput.md) `.extended` is written as **HDR10** instead, with no extra flag to pass. That means Rec. 2020 primaries, the PQ transfer, 10-bit HEVC, and the mastering-display and content-light metadata the format expects. If the codec was left at the `h264` default, it is forced to `hevc`, because eight bits cannot carry HDR. A `.wide` sketch's track is tagged P3-D65, which is the same standard range through wider primaries.
 
 **Spatial video.** A 3D sketch can be exported as [spatial video](Spatial.md#spatial-video) instead. It uses the same fixed-clock drive, but each frame is rendered from two eyes. The two views are muxed into the stereo format that Apple's platforms play with real depth.
+
+### Transparent output
+
+A canvas whose background is see-through stays see-through in the file. Call `background(.clear)`, or any color with an alpha under 1, and every export keeps the frame's coverage as its alpha. `--export` writes a PNG with an alpha channel and `--export-sequence` a folder of them. `--export-gif` writes a GIF with its one transparent index, a hard edge, since GIF has no partial alpha. `--export-video` writes a clip with an alpha channel through the two codecs that carry one:
+
+```sh
+swift run --package-path Examples Example-Export-Cutout --export /tmp/cutout.png
+swift run --package-path Examples Example-Export-Cutout --export-video /tmp/cutout.mov --codec proRes4444 --seconds 4
+swift run --package-path Examples Example-Export-Cutout --export-video /tmp/cutout.mp4 --codec hevcWithAlpha --seconds 4
+```
+
+`proRes4444` keeps the alpha losslessly and is the choice for an edit timeline. `hevcWithAlpha` is HEVC with an alpha channel beside the picture, a fraction of the size, and it plays wherever HEVC plays. A player that ignores the alpha shows the picture over black. The other codecs have no alpha channel. A see-through canvas through `h264`, `hevc`, or `proRes422` is composited over black, which is what the window shows for it too. The export says so as it starts. In code, `VideoCodec.carriesAlpha` tells the two kinds apart.
+
+The bytes are premultiplied, which is how every reader of an 8-bit image with alpha expects them. The tone map sees the straight color, so a half-covered pixel keeps the color the sketch drew at half the coverage rather than turning darker. A frame filter runs before that, on the premultiplied frame, so a blur spreads the coverage along with the color. A live feed keeps the alpha as well. A [Syphon](../Integration/Syphon.md) client and a [recording](Recording.md) of a see-through canvas receive the frame with its coverage. A VJ program then layers it as it would any other source. The window itself is opaque and paints the frame over black. Open the PNG to see the transparency. An opaque canvas keeps its opaque tag and its bytes.
+
+An `extended` (HDR) clip carries no alpha channel, and `hevcWithAlpha` on such a sketch falls back to `hevc`.
 
 ### Sound
 

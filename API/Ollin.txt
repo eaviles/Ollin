@@ -742,9 +742,11 @@ enum VerticalTextAlign: Equatable, Hashable, Sendable
 enum VideoCodec: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case h264
   case hevc
+  case hevcWithAlpha
   case proRes422
   case proRes4444
   init?(flag: String)
+  var carriesAlpha: Bool { get }
 enum WFCSymmetry: ParamOption, ParamValue, CaseIterable, Equatable, Hashable, Sendable
   case all
   case none

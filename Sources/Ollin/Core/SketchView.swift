@@ -2674,11 +2674,15 @@ public enum OllinApp {
         let bytesPerRow: Int
         let width: Int
         let height: Int
+        /// The canvas showed through (`background(.clear)`), so the present
+        /// kept its coverage as alpha and the image is tagged premultiplied.
+        let transparent: Bool
 
         /// The frame as an image, in whatever space the sketch's `colorOutput`
         /// presents into.
         var image: CGImage? {
-            renderer.displayImage(from: buffer, width: width, height: height)
+            renderer.displayImage(from: buffer, width: width, height: height,
+                                  transparent: transparent)
         }
 
         /// The presented bytes themselves, `bytesPerRow * height` of them.
@@ -2800,14 +2804,16 @@ public enum OllinApp {
                    written < frames {
                     write(RenderedFrame(renderer: renderer, buffer: made.buffer,
                                         bytesPerRow: made.bytesPerRow,
-                                        width: width, height: height), written)
+                                        width: width, height: height,
+                                        transparent: sketch.drawer.hasTransparentBackground), written)
                     written += 1
                 }
             }
             if written < frames {
                 write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
                                     bytesPerRow: rendered.bytesPerRow,
-                                    width: width, height: height), written)
+                                    width: width, height: height,
+                                    transparent: sketch.drawer.hasTransparentBackground), written)
                 written += 1
             }
 
@@ -3228,7 +3234,7 @@ public extension OllinApp {
             return true
         }
         // `--export-video <path> (--frames N | --seconds S) [--fps F] [--skip S]
-        // [--codec h264|hevc|proRes422|proRes4444] [--bitrate MBPS] [--quality 0..1]`
+        // [--codec h264|hevc|hevcWithAlpha|proRes422|proRes4444] [--bitrate MBPS] [--quality 0..1]`
         // encodes a video (.mp4/.mov) and exits.
         if let i = args.firstIndex(of: "--export-video"), i + 1 < args.count {
             func value(_ flag: String) -> String? {

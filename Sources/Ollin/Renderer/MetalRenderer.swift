@@ -1645,10 +1645,14 @@ final class MetalRenderer {
         let request: FrameGrabRequest
         let texture: MTLTexture
         let buffer: MTLBuffer?
-        init(request: FrameGrabRequest, texture: MTLTexture, buffer: MTLBuffer?) {
+        /// The present kept the canvas's coverage as alpha (a see-through
+        /// background), so the image is tagged premultiplied rather than opaque.
+        let transparent: Bool
+        init(request: FrameGrabRequest, texture: MTLTexture, buffer: MTLBuffer?, transparent: Bool) {
             self.request = request
             self.texture = texture
             self.buffer = buffer
+            self.transparent = transparent
         }
     }
 
@@ -2295,7 +2299,8 @@ final class MetalRenderer {
     func accumulatedImage(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
         guard let frame = accumulatedFrame(of: drawer, viewport: viewport, width: width, height: height)
         else { return nil }
-        return displayImage(from: frame.buffer, width: width, height: height)
+        return displayImage(from: frame.buffer, width: width, height: height,
+                            transparent: drawer.hasTransparentBackground)
     }
 
     /// `accumulatedImage(of:…)` stopping one step earlier, at the read-back
@@ -2338,7 +2343,8 @@ final class MetalRenderer {
 
         // Tone-map the float pile into the sRGB display texture, then read that back.
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: display)) {
-            encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
+            encodePresent(from: resolve, drawer: drawer, into: presentEncoder,
+                          keepsAlpha: drawer.hasTransparentBackground)
             presentEncoder.endEncoding()
         }
 
@@ -2401,21 +2407,30 @@ final class MetalRenderer {
     /// pass left them. The 8-bit path is untouched; a float display texture
     /// comes back as half-float components tagged extended-linear Display P3,
     /// so the wide gamut (and, in an `extended` frame, the values above 1)
-    /// survive into the image.
-    func displayImage(from buffer: MTLBuffer, width: Int, height: Int) -> CGImage? {
+    /// survive into the image. `transparent` says the present kept the frame's
+    /// coverage as alpha (a see-through canvas, `Drawer.hasTransparentBackground`),
+    /// so the bytes are tagged premultiplied and a PNG or a ProRes 4444 clip
+    /// carries the transparency; an opaque frame keeps the tag it always had.
+    func displayImage(from buffer: MTLBuffer, width: Int, height: Int,
+                      transparent: Bool = false) -> CGImage? {
         pixelFormat == .rgba16Float
-            ? MetalRenderer.cgImage(fromRGBA16Float: buffer, width: width, height: height)
-            : MetalRenderer.cgImage(fromBGRA8: buffer, width: width, height: height)
+            ? MetalRenderer.cgImage(fromRGBA16Float: buffer, width: width, height: height,
+                                    transparent: transparent)
+            : MetalRenderer.cgImage(fromBGRA8: buffer, width: width, height: height,
+                                    transparent: transparent)
     }
 
-    /// Build an opaque BGRA8 `CGImage` from a shared buffer of `width*height*4`
-    /// bytes (the resolved-texture read-back layout). Shared by `image(of:)` and
-    /// the accumulation read-back paths.
-    private static func cgImage(fromBGRA8 buffer: MTLBuffer, width: Int, height: Int) -> CGImage? {
+    /// Build a BGRA8 `CGImage` from a shared buffer of `width*height*4` bytes
+    /// (the resolved-texture read-back layout), opaque unless `transparent`
+    /// says the alpha byte is real coverage over premultiplied color. Shared by
+    /// `image(of:)` and the accumulation read-back paths.
+    private static func cgImage(fromBGRA8 buffer: MTLBuffer, width: Int, height: Int,
+                                transparent: Bool) -> CGImage? {
         let bytesPerRow = width * 4, byteCount = bytesPerRow * height
         let data = Data(bytes: buffer.contents(), count: byteCount)
         guard let provider = CGDataProvider(data: data as CFData) else { return nil }
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue
+        let alpha: CGImageAlphaInfo = transparent ? .premultipliedFirst : .noneSkipFirst
+        let bitmapInfo = CGBitmapInfo(rawValue: alpha.rawValue
                                       | CGBitmapInfo.byteOrder32Little.rawValue)
         return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
                        bytesPerRow: bytesPerRow, space: CGColorSpaceCreateDeviceRGB(),
@@ -2429,14 +2444,16 @@ final class MetalRenderer {
     /// component above 1.0, so an `extended` frame's highlights are still in
     /// here; writing it to a PNG or HEIC is where they meet the file format's
     /// own ceiling.
-    private static func cgImage(fromRGBA16Float buffer: MTLBuffer, width: Int, height: Int) -> CGImage? {
+    private static func cgImage(fromRGBA16Float buffer: MTLBuffer, width: Int, height: Int,
+                                transparent: Bool) -> CGImage? {
         let bytesPerRow = width * 8, byteCount = bytesPerRow * height
         let data = Data(bytes: buffer.contents(), count: byteCount)
         guard let provider = CGDataProvider(data: data as CFData),
               let space = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3) else { return nil }
+        let alpha: CGImageAlphaInfo = transparent ? .premultipliedLast : .noneSkipLast
         let bitmapInfo = CGBitmapInfo(rawValue: CGBitmapInfo.floatComponents.rawValue
                                       | CGBitmapInfo.byteOrder16Little.rawValue
-                                      | CGImageAlphaInfo.noneSkipLast.rawValue)
+                                      | alpha.rawValue)
         return CGImage(width: width, height: height, bitsPerComponent: 16, bitsPerPixel: 64,
                        bytesPerRow: bytesPerRow, space: space,
                        bitmapInfo: bitmapInfo, provider: provider, decode: nil,
@@ -2450,7 +2467,8 @@ final class MetalRenderer {
     func image(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
         guard let frame = renderedFrame(of: drawer, viewport: viewport, width: width, height: height)
         else { return nil }
-        return displayImage(from: frame.buffer, width: width, height: height)
+        return displayImage(from: frame.buffer, width: width, height: height,
+                            transparent: drawer.hasTransparentBackground)
     }
 
     /// `image(of:…)` stopping at the read-back buffer instead of building an
@@ -2781,7 +2799,8 @@ final class MetalRenderer {
                          inputWidth: width, inputHeight: height,
                          outputWidth: outWidth, outputHeight: outHeight)
         guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
-        encodePresent(from: presented, drawer: drawer, into: presentEncoder)
+        encodePresent(from: presented, drawer: drawer, into: presentEncoder,
+                      keepsAlpha: drawer.hasTransparentBackground)
         presentEncoder.endEncoding()
 
         // Copy the display texture into a CPU-readable buffer (works on every
@@ -3020,7 +3039,8 @@ final class MetalRenderer {
             grabTextures.append(texture)
             return
         }
-        encodePresent(from: presentSource, drawer: drawer, into: presentEncoder)
+        encodePresent(from: presentSource, drawer: drawer, into: presentEncoder,
+                      keepsAlpha: drawer.hasTransparentBackground)
         presentEncoder.endEncoding()
 
         // The image's bytes, copied out on the GPU (works on every Mac GPU,
@@ -3049,7 +3069,8 @@ final class MetalRenderer {
         // loop (a modal loop, a test's wait), and a run-loop block can. Every
         // common mode, so a frame lands during a drag too, and a wake-up so it
         // lands as soon as the GPU is done rather than at the next event.
-        let inFlight = FrameGrabInFlight(request: grab, texture: texture, buffer: buffer)
+        let inFlight = FrameGrabInFlight(request: grab, texture: texture, buffer: buffer,
+                                         transparent: drawer.hasTransparentBackground)
         commandBuffer.addCompletedHandler { [weak self] _ in
             RunLoop.main.perform(inModes: [.common]) {
                 MainActor.assumeIsolated { self?.finishFrameGrab(inFlight) }
@@ -3064,7 +3085,10 @@ final class MetalRenderer {
     private func finishFrameGrab(_ grab: FrameGrabInFlight) {
         let request = grab.request
         let image = request.wantsImage
-            ? grab.buffer.flatMap { displayImage(from: $0, width: request.width, height: request.height) }
+            ? grab.buffer.flatMap {
+                displayImage(from: $0, width: request.width, height: request.height,
+                             transparent: grab.transparent)
+            }
             : nil
         request.deliver(image, request.wantsTexture ? grab.texture : nil)
         if grabTextures.count <= MetalRenderer.maxFramesInFlight { grabTextures.append(grab.texture) }

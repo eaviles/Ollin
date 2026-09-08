@@ -34,6 +34,8 @@ Clear the frame to `color`. The renderer clears every frame, so call this first 
 background(.white)
 ```
 
+`background(.clear)`, or any color with an alpha under 1, makes the canvas see-through. The window paints it over black, and every export keeps the coverage as the file's alpha, so the piece lands over another layer. See [Transparent output](../Output/Export.md#transparent-output).
+
 <a name="fill"></a>
 
 #### fill / noFill
