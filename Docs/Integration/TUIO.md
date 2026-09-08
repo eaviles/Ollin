@@ -88,7 +88,7 @@ try surface.start()
 | `start()` / `stop()` | Opens and closes the socket. `start()` throws if the port is taken |
 | `isRunning`, `boundPort` | Whether it is listening, and on what. Pass port `0` to be given a free one |
 | `cursors`, `objects`, `blobs` | What is on the surface right now, ordered by session id |
-| `framesReceived` | How many surface frames have arrived |
+| `framesReceived` | How many frames have arrived, across the three profiles |
 | `sourceName` | What the tracker calls itself, once it has said so |
 | `receive(_:)` | Hands it a message or a packet you read yourself |
 

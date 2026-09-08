@@ -332,9 +332,10 @@ public final class TUIOReceiver: @unchecked Sendable {
     /// The untagged shapes on the surface right now, by session id.
     public var blobs: [TUIOBlob] { surface.withLock { $0.blobs.items } }
 
-    /// How many surface frames have arrived. A tracker with nothing on it still
-    /// sends a frame each tick, so this is what says a tracker is there at all,
-    /// where an empty `cursors` only says nobody is touching it.
+    /// How many frames have arrived, counted across the three profiles (a tracker
+    /// that reports touches and markers sends a frame of each). A tracker with
+    /// nothing on it still sends a frame every tick, so this is what says a tracker
+    /// is there at all, where an empty `cursors` only says nobody is touching it.
     public var framesReceived: Int {
         surface.withLock { $0.cursors.frames + $0.objects.frames + $0.blobs.frames }
     }
