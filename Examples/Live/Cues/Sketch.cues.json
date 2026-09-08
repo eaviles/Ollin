@@ -1,0 +1,195 @@
+{
+  "cues" : [
+    {
+      "name" : "calm",
+      "values" : {
+        "count" : {
+          "number" : {
+            "_0" : 12
+          }
+        },
+        "ground" : {
+          "color" : {
+            "alpha" : 1,
+            "blue" : 0.92,
+            "green" : 0.95,
+            "red" : 0.96
+          }
+        },
+        "hue" : {
+          "number" : {
+            "_0" : 0.58
+          }
+        },
+        "lit" : {
+          "boolean" : {
+            "_0" : false
+          }
+        },
+        "size" : {
+          "number" : {
+            "_0" : 46
+          }
+        },
+        "spin" : {
+          "number" : {
+            "_0" : 0.25
+          }
+        }
+      }
+    },
+    {
+      "name" : "dense",
+      "values" : {
+        "count" : {
+          "number" : {
+            "_0" : 48
+          }
+        },
+        "ground" : {
+          "color" : {
+            "alpha" : 1,
+            "blue" : 0.86,
+            "green" : 0.93,
+            "red" : 0.97
+          }
+        },
+        "hue" : {
+          "number" : {
+            "_0" : 0.12
+          }
+        },
+        "lit" : {
+          "boolean" : {
+            "_0" : false
+          }
+        },
+        "size" : {
+          "number" : {
+            "_0" : 22
+          }
+        },
+        "spin" : {
+          "number" : {
+            "_0" : 0.6
+          }
+        }
+      }
+    },
+    {
+      "name" : "storm",
+      "values" : {
+        "count" : {
+          "number" : {
+            "_0" : 36
+          }
+        },
+        "ground" : {
+          "color" : {
+            "alpha" : 1,
+            "blue" : 0.14,
+            "green" : 0.12,
+            "red" : 0.16
+          }
+        },
+        "hue" : {
+          "number" : {
+            "_0" : 0.02
+          }
+        },
+        "lit" : {
+          "boolean" : {
+            "_0" : true
+          }
+        },
+        "size" : {
+          "number" : {
+            "_0" : 90
+          }
+        },
+        "spin" : {
+          "number" : {
+            "_0" : 1.8
+          }
+        }
+      }
+    },
+    {
+      "name" : "night",
+      "values" : {
+        "count" : {
+          "number" : {
+            "_0" : 20
+          }
+        },
+        "ground" : {
+          "color" : {
+            "alpha" : 1,
+            "blue" : 0.14,
+            "green" : 0.07,
+            "red" : 0.05
+          }
+        },
+        "hue" : {
+          "number" : {
+            "_0" : 0.68
+          }
+        },
+        "lit" : {
+          "boolean" : {
+            "_0" : true
+          }
+        },
+        "size" : {
+          "number" : {
+            "_0" : 60
+          }
+        },
+        "spin" : {
+          "number" : {
+            "_0" : -0.4
+          }
+        }
+      }
+    },
+    {
+      "name" : "blank",
+      "values" : {
+        "count" : {
+          "number" : {
+            "_0" : 4
+          }
+        },
+        "ground" : {
+          "color" : {
+            "alpha" : 1,
+            "blue" : 1,
+            "green" : 1,
+            "red" : 1
+          }
+        },
+        "hue" : {
+          "number" : {
+            "_0" : 0.5
+          }
+        },
+        "lit" : {
+          "boolean" : {
+            "_0" : false
+          }
+        },
+        "size" : {
+          "number" : {
+            "_0" : 140
+          }
+        },
+        "spin" : {
+          "number" : {
+            "_0" : 0
+          }
+        }
+      }
+    }
+  ],
+  "version" : 1
+}

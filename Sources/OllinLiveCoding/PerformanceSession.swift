@@ -142,6 +142,12 @@ final class PerformanceSession {
                 guard let self else { return }
                 if let wanted, wanted == self.isRecording { return }
                 self.toggleRecording()
+            },
+            cue: { [weak self] request in
+                self?.core.callCue(request, over: CuesCardView.fade())
+            },
+            cueOver: { [weak self] request, fade in
+                self?.core.callCue(request, over: fade)
             }
         )
     }
@@ -241,10 +247,23 @@ final class PerformanceSession {
             return
         }
         fileURL = url
+        adoptCueFile(beside: url)
         editor.setText(text)
         clearDirty()
         refreshTitle()
         evaluate(fresh: true)
+    }
+
+    /// The cues live in `Sketch.cues.json` beside the open document, so a set
+    /// rehearsed in the live host is on the stage too. An untitled buffer
+    /// keeps its cues for the session only, until it is saved somewhere.
+    private func adoptCueFile(beside url: URL) {
+        let path = url.deletingPathExtension().appendingPathExtension("cues.json").path
+        do {
+            try core.adoptCueFile(path)
+        } catch {
+            presentError("Couldn't read the cues beside \(url.lastPathComponent): \(error)")
+        }
     }
 
     func saveDocument() {
@@ -301,6 +320,7 @@ final class PerformanceSession {
     }
 
     private func write(to url: URL) {
+        if fileURL == nil || core.cueFile == nil { adoptCueFile(beside: url) }
         do {
             try editor.text().write(to: url, atomically: true, encoding: .utf8)
             clearDirty()

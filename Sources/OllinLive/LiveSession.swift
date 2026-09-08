@@ -70,6 +70,11 @@ final class LiveSession {
     var stats: FrameStats { core.stats }
     /// The running sketch's `@Param` parameters, surfaced as sliders in the inspector.
     var params: [ParamHandle] { core.params }
+    var cues: [Cue] { core.cues }
+    var currentCue: String? { core.currentCue }
+    func saveCue(_ name: String) { core.saveCue(name) }
+    func deleteCue(_ name: String) { core.deleteCue(name) }
+    func callCue(_ request: CueRequest, over seconds: Double) { core.callCue(request, over: seconds) }
     /// A user shader's compile error (`nil` when every shader compiles).
     /// Distinct from `status`, which tracks the Swift hot-reload, so a shader
     /// error and a sketch-compile error don't clear each other.
@@ -155,6 +160,15 @@ final class LiveSession {
         // the panel's edits replace it through the same seam and write back
         // to the same file.
         core.automation = automation
+        // The cues ride the engine the same way, from the sketch's own sibling
+        // `.cues.json`; one that does not exist yet is where the first save lands.
+        let cuesPath = ((sketchPath as NSString).deletingPathExtension as NSString)
+            .appendingPathExtension("cues.json") ?? sketchPath + ".cues.json"
+        do {
+            try core.adoptCueFile(cuesPath)
+        } catch {
+            print("OllinLive: could not read the cues at \(cuesPath): \(error)")
+        }
         timeline.setFile(automationURL)
         timeline.automationChanged = { [weak self] automation in
             self?.core.automation = automation

@@ -1,4 +1,5 @@
 import Foundation
+import Ollin
 import Observation
 import OllinMIDI
 import OllinOSC
@@ -29,7 +30,7 @@ final class PerformanceControls {
 
     /// One thing the host does from a control.
     enum Action: String, CaseIterable, Codable, Sendable, Identifiable {
-        case evaluate, evaluateFresh, hideCode, backdrop, codeSize, record
+        case evaluate, evaluateFresh, hideCode, backdrop, codeSize, record, cueNext, cuePrevious
 
         var id: String { rawValue }
 
@@ -41,6 +42,8 @@ final class PerformanceControls {
             case .backdrop:      return "Code backdrop"
             case .codeSize:      return "Code size"
             case .record:        return "Record"
+            case .cueNext:       return "Next cue"
+            case .cuePrevious:   return "Previous cue"
             }
         }
 
@@ -59,8 +62,16 @@ final class PerformanceControls {
             case .backdrop:      return "/ollin/code/backdrop"
             case .codeSize:      return "/ollin/code/size"
             case .record:        return "/ollin/record"
+            case .cueNext:       return "/ollin/cue/next"
+            case .cuePrevious:   return "/ollin/cue/previous"
             }
         }
+
+        /// The address a cue is called at by name or number, with nothing to
+        /// learn: `/ollin/cue "finale"` or `/ollin/cue 3`, an optional second
+        /// argument the fade in seconds. A MIDI program change calls a cue by
+        /// number the same way, on any channel.
+        static let cueAddress = "/ollin/cue"
 
         /// The action a fixed address names, if it is one.
         static func named(by address: String) -> Action? {
@@ -98,6 +109,10 @@ final class PerformanceControls {
         var setCodeSize: (Double) -> Void
         /// `nil` turns recording over; a value sets it.
         var setRecording: (Bool?) -> Void
+        /// Call a cue, over the fade the Cues card holds (or the one given).
+        var cue: (CueRequest) -> Void
+        /// A cue called with its own fade, from `/ollin/cue name seconds`.
+        var cueOver: ((CueRequest, Double) -> Void)? = nil
     }
 
     static let smallestCodeSize = 9.0
@@ -273,6 +288,9 @@ final class PerformanceControls {
                     press(action)
                 }
             }
+        case .programChange(let program):
+            // A program change is a cue number; nothing else in the host reads one.
+            handlers.cue(.number(program))
         default:
             break
         }
@@ -282,6 +300,24 @@ final class PerformanceControls {
     func handle(_ message: OSCMessage) {
         let trigger = Trigger.osc(message.address)
         if takeForLearning(trigger) { return }
+        if message.address == Action.cueAddress {
+            // A name or a number, then an optional fade.
+            let request: CueRequest?
+            if let text = message.text {
+                request = .named(text)
+            } else if let number = message.int {
+                request = .number(number)
+            } else {
+                request = nil
+            }
+            guard let request else { return }
+            if message.arguments.count > 1, let fade = message.arguments[1].number, let cueOver = handlers.cueOver {
+                cueOver(request, fade)
+            } else {
+                handlers.cue(request)
+            }
+            return
+        }
         var actions: [Action] = []
         for (action, bound) in map where bound == trigger { actions.append(action) }
         if let fixed = Action.named(by: message.address), !actions.contains(fixed) {
@@ -308,6 +344,8 @@ final class PerformanceControls {
         case .evaluate:      handlers.evaluate(false)
         case .evaluateFresh: handlers.evaluate(true)
         case .hideCode:      handlers.setCodeHidden(nil)
+        case .cueNext:       handlers.cue(.next)
+        case .cuePrevious:   handlers.cue(.previous)
         case .record:        handlers.setRecording(nil)
         case .backdrop, .codeSize: break
         }

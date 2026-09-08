@@ -189,6 +189,11 @@ struct LiveCodingRootView: View {
                                            session.core.recordParam(name, value)
                                        },
                                        save: session.saveAction)
+                    CuesCardView(cues: session.core.cues,
+                                 currentCue: { session.core.currentCue },
+                                 onCall: { request, fade in session.core.callCue(request, over: fade) },
+                                 onSave: { session.core.saveCue($0) },
+                                 onDelete: { session.core.deleteCue($0) })
                     ControlsCardView(controls: session.controls)
                 }
                 .endsTypingOnBackgroundTap()

@@ -715,6 +715,8 @@ The loop is different from the live-reload host you've used since [Chapter 1](01
 
 Evaluation never writes your file (⌘S does), so you can riff as recklessly as the room deserves and keep only what worked.
 
+A set has looks it comes back to, and a look is every parameter at once. Save one as a *cue*: `saveCue("night")` in code, or the Cues card under the parameters with a name typed in. `cue("night", over: 2)` brings every parameter back over two seconds, a switch flipping at the start and a number easing in, and `nextCue()` walks the sheet in order. The hosts keep the sheet in `Sketch.cues.json` beside the sketch, so a reload never loses one. On stage a MIDI program change calls a cue by number, `/ollin/cue` by name, and a pad learned onto **Next cue** steps through the set. `Examples/Live/Cues` carries five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
+
 The host's own actions answer to a controller too, beside the bindings your sketch makes for itself. Set a port in the inspector's Controls card and the host listens for OSC at `/ollin/evaluate`, `/ollin/code/hidden`, `/ollin/record`, and the rest. A second machine or a phone layout can run the show that way. For a pad or a fader, press Learn on an action and then press or move the control, and the host remembers it. Evaluate lands on a pad next to the ones playing the notes, and a fader rides the strip behind the code. None of this is in the sketch; it is the host's own preference. [Live coding](../Docs/Tools/LiveCoding.md#the-host-on-a-controller) lists the addresses.
 
 The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on the stage too, through the code. Hold Command, and the shape under the pointer is outlined over the text. Drag it, pull a corner, or turn the knob, and the numbers change in the code the room is reading. The host evaluates that for you, so the shape stays where you left it and the clock carries. If you have typed since the last evaluation, the host asks you to evaluate first rather than guess which line moved.
@@ -943,6 +945,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
+- [Cues](../Docs/Helpers/Cues.md): looks you saved and call back, over a fade, from a key, the card, a program change, or `--cue`.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
 - [Formula](../Docs/Helpers/Formula.md): the whole arithmetic vocabulary a parameter's rule speaks, what it can name, and what it reports rather than throws.
 - Worked examples: [`Examples/Export/`](../Examples/Export/), [`Examples/Live/`](../Examples/Live/), and [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift).

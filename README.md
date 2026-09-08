@@ -249,7 +249,7 @@ Good places to start:
 - [Sketch](Docs/Core/Sketch.md) and [Canvas](Docs/Core/Canvas.md), the lifecycle and the drawing surface
 - [Drawing](Docs/Drawing/Drawing.md) and [Color](Docs/Drawing/Color.md), the day-to-day API
 - [Input](Docs/Helpers/Input.md) and [Math](Docs/Helpers/Math.md), mouse and keys, and the helpers you'll use all the time
-- [Parameters](Docs/Helpers/Parameters.md), the `@Param` inspector controls
+- [Parameters](Docs/Helpers/Parameters.md), the `@Param` inspector controls, and [Cues](Docs/Helpers/Cues.md), the looks you saved and call back
 - [Data](Docs/Helpers/Data.md), reading a CSV or JSON file to draw from
 - [Animation](Docs/Helpers/Animation.md) and [Noise](Docs/Generators/Noise.md), the motion and texture layers
 - [Layered effects](Docs/Drawing/Effects.md) and [Shaders](Docs/Shaders/Shaders.md), when you go to the GPU

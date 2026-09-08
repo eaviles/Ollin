@@ -2338,6 +2338,21 @@ open class Sketch {
     /// sketch reaches it through the `automation` property.
     var automationPlayer: AutomationPlayer?
 
+    /// The cues this sketch carries: named sets of parameter values, saved
+    /// with `saveCue(_:)` and called back with `cue(_:over:)` (see `Cue`). A
+    /// host installs the sheet it read from `Sketch.cues.json` here before
+    /// `setup()` runs, and is told through `cuesChanged` when the sketch
+    /// saves or deletes one, so the file follows.
+    public var cueSheet = CueSheet() {
+        didSet { if cueSheet != oldValue { cuesChanged?() } }
+    }
+    /// The name of the cue called last, or nil before any was.
+    public internal(set) var currentCue: String?
+    /// The cue on its way in, while one fades.
+    var cueTransition: CueTransition?
+    /// Called after the sheet changes, for a host that keeps it in a file.
+    package var cuesChanged: (() -> Void)?
+
     /// Keys currently held down, so `isKeyDown(_:)` can answer and `keyIsPressed`
     /// tracks whether any key is down. The view inserts on press and removes on
     /// release (see `handleKey`).
@@ -3995,6 +4010,10 @@ open class Sketch {
         // samples the parameters, so a run recorded while an automation played
         // writes down the values the curves actually held.
         automationPlayer?.apply(to: self, at: time)
+        // A cue fading in moves its parameters here, after the automation (a
+        // track still wins its parameter every frame) and before the recorder
+        // samples them, so a take written during a fade holds the fade.
+        advanceCue(by: deltaTime)
         takeRecorder?.recordFrame(of: self, time: time, deltaTime: deltaTime,
                                   frameRate: frameRate)
         frameCount += 1

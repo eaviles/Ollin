@@ -237,6 +237,11 @@ enum ComputeTextureFormat: Equatable, Hashable, Sendable
   case rgba16Float
   case rgba32Float
   case rgba8Unorm
+enum CueRequest: Equatable, Sendable
+  case named(String)
+  case next
+  case number(Int)
+  case previous
 enum DepthConfidence: Int, Comparable, Equatable, Hashable, RawRepresentable, Sendable
   case high
   case low
@@ -1803,7 +1808,12 @@ func totalisticCA(code: Int, colors: Int = default, width: Int, generations: Int
 func unipolar(_: Double) -> Double
 func wrap(_: Double, _: Double, _: Double) -> Double
 open class Sketch: Sendable
+  @discardableResult func cue(_: CueRequest, over: Double = default) -> Bool
+  @discardableResult func cue(_: Int, over: Double = default) -> Bool
+  @discardableResult func cue(_: String, over: Double = default) -> Bool
   @discardableResult func drawFrame(_: some VideoFeed, in: Rectangle? = default, waiting: String? = default) -> Rectangle?
+  @discardableResult func nextCue(over: Double = default) -> Bool
+  @discardableResult func previousCue(over: Double = default) -> Bool
   @discardableResult func saveMesh(_: Mesh, to: String, as: MeshFileFormat? = default, unit: ModelUnit = default, upAxis: UpAxis = default) -> Bool
   @discardableResult func saveScene(_: Scene, to: String, as: SceneFileFormat? = default, metersPerUnit: Double = default) -> Bool
   final static func main()
@@ -1852,6 +1862,7 @@ open class Sketch: Sendable
   func curlNoise(_: Double, _: Double) -> Vector2
   func curlNoise(_: Vector2) -> Vector2
   func delaunay(_: [Vector2]) -> Delaunay
+  func deleteCue(_: String)
   func depth(_: Double)
   func depth(at: Vector3)
   func describe(_: String)
@@ -2140,6 +2151,7 @@ open class Sketch: Sendable
   func lightingPreset(_: LightingPreset)
   func lights()
   func lloyd(_: [Vector2], in: Rectangle? = default, iterations: Int = default) -> [Vector2]
+  func loadCues(from: String) throws
   func loadImage(_: Foundation.URL) -> Image?
   func loadImage(_: String) -> Image?
   func loadJSON(_: Foundation.URL) -> JSON?
@@ -2289,6 +2301,8 @@ open class Sketch: Sendable
   func rotateY(_: Double)
   func rotateZ(_: Double)
   func saveCheckpoint()
+  func saveCue(_: String)
+  func saveCues(to: String) throws
   func savedProperties() -> [SavedHandle]
   func scale(_: Double)
   func scale(_: Double, _: Double)
@@ -2474,11 +2488,14 @@ open class Sketch: Sendable
   var canvasOnScreen: Rectangle? { get }
   var canvasRectangle: Rectangle { get }
   var center: Vector2 { get }
+  var cueSheet: CueSheet { get set }
+  var currentCue: String? { get }
   var deltaTime: Double { get }
   var displayHeadroom: Double { get }
   var frameCount: Int { get }
   var frameRate: Double { get }
   var height: Double { get }
+  var isCueFading: Bool { get }
   var isLooping: Bool { get }
   var isRecording: Bool { get }
   var isVectorExporting: Bool { get }
@@ -3115,6 +3132,29 @@ struct CreasePattern: Equatable, Sendable
   var inverted: CreasePattern { get }
   var isFlatFoldable: Bool { get }
   var vertices: [Vector2] { get }
+struct Cue: Decodable, Encodable, Equatable, Sendable
+  init(name: String, values: [String : ParamStored])
+  var name: String { get set }
+  var values: [String : ParamStored] { get set }
+struct CueSheet: Decodable, Encodable, Equatable, Sendable
+  enum LoadError: CustomStringConvertible, Error, Sendable
+    case newerVersion(Int)
+    var description: String { get }
+  func index(of: String) -> Int?
+  func write(to: String) throws
+  init(cues: [Cue] = default)
+  mutating func remove(_: String)
+  mutating func store(_: Cue)
+  static func load(from: String) throws -> CueSheet
+  static let currentVersion: Int
+  subscript(_: String) -> Cue? { get }
+  var cues: [Cue] { get set }
+  var version: Int { get set }
+struct CuesCardView: Sendable, View
+  init(cues: [Cue], currentCue: () -> String?, onCall: (CueRequest, Double) -> Void, onSave: (String) -> Void, onDelete: (String) -> Void)
+  static func fade(in: Foundation.UserDefaults = default) -> Double
+  static let fadeKey: String
+  var body: some SwiftUI.View { get }
 struct DXF: Equatable, Sendable
   func drafting(_: [Contour], in: Rectangle) -> Drafting
   func text(_: [Contour], in: Rectangle) -> String

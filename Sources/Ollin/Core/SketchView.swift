@@ -3009,6 +3009,9 @@ public extension OllinApp {
         // Read here rather than inside an export branch, so the windowed path
         // picks it up too (`handleCommandLine` runs before any window opens).
         readParamOverrides(args)
+        // `--cues <file>` names a saved cue sheet and `--cue <name>` the look to
+        // start at, applied after `setup()` the way `--param` is.
+        readCueFlags(args)
         // `--render-quality <performance|default|detail>` sets the render-quality fallback for
         // the export paths, applied to any feature the sketch left at `.default` (an explicit
         // sketch dial still wins). Defaults to `.detail`: exported art is full quality unless

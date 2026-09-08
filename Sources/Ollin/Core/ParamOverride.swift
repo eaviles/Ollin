@@ -265,6 +265,29 @@ extension OllinApp {
     /// makes: each tile of a contact sheet gets them, not only the first.
     static var paramOverrides: [ParamOverride] = []
 
+    /// The cue sheet this run was given (`--cues <file>`) and the cue it should
+    /// start at (`--cue <name>`), applied after `setup()` like `--param`, so an
+    /// export renders a look that was saved rather than typed in.
+    static var cueSheetPath: String?
+    static var startingCue: String?
+
+    /// Read `--cues <file>` and `--cue <name>`. Without `--cues`, the cue is
+    /// looked for in the sheet the sketch already carries (a live host's
+    /// sibling file, or one `setup()` loads). A sheet that cannot be read
+    /// stops the run here.
+    static func readCueFlags(_ args: [String]) {
+        func value(after flag: String) -> String? {
+            guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
+            return args[i + 1]
+        }
+        cueSheetPath = value(after: "--cues")
+        startingCue = value(after: "--cue")
+        if let cueSheetPath, (try? CueSheet.load(from: cueSheetPath)) == nil {
+            FileHandle.standardError.write(Data("Ollin: could not read the cue sheet at \(cueSheetPath)\n".utf8))
+            exit(1)
+        }
+    }
+
     /// Read the `--param` flags, and stop the run when one cannot be read at
     /// all. Called at the top of `handleCommandLine`, so the windowed path picks
     /// them up too.
@@ -297,7 +320,16 @@ extension Sketch {
     /// `setup()` itself because something else has to happen in between (the
     /// window path restores a saved checkpoint there).
     func applyCommandLineParams() {
-        let problems = ParamOverride.apply(OllinApp.paramOverrides, to: self)
+        var problems = ParamOverride.apply(OllinApp.paramOverrides, to: self)
+        // A cue sheet named on the command line rides along, and the cue named
+        // with it lands after `--param`, so a value given by hand still wins.
+        if let path = OllinApp.cueSheetPath, let sheet = try? CueSheet.load(from: path) {
+            cueSheet = sheet
+        }
+        if let name = OllinApp.startingCue, !cue(name) {
+            problems.append("no cue named \"\(name)\"; the sheet holds "
+                            + (cueSheet.cues.isEmpty ? "none" : cueSheet.cues.map(\.name).joined(separator: ", ")))
+        }
         guard problems.isEmpty else {
             for problem in problems {
                 FileHandle.standardError.write(Data(("Ollin: " + problem + "\n").utf8))

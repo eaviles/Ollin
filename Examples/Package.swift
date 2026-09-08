@@ -373,6 +373,7 @@ let package = Package(
         example("Motion/Petals"),
         example("Live/DragToEdit"),
         example("Live/Parameters"),
+        example("Live/Cues", resources: [.copy("Sketch.cues.json")]),
         example("Motion/Trail"),
         example("Motion/Steering"),
         example("Motion/PerfectLoop"),

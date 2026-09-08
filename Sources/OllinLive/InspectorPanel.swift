@@ -26,6 +26,11 @@ struct InspectorPanel: View {
                                            session.recordParam(name, value)
                                        },
                                        save: session.saveAction)
+                    CuesCardView(cues: session.cues,
+                                 currentCue: { session.currentCue },
+                                 onCall: { request, fade in session.callCue(request, over: fade) },
+                                 onSave: { session.saveCue($0) },
+                                 onDelete: { session.deleteCue($0) })
                 }
                 .endsTypingOnBackgroundTap()
             }

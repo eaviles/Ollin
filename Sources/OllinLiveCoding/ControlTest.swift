@@ -1,4 +1,5 @@
 import Foundation
+import Ollin
 import OllinMIDI
 import OllinOSC
 
@@ -35,6 +36,8 @@ enum ControlTest {
         var backdrop = 0.55
         var codeSize = 15.0
         var recording = false
+        var cueCalls: [CueRequest] = []
+        var cueFades: [Double] = []
 
         var handlers: PerformanceControls.Handlers {
             PerformanceControls.Handlers(
@@ -47,7 +50,12 @@ enum ControlTest {
                 },
                 setBackdrop: { [self] in backdrop = $0 },
                 setCodeSize: { [self] in codeSize = $0 },
-                setRecording: { [self] wanted in recording = wanted ?? !recording }
+                setRecording: { [self] wanted in recording = wanted ?? !recording },
+                cue: { [self] request in cueCalls.append(request) },
+                cueOver: { [self] request, fade in
+                    cueCalls.append(request)
+                    cueFades.append(fade)
+                }
             )
         }
     }
@@ -195,7 +203,32 @@ enum ControlTest {
         controls.stop()
         defaults.removePersistentDomain(forName: suite)
 
-        print("OllinLiveCoding controltest passed: learning, MIDI matching, the fixed OSC addresses, the map, and both wires hold.")
+        print("OllinLiveCoding controltest: cues …")
+        // A program change is a cue number, on any channel, with nothing learned.
+        controls.handle(MIDIMessage(.programChange(program: 3), channel: 5))
+        guard tally.cueCalls == [.number(3)] else { fail("a program change did not call cue 3: \(tally.cueCalls)") }
+        // The fixed address takes a name or a number, and a fade of its own.
+        controls.handle(OSCMessage(Action.cueAddress, .string("finale")))
+        controls.handle(OSCMessage(Action.cueAddress, .int(1)))
+        controls.handle(OSCMessage(Action.cueAddress, .string("intro"), .float(2.5)))
+        guard tally.cueCalls == [.number(3), .named("finale"), .number(1), .named("intro")],
+              tally.cueFades == [2.5] else {
+            fail("/ollin/cue did not call as asked: \(tally.cueCalls) fades \(tally.cueFades)")
+        }
+        // Next and previous are press actions: fixed addresses, and learnable.
+        controls.handle(OSCMessage(Action.cueNext.address))
+        controls.learn(.cuePrevious)
+        controls.handle(MIDIMessage(.noteOn(note: 40, velocity: 100), channel: 1))
+        guard controls.map[.cuePrevious] == .note(40, channel: 1) else { fail("previous cue did not learn the note") }
+        controls.handle(MIDIMessage(.noteOn(note: 40, velocity: 100), channel: 1))
+        guard tally.cueCalls.suffix(2) == [.next, .previous] else {
+            fail("next and previous did not press: \(tally.cueCalls.suffix(2))")
+        }
+        // A bare message at the cue address with nothing to name calls nothing.
+        controls.handle(OSCMessage(Action.cueAddress))
+        guard tally.cueCalls.count == 6 else { fail("an empty cue message called something") }
+
+        print("OllinLiveCoding controltest passed: cues on a program change, the cue address, next and previous; learning, MIDI matching, the fixed OSC addresses, the map, and both wires hold.")
         exit(0)
     }
 

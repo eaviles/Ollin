@@ -218,7 +218,7 @@ Headless export never opens an inspector, so a render uses the defaults written 
 
 ### Saving what you turned
 
-A tuned value lives in the running process, so it is gone when you quit the host. The **Save parameters to Sketch.swift** button under the rows writes it into the file instead. Each value you changed goes into the `@Param` line that declared it:
+A tuned value lives in the running process, so it is gone when you quit the host. The **Save parameters to Sketch.swift** button under the rows writes it into the file instead. Each value you changed goes into the `@Param` line that declared it (a look you want to come back to *during* a run is a [cue](./Cues.md), saved from the card under the rows and called back over a fade):
 
 ```swift
 @Param(0...200) var radius = 120.0            // before, and after the save:

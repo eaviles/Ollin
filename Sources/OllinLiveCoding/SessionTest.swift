@@ -89,7 +89,34 @@ enum SessionTest {
             fail("a superseded evaluation landed last (speed = \(value(of: "speed", session) ?? .nan))")
         }
 
-        print("OllinLiveCoding sessiontest passed: param carry, variation carry, edited defaults, and supersede hold.")
+        print("OllinLiveCoding sessiontest: cue carry across an evaluation …")
+        let cuesPath = (dir as NSString).appendingPathComponent("Sketch.cues.json")
+        try? FileManager.default.removeItem(atPath: cuesPath)
+        do { try session.adoptCueFile(cuesPath) } catch { fail("could not adopt the cue file: \(error)") }
+        func setRadius(_ v: Double) {
+            session.params.first { $0.name == "radius" }?.param.restore(.number(v))
+        }
+        setRadius(250)
+        session.saveCue("wide")
+        guard session.cues.map(\.name) == ["wide"], FileManager.default.fileExists(atPath: cuesPath) else {
+            fail("saving a cue did not list it and file it")
+        }
+        setRadius(50)
+        session.callCue(.named("wide"), over: 0)
+        guard value(of: "radius", session) == 250 else { fail("calling the cue did not bring the radius back") }
+        session.evaluate(loader, input: .source(source(radiusDefault: 100, speedDefault: 1)))
+        await settle(session)
+        guard session.cues.map(\.name) == ["wide"], session.sketch?.cueSheet.cues.count == 1 else {
+            fail("the cue did not carry across the evaluation")
+        }
+        session.callCue(.number(0), over: 0)
+        guard value(of: "radius", session) == 250 else { fail("the carried cue did not apply to the new sketch") }
+        session.deleteCue("wide")
+        guard session.cues.isEmpty, (try? CueSheet.load(from: cuesPath))?.cues.isEmpty == true else {
+            fail("deleting the cue did not empty the list and the file")
+        }
+
+        print("OllinLiveCoding sessiontest passed: param carry, variation carry, edited defaults, supersede, and the cue carry hold.")
         exit(0)
     }
 

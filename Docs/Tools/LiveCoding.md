@@ -89,8 +89,12 @@ A performer's hands are often on a controller rather than the keyboard, and a se
 | `/ollin/code/backdrop` | the strip behind the text, `0` to `1` |
 | `/ollin/code/size` | the type size, `0` to `1` across 9 to 32 points |
 | `/ollin/record` | a bare message starts or stops a take; `1` and `0` say which |
+| `/ollin/cue` | call a [cue](../Helpers/Cues.md) by name (`"night"`) or by number; a second argument sets that call's fade in seconds |
+| `/ollin/cue/next`, `/ollin/cue/previous` | step to the next or the previous cue, over the Cues card's fade |
 
 A button in a layout sends its release as well as its press, and only the press counts. Leave the port empty and the host listens to nothing.
+
+A MIDI **program change** calls the cue of that number, on any channel, with nothing to learn; **Next cue** and **Previous cue** are press actions on the Controls card, learned like the others.
 
 **MIDI** has no natural default for a pad, so a control is learned. In the Controls card, press the Learn button on the action, then press the pad or the button, or move the fader. The next control to arrive is the binding. It shows on the row and holds across launches. A pad or key fires an action once per press, on its own channel. A button on a controller sends 127 pressed and 0 released, so it fires once on the way up. A knob or fader rides the backdrop or the code size, and refuses the press actions. The same Learn button binds an OSC address, for a layout that already has its own names. The minus button forgets a control, and a control learned for one action leaves any other it was on.
 

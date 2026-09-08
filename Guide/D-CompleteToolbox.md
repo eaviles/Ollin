@@ -36,6 +36,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Mouse | `mouseX`/`mouseY`, the one-point `mouse`/`previousMouse`, pressed state, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | Keyboard | `key`, typed `KeyCode`, `isKeyDown(_:)`, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | `@Param` parameters | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 28](28-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
+| Cues | Every parameter's value under a name, called back at once or over a fade: `saveCue`, `cue(_:over:)`, `nextCue`, the inspector's Cues card, `Sketch.cues.json`, `--cue` | [Ch 31](31-SharingAndPerforming.md) | [Cues](../Docs/Helpers/Cues.md) |
 | Live reload | `swift run OllinLive Sketch.swift`: save the file, the window swaps the change in | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |
 | Dragging a shape | Hold Command in the live window and drag a shape: the numbers that placed it change in your file | [Ch 1](01-HelloOllin.md) | [DragToEdit](../Docs/Tools/DragToEdit.md) |
 | Single-file sketches | `ollin new` and `ollin <file>.swift`: one loose file is a whole sketch, runnable from anywhere | [Ch 1](01-HelloOllin.md) | [SingleFile](../Docs/Tools/SingleFile.md) |

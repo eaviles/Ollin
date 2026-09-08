@@ -64,6 +64,16 @@ public final class SketchSession {
     /// precedence a file has everywhere else.
     public var automation: Automation?
 
+    /// The cues the running sketch carries, for the inspector's card. Kept
+    /// across swaps like the automation: the sheet is re-installed on each
+    /// freshly loaded sketch before its `setup()` runs.
+    public private(set) var cues: [Cue] = []
+    /// The file the cue sheet round-trips through (`Sketch.cues.json` beside
+    /// the sketch), written after every save and delete; nil keeps the cues
+    /// in memory for the session.
+    public var cueFile: String?
+    @ObservationIgnored private var cueSheet: CueSheet?
+
     /// The in-flight compile, kept so a newer evaluation can cancel it. (The
     /// detached `swiftc` still runs to completion; its result is refused.)
     @ObservationIgnored private var compileTask: Task<Void, Never>?
@@ -116,6 +126,56 @@ public final class SketchSession {
     /// winning, and editing that default by hand would look ignored.
     public func forgetTunedParams(_ names: [String]) {
         for name in names { paramValues.removeValue(forKey: name) }
+    }
+
+    // MARK: - Cues
+
+    /// Take the cue sheet at `path` as this session's, and keep writing it
+    /// there. A path with no file yet is simply where the first save lands; a
+    /// file that cannot be read throws, before anything runs.
+    public func adoptCueFile(_ path: String) throws {
+        cueFile = path
+        if FileManager.default.fileExists(atPath: path) {
+            let sheet = try CueSheet.load(from: path)
+            cueSheet = sheet
+            cues = sheet.cues
+            if let sketch { sketch.cueSheet = sheet }
+        } else if let cueSheet, !cueSheet.cues.isEmpty {
+            // Cues saved before the sketch had a file (an untitled buffer)
+            // land in the new file now rather than at the next change.
+            try cueSheet.write(to: path)
+        }
+    }
+
+    /// Save the running sketch's parameters as they stand under `name`.
+    public func saveCue(_ name: String) {
+        sketch?.saveCue(name)
+    }
+
+    public func deleteCue(_ name: String) {
+        sketch?.deleteCue(name)
+    }
+
+    /// Call a cue on the running sketch, over `seconds`.
+    public func callCue(_ request: CueRequest, over seconds: Double) {
+        sketch?.cue(request, over: seconds)
+    }
+
+    /// The cue the running sketch called last.
+    public var currentCue: String? { sketch?.currentCue }
+
+    /// The sketch saved or deleted a cue: carry the sheet, show it, file it.
+    private func cueSheetDidChange() {
+        guard let sketch else { return }
+        cueSheet = sketch.cueSheet
+        cues = sketch.cueSheet.cues
+        if let cueFile {
+            do {
+                try sketch.cueSheet.write(to: cueFile)
+            } catch {
+                print("Ollin: could not write the cues to \(cueFile): \(error)")
+            }
+        }
     }
 
     /// Record a variation seed the user navigated to, so it survives the next
@@ -188,6 +248,10 @@ public final class SketchSession {
         // Carry the timeline's tracks the same way: installed before setup()
         // runs, so a track the sketch writes there still wins its own parameter.
         if let automation { sketch.automation = automation }
+        // The cue sheet the same way, then the hook that files every change.
+        if let cueSheet { sketch.cueSheet = cueSheet }
+        sketch.cuesChanged = { [weak self] in self?.cueSheetDidChange() }
+        cues = sketch.cueSheet.cues
         let handles = sketch.parameters()
         for handle in handles {
             guard let stored = paramValues[handle.name] else { continue }

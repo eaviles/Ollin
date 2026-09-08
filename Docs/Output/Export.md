@@ -514,6 +514,8 @@ The value is read against the parameter's own kind:
 
 The value lands after `setup()` and before the first frame. It goes through the same restore path the live hosts use across a reload. So it clamps to the declared range the way dragging the row does. It also overrides a value the sketch set for itself in `setup()`, and the recipe then names what the frame was drawn with. Beside a `--replay`, it overrides the take's recorded parameters, the way `--seed` overrides the take's seed. So the same gestures land on a different setting. A parameter named twice ends on the last value given. A name the sketch does not have, or a value its kind cannot read, stops the run. The error says what value it expected, so the run never renders something you did not ask for.
 
+`--cue <name>` lands a saved [cue](../Helpers/Cues.md) the same way, every parameter it holds at once, after `setup()` and before any `--param`. `--cues <file>` names the sheet when the sketch is not carrying one; under OllinLive the `Sketch.cues.json` beside the sketch is installed first, so `--cue` alone finds it.
+
 ---
 
 ### Driving the parameters from a file
