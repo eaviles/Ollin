@@ -108,16 +108,29 @@ else
 fi
 [[ $expected -gt 0 ]] || single "the bundle listed no tests"
 
+# Dealt by test count, the heaviest suite first into the lightest shard so
+# far. A count is a rough proxy for cost (one render probe outweighs a hundred
+# string tests), but it beats dealing blind by name, which put the GPU
+# simulation suites together and left one shard running twenty minutes after
+# the other had finished (2026-09-08, on the runner). The heartbeat below
+# prints the balance, so the next imbalance is read rather than guessed.
 python3 - "$work" "$shards" "$apart" <<'PY'
 import sys, re
+from collections import Counter
 work, shards, apart = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 drop = re.compile('^(' + apart + ')/')
-suites = sorted({l.split('/')[0] for l in open(work + '/ids.txt') if l.strip() and not drop.match(l)})
+counts = Counter(l.split('/')[0] for l in open(work + '/ids.txt') if l.strip() and not drop.match(l))
+dealt = [[] for _ in range(shards)]
+weight = [0] * shards
+for suite, count in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
+    lightest = min(range(shards), key=lambda i: (weight[i], i))
+    dealt[lightest].append(suite)
+    weight[lightest] += count
 for i in range(shards):
-    mine = suites[i::shards]
+    mine = sorted(dealt[i])
     pattern = '^(' + '|'.join(s.replace('.', r'\.') for s in mine) + ')/' if mine else '^$a^'
     open(f'{work}/shard{i}.filter', 'w').write(pattern)
-    print(f'shard-tests: shard {i} has {len(mine)} suites')
+    print(f'shard-tests: shard {i} has {len(mine)} suites, {weight[i]} tests')
 PY
 
 echo "shard-tests: $expected tests over $shards shards"
@@ -128,12 +141,35 @@ started=$SECONDS
 # skip was meant to drop. The count check below is what caught that.
 typeset -a skipArgs=()
 [[ -n "$skip" ]] && skipArgs=(--skip "$skip")
+typeset -a pids=()
 for i in {0..$((shards - 1))}; do
     "$helper" --test-bundle-path "$bundle" --testing-library swift-testing "$bundle" \
         --filter "$(<$work/shard$i.filter)" $skipArgs \
         > "$work/shard$i.log" 2>&1 &
+    pids+=($!)
 done
-wait
+
+# A heartbeat while the shards run: each shard writes to its own file, so
+# without this the run is silent until the last one finishes, and a watchdog
+# that reads silence as a wedge (Scripts/ci-test.sh, fifteen minutes) killed
+# a healthy sharded run on its first outing. The line also shows how evenly
+# the deal came out, and names the moment each shard finished.
+typeset -A finished=()
+while (( ${#pids} > 0 )); do
+    sleep ${OLLIN_SHARD_HEARTBEAT:-30}
+    typeset -a still=()
+    for p in $pids; do kill -0 $p 2>/dev/null && still+=($p); done
+    pids=($still)
+    line="shard-tests: $((SECONDS - started))s"
+    for i in {0..$((shards - 1))}; do
+        count=$(grep -E '^[✔✘] Test ' "$work/shard$i.log" 2>/dev/null | grep -vc 'Test run with')
+        if [[ -z "${finished[$i]}" ]] && grep -q 'Test run with' "$work/shard$i.log" 2>/dev/null; then
+            finished[$i]=$((SECONDS - started))
+        fi
+        line+="  shard $i: ${count:-0}${finished[$i]:+ (finished at ${finished[$i]}s)}"
+    done
+    echo "$line"
+done
 elapsed=$((SECONDS - started))
 
 ran=0

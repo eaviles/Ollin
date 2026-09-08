@@ -28,11 +28,20 @@ extension MetalRenderer {
     /// is free, and the composed library is cached per source so several entries in
     /// one source share one compile.
     func computePipeline(for kernel: ComputeKernel) throws -> MTLComputePipelineState {
+        // The cheap key first (see `quickComputePipelines`): a kernel in the
+        // sketch's own source is found by that source alone, and only a miss
+        // composes the full text.
+        let quick = kernel.sourcePath.isEmpty
+            ? ComputeKey(sourceHash: MetalRenderer.fnv1a(kernel.source), entry: kernel.entry) : nil
+        if let quick, let existing = quickComputePipelines[quick] { return existing }
         let composed = MetalRenderer.composeComputeSource(kernel.source,
                                                           sourcePath: kernel.sourcePath)
         let hash = MetalRenderer.fnv1a(composed)
         let key = ComputeKey(sourceHash: hash, entry: kernel.entry)
-        if let existing = computePipelines[key] { return existing }
+        if let existing = computePipelines[key] {
+            if let quick { quickComputePipelines[quick] = existing }
+            return existing
+        }
         let lib: MTLLibrary
         if let cached = computeLibraries[hash] {
             lib = cached
@@ -45,6 +54,7 @@ extension MetalRenderer {
         }
         let state = try device.makeComputePipelineState(function: function)
         computePipelines[key] = state
+        if let quick { quickComputePipelines[quick] = state }
         return state
     }
 
@@ -66,6 +76,7 @@ extension MetalRenderer {
         // User compute kernels compile from their own source, but drop their caches
         // too so they rebuild against any edited shared types/prelude on next use.
         computePipelines.removeAll()
+        quickComputePipelines.removeAll()
         computeLibraries.removeAll()
         // Main-library kernels (the caustics chain) rebuild from the new library.
         libComputePipelines.removeAll()
@@ -654,7 +665,7 @@ extension MetalRenderer {
     /// bundle: the built-in `.metal` segments and the shared CPU/GPU `.h` header all
     /// ship there. `askedBy` is unused, because a bundle is flat: every spelling is a
     /// plain resource name however deep the chain that asked for it.
-    static func bundleShaderFile(_ spelling: String, _ askedBy: String) -> ShaderIncludes.Source? {
+    nonisolated static func bundleShaderFile(_ spelling: String, _ askedBy: String) -> ShaderIncludes.Source? {
         let stem = (spelling as NSString).deletingPathExtension
         let ext = (spelling as NSString).pathExtension
         guard let url = OllinResources.bundle.url(forResource: stem,
@@ -673,19 +684,26 @@ extension MetalRenderer {
     /// because the runtime compiler has no include search path (same reason
     /// `composeShaderSource` splices).
     static func composeComputeSource(_ userSource: String, sourcePath: String = "") -> String {
-        var lib = "#include <metal_stdlib>\nusing namespace metal;\n#include \"OllinShaderTypes.h\"\n"
-        if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
-           let text = try? String(contentsOf: url, encoding: .utf8) {
-            lib = text
-        }
-        lib = ShaderIncludes.resolve(lib, name: "OllinShaderLib.metal", load: bundleShaderFile).source
         // A kernel may pull in a file of its own, the same way a fragment shader does,
         // so one helper file can serve both. It resolves against the folder the kernel's
         // source came from.
         let user = sourcePath.isEmpty ? userSource
             : ShaderIncludes.resolveFromFilesystem(userSource, name: sourcePath).source
-        return lib + "\n" + user
+        return resolvedComputeLibrary + "\n" + user
     }
+
+    /// The shared library's text with its includes resolved, read once per
+    /// process: the bundle does not change under a running one, and resolving
+    /// it again for every kernel on every dispatch was most of what a compute
+    /// dispatch cost on the CPU.
+    private static let resolvedComputeLibrary: String = {
+        var lib = "#include <metal_stdlib>\nusing namespace metal;\n#include \"OllinShaderTypes.h\"\n"
+        if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            lib = text
+        }
+        return ShaderIncludes.resolve(lib, name: "OllinShaderLib.metal", load: bundleShaderFile).source
+    }()
 
     /// FNV-1a hash of a string's UTF-8, for the compute-pipeline cache key.
     /// (`Hasher` is per-process-seeded, so it can't key a stable cache; FNV is

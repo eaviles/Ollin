@@ -117,10 +117,13 @@ struct MIDILoopbackTests {
         for piece in 0 ..< 8 {
             output.send(MIDIMessage(.timecodeQuarterFrame(piece: piece, value: code.quarterFrameValue(piece: piece))))
         }
-        let landed = await waitFor { clock.timecode }
-        #expect(landed?.frameRate == .fps25)
-        #expect(landed == code.advanced(by: 1))
-        #expect(clock.isReceiving)
+        // `isReceiving` is a one-second window, so it is read in the same probe
+        // that sees the frame land: a starved run can hand the task back
+        // seconds after the wait returned, with the window already closed.
+        let landed = await waitFor { clock.timecode.map { ($0, clock.isReceiving) } }
+        #expect(landed?.0.frameRate == .fps25)
+        #expect(landed?.0 == code.advanced(by: 1))
+        #expect(landed?.1 == true)
 
         let parked = Timecode(hours: 9, minutes: 0, seconds: 0, frames: 0, frameRate: .fps30)
         output.send(timecode: parked)

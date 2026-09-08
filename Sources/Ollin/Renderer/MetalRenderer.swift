@@ -553,6 +553,15 @@ final class MetalRenderer {
     struct ComputeKey: Hashable { let sourceHash: UInt64; let entry: String }
     var computePipelines: [ComputeKey: MTLComputePipelineState] = [:]
     var computeLibraries: [UInt64: MTLLibrary] = [:]
+    /// The same pipelines keyed by the kernel's own source alone, for a kernel
+    /// written in the sketch's source: the library half of its composed text
+    /// never changes within a process, so a hit here skips composing it (the
+    /// shared library read and its includes resolved, then a hash over the
+    /// whole text) on every dispatch of every frame. A runner's sample once
+    /// put two thirds of a GPU simulation test's time in that composition.
+    /// A kernel loaded from a file is not keyed here, since a file it includes
+    /// may have been edited under it and the composed hash is what notices.
+    var quickComputePipelines: [ComputeKey: MTLComputePipelineState] = [:]
 
     /// User-supplied shaders (the `Shader` type) compile to their own small library,
     /// like compute kernels: keyed by a hash of the composed source (lib + wrapper +

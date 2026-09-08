@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Fixed
+
+- **A compute kernel no longer recomposes the shader library on every dispatch.** Every `compute(...)` call looked its pipeline up by a hash of the kernel's full composed source, which meant reading the shared shader library, resolving its includes, and hashing the whole text once per dispatch per frame; a kernel written in the sketch's own source is now found by its own text, and the library is resolved once per process. A kernel loaded from a file still composes each time, so an edit to a file it includes is noticed.
+
 ## [0.2.0] - 2026-09-08
 
 ### Added
