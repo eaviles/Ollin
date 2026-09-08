@@ -810,5 +810,6 @@ let package = Package(
         // The same square placed by the same rule, and only the colors change,
         // after Josef Albers's "Homage to the Square".
         example("Recreations/JosefAlbers/Homage"),
+        example("Recreations/JohnWhitney/Permutations"),
     ]
 )
