@@ -167,22 +167,31 @@ struct SiteTests {
         #expect(example.contains("language-swift"))
         #expect(example.contains("Example-Basic-HelloCircle"))
 
-        // The logo: the favicon is the logo's own file, every page's bar wears
-        // the small form in the page's ink, and the front page opens with the
-        // full mark lifted off the README rather than the README's picture,
-        // each mark with a mask of its own.
+        // The logo: the favicon is the small form in paper on an ink tile,
+        // every page's bar wears the small form in the page's own color, and
+        // the front page opens with the full mark lifted off the README
+        // rather than the README's picture.
         let favicon = try String(contentsOf: output.appendingPathComponent("favicon.svg"), encoding: .utf8)
-        let source = try String(contentsOf: root.appendingPathComponent(SiteLogo.favicon), encoding: .utf8)
-        #expect(favicon == source, "the favicon is not the logo's own file")
+        let small = try String(contentsOf: root.appendingPathComponent(SiteLogo.small), encoding: .utf8)
+        #expect(favicon == SiteLogo.tiled(small, ink: SiteLogo.paper, tile: SiteLogo.ink), "the favicon is not the small form on its tile")
         for (name, page) in [("the front page", home), ("a chapter", chapter), ("an example", example)] {
             #expect(page.contains("<svg class=\"mark\" aria-hidden=\"true\""), "\(name) has no mark in its bar")
-            #expect(!page.contains(SiteLogo.ink) && !page.contains(SiteLogo.paper), "\(name) draws the mark in its own ink, not the page's")
+            #expect(!page.contains(SiteLogo.ink) && !page.contains(SiteLogo.paper) && !page.contains("fill=\"#000"),
+                    "\(name) draws the mark in its own ink, not the page's")
         }
         #expect(home.contains("<svg class=\"logo\" aria-hidden=\"true\""), "the front page opens without the mark")
         #expect(!home.contains("ollin-mark"), "the README's picture reached the front page beside the hero's mark")
-        #expect(home.components(separatedBy: "id=\"mark-eye\"").count == 2)
-        #expect(home.components(separatedBy: "id=\"logo-eye\"").count == 2)
-        #expect(home.contains("mask=\"url(#logo-eye)\""))
+
+        // The README's dark twin is the master in paper, written by
+        // Scripts/logo.sh; a re-export that skipped the script shows up here.
+        let master = try String(contentsOf: root.appendingPathComponent(SiteLogo.mark), encoding: .utf8)
+        let twin = try String(contentsOf: root.appendingPathComponent("Logo/ollin-mark-dark.svg"), encoding: .utf8)
+        #expect(twin == SiteLogo.colored(master, ink: SiteLogo.paper), "Logo/ollin-mark-dark.svg is not the mark in paper; run Scripts/logo.sh")
+        for file in [SiteLogo.mark, SiteLogo.small] {
+            let svg = try String(contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+            #expect(!svg.contains("fill=") && !svg.contains("<title") && !svg.contains("transform=") && !svg.contains("<?xml"),
+                    "\(file) is a raw export; run Scripts/logo.sh")
+        }
         #expect(!chapter.contains("class=\"logo\""), "only the front page wears the full mark")
 
         // The search: every page carries the button, the dialog with the way
@@ -365,33 +374,60 @@ struct SiteTests {
 
     // MARK: - The logo
 
-    @Test("A logo file inlines with its tile dropped, its ink as the page's, and a mask of its own")
-    func inlineLogo() {
-        let svg = """
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#F4F3F0" stroke-width="9">
-          <rect width="100" height="100" fill="#0B0F14" stroke="none"/>
-          <mask id="eye"><rect width="100" height="100" fill="#fff"/><circle cx="50" cy="50" r="26" fill="#000"/></mask>
-          <g mask="url(#eye)">
-            <rect x="8" y="40" width="84" height="20" rx="10" transform="rotate(45 50 50)"/>
-          </g>
-          <circle cx="50" cy="50" r="5.5" fill="#F4F3F0" stroke="none"/>
+    @Test("A master inlines in the page's color, writes in one color, or sits on a tile")
+    func logoColors() {
+        // A master: ink on nothing, no color of its own.
+        let master = """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14">
+          <path d="M1 1h3v3z"/>
+
+          <circle cx="7" cy="7" r=".77"/>
+        </svg>
+
+        """
+        let inline = SiteLogo.inline(master, className: "mark")
+        #expect(inline == """
+        <svg class="mark" aria-hidden="true" focusable="false" viewBox="0 0 14 14" fill="currentColor">
+        <path d="M1 1h3v3z"/>
+        <circle cx="7" cy="7" r=".77"/>
+        </svg>
+        """, "\(inline)")
+
+        // A color set on the root reaches every shape, so a file keeps its
+        // layout and gains one attribute; the tile is the first child and
+        // fills the viewport whatever the box.
+        #expect(SiteLogo.colored(master, ink: "#F4F3F0") == """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="#F4F3F0">
+          <path d="M1 1h3v3z"/>
+
+          <circle cx="7" cy="7" r=".77"/>
+        </svg>
+
+        """)
+        #expect(SiteLogo.tiled(master, ink: "#F4F3F0", tile: "#0B0F14").hasPrefix("""
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="#F4F3F0">
+          <rect width="100%" height="100%" fill="#0B0F14"/>
+          <path d="M1 1h3v3z"/>
+        """))
+
+        // A raw export writes its black out and carries a prolog; both go,
+        // or the color set on the root would reach nothing.
+        let raw = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14">
+          <path d="M1 1h3v3z" fill="#000000"/>
+          <circle cx="7" cy="7" r=".77" fill="#000"/>
         </svg>
         """
-        let inline = SiteLogo.inline(svg, id: "bar-eye", className: "mark")
-        #expect(inline.hasPrefix("<svg class=\"mark\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 100 100\""))
-        #expect(!inline.contains("xmlns"))
-        #expect(!inline.contains("<rect width=\"100\" height=\"100\" fill=\"#0B0F14\""), "the tile came along")
-        #expect(inline.contains("<mask id=\"bar-eye\"><rect width=\"100\" height=\"100\" fill=\"#fff\"/>"), "the mask's own white is not ink")
-        #expect(inline.contains("mask=\"url(#bar-eye)\""))
-        #expect(!inline.contains("id=\"eye\"") && !inline.contains("url(#eye)"))
-        #expect(!inline.contains("#F4F3F0") && !inline.contains("#0B0F14"))
-        #expect(inline.contains("stroke=\"currentColor\" stroke-width=\"9\""))
-        #expect(inline.contains("fill=\"currentColor\" stroke=\"none\""))
-        #expect(!inline.contains("\n\n"), "blank lines came along")
-        #expect(!inline.contains("  <"), "indentation came along")
+        let rawInline = SiteLogo.inline(raw, className: "logo")
+        #expect(rawInline.hasPrefix("<svg class=\"logo\""))
+        #expect(!rawInline.contains("#000") && !rawInline.contains("xml"), "\(rawInline)")
+        #expect(SiteLogo.colored(raw, ink: "#F4F3F0").contains("<path d=\"M1 1h3v3z\"/>"))
 
-        // A file that is not there inlines as nothing, which the build notes.
-        #expect(SiteLogo.inline(readingAt: URL(fileURLWithPath: "/nowhere/ollin-mark.svg"), id: "x", className: "mark").isEmpty)
+        // Text with no drawing in it, and a file that is not there, give
+        // nothing, which the build notes.
+        #expect(SiteLogo.inline("not a drawing", className: "mark").isEmpty)
+        #expect(SiteLogo.inline(readingAt: URL(fileURLWithPath: "/nowhere/ollin-mark.svg"), className: "mark").isEmpty)
     }
 
     // MARK: - The front page's ring

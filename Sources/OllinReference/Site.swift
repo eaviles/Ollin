@@ -109,8 +109,8 @@ public struct SiteBuilder {
     /// every sidebar can name every neighbor.
     func plan() -> Plan {
         var plan = Plan()
-        plan.mark = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.favicon), id: "mark-eye", className: "mark")
-        plan.logo = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.mark), id: "logo-eye", className: "logo")
+        plan.mark = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.small), className: "mark")
+        plan.logo = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.mark), className: "logo")
 
         func add(_ repoPath: String, _ kind: Page.Kind, title: String? = nil, summary: String = "") {
             let url = root.appendingPathComponent(repoPath)
@@ -271,14 +271,15 @@ public struct SiteBuilder {
         report.sections = entries.count
 
         try write(SiteStyle.css, to: output.appendingPathComponent("assets/site.css"))
-        let favicon = root.appendingPathComponent(SiteLogo.favicon)
-        if manager.fileExists(atPath: favicon.path) {
-            try write(String(contentsOf: favicon, encoding: .utf8), to: output.appendingPathComponent("favicon.svg"))
+        // The favicon is the small form in paper on an ink tile: a tab bar
+        // is whatever color the browser makes it, so the icon brings its own.
+        if let small = SiteLogo.read(root.appendingPathComponent(SiteLogo.small)) {
+            try write(SiteLogo.tiled(small, ink: SiteLogo.paper, tile: SiteLogo.ink), to: output.appendingPathComponent("favicon.svg"))
         } else {
-            report.notes.append("the site has no favicon: \(SiteLogo.favicon) is not in the checkout")
+            report.notes.append("the site has no favicon: \(SiteLogo.small) is not in the checkout")
         }
         if plan.mark.isEmpty {
-            report.notes.append("the bar has no mark: \(SiteLogo.favicon) is not in the checkout")
+            report.notes.append("the bar has no mark: \(SiteLogo.small) is not in the checkout")
         }
         if plan.logo.isEmpty {
             report.notes.append("the front page has no mark: \(SiteLogo.mark) is not in the checkout")
