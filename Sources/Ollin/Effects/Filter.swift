@@ -283,6 +283,12 @@ public struct Filter: Sendable {
         /// from the brightness blurred by `smoothing` px and ignored under `threshold`.
         case shock(iterations: Int, flow: Double, radius: Double, smoothing: Double,
                    threshold: Double)
+        /// Pen hatching that follows the picture: strokes `spacing` px apart and
+        /// `length` px long laid along the picture's own flow, inked `foreground`
+        /// over `background`, as many of them as the tone is dark, with
+        /// `directions` layers stacking as it darkens (1 one way, 2 crossed).
+        case hatching(spacing: Double, length: Double, directions: Int,
+                      foreground: SIMD4<Float>, background: SIMD4<Float>)
         /// 3×3 median: replace each pixel with the per-channel median of its neighborhood
         /// (removes speckle while keeping edges).
         case median
@@ -888,6 +894,32 @@ public struct Filter: Sendable {
                             radius: min(max(radius, 1), 6),
                             smoothing: min(max(smoothing, 0), 8),
                             threshold: max(threshold, 0)))
+    }
+
+    /// Hatching: the picture as pen work, its strokes running along its own flow.
+    /// The direction at every pixel is read from the structure tensor, the same
+    /// flow `brushwork` and `shock` follow, so the strokes bend around a face or a
+    /// fold instead of running across it the way the fixed screen of `crosshatch`
+    /// does. How many go down is the picture's own tone: the ink covers about as
+    /// much of the paper as the picture is dark, so the drawing holds its light
+    /// and shade with nothing but line. `spacing` is the distance between strokes
+    /// in pixels, and so how fine the pen is; `length` is how far one runs before
+    /// it ends, in pixels, with a short length making a stipple of dashes and a
+    /// long one a comb. `directions` is how many layers stack as the tone darkens:
+    /// 1 hatches one way only and cannot reach the deepest tones, 2 crosses the
+    /// first layer with a second at right angles once the first has done what it
+    /// can, and 3 lays a third between them. The picture is read as the colors a
+    /// display shows over white paper, so empty space on a transparent layer
+    /// counts as paper and is left bare; `background: .clear` keeps it that way in
+    /// the result. The cost grows with `directions` times `length`.
+    public static func hatching(spacing: Double = 6, length: Double = 14,
+                                directions: Int = 2, foreground: Color = .black,
+                                background: Color = .white) -> Filter {
+        Filter(kind: .hatching(spacing: min(max(spacing, 1.5), 48),
+                               length: min(max(length, 2), 96),
+                               directions: min(max(directions, 1), 3),
+                               foreground: foreground.linearRGBA,
+                               background: background.linearRGBA))
     }
 
     public static func median() -> Filter { Filter(kind: .median) }

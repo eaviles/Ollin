@@ -69,6 +69,7 @@ final class FilterCatalog_Example: Sketch {
                 ("brushwork", .brushwork()),
                 ("shock", .shock()),
                 ("crosshatch", .crosshatch(scale: 95)),
+                ("hatching", .hatching(spacing: 4, length: 22)),
                 ("xdog", .xdog()),
                 ("median", .median()),
                 ("contour", .contour(levels: 12)),

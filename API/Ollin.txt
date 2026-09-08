@@ -3439,6 +3439,7 @@ struct Filter: Sendable
   static func gradientMap(_: Ramp, amount: Double = default) -> Filter
   static func grain(amount: Double = default, seed: Double = default) -> Filter
   static func halftone(scale: Double = default, angle: Double = default) -> Filter
+  static func hatching(spacing: Double = default, length: Double = default, directions: Int = default, foreground: Color = default, background: Color = default) -> Filter
   static func heatmap(colors: [Color] = default, contour: Double = default, innerGlow: Double = default, outerGlow: Double = default, angle: Double = default, noise: Double = default, phase: Double = default) -> Filter
   static func inverseFourier() -> Filter
   static func invert(amount: Double = default) -> Filter

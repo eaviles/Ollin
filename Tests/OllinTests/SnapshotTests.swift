@@ -183,6 +183,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-shock",
                  note: "The coherence-enhancing filter over the same fixed still life as effects-xdog: the default three rounds, one round, the layer itself, and eight rounds with the sign read through a blur of 2. Pins the round's six passes (the color tensor kept from the previous estimate where the picture went flat, its blur, the convolution along the flow, the tensor again, the shock across it) and the final edge smoothing.",
                  make: { EffectsShock() }),
+    SnapshotCase("effects-hatching",
+                 note: "The flow hatching over the same fixed still life as effects-xdog: the default pen, a fine pen hatching one way only, the layer itself, and a fine three-direction pen on cream paper. Pins the three passes (the normalized color structure tensor, its blur, the walk that lays the strokes), the rank that turns a convolution of noise into a tone, and the capped layers that let a second direction cross the first.",
+                 make: { EffectsHatching() }),
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
@@ -6918,6 +6921,29 @@ private final class EffectsShock: Sketch {
         drawImage(scene.filtered(.shock(iterations: 1)).image, in: tile(1, 0))
         drawImage(scene.image, in: tile(0, 1))
         drawImage(scene.filtered(.shock(iterations: 8, smoothing: 2)).image, in: tile(1, 1))
+    }
+}
+
+/// The flow hatching over one fixed still life: the default pen, a fine pen
+/// hatching one way only, the layer itself, and a fine three-direction pen.
+/// Deterministic (no time/random), so it pins the walk and the rank behind it.
+private final class EffectsHatching: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let scene = makeRenderTarget(scale: 0.5)
+        withTarget(scene) { paintEffectsStillLife() }
+        func tile(_ col: Int, _ row: Int) -> Rectangle {
+            Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
+        }
+        drawImage(scene.filtered(.hatching()).image, in: tile(0, 0))
+        drawImage(scene.filtered(.hatching(spacing: 3, length: 20, directions: 1)).image, in: tile(1, 0))
+        drawImage(scene.image, in: tile(0, 1))
+        drawImage(scene.filtered(.hatching(spacing: 3, length: 24, directions: 3,
+                                           foreground: Color(hex: 0x2B2118),
+                                           background: Color(hex: 0xF3EBDD))).image,
+                  in: tile(1, 1))
     }
 }
 

@@ -121,6 +121,7 @@ let package = Package(
         example("Effects/InkDrawing"),
         example("Effects/Brushwork"),
         example("Effects/Coherence"),
+        example("Effects/Hatching"),
         example("Effects/Antialias"),
         example("Effects/Relight"),
         example("Effects/Glitter"),

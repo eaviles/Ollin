@@ -1330,6 +1330,10 @@ fragment float4 ollin_fx_xdog_along(PresentOut in [[stage_in]],
 // is paper and an edge in a shadow counts as much as one in the light), and the three
 // are summed as one outer product (E = fx·fx, F = fx·fy, G = fy·fy), with the gradient
 // scaled to one texel so the numbers stay inside a half float (params[0].xy = texel).
+// params[0].z asks for the tensor to be normalized to unit length first, which costs
+// nothing to a reader that wants only its direction or its anisotropy (both are
+// ratios). It is what lets a gradient too gentle to survive a half float at all,
+// a tone that crosses the whole canvas, still say which way the picture runs.
 static inline float3 ollin_brushwork_read(texture2d<float> src, sampler samp, float2 uv) {
     float4 s = src.sample(samp, uv, level(0.0));
     return linearToSrgb(saturate(s.rgb + (1.0 - s.a)));
@@ -1350,7 +1354,12 @@ fragment float4 ollin_fx_brushwork_tensor(PresentOut in [[stage_in]],
     float3 c22 = ollin_brushwork_read(src, samp, in.uv + t * float2( 1,  1));
     float3 gx = ((c20 + 2.0 * c21 + c22) - (c00 + 2.0 * c01 + c02)) * 0.125;
     float3 gy = ((c02 + 2.0 * c12 + c22) - (c00 + 2.0 * c10 + c20)) * 0.125;
-    return float4(dot(gx, gx), dot(gx, gy), dot(gy, gy), 1.0);
+    float3 s = float3(dot(gx, gx), dot(gx, gy), dot(gy, gy));
+    if (params[0].z > 0.5) {
+        float m = length(s);
+        s = m > 1e-24 ? s / m : float3(0.0);
+    }
+    return float4(s, 1.0);
 }
 
 // brushwork, pass 2: the filter over the layer and the smoothed tensor. The tensor's
@@ -1602,6 +1611,119 @@ fragment float4 ollin_fx_shock_sharpen(PresentOut in [[stage_in]],
         }
     }
     return out;
+}
+
+// MARK: - Hatching (pen strokes along the picture's own flow, written from the technique)
+//
+// The picture drawn as pen work. A stroke texture comes from a line integral
+// convolution of value noise along the smoothed structure tensor's minor
+// eigenvector: the walk averages the noise along the flow and leaves it untouched
+// across it, so the noise comes out combed into marks about one spacing wide and
+// one length long, and the marks bend with whatever the picture is made of. Tone
+// then decides which marks are inked. The convolution's value is turned into its
+// own rank, near enough uniform over 0…1, and every mark under the pixel's
+// darkness is drawn, so the share of paper the ink covers is the share the picture
+// is dark. Layers past the first run across the flow, and at three between the
+// two, each taking on what the layer before it left, which is how a pen reaches a
+// tone one direction cannot.
+
+// The direction layer `k` hatches in: along the flow, across it, or between them.
+static inline float2 ollin_hatch_direction(float3 g, int layer) {
+    float2 t = ollin_xdog_tangent(g);
+    float2 n = float2(-t.y, t.x);
+    if (layer == 1) { return n; }
+    if (layer >= 2) { return normalize(t + n); }
+    return t;
+}
+
+// The spread of the value noise the strokes are combed out of: the variance of a
+// smoothstep-blended draw of four uniform per-cell values, 0.046 measured over
+// four million samples. It is what turns a convolution into a rank below.
+constant float ollin_hatch_spread = 0.046;
+
+// One layer's stroke texture at a pixel. Value noise of cell size `spacing` is
+// averaged along the layer's own direction field over 2·steps + 1 one-texel
+// second-order Runge-Kutta steps (the direction re-read at the half step, the
+// heading carried through the eigenvector's sign flips, since a tensor has an
+// orientation and no direction), then standardized and pushed through the normal
+// distribution so the answer is a rank: cutting it at a darkness inks that share
+// of the paper. Only one sample in `spacing` is telling the average anything new,
+// since that is how far the walk travels before it reaches a new cell, and the
+// count of independent draws is what sets the spread of the average. `salt` moves
+// one layer's noise off the next one's.
+static inline float ollin_hatch_rank(texture2d<float> tensor, sampler samp, float2 uv,
+                                     float2 texel, float spacing, int steps,
+                                     int layer, float salt) {
+    float2 size = 1.0 / texel;
+    float scale = 1.0 / max(spacing, 1.0);
+    float sum = ollin_vnoise(uv * size * scale + salt);
+    float count = 1.0;
+    float2 d0 = ollin_hatch_direction(tensor.sample(samp, uv, level(0.0)).xyz, layer);
+    for (int way = -1; way <= 1; way += 2) {
+        float2 p = uv;
+        float2 heading = d0 * float(way);
+        for (int i = 1; i <= steps; i += 1) {
+            float2 d = ollin_hatch_direction(tensor.sample(samp, p, level(0.0)).xyz, layer);
+            if (dot(d, heading) < 0.0) { d = -d; }
+            float2 dm = ollin_hatch_direction(tensor.sample(samp, p + 0.5 * d * texel, level(0.0)).xyz, layer);
+            if (dot(dm, d) < 0.0) { dm = -dm; }
+            p += dm * texel;
+            if (any(p < 0.0) || any(p > 1.0)) { break; }
+            sum += ollin_vnoise(p * size * scale + salt);
+            count += 1.0;
+            heading = dm;
+        }
+    }
+    float independent = max(count / max(spacing, 1.0), 1.0);
+    float sigma = sqrt(ollin_hatch_spread / independent);
+    float z = (sum / count - 0.5) / max(sigma, 1e-5);
+    // The normal distribution's own tail, as the hyperbolic tangent standing in for
+    // the error function (which Metal does not carry), √(2/π)(z + 0.044715 z³),
+    // right to a third of a thousandth over the whole range.
+    return saturate(0.5 * (1.0 + tanh(0.7978845608 * (z + 0.044715 * z * z * z))));
+}
+
+// hatching: the layers laid down in order over the paper. Each covers the share of
+// it the darkness left over asks for, capped short of a full cover for every layer
+// but the last so a second direction has something to do, and each cut is
+// anti-aliased over the pixel's own footprint in the rank. The picture is read as
+// the colors a display shows over white paper, so empty space on a transparent
+// layer is paper and never reads as ink. Painted foreground (params[2]) over
+// background (params[3]); params[0].xy = texel, .z = spacing in texels, .w = steps
+// each way; params[1].x = how many directions, .y = the cap on one layer's cover.
+fragment float4 ollin_fx_hatching(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  texture2d<float> tensor [[texture(1)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float spacing = params[0].z;
+    int steps = int(params[0].w);
+    int directions = clamp(int(params[1].x), 1, 3);
+    float cap = params[1].y;
+    float darkness = saturate(1.0 - ollin_luma(ollin_brushwork_read(src, samp, in.uv)));
+
+    // The ranks come first, all of them, because the cut's width is a screen-space
+    // derivative and a walk skipped where the paper is light would take the pixel
+    // beside it out of the quad the derivative is read from.
+    float rank[3] = { 0.0, 0.0, 0.0 };
+    float width[3] = { 0.0, 0.0, 0.0 };
+    for (int k = 0; k < directions; k += 1) {
+        float r = ollin_hatch_rank(tensor, samp, in.uv, texel, spacing, steps, k, float(k) * 37.0);
+        rank[k] = r;
+        width[k] = max(0.5 * fwidth(r), 0.002);
+    }
+
+    float remaining = darkness;
+    float ink = 0.0;
+    for (int k = 0; k < directions; k += 1) {
+        float share = (k == directions - 1) ? remaining : min(remaining, cap);
+        float mark = 1.0 - smoothstep(share - width[k], share + width[k], rank[k]);
+        ink += (1.0 - ink) * mark;
+        remaining = saturate((remaining - share) / max(1.0 - share, 1e-4));
+    }
+    float4 c = mix(params[3], params[2], saturate(ink));
+    return ollin_premul(c.rgb, c.a);
 }
 
 // 3×3 median via a min/max sorting network (written from the technique), per-channel,

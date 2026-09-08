@@ -732,6 +732,38 @@ extension MetalRenderer {
                                  params: [SIMD4(texel.x, texel.y, 1.25, 0)], into: cb)
             return output
 
+        case let .hatching(spacing, length, directions, foreground, background):
+            // Three passes: the structure tensor of the color, the one brushwork
+            // takes; that tensor blurred, so the direction at every texel is its
+            // neighborhood's; and the hatching, which walks that flow once per
+            // layer and cuts the walk into strokes at the picture's own tone.
+            guard let tensor = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let smoothed = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
+            // The tensor is normalized before it is stored, so a gradient as gentle
+            // as a tone crossing the whole canvas still says which way the picture
+            // runs; unnormalized it would be far under a half float's smallest
+            // number and read as flat, and every stroke would fall back to level.
+            encodeEffectFragment("ollin_fx_brushwork_tensor", inputs: [input], output: tensor,
+                                 params: [SIMD4(texel.x, texel.y, 1, 0)], into: cb)
+            let blur = MPSImageGaussianBlur(device: device, sigma: 2)
+            blur.edgeMode = .clamp
+            blur.encode(commandBuffer: cb, sourceTexture: tensor, destinationTexture: smoothed)
+            // Half the stroke each way from the pixel, so the walk is the length.
+            let steps = min(max((length / 2).rounded(), 1), 48)
+            // A layer free to cover the whole page leaves the next one nothing to
+            // do, so every layer but the last stops at half the paper and hands on
+            // what is left, which is about where one direction starts to read as a
+            // smudge rather than as strokes.
+            let layerCap: Float = 0.5
+            encodeEffectFragment("ollin_fx_hatching", inputs: [input, smoothed], output: output,
+                                 params: [SIMD4(texel.x, texel.y, Float(spacing), Float(steps)),
+                                          SIMD4(Float(directions), layerCap, 0, 0),
+                                          foreground, background],
+                                 into: cb)
+            return output
+
         // Every single-pass filter was encoded from its `singlePass` description
         // above; the list stays exhaustive so a new kind must choose a side.
         case .colorGrade, .invert, .posterize, .threshold, .sepia, .colorVision, .duotone,

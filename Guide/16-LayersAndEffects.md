@@ -125,6 +125,25 @@ The second move is the shock. Across that direction the filter reads whether the
 
 The dials: `iterations` is how many times the pair runs, and so the level of abstraction. One or two rounds clean a picture up, and ten make a poster. `flow` is how far along the flow each round smooths, in pixels, and the filter adapts it. A clear straight edge gets the whole reach, a flat or curved neighborhood a quarter of it. `radius` is how far across an edge the shock reaches, which sets the edge scale, and anything thinner than that is fattened to it. `smoothing` blurs the brightness the shock reads its sign from, so texture finer than it stops making edges. That is the dial to raise on a noisy or grainy picture, where the flow otherwise follows the noise into a maze. `threshold` is the bend under which nothing is sharpened, which keeps nearly flat regions quiet. Empty space on a transparent layer counts as paper, and the result keeps the layer's alpha. [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) puts every dial on a parameter over fruit on a grained table under a moving lamp.
 
+### Strokes that follow the picture: hatching
+
+The fourth of these draws the picture as pen work. `.hatching()` lays strokes along the same flow, and lays down as many of them as the tone is dark, so the drawing keeps its light and shade with nothing but line.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Hatched-dark.jpg">
+  <img src="Images/16-LayersAndEffects/Hatched.jpg" alt="Three panels: a sphere and a pot on a table drawn in smooth gray, the same layer hatched one way with the strokes ringing the sphere and running down the pot, and the same crossed by a second direction in the darkest places" width="680">
+</picture>
+
+```swift
+drawImage(scene.filtered(.hatching()).image, 0, 0)
+```
+
+Look at where the marks go. They ring the sphere, because every ring of equal light on a sphere is a circle. They run down the pot, because its light changes across it and not along it. They lie flat on the wall and the table. Nothing told them to; the direction comes out of the picture, the way it does for `brushwork` and `shock`.
+
+The tone is the other half. Under the strokes is a stroke texture made by combing noise along the flow, and the filter inks every mark darker than the pixel it sits under. Because that texture is even, the share of paper the ink covers comes out as the share the picture is dark. A quarter-dark tone gets a quarter of the page, and a picture with light and shade in it arrives with light and shade in the line work.
+
+The dials: `spacing` is the distance between strokes, and so how fine the pen is. `length` is how far one runs before it ends, with a short length making a stipple of dashes and a long one a comb. `directions` is how many layers stack as the tone darkens. One hatches a single way, which turns the deepest tones into fat merged marks; two crosses the first at right angles once one direction has laid all it may, which is what a pen does when a tone goes past what one direction can hold; three lays a third between them. Ink and paper are yours: `background: .clear` leaves the page bare where the picture was empty, so a hatched shape drops onto whatever is under it. [`Examples/Effects/Hatching`](../Examples/Effects/Hatching/Sketch.swift) puts every dial on a parameter over an engraved landscape with the sun crossing it.
+
 ## Filters that read the layer as something else
 
 Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those are worth meeting individually, because what you feed them matters more than the parameters.
