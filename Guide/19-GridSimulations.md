@@ -155,6 +155,37 @@ Everything in that figure came out of the rule. Nobody drew the circle, the four
 
 `topplings` is the pacing dial. An avalanche front moves one cell per pass, so `.sandpile(topplings: 1)` lets you watch each wave roll across the pile, and 128 hurries a collapse. And a mark you *hold* is a torrent rather than a drop. Its middle stays molten for as long as you keep pouring, with cells at four grains and above churning at the top of the ramp. It crystallizes into lacework when you stop. The `Simulation/Automata` example's sandpile rule is exactly that piece, a mountain collapsing in front of you, and a torrent wherever you hold the mouse.
 
+## A forest that keeps burning
+
+The forest fire in that list is an automaton too, and its rule is three lines. Every cell is bare ground, a tree, or burning. A burning cell is bare ground next step. A tree catches from any burning neighbor, and otherwise catches on its own with a small chance, which is the lightning. Bare ground grows a tree with a small chance. That is all of it:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/ForestFire-dark.jpg">
+  <img src="Images/19-GridSimulations/ForestFire.jpg" alt="Left, three boxes in a column, bare ground, a tree, and burning, with arrows down between them labeled it grows with a small chance each step and a neighbor is alight or lightning strikes, and an arrow back up the side labeled always the next step. Right, a field running the rule, a green forest cut by dark scars with amber fire lines in it" width="700">
+</picture>
+
+```swift
+var woods: SimField!
+let colors = Ramp(stops: [(0.0, Color(hex: 0x17120E)),     // bare ground
+                          (0.5, Color(hex: 0x2F7D45)),     // a tree
+                          (1.0, Color(hex: 0xFFC24A))])    // burning
+
+override func setup() {
+    woods = makeSimField(.forestFire(growth: 0.02, lightning: 0.00004), scale: 0.25)
+}
+
+override func draw() {
+    background(.black)
+    drawImage(woods.filtered(.gradientMap(colors)).image, 0, 0)
+}
+```
+
+There is nothing to seed. The field starts bare and grows itself in, and that is the first thing worth watching. Trees fill the map, the first strike takes a stand, another takes a bigger one, and after a while the density stops changing. Nothing in the rule names that density. It is the level where a stand is just connected enough for a fire to run through it. The fire then clears exactly the crowd that got it there. Turn `growth` up and the forest closes faster, so fires get bigger. Turn `lightning` up toward `growth` and no tree lives long enough to have neighbors. That is the end of the model, and the end of the forest.
+
+The ratio between the two rates is the whole dial, so keep `lightning` far below `growth`. At a thousand to one you get the interesting regime. Fires come in every size, from one tree to most of the map, with no size more typical than another. That is the sandpile's own self-organized criticality, in a system that looks nothing like a sandpile. It is why the two are always named together.
+
+Drawing works as it does everywhere else here. White sets cells burning, so you can start a fire where you want one. Black clears a firebreak, and the flames stop at it while the trees grow back into it. The `Simulation/Automata` example's forest rule is that piece with both rates on parameters, which is the fastest way to feel what the ratio does.
+
 ## Sand that falls
 
 The sandpile counts grains. The other sand automaton moves them. Every cell holds one material: empty, water, sand, or wall. Each pass, the grid is cut into 2x2 blocks, and every block settles on its own. A grain over an empty cell falls into it. A grain over water swaps with it, so it sinks and the water rises. A grain that cannot fall straight down rolls into an empty cell diagonally below it. Water swaps with the empty cell beside it, so a pool spreads until it lies flat. A wall never moves. Then the blocks shift by one cell and the next pass runs, so what one block could not see, the next one settles. That is the whole rule, and it makes heaps, slopes, and pools:

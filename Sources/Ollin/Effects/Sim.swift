@@ -45,6 +45,8 @@ public struct Sim: Sendable {
         case excitable(states: Int, threshold: Int, range: Int,
                        neighborhood: CellNeighborhood)
         case briansBrain
+        case forestFire(growth: Double, lightning: Double,
+                        neighborhood: CellNeighborhood, seed: Double)
         case hodgepodge(states: Int, k1: Int, k2: Int, g: Int,
                         neighborhood: CellNeighborhood, seed: Double)
         case selfWarp(SelfWarpConfig)
@@ -451,6 +453,43 @@ public struct Sim: Sendable {
     /// texel is one cell; edges wrap.
     public static func briansBrain() -> Sim { Sim(kind: .briansBrain) }
 
+    /// The Drossel-Schwabl **forest fire**, the automaton that made self-organized
+    /// criticality visible. Every cell is empty, a tree, or burning. A burning cell
+    /// is empty next step. A tree catches from any burning neighbor, and otherwise
+    /// catches on its own with probability `lightning`. An empty cell grows a tree
+    /// with probability `growth`. Nothing in the rule aims at a density, and yet one
+    /// arrives: trees fill in until a stand is connected enough for a strike to run
+    /// through it, the fire clears exactly that crowd, and the field hovers there
+    /// forever, throwing fires of every size from a single tree to most of the map.
+    ///
+    /// The field starts empty and grows itself in, so it **needs no seeding**, and
+    /// the coin each cell throws is a hash of the cell and the field's own frame
+    /// count, so a run replays exactly. Drawing stamps states: white sets cells
+    /// burning (a fire you start where you want it), mid-gray plants trees, and
+    /// black clears a firebreak the flames cannot cross.
+    ///
+    /// The raw `image` is grayscale, empty black, trees mid, fire white, made for
+    /// `.filtered(.gradientMap(...))` with a ramp that runs dark ground to green to
+    /// hot. One texel is one cell (`scale` sets the size), and edges wrap.
+    ///
+    /// - Parameters:
+    ///   - growth: The chance an empty cell grows a tree in a step (0...1). This is
+    ///     the pace of the whole system.
+    ///   - lightning: The chance a tree catches on its own in a step (0...1). Keep it
+    ///     far below `growth`: the ratio between them is what sets how big fires get,
+    ///     and a rate near `growth` burns every tree as soon as it grows.
+    ///   - neighborhood: `.vonNeumann` (the classic four) or `.moore` (eight, which
+    ///     spreads fire through diagonal gaps and reads rounder).
+    ///   - seed: Picks the run, so the same seed replays the same fires, and two
+    ///     fields side by side burn differently.
+    public static func forestFire(growth: Double = 0.015, lightning: Double = 0.000006,
+                                  neighborhood: CellNeighborhood = .vonNeumann,
+                                  seed: Double = 1) -> Sim {
+        Sim(kind: .forestFire(growth: max(0, min(1, growth)),
+                              lightning: max(0, min(1, lightning)),
+                              neighborhood: neighborhood, seed: seed))
+    }
+
     /// The Gerhardt-Schuster **hodgepodge machine**, the automaton built to mimic an
     /// oscillating chemical reaction (its waves are dead ringers for the
     /// Belousov-Zhabotinsky reaction in a dish). Cells run from healthy (0) through
@@ -556,6 +595,7 @@ public struct Sim: Sendable {
         case .cyclic:            return 1   // one generation per frame, like Life
         case .excitable:         return 1
         case .briansBrain:       return 1
+        case .forestFire:        return 1
         case .hodgepodge:        return 1
         case .selfWarp:          return 1   // unused: self-warp runs its own pipeline
         }
@@ -582,6 +622,8 @@ public struct Sim: Sendable {
                                                             // random states (stateSeedFill)
         case .excitable:         return SIMD4(0, 0, 0, 1)   // everything at rest
         case .briansBrain:       return SIMD4(0, 0, 0, 1)   // everything ready
+        case .forestFire:        return SIMD4(0, 0, 0, 1)   // bare ground, which
+                                                            // grows itself in
         case .hodgepodge:        return SIMD4(0, 0, 0, 1)   // unused: starts as seeded
                                                             // random states (stateSeedFill)
         case .selfWarp:          return SIMD4(0, 0, 0, 0)   // unused: runSelfWarp clears
@@ -604,6 +646,7 @@ public struct Sim: Sendable {
         case .cyclic:            return "ollin_sim_cyclic"
         case .excitable:         return "ollin_sim_excitable"
         case .briansBrain:       return "ollin_sim_brain"
+        case .forestFire:        return "ollin_sim_forest_fire"
         case .hodgepodge:        return "ollin_sim_hodgepodge"
         case .selfWarp:          return ""   // unused: self-warp dispatches its own fragments
         }
@@ -678,6 +721,9 @@ public struct Sim: Sendable {
                           neighborhood == .moore ? 1 : 0)]
         case .briansBrain:
             return []
+        case let .forestFire(growth, lightning, neighborhood, seed):
+            return [SIMD4(Float(growth), Float(lightning),
+                          neighborhood == .moore ? 1 : 0, Float(seed))]
         case let .hodgepodge(states, k1, k2, g, neighborhood, _):
             return [SIMD4(Float(states), Float(k1), Float(k2), Float(g)),
                     SIMD4(neighborhood == .moore ? 1 : 0, 0, 0, 0)]
@@ -688,7 +734,7 @@ public struct Sim: Sendable {
 }
 
 /// Which cells count as a cell's neighbors in the grid automata (`Sim.cyclic`,
-/// `Sim.excitable`, `Sim.hodgepodge`). With a `range` above 1 the same two shapes
+/// `Sim.excitable`, `Sim.hodgepodge`, `Sim.forestFire`). With a `range` above 1 the same two shapes
 /// scale up: `.moore` is the full block within that distance, `.vonNeumann` the
 /// diamond.
 public enum CellNeighborhood: Sendable, Equatable {

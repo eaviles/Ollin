@@ -495,6 +495,52 @@ fragment float4 ollin_sim_hodgepodge(PresentOut in [[stage_in]],
     return float4(float3(clamp(ns, 0.0, n) / n), 1.0);
 }
 
+// The Drossel-Schwabl forest fire: three states on a grid, empty, tree, burning.
+// A burning cell is empty next step. A tree catches from any burning neighbor, and
+// otherwise catches on its own with probability `lightning`. An empty cell grows a
+// tree with probability `growth`. Fires clear the crowd that grew them, so with
+// lightning far rarer than growth the field settles at the density where a strike is
+// as likely to fizzle as to take the whole stand, and fires of every size run through
+// it forever. The per-cell coin is a hash of the cell and the field's frame age, so a
+// run replays exactly, and a different seed gives a different run. params[0].w = age;
+// params[1] = (growth, lightning, moore, seed).
+fragment float4 ollin_sim_forest_fire(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float age = params[0].w;
+    float growth = clamp(params[1].x, 0.0, 1.0);
+    float lightning = clamp(params[1].y, 0.0, 1.0);
+    bool moore = params[1].z > 0.5;
+    float seed = params[1].w;
+    float2 uv = in.uv;
+    const float top = 2.0;   // 0 empty, 1 tree, 2 burning
+    float s = ollin_cell_state(src, samp, uv, top);
+    float2 cell = floor(uv / max(t, float2(1e-6)));
+    float roll = hash12(cell + float2(age * 0.7331 + seed * 37.13 + 11.13,
+                                      age * 1.3197 + seed * 11.71 + 3.71));
+
+    float ns;
+    if (s > 1.5) {
+        ns = 0.0;                                     // burned out
+    } else if (s > 0.5) {
+        float burning = 0.0;
+        for (int dy = -1; dy <= 1; dy += 1) {
+            for (int dx = -1; dx <= 1; dx += 1) {
+                if (dx == 0 && dy == 0) { continue; }
+                if (!moore && abs(dx) + abs(dy) > 1) { continue; }
+                float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+                burning += (ollin_cell_state(src, samp, p, top) > 1.5) ? 1.0 : 0.0;
+            }
+        }
+        ns = (burning > 0.0 || roll < lightning) ? 2.0 : 1.0;
+    } else {
+        ns = (roll < growth) ? 1.0 : 0.0;
+    }
+    return float4(float3(ns / top), 1.0);
+}
+
 // Lenia: the continuous Game of Life. The state is a smooth 0…1 mass in .r. Each step
 // convolves the state with a soft ring kernel to get the neighborhood potential U (an
 // exponential bump copied into up to three concentric rings, normalized by the summed

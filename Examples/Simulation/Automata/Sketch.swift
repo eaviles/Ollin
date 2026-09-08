@@ -27,6 +27,9 @@ import Ollin
 ///   • **lenia**: Lenia, the continuous Game of Life; a mass field convolved
 ///     with a soft ring kernel, blobs that pulse, split, and swim, the growth
 ///     rule tunable live.
+///   • **forest**: the Drossel-Schwabl forest fire; trees grow at random, a
+///     rare strike lights one, and the fire runs the stand it can reach, so the
+///     field settles at its own density and throws fires of every size.
 ///   • **sand**: the falling-sand automaton; grains fall, roll off each other
 ///     into heaps, sink through water that spreads flat, and stop at walls; the
 ///     brush pours whichever material the parameter names, `friction` sets how steep
@@ -37,7 +40,7 @@ import Ollin
 final class Automata: Sketch {
 
     enum Rule: String, CaseIterable, ParamOption {
-        case life, brain, cyclic, excitable, hodgepodge, sandpile, lenia, sand
+        case life, brain, cyclic, excitable, hodgepodge, forest, sandpile, lenia, sand
     }
 
     /// What the brush pours in the falling-sand rule.
@@ -70,6 +73,11 @@ final class Automata: Sketch {
     /// Toppling passes per frame: an avalanche front moves one cell per pass,
     /// so this is the pacing dial.
     @Param("Pace", 1 ... 128, icon: "speedometer", group: "Sandpile") var pace = 64.0
+    /// The chance an empty cell grows a tree in a step.
+    @Param("Growth", 0.002 ... 0.06, icon: "leaf", group: "Forest") var growth = 0.015
+    /// Strikes per million tree-steps. Far below the growth rate is what makes fires
+    /// of every size; near it, every tree burns as soon as it grows.
+    @Param("Lightning", 0.5 ... 200, icon: "bolt", group: "Forest") var strikes = 6.0
     @Param("Growth center", 0.05 ... 0.3, icon: "target", group: "Lenia") var growthCenter = 0.15
     @Param("Growth width", 0.005 ... 0.05, icon: "slider.horizontal.below.rectangle", group: "Lenia") var growthWidth = 0.015
     @Param("Pour", icon: "paintbrush.pointed", group: "Sand") var grain: Grain = .sand
@@ -105,6 +113,12 @@ final class Automata: Sketch {
                                       (0.50, Color(hex: 0xE3A857)),
                                       (0.75, Color(hex: 0xF2E9DC)),
                                       (1.00, .white)])
+
+    /// Forest fire: bare ground, a stand of trees, and the fire in it, at the
+    /// three levels the field stores (empty, tree, burning).
+    private let woods = Ramp(stops: [(0.0, Color(hex: 0x1A1410)),
+                                     (0.5, Color(hex: 0x2F7D45)),
+                                     (1.0, Color(hex: 0xFFC24A))])
 
     /// Falling sand: one tone per material, at the thirds the field stores them
     /// on (empty, water, sand, wall).
@@ -150,6 +164,8 @@ final class Automata: Sketch {
                                      seed: Double(variation))
         case .excitable: return .excitable(states: tail)
         case .hodgepodge: return .hodgepodge(infectionRate: speed, seed: Double(variation))
+        case .forest: return .forestFire(growth: growth, lightning: strikes / 1_000_000,
+                                        seed: Double(variation))
         case .sandpile: return .sandpile(pour: 1024, topplings: Int(pace))
         case .lenia: return .lenia(growthCenter: growthCenter, growthWidth: growthWidth)
         case .sand: return .fallingSand(passes: 16, friction: friction)
@@ -162,7 +178,7 @@ final class Automata: Sketch {
         switch rule {
         case .life: return Double(cells) / width
         case .brain: return 0.15
-        case .cyclic, .excitable, .hodgepodge: return 0.25
+        case .cyclic, .excitable, .hodgepodge, .forest: return 0.25
         case .sandpile, .lenia, .sand: return 0.5
         }
     }
@@ -253,6 +269,11 @@ final class Automata: Sketch {
             // Mid-gray stamps a degree of infection; black heals.
             fill(keyIsPressed ? .black : Color(white: 0.6))
             drawCircle(mouseX, mouseY, 60)
+        case .forest:
+            // White sets a fire where you drag it; a held key cuts a firebreak the
+            // flames cannot cross (and the trees grow back into it).
+            fill(keyIsPressed ? .black : .white)
+            drawCircle(mouseX, mouseY, keyIsPressed ? 60 : 10)
         case .sandpile:
             // Sand cannot be unpoured (a dark mark adds no grains), so the held
             // key simply holds the torrent.
@@ -291,6 +312,7 @@ final class Automata: Sketch {
         case .cyclic: return field.filtered(.gradientMap(wheel)).image
         case .excitable: return field.filtered(.gradientMap(.inferno)).image
         case .hodgepodge: return field.filtered(.gradientMap(.turbo)).image
+        case .forest: return field.filtered(.gradientMap(woods)).image
         case .sandpile: return field.filtered(.gradientMap(counts)).image
         case .lenia: return field.filtered(.gradientMap(.magma)).image
         case .sand: return field.filtered(.gradientMap(materials)).image
@@ -309,6 +331,8 @@ final class Automata: Sketch {
             return "excitable medium · fire, recover, rest · dab to spark, hold a key to calm"
         case .hodgepodge:
             return "hodgepodge machine · infection chasing recovery · drag to infect, hold a key to heal"
+        case .forest:
+            return "forest fire · trees grow, lightning strikes · drag to set fires, hold a key to cut a break"
         case .sandpile:
             return "Abelian sandpile · four grains at a time · hold to pour another mountain"
         case .lenia:

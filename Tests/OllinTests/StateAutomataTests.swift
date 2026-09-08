@@ -3,7 +3,8 @@ import Ollin
 import Testing
 
 /// Behavioral probes for the state automata (`.cyclic`, `.excitable`,
-/// `.briansBrain`, `.hodgepodge`), run headless on a 64-texel field and compared
+/// `.briansBrain`, `.hodgepodge`, `.forestFire`), run headless on a 64-texel field
+/// and compared
 /// **cell for cell** against a plain sequential CPU reference stepping the same
 /// published rule from the same start. The match pins the shared state encoding
 /// (s/(levels-1) in .r, decoded with rint), the exact neighbor counts under both
@@ -104,6 +105,98 @@ struct StateAutomataTests {
         #expect(brain.allSatisfy { $0.allSatisfy { $0 == 0 } })
     }
 
+    // MARK: The forest fire
+
+    /// With both rates at zero the rule is fully deterministic: fire spreads to
+    /// neighboring trees and burns out, and nothing grows back. That is the half a
+    /// reference can check cell for cell, since the coin the other half throws is a
+    /// GPU hash no CPU reproduces bit for bit.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func forestFireSpreadMatchesTheSequentialReference() throws {
+        var start = randomGrid(levels: 2, seed: 23)   // a patchy stand of trees
+        start[32][32] = 2                             // one of them alight
+        start[8][40] = 2
+        let sketch = probe(.forestFire(growth: 0, lightning: 0), stamps: fullStamps(start, levels: 3))
+        let gpu = try grid(sketch, generations: 14, levels: 3)
+        var reference = start
+        for _ in 0 ..< 14 { reference = stepForestFire(reference, moore: false) }
+        #expect(gpu == reference)
+        #expect(gpu != start)                          // the fire actually ran
+        #expect(gpu.joined().contains(0))              // and left bare ground behind
+    }
+
+    /// The neighborhood shape decides whether a fire crosses a corner. Two trees
+    /// touching only at a diagonal are one cell apart under `.moore` and two apart
+    /// under `.vonNeumann`, so this is the sharpest test of which taps are counted.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func fireCrossesACornerOnlyForTheEightCellBlock() throws {
+        // A lit tree at (20,20) and a lone tree touching it at the corner, with
+        // nothing orthogonally between them.
+        var start = [[Int]](repeating: [Int](repeating: 0, count: 64), count: 64)
+        start[20][20] = 2
+        start[21][21] = 1
+        let stamps = fullStamps(start, levels: 3)
+        let near = try grid(probe(.forestFire(growth: 0, lightning: 0, neighborhood: .vonNeumann),
+                                  stamps: stamps), generations: 3, levels: 3)
+        let corners = try grid(probe(.forestFire(growth: 0, lightning: 0, neighborhood: .moore),
+                                     stamps: stamps), generations: 3, levels: 3)
+        #expect(near[21][21] == 1)       // the four edge sharers never reach it
+        #expect(corners[21][21] == 0)    // the block does: it caught and burned out
+    }
+
+    /// The two rates at their limits are deterministic too, and they pin which
+    /// branch each state takes: every empty cell grows, and every tree catches.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func certainGrowthFillsTheFieldAndCertainLightningBurnsIt() throws {
+        let grown = try grid(probe(.forestFire(growth: 1, lightning: 0), stamps: []),
+                             generations: 2, levels: 3)
+        #expect(grown.allSatisfy { $0.allSatisfy { $0 == 1 } })
+
+        // Trees everywhere, then a strike in every one of them: all burning after
+        // one step, all bare after the next.
+        let forest = [[Int]](repeating: [Int](repeating: 1, count: 64), count: 64)
+        let stamps = fullStamps(forest, levels: 3)
+        let alight = try grid(probe(.forestFire(growth: 0, lightning: 1), stamps: stamps),
+                              generations: 1, levels: 3)
+        let after = try grid(probe(.forestFire(growth: 0, lightning: 1), stamps: stamps),
+                             generations: 2, levels: 3)
+        #expect(alight.allSatisfy { $0.allSatisfy { $0 == 2 } })
+        #expect(after.allSatisfy { $0.allSatisfy { $0 == 0 } })
+    }
+
+    /// A field with no lightning and no fire drawn into it can only fill up, and it
+    /// starts bare rather than from seeded noise, so this also pins the rest state.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aForestWithNoLightningOnlyGrows() throws {
+        let early = try grid(probe(.forestFire(growth: 0.3, lightning: 0), stamps: []),
+                             generations: 1, levels: 3)
+        let later = try grid(probe(.forestFire(growth: 0.3, lightning: 0), stamps: []),
+                             generations: 30, levels: 3)
+        let bare = early.joined().count { $0 == 0 }
+        #expect(bare > 2000 && bare < 4096)          // one step in, most of it is still bare
+        #expect(!early.joined().contains(2))         // and nothing is burning
+        #expect(later.joined().count { $0 == 1 } > 4000)   // thirty steps in, it is a forest
+        #expect(!later.joined().contains(2))
+    }
+
+    /// The point of the rule: with lightning far rarer than growth, the field neither
+    /// fills up nor burns out. It settles between the two and keeps throwing fires.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theForestSettlesBetweenBareAndFull() throws {
+        let field = try grid(probe(.forestFire(growth: 0.06, lightning: 0.0008), stamps: []),
+                             generations: 200, levels: 3)
+        let trees = Double(field.joined().count { $0 == 1 }) / 4096
+        let bare = Double(field.joined().count { $0 == 0 }) / 4096
+        #expect(trees > 0.1 && trees < 0.95)
+        #expect(bare > 0.02)
+        // A run at that ratio is never quiet for long: something is alight.
+        let burning = (150 ... 200).contains { generation in
+            (try? grid(probe(.forestFire(growth: 0.06, lightning: 0.0008), stamps: []),
+                       generations: generation, levels: 3))?.joined().contains(2) ?? false
+        }
+        #expect(burning)
+    }
+
     // MARK: Probes and readback
 
     private func probe(_ sim: Sim, stamps: [(x: Int, y: Int, white: Double)])
@@ -178,6 +271,21 @@ struct StateAutomataTests {
             }
         }
         return list
+    }
+
+    /// The forest fire with both rates at zero: a burning cell empties, a tree with
+    /// a burning neighbor catches, and nothing else moves.
+    private func stepForestFire(_ g: [[Int]], moore: Bool) -> [[Int]] {
+        let taps = offsets(range: 1, moore: moore)
+        return (0 ..< 64).map { y in
+            (0 ..< 64).map { x in
+                let s = g[y][x]
+                if s == 2 { return 0 }
+                if s == 0 { return 0 }
+                let alight = taps.contains { g[(y + $0.1 + 64) % 64][(x + $0.0 + 64) % 64] == 2 }
+                return alight ? 2 : 1
+            }
+        }
     }
 
     private func stepCyclic(_ g: [[Int]], states: Int, threshold: Int,

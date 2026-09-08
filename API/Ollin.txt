@@ -5415,6 +5415,7 @@ struct Sim: Sendable
   static func excitable(states: Int = default, threshold: Int = default, range: Int = default, neighborhood: CellNeighborhood = default) -> Sim
   static func fallingSand(passes: Int = default, friction: Double = default) -> Sim
   static func fluid(curl: Double = default, velocityDissipation: Double = default, densityDissipation: Double = default, pressureIterations: Int = default, buoyancy: Double = default) -> Sim
+  static func forestFire(growth: Double = default, lightning: Double = default, neighborhood: CellNeighborhood = default, seed: Double = default) -> Sim
   static func gameOfLife() -> Sim
   static func hodgepodge(states: Int = default, infectedDivisor: Int = default, illDivisor: Int = default, infectionRate: Int = default, neighborhood: CellNeighborhood = default, seed: Double = default) -> Sim
   static func lenia(radius: Int = default, growthCenter: Double = default, growthWidth: Double = default, timeScale: Double = default, rings: [Double] = default) -> Sim
