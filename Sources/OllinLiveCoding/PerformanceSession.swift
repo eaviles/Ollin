@@ -17,6 +17,10 @@ final class PerformanceSession {
     /// swaps, the two error channels).
     @ObservationIgnored let core = SketchSession(keepClock: true)
     @ObservationIgnored let editor = EditorController()
+    /// The host's own performance surface on MIDI and OSC: evaluate, hide the
+    /// code, the backdrop and size, record. A host preference, never the
+    /// sketch's; see `PerformanceControls`.
+    @ObservationIgnored private(set) lazy var controls = PerformanceControls(handlers: controlHandlers)
 
     /// The open document; `nil` is an untitled buffer.
     private(set) var fileURL: URL?
@@ -118,6 +122,28 @@ final class PerformanceSession {
         }
 
         evaluate()
+        controls.start()
+    }
+
+    /// What a control does when it reaches the host. The view settings live
+    /// in the defaults the views already read, so a fader moving the backdrop
+    /// moves the menu's picker with it.
+    private var controlHandlers: PerformanceControls.Handlers {
+        let defaults = UserDefaults.standard
+        return PerformanceControls.Handlers(
+            evaluate: { [weak self] fresh in self?.evaluate(fresh: fresh) },
+            setCodeHidden: { wanted in
+                let key = LiveCodingRootView.codeHiddenKey
+                defaults.set(wanted ?? !defaults.bool(forKey: key), forKey: key)
+            },
+            setBackdrop: { defaults.set($0, forKey: LiveCodingRootView.backdropKey) },
+            setCodeSize: { defaults.set($0.rounded(), forKey: LiveCodingRootView.fontSizeKey) },
+            setRecording: { [weak self] wanted in
+                guard let self else { return }
+                if let wanted, wanted == self.isRecording { return }
+                self.toggleRecording()
+            }
+        )
     }
 
     // MARK: - Evaluate

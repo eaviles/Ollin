@@ -189,6 +189,7 @@ struct LiveCodingRootView: View {
                                            session.core.recordParam(name, value)
                                        },
                                        save: session.saveAction)
+                    ControlsCardView(controls: session.controls)
                 }
                 .endsTypingOnBackgroundTap()
             }

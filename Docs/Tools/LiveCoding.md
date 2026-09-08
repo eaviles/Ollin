@@ -28,6 +28,7 @@ OllinLiveCoding sits beside `OllinLive` rather than replacing it. OllinLive watc
 - [Files, saving, and recovery](#files-saving-and-recovery) - evaluate never saves
 - [Performance chrome](#performance-chrome) - hide code, fullscreen, the inspector
 - [Dragging a shape on the stage](#dragging-a-shape-on-the-stage) - Command-drag through the code
+- [The host on a controller](#the-host-on-a-controller) - evaluate, hide the code, and record from MIDI or OSC
 - [Keyboard reference](#keyboard-reference)
 
 ---
@@ -73,6 +74,27 @@ Assets that sit beside the `.swift` file, such as an image or a `.metal` file, r
 Hold Command over the stage, and the shape under the pointer is outlined through the text, with the line that drew it named above the outline. Drag the shape to move it, pull a corner to resize it, or turn the knob above it, and the numbers on that line change in the code on the stage. The host evaluates the buffer for you, the way ⌘↩ does, so the shape stays where you left it after the swap. With a shape outlined, `⌘]` and `⌘[` move its line past its neighbor's, so it draws in front or behind. Nothing here writes the file, so ⌘S still decides what reaches the disk, and ⌘Z in the editor takes a drag back.
 
 The drag edits the text the stage was built from and nothing else. If you have typed since the last evaluation, a drag asks you to evaluate first rather than guess where the line went. See [Dragging a shape](./DragToEdit.md) for what each handle writes and what it refuses.
+
+### The host on a controller
+
+A performer's hands are often on a controller rather than the keyboard, and a second machine may be running the show. The host's own actions answer to MIDI and OSC, beside the `@Param` bindings a sketch makes for itself. This is a host preference and never part of the sketch. The sketch reads its own inputs, and the host reads its own.
+
+**OSC** answers at fixed addresses once a port is set. Open the inspector (⌘/), find the **Controls** card, and type a port. From then on the host listens there:
+
+| Address | What it does |
+| --- | --- |
+| `/ollin/evaluate` | evaluate the buffer, the way ⌘↩ does |
+| `/ollin/evaluate/fresh` | evaluate fresh, with the clock reset |
+| `/ollin/code/hidden` | a bare message turns the code over; `1` hides it and `0` shows it |
+| `/ollin/code/backdrop` | the strip behind the text, `0` to `1` |
+| `/ollin/code/size` | the type size, `0` to `1` across 9 to 32 points |
+| `/ollin/record` | a bare message starts or stops a take; `1` and `0` say which |
+
+A button in a layout sends its release as well as its press, and only the press counts. Leave the port empty and the host listens to nothing.
+
+**MIDI** has no natural default for a pad, so a control is learned. In the Controls card, press the Learn button on the action, then press the pad or the button, or move the fader. The next control to arrive is the binding. It shows on the row and holds across launches. A pad or key fires an action once per press, on its own channel. A button on a controller sends 127 pressed and 0 released, so it fires once on the way up. A knob or fader rides the backdrop or the code size, and refuses the press actions. The same Learn button binds an OSC address, for a layout that already has its own names. The minus button forgets a control, and a control learned for one action leaves any other it was on.
+
+The card's last line says what the host hears: the OSC port it is listening on, and how many MIDI sources the Mac sees. The sketch side of the same two wires is in [MIDI](../Integration/MIDI.md) and [OSC](../Integration/OSC.md).
 
 ### Keyboard reference
 

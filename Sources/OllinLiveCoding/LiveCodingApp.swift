@@ -29,6 +29,7 @@ struct LiveCodingApp: App {
         if arguments.contains("--selftest") { SelfTest.run() }        // headless; exits
         if arguments.contains("--sessiontest") { SessionTest.run() }  // headless; exits
         if arguments.contains("--dragtest") { DragTest.run() }        // headless; exits
+        if arguments.contains("--controltest") { ControlTest.run() }  // headless; exits
 
         // A path argument opens that sketch; none starts an untitled buffer
         // from the template.

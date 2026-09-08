@@ -142,16 +142,18 @@ public enum OllinInspector {
         return String(format: "%02d:%02d:%02d.%d", h, m, sec, tenths)
     }
 
-    struct Palette {
-        let cardFill: SwiftUI.Color
-        let cardStroke: SwiftUI.Color
-        let fieldFill: SwiftUI.Color
-        let fieldStroke: SwiftUI.Color
-        let separator: SwiftUI.Color
-        let textTertiary: SwiftUI.Color
-        let readout: SwiftUI.Color
+    /// The card colors for one appearance, so a host's own card sits beside
+    /// the shipped ones without restating them.
+    public struct Palette {
+        public let cardFill: SwiftUI.Color
+        public let cardStroke: SwiftUI.Color
+        public let fieldFill: SwiftUI.Color
+        public let fieldStroke: SwiftUI.Color
+        public let separator: SwiftUI.Color
+        public let textTertiary: SwiftUI.Color
+        public let readout: SwiftUI.Color
 
-        static func resolve(_ scheme: ColorScheme) -> Palette {
+        public static func resolve(_ scheme: ColorScheme) -> Palette {
             if scheme == .dark {
                 return Palette(
                     cardFill: .white.opacity(0.055),
