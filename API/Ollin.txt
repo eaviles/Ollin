@@ -3393,6 +3393,7 @@ struct Filter: Sendable
   static func sepia(amount: Double = default) -> Filter
   static func shader(_: Shader) -> Filter
   static func sharpen(amount: Double = default) -> Filter
+  static func shock(iterations: Int = default, flow: Double = default, radius: Double = default, smoothing: Double = default, threshold: Double = default) -> Filter
   static func softProof(_: ICCProfile, intent: RenderingIntent = default, simulatesPaper: Bool = default, warning: Color? = default, amount: Double = default) -> Filter
   static func softProof(_: SoftProof, warning: Color? = default, amount: Double = default) -> Filter
   static func solarize(_: Double = default, softness: Double = default) -> Filter

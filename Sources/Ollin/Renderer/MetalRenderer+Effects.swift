@@ -679,6 +679,59 @@ extension MetalRenderer {
                                  into: cb)
             return output
 
+        case let .shock(iterations, flow, radius, smoothing, threshold):
+            // Six passes a round, repeated: the structure tensor of the color (kept from
+            // the previous estimate where the picture has gone flat); its blur; the line
+            // integral convolution along the flow; the tensor again over the smoothed
+            // layer; its blur; and the shock across the flow, its sign read from the
+            // layer or, when `smoothing` asks, from the layer blurred. Then one more
+            // convolution along the flow at a small fixed sigma, over the last tensor,
+            // to anti-alias the steps the shocks made.
+            guard let tensor = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let smoothed = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let a = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let b = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            let softens = smoothing > 0.01
+            let gray = softens ? acquireFilterTexture(width: width, height: height, pooled: pooled) : nil
+            if softens && gray == nil { return nil }
+            let texel = SIMD2<Float>(1 / Float(width), 1 / Float(height))
+            let tensorBlur = MPSImageGaussianBlur(device: device, sigma: 2)
+            tensorBlur.edgeMode = .clamp
+            let grayBlur = softens ? MPSImageGaussianBlur(device: device, sigma: Float(smoothing)) : nil
+            grayBlur?.edgeMode = .clamp
+            // The gradient magnitude under which a texel keeps its previous direction,
+            // the technique's own relaxation threshold on a 0…1 display scale.
+            let floorMagnitude: Float = 0.002
+            func estimate(_ image: MTLTexture, hasPrevious: Bool) {
+                encodeEffectFragment("ollin_fx_shock_tensor", inputs: [image, smoothed], output: tensor,
+                                     params: [SIMD4(texel.x, texel.y, floorMagnitude, hasPrevious ? 1 : 0)],
+                                     into: cb)
+                tensorBlur.encode(commandBuffer: cb, sourceTexture: tensor, destinationTexture: smoothed)
+            }
+            var current = input
+            for round in 0 ..< iterations {
+                estimate(current, hasPrevious: round > 0)
+                let flowed = current === a ? b : a
+                encodeEffectFragment("ollin_fx_shock_flow", inputs: [current, smoothed], output: flowed,
+                                     params: [SIMD4(texel.x, texel.y, Float(flow), 1)], into: cb)
+                estimate(flowed, hasPrevious: true)
+                var sign = flowed
+                if let gray, let grayBlur {
+                    grayBlur.encode(commandBuffer: cb, sourceTexture: flowed, destinationTexture: gray)
+                    sign = gray
+                }
+                let shocked = flowed === a ? b : a
+                // The Laplacian's sigma follows the reach, 1.5 at the technique's radius of 2.
+                encodeEffectFragment("ollin_fx_shock_sharpen", inputs: [flowed, smoothed, sign], output: shocked,
+                                     params: [SIMD4(texel.x, texel.y, Float(0.75 * radius), Float(radius.rounded())),
+                                              SIMD4(Float(threshold), 0, 0, 0)], into: cb)
+                current = shocked
+            }
+            let output = current === a ? b : a
+            encodeEffectFragment("ollin_fx_shock_flow", inputs: [current, smoothed], output: output,
+                                 params: [SIMD4(texel.x, texel.y, 1.25, 0)], into: cb)
+            return output
+
         // Every single-pass filter was encoded from its `singlePass` description
         // above; the list stays exhaustive so a new kind must choose a side.
         case .colorGrade, .invert, .posterize, .threshold, .sepia, .colorVision, .duotone,

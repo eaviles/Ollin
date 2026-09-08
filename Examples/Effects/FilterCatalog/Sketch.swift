@@ -67,6 +67,7 @@ final class FilterCatalog_Example: Sketch {
                 ("toon", .toon(levels: 5)),
                 ("oilPaint", .oilPaint(radius: 5)),
                 ("brushwork", .brushwork()),
+                ("shock", .shock()),
                 ("crosshatch", .crosshatch(scale: 95)),
                 ("xdog", .xdog()),
                 ("median", .median()),

@@ -180,6 +180,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-brushwork",
                  note: "The anisotropic Kuwahara filter over the same fixed still life as effects-xdog: the default brush, the same brush held round (stretch 1), the layer itself, and a broad hard brush (radius 10, stretch 8, sharpness 16). Pins the three passes (the color structure tensor, its blur, the sector filter), the stretch following the tensor's direction, and the sharpness exponent on the sector spread.",
                  make: { EffectsBrushwork() }),
+    SnapshotCase("effects-shock",
+                 note: "The coherence-enhancing filter over the same fixed still life as effects-xdog: the default three rounds, one round, the layer itself, and eight rounds with the sign read through a blur of 2. Pins the round's six passes (the color tensor kept from the previous estimate where the picture went flat, its blur, the convolution along the flow, the tensor again, the shock across it) and the final edge smoothing.",
+                 make: { EffectsShock() }),
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
@@ -6894,6 +6897,27 @@ private final class EffectsBrushwork: Sketch {
         drawImage(scene.image, in: tile(0, 1))
         drawImage(scene.filtered(.brushwork(radius: 10, stretch: 8, sharpness: 16)).image,
                   in: tile(1, 1))
+    }
+}
+
+/// The coherence-enhancing filter over the same still life as `EffectsXDoG`: the
+/// default three rounds, a single round, the layer itself, and eight rounds with
+/// the shock's sign read through a blur of 2. Deterministic (no time/random), so
+/// it pins the round's passes and the edge smoothing after them.
+private final class EffectsShock: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let scene = makeRenderTarget(scale: 0.5)
+        withTarget(scene) { paintEffectsStillLife() }
+        func tile(_ col: Int, _ row: Int) -> Rectangle {
+            Rectangle(x: Double(col) * 256, y: Double(row) * 128, width: 256, height: 128)
+        }
+        drawImage(scene.filtered(.shock()).image, in: tile(0, 0))
+        drawImage(scene.filtered(.shock(iterations: 1)).image, in: tile(1, 0))
+        drawImage(scene.image, in: tile(0, 1))
+        drawImage(scene.filtered(.shock(iterations: 8, smoothing: 2)).image, in: tile(1, 1))
     }
 }
 

@@ -263,7 +263,7 @@ extension Filter {
         // hold, stays with the renderer.
         case .shader, .gaussianBlur, .bloom, .softProof, .fourier, .inverseFourier, .spectrum,
              .liquidMetal, .heatmap, .gemSmoke, .diffuse, .distanceField, .boxBlur,
-             .adaptiveThreshold, .xdog, .brushwork:
+             .adaptiveThreshold, .xdog, .brushwork, .shock:
             return nil
         }
     }

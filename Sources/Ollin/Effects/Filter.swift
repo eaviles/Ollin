@@ -275,6 +275,14 @@ public struct Filter: Sendable {
         /// out along an edge (an aspect ratio; 1 keeps every patch round), `sharpness`
         /// how decisively the flattest patch wins (the exponent on its spread).
         case brushwork(radius: Double, stretch: Double, sharpness: Double)
+        /// Coherence-enhancing filtering: the picture flattened into regions with
+        /// crisp edges that follow its own flow. Each of `iterations` rounds smooths
+        /// the layer along the direction of least change (a line integral convolution
+        /// of `flow` px, adapted to the local anisotropy) and sharpens it across that
+        /// direction with a shock filter reaching `radius` px, whose sign is read
+        /// from the brightness blurred by `smoothing` px and ignored under `threshold`.
+        case shock(iterations: Int, flow: Double, radius: Double, smoothing: Double,
+                   threshold: Double)
         /// 3×3 median: replace each pixel with the per-channel median of its neighborhood
         /// (removes speckle while keeping edges).
         case median
@@ -851,6 +859,35 @@ public struct Filter: Sendable {
         Filter(kind: .brushwork(radius: min(max(radius, 1), 12),
                                 stretch: min(max(stretch, 1), 16),
                                 sharpness: min(max(sharpness, 0), 16)))
+    }
+
+    /// Shock: the picture flattened into regions with crisp edges, the
+    /// coherence-enhancing filter. Each round smooths the layer along its own flow
+    /// (the direction of least change at every pixel, read from the structure
+    /// tensor) and sharpens it across that flow: where the brightness across an edge
+    /// bends toward bright, a pixel takes the brightest pixel within reach; where it
+    /// bends toward dark, the darkest. A soft transition snaps to a step, and
+    /// everything along an edge is drawn out into one coherent stroke. `iterations`
+    /// is how many rounds, and so the level of abstraction: 2 is a light clean-up,
+    /// 10 a poster. `flow` is how far along the flow each round smooths, in pixels,
+    /// adapted to how clear the direction is (a clear straight edge gets the whole
+    /// reach, a flat or curved neighborhood a quarter of it). `radius` is how far
+    /// across an edge the shock reaches, in pixels, which sets the edge scale.
+    /// `smoothing` blurs the brightness the shock reads its sign from, so texture
+    /// finer than it stops making edges and flattens into regions, and `threshold`
+    /// is the curvature under which nothing is sharpened, which keeps nearly flat
+    /// regions from breaking into shocks. No color is invented: every pixel is a
+    /// blend, along its own contour, of colors the layer holds. The picture is read
+    /// as the colors a display shows over white paper, so empty space on a
+    /// transparent layer counts as paper, and the result keeps the layer's alpha.
+    /// The cost grows with `iterations` times `flow`; `iterations` is capped at 12.
+    public static func shock(iterations: Int = 3, flow: Double = 6, radius: Double = 2,
+                             smoothing: Double = 0, threshold: Double = 0.005) -> Filter {
+        Filter(kind: .shock(iterations: min(max(iterations, 1), 12),
+                            flow: min(max(flow, 1), 16),
+                            radius: min(max(radius, 1), 6),
+                            smoothing: min(max(smoothing, 0), 8),
+                            threshold: max(threshold, 0)))
     }
 
     public static func median() -> Filter { Filter(kind: .median) }

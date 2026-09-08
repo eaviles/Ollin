@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **Shock, the picture flattened into regions.** `layer.filtered(.shock())` smooths the layer along its own flow and sharpens it across that flow, round after round: soft shading snaps into flat regions with crisp edges, and grain, hair, or grass is drawn out into one coherent stroke, with no color invented. `iterations` sets the level of abstraction, `flow` how far each round smooths along the flow, `radius` how far across an edge the shock reaches, `smoothing` the blur on the brightness the shock reads its sign from (the dial for a noisy picture), and `threshold` the bend under which nothing is sharpened. `Examples/Effects/Coherence` puts every dial on a parameter; the FilterCatalog's stylize sheet has a tile.
+
 ### Fixed
 
 - **A compute kernel no longer recomposes the shader library on every dispatch.** Every `compute(...)` call looked its pipeline up by a hash of the kernel's full composed source, which meant reading the shared shader library, resolving its includes, and hashing the whole text once per dispatch per frame; a kernel written in the sketch's own source is now found by its own text, and the library is resolved once per process. A kernel loaded from a file still composes each time, so an edit to a file it includes is noticed.

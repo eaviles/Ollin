@@ -1412,6 +1412,169 @@ fragment float4 ollin_fx_brushwork(PresentOut in [[stage_in]],
     return total > 0.0 ? out / total : src.sample(samp, in.uv, level(0.0));
 }
 
+// MARK: - Shock (coherence-enhancing filtering, written from the technique)
+//
+// Smoothing along the picture's flow and a shock across it, round after round. A
+// round reads the structure tensor of the color, smooths the layer by line integral
+// convolution along the tensor's minor eigenvector (the direction of least change),
+// reads the tensor again over the smoothed layer, and sharpens across its major
+// eigenvector with a shock filter: a pixel on the bright side of an inflection
+// takes the brightest pixel within reach along that direction, one on the dark side
+// the darkest, so a soft transition snaps to a step while everything along an edge
+// is drawn out into one coherent stroke. A last convolution along the flow at a
+// small sigma anti-aliases the steps.
+
+// The anisotropy of a tensor: 0 in a flat or isotropic texel, 1 on one clear edge.
+static inline float ollin_shock_anisotropy(float3 g) {
+    float E = g.x, F = g.y, G = g.z;
+    float root = sqrt(max((E - G) * (E - G) + 4.0 * F * F, 0.0));
+    float sum = E + G;
+    return sum > 1e-12 ? clamp(root / sum, 0.0, 1.0) : 0.0;
+}
+
+// The brightness the shock reads: the layer as a display shows it over white paper.
+static inline float ollin_shock_gray(texture2d<float> src, sampler samp, float2 uv) {
+    float4 s = src.sample(samp, uv, level(0.0));
+    float l = ollin_luma(s.rgb) + (1.0 - s.a);
+    return linearToSrgb(float3(saturate(l))).x;
+}
+
+// shock, pass 1: the structure tensor of the color, taken the way brushwork takes it
+// (each channel's Sobel gradient over the display color on white paper, the outer
+// products summed, scaled to one texel). Where the gradient is too small to say
+// which way the picture runs (its magnitude under params[0].z) the texel keeps the
+// direction the previous estimate found, read from the previous smoothed tensor in
+// texture 1 when params[0].w says there is one, so a region the rounds have
+// flattened still knows its flow.
+fragment float4 ollin_fx_shock_tensor(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      texture2d<float> previous [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float floorMagnitude = params[0].z;
+    bool hasPrevious = params[0].w > 0.5;
+    float3 c00 = ollin_brushwork_read(src, samp, in.uv + t * float2(-1, -1));
+    float3 c10 = ollin_brushwork_read(src, samp, in.uv + t * float2( 0, -1));
+    float3 c20 = ollin_brushwork_read(src, samp, in.uv + t * float2( 1, -1));
+    float3 c01 = ollin_brushwork_read(src, samp, in.uv + t * float2(-1,  0));
+    float3 c21 = ollin_brushwork_read(src, samp, in.uv + t * float2( 1,  0));
+    float3 c02 = ollin_brushwork_read(src, samp, in.uv + t * float2(-1,  1));
+    float3 c12 = ollin_brushwork_read(src, samp, in.uv + t * float2( 0,  1));
+    float3 c22 = ollin_brushwork_read(src, samp, in.uv + t * float2( 1,  1));
+    float3 gx = ((c20 + 2.0 * c21 + c22) - (c00 + 2.0 * c01 + c02)) * 0.125;
+    float3 gy = ((c02 + 2.0 * c12 + c22) - (c00 + 2.0 * c10 + c20)) * 0.125;
+    float3 s = float3(dot(gx, gx), dot(gx, gy), dot(gy, gy));
+    if (hasPrevious && sqrt(s.x * s.x + s.z * s.z + 2.0 * s.y * s.y) < floorMagnitude) {
+        s = previous.sample(samp, in.uv, level(0.0)).xyz;
+    }
+    return float4(s, 1.0);
+}
+
+// shock, pass 2: line integral convolution along the flow. From the pixel, a walk
+// each way along the smoothed tensor's minor eigenvector in one-texel steps, each a
+// second-order Runge-Kutta step (the direction re-read at the half step, the tensor
+// sampled bilinearly), the heading kept through the eigenvector's sign flips since
+// a tensor has orientation but no direction. The layer's color is gathered under a
+// Gaussian whose sigma adapts to the pixel's anisotropy, σ̃ = ¼ σ (1 + A)², so a
+// clear straight edge is smoothed the whole reach and a flat or curved
+// neighborhood a quarter of it (params[0].xy = texel, .z = σ, .w = 1 to adapt or 0
+// to hold σ as given, the edge-smoothing pass).
+fragment float4 ollin_fx_shock_flow(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    texture2d<float> tensor [[texture(1)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float sigma = params[0].z;
+    bool adaptive = params[0].w > 0.5;
+    float3 g0 = tensor.sample(samp, in.uv, level(0.0)).xyz;
+    float A = ollin_shock_anisotropy(g0);
+    float s = adaptive ? 0.25 * sigma * (1.0 + A) * (1.0 + A) : sigma;
+    int steps = min(int(ceil(2.0 * s)), 64);
+    float two = 2.0 * s * s;
+    float4 sum = src.sample(samp, in.uv, level(0.0));
+    float norm = 1.0;
+    float2 t0 = ollin_xdog_tangent(g0);
+    for (int way = -1; way <= 1; way += 2) {
+        float2 p = in.uv;
+        float2 heading = t0 * float(way);
+        for (int i = 1; i <= steps; i += 1) {
+            float2 d = ollin_xdog_tangent(tensor.sample(samp, p, level(0.0)).xyz);
+            if (dot(d, heading) < 0.0) { d = -d; }
+            float2 dm = ollin_xdog_tangent(tensor.sample(samp, p + 0.5 * d * texel, level(0.0)).xyz);
+            if (dot(dm, d) < 0.0) { dm = -dm; }
+            p += dm * texel;
+            if (any(p < 0.0) || any(p > 1.0)) { break; }
+            float w = exp(-float(i * i) / two);
+            sum += w * src.sample(samp, p, level(0.0));
+            norm += w;
+            heading = dm;
+        }
+    }
+    return sum / norm;
+}
+
+// shock, pass 3: the shock across the flow. The sign is read from a one-dimensional
+// Laplacian of Gaussian of the brightness (texture 2: the layer, or the layer
+// blurred) along the major eigenvector, scale-normalized, σ² G''(t) = (t² − σ²) /
+// (√(2π) σ³) e^{−t²/2σ²}, sampled at a step of one texel along the direction's
+// longer axis and made zero-sum, so a ramp reads as no curvature and only a bend
+// counts. Negative past the threshold (the bright side of an inflection) takes the
+// brightest pixel within `radius` texels along that direction, positive the darkest,
+// and anything in between keeps the pixel; the candidates are texel centers, so the
+// pixel taken is one the layer holds (params[0].xy = texel, .z = σ, .w = radius;
+// params[1].x = threshold).
+fragment float4 ollin_fx_shock_sharpen(PresentOut in [[stage_in]],
+                                       texture2d<float> src [[texture(0)]],
+                                       texture2d<float> tensor [[texture(1)]],
+                                       texture2d<float> gray [[texture(2)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float sigma = params[0].z;
+    int radius = int(params[0].w);
+    float threshold = params[1].x;
+    float2 tangent = ollin_xdog_tangent(tensor.sample(samp, in.uv, level(0.0)).xyz);
+    float2 n = float2(tangent.y, -tangent.x);
+    float2 nabs = abs(n);
+    float ds = 1.0 / max(max(nabs.x, nabs.y), 1e-4);
+    int taps = min(int(ceil(3.0 * sigma / ds)), 32);
+    float twoS = 2.0 * sigma * sigma;
+    float wv = -sigma * sigma * ollin_shock_gray(gray, samp, in.uv);
+    float wsum = -sigma * sigma;
+    float vsum = ollin_shock_gray(gray, samp, in.uv);
+    float count = 1.0;
+    for (int k = 1; k <= taps; k += 1) {
+        float d = float(k) * ds;
+        float w = (d * d - sigma * sigma) * exp(-d * d / twoS);
+        float2 offset = n * d * texel;
+        float v = ollin_shock_gray(gray, samp, in.uv + offset) + ollin_shock_gray(gray, samp, in.uv - offset);
+        wv += w * v;
+        wsum += 2.0 * w;
+        vsum += v;
+        count += 2.0;
+    }
+    float z = (wv - wsum / count * vsum) * ds / (2.5066283 * sigma * sigma * sigma);
+
+    float4 out = src.sample(samp, in.uv, level(0.0));
+    if (z > threshold || z < -threshold) {
+        bool wantDarkest = z > 0.0;
+        float best = ollin_shock_gray(src, samp, in.uv);
+        float2 size = 1.0 / texel;
+        for (int k = -radius; k <= radius; k += 1) {
+            if (k == 0) { continue; }
+            float2 q = (floor(in.uv * size + float(k) * n) + 0.5) * texel;
+            float gq = ollin_shock_gray(src, samp, q);
+            if (wantDarkest ? gq < best : gq > best) {
+                best = gq;
+                out = src.sample(samp, q, level(0.0));
+            }
+        }
+    }
+    return out;
+}
+
 // 3×3 median via a min/max sorting network (written from the technique), per-channel,
 // so speckle drops while edges hold (params: texel.xy).
 #define OLLIN_S2(a, b) { float3 _t = a; a = min(a, b); b = max(_t, b); }
