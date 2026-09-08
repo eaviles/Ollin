@@ -1,5 +1,33 @@
 // OllinSerial: the public surface, written by Scripts/api-surface.sh.
 // Change the source, then run it with --record; never edit this file by hand.
+enum FirmataMessage: Equatable, Sendable
+  case analog(pin: Int, value: Int)
+  case digital(pin: Int, value: Bool)
+  case firmware(FirmataFirmware)
+  case string(String)
+  case sysex(command: UInt8, data: [UInt8])
+final class FirmataBoard: Sendable
+  convenience init(matching: String, baudRate: Int = default)
+  convenience init(path: String, baudRate: Int = default)
+  func analog(_: Int) -> Double?
+  func analog(_: Int, default: Double) -> Double
+  func bind(analog: Int, to: Param<Double>)
+  func close()
+  func digital(_: Int, pullUp: Bool = default) -> Bool?
+  func digital(_: Int, pullUp: Bool = default, default: Bool) -> Bool
+  func messages() -> [FirmataMessage]
+  func open()
+  func send(text: String)
+  func setMode(_: Int, _: FirmataPinMode)
+  func setSamplingInterval(_: Int)
+  func unbind(analog: Int)
+  func write(_: Int, _: Bool)
+  func write(_: Int, _: Double)
+  func write(_: Int, angle: Double)
+  init(port: SerialPort)
+  let port: SerialPort
+  var firmware: FirmataFirmware? { get }
+  var isOpen: Bool { get }
 final class SerialPort: Sendable
   convenience init(device: SerialDevice, baudRate: Int = default)
   func bind(to: Param<Double>, from: ClosedRange<Double> = default)
@@ -22,6 +50,20 @@ final class SerialPort: Sendable
   static func availableDevices() -> [SerialDevice]
   var isOpen: Bool { get }
   var latestLine: String? { get }
+struct FirmataFirmware: Equatable, Sendable
+  init(name: String, majorVersion: Int, minorVersion: Int)
+  var majorVersion: Int { get set }
+  var minorVersion: Int { get set }
+  var name: String { get set }
+struct FirmataPinMode: Equatable, Hashable, RawRepresentable, Sendable
+  init(rawValue: UInt8)
+  let rawValue: UInt8
+  static let analog: FirmataPinMode
+  static let input: FirmataPinMode
+  static let inputPullUp: FirmataPinMode
+  static let output: FirmataPinMode
+  static let pwm: FirmataPinMode
+  static let servo: FirmataPinMode
 struct SerialDevice: Equatable, Hashable, Identifiable, Sendable
   init(path: String, name: String)
   let name: String

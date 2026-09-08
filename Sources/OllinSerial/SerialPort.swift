@@ -85,6 +85,13 @@ public final class SerialPort: @unchecked Sendable {
     /// a partial line from the previous session never leaks into the next.
     private var assembler = LineAssembler()
 
+    /// A protocol layered over the port (Firmata) reads the stream here, on
+    /// the port's queue, as each chunk lands; and hears of every fresh
+    /// connection so it can restate what it asked of the device. Internal:
+    /// the framing a sketch sees stays lines and bytes.
+    var byteSink: (@Sendable ([UInt8]) -> Void)?
+    var connectionSink: (@Sendable () -> Void)?
+
     /// Caps on undrained data, so a sketch that never calls `lines()` or
     /// `bytes()` doesn't grow the buffers without bound; the oldest entries
     /// are dropped past them.
@@ -293,6 +300,7 @@ public final class SerialPort: @unchecked Sendable {
         source.setCancelHandler { _ = Darwin.close(descriptor) }
         io.withLock { $0 = IO(descriptor: descriptor, source: source) }
         source.activate()
+        connectionSink?()
 
         // `close()` may have landed between the check above and the store;
         // re-checking here closes that window.
@@ -361,6 +369,7 @@ public final class SerialPort: @unchecked Sendable {
     }
 
     private func ingest(_ chunk: [UInt8], _ generation: Int) {
+        byteSink?(chunk)
         let newLines = assembler.ingest(chunk)
         // Stash under the lock and read out any binding, then apply the
         // binding outside the lock so the param's own lock never nests under

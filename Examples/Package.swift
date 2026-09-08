@@ -632,6 +632,7 @@ let package = Package(
         // physical-computing loop runs with no hardware (like OSCLoopback);
         // clicking writes a line back and the wave flips.
         example("Integration/SerialLoopback", [.serial]),
+        example("Integration/Firmata", [.serial]),
         // Lists every serial device live and scrolls whatever the open one
         // prints: plug a microcontroller in and its lines (and a numeric
         // value bar) appear; keys pick a device and send a line back.

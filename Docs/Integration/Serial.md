@@ -34,6 +34,7 @@ final class Dial: Sketch {
 - [Reading](#reading) - the latest value, or every line since the last frame
 - [Binding to a `@Param`](#binding-to-a-param) - a sensor drives a parameter
 - [Writing](#writing) - lines and bytes back to the board
+- [A board with no firmware of your own: Firmata](#firmata) - StandardFirmata's pins answer to the sketch
 - [Testing without hardware](#testing-without-hardware) - the loopback and monitor examples
 
 <a name="finding-a-device"></a>
@@ -144,6 +145,77 @@ serial.writeLine("servo:\(Int(angle))")
 ```
 
 Bytes you send while the device is away are dropped rather than queued. A board that has just reconnected needs current values, not a replay of everything it missed.
+
+<a name="firmata"></a>
+
+### A board with no firmware of your own: Firmata
+
+```swift
+import OllinSerial
+
+let board = FirmataBoard(matching: "usbmodem")   // StandardFirmata's own 57600 baud
+
+override func setup() { board.open() }
+override func draw() {
+    let level = board.analog(0, default: 0)          // A0, scaled 0...1
+    let pressed = board.digital(2, pullUp: true, default: false)
+    board.write(13, pressed)                          // digital out
+    board.write(9, level)                             // PWM duty 0...1
+    board.write(10, angle: 90 + 90 * sin(time))       // a servo, in degrees
+}
+```
+
+Firmata is the protocol behind the sketch every Arduino IDE ships (File > Examples >
+Firmata > StandardFirmata). Upload that once and the board's pins answer to the Mac.
+There is no firmware of your own to write or to keep in step with the sketch. A
+`FirmataBoard` wraps a `SerialPort` and speaks the protocol over it. The port is its own,
+from `matching:` or `path:`, or one you built and pass as `port:`.
+
+```swift
+func analog(_ pin: Int) -> Double?                 // A0 is 0; the latest reading, 0...1
+func analog(_ pin: Int, default: Double) -> Double
+func digital(_ pin: Int, pullUp: Bool = false) -> Bool?
+func digital(_ pin: Int, pullUp: Bool = false, default: Bool) -> Bool
+func messages() -> [FirmataMessage]                // every decoded message since the last call
+
+func write(_ pin: Int, _ value: Bool)              // digital out
+func write(_ pin: Int, _ level: Double)            // PWM, 0...1
+func write(_ pin: Int, angle: Double)              // servo, 0...180 degrees
+func setMode(_ pin: Int, _ mode: FirmataPinMode)   // .input, .inputPullUp, .output, .pwm, .servo, .analog
+func setSamplingInterval(_ milliseconds: Int)      // how often the board reports analog pins
+func send(text: String)
+
+func bind(analog pin: Int, to param: Param<Double>)
+func unbind(analog pin: Int)
+
+var firmware: FirmataFirmware?                     // what the board said it runs, once it has
+var port: SerialPort
+```
+
+**Asking a pin is what turns it on.** The first `analog(0)` asks the board to report A0.
+The first `digital(2)` puts pin 2 in input mode and asks for its port. With `pullUp`
+true the board's own pull-up is on, so a button wired to ground reads true when pressed.
+A later ask leaves the mode alone; `setMode` changes it. A write sets the pin's mode the
+first time. Nothing is sent twice, and a pin you never ask about is never touched. Analog
+pins are numbered as channels, so A0 is 0. Digital pins go by their pin number, the way
+the protocol and the board's silkscreen do.
+
+**The board forgets everything when it resets**, and an Arduino resets when its port
+opens. So the board is asked what it runs on every connection. Whenever it announces
+itself, every mode, report, and sampling interval asked so far is restated. Replug the
+board and it picks up where the sketch is. `firmware` is `nil` until the board has
+answered.
+
+The reads follow the port's shape: the latest value, `nil` until one arrives, or
+`messages()` for every decoded message since the last frame. That is each analog reading,
+each digital pin that changed, text the firmware sent, and the announcement.
+`bind(analog:to:)` maps a pin's `0...1` onto a `@Param`'s own range, the way
+`bind(to:from:)` does for a line stream. Neither needs a pin asked first; they ask for
+you.
+
+The **Firmata** example (`Examples/Integration/Firmata`) draws the six analog pins as bars
+and digital pins 2 through 7 as dots. A click flips the LED on pin 13, and the mouse sets
+the PWM duty on pin 9.
 
 <a name="testing-without-hardware"></a>
 
