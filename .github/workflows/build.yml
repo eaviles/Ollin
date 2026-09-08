@@ -182,13 +182,18 @@ jobs:
       # probe queues on one thread and a single process uses a fraction of the
       # cores; the log's long silences are that queue draining, in bursts
       # (2026-09-06: 3,400 tests reported in the first ten minutes, six
-      # minutes of silence, 1,500 more at minute 22). The recipe runs
-      # OllinTests as two processes, dealt by suite, with every other target
-      # in a third beside them, which is what three cores have room for. The
-      # shards invoke the built bundle directly the way SwiftPM itself does;
-      # Scripts/shard-tests.sh handles the merged bundle this toolchain
-      # writes as well as the per-target one the desk's does, and refuses to
-      # fall back to one process silently.
+      # minutes of silence, 1,500 more at minute 22). The recipe runs the
+      # loopback suites alone first (a clock train through Core MIDI measured
+      # against a window starves beside other processes), then OllinTests as
+      # two processes, dealt by suite, with every other target in a third
+      # beside them at a lower priority, which is what three cores have room
+      # for. The shards invoke the built bundle directly the way SwiftPM
+      # itself does; Scripts/shard-tests.sh handles the merged bundle this
+      # toolchain writes as well as the per-target one the desk's does,
+      # prints a heartbeat with each shard's count (its shards write to their
+      # own files, and a silent run reads as a wedge below), and refuses to
+      # fall back to one process silently. Measured 2026-09-08 with the cache
+      # warm: the build 2 min, the shards 1117 s, the step 19 min.
       #
       # The step timeout is the hang guard, and it has three times been set
       # too low rather than too high: ten minutes was a figure from a much

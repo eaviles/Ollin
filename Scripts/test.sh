@@ -10,10 +10,11 @@
 #                                # everyday run leaves out
 #   Scripts/test.sh shard        # the same suite with OllinTests split
 #                                # across processes: fewer minutes, more fans
-#   Scripts/test.sh ci           # the runner's recipe (build.yml): OllinTests
-#                                # as two shards with every other target
-#                                # running beside them, minus the suites that
-#                                # want a device the runner does not have
+#   Scripts/test.sh ci           # the runner's recipe (build.yml): the loopback
+#                                # suites alone, then OllinTests as two shards
+#                                # with every other target running beside them,
+#                                # minus the suites that want a device the
+#                                # runner does not have
 #   Scripts/test.sh <pattern>    # swift test --filter <pattern>
 #
 # The sharded run exists because OllinTests draws through `Sketch`, which is
@@ -95,6 +96,16 @@ sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisio
 # not here: it then refuses itself wherever the device is absent.
 runner='OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests|PhoneProjectBuildTests|OllinCameraTests.VirtualCameraTests'
 
+# The runner's own quiet phase: the loopback suites send a clock train or a
+# frame through a real system service (Core MIDI, the Link session's socket,
+# the laser's stand-in DAC) and measure what arrives against a window. Beside
+# two shards on three cores they starve: the timecode clock's one-second
+# window closed before its probe ran, the tempo clock read no tempo at all
+# (2026-09-08, run 34248343439, both in the third process at minute ten). Run
+# alone first they take seconds, the same phasing the desk gives its
+# wall-clock suites above.
+loopback='OllinMIDITests.MIDILoopbackTests|OllinMIDITests.TempoClockLoopbackTests|OllinLinkTests.LinkLoopbackTests|OllinLaserTests.EtherDreamLoopbackTests'
+
 phases() {
     echo "test.sh: phase 1 of 2, the wall-clock and device suites alone"
     swift test --filter "$sensitive" || exit 1
@@ -126,18 +137,24 @@ milestone | --milestone)
     phases
     ;;
 ci)
-    # Two shards of OllinTests and one process for every other target, all at
-    # once: the shards are main-thread bound, so their pools leave the cores
-    # to the third process, and three processes are what the runner has cores
-    # for. Everything is built first so that neither the shards (which invoke
-    # the bundle directly) nor `swift test --skip-build` has anything left to
-    # compile. Each line says which of the three wrote it.
-    echo "test.sh: the runner's recipe; OllinTests as ${OLLIN_CI_SHARDS:-2} shards, the other targets beside them"
+    # The loopback suites alone, then two shards of OllinTests and one process
+    # for every other target at once. Everything is built first so that
+    # neither the shards (which invoke the bundle directly) nor
+    # `swift test --skip-build` has anything left to compile. The third
+    # process runs at a lower priority: the shards are main-thread bound and
+    # their pools leave the cores to it, but with all three at the same
+    # priority one shard's main thread got no time for six minutes while the
+    # third process drained its own queue (the heartbeat showed it sitting at
+    # zero). Each line says which of the three wrote it.
+    echo "test.sh: the runner's recipe; the loopback suites alone, then OllinTests as ${OLLIN_CI_SHARDS:-2} shards with the other targets beside them"
     swift build --build-tests || exit 1
+    echo "test.sh: phase 1 of 2, the loopback suites alone"
+    swift test --skip-build --filter "$loopback" || exit 1
+    echo "test.sh: phase 2 of 2, the shards and the rest"
     export OLLIN_SHARD_SKIP="$sensitive|$runner"
     Scripts/shard-tests.sh "${OLLIN_CI_SHARDS:-2}" > >(sed -l 's/^/[shards] /') 2>&1 &
     shardsPid=$!
-    swift test --skip-build --skip "$sensitive|$runner|^OllinTests\\." > >(sed -l 's/^/[rest] /') 2>&1 &
+    nice -n 10 swift test --skip-build --skip "$sensitive|$runner|$loopback|^OllinTests\\." > >(sed -l 's/^/[rest] /') 2>&1 &
     restPid=$!
     failed=0
     wait $shardsPid || failed=1
