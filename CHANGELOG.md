@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-08
+
 ### Added
 
 - **Newton's basins.** `generate(.newton(roots:))` runs Newton's method from every pixel over the polynomial with the roots you place (up to eight) and colors each pixel by the root it lands on, shaded by how many steps it took, with the palette spread around the roots and `phase` turning it. `relaxation` scales the step so the basins swell, spiral, and shed islands, and a pixel the method never brings home is painted `trapped`. The `Effects/NewtonBasins` example, a Guide section in Chapter 18 with the NewtonBasins figure, and the `newton-basins` snapshot.
@@ -121,5 +123,6 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/eaviles/Ollin/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/eaviles/Ollin/releases/tag/0.1.0

@@ -72,7 +72,7 @@ platforms: [
 ],
 dependencies: [
     // Pre-1.0: a breaking change bumps the minor, so stay on one minor.
-    .package(url: "https://github.com/eaviles/Ollin.git", .upToNextMinor(from: "0.1.0"))
+    .package(url: "https://github.com/eaviles/Ollin.git", .upToNextMinor(from: "0.2.0"))
 ],
 targets: [
     .executableTarget(
