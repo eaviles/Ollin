@@ -75,6 +75,7 @@ final class MaterialExplorer: Sketch {
     @Param(group: "Stage") var backdrop: Backdrop = .studio
     @Param(group: "Stage") var shadows = true
     @Param(group: "Stage") var haze = false
+    @Param("Air", icon: "cloud.fog", group: "Stage") var air: Fog = .haze
 
     // The finish, parameter by parameter. Defaults spell out `.glossy`, the opening preset.
     @Param(group: "Finish") var shading: ShadingChoice = .standard
@@ -234,7 +235,7 @@ final class MaterialExplorer: Sketch {
         lightingPreset(mood)
         if let environment = backdrop.environment { self.environment(environment) }
         castShadows(shadows)
-        if haze { fog(Color(white: 0.55), density: 0.1) }
+        if haze { fog(air) }
 
         // The ground that catches the shadow: matte, neutral.
         withState {

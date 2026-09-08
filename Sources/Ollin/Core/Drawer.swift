@@ -727,6 +727,10 @@ final class Drawer {
     /// How the fog thins with world height y (density is `fogDensity · e^(−falloff·y)`);
     /// 0 = the same thickness everywhere.
     private(set) var fogHeightFalloff: Double = 0
+    /// A fog given as a `Fog` value, measured against the camera rather than in
+    /// world units: its density and falloff are worked out at pack time from the
+    /// framing in force. nil while the frame's fog was given in world units.
+    private(set) var fogValue: Fog? = nil
     /// Aerial perspective (`aerialPerspective`): true while this frame chose the
     /// wavelength-split atmosphere over classic fog. Per-frame state like the lights;
     /// the two models are exclusive, so setting either clears the other.
@@ -2493,6 +2497,18 @@ final class Drawer {
         fogColor = color
         fogDensity = max(0, density)
         fogHeightFalloff = max(0, heightFalloff)
+        fogValue = nil
+        aerialActive = false
+    }
+
+    /// Wrap this frame's 3D scene in a `Fog` value: the veil and the pooling
+    /// are measured against the camera's target distance and turned into the
+    /// world-unit density and falloff when the frame's lighting is packed.
+    func fog(_ fog: Fog) {
+        fogColor = fog.color
+        fogDensity = 0
+        fogHeightFalloff = 0
+        fogValue = fog
         aerialActive = false
     }
 
@@ -2501,6 +2517,7 @@ final class Drawer {
         fogColor = nil
         fogDensity = 0
         fogHeightFalloff = 0
+        fogValue = nil
     }
 
     /// Wrap this frame's 3D scene in aerial perspective: the fog integral split by
@@ -2633,7 +2650,16 @@ final class Drawer {
             u.fogColor = SIMD4<Float>(Float(Color.srgbToLinear(c.red)),
                                       Float(Color.srgbToLinear(c.green)),
                                       Float(Color.srgbToLinear(c.blue)), 1)
-            u.fogParams = SIMD4<Float>(Float(fogDensity), Float(fogHeightFalloff),
+            // A `Fog` value is measured against the camera: its veil and pooling
+            // become the world-unit density and falloff at the framing in force,
+            // the same distance the aerial default derives from.
+            var density = fogDensity, falloff = fogHeightFalloff
+            if let fogValue {
+                let radius = camera3D.map { max(($0.eye - $0.target).length, 1e-4) } ?? 1000
+                density = fogValue.density(at: radius)
+                falloff = fogValue.heightFalloff(at: radius)
+            }
+            u.fogParams = SIMD4<Float>(Float(density), Float(falloff),
                                        Float(volumetricAmount), Float(volumetricAnisotropy))
             // x (the march's step budget) stays 0 here: the renderer owns the
             // quality-to-budget mapping and fills it at encode time. y caps the air
@@ -3941,6 +3967,7 @@ final class Drawer {
         fogColor = nil
         fogDensity = 0
         fogHeightFalloff = 0
+        fogValue = nil
         aerialActive = false
         aerialDensity = nil
         aerialHaziness = 0.3

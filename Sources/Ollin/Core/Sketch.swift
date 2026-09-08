@@ -1657,6 +1657,14 @@ open class Sketch {
         drawer.fog(color, density: density, heightFalloff: heightFalloff)
     }
 
+    /// Wrap this frame's 3D scene in a `Fog` value: a color, a `veil` (how much of a
+    /// surface at the camera's target distance is fog) and a `pooling` (how fast it
+    /// thins with height, in target distances), so `.mist` reads alike at any scene
+    /// scale. The presets (`.haze`, `.mist`, `.thick`, `.groundMist`, `.night`) sit on
+    /// the inspector's menu as a `@Param`. Per-frame state like the bare call;
+    /// `noFog()` turns it back off.
+    public func fog(_ fog: Fog) { drawer.fog(fog) }
+
     /// Clear the fog (the default).
     public func noFog() { drawer.noFog() }
 

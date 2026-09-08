@@ -2104,6 +2104,7 @@ open class Sketch: Sendable
   func fill(_: Paint)
   func flowField(scale: Double = default, turns: Double = default, z: Double = default) -> FlowField
   func fog(_: Color, density: Double = default, heightFalloff: Double = default)
+  func fog(_: Fog)
   func fordCircles(order: Int, in: Rectangle? = default, interval: ClosedRange<Double> = default) -> [FordCircle]
   func forgetCheckpoint()
   func frameInterpolation()
@@ -3488,6 +3489,20 @@ struct FlowField
   func streamlines(from: [Vector2], stepLength: Double = default, steps: Int = default, bounds: Rectangle? = default, separation: Double? = default) -> [[Vector2]]
   init(angle: (Vector2) -> Double)
   let angle: (Vector2) -> Double
+struct Fog: ParamChoices, ParamValue, Equatable, Hashable, Sendable
+  func density(at: Double) -> Double
+  func heightFalloff(at: Double) -> Double
+  func tinted(_: Color) -> Fog
+  init(_: Color = default, veil: Double = default, pooling: Double = default)
+  static let groundMist: Fog
+  static let haze: Fog
+  static let mist: Fog
+  static let night: Fog
+  static let thick: Fog
+  static var paramChoices: [(name: String, value: Fog)] { get }
+  var color: Color { get set }
+  var pooling: Double { get set }
+  var veil: Double { get set }
 struct FordCircle: Equatable, Sendable
   func touches(_: FordCircle) -> Bool
   init(fraction: Fraction, circle: Circle)

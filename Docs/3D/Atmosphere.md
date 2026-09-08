@@ -21,6 +21,7 @@ override func draw() {
 ### Contents
 
 - [Fog](#fog) - `fog(_:density:heightFalloff:)` / `noFog()`
+- [Fog as one value](#fog-value) - a `Fog` value and its presets, measured against the camera
 - [Aerial perspective](#aerial) - `aerialPerspective(density:haziness:heightFalloff:sun:)` / `noAerialPerspective()`
 - [Volumetric light](#volumetric) - `volumetricLight(_:anisotropy:)` / `noVolumetricLight()`
 - [Quality](#quality) - `volumetricQuality(_:)` / `volumetricSteps(_:)`
@@ -43,6 +44,22 @@ noFog()
 The fog color is also the glow of the air itself, the ambient light the mist scatters toward you. Empty sky fades toward that color with distance. The air backdrop draws in the same slot as the environment skybox: behind everything 3D, and under anything 2D you draw.
 
 The example `3D/Effects/Atmosphere` is a colonnade standing in pooled mist. Hold space to switch it to aerial perspective, and a new `variation` scatters the scene again.
+
+<a id="fog-value"></a>
+### Fog as one value
+
+```swift
+fog(.mist)                                   // the target half veiled, at any scene scale
+fog(.groundMist)                             // pooled low
+fog(Fog.night.tinted(Color(hex: 0x1A1020)))  // a preset in another color
+fog(Fog(veil: 0.7, pooling: 1))              // your own air
+
+@Param("Air", icon: "cloud.fog") var air: Fog = .haze   // the presets on a menu
+```
+
+`density` is a number of inverse world units. The same value reads as mist over a ten-unit courtyard and as soup over a one-unit tabletop. A `Fog` measures the air against the camera instead. `veil` is how much of a surface at the camera's target distance is fog, from 0 to just under 1. `pooling` is how fast the fog thins with height, in target distances. At 0 the air is even, and at 1 it thins to a third by one target distance up. Each frame the value is turned into the density and falloff the bare call would take at the camera in force. So `.mist` reads alike in a room and over a range, the way a bare `aerialPerspective()` does. The two calls are the same fog underneath, and the last one in a frame wins.
+
+The presets are `.haze` (a quarter veiled), `.mist` (half), `.thick` (most), `.groundMist` (half, pooled low), and `.night` (a dark blue-black air). `tinted(_:)` keeps a preset's air in another color. A `Fog` is a `ParamChoices` value, so a `@Param` of that type puts the presets on the inspector's menu. `3D/Materials/Explorer` has one behind its haze switch.
 
 <a id="aerial"></a>
 ### Aerial perspective
