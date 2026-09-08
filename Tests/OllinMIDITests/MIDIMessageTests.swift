@@ -81,7 +81,7 @@ struct MIDIMessageTests {
     @Test func rejectsBareDataByteAndUnmodeledSystem() {
         #expect(MIDIMessage(status: 0x40, data1: 0, data2: 0) == nil)   // a data byte, not a status
         #expect(MIDIMessage(status: 0xF0) == nil)   // SysEx start
-        #expect(MIDIMessage(status: 0xF1, data1: 1) == nil)   // MIDI time code
+        #expect(MIDIMessage(status: 0xF3, data1: 1) == nil)   // MIDI time code
         #expect(MIDIMessage(status: 0xF6) == nil)   // tune request
         #expect(MIDIMessage(status: 0xFE) == nil)   // active sensing
     }

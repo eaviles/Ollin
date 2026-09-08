@@ -56,6 +56,11 @@ public struct MIDIMessage: Sendable, Equatable {
         /// (6 timing clocks each), 0…16383. Usually sent while stopped, so a
         /// following `continue` resumes from the right place. (No channel.)
         case songPosition(sixteenths: Int)
+        /// One piece of a MIDI Time Code position: `piece` (0…7) names which
+        /// nibble of the hours, minutes, seconds, and frames this is, `value`
+        /// the nibble. A running sender spells a whole time in eight of them,
+        /// four a frame; `TimecodeClock` reads them.
+        case timecodeQuarterFrame(piece: Int, value: Int)
     }
 
     /// What the message says.
@@ -127,8 +132,8 @@ public struct MIDIMessage: Sendable, Equatable {
 public extension MIDIMessage {
     /// Builds a message from a MIDI 1.0 status byte and up to two data bytes.
     ///
-    /// Returns `nil` for status bytes Ollin doesn't model (System Exclusive, MIDI
-    /// Time Code, song select, tune request, active sensing, reset) and for a
+    /// Returns `nil` for status bytes Ollin doesn't model (System Exclusive,
+    /// song select, tune request, active sensing, reset) and for a
     /// bare data byte (`status < 0x80`), so a caller can skip what it doesn't
     /// understand without trapping. A note-on with velocity `0` is normalized to
     /// a note-off, the convention most gear uses.
@@ -136,9 +141,10 @@ public extension MIDIMessage {
         guard status >= 0x80 else { return nil }   // a data byte alone isn't a message
 
         // System real-time / common: 0xF0…0xFF, no channel. Only the transport,
-        // clock, and song-position messages are modeled; the rest are skipped.
+        // clock, song-position, and timecode messages are modeled; the rest are skipped.
         if status >= 0xF0 {
             switch status {
+            case 0xF1: self.init(.timecodeQuarterFrame(piece: Int(data1 >> 4) & 0x7, value: Int(data1 & 0x0F)))
             case 0xF2: self.init(.songPosition(sixteenths: Int(data1 & 0x7F) | (Int(data2 & 0x7F) << 7)))
             case 0xF8: self.init(.clock)
             case 0xFA: self.init(.start)
@@ -209,6 +215,8 @@ public extension MIDIMessage {
         case .songPosition(let sixteenths):
             let s = Swift.max(0, Swift.min(16383, sixteenths))
             return (0xF2, UInt8(s & 0x7F), UInt8((s >> 7) & 0x7F))
+        case .timecodeQuarterFrame(let piece, let value):
+            return (0xF1, UInt8(((piece & 0x7) << 4) | (value & 0xF)), 0)
         }
     }
 
@@ -239,6 +247,7 @@ extension MIDIMessage: CustomStringConvertible {
         case .stop:                        return "stop"
         case .continue:                    return "continue"
         case .songPosition(let s):         return "songPosition \(s)"
+        case .timecodeQuarterFrame(let p, let v): return "timecode piece \(p) = \(v)"
         }
         return "ch\(channel) \(body)"
     }

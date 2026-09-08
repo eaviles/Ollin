@@ -67,8 +67,13 @@ public final class MIDIInput: @unchecked Sendable {
         var inbox: [MIDIMessage] = []
         var bindings: [ControlKey: ParamBinding] = [:]
         var listeners: [@Sendable (MIDIMessage, Double) -> Void] = []
+        var exclusiveListeners: [@Sendable ([UInt8], Double) -> Void] = []
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
+    /// A system exclusive being assembled across packets, on the Core MIDI thread.
+    private let exclusive = OSAllocatedUnfairLock(initialState: [UInt8]())
+    /// How many 32-bit words each Universal MIDI Packet type spans, by its high nibble.
+    private static let umpWordCount = [1, 1, 1, 2, 2, 4, 1, 1, 2, 2, 2, 3, 3, 4, 4, 4]
 
     /// Cap on undrained messages, so a sketch that never calls `messages()`
     /// doesn't grow the inbox without bound; the oldest are dropped past it.
@@ -245,6 +250,14 @@ public final class MIDIInput: @unchecked Sendable {
         state.withLock { $0.listeners.append(listener) }
     }
 
+    /// Registers a closure called with every complete system exclusive message
+    /// (the bytes between its start and end) and its host-time stamp in
+    /// seconds. Module-internal for the same reasons as `addListener`; the
+    /// `TimecodeClock` reads full-frame messages through it.
+    func addSysExListener(_ listener: @escaping @Sendable ([UInt8], Double) -> Void) {
+        state.withLock { $0.exclusiveListeners.append(listener) }
+    }
+
     // MARK: Receiving (Core MIDI thread)
 
     private func handle(_ eventList: UnsafePointer<MIDIEventList>) {
@@ -252,9 +265,13 @@ public final class MIDIInput: @unchecked Sendable {
         guard packetCount > 0 else { return }
 
         var parsed: [(message: MIDIMessage, time: Double)] = []
+        var exclusives: [(body: [UInt8], time: Double)] = []
         // The packets follow the list header; walk them with MIDIEventPacketNext,
         // reading each packet's Universal MIDI Packet words. Each packet carries a
         // host-time stamp (0 means "now"), converted to seconds for the listeners.
+        // A message spans one to four words by its type, so the walk steps by
+        // that count: reading a two-word exclusive one word at a time would
+        // take its data for a message.
         var packet = UnsafeRawPointer(eventList)
             .advanced(by: MemoryLayout<MIDIEventList>.offset(of: \.packet)!)
             .assumingMemoryBound(to: MIDIEventPacket.self)
@@ -264,13 +281,62 @@ public final class MIDIInput: @unchecked Sendable {
             let wordCount = Int(packet.pointee.wordCount)
             withUnsafeBytes(of: packet.pointee.words) { raw in
                 let words = raw.bindMemory(to: UInt32.self)
-                for i in 0..<min(wordCount, words.count) {
-                    if let message = MIDIMessage(umpWord: words[i]) { parsed.append((message, seconds)) }
+                let count = min(wordCount, words.count)
+                var i = 0
+                while i < count {
+                    let word = words[i]
+                    let type = Int(word >> 28)
+                    if type == 0x3 {
+                        if i + 1 < count, let body = assembleExclusive(word, words[i + 1]) {
+                            exclusives.append((body, seconds))
+                        }
+                    } else if let message = MIDIMessage(umpWord: word) {
+                        parsed.append((message, seconds))
+                    }
+                    i += Self.umpWordCount[type]
                 }
             }
             packet = UnsafePointer(MIDIEventPacketNext(packet))
         }
         if !parsed.isEmpty { ingest(parsed) }
+        if !exclusives.isEmpty {
+            let listeners = state.withLock { $0.exclusiveListeners }
+            for (body, time) in exclusives {
+                for listener in listeners { listener(body, time) }
+            }
+        }
+    }
+
+    /// One 7-bit system exclusive packet (two words: a status of complete,
+    /// start, continue, or end, a byte count, and up to six bytes), folded
+    /// into the message being assembled. Returns the whole body when a
+    /// message completes.
+    private func assembleExclusive(_ first: UInt32, _ second: UInt32) -> [UInt8]? {
+        let status = Int(first >> 20) & 0xF
+        let count = min(6, Int(first >> 16) & 0xF)
+        let bytes = [UInt8((first >> 8) & 0x7F), UInt8(first & 0x7F),
+                     UInt8((second >> 24) & 0x7F), UInt8((second >> 16) & 0x7F),
+                     UInt8((second >> 8) & 0x7F), UInt8(second & 0x7F)].prefix(count)
+        return exclusive.withLock { buffer -> [UInt8]? in
+            switch status {
+            case 0x0:
+                buffer.removeAll(keepingCapacity: true)
+                return Array(bytes)
+            case 0x1:
+                buffer = Array(bytes)
+                return nil
+            case 0x2:
+                buffer.append(contentsOf: bytes)
+                return nil
+            case 0x3:
+                buffer.append(contentsOf: bytes)
+                let whole = buffer
+                buffer.removeAll(keepingCapacity: true)
+                return whole
+            default:
+                return nil
+            }
+        }
     }
 
     private func ingest(_ messages: [(message: MIDIMessage, time: Double)]) {

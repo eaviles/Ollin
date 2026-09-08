@@ -38,6 +38,7 @@ final class Wired: Sketch {
 - [MIDIInput](#midiinput) - read incoming MIDI three ways
 - [Binding to a `@Param`](#binding-to-a-param) - drive a parameter from a controller
 - [Tempo sync (TempoClock)](#tempo-sync-tempoclock) - lock motion to the beat of whatever is playing
+- [Timecode (TimecodeClock)](#timecode-timecodeclock) - chase a timeline sent as MIDI Time Code
 - [MIDIOutput](#midioutput) - send notes and control changes
 - [Testing without hardware](#testing-without-hardware) - loopback and the monitor
 
@@ -58,6 +59,8 @@ default: break
 ```
 
 The common kinds are `.noteOn` / `.noteOff` (a key or pad), `.controlChange` (a knob, fader, or pedal), and `.pitchBend`. The other kinds are `.programChange`, `.channelPressure`, `.polyPressure`, and the system sync messages `.clock` / `.start` / `.stop` / `.continue` / `.songPosition`. The sync messages carry no channel, so they report `0`, and the [tempo clock](#tempo-sync-tempoclock) reads them for you. A note-on with velocity 0 becomes `.noteOff`, because many devices send that form for a release.
+
+A `.timecodeQuarterFrame(piece:value:)` is one piece of a MIDI Time Code position; a `TimecodeClock` reads those for you.
 
 The convenience accessors cover the common reads, so you rarely need to switch on `kind` directly:
 
@@ -212,6 +215,50 @@ override func draw() {
 
 The **Tempo** example (`Examples/Integration/Tempo`) shows this with no hardware. An internal timer sends clock through a virtual source, and the visuals lock to it. Connect real gear to the Mac, and the same sketch follows that clock instead.
 
+<a name="timecode-timecodeclock"></a>
+
+### Timecode (TimecodeClock)
+
+```swift
+TimecodeClock(from: MIDIInput)
+var timecode: Timecode?             // the frame the timeline is on; nil until any arrives
+var seconds: Double                 // the position in seconds, gliding between frames
+var frameRate: Timecode.FrameRate?  // 24, 25, 29.97 drop, or 30, once the sender has said
+var isPlaying: Bool                 // quarter frames arrived within the last half second
+var isReceiving: Bool               // any timecode arrived within the last second
+var isReversed: Bool                // the pieces run backward: a deck shuttling in reverse
+
+Timecode(hours:minutes:seconds:frames:frameRate:)
+Timecode(frameNumber:frameRate:)    // and Timecode(seconds:frameRate:)
+var frameNumber: Int                // frames from zero, the dropped numbers not counted
+var totalSeconds: Double            // the same on the wall clock
+func advanced(by frames: Int) -> Timecode
+"\(code)"                           // "01:02:03:04", or "00:10:00;02" for drop frame
+```
+
+Where a tempo clock says how fast, timecode says where. A video deck, a show controller, a lighting desk, or a DAW locked to picture sends its position as MIDI Time Code. That is hours, minutes, seconds, and frames, at one of four frame rates. A `TimecodeClock` reads it, so a sketch can chase the same timeline and land a cue on the frame:
+
+```swift
+let midi = MIDIInput()
+lazy var timecode = TimecodeClock(from: midi)
+
+override func setup() { try? midi.start() }
+
+override func draw() {
+    background(.black)
+    let t = timecode.seconds                                   // 90.48 when the deck reads 00:01:30:12 at 25
+    fill(t >= 90 && t < 92 ? .white : Color(white: 0.3))      // a cue at a minute and a half
+    drawCircle(width / 2, height / 2, 120 * scale)
+    drawText(timecode.timecode.map { "\($0)" } ?? "--:--:--:--", 40 * scale, 60 * scale)
+}
+```
+
+**How it reads the wire.** A running sender spells its position in eight *quarter-frame* messages, four to a frame, so a whole time arrives every two frames. The clock counts every message as a quarter of a frame in the direction the pieces run, and re-anchors on each completed set. A deck shuttling backward sends them in reverse, and the position runs backward with it. `seconds` is therefore exact at every message and glides at the frame rate between them. The glide stops just short of the next message, so a late one never runs it backward. A *full-frame* message, the one a deck sends when it locates or stops, sets the position outright. Half a second of silence means the transport stopped, and the position holds where it was.
+
+**Frame rates.** `Timecode.FrameRate` is the four the protocol names: `.fps24`, `.fps25`, `.fps30Drop`, and `.fps30`. Drop frame counts thirty frames a second over video that runs at 29.97. It skips frame numbers 0 and 1 at the top of every minute except each tenth, so the labels stay on the wall clock. `frameNumber` and `totalSeconds` account for that, and a drop-frame timecode prints with a semicolon before the frames, the way a broadcast display does.
+
+**Sending it.** `MIDIOutput.send(timecode:)` sends a position whole as a full-frame message. `send(.timecodeQuarterFrame(piece:value:))` with `Timecode.quarterFrameValue(piece:)` spells one out, and `send(sysEx:)` under both sends any system exclusive. The **Timecode** example (`Examples/Integration/Timecode`) plays the deck itself. An internal timer sends the quarter frames through a virtual source, a `TimecodeClock` follows them, and cues flash under a scrolling timeline. Point a real sender at the Mac and the same sketch chases that.
+
 <a name="midioutput"></a>
 
 ### MIDIOutput
@@ -225,6 +272,8 @@ func send(_ message: MIDIMessage)
 func noteOn(_ note: Int, velocity: Int = 100, channel: Int = 1)
 func noteOff(_ note: Int, velocity: Int = 0, channel: Int = 1)
 func controlChange(_ controller: Int, value: Int, channel: Int = 1)
+func send(sysEx body: [UInt8])       // a system exclusive, the bytes between its start and end
+func send(timecode: Timecode)         // a position whole, as a full-frame timecode message
 func close()
 ```
 
@@ -248,4 +297,4 @@ To bring in real gear, connect a controller and run the **MIDIMonitor** example 
 
 ---
 
-See the **MIDILoopback** example for a sketch that sends and receives with no hardware. Use **MIDIMonitor** to inspect messages from a real controller, and **Tempo** for visuals locked to MIDI clock.
+See the **MIDILoopback** example for a sketch that sends and receives with no hardware. Use **MIDIMonitor** to inspect messages from a real controller, **Tempo** for visuals locked to MIDI clock, and **Timecode** for a sketch that chases a timeline.

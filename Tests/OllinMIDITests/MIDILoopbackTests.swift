@@ -103,4 +103,29 @@ struct MIDILoopbackTests {
         #expect((value?.beatsPerMinute ?? 0) > 159)
         #expect(value?.beatsPerBar == 3)
     }
+
+    /// Timecode crosses the link both ways it travels: eight quarter frames
+    /// land a `TimecodeClock` on the frame they spell plus the frame the set
+    /// took, and a full-frame exclusive (the two-packet path through the
+    /// event list) locates it outright.
+    @Test func timecodeCrossesTheLink() async {
+        guard let (output, input) = await makePair() else { return }   // soft-skip
+        defer { output.close(); input.stop() }
+
+        let clock = TimecodeClock(from: input)
+        let code = Timecode(hours: 1, minutes: 2, seconds: 3, frames: 4, frameRate: .fps25)
+        for piece in 0 ..< 8 {
+            output.send(MIDIMessage(.timecodeQuarterFrame(piece: piece, value: code.quarterFrameValue(piece: piece))))
+        }
+        let landed = await waitFor { clock.timecode }
+        #expect(landed?.frameRate == .fps25)
+        #expect(landed == code.advanced(by: 1))
+        #expect(clock.isReceiving)
+
+        let parked = Timecode(hours: 9, minutes: 0, seconds: 0, frames: 0, frameRate: .fps30)
+        output.send(timecode: parked)
+        let located = await waitFor { clock.timecode == parked ? parked : nil }
+        #expect(located == parked)
+        #expect(clock.frameRate == .fps30)
+    }
 }

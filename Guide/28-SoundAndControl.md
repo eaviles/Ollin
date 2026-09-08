@@ -203,6 +203,17 @@ The readers in the figure cover most of what you'll want. `beats` is the running
 
 Two behaviors to expect from real gear. Pressing play on the master arms the clock, and it starts on the *next* tick rather than immediately. That is the MIDI convention, and it keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock. `TempoClock` then starts following from the first tick it hears. The `Integration/Tempo` example (in its MIDI mode) rehearses all of this with no hardware, by having the sketch send clock to itself. [The MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
 
+The other position a cable carries is *timecode*. A video deck, a show controller, a lighting desk, or a DAW locked to picture broadcasts where it is rather than how fast it goes. It sends hours, minutes, seconds, and frames, as MIDI Time Code. A `TimecodeClock` reads it, so a sketch can land a cue on the frame the video hits it:
+
+```swift
+lazy var timecode = TimecodeClock(from: midi)
+// in draw():
+let t = timecode.seconds                                          // where the timeline is
+drawText(timecode.timecode.map { "\($0)" } ?? "--:--:--:--", 40, 60)   // 00:01:30:12
+```
+
+The sender spells each position in eight small messages, four to a frame, so a whole time arrives every two frames. The clock counts each message as a quarter of a frame in between. Stop the deck and the position holds where it was. Press locate and a single full-frame message jumps it there. The **Timecode** example (`Examples/Integration/Timecode`) plays the deck itself with an internal timer. You can watch cues flash under a scrolling timeline with nothing plugged in.
+
 **OSC** is the networked cousin, the protocol of TouchOSC, Max/MSP, TouchDesigner, and most of the performance world. Messages are named by slash-paths and travel over the network, which means the fader can be a phone on the same Wi-Fi:
 
 ```swift

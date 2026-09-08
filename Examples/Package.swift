@@ -621,6 +621,9 @@ let package = Package(
         // real gear pointed at the Mac drives the same sketch) or the local
         // network's shared tempo session (alone it free-runs at its own tempo).
         example("Integration/Tempo", [.midi, .link]),
+        // A sketch that chases a timeline: an internal deck sends MIDI Time Code
+        // to itself through a virtual source and a TimecodeClock follows it.
+        example("Integration/Timecode", [.midi]),
         // Self-contained: a fake device on the manager side of a pty pair prints
         // a sensor value and a SerialPort reads the other side, so the classic
         // physical-computing loop runs with no hardware (like OSCLoopback);
