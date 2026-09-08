@@ -3,12 +3,13 @@ import OllinProjects
 
 /// The site: the repository's own writing, rendered as one set of web pages.
 ///
-/// A lens on the markdown, not a second copy of it. The README is the front
-/// page, the Guide and the reference are their own sections with the chapter
-/// list and the index groups beside them, and the examples are a gallery
-/// where every sketch has a page with its source. Nothing is rewritten on the
-/// way: a page's prose reaches the site exactly as the file spells it, and
-/// only the chrome around it is the site's own.
+/// A lens on the markdown, not a second copy of it. The README opens the
+/// front page (its opening and a few of its sections, laid out for a page)
+/// and is the About page whole, the Guide and the reference are their own
+/// sections with the chapter list and the index groups beside them, and the
+/// examples are a gallery where every sketch has a page with its source.
+/// Nothing is rewritten on the way: a page's prose reaches the site exactly
+/// as the file spells it, and only the chrome around it is the site's own.
 ///
 /// Paths mirror the repository, lower-cased, with `README.md` as each
 /// folder's `index.html`, so every relative link a page already carries
@@ -99,18 +100,24 @@ public struct SiteBuilder {
         var examples: [String: Page] = [:]
         var docsGroups: [(name: String, topics: [String])] = []
         var exampleCategories: [(name: String, path: String)] = []
-        /// The small form of the logo for the bar, inlined in the page's ink.
+        /// The full mark for the bar, inlined in the page's ink.
         var mark = ""
-        /// The full mark for the front page, inlined the same way.
-        var logo = ""
+        /// The README rendered whole, beside the front page that shows part
+        /// of it; nil while the README is not in the checkout.
+        var about: Page?
+        /// Whether the checkout carries the two bitmaps `Scripts/logo.sh`
+        /// writes: the social card and the touch icon.
+        var hasSocialCard = false
+        var hasTouchIcon = false
     }
 
     /// The pages the site will hold, with their titles read ahead of time so
     /// every sidebar can name every neighbor.
     func plan() -> Plan {
         var plan = Plan()
-        plan.mark = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.small), className: "mark")
-        plan.logo = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.mark), className: "logo")
+        plan.mark = SiteLogo.inline(readingAt: root.appendingPathComponent(SiteLogo.mark), className: "mark")
+        plan.hasSocialCard = exists(SiteLogo.socialCard)
+        plan.hasTouchIcon = exists(SiteLogo.touchIcon)
 
         func add(_ repoPath: String, _ kind: Page.Kind, title: String? = nil, summary: String = "") {
             let url = root.appendingPathComponent(repoPath)
@@ -125,9 +132,18 @@ public struct SiteBuilder {
             plan.byRepoPath[repoPath] = page
         }
 
-        // The front page and the project pages beside it, in the order the
-        // README's own navigation row names them.
+        // The front page shows part of the README (`SiteHome`); the About
+        // page is the same file whole, so every section the front page
+        // leaves out is still one click away and every `README.md#anchor`
+        // link in the tree has a page that carries the anchor. Then the
+        // project pages, in the order the README's own navigation row names
+        // them.
         add("README.md", .home)
+        if exists("README.md") {
+            let about = Page(repoPath: "README.md", sitePath: "about.html", kind: .about, title: "About", summary: "")
+            plan.pages.append(about)
+            plan.about = about
+        }
         for name in Self.aboutPages where exists(name) {
             add(name, .about)
         }
@@ -182,6 +198,18 @@ public struct SiteBuilder {
         "DESIGN-NOTES.md", "ATTRIBUTION.md", "THIRD-PARTY-NOTICES.md", "CODE_OF_CONDUCT.md", "SECURITY.md",
     ]
 
+    /// The address GitHub Pages serves a repository's site at, from the
+    /// repository's own address (`https://github.com/owner/name` becomes
+    /// `https://owner.github.io/name/`), or nil for a repository hosted
+    /// anywhere else.
+    static func pagesAddress(of repository: String) -> String? {
+        guard let url = URL(string: repository), url.host == "github.com" else { return nil }
+        let parts = url.pathComponents.filter { $0 != "/" }
+        guard parts.count == 2 else { return nil }
+        let name = parts[1].hasSuffix(".git") ? String(parts[1].dropLast(4)) : parts[1]
+        return "https://\(parts[0].lowercased()).github.io/\(name)/"
+    }
+
     /// Where a repository path lands on the site.
     static func sitePath(forRepoPath repoPath: String) -> String {
         var parts = repoPath.split(separator: "/").map { $0.lowercased() }
@@ -212,7 +240,9 @@ public struct SiteBuilder {
             guard !topic.hasPrefix("..") else { continue }
             groups[groups.count - 1].topics.append(topic)
         }
-        return groups
+        // A heading with no page under it (the catalog table at the top of
+        // the index) is not a group.
+        return groups.filter { !$0.topics.isEmpty }
     }
 
     /// The example categories, in the order the listing's table names them.
@@ -279,11 +309,26 @@ public struct SiteBuilder {
             report.notes.append("the site has no favicon: \(SiteLogo.small) is not in the checkout")
         }
         if plan.mark.isEmpty {
-            report.notes.append("the bar has no mark: \(SiteLogo.small) is not in the checkout")
+            report.notes.append("the bar has no mark: \(SiteLogo.mark) is not in the checkout")
         }
-        if plan.logo.isEmpty {
-            report.notes.append("the front page has no mark: \(SiteLogo.mark) is not in the checkout")
+        // Safari's pinned-tab icon wants one color on nothing, which is what
+        // a master already is; the social card and the touch icon are the
+        // bitmaps Scripts/logo.sh writes beside the masters.
+        if let small = SiteLogo.read(root.appendingPathComponent(SiteLogo.small)) {
+            try write(SiteLogo.colored(small, ink: SiteLogo.ink), to: output.appendingPathComponent("mask-icon.svg"))
         }
+        for (present, file, sitePath, what) in [(plan.hasSocialCard, SiteLogo.socialCard, "assets/social.png", "a link preview shows no card"),
+                                                (plan.hasTouchIcon, SiteLogo.touchIcon, "apple-touch-icon.png", "a phone's home screen gets no icon")] {
+            if present {
+                let destination = output.appendingPathComponent(sitePath)
+                try manager.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+                if manager.fileExists(atPath: destination.path) { try manager.removeItem(at: destination) }
+                try manager.copyItem(at: root.appendingPathComponent(file), to: destination)
+            } else {
+                report.notes.append("\(what): \(file) is not in the checkout; run Scripts/logo.sh")
+            }
+        }
+        report.notes.append(contentsOf: log.notes)
         try write("", to: output.appendingPathComponent(".nojekyll"))
         if let domain { try write(domain + "\n", to: output.appendingPathComponent("CNAME")) }
 
@@ -305,23 +350,21 @@ public struct SiteBuilder {
         var images: [String: String] = [:]
         var missing: [String] = []
         var search: [SiteSearch.Entry] = []
+        /// What a page went without, for the report.
+        var notes: [String] = []
     }
 
     // MARK: - A markdown page
 
     func markdownPage(_ markdown: String, page: Page, plan: Plan, log: LinkLog) -> String {
-        var source = markdown
-        var hero = ""
         if case .home = page.kind {
-            hero = homeHero(&source, page: page, plan: plan)
+            return homePage(markdown, page: page, plan: plan, log: log)
         }
-        let rendered = HTML.render(source) { target, image in
+        let rendered = HTML.render(markdown) { target, image in
             resolve(target, image: image, from: page, plan: plan, log: log)
         }
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: rendered))
-        let body = hero.isEmpty
-            ? "<article class=\"prose\">\n\(rendered.body)\n</article>"
-            : "\(hero)\n<article class=\"prose home\">\n\(rendered.body)\n</article>"
+        let body = "<article class=\"prose\">\n\(rendered.body)\n</article>"
         let title = page.title
         let description = page.summary.isEmpty ? Self.tagline : page.summary
         return layout(page: page, title: title, description: description, trail: rendered.trail,
@@ -330,13 +373,69 @@ public struct SiteBuilder {
 
     static let tagline = "A Metal-rendered creative-coding framework for Swift on Apple platforms."
 
+    // MARK: - The front page
+
+    /// The front page: the hero and the cards, then the README's opening and
+    /// the sections `SiteHome.rows` names, each in a block of its own so the
+    /// stylesheet can lay it out for the width of a page (the code beside its
+    /// paragraph, two short sections side by side, a list as a grid of cards),
+    /// and a row of links to every section left for the About page. A link
+    /// inside the shown text at a section that is not shown goes to the About
+    /// page, where every anchor is. The search lists the front page once, by
+    /// its opening; the README's sections are listed from the About page.
+    func homePage(_ markdown: String, page: Page, plan: Plan, log: LinkLog) -> String {
+        var (opening, sections) = SiteHome.split(markdown)
+        let hero = homeHero(&opening, page: page, plan: plan)
+        opening = SiteHome.trimmedOpening(opening)
+
+        let shown = sections.filter { SiteHome.shown.contains($0.heading) }
+        var anchors = SiteHome.anchors(in: opening)
+        for section in shown { anchors.formUnion(SiteHome.anchors(in: section.markdown)) }
+        let aboutPath = plan.about.map { relative(from: page.siteDirectory, to: $0.sitePath) }
+        let resolveHome: HTML.Resolver = { target, image in
+            let trimmed = Self.anchor(target.trimmingCharacters(in: .whitespaces))
+            if trimmed.hasPrefix("#"), let aboutPath, !anchors.contains(String(trimmed.dropFirst())) {
+                return aboutPath + trimmed
+            }
+            return resolve(target, image: image, from: page, plan: plan, log: log)
+        }
+
+        let openingRendered = HTML.render(opening, resolve: resolveHome)
+        log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: openingRendered))
+        var body = "<section class=\"home-section home-opening\">\n\(openingRendered.body)\n</section>\n"
+
+        func block(_ heading: String) -> String {
+            guard let section = sections.first(where: { $0.heading == heading }) else {
+                log.notes.append("the front page names a README section that is not there: \(heading)")
+                return ""
+            }
+            let rendered = HTML.render(section.markdown, resolve: resolveHome)
+            return "<section class=\"home-section home-\(section.anchor)\">\n\(rendered.body)\n</section>\n"
+        }
+        for row in SiteHome.rows {
+            switch row {
+            case .section(let heading):
+                body += block(heading)
+            case .pair(let left, let right):
+                body += "<div class=\"home-pair\">\n\(block(left))\(block(right))</div>\n"
+            }
+        }
+
+        let rest = sections.filter { !SiteHome.shown.contains($0.heading) }
+        if let aboutPath, !rest.isEmpty {
+            let links = rest.map { "<li><a href=\"\(aboutPath)#\($0.anchor)\">\(HTML.escape($0.heading))</a></li>" }
+            body += "<section class=\"home-section home-more\">\n<h2>More about Ollin</h2>\n<ul>\n\(links.joined(separator: "\n"))\n</ul>\n</section>\n"
+        }
+
+        return layout(page: page, title: page.title, description: Self.tagline, trail: "",
+                      body: "\(hero)\n<article class=\"prose home\">\n\(body)</article>", headings: [], plan: plan)
+    }
+
     /// The front page's opening, lifted off the README and set as the hero:
-    /// the mark the README opens with, the title, and the one bold line under
-    /// it, beside the ring. The README's prose follows exactly as written;
-    /// only these lines are placed differently. The mark is drawn from the
-    /// logo's own file in the page's ink (`Plan.logo`) rather than copied as
-    /// the README's picture, and it appears only when the README opens with
-    /// one, so the front page shows what the README shows.
+    /// the title and the one bold line under it, beside the ring. The picture
+    /// the README opens with (the mark) is taken off too, since the bar wears
+    /// the mark on every page. What remains of the opening is handed back for
+    /// the page to render as written.
     ///
     /// The ring is `Examples/Web/BreathingRing` played by its own web page: the
     /// inline fragment the exporter wrote for it, verbatim, then the site's
@@ -348,13 +447,11 @@ public struct SiteBuilder {
     func homeHero(_ markdown: inout String, page: Page, plan: Plan) -> String {
         var lines = markdown.components(separatedBy: "\n")
         var tagline = Self.tagline
-        var opensWithMark = false
         if let heading = lines.firstIndex(where: { $0.hasPrefix("# ") }) {
-            // A picture before the title (the logo) is the hero's to place.
+            // A picture before the title (the mark) is the bar's, not the page's.
             let above = lines[..<heading].map { $0.trimmingCharacters(in: .whitespaces) }
             if above.contains(where: { $0.hasPrefix("<picture") || $0.hasPrefix("<img") }),
                above.allSatisfy({ $0.isEmpty || HTML.isRawBlock($0) }) {
-                opensWithMark = true
                 lines.removeSubrange(..<heading)
             }
         }
@@ -384,11 +481,10 @@ public struct SiteBuilder {
 
         """
 
-        let mark = opensWithMark && !plan.logo.isEmpty ? plan.logo + "\n" : ""
         return """
         <section class="hero">
           <div class="hero-text">
-            \(mark)<p class="eyebrow">Ollin</p>
+            <p class="eyebrow">Ollin</p>
             <h1>\(HTML.escape(tagline))</h1>
             <p class="hero-actions"><a class="button" href="\(guide)">Start with the Guide</a><a class="button quiet" href="\(HTML.escape(repository))" rel="noopener">View on GitHub</a></p>
           </div>
@@ -459,12 +555,13 @@ public struct SiteBuilder {
     /// A target that exists nowhere is left as written and reported.
     func resolve(_ target: String, image: Bool, from page: Page, plan: Plan, log: LinkLog) -> String {
         let trimmed = target.trimmingCharacters(in: .whitespaces)
-        if trimmed.isEmpty || trimmed.hasPrefix("#") { return trimmed }
+        if trimmed.isEmpty { return trimmed }
+        if trimmed.hasPrefix("#") { return Self.anchor(trimmed) }
         if trimmed.contains("://") || trimmed.hasPrefix("mailto:") { return trimmed }
 
         let split = trimmed.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)
         let path = String(split[0])
-        let anchor = split.count > 1 ? "#" + split[1] : ""
+        let anchor = split.count > 1 ? Self.anchor("#" + split[1]) : ""
         let sourceDirectory = page.repoPath.split(separator: "/").dropLast().map(String.init)
         guard let repoPath = Self.joined(sourceDirectory, path) else {
             log.missing.append("\(page.repoPath): \(target)")
@@ -481,6 +578,12 @@ public struct SiteBuilder {
             return relative(from: page.siteDirectory, to: sitePath)
         }
 
+        // The front page shows part of the README, so a link at one of its
+        // sections goes to the About page, which carries every anchor; a
+        // link at the README itself goes to the front.
+        if repoPath == "README.md" || repoPath.isEmpty, !anchor.isEmpty, let about = plan.about {
+            return relative(from: page.siteDirectory, to: about.sitePath) + anchor
+        }
         if let found = plan.byRepoPath[repoPath] {
             return relative(from: page.siteDirectory, to: found.sitePath) + anchor
         }
@@ -503,6 +606,19 @@ public struct SiteBuilder {
 
         log.missing.append("\(page.repoPath): \(target)")
         return trimmed
+    }
+
+    /// An anchor as the site's ids spell it. A heading's id collapses the
+    /// spaces around a dropped character to one dash (`status-contributing`),
+    /// where GitHub keeps one dash per space (`status--contributing`); the
+    /// pages link both ways, so a run of dashes in a link is read as one.
+    static func anchor(_ anchor: String) -> String {
+        var out = ""
+        for character in anchor {
+            if character == "-", out.hasSuffix("-") { continue }
+            out.append(character)
+        }
+        return out
     }
 
     /// A relative path joined onto a folder, with `.` and `..` walked, as
@@ -541,7 +657,32 @@ public struct SiteBuilder {
         let isHome: Bool
         if case .home = page.kind { isHome = true } else { isHome = false }
         let fullTitle = isHome ? "Ollin" : "\(title) · Ollin"
-        let canonical = domain.map { "<link rel=\"canonical\" href=\"https://\($0)/\(page.sitePath == "index.html" ? "" : page.sitePath)\">" } ?? ""
+        let pagePath = page.sitePath == "index.html" ? "" : page.sitePath
+        let canonical = domain.map { "<link rel=\"canonical\" href=\"https://\($0)/\(pagePath)\">" } ?? ""
+        // What a link to the page unfurls as, in a message or a feed: the
+        // page's title and line, and the social card. A card has to be an
+        // absolute address, so it is written against the custom domain or,
+        // before there is one, the address GitHub Pages serves the repository
+        // at, and left out when neither is known.
+        var share = ""
+        if let base = domain.map({ "https://\($0)/" }) ?? Self.pagesAddress(of: repository) {
+            share += "<meta property=\"og:url\" content=\"\(HTML.escape(base + pagePath))\">\n"
+            if plan.hasSocialCard {
+                share += """
+                <meta property="og:image" content="\(HTML.escape(base))assets/social.png">
+                <meta property="og:image:width" content="1200">
+                <meta property="og:image:height" content="630">
+                <meta property="og:image:alt" content="The Ollin mark">
+                <meta name="twitter:card" content="summary_large_image">
+
+                """
+            }
+        }
+        var icons = "<link rel=\"icon\" href=\"\(asset("favicon.svg"))\" type=\"image/svg+xml\">\n"
+        icons += "<link rel=\"mask-icon\" href=\"\(asset("mask-icon.svg"))\" color=\"\(SiteLogo.ink)\">\n"
+        if plan.hasTouchIcon {
+            icons += "<link rel=\"apple-touch-icon\" href=\"\(asset("apple-touch-icon.png"))\">\n"
+        }
 
         func navItem(_ label: String, _ section: Section, _ path: String) -> String {
             let active = page.section == section && !isHome ? " class=\"active\" aria-current=\"true\"" : ""
@@ -596,9 +737,9 @@ public struct SiteBuilder {
         <meta property="og:title" content="\(HTML.escape(fullTitle))">
         <meta property="og:description" content="\(HTML.escape(description))">
         <meta property="og:type" content="website">
-        \(canonical)
-        <link rel="icon" href="\(asset("favicon.svg"))" type="image/svg+xml">
-        <link rel="stylesheet" href="\(asset("assets/site.css"))">
+        <meta property="og:site_name" content="Ollin">
+        \(share)\(canonical)
+        \(icons)<link rel="stylesheet" href="\(asset("assets/site.css"))">
         </head>
         <body>
         \(nav)
@@ -625,7 +766,9 @@ public struct SiteBuilder {
     func sidebar(for page: Page, plan: Plan) -> String {
         let here = page.siteDirectory
         func item(_ target: Page, label: String? = nil) -> String {
-            let current = target.repoPath == page.repoPath ? " aria-current=\"page\"" : ""
+            // By site path, not source: the front page and the About page
+            // are two pages of one file.
+            let current = target.sitePath == page.sitePath ? " aria-current=\"page\"" : ""
             return "<li><a href=\"\(relative(from: here, to: target.sitePath))\"\(current)>\(HTML.escape(label ?? target.title))</a></li>"
         }
         func group(_ name: String, open: Bool, _ items: [String]) -> String {
@@ -639,7 +782,7 @@ public struct SiteBuilder {
             var items: [String] = []
             for target in plan.pages {
                 switch target.kind {
-                case .home: items.append(item(target, label: "Overview"))
+                case .home: items.append(item(target, label: "Home"))
                 case .about: items.append(item(target))
                 default: break
                 }

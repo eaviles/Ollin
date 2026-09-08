@@ -168,19 +168,69 @@ struct SiteTests {
         #expect(example.contains("Example-Basic-HelloCircle"))
 
         // The logo: the favicon is the small form in paper on an ink tile,
-        // every page's bar wears the small form in the page's own color, and
-        // the front page opens with the full mark lifted off the README
-        // rather than the README's picture.
+        // Safari's pinned-tab icon the small form alone, every page's bar
+        // wears the full mark in the page's own color, and the README's own
+        // picture of the mark stays off the front page, whose bar has it.
         let favicon = try String(contentsOf: output.appendingPathComponent("favicon.svg"), encoding: .utf8)
         let small = try String(contentsOf: root.appendingPathComponent(SiteLogo.small), encoding: .utf8)
         #expect(favicon == SiteLogo.tiled(small, ink: SiteLogo.paper, tile: SiteLogo.ink), "the favicon is not the small form on its tile")
+        let pinned = try String(contentsOf: output.appendingPathComponent("mask-icon.svg"), encoding: .utf8)
+        #expect(pinned == SiteLogo.colored(small, ink: SiteLogo.ink), "the pinned-tab icon is not the small form in ink")
         for (name, page) in [("the front page", home), ("a chapter", chapter), ("an example", example)] {
-            #expect(page.contains("<svg class=\"mark\" aria-hidden=\"true\""), "\(name) has no mark in its bar")
-            #expect(!page.contains(SiteLogo.ink) && !page.contains(SiteLogo.paper) && !page.contains("fill=\"#000"),
+            #expect(page.contains("<svg class=\"mark\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 100 100\""),
+                    "\(name) does not wear the full mark in its bar")
+            #expect(!page.contains("viewBox=\"0 0 14 14\""), "\(name) wears the small form somewhere")
+            #expect(page.contains("<link rel=\"mask-icon\" href=") && page.contains("<link rel=\"apple-touch-icon\" href="),
+                    "\(name) names no pinned-tab or touch icon")
+            #expect(!page.contains(SiteLogo.paper) && !page.contains("fill=\"#000"),
                     "\(name) draws the mark in its own ink, not the page's")
         }
-        #expect(home.contains("<svg class=\"logo\" aria-hidden=\"true\""), "the front page opens without the mark")
-        #expect(!home.contains("ollin-mark"), "the README's picture reached the front page beside the hero's mark")
+        #expect(!home.contains("class=\"logo\"") && !home.contains("ollin-mark"), "the README's picture reached the front page beside the bar's mark")
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("apple-touch-icon.png").path))
+        #expect(FileManager.default.fileExists(atPath: output.appendingPathComponent("assets/social.png").path))
+
+        // What a link to a page unfurls as: the card, at an absolute address
+        // under the domain, on every page.
+        for (name, page, path) in [("the front page", home, ""), ("a chapter", chapter, "guide/02-color.html"), ("an example", example, "examples/basic/hellocircle.html")] {
+            #expect(page.contains("<meta property=\"og:image\" content=\"https://ollin.example/assets/social.png\">"), "\(name) has no card")
+            #expect(page.contains("<meta property=\"og:url\" content=\"https://ollin.example/\(path)\">"), "\(name) has no address")
+            #expect(page.contains("<meta name=\"twitter:card\" content=\"summary_large_image\">"))
+        }
+
+        // The front page shows the README's opening and the sections SiteHome
+        // names, laid out in blocks, and hands every other section to the
+        // About page, which is the README whole; every link the front page
+        // makes at a README section lands on a page that carries the anchor.
+        let about = try String(contentsOf: output.appendingPathComponent("about.html"), encoding: .utf8)
+        for heading in SiteHome.shown {
+            #expect(home.contains("<section class=\"home-section home-\(HTML.slug(heading))\">"), "the front page has no block for \(heading)")
+        }
+        #expect(home.contains("<div class=\"home-pair\">"))
+        #expect(home.contains("<section class=\"home-section home-opening\">"))
+        #expect(home.contains("<section class=\"home-section home-more\">"))
+        #expect(!home.contains("class=\"badges\""), "the badge row reached the front page")
+        #expect(!home.contains("id=\"live-reload\"") && !home.contains("id=\"built-with-ai\""), "a section left for the About page is on the front page")
+        #expect(about.contains("id=\"live-reload\"") && about.contains("id=\"built-with-ai\"") && about.contains("id=\"hello-circle\""), "the About page is not the whole README")
+        #expect(about.contains("class=\"badges\"") && about.contains("class=\"trail\"") == false, "the About page is the README as written")
+        #expect(about.contains("<nav class=\"sidebar\"") && about.contains("<nav class=\"rail\""), "the About page reads like a project page")
+        let aboutIds = Self.ids(in: about)
+        let homeIds = Self.ids(in: home)
+        var lost: [String] = []
+        for href in Self.hrefs(in: home) {
+            if href.hasPrefix("#") {
+                if !homeIds.contains(String(href.dropFirst())) { lost.append(href) }
+            } else if href.hasPrefix("about.html#") {
+                if !aboutIds.contains(String(href.dropFirst("about.html#".count))) { lost.append(href) }
+            }
+        }
+        #expect(lost.isEmpty, "front-page links at nothing: \(lost.joined(separator: ", "))")
+        for href in Self.hrefs(in: about) where href.hasPrefix("#") {
+            #expect(aboutIds.contains(String(href.dropFirst())), "the About page links at nothing: \(href)")
+        }
+        // A README anchor linked from the reference lands on the About page.
+        let drag = try String(contentsOf: output.appendingPathComponent("docs/tools/dragtoedit.html"), encoding: .utf8)
+        #expect(drag.contains("href=\"../../about.html#live-reload\""), "a README section linked from the reference does not reach the About page")
+        #expect(aboutIds.contains("live-reload"))
 
         // The README's dark twin is the master in paper, written by
         // Scripts/logo.sh; a re-export that skipped the script shows up here.
@@ -192,7 +242,6 @@ struct SiteTests {
             #expect(!svg.contains("fill=") && !svg.contains("<title") && !svg.contains("transform=") && !svg.contains("<?xml"),
                     "\(file) is a raw export; run Scripts/logo.sh")
         }
-        #expect(!chapter.contains("class=\"logo\""), "only the front page wears the full mark")
 
         // The search: every page carries the button, the dialog with the way
         // back to the site's root, and the script; the index lists one entry
@@ -240,6 +289,18 @@ struct SiteTests {
     }
 
     /// Every `id` on a page.
+    /// Every `href` on a page.
+    static func hrefs(in html: String) -> [String] {
+        var found: [String] = []
+        var searchFrom = html.startIndex
+        while let range = html.range(of: "href=\"", range: searchFrom ..< html.endIndex) {
+            guard let close = html[range.upperBound...].firstIndex(of: "\"") else { break }
+            found.append(String(html[range.upperBound ..< close]))
+            searchFrom = close
+        }
+        return found
+    }
+
     static func ids(in html: String) -> Set<String> {
         var found = Set<String>()
         var searchFrom = html.startIndex
@@ -370,6 +431,80 @@ struct SiteTests {
         #expect(blocks[3].first == "1 match" && blocks[3].dropFirst().first?.hasPrefix("../guide/02-color.html|") == true, "\(report)")
         #expect(blocks[4].first == "Nothing matches “kuwa colour”.", "\(report)")
         #expect(blocks[5].first == "Nothing matches “nothinghere”.", "\(report)")
+    }
+
+    // MARK: - The front page
+
+    @Test("The README splits at its sections, the chrome's rows leave the opening, and a heading inside code is code")
+    func homeSplit() {
+        let readme = """
+        <picture>
+          <img src="Logo/ollin-mark.svg" alt="" width="96">
+        </picture>
+
+        # Ollin
+
+        **One line.**
+
+        ![Platform](https://img.shields.io/badge/platform-blue) [![License](https://img.shields.io/badge/license-green)](LICENSE)
+
+        [Guide](Guide/README.md) · [Docs](Docs/README.md) · [Examples](Examples/)
+
+        Ollin is for generative art. See [the catalog](Docs/README.md#the-catalog) and [Status](#status--contributing).
+
+        - **Platform:** macOS 26+
+
+        ## Hello, circle
+
+        ```swift
+        // ## not a heading
+        drawCircle(1, 2, 3)
+        ```
+
+        A circle. See [Live reload](#live-reload).
+
+        ## Live reload
+
+        Text.
+
+        ### Inside
+
+        More.
+
+        ## Status & contributing
+
+        Alpha.
+        """
+        let (opening, sections) = SiteHome.split(readme)
+        #expect(sections.map(\.heading) == ["Hello, circle", "Live reload", "Status & contributing"])
+        #expect(sections.map(\.anchor) == ["hello-circle", "live-reload", "status-contributing"])
+        #expect(sections[0].markdown.hasPrefix("## Hello, circle\n"))
+        #expect(sections[0].markdown.contains("// ## not a heading"))
+        #expect(sections[1].markdown.contains("### Inside"))
+        #expect(opening.contains("# Ollin") && opening.contains("- **Platform:** macOS 26+"))
+
+        let trimmed = SiteHome.trimmedOpening(opening)
+        #expect(!trimmed.contains("shields.io"), "the badge row stayed")
+        #expect(!trimmed.contains("[Guide](Guide/README.md) ·"), "the navigation row stayed")
+        #expect(trimmed.contains("Ollin is for generative art."))
+        #expect(trimmed.contains("- **Platform:** macOS 26+"))
+        #expect(SiteHome.isNavigationRow("[Guide](Guide/README.md) · [Docs](Docs/README.md)"))
+        #expect(!SiteHome.isNavigationRow("[Guide](Guide/README.md) · then some words"))
+        #expect(!SiteHome.isNavigationRow("See [Guide](Guide/README.md) · [Docs](Docs/README.md)"))
+
+        #expect(SiteHome.anchors(in: sections[1].markdown) == ["live-reload", "inside"])
+        #expect(SiteHome.anchors(in: sections[0].markdown) == ["hello-circle"], "a heading inside code counted")
+        #expect(SiteHome.shown == ["Hello, circle", "Run it", "Install", "What's in it"])
+        #expect(SiteBuilder.anchor("#status--contributing") == "#status-contributing")
+        #expect(SiteBuilder.anchor("#a-b") == "#a-b")
+    }
+
+    @Test("The address GitHub Pages serves a repository at")
+    func pagesAddress() {
+        #expect(SiteBuilder.pagesAddress(of: "https://github.com/eaviles/Ollin") == "https://eaviles.github.io/Ollin/")
+        #expect(SiteBuilder.pagesAddress(of: "https://github.com/Eaviles/Ollin.git") == "https://eaviles.github.io/Ollin/")
+        #expect(SiteBuilder.pagesAddress(of: "https://example.com/eaviles/Ollin") == nil)
+        #expect(SiteBuilder.pagesAddress(of: "https://github.com/eaviles") == nil)
     }
 
     // MARK: - The logo

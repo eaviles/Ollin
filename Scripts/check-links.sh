@@ -9,12 +9,12 @@
 # The prose navigates by number and by path. Chapters point at each other, the
 # footer chain runs through the appendices, Appendix D and the coverage matrix
 # key rows to chapters, CAPABILITIES.md points at chapters by section heading,
-# Docs pages cross-reference each other, and the root README's capability table
-# is the front door to every Docs page. All of that was once verified by hand,
+# Docs pages cross-reference each other, and the reference index's capability
+# table is the front door to every Docs page. All of that was once verified by hand,
 # which works until something moves; then hundreds of links, image tags and
 # chapter tokens go stale at once and nothing notices, because no gate ever
 # read them. (This script began life as guide-links.sh, scoped to Guide/; the
-# blind spots it grew out of, Docs-to-Docs links and the README's table, are
+# blind spots it grew out of, Docs-to-Docs links and the catalog table, are
 # exactly where real breaks hid.)
 #
 # This is that gate. Eleven checks, in the order a reader would trip over them:
@@ -35,8 +35,9 @@
 #   9. Every chapter token names a chapter that exists: `Ch N` in PLAN.md and
 #      Appendix D, and `Guide Ch N § *Heading*` in CAPABILITIES.md, where the
 #      heading itself has to exist in that chapter.
-#  10. Every Docs page is reachable: linked from the root README's capability
-#      table and listed in Docs/README.md. This is the invariant that once
+#  10. Every Docs page is reachable: listed in Docs/README.md's groups, and
+#      named at the front (the catalog table at the top of Docs/README.md, or
+#      the root README's prose). This is the invariant that once
 #      broke silently and orphaned 21 pages; it used to live in CLAUDE.md as a
 #      `comm` command somebody had to remember to run.
 #  11. Every example is listed in the README that covers it, and every row
@@ -437,24 +438,43 @@ for n, line in enumerate(lines[GUIDE / "PLAN.md"], 1):
         else:
             note(f"Guide/PLAN.md:{n}", f"\"{quoted}\" is not a heading in {home}")
 
-# ------------------- 10: every Docs page is reachable from the two indexes
+# ------------- 10: every Docs page is reachable from the reference index
 #
-# The root README links every Docs page by capability through its catalog
-# table, and Docs/README.md is the flat annotated index; a page missing from
-# either is invisible to a reader arriving from the front. Index files are
-# exempt: they are the doors, not the rooms.
-root_links = set(re.findall(r"\]\((Docs/[^)#\s]+\.md)", text[root_readme]))
-index_links = set()
-for target in re.findall(r"\]\(([^)#\s]+\.md)", text[pathlib.Path("Docs/README.md")]):
-    index_links.add(re.sub(r"^\./", "", target))
+# Every Docs page has two ways in from the front. The groups of Docs/README.md
+# list every page by area with one line each (the flat index). And the front
+# names it by what it is for: the catalog table under the `### The catalog`
+# heading at the top of Docs/README.md, or the root README's own prose, which
+# still links the pages its sections talk about (the tools, the concept pages,
+# the export formats). A page missing from the index, or named nowhere at the
+# front, is invisible to a reader arriving there. Index files are exempt:
+# they are the doors, not the rooms.
+index_path = pathlib.Path("Docs/README.md")
+catalog_block, group_block, inside = [], [], False
+for line in lines[index_path]:
+    if line.startswith("### "):
+        inside = line.strip() == "### The catalog"
+    (catalog_block if inside else group_block).append(line)
+if not catalog_block:
+    fail("Docs/README.md", "has no `### The catalog` section; the capability table lives there")
+
+def docs_links(block):
+    return {re.sub(r"^\./", "", t) for t in re.findall(r"\]\(([^)#\s]+\.md)", "\n".join(block))}
+
+catalog_links = docs_links(catalog_block)
+index_links = docs_links(group_block)
+root_links = re.findall(r"\]\((Docs/[^)#\s]+\.md)", text[root_readme])
+front_links = catalog_links | {t[len("Docs/"):] for t in root_links}
+if "Docs/README.md" not in root_links:
+    fail("README.md", "does not link Docs/README.md, the door to the reference")
 
 for page in docs_pages:
     if page.name == "README.md":
         continue
-    if str(page) not in root_links:
-        fail("README.md", f"capability table does not link {page}")
-    if str(page.relative_to("Docs")) not in index_links:
-        fail("Docs/README.md", f"index does not list {page.relative_to('Docs')}")
+    rel = str(page.relative_to("Docs"))
+    if rel not in front_links:
+        fail("Docs/README.md", f"neither the catalog nor the root README links {rel}")
+    if rel not in index_links:
+        fail("Docs/README.md", f"the groups do not list {rel}")
 
 
 # ------------------------- 11: every example is listed where a reader looks

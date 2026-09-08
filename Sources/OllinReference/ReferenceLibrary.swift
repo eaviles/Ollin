@@ -91,10 +91,19 @@ public enum ReferenceLibrary {
     public static func groups(inDocs docs: URL) -> [String] {
         guard let text = try? String(contentsOf: docs.appendingPathComponent("README.md"),
                                      encoding: .utf8) else { return [] }
-        return text.components(separatedBy: "\n").compactMap { line in
-            guard line.hasPrefix("### ") else { return nil }
-            return Markdown.plain(String(line.dropFirst(4))).trimmingCharacters(in: .whitespaces)
+        // A heading files pages when a page line follows it; one that does
+        // not (the catalog table at the top of the index) is not a group.
+        var groups: [String] = []
+        var heading: String?
+        for line in text.components(separatedBy: "\n") {
+            if line.hasPrefix("### ") {
+                heading = Markdown.plain(String(line.dropFirst(4))).trimmingCharacters(in: .whitespaces)
+            } else if let name = heading, line.trimmingCharacters(in: .whitespaces).hasPrefix("- [") {
+                groups.append(name)
+                heading = nil
+            }
         }
+        return groups
     }
 
     /// The page's own heading.

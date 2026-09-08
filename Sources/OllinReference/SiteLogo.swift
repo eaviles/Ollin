@@ -9,23 +9,32 @@ import Foundation
 /// the repository, and it sets the color itself, in one of three ways:
 ///
 /// - `inline` puts a drawing in a page with its ink as `currentColor`, so
-///   the bar's mark and the front page's take the page's own text color and
-///   one file serves the light scheme and the dark one.
+///   the bar's mark takes the page's own text color and one file serves the
+///   light scheme and the dark one.
 /// - `colored` writes a drawing in one color, for a place that cannot pass
 ///   one in: the README's dark twin on GitHub, where the picture is an image.
 /// - `tiled` puts a drawing in one color on a square tile of another, which
 ///   is the favicon: a tab bar is whatever color the browser makes it, so
 ///   the icon carries its own ground.
 ///
-/// The bar wears the small form (heavier lines, four dots in place of the
-/// satellites), which is the one that reads at 16 px; the front page wears
-/// the full mark.
+/// The bar wears the full mark. The small form (heavier lines, four dots in
+/// place of the satellites) is for the places that show the logo at icon
+/// size: the favicon and Safari's pinned-tab icon, which is the one that
+/// reads at 16 px. Two pictures the site cannot draw from the masters at
+/// build time, since they have to be bitmaps, are written by `Scripts/logo.sh`
+/// beside them and copied in: the social card a link preview shows, and the
+/// touch icon a phone puts on its home screen, both the full mark in paper on
+/// an ink tile.
 enum SiteLogo {
 
     /// The full mark, ink on nothing.
     static let mark = "Logo/ollin-mark.svg"
     /// The small form, ink on nothing.
     static let small = "Logo/ollin-favicon.svg"
+    /// The social card, 1200 by 630, the full mark in paper on an ink tile.
+    static let socialCard = "Logo/ollin-social.png"
+    /// The touch icon, 180 by 180, the same on a square tile.
+    static let touchIcon = "Logo/ollin-touch.png"
 
     /// The site's ink and paper, which the favicon is drawn in.
     static let ink = "#0B0F14"

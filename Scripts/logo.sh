@@ -2,7 +2,7 @@
 #
 # Scripts/logo.sh: the logo's files, from the masters.
 #
-#   Scripts/logo.sh    # clean both masters in place, then write the dark twin
+#   Scripts/logo.sh    # clean both masters in place, then write the files made from them
 #
 # The masters are Logo/ollin-mark.svg (the full mark) and Logo/ollin-favicon.svg
 # (the small form), drawn in Sketch and exported over the files here. An
@@ -19,9 +19,17 @@
 # for the README on GitHub, where the picture is an image and cannot take the
 # page's color. The website never reads the twin: it inlines the masters with
 # their ink as currentColor and draws the favicon on a tile itself
-# (Sources/OllinReference/SiteLogo.swift, whose `paper` this script repeats).
-# SiteTests checks the committed twin against the master and the masters for
-# an export's leftovers, so a re-export that skips this script fails there.
+# (Sources/OllinReference/SiteLogo.swift, whose `paper` and `ink` this script
+# repeats). SiteTests checks the committed twin against the master and the
+# masters for an export's leftovers, so a re-export that skips this script
+# fails there.
+#
+# Last it writes the two bitmaps the site cannot make from the masters at
+# build time: Logo/ollin-social.png (1200 by 630, the card a link to the site
+# unfurls as in a message or a feed) and Logo/ollin-touch.png (180 by 180, the
+# icon a phone puts on its home screen), both the full mark in paper centered
+# on an ink tile, rasterized by AppKit from the twin. The site copies them in
+# as assets/social.png and apple-touch-icon.png.
 #
 # SVGO leaves a group's translate alone when the group holds a circle (it
 # rewrites path data, never cx/cy). The script refuses a master that keeps a
@@ -83,3 +91,44 @@ if ! head -1 Logo/ollin-mark-dark.svg | grep -q "fill=\"$paper\""; then
     exit 1
 fi
 echo "Logo/ollin-mark-dark.svg: written from Logo/ollin-mark.svg in $paper"
+
+# The bitmaps: the twin drawn on an ink tile at the two sizes. AppKit reads
+# an SVG as an image, so no other tool is needed; the source is compiled once
+# per run into a temp binary (the interpreter would do, but a compiled run
+# is faster and its errors are clearer).
+ink='#0B0F14'
+raster=$(mktemp -d -t ollin-logo-raster.XXXXXX)
+trap 'rm -f "$config"; rm -rf "$raster"' EXIT
+cat > "$raster/raster.swift" <<'EOF'
+import AppKit
+
+// raster <svg> <png> <width> <height> <mark side> <tile hex>
+let args = CommandLine.arguments
+guard args.count == 7, let width = Int(args[3]), let height = Int(args[4]), let side = Double(args[5]),
+      let image = NSImage(contentsOf: URL(fileURLWithPath: args[1])) else {
+    FileHandle.standardError.write("raster: bad arguments\n".data(using: .utf8)!)
+    exit(2)
+}
+let hex = args[6].dropFirst()
+let value = UInt32(hex, radix: 16) ?? 0
+let tile = NSColor(red: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255,
+                   blue: CGFloat(value & 0xFF) / 255, alpha: 1)
+let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8,
+                           samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                           bytesPerRow: 0, bitsPerPixel: 0)!
+NSGraphicsContext.saveGraphicsState()
+NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+tile.setFill()
+NSRect(x: 0, y: 0, width: width, height: height).fill()
+let box = NSRect(x: (Double(width) - side) / 2, y: (Double(height) - side) / 2, width: side, height: side)
+image.draw(in: box, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true,
+           hints: [.interpolation: NSImageInterpolation.high])
+NSGraphicsContext.restoreGraphicsState()
+guard let png = rep.representation(using: .png, properties: [:]) else { exit(3) }
+try! png.write(to: URL(fileURLWithPath: args[2]))
+EOF
+xcrun swiftc -O -o "$raster/raster" "$raster/raster.swift"
+"$raster/raster" Logo/ollin-mark-dark.svg Logo/ollin-social.png 1200 630 360 "$ink"
+echo "Logo/ollin-social.png: the mark in $paper on $ink, 1200 by 630"
+"$raster/raster" Logo/ollin-mark-dark.svg Logo/ollin-touch.png 180 180 126 "$ink"
+echo "Logo/ollin-touch.png: the mark in $paper on $ink, 180 by 180"

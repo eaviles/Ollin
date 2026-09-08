@@ -105,7 +105,7 @@ enum SiteStyle {
     .bar-inner { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad); height: 100%; display: flex; align-items: center; gap: 1.5rem; }
     .wordmark { display: inline-flex; align-items: center; gap: 0.6rem; color: var(--text); font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
     .wordmark:hover { text-decoration: none; }
-    .mark { width: 22px; height: 22px; flex: none; }
+    .mark { width: 30px; height: 30px; flex: none; }
     .sections { margin-left: auto; display: flex; align-items: stretch; height: 100%; gap: 0.25rem; }
     .sections a { position: relative; display: inline-flex; align-items: center; padding: 0 0.85rem; color: var(--text-2); font-size: 14px; font-weight: 500; letter-spacing: -0.005em; transition: color 150ms var(--ease); }
     .sections a:hover { color: var(--text); text-decoration: none; }
@@ -186,7 +186,6 @@ enum SiteStyle {
     .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); align-items: center; gap: 3rem; padding: clamp(3rem, 8vw, 6rem) 0 clamp(2rem, 5vw, 4rem); }
     .eyebrow { font-size: 15px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); margin-bottom: 1rem; }
     .hero h1 { font-size: clamp(36px, 5vw, 60px); line-height: 1.05; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 1.75rem; }
-    .logo { width: 56px; height: 56px; margin: 0 0 1.25rem -4px; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .button { display: inline-flex; align-items: center; padding: 0.7rem 1.25rem; border-radius: 999px; background: var(--text); color: var(--bg); font-weight: 500; font-size: 15px; transition: transform 300ms var(--ease), opacity 150ms; }
     .button:hover { text-decoration: none; transform: translateY(-1px); opacity: 0.9; }
@@ -198,7 +197,40 @@ enum SiteStyle {
     .card:hover { text-decoration: none; transform: translateY(-2px); background: var(--surface-2); }
     .card h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 0.4rem; }
     .card p { color: var(--text-2); font-size: 15px; margin: 0; }
-    .prose.home { max-width: 760px; }
+
+    /* The front page below the cards: the README's opening and a few of its
+       sections, each laid out for the width of a page. The blocks are the
+       README's own markup; only the classes on the sections are the site's. */
+    .home-section { padding: 3.5rem 0; border-top: 1px solid var(--border); }
+    .home-section > h2:first-child, .home-pair h2 { font-size: 34px; letter-spacing: -0.025em; margin: 0 0 1.5rem; }
+    .home-opening { border-top: 0; padding-top: 0.5rem; }
+    .home-opening > p, .home-opening > blockquote { max-width: 820px; }
+    .home-opening > p:first-child { font-size: 22px; line-height: 1.4; letter-spacing: -0.012em; margin-bottom: 1.5rem; }
+    .home-opening > ul { list-style: none; padding: 0; margin: 2rem 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .home-opening > ul > li { margin: 0; padding: 1.1rem 1.25rem; background: var(--surface); border-radius: 14px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+    .home-opening > ul > li strong { color: var(--text); }
+    .home-opening > ul > li code { background: var(--surface-2); }
+    .home-hello-circle { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 1.5rem 3rem; align-items: start; }
+    .home-hello-circle > h2 { grid-column: 1 / -1; margin-bottom: 0.25rem; }
+    .home-hello-circle > pre { margin: 0; }
+    .home-hello-circle > p { margin: 0; font-size: 18px; line-height: 1.5; }
+    .home-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3rem; padding: 3.5rem 0; border-top: 1px solid var(--border); }
+    .home-pair > .home-section { border-top: 0; padding: 0; min-width: 0; }
+    .home-pair p:last-child, .home-pair pre:last-child { margin-bottom: 0; }
+    /* The section is the grid, since the README's spaced bullets render as
+       one list each; the lists dissolve into it and every item is a card. */
+    .home-whats-in-it { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+    .home-whats-in-it > h2, .home-whats-in-it > p { grid-column: 1 / -1; max-width: 820px; margin: 0; }
+    .home-section.home-whats-in-it > h2:first-child { margin-bottom: 0.25rem; }
+    .home-whats-in-it > p:last-child { margin-top: 0.5rem; }
+    .home-whats-in-it > ul { display: contents; }
+    .home-whats-in-it > ul > li { list-style: none; margin: 0; padding: 1.5rem 1.6rem; background: var(--surface); border-radius: 18px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+    .home-whats-in-it > ul > li > strong:first-child { display: block; color: var(--text); font-size: 19px; line-height: 1.3; letter-spacing: -0.015em; margin-bottom: 0.5rem; }
+    .home-whats-in-it > ul > li code { background: var(--surface-2); }
+    .home-more > ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .home-more > ul > li { margin: 0; }
+    .home-more a { display: inline-flex; align-items: center; padding: 0.55rem 1rem; border: 1px solid var(--border); border-radius: 999px; color: var(--text); font-size: 15px; font-weight: 500; transition: background 150ms var(--ease); }
+    .home-more a:hover { text-decoration: none; background: var(--surface); }
 
     /* The foot */
     .foot { border-top: 1px solid var(--border); margin-top: auto; }
@@ -220,6 +252,11 @@ enum SiteStyle {
       .hero { grid-template-columns: minmax(0, 1fr); }
       .hero-canvas { max-width: 320px; order: -1; }
       .cards { grid-template-columns: minmax(0, 1fr); }
+      .home-section { padding: 2.5rem 0; }
+      .home-section > h2:first-child, .home-pair h2 { font-size: 28px; }
+      .home-opening > p:first-child { font-size: 19px; }
+      .home-opening > ul, .home-hello-circle, .home-pair, .home-whats-in-it { grid-template-columns: minmax(0, 1fr); }
+      .home-pair { gap: 2.5rem; padding: 2.5rem 0; }
       .prose h1 { font-size: 32px; }
       .prose h2 { font-size: 24px; }
       .sections a { padding: 0 0.55rem; font-size: 13px; }

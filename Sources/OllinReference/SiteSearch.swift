@@ -55,8 +55,13 @@ enum SiteSearch {
     /// Guide, the reference, and the examples.
     static func entries(for page: SiteBuilder.Page, rendered: HTML.Page) -> [Entry] {
         let kind = page.section.rawValue
+        // The project pages beside the front page list headings and excerpts
+        // with no words, since their sections run to thousands of words each;
+        // the README on its About page is the one of them whose words are
+        // listed, because the front page shows only part of it and lists only
+        // its own opening.
         let listsWords: Bool
-        if case .about = page.kind { listsWords = false } else { listsWords = true }
+        if case .about = page.kind, page.repoPath != "README.md" { listsWords = false } else { listsWords = true }
         let titleWords = Set(tokens(page.title))
         let sections = rendered.sections.isEmpty ? [""] : rendered.sections
         var opening = sections[0]

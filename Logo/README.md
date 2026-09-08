@@ -4,13 +4,15 @@ Ollin is the Aztec day sign for movement: two bands crossing, four lobes around 
 
 ## The files
 
-Two masters, drawn in Sketch and exported here, and one file written from them.
+Two masters, drawn in Sketch and exported here, and three files written from them.
 
 | File | What it is |
 |---|---|
 | [`ollin-mark.svg`](ollin-mark.svg) | The full mark. A master. |
 | [`ollin-favicon.svg`](ollin-favicon.svg) | The small form: heavier lines, no satellites, a dot at each cardinal point. A master, and the one to use under about 32 px. |
 | [`ollin-mark-dark.svg`](ollin-mark-dark.svg) | The full mark in paper, for the README on GitHub. Written by `Scripts/logo.sh`, never edited. |
+| [`ollin-social.png`](ollin-social.png) | The card a link to the site unfurls as, 1200 by 630: the full mark in paper on an ink tile. Written by the script, never edited. |
+| [`ollin-touch.png`](ollin-touch.png) | The icon a phone puts on its home screen for the site, 180 by 180, the same picture square. Written by the script, never edited. |
 
 Both masters are black ink on nothing. Every shape is a filled outline, no color is written into the file, and the background is transparent. A drawing takes whatever color is set on it and sits on any ground. The full mark is drawn in a 100 by 100 box, the small form in a 14 by 14 box.
 
@@ -22,11 +24,11 @@ The small form keeps the bars, cut 26 units from the center on the same scale, a
 
 ## The colors
 
-The masters carry none. Where the site draws the mark, ink is `#0B0F14` and paper is `#F4F3F0`. In a page the drawing is inlined with `currentColor`, so it takes the page's text color and follows the reader's light or dark setting. The favicon is the small form in paper on an ink tile, since a tab bar is whatever color the browser makes it. The README shows the master and switches to the paper twin with the reader's setting.
+The masters carry none. Where the site draws the mark, ink is `#0B0F14` and paper is `#F4F3F0`. In a page the drawing is inlined with `currentColor`, so it takes the page's text color and follows the reader's light or dark setting. The site's bar wears the full mark, inlined. The favicon and Safari's pinned-tab icon are the small form, the favicon in paper on an ink tile, since a tab bar is whatever color the browser makes it. The social card and the touch icon are the full mark in paper on an ink tile. The README shows the master and switches to the paper twin with the reader's setting.
 
 ## After an export
 
-Export the drawing from Sketch over its master, then run `Scripts/logo.sh`. It cleans both masters in place and writes the dark twin. The XML prolog, the title, the editor ids, the pixel size, the written-out black, and the group's offset go. Coordinates round to five decimals, and the layout stays readable. The site's tests check the twin against the master, and the masters for an export's leftovers. A re-export that skips the script fails there.
+Export the drawing from Sketch over its master, then run `Scripts/logo.sh`. It cleans both masters in place, writes the dark twin, and rasterizes the social card and the touch icon from it. The XML prolog, the title, the editor ids, the pixel size, the written-out black, and the group's offset go. Coordinates round to five decimals, and the layout stays readable. The site's tests check the twin against the master, and the masters for an export's leftovers. A re-export that skips the script fails there.
 
 ## Where it comes from
 
