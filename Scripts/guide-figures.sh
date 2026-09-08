@@ -13,6 +13,10 @@
 # before committing anything under Guide/ or the Docs figures. Exits nonzero
 # if any figure fails to compile or render. Conventions live in
 # Guide/AUTHORING.md.
+#
+# The worker count follows the machine (cores and memory; see defaultJobs in
+# the runner). OLLIN_FIGURE_JOBS overrides it for one run without touching
+# the callers, which is how a session on a loaded machine turns it down.
 
 cd "$(dirname "$0")/.." || exit 1
-exec swift run OllinGuideFigures "$@"
+exec swift run OllinGuideFigures ${OLLIN_FIGURE_JOBS:+--jobs "$OLLIN_FIGURE_JOBS"} "$@"

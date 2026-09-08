@@ -4,6 +4,7 @@
 # diagnosis.
 #
 #   Scripts/ci-test.sh [swift test arguments]
+#   Scripts/ci-test.sh --run <command> [arguments]   # any command instead
 #
 # The test process's output is watched. When nothing has been written for
 # OLLIN_QUIET_LIMIT seconds (900 by default), every test process still alive
@@ -25,7 +26,16 @@ limit=${OLLIN_QUIET_LIMIT:-900}
 log=$(mktemp -t ollin-ci-test) || exit 1
 trap 'rm -f "$log"' EXIT
 
-swift test "$@" > >(tee -a "$log") 2>&1 &
+# `--run` wraps a command of the caller's (Scripts/test.sh ci, which runs
+# OllinTests as shards and the other targets beside them); the sample below
+# still finds every test process, since the shards invoke the same helper
+# `swift test` does.
+if [[ "$1" == "--run" ]]; then
+    shift
+    "$@" > >(tee -a "$log") 2>&1 &
+else
+    swift test "$@" > >(tee -a "$log") 2>&1 &
+fi
 pid=$!
 
 quiet=0
@@ -49,6 +59,7 @@ while kill -0 $pid 2>/dev/null; do
         done
         print -r -- "ci-test: killing the wedged run"
         pkill -f 'swiftpm-testing-helper' 2>/dev/null
+        pkill -P $pid 2>/dev/null
         kill $pid 2>/dev/null
         wait $pid 2>/dev/null
         exit 124

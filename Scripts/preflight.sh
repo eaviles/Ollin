@@ -14,37 +14,47 @@
 # nonzero if any gate failed. Gates keep running after a failure so one pass
 # reports everything.
 #
-# What runs when:
-#   Sources/, External/, Package.*, or figure sketches changed
-#       -> Scripts/guide-figures.sh (the probe decides how much renders)
-#   Sources/, External/, or Package.* changed
-#       -> xcodebuild for generic iOS (nothing else compiles the framework
-#          for the phone, and a macOS-only call in a core file broke it
-#          silently within a day of the last hand check; about 30 s warm)
-#       -> Scripts/api-surface.sh (the public surface of every library
-#          product, written down under API/; a change there has to be
-#          recorded on purpose, and from 1.0 on a removal needs its shim;
-#          about a minute warm, most of it the per-target build)
+# What runs when, cheapest first, so a failure that takes seconds to find
+# is reported before the gate that takes minutes starts:
+#   always
+#       -> the em-dash and invisible-character net over the added diff lines
+#       -> the parked-thread net over Tests/
 #   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #   Guide/ or Docs/ prose changed
 #       -> Scripts/prose-lint.sh over just those files
-#   the ring sketch, the web exporter, the shader rewriter, or the shaders
-#   changed
-#       -> Scripts/site-hero.sh (the site's front-page ring is the sketch's
-#          recorded web page, committed as source; any of those moves it)
 #   the expander's sources changed (Sources/OllinExpander, the wasm entry,
 #   the vendored tessellator)
 #       -> Scripts/build-web-expander.sh --check (the committed WebAssembly
 #          resource must have been built from these sources)
-#   always
-#       -> the em-dash and invisible-character net over the added diff lines
+#   Sources/, External/, or Package.* changed
+#       -> Scripts/api-surface.sh (the public surface of every library
+#          product, written down under API/; a change there has to be
+#          recorded on purpose, and from 1.0 on a removal needs its shim;
+#          about a minute warm, most of it the per-target build)
+#       -> xcodebuild for generic iOS (nothing else compiles the framework
+#          for the phone, and a macOS-only call in a core file broke it
+#          silently within a day of the last hand check; about 30 s warm)
+#   the ring sketch, the web exporter, the shader rewriter, or the shaders
+#   changed
+#       -> Scripts/site-hero.sh (the site's front-page ring is the sketch's
+#          recorded web page, committed as source; any of those moves it)
+#   Sources/, External/, Package.*, or figure sketches changed
+#       -> Scripts/guide-figures.sh, last: the probe decides how much
+#          renders, and when it hands the run to the full render that is the
+#          one gate here that takes half an hour, so everything else has
+#          reported by then
 #   --milestone adds
 #       -> Scripts/test.sh milestone (both phases plus the four nested
 #          signed-bundle builds the everyday run leaves out), guide-figures
 #          --no-probe, site-hero, and swift build --package-path Examples (the
 #          examples anti-rot guard; CI runs on pull requests only, so nothing
 #          else compiles them)
+#
+# The figure gate's worker count follows the machine's memory (see
+# defaultJobs in the runner; OLLIN_FIGURE_JOBS overrides it). Four workers on
+# 8 GB put the machine into swap and got the whole preflight killed twice in
+# one day (2026-09-08), so leave that to the runner rather than raising it.
 #
 # This does not commit and does not replace the docs audit's judgment passes
 # (stale prose, snippet APIs, comment leaks); it is the mechanical half.
@@ -57,7 +67,7 @@ milestone=0
 case "$1" in
 --milestone) milestone=1 ;;
 --help | -h)
-    sed -n '3,31p' "$0" | sed 's|^# \?||'
+    sed -n '3,55p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 esac
@@ -85,76 +95,7 @@ prose=$(grep -E '\.md$' <<<"$changed")
 examples=$(grep -E '^Examples/' <<<"$changed")
 reader_prose=$(grep -E '^(Guide|Docs)/.*\.md$' <<<"$changed" | grep -vE '^Guide/(PLAN|AUTHORING)\.md$')
 hero=$(grep -E '^(Examples/Web/BreathingRing/|Sources/Ollin/Export/Web|Sources/OllinShaderText/|Sources/Ollin/Renderer/Shader|Scripts/site-hero\.sh$)' <<<"$changed")
-
-# The figure gate: a framework change may move any figure (the probe decides),
-# and an edited figure sketch or a hand-touched image must re-render or fail.
-if [[ $milestone -eq 1 ]]; then
-    run "guide-figures --no-probe" Scripts/guide-figures.sh --no-probe
-elif [[ -n "$framework" || -n "$figures" || -n "$images" ]]; then
-    run "guide-figures" Scripts/guide-figures.sh
-else
-    skip "guide-figures" "no framework, figure, or image change"
-fi
-
-# Navigation and coverage read the whole tree in seconds, so any prose or
-# image change buys both. A new example is a navigation change too: its folder
-# appears and the group README does not follow it by itself.
-if [[ -n "$prose" || -n "$images" || -n "$examples" || $milestone -eq 1 ]]; then
-    run "check-links" Scripts/check-links.sh
-    run "guide-coverage" Scripts/guide-coverage.sh
-else
-    skip "check-links and guide-coverage" "no prose, image, or example change"
-fi
-
-# Vale, scoped to the reader-facing files actually touched.
-if [[ -n "$reader_prose" ]]; then
-    run "prose-lint" Scripts/prose-lint.sh ${(f)reader_prose}
-elif [[ $milestone -eq 1 ]]; then
-    run "prose-lint" Scripts/prose-lint.sh
-else
-    skip "prose-lint" "no Guide/ or Docs/ prose change"
-fi
-
-# The front page's ring: the sketch's own web page, recorded into
-# Sources/OllinReference/SiteHero.swift. The recording is deterministic, so
-# rerunning it rewrites the file only when something it carries moved, and
-# the rewrite then shows in the diff to be committed with the change.
-if [[ -n "$hero" || $milestone -eq 1 ]]; then
-    run "site-hero" Scripts/site-hero.sh
-else
-    skip "site-hero" "no change to the ring sketch, the web exporter, or the shaders it carries"
-fi
-
-# The page's expander: the shared expander module compiled to WebAssembly and
-# committed as a resource with a hash of the sources it was built from. An
-# edit to those sources without a rebuild would ship a page that expands its
-# strokes differently from the Mac, so the check fails until
-# Scripts/build-web-expander.sh has run (it needs the swift.org toolchain).
 expander=$(grep -E '^(Sources/OllinExpander/|Scripts/web-expander/|External/CLibtess2/|Scripts/build-web-expander\.sh$)' <<<"$changed")
-if [[ -n "$expander" || $milestone -eq 1 ]]; then
-    run "web-expander --check" Scripts/build-web-expander.sh --check
-else
-    skip "web-expander" "no change to the expander's sources"
-fi
-
-# The iOS build: nothing else compiles the framework for the phone, so a
-# macOS-only SwiftUI call in a core file breaks it without a word (2026-09-02:
-# a seed-box `onExitCommand`). Warm, this is about 30 s.
-if [[ -n "$framework" || $milestone -eq 1 ]]; then
-    run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
-else
-    skip "iOS build" "no framework change"
-fi
-
-# The public surface: every library product's API is written down under API/
-# and diffed against the build, so a public change is a deliberate one
-# (Scripts/api-surface.sh --record) and shows up in review beside the change
-# that made it. From 1.0 on this is where a rename without its shim fails.
-if [[ -n "$framework" || $milestone -eq 1 ]]; then
-    run "api-surface" Scripts/api-surface.sh
-else
-    skip "api-surface" "no framework change"
-fi
 
 # The em-dash and invisible-character net over added lines, for text written
 # through heredocs or scripts that the editing hooks never saw. CLAUDE.md and
@@ -199,6 +140,77 @@ if [[ -n "$parked" ]]; then
     echo "preflight: a test parks a thread; hop with 'await MainActor.run' instead:" >&2
     echo "$parked" >&2
     failures+=("parked thread in Tests/")
+fi
+
+# Navigation and coverage read the whole tree in seconds, so any prose or
+# image change buys both. A new example is a navigation change too: its folder
+# appears and the group README does not follow it by itself.
+if [[ -n "$prose" || -n "$images" || -n "$examples" || $milestone -eq 1 ]]; then
+    run "check-links" Scripts/check-links.sh
+    run "guide-coverage" Scripts/guide-coverage.sh
+else
+    skip "check-links and guide-coverage" "no prose, image, or example change"
+fi
+
+# Vale, scoped to the reader-facing files actually touched.
+if [[ -n "$reader_prose" ]]; then
+    run "prose-lint" Scripts/prose-lint.sh ${(f)reader_prose}
+elif [[ $milestone -eq 1 ]]; then
+    run "prose-lint" Scripts/prose-lint.sh
+else
+    skip "prose-lint" "no Guide/ or Docs/ prose change"
+fi
+
+# The page's expander: the shared expander module compiled to WebAssembly and
+# committed as a resource with a hash of the sources it was built from. An
+# edit to those sources without a rebuild would ship a page that expands its
+# strokes differently from the Mac, so the check fails until
+# Scripts/build-web-expander.sh has run (it needs the swift.org toolchain).
+if [[ -n "$expander" || $milestone -eq 1 ]]; then
+    run "web-expander --check" Scripts/build-web-expander.sh --check
+else
+    skip "web-expander" "no change to the expander's sources"
+fi
+
+# The public surface: every library product's API is written down under API/
+# and diffed against the build, so a public change is a deliberate one
+# (Scripts/api-surface.sh --record) and shows up in review beside the change
+# that made it. From 1.0 on this is where a rename without its shim fails.
+if [[ -n "$framework" || $milestone -eq 1 ]]; then
+    run "api-surface" Scripts/api-surface.sh
+else
+    skip "api-surface" "no framework change"
+fi
+
+# The iOS build: nothing else compiles the framework for the phone, so a
+# macOS-only SwiftUI call in a core file breaks it without a word (2026-09-02:
+# a seed-box `onExitCommand`). Warm, this is about 30 s.
+if [[ -n "$framework" || $milestone -eq 1 ]]; then
+    run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
+else
+    skip "iOS build" "no framework change"
+fi
+
+# The front page's ring: the sketch's own web page, recorded into
+# Sources/OllinReference/SiteHero.swift. The recording is deterministic, so
+# rerunning it rewrites the file only when something it carries moved, and
+# the rewrite then shows in the diff to be committed with the change.
+if [[ -n "$hero" || $milestone -eq 1 ]]; then
+    run "site-hero" Scripts/site-hero.sh
+else
+    skip "site-hero" "no change to the ring sketch, the web exporter, or the shaders it carries"
+fi
+
+# The figure gate, last: a framework change may move any figure (the probe
+# decides), and an edited figure sketch or a hand-touched image must
+# re-render or fail. When the probe finds a mover this is the long gate, and
+# the runner says how long before it starts.
+if [[ $milestone -eq 1 ]]; then
+    run "guide-figures --no-probe" Scripts/guide-figures.sh --no-probe
+elif [[ -n "$framework" || -n "$figures" || -n "$images" ]]; then
+    run "guide-figures" Scripts/guide-figures.sh
+else
+    skip "guide-figures" "no framework, figure, or image change"
 fi
 
 if [[ $milestone -eq 1 ]]; then

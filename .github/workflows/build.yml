@@ -4,29 +4,29 @@ name: Build
 # different amounts.
 #
 # `build` covers the Ollin library, the live/gallery hosts, and the tests: a
-# cold run is about a minute and a half.
+# cold build is about nine minutes on the runner's three cores, and the test
+# step is the long half (see its note).
 #
 # `examples` compiles all 350 sketches in the Examples package, which is the
 # guard that keeps them building against the current API instead of rotting. It
 # picks up new examples automatically, with no list to maintain here (mirroring
 # the no-hand-maintained-stanzas rule the manifests follow), but it is the
-# expensive half: a cold run is over six minutes, because a path dependency is
-# built again inside that package. Kept separate so the cheap half can be read
-# on its own, and so this one can be dropped from a run without touching the
-# other.
+# expensive half: a cold run is about seventeen minutes, because a path
+# dependency is built again inside that package. Kept separate so the cheap
+# half can be read on its own, and so this one can be dropped from a run
+# without touching the other.
 #
 # Neither can run on Linux, since Ollin is Swift plus Metal and Apple-platforms
 # only, so both use a macOS runner. The Metal shader is compiled at *runtime*
 # from source, so no GPU is needed at build time, only the macOS SDK.
 
 # Deliberately NOT run on push. A macOS runner bills every minute at a 10x
-# multiplier, a full run is a cold build of both jobs (about a minute and a half
-# for the library and the tests, over six minutes for the 350 examples), and
-# pre-1.0 work goes straight to main at roughly fifteen pushes a day. That is
-# well past a thousand billable minutes a day, which exhausts a month's
-# allowance in about three, and it did so in both July and August 2026. A green
-# build costs exactly as much as a red one, so this is a volume problem and the
-# only fix is to stop running it on every commit.
+# multiplier, a full run is about fifty minutes across both jobs, and pre-1.0
+# work goes straight to main at roughly fifteen pushes a day. That is well
+# past a thousand billable minutes a day, which exhausts a month's allowance
+# in about three, and it did so in both July and August 2026. A green build
+# costs exactly as much as a red one, so this is a volume problem and the only
+# fix is to stop running it on every commit.
 #
 # So: pull requests, plus a manual trigger for when a check is actually wanted
 # (before a milestone, say). While main is pushed to directly this means the
@@ -42,11 +42,9 @@ name: Build
 # nothing was going to give. A filter cannot fix that from this side either: a
 # pull request touching a Markdown file and a Swift file matches both a
 # paths-ignore and its complement, so a second workflow standing in for the
-# skipped one double-reports under the same name.
-#
-# The cost this trades away is the one the note above already retired. Standard
-# runners are free on a public repository, so compiling once for a typo fix
-# spends nothing but the contributor's patience.
+# skipped one double-reports under the same name. The Examples job answers
+# the same need from inside: it always runs and reports, and skips its build
+# step when the pull request touched nothing an example compiles against.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -69,9 +67,9 @@ jobs:
     # `swift test` hung for 4.5 hours; at the 10x macOS billing multiplier
     # that single run consumed most of a month's Actions minutes. A full
     # build plus the tests fits under this cap (the build measured 458 s to
-    # 732 s across the green runs of 2026-09-01 to 09-03, the test step 22 to
-    # 30 minutes and rising; see its note), and the test step carries its own
-    # tighter one.
+    # 732 s across the green runs of 2026-09-01 to 09-03 and 548 s on 09-08,
+    # the test step 22 to 30 minutes in one process; see its note), and the
+    # test step carries its own tighter one.
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -82,29 +80,55 @@ jobs:
       # SDK symbols the older macos-15 image (Xcode 16 / Swift 6.1.2) couldn't
       # even reference. We don't pin an Xcode path (the exact Xcode_26.x.app name
       # drifts as the image updates); just log the toolchain so a future
-      # Swift-version regression is easy to spot.
+      # Swift-version regression is easy to spot. The version also keys the
+      # build cache below: a toolchain change invalidates every object file.
       - name: Swift version
-        run: swift --version
+        id: swift
+        run: |
+          swift --version
+          echo "version=$(swift --version 2>&1 | head -1 | tr -c 'A-Za-z0-9.\n' '-')" >> "$GITHUB_OUTPUT"
 
-      # There is deliberately no build cache here, and the measurement it rests
-      # on has gone stale. The claim was that a cold build of this tree costs
-      # about ninety seconds, so caching 1.7 GB to save it buys little. Two
-      # green runs on 2026-09-01 measured 527 s and 732 s, five to eight times
-      # that, and the spread between two builds of the same code is itself 39%.
-      # The Examples job's `swift build` measured 1132 s against a note calling
-      # it "over six minutes", and its tree is about 12 GB, which does not fit
-      # the 10 GB per-repository cache limit anyway.
-      #
-      # So the no-cache decision is now resting on a number nobody has
-      # re-measured, and it is worth re-deciding rather than inheriting. Not
-      # done here: it wants its own measurement, and a cache only ever lands on
-      # a green run, which is a thing this job has only just started producing.
-      #
-      # One earlier failure is worth recording, because it is invisible until
-      # looked for: the combined cache action skips its save step when the job
-      # fails, and this job failed on every run for weeks, so the cache sat at
-      # zero bytes while every run paid for a full from-scratch build. A cache
-      # can only ever land on a green run.
+      # The build cache, and what makes it work. SwiftPM decides what to
+      # recompile from each source's modification time and size, not its
+      # content (measured 2026-09-08 on both build systems: a file given a new
+      # inode with its old mtime is left alone, a touched one recompiles). A
+      # checkout stamps every file with the moment it was written, so a
+      # restored .build would see every source as newer than its objects and
+      # rebuild the world, which is the failure that made the earlier no-cache
+      # decision look right. So before the restore, every tracked file gets a
+      # modification time derived from its content: the same blob always gets
+      # the same time, a changed file gets a new one, and the products of the
+      # last run stay valid for everything that did not change. No history is
+      # needed for that, only the index, which is why the checkout stays
+      # shallow. The times land in 2017 to 2020, well before any product.
+      - name: Date every tracked file by its content
+        run: |
+          git ls-files -s -z | python3 -c '
+          import os, sys
+          for entry in sys.stdin.buffer.read().split(b"\0"):
+              if not entry:
+                  continue
+              meta, path = entry.split(b"\t", 1)
+              blob = meta.split()[1]
+              when = 1_500_000_000 + int(blob[:8], 16) % 100_000_000
+              os.utime(path, (when, when), follow_symlinks=False)
+          '
+
+      # The newest cache for this toolchain, whatever commit built it: the
+      # exact key only ever matches a re-run of the same commit, and the
+      # prefix falls back to the last saved build, from which an incremental
+      # build finishes what changed. A run whose build step fails saves
+      # nothing (see the save step), and a miss costs only the cold build the
+      # step paid before the cache existed. Caches saved on main serve every
+      # branch; one saved on a pull request serves that pull request alone.
+      - name: Restore the last build
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: build-${{ steps.swift.outputs.version }}-${{ github.sha }}
+          restore-keys: |
+            build-${{ steps.swift.outputs.version }}-
 
       # Builds the library, the OllinLive/OllinExamples/OllinLiveCoding hosts,
       # and the test targets. `--build-tests` compiles the tests here, so
@@ -114,87 +138,28 @@ jobs:
       # never touches the test targets) quietly is not.
       # Warnings stay warnings; this fails only on a compile error.
       - name: Build everything
+        id: build
         run: swift build --build-tests
 
-      # Run the GPU-independent tests (the frame-grab seam's dispatch logic).
-      # The image-snapshot tests are skipped here on purpose: their reference
-      # PNGs are GPU-specific (recorded on a developer's machine) and a CI
-      # runner's GPU may anti-alias differently, so they run locally where the
-      # reference matches the renderer rather than risk a cross-GPU flake.
-      # (They'd also skip on their own via `.enabled(if: hasMetal)` when a
-      # runner has no Metal device; `--skip` removes the doubt either way.)
-      #
-      # FlowTrackerTests are skipped too: Vision's optical-flow analysis needs
-      # the real media stack and reliably fails on the virtualized runner with
-      # memFullErr ("failed to analyze motion flow"). An environment limit,
-      # not a code signal, so it runs locally like the snapshots.
-      #
-      # measuresAPairInline goes with them, and is named separately because it
-      # is the one call to that same optical flow living outside the suite named
-      # after it. Vision reports no compute device on the runner at all
-      # ("No available compute device for VNComputeStageMain"), so it fails the
-      # same way for the same reason. Its suite's other test uses contours,
-      # which do run here, so only the one test is named rather than the suite.
-      #
-      # The suites Scripts/test.sh runs in a phase of their own are skipped
-      # outright here, and that list is copied from it deliberately: they are
-      # the ones that want a device to themselves, and this runner has none of
-      # the devices. No camera, no speech stack, no hardware decoder, and Vision
-      # reports no compute device at all. Left in, they do not merely fail. They
-      # park the cooperative pool, which is one thread per core, and everything
-      # else waits behind them: a run measured here spent five minutes silent in
-      # the middle of a color round trip, and trivial string tests reported
+      # The run goes through Scripts/test.sh ci, so the runner's knowledge
+      # lives in one place with the rest of the suite's: which suites want a
+      # device this runner does not have (no camera, no speech stack, no
+      # hardware decoder, and Vision reports no compute device at all; its
+      # `runner` list says why each entry is there), and how the work is laid
+      # out. Left in, a device suite does not merely fail here. It parks the
+      # cooperative pool, which is one thread per core, and everything else
+      # waits behind it: a run measured here spent five minutes silent in the
+      # middle of a color round trip, and trivial string tests reported
       # durations of 444 seconds each because they all unblocked at once.
       #
-      # The step timeout is the hang guard, and it has three times been set
-      # too low rather than too high: ten minutes was a figure from a much
-      # smaller suite, twenty-two was guessed while a crash was still ending
-      # every run, and thirty-five was headroom over a single 1316 s green run.
-      # What the step has measured since, on 2026-09-03 and 09-04: 1330 s and
-      # 1578 s green for near-identical trees (that spread is the runner's, not
-      # the suite's), 1820 s one commit later with twelve failures in suites
-      # that had starved past their own deadlines, and then a run killed at
-      # 2094 s with 1046 of its tests reported, right after five test files
-      # for the web page's doors landed. Those suites draw through the main
-      # actor and launch a headless browser twenty times between them, and
-      # take 109 s on a desk. So forty-five, over a measured half hour and
-      # rising, with the job cap above moved to match. A killed run always
-      # looks like it did less work than it did: an uncaught exception flushes
-      # stdio on the way out, a killed process does not.
-      #
-      # Why it is slow is known, and it is not the machine. OllinTests draws
-      # through `Sketch`, which is main-actor isolated, so every render probe
-      # queues on one thread and the target uses a fraction of the cores. Those
-      # long silences in the log are that queue draining, and every door the
-      # web page gains adds to it, so this number will want another look.
-      # Sharding is the standing answer and does not work here yet; the note on
-      # the test step below says what stopped it.
-      #
-      # Three more join them for the same reason, found the same way. Screen
-      # capture is permitted here and still delivers nothing: the guard those
-      # tests already carry asks whether capture is permitted, which the runner
-      # answers yes to before handing over a display that never produces a
-      # frame. The segmenter's live wiring wants the Vision compute device that
-      # does not exist here, and the frame interpolation gate wants a camera.
-      # Named individually where one test in a suite needs a device and the
-      # rest do not.
-      #
-      # GeneratedProjectBuildTests goes too, which is what Scripts/test.sh
-      # already does for its quick pass. That suite builds whole generated
-      # packages by running swift build inside a test, is declared serialized
-      # with a fifteen minute limit of its own, and takes OllinProjectsTests
-      # from 155 seconds to 725. Fifteen serialized minutes does not fit inside
-      # a twenty-two minute step that has four thousand other tests to get
-      # through, and on this runner it simply stopped: the log ran normally and
-      # then said nothing at all for twenty minutes. It is a milestone check,
-      # not a per-commit one.
-      # Nothing below is the place to put the next one. This list grew by
+      # Nothing here is the place to put the next skip. That list grew by
       # discovery, one runner failure at a time, and every entry is knowledge
-      # about a device that lives here instead of next to the test that needs
-      # it. A test that wants hardware belongs behind an `.enabled(if:)` guard
-      # on a probe of that hardware, the way the 592 already here do: it then
-      # refuses itself wherever the device is absent, this runner included, and
-      # at a desk with the screen locked, with no list to keep in sync.
+      # about a device that lives beside the suite instead of next to the test
+      # that needs it. A test that wants hardware belongs behind an
+      # `.enabled(if:)` guard on a probe of that hardware, the way the 592
+      # already there do: it then refuses itself wherever the device is
+      # absent, this runner included, and at a desk with the screen locked,
+      # with no list to keep in sync.
       #
       # The strand-field render tests are the worked example. They did not fail
       # here, they killed the process: this runner's paravirtualized GPU builds a
@@ -203,7 +168,7 @@ jobs:
       # four thousand with it. What holds it back is a capability check
       # (`MetalRenderer.meshShadersAvailable(on:)`, which the renderer consults
       # before drawing and `Snapshot.hasMeshShaders` gates the tests on), not a
-      # thirteenth entry below.
+      # thirteenth skip.
       #
       # Worth knowing before writing the next one: only the GPU family tells the
       # truth here. The runner reports `Apple Paravirtual device` with `metal3`
@@ -212,45 +177,55 @@ jobs:
       # capability probe that asks anything nearer the failure than the family
       # gets a yes and crashes anyway, which is how the second run was lost.
       #
-      # The snapshot pattern is anchored with its module name because `--skip`
-      # takes an unanchored regex over the full test ID: a bare `SnapshotTests`
-      # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
-      # dropped 46 pure-CPU determinism tests from every run here for weeks.
+      # Why the step is slow is known, and it is not the machine. OllinTests
+      # draws through `Sketch`, which is main-actor isolated, so every render
+      # probe queues on one thread and a single process uses a fraction of the
+      # cores; the log's long silences are that queue draining, in bursts
+      # (2026-09-06: 3,400 tests reported in the first ten minutes, six
+      # minutes of silence, 1,500 more at minute 22). The recipe runs
+      # OllinTests as two processes, dealt by suite, with every other target
+      # in a third beside them, which is what three cores have room for. The
+      # shards invoke the built bundle directly the way SwiftPM itself does;
+      # Scripts/shard-tests.sh handles the merged bundle this toolchain
+      # writes as well as the per-target one the desk's does, and refuses to
+      # fall back to one process silently.
       #
-      # Sharding was tried here and is not in place, which is worth writing down
-      # because the attempt looked like it worked. Scripts/shard-tests.sh runs
-      # OllinTests as four processes locally (409 s to 189 s) and takes this
-      # step's skip list through OLLIN_SHARD_SKIP, so the wiring was easy. What
-      # it cannot do is find the bundle: it invokes swiftpm-testing-helper
-      # directly against `.build/debug/OllinTests.xctest`, and the toolchain on
-      # this image emits one merged `OllinPackageTests.xctest` instead of a
-      # bundle per target. Its guard then fires, it says so in one line among
-      # ten thousand, and it runs OllinTests in a single process exactly as
-      # before. The measured 1337 s that came back was not a sharded run beating
-      # nothing; it was an unsharded run, 1.6% off the unsharded run before it.
+      # The step timeout is the hang guard, and it has three times been set
+      # too low rather than too high: ten minutes was a figure from a much
+      # smaller suite, twenty-two was guessed while a crash was still ending
+      # every run, and thirty-five was headroom over a single 1316 s green run.
+      # In one process the step measured 1330 s to 2000 s green across
+      # 2026-09-03 to 09-06 (the spread is the runner's, not the suite's).
+      # Forty-five stays until the sharded recipe has a few measurements of
+      # its own. A killed run always looks like it did less work than it
+      # did: an uncaught exception flushes stdio on the way out, a killed
+      # process does not.
       #
-      # So a future attempt needs bundle discovery that handles both layouts,
-      # and it cannot be written blind: this desk is on Swift 6.4 and produces
-      # per-target bundles, the runner is on 6.3.3 and produces the merged one,
-      # and there is no flag to make either behave like the other. That makes it
-      # work to do when a run costs nothing, which is the moment the repository
-      # goes public, rather than against a billed runner now. Checked again on
-      # 2026-09-04: the image is still on Swift 6.3.3 and still emits the merged
-      # bundle.
-      #
-      # The run goes through Scripts/ci-test.sh, a watchdog over `swift test`:
-      # after fifteen minutes with no output it samples every test process
-      # (each thread's stack lands in this log), kills the run, and exits 124.
-      # Two runs in one day went silent at about ten minutes in, on a tree that
-      # had just passed, and sat there until the cap. A killed process loses
-      # its buffered last lines, so the log named nothing; the sample is the
-      # diagnosis a machine nobody can attach to can still give. The cap below
-      # stays as the outer bound.
-      - name: Test (excluding GPU snapshots)
+      # The run goes through Scripts/ci-test.sh, a watchdog: after fifteen
+      # minutes with no output it samples every test process (each thread's
+      # stack lands in this log), kills the run, and exits 124. Two runs in
+      # one day went silent at about ten minutes in, on a tree that had just
+      # passed, and sat there until the cap. A killed process loses its
+      # buffered last lines, so the log named nothing; the sample is the
+      # diagnosis a machine nobody can attach to can still give, and it is
+      # what found the synchronous texture loader parking the main thread
+      # (2026-09-06). The cap below stays as the outer bound.
+      - name: Test (the runner's recipe)
         timeout-minutes: 45
-        run: >-
-          Scripts/ci-test.sh --skip
-          'OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests'
+        run: Scripts/ci-test.sh --run Scripts/test.sh ci
+
+      # Saved after the tests rather than after the build, so a red test run
+      # still leaves the next run a warm build; saved only when the build
+      # itself succeeded, since a half-built tree is not worth restoring; and
+      # not on an exact hit, which is a re-run of a commit already saved.
+      # Each save is a new entry under the toolchain's prefix; the repository
+      # keeps ten gigabytes of them and evicts the oldest first.
+      - name: Save the build
+        if: always() && steps.build.outcome == 'success' && steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .build
+          key: build-${{ steps.swift.outputs.version }}-${{ github.sha }}
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the
@@ -262,14 +237,45 @@ jobs:
     needs: build
     timeout-minutes: 35
     steps:
+      # The whole history, so a pull request can be diffed against its base
+      # below; the pack is about 170 MB and the fetch a few seconds.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Swift version
         run: swift --version
 
+      # An example can only stop compiling when the framework, the vendored
+      # code, a manifest, or an example's own source changed. A pull request
+      # that touched none of those (prose, a figure, a workflow) keeps the
+      # job, which is a required check, and skips the seventeen minutes. A
+      # dispatched run always builds: it is the milestone check, and it has
+      # no base to diff against.
+      - name: Decide whether an example can have changed
+        id: scope
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" -- \
+            Sources External Package.swift Package.resolved \
+            Examples/Package.swift 'Examples/**/*.swift' .github/workflows/build.yml)
+          if [ -n "$changed" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "$changed" | head -20
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "nothing an example compiles against changed; the build is skipped"
+          fi
+
       # The examples are their own package, so the build is scoped to it. It
       # builds its own copy of the library through the path dependency, which is
-      # why this costs more than the job above rather than less.
+      # why this costs more than the job above rather than less. No cache here:
+      # the tree comes to about twelve gigabytes, past the runner's disk and
+      # the repository's cache allowance alike.
       - name: Build every example
+        if: steps.scope.outputs.build == 'true'
         run: swift build --package-path Examples

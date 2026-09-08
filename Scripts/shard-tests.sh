@@ -75,16 +75,23 @@ fi
 
 platform=$(xcrun --sdk macosx --show-sdk-platform-path 2>/dev/null)
 helper="$(dirname "$(xcrun --find swift)")/../libexec/swift/pm/swiftpm-testing-helper"
-# A bundle per target is one of two layouts SwiftPM produces, and the only one
-# this handles. The other is a single merged `OllinPackageTests.xctest` holding
-# every target at once, which is what the macos-26 runner's Swift 6.3.3 emits
-# where this desk's 6.4 emits the per-target form. There is no flag to make
-# either produce the other, so supporting the merged layout means listing every
-# target's tests and cutting the set back to OllinTests before dealing it, and
-# it cannot be written or checked from a machine that never produces one.
-bundle=".build/debug/OllinTests.xctest/Contents/MacOS/OllinTests"
+# SwiftPM lays the test bundles out one of two ways, and this handles both.
+# The Swift Build system (this desk, `.build/.buildSystem_debug` says
+# `swiftbuild`) writes a bundle per target; the native one (the macos-26
+# runner's Swift 6.3.3) writes a single merged `OllinPackageTests.xctest`
+# holding every target at once. The helper takes either: with the merged
+# bundle its listing carries every target's tests, so the listing is cut
+# back to OllinTests before it is dealt, and the count check below asks for
+# exactly that set. The layout is not a toolchain version, only a build
+# system: the same desk produces the merged form under --build-system native.
+bin=$(swift build --show-bin-path 2>/dev/null)
+bundle=""
+for candidate in "$bin/OllinTests.xctest/Contents/MacOS/OllinTests" \
+    "$bin/OllinPackageTests.xctest/Contents/MacOS/OllinPackageTests"; do
+    [[ -f "$candidate" ]] && { bundle="$candidate"; break; }
+done
 [[ -n "$platform" && -x "$helper" ]] || single "no swiftpm-testing-helper on this toolchain"
-[[ -f "$bundle" ]] || single "no $bundle (a merged PackageTests bundle is not handled)"
+[[ -n "$bundle" ]] || single "no test bundle under $bin (neither per-target nor merged)"
 
 export DYLD_FRAMEWORK_PATH="$platform/Developer/Library/Frameworks"
 export DYLD_LIBRARY_PATH="$platform/Developer/usr/lib"
@@ -92,8 +99,8 @@ export DYLD_LIBRARY_PATH="$platform/Developer/usr/lib"
 work=$(mktemp -d) || exit 1
 trap 'rm -rf "$work"' EXIT
 
-"$helper" --test-bundle-path "$bundle" --list-tests --testing-library swift-testing "$bundle" \
-    > "$work/ids.txt" 2>/dev/null || single "the bundle would not list its tests"
+"$helper" --test-bundle-path "$bundle" --list-tests --testing-library swift-testing "$bundle" 2>/dev/null \
+    | grep -E '^OllinTests\.' > "$work/ids.txt" || single "the bundle would not list OllinTests"
 if [[ -n "$skip" ]]; then
     expected=$(grep -vE "^($apart)/" "$work/ids.txt" | grep -cvE "$skip") || true
 else

@@ -247,6 +247,8 @@ enum GuideFigures {
             case "--list": listPath = value("--list")
             case "--results": resultsPath = value("--results")
             case "--progress": progressPath = value("--progress")
+            case "--baselines": baselineDirectory = value("--baselines")
+            case "--reference": referenceDirectory = value("--reference")
             case "--compare":
                 let first = value("--compare")
                 compare = (first, value("--compare"))
@@ -315,6 +317,13 @@ enum GuideFigures {
         let previous = loadCache(cachePath)
         var cache = previous
         let frameworkChanged = cache.framework != digest
+        // This run's renders file under the digest they are made with; a probe
+        // reads the folder of the digest the cache last trusted (see the
+        // baselines section). With no trusted digest yet there is nothing to
+        // read, and the committed images stand in.
+        baselineDirectory = baselineFolder(root: root, digest: digest)
+        referenceDirectory = previous.framework.isEmpty
+            ? nil : baselineFolder(root: root, digest: previous.framework)
         var renderAll = force
         if frameworkChanged || cache.version != Cache.currentVersion {
             if only == nil || cache.version != Cache.currentVersion {
@@ -326,30 +335,38 @@ enum GuideFigures {
                 // back to the full re-render below.
                 if only == nil, !force, cache.version == Cache.currentVersion,
                    !cache.figures.isEmpty, probing,
-                   case let sample = probeFigures(figures, root: root),
+                   case let sample = probeFigures(figures, cache: cache, root: root),
                    !sample.isEmpty {
                     let moved = runProbe(sample, root: root, jobs: jobs, verbose: verbose)
                     if moved.isEmpty {
+                        // Render-neutral: every entry keeps its place under the
+                        // new digest, and the run goes on to whatever is stale
+                        // on its own account (a new figure, an edited one),
+                        // which a framework change landing in the same commit
+                        // used to leave unrendered until the next run.
                         cache.framework = digest
                         saveCache(cache, to: cachePath)
+                        pruneBaselines(root: root, keeping: digest)
                         print("guide-figures: the framework changed, but all"
                               + " \(sample.count) probe figure\(plural(sample.count)) drew the"
                               + " same pixels, so the rest are left alone."
                               + " Run with --no-probe to re-render everything anyway.")
-                        exit(0)
+                    } else {
+                        // Any move at all hands the run to the full render,
+                        // since a change too small to see on the sample can
+                        // still be visible on a figure it never looked at; the
+                        // full render then rewrites only the images that moved
+                        // visibly.
+                        print("guide-figures: the probe found \(moved.count)"
+                              + " figure\(plural(moved.count)) whose pixels moved, so every"
+                              + " figure is re-rendered; only a visible move rewrites"
+                              + " a committed image")
+                        for (figure, movement) in moved {
+                            print("  \(figure): \(movement?.summary ?? "failed to render")")
+                        }
+                        cache = Cache(version: Cache.currentVersion, framework: digest,
+                                      figures: [:])
                     }
-                    // Any move at all hands the run to the full render, since
-                    // a change too small to see on the sample can still be
-                    // visible on a figure it never looked at; the full render
-                    // then rewrites only the images that moved visibly.
-                    print("guide-figures: the probe found \(moved.count)"
-                          + " figure\(plural(moved.count)) whose pixels moved, so every"
-                          + " figure is re-rendered; only a visible move rewrites"
-                          + " a committed image")
-                    for (figure, movement) in moved {
-                        print("  \(figure): \(movement?.summary ?? "failed to render")")
-                    }
-                    cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
                 } else if !cache.figures.isEmpty {
                     print("guide-figures: the framework changed, so every figure is re-rendered")
                     cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
@@ -417,8 +434,21 @@ enum GuideFigures {
             print("guide-figures: rendering \(stale.count) figure\(plural(stale.count))")
             results = render(stale, root: root, progressPath: nil, echo: true)
         } else {
+            // Say what the wait is before it starts: a full pass on a small
+            // machine is half an hour, and a session deciding whether to sit
+            // through it wants the number up front, from the last timings.
+            let timed = stale.compactMap { previous.figures[$0.figure]?.seconds }
+            let estimate: String
+            if timed.isEmpty {
+                estimate = ""
+            } else {
+                let wall = format(timed.reduce(0, +) / Double(workers))
+                estimate = timed.count == stale.count
+                    ? ", about \(wall) by the last timings"
+                    : ", at least \(wall) by the last timings of \(timed.count) of them"
+            }
             print("guide-figures: rendering \(stale.count) figure\(plural(stale.count))"
-                  + " across \(workers) job\(plural(workers))")
+                  + " across \(workers) job\(plural(workers))\(estimate)")
             results = renderSharded(stale, workers: workers, verbose: verbose)
         }
         results.sort { $0.figure < $1.figure }
@@ -434,6 +464,10 @@ enum GuideFigures {
             cache.figures.removeValue(forKey: result.figure)
         }
         saveCache(cache, to: cachePath)
+        // A filtered run leaves the cache on its old digest (see above), so
+        // this keeps that digest's folder and drops the partial one; a full
+        // run has adopted the new digest and drops the old.
+        pruneBaselines(root: root, keeping: cache.framework)
 
         let elapsed = Date().timeIntervalSince(started)
         let failures = results.filter { !$0.ok }
@@ -463,9 +497,14 @@ enum GuideFigures {
     /// The figures marked `// figure: probe`, minus any that cannot be
     /// compared. An `unstable` figure renders differently every time, so a
     /// probe made of one would report a change on every run and the sample
-    /// would never pass.
-    private static func probeFigures(_ figures: [String], root: String) -> [String] {
-        figures.filter { figure in
+    /// would never pass. A probe figure whose own source changed since its
+    /// cache entry sits the sample out too: its render would move for its
+    /// own reasons and say nothing about the framework, and it is stale
+    /// anyway, so the pass after the probe renders it exactly.
+    private static func probeFigures(_ figures: [String], cache: Cache,
+                                     root: String) -> [String] {
+        var edited: [String] = []
+        let sample = figures.filter { figure in
             guard let data = FileManager.default.contents(atPath: sourceFile(figure, root: root)),
                   let source = String(data: data, encoding: .utf8) else { return false }
             let directive = Directive(source: source)
@@ -473,8 +512,20 @@ enum GuideFigures {
                 warn("\(figure) is marked both probe and unstable; ignoring the probe mark")
                 return false
             }
+            if directive.probe, cache.figures[figure] != nil,
+               !unchanged(figure, cache: cache, root: root) {
+                edited.append(figure)
+                return false
+            }
             return directive.probe
         }
+        if !edited.isEmpty {
+            print("guide-figures: \(edited.count) probe figure\(plural(edited.count)) changed"
+                  + " \(edited.count == 1 ? "its" : "their") own source and"
+                  + " \(edited.count == 1 ? "sits" : "sit") the sample out:"
+                  + " \(edited.joined(separator: ", "))")
+        }
+        return sample
     }
 
     /// Render the sample and report which of them no longer match the image
@@ -585,8 +636,12 @@ enum GuideFigures {
                             if FileManager.default.fileExists(atPath: darkWrite) {
                                 darkOutPath = directory + "/" + darkName
                                 if probing {
-                                    movement = Movement.between(darkWrite,
-                                                                and: directory + "/" + darkName)
+                                    movement = Movement.between(darkWrite, and: probeReference(
+                                        relative, dark: true,
+                                        committed: directory + "/" + darkName))
+                                }
+                                if directive.probe {
+                                    keepBaseline(darkWrite, for: relative, dark: true)
                                 }
                             } else {
                                 ok = false
@@ -605,8 +660,12 @@ enum GuideFigures {
                         }
                     }
                     if probing {
-                        let light = Movement.between(writePath, and: outPath)
+                        let light = Movement.between(writePath, and: probeReference(
+                            relative, dark: false, committed: outPath))
                         movement = movement.map { Movement.larger($0, light) } ?? light
+                    }
+                    if ok, directive.probe {
+                        keepBaseline(writePath, for: relative, dark: false)
                     }
                     if verifying || probing {
                         try? FileManager.default.removeItem(atPath: writePath)
@@ -679,6 +738,12 @@ enum GuideFigures {
             process.executableURL = URL(fileURLWithPath: executable)
             process.arguments = ["--list", listPath, "--results", resultPath,
                                  "--progress", progressPath]
+            if let baselineDirectory {
+                process.arguments?.append(contentsOf: ["--baselines", baselineDirectory])
+            }
+            if let referenceDirectory {
+                process.arguments?.append(contentsOf: ["--reference", referenceDirectory])
+            }
             process.currentDirectoryURL = URL(fileURLWithPath:
                 FileManager.default.currentDirectoryPath)
             if let handle = FileHandle(forWritingAtPath: logPath) {
@@ -936,8 +1001,89 @@ enum GuideFigures {
 
     private static var defaultJobs: Int {
         // Four is a deliberate ceiling rather than the core count: each shard is
-        // a full Metal process, and they share one GPU and this machine's memory.
-        min(4, max(1, ProcessInfo.processInfo.activeProcessorCount - 2))
+        // a full Metal process, and they share one GPU and this machine's
+        // memory. Memory is the binding limit on a small machine: a shard
+        // compiles each figure through swiftc beside its own render, and four
+        // of them on 8 GB pushed the machine into swap until the run was
+        // killed (2026-09-08, twice, about half an hour in each time). So the
+        // count also follows the memory, one shard per 3 GB.
+        let cores = ProcessInfo.processInfo.activeProcessorCount
+        let byMemory = Int(ProcessInfo.processInfo.physicalMemory / (3 << 30))
+        return max(1, min(4, cores - 2, byMemory))
+    }
+
+    // MARK: - Probe baselines
+
+    /// Where a probe figure's last render is kept (`Guide/.figure-baselines/`,
+    /// gitignored), so the next probe measures a framework change against what
+    /// the framework drew last time rather than against the committed image.
+    /// The two drift apart on purpose: a move below the visible threshold
+    /// keeps the committed image, and once one probe figure sits a few
+    /// invisible pixels off its image, comparing against the image would hand
+    /// every later framework change to the full render, however neutral.
+    /// (2026-09-08: one Vision figure had drifted by a mean of 0.00 levels,
+    /// and every preflight since re-rendered all 497 figures because of it.)
+    ///
+    /// The renders are filed under the framework digest they were made with,
+    /// and a probe reads only the folder of the digest the cache last trusted.
+    /// A run that was killed halfway leaves a partial folder under the new
+    /// digest, which no probe reads until a run completes under it and the
+    /// cache adopts it; a probe comparing against renders made under the very
+    /// change it is meant to measure would call every change neutral.
+    /// `baselineDirectory` is where this process files its renders and
+    /// `referenceDirectory` where a probe looks; the parent sets both from the
+    /// digests and hands them to its shards.
+    nonisolated(unsafe) private static var baselineDirectory: String?
+    nonisolated(unsafe) private static var referenceDirectory: String?
+
+    private static func baselinesRoot(_ root: String) -> String {
+        root + "/Guide/.figure-baselines"
+    }
+
+    private static func baselineFolder(root: String, digest: String) -> String {
+        baselinesRoot(root) + "/" + String(digest.prefix(12))
+    }
+
+    private static func baselineFile(in directory: String, figure: String, dark: Bool,
+                                     extension ext: String) -> String {
+        let key = figure.replacingOccurrences(of: "/", with: "__")
+        let stem = (key as NSString).deletingPathExtension + (dark ? "-dark" : "")
+        return directory + "/" + stem + "." + ext
+    }
+
+    /// The image a probe render is measured against: the figure's last render
+    /// under the trusted digest when there is one, else the committed image
+    /// (a fresh clone, a cleared cache, or a figure only just marked as a
+    /// probe).
+    private static func probeReference(_ figure: String, dark: Bool,
+                                       committed: String) -> String {
+        guard let referenceDirectory else { return committed }
+        let baseline = baselineFile(in: referenceDirectory, figure: figure, dark: dark,
+                                    extension: (committed as NSString).pathExtension)
+        return FileManager.default.fileExists(atPath: baseline) ? baseline : committed
+    }
+
+    /// File a probe figure's fresh render under the current digest. Every
+    /// successful render of a probe figure lands here, whatever run made it.
+    private static func keepBaseline(_ fresh: String, for figure: String, dark: Bool) {
+        guard let baselineDirectory else { return }
+        let manager = FileManager.default
+        let baseline = baselineFile(in: baselineDirectory, figure: figure, dark: dark,
+                                    extension: (fresh as NSString).pathExtension)
+        try? manager.createDirectory(atPath: baselineDirectory, withIntermediateDirectories: true)
+        try? manager.removeItem(atPath: baseline)
+        try? manager.copyItem(atPath: fresh, toPath: baseline)
+    }
+
+    /// Drop every baseline folder but the trusted digest's, once a run has
+    /// completed and the cache has adopted it.
+    private static func pruneBaselines(root: String, keeping digest: String) {
+        let manager = FileManager.default
+        let base = baselinesRoot(root)
+        let keep = String(digest.prefix(12))
+        for entry in (try? manager.contentsOfDirectory(atPath: base)) ?? [] where entry != keep {
+            try? manager.removeItem(atPath: base + "/" + entry)
+        }
     }
 
     private static func fileHash(_ path: String) -> String {

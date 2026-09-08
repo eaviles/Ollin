@@ -27,6 +27,7 @@ DerivedData/
 
 # Guide figure render cache (Scripts/guide-figures.sh); local timing + hashes
 /Guide/.figure-cache.json
+/Guide/.figure-baselines/
 
 # Vale style packages fetched by `vale sync` (Scripts/prose-lint.sh); only the
 # OllinGuide style is ours and committed

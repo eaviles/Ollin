@@ -10,6 +10,10 @@
 #                                # everyday run leaves out
 #   Scripts/test.sh shard        # the same suite with OllinTests split
 #                                # across processes: fewer minutes, more fans
+#   Scripts/test.sh ci           # the runner's recipe (build.yml): OllinTests
+#                                # as two shards with every other target
+#                                # running beside them, minus the suites that
+#                                # want a device the runner does not have
 #   Scripts/test.sh <pattern>    # swift test --filter <pattern>
 #
 # The sharded run exists because OllinTests draws through `Sketch`, which is
@@ -68,6 +72,29 @@ cd "$(dirname "$0")/.." || exit 1
 # a full parallel run that wait has wedged indefinitely rather than failing.
 sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests'
 
+# What the CI runner cannot run, on top of the sensitive suites above, which
+# it skips outright (it has none of the devices they want). Found one runner
+# failure at a time, and kept here rather than in the workflow so the
+# knowledge lives beside the rest of it. The snapshot references are recorded
+# on a developer's GPU and the runner's paravirtual one anti-aliases
+# differently; Vision reports no compute device there at all (optical flow,
+# the segmenter's live wiring); screen capture is permitted and delivers no
+# frame; the frame interpolation gate wants a camera; the two build suites run
+# whole nested builds inside a test (the generated packages at 15 serialized
+# minutes, the phone host at 9 minutes on the runner's three cores, with the
+# framework's own iOS compile already made by preflight on every change).
+# The virtual camera suite is the one no probe can guard: its first call into
+# CoreMediaIO makes the framework initialize its extension plug-ins, which
+# sends an XPC message to an extension host that never answers on the runner,
+# and a thread parked in a synchronous C call is beyond any suite time limit.
+# Two of the pool's three threads sat there for the rest of the run
+# (2026-09-08, run 34236822231: 2,971 tests in seven minutes, then silence
+# until the watchdog sampled and killed it; the sample names both tests),
+# and a video export waiting on the main thread never got its worker.
+# A new device test belongs behind an `.enabled(if:)` probe of its device,
+# not here: it then refuses itself wherever the device is absent.
+runner='OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinScreenTests.ScreenCaptureTests|liveWiringPublishesMatteCutoutAndCount|theGateNeedsACameraAndAHostThatCanSpareARefresh|GeneratedProjectBuildTests|PhoneProjectBuildTests|OllinCameraTests.VirtualCameraTests'
+
 phases() {
     echo "test.sh: phase 1 of 2, the wall-clock and device suites alone"
     swift test --filter "$sensitive" || exit 1
@@ -97,6 +124,25 @@ milestone | --milestone)
     echo "test.sh: milestone run; the four signed-bundle builds are included"
     export OLLIN_BUNDLE_BUILDS=1
     phases
+    ;;
+ci)
+    # Two shards of OllinTests and one process for every other target, all at
+    # once: the shards are main-thread bound, so their pools leave the cores
+    # to the third process, and three processes are what the runner has cores
+    # for. Everything is built first so that neither the shards (which invoke
+    # the bundle directly) nor `swift test --skip-build` has anything left to
+    # compile. Each line says which of the three wrote it.
+    echo "test.sh: the runner's recipe; OllinTests as ${OLLIN_CI_SHARDS:-2} shards, the other targets beside them"
+    swift build --build-tests || exit 1
+    export OLLIN_SHARD_SKIP="$sensitive|$runner"
+    Scripts/shard-tests.sh "${OLLIN_CI_SHARDS:-2}" > >(sed -l 's/^/[shards] /') 2>&1 &
+    shardsPid=$!
+    swift test --skip-build --skip "$sensitive|$runner|^OllinTests\\." > >(sed -l 's/^/[rest] /') 2>&1 &
+    restPid=$!
+    failed=0
+    wait $shardsPid || failed=1
+    wait $restPid || failed=1
+    exit $failed
     ;;
 "")
     phases
