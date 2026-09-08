@@ -3555,7 +3555,8 @@ public extension OllinApp {
         let pdfFlag = args.firstIndex(of: "--export-pdf")
         let gcodeFlag = args.firstIndex(of: "--export-gcode")
         let embroideryFlag = args.firstIndex(of: "--export-embroidery")
-        if svgFlag != nil || pdfFlag != nil || gcodeFlag != nil || embroideryFlag != nil {
+        let dxfFlag = args.firstIndex(of: "--export-dxf")
+        if svgFlag != nil || pdfFlag != nil || gcodeFlag != nil || embroideryFlag != nil || dxfFlag != nil {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
@@ -3606,9 +3607,19 @@ public extension OllinApp {
                 OllinApp.exportEmbroidery(make(), to: args[i + 1], settings: settings, frame: frame)
                 handled = true
             }
+            if let i = dxfFlag, i + 1 < args.count {
+                // `--export-dxf <path.dxf>` writes the frame as a drawing a CAD program
+                // or a laser's software opens, a layer per color (`--dxf-width MM`,
+                // `--dxf-margin MM`, sharing `--hatch`).
+                let width = value("--dxf-width").flatMap(Double.init) ?? 150
+                let margin = value("--dxf-margin").flatMap(Double.init) ?? 0
+                OllinApp.exportDXF(make(), to: args[i + 1], settings: DXF(width: width, margin: margin),
+                                   frame: frame, hatching: hatching)
+                handled = true
+            }
             if !handled {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> | --export-gcode <path.gcode> | --export-embroidery <path.dst> [--frame N] [--gcode-machine plotter|laser|mill] [--gcode-width MM] [--gcode-margin MM] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
+                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> | --export-gcode <path.gcode> | --export-dxf <path.dxf> | --export-embroidery <path.dst> [--frame N] [--gcode-machine plotter|laser|mill] [--gcode-width MM] [--gcode-margin MM] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
             }
             return true
         }

@@ -342,7 +342,7 @@ func stitchBlocks(_ commands: [SVGCommand], canvas: Rectangle) -> [StitchBlock] 
             if !clipStack.isEmpty { clipStack.removeLast() }
         case let .draw(record):
             let toDevice = { (p: Vector2) in transformed(p, record.transform) }
-            if let fill = record.style.fill, let color = threadColor(fill),
+            if let fill = record.style.fill, let color = paintColor(fill),
                let (contours, winding) = fillContours(record.geometry) {
                 var region = Shape(contours: contours.map {
                     Contour($0.map(toDevice), closed: true)
@@ -358,7 +358,7 @@ func stitchBlocks(_ commands: [SVGCommand], canvas: Rectangle) -> [StitchBlock] 
                     blocks[block(for: color)].fills.append(region)
                 }
             }
-            if let stroke = record.style.stroke, let color = threadColor(stroke) {
+            if let stroke = record.style.stroke, let color = paintColor(stroke) {
                 let strokePaths = record.geometry.strokePaths
                     ?? fillContours(record.geometry).map { outline in
                         outline.contours.map { ($0, true) }
@@ -381,9 +381,10 @@ func stitchBlocks(_ commands: [SVGCommand], canvas: Rectangle) -> [StitchBlock] 
     return blocks
 }
 
-/// The thread a paint asks for: a solid color as itself, a gradient as the middle
-/// of its ramp (a thread is one color). Nothing for a fully transparent paint.
-private func threadColor(_ paint: Paint) -> Color? {
+/// The one color a paint asks for: a solid color as itself, a gradient as the
+/// middle of its ramp (a thread, or a layer, is one color). Nothing for a fully
+/// transparent paint.
+func paintColor(_ paint: Paint) -> Color? {
     let color: Color
     switch paint {
     case .color(let c): color = c

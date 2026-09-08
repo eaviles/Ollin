@@ -272,6 +272,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Recording`](./Output/Recording.md) - record a live run as it happens, with the picture and the sketch's own sound (or the room's sound) in one movie, in real time
 - [`Fabrication`](./Output/Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`G-code`](./Output/GCode.md) - write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly
+- [`DXF`](./Output/DXF.md) - write a frame as a DXF drawing a CAD program or a laser cutter's software opens: lines, polylines, and true circles in millimeters, each color on its own layer
 - [`Embroidery`](./Output/Embroidery.md) - write a frame as the stitches an embroidery machine sews, a `.dst` file with strokes as running stitch, fills as rows, and each color as its own thread
 - [`Installation`](./Output/Installation.md) - leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that restarts it, and the building's hours
 - [`A sketch as an app`](./Output/App.md) - wrap a finished piece as a signed, double-clickable Mac app that runs without the toolchain, with a frame of itself as its icon

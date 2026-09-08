@@ -206,6 +206,27 @@ Three things change on the way from pixels to thread. A stroke becomes a running
 
 The width is yours to give, as it is for G-code, because a hoop has real millimeters. Between two paths the thread is sewn across when the hop is within the pitch, and carried over in a jump when it is not. The planner reorders the paths within each thread to keep those jumps short. The plan is public, so a sketch can draw its own stitches before anything runs, which is what the figure does. [`Docs/Output/Embroidery.md`](../Docs/Output/Embroidery.md) has the parameters and the things to check before you sew.
 
+## A drawing for the shop: DXF
+
+A laser shop, a waterjet, or a sign maker does not run your program. It opens a drawing in its own software and sets up the job there. That software reads DXF, the drawing exchange file, and it tells one job from another by the layer a line sits on. `--export-dxf` writes the frame as that drawing, with each color on its own layer:
+
+```sh
+swift run OllinLive MySketches/Panel.swift --export-dxf panel.dxf
+```
+
+```swift
+OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/LayerStack-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/LayerStack.jpg" alt="Two panels: a coaster drawn in three colors, an outline to cut, a ring to score, and a rosette to engrave, and the same drawing pulled apart into three plates, one per color, each labeled with its layer name and the entities on it" width="680">
+</picture>
+
+So the sketch's colors are the handle. Draw the outline in one color, the fold lines in another, and the engraving in a third, and the file arrives sorted into the three jobs. A layer is named by its color's bytes, `color-1B1040`, and carries the nearest of the nine colors a drawing can show, so the shop sees the same three colors you did.
+
+The width is yours to give, as it is for G-code, because a drawing on a shop's screen has real millimeters. Strokes arrive as lines and polylines along their centerlines, and fills as their outlines, unless a hatching turns them into line work. A circle that nothing has skewed stays a circle, which a cutter drilling a hole prefers. Paths whose ends touch merge into one, and a clip cuts the work as it cuts the render. [`Examples/Export/Drafting`](../Examples/Export/Drafting/Sketch.swift) draws a box panel that way and lists the layers beside it, read from the planner. Whatever wrote the drawing, check its size against the material in the shop's software before anything moves.
+
 ## Drawing with light: a show laser
 
 A laser draws with one moving dot. Two mirrors steer the beam. A fixed clock decides how often they are told where to point, and at each of those points the beam is lit or dark. Nothing in a laser holds a picture. What you see is one dot going round a loop fast enough that your eye keeps the whole shape.
@@ -914,6 +935,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Recording](../Docs/Output/Recording.md): recording a live run in real time, what the sound modes hear, and how a take survives an evaluation.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
+- [DXF](../Docs/Output/DXF.md): a frame as the drawing a shop program opens, each color on its own layer, with circles kept as circles and touching paths merged.
 - [Embroidery](../Docs/Output/Embroidery.md): a frame as the stitches a machine sews, with strokes as running stitch, fills as rows, and each color as its own thread.
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.

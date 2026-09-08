@@ -151,7 +151,8 @@ extension CaptureSource {
     static let outputFlags = [
         "--export", "--export-sequence", "--export-video", "--export-gif",
         "--export-loop", "--export-spatial", "--export-svg", "--export-pdf",
-        "--export-gcode", "--export-usdz", "--export-grid", "--export-sweep",
+        "--export-gcode", "--export-dxf", "--export-embroidery", "--export-usdz",
+        "--export-grid", "--export-sweep",
         "--export-separations", "--export-plates", "--export-web",
     ]
 

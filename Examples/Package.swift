@@ -94,6 +94,7 @@ let package = Package(
         example("Export/Hatching"),
         example("Export/Toolpath"),
         example("Export/Embroidery"),
+        example("Export/Drafting"),
         example("Installation/Unattended"),
         example("Installation/Watched"),
         example("Installation/Hours"),
