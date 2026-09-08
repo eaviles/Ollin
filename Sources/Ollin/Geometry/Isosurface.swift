@@ -1,7 +1,8 @@
 import Foundation
 
 /// Isosurfaces: the surface where a 3D scalar field crosses a level, built as
-/// a `Mesh` by marching cubes. Give it any `(Vector3) -> Double` field (a sum
+/// a `Mesh` by marching cubes, or by dual contouring where the field has
+/// corners to keep. Give it any `(Vector3) -> Double` field (a sum
 /// of metaballs, 3D noise, a distance function, your own math) and a level,
 /// and back comes the skin of the region where the field runs above it: the
 /// 3D reading of what `isolines` does in the plane.
@@ -27,6 +28,8 @@ import Foundation
 /// rather than re-marching every frame.
 
 /// The surface of `field` at `level` inside `bounds`, as a triangle `Mesh`.
+/// `method` picks how the crossings become triangles: marching cubes by
+/// default, or dual contouring for a field with corners to keep.
 ///
 /// The field is sampled on a grid of cubic cells, `resolution` of them across
 /// the longest side of `bounds` (so the shorter sides get proportionally
@@ -37,11 +40,35 @@ import Foundation
 public func isosurface(at level: Double = 0,
                        in bounds: Box3,
                        resolution: Int = 48,
+                       method: IsosurfaceMethod = .marchingCubes,
                        field: (Vector3) -> Double) -> Mesh {
     guard let grid = IsosurfaceGrid(bounds: bounds, resolution: resolution) else {
         return Mesh(positions: [], indices: [])
     }
-    return grid.march(values: grid.sample(field, level: level))
+    let values = grid.sample(field, level: level)
+    switch method {
+    case .marchingCubes:
+        return grid.march(values: values)
+    case .dualContouring:
+        return grid.dualContour(values: values, field: field, level: level)
+    }
+}
+
+/// How `isosurface` turns the sampled field into triangles.
+public enum IsosurfaceMethod: Sendable, Equatable {
+    /// One vertex on every crossed grid edge, placed by interpolating the two
+    /// samples, and each cell's crossings stitched into its patch of surface.
+    /// Cheap (the field is read once per lattice point) and smooth, and it
+    /// rounds any corner of the field off to the size of a cell, since a
+    /// vertex can only sit on an edge of the grid.
+    case marchingCubes
+    /// One vertex per cell, placed where the tangent planes through the
+    /// cell's crossings agree, read from the field's own normals there, so a
+    /// crease stays a crease and a corner lands on the corner whatever the
+    /// resolution. Costs about a dozen field calls per crossing more, and
+    /// shades a crease with one normal per side. Reach for it when the field
+    /// has edges to keep: a box, a bored hole, a chamfer.
+    case dualContouring
 }
 
 /// `isosurface` over a field that may decline to answer: where `field` returns
@@ -69,7 +96,7 @@ func partialIsosurface(at level: Double,
 
 /// A cube corner is a 3-bit number: bit 0 is x, bit 1 is y, bit 2 is z. Every
 /// table below is built from that one convention.
-private enum Cube {
+enum IsosurfaceCube {
 
     /// The 12 edges as (low corner, high corner). The low corner is always the
     /// one carrying 0 in the axis the edge runs along, so it names the lattice
@@ -263,8 +290,13 @@ struct IsosurfaceGrid {
 
     /// One face's contribution: 0, 1, or 2 directed segments, recorded as
     /// `next[from] = to` over local edge indices. `order` is scratch the caller
-    /// owns, so a face costs no allocation.
-    private func link(face: Int, corner: [Double], order: inout [Int], into next: inout [Int]) {
+    /// owns, so a face costs no allocation. Shared with the dual contouring,
+    /// which chains the same segments to tell one sheet of surface through a
+    /// cell from another, and which settles an ambiguous face through `decide`
+    /// (given the face, whether its two inside corners join, or nil to fall
+    /// back on the bilinear guess) by asking the field itself.
+    func link(face: Int, corner: [Double], order: inout [Int], into next: inout [Int],
+              decide: (Int) -> Bool? = { _ in nil }) {
         // Walk the face's perimeter counter-clockwise, collecting the sign
         // changes. A corner going inside to outside opens a segment; outside to
         // inside closes one, and because the signs alternate around the
@@ -274,11 +306,11 @@ struct IsosurfaceGrid {
         var opensFirst = false
 
         for step in 0 ..< 4 {
-            let a = Cube.faceCorners[base + step], b = Cube.faceCorners[base + (step + 1) % 4]
+            let a = IsosurfaceCube.faceCorners[base + step], b = IsosurfaceCube.faceCorners[base + (step + 1) % 4]
             let inA = corner[a] > 0
             guard inA != (corner[b] > 0) else { continue }
             if count == 0 { opensFirst = inA }
-            order[count] = Cube.edgeBetween[a * 8 + b]
+            order[count] = IsosurfaceCube.edgeBetween[a * 8 + b]
             count += 1
         }
 
@@ -292,7 +324,7 @@ struct IsosurfaceGrid {
             // the bilinear surface's saddle value, which depends only on these
             // four corner values, so the cell on the other side of this face
             // reaches the same answer and the two tessellations meet exactly.
-            let joined = saddleIsInside(face: face, corner: corner)
+            let joined = decide(face) ?? saddleIsInside(face: face, corner: corner)
             // Joining each open to the close that follows it cuts off the
             // outside corners, leaving the two inside ones connected; joining
             // it to the close before it separates them.
@@ -304,14 +336,29 @@ struct IsosurfaceGrid {
         }
     }
 
+    /// Where the saddle of the face's bilinear surface sits, as the face's
+    /// perimeter-corner offsets `(s, t)` from its first corner toward its
+    /// second and its fourth, or nil when there is no saddle or it falls off
+    /// the face. What the dual contouring asks the field at.
+    func saddle(face: Int, corner: [Double]) -> (s: Double, t: Double)? {
+        let base = face * 4
+        let a = corner[IsosurfaceCube.faceCorners[base]], b = corner[IsosurfaceCube.faceCorners[base + 1]]
+        let c = corner[IsosurfaceCube.faceCorners[base + 2]], d = corner[IsosurfaceCube.faceCorners[base + 3]]
+        let denominator = a - b + c - d
+        guard denominator != 0 else { return nil }
+        let s = (a - d) / denominator, t = (a - b) / denominator
+        guard s >= 0, s <= 1, t >= 0, t <= 1 else { return nil }
+        return (s, t)
+    }
+
     /// Whether the saddle of the face's bilinear surface sits inside. For
     /// corner values `a, b, c, d` walked around the face, the saddle value is
     /// `(a*c - b*d) / (a + c - b - d)`; the field is already shifted so the
     /// surface sits at zero, which makes its sign the whole answer.
-    private func saddleIsInside(face: Int, corner: [Double]) -> Bool {
+    func saddleIsInside(face: Int, corner: [Double]) -> Bool {
         let base = face * 4
-        let a = corner[Cube.faceCorners[base]], b = corner[Cube.faceCorners[base + 1]]
-        let c = corner[Cube.faceCorners[base + 2]], d = corner[Cube.faceCorners[base + 3]]
+        let a = corner[IsosurfaceCube.faceCorners[base]], b = corner[IsosurfaceCube.faceCorners[base + 1]]
+        let c = corner[IsosurfaceCube.faceCorners[base + 2]], d = corner[IsosurfaceCube.faceCorners[base + 3]]
         let denominator = a + c - b - d
         guard denominator != 0 else { return false }   // no saddle: keep them separate
         return (a * c - b * d) / denominator > 0
@@ -321,8 +368,8 @@ struct IsosurfaceGrid {
     private func weld(edge: Int, cell: (i: Int, j: Int, k: Int), corner: [Double],
                       values: [Double], defined: [Bool]?, vertexAt: inout [Int32],
                       positions: inout [Vector3], normals: inout [Vector3]) -> Int {
-        let (low, high) = Cube.edges[edge]
-        let axis = Cube.axis(of: edge)
+        let (low, high) = IsosurfaceCube.edges[edge]
+        let axis = IsosurfaceCube.axis(of: edge)
         let li = cell.i + (low & 1), lj = cell.j + ((low >> 1) & 1), lk = cell.k + ((low >> 2) & 1)
         let slot = latticeIndex(li, lj, lk) * 3 + axis
 

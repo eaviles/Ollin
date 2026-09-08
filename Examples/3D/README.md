@@ -36,6 +36,7 @@ This group covers meshes, point clouds, and the 3D transform stack.
 | [SurfaceScatter](Geometry/SurfaceScatter/) | Trees standing on a globe. `surfacePoints` scatters them over the skin by area, and `alignment` stands each one up. The `spread` parameter compares an even covering, a plain draw, and the vertex-list shortcut. |
 | [Terrain](Geometry/Terrain/) | Generated terrain, then weathered. A heightfield is grown by diamond-square subdivision, then eroded by tens of thousands of simulated raindrops that carve ravines and build sediment fans. |
 | [Metaballs](Geometry/Metaballs/) | Soft spheres that merge as they come close. Every ball adds a bump to one shared field, and `isosurface` walks that field into a mesh. |
+| [SharpFields](Geometry/SharpFields/) | A block with a hole bored through it and a corner bitten out, meshed so the corners stay. `isosurface` with `method: .dualContouring` puts each cell's vertex where the field's normals meet, beside marching cubes for the difference. |
 | [MeshGrowth](Geometry/MeshGrowth/) | A surface that grows more than it has room for. Its vertices are pushed apart, faster where the surface is already crowded, until it buckles. |
 | [SubdivisionSurfaces](Geometry/SubdivisionSurfaces/) | A coarse low-poly cage refined into a smooth solid (`mesh.subdivided(_:levels:)`). |
 | [SurfaceFromPoints](Geometry/SurfaceFromPoints/) | A surface rebuilt from points, two ways. A knot is sampled into a bare point cloud and then reconstructed from that cloud. |

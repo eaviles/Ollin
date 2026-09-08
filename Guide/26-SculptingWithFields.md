@@ -153,6 +153,21 @@ The right panel is that same form with `wireframe()` on, marched deliberately co
 
 Any field works here, not just metaballs. The one thing to know is which side it treats as solid. The surface wraps the region where the field runs *above* the level. So a distance function, which is negative inside, needs a minus sign in front of it.
 
+A field with corners is where the grid shows. Marching cubes can only put a vertex on an edge of the grid. A corner that falls inside a cube therefore comes out as a bevel across it. A block reads as a pebble at any resolution you can afford. Ask for `method: .dualContouring` and each cube gets one vertex where the field's own normals say the surface is. Three faces meet at a corner, so the vertex lands on the corner, and a bored hole keeps its rim.
+
+```swift
+let block = isosurface(at: 0, in: box, resolution: 14, method: .dualContouring) { p in
+    let q = Vector3(abs(p.x) - 1, abs(p.y) - 1, abs(p.z) - 1)
+    let walls = Vector3(max(q.x, 0), max(q.y, 0), max(q.z, 0)).length + min(max(q.x, max(q.y, q.z)), 0)
+    let bore = (p.x * p.x + p.y * p.y).squareRoot() - 0.5
+    return -max(walls, -bore)
+}
+```
+
+<img src="Images/26-SculptingWithFields/SharpFields.jpg" alt="Two panels: a block with a hole bored through it, its corners rounded off and the rim of its hole softened on the left, and the same block on the same coarse grid with square corners and a crisp rim on the right" width="680">
+
+Both blocks come from the same fourteen cells across. Only where the vertices sit differs. It costs a dozen extra reads of the field at every crossing. Reach for it when the field has edges to keep.
+
 So there are two ways out of a field, and they cost differently. `drawSDF3D` shades straight to pixels and pays by the pixel. `isosurface` makes geometry and pays by the volume, cubically in `resolution`. Reach for the mesh when you need a real object, and for the traced field when you just want it on screen.
 
 ## One solid, two shadows

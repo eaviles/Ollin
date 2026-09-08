@@ -23,7 +23,7 @@
 - [`String art`](./StringArt.md) - `StringArt`, one continuous thread wound around pins on a rim until its crossings reproduce a picture (a stateful stepper)
 - [`Percolation`](./Percolation.md) - `Percolation`, site-percolation clusters over a seeded grid, with largest-first labeling, the spanning cluster, cell rectangles, and traced boundary loops
 - [`Isolines`](./Isolines.md) - `isolines`, marching squares over any scalar field or the tone of an image, giving level curves from metaball outlines to contour maps
-- [`Isosurfaces`](./Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`. This gives soft spheres that fuse, noise volumes, and gyroids
+- [`Isosurfaces`](./Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`, by marching cubes or by dual contouring where the field has corners to keep. This gives soft spheres that fuse, noise volumes, and gyroids
 - [`Subdivision surfaces`](./SubdivisionSurfaces.md) - `mesh.subdivided`, a low-poly control cage refined into a smooth solid by the Catmull-Clark or Loop rules. Welding and open-edge handling are built in
 - [`Mesh growth`](./MeshGrowth.md) - `MeshGrowth` / `MeshReactionDiffusion`, a surface that grows more area than it has room for, so it folds. The results include brain coral, branching coral, and a ruffled leaf margin
 - [`Hulls`](./Hulls.md) - `concaveHull` / `alphaShape`, the tighter answers to the question "what shape are these points?". The first returns one simple polygon that follows the inlets, and the second returns the true footprint of the scatter, islands and holes included

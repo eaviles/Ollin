@@ -723,6 +723,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("instanced-mesh",
                  note: "A ring of pillars drawn as ONE instanced mesh call (drawMesh(_:instances:)): per-copy positions, y rotations, non-uniform scales, and tints over a floor, lit by a directional key with castShadows() on. Pins the instanced vertex placement (the per-copy matrix applied on the GPU), the adjugate normal transform under non-uniform scale, the per-copy tint multiply, and the instanced casters rendering into the 2D shadow map beside a plain-mesh floor. No time and no rng, deterministic.",
                  make: { InstancedMeshScene() }),
+    SnapshotCase("dual-contouring",
+                 note: "One bored block meshed twice from the same field on the same coarse grid: marching cubes on the left, dual contouring on the right, under one directional key. Pins the dual-contouring vertex placement (the block's corners and the bore's rim land on the field's own creases where marching cubes chamfers them) and the per-sheet split normals that shade each face flat to its edge. No time and no rng, deterministic.",
+                 make: { DualContouringScene() }),
     SnapshotCase("mesh-field",
                  note: "A retained MeshField of three mesh kinds (boxes, spheres, cones) in a ring, drawn by GPU-written indirect draws with per-copy frustum culling ON and the camera framed so part of the ring sits outside the view. Pins the field build (entry table, compact regions), the cull + encode kernels, the per-entry indirect draws, the per-copy tints, and the field casters in the 2D shadow map beside a plain floor. Culling must not change a pixel (a culled copy is off-screen), so this reference also pins that no visible copy is ever lost. No rng and no time, deterministic.",
                  make: { MeshFieldScene() }),
@@ -9880,5 +9883,40 @@ private final class RaymarchedSDF3DFractalsScene: Sketch {
             .colored(Color(hex: 0xffd166)).rotatedY(0.5).at(0, 0, 0))
         drawSDF3D(SDF3D.mandelbox(scale: -1.5, iterations: 12, size: 2.2)
             .colored(Color(hex: 0x4ea8ff)).rotatedY(0.4).at(3.0, 0, 0))
+    }
+}
+
+/// A block with a hole bored through it, meshed from one field twice: marching
+/// cubes on the left, dual contouring on the right. Deterministic: no time, no
+/// rng, one directional light.
+private final class DualContouringScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private func field(_ p: Vector3) -> Double {
+        let q = Vector3(abs(p.x) - 1, abs(p.y) - 1, abs(p.z) - 1)
+        let walls = Vector3(max(q.x, 0), max(q.y, 0), max(q.z, 0)).length
+            + min(max(q.x, max(q.y, q.z)), 0)
+        let bore = (p.x * p.x + p.y * p.y).squareRoot() - 0.45
+        return -max(walls, -bore)
+    }
+
+    override func draw() {
+        background(Color(hex: 0x1A1E26))
+        perspective(eye: Vector3(0, 2.4, 6.6), target: Vector3(0, -0.1, 0),
+                    fieldOfView: .pi / 3.6, near: 0.5, far: 40)
+        directionalLight(.white, direction: Vector3(0.4, -0.6, 0.7), intensity: 1.0)
+        environment(.studio.intensified(to: 0.3))
+        let box = Box3(min: Vector3(-1.3, -1.3, -1.3), max: Vector3(1.3, 1.3, 1.3))
+        fill(Color(hex: 0xC9B27C))
+        material(.dielectric(roughness: 0.5))
+        for (index, method) in [IsosurfaceMethod.marchingCubes, .dualContouring].enumerated() {
+            let mesh = isosurface(at: 0, in: box, resolution: 14, method: method, field: field)
+            withState {
+                translate(Double(index) * 3.2 - 1.6, 0, 0)
+                rotateY(0.6)
+                rotateX(0.3)
+                drawMesh(mesh)
+            }
+        }
     }
 }

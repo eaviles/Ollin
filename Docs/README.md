@@ -124,7 +124,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`String art`](./Generators/StringArt.md) - `StringArt`, one continuous thread wound over rim pins until the crossings reproduce a picture (a stateful stepper)
 - [`Percolation`](./Generators/Percolation.md) - `Percolation`, site-percolation clusters over a seeded grid: largest-first labeling, the spanning cluster, cell rectangles, and traced boundary loops
 - [`Isolines`](./Generators/Isolines.md) - `isolines`, level curves of any scalar field or of an image's tone, by marching squares: from metaball outlines to contour maps
-- [`Isosurfaces`](./Generators/Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`: soft spheres that fuse, noise volumes, gyroids
+- [`Isosurfaces`](./Generators/Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh` (dual contouring where the field has corners to keep): soft spheres that fuse, noise volumes, gyroids
 - [`Subdivision surfaces`](./Generators/SubdivisionSurfaces.md) - `mesh.subdivided`, a low-poly control cage refined into a smooth solid by the Catmull-Clark or Loop rules, with welding and open-edge handling built in
 - [`Mesh growth`](./Generators/MeshGrowth.md) - `MeshGrowth` / `MeshReactionDiffusion`, a surface that grows more area than it has room for and folds: brain coral, branching coral, a ruffled leaf margin
 - [`Surface reconstruction`](./Generators/SurfaceReconstruction.md) - `reconstructSurface` / `particleSurface`, from points back to a `Mesh`. Rebuild a scanned room or object with its holes kept, or skin a particle set as one blended body.

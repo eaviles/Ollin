@@ -24,6 +24,7 @@ This is the same idea as [isolines](Isolines.md), one dimension up. There, a fie
 - [Resolution and cost](#resolution)
 - [Which side is inside](#inside)
 - [How the march works](#march)
+- [Sharp features: dual contouring](#sharp)
 - [Practical notes](#notes)
 
 <a name="metaballs"></a>
@@ -104,6 +105,33 @@ Marching cubes walks a grid of cubes over the box. Each corner of a cube is eith
 
 Some corner arrangements can be stitched in more than one way. If two neighboring cubes pick differently, the surface tears open along the face between them. Ollin settles each shared face by reading the four values on that face alone. Both cubes therefore reach the same answer, and the seam always closes. Ollin also welds vertices across cubes and takes their normals from the field's own gradient. A smooth field then gives a smooth surface with no shading facets.
 
+<a name="sharp"></a>
+
+#### Sharp features: dual contouring
+
+Marching cubes puts every vertex on an edge of the grid. A corner of the field that falls inside a cube can therefore only come out as a bevel across it. A block reads as a pebble at any resolution you can afford. `method: .dualContouring` puts one vertex inside each cube instead, where the field's own normals say the surface is:
+
+```swift
+let block = isosurface(at: 0, in: box, resolution: 24, method: .dualContouring) { p in
+    let q = Vector3(abs(p.x) - 1, abs(p.y) - 1, abs(p.z) - 1)
+    let walls = Vector3(max(q.x, 0), max(q.y, 0), max(q.z, 0)).length + min(max(q.x, max(q.y, q.z)), 0)
+    let bore = (p.x * p.x + p.y * p.y).squareRoot() - 0.5
+    return -max(walls, -bore)
+}
+```
+
+At every crossing it reads the point on the true surface and the field's normal there. Three faces meet at a corner, so the vertex lands on the corner. Two meet along an edge, so it lands on the edge. On a smooth patch it lands on the patch. Each crossed edge of the grid then becomes one quad joining the four cubes around it. A block's corners land exactly at any resolution, and a bored hole keeps its rim.
+
+<img src="../../Guide/Images/26-SculptingWithFields/SharpFields.jpg" alt="Two panels: a block with a hole bored through it, its corners rounded off and the rim of its hole softened on the left, and the same block on the same coarse grid with square corners and a crisp rim on the right" width="680">
+
+What it costs, and what to know:
+
+- **More field calls.** Each crossing is refined onto the surface and its normal read there, about a dozen calls per crossing on top of the one per lattice point. The mesh is setup-shaped work either way.
+- **Shading follows the creases.** A cube on a crease carries one vertex per side. A block's faces therefore shade flat right up to its edges, while a sphere still shades smooth. The mesh has more vertices than distinct positions where that happens.
+- **It reads the field between the samples.** The refinement asks the field between lattice points, so a field that only exists at the samples cannot use it. `Metaballs.mesh()` and `reconstructSurface` stay on marching cubes, since a smooth field gains nothing from the corners.
+- **A knife edge shows the grid.** Where two curved surfaces meet at a shallow angle, a cube can hold a sliver of one surface without any of its edges crossing the other. The crease steps by the cell there. Raise `resolution`, or keep such a meeting off the picture.
+- **The default is unchanged.** No `method` reads as marching cubes, vertex for vertex.
+
 <a name="notes"></a>
 
 #### Practical notes
@@ -116,6 +144,7 @@ Some corner arrangements can be stitched in more than one way. If two neighborin
 ### See also
 
 - [Isolines](Isolines.md), the same idea one dimension down.
+- The [SharpFields](../../Examples/3D/Geometry/SharpFields/) example, a bored block meshed both ways under a switch.
 - [Terrain](Terrain.md), the other generator that returns a `Mesh`.
 - [3D mode](../3D/3D.md), for drawing, lighting, and materials.
 - [SDF combinators](../Drawing/Combinators.md), for fields shaded directly on the GPU.

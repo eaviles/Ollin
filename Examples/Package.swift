@@ -254,6 +254,9 @@ let package = Package(
         example("3D/Geometry/ShapeFactory"),
         example("3D/Geometry/Terrain"),
         example("3D/Geometry/Metaballs"),
+        // A block with a hole bored through it, meshed so the corners stay:
+        // isosurface with method: .dualContouring beside marching cubes.
+        example("3D/Geometry/SharpFields"),
         example("3D/Geometry/ShadowArt"),
         example("3D/Geometry/SubdivisionSurfaces"),
         example("3D/Geometry/MeshGrowth"),
