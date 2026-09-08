@@ -6,6 +6,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **The four effects that move a sound.** `.chorus(Chorus())`, `.flanger(Flanger())`, `.phaser(Phaser())`, and `.tremolo(Tremolo())` join the effects chain: a copy sliding later and earlier so one voice reads as several, a copy a hair behind sweeping a comb of notches (with `feedback` for the teeth), a row of phase-turning stages sweeping a notch per pair, and the level breathing (with `spread` to swing it from side to side). Each is one slow wave and the thing it moves, `rate` and `depth` on every one, a `mix` of 0 the plain sound exactly, and a setting turned while the sound plays carries the motion on rather than restarting it. They reach an export like the rest of the chain. `Examples/Audio/Movement` plays one phrase through each.
 - **Shock, the picture flattened into regions.** `layer.filtered(.shock())` smooths the layer along its own flow and sharpens it across that flow, round after round: soft shading snaps into flat regions with crisp edges, and grain, hair, or grass is drawn out into one coherent stroke, with no color invented. `iterations` sets the level of abstraction, `flow` how far each round smooths along the flow, `radius` how far across an edge the shock reaches, `smoothing` the blur on the brightness the shock reads its sign from (the dial for a noisy picture), and `threshold` the bend under which nothing is sharpened. `Examples/Effects/Coherence` puts every dial on a parameter; the FilterCatalog's stylize sheet has a tile.
 
 ### Fixed

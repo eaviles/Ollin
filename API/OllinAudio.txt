@@ -5,18 +5,26 @@ enum AudioError: CustomStringConvertible, Error, Sendable
   case resourceNotFound(String)
   var description: String { get }
 enum Effect: Decodable, Encodable, Equatable, Hashable, Sendable
+  case chorus(Chorus)
   case custom(CustomEffect)
   case delay(Delay)
   case distortion(Distortion)
   case equalizer(Equalizer)
+  case flanger(Flanger)
+  case phaser(Phaser)
   case reverb(Reverb)
+  case tremolo(Tremolo)
   enum Kind: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case chorus
     case convolution
     case custom
     case delay
     case distortion
     case equalizer
+    case flanger
+    case phaser
     case reverb
+    case tremolo
   static func custom(_: String = default, _: (AudioBlock) -> Void) -> Effect
   static func custom(_: String = default, state: State, _: (AudioBlock, inout State) -> Void) -> Effect
   var kind: Effect.Kind { get }
@@ -301,6 +309,11 @@ struct Chord: Equatable, ExpressibleByExtendedGraphemeClusterLiteral, Expressibl
   var pitches: [Pitch] { get }
   var quality: Chord.Quality { get set }
   var root: Pitch { get set }
+struct Chorus: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(rate: Double = default, depth: Double = default, mix: Double = default)
+  var depth: Double { get set }
+  var mix: Double { get set }
+  var rate: Double { get set }
 struct CustomEffect: Decodable, Encodable, Equatable, Hashable, Sendable
   func encode(to: any Encoder) throws
   func hash(into: Hasher)
@@ -352,6 +365,12 @@ struct Equalizer: Decodable, Encodable, Equatable, Hashable, Sendable
   var midFrequency: Double { get set }
   var midGain: Double { get set }
   var midWidth: Double { get set }
+struct Flanger: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(rate: Double = default, depth: Double = default, feedback: Double = default, mix: Double = default)
+  var depth: Double { get set }
+  var feedback: Double { get set }
+  var mix: Double { get set }
+  var rate: Double { get set }
 struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   func reversed() -> ImpulseResponse
   init(_: [Float], sampleRate: Double)
@@ -432,6 +451,13 @@ struct Patch: Decodable, Encodable, Equatable, Hashable, Sendable
     var waveform: Waveform { get set }
   var count: Int { get }
   var operators: [Patch.Operator] { get }
+struct Phaser: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(rate: Double = default, depth: Double = default, stages: Int = default, feedback: Double = default, mix: Double = default)
+  var depth: Double { get set }
+  var feedback: Double { get set }
+  var mix: Double { get set }
+  var rate: Double { get set }
+  var stages: Int { get set }
 struct Pitch: Comparable, CustomStringConvertible, Equatable, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Hashable, Sendable
   func transposed(by: Double) -> Pitch
   init(_: Double)
@@ -615,6 +641,11 @@ struct StruckShape: Sendable
   func gains(struckAt: Vector2) -> [Double]
   init?(_: Shape, modes: Int = default, resolution: Int = default)
   let ratios: [Double]
+struct Tremolo: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(rate: Double = default, depth: Double = default, spread: Double = default)
+  var depth: Double { get set }
+  var rate: Double { get set }
+  var spread: Double { get set }
 struct Tuning: Equatable, Hashable, Sendable
   func frequency(_: Int) -> Double
   func pitch(_: Int) -> Pitch

@@ -69,8 +69,8 @@ public struct AudioBlock {
 
 /// An effect you wrote yourself, as a link in the chain.
 ///
-/// The four built-in kinds cover the classics; this is the seam for everything
-/// they do not. The closure is handed each ``AudioBlock`` on its way to the
+/// The built-in kinds cover the classics; this is the seam for everything they
+/// do not. The closure is handed each ``AudioBlock`` on its way to the
 /// speakers and rewrites the samples in place. It sits anywhere in
 /// ``Synth/effects``, before or after the built-ins, and reaches an export the
 /// same way they do.
@@ -235,6 +235,24 @@ final class ClosureAudioUnit: AUAudioUnit {
         room = made
         slot.set(CustomEffectRunner { block in made.process(block) })
     }
+
+    /// The motion a chorus, flanger, phaser, or tremolo runs on this unit,
+    /// kept for the same reason the room is: a turn of a setting rides the
+    /// standing wave and lines rather than starting them over.
+    var motion: ModulationEffect?
+
+    /// Puts a motion's settings onto this unit: the standing one when it is
+    /// the same kind at the same rate, a new one otherwise.
+    func setMotion(_ settings: ModulationEffect.Settings, sampleRate: Double) {
+        if let motion, motion.serves(settings, at: sampleRate) {
+            motion.update(settings)
+            return
+        }
+        let made = ModulationEffect(settings, sampleRate: sampleRate)
+        motion = made
+        slot.set(CustomEffectRunner { block in made.process(block) })
+    }
+
     private var inputBus: AUAudioUnitBus!
     private var outputBus: AUAudioUnitBus!
     private var inputBusArray: AUAudioUnitBusArray!

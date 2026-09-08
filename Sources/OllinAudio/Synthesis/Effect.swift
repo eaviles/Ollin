@@ -29,6 +29,16 @@ public enum Effect: Sendable, Hashable, Codable {
     case equalizer(Equalizer)
     /// Driving it past where it fits, from a warm edge to a broken one.
     case distortion(Distortion)
+    /// A copy of the sound sliding a little later and earlier, so it reads as
+    /// several voices. See ``Chorus``.
+    case chorus(Chorus)
+    /// The sound and a copy a hair apart, the gap sweeping a comb of notches
+    /// through it. See ``Flanger``.
+    case flanger(Flanger)
+    /// A few notches swept up and down the spectrum. See ``Phaser``.
+    case phaser(Phaser)
+    /// The level breathing. See ``Tremolo``.
+    case tremolo(Tremolo)
     /// One you wrote yourself: a closure over the samples. See ``CustomEffect``.
     case custom(CustomEffect)
 
@@ -40,7 +50,7 @@ public enum Effect: Sendable, Hashable, Codable {
     /// its own is a reverb's room: a ``Reverb`` carrying an ``ImpulseResponse``
     /// runs on its own unit, so it reads as `.convolution` here.
     public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
-        case delay, reverb, equalizer, distortion, custom
+        case delay, reverb, equalizer, distortion, chorus, flanger, phaser, tremolo, custom
         /// A reverb of a recorded or drawn room, `Reverb(impulse)`.
         case convolution
     }
@@ -52,7 +62,23 @@ public enum Effect: Sendable, Hashable, Codable {
             return reverb.impulse == nil ? .reverb : .convolution
         case .equalizer:  return .equalizer
         case .distortion: return .distortion
+        case .chorus:     return .chorus
+        case .flanger:    return .flanger
+        case .phaser:     return .phaser
+        case .tremolo:    return .tremolo
         case .custom:     return .custom
+        }
+    }
+
+    /// The motion this effect is, for the unit that carries one, or nil for
+    /// an effect that does not move.
+    var motion: ModulationEffect.Settings? {
+        switch self {
+        case .chorus(let chorus):   return .chorus(chorus)
+        case .flanger(let flanger): return .flanger(flanger)
+        case .phaser(let phaser):   return .phaser(phaser)
+        case .tremolo(let tremolo): return .tremolo(tremolo)
+        default:                    return nil
         }
     }
 
@@ -60,13 +86,16 @@ public enum Effect: Sendable, Hashable, Codable {
     /// separately, so one unit serves every setting of its kind. For a custom
     /// effect the closure itself is the setting, which is what lets a sketch
     /// swap the work without the chain being rewired; a convolution reverb
-    /// rides the same unit, its room prepared and swapped in the same way.
+    /// and the four motions ride the same unit, each prepared and swapped in
+    /// the same way.
     static func makeUnit(for kind: Kind) -> AVAudioUnit {
         switch kind {
         case .delay:       return AVAudioUnitDelay()
         case .reverb:      return AVAudioUnitReverb()
         case .equalizer:   return AVAudioUnitEQ(numberOfBands: 3)
         case .distortion:  return AVAudioUnitDistortion()
+        case .chorus, .flanger, .phaser, .tremolo:
+            return ClosureAudioUnit.makeUnit()
         case .custom:      return ClosureAudioUnit.makeUnit()
         case .convolution: return ClosureAudioUnit.makeUnit()
         }
@@ -92,6 +121,10 @@ public enum Effect: Sendable, Hashable, Codable {
         case .distortion(let distortion):
             guard let unit = unit as? AVAudioUnitDistortion else { return }
             distortion.apply(to: unit)
+        case .chorus, .flanger, .phaser, .tremolo:
+            guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit,
+                  let motion else { return }
+            closureUnit.setMotion(motion, sampleRate: sampleRate)
         case .custom(let custom):
             guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit else { return }
             closureUnit.slot.set(custom.runner)

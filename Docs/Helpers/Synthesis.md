@@ -647,6 +647,10 @@ The voice side of this library is routing as a value. A [`Patch`](#patch) says w
 | `.reverb(Reverb)` | a room around it: one of four built in, or [a room of your own](#a-room-of-your-own) |
 | `.equalizer(Equalizer)` | lifting or cutting part of the spectrum |
 | `.distortion(Distortion)` | driving it past where it fits |
+| `.chorus(Chorus)` | a copy sliding a little later and earlier, so one voice reads as several ([the four that move](#the-four-that-move)) |
+| `.flanger(Flanger)` | the sound and a copy a hair apart, the gap sweeping a comb of notches through it |
+| `.phaser(Phaser)` | a few notches swept up and down the spectrum |
+| `.tremolo(Tremolo)` | the level breathing |
 | `.custom(...)` | [one you wrote yourself](#an-effect-of-your-own), as a closure over the samples |
 
 #### The two that were here first
@@ -727,6 +731,26 @@ Distortion(.softClip, drive: -6, mix: 0.3)
 ```
 
 `.softClip` gives warmth rather than damage. `.overdrive`, `.bitCrush`, `.ring` and `.squeeze` get progressively harsher. `drive` is how hard the sound is pushed in, in decibels, and `mix` dials the whole thing back to nothing.
+
+#### The four that move
+
+```swift
+synth.effects = [.chorus(Chorus(rate: 0.8, depth: 0.5))]
+synth.effects = [.flanger(Flanger(rate: 0.25, depth: 0.7, feedback: 0.5))]
+synth.effects = [.phaser(Phaser(rate: 0.4, stages: 4))]
+synth.effects = [.tremolo(Tremolo(rate: 5, depth: 0.6, spread: 1))]
+```
+
+Each of these is one slow wave and the thing it moves. `rate` is how many times a second the wave turns, in Hz, and `depth` how far it moves the thing, `0...1`. Where there is a `mix`, it is how much of the result is the moved sound rather than the plain one, and a `mix` of 0 is the plain sound exactly.
+
+| Motion | What the wave moves | Settings |
+|---|---|---|
+| `Chorus` | a copy of the sound, about twenty milliseconds behind, six milliseconds either way at full depth. The two sides move a quarter turn apart, so a chorus is wide by itself | `rate`, `depth`, `mix` |
+| `Flanger` | a copy a hair behind, from one millisecond to seven at full depth. That close, the copy is a comb of notches through the spectrum, and the wave sweeps the comb. `feedback` sends the copy back to be copied again: positive sharpens the teeth, negative turns the comb inside out | `rate`, `depth`, `feedback`, `mix` |
+| `Phaser` | a row of stages that each turn the sound's phase without touching its level. Added back to the plain sound, the turned parts cancel at one frequency per two stages, and the wave sweeps those notches from two hundred hertz up, by as much as a factor of twenty at full depth | `rate`, `depth`, `stages`, `feedback`, `mix` |
+| `Tremolo` | the level, from full down to `1 - depth` and back. `spread` moves the two sides apart in time: at 1 they breathe in opposite turns, and the sound swings from side to side | `rate`, `depth`, `spread` |
+
+Turn any setting while the sound plays and the motion carries on from where it was: the wave keeps its phase, and a copy keeps sliding. A setting change never restarts the effect.
 
 #### An effect of your own
 

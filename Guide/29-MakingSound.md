@@ -112,7 +112,7 @@ Changing a setting costs nothing. Changing which effects are in the chain rewire
 
 ### An effect nobody wrote for you
 
-The four kinds in the chain are the classics. The fifth is a closure, and you write it:
+The built-in kinds in the chain are the classics. The last is a closure, and you write it:
 
 ```swift
 synth.effects = [
@@ -159,6 +159,32 @@ let humming = ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(2 * .pi * 
 Fading noise is the plainest room there is. Real rooms lose their top end first, which is what `damping` does. Run the same noise backward and the room swells toward the click instead of fading from it, a sound records have used for sixty years. The third room in the picture is a dropped ball: a burst on every bounce, the gaps closing by a fixed ratio. A rule that ignores the noise it is handed gives a resonator instead. That is a room that hums at one pitch, and it tunes everything you play into it.
 
 Every room is brought to the same level on the way in, so `mix` means one thing whether the recording was quiet or loud. Turn `mix` on a room that is sounding and the tail keeps going. Change the room itself, or its `preDelay`, and a fresh one starts. `Examples/Audio/Rooms` draws five rooms from rules and plays through each, with the room's answer to a click drawn above the instrument's trace.
+
+### Something that moves: chorus, flanger, phaser, tremolo
+
+The effects so far leave a sound where it is. Four more move it. Each is one slow wave and the thing it moves, and the wave's `rate` and `depth` are the two settings they all share.
+
+```swift
+synth.effects = [.chorus(Chorus(rate: 0.8, depth: 0.5))]
+synth.effects = [.flanger(Flanger(rate: 0.25, depth: 0.7, feedback: 0.5))]
+synth.effects = [.phaser(Phaser(rate: 0.4, stages: 4))]
+synth.effects = [.tremolo(Tremolo(rate: 5, depth: 0.6))]
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/Movement-dark.jpg">
+  <img src="Images/29-MakingSound/Movement.jpg" alt="Four panels: a tremolo's level breathing over a tone, a chorus's copy sliding later and earlier around twenty milliseconds, a flanger's comb of notches through the spectrum, and a phaser's two notches swept up the spectrum" width="680">
+</picture>
+
+A **tremolo** moves the level. It rises and falls with the wave, from full down to whatever `depth` leaves, and nothing else changes. It is the plainest of the four and the one a guitar amplifier had a knob for. Set `spread` to 1 and the two sides breathe in opposite turns, so the sound swings from side to side.
+
+A **chorus** moves a copy of the sound. The copy sits about twenty milliseconds behind, and the wave slides it later and earlier. A copy that is always sliding is never quite in tune with the original, and two voices that can never agree read as several. That is the whole trick, and the name. The two sides slide a quarter turn apart, which is why a chorus is wide by itself.
+
+A **flanger** is the same copy brought in close, a millisecond or so behind. That close, you no longer hear a second voice. The copy and the original cancel at every frequency where the gap is half a wavelength, which cuts a comb of notches through the spectrum. The wave sweeps the gap, so the comb sweeps, and that is the jet-plane whoosh every record has used. `feedback` sends the copy back to be copied again, which sharpens the teeth. Make it negative and the comb turns inside out.
+
+A **phaser** makes fewer notches, and makes them differently. The sound goes through a row of stages that each turn its phase without touching its level. Added back to the original, the turned parts cancel at one frequency for every two stages. The wave sweeps those notches up and down the spectrum. Four stages give two notches, which is the usual count, and the result is the softer swirl of the four.
+
+None of them invents a sound. Each is the sound and a copy of itself, or the sound and a wave, so a `mix` of 0 is the plain sound exactly. Turn a setting while the sound plays and the motion carries on from where it was. [`Examples/Audio/Movement`](../Examples/Audio/Movement/Sketch.swift) plays one phrase through each of the four, every setting on a parameter, with the wave drawn over the trace.
 
 ## An instrument somebody recorded
 
@@ -757,7 +783,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 
 ## Go deeper
 
-- [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb, [a room of your own](../Docs/Helpers/Synthesis.md#a-room-of-your-own), and the whole effects chain.
+- [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb, [a room of your own](../Docs/Helpers/Synthesis.md#a-room-of-your-own), [the four that move](../Docs/Helpers/Synthesis.md#the-four-that-move), and the whole effects chain.
 - [Patches](../Docs/Helpers/Synthesis.md#patch): what an operator is, the named patches, and why eight.
 - [Sampled instruments](../Docs/Helpers/Synthesis.md#sampled-instruments): loading an SFZ instrument, what a recording being moved costs, and where to find instruments you are allowed to ship.
 - [Wavetables](../Docs/Helpers/Synthesis.md#wavetables): the built-in tables, making one from harmonics, drawn cycles, or a rule, and why a high note reads a softer copy.
