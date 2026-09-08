@@ -789,5 +789,8 @@ let package = Package(
         // diagonal paths of its four-dimensional relative, after Manfred Mohr.
         example("Recreations/ManfredMohr/CubicLimit"),
         example("Recreations/ManfredMohr/DiagonalPath"),
+        // The same square placed by the same rule, and only the colors change,
+        // after Josef Albers's "Homage to the Square".
+        example("Recreations/JosefAlbers/Homage"),
     ]
 )

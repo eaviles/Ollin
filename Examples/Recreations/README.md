@@ -22,3 +22,4 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**Jared Tarbell**](JaredTarbell/). Emergent city maps grown from colliding cracks, shaded with sand-grain washes.
 - [**Manuel Felguérez**](ManuelFelguerez/). A machine that composed in the artist's own geometric language, and evaluated what it made.
 - [**Manfred Mohr**](ManfredMohr/). A cube taken apart and used as an alphabet, and walks through its four-dimensional counterpart.
+- [**Josef Albers**](JosefAlbers/). Three or four nested squares set low in the panel, and a new set of colors on them every few seconds, each chosen so the squares change one another.
