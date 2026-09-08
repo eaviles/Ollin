@@ -130,6 +130,12 @@ public struct Generator: Sendable {
                             zeros: [Vector2], poles: [Vector2],
                             shading: DomainShading, strength: Double,
                             center: Vector2, zoom: Double, phase: Double)
+        /// Newton's method run from every pixel over the polynomial with these
+        /// roots, each pixel colored by the root it lands on and shaded by how
+        /// many steps that took; a pixel that never lands is painted `trapped`.
+        case newton(colors: [SIMD4<Float>], trapped: SIMD4<Float>, roots: [Vector2],
+                    shading: Double, relaxation: Double, center: Vector2, zoom: Double,
+                    iterations: Double, phase: Double)
     }
 
     let kind: Kind
@@ -862,6 +868,56 @@ public struct Generator: Sendable {
                                         center: center,
                                         zoom: min(max(zoom, 0.01), 10_000),
                                         phase: phase))
+    }
+
+    // MARK: Newton's basins
+
+    /// **Newton's basins**: run Newton's method from every pixel over the
+    /// polynomial whose `roots` you place, and color each pixel by the root it
+    /// lands on. Newton's method is the step z -= p(z) / p'(z), the one every
+    /// numeric solver takes, and away from the roots it is anything but tame:
+    /// wherever two basins meet, every other basin shows up too, at every
+    /// scale, so the boundaries are dust where all the colors touch.
+    ///
+    /// The palette is spread around the roots in order (three roots on a
+    /// six-stop palette take the first, third, and fifth; pass one color per
+    /// root for exact control), and `phase` turns the palette around the wheel
+    /// without recomputing anything, so feed it your `time`. `shading` (0…1)
+    /// darkens a pixel by how many steps it needed, so a basin is bright at its
+    /// root and dark toward the edge, with a faint contour per step. A pixel
+    /// that never lands within `iterations` is painted `trapped`: rare for a
+    /// plain polynomial (a cycle can catch the method, as z³ - 2z + 2 does at
+    /// 0 and 1), and common once `relaxation` moves off 1. That dial scales the
+    /// step, so 0.6 creeps and 1.4 overshoots: the basins swell, spiral, and
+    /// shed islands, and past 2 nothing lands anywhere. `center` and `zoom`
+    /// frame the plane as in `domainColoring` (zoom 1 shows about 3 units
+    /// across, y up). Up to eight roots; the default is the three cube roots of
+    /// one, the cubic Cayley asked about in 1879.
+    ///
+    /// ```swift
+    /// drawImage(generate(.newton(relaxation: 1 + 0.3 * sin(time * 0.2))).image, 0, 0)
+    /// ```
+    public static func newton(roots: [Vector2] = [Vector2(1, 0),
+                                                  Vector2(-0.5, 0.8660254),
+                                                  Vector2(-0.5, -0.8660254)],
+                              colors: [Color] = [Color(hex: 0xE2544C), Color(hex: 0xE7A33C),
+                                                 Color(hex: 0x8FBF45), Color(hex: 0x3FA9A0),
+                                                 Color(hex: 0x4A6FC4), Color(hex: 0x9B58B5)],
+                              trapped: Color = .black,
+                              shading: Double = 0.6,
+                              relaxation: Double = 1,
+                              center: Vector2 = .zero, zoom: Double = 1,
+                              iterations: Double = 48,
+                              phase: Double = 0) -> Generator {
+        Generator(kind: .newton(colors: colorRows(colors, max: 8),
+                                trapped: trapped.linearRGBA,
+                                roots: Array(roots.prefix(8)),
+                                shading: min(max(shading, 0), 1),
+                                relaxation: min(max(relaxation, 0.05), 2.5),
+                                center: center,
+                                zoom: min(max(zoom, 0.01), 10_000),
+                                iterations: min(max(iterations, 4), 200),
+                                phase: phase))
     }
 }
 

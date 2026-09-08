@@ -207,6 +207,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("domain-coloring",
                  note: "The domain-coloring generator tiled 2x2 at a fixed phase (no time, no random): a rational function with two placed zeros and two poles, z cubed and tan z under the conformal ruling, and log z with its branch cut. Pins the complex evaluation of every mode, the wrapping palette wheel (the last stop blending back into the first), the plane written with the imaginary axis up, and the modulus and direction rulings.",
                  make: { DomainColoringScene() }),
+    SnapshotCase("newton-basins",
+                 note: "The Newton's-basins generator tiled 2x2 at a fixed phase (no time, no random): the three cube roots of one, five roots on a circle with the step scaled by 1.3, the cubic z^3 - 2z + 2 framed on the cycle at 0 and 1 that paints two trapped pools, and a zoom into the boundary of the cube roots. Pins the reciprocal-sum step, the landing test, the continuous step count and its contours, the palette spread over the roots, and the trapped fill.",
+                 make: { NewtonBasinsScene() }),
     SnapshotCase("noise-toolkit",
                  note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp parameter on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
                  make: { NoiseToolkitScene() }),
@@ -7074,6 +7077,36 @@ private final class SpectralSheet: Sketch {
         for (i, nm) in [430.0, 470, 510, 550, 590, 630, 670].enumerated() {
             fill(Color(wavelength: nm))
             drawRect(129 + Double(i) * 18, 212, 18, 43)
+        }
+    }
+}
+
+/// Newton's basins four ways at fixed framing (no time, no random): pins the
+/// reciprocal-sum step, the landing test, the continuous step count with its
+/// contours, the palette spread over the roots, the relaxation scaling, the
+/// trapped pools where a cycle catches the method, and the zoomed framing.
+private final class NewtonBasinsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 126, h = 126
+        let five = (0 ..< 5).map { i -> Vector2 in
+            let a = Double(i) / 5 * .tau + 0.3
+            return Vector2(cos(a), sin(a))
+        }
+        let cycle = [Vector2(-1.7693, 0), Vector2(0.88465, 0.58974), Vector2(0.88465, -0.58974)]
+        let tiles: [Generator] = [
+            .newton(phase: 0.1),
+            .newton(roots: five, relaxation: 1.3, iterations: 80),
+            .newton(roots: cycle, trapped: Color(hex: 0x14202B), shading: 0.8,
+                    center: Vector2(0.5, 0), zoom: 2.2),
+            .newton(center: Vector2(-0.35, 0.2), zoom: 12, iterations: 96, phase: 0.5),
+        ]
+        for (i, tile) in tiles.enumerated() {
+            let x = Double(1 + (i % 2) * 128), y = Double(2 + (i / 2) * 128)
+            drawImage(generate(tile, width: w, height: h).image,
+                      in: Rectangle(x: x, y: y, width: Double(w), height: Double(h)))
         }
     }
 }

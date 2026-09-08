@@ -3601,6 +3601,7 @@ struct Generator: Sendable
   static func mandelbrot(colors: [Color] = default, interior: Color = default, center: Vector2 = default, zoom: Double = default, iterations: Double = default, cycles: Double = default, phase: Double = default) -> Generator
   static func meshGradient(colors: [Color] = default, distortion: Double = default, swirl: Double = default, mixing: Double = default, grain: Double = default, phase: Double = default) -> Generator
   static func moire(foreground: Color = default, background: Color = default, sources: Double = default, frequency: Double = default, scale: Double = default, phase: Double = default) -> Generator
+  static func newton(roots: [Vector2] = default, colors: [Color] = default, trapped: Color = default, shading: Double = default, relaxation: Double = default, center: Vector2 = default, zoom: Double = default, iterations: Double = default, phase: Double = default) -> Generator
   static func noise(scale: Double = default, sharpness: Double = default, warp: Double = default, foreground: Color = default, background: Color = default) -> Generator
   static func orbitTrap(_: Generator.OrbitTrap = default, c: Vector2? = default, colors: [Color] = default, center: Vector2? = default, zoom: Double = default, iterations: Double = default, glow: Double = default, angle: Double = default) -> Generator
   static func phyllotaxis(colors: [Color] = default, background: Color = default, count: Double = default, dotSize: Double = default, phase: Double = default) -> Generator

@@ -1942,6 +1942,83 @@ fragment float4 ollin_gen_domain(PresentOut in [[stage_in]],
     return ollin_pat_out(color);
 }
 
+// MARK: - newton (Newton's basins)
+//
+// Newton's method, z -= a p(z) / p'(z), run from every pixel over the polynomial
+// with the given roots, each pixel colored by the root it lands on and shaded by
+// how many steps that took. With p written as the product of (z - r_i), p'/p is
+// the sum of 1/(z - r_i), so the step is the reciprocal of that sum and no
+// coefficient is ever formed; up to eight roots. A pixel has landed once it sits
+// within eps of a root (eps a thousandth of the framed span, so a zoom keeps
+// its contours), and the step count is made continuous the way the escape
+// count is: near a simple root the error squares each step, so the fraction of
+// a step still owed is log2 of the ratio of the logs, clamped to one step for
+// the linear cases (a repeated root, a relaxation off 1). A sum near zero is a
+// critical point, where the step blows up: that pixel is left trapped, as is
+// one that never lands within the cap. Root i takes the palette wheel at
+// i / rootCount (+ phase), and the shading is 1 / (1 + 0.12 nu) with a
+// contour per whole step, mixed in by `shading`. (params[0]: colorCount,
+// aspect, rootCount, iterations; params[1]: center.xy, zoom, phase; params[2]:
+// shading, relaxation; params[3]: trapped; params[4..7]: roots, two per row;
+// then colors.)
+fragment float4 ollin_gen_newton(PresentOut in [[stage_in]],
+                                 constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x);
+    float aspect = params[0].y;
+    int rootCount = min(int(params[0].z), 8);
+    int maxIter = int(params[0].w);
+    float2 center = params[1].xy;
+    float zoom = max(params[1].z, 1e-3);
+    float phase = params[1].w;
+    float shading = params[2].x;
+    float relaxation = params[2].y;
+    float2 roots[8] = { params[4].xy, params[4].zw, params[5].xy, params[5].zw,
+                        params[6].xy, params[6].zw, params[7].xy, params[7].zw };
+    constant float4 *colors = params + 8;
+
+    float span = 3.0 / zoom;
+    float2 q = ollin_pat_square(in.uv, aspect) * span;
+    float2 z = float2(q.x, -q.y) + center;
+    float eps = max(1e-3 * span, 1e-6);
+    float eps2 = eps * eps;
+
+    int landed = -1;
+    float nu = 0.0;
+    for (int n = 0; n < 200; n++) {
+        if (n >= maxIter) { break; }
+        // Landed? The nearest root within eps claims the pixel.
+        int nearest = -1;
+        float best = eps2;
+        for (int i = 0; i < 8; i++) {
+            if (i >= rootCount) { break; }
+            float2 d = z - roots[i];
+            float dd = dot(d, d);
+            if (dd < best) { best = dd; nearest = i; }
+        }
+        if (nearest >= 0) {
+            landed = nearest;
+            float ratio = log(max(sqrt(best), 1e-30)) / log(eps);
+            nu = max(float(n) - clamp(log2(max(ratio, 1.0)), 0.0, 1.0), 0.0);
+            break;
+        }
+        // The step: the reciprocal of the sum of 1 / (z - r_i), scaled.
+        float2 s = float2(0.0);
+        for (int i = 0; i < 8; i++) {
+            if (i >= rootCount) { break; }
+            s += ollin_cdiv(float2(1.0, 0.0), z - roots[i]);
+        }
+        if (dot(s, s) < 1e-20) { break; }   // a critical point: no step to take
+        z -= relaxation * ollin_cdiv(float2(1.0, 0.0), s);
+    }
+    if (landed < 0) { return ollin_pat_out(ollin_pat_stop(params[3])); }
+
+    float4 color = ollin_pat_wheel(colors, count, float(landed) / float(rootCount) + phase);
+    float tone = 1.0 / (1.0 + 0.12 * nu);
+    float contour = 0.8 + 0.2 * (1.0 - fract(nu));
+    color.rgb *= mix(1.0, tone * contour, shading);
+    return ollin_pat_out(color);
+}
+
 // MARK: - diffuse (diffusion curves)
 //
 // Hold every drawn pixel as a color source and let the color out into the empty

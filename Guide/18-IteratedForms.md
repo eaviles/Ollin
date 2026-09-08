@@ -236,6 +236,29 @@ All three panels are the same Julia set. Only the question changes. The first as
 
 Which brings the sidebar back to the chapter. The simulation fields spread their iteration across *frames*, because their rules need neighbors and memory. A Gray-Scott pattern at frame 900 genuinely required the 899 before it. The fractal needs neither, so its whole life fits in one evaluation and any frame can be computed on its own. Both are the same lesson at different speeds. Iterate something simple, and structure appears. `Examples/Effects/EscapeTime` sets a Julia's `c` drifting so the filigree morphs continuously, which is the best argument for the technique that exists.
 
+## Where it lands: Newton's basins
+
+Escape time asks an orbit when it left. There is a gentler question to ask of the same plane: where does it end up?
+
+```swift
+drawImage(generate(.newton()).image, 0, 0)
+```
+
+**Newton's method** is the step every numeric solver takes. Guess a root, slide down the tangent line, and guess again. Near a root it lands in a few steps. `.newton` runs that step from every pixel and colors the pixel by the root it reaches, so every root owns a **basin**.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/NewtonBasins-dark.jpg">
+  <img src="Images/18-IteratedForms/NewtonBasins.jpg" alt="Three panels. Three basins in red, green, and blue meeting along borders beaded with the third color at every scale; five basins spiraling into each other with small islands thrown off; and three basins meeting around two dark pools where the method never lands" width="680">
+</picture>
+
+The left panel is the cubic with the three cube roots of one, the picture Arthur Cayley asked about in 1879. Three roots, three basins, and you might expect three wedges with straight borders. Look at the border between any two colors instead. The third color is there too, as a chain of beads, and each bead wears the other two along its own border. Wherever two basins meet, all three do. That holds at every scale, so the boundary is dust rather than a line. It is the set of points the method never decides, folded over itself all the way down.
+
+You place the roots yourself, up to eight. The palette spreads around them in order. `shading` darkens each pixel by how many steps it took: bright at the root, dark toward the edge, with a faint contour per step. `phase` turns the palette without recomputing anything, so it costs nothing to animate.
+
+The middle panel changes the step. `relaxation` scales it. Below 1 the method creeps and the basins fatten. Above 1 it overshoots, and the basins spiral and throw off islands. Five roots at 1.3 is what the panel shows. Feed the dial a slow sine and the whole plane breathes, which is what `Examples/Effects/NewtonBasins` does while its roots ride orbits of their own.
+
+The right panel is the warning. Newton's method is not promised to land. For the cubic z³ - 2z + 2 the step sends 0 to 1 and 1 back to 0, and that cycle pulls in everything near it. Those pixels are painted `trapped`, the two dark pools in the panel, one at 0 and one at 1. With a plain polynomial and the dial at 1, pools are rare. Move the dial and they open everywhere.
+
 ## A picture of a function: domain coloring
 
 Everything so far asked a question about a **loop**. There is one more thing worth doing with this plane, and it asks about a single step.
@@ -371,7 +394,7 @@ Before moving on, make it yours:
 
 The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992. It ran for years as a distributed screensaver that evolved flames by popular vote. The Buddhabrot is Melinda Green's 1993 discovery, and the three-cap false-color reading is hers too, named after the astronomical plates it resembles. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves and the paired circles both come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*. It runs four hundred pages, making Felix Klein's groups visible. Friedrich Schottky described the paired-circle groups in 1877.
 
-The formula-driven maps come from elsewhere again. The Clifford attractor is named for Clifford Pickover, and the de Jong attractor for Peter de Jong. Paul Bourke's long-running fractal pages popularized both. The Gumowski-Mira map came out of particle-beam physics at CERN, and the Ikeda map out of laser optics. Barry Martin's hopalong reached everyone through A. K. Dewdney's *Scientific American* column. Robert May's 1976 *Nature* paper "Simple mathematical models with very complicated dynamics" made the logistic map and its bifurcation diagram famous, and the universal rhythm of its forks is Mitchell Feigenbaum's discovery. The Mandelbrot set is named for Benoit Mandelbrot, who first plotted it in 1980, on the mathematics of Gaston Julia's 1918 sets. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The formula-driven maps come from elsewhere again. The Clifford attractor is named for Clifford Pickover, and the de Jong attractor for Peter de Jong. Paul Bourke's long-running fractal pages popularized both. The Gumowski-Mira map came out of particle-beam physics at CERN, and the Ikeda map out of laser optics. Barry Martin's hopalong reached everyone through A. K. Dewdney's *Scientific American* column. Robert May's 1976 *Nature* paper "Simple mathematical models with very complicated dynamics" made the logistic map and its bifurcation diagram famous, and the universal rhythm of its forks is Mitchell Feigenbaum's discovery. The Mandelbrot set is named for Benoit Mandelbrot, who first plotted it in 1980, on the mathematics of Gaston Julia's 1918 sets. Newton's basins go back further: Arthur Cayley posed the cubic's basins as a problem in 1879, and the color plates in Heinz-Otto Peitgen and Peter Richter's *The Beauty of Fractals* (1986) are where most people first saw the answer. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -380,6 +403,7 @@ The formula-driven maps come from elsewhere again. The Clifford attractor is nam
 - [Attractors](../Docs/Drawing/Attractors.md): every `ChaoticMap`, the `IteratedMap` family, `bifurcationImage`, and the GPU tier that carries a million orbits at once, which [Chapter 23](23-Landscapes.md) puts to work as a field of drifting points.
 - [Chaotic maps and bifurcation](../Docs/Generators/Bifurcation.md): the one-dimensional families, the diagram's dot and density forms, cobwebs, and Lyapunov exponents.
 - [Escape time as a generator](../Docs/Drawing/Effects.md#generate): `.mandelbrot`, `.julia`, and `.orbitTrap` as layers a chain can filter, with the center, zoom, iteration, and banding parameters.
+- [Newton's basins](../Docs/Drawing/Effects.md#generate): `.newton` with its placeable roots, the palette spread around them, the shading by step count, the `relaxation` dial, and the trapped color.
 - [Domain coloring](../Docs/Drawing/Effects.md#generate): `.domainColoring` with its placeable zeros and poles, the named functions, and the modulus and conformal rulings.
 - Appendix B draws the idea underneath all of this, one picture per entry: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Where things are](B-JustEnoughMath.md#where-things-are) for the coordinates the orbits live in.
 - Worked examples: [`Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Patterns/Buddhabrot`](../Examples/Patterns/Buddhabrot/Sketch.swift), [`Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift), [`Patterns/Schottky`](../Examples/Patterns/Schottky/Sketch.swift) (the lean swung back and forth), [`Patterns/ChaoticMaps`](../Examples/Patterns/ChaoticMaps/Sketch.swift) (the density bloom, all six presets on a parameter), [`Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift), and [`Effects/EscapeTime`](../Examples/Effects/EscapeTime/Sketch.swift) (the escape-time pair as a shader).

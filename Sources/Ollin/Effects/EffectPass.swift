@@ -480,14 +480,21 @@ extension Generator {
                          SIMD4(Float(strength), Float(exponent),
                                Float(zeros.count), Float(poles.count))]
                         + EffectPass.pointPairRows(zeros) + EffectPass.pointPairRows(poles) + colors)
+        case let .newton(colors, trapped, roots, shading, relaxation, center, zoom,
+                         iterations, phase):
+            return pass("ollin_gen_newton",
+                        [SIMD4(Float(colors.count), aspect, Float(roots.count), Float(iterations)),
+                         SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(phase)),
+                         SIMD4(Float(shading), Float(relaxation), 0, 0),
+                         trapped] + EffectPass.pointPairRows(roots, capacity: 8) + colors)
         }
     }
 }
 
 extension EffectPass {
-    /// Up to four points packed two to a row, zero where fewer were given.
-    static func pointPairRows(_ points: [Vector2]) -> [SIMD4<Float>] {
-        stride(from: 0, to: 4, by: 2).map { i in
+    /// Up to `capacity` points packed two to a row, zero where fewer were given.
+    static func pointPairRows(_ points: [Vector2], capacity: Int = 4) -> [SIMD4<Float>] {
+        stride(from: 0, to: capacity, by: 2).map { i in
             let a = i < points.count ? points[i] : Vector2.zero
             let b = i + 1 < points.count ? points[i + 1] : Vector2.zero
             return SIMD4(Float(a.x), Float(a.y), Float(b.x), Float(b.y))

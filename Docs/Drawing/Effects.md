@@ -486,6 +486,32 @@ stepless iteration count through the palette, with `phase` cycling the bands:
   <img src="../../Guide/Images/18-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
 </picture>
 
+**Newton's basins**: the same plane, asked where an orbit ends up rather than when it
+left. `.newton` runs Newton's method, z -= p(z) / p'(z), from every pixel over the
+polynomial whose roots you place. Each pixel takes the color of the root it lands on, so
+every root owns a basin. Wherever two basins meet every other one is there too, at every
+scale, so the boundaries are dust where all the colors touch:
+
+- **`.newton(roots:colors:trapped:shading:relaxation:center:zoom:iterations:phase:)`**
+  up to eight `roots` on the plane (the default is the three cube roots of one). The
+  palette is spread around the roots in order, so pass one color per root for exact
+  control, and `phase` turns it around the wheel without recomputing anything. `shading`
+  (0…1) darkens a pixel by the steps it took, bright at the root and dark toward the
+  edge, with a faint contour per step. A pixel the method never brings to a root within
+  `iterations` is painted `trapped`: rare for a plain polynomial (z³ - 2z + 2 has a cycle
+  at 0 and 1 that catches it), common once `relaxation` leaves 1. That dial scales the
+  step: 0.6 creeps and the basins fatten, 1.4 overshoots and they spiral and shed
+  islands, and past 2 nothing lands. `center` and `zoom` frame the plane as
+  `.domainColoring` does, about 3 units across at zoom 1 with y up.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/NewtonBasins-dark.jpg">
+  <img src="../../Guide/Images/18-IteratedForms/NewtonBasins.jpg" alt="Three panels. Three basins in red, green, and blue meeting along borders beaded with the third color at every scale; five basins spiraling into each other with small islands thrown off; and three basins meeting around two dark pools where the method never lands" width="680">
+</picture>
+
+See `Examples/Effects/NewtonBasins`, where the roots ride slow orbits and the step's
+scale is a dial.
+
 **Diffusion**: not a look laid over a picture, but a picture made out of a few marks.
 `.diffuse` holds every drawn pixel as a color source and lets the color out into the
 empty space between them until it settles. Away from the marks every pixel ends up the

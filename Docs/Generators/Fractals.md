@@ -13,7 +13,7 @@ Six ways to turn a handful of numbers into endless detail:
 - **Kleinian limit sets** are the fractal boundary curves of Möbius groups, traced in order.
 - **Schottky circle orbits** pair circles off by Möbius maps, and the pairs nest forever.
 
-All six are deterministic. The point emitters draw from a seedable generator, and the Kleinian walk uses no randomness at all. The escape-time relatives (`.mandelbrot`, `.julia`, `.orbitTrap`) run on the GPU as [generators](../Drawing/Effects.md#generate).
+All six are deterministic. The point emitters draw from a seedable generator, and the Kleinian walk uses no randomness at all. The escape-time relatives (`.mandelbrot`, `.julia`, `.orbitTrap`) and Newton's basins (`.newton`) run on the GPU as [generators](../Drawing/Effects.md#generate).
 
 ### Contents
 

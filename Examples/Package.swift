@@ -146,6 +146,7 @@ let package = Package(
         example("Simulation/ParticleFluid"),
         example("Simulation/SoftBodies"),
         example("Effects/EscapeTime"),
+        example("Effects/NewtonBasins"),
         example("Effects/Droste"),
         example("Effects/DomainColoring"),
         example("Effects/DiffusionCurves"),
