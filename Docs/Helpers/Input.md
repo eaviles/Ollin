@@ -195,6 +195,27 @@ A 3D sketch reads the same value and maps y onto its own forward direction. The 
 
 <a name="keyboardFocus"></a>
 
+<a name="droppedFiles"></a>
+
+### droppedFiles / filesDropped
+
+```swift
+droppedFiles() -> [String]
+filesDropped()
+```
+
+Files dropped on the window from the Finder. `droppedFiles()` returns the paths dropped since the last call, oldest first, and reading them empties the list. `filesDropped()` is called once at each drop, after the paths have arrived and with `mouseX`/`mouseY` at the drop point, so a sketch can respond there or poll in `draw()`, whichever it prefers. Anything the Finder can hand over arrives: a picture for `loadImage`, a clip, a font, a table. A drop is live input outside a take, neither recorded nor replayed.
+
+```swift
+override func filesDropped() {
+    for path in droppedFiles() {
+        if let picture = loadImage(path) { pictures.append((picture, mouse)) }
+    }
+}
+```
+
+Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. With the code showing, the editor over the stage takes the drop as text instead.
+
 ### Keyboard focus in the hosts
 
 A window that *is* the sketch gives the sketch the keyboard as soon as it opens. That covers a standalone `swift run` and the live host, so everything above works with no click first. The examples gallery is different. Its example list keeps the keyboard, so the arrow keys navigate the examples. In the gallery, a sketch that reads keys shows a small **"Click the sketch to use the keyboard"** prompt over the canvas. Clicking the sketch gives it the keys, and clicking back in the example list returns them.

@@ -8,6 +8,7 @@ These examples load, draw, tint, and author raster images through the `Image` va
 
 | Example | What it shows |
 |---|---|
+| [Dropped](Dropped/Sketch.swift) | pictures dropped on the window from the Finder, each landing where it was dropped: `filesDropped()` and `droppedFiles()` hand over the paths, `loadImage` reads them, and a file that is not a picture is named instead |
 | [Fit](Fit/Sketch.swift) | one painted 3:2 landscape drawn into three 2:3 boxes, one per `ImageFit`: `.stretch` squashes the round sun into an ellipse, `.contain` leaves part of the box showing, and `.cover` fills the box and crops the lone tree away (`drawImage(_:in:fit:)`) |
 | [GlyphMosaic](GlyphMosaic/Sketch.swift) | a drifting field of light rebuilt as a grid of geometric marks, where each cell's character is chosen by how much ink that glyph has in the bundled bitmap font (`drawGlyphMosaic`, `GlyphSet`, a custom character set) |
 | [Halftone](Halftone/Sketch.swift) | a shaded still life drawn as a print dot screen that rotates a quarter turn while the tone stays the same, with the inverted reading on mouse hold, and plotter-ready through `--export-svg` (`drawHalftone`, `pitch`, `angle`, `inverted`) |

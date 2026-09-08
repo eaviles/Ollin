@@ -22,7 +22,7 @@ final class HelloCircle: Sketch {
 
 ### Contents
 
-- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `reloaded`
+- [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `filesDropped`, `reloaded`
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
 - [Canvas](#canvas) - `width`, `height`, `canvasOnScreen`, `screenFrame`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
@@ -102,6 +102,22 @@ Ollin calls these once each time a key is pressed or released. `key` and `keyCod
 ```swift
 override func keyPressed() {
     if key == " " { noLoop() }   // space pauses
+}
+```
+
+<a name="filesDropped"></a>
+
+#### filesDropped
+
+```swift
+filesDropped()
+```
+
+Ollin calls this once each time files are dropped on the window. `droppedFiles()` holds their paths and `mouseX`/`mouseY` where they landed. To pick them up later instead, poll `droppedFiles()` in `draw()`. See [Input](../Helpers/Input.md#droppedFiles).
+
+```swift
+override func filesDropped() {
+    for path in droppedFiles() { photo = loadImage(path) ?? photo }
 }
 ```
 

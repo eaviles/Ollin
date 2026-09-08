@@ -554,6 +554,7 @@ let package = Package(
         example("Text/Columns"),
         example("Text/MongolianColumns"),
         example("Text/HangingStops"),
+        example("Images/Dropped"),
         example("Images/GlyphMosaic"),
         example("Images/PhotoMosaic"),
         example("Images/Autostereogram"),

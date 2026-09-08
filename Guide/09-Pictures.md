@@ -45,6 +45,20 @@ noTint()                                        // back to as-is
 
 Tint never edits the image itself, only how it's drawn, and `withState { }` scopes it like any other state.
 
+### A picture you drop on the window
+
+A path typed into `loadImage` is fine for a picture you keep. For one you want to try, drop it on the window. The sketch is told at the drop, the paths arrive through `droppedFiles()`, and `mouseX`/`mouseY` say where the file landed:
+
+```swift
+override func filesDropped() {
+    for path in droppedFiles() {
+        if let picture = loadImage(path) { pictures.append((picture, mouse)) }
+    }
+}
+```
+
+`droppedFiles()` empties itself as you read it, so a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture, and a file the sketch cannot use is a path it can name. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
+
 ## The box is never the right shape
 
 That first `drawImage(photo, 0, 0, width, height)` did something quietly: it stretched. A photo is 3:2 or 4:3, your canvas is square or portrait, and squashing is only one of three answers. `fit:` names all three, and every one of them gives something up.

@@ -1568,6 +1568,33 @@ final class OllinMTKView: MTKView {
         dragger.modifierChanged(held: held, at: pointer)
     }
 
+    // MARK: Files dropped on the canvas
+
+    /// A drop of files from the Finder is taken as a copy when the pasteboard
+    /// holds file URLs and the canvas answers input at all.
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        guard !ignoresInput, sketch != nil,
+              Self.fileURLs(on: sender.draggingPasteboard) != nil else { return [] }
+        return .copy
+    }
+
+    /// The files reach the sketch as paths, with the pointer at the drop point
+    /// mapped the way a click is, so a projected run reads it in its own canvas.
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        guard let sketch, let urls = Self.fileURLs(on: sender.draggingPasteboard),
+              let point = canvasPoint(sender.draggingLocation) else { return false }
+        sketch.handleDroppedFiles(urls.map(\.path), at: point)
+        return true
+    }
+
+    /// The file URLs a pasteboard carries, or nil when it carries none.
+    static func fileURLs(on pasteboard: NSPasteboard) -> [URL]? {
+        let read = pasteboard.readObjects(forClasses: [NSURL.self],
+                                          options: [.urlReadingFileURLsOnly: true]) as? [URL]
+        guard let read, !read.isEmpty else { return nil }
+        return read
+    }
+
     // MARK: Dragging a shape back into the source
 
     /// The modifier that hands a press to the host instead of the sketch.
@@ -1981,6 +2008,8 @@ func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinM
     let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
     view.sketch = sketch
     configureOllinCanvas(view, sketch: sketch)
+    // Files dropped on the canvas reach the sketch as paths.
+    view.registerForDraggedTypes([.fileURL])
     // Ask a Force Touch trackpad for the drawing gesture rather than the default
     // one: a single stage over the full 0...1 range, so a press reads as a smooth
     // amount instead of arming the force-click that fires look-up mid-stroke.

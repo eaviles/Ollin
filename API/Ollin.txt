@@ -2074,6 +2074,7 @@ open class Sketch: Sendable
   func drive(_: Param<Rectangle>, x: String? = default, y: String? = default, width: String? = default, height: String? = default)
   func drive(_: Param<Vector2>, x: String? = default, y: String? = default)
   func drive(_: Param<Vector3>, x: String? = default, y: String? = default, z: String? = default)
+  func droppedFiles() -> [String]
   func elementaryCA(rule: Int, width: Int, generations: Int, from: [Bool]? = default, wrap: Bool = default) -> [[Bool]]
   func elementaryCA(rule: Int, width: Int, generations: Int, startDensity: Double, wrap: Bool = default) -> [[Bool]]
   func environment(_: Environment)
@@ -2446,6 +2447,7 @@ open class Sketch: Sendable
   func worley(_: Double, _: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
   func worley(_: Double, _: Double, feature: WorleyFeature = default, jitter: Double = default) -> Double
   open func draw()
+  open func filesDropped()
   open func keyPressed()
   open func keyReleased()
   open func mousePressed()

@@ -173,6 +173,27 @@ open class Sketch {
     /// event for one-shot response.
     public internal(set) var scrollDeltaY: Double = 0
 
+    /// The paths of files dropped on the window since the last call, oldest
+    /// first, as `String` paths, and reading them empties the list.
+    ///
+    /// Anything the Finder can hand over arrives: a picture to `loadImage`, a
+    /// clip, a font, a table. The window takes the drop wherever the sketch is
+    /// running, and `mouseX`/`mouseY` hold where the last drop landed. Poll it
+    /// in `draw()`, or override `filesDropped()` to be told at the drop.
+    ///
+    /// ```swift
+    /// override func draw() {
+    ///     for path in droppedFiles() {
+    ///         if let picture = loadImage(path) { pictures.append(picture) }
+    ///     }
+    /// }
+    /// ```
+    public func droppedFiles() -> [String] {
+        defer { droppedFileInbox.removeAll() }
+        return droppedFileInbox
+    }
+    var droppedFileInbox: [String] = []
+
     /// The modifier keys (shift, option, command, control) currently held. Combine
     /// with a drag for a modified gesture, e.g. `if modifiers.contains(.shift) { … }`.
     public internal(set) var modifiers: ModifierKeys = []
@@ -411,6 +432,11 @@ open class Sketch {
     /// Called once each time a key is released; `key`/`keyCode` hold the released
     /// key.
     open func keyReleased() {}
+    /// Called once each time files are dropped on the window. `droppedFiles()`
+    /// holds their paths and `mouseX`/`mouseY` where they landed. Override to
+    /// respond at the drop; to pick them up later, poll `droppedFiles()` in
+    /// `draw()` instead.
+    open func filesDropped() {}
     /// Called once after this sketch is hot-swapped in by the live-reload host,
     /// right after its `setup()`. Override to do reload-specific work (the
     /// default does nothing). Not called on the first launch — only on reloads.
@@ -3873,6 +3899,17 @@ open class Sketch {
         pendingScroll += deltaY
         scrollDeltaY = deltaY
         mouseScrolled()
+    }
+
+    /// Files dropped on the window from the view: the pointer moves to where
+    /// they landed, the paths join the inbox, and the per-drop hook fires. A
+    /// drop is live input outside a take: neither recorded nor replayed, so a
+    /// replay still takes one.
+    func handleDroppedFiles(_ paths: [String], at point: Vector2) {
+        guard !paths.isEmpty else { return }
+        ingestMouse(x: point.x, y: point.y)
+        droppedFileInbox.append(contentsOf: paths)
+        filesDropped()
     }
 
     /// Record the held modifier keys from the view.
