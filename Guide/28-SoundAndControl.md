@@ -290,6 +290,52 @@ override func setup() {
 
 The rule reads the other parameter live, so flipping the toggle brings the row back, and a group whose rows are all hidden drops its whole card. Hiding is display only. The parameter keeps its value, keeps persisting across reloads, and a MIDI or OSC binding keeps driving it while it's out of sight. The heaviest panel in the repo, [`Examples/3D/Materials/Explorer`](../Examples/3D/Materials/Explorer/Sketch.swift), runs a show-rule on every dependent finish scalar, which is why its glass parameters only appear under the shading model that reads them.
 
+## A table you put things on: TUIO
+
+A knob and a fader are one hand each. A table is a different thing: several hands at once, and objects you can slide, turn, and take away. Surfaces like that speak TUIO, which rides on OSC, so reading one needs no new import.
+
+```swift
+let surface = TUIOReceiver()          // port 3333, what trackers use by default
+
+override func setup() { try? surface.start() }
+
+override func draw() {
+    background(.white)
+    for touch in surface.cursors {
+        drawCircle(center: touch.position(in: bounds), radius: 40)
+    }
+}
+```
+
+A tracker reports three kinds of thing, and each gets its own list. `cursors` are touches: a fingertip, a contact, a pointer from a phone app. `objects` are tagged pieces, printed markers the tracker can name and measure, so each one carries the `symbol` printed on it and the `angle` it is turned to. `blobs` are shapes it found but cannot name, a hand or a sleeve or a cup, each with a size and an area.
+
+The lists are what is on the surface right now, not a history. That matters, because of how the protocol says goodbye.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/SurfaceFrame-dark.jpg">
+  <img src="Images/28-SoundAndControl/SurfaceFrame.jpg" alt="Two rows. Each has a card of TUIO messages on the left and the surface they describe on the right. The first frame sets two touches, lists both as alive, and gives a frame number. The second lists only one, and the surface has lost the other, shown as an empty ring" width="700">
+</picture>
+
+A tracker sends the whole surface many times a second. Each frame is a `set` for every thing that moved, then the alive list, then the frame number that commits them. There is no message that says a touch ended. It simply stops appearing in the list, and Ollin drops it for you.
+
+The `id` on each report is what a sketch holds onto. It stays with one finger from the moment it lands until it lifts, so a stroke, a color, or a note can belong to it:
+
+```swift
+var trails: [Int: [Vector2]] = [:]
+
+override func draw() {
+    for touch in surface.cursors {
+        trails[touch.id, default: []].append(touch.position(in: bounds))
+    }
+    let here = Set(surface.cursors.map(\.id))
+    trails = trails.filter { here.contains($0.key) }   // what is missing has lifted
+}
+```
+
+Positions come in measured from 0 to 1 across the surface, from the top left, which is the direction the canvas already counts in. `position(in: bounds)` lands a report on the canvas, and any other rectangle works too, so a table can drive a panel rather than the whole screen.
+
+You do not need a table to try this. The [`TUIOSurface`](../Examples/Integration/TUIOSurface/Sketch.swift) example runs both ends. A stand-in tracker sends real frames to `127.0.0.1`, and what you see is drawn from what came back off the wire. Turn its `simulate` parameter off and point a real table, wall, or phone app at this Mac instead.
+
 ## Something to hold: game controllers
 
 A knob box is one kind of hand and a phone fader is another. A game controller is a third, and it's the one most people already own.
@@ -536,6 +582,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [Link](../Docs/Integration/Link.md): the network tempo session in full, tempo and transport, the quantum, and what discovery and clock sync do underneath.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
+- [TUIO](../Docs/Integration/TUIO.md): touches, tagged pieces, and shapes from a tangible surface, the frame that commits them, and sharing one port with your own OSC.
 - [Serial](../Docs/Integration/Serial.md): finding a board, the three reads, writing lines back, and staying connected through unplugs, and `FirmataBoard`, a board running StandardFirmata driven pin by pin with no firmware of your own.
 - [Bluetooth](../Docs/Integration/Bluetooth.md): the room in range, the three ways to name a device, the formats that turn bytes into values, and the permission the first run has to get past.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.

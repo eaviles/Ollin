@@ -69,6 +69,12 @@ public final class OSCReceiver: @unchecked Sendable {
     /// doesn't grow the inbox without bound; the oldest are dropped past it.
     private let inboxLimit = 4096
 
+    /// Handlers called for every message as it arrives. The seam a decoder over
+    /// this receiver rides (the TUIO surface is the one in the tree), kept
+    /// internal because a sketch reads through the polling surface above, and
+    /// separate from `state` so a handler never runs under that lock.
+    private let observers = OSAllocatedUnfairLock<[@Sendable (OSCMessage) -> Void]>(initialState: [])
+
     // MARK: Lifecycle
 
     /// Creates a receiver bound to `port`. Pass `0` to let the system assign a
@@ -193,6 +199,14 @@ public final class OSCReceiver: @unchecked Sendable {
         state.withLock { $0.bindings[address] = nil }
     }
 
+    // MARK: Observing (internal)
+
+    /// Calls `handler` on the network queue for every message that arrives, once
+    /// the caches above have taken it.
+    func observe(_ handler: @escaping @Sendable (OSCMessage) -> Void) {
+        observers.withLock { $0.append(handler) }
+    }
+
     // MARK: Receiving (background queue)
 
     private func accept(_ box: ConnectionBox) {
@@ -233,6 +247,7 @@ public final class OSCReceiver: @unchecked Sendable {
         if let binding, let raw = message.number {
             binding.write(OSCReceiver.map(raw, from: binding.input, to: binding.output))
         }
+        for handler in observers.withLock({ $0 }) { handler(message) }
     }
 
     private static func map(_ value: Double, from input: ClosedRange<Double>, to output: ClosedRange<Double>) -> Double {

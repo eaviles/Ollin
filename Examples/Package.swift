@@ -609,6 +609,7 @@ let package = Package(
         // Listens for OSC and prints/draws every message — point a phone or any
         // OSC source at this Mac to discover what its controls send.
         example("Integration/OSCMonitor", [.osc]),
+        example("Integration/TUIOSurface", [.osc]),
         // Self-contained: a DMX sender drives a drawn rig of pars over sACN on
         // loopback and the receiver lights them from what arrives, so the stage
         // you see is the round trip (like OSCLoopback). Point it at a real

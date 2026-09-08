@@ -316,6 +316,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
 | Link | The network's shared tempo session: one beat and one downbeat for every app in the room | [Ch 28](28-SoundAndControl.md) | [Link](../Docs/Integration/Link.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 28](28-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
+| TUIO | Touches, tagged pieces, and shapes from a marker table, a touch wall, or a phone app | [Ch 28](28-SoundAndControl.md) | [TUIO](../Docs/Integration/TUIO.md) |
 | Serial | A USB microcontroller's sensor lines read in `draw()` or bound to a parameter, lines written back to drive the hardware, and a port that waits through unplugs and reopens itself | [Ch 28](28-SoundAndControl.md) | [Serial](../Docs/Integration/Serial.md) |
 | Bluetooth | A Bluetooth Low Energy sensor read in `draw()` or bound to a parameter, the room of devices in range, the formats that turn bytes into values, and a connection that waits and returns by itself | [Ch 28](28-SoundAndControl.md) | [Bluetooth](../Docs/Integration/Bluetooth.md) |
 | Remote surface | The sketch's `@Param` parameters served to a phone on the same Wi-Fi as touch controls, live both ways, for tuning an installation from in front of it | [Ch 32](32-Installations.md) | [Remote](../Docs/Integration/Remote.md) |

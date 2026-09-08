@@ -52,6 +52,20 @@ final class OSCSender
   init(host: String, port: Int)
   let host: String
   let port: Int
+final class TUIOReceiver: Sendable
+  func receive(_: OSCMessage)
+  func receive(_: OSCPacket)
+  func start() throws
+  func stop()
+  init(port: Int = default)
+  static let defaultPort: Int
+  var blobs: [TUIOBlob] { get }
+  var boundPort: Int? { get }
+  var cursors: [TUIOCursor] { get }
+  var framesReceived: Int { get }
+  var isRunning: Bool { get }
+  var objects: [TUIOObject] { get }
+  var sourceName: String? { get }
 struct OSCBundle: Equatable, Sendable
   func encode() -> Foundation.Data
   init(_: OSCTimeTag = default, _: [OSCPacket] = default)
@@ -76,3 +90,34 @@ struct OSCTimeTag: Equatable, Sendable
   var date: Foundation.Date? { get }
   var isImmediate: Bool { get }
   var raw: UInt64 { get set }
+struct TUIOBlob: Equatable, Sendable
+  func bounds(in: Rectangle) -> Rectangle
+  func position(in: Rectangle) -> Vector2
+  init(id: Int, point: Vector2, angle: Double = default, size: Vector2 = default, area: Double = default, velocity: Vector2 = default, angularVelocity: Double = default, acceleration: Double = default, angularAcceleration: Double = default)
+  let acceleration: Double
+  let angle: Double
+  let angularAcceleration: Double
+  let angularVelocity: Double
+  let area: Double
+  let id: Int
+  let point: Vector2
+  let size: Vector2
+  let velocity: Vector2
+struct TUIOCursor: Equatable, Sendable
+  func position(in: Rectangle) -> Vector2
+  init(id: Int, point: Vector2, velocity: Vector2 = default, acceleration: Double = default)
+  let acceleration: Double
+  let id: Int
+  let point: Vector2
+  let velocity: Vector2
+struct TUIOObject: Equatable, Sendable
+  func position(in: Rectangle) -> Vector2
+  init(id: Int, symbol: Int, point: Vector2, angle: Double = default, velocity: Vector2 = default, angularVelocity: Double = default, acceleration: Double = default, angularAcceleration: Double = default)
+  let acceleration: Double
+  let angle: Double
+  let angularAcceleration: Double
+  let angularVelocity: Double
+  let id: Int
+  let point: Vector2
+  let symbol: Int
+  let velocity: Vector2
