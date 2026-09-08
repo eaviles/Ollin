@@ -783,6 +783,7 @@ let package = Package(
         example("Recreations/VeraMolnar/Interruptions"),
         example("Recreations/VeraMolnar/DesOrdres"),
         example("Recreations/GeorgNees/Schotter"),
+        example("Recreations/FriederNake/HommageAPaulKlee"),
         example("Recreations/BridgetRiley/Fragment3"),
         example("Recreations/BridgetRiley/Current"),
         example("Recreations/OsamuSato/Totem"),
