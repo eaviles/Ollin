@@ -1,0 +1,59 @@
+// OllinHaptics: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum HapticHardware: String, Equatable, Hashable, RawRepresentable, Sendable
+  case engine
+  case none
+  case trackpad
+enum TrackpadPlan
+  static func knocks(for: HapticPattern, strength: Double = default) -> [TrackpadKnock]
+  static let fastestHum: Double
+  static let minSpacing: Double
+  static let silenceFloor: Double
+  static let slowestHum: Double
+open extension Ollin.Sketch
+  func hapticStrength(_: Double)
+  func playHaptic(_: HapticPattern)
+  func stopHaptics()
+  var hapticHardware: HapticHardware { get }
+  var hapticsAreAvailable: Bool { get }
+  var hapticsUnavailableReason: String? { get }
+struct HapticEvent: Equatable, Sendable
+  enum Kind: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+    case hum
+    case tap
+  func delayed(by: Double) -> HapticEvent
+  func strength(at: Double) -> Double
+  init(_: HapticEvent.Kind, at: Double = default, intensity: Double = default, sharpness: Double = default, duration: Double = default, fadeIn: Double = default, fadeOut: Double = default)
+  let duration: Double
+  let fadeIn: Double
+  let fadeOut: Double
+  let intensity: Double
+  let kind: HapticEvent.Kind
+  let sharpness: Double
+  let time: Double
+  var endTime: Double { get }
+struct HapticPattern: Equatable, Sendable
+  func delayed(by: Double) -> HapticPattern
+  func over(_: HapticPattern) -> HapticPattern
+  func repeated(_: Int, every: Double? = default) -> HapticPattern
+  func reversed() -> HapticPattern
+  func scaled(intensity: Double) -> HapticPattern
+  func scaled(speed: Double) -> HapticPattern
+  func then(_: HapticPattern) -> HapticPattern
+  init(_: [HapticEvent])
+  let duration: Double
+  let events: [HapticEvent]
+  static func hum(_: Double, intensity: Double = default, sharpness: Double = default, fadeIn: Double = default, fadeOut: Double = default) -> HapticPattern
+  static func pulses(_: Int, every: Double, intensity: Double = default, sharpness: Double = default) -> HapticPattern
+  static func silence(_: Double) -> HapticPattern
+  static func tap(intensity: Double = default, sharpness: Double = default) -> HapticPattern
+  static let none: HapticPattern
+  var isEmpty: Bool { get }
+struct TrackpadKnock: Equatable, Sendable
+  enum Feel: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+    case crisp
+    case level
+    case soft
+  init(time: Double, feel: TrackpadKnock.Feel)
+  let feel: TrackpadKnock.Feel
+  let time: Double

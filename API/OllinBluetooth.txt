@@ -1,0 +1,132 @@
+// OllinBluetooth: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum BluetoothFormat: Equatable, Hashable, Sendable
+  case float32
+  case heartRate
+  case raw
+  case signed(bytes: Int, scale: Double)
+  case text
+  case unsigned(bytes: Int, scale: Double)
+  func number(from: [UInt8]) -> Double?
+  func text(from: [UInt8]) -> String?
+  static let int16: BluetoothFormat
+  static let int32: BluetoothFormat
+  static let int8: BluetoothFormat
+  static let uint16: BluetoothFormat
+  static let uint32: BluetoothFormat
+  static let uint8: BluetoothFormat
+enum BluetoothRadioState: Equatable, Hashable, Sendable
+  case off
+  case on
+  case unauthorized
+  case unsupported
+  case waiting
+final class BluetoothDevice: Sendable
+  convenience init(_: BluetoothPeripheral)
+  convenience init(id: Foundation.UUID)
+  convenience init(named: String)
+  convenience init(service: BluetoothService)
+  convenience init(target: BluetoothDevice.Target)
+  enum Target: Equatable, Hashable, Sendable
+    case id(Foundation.UUID)
+    case name(String)
+    case service(BluetoothService)
+  func bind(_: BluetoothCharacteristic, to: Param<Double>, from: ClosedRange<Double> = default)
+  func bool(_: BluetoothCharacteristic) -> Bool?
+  func bytes(_: BluetoothCharacteristic) -> [UInt8]?
+  func connect()
+  func data(_: BluetoothCharacteristic) -> Foundation.Data?
+  func disconnect()
+  func int(_: BluetoothCharacteristic) -> Int?
+  func int(_: BluetoothCharacteristic, default: Int) -> Int
+  func latest(_: BluetoothCharacteristic) -> BluetoothReading?
+  func number(_: BluetoothCharacteristic) -> Double?
+  func number(_: BluetoothCharacteristic, default: Double) -> Double
+  func poll(_: BluetoothCharacteristic, every: Double)
+  func read(_: BluetoothCharacteristic)
+  func readings() -> [BluetoothReading]
+  func subscribe(to: BluetoothCharacteristic)
+  func text(_: BluetoothCharacteristic) -> String?
+  func text(_: BluetoothCharacteristic, default: String) -> String
+  func unbind(_: BluetoothCharacteristic)
+  func unsubscribe(from: BluetoothCharacteristic)
+  func write(_: String, to: BluetoothCharacteristic)
+  func write(_: [UInt8], to: BluetoothCharacteristic)
+  var characteristics: [BluetoothCharacteristic] { get }
+  var isAvailable: Bool { get }
+  var isConnected: Bool { get }
+  var name: String? { get }
+  var radioState: BluetoothRadioState { get }
+  var signal: Int? { get }
+  var unavailableReason: String? { get }
+final class BluetoothScan: Sendable
+  convenience init()
+  convenience init(service: BluetoothService)
+  func start()
+  func stop()
+  var forgetAfter: Double { get set }
+  var isAvailable: Bool { get }
+  var isScanning: Bool { get }
+  var peripherals: [BluetoothPeripheral] { get }
+  var radioState: BluetoothRadioState { get }
+  var unavailableReason: String? { get }
+struct BluetoothCharacteristic: CustomStringConvertible, Equatable, Hashable, Sendable
+  func hash(into: Hasher)
+  func read(as: BluetoothFormat) -> BluetoothCharacteristic
+  init(_: BluetoothUUID, as: BluetoothFormat = default, name: String = default)
+  init(_: String, as: BluetoothFormat = default, name: String = default)
+  let format: BluetoothFormat
+  let id: BluetoothUUID
+  let name: String
+  static func ==(_: BluetoothCharacteristic, _: BluetoothCharacteristic) -> Bool
+  static func standard(for: BluetoothUUID) -> BluetoothCharacteristic
+  static let batteryLevel: BluetoothCharacteristic
+  static let bodySensorLocation: BluetoothCharacteristic
+  static let firmwareRevision: BluetoothCharacteristic
+  static let heartRateMeasurement: BluetoothCharacteristic
+  static let humidity: BluetoothCharacteristic
+  static let manufacturerName: BluetoothCharacteristic
+  static let modelNumber: BluetoothCharacteristic
+  static let pressure: BluetoothCharacteristic
+  static let standard: [BluetoothCharacteristic]
+  static let temperature: BluetoothCharacteristic
+  static let uartIn: BluetoothCharacteristic
+  static let uartOut: BluetoothCharacteristic
+  var description: String { get }
+struct BluetoothPeripheral: Equatable, Hashable, Identifiable, Sendable
+  init(id: Foundation.UUID, name: String, signal: Int, services: [BluetoothService] = default, isConnectable: Bool = default, lastSeen: Foundation.Date = default)
+  let id: Foundation.UUID
+  let isConnectable: Bool
+  let lastSeen: Foundation.Date
+  let name: String
+  let services: [BluetoothService]
+  let signal: Int
+struct BluetoothReading: Sendable
+  init(characteristic: BluetoothCharacteristic, bytes: [UInt8], time: Foundation.Date = default)
+  let bytes: [UInt8]
+  let characteristic: BluetoothCharacteristic
+  let time: Foundation.Date
+  var data: Foundation.Data { get }
+  var int: Int? { get }
+  var isOn: Bool? { get }
+  var number: Double? { get }
+  var text: String? { get }
+struct BluetoothService: CustomStringConvertible, Equatable, Hashable, Sendable
+  init(_: BluetoothUUID, name: String = default)
+  init(_: String, name: String = default)
+  let id: BluetoothUUID
+  let name: String
+  static let battery: BluetoothService
+  static let deviceInformation: BluetoothService
+  static let environmentalSensing: BluetoothService
+  static let heartRate: BluetoothService
+  static let standard: [BluetoothService]
+  static let uart: BluetoothService
+  var description: String { get }
+struct BluetoothUUID: CustomStringConvertible, Equatable, Hashable, Sendable
+  init(_: String)
+  init(short: UInt16)
+  let isWellFormed: Bool
+  let string: String
+  var description: String { get }
+  var shortNumber: UInt16? { get }

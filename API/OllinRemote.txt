@@ -1,0 +1,103 @@
+// OllinRemote: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum RemoteControlKind: String, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+  case color
+  case insets
+  case menu
+  case range
+  case rect
+  case slider
+  case stepper
+  case swatches
+  case text
+  case toggle
+  case vector
+  case vector3
+enum RemoteHTTP
+  static func acceptKey(for: String) -> String
+  static func isWebSocketUpgrade(_: RemoteHTTP.Request) -> Bool
+  static func notFound() -> Foundation.Data
+  static func pageResponse(html: Foundation.Data) -> Foundation.Data
+  static func parseHead(_: [UInt8]) -> (request: RemoteHTTP.Request, consumed: Int)?
+  static func upgradeResponse(accept: String) -> Foundation.Data
+  struct Request: Equatable, Sendable
+    var headers: [String : String] { get set }
+    var method: String { get set }
+    var path: String { get set }
+enum RemoteMessageKind: String, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+  case hello
+  case set
+  case stats
+  case update
+enum RemoteWire
+  static func apply(_: ParamStored, to: ParamHandle)
+  static func descriptor(for: ParamHandle) -> RemoteParamDescriptor
+  static func snapshotValue(of: ParamHandle) -> ParamStored
+enum WebSocketFraming
+  enum Opcode: UInt8, Equatable, Hashable, RawRepresentable, Sendable
+    case binary
+    case close
+    case continuation
+    case ping
+    case pong
+    case text
+  static func decode(buffer: [UInt8]) -> [WebSocketFraming.Frame]?
+  static func encode(_: WebSocketFraming.Opcode, payload: [UInt8]) -> Foundation.Data
+  static func encodeText(_: String) -> Foundation.Data
+  struct Frame: Equatable, Sendable
+    init(fin: Bool, opcode: WebSocketFraming.Opcode, payload: [UInt8])
+    var fin: Bool { get set }
+    var opcode: WebSocketFraming.Opcode { get set }
+    var payload: [UInt8] { get set }
+final class RemoteInspector: SketchExtension, Sendable
+  func afterFrame(_: Sketch, _: FrameInfo)
+  func beforeDraw(_: Sketch)
+  func setup(_: Sketch)
+  func stop()
+  init(port: Int = default)
+  var boundPort: Int? { get }
+  var url: String? { get }
+struct RemoteHello: Decodable, Encodable, Sendable
+  var host: String { get set }
+  var kind: RemoteMessageKind { get set }
+  var params: [RemoteParamDescriptor] { get set }
+  var sketch: String { get set }
+struct RemoteParamDescriptor: Decodable, Encodable, Equatable, Sendable
+  var group: String? { get set }
+  var hLower: Double? { get set }
+  var hUpper: Double? { get set }
+  var icon: String? { get set }
+  var isField: Bool? { get set }
+  var isGradient: Bool? { get set }
+  var isPad: Bool? { get set }
+  var isSegmented: Bool? { get set }
+  var isShown: Bool { get set }
+  var kind: RemoteControlKind { get set }
+  var label: String { get set }
+  var lower: Double? { get set }
+  var name: String { get set }
+  var options: [String]? { get set }
+  var step: Double? { get set }
+  var upper: Double? { get set }
+  var value: ParamStored { get set }
+  var wLower: Double? { get set }
+  var wUpper: Double? { get set }
+  var xLower: Double? { get set }
+  var xUpper: Double? { get set }
+  var yLower: Double? { get set }
+  var yUpper: Double? { get set }
+  var zLower: Double? { get set }
+  var zUpper: Double? { get set }
+struct RemoteSet: Decodable, Encodable, Sendable
+  var kind: RemoteMessageKind { get set }
+  var name: String { get set }
+  var value: ParamStored { get set }
+struct RemoteStats: Decodable, Encodable, Sendable
+  var clock: Double { get set }
+  var fps: Double { get set }
+  var frame: Int { get set }
+  var kind: RemoteMessageKind { get set }
+struct RemoteUpdate: Decodable, Encodable, Sendable
+  var kind: RemoteMessageKind { get set }
+  var shown: [String : Bool] { get set }
+  var values: [String : ParamStored] { get set }

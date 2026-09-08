@@ -1,0 +1,703 @@
+// OllinAudio: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum AudioError: CustomStringConvertible, Error, Sendable
+  case couldNotDecode(String)
+  case resourceNotFound(String)
+  var description: String { get }
+enum Effect: Decodable, Encodable, Equatable, Hashable, Sendable
+  case custom(CustomEffect)
+  case delay(Delay)
+  case distortion(Distortion)
+  case equalizer(Equalizer)
+  case reverb(Reverb)
+  enum Kind: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case convolution
+    case custom
+    case delay
+    case distortion
+    case equalizer
+    case reverb
+  static func custom(_: String = default, _: (AudioBlock) -> Void) -> Effect
+  static func custom(_: String = default, state: State, _: (AudioBlock, inout State) -> Void) -> Effect
+  var kind: Effect.Kind { get }
+enum VoiceSource: Decodable, Encodable, Equatable, Hashable, Sendable
+  case blown(BlownTube)
+  case bowed(BowedString)
+  case patch(Patch)
+  case plucked(PluckedString)
+  case sampled(Sampler)
+  case struck(ModalBody)
+  case wave(Waveform)
+  case wavetable(WavetableScan)
+  var isDriven: Bool { get }
+enum Waveform: String, ParamOption, ParamValue, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+  case noise
+  case sawtooth
+  case sine
+  case square
+  case triangle
+final class AudioAnalyzer: Sendable
+  func bands(_: Int) -> [Float]
+  func magnitude(in: ClosedRange<Double>) -> Float
+  func process(_: AVFAudio.AVAudioPCMBuffer)
+  func process(samples: UnsafePointer<Float>, count: Int)
+  init(fftSize: Int = default, sampleRate: Double = default, smoothing: Float = default)
+  let binCount: Int
+  let sampleRate: Double
+  var amplitude: Float { get }
+  var bass: Float { get }
+  var beat: Float { get }
+  var beatCount: Int { get }
+  var beatSensitivity: Float { get set }
+  var mid: Float { get }
+  var smoothing: Float { get set }
+  var spectrum: [Float] { get }
+  var timeSinceBeat: Double { get }
+  var treble: Float { get }
+  var waveform: [Float] { get }
+final class AudioInput: AudioTapSource, AudioSource, Sendable
+  func start() throws
+  func stop()
+  init(fftSize: Int = default, smoothing: Float = default)
+  nonisolated let analyzer: AudioAnalyzer
+  var audioTap: AudioTap? { get set }
+  var isRunning: Bool { get }
+final class AudioPlayer: AudioTapSource, CaptureAudioSource, FrameAdvancing, AudioSource, Sendable
+  convenience init(path: String, fftSize: Int = default, smoothing: Float = default) throws
+  convenience init(resource: String, withExtension: String, in: Foundation.Bundle, fftSize: Int = default, smoothing: Float = default) throws
+  func pause()
+  func play()
+  func stop()
+  init(url: Foundation.URL, fftSize: Int = default, smoothing: Float = default) throws
+  nonisolated let analyzer: AudioAnalyzer
+  var audioTap: AudioTap? { get set }
+  var isPlaying: Bool { get }
+  var loops: Bool { get set }
+final class BeatFollower: Sendable
+  func reset()
+  func rhythm(steps: Int = default, perBeat: Double = default) -> Rhythm
+  func update(at: Double)
+  init(_: any AudioSource, range: ClosedRange<Double> = default)
+  var beats: Double { get }
+  var isFollowing: Bool { get }
+  var steadiness: Double { get }
+  var tempo: Double { get }
+final class SampledInstrument: Sendable
+  convenience init?(sfz: String, in: Foundation.Bundle)
+  func recording(at: Int, over: ClosedRange<Int>) -> SampledInstrument.Recording
+  func recordingIndex(for: Int, velocity: Double = default) -> Int?
+  init(name: String = default, recordings: [SampledInstrument.Recording])
+  init?(contentsOf: Foundation.URL)
+  let name: String
+  static let builtIn: SampledInstrument?
+  struct Recording: Sendable
+    init(frames: [Float], sampleRate: Double, rootKey: Int, lowKey: Int? = default, highKey: Int? = default)
+    var frames: [Float] { get set }
+    var highKey: Int { get set }
+    var lowKey: Int { get set }
+    var rootKey: Int { get set }
+    var sampleRate: Double { get set }
+  var isEmpty: Bool { get }
+  var recordingCount: Int { get }
+  var recordingRoots: [Int] { get }
+final class SoundClassifier: Sendable
+  convenience init(of: any AudioTapSource, modelAt: Foundation.URL, threshold: Double = default, windowDuration: Double = default) throws
+  func confidence(of: String) -> Double
+  func detach()
+  func events() -> [SoundEvent]
+  func timeSinceHearing(_: String) -> Double
+  init(of: any AudioTapSource, model: CoreML.MLModel, threshold: Double = default, windowDuration: Double = default)
+  init(of: any AudioTapSource, threshold: Double = default, windowDuration: Double = default)
+  nonisolated static func classify(_: [Float], sampleRate: Double, model: CoreML.MLModel? = default, windowDuration: Double = default) -> [SoundClassification]
+  nonisolated static func classify(contentsOf: Foundation.URL, model: CoreML.MLModel? = default, windowDuration: Double = default) throws -> [SoundClassification]
+  nonisolated static func classify(resource: String, withExtension: String, in: Foundation.Bundle, model: CoreML.MLModel? = default, windowDuration: Double = default) throws -> [SoundClassification]
+  var classifications: [SoundClassification] { get }
+  var isAvailable: Bool { get }
+  var labels: [String] { get }
+  var threshold: Double { get set }
+  var topClassification: SoundClassification? { get }
+  var unavailableReason: String? { get }
+final class Soundtrack: AudioSource, Sendable
+  func detach()
+  init(of: any AudioTapSource, fftSize: Int = default, smoothing: Float = default)
+  nonisolated var analyzer: AudioAnalyzer { get }
+final class SpeechListener: Sendable
+  func detach()
+  func phrases() -> [SpokenPhrase]
+  func reset()
+  init(of: any AudioTapSource, locale: Foundation.Locale = default)
+  nonisolated static func transcribe(_: [Float], sampleRate: Double, locale: Foundation.Locale = default) throws -> String
+  nonisolated static func transcribe(contentsOf: Foundation.URL, locale: Foundation.Locale = default) throws -> String
+  nonisolated static func transcribe(resource: String, withExtension: String, in: Foundation.Bundle, locale: Foundation.Locale = default) throws -> String
+  nonisolated static var supportedLocales: [Foundation.Locale] { get }
+  var caption: String { get }
+  var captionWords: Int { get set }
+  var isAvailable: Bool { get }
+  var isListening: Bool { get }
+  var latest: SpokenPhrase? { get }
+  var locale: Foundation.Locale { get }
+  var transcript: String { get }
+  var unavailableReason: String? { get }
+final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, TransportMutable, AudioSource, Sendable
+  func advance(by: Double)
+  func allNotesOff()
+  func noteOff(_: Pitch)
+  func noteOn(_: Pitch, velocity: Double = default)
+  func place(at: Vector3, heardFrom: Camera3D)
+  func play(_: Note, tempo: Tempo = default)
+  func play(_: Pitch, velocity: Double = default, for: Double? = default)
+  func play(_: Sonification, step: Int, tempo: Tempo = default)
+  func play(_: [Note], tempo: Tempo = default)
+  func play(chord: [Pitch], velocity: Double = default, for: Double? = default)
+  func start()
+  func stop()
+  func unplace()
+  init(_: Voice = default, polyphony: Int = default, fftSize: Int = default)
+  nonisolated let analyzer: AudioAnalyzer
+  var activeVoiceCount: Int { get }
+  var delay: Delay? { get set }
+  var effects: [Effect] { get set }
+  var gain: Double { get set }
+  var hearingRange: ClosedRange<Double> { get set }
+  var instrument: SampledInstrument? { get set }
+  var isRunning: Bool { get }
+  var position: Vector3? { get }
+  var pressure: Double { get set }
+  var reverb: Reverb? { get set }
+  var voice: Voice { get set }
+  var wavetable: Wavetable? { get set }
+final class Tone: AudioTapSource, CaptureAudioSource, AudioSource, Sendable
+  func play()
+  func stop()
+  init(frequency: Double = default, amplitude: Double = default, waveform: Tone.Waveform = default, fftSize: Int = default, smoothing: Float = default)
+  nonisolated let analyzer: AudioAnalyzer
+  typealias Waveform = Waveform
+  var amplitude: Double { get set }
+  var audioTap: AudioTap? { get set }
+  var frequency: Double { get set }
+  var isPlaying: Bool { get }
+  var waveform: Tone.Waveform { get set }
+final class Wavetable: Sendable
+  convenience init(name: String = default, frameCount: Int, _: (Double, Double) -> Double)
+  func cycle(at: Double) -> [Double]
+  func frame(_: Int) -> [Double]
+  func frame(_: Int, harmonicsUpTo: Int) -> [Double]
+  init(name: String = default, frames: [[Double]])
+  init(name: String = default, harmonics: [[Double]])
+  let frameCount: Int
+  let name: String
+  static let basic: Wavetable
+  static let length: Int
+  static let pulse: Wavetable
+  static let vowels: Wavetable
+func waitFor(_: () async throws -> T) throws -> T
+protocol AudioSource where Self : AnyObject
+  func bands(_: Int) -> [Float]
+  func magnitude(in: ClosedRange<Double>) -> Float
+  var amplitude: Float { get }
+  var analyzer: AudioAnalyzer { get }
+  var bass: Float { get }
+  var beat: Float { get }
+  var beatCount: Int { get }
+  var beatSensitivity: Float { get set }
+  var mid: Float { get }
+  var smoothing: Float { get set }
+  var spectrum: [Float] { get }
+  var timeSinceBeat: Double { get }
+  var treble: Float { get }
+  var waveform: [Float] { get }
+struct Arpeggio: Equatable, Hashable, Sendable
+  enum Pattern: String, ParamOption, ParamValue, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case asPlayed
+    case converge
+    case diverge
+    case down
+    case downUp
+    case random
+    case up
+    case upDown
+  init(_: Chord, _: Arpeggio.Pattern = default, octaves: Int = default, seed: Int = default)
+  init(_: [Pitch], _: Arpeggio.Pattern = default, octaves: Int = default, seed: Int = default)
+  let octaves: Int
+  let order: [Pitch]
+  let pattern: Arpeggio.Pattern
+  let pitches: [Pitch]
+  let seed: Int
+  let spreadPitches: [Pitch]
+  subscript(_: Int) -> Pitch { get }
+  var length: Int { get }
+struct AudioBlock
+  let channelCount: Int
+  let frameCount: Int
+  let sampleRate: Double
+  let time: Double
+  subscript(_: Int) -> UnsafeMutableBufferPointer<Float> { get }
+  var left: UnsafeMutableBufferPointer<Float> { get }
+  var right: UnsafeMutableBufferPointer<Float> { get }
+struct BeatEngine: Equatable, Hashable, Sendable
+  func beats(at: Double) -> Double
+  func rhythm(steps: Int = default, perBeat: Double = default) -> Rhythm
+  init(range: ClosedRange<Double> = default, memory: Int = default)
+  mutating func hearBeat(at: Double)
+  mutating func reset()
+  var beatCount: Int { get }
+  var isFollowing: Bool { get }
+  var memory: Int { get set }
+  var range: ClosedRange<Double> { get set }
+  var secondsPerBeat: Double { get }
+  var steadiness: Double { get }
+  var tempo: Double { get }
+struct BlownTube: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(embouchure: Double = default, breathiness: Double = default, decay: Double = default, damping: Double = default)
+  static let clarinet: BlownTube
+  static let hollow: BlownTube
+  static let reedy: BlownTube
+  var breathiness: Double { get set }
+  var damping: Double { get set }
+  var decay: Double { get set }
+  var embouchure: Double { get set }
+struct BowedString: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(position: Double = default, force: Double = default, decay: Double = default, damping: Double = default)
+  static let cello: BowedString
+  static let ponticello: BowedString
+  static let sustained: BowedString
+  static let violin: BowedString
+  var damping: Double { get set }
+  var decay: Double { get set }
+  var force: Double { get set }
+  var position: Double { get set }
+struct Chord: Equatable, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Hashable, Sendable
+  enum Quality: String, ParamOption, ParamValue, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case addNine
+    case augmented
+    case diminished
+    case diminishedSeventh
+    case dominantSeventh
+    case eleventh
+    case fifth
+    case halfDiminishedSeventh
+    case major
+    case majorNinth
+    case majorSeventh
+    case minor
+    case minorMajorSeventh
+    case minorNinth
+    case minorSeventh
+    case minorSixth
+    case ninth
+    case sixth
+    case sus2
+    case sus4
+    case thirteenth
+    var intervals: [Int] { get }
+  func inverted(_: Int = default) -> Chord
+  func spread(over: Int = default) -> [Pitch]
+  func transposed(by: Double) -> Chord
+  init(_: Pitch, _: Chord.Quality = default, inversion: Int = default)
+  init(stringLiteral: String)
+  init?(symbol: String)
+  static func quality(_: String) -> Chord.Quality?
+  var inversion: Int { get set }
+  var pitches: [Pitch] { get }
+  var quality: Chord.Quality { get set }
+  var root: Pitch { get set }
+struct CustomEffect: Decodable, Encodable, Equatable, Hashable, Sendable
+  func encode(to: any Encoder) throws
+  func hash(into: Hasher)
+  init(_: String = default, _: (AudioBlock) -> Void)
+  init(_: String = default, state: State, _: (AudioBlock, inout State) -> Void)
+  init(from: any Decoder) throws
+  static func ==(_: CustomEffect, _: CustomEffect) -> Bool
+  var name: String { get set }
+struct Delay: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(time: Double = default, feedback: Double = default, mix: Double = default, damping: Double = default)
+  var damping: Double { get set }
+  var feedback: Double { get set }
+  var mix: Double { get set }
+  var time: Double { get set }
+struct Distortion: Decodable, Encodable, Equatable, Hashable, Sendable
+  enum Character: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case bitCrush
+    case overdrive
+    case ring
+    case softClip
+    case squeeze
+  init(_: Distortion.Character = default, drive: Double = default, mix: Double = default)
+  var character: Distortion.Character { get set }
+  var drive: Double { get set }
+  var mix: Double { get set }
+struct Envelope: Decodable, Encodable, Equatable, Hashable, Sendable
+  func level(at: Double, heldFor: Double) -> Double
+  init(attack: Double = default, decay: Double = default, sustain: Double = default, release: Double = default)
+  static let organ: Envelope
+  static let percussive: Envelope
+  static let plucked: Envelope
+  static let standard: Envelope
+  static let sustained: Envelope
+  static let swell: Envelope
+  var attack: Double { get set }
+  var decay: Double { get set }
+  var release: Double { get set }
+  var sustain: Double { get set }
+struct Equalizer: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(lowGain: Double = default, lowEdge: Double = default, midGain: Double = default, midFrequency: Double = default, midWidth: Double = default, highGain: Double = default, highEdge: Double = default)
+  static func lowCut(below: Double, by: Double = default) -> Equalizer
+  static let bright: Equalizer
+  static let scooped: Equalizer
+  static let warm: Equalizer
+  var highEdge: Double { get set }
+  var highGain: Double { get set }
+  var lowEdge: Double { get set }
+  var lowGain: Double { get set }
+  var midFrequency: Double { get set }
+  var midGain: Double { get set }
+  var midWidth: Double { get set }
+struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
+  func reversed() -> ImpulseResponse
+  init(_: [Float], sampleRate: Double)
+  init(left: [Float], right: [Float], sampleRate: Double)
+  init(seconds: Double, sampleRate: Double = default, seed: Int = default, _: (Double, Double) -> Double)
+  init?(contentsOf: Foundation.URL)
+  static func decay(seconds: Double = default, damping: Double = default, sampleRate: Double = default, seed: Int = default) -> ImpulseResponse
+  static func load(_: String) -> ImpulseResponse?
+  static func resource(_: String, withExtension: String = default, in: Foundation.Bundle) -> ImpulseResponse?
+  static let maxSeconds: Double
+  var channelCount: Int { get }
+  var channels: [[Float]] { get set }
+  var duration: Double { get }
+  var frameCount: Int { get }
+  var sampleRate: Double { get set }
+struct MarkovChain<Element where Element : Hashable, Element : Sendable>: Sendable
+  func continuations(after: [Element]) -> [(element: Element, probability: Double)]
+  init(learning: [Element], order: Int = default, seed: Int = default, loops: Bool = default)
+  init(order: Int = default, seed: Int = default)
+  let order: Int
+  mutating func learn(_: [Element], loops: Bool = default)
+  mutating func next() -> Element?
+  mutating func next(_: Int) -> [Element]
+  mutating func reset()
+  mutating func start(at: Element)
+  mutating func start(with: [Element])
+  var context: [Element] { get }
+  var continuations: [(element: Element, probability: Double)] { get }
+  var isEmpty: Bool { get }
+  var vocabulary: [Element] { get }
+struct ModalBody: Decodable, Encodable, Equatable, Hashable, Sendable
+  func frequency(of: Int, playing: Pitch) -> Double
+  init(modes: [ModalBody.Mode], decay: Double = default, damping: Double = default, hardness: Double = default)
+  init(shape: Shape, struckAt: Vector2? = default, modes: Int = default, resolution: Int = default, decay: Double = default, damping: Double = default, hardness: Double = default)
+  static let bar: ModalBody
+  static let bell: ModalBody
+  static let drum: ModalBody
+  static let glass: ModalBody
+  static let maxModes: Int
+  static let plate: ModalBody
+  static let wood: ModalBody
+  struct Mode: Decodable, Encodable, Equatable, Hashable, Sendable
+    init(ratio: Double, gain: Double = default)
+    var gain: Double { get set }
+    var ratio: Double { get set }
+  var count: Int { get }
+  var damping: Double { get set }
+  var decay: Double { get set }
+  var hardness: Double { get set }
+  var modes: [ModalBody.Mode] { get }
+struct Note: Equatable, Hashable, Sendable
+  func seconds(at: Tempo) -> Double
+  func transposed(by: Double) -> Note
+  init(_: Pitch, velocity: Double = default, length: NoteLength = default)
+  var length: NoteLength { get set }
+  var pitch: Pitch { get set }
+  var velocity: Double { get set }
+struct Patch: Decodable, Encodable, Equatable, Hashable, Sendable
+  func fedBack(_: Double) -> Patch
+  func level(_: Double) -> Patch
+  func mixed(with: Patch) -> Patch
+  func modulated(by: Patch, index: Double) -> Patch
+  func ratio(_: Double) -> Patch
+  static func tone(_: Waveform = default, ratio: Double = default, level: Double = default) -> Patch
+  static let bell: Patch
+  static let brass: Patch
+  static let buzz: Patch
+  static let glass: Patch
+  static let maxOperators: Int
+  static let simple: Patch
+  static let struck: Patch
+  struct Operator: Equatable, Hashable, Sendable
+    var feedback: Double { get set }
+    var level: Double { get set }
+    var modulatedBy: Int? { get set }
+    var ratio: Double { get set }
+    var reachesOutput: Bool { get set }
+    var waveform: Waveform { get set }
+  var count: Int { get }
+  var operators: [Patch.Operator] { get }
+struct Pitch: Comparable, CustomStringConvertible, Equatable, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Hashable, Sendable
+  func transposed(by: Double) -> Pitch
+  init(_: Double)
+  init(floatLiteral: Double)
+  init(frequency: Double)
+  init(integerLiteral: Int)
+  init(stringLiteral: String)
+  init?(name: String)
+  static func <(_: Pitch, _: Pitch) -> Bool
+  var description: String { get }
+  var frequency: Double { get }
+  var midi: Double { get set }
+struct PluckedString: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(position: Double = default, hardness: Double = default, decay: Double = default, damping: Double = default)
+  static let harp: PluckedString
+  static let muted: PluckedString
+  static let nylon: PluckedString
+  static let steel: PluckedString
+  var damping: Double { get set }
+  var decay: Double { get set }
+  var hardness: Double { get set }
+  var position: Double { get set }
+struct Progression: Equatable, Hashable, Sendable
+  func chord(at: Int) -> Chord?
+  func degree(at: Int) -> Int
+  func pitches(at: Int) -> [Pitch]
+  func root(at: Int) -> Pitch
+  func rotated(by: Int) -> Progression
+  func transposed(by: Double) -> Progression
+  func wandering(_: Int, order: Int = default, seed: Int = default) -> Progression
+  init(_: String, in: Scale, noteCount: Int = default, spacing: Int = default)
+  init(_: [Chord])
+  init(_: [Int], in: Scale, noteCount: Int = default, spacing: Int = default)
+  init(symbols: String)
+  static func andalusian(in: Scale) -> Progression
+  static func blues(in: Scale) -> Progression
+  static func circleOfFifths(in: Scale) -> Progression
+  static func fifties(in: Scale) -> Progression
+  static func pop(in: Scale) -> Progression
+  static func twoFiveOne(in: Scale) -> Progression
+  subscript(_: Int) -> [Pitch] { get }
+  var count: Int { get }
+  var degrees: [Int] { get }
+  var noteCount: Int { get set }
+  var scale: Scale { get set }
+  var spacing: Int { get set }
+  var writtenChords: [Chord]? { get }
+struct Reverb: Decodable, Encodable, Equatable, Hashable, Sendable
+  enum Space: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case cathedral
+    case hall
+    case plate
+    case room
+  func encode(to: any Encoder) throws
+  init(_: ImpulseResponse, mix: Double = default, preDelay: Double = default)
+  init(_: Reverb.Space = default, mix: Double = default)
+  init(from: any Decoder) throws
+  var impulse: ImpulseResponse? { get set }
+  var mix: Double { get set }
+  var preDelay: Double { get set }
+  var space: Reverb.Space { get set }
+struct Rhythm: CustomStringConvertible, Equatable, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Hashable, Sendable
+  func inverted() -> Rhythm
+  func rotated(by: Int) -> Rhythm
+  init(_: Int, in: Int, rotation: Int = default)
+  init(steps: [Bool])
+  init(stringLiteral: String)
+  init?(pattern: String)
+  static let agsagSamai: Rhythm
+  static let aksak: Rhythm
+  static let bellPattern: Rhythm
+  static let bossaNova: Rhythm
+  static let cinquillo: Rhythm
+  static let fandango: Rhythm
+  static let nawakhat: Rhythm
+  static let ruchenitza: Rhythm
+  static let samba: Rhythm
+  static let tresillo: Rhythm
+  static let yorkSamai: Rhythm
+  subscript(_: Int) -> Bool { get }
+  var description: String { get }
+  var intervals: [Int] { get }
+  var length: Int { get }
+  var onsetCount: Int { get }
+  var onsets: [Int] { get }
+  var steps: [Bool] { get }
+struct Sampler: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(loops: Bool = default, velocitySensitivity: Double = default, transposition: Double = default)
+  var loops: Bool { get set }
+  var transposition: Double { get set }
+  var velocitySensitivity: Double { get set }
+struct Scale: Equatable, Hashable, Sendable
+  enum Mode: String, ParamOption, ParamValue, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case blues
+    case chromatic
+    case dorian
+    case harmonicMinor
+    case hirajoshi
+    case inSen
+    case iwato
+    case locrian
+    case lydian
+    case major
+    case majorPentatonic
+    case melodicMinor
+    case minor
+    case minorPentatonic
+    case mixolydian
+    case octatonic
+    case phrygian
+    case wholeTone
+    var intervals: [Int] { get }
+  func chord(on: Int, noteCount: Int = default, spacing: Int = default) -> [Pitch]
+  func contains(_: Pitch) -> Bool
+  func degree(nearest: Pitch) -> Int
+  func pitch(_: Int) -> Pitch
+  func pitches(_: Int, from: Int = default) -> [Pitch]
+  func snap(_: Pitch) -> Pitch
+  func transposed(by: Double) -> Scale
+  init(_: Scale.Mode = default, root: Pitch = default)
+  init(intervals: [Int], root: Pitch = default)
+  subscript(_: Int) -> Pitch { get }
+  var degreeCount: Int { get }
+  var intervals: [Int] { get }
+  var root: Pitch { get set }
+struct Sonification: Equatable, Sendable
+  enum Bounds: Equatable, Sendable
+    case extremes
+    case fixed(ClosedRange<Double>)
+    case robust(ignoring: Double)
+  enum Polarity: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+    case negative
+    case positive
+  func amplified(by: [Double], bounds: Sonification.Bounds = default, levels: ClosedRange<Double> = default) -> Sonification
+  func inverted() -> Sonification
+  func note(at: Int) -> Note?
+  func notes() -> [Note]
+  func pitch(for: Double) -> Pitch
+  func reference(at: Double, velocity: Double = default) -> Note
+  func velocity(at: Int) -> Double
+  init(_: Heightfield, column: Int, in: Scale? = default, pitches: ClosedRange<Pitch> = default, bounds: Sonification.Bounds = default, polarity: Sonification.Polarity = default, noteLength: NoteLength = default)
+  init(_: Heightfield, from: Vector2, to: Vector2, count: Int, in: Scale? = default, pitches: ClosedRange<Pitch> = default, bounds: Sonification.Bounds = default, polarity: Sonification.Polarity = default, noteLength: NoteLength = default)
+  init(_: Heightfield, row: Int, in: Scale? = default, pitches: ClosedRange<Pitch> = default, bounds: Sonification.Bounds = default, polarity: Sonification.Polarity = default, noteLength: NoteLength = default)
+  init(_: Image, column: Int, in: Scale? = default, pitches: ClosedRange<Pitch> = default, bounds: Sonification.Bounds = default, polarity: Sonification.Polarity = default, noteLength: NoteLength = default)
+  init(_: Image, row: Int, in: Scale? = default, pitches: ClosedRange<Pitch> = default, bounds: Sonification.Bounds = default, polarity: Sonification.Polarity = default, noteLength: NoteLength = default)
+  init(_: Table, column: String, in: Scale? = default, pitches: ClosedRange<Pitch> = default, bounds: Sonification.Bounds = default, polarity: Sonification.Polarity = default, noteLength: NoteLength = default)
+  init(_: [Double], in: Scale? = default, pitches: ClosedRange<Pitch> = default, bounds: Sonification.Bounds = default, polarity: Sonification.Polarity = default, noteLength: NoteLength = default)
+  subscript(_: Int) -> Note? { get }
+  var count: Int { get }
+  var isEmpty: Bool { get }
+  var levels: ClosedRange<Double> { get set }
+  var loudness: [Double]? { get set }
+  var loudnessDomain: ClosedRange<Double> { get set }
+  var noteLength: NoteLength { get set }
+  var pitches: ClosedRange<Pitch> { get set }
+  var polarity: Sonification.Polarity { get set }
+  var scale: Scale? { get set }
+  var valueDomain: ClosedRange<Double> { get set }
+  var values: [Double] { get set }
+struct SoundClassification: Equatable, Sendable
+  init(label: String, confidence: Double)
+  let confidence: Double
+  let label: String
+struct SoundEvent: Equatable, Sendable
+  let confidence: Double
+  let label: String
+  let time: Double
+struct SpokenPhrase: Equatable, Sendable
+  let duration: Double
+  let start: Double
+  let text: String
+struct StepCounter: Equatable, Hashable, Sendable
+  init(perBeat: Double = default, maxCatchUp: Int = default)
+  mutating func reset(to: Double = default)
+  mutating func steps(upTo: Double) -> Range<Int>
+  var maxCatchUp: Int { get set }
+  var nextStep: Int { get }
+  var perBeat: Double { get set }
+struct StruckShape: Sendable
+  func body(struckAt: Vector2? = default, decay: Double = default, damping: Double = default, hardness: Double = default) -> ModalBody
+  func gains(struckAt: Vector2) -> [Double]
+  init?(_: Shape, modes: Int = default, resolution: Int = default)
+  let ratios: [Double]
+struct Tuning: Equatable, Hashable, Sendable
+  func frequency(_: Int) -> Double
+  func pitch(_: Int) -> Pitch
+  func rooted(at: Pitch) -> Tuning
+  func snap(_: Pitch) -> Pitch
+  init(ratios: [Double], period: Double = default, root: Pitch = default)
+  static func equal(_: Int, period: Double = default, root: Pitch = default) -> Tuning
+  static let bohlenPierce: Tuning
+  static let equalTemperament: Tuning
+  static let just: Tuning
+  static let nineteen: Tuning
+  static let pythagorean: Tuning
+  static let quarterTones: Tuning
+  static let thirtyOne: Tuning
+  subscript(_: Int) -> Pitch { get }
+  var cents: [Double] { get }
+  var degreeCount: Int { get }
+  var period: Double { get }
+  var ratios: [Double] { get }
+  var root: Pitch { get set }
+struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(blown: BlownTube, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(bowed: BowedString, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(patch: Patch, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(plucked: PluckedString, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(sampled: Sampler, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(source: VoiceSource, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(struck: ModalBody, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(waveform: Waveform = default, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(wavetable: WavetableScan, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  static let bar: Voice
+  static let bass: Voice
+  static let bell: Voice
+  static let bowed: Voice
+  static let breath: Voice
+  static let cello: Voice
+  static let chime: Voice
+  static let clarinet: Voice
+  static let drum: Voice
+  static let fmBell: Voice
+  static let fmBrass: Voice
+  static let fmBuzz: Voice
+  static let glass: Voice
+  static let harp: Voice
+  static let hollow: Voice
+  static let morph: Voice
+  static let muted: Voice
+  static let nylon: Voice
+  static let pad: Voice
+  static let pluck: Voice
+  static let reed: Voice
+  static let sine: Voice
+  static let stab: Voice
+  static let steel: Voice
+  static let violin: Voice
+  struct Filter: Decodable, Encodable, Equatable, Hashable, Sendable
+    enum Mode: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+      case bandpass
+      case highpass
+      case lowpass
+      case notch
+    init(mode: Voice.Filter.Mode = default, cutoff: Double = default, resonance: Double = default, envelopeAmount: Double = default, envelope: Envelope = default, keyTracking: Double = default)
+    static func lowpass(cutoff: Double, resonance: Double = default) -> Voice.Filter
+    static func sweep(from: Double, by: Double = default, resonance: Double = default, envelope: Envelope = default) -> Voice.Filter
+    var cutoff: Double { get set }
+    var envelope: Envelope { get set }
+    var envelopeAmount: Double { get set }
+    var keyTracking: Double { get set }
+    var mode: Voice.Filter.Mode { get set }
+    var resonance: Double { get set }
+  var detune: Double { get set }
+  var envelope: Envelope { get set }
+  var filter: Voice.Filter? { get set }
+  var gain: Double { get set }
+  var patch: Patch? { get set }
+  var plucked: PluckedString? { get set }
+  var source: VoiceSource { get set }
+  var struck: ModalBody? { get set }
+  var waveform: Waveform { get set }
+  var wavetable: WavetableScan? { get set }
+struct WavetableScan: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(position: Double = default, sweep: Double = default, envelope: Envelope = default)
+  static func at(_: Double) -> WavetableScan
+  var envelope: Envelope { get set }
+  var position: Double { get set }
+  var sweep: Double { get set }

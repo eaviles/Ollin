@@ -1,0 +1,113 @@
+// OllinMIDI: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum MIDIError: Error, Sendable
+  case coreMIDI(Darwin.OSStatus)
+final class MIDIInput: Sendable
+  func bind(controlChange: Int, to: Param<Double>, channel: Int? = default, from: ClosedRange<Double> = default)
+  func bind(controlChange: Int, to: Param<Tempo>, channel: Int? = default, from: ClosedRange<Double> = default)
+  func controlValue(_: Int, channel: Int? = default) -> Int?
+  func controlValue(_: Int, default: Int, channel: Int? = default) -> Int
+  func isNoteOn(_: Int, channel: Int? = default) -> Bool
+  func messages() -> [MIDIMessage]
+  func start() throws
+  func stop()
+  func unbind(controlChange: Int, channel: Int? = default)
+  init(name: String = default)
+  var isRunning: Bool { get }
+  var sources: [MIDIEndpoint] { get }
+final class MIDIOutput: Sendable
+  func close()
+  func controlChange(_: Int, value: Int, channel: Int = default)
+  func noteOff(_: Int, velocity: Int = default, channel: Int = default)
+  func noteOn(_: Int, velocity: Int = default, channel: Int = default)
+  func open(matching: String? = default) throws
+  func openVirtual(named: String? = default) throws
+  func send(_: MIDIMessage)
+  func send(sysEx: [UInt8])
+  func send(timecode: Timecode)
+  init(name: String = default)
+  var destinations: [MIDIEndpoint] { get }
+  var isOpen: Bool { get }
+final class TempoClock: Sendable
+  func progress(over: Double, phase: Double = default) -> Double
+  init(from: MIDIInput)
+  var bar: Int { get }
+  var barPhase: Double { get }
+  var beat: Double { get }
+  var beatCount: Int { get }
+  var beats: Double { get }
+  var beatsPerBar: Int { get set }
+  var isPlaying: Bool { get }
+  var isReceiving: Bool { get }
+  var phase: Double { get }
+  var tempo: Double { get }
+  var timeSinceBeat: Double { get }
+final class TimecodeClock: Sendable
+  init(from: MIDIInput)
+  var frameRate: Timecode.FrameRate? { get }
+  var isPlaying: Bool { get }
+  var isReceiving: Bool { get }
+  var isReversed: Bool { get }
+  var seconds: Double { get }
+  var timecode: Timecode? { get }
+struct MIDIEndpoint: Equatable, Hashable, Identifiable, Sendable
+  func hash(into: Hasher)
+  let manufacturer: String?
+  let name: String
+  static func ==(_: MIDIEndpoint, _: MIDIEndpoint) -> Bool
+  var id: UInt32 { get }
+struct MIDIMessage: CustomStringConvertible, Equatable, Sendable
+  enum Kind: Equatable, Sendable
+    case channelPressure(pressure: Int)
+    case clock
+    case continue
+    case controlChange(controller: Int, value: Int)
+    case noteOff(note: Int, velocity: Int)
+    case noteOn(note: Int, velocity: Int)
+    case pitchBend(value: Int)
+    case polyPressure(note: Int, pressure: Int)
+    case programChange(program: Int)
+    case songPosition(sixteenths: Int)
+    case start
+    case stop
+    case timecodeQuarterFrame(piece: Int, value: Int)
+  init(_: MIDIMessage.Kind, channel: Int = default)
+  init?(status: UInt8, data1: UInt8 = default, data2: UInt8 = default)
+  init?(umpWord: UInt32)
+  var bytes: (status: UInt8, data1: UInt8, data2: UInt8) { get }
+  var channel: Int { get set }
+  var controller: Int? { get }
+  var description: String { get }
+  var isNoteOff: Bool { get }
+  var isNoteOn: Bool { get }
+  var kind: MIDIMessage.Kind { get set }
+  var note: Int? { get }
+  var umpWord: UInt32 { get }
+  var value: Int? { get }
+  var velocity: Int? { get }
+struct Timecode: CustomStringConvertible, Equatable, Hashable, Sendable
+  enum FrameRate: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+    case fps24
+    case fps25
+    case fps30
+    case fps30Drop
+    var framesPerSecond: Int { get }
+    var isDropFrame: Bool { get }
+    var name: String { get }
+    var secondsPerFrame: Double { get }
+  func advanced(by: Int) -> Timecode
+  func quarterFrameValue(piece: Int) -> Int
+  init(frameNumber: Int, frameRate: Timecode.FrameRate)
+  init(hours: Int, minutes: Int, seconds: Int, frames: Int, frameRate: Timecode.FrameRate)
+  init(quarterFrameValues: [Int])
+  init(seconds: Double, frameRate: Timecode.FrameRate)
+  init?(fullFrameSysEx: [UInt8])
+  var description: String { get }
+  var frameNumber: Int { get }
+  var frameRate: Timecode.FrameRate { get set }
+  var frames: Int { get set }
+  var fullFrameSysEx: [UInt8] { get }
+  var hours: Int { get set }
+  var minutes: Int { get set }
+  var seconds: Int { get set }
+  var totalSeconds: Double { get }

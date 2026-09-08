@@ -1,0 +1,517 @@
+// OllinVision: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum BodyJoint3D: CaseIterable, Equatable, Hashable, Sendable
+  case centerHead
+  case centerShoulder
+  case leftAnkle
+  case leftElbow
+  case leftHip
+  case leftKnee
+  case leftShoulder
+  case leftWrist
+  case rightAnkle
+  case rightElbow
+  case rightHip
+  case rightKnee
+  case rightShoulder
+  case rightWrist
+  case root
+  case spine
+  case topHead
+enum BodyJoint: CaseIterable, Equatable, Hashable, Sendable
+  case leftAnkle
+  case leftEar
+  case leftElbow
+  case leftEye
+  case leftHip
+  case leftKnee
+  case leftShoulder
+  case leftWrist
+  case neck
+  case nose
+  case rightAnkle
+  case rightEar
+  case rightElbow
+  case rightEye
+  case rightHip
+  case rightKnee
+  case rightShoulder
+  case rightWrist
+  case root
+enum CameraError: Equatable, Error, Hashable, Sendable
+  case cannotAddInput
+  case cannotAddOutput
+  case noDevice
+enum FaceLandmark: CaseIterable, Equatable, Hashable, Sendable
+  case allPoints
+  case faceContour
+  case innerLips
+  case leftEye
+  case leftEyebrow
+  case leftPupil
+  case medianLine
+  case nose
+  case noseCrest
+  case outerLips
+  case rightEye
+  case rightEyebrow
+  case rightPupil
+enum Finger: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case index
+  case little
+  case middle
+  case ring
+  case thumb
+  var chain: [HandJoint] { get }
+enum HandJoint: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case indexDIP
+  case indexMCP
+  case indexPIP
+  case indexTip
+  case littleDIP
+  case littleMCP
+  case littlePIP
+  case littleTip
+  case middleDIP
+  case middleMCP
+  case middlePIP
+  case middleTip
+  case ringDIP
+  case ringMCP
+  case ringPIP
+  case ringTip
+  case thumbCMC
+  case thumbIP
+  case thumbMP
+  case thumbTip
+  case wrist
+  static let tips: [HandJoint]
+enum VisionSpace
+  static func fittedRectangle(imageSize: Vector2, in: Rectangle) -> Rectangle
+  static func normalizedPoint(_: Vector2, in: Rectangle, mirrored: Bool = default) -> Vector2
+  static func normalizedRectangle(_: Rectangle, in: Rectangle, mirrored: Bool = default) -> Rectangle
+  static func point(_: Double, _: Double, in: Rectangle, mirrored: Bool = default) -> Vector2
+  static func point(_: Vector2, in: Rectangle, mirrored: Bool = default) -> Vector2
+  static func rectangle(_: Rectangle, in: Rectangle, mirrored: Bool = default) -> Rectangle
+extension Collection
+  func lifted(through: RGBDFrame, radius: Int = default) -> [LiftedPose]
+final class BarcodeScanner: VisionAvailability, Sendable
+  init(_: any FrameSource)
+  static func detect(in: Image) throws -> [DetectedBarcode]
+  var barcodes: [DetectedBarcode] { get }
+  var count: Int { get }
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+final class BodyTracker3D: VisionAvailability, Sendable
+  init(_: any FrameSource)
+  static func detect(in: Image) throws -> Body3D?
+  var body: Body3D? { get }
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+final class BodyTracker: VisionAvailability, Sendable
+  init(_: any FrameSource)
+  static func detect(in: Image) throws -> [Body]
+  var bodies: [Body] { get }
+  var count: Int { get }
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+final class Camera: FrameSource, VideoFeed, Sendable
+  enum Device: Equatable, Hashable, Sendable
+    case builtIn
+    case continuity
+    case default
+    case deskView
+    case external
+  func start() throws
+  func stop()
+  init(_: Camera.Device = default)
+  var frame: Image? { get }
+  var frameSize: Vector2? { get }
+  var frameTap: FrameTap? { get set }
+  var isRunning: Bool { get }
+  var waitingMessage: String { get }
+final class ClassMask: Sendable
+  func classIndex(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Int
+  func classIndexNormalized(at: Vector2) -> Int
+  func coverage(of: String) -> Double
+  func coverage(ofClass: Int) -> Double
+  func label(at: Vector2, in: Rectangle, mirrored: Bool = default) -> String?
+  func mask(of: String) -> Image?
+  func mask(ofClass: Int) -> Image?
+  let height: Int
+  let labels: [String]
+  let presentClassIndices: [Int]
+  let width: Int
+  var presentLabels: [String] { get }
+final class ConceptTracker: VisionAvailability, Sendable
+  enum Error: CustomStringConvertible, Error, Sendable
+    case unavailable(String)
+    var description: String { get }
+  func confidence(of: String) -> Double
+  func detect(in: Image) throws -> [Classification]
+  func embedding(of: String) throws -> [Double]
+  func similarity(of: String) -> Double
+  init(_: any FrameSource, imageModelAt: Foundation.URL, textModelAt: Foundation.URL, vocabularyAt: Foundation.URL, concepts: [String] = default)
+  init(imageModelAt: Foundation.URL, textModelAt: Foundation.URL, vocabularyAt: Foundation.URL, concepts: [String] = default)
+  var concepts: [String] { get set }
+  var imageEmbedding: [Double]? { get }
+  var isAvailable: Bool { get }
+  var isLoaded: Bool { get }
+  var labels: [Classification] { get }
+  var topClassification: Classification? { get }
+  var unavailableReason: String? { get }
+final class ContourDetector: VisionAvailability, Sendable
+  func contours(in: Rectangle, mirrored: Bool = default) -> [Contour]
+  func shapes(in: Rectangle, mirrored: Bool = default) -> [Shape]
+  init(_: any FrameSource, detectsDarkOnLight: Bool = default, contrastAdjustment: Float = default)
+  let contrastAdjustment: Float
+  let detectsDarkOnLight: Bool
+  static func detect(in: Image, detectsDarkOnLight: Bool = default, contrastAdjustment: Float = default, maximumDimension: Int = default) throws -> DetectedContours
+  var contourTree: DetectedContours { get }
+  var count: Int { get }
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+final class DepthClip: Sendable
+  enum Error: CustomStringConvertible, Error, Sendable
+    case unavailable(String)
+    var description: String { get }
+  func map(at: Double) -> Image?
+  func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
+  func value(at: Vector2, in: Rectangle, time: Double, mirrored: Bool = default) -> Double
+  func valueNormalized(at: Vector2, time: Double) -> Double
+  init(_: any ClipPlayback, modelAt: Foundation.URL)
+  init(url: Foundation.URL, modelAt: Foundation.URL)
+  var frameCount: Int { get }
+  var isAvailable: Bool { get }
+  var isReady: Bool { get }
+  var map: Image? { get }
+  var progress: Double { get }
+  var range: ClosedRange<Double>? { get }
+  var unavailableReason: String? { get }
+final class DepthTracker: VisionAvailability, Sendable
+  enum Error: CustomStringConvertible, Error, Sendable
+    case unavailable(String)
+    var description: String { get }
+  func reset()
+  func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
+  func valueNormalized(at: Vector2) -> Double
+  init(_: any FrameSource, modelAt: Foundation.URL)
+  var analyzedFrames: Int { get }
+  var isAvailable: Bool { get }
+  var isLoaded: Bool { get }
+  var map: Image? { get }
+  var range: ClosedRange<Double>? { get }
+  var sourceFrame: Image? { get }
+  var unavailableReason: String? { get }
+final class FaceTracker: VisionAvailability, Sendable
+  init(_: any FrameSource)
+  static func detect(in: Image) throws -> [Face]
+  var count: Int { get }
+  var faces: [Face] { get }
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+final class FlowTracker: VisionAvailability, Sendable
+  enum Quality: Equatable, Hashable, Sendable
+    case high
+    case low
+    case medium
+    case veryHigh
+  func reset()
+  init(_: any FrameSource, quality: FlowTracker.Quality = default)
+  static func detect(across: [Image], quality: FlowTracker.Quality = default) throws -> [MotionField?]
+  static func detect(from: Image, to: Image, quality: FlowTracker.Quality = default) throws -> MotionField?
+  var field: MotionField? { get }
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+final class HandTracker: VisionAvailability, Sendable
+  init(_: any FrameSource, maximumHandCount: Int = default)
+  let maximumHandCount: Int
+  static func detect(in: Image, maximumHandCount: Int = default) throws -> [Hand]
+  var count: Int { get }
+  var hands: [Hand] { get }
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+final class ImageClassifier: VisionAvailability, Sendable
+  func confidence(of: String) -> Double
+  init(_: any FrameSource, minConfidence: Double = default)
+  let minConfidence: Double
+  static func detect(in: Image, minConfidence: Double = default) throws -> [Classification]
+  static func supportedLabels() -> [String]
+  var isAvailable: Bool { get }
+  var labels: [Classification] { get }
+  var topClassification: Classification? { get }
+  var unavailableReason: String? { get }
+final class ModelTracker: VisionAvailability, Sendable
+  enum Error: CustomStringConvertible, Error, Sendable
+    case unavailable(String)
+    var description: String { get }
+  func confidence(of: String) -> Double
+  func detect(in: Image) throws -> ModelOutput
+  func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
+  func valueNormalized(at: Vector2) -> Double
+  init(_: any FrameSource, model: CoreML.MLModel)
+  init(_: any FrameSource, modelAt: Foundation.URL)
+  init(modelAt: Foundation.URL)
+  var classMask: ClassMask? { get }
+  var image: Image? { get }
+  var isAvailable: Bool { get }
+  var isLoaded: Bool { get }
+  var labels: [Classification] { get }
+  var map: Image? { get }
+  var objects: [Detection] { get }
+  var sourceFrame: Image? { get }
+  var topClassification: Classification? { get }
+  var unavailableReason: String? { get }
+final class ObjectTracker: VisionAvailability, Sendable
+  func stopTracking()
+  func track(_: Rectangle, in: Rectangle, mirrored: Bool = default)
+  func track(centeredAt: Vector2, size: Double, in: Rectangle, mirrored: Bool = default)
+  func track(normalized: Rectangle)
+  init(_: any FrameSource)
+  static func track(_: Rectangle, across: [Image]) throws -> [TrackedObject]
+  var isAvailable: Bool { get }
+  var isTracking: Bool { get }
+  var trackedObject: TrackedObject? { get }
+  var unavailableReason: String? { get }
+final class PersonSegmenter: VisionAvailability, Sendable
+  enum Quality: Equatable, Hashable, Sendable
+    case accurate
+    case balanced
+    case fast
+  init(_: any FrameSource, quality: PersonSegmenter.Quality = default)
+  static func detect(in: Image, quality: PersonSegmenter.Quality = default) throws -> Segmentation?
+  var cutout: Image? { get }
+  var isAvailable: Bool { get }
+  var matte: Image? { get }
+  var unavailableReason: String? { get }
+final class PointSegmenter: VisionAvailability, Sendable
+  enum Error: CustomStringConvertible, Error, Sendable
+    case unavailable(String)
+    var description: String { get }
+  func detect(in: Image, at: [Vector2], avoiding: [Vector2] = default) throws -> PointSegmenter.Pick?
+  func exclude(_: Vector2, in: Rectangle)
+  func include(_: Vector2, in: Rectangle)
+  func pick(at: Vector2, in: Rectangle)
+  func reset()
+  init(_: any FrameSource, imageEncoderAt: Foundation.URL, promptEncoderAt: Foundation.URL, maskDecoderAt: Foundation.URL)
+  init(imageEncoderAt: Foundation.URL, promptEncoderAt: Foundation.URL, maskDecoderAt: Foundation.URL)
+  struct Pick: Sendable
+    func bounds(in: Rectangle) -> Rectangle
+    let cutout: Image
+    let matte: Image
+    let score: Double
+  var isAvailable: Bool { get }
+  var isWorking: Bool { get }
+  var pick: PointSegmenter.Pick? { get }
+  var unavailableReason: String? { get }
+final class RectangleDetector: VisionAvailability, Sendable
+  init(_: any FrameSource, minAspectRatio: Float = default, maxAspectRatio: Float = default, minSize: Float = default, minConfidence: Float = default, maxCount: Int = default)
+  let maxAspectRatio: Float
+  let maxCount: Int
+  let minAspectRatio: Float
+  let minConfidence: Float
+  let minSize: Float
+  static func detect(in: Image, minAspectRatio: Float = default, maxAspectRatio: Float = default, minSize: Float = default, minConfidence: Float = default, maxCount: Int = default) throws -> [DetectedRectangle]
+  var count: Int { get }
+  var isAvailable: Bool { get }
+  var rectangles: [DetectedRectangle] { get }
+  var unavailableReason: String? { get }
+final class SaliencyTracker: VisionAvailability, Sendable
+  enum Mode: Equatable, Hashable, Sendable
+    case attention
+    case objectness
+  func salience(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
+  func salienceNormalized(at: Vector2) -> Double
+  init(_: any FrameSource, mode: SaliencyTracker.Mode = default)
+  let mode: SaliencyTracker.Mode
+  static func detect(in: Image, mode: SaliencyTracker.Mode = default) throws -> Saliency?
+  var heatMap: Image? { get }
+  var isAvailable: Bool { get }
+  var regions: [DetectedRectangle] { get }
+  var unavailableReason: String? { get }
+final class SubjectSegmenter: VisionAvailability, Sendable
+  init(_: any FrameSource)
+  static func detect(in: Image) throws -> Segmentation?
+  var count: Int { get }
+  var cutout: Image? { get }
+  var isAvailable: Bool { get }
+  var matte: Image? { get }
+  var unavailableReason: String? { get }
+final class TextRecognizer: VisionAvailability, Sendable
+  enum Quality: Equatable, Hashable, Sendable
+    case accurate
+    case fast
+  init(_: any FrameSource, quality: TextRecognizer.Quality = default)
+  let quality: TextRecognizer.Quality
+  static func detect(in: Image, quality: TextRecognizer.Quality = default) throws -> [DetectedText]
+  var count: Int { get }
+  var isAvailable: Bool { get }
+  var lines: [DetectedText] { get }
+  var text: String { get }
+  var unavailableReason: String? { get }
+final class TrajectoryTracker: VisionAvailability, Sendable
+  func reset()
+  init(_: any FrameSource, trajectoryLength: Int = default, minimumObjectRadius: Double? = default, maximumObjectRadius: Double? = default)
+  static func detect(across: [Image], frameRate: Double = default, trajectoryLength: Int = default) throws -> [[DetectedTrajectory]]
+  var isAvailable: Bool { get }
+  var trajectories: [DetectedTrajectory] { get }
+  var unavailableReason: String? { get }
+func waitFor(_: Image, _: (Image) async throws -> T) throws -> T
+func waitFor(_: Image, _: Image, _: (Image, Image) async throws -> T) throws -> T
+func waitFor(_: [Image], _: ([Image]) async throws -> T) throws -> T
+protocol VisionAvailability where Self : AnyObject
+  var isAvailable: Bool { get }
+  var unavailableReason: String? { get }
+struct Body3D: Sendable
+  enum HeightEstimation: Equatable, Hashable, Sendable
+    case measured
+    case reference
+  func bones() -> [(Vector3, Vector3)]
+  func bones(in: Rectangle, mirrored: Bool = default) -> [(Vector2, Vector2)]
+  func cameraRelativePosition(_: BodyJoint3D) -> Vector3?
+  func has(_: BodyJoint3D) -> Bool
+  func point(_: BodyJoint3D, in: Rectangle, mirrored: Bool = default) -> Vector2?
+  func points(in: Rectangle, mirrored: Bool = default) -> [BodyJoint3D : Vector2]
+  func position(_: BodyJoint3D) -> Vector3?
+  let confidence: Double
+  let height: Double
+  let heightEstimation: Body3D.HeightEstimation
+  static let skeleton: [(BodyJoint3D, BodyJoint3D)]
+  var distance: Double? { get }
+  var positions: [BodyJoint3D : Vector3] { get }
+struct Body: Sendable
+  func bones(in: Rectangle, mirrored: Bool = default) -> [(Vector2, Vector2)]
+  func has(_: BodyJoint) -> Bool
+  func lifted(through: RGBDFrame, radius: Int = default) -> LiftedPose
+  func point(_: BodyJoint, in: Rectangle, mirrored: Bool = default) -> Vector2?
+  func points(in: Rectangle, mirrored: Bool = default) -> [BodyJoint : Vector2]
+  let confidence: Double
+  static let skeleton: [(BodyJoint, BodyJoint)]
+struct Classification: Sendable
+  let confidence: Double
+  let label: String
+  var name: String { get }
+struct DetectedBarcode: Sendable
+  func center(in: Rectangle, mirrored: Bool = default) -> Vector2
+  func corners(in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  let confidence: Double
+  let payload: String?
+  let symbology: DetectedBarcode.Symbology
+  struct Symbology: CustomStringConvertible, Equatable, Hashable, RawRepresentable, Sendable
+    init(rawValue: String)
+    let rawValue: String
+    static let aztec: DetectedBarcode.Symbology
+    static let codabar: DetectedBarcode.Symbology
+    static let code128: DetectedBarcode.Symbology
+    static let code39: DetectedBarcode.Symbology
+    static let code93: DetectedBarcode.Symbology
+    static let dataBar: DetectedBarcode.Symbology
+    static let dataMatrix: DetectedBarcode.Symbology
+    static let ean13: DetectedBarcode.Symbology
+    static let ean8: DetectedBarcode.Symbology
+    static let itf14: DetectedBarcode.Symbology
+    static let microQR: DetectedBarcode.Symbology
+    static let pdf417: DetectedBarcode.Symbology
+    static let qr: DetectedBarcode.Symbology
+    static let upce: DetectedBarcode.Symbology
+    var description: String { get }
+struct DetectedContours: Sendable
+  func contours(in: Rectangle, mirrored: Bool = default) -> [Contour]
+  func shapes(in: Rectangle, mirrored: Bool = default) -> [Shape]
+  init(topLevel: [DetectedContours.Node], count: Int)
+  let count: Int
+  let topLevel: [DetectedContours.Node]
+  static let empty: DetectedContours
+  struct Node: Sendable
+    init(points: [Vector2], children: [DetectedContours.Node])
+    let children: [DetectedContours.Node]
+    let points: [Vector2]
+struct DetectedRectangle: Sendable
+  func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
+  func center(in: Rectangle, mirrored: Bool = default) -> Vector2
+  func corners(in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  let confidence: Double
+struct DetectedText: Sendable
+  func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
+  func corners(in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  let confidence: Double
+  let text: String
+struct DetectedTrajectory: Identifiable, Sendable
+  func detectedPoints(in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  func projectedPoints(in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  let confidence: Double
+  let detectedPointsNormalized: [Vector2]
+  let equationCoefficients: SIMD3<Double>
+  let id: Foundation.UUID
+  let normalizedRadius: Double
+  let projectedPointsNormalized: [Vector2]
+  let timeRange: ClosedRange<Double>?
+struct Detection: Sendable
+  func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
+  func center(in: Rectangle, mirrored: Bool = default) -> Vector2
+  let confidence: Double
+  let label: String
+struct Face: Identifiable, Sendable
+  func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
+  func center(in: Rectangle, mirrored: Bool = default) -> Vector2
+  func landmarks(_: FaceLandmark, in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  let boundingBoxNormalized: Rectangle
+  let confidence: Double
+  let id: Foundation.UUID
+  let pitch: Double
+  let quality: Double?
+  let roll: Double
+  let yaw: Double
+  var hasLandmarks: Bool { get }
+struct Hand: Sendable
+  enum Chirality: Equatable, Hashable, Sendable
+    case left
+    case right
+    case unknown
+  func bones(in: Rectangle, mirrored: Bool = default) -> [(Vector2, Vector2)]
+  func finger(_: Finger, in: Rectangle, mirrored: Bool = default) -> [Vector2]
+  func has(_: HandJoint) -> Bool
+  func point(_: HandJoint, in: Rectangle, mirrored: Bool = default) -> Vector2?
+  func points(in: Rectangle, mirrored: Bool = default) -> [HandJoint : Vector2]
+  let chirality: Hand.Chirality
+  let confidence: Double
+struct LiftedPose: Sendable
+  func bones() -> [(Vector3, Vector3)]
+  func cloud(jointSize: Double = default, boneSize: Double = default, color: Color = default) -> PointCloud
+  func has(_: BodyJoint) -> Bool
+  func position(_: BodyJoint) -> Vector3?
+  let confidence: Double
+  var center: Vector3? { get }
+  var positions: [BodyJoint : Vector3] { get }
+struct ModelOutput: Sendable
+  func value(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
+  func valueNormalized(at: Vector2) -> Double
+  let classMask: ClassMask?
+  let image: Image?
+  let labels: [Classification]
+  let map: Image?
+  let objects: [Detection]
+struct MotionField: Sendable
+  func averageFlow(in: Rectangle, mirrored: Bool = default) -> Vector2
+  func flowNormalized(at: Vector2) -> Vector2
+  func samples(in: Rectangle, every: Double = default, mirrored: Bool = default) -> [MotionField.Sample]
+  func vector(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Vector2
+  let averageFlowNormalized: Vector2
+  let confidence: Double
+  struct Sample: Sendable
+    let flow: Vector2
+    let position: Vector2
+  var size: Vector2 { get }
+struct Saliency: Sendable
+  func salience(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
+  func salienceNormalized(at: Vector2) -> Double
+  let heatMap: Image
+  let regions: [DetectedRectangle]
+struct Segmentation: Sendable
+  let cutout: Image
+  let matte: Image
+struct TrackedObject: Sendable
+  func bounds(in: Rectangle, mirrored: Bool = default) -> Rectangle
+  func center(in: Rectangle, mirrored: Bool = default) -> Vector2
+  let boundingBoxNormalized: Rectangle
+  let confidence: Double

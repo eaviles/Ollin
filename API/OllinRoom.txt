@@ -1,0 +1,135 @@
+// OllinRoom: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+@objc final class LocalNetworkTransport: ObjectiveC.NSObject, MCNearbyServiceAdvertiserDelegate, MCNearbyServiceBrowserDelegate, MCSessionDelegate, NSObjectProtocol, RoomTransport, CVarArg, CustomDebugStringConvertible, CustomStringConvertible, Equatable, Hashable, Sendable
+  @objc func advertiser(_: MultipeerConnectivity.MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer: any Error)
+  @objc func advertiser(_: MultipeerConnectivity.MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer: MultipeerConnectivity.MCPeerID, withContext: Foundation.Data?, invitationHandler: (Bool, MultipeerConnectivity.MCSession?) -> Void)
+  @objc func browser(_: MultipeerConnectivity.MCNearbyServiceBrowser, didNotStartBrowsingForPeers: any Error)
+  @objc func browser(_: MultipeerConnectivity.MCNearbyServiceBrowser, foundPeer: MultipeerConnectivity.MCPeerID, withDiscoveryInfo: [String : String]?)
+  @objc func browser(_: MultipeerConnectivity.MCNearbyServiceBrowser, lostPeer: MultipeerConnectivity.MCPeerID)
+  @objc func session(_: MultipeerConnectivity.MCSession, didFinishReceivingResourceWithName: String, fromPeer: MultipeerConnectivity.MCPeerID, at: Foundation.URL?, withError: (any Error)?)
+  @objc func session(_: MultipeerConnectivity.MCSession, didReceive: Foundation.Data, fromPeer: MultipeerConnectivity.MCPeerID)
+  @objc func session(_: MultipeerConnectivity.MCSession, didReceive: Foundation.InputStream, withName: String, fromPeer: MultipeerConnectivity.MCPeerID)
+  @objc func session(_: MultipeerConnectivity.MCSession, didStartReceivingResourceWithName: String, fromPeer: MultipeerConnectivity.MCPeerID, with: Foundation.Progress)
+  @objc func session(_: MultipeerConnectivity.MCSession, peer: MultipeerConnectivity.MCPeerID, didChange: MultipeerConnectivity.MCSessionState)
+  func send(_: Foundation.Data, reliable: Bool, to: [String])
+  func start(_: RoomTransportHandler)
+  func stop()
+  init(room: String, as: String? = default, passcode: String? = default)
+  var connectedPeers: [String] { get }
+  var peerName: String { get }
+enum RoomMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case clockPing
+  case clockPong
+  case hello
+  case parameter
+  case value
+enum RoomValue: Equatable, Sendable
+  case bool(Bool)
+  case bytes(Foundation.Data)
+  case color(Color)
+  case int(Int)
+  case number(Double)
+  case point(Vector2)
+  case text(String)
+  var bool: Bool? { get }
+  var bytes: Foundation.Data? { get }
+  var color: Color? { get }
+  var int: Int? { get }
+  var number: Double? { get }
+  var point: Vector2? { get }
+  var text: String? { get }
+enum RoomWire
+  static func decodeClockPing(_: [UInt8]) -> UInt32?
+  static func decodeClockPong(_: [UInt8]) -> (id: UInt32, roomTime: Double)?
+  static func decodeHello(_: [UInt8]) -> (seat: Int?, sketchName: String)?
+  static func decodeParameter(_: [UInt8]) -> (name: String, turnedAt: Double, stored: ParamStored)?
+  static func decodeValue(_: [UInt8]) -> (key: String, value: RoomValue)?
+  static func encodeClockPing(id: UInt32) -> Foundation.Data
+  static func encodeClockPong(id: UInt32, roomTime: Double) -> Foundation.Data
+  static func encodeHello(seat: Int?, sketchName: String) -> Foundation.Data
+  static func encodeParameter(name: String, stored: ParamStored, turnedAt: Double) -> Foundation.Data?
+  static func encodeValue(key: String, value: RoomValue) -> Foundation.Data
+  static func frame(_: RoomMessageKind, _: [UInt8]) -> Foundation.Data
+  static func hash(_: String) -> String
+  static func peerName(host: String, suffix: String) -> String
+  static func serviceType(for: String) -> String
+  static func unframe(_: Foundation.Data) -> (kind: RoomMessageKind, payload: [UInt8])?
+  static let headerByteCount: Int
+  static let magic: UInt32
+  static let maxPayloadBytes: Int
+  static let version: UInt8
+final class Room: SketchExtension, Sendable
+  convenience init(named: String, as: String? = default, seat: Int? = default, passcode: String? = default)
+  func arrivals() -> [String]
+  func beforeDraw(_: Sketch)
+  func bind(_: String, to: Param<Double>, from: ClosedRange<Double> = default)
+  func bool(_: String) -> Bool?
+  func bool(_: String, default: Bool) -> Bool
+  func bytes(_: String) -> Foundation.Data?
+  func color(_: String) -> Color?
+  func color(_: String, default: Color) -> Color
+  func departures() -> [String]
+  func int(_: String) -> Int?
+  func int(_: String, default: Int) -> Int
+  func message(_: String) -> RoomMessage?
+  func messages() -> [RoomMessage]
+  func number(_: String) -> Double?
+  func number(_: String, default: Double) -> Double
+  func point(_: String) -> Vector2?
+  func point(_: String, default: Vector2) -> Vector2
+  func send(_: String, _: Bool, reliable: Bool = default)
+  func send(_: String, _: Color, reliable: Bool = default)
+  func send(_: String, _: Double, reliable: Bool = default)
+  func send(_: String, _: Foundation.Data, reliable: Bool = default)
+  func send(_: String, _: Int, reliable: Bool = default)
+  func send(_: String, _: String, reliable: Bool = default)
+  func send(_: String, _: Vector2, reliable: Bool = default)
+  func setup(_: Sketch)
+  func share(_: String...)
+  func shareAll()
+  func sketchName(of: String) -> String?
+  func start()
+  func stop()
+  func text(_: String) -> String?
+  func text(_: String, default: String) -> String
+  func unbind(_: String)
+  init(transport: any RoomTransport, seat: Int? = default)
+  var clockError: Double? { get }
+  var everyone: [String] { get }
+  var isAlone: Bool { get }
+  var isRunning: Bool { get }
+  var name: String { get }
+  var ownsClock: Bool { get }
+  var peers: [String] { get }
+  var problem: String? { get }
+  var seat: Int { get }
+  var seatCount: Int { get }
+  var time: Double { get }
+protocol RoomTransport: Sendable where Self : AnyObject, Self : Sendable
+  func send(_: Foundation.Data, reliable: Bool, to: [String])
+  func start(_: RoomTransportHandler)
+  func stop()
+  var connectedPeers: [String] { get }
+  var peerName: String { get }
+struct RoomClockSample: Equatable, Sendable
+  init(roundTrip: Double, offset: Double)
+  let offset: Double
+  let roundTrip: Double
+  var error: Double { get }
+struct RoomMessage: Equatable, Sendable
+  init(key: String, value: RoomValue, sender: String)
+  let key: String
+  let sender: String
+  let value: RoomValue
+  var bool: Bool? { get }
+  var bytes: Foundation.Data? { get }
+  var color: Color? { get }
+  var int: Int? { get }
+  var number: Double? { get }
+  var point: Vector2? { get }
+  var text: String? { get }
+struct RoomTransportHandler: Sendable
+  init(received: (Foundation.Data, String) -> Void, peersChanged: ([String]) -> Void, problem: (String?) -> Void)
+  var peersChanged: ([String]) -> Void { get set }
+  var problem: (String?) -> Void { get set }
+  var received: (Foundation.Data, String) -> Void { get set }

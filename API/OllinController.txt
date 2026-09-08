@@ -1,0 +1,56 @@
+// OllinController: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum ControllerButton: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case a
+  case b
+  case down
+  case home
+  case left
+  case leftShoulder
+  case leftStick
+  case leftTrigger
+  case menu
+  case options
+  case right
+  case rightShoulder
+  case rightStick
+  case rightTrigger
+  case touchpad
+  case up
+  case x
+  case y
+open extension Ollin.Sketch
+  func controller(_: Int) -> Controller
+  func controllerDeadzone(_: Double)
+  func controllerMotion(_: Bool)
+  func controllersRunInBackground(_: Bool)
+  func discoverControllers(_: (() -> Void)? = default)
+  var connectedControllers: [Controller] { get }
+  var controller: Controller { get }
+  var controllerCount: Int { get }
+struct Controller: Equatable, Sendable
+  func isDown(_: ControllerButton) -> Bool
+  func wasPressed(_: ControllerButton) -> Bool
+  func wasReleased(_: ControllerButton) -> Bool
+  let acceleration: Vector3
+  let batteryLevel: Double?
+  let didConnect: Bool
+  let didDisconnect: Bool
+  let dpad: Vector2
+  let gravity: Vector3
+  let hasMotion: Bool
+  let hasTouchpad: Bool
+  let isCharging: Bool
+  let isConnected: Bool
+  let isTouching: Bool
+  let leftStick: Vector2
+  let leftTrigger: Double
+  let name: String?
+  let player: Int
+  let rightStick: Vector2
+  let rightTrigger: Double
+  let rotationRate: Vector3
+  let touch: Vector2
+  let unavailableReason: String?
+  var anyButtonIsDown: Bool { get }
+  var anyButtonWasPressed: Bool { get }

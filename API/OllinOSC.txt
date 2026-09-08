@@ -1,0 +1,78 @@
+// OllinOSC: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum OSCArgument: Equatable, ExpressibleByBooleanLiteral, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Sendable
+  case blob(Foundation.Data)
+  case bool(Bool)
+  case double(Double)
+  case float(Float)
+  case impulse
+  case int(Int32)
+  case int64(Int64)
+  case null
+  case string(String)
+  init(booleanLiteral: Bool)
+  init(floatLiteral: Float)
+  init(integerLiteral: Int32)
+  init(stringLiteral: String)
+  var bool: Bool? { get }
+  var int: Int? { get }
+  var number: Double? { get }
+  var text: String? { get }
+enum OSCError: Equatable, Error, Hashable, Sendable
+  case invalidPort
+enum OSCPacket: Equatable, Sendable
+  case bundle(OSCBundle)
+  case message(OSCMessage)
+  func encode() -> Foundation.Data
+  init?(data: Foundation.Data)
+final class OSCReceiver: Sendable
+  func arguments(_: String) -> [OSCArgument]?
+  func bind(_: String, to: Param<Double>, from: ClosedRange<Double> = default)
+  func bind(_: String, to: Param<Tempo>, from: ClosedRange<Double> = default)
+  func bool(_: String) -> Bool?
+  func bool(_: String, default: Bool) -> Bool
+  func int(_: String) -> Int?
+  func int(_: String, default: Int) -> Int
+  func message(_: String) -> OSCMessage?
+  func messages() -> [OSCMessage]
+  func number(_: String) -> Double?
+  func number(_: String, default: Double) -> Double
+  func start() throws
+  func stop()
+  func text(_: String) -> String?
+  func unbind(_: String)
+  init(port: Int)
+  var boundPort: Int? { get }
+  var isRunning: Bool { get }
+final class OSCSender
+  func close()
+  func send(_: OSCBundle)
+  func send(_: OSCMessage)
+  func send(_: String, _: OSCArgument...)
+  init(host: String, port: Int)
+  let host: String
+  let port: Int
+struct OSCBundle: Equatable, Sendable
+  func encode() -> Foundation.Data
+  init(_: OSCTimeTag = default, _: [OSCPacket] = default)
+  init(_: OSCTimeTag = default, messages: [OSCMessage])
+  var elements: [OSCPacket] { get set }
+  var timeTag: OSCTimeTag { get set }
+struct OSCMessage: Equatable, Sendable
+  func encode() -> Foundation.Data
+  init(_: String, _: OSCArgument...)
+  init(_: String, arguments: [OSCArgument])
+  init?(data: Foundation.Data)
+  var address: String { get set }
+  var arguments: [OSCArgument] { get set }
+  var bool: Bool? { get }
+  var int: Int? { get }
+  var number: Double? { get }
+  var text: String? { get }
+struct OSCTimeTag: Equatable, Sendable
+  init(_: Foundation.Date)
+  init(raw: UInt64)
+  static let immediate: OSCTimeTag
+  var date: Foundation.Date? { get }
+  var isImmediate: Bool { get }
+  var raw: UInt64 { get set }

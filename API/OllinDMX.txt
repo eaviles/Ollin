@@ -1,0 +1,124 @@
+// OllinDMX: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum DMXError: Equatable, Error, Hashable, Sendable
+  case invalidPort
+enum DMXProtocol: String, Equatable, Hashable, RawRepresentable, Sendable
+  case artNet
+  case sACN
+  var defaultPort: Int { get }
+final class DMXReceiver: Sendable
+  func bind(channel: Int, universe: Int = default, to: Param<Double>)
+  func channel(_: Int, universe: Int = default) -> UInt8
+  func color(_: Int, universe: Int = default) -> Color
+  func level(_: Int, universe: Int = default) -> Double
+  func start(universes: [Int] = default) throws
+  func stop()
+  func unbind(channel: Int, universe: Int = default)
+  func universe(_: Int = default) -> DMXUniverse?
+  func universeNumbers() -> [Int]
+  init(_: DMXProtocol = default, port: Int? = default)
+  let dmxProtocol: DMXProtocol
+  var boundPort: Int? { get }
+  var isRunning: Bool { get }
+final class DMXSender
+  func close()
+  func send(_: DMXUniverse, universe: Int = default)
+  func send(channels: [UInt8], universe: Int = default)
+  init()
+  init(artNet: String, port: Int = default)
+  init(sACN: String, port: Int = default)
+  let dmxProtocol: DMXProtocol
+  let host: String?
+  let port: Int
+  var maxRate: Double { get set }
+  var priority: Int { get set }
+  var sourceName: String { get set }
+final class LEDMap: SketchExtension, Sendable
+  @discardableResult func addMatrix(in: Rectangle, columns: Int, rows: Int, serpentine: Bool = default, universe: Int = default, address: Int = default, layout: [DMXFixture.Role] = default, sampleRadius: Double? = default) -> LEDMap.Fixture
+  @discardableResult func addPoints(_: [Vector2], universe: Int = default, address: Int = default, layout: [DMXFixture.Role] = default, sampleRadius: Double = default) -> LEDMap.Fixture
+  @discardableResult func addStrip(along: [Vector2], leds: Int, closed: Bool = default, universe: Int = default, address: Int = default, layout: [DMXFixture.Role] = default, sampleRadius: Double? = default) -> LEDMap.Fixture
+  @discardableResult func addStrip(from: Vector2, to: Vector2, leds: Int, universe: Int = default, address: Int = default, layout: [DMXFixture.Role] = default, sampleRadius: Double? = default) -> LEDMap.Fixture
+  func frameRendered(_: Sketch, texture: any Metal.MTLTexture)
+  func removeAll()
+  init(sender: DMXSender)
+  let sender: DMXSender
+  struct Fixture
+    func address(ofLED: Int) -> (universe: Int, channel: Int)?
+    let address: Int
+    let layout: [DMXFixture.Role]
+    let positions: [Vector2]
+    let sampleRadius: Double
+    let universe: Int
+    var ledCount: Int { get }
+    var universes: [Int] { get }
+  var brightness: Double { get set }
+  var colors: [Color] { get }
+  var fixtures: [LEDMap.Fixture] { get }
+  var positions: [Vector2] { get }
+  var universes: [Int] { get }
+  var wantsRenderedTexture: Bool { get }
+struct ArtDMXPacket: Equatable, Sendable
+  func encode() -> Foundation.Data
+  init(universe: Int, channels: [UInt8], sequence: UInt8 = default, physical: UInt8 = default)
+  init?(data: Foundation.Data)
+  static let port: Int
+  var channels: [UInt8] { get set }
+  var physical: UInt8 { get set }
+  var sequence: UInt8 { get set }
+  var universe: Int { get set }
+struct DMXFixture: Equatable, Sendable
+  enum Role: Equatable, Hashable, Sendable
+    case amber
+    case blue
+    case dimmer
+    case green
+    case pan
+    case red
+    case strobe
+    case tilt
+    case unused
+    case uv
+    case white
+  func channel(of: DMXFixture.Role) -> Int?
+  init(at: Int, _: DMXFixture.Role...)
+  init(at: Int, _: [DMXFixture.Role])
+  let address: Int
+  let layout: [DMXFixture.Role]
+  static func dimmer(at: Int) -> DMXFixture
+  static func drgb(at: Int) -> DMXFixture
+  static func rgb(at: Int) -> DMXFixture
+  static func rgbw(at: Int) -> DMXFixture
+  var channelCount: Int { get }
+  var nextAddress: Int { get }
+struct DMXUniverse: Equatable, Sendable
+  func color(_: Int) -> Color
+  func level(_: Int) -> Double
+  init()
+  init(channels: [UInt8])
+  mutating func clear()
+  mutating func set(_: DMXFixture, _: DMXFixture.Role, level: Double)
+  mutating func set(_: DMXFixture, _: DMXFixture.Role, to: UInt8)
+  mutating func set(_: DMXFixture, color: Color, dimmer: Double = default)
+  mutating func set(_: Int, color: Color)
+  mutating func set(_: Int, level: Double)
+  mutating func set(_: Int, to: UInt8)
+  static let channelCount: Int
+  subscript(_: Int) -> UInt8 { get set }
+  var channels: [UInt8] { get }
+struct SACNDataPacket: Equatable, Sendable
+  func encode() -> Foundation.Data
+  init(universe: Int, channels: [UInt8], sequence: UInt8 = default, priority: UInt8 = default, sourceName: String = default, componentID: Foundation.UUID = default, startCode: UInt8 = default, isPreview: Bool = default, isTerminated: Bool = default, forcesSynchronization: Bool = default, synchronizationAddress: Int = default)
+  init?(data: Foundation.Data)
+  static func multicastGroup(universe: Int) -> String
+  static let port: Int
+  var channels: [UInt8] { get set }
+  var componentID: Foundation.UUID { get set }
+  var forcesSynchronization: Bool { get set }
+  var isPreview: Bool { get set }
+  var isTerminated: Bool { get set }
+  var priority: UInt8 { get set }
+  var sequence: UInt8 { get set }
+  var sourceName: String { get set }
+  var startCode: UInt8 { get set }
+  var synchronizationAddress: Int { get set }
+  var universe: Int { get set }

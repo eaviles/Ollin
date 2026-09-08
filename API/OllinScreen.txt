@@ -1,0 +1,49 @@
+// OllinScreen: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum ScreenSource: Equatable, Sendable
+  case app(String)
+  case display(CoreGraphics.CGDirectDisplayID)
+  case mainDisplay
+  case window(title: String, app: String?)
+  case windowID(CoreGraphics.CGWindowID)
+  static func window(title: String) -> ScreenSource
+  var label: String { get }
+final class ScreenCapture: FrameSource, VideoFeed, Sendable
+  @discardableResult nonisolated static func requestAccess() -> Bool
+  func start()
+  func stop()
+  init(_: ScreenSource = default)
+  nonisolated static func apps() -> [ScreenApp]
+  nonisolated static func availableDisplays() -> [ScreenDisplay]
+  nonisolated static func availableWindows() -> [ScreenWindow]
+  nonisolated static var isAvailable: Bool { get }
+  nonisolated static var unavailableReason: String? { get }
+  var excludesOwnWindows: Bool { get set }
+  var frame: Image? { get }
+  var frameRate: Double { get set }
+  var frameSize: Vector2? { get }
+  var frameTap: FrameTap? { get set }
+  var isReceiving: Bool { get }
+  var isRunning: Bool { get }
+  var scale: Double { get set }
+  var showsCursor: Bool { get set }
+  var source: ScreenSource { get set }
+  var unavailableReason: String? { get }
+  var waitingMessage: String { get }
+struct ScreenApp: Equatable, Identifiable, Sendable
+  let bundleIdentifier: String
+  let id: _DarwinFoundation2.pid_t
+  let name: String
+  var label: String { get }
+struct ScreenDisplay: Equatable, Identifiable, Sendable
+  let id: CoreGraphics.CGDirectDisplayID
+  let isMain: Bool
+  let size: CoreFoundation.CGSize
+  var label: String { get }
+struct ScreenWindow: Equatable, Identifiable, Sendable
+  let appName: String?
+  let bundleIdentifier: String?
+  let frame: CoreFoundation.CGRect
+  let id: CoreGraphics.CGWindowID
+  let title: String?
+  var label: String { get }

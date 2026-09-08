@@ -1,0 +1,19 @@
+// OllinCamera: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum VirtualCameraError: CustomStringConvertible, Error, Sendable
+  case deviceNotFound(String)
+  case queueUnavailable(Darwin.OSStatus)
+  case sinkStreamNotFound(String)
+  case startFailed(Darwin.OSStatus)
+  var description: String { get }
+final class VirtualCameraServer: SketchExtension, Sendable
+  func frameRendered(_: Sketch, texture: any Metal.MTLTexture)
+  func stop()
+  init(deviceName: String = default)
+  let deviceName: String
+  var isAvailable: Bool { get }
+  var isPublishing: Bool { get }
+  var unavailableReason: String? { get }
+  var wantsRenderedTexture: Bool { get }
+open extension Ollin.Sketch
+  @discardableResult func publishVirtualCamera(deviceName: String = default) -> VirtualCameraServer

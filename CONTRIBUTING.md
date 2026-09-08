@@ -19,6 +19,7 @@ You need macOS 26+ with a Metal-capable GPU and a Swift 6 toolchain.
 - Run an example to see the framework working: `swift run --package-path Examples Example-Basic-HelloCircle`.
 - Run the tests for the area you touched with `Scripts/test.sh <Suite>`. `Scripts/test.sh quick` runs the pass that takes under a minute, and the full suite takes many minutes.
 - Run `Scripts/preflight.sh` before every commit. It reads your diff and runs every gate that applies and nothing else (tests, link checks, prose lint). It also says what it skipped and why.
+- A change to the public API fails preflight until you run `Scripts/api-surface.sh --record` and commit the rewritten listing under `API/` with it. That diff is how a reviewer sees what the surface gained, lost, or renamed; the changelog names a rename by both names.
 - A new capability ships with an example, a test, and a `Docs/` page. The full ship checklist is in `CLAUDE.md`.
 - A change a user would notice gets a line under *Unreleased* in [`CHANGELOG.md`](CHANGELOG.md). A rename names both the old and the new spelling in that line.
 

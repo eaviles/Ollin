@@ -1,0 +1,28 @@
+// OllinSyphon: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+final class SyphonClient: Sendable
+  convenience init()
+  func connect(named: String? = default, appName: String? = default)
+  func stop()
+  init(named: String? = default, appName: String? = default)
+  init(source: SyphonServerInfo)
+  static func availableServers() -> [SyphonServerInfo]
+  var appName: String? { get }
+  var frame: Image? { get }
+  var hasNewFrame: Bool { get }
+  var isActive: Bool { get }
+  var serverName: String? { get }
+final class SyphonServer: SketchExtension, Sendable
+  func frameRendered(_: Sketch, texture: any Metal.MTLTexture)
+  func stop()
+  init(name: String = default)
+  let name: String
+  var hasClients: Bool { get }
+  var isPublishing: Bool { get }
+  var wantsRenderedTexture: Bool { get }
+open extension Ollin.Sketch
+  @discardableResult func publishSyphon(name: String = default) -> SyphonServer
+struct SyphonServerInfo
+  let appName: String?
+  let name: String?
+  var label: String { get }

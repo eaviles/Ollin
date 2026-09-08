@@ -1,0 +1,172 @@
+// OllinLaser: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum EtherDreamWire
+  static func begin(pointsPerSecond: Int) -> Foundation.Data
+  static func clearEmergencyStop() -> Foundation.Data
+  static func emergencyStop() -> Foundation.Data
+  static func encode(_: LaserPoint) -> Foundation.Data
+  static func ping() -> Foundation.Data
+  static func prepare() -> Foundation.Data
+  static func queueRateChange(pointsPerSecond: Int) -> Foundation.Data
+  static func stop() -> Foundation.Data
+  static func write(_: [LaserPoint]) -> Foundation.Data
+  static let broadcastPort: Int
+  static let controlPort: Int
+enum ILDAFile
+  @discardableResult static func write(_: [LaserStream], to: Foundation.URL, name: String = default, company: String = default, projector: Int = default) throws -> Int
+  static func data(_: LaserStream, name: String = default, company: String = default, projector: Int = default) -> Foundation.Data
+  static func data(_: [LaserStream], name: String = default, company: String = default, projector: Int = default) -> Foundation.Data
+  static func frames(_: [[LaserPoint]], name: String = default, company: String = default, projector: Int = default) -> Foundation.Data
+  static let formatCode: UInt8
+  static let maximumPointsPerFrame: Int
+enum ProjectorSpace
+  static func clamped(_: Vector2) -> Vector2
+  static func inverse(to: Rectangle) -> (Vector2) -> Vector2
+  static func transform(from: Rectangle) -> (Vector2) -> Vector2
+final class EtherDreamDAC: Sendable
+  convenience init(device: EtherDreamDevice)
+  func connect()
+  func disconnect()
+  func play(_: [LaserPoint])
+  init(host: String, port: Int = default)
+  let host: String
+  let port: Int
+  var bufferCapacity: Int { get set }
+  var headroom: Double { get set }
+  var isPlaying: Bool { get }
+  var lastError: String? { get }
+  var maximumBatch: Int { get set }
+  var pointsPerSecond: Int { get set }
+  var pointsSent: Int { get }
+  var stallTimeout: Double { get set }
+  var status: EtherDreamStatus? { get }
+final class EtherDreamFinder: Sendable
+  func start() throws
+  func stop()
+  init()
+  var devices: [EtherDreamDevice] { get }
+  var isRunning: Bool { get }
+final class LaserProjector: Sendable
+  @discardableResult func send(_: LaserFrame) -> LaserStream
+  convenience init(device: EtherDreamDevice)
+  convenience init(etherDream: String, port: Int = default)
+  func arm()
+  func connect()
+  func connect(etherDream: String, port: Int = default)
+  func connect(to: EtherDreamDevice)
+  func disarm()
+  func disconnect()
+  init()
+  var isArmed: Bool { get }
+  var isConnected: Bool { get }
+  var lastError: String? { get }
+  var optimizer: LaserOptimizer { get set }
+  var safety: LaserSafety { get set }
+  var status: EtherDreamStatus? { get }
+  var stream: LaserStream? { get }
+open extension Ollin.Sketch
+  func drawLaserPreview(_: LaserStream?, showsTravel: Bool = default, showsPoints: Bool = default, pointRadius: Double = default)
+struct EtherDreamDevice: Equatable, Sendable
+  static func decode(_: Foundation.Data, host: String) -> EtherDreamDevice?
+  var bufferCapacity: Int { get set }
+  var hardwareRevision: Int { get set }
+  var host: String { get set }
+  var macAddress: String { get set }
+  var maximumPointRate: Int { get set }
+  var softwareRevision: Int { get set }
+  var status: EtherDreamStatus { get set }
+struct EtherDreamResponse: Equatable, Sendable
+  enum Code: UInt8, Equatable, Hashable, RawRepresentable, Sendable
+    case ack
+    case full
+    case invalid
+    case stopped
+  static func decode(_: Foundation.Data) -> EtherDreamResponse?
+  var code: EtherDreamResponse.Code { get set }
+  var command: UInt8 { get set }
+  var status: EtherDreamStatus { get set }
+struct EtherDreamStatus: Equatable, Sendable
+  enum LightEngine: UInt8, Equatable, Hashable, RawRepresentable, Sendable
+    case cooldown
+    case emergencyStop
+    case ready
+    case warmup
+  enum Playback: UInt8, Equatable, Hashable, RawRepresentable, Sendable
+    case idle
+    case playing
+    case prepared
+  static func decode(_: Foundation.Data, at: Int = default) -> EtherDreamStatus?
+  var bufferFullness: Int { get set }
+  var lightEngine: EtherDreamStatus.LightEngine { get set }
+  var lightEngineFlags: UInt16 { get set }
+  var playback: EtherDreamStatus.Playback { get set }
+  var playbackFlags: UInt16 { get set }
+  var pointCount: Int { get set }
+  var pointRate: Int { get set }
+  var protocolVersion: UInt8 { get set }
+  var source: UInt8 { get set }
+  var sourceFlags: UInt16 { get set }
+struct LaserFrame: Sendable
+  init(canvas: Rectangle)
+  init(width: Double, height: Double)
+  mutating func add(_: Contour, color: Color)
+  mutating func add(_: LaserPath)
+  mutating func add(_: Shape, color: Color)
+  mutating func add(_: [Shape], color: Color)
+  mutating func add(_: [Vector2], color: Color, closed: Bool = default)
+  mutating func add(_: [Vector2], colors: [Color], closed: Bool = default)
+  mutating func addLine(from: Vector2, to: Vector2, color: Color)
+  var canvas: Rectangle { get set }
+  var isEmpty: Bool { get }
+  var paths: [LaserPath] { get set }
+struct LaserOptimizer: Sendable
+  func stream(_: LaserFrame) -> LaserStream
+  init()
+  var blankingDwell: Int { get set }
+  var cornerAngle: Double { get set }
+  var cornerDwell: Int { get set }
+  var pointBudget: Int { get }
+  var pointsPerSecond: Int { get set }
+  var refreshRate: Double { get set }
+  var reordersPaths: Bool { get set }
+  var spacing: Double { get set }
+  var travelSpacing: Double { get set }
+struct LaserPath: Equatable, Sendable
+  func color(at: Int) -> Color
+  init(_: [Vector2], color: Color, closed: Bool = default)
+  init(_: [Vector2], colors: [Color], closed: Bool = default)
+  var colors: [Color] { get set }
+  var isClosed: Bool { get set }
+  var points: [Vector2] { get set }
+struct LaserPoint: Equatable, Sendable
+  init(_: Vector2, color: Color)
+  init(blankedAt: Vector2)
+  var color: Color { get set }
+  var isBlanked: Bool { get set }
+  var position: Vector2 { get set }
+struct LaserSafety: Sendable
+  func guarded(_: LaserStream) -> LaserStream
+  func guarded(_: [LaserPoint]) -> [LaserPoint]
+  init()
+  static func blankHold(count: Int = default) -> [LaserPoint]
+  static var unguarded: LaserSafety { get }
+  var maximumBrightness: Double { get set }
+  var stallTimeout: Double { get set }
+  var stationaryLimit: Int { get set }
+  var stationaryRadius: Double { get set }
+struct LaserStream: Sendable
+  init(points: [LaserPoint], canvas: Rectangle, pointsPerSecond: Int, pointBudget: Int, drawnLength: Double, travelLength: Double, pathCount: Int)
+  static func empty(canvas: Rectangle, pointsPerSecond: Int, pointBudget: Int) -> LaserStream
+  var blankedCount: Int { get }
+  var canvas: Rectangle { get set }
+  var drawnLength: Double { get set }
+  var duration: Double { get }
+  var isOverBudget: Bool { get }
+  var litCount: Int { get }
+  var pathCount: Int { get set }
+  var pointBudget: Int { get set }
+  var points: [LaserPoint] { get set }
+  var pointsPerSecond: Int { get set }
+  var refreshRate: Double { get }
+  var summary: String { get }
+  var travelLength: Double { get set }

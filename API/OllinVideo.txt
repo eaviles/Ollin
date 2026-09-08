@@ -1,0 +1,28 @@
+// OllinVideo: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum VideoError: CustomStringConvertible, Error, Sendable
+  case fileNotFound(String)
+  case resourceNotFound(String)
+  var description: String { get }
+final class VideoPlayer: AudioTapSource, ClipPlayback, FrameAdvancing, FrameSource, VideoFeed, Sendable
+  convenience init(path: String) throws
+  convenience init(resource: String, withExtension: String, in: Foundation.Bundle) throws
+  func pause()
+  func play()
+  func seek(to: Double)
+  func snapshot() -> Image?
+  func stop()
+  init(url: Foundation.URL)
+  let url: Foundation.URL
+  var audioTap: AudioTap? { get set }
+  var currentTime: Double { get }
+  var duration: Double? { get }
+  var frame: Image? { get }
+  var frameSize: Vector2? { get }
+  var frameTap: FrameTap? { get set }
+  var isMuted: Bool { get set }
+  var isPlaying: Bool { get }
+  var loops: Bool { get set }
+  var rate: Double { get set }
+  var size: Vector2? { get }
+  var volume: Double { get set }

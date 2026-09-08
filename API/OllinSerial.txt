@@ -1,0 +1,29 @@
+// OllinSerial: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+final class SerialPort: Sendable
+  convenience init(device: SerialDevice, baudRate: Int = default)
+  func bind(to: Param<Double>, from: ClosedRange<Double> = default)
+  func bool() -> Bool?
+  func bool(default: Bool) -> Bool
+  func bytes() -> [UInt8]
+  func close()
+  func int() -> Int?
+  func int(default: Int) -> Int
+  func lines() -> [String]
+  func number() -> Double?
+  func number(default: Double) -> Double
+  func open()
+  func unbind()
+  func write(_: String)
+  func write(_: [UInt8])
+  func writeLine(_: String)
+  init(matching: String, baudRate: Int = default)
+  init(path: String, baudRate: Int = default)
+  static func availableDevices() -> [SerialDevice]
+  var isOpen: Bool { get }
+  var latestLine: String? { get }
+struct SerialDevice: Equatable, Hashable, Identifiable, Sendable
+  init(path: String, name: String)
+  let name: String
+  let path: String
+  var id: String { get }

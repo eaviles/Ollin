@@ -1,0 +1,49 @@
+// OllinRecord3D: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum Record3DCamera: Equatable, Hashable, Sendable
+  case lidar
+  case trueDepth
+  case unknown
+  static func classify(depthWidth: Int, depthHeight: Int) -> Record3DCamera
+enum Record3DError: CustomStringConvertible, Error, Sendable
+  case decodeFailed(String)
+  case fileNotFound(String)
+  case frameOutOfRange(Int, count: Int)
+  case malformedMetadata(String)
+  case missingEntry(String)
+  case notAnArchive
+  case resourceNotFound(String)
+  var description: String { get }
+extension Ollin.RGBDFrame
+  var camera: Record3DCamera { get }
+final class Record3DDevice: FrameSource, VideoFeed, Sendable
+  func pointCloud(minConfidence: DepthConfidence = default, depthRange: ClosedRange<Double>? = default, step: Int = default, pointSize: Double = default) -> PointCloud?
+  func start()
+  func stop()
+  init(port: UInt16 = default)
+  nonisolated static let streamPort: UInt16
+  var camera: Record3DCamera? { get }
+  var frame: Image? { get }
+  var frameSize: Vector2? { get }
+  var frameTap: FrameTap? { get set }
+  var isRunning: Bool { get }
+  var latestFrame: RGBDFrame? { get }
+  var latestPose: Record3DPose? { get }
+  var waitingMessage: String { get }
+final class Record3DRecording
+  convenience init(path: String) throws
+  convenience init(resource: String, withExtension: String, in: Foundation.Bundle) throws
+  convenience init(url: Foundation.URL) throws
+  func frame(at: Int) throws -> RGBDFrame
+  func pointCloud(at: Int, minConfidence: DepthConfidence = default, depthRange: ClosedRange<Double>? = default, step: Int = default, pointSize: Double = default) throws -> PointCloud
+  func pose(at: Int) -> simd.simd_float4x4?
+  init(data: Foundation.Data) throws
+  let frameRate: Double
+  let poses: [simd.simd_float4x4]
+  var frameCount: Int { get }
+  var intrinsics: CameraIntrinsics { get }
+struct Record3DPose: Equatable, Sendable
+  init(rotation: SIMD4<Float>, position: Vector3)
+  static let identity: Record3DPose
+  var position: Vector3 { get set }
+  var rotation: SIMD4<Float> { get set }

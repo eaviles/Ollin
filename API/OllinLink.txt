@@ -1,0 +1,19 @@
+// OllinLink: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+final class LinkClock: Sendable
+  convenience init(tempo: Double = default)
+  func progress(over: Double, phase: Double = default) -> Double
+  func start()
+  func stop()
+  var bar: Int { get }
+  var barPhase: Double { get }
+  var beat: Double { get }
+  var beatCount: Int { get }
+  var beats: Double { get }
+  var beatsPerBar: Int { get set }
+  var isPlaying: Bool { get set }
+  var isRunning: Bool { get }
+  var peerCount: Int { get }
+  var phase: Double { get }
+  var tempo: Double { get set }
+  var timeSinceBeat: Double { get }

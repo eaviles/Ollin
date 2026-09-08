@@ -1,0 +1,504 @@
+// OllinPhysics: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+class SoftBody3D: Colliding3D
+  func applyForce(_: Vector3)
+  func follow(_: Scene)
+  func isPinned(_: Int) -> Bool
+  func isTouching(_: any Colliding3D) -> Bool
+  func move(_: Int, to: Vector3)
+  func nearestVertex(to: Vector3) -> Int?
+  func pin(_: Int)
+  func snap(to: Scene)
+  func unpin(_: Int)
+  func wake()
+  let isClosed: Bool
+  let sourceMesh: Mesh
+  var arrivals: [any Colliding3D] { get }
+  var assetName: String? { get set }
+  var contacts: [Contact3D] { get }
+  var density: Double { get set }
+  var departures: [any Colliding3D] { get }
+  var followsSkin: Bool { get set }
+  var group: CollisionGroup { get set }
+  var isAwake: Bool { get }
+  var isSkinned: Bool { get }
+  var iterations: Int { get set }
+  var mesh: Mesh { get }
+  var particleCount: Int { get }
+  var particlePositions: [Vector3] { get }
+  var particleVelocities: [Vector3] { get }
+  var position: Vector3 { get }
+  var positions: [Vector3] { get }
+  var pressure: Double { get set }
+  var swayScale: Double { get set }
+  var touching: [any Colliding3D] { get }
+  var userData: Any? { get set }
+  var vertexRadius: Double { get set }
+  var volume: Double { get }
+enum Collider
+  case box(width: Double, height: Double)
+  case capsule(from: Vector2, to: Vector2, radius: Double)
+  case circle(radius: Double)
+  case polygon([Vector2])
+enum Collider3D
+  case box(width: Double, height: Double, depth: Double)
+  case capsule(height: Double, radius: Double)
+  case compound([Collider3D.Part])
+  case cone(height: Double, radius: Double)
+  case cylinder(height: Double, radius: Double)
+  case heightfield(Heightfield, width: Double, depth: Double, height: Double)
+  case hull([Vector3])
+  case mesh(Mesh)
+  case sphere(radius: Double)
+  case taperedCapsule(height: Double, topRadius: Double, bottomRadius: Double)
+  case taperedCylinder(height: Double, topRadius: Double, bottomRadius: Double)
+  struct Part
+    static func part(_: Collider3D, at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, density: Double = default) -> Collider3D.Part
+    var angle: Double { get set }
+    var axis: Vector3 { get set }
+    var collider: Collider3D { get set }
+    var density: Double { get set }
+    var position: Vector3 { get set }
+enum JointKind
+  case distance(from: Vector2, to: Vector2, length: Double?, stiffness: Double)
+  case prismatic(at: Vector2, axis: Vector2)
+  case revolute(at: Vector2)
+  case weld
+enum JointKind3D
+  case allowing(Freedom3D, at: Vector3, travel: ClosedRange<Double>?, rotation: ClosedRange<Double>?)
+  case ball(at: Vector3)
+  case cable(from: Vector3, to: Vector3, length: Double?, stiffness: Double)
+  case distance(from: Vector3, to: Vector3, length: Double?, stiffness: Double)
+  case path(through: [Vector3], looping: Bool, alignment: JointKind3D.PathAlignment)
+  case prismatic(at: Vector3, axis: Vector3, limits: ClosedRange<Double>?)
+  case pulley(from: Vector3, over: Vector3, and: Vector3, to: Vector3, ratio: Double, taut: Bool)
+  case revolute(at: Vector3, axis: Vector3, limits: ClosedRange<Double>?)
+  case swingTwist(at: Vector3, axis: Vector3, swing: Double, twist: ClosedRange<Double>)
+  case weld
+  enum PathAlignment: Equatable, Hashable, Sendable
+    case fixed
+    case followsPath
+    case free
+    case rolls
+  static func path(_: Contour, atHeight: Double = default, looping: Bool? = default, alignment: JointKind3D.PathAlignment = default) -> JointKind3D
+enum JointLink3D: Sendable
+  case gear(ratio: Double)
+  case rackAndPinion(travelPerTurn: Double)
+  static func gear(teeth: Int, and: Int) -> JointLink3D
+enum PhysicsAsset: Sendable
+  case heightfield(Heightfield)
+  case mesh(Mesh)
+extension Ollin.Scene
+  mutating func apply(_: Ragdoll3D)
+final class Body
+  enum Kind: Equatable, Hashable
+    case dynamic
+    case kinematic
+    case static
+  func applyForce(_: Vector2)
+  func applyImpulse(_: Vector2)
+  func applyTorque(_: Double)
+  var angle: Double { get set }
+  var angularVelocity: Double { get set }
+  var kind: Body.Kind { get set }
+  var mass: Double { get }
+  var position: Vector2 { get set }
+  var userData: Any? { get set }
+  var velocity: Vector2 { get set }
+final class Body3D: Colliding3D
+  enum Kind: Equatable, Hashable
+    case dynamic
+    case kinematic
+    case static
+  func applyForce(_: Vector3)
+  func applyImpulse(_: Vector3)
+  func applyTorque(_: Vector3)
+  func isTouching(_: any Colliding3D) -> Bool
+  func setRotation(_: Double, axis: Vector3)
+  func sleep()
+  func wake()
+  let collider: Collider3D
+  let density: Double
+  let isSensor: Bool
+  var angularVelocity: Vector3 { get set }
+  var arrivals: [any Colliding3D] { get }
+  var assetName: String? { get set }
+  var buoyancyScale: Double { get set }
+  var checksPath: Bool { get set }
+  var contacts: [Contact3D] { get }
+  var departures: [any Colliding3D] { get }
+  var freedom: Freedom3D { get set }
+  var friction: Double { get set }
+  var gravityScale: Double { get set }
+  var group: CollisionGroup { get set }
+  var isAwake: Bool { get }
+  var kind: Body3D.Kind { get set }
+  var mass: Double { get }
+  var position: Vector3 { get set }
+  var restitution: Double { get set }
+  var rotation: Rotation3D { get set }
+  var rotationAngle: Double { get }
+  var rotationAxis: Vector3 { get }
+  var touching: [any Colliding3D] { get }
+  var userData: Any? { get set }
+  var velocity: Vector3 { get set }
+final class Character3D
+  enum GroundState: Equatable, Hashable
+    case inAir
+    case notSupported
+    case onGround
+    case onSteepSlope
+  func isSlopeTooSteep(_: Vector3) -> Bool
+  func jump(_: Double = default)
+  func move(_: Vector3)
+  func move(x: Double, z: Double)
+  func stop()
+  let height: Double
+  let radius: Double
+  var actualVelocity: Vector3 { get }
+  var body: Body3D! { get }
+  var desiredVelocity: Vector3 { get set }
+  var facing: Double { get set }
+  var groundBody: Body3D? { get }
+  var groundNormal: Vector3 { get }
+  var groundState: Character3D.GroundState { get }
+  var groundVelocity: Vector3 { get }
+  var group: CollisionGroup { get set }
+  var isOnGround: Bool { get }
+  var mass: Double { get set }
+  var maxSlope: Double { get set }
+  var position: Vector3 { get set }
+  var pushStrength: Double { get set }
+  var stepHeight: Double { get set }
+  var stickToFloorDistance: Double { get set }
+  var userData: Any? { get set }
+  var velocity: Vector3 { get set }
+final class Joint
+  func remove()
+  var target: Vector2 { get set }
+final class Joint3D
+  func drive(at: Double, strength: Double = default)
+  func drive(to: Double, frequency: Double = default, damping: Double = default, strength: Double = default)
+  func drive(toward: Vector3, twist: Double = default, frequency: Double = default, damping: Double = default, strength: Double = default)
+  func remove()
+  func softenLimits(frequency: Double, damping: Double = default)
+  func stopMotor()
+  let kind: JointKind3D?
+  let link: JointLink3D?
+  var angle: Double { get }
+  var friction: Double { get set }
+  var offset: Double { get }
+  var progress: Double { get }
+  var target: Vector3 { get set }
+  var twist: Double { get }
+final class Particle
+  @discardableResult func pin() -> Particle
+  @discardableResult func unpin() -> Particle
+  func applyForce(_: Vector2)
+  func place(at: Vector2)
+  func push(_: Vector2)
+  init(position: Vector2, radius: Double = default, mass: Double = default)
+  var acceleration: Vector2 { get set }
+  var inverseMass: Double { get set }
+  var isPinned: Bool { get set }
+  var mass: Double { get set }
+  var position: Vector2 { get set }
+  var previous: Vector2 { get set }
+  var radius: Double { get set }
+  var userData: Any? { get set }
+  var velocity: Vector2 { get }
+final class Ragdoll3D
+  func applyImpulse(_: Vector3)
+  func drive(toward: Scene, frequency: Double = default, damping: Double = default, strength: Double = default)
+  func goLimp()
+  func limit(_: String, swing: Double, twist: ClosedRange<Double> = default)
+  func pose(from: Scene)
+  func wake()
+  struct Limb
+    let body: Body3D
+    let collider: Collider3D
+    let name: String
+    let parent: Int?
+    let shapeAngle: Double
+    let shapeAxis: Vector3
+    let shapeCenter: Vector3
+  var bodies: [Body3D] { get }
+  var group: CollisionGroup { get set }
+  var isAwake: Bool { get }
+  var kind: Body3D.Kind { get set }
+  var limbs: [Ragdoll3D.Limb] { get }
+  var position: Vector3 { get }
+  var userData: Any? { get set }
+final class Rope3D: SoftBody3D, Colliding3D
+  let points: [Vector3]
+  override var mesh: Mesh { get }
+  var length: Double { get }
+  var restLength: Double { get }
+  var segmentCount: Int { get }
+  var segments: [RopeSegment3D] { get }
+  var sides: Int { get set }
+  var thickness: Double { get set }
+final class Spring
+  init(_: Particle, _: Particle, length: Double? = default, stiffness: Double = default)
+  let a: Particle
+  let b: Particle
+  var length: Double { get set }
+  var stiffness: Double { get set }
+  var strain: Double { get }
+final class Tensegrity3D
+  func applyImpulse(_: Vector3)
+  func endpoints(of: Tensegrity.Member) -> (start: Vector3, end: Vector3)
+  func isSlack(_: Int, tolerance: Double = default) -> Bool
+  func wake()
+  let cableRestLengths: [Double]
+  let cables: [Joint3D]
+  let jointsBetweenStruts: [Joint3D]
+  let source: Tensegrity
+  let struts: [Body3D]
+  var bottom: Double { get }
+  var cableLengths: [Double] { get }
+  var center: Vector3 { get }
+  var isAwake: Bool { get }
+  var nodes: [Vector3] { get }
+  var top: Double { get }
+final class Vehicle3D
+  enum TrackSide: Equatable, Hashable
+    case left
+    case right
+  enum WheelContact: Equatable, Hashable
+    case cylinder
+    case ray
+    case sphere
+  func coast()
+  func drive(throttle: Double, steering: Double = default, brake: Double = default)
+  func trackSpeed(_: Vehicle3D.TrackSide) -> Double
+  func wheels(on: Vehicle3D.TrackSide) -> [Wheel3D]
+  let balances: Bool
+  let body: Body3D
+  let isTracked: Bool
+  var antiRollStiffness: Double { get set }
+  var brake: Double { get set }
+  var clutch: Double { get }
+  var engineTorque: Double { get set }
+  var forward: Vector3 { get }
+  var gear: Int { get }
+  var group: CollisionGroup { get set }
+  var handBrake: Double { get set }
+  var isOnGround: Bool { get }
+  var maxTilt: Double? { get set }
+  var rpm: Double { get }
+  var speed: Double { get }
+  var steering: Double { get set }
+  var throttle: Double { get set }
+  var topSpeed: Double { get set }
+  var up: Vector3 { get }
+  var userData: Any? { get set }
+  var wheelContact: Vehicle3D.WheelContact { get set }
+  var wheels: [Wheel3D] { get }
+final class Wheel3D
+  init(at: Vector3, radius: Double = default, width: Double = default, steers: Bool = default, driven: Bool = default, handBrake: Bool = default)
+  static func wheel(at: Vector3, radius: Double = default, width: Double = default, steers: Bool = default, driven: Bool = default, handBrake: Bool = default) -> Wheel3D
+  var brakeTorque: Double { get set }
+  var casterAngle: Double { get set }
+  var center: Vector3 { get }
+  var driven: Bool { get set }
+  var grip: Double { get set }
+  var groundBody: Body3D? { get }
+  var groundNormal: Vector3 { get }
+  var handBrakeTorque: Double { get set }
+  var isOnGround: Bool { get }
+  var maxSteerAngle: Double { get set }
+  var position: Vector3 { get set }
+  var radius: Double { get set }
+  var rotation: Rotation3D { get }
+  var rotationAngle: Double { get }
+  var rotationAxis: Vector3 { get }
+  var slip: Double { get }
+  var slipAngle: Double { get }
+  var spin: Double { get }
+  var spinRate: Double { get }
+  var steerAngle: Double { get }
+  var steers: Bool { get set }
+  var suspensionCompression: Double { get }
+  var suspensionDamping: Double { get set }
+  var suspensionFrequency: Double { get set }
+  var suspensionLength: Double { get set }
+  var suspensionTravel: Double { get set }
+  var userData: Any? { get set }
+  var width: Double { get set }
+final class World
+  @discardableResult func addBody(_: Collider, at: Vector2, kind: Body.Kind = default, density: Double = default, friction: Double = default, restitution: Double? = default) -> Body
+  @discardableResult func addParticle(at: Vector2, radius: Double = default, mass: Double = default) -> Particle
+  @discardableResult func connect(_: Body, _: Body, _: JointKind) -> Joint
+  @discardableResult func connect(_: Particle, _: Particle, length: Double? = default, stiffness: Double = default) -> Spring
+  @discardableResult func grab(_: Body, at: Vector2) -> Joint
+  func advance(by: Double)
+  func remove(_: Particle)
+  func remove(_: Spring)
+  func removeAll()
+  init()
+  var bodies: [Body] { get }
+  var bounds: Rectangle? { get set }
+  var drag: Double { get set }
+  var gravity: Vector2 { get set }
+  var iterations: Int { get set }
+  var joints: [Joint] { get }
+  var maxTimestep: Double { get set }
+  var particles: [Particle] { get }
+  var particlesCollide: Bool { get set }
+  var pixelsPerMeter: Double { get set }
+  var restitution: Double { get set }
+  var springs: [Spring] { get }
+final class World3D
+  @discardableResult func addBodies(from: Scene, usesSceneGravity: Bool = default, group: CollisionGroup = default) -> [Body3D]
+  @discardableResult func addBody(_: Collider3D, at: Vector3, kind: Body3D.Kind = default, isSensor: Bool = default, rotated: Double = default, axis: Vector3 = default, density: Double = default, friction: Double = default, restitution: Double? = default, freedom: Freedom3D = default, gravityScale: Double = default, checksPath: Bool = default, group: CollisionGroup = default) -> Body3D
+  @discardableResult func addCharacter(radius: Double = default, height: Double = default, at: Vector3, stepHeight: Double = default, stickToFloorDistance: Double = default, maxSlope: Double = default, mass: Double = default, pushStrength: Double = default, group: CollisionGroup = default) -> Character3D
+  @discardableResult func addRagdoll(from: Scene, at: Vector3? = default, joints: [String]? = default, swing: Double = default, twist: ClosedRange<Double> = default, mass: Double = default, friction: Double = default, group: CollisionGroup = default) -> Ragdoll3D?
+  @discardableResult func addRope(through: [Vector3], at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, thickness: Double = default, sides: Int = default, mass: Double = default, stiffness: Double = default, bend: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, pinned: ((Vector3) -> Bool)? = default, maxStretch: Double? = default, group: CollisionGroup = default) -> Rope3D?
+  @discardableResult func addSoftBody(from: Mesh, at: Vector3 = default, rotated: Double = default, axis: Vector3 = default, mass: Double = default, stiffness: Double = default, bend: Double = default, pressure: Double = default, damping: Double = default, friction: Double = default, restitution: Double? = default, iterations: Int = default, vertexRadius: Double = default, isTwoSided: Bool = default, pinned: ((Vector3) -> Bool)? = default, skinnedTo: Scene? = default, carriedBy: ((Vector3) -> String?)? = default, sway: ((Vector3) -> Double)? = default, backStop: Double? = default, maxStretch: Double? = default, group: CollisionGroup = default) -> SoftBody3D?
+  @discardableResult func addStaticBodies(from: Scene, friction: Double = default, restitution: Double? = default, group: CollisionGroup = default) -> [Body3D]
+  @discardableResult func addTensegrity(_: Tensegrity, at: Vector3 = default, strutRadius: Double = default, prestress: Double = default, stiffness: Double = default, density: Double = default, friction: Double = default, group: CollisionGroup = default) -> Tensegrity3D?
+  @discardableResult func addVehicle(_: Collider3D, at: Vector3, wheels: [Wheel3D], mass: Double = default, engineTorque: Double = default, topSpeed: Double = default, centerOfMass: Vector3? = default, rotated: Double = default, axis: Vector3 = default, friction: Double = default, balances: Bool = default, maxLeanAngle: Double = default, isTracked: Bool = default, group: CollisionGroup = default) -> Vehicle3D?
+  @discardableResult func connect(_: Body3D, _: Body3D, _: JointKind3D) -> Joint3D
+  @discardableResult func connect(_: Body3D, toWorld: JointKind3D) -> Joint3D
+  @discardableResult func connect(_: Joint3D, _: Joint3D, _: JointLink3D) -> Joint3D
+  @discardableResult func grab(_: Body3D, at: Vector3) -> Joint3D
+  @discardableResult func load(contentsOf: Foundation.URL, resolving: PhysicsAssetResolver? = default) -> Bool
+  func advance(by: Double)
+  func allowCollisions(between: CollisionGroup, and: CollisionGroup)
+  func bodiesContaining(_: Vector3, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [any Colliding3D]
+  func bodiesOverlapping(_: Collider3D, at: Vector3, rotated: Double = default, axis: Vector3 = default, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [any Colliding3D]
+  func collides(between: CollisionGroup, and: CollisionGroup) -> Bool
+  func ignoreCollisions(between: CollisionGroup, and: CollisionGroup)
+  func raycast(from: Vector3, to: Vector3, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> Hit3D?
+  func raycastAll(from: Vector3, to: Vector3, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [Hit3D]
+  func remove(_: Body3D)
+  func remove(_: Character3D)
+  func remove(_: Ragdoll3D)
+  func remove(_: SoftBody3D)
+  func remove(_: Tensegrity3D)
+  func remove(_: Vehicle3D)
+  func removeAll()
+  func restore(_: PhysicsSnapshot, resolving: PhysicsAssetResolver? = default)
+  func save(to: Foundation.URL) throws
+  func snapshot() -> PhysicsSnapshot
+  func sweep(_: Collider3D, from: Vector3, to: Vector3, rotated: Double = default, axis: Vector3 = default, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> Hit3D?
+  func sweepAll(_: Collider3D, from: Vector3, to: Vector3, rotated: Double = default, axis: Vector3 = default, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [Hit3D]
+  func waterHeight(at: Vector3) -> Double?
+  func waterMesh(extent: Double = default, resolution: Int = default, around: Vector3 = default) -> Mesh?
+  init(maxBodies: Int = default)
+  static var maxCollisionGroups: Int { get }
+  var bodies: [Body3D] { get }
+  var characters: [Character3D] { get }
+  var collisionGroups: [CollisionGroup] { get }
+  var contacts: [Contact3D] { get }
+  var gravity: Vector3 { get set }
+  var ground: Double? { get set }
+  var groundBody: Body3D? { get }
+  var joints: [Joint3D] { get }
+  var maxTimestep: Double { get set }
+  var ragdolls: [Ragdoll3D] { get }
+  var restitution: Double { get set }
+  var softBodies: [SoftBody3D] { get }
+  var tensegrities: [Tensegrity3D] { get }
+  var unitsPerMeter: Double { get set }
+  var vehicles: [Vehicle3D] { get }
+  var water: Water? { get set }
+  var waterPhase: Double { get }
+open extension Ollin.Sketch
+  func body(under: Vector2, in: World3D) -> (body: Body3D, point: Vector3)?
+  func dragBodies(in: World3D)
+  func dragGrab(_: Joint3D, to: Vector2)
+  func dragSoftGrab(_: Sketch.SoftGrip, to: Vector2)
+  func drawBody(_: Body3D)
+  func drawCollider(_: Collider3D)
+  func drawSoftBody(_: SoftBody3D)
+  func drawTensegrity(_: Tensegrity3D, cableRadius: Double = default)
+  func grabBody(at: Vector2, in: World3D) -> Joint3D?
+  func grabSoftBody(at: Vector2, in: World3D) -> Sketch.SoftGrip?
+  func releaseSoftGrab(_: Sketch.SoftGrip)
+  func withBody(_: Body3D, _: () -> Void)
+  func withCharacter(_: Character3D, _: () -> Void)
+  func withLimb(_: Ragdoll3D.Limb, _: () -> Void)
+  func withSegment(_: RopeSegment3D, _: () -> Void)
+  func withWheel(_: Wheel3D, _: () -> Void)
+  struct SoftGrip
+    let body: SoftBody3D
+    let vertex: Int
+protocol Colliding3D where Self : AnyObject
+  func wake()
+  var group: CollisionGroup { get set }
+  var isAwake: Bool { get }
+  var userData: Any? { get set }
+struct CollisionGroup: CustomStringConvertible, Equatable, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Hashable, Sendable
+  init(_: String)
+  init(stringLiteral: String)
+  let name: String
+  static let default: CollisionGroup
+  var description: String { get }
+struct Contact3D
+  enum Phase: Equatable, Hashable
+    case began
+    case ended
+  func involves(_: any Colliding3D) -> Bool
+  func other(than: any Colliding3D) -> (any Colliding3D)?
+  let a: any Colliding3D
+  let b: any Colliding3D
+  let normal: Vector3
+  let phase: Contact3D.Phase
+  let point: Vector3
+  let speed: Double
+struct Freedom3D: Equatable, ExpressibleByArrayLiteral, Hashable, OptionSet, RawRepresentable, Sendable, SetAlgebra
+  init(rawValue: UInt32)
+  let rawValue: UInt32
+  static func plane(normal: Vector3 = default) -> Freedom3D
+  static let all: Freedom3D
+  static let moveX: Freedom3D
+  static let moveY: Freedom3D
+  static let moveZ: Freedom3D
+  static let noMoving: Freedom3D
+  static let noTurning: Freedom3D
+  static let turnX: Freedom3D
+  static let turnY: Freedom3D
+  static let turnZ: Freedom3D
+  static let upright: Freedom3D
+struct Hit3D
+  let body: any Colliding3D
+  let distance: Double
+  let normal: Vector3
+  let point: Vector3
+struct PhysicsSnapshot: Equatable, Sendable
+  enum Failure: Equatable, Error, Hashable, Sendable
+    case unreadable
+  func write(to: Foundation.URL) throws
+  init(contentsOf: Foundation.URL) throws
+  init?(data: Foundation.Data)
+  init?(resource: String, extension: String = default, in: Foundation.Bundle)
+  let bodyCount: Int
+  let data: Foundation.Data
+  let jointCount: Int
+  var assetNames: [String] { get }
+struct RopeSegment3D: Sendable
+  let end: Vector3
+  let index: Int
+  let rotation: simd.simd_quatd
+  let start: Vector3
+  var center: Vector3 { get }
+  var direction: Vector3 { get }
+  var length: Double { get }
+struct Water: Equatable, Sendable
+  func height(at: Vector3, phase: Double) -> Double
+  init(level: Double = default, density: Double = default, linearDrag: Double = default, angularDrag: Double = default, flow: Vector3 = default, waves: Water.Waves? = default)
+  struct Waves: Equatable, Sendable
+    init(amplitude: Double = default, wavelength: Double = default, speed: Double = default, heading: Double = default)
+    var amplitude: Double { get set }
+    var heading: Double { get set }
+    var speed: Double { get set }
+    var wavelength: Double { get set }
+  var angularDrag: Double { get set }
+  var density: Double { get set }
+  var flow: Vector3 { get set }
+  var level: Double { get set }
+  var linearDrag: Double { get set }
+  var waves: Water.Waves? { get set }
+typealias PhysicsAssetResolver = (String) -> PhysicsAsset?

@@ -21,6 +21,10 @@
 #       -> xcodebuild for generic iOS (nothing else compiles the framework
 #          for the phone, and a macOS-only call in a core file broke it
 #          silently within a day of the last hand check; about 30 s warm)
+#       -> Scripts/api-surface.sh (the public surface of every library
+#          product, written down under API/; a change there has to be
+#          recorded on purpose, and from 1.0 on a removal needs its shim;
+#          about a minute warm, most of it the per-target build)
 #   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #   Guide/ or Docs/ prose changed
@@ -140,6 +144,16 @@ if [[ -n "$framework" || $milestone -eq 1 ]]; then
     run "iOS build" xcodebuild -scheme Ollin -destination 'generic/platform=iOS' -quiet build
 else
     skip "iOS build" "no framework change"
+fi
+
+# The public surface: every library product's API is written down under API/
+# and diffed against the build, so a public change is a deliberate one
+# (Scripts/api-surface.sh --record) and shows up in review beside the change
+# that made it. From 1.0 on this is where a rename without its shim fails.
+if [[ -n "$framework" || $milestone -eq 1 ]]; then
+    run "api-surface" Scripts/api-surface.sh
+else
+    skip "api-surface" "no framework change"
 fi
 
 # The em-dash and invisible-character net over added lines, for text written

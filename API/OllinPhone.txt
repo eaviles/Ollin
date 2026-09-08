@@ -1,0 +1,578 @@
+// OllinPhone: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum PhoneBlendShape: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case browDownLeft
+  case browDownRight
+  case browInnerUp
+  case browOuterUpLeft
+  case browOuterUpRight
+  case cheekPuff
+  case cheekSquintLeft
+  case cheekSquintRight
+  case eyeBlinkLeft
+  case eyeBlinkRight
+  case eyeLookDownLeft
+  case eyeLookDownRight
+  case eyeLookInLeft
+  case eyeLookInRight
+  case eyeLookOutLeft
+  case eyeLookOutRight
+  case eyeLookUpLeft
+  case eyeLookUpRight
+  case eyeSquintLeft
+  case eyeSquintRight
+  case eyeWideLeft
+  case eyeWideRight
+  case jawForward
+  case jawLeft
+  case jawOpen
+  case jawRight
+  case mouthClose
+  case mouthDimpleLeft
+  case mouthDimpleRight
+  case mouthFrownLeft
+  case mouthFrownRight
+  case mouthFunnel
+  case mouthLeft
+  case mouthLowerDownLeft
+  case mouthLowerDownRight
+  case mouthPressLeft
+  case mouthPressRight
+  case mouthPucker
+  case mouthRight
+  case mouthRollLower
+  case mouthRollUpper
+  case mouthShrugLower
+  case mouthShrugUpper
+  case mouthSmileLeft
+  case mouthSmileRight
+  case mouthStretchLeft
+  case mouthStretchRight
+  case mouthUpperUpLeft
+  case mouthUpperUpRight
+  case noseSneerLeft
+  case noseSneerRight
+  case tongueOut
+enum PhoneEye: CaseIterable, Equatable, Hashable, Sendable
+  case left
+  case right
+enum PhoneHandChirality: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case left
+  case right
+  case unknown
+enum PhoneHandJoint: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case indexDIP
+  case indexMCP
+  case indexPIP
+  case indexTip
+  case littleDIP
+  case littleMCP
+  case littlePIP
+  case littleTip
+  case middleDIP
+  case middleMCP
+  case middlePIP
+  case middleTip
+  case ringDIP
+  case ringMCP
+  case ringPIP
+  case ringTip
+  case thumbCMC
+  case thumbIP
+  case thumbMP
+  case thumbTip
+  case wrist
+enum PhoneJoint: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case chest
+  case head
+  case hips
+  case leftAnkle
+  case leftElbow
+  case leftFoot
+  case leftHand
+  case leftHip
+  case leftKnee
+  case leftShoulder
+  case leftWrist
+  case neck
+  case rightAnkle
+  case rightElbow
+  case rightFoot
+  case rightHand
+  case rightHip
+  case rightKnee
+  case rightShoulder
+  case rightWrist
+  case root
+  case spine
+enum PhoneMarkerKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case image
+  case object
+enum PhoneMessage: Equatable, Sendable
+  case depth(PhoneDepthSample)
+  case face([PhoneFaceSample])
+  case hands([PhoneHandSample])
+  case light(PhoneLightSample)
+  case markers([PhoneMarkerSample])
+  case motion(PhoneMotionSample)
+  case plane(PhonePlaneSample)
+  case pose([PhonePoseSample])
+  case saliency(PhoneSaliencySample)
+  case sceneMesh(PhoneSceneMeshSample)
+  case segmentation(PhoneSegmentationSample)
+  case texts([PhoneTextSample])
+  case wand(PhoneWandSample)
+  var kind: PhoneMessageKind { get }
+enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case bodyPose
+  case depth
+  case deviceMotion
+  case face
+  case handPose
+  case light
+  case marker
+  case plane
+  case recognizedText
+  case saliency
+  case sceneMesh
+  case segmentation
+  case wand
+enum PhonePlaneAlignment: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case horizontal
+  case vertical
+enum PhoneSurface: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case ceiling
+  case door
+  case floor
+  case seat
+  case table
+  case unclassified
+  case wall
+  case window
+enum PhoneWire
+  static func bufferPoint(fromUpright: SIMD2<Float>, quarterTurnsCW: UInt8) -> SIMD2<Float>
+  static func decode(header: PhoneHeader, payload: Foundation.Data) -> PhoneMessage?
+  static func encode(_: PhoneMessage) -> Foundation.Data
+  static func markerName(fromFileName: String) -> String
+  static func markerStem(_: String) -> String
+  static func markerWidth(fromName: String, fallback: Double = default) -> (meters: Double, stated: Bool)
+  static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int, surfaceCount: Int) -> Int
+  static func wandFrame(fromCamera: simd.simd_float4x4, quarterTurnsCW: UInt8) -> simd.simd_float4x4
+  static let headerByteCount: Int
+  static let magic: UInt32
+  static let markerImageExtensions: Set<String>
+  static let markerObjectExtension: String
+  static let streamPort: UInt16
+  static let version: UInt8
+final class PhoneDevice: FrameSource, VideoFeed, Sendable
+  func marker(named: String) -> PhoneMarker?
+  func pointCloud(minConfidence: DepthConfidence = default, depthRange: ClosedRange<Double>? = default, step: Int = default, pointSize: Double = default) -> PointCloud?
+  func resetPlanes()
+  func resetSceneMesh()
+  func start()
+  func stop()
+  init(port: UInt16 = default)
+  nonisolated static let streamPort: UInt16
+  var frame: Image? { get }
+  var frameSize: Vector2? { get }
+  var frameTap: FrameTap? { get set }
+  var isRunning: Bool { get }
+  var latestBodies: [PhoneBody] { get }
+  var latestBody: PhoneBody? { get }
+  var latestFace: PhoneFace? { get }
+  var latestFaces: [PhoneFace] { get }
+  var latestFrame: RGBDFrame? { get }
+  var latestFrameVersion: Int? { get }
+  var latestHand: PhoneHand? { get }
+  var latestHands: [PhoneHand] { get }
+  var latestLight: PhoneLight? { get }
+  var latestMarker: PhoneMarker? { get }
+  var latestMarkers: [PhoneMarker] { get }
+  var latestMotion: PhoneMotion? { get }
+  var latestPose: simd.simd_float4x4? { get }
+  var latestSaliency: PhoneSaliency? { get }
+  var latestSaliencyFrame: Image? { get }
+  var latestSaliencyHeatMap: Image? { get }
+  var latestSegmentationCutout: Image? { get }
+  var latestSegmentationMatte: Image? { get }
+  var latestText: PhoneText? { get }
+  var latestTexts: [PhoneText] { get }
+  var latestWand: PhoneWand? { get }
+  var planes: PhonePlanes { get }
+  var planesVersion: Int? { get }
+  var sceneMesh: PhoneSceneMesh { get }
+  var sceneMeshVersion: Int? { get }
+  var waitingMessage: String { get }
+struct PhoneBody: Sendable
+  func bones() -> [(Vector3, Vector3)]
+  func cloud(jointSize: Double = default, boneSize: Double = default, color: Color = default) -> PointCloud
+  func has(_: PhoneJoint) -> Bool
+  func isJointTracked(_: PhoneJoint) -> Bool
+  func modelTransform(_: PhoneJoint) -> simd.simd_float4x4?
+  func orientation(_: PhoneJoint) -> SIMD4<Float>?
+  func position(_: PhoneJoint) -> Vector3?
+  func worldPosition(_: PhoneJoint) -> Vector3?
+  func worldTransform(ofJoint: PhoneJoint) -> simd.simd_float4x4?
+  init(_: PhonePoseSample)
+  let isTracked: Bool
+  let scaleFactor: Double
+  let timestamp: Double
+  let worldTransform: simd.simd_float4x4
+  static let skeleton: [(PhoneJoint, PhoneJoint)]
+  var center: Vector3 { get }
+  var positions: [PhoneJoint : Vector3] { get }
+  var worldCenter: Vector3 { get }
+struct PhoneDepthSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, depthWidth: Int, depthHeight: Int, fx: Float, fy: Float, cx: Float, cy: Float, cameraTransform: simd.simd_float4x4, colorJPEG: Foundation.Data, depth: [Float], confidence: [UInt8]?)
+  var cameraTransform: simd.simd_float4x4 { get set }
+  var colorJPEG: Foundation.Data { get set }
+  var confidence: [UInt8]? { get set }
+  var cx: Float { get set }
+  var cy: Float { get set }
+  var depth: [Float] { get set }
+  var depthHeight: Int { get set }
+  var depthWidth: Int { get set }
+  var fx: Float { get set }
+  var fy: Float { get set }
+  var isTracked: Bool { get set }
+  var timestamp: Double { get set }
+struct PhoneFace: Sendable
+  func blendShape(_: PhoneBlendShape) -> Double
+  func cloud(pointSize: Double = default, color: Color = default) -> PointCloud
+  func eyeOrientation(_: PhoneEye) -> SIMD4<Float>
+  func eyePosition(_: PhoneEye) -> Vector3
+  func gazeDirection(_: PhoneEye) -> Vector3
+  func mesh() -> Mesh
+  func strongestBlendShapes(count: Int = default, above: Double = default) -> [(shape: PhoneBlendShape, value: Double)]
+  func worldEyePosition(_: PhoneEye) -> Vector3
+  func worldGazeDirection(_: PhoneEye) -> Vector3
+  init(_: PhoneFaceSample)
+  init(isTracked: Bool = default, timestamp: Double = default, headOrientation: SIMD4<Float> = default, headPosition: Vector3 = default, blendShapes: [PhoneBlendShape : Double] = default, meshPoints: [Vector3] = default, triangleIndices: [UInt32] = default, textureCoordinates: [Vector2] = default, leftEyeOrientation: SIMD4<Float> = default, leftEyePosition: Vector3 = default, rightEyeOrientation: SIMD4<Float> = default, rightEyePosition: Vector3 = default, lookAtPoint: Vector3 = default)
+  let headOrientation: SIMD4<Float>
+  let headPosition: Vector3
+  let isTracked: Bool
+  let lookAtPoint: Vector3
+  let timestamp: Double
+  var blendShapes: [PhoneBlendShape : Double] { get }
+  var center: Vector3 { get }
+  var headTransform: simd.simd_float4x4 { get }
+  var meshPoints: [Vector3] { get }
+  var meshUVs: [Vector2] { get }
+  var worldLookAtPoint: Vector3 { get }
+struct PhoneFaceSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, headOrientation: SIMD4<Float>, headPosition: SIMD3<Float>, blendShapes: [Float], meshVertices: [SIMD3<Float>], triangleIndices: [UInt16] = default, textureCoordinates: [SIMD2<Float>] = default, leftEyeOrientation: SIMD4<Float> = default, leftEyePosition: SIMD3<Float> = default, rightEyeOrientation: SIMD4<Float> = default, rightEyePosition: SIMD3<Float> = default, lookAtPoint: SIMD3<Float> = default)
+  var blendShapes: [Float] { get set }
+  var headOrientation: SIMD4<Float> { get set }
+  var headPosition: SIMD3<Float> { get set }
+  var isTracked: Bool { get set }
+  var leftEyeOrientation: SIMD4<Float> { get set }
+  var leftEyePosition: SIMD3<Float> { get set }
+  var lookAtPoint: SIMD3<Float> { get set }
+  var meshVertices: [SIMD3<Float>] { get set }
+  var rightEyeOrientation: SIMD4<Float> { get set }
+  var rightEyePosition: SIMD3<Float> { get set }
+  var textureCoordinates: [SIMD2<Float>] { get set }
+  var timestamp: Double { get set }
+  var triangleIndices: [UInt16] { get set }
+struct PhoneHand: Sendable
+  enum Chirality: Equatable, Hashable, Sendable
+    case left
+    case right
+    case unknown
+  func bones() -> [(Vector3, Vector3)]
+  func bones(in: Rectangle) -> [(Vector2, Vector2)]
+  func cloud(jointSize: Double = default, boneSize: Double = default, color: Color = default) -> PointCloud
+  func confidence(of: PhoneHandJoint) -> Double?
+  func has(_: PhoneHandJoint) -> Bool
+  func point(_: PhoneHandJoint, in: Rectangle) -> Vector2?
+  func points(in: Rectangle) -> [PhoneHandJoint : Vector2]
+  func position(_: PhoneHandJoint) -> Vector3?
+  init(_: PhoneHandSample)
+  let chirality: PhoneHand.Chirality
+  let confidence: Double
+  let isTracked: Bool
+  let timestamp: Double
+  static let fingerChains: [[PhoneHandJoint]]
+  static let skeleton: [(PhoneHandJoint, PhoneHandJoint)]
+  static let tips: [PhoneHandJoint]
+  var center: Vector3 { get }
+  var hasWorldPositions: Bool { get }
+  var pinchDistance: Double? { get }
+struct PhoneHandJointSample: Equatable, Sendable
+  init(point: SIMD2<Float>, confidence: Float = default, hasWorldPosition: Bool = default, worldPosition: SIMD3<Float> = default)
+  var confidence: Float { get set }
+  var hasWorldPosition: Bool { get set }
+  var point: SIMD2<Float> { get set }
+  var worldPosition: SIMD3<Float> { get set }
+struct PhoneHandSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, chirality: PhoneHandChirality = default, confidence: Float = default, joints: [PhoneHandJoint : PhoneHandJointSample])
+  var chirality: PhoneHandChirality { get set }
+  var confidence: Float { get set }
+  var isTracked: Bool { get set }
+  var joints: [PhoneHandJoint : PhoneHandJointSample] { get set }
+  var timestamp: Double { get set }
+struct PhoneHeader: Equatable, Sendable
+  init(kind: PhoneMessageKind, payloadLength: Int)
+  static func parse(_: Foundation.Data) -> PhoneHeader?
+  var kind: PhoneMessageKind { get set }
+  var payloadLength: Int { get set }
+struct PhoneJointSample: Equatable, Sendable
+  init(position: SIMD3<Float>, orientation: SIMD4<Float> = default, isTracked: Bool = default)
+  var isTracked: Bool { get set }
+  var orientation: SIMD4<Float> { get set }
+  var position: SIMD3<Float> { get set }
+struct PhoneLight: Sendable
+  init(lumens: Double, kelvin: Double, direction: Vector3? = default, keyIntensity: Double? = default, sphericalHarmonics: [Float]? = default, timestamp: Double = default)
+  let color: Color
+  let direction: Vector3?
+  let intensity: Double
+  let kelvin: Double
+  let keyIntensity: Double?
+  let lumens: Double
+  let sphericalHarmonics: [Float]?
+  let timestamp: Double
+  var ambient: Color { get }
+  var key: Light? { get }
+struct PhoneLightSample: Equatable, Sendable
+  init(timestamp: Double, ambientIntensity: Float, colorTemperature: Float, hasDirection: Bool = default, direction: SIMD3<Float> = default, directionalIntensity: Float = default, sphericalHarmonics: [Float] = default)
+  var ambientIntensity: Float { get set }
+  var colorTemperature: Float { get set }
+  var direction: SIMD3<Float> { get set }
+  var directionalIntensity: Float { get set }
+  var hasDirection: Bool { get set }
+  var sphericalHarmonics: [Float] { get set }
+  var timestamp: Double { get set }
+struct PhoneMarker: Sendable
+  init(_: PhoneMarkerSample)
+  let id: Foundation.UUID
+  let isTracked: Bool
+  let kind: PhoneMarkerKind
+  let name: String
+  let placement: simd.simd_float4x4
+  let position: Vector3
+  let scaleFactor: Double
+  let size: Vector3
+  let timestamp: Double
+  let transform: simd.simd_float4x4
+  var across: Vector3 { get }
+  var corners: [Vector3] { get }
+  var depth: Double { get }
+  var facing: Vector3 { get }
+  var height: Double { get }
+  var isImage: Bool { get }
+  var isObject: Bool { get }
+  var up: Vector3 { get }
+  var width: Double { get }
+struct PhoneMarkerSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, id: Foundation.UUID, name: String, kind: PhoneMarkerKind, transform: simd.simd_float4x4, size: SIMD3<Float>, center: SIMD3<Float> = default, scaleFactor: Float = default)
+  var center: SIMD3<Float> { get set }
+  var id: Foundation.UUID { get set }
+  var isTracked: Bool { get set }
+  var kind: PhoneMarkerKind { get set }
+  var name: String { get set }
+  var scaleFactor: Float { get set }
+  var size: SIMD3<Float> { get set }
+  var timestamp: Double { get set }
+  var transform: simd.simd_float4x4 { get set }
+struct PhoneMotion: Equatable, Sendable
+  let attitude: SIMD4<Float>
+  let gravity: Vector3
+  let rotationRate: Vector3
+  let timestamp: Double
+  let userAcceleration: Vector3
+struct PhoneMotionSample: Equatable, Sendable
+  init(attitude: SIMD4<Float>, gravity: SIMD3<Float>, rotationRate: SIMD3<Float>, userAcceleration: SIMD3<Float>, timestamp: Double)
+  var attitude: SIMD4<Float> { get set }
+  var gravity: SIMD3<Float> { get set }
+  var rotationRate: SIMD3<Float> { get set }
+  var timestamp: Double { get set }
+  var userAcceleration: SIMD3<Float> { get set }
+struct PhonePlane: Identifiable, Sendable
+  init(id: Foundation.UUID, surface: PhoneSurface, alignment: PhonePlaneAlignment, center: Vector3, normal: Vector3, width: Double, height: Double, boundary: [Vector3])
+  let alignment: PhonePlaneAlignment
+  let boundary: [Vector3]
+  let bounds: Box3
+  let center: Vector3
+  let height: Double
+  let id: Foundation.UUID
+  let normal: Vector3
+  let surface: PhoneSurface
+  let width: Double
+  var area: Double { get }
+  var mesh: Mesh { get }
+  var outline: [Vector3] { get }
+struct PhonePlaneSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, id: Foundation.UUID, scan: UInt32 = default, isRemoved: Bool = default, transform: simd.simd_float4x4, center: SIMD3<Float> = default, width: Float = default, height: Float = default, rotationOnYAxis: Float = default, alignment: PhonePlaneAlignment = default, surface: PhoneSurface = default, boundary: [SIMD3<Float>] = default)
+  var alignment: PhonePlaneAlignment { get set }
+  var boundary: [SIMD3<Float>] { get set }
+  var center: SIMD3<Float> { get set }
+  var height: Float { get set }
+  var id: Foundation.UUID { get set }
+  var isRemoved: Bool { get set }
+  var isTracked: Bool { get set }
+  var rotationOnYAxis: Float { get set }
+  var scan: UInt32 { get set }
+  var surface: PhoneSurface { get set }
+  var timestamp: Double { get set }
+  var transform: simd.simd_float4x4 { get set }
+  var width: Float { get set }
+struct PhonePlanes: Sendable
+  func largest(of: PhoneSurface...) -> PhonePlane?
+  func mesh(colored: (PhoneSurface) -> Color) -> Mesh
+  func planes(of: PhoneSurface...) -> [PhonePlane]
+  func planes(of: Set<PhoneSurface>) -> [PhonePlane]
+  init()
+  mutating func apply(_: PhonePlane)
+  mutating func remove(_: Foundation.UUID)
+  mutating func reset()
+  var bounds: Box3 { get }
+  var center: Vector3 { get }
+  var count: Int { get }
+  var flat: [PhonePlane] { get }
+  var floor: PhonePlane? { get }
+  var foundSurfaces: Set<PhoneSurface> { get }
+  var isEmpty: Bool { get }
+  var largest: PhonePlane? { get }
+  var mesh: Mesh { get }
+  var planes: [PhonePlane] { get }
+  var upright: [PhonePlane] { get }
+struct PhonePoseSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, anchor: simd.simd_float4x4 = default, scaleFactor: Float = default, joints: [PhoneJoint : PhoneJointSample])
+  var anchor: simd.simd_float4x4 { get set }
+  var isTracked: Bool { get set }
+  var joints: [PhoneJoint : PhoneJointSample] { get set }
+  var scaleFactor: Float { get set }
+  var timestamp: Double { get set }
+struct PhoneSaliency: Sendable
+  func salience(at: Vector2, in: Rectangle) -> Double
+  func salienceNormalized(at: Vector2) -> Double
+  init(_: PhoneSaliencySample)
+  let heatHeight: Int
+  let heatWidth: Int
+  let isTracked: Bool
+  let regions: [PhoneSalientRegion]
+  let timestamp: Double
+  var strongestRegion: PhoneSalientRegion? { get }
+struct PhoneSaliencySample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, heatWidth: Int, heatHeight: Int, orientation: UInt8 = default, heat: [UInt8], colorJPEG: Foundation.Data = default, regions: [PhoneSalientRegionSample] = default)
+  var colorJPEG: Foundation.Data { get set }
+  var heat: [UInt8] { get set }
+  var heatHeight: Int { get set }
+  var heatWidth: Int { get set }
+  var isTracked: Bool { get set }
+  var orientation: UInt8 { get set }
+  var regions: [PhoneSalientRegionSample] { get set }
+  var timestamp: Double { get set }
+struct PhoneSalientRegion: Sendable
+  func bounds(in: Rectangle) -> Rectangle
+  func center(in: Rectangle) -> Vector2
+  init(_: PhoneSalientRegionSample)
+  let confidence: Double
+  var hasWorldPlacement: Bool { get }
+  var worldCenter: Vector3 { get }
+struct PhoneSalientRegionSample: Equatable, Sendable
+  init(x: Float, y: Float, width: Float, height: Float, confidence: Float = default, hasWorldCenter: Bool = default, worldCenter: SIMD3<Float> = default)
+  var confidence: Float { get set }
+  var hasWorldCenter: Bool { get set }
+  var height: Float { get set }
+  var width: Float { get set }
+  var worldCenter: SIMD3<Float> { get set }
+  var x: Float { get set }
+  var y: Float { get set }
+struct PhoneSceneChunk: Identifiable, Sendable
+  init(id: Foundation.UUID, positions: [Vector3], normals: [Vector3], indices: [UInt32], surfaces: [PhoneSurface])
+  let bounds: Box3
+  let id: Foundation.UUID
+  let indices: [UInt32]
+  let normals: [Vector3]
+  let positions: [Vector3]
+  let surfaces: [PhoneSurface]
+  var mesh: Mesh { get }
+  var triangleCount: Int { get }
+struct PhoneSceneMesh: Sendable
+  func mesh(colored: (PhoneSurface) -> Color) -> Mesh
+  func mesh(of: PhoneSurface...) -> Mesh
+  func mesh(of: Set<PhoneSurface>) -> Mesh
+  init()
+  mutating func apply(_: PhoneSceneChunk)
+  mutating func remove(_: Foundation.UUID)
+  mutating func reset()
+  var bounds: Box3 { get }
+  var center: Vector3 { get }
+  var chunkCount: Int { get }
+  var chunks: [PhoneSceneChunk] { get }
+  var foundSurfaces: Set<PhoneSurface> { get }
+  var isEmpty: Bool { get }
+  var mesh: Mesh { get }
+  var triangleCount: Int { get }
+  var vertexCount: Int { get }
+struct PhoneSceneMeshSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, id: Foundation.UUID, scan: UInt32 = default, isRemoved: Bool = default, transform: simd.simd_float4x4, vertices: [SIMD3<Float>] = default, normals: [SIMD3<Float>] = default, triangleIndices: [UInt32] = default, surfaces: [PhoneSurface] = default)
+  var id: Foundation.UUID { get set }
+  var isRemoved: Bool { get set }
+  var isTracked: Bool { get set }
+  var normals: [SIMD3<Float>] { get set }
+  var scan: UInt32 { get set }
+  var surfaces: [PhoneSurface] { get set }
+  var timestamp: Double { get set }
+  var transform: simd.simd_float4x4 { get set }
+  var triangleIndices: [UInt32] { get set }
+  var vertices: [SIMD3<Float>] { get set }
+struct PhoneSegmentationSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, matteWidth: Int, matteHeight: Int, orientation: UInt8 = default, matte: [UInt8], colorJPEG: Foundation.Data)
+  var colorJPEG: Foundation.Data { get set }
+  var isTracked: Bool { get set }
+  var matte: [UInt8] { get set }
+  var matteHeight: Int { get set }
+  var matteWidth: Int { get set }
+  var orientation: UInt8 { get set }
+  var timestamp: Double { get set }
+struct PhoneText: Sendable
+  func bounds(in: Rectangle) -> Rectangle
+  func corners(in: Rectangle) -> [Vector2]
+  init(_: PhoneTextSample)
+  let confidence: Double
+  let isTracked: Bool
+  let text: String
+  let timestamp: Double
+  var hasWorldPlacement: Bool { get }
+  var worldCenter: Vector3 { get }
+  var worldCorners: [Vector3] { get }
+  var worldHeight: Double { get }
+  var worldTransform: simd.simd_float4x4? { get }
+  var worldWidth: Double { get }
+struct PhoneTextSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, text: String, confidence: Float = default, corners: [SIMD2<Float>], hasWorldCorners: Bool = default, worldCorners: [SIMD3<Float>] = default)
+  var confidence: Float { get set }
+  var corners: [SIMD2<Float>] { get set }
+  var hasWorldCorners: Bool { get set }
+  var isTracked: Bool { get set }
+  var text: String { get set }
+  var timestamp: Double { get set }
+  var worldCorners: [SIMD3<Float>] { get set }
+struct PhoneWand: Sendable
+  func point(at: Double) -> Vector3
+  init(_: PhoneWandSample)
+  let isPressed: Bool
+  let isTracked: Bool
+  let placement: simd.simd_float4x4
+  let position: Vector3
+  let pressCount: Int
+  let quarterTurns: Int
+  let timestamp: Double
+  let touch: Vector2?
+  let transform: simd.simd_float4x4
+  var across: Vector3 { get }
+  var pointing: Vector3 { get }
+  var ray: Ray3 { get }
+  var up: Vector3 { get }
+struct PhoneWandSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, transform: simd.simd_float4x4, quarterTurnsCW: UInt8 = default, isPressed: Bool = default, pressCount: UInt32 = default, hasTouch: Bool = default, touch: SIMD2<Float> = default)
+  var hasTouch: Bool { get set }
+  var isPressed: Bool { get set }
+  var isTracked: Bool { get set }
+  var pressCount: UInt32 { get set }
+  var quarterTurnsCW: UInt8 { get set }
+  var timestamp: Double { get set }
+  var touch: SIMD2<Float> { get set }
+  var transform: simd.simd_float4x4 { get set }
