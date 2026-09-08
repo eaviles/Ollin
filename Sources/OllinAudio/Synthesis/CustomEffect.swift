@@ -217,6 +217,24 @@ final class ClosureAudioUnit: AUAudioUnit {
 
     let slot = Slot(CustomEffectRunner { _ in })
     private let renderState = RenderState()
+
+    /// The room a convolution reverb prepared for this unit, kept so a change
+    /// of `mix` rides the standing engine rather than replacing it, and a
+    /// tail still sounding is not cut. Main-thread state, like the settings
+    /// on the built-in units.
+    var room: ConvolutionReverb?
+
+    /// Puts a reverb's room onto this unit: the standing engine when it is
+    /// the same room at the same rate, a new one otherwise.
+    func setRoom(_ reverb: Reverb, impulse: ImpulseResponse, sampleRate: Double) {
+        if let room, room.serves(reverb, at: sampleRate) {
+            room.mix = reverb.mix
+            return
+        }
+        let made = ConvolutionReverb(reverb, impulse: impulse, sampleRate: sampleRate)
+        room = made
+        slot.set(CustomEffectRunner { block in made.process(block) })
+    }
     private var inputBus: AUAudioUnitBus!
     private var outputBus: AUAudioUnitBus!
     private var inputBusArray: AUAudioUnitBusArray!

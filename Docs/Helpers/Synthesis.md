@@ -644,7 +644,7 @@ The voice side of this library is routing as a value. A [`Patch`](#patch) says w
 | Effect | What it is |
 |---|---|
 | `.delay(Delay)` | the sound again, later and quieter each time |
-| `.reverb(Reverb)` | a room around it |
+| `.reverb(Reverb)` | a room around it: one of four built in, or [a room of your own](#a-room-of-your-own) |
 | `.equalizer(Equalizer)` | lifting or cutting part of the spectrum |
 | `.distortion(Distortion)` | driving it past where it fits |
 | `.custom(...)` | [one you wrote yourself](#an-effect-of-your-own), as a closure over the samples |
@@ -677,7 +677,39 @@ Delay(time: 0.25, feedback: 0.4, mix: 0.3, damping: 6000)
 Reverb(.hall, mix: 0.3)
 ```
 
-The rooms are `.room`, `.hall`, `.plate`, and `.cathedral`, biggest last. `mix` is how much of the result is the room.
+The rooms are `.room`, `.hall`, `.plate`, and `.cathedral`, biggest last. `mix` is how much of the result is the room. Any other room is [a room of your own](#a-room-of-your-own).
+
+#### A room of your own
+
+```swift
+let stairwell = ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)!
+synth.reverb = Reverb(stairwell, mix: 0.4, preDelay: 0.02)
+```
+
+A room is what it does to a click. Clap once in a stairwell and what comes back is the stairwell: every surface and every distance, all at once. That recording is an impulse response. An instrument played through it is heard in that room, because every sample of the sound starts its own copy of the click's answer. `ImpulseResponse` is the answer written down, and `Reverb(room)` is the convolution reverb that plays through it. It sits in the chain like any other reverb, the `reverb` view reaches it, and it reaches an [export](#sound-in-an-export).
+
+| Where a room comes from | What it is |
+|---|---|
+| `ImpulseResponse.load("stairwell.wav")` | a recording, in any file the system plays. The first two channels are kept |
+| `.resource("stairwell", withExtension: "wav", in: .module)` | the same, from the sketch's own bundle |
+| `.decay(seconds: 3, damping: 0.6)` | fading noise, the plainest room there is. `seconds` is how long it takes to fall silent, and `damping` is how much faster the top end goes |
+| `ImpulseResponse(seconds: 2) { t, noise in ... }` | drawn from a rule. The closure is asked for every sample, with the time since the click and a noise value it may use or ignore |
+| `.reversed()` | the same room run backward, the reverse reverb of a thousand records |
+
+A drawn room is whatever the rule says:
+
+```swift
+ImpulseResponse(seconds: 3) { t, noise in exp(-2.3 * t) * noise }            // a hall
+ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(2 * .pi * 440 * t) }  // a room that hums at A
+```
+
+The noise differs between the two sides, which is what gives a room its width. It comes from a `seed`, so the same rule draws the same room every run. A response is two channels, and a mono recording is heard the same on both sides.
+
+Two things sit beside `mix`. `preDelay` is seconds of silence before the room answers, `0...1`, and a little of it keeps the sound itself clear of the room. And every room is brought to unit energy on the way in, so a quiet recording and a loud one sit at the same level, and `mix` means the same for both. Changing `mix` on a sounding room leaves its tail alone. Changing the room or the pre-delay starts a fresh one, since those are the room itself. A room longer than twenty seconds is cut there.
+
+Recording one is a microphone and a clap, a balloon, or a starter pistol in the space you want. Free libraries of measured rooms exist, and the license travels with the file the way it does with a sample. A room's cost is its length, and the longest one allowed runs in a few percent of real time.
+
+`Examples/Audio/Rooms` is five rooms drawn from rules, each room's answer to a click drawn as a waveform.
 
 #### Equalizer
 

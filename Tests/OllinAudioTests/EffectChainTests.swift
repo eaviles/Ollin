@@ -78,7 +78,11 @@ import Testing
         #expect(Effect.equalizer(Equalizer()).kind == .equalizer)
         #expect(Effect.distortion(Distortion()).kind == .distortion)
         #expect(Effect.custom(CustomEffect("mine") { _ in }).kind == .custom)
-        #expect(Effect.Kind.allCases.count == 5)
+        // A reverb carrying a room of its own runs on its own unit, so it
+        // reads as its own kind; the rest of that story is in ConvolutionTests.
+        let room = ImpulseResponse(seconds: 0.01, sampleRate: 48000) { time, _ in exp(-100 * time) }
+        #expect(Effect.reverb(Reverb(room)).kind == .convolution)
+        #expect(Effect.Kind.allCases.count == 6)
     }
 
     @MainActor
@@ -101,12 +105,13 @@ import Testing
             .equalizer(.warm),
             .delay(Delay(time: 0.2)),
             .custom("nothing") { _ in },
+            .reverb(Reverb(.decay(seconds: 0.1, seed: 1), mix: 0.2)),
             .reverb(Reverb(.hall)),
         ]
-        #expect(synth.effects.count == 5)
+        #expect(synth.effects.count == 6)
         // And in the other order, since a chain is not a fixed rack.
         synth.effects = synth.effects.reversed()
-        #expect(synth.effects.map(\.kind) == [.reverb, .custom, .delay, .equalizer, .distortion])
+        #expect(synth.effects.map(\.kind) == [.reverb, .convolution, .custom, .delay, .equalizer, .distortion])
     }
 
     // MARK: - The settings

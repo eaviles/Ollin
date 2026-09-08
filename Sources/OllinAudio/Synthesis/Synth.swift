@@ -191,26 +191,35 @@ public final class Synth: AudioSource {
             for case .delay(let delay) in effects { return delay }
             return nil
         }
-        set { replaceFirst(.delay, with: newValue.map { Effect.delay($0) }) }
+        set {
+            replaceFirst(where: { if case .delay = $0 { return true } else { return false } },
+                         with: newValue.map { Effect.delay($0) })
+        }
     }
 
     /// A room around everything the synth plays, or nil for none.
     ///
-    /// A view over ``effects``, the same way ``delay`` is.
+    /// A view over ``effects``, the same way ``delay`` is. The first room in
+    /// the chain, whether one of the built-in ones or a room of your own.
     public var reverb: Reverb? {
         get {
             for case .reverb(let reverb) in effects { return reverb }
             return nil
         }
-        set { replaceFirst(.reverb, with: newValue.map { Effect.reverb($0) }) }
+        set {
+            replaceFirst(where: { if case .reverb = $0 { return true } else { return false } },
+                         with: newValue.map { Effect.reverb($0) })
+        }
     }
 
-    /// Puts an effect where the first one of its kind is, or on the end, or
+    /// Puts an effect where the first one like it is, or on the end, or
     /// takes it out. Keeping the position is what stops setting `reverb` twice
-    /// from moving it down the chain.
-    private func replaceFirst(_ kind: Effect.Kind, with effect: Effect?) {
+    /// from moving it down the chain. Matched by the case rather than the
+    /// kind, because a reverb with a room of its own is a kind of its own for
+    /// the wiring and still the reverb to a sketch.
+    private func replaceFirst(where matches: (Effect) -> Bool, with effect: Effect?) {
         var chain = effects
-        if let position = chain.firstIndex(where: { $0.kind == kind }) {
+        if let position = chain.firstIndex(where: matches) {
             if let effect { chain[position] = effect } else { chain.remove(at: position) }
         } else if let effect {
             chain.append(effect)
@@ -401,6 +410,10 @@ public final class Synth: AudioSource {
     /// and the source itself otherwise.
     private var chainHead: AVAudioNode { listener ?? sourceNode }
 
+    /// The rate the chain was last wired at, which a room is prepared for.
+    /// Zero until the first rebuild, when the instrument's own rate stands in.
+    private var chainSampleRate: Double = 0
+
     /// Brings the wiring into line with `effects`.
     ///
     /// A chain of the same kinds in the same order is the same wiring, so only
@@ -411,7 +424,8 @@ public final class Synth: AudioSource {
         if kinds != wiredKinds {
             rebuildEffectChain()
         } else {
-            for (unit, effect) in zip(effectUnits, effects) { effect.apply(to: unit) }
+            let rate = chainSampleRate > 0 ? chainSampleRate : sampleRate
+            for (unit, effect) in zip(effectUnits, effects) { effect.apply(to: unit, sampleRate: rate) }
         }
     }
 
@@ -425,21 +439,22 @@ public final class Synth: AudioSource {
             engine.disconnectNodeOutput(unit)
             engine.detach(unit)
         }
-        effectUnits = effects.map { effect in
-            let unit = Effect.makeUnit(for: effect.kind)
-            engine.attach(unit)
-            effect.apply(to: unit)
-            return unit
-        }
-        wiredKinds = effects.map(\.kind)
-
-        engine.disconnectNodeOutput(chainHead)
         // A connection touching a custom unit names the chain's format
         // outright: left to work the format out, the engine keeps such a
         // unit's declared format and quietly resamples around it instead,
         // which is a converter in the middle of the sound. Connections between
         // built-in kinds stay worked out by the engine.
         let chainFormat = chainHead.outputFormat(forBus: 0)
+        chainSampleRate = chainFormat.sampleRate > 0 ? chainFormat.sampleRate : sampleRate
+        effectUnits = effects.map { effect in
+            let unit = Effect.makeUnit(for: effect.kind)
+            engine.attach(unit)
+            effect.apply(to: unit, sampleRate: chainSampleRate)
+            return unit
+        }
+        wiredKinds = effects.map(\.kind)
+
+        engine.disconnectNodeOutput(chainHead)
         func isCustom(_ node: AVAudioNode) -> Bool {
             (node as? AVAudioUnit)?.auAudioUnit is ClosureAudioUnit
         }
@@ -499,6 +514,15 @@ public struct Delay: Sendable, Hashable, Codable {
 }
 
 /// A room the sound is heard in.
+///
+/// Four rooms are built in, and any room at all can be brought: a recording
+/// of one, or one drawn from a rule, as an ``ImpulseResponse``.
+///
+/// ```swift
+/// synth.reverb = Reverb(.hall, mix: 0.3)
+/// synth.reverb = Reverb(.decay(seconds: 4, damping: 0.7), mix: 0.4)
+/// synth.reverb = Reverb(ImpulseResponse.load("stairwell.wav")!, mix: 0.5, preDelay: 0.02)
+/// ```
 public struct Reverb: Sendable, Hashable, Codable {
     /// How big the room is.
     public enum Space: String, Sendable, Hashable, CaseIterable, Codable {
@@ -514,13 +538,58 @@ public struct Reverb: Sendable, Hashable, Codable {
         }
     }
 
+    /// Which of the built-in rooms. Not read while ``impulse`` is set.
     public var space: Space
     /// How much of the result is the room rather than the sound itself, `0...1`.
     public var mix: Double
+    /// A room of your own, recorded or drawn. While one is set, the reverb
+    /// is that room and ``space`` is not read.
+    public var impulse: ImpulseResponse?
+    /// Seconds before a room of your own answers, `0...1`. A little of it
+    /// keeps the sound itself clear of the room; the built-in rooms carry
+    /// their own and ignore this.
+    public var preDelay: Double
 
     public init(_ space: Space = .hall, mix: Double = 0.3) {
         self.space = space
         self.mix = mix
+        self.impulse = nil
+        self.preDelay = 0
+    }
+
+    /// A room of your own: the sound convolved with `impulse`.
+    ///
+    /// The room is brought to unit energy on the way in, so `mix` means the
+    /// same for a quiet recording and a loud one. Changing `mix` on a
+    /// sounding room leaves its tail alone; changing the room or the
+    /// pre-delay starts a fresh one.
+    public init(_ impulse: ImpulseResponse, mix: Double = 0.3, preDelay: Double = 0) {
+        self.space = .hall
+        self.mix = mix
+        self.impulse = impulse
+        self.preDelay = min(max(0, preDelay), 1)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case space, mix, impulse, preDelay
+    }
+
+    /// Read back with the two fields a room of your own adds allowed to be
+    /// missing, so a reverb written down before they existed still reads.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        space = try container.decode(Space.self, forKey: .space)
+        mix = try container.decode(Double.self, forKey: .mix)
+        impulse = try container.decodeIfPresent(ImpulseResponse.self, forKey: .impulse)
+        preDelay = try container.decodeIfPresent(Double.self, forKey: .preDelay) ?? 0
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(space, forKey: .space)
+        try container.encode(mix, forKey: .mix)
+        try container.encodeIfPresent(impulse, forKey: .impulse)
+        if preDelay != 0 { try container.encode(preDelay, forKey: .preDelay) }
     }
 }
 

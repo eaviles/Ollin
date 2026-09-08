@@ -132,6 +132,34 @@ An effect that has to remember something between blocks takes its memory as `sta
 
 `Examples/Audio/Shaping` is three of these behind one parameter: a wavefolder, a crush that remembers each held sample in `state:`, and a wobble that breathes on `sound.time`. The sound going in is drawn dim, and the sound coming out bright.
 
+### A room you can draw
+
+The reverb in that chain is one of four rooms somebody else built. Here is what a room is, so you can bring your own.
+
+Clap once in a stairwell. What comes back is the stairwell: every surface and every distance, all at once, in the order the sound reached them. Record that and you have the room written down, as its answer to a single click. Play an instrument through the recording and it is heard in the stairwell. Every sample of the sound starts its own copy of the click's answer, and the answers add up. That is a convolution, and a reverb built this way is a convolution reverb.
+
+```swift
+let stairwell = ImpulseResponse.resource("stairwell", withExtension: "wav", in: .module)!
+synth.reverb = Reverb(stairwell, mix: 0.4)
+```
+
+The room does not have to be real. A room is a rule over time, so you can draw one the way you draw anything else:
+
+```swift
+let hall = ImpulseResponse.decay(seconds: 3, damping: 0.6)                     // fading noise
+let backward = hall.reversed()                                                // swelling toward the click
+let humming = ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(2 * .pi * 220 * t) }
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/Rooms-dark.jpg">
+  <img src="Images/29-MakingSound/Rooms.jpg" alt="Three rooms drawn as their answer to a click: fading noise three seconds long, the same noise run backward so it swells to the end, and a dropped ball whose bursts arrive closer and closer together" width="680">
+</picture>
+
+Fading noise is the plainest room there is. Real rooms lose their top end first, which is what `damping` does. Run the same noise backward and the room swells toward the click instead of fading from it, a sound records have used for sixty years. The third room in the picture is a dropped ball: a burst on every bounce, the gaps closing by a fixed ratio. A rule that ignores the noise it is handed gives a resonator instead. That is a room that hums at one pitch, and it tunes everything you play into it.
+
+Every room is brought to the same level on the way in, so `mix` means one thing whether the recording was quiet or loud. Turn `mix` on a room that is sounding and the tail keeps going. Change the room itself, or its `preDelay`, and a fresh one starts. `Examples/Audio/Rooms` draws five rooms from rules and plays through each, with the room's answer to a click drawn above the instrument's trace.
+
 ## An instrument somebody recorded
 
 Everything in this chapter so far is worked out as it goes. The other way round is to start from a recording.
@@ -721,13 +749,15 @@ Then make it yours:
 
 Frequency modulation as a way of making sound is John Chowning's, worked out at Stanford in the late 1960s and published in 1973. It reached most people as the Yamaha DX7, whose bells and electric pianos are the sound of a decade. The plucked string is Kevin Karplus and Alex Strong's algorithm (1983), a discovery in the literal sense. They were building a wavetable synthesizer, and a bug which averaged the table as it played turned a burst of noise into a plucked string. They worked out afterwards why. David Jaffe and Julius Smith published the extensions the same year, and it is their version, tuned by an allpass and plucked at a position, that Ollin implements.
 
+Playing a sound through a recorded room is convolution, and it was too slow to be useful until Thomas Stockham showed in 1966 that the fast Fourier transform made it cheap. William Gardner worked out in 1995 how to do it with no delay at all, by running the first stretch of the room directly and the rest through the transform, which is the arrangement Ollin uses.
+
 Hearing a shape has a mathematical name, from Mark Kac's 1966 question "Can one hear the shape of a drum?". It also has an answer. Not always, since two different outlines can ring identically, but you can certainly hear a great deal of it. Working the frequencies out from the outline is modal synthesis. Jean-Marie Adrien set it out for sound, and Kees van den Doel and Dinesh Pai developed it for struck objects.
 
 The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses in a spallation neutron source. Godfried Toussaint connected it to musical timelines in 2005, along with the names of the rhythms it produces. Writing changes as numerals rather than names is figured bass and Roman numeral analysis, which is how music theory has written harmony down for centuries and for the same reason: the numbers are what survives a change of key. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb, and the whole effects chain.
+- [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb, [a room of your own](../Docs/Helpers/Synthesis.md#a-room-of-your-own), and the whole effects chain.
 - [Patches](../Docs/Helpers/Synthesis.md#patch): what an operator is, the named patches, and why eight.
 - [Sampled instruments](../Docs/Helpers/Synthesis.md#sampled-instruments): loading an SFZ instrument, what a recording being moved costs, and where to find instruments you are allowed to ship.
 - [Wavetables](../Docs/Helpers/Synthesis.md#wavetables): the built-in tables, making one from harmonics, drawn cycles, or a rule, and why a high note reads a softer copy.

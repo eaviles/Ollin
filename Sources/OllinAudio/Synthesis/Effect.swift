@@ -36,15 +36,20 @@ public enum Effect: Sendable, Hashable, Codable {
     ///
     /// What the chain is rebuilt against: two chains of the same kinds in the
     /// same order are the same wiring, whatever their settings say, so changing
-    /// a setting never disturbs the graph.
+    /// a setting never disturbs the graph. The one setting that is a kind of
+    /// its own is a reverb's room: a ``Reverb`` carrying an ``ImpulseResponse``
+    /// runs on its own unit, so it reads as `.convolution` here.
     public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
         case delay, reverb, equalizer, distortion, custom
+        /// A reverb of a recorded or drawn room, `Reverb(impulse)`.
+        case convolution
     }
 
     public var kind: Kind {
         switch self {
         case .delay:      return .delay
-        case .reverb:     return .reverb
+        case .reverb(let reverb):
+            return reverb.impulse == nil ? .reverb : .convolution
         case .equalizer:  return .equalizer
         case .distortion: return .distortion
         case .custom:     return .custom
@@ -54,26 +59,33 @@ public enum Effect: Sendable, Hashable, Codable {
     /// A unit that can do this kind of work. The settings are applied
     /// separately, so one unit serves every setting of its kind. For a custom
     /// effect the closure itself is the setting, which is what lets a sketch
-    /// swap the work without the chain being rewired.
+    /// swap the work without the chain being rewired; a convolution reverb
+    /// rides the same unit, its room prepared and swapped in the same way.
     static func makeUnit(for kind: Kind) -> AVAudioUnit {
         switch kind {
-        case .delay:      return AVAudioUnitDelay()
-        case .reverb:     return AVAudioUnitReverb()
-        case .equalizer:  return AVAudioUnitEQ(numberOfBands: 3)
-        case .distortion: return AVAudioUnitDistortion()
-        case .custom:     return ClosureAudioUnit.makeUnit()
+        case .delay:       return AVAudioUnitDelay()
+        case .reverb:      return AVAudioUnitReverb()
+        case .equalizer:   return AVAudioUnitEQ(numberOfBands: 3)
+        case .distortion:  return AVAudioUnitDistortion()
+        case .custom:      return ClosureAudioUnit.makeUnit()
+        case .convolution: return ClosureAudioUnit.makeUnit()
         }
     }
 
-    /// Puts this effect's settings onto a unit of its kind.
-    func apply(to unit: AVAudioUnit) {
+    /// Puts this effect's settings onto a unit of its kind. `sampleRate` is
+    /// the rate the chain runs at, which a room has to be prepared for.
+    func apply(to unit: AVAudioUnit, sampleRate: Double) {
         switch self {
         case .delay(let delay):
             guard let unit = unit as? AVAudioUnitDelay else { return }
             Synth.configure(unit, with: delay)
         case .reverb(let reverb):
-            guard let unit = unit as? AVAudioUnitReverb else { return }
-            Synth.configure(unit, with: reverb)
+            if let unit = unit as? AVAudioUnitReverb {
+                Synth.configure(unit, with: reverb)
+            } else if let closureUnit = unit.auAudioUnit as? ClosureAudioUnit,
+                      let impulse = reverb.impulse {
+                closureUnit.setRoom(reverb, impulse: impulse, sampleRate: sampleRate)
+            }
         case .equalizer(let equalizer):
             guard let unit = unit as? AVAudioUnitEQ else { return }
             equalizer.apply(to: unit)

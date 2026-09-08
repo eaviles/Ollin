@@ -220,14 +220,14 @@ import Testing
                 )
                 Effect.custom("half") { sound in
                     for i in 0..<sound.frameCount { sound.left[i] *= 0.5 }
-                }.apply(to: unit)
+                }.apply(to: unit, sampleRate: 44100)
                 closureUnit.slot.run(block)
                 #expect(Array(buffer) == [0.5, 0.5, 0.5, 0.5],
                         "the first closure never reached the unit")
 
                 Effect.custom("zero") { sound in
                     for i in 0..<sound.frameCount { sound.left[i] = 0 }
-                }.apply(to: unit)
+                }.apply(to: unit, sampleRate: 44100)
                 closureUnit.slot.run(block)
             }
         }

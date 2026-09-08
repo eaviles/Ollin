@@ -157,7 +157,7 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
             for effect in synth.effects {
                 let unit = Effect.makeUnit(for: effect.kind)
                 engine.attach(unit)
-                effect.apply(to: unit)
+                effect.apply(to: unit, sampleRate: sampleRate)
                 chain.append(unit)
             }
 
