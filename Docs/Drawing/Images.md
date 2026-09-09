@@ -31,7 +31,7 @@ final class Photo: Sketch {
 - [drawImage](#drawimage) - draw at native size, scaled, or into a rectangle
 - [Fitting a picture to a box](#fit) - `.stretch`, `.contain`, `.cover`
 - [tint](#tint) - recolor and fade images as you draw them
-- [Image](#image) - the value type, loading from data or a bundle, and `resized`
+- [Image](#image) - the value type, loading from data or a bundle, `resized`, and `cropped`
 - [Pixels](#pixels) - author or sample an image pixel by pixel
 
 <a name="loadimage"></a>
@@ -103,7 +103,7 @@ A picture and the box you draw it into are rarely the same shape. `fit` says wha
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/PictureFit-dark.jpg">
-  <img src="../../Guide/Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 landscape drawn into three 2:3 boxes: stretched, where the round sun goes oval; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and the tree on the right has been cropped away" width="680">
+  <img src="../../Guide/Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 photograph of a city street drawn into three 2:3 boxes: stretched, where the round dome of a church goes narrow; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and only the middle of the width is left" width="680">
 </picture>
 
 ```swift
@@ -184,7 +184,14 @@ let texture = Image(resource: "paper", withExtension: "png", in: .module)
 let small = SamplePhoto.scarf.load().resized(width: 300, height: 300)
 ```
 
-For a picture to try any of this on, `import OllinSamplePhotos` bundles [four photographs](./SamplePhotos.md) with their credits.
+`cropped(x:y:width:height:)` changes what is in the picture rather than how big it is: it hands back a copy of the given rectangle, measured from the top-left corner. The rectangle is clamped to the picture, so a crop that runs off an edge comes back smaller rather than empty. `cropped(toAspect:)` is the common case spelled once, the largest centered piece of a given shape, where the number is width over height. Nothing is scaled either way, so the copy keeps the original's own pixels.
+
+```swift
+let wide = SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)   // a 3:2 slice of a square
+let corner = photo.cropped(x: 0, y: 0, width: 512, height: 512)
+```
+
+For a picture to try any of this on, `import OllinSamplePhotos` bundles [fourteen photographs](./SamplePhotos.md) with their credits.
 
 **Transparency works.** Ollin honors a PNG's alpha channel, so transparent regions show what is behind them, and the edges composite cleanly.
 

@@ -1,14 +1,15 @@
 // figure: frame=0 themed
 //
-// Docs diagram (Drawing/SamplePhotos.md): the ten bundled sample photographs,
-// four faces, then four figures, then two tables, each under its name and its
-// photographer, so the page shows what every `SamplePhoto` loads.
+// Docs diagram (Drawing/SamplePhotos.md): the fourteen bundled sample
+// photographs, four faces, then four figures, then two tables, then four
+// streets, each under its name and its photographer, so the page shows what
+// every `SamplePhoto` loads.
 import Ollin
 import OllinDiagram
 import OllinSamplePhotos
 
 final class SamplePhotos: Sketch {
-    override var canvasSize: CanvasSize { .size(880, 850) }
+    override var canvasSize: CanvasSize { .size(880, 1124) }
 
     @Param var darkTheme = false
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
@@ -48,8 +49,12 @@ final class SamplePhotos: Sketch {
             textSize(17)
             drawText(".\(photo.name)", frame.x + side / 2, frame.y + side + 12)
             fill(faint)
+            // A long name is set smaller rather than allowed to run past its
+            // cell, so every credit stays under the picture it belongs to.
             textSize(13)
-            drawText(photo.credit.photographer, frame.x + side / 2, frame.y + side + 36)
+            let name = photo.credit.photographer
+            if textWidth(name) > side { textSize(13 * side / textWidth(name)) }
+            drawText(name, frame.x + side / 2, frame.y + side + 36)
         }
     }
 }

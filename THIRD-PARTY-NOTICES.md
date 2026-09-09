@@ -294,7 +294,7 @@ redistributed inside this repository.
 ## Sample photographs (example assets)
 
 - **Used for:** the `OllinSamplePhotos` library, which the `Images`, `Color`, and `Effects` example sketches and the Guide's and reference's figures read so a filter, a mosaic, a dither, or a winding can be shown on a real picture. A product of its own, so an app that never imports it ships none of them; the `Ollin` framework itself bundles no photograph.
-- **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), ten JPEGs at 1600 pixels on the long side, re-encoded at quality 78 to 80 with the metadata stripped: four faces cropped square from their originals, four whole figures kept in whatever frame holds the body, and two tables seen from above, cropped square. Each credit is also carried in code as `SamplePhoto.credit`.
+- **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), fourteen JPEGs at 1600 pixels on the long side, re-encoded at quality 72 to 80 with the metadata stripped: four faces cropped square from their originals, four whole figures kept in whatever frame holds the body, two tables seen from above, cropped square, and four streets cropped to the largest square each original held. Each credit is also carried in code as `SamplePhoto.credit`.
 - **`portrait.jpg`:** *Vibrant portrait of a woman in traditional Oaxaca attire* by Jhovani Morales, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/13402074/ (Pexels License).
 - **`scarf.jpg`:** *An elderly woman with a scarf looks directly at viewer* by Matthew Stephenson, Oaxaca, Mexico. https://unsplash.com/photos/j6OYgSMVuiI — Unsplash License.
 - **`profile.jpg`:** *Profile of a woman with a braided ponytail against a solid tan background* by Jessica Felicio, Berrien County, United States. https://unsplash.com/photos/QS9ZX5UnS14 — Unsplash License.
@@ -305,6 +305,10 @@ redistributed inside this repository.
 - **`handstand.jpg`:** *Energetic breakdancer in urban setting performing a handstand mid-move* by Gabriel Jiménez. https://www.pexels.com/photo/26870547/ (Pexels License).
 - **`breakfast.jpg`:** *Top view of a vibrant Oaxacan breakfast with various dishes on a wooden table* by Jorge Acre, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/17061842/ (Pexels License).
 - **`desk.jpg`:** *flat-lay photography of MacBook, coffee-filled cup, book, and wristwatch* by Ben Kolde, Oxford, United States. https://unsplash.com/photos/H29h6a8j8QM (Unsplash License).
+- **`alley.jpg`:** *Colorful Guanajuato Street Under Blue Sky* by Emanuel Estrada, Guanajuato, Mexico. https://www.pexels.com/photo/33880220/ (Pexels License).
+- **`street.jpg`:** *Colorful Decorations over Street* by Jorge Acre, San Miguel de Allende, Mexico. https://www.pexels.com/photo/16625366/ (Pexels License).
+- **`textiles.jpg`:** *multicolored textiles lot* by analuisa gamboa, Teotitlán del Valle, Oaxaca, Mexico. https://unsplash.com/photos/0ohjyDUIUq0 (Unsplash License).
+- **`city.jpg`:** *people walking on street near brown concrete building during daytime* by Gerardo Martin Fernandez Vallejo, Guanajuato, Mexico. https://unsplash.com/photos/ukIew--AEOc (Unsplash License).
 - **Licenses:** Unsplash License (https://unsplash.com/license); Pexels License (https://www.pexels.com/license/)
 
 > Both licenses grant a free, worldwide license to download, copy, modify, and

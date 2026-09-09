@@ -1115,6 +1115,8 @@ final class Image
   convenience init?(resource: String, withExtension: String?, in: Foundation.Bundle)
   func autostereogram(_: Autostereogram = default, pattern: Image? = default, seed: Int = default) -> Image?
   func averageColor(in: Rectangle? = default) -> Color
+  func cropped(toAspect: Double) -> Image
+  func cropped(x: Int, y: Int, width: Int, height: Int) -> Image
   func currentCGImage() -> CoreGraphics.CGImage
   func dithered(_: Dither = default, levels: Int, amount: Double = default, serpentine: Bool = default) -> Image
   func dithered(_: Dither = default, to: Palette, amount: Double = default, serpentine: Bool = default) -> Image

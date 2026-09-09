@@ -17,7 +17,17 @@ import Testing
     /// choosing what to lose. A figure keeps whatever frame holds its whole
     /// body, upright where a raised arm and a foot would not fit a square.
     @Test func theFacesAreSquare() {
-        for photo in [SamplePhoto.portrait, .scarf, .profile, .marigolds, .breakfast, .desk] {
+        for photo in [SamplePhoto.portrait, .scarf, .profile, .marigolds] {
+            let image = photo.load()
+            #expect(image.width == image.height, "\(photo.name)")
+        }
+    }
+
+    /// The tables and the streets are square too: a table shot from above has
+    /// no upright to keep, and a street was cut to the largest square its own
+    /// frame held rather than trimmed on all four sides.
+    @Test func theTablesAndStreetsAreSquare() {
+        for photo in [SamplePhoto.breakfast, .desk, .alley, .street, .textiles, .city] {
             let image = photo.load()
             #expect(image.width == image.height, "\(photo.name)")
         }
@@ -36,6 +46,6 @@ import Testing
 
     @Test func theNamesAreDistinct() {
         #expect(Set(SamplePhoto.all.map(\.name)).count == SamplePhoto.all.count)
-        #expect(SamplePhoto.all.count == 10)
+        #expect(SamplePhoto.all.count == 14)
     }
 }

@@ -1,19 +1,21 @@
 import Ollin
+import OllinSamplePhotos
 
 /// A picture and a box rarely have the same shape, and `fit:` says what to do
-/// about it. The same landscape goes into the same three tall boxes:
-/// `.stretch` squashes it, which the round sun reports at once; `.contain` keeps
-/// its proportions and leaves the box showing above and below; `.cover` keeps
-/// them too and fills the box, paying for it with the left and right edges, so
-/// the lone tree goes over the side.
+/// about it. The same city goes into the same three tall boxes: `.stretch`
+/// squashes it, which the round dome reports at once; `.contain` keeps its
+/// proportions and leaves the box showing above and below; `.cover` keeps them
+/// too and fills the box, paying for it with the left and right edges, so the
+/// people walking up the street go over the side.
 ///
-/// The picture is painted in `setup()`, so the sketch carries no asset. The
-/// panel at the foot is it, at the shape it really is.
+/// The picture is a bundled photograph, wide because `cropped(toAspect:)` takes
+/// a 3:2 slice out of the square it ships as. The panel at the foot is that
+/// slice, at the shape it really is.
 ///
 /// See Docs/Drawing/Images.md.
 @main
 final class Fit: Sketch {
-    private var picture = Image(width: 480, height: 320, color: .white)
+    private var picture = Image(width: 1, height: 1)
 
     let paper = Color(hex: 0xF2EDE6)
     let ink = Color(hex: 0x24262E)
@@ -27,7 +29,7 @@ final class Fit: Sketch {
 
     override func setup() {
         textFont(OutlineFont.system)
-        paint()
+        picture = SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)
     }
 
     override func draw() {
@@ -96,61 +98,5 @@ final class Fit: Sketch {
         textSize(21)
         textAlign(.center, .top)
         drawText("the picture, 3:2", 540, wide.y + wide.height + 14)
-    }
-
-    // MARK: The picture
-
-    /// A low sun over two ridges, with one tree well off to the right. The sun is
-    /// round on purpose: it is the fastest way to see a stretch. The tree is off
-    /// center on purpose: it is the fastest way to see a crop.
-    func paint() {
-        let w = picture.width, h = picture.height
-        let sun = Vector2(Double(w) * 0.30, Double(h) * 0.33), sunRadius = 46.0
-
-        for y in 0..<h {
-            let v = Double(y) / Double(h - 1)
-            let sky = Color.mix(Color(hex: 0x3E5C7E), Color(hex: 0xE8B478), pow(v, 0.7))
-            for x in 0..<w {
-                var c = sky
-                let d = Vector2(Double(x), Double(y)).distance(to: sun)
-                if d < sunRadius {
-                    c = Color(hex: 0xFFF0C2)
-                } else if d < sunRadius * 2.4 {
-                    let glow = 1 - (d - sunRadius) / (sunRadius * 1.4)
-                    c = Color.mix(c, Color(hex: 0xFFD98F), glow * 0.5)
-                }
-                picture[x, y] = c
-            }
-        }
-
-        // Two ridges, the far one paler, laid over the sky.
-        ridge(base: 0.62, amplitude: 26, frequency: 2.1, phase: 0.4, color: Color(hex: 0x5D6B77))
-        ridge(base: 0.78, amplitude: 18, frequency: 1.3, phase: 2.2, color: Color(hex: 0x2E3A43))
-
-        tree(at: 0.85, groundHeight: 0.78)
-    }
-
-    func ridge(base: Double, amplitude: Double, frequency: Double, phase: Double, color: Color) {
-        let w = picture.width, h = picture.height
-        for x in 0..<w {
-            let u = Double(x) / Double(w - 1)
-            let top = Double(h) * base + sin(u * .tau * frequency + phase) * amplitude
-            for y in Int(top)..<h where y >= 0 { picture[x, y] = color }
-        }
-    }
-
-    /// A trunk and a round crown, dark against the sky.
-    func tree(at u: Double, groundHeight: Double) {
-        let w = picture.width, h = picture.height
-        let x0 = Double(w) * u
-        let ground = Double(h) * groundHeight
-        let crown = Vector2(x0, ground - 62), bark = Color(hex: 0x22282C)
-        for y in 0..<h {
-            for x in 0..<w {
-                let p = Vector2(Double(x), Double(y))
-                let inTrunk = abs(p.x - x0) < 5 && p.y > crown.y && p.y < ground
-                if inTrunk || p.distance(to: crown) < 30 { picture[x, y] = bark }
-            }
-        }
     }
 }

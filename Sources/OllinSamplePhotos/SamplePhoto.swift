@@ -5,15 +5,18 @@ import Ollin
 /// and for any sketch that wants a real picture to work on before it has one of
 /// its own.
 ///
-/// Ten pictures, 1600 pixels on the long side. Four faces, each a square: a
+/// Fourteen pictures, 1600 pixels on the long side. Four faces, each a square: a
 /// frontal `portrait`, an older face in a `scarf`, a `profile` on a plain
 /// ground, and a woman before a wall of `marigolds`. Four whole figures, framed
 /// so no limb runs off the edge: someone `reaching` up a concrete wall, a
 /// masked `wrestler` with both arms raised, a `dancer` on white, and a
-/// breakdancer holding a `handstand`. And two tables seen from above, for the
+/// breakdancer holding a `handstand`. Two tables seen from above, for the
 /// readers that want things to name and print to read: a `breakfast` and a
-/// `desk`. Each carries its `credit`: who made it, where, and the terms it is
-/// used under, so a sketch can draw the line the photographer is owed.
+/// `desk`. And four streets, each the largest square its original held, for
+/// everything that wants a whole scene: an `alley`, a `street`, a wall of
+/// `textiles`, and a `city` under its hills. Each carries its `credit`: who
+/// made it, where, and the terms it is used under, so a sketch can draw the
+/// line the photographer is owed.
 ///
 ///     let picture = SamplePhoto.portrait.load()
 ///     drawImage(picture, in: canvasRectangle, fit: .cover)
@@ -152,9 +155,52 @@ public struct SamplePhoto: Hashable, Sendable {
                        source: "https://unsplash.com/photos/H29h6a8j8QM",
                        license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
 
-    /// Every bundled photograph: the four faces, then the four figures, then the
-    /// two tables.
+    /// A Guanajuato alley under a wide sky: pastel walls in flat planes, hard
+    /// vertical edges, and half the frame given to clouds. The sky is the part
+    /// that matters, being the low-detail region a seam carver eats and the band
+    /// a pixel sorter reorders, and the flat walls are what the shock filter
+    /// flattens to.
+    public static let alley = SamplePhoto(
+        name: "alley",
+        subject: "a Guanajuato alley of pastel walls under a wide cloudy sky",
+        credit: Credit(photographer: "Emanuel Estrada", place: "Guanajuato, Mexico",
+                       source: "https://www.pexels.com/photo/33880220/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
+    /// A San Miguel de Allende street strung with papel picado, its facades in
+    /// half a dozen colors, people and a car and a dog in it. The busy one: fine
+    /// detail everywhere and no large plain region.
+    public static let street = SamplePhoto(
+        name: "street",
+        subject: "a San Miguel de Allende street under strings of papel picado",
+        credit: Credit(photographer: "Jorge Acre", place: "San Miguel de Allende, Mexico",
+                       source: "https://www.pexels.com/photo/16625366/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
+    /// Woven blankets hung at Teotitlán del Valle. Pattern that repeats at a
+    /// scale the eye can follow and a dozen saturated colors, which makes it the
+    /// one to point a palette extractor or a frequency transform at.
+    public static let textiles = SamplePhoto(
+        name: "textiles",
+        subject: "woven blankets hung side by side, Teotitlán del Valle",
+        credit: Credit(photographer: "analuisa gamboa", place: "Teotitlán del Valle, Oaxaca, Mexico",
+                       source: "https://unsplash.com/photos/0ohjyDUIUq0",
+                       license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
+
+    /// Guanajuato seen along a street, rooftops running back to the hills under
+    /// a warm sky. Depth without a subject: a picture that is mostly middle
+    /// distance, which is the awkward case for anything that wants a foreground.
+    public static let city = SamplePhoto(
+        name: "city",
+        subject: "Guanajuato rooftops running back to the hills under a warm sky",
+        credit: Credit(photographer: "Gerardo Martin Fernandez Vallejo", place: "Guanajuato, Mexico",
+                       source: "https://unsplash.com/photos/ukIew--AEOc",
+                       license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
+
+    /// Every bundled photograph: the four faces, the four figures, the two
+    /// tables, then the four streets.
     public static let all: [SamplePhoto] = [.portrait, .scarf, .profile, .marigolds,
                                             .reaching, .wrestler, .dancer, .handstand,
-                                            .breakfast, .desk]
+                                            .breakfast, .desk,
+                                            .alley, .street, .textiles, .city]
 }

@@ -16,11 +16,14 @@ import OllinSamplePhotos
 /// family of blur and sharpen filters does, because scale is what the spectrum
 /// is laid out by.
 ///
-/// The picture is one of the bundled sample photographs, a woman before a wall
-/// of marigolds: the petals are the fine detail out at the spectrum's edges, the
-/// face and the blouse the broad tones near its middle. A photograph's spectrum
+/// The picture is one of the bundled sample photographs, woven blankets hung
+/// side by side: the weave is the fine detail out at the spectrum's edges, the
+/// broad blocks of color the slow tones near its middle. A photograph's spectrum
 /// falls off from the center the way every natural picture's does, so the
-/// mask's radius is a slider through that falloff.
+/// mask's radius is a slider through that falloff. The blankets hang in
+/// stripes, so the spectrum carries bands along their own directions rather
+/// than a plain blob, which is what makes `turn` worth turning: rotate the
+/// picture and the bands go round with it.
 ///
 /// The transform works on a square layer whose side is a power of two, so the
 /// panels here are 512, and it reads one channel: the linear brightness unless
@@ -37,7 +40,7 @@ final class FourierPanels: Sketch {
     private var photograph = Image(width: 1, height: 1)
 
     override func setup() {
-        photograph = SamplePhoto.marigolds.load().resized(width: 512, height: 512)
+        photograph = SamplePhoto.textiles.load().resized(width: 512, height: 512)
     }
 
     override func draw() {

@@ -84,9 +84,9 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Three font kinds | Outline (any installed font), bitmap, and plotter stroke fonts | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
 | Text as geometry | `textToShapes`: letters become `Shape`s you can warp, resample, and rebuild | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
 | Atlas text | `textMode(.atlas)` for fast, crisp text when there's a lot of it | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
-| Images | Load PNG/JPEG/HEIC and friends, draw, tint, and scale them | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
+| Images | Load PNG/JPEG/HEIC and friends, draw, tint, scale, and crop them | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
-| Sample photographs | Eight bundled photographs with their credits, one import away, to try a technique on | [Ch 9](09-Pictures.md) | [Sample photographs](../Docs/Drawing/SamplePhotos.md) |
+| Sample photographs | Fourteen bundled photographs with their credits, one import away, to try a technique on | [Ch 9](09-Pictures.md) | [Sample photographs](../Docs/Drawing/SamplePhotos.md) |
 | A feed with no camera | `Camera.orStill` and `StillFrames`, so a sketch that reads the world runs with nothing plugged in | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md#nocamera) |
 | Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | [Ch 9](09-Pictures.md) | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
 | Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | [Ch 9](09-Pictures.md) | [PixelSorting](../Docs/Drawing/PixelSorting.md) |

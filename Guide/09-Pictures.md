@@ -33,7 +33,7 @@ final class Photo: Sketch {
 
 `loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends) and returns an optional, since a path can be wrong. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
 
-For a picture to try right now, Ollin bundles ten photographs. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square; `.scarf`, `.profile`, and `.marigolds` are the other faces, and `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures for the chapters that read a body, and `.breakfast` and `.desk` are two tables from above for the readers that name things or read print. Each carries its `credit`, the photographer and the terms it is used under. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. A large picture is more than a stipple or a dither needs, and `resized(width:height:)` makes the small working copy: `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call.
+For a picture to try right now, Ollin bundles fourteen photographs. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. Each carries its `credit`, the photographer and the terms it is used under. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. A large picture is more than a stipple or a dither needs, and `resized(width:height:)` makes the small working copy: `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call. `cropped(toAspect:)` is its companion for the other kind of change. `SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)` takes the largest 3:2 piece out of a square, scaling nothing.
 
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 
@@ -67,7 +67,7 @@ That first `drawImage(photo, 0, 0, width, height)` did something quietly: it str
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureFit-dark.jpg">
-  <img src="Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 landscape drawn into three 2:3 boxes: stretched, where the round sun goes oval; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and the tree on the right has been cropped away" width="680">
+  <img src="Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 photograph of a city street drawn into three 2:3 boxes: stretched, where the round dome of a church goes narrow; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and only the middle of the width is left" width="680">
 </picture>
 
 - `.stretch` fills the box and gives up the picture's proportions. It is the default, because it is what `drawImage` has always done.
@@ -80,7 +80,7 @@ drawImage(photo, in: panel, fit: .cover)
 
 So the question is never which one is correct. It is what you would rather lose. A wallpaper covers, because a strip of empty screen would be worse than a missing corner. A photograph in a contact sheet contains, because you are there to see all of it. A texture on a panel stretches, because nobody is checking its proportions.
 
-A round shape in the picture is the fastest way to tell which one you are looking at. Stretched, it is an ellipse. The sun in the figure gives the game away in all three panels at once.
+A round shape in the picture is the fastest way to tell which one you are looking at. Stretched, it is an ellipse. The church dome in the figure gives the game away in all three panels at once.
 
 Cropping is free here, which is worth knowing before you avoid it. `.cover` does not clip the drawing. It reads a smaller part of the picture instead, so a covered photograph costs the same one quad and one texture read as a stretched one.
 
