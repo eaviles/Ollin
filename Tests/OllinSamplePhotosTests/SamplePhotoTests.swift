@@ -5,11 +5,21 @@ import Testing
 /// a credit that names the photographer, the place, the page it came from, and
 /// the license it is used under.
 @Suite struct SamplePhotoTests {
-    @Test func everyPhotographDecodesAsA1600Square() {
+    @Test func everyPhotographDecodesAt1600OnItsLongSide() {
         for photo in SamplePhoto.all {
             let image = photo.load()
-            #expect(image.width == 1600, "\(photo.name)")
-            #expect(image.height == 1600, "\(photo.name)")
+            #expect(max(image.width, image.height) == 1600, "\(photo.name)")
+            #expect(min(image.width, image.height) >= 1000, "\(photo.name)")
+        }
+    }
+
+    /// The faces are square, so a sketch can crop one to the canvas without
+    /// choosing what to lose. A figure keeps whatever frame holds its whole
+    /// body, upright where a raised arm and a foot would not fit a square.
+    @Test func theFacesAreSquare() {
+        for photo in [SamplePhoto.portrait, .scarf, .profile, .marigolds] {
+            let image = photo.load()
+            #expect(image.width == image.height, "\(photo.name)")
         }
     }
 
@@ -26,6 +36,6 @@ import Testing
 
     @Test func theNamesAreDistinct() {
         #expect(Set(SamplePhoto.all.map(\.name)).count == SamplePhoto.all.count)
-        #expect(SamplePhoto.all.count == 4)
+        #expect(SamplePhoto.all.count == 8)
     }
 }

@@ -6,10 +6,14 @@ struct SamplePhoto: Equatable, Hashable, Sendable
   let name: String
   let subject: String
   static let all: [SamplePhoto]
+  static let dancer: SamplePhoto
+  static let handstand: SamplePhoto
   static let marigolds: SamplePhoto
   static let portrait: SamplePhoto
   static let profile: SamplePhoto
+  static let reaching: SamplePhoto
   static let scarf: SamplePhoto
+  static let wrestler: SamplePhoto
   struct Credit: Equatable, Hashable, Sendable
     let license: String
     let licenseURL: String

@@ -4,7 +4,7 @@
 
 ## Sample photographs
 
-Four photographs travel with Ollin so that an image technique or a filter can be tried on a real picture before you have one of your own. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
+Eight photographs travel with Ollin so that an image technique, a filter, or a pose reader can be tried on a real picture before you have one of your own. Four are faces and four are whole figures. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
 
 ```swift
 import OllinSamplePhotos
@@ -24,19 +24,20 @@ final class Portrait: Sketch {
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/SamplePhotos-dark.jpg">
-  <img src="../Images/SamplePhotos.jpg" alt="Four square photographs in a row: a young woman in a lace headdress, an elderly woman in a yellow scarf, a woman in profile against a plain tan ground, and a woman before a wall of orange marigolds, each labeled with its name and its photographer" width="680">
+  <img src="../Images/SamplePhotos.jpg" alt="Eight photographs in two rows. Above, four square faces: a young woman in a lace headdress, an elderly woman in a yellow scarf, a woman in profile against a plain tan ground, and a woman before a wall of orange marigolds. Below, four whole figures: a dancer reaching up a concrete wall, a masked wrestler with both arms raised, a dancer on white, and a breakdancer upside down on one hand. Each is labeled with its name and its photographer" width="680">
 </picture>
 
 ### Contents
 
-- [The four](#four) - what each shows and what it is good for
+- [The faces](#faces) - four squares, and what each is good for
+- [The figures](#figures) - four whole bodies, and what each is good for
 - [SamplePhoto](#samplephoto) - `load`, `credit`, `all`
 - [Working copies](#copies) - `resized(width:height:)`
 - [Terms](#terms) - the licenses the pictures are used under
 
-<a name="four"></a>
+<a name="faces"></a>
 
-### The four
+### The faces
 
 Each is a 1600-pixel square, cropped from the original around its subject.
 
@@ -46,6 +47,19 @@ Each is a 1600-pixel square, cropped from the original around its subject.
 - **`.marigolds`** is a woman before a wall of cempasúchil, the marigolds of Día de Muertos. The color and texture picture: what palette extraction, the color-vision simulation, the shock filter, and the frequency domain show best.
 
 The examples in `Examples/Images`, `Examples/Color`, and `Examples/Effects` read them, and so do the Guide's ink, brushwork, shock, filter-sheet, thread, and photo-mosaic figures.
+
+<a name="figures"></a>
+
+### The figures
+
+Each is 1600 pixels on its long side, framed so that no limb runs off the edge, which is what a body needs if its joints are to be read. Three stand upright, since a square would cut a raised arm or a foot off; the wrestler is square, his arena frame having had the room to crop that way.
+
+- **`.reaching`** is a dancer reaching up the face of a concrete wall, whole body, feet on a paved floor. All nineteen joints read, so it is the straightforward one to start from.
+- **`.wrestler`** is a masked luchador with both fists raised over a full arena. Both arms read, and so does the crowd behind him, which makes him a person and a scene at once. The mask leaves the face trackers nothing to find, which is the reason he sits here beside the faces.
+- **`.dancer`** is a contemporary dancer on a white ground, one arm reaching up and a long black skirt around the legs. Nothing stands behind her, so she is the cleanest figure to matte.
+- **`.handstand`** is a breakdancer upside down on one hand against a stone wall. The hard pose: a body the wrong way up, which the joint model reads as readily as any other, and a good check that a sketch never assumed the head is on top.
+
+Every one of them was read by the joint model before it was bundled. Three give all nineteen joints; the wrestler gives seventeen, since his ankles are behind the ring rope.
 
 <a name="samplephoto"></a>
 
@@ -80,7 +94,7 @@ drawText(SamplePhoto.scarf.credit.line, 24, height - 24)
 // Photograph by Matthew Stephenson, Oaxaca, Mexico (Unsplash License)
 ```
 
-`all` lists the four in the order above.
+`all` lists all eight, the faces first and then the figures.
 
 <a name="copies"></a>
 
@@ -99,8 +113,8 @@ A filter that runs on the GPU reads the full picture as it is: draw it into a la
 
 ### Terms
 
-The portrait and the marigolds come from Pexels under the [Pexels License](https://www.pexels.com/license/); the scarf and the profile come from Unsplash under the [Unsplash License](https://unsplash.com/license). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was cropped square, resized, converted to sRGB, and re-encoded with its metadata removed. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
+The scarf and the profile come from Unsplash under the [Unsplash License](https://unsplash.com/license); the other six come from Pexels under the [Pexels License](https://www.pexels.com/license/). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was resized, converted to sRGB, and re-encoded with its metadata removed, the faces cropped square and two of the figures cropped in. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
 
 ---
 
-Example sketches: every sketch in [`Examples/Images`](../../Examples/Images/README.md), plus [`Examples/Color/Dithering`](../../Examples/Color/Dithering/Sketch.swift), [`Examples/Color/PaletteFromImage`](../../Examples/Color/PaletteFromImage/Sketch.swift), [`Examples/Effects/InkDrawing`](../../Examples/Effects/InkDrawing/Sketch.swift), [`Examples/Effects/Brushwork`](../../Examples/Effects/Brushwork/Sketch.swift), [`Examples/Effects/Coherence`](../../Examples/Effects/Coherence/Sketch.swift), [`Examples/Effects/FilterCatalog`](../../Examples/Effects/FilterCatalog/Sketch.swift), and [`Examples/Effects/Fourier`](../../Examples/Effects/Fourier/Sketch.swift).
+Example sketches: every sketch in [`Examples/Images`](../../Examples/Images/README.md), plus [`Examples/Color/Dithering`](../../Examples/Color/Dithering/Sketch.swift), [`Examples/Color/PaletteFromImage`](../../Examples/Color/PaletteFromImage/Sketch.swift), [`Examples/Effects/InkDrawing`](../../Examples/Effects/InkDrawing/Sketch.swift), [`Examples/Effects/Brushwork`](../../Examples/Effects/Brushwork/Sketch.swift), [`Examples/Effects/Coherence`](../../Examples/Effects/Coherence/Sketch.swift), [`Examples/Effects/FilterCatalog`](../../Examples/Effects/FilterCatalog/Sketch.swift), and [`Examples/Effects/Fourier`](../../Examples/Effects/Fourier/Sketch.swift). For the figures, see [body pose](../Vision/Vision.md).

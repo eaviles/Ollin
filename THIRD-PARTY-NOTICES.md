@@ -294,12 +294,16 @@ redistributed inside this repository.
 ## Sample photographs (example assets)
 
 - **Used for:** the `OllinSamplePhotos` library, which the `Images`, `Color`, and `Effects` example sketches and the Guide's and reference's figures read so a filter, a mosaic, a dither, or a winding can be shown on a real picture. A product of its own, so an app that never imports it ships none of them; the `Ollin` framework itself bundles no photograph.
-- **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), four JPEGs, each a 1600-pixel square cropped from the original and re-encoded at quality 78 with the metadata stripped. Each credit is also carried in code as `SamplePhoto.credit`.
-- **`portrait.jpg`:** *Vibrant portrait of a woman in traditional Oaxaca attire* by Jhovani Morales, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/13402074/ — Pexels License.
+- **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), eight JPEGs at 1600 pixels on the long side, re-encoded at quality 78 with the metadata stripped: four faces cropped square from their originals, and four whole figures kept upright or landscape so no limb runs off the edge. Each credit is also carried in code as `SamplePhoto.credit`.
+- **`portrait.jpg`:** *Vibrant portrait of a woman in traditional Oaxaca attire* by Jhovani Morales, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/13402074/ (Pexels License).
 - **`scarf.jpg`:** *An elderly woman with a scarf looks directly at viewer* by Matthew Stephenson, Oaxaca, Mexico. https://unsplash.com/photos/j6OYgSMVuiI — Unsplash License.
 - **`profile.jpg`:** *Profile of a woman with a braided ponytail against a solid tan background* by Jessica Felicio, Berrien County, United States. https://unsplash.com/photos/QS9ZX5UnS14 — Unsplash License.
-- **`marigolds.jpg`:** *Portrait of an elderly Mexican woman with vibrant cempasuchil flowers for Día de Muertos celebration* by Fernando Paleta, Mexico City, Mexico. https://www.pexels.com/photo/29302608/ — Pexels License.
-- **Licenses:** Unsplash License — https://unsplash.com/license; Pexels License — https://www.pexels.com/license/
+- **`marigolds.jpg`:** *Portrait of an elderly Mexican woman with vibrant cempasuchil flowers for Día de Muertos celebration* by Fernando Paleta, Mexico City, Mexico. https://www.pexels.com/photo/29302608/ (Pexels License).
+- **`reaching.jpg`:** *Man Dancing Alone* by Los Muertos Crew, Mexico. https://www.pexels.com/photo/8854016/ (Pexels License).
+- **`wrestler.jpg`:** *Masked wrestler triumphs in lively arena* by Juan TM, Santiago de Querétaro, Mexico. https://www.pexels.com/photo/30098566/ (Pexels License).
+- **`dancer.jpg`:** *Graceful contemporary dancer posing barefoot in a flowing black skirt* by Gustavo Fring. https://www.pexels.com/photo/7447230/ (Pexels License).
+- **`handstand.jpg`:** *Energetic breakdancer in urban setting performing a handstand mid-move* by Gabriel Jiménez. https://www.pexels.com/photo/26870547/ (Pexels License).
+- **Licenses:** Unsplash License (https://unsplash.com/license); Pexels License (https://www.pexels.com/license/)
 
 > Both licenses grant a free, worldwide license to download, copy, modify, and
 > use the photographs, commercial use included, with no attribution required;
@@ -307,10 +311,12 @@ redistributed inside this repository.
 > selling unaltered copies and compiling the pictures into a competing stock
 > service, and the Pexels License adds that an identifiable person may not be
 > shown in a bad light or as endorsing anything, which is how they are used:
-> as the picture under a filter, a screen, or a winding. **Changes:** each was
-> cropped to a square around the subject, resized to 1600 pixels, converted to
-> sRGB, and re-encoded as JPEG with its metadata (location included) removed;
-> no other edits. The licenses ride on the photographs, not on Ollin's code,
+> as the picture under a filter, a screen, a winding, or a pose skeleton.
+> **Changes:** each was resized to 1600 pixels on its long side, converted to
+> sRGB, and re-encoded as JPEG with its metadata (location included) removed.
+> The four faces were also cropped square around the subject, and `reaching`
+> was cropped to bring the figure up in the frame; the other three figures keep
+> the whole frame the photographer shot. No other edits. The licenses ride on the photographs, not on Ollin's code,
 > which stays MIT. The root [`LICENSE`](LICENSE) is unaffected.
 
 ---

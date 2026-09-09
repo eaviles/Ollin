@@ -1,5 +1,6 @@
 import Testing
 import Ollin
+import OllinSamplePhotos
 @testable import OllinVision
 
 /// Body pose is hard to synthesize, so detection is a smoke test and the skeleton
@@ -14,6 +15,26 @@ import Ollin
         // runs for real where a device is available.
         guard let bodies = try? await BodyTracker.detect(in: image) else { return }
         #expect(bodies.isEmpty)
+    }
+
+    /// The bundled figure photographs are here to be read: each holds one
+    /// person whose joints the model should find, including the one standing on
+    /// a hand. Read in one test rather than four parallel ones, because Vision's
+    /// body-pose model loads on the first request that needs it and answers
+    /// requests that arrive while it loads with nothing, which four at once
+    /// reliably provoked.
+    @Test func everyFigurePhotographYieldsItsBody() async throws {
+        // Soft-skip where the model has no compute device, as above.
+        guard (try? await BodyTracker.detect(in: SamplePhoto.reaching.load())) != nil else { return }
+
+        // The wrestler's ankles are behind the ring rope, so the bar is most of
+        // the skeleton rather than all of it.
+        for photo in [SamplePhoto.reaching, .wrestler, .dancer, .handstand] {
+            let bodies = try await BodyTracker.detect(in: photo.load())
+            #expect(!bodies.isEmpty, "\(photo.name)")
+            let joints = bodies.map { body in BodyJoint.allCases.count(where: body.has) }.max() ?? 0
+            #expect(joints >= 16, "\(photo.name) found \(joints) joints")
+        }
     }
 
     @Test func skeletonReferencesKnownJoints() {

@@ -108,11 +108,46 @@ public final class BodyTracker: VisionTracking, @unchecked Sendable {
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
+    /// Whether this process has yet had Vision report a 2D body pose. Until it
+    /// has, `detect(in:)` reads an empty answer as the model still loading
+    /// rather than as a picture with nobody in it.
+    private static let hasReportedABody = OSAllocatedUnfairLock(initialState: false)
+
+    /// How many times `detect(in:)` will ask again before it believes an empty
+    /// answer from a cold model.
+    private static let coldAttempts = 3
+
     /// Detect body pose in a still image, once.
     public static func detect(in image: Image) async throws -> [Body] {
         let request = DetectHumanBodyPoseRequest()
-        let observations = try await request.perform(on: image.currentCGImage())
-        return decode(observations)
+        let cgImage = image.currentCGImage()
+
+        // Vision loads its 2D body-pose model on the first request that needs
+        // it, and requests that arrive while it loads come back with no
+        // observations at all, so a sketch that asks once about a still picture
+        // is told nobody is in it. Measured here: in a fresh process the first
+        // request finds nothing and the second finds all nineteen joints, every
+        // time; under a parallel test run, where several requests land
+        // together, an empty answer showed up later than the first call too. No
+        // other request in this library behaves that way, the 3D body request
+        // included.
+        //
+        // So until this process has seen one pose, an empty answer is more
+        // likely to be the model loading than an empty picture, and the ask is
+        // repeated. Once any picture has yielded a body the model is warm, and
+        // an empty answer is taken at its word from then on, at no cost.
+        for attempt in 0 ..< coldAttempts {
+            let observations = try await request.perform(on: cgImage)
+            if !observations.isEmpty {
+                hasReportedABody.withLock { $0 = true }
+                return decode(observations)
+            }
+            if hasReportedABody.withLock({ $0 }) { break }
+            if attempt < coldAttempts - 1 {
+                try? await Task.sleep(for: .milliseconds(60))
+            }
+        }
+        return []
     }
 
     // MARK: VisionTracking
