@@ -13,7 +13,7 @@ import Foundation
 /// through a replay exactly.
 @Suite
 @MainActor
-struct PenTests {
+struct StylusTests {
 
     private final class Drawing: Sketch {
         override var canvasSize: CanvasSize { .square(64) }
@@ -21,17 +21,17 @@ struct PenTests {
     }
 
     @Test func aLeanIsHeldToItsRangeAndATurnToOneLap() {
-        let steep = Pen(tilt: Vector2(-3, 2.5), twist: 7 * .pi)
+        let steep = Stylus(tilt: Vector2(-3, 2.5), twist: 7 * .pi)
         #expect(steep.tilt == Vector2(-1, 1), "a lean past flat is flat: \(steep.tilt)")
         #expect(abs(steep.twist - .pi) < 1e-9, "seven half turns is half a turn: \(steep.twist)")
-        #expect(Pen(twist: -.pi / 2).twist == 1.5 * .pi, "a turn back is a turn round")
-        #expect(Pen(twist: .nan).twist == 0, "and nothing at all is upright")
+        #expect(Stylus(twist: -.pi / 2).twist == 1.5 * .pi, "a turn back is a turn round")
+        #expect(Stylus(twist: .nan).twist == 0, "and nothing at all is upright")
     }
 
     @Test func aSketchWithNoTabletReadsAsOne() {
         let sketch = Drawing()
-        #expect(sketch.pen == Pen(), "the pen starts as nothing")
-        #expect(sketch.pen.tilt == .zero && !sketch.pen.isNearby && !sketch.pen.tiltIsAvailable,
+        #expect(sketch.stylus == Stylus(), "the pen starts as nothing")
+        #expect(sketch.stylus.tilt == .zero && !sketch.stylus.isNearby && !sketch.stylus.tiltIsAvailable,
                 "so a sketch written for a pen still runs under a mouse")
     }
 
@@ -40,21 +40,21 @@ struct PenTests {
         // lifted out of range would otherwise take the pen path away in the
         // middle of a stroke.
         let sketch = Drawing()
-        sketch.setPen(Pen(tilt: Vector2(0.4, -0.2), isNearby: true, tiltIsAvailable: true))
-        #expect(sketch.pen.tiltIsAvailable)
-        sketch.setPen(Pen(isNearby: false, tiltIsAvailable: false))
-        #expect(sketch.pen.tiltIsAvailable, "the sketch still knows a pen was used")
-        #expect(!sketch.pen.isNearby, "and that it is gone for now")
-        #expect(sketch.pen.tilt == .zero, "with nothing left over from the last reading")
+        sketch.setStylus(Stylus(tilt: Vector2(0.4, -0.2), isNearby: true, tiltIsAvailable: true))
+        #expect(sketch.stylus.tiltIsAvailable)
+        sketch.setStylus(Stylus(isNearby: false, tiltIsAvailable: false))
+        #expect(sketch.stylus.tiltIsAvailable, "the sketch still knows a pen was used")
+        #expect(!sketch.stylus.isNearby, "and that it is gone for now")
+        #expect(sketch.stylus.tilt == .zero, "with nothing left over from the last reading")
     }
 
     @Test func theErasingEndIsItsOwnThing() {
         let sketch = Drawing()
-        sketch.setPen(Pen(tilt: Vector2(0.1, 0.1), isEraser: true, isNearby: true,
+        sketch.setStylus(Stylus(tilt: Vector2(0.1, 0.1), isEraser: true, isNearby: true,
                           tiltIsAvailable: true))
-        #expect(sketch.pen.isEraser, "the end on the tablet is the eraser")
-        sketch.setPen(Pen(isEraser: false, isNearby: true, tiltIsAvailable: true))
-        #expect(!sketch.pen.isEraser, "and turning it over is the tip again")
+        #expect(sketch.stylus.isEraser, "the end on the tablet is the eraser")
+        sketch.setStylus(Stylus(isEraser: false, isNearby: true, tiltIsAvailable: true))
+        #expect(!sketch.stylus.isEraser, "and turning it over is the tip again")
     }
 
     @Test func pressureAndThePenAreSeparate() {
@@ -62,10 +62,10 @@ struct PenTests {
         // one must never touch the other.
         let sketch = Drawing()
         sketch.setPressure(0.6, canVary: true)
-        sketch.setPen(Pen(tilt: Vector2(0.5, 0), isNearby: true, tiltIsAvailable: true))
+        sketch.setStylus(Stylus(tilt: Vector2(0.5, 0), isNearby: true, tiltIsAvailable: true))
         #expect(sketch.pressure == 0.6, "the pen left the pressure alone")
         sketch.setPressure(0.2, canVary: true)
-        #expect(sketch.pen.tilt == Vector2(0.5, 0), "and the pressure left the lean alone")
+        #expect(sketch.stylus.tilt == Vector2(0.5, 0), "and the pressure left the lean alone")
     }
 
     @Test func aTakeCarriesThePenThroughAReplay() {
@@ -73,29 +73,29 @@ struct PenTests {
         live.setCanvasSize(width: 64, height: 64)
         live.takeRecorder = TakeRecorder(sketch: live)
         live.setup()
-        let reading = Pen(tilt: Vector2(-0.35, 0.7), twist: 1.2, isEraser: true,
+        let reading = Stylus(tilt: Vector2(-0.35, 0.7), twist: 1.2, isEraser: true,
                           isNearby: true, tiltIsAvailable: true)
         for frame in 0..<6 {
-            if frame == 2 { live.setPen(reading) }
-            if frame == 4 { live.setPen(Pen(isNearby: false, tiltIsAvailable: true)) }
+            if frame == 2 { live.setStylus(reading) }
+            if frame == 4 { live.setStylus(Stylus(isNearby: false, tiltIsAvailable: true)) }
             live.advance(time: Double(frame) / 60, deltaTime: 1.0 / 60, frameRate: 60)
             live.performDraw()
         }
         let take = live.takeRecorder!.take
-        #expect(take.events.contains { if case .pen = $0.event { return true } else { return false } },
+        #expect(take.events.contains { if case .stylus = $0.event { return true } else { return false } },
                 "the pen was written down")
 
         let replayed = Drawing()
         replayed.setCanvasSize(width: 64, height: 64)
         take.install(on: replayed)
         replayed.setup()
-        var seen: [Pen] = []
+        var seen: [Stylus] = []
         for frame in 0..<6 {
             replayed.advance(time: Double(frame) * 9, deltaTime: 9, frameRate: 1)
             replayed.performDraw()
-            seen.append(replayed.pen)
+            seen.append(replayed.stylus)
         }
         #expect(seen.contains(reading), "and it came back exactly: \(seen)")
-        #expect(!replayed.pen.isNearby, "including the lift at the end")
+        #expect(!replayed.stylus.isNearby, "including the lift at the end")
     }
 }

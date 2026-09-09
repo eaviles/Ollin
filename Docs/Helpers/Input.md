@@ -13,7 +13,7 @@ Pointer and keyboard input are plain properties and overridable methods on the s
 - [mouseIsPressed](#mouseIsPressed)
 - [mousePressed / mouseReleased](#mousePressed)
 - [pressure / pressureIsAvailable](#pressure)
-- [pen](#pen)
+- [stylus](#stylus)
 - [key / keyCode / keyIsPressed](#key)
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
@@ -116,16 +116,16 @@ override func mousePressed() {
 
 Ollin asks the trackpad for the drawing gesture, which is a single stage over the full range. A press therefore reads as a smooth amount, and no force-click fires look-up in the middle of a stroke. See [Marks](../Drawing/Marks.md) for the brush that reads pressure.
 
-<a name="pen"></a>
+<a name="stylus"></a>
 
-### pen
+### stylus
 
 ```swift
-pen.tilt: Vector2            // how far it leans, -1...1 each axis, .zero upright
-pen.twist: Double            // how far the barrel is turned, radians, 0..<2π
-pen.isEraser: Bool           // the end on the tablet is the eraser
-pen.isNearby: Bool           // a stylus is over the tablet, hovering or drawing
-pen.tiltIsAvailable: Bool    // whether a lean has ever been reported
+stylus.tilt: Vector2            // how far it leans, -1...1 each axis, .zero upright
+stylus.twist: Double            // how far the barrel is turned, radians, 0..<2π
+stylus.isEraser: Bool           // the end on the tablet is the eraser
+stylus.isNearby: Bool           // a stylus is over the tablet, hovering or drawing
+stylus.tiltIsAvailable: Bool    // whether a lean has ever been reported
 ```
 
 What a tablet says about the stylus beyond where it is and how hard it is pressed. How hard is [`pressure`](#pressure) rather than a member here, since a trackpad measures that too and no trackpad has a lean.
@@ -133,14 +133,14 @@ What a tablet says about the stylus beyond where it is and how hard it is presse
 `tilt` is the pen leaning away from upright: `x` positive when the top of the pen leans right, `y` positive when it leans down the canvas, and the vector's length is how far from upright it is, near 1 when the pen is nearly flat. It is what a broad-edged nib is made of, since a chisel laid across the lean draws thick one way and thin the other:
 
 ```swift
-let angle = pen.tiltIsAvailable ? atan2(pen.tilt.y, pen.tilt.x) + .pi / 2 : .pi / 4
+let angle = stylus.tiltIsAvailable ? atan2(stylus.tilt.y, stylus.tilt.x) + .pi / 2 : .pi / 4
 ```
 
 `twist` moves only on an art pen. `isEraser` is the end being used, which a stylus reports by arriving as a different pointing device when it is turned over. `isNearby` covers hovering as well as drawing, so a cursor can be shown under a pen that has not touched down yet.
 
 `tiltIsAvailable` is the same kind of answer `pressureIsAvailable` is: it comes from the events rather than from the machine, so it is false until a pen has been used, and it latches on once one has, since a stylus lifted out of range would otherwise take the pen path away in the middle of a stroke. Everything else is zero and false under a mouse, so a sketch written for a stylus still runs there.
 
-A pen's values are recorded into a [take](../Output/Recording.md) and replayed with the rest of the input. See [Marks](../Drawing/Marks.md) for the brush that reads a press, and `Examples/Input/Pen` for a nib that reads the lean.
+A stylus's values are recorded into a [take](../Output/Recording.md) and replayed with the rest of the input. See [Marks](../Drawing/Marks.md) for the brush that reads a press, and `Examples/Input/Pen` for a nib that reads the lean.
 
 <a name="key"></a>
 

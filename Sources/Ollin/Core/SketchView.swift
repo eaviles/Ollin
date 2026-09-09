@@ -1777,7 +1777,7 @@ final class OllinMTKView: MTKView {
 
     private func reportPointer(_ event: NSEvent) {
         report(windowPoint: event.locationInWindow)
-        reportPen(event)
+        reportStylus(event)
     }
 
     /// What a tablet says about the stylus beyond where it is.
@@ -1787,7 +1787,7 @@ final class OllinMTKView: MTKView {
     /// touched under a plain mouse. A tablet's pointer motion arrives as an
     /// ordinary mouse event with the `tabletPoint` subtype; entering and
     /// leaving the tablet's range arrives on its own.
-    private func reportPen(_ event: NSEvent) {
+    private func reportStylus(_ event: NSEvent) {
         guard let sketch else { return }
         let mouseKind = event.type == .mouseMoved || event.type == .leftMouseDown
             || event.type == .leftMouseDragged || event.type == .leftMouseUp
@@ -1801,11 +1801,11 @@ final class OllinMTKView: MTKView {
             || (mouseKind && event.subtype == .tabletPoint)
         guard tabletEvent else { return }
         let tilt = event.tilt
-        sketch.setPen(Pen(tilt: Vector2(Double(tilt.x), Double(tilt.y)),
-                          twist: Double(event.rotation) * .pi / 180,
-                          isEraser: sketch.pen.isEraser,
-                          isNearby: true,
-                          tiltIsAvailable: true))
+        sketch.setStylus(Stylus(tilt: Vector2(Double(tilt.x), Double(tilt.y)),
+                                twist: Double(event.rotation) * .pi / 180,
+                                isEraser: sketch.stylus.isEraser,
+                                isNearby: true,
+                                tiltIsAvailable: true))
     }
 
     /// The pen entering or leaving the tablet's range, which is also where the
@@ -1814,11 +1814,11 @@ final class OllinMTKView: MTKView {
     override func tabletProximity(with event: NSEvent) {
         guard let sketch else { return }
         let entering = event.isEnteringProximity
-        sketch.setPen(Pen(tilt: entering ? sketch.pen.tilt : .zero,
-                          twist: entering ? sketch.pen.twist : 0,
-                          isEraser: event.pointingDeviceType == .eraser,
-                          isNearby: entering,
-                          tiltIsAvailable: sketch.pen.tiltIsAvailable))
+        sketch.setStylus(Stylus(tilt: entering ? sketch.stylus.tilt : .zero,
+                                twist: entering ? sketch.stylus.twist : 0,
+                                isEraser: event.pointingDeviceType == .eraser,
+                                isNearby: entering,
+                                tiltIsAvailable: sketch.stylus.tiltIsAvailable))
     }
 
     /// The pen moving in range without a button held, which a tablet sends as

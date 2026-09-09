@@ -55,18 +55,18 @@ final class Pen: Sketch {
 
         // The nib's angle: across the lean when a pen is on the tablet, and the
         // fixed angle of an italic nib otherwise.
-        let leaning = pen.tiltIsAvailable && pen.tilt.length > 0.02
-        let angle = leaning ? atan2(pen.tilt.y, pen.tilt.x) + .pi / 2 : fixedAngle
+        let leaning = stylus.tiltIsAvailable && stylus.tilt.length > 0.02
+        let angle = leaning ? atan2(stylus.tilt.y, stylus.tilt.x) + .pi / 2 : fixedAngle
         // How wide: the press when the device measures one, and how slowly the
         // hand moved when it does not. A pen laid flat draws wider, the way a
         // brush pressed onto its side does.
         let speed = min((here - from).length / 40, 1)
         let force = pressureIsAvailable ? pressure : 1 - speed * 0.7
-        let width = nib * (0.18 + 0.82 * force) * (leaning ? 0.6 + 0.6 * pen.tilt.length : 1)
+        let width = nib * (0.18 + 0.82 * force) * (leaning ? 0.6 + 0.6 * stylus.tilt.length : 1)
         let across = Vector2(cos(angle), sin(angle)) * (width / 2)
 
         noStroke()
-        fill(pen.isEraser ? paper : ink)
+        fill(stylus.isEraser ? paper : ink)
         drawShape { path in
             path.move(to: from + across)
             path.line(to: here + across)
@@ -85,16 +85,16 @@ final class Pen: Sketch {
         fill(ink.withAlpha(0.5))
         textSize(15)
         textAlign(.left, .top)
-        let lean = pen.tiltIsAvailable
+        let lean = stylus.tiltIsAvailable
             ? String(format: "lean %.2f, %.2f   turn %.0f°",
-                     pen.tilt.x, pen.tilt.y, pen.twist * 180 / .pi)
+                     stylus.tilt.x, stylus.tilt.y, stylus.twist * 180 / .pi)
             : "lean: no tablet has spoken"
         let press = pressureIsAvailable
             ? String(format: "press %.2f (measured)", pressure)
             : String(format: "press %.2f (a button, not a force)", pressure)
         let lines = [lean, press,
-                     pen.isNearby ? "the pen is over the tablet" : "no pen in range",
-                     pen.isEraser ? "the eraser end is down" : "the tip end is down"]
+                     stylus.isNearby ? "the pen is over the tablet" : "no pen in range",
+                     stylus.isEraser ? "the eraser end is down" : "the tip end is down"]
         for (index, line) in lines.enumerated() {
             drawText(line, panel.x + 16, panel.y + 16 + Double(index) * 26)
         }

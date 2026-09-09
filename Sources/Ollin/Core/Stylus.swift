@@ -11,8 +11,8 @@ import Foundation
 /// override func draw() {
 ///     guard mouseIsPressed else { return }
 ///     // A nib that follows the lean: wide across the direction of the tilt.
-///     strokeWeight(2 + pressure * 10 + pen.tilt.length * 8)
-///     stroke(pen.isEraser ? Color(white: 1) : .black)
+///     strokeWeight(2 + pressure * 10 + stylus.tilt.length * 8)
+///     stroke(stylus.isEraser ? Color(white: 1) : .black)
 ///     drawLine(previousMouse, mouse)
 /// }
 /// ```
@@ -20,7 +20,7 @@ import Foundation
 /// Everything here is zero, and `isNearby` false, on a machine with no tablet,
 /// so a sketch written against a pen still runs under a mouse; read
 /// `tiltIsAvailable` to offer something else there.
-public struct Pen: Sendable, Equatable, Codable {
+public struct Stylus: Sendable, Equatable, Codable {
 
     /// How far the pen is leaning, `-1...1` on each axis: `.zero` when it is
     /// straight up, and `x` positive when the top of the pen leans right, `y`
@@ -48,7 +48,7 @@ public struct Pen: Sendable, Equatable, Codable {
     public init(tilt: Vector2 = .zero, twist: Double = 0, isEraser: Bool = false,
                 isNearby: Bool = false, tiltIsAvailable: Bool = false) {
         self.tilt = Vector2(min(max(tilt.x, -1), 1), min(max(tilt.y, -1), 1))
-        self.twist = Pen.wrapped(twist)
+        self.twist = Stylus.wrapped(twist)
         self.isEraser = isEraser
         self.isNearby = isNearby
         self.tiltIsAvailable = tiltIsAvailable

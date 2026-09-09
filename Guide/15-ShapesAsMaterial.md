@@ -376,10 +376,10 @@ override func mousePressed() {
 }
 ```
 
-A tablet says more than how hard. `pen` carries the rest of the stylus: `tilt` is how far it leans, `-1...1` on each axis and zero when it is upright; `twist` is how far an art pen's barrel has been turned; `isEraser` is whether the end on the tablet is the eraser; and `isNearby` is whether it is over the tablet at all, which it is while hovering as well as while drawing. The lean is what a broad-edged nib is made of, since a chisel laid across the direction of the lean draws thick one way and thin the other:
+A tablet says more than how hard. `stylus` carries the rest of it: `tilt` is how far it leans, `-1...1` on each axis and zero when it is upright; `twist` is how far an art pen's barrel has been turned; `isEraser` is whether the end on the tablet is the eraser; and `isNearby` is whether it is over the tablet at all, which it is while hovering as well as while drawing. The lean is what a broad-edged nib is made of, since a chisel laid across the direction of the lean draws thick one way and thin the other:
 
 ```swift
-let angle = pen.tiltIsAvailable ? atan2(pen.tilt.y, pen.tilt.x) + .pi / 2 : .pi / 4
+let angle = stylus.tiltIsAvailable ? atan2(stylus.tilt.y, stylus.tilt.x) + .pi / 2 : .pi / 4
 ```
 
 <picture>
@@ -387,7 +387,7 @@ let angle = pen.tiltIsAvailable ? atan2(pen.tilt.y, pen.tilt.x) + .pi / 2 : .pi 
   <img src="Images/15-ShapesAsMaterial/NibAndLean.jpg" alt="Three panels, each the same looping path drawn with a broad-edged nib at a different lean: the stroke is thick where the path runs across the nib and thin where it runs along it, and the thick and thin fall in different places in each panel" width="680">
 </picture>
 
-`pen.tiltIsAvailable` is the same kind of answer `pressureIsAvailable` is, and it latches on once a pen has been used, so lifting the stylus out of range does not take the pen path away mid-stroke. Under a mouse everything in `pen` is zero and false, so a sketch written for a stylus still runs. [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift) is a chisel nib that reads all of it, with a panel that says what the tablet is sending.
+`stylus.tiltIsAvailable` is the same kind of answer `pressureIsAvailable` is, and it latches on once a pen has been used, so lifting the stylus out of range does not take the pen path away mid-stroke. Under a mouse everything in `stylus` is zero and false, so a sketch written for a stylus still runs. [`Examples/Input/Pen`](../Examples/Input/Pen/Sketch.swift) is a chisel nib that reads all of it, with a panel that says what the tablet is sending.
 
 Three practical notes. A mark is an ordinary value, so finishing one is `strokes.append(mark)` and `mark.clear()`. The `smoothing` parameter matters more than it looks. Raw frame-to-frame speed is far too jumpy to drive a width directly. The default sits where a mark feels deliberate without lagging the pointer. And profiles compose with dynamics rather than competing, so `strokeProfile(.taper(start: 1))` still gives a dynamic mark a clean lift-off at the end.
 

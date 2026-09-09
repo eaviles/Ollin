@@ -43,7 +43,7 @@ public struct Take: Codable, Equatable, Sendable {
         case pressure(amount: Double, canVary: Bool)
         /// What the tablet says about the stylus: its lean, its turn, which end
         /// is down, and whether it is over the tablet at all.
-        case pen(Pen)
+        case stylus(Stylus)
         /// One scroll-wheel event's movement; the `mouseScrolled()` hook fires.
         case scroll(deltaY: Double)
         /// The held modifier keys changed.
