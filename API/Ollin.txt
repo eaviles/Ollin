@@ -2512,6 +2512,7 @@ open class Sketch: Sendable
   var mouseX: Double { get }
   var mouseY: Double { get }
   var moveAxis: Vector2 { get }
+  var pen: Pen { get }
   var prefersReducedMotion: Bool { get }
   var pressure: Double { get }
   var pressureIsAvailable: Bool { get }
@@ -4848,6 +4849,13 @@ struct PathTracing: Equatable, Sendable
   var denoise: Bool { get set }
   var maxDepth: Int { get set }
   var samplesPerPixel: Int { get set }
+struct Pen: Decodable, Encodable, Equatable, Sendable
+  init(tilt: Vector2 = default, twist: Double = default, isEraser: Bool = default, isNearby: Bool = default, tiltIsAvailable: Bool = default)
+  var isEraser: Bool { get set }
+  var isNearby: Bool { get set }
+  var tilt: Vector2 { get set }
+  var tiltIsAvailable: Bool { get set }
+  var twist: Double { get set }
 struct Percolation: Equatable, Hashable, Sendable
   func cellRects(of: Int, in: Rectangle) -> [Rectangle]
   func cluster(_: Int) -> [(column: Int, row: Int)]
@@ -5747,6 +5755,7 @@ struct Take: Decodable, Encodable, Equatable, Sendable
     case key(character: String?, code: KeyCode?, pressed: Bool)
     case keysCleared
     case modifiers(ModifierKeys)
+    case pen(Pen)
     case pointer(x: Double, y: Double)
     case pressure(amount: Double, canVary: Bool)
     case rightButton(pressed: Bool)

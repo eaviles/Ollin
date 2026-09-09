@@ -166,6 +166,14 @@ open class Sketch {
     /// it.
     public internal(set) var pressureIsAvailable = false
 
+    /// The stylus: how far it is leaning, how far its barrel is turned, whether
+    /// the end on the tablet is the eraser, and whether it is over the tablet
+    /// at all. See ``Pen``.
+    ///
+    /// How hard it is pressed is ``pressure`` rather than a member here, since
+    /// a trackpad measures that too and no trackpad has a lean.
+    public internal(set) var pen = Pen()
+
     /// How far the scroll wheel (or a trackpad two-finger scroll) moved this frame,
     /// summed since the last frame; `0` when nothing scrolled. Positive is a scroll
     /// up. Read it in `draw()` (it is a per-frame value, like `mouseX`); the
@@ -3947,6 +3955,21 @@ open class Sketch {
         if canVary { pressureIsAvailable = true }
     }
 
+    /// What the tablet says about the stylus, from the view or a replay. The
+    /// lean's availability latches on the way pressure's does: a session that
+    /// has seen a pen keeps offering the pen path, since a stylus lifted out of
+    /// range would otherwise take it away mid-stroke.
+    func setPen(_ reading: Pen) {
+        takeRecorder?.log(.pen(reading), at: frameCount)
+        applyPen(reading)
+    }
+
+    func applyPen(_ reading: Pen) {
+        var kept = reading
+        kept.tiltIsAvailable = reading.tiltIsAvailable || pen.tiltIsAvailable
+        pen = kept
+    }
+
     /// Scroll delivered between frames, summed here and surfaced as `scrollDeltaY`
     /// at the start of the next `advance()`, so no wheel movement is lost.
     private var pendingScroll: Double = 0
@@ -4033,6 +4056,8 @@ open class Sketch {
             mouseIsPressed = pressed
         case .rightButton(let pressed):
             rightMouseIsPressed = pressed
+        case .pen(let reading):
+            applyPen(reading)
         case .pressure(let amount, let canVary):
             ingestPressure(amount, canVary: canVary)
         case .scroll(let deltaY):

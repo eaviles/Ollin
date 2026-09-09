@@ -428,6 +428,7 @@ let package = Package(
         example("Patterns/Phyllotaxis"),
         example("Input/RepelGrid"),
         example("Input/Keys"),
+        example("Input/Pen"),
         // Press, drag, release: the per-frame delta on screen, and a fling
         // carrying the speed of the last few frames.
         example("Input/Drag"),

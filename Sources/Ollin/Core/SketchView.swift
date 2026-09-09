@@ -1777,6 +1777,54 @@ final class OllinMTKView: MTKView {
 
     private func reportPointer(_ event: NSEvent) {
         report(windowPoint: event.locationInWindow)
+        reportPen(event)
+    }
+
+    /// What a tablet says about the stylus beyond where it is.
+    ///
+    /// The tablet fields are only there on a tablet event, and reading one off
+    /// any other event raises, so the subtype is checked first and nothing is
+    /// touched under a plain mouse. A tablet's pointer motion arrives as an
+    /// ordinary mouse event with the `tabletPoint` subtype; entering and
+    /// leaving the tablet's range arrives on its own.
+    private func reportPen(_ event: NSEvent) {
+        guard let sketch else { return }
+        let mouseKind = event.type == .mouseMoved || event.type == .leftMouseDown
+            || event.type == .leftMouseDragged || event.type == .leftMouseUp
+        // A tablet rides the mouse stream with a subtype, and the subtype is
+        // itself only readable on the kinds of event that have one.
+        if mouseKind, event.subtype == .tabletProximity {
+            tabletProximity(with: event)
+            return
+        }
+        let tabletEvent = event.type == .tabletPoint
+            || (mouseKind && event.subtype == .tabletPoint)
+        guard tabletEvent else { return }
+        let tilt = event.tilt
+        sketch.setPen(Pen(tilt: Vector2(Double(tilt.x), Double(tilt.y)),
+                          twist: Double(event.rotation) * .pi / 180,
+                          isEraser: sketch.pen.isEraser,
+                          isNearby: true,
+                          tiltIsAvailable: true))
+    }
+
+    /// The pen entering or leaving the tablet's range, which is also where the
+    /// end being used is said: a stylus turned over arrives as a different
+    /// pointing device entirely.
+    override func tabletProximity(with event: NSEvent) {
+        guard let sketch else { return }
+        let entering = event.isEnteringProximity
+        sketch.setPen(Pen(tilt: entering ? sketch.pen.tilt : .zero,
+                          twist: entering ? sketch.pen.twist : 0,
+                          isEraser: event.pointingDeviceType == .eraser,
+                          isNearby: entering,
+                          tiltIsAvailable: sketch.pen.tiltIsAvailable))
+    }
+
+    /// The pen moving in range without a button held, which a tablet sends as
+    /// its own kind of event rather than as a mouse move.
+    override func tabletPoint(with event: NSEvent) {
+        reportPointer(event)
     }
 
     /// Hand the sketch a window point in its own coordinates (see

@@ -186,7 +186,7 @@ pressureIsAvailable   // whether this device can measure it at all
 
 `Sketch.pressure` is how hard the pointer is being pressed. On a pressure-sensing device, such as a Force Touch trackpad or a pen tablet, it varies continuously through a press. On a device that cannot measure pressure it is `1` while a button is down. A pressure-driven brush still draws there, at one weight throughout.
 
-`pressureIsAvailable` says which kind of device you have. The answer comes from the event rather than from the machine, so it is `false` until the first press. Read it in `mousePressed()` rather than in `setup()`:
+A pen tablet says more than how hard: [`pen`](../Helpers/Input.md#pen) carries the stylus's lean, its barrel turn, which end is down, and whether it is over the tablet at all, and the lean is what a broad-edged nib is made of. `pressureIsAvailable` says which kind of device you have. The answer comes from the event rather than from the machine, so it is `false` until the first press. Read it in `mousePressed()` rather than in `setup()`:
 
 ```swift
 override func mousePressed() {
