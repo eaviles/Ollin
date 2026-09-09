@@ -17,7 +17,7 @@ import Testing
     /// choosing what to lose. A figure keeps whatever frame holds its whole
     /// body, upright where a raised arm and a foot would not fit a square.
     @Test func theFacesAreSquare() {
-        for photo in [SamplePhoto.portrait, .scarf, .profile, .marigolds] {
+        for photo in [SamplePhoto.portrait, .scarf, .profile, .marigolds, .breakfast, .desk] {
             let image = photo.load()
             #expect(image.width == image.height, "\(photo.name)")
         }
@@ -36,6 +36,6 @@ import Testing
 
     @Test func theNamesAreDistinct() {
         #expect(Set(SamplePhoto.all.map(\.name)).count == SamplePhoto.all.count)
-        #expect(SamplePhoto.all.count == 8)
+        #expect(SamplePhoto.all.count == 10)
     }
 }

@@ -294,7 +294,7 @@ redistributed inside this repository.
 ## Sample photographs (example assets)
 
 - **Used for:** the `OllinSamplePhotos` library, which the `Images`, `Color`, and `Effects` example sketches and the Guide's and reference's figures read so a filter, a mosaic, a dither, or a winding can be shown on a real picture. A product of its own, so an app that never imports it ships none of them; the `Ollin` framework itself bundles no photograph.
-- **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), eight JPEGs at 1600 pixels on the long side, re-encoded at quality 78 with the metadata stripped: four faces cropped square from their originals, and four whole figures kept upright or landscape so no limb runs off the edge. Each credit is also carried in code as `SamplePhoto.credit`.
+- **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), ten JPEGs at 1600 pixels on the long side, re-encoded at quality 78 to 80 with the metadata stripped: four faces cropped square from their originals, four whole figures kept in whatever frame holds the body, and two tables seen from above, cropped square. Each credit is also carried in code as `SamplePhoto.credit`.
 - **`portrait.jpg`:** *Vibrant portrait of a woman in traditional Oaxaca attire* by Jhovani Morales, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/13402074/ (Pexels License).
 - **`scarf.jpg`:** *An elderly woman with a scarf looks directly at viewer* by Matthew Stephenson, Oaxaca, Mexico. https://unsplash.com/photos/j6OYgSMVuiI — Unsplash License.
 - **`profile.jpg`:** *Profile of a woman with a braided ponytail against a solid tan background* by Jessica Felicio, Berrien County, United States. https://unsplash.com/photos/QS9ZX5UnS14 — Unsplash License.
@@ -303,6 +303,8 @@ redistributed inside this repository.
 - **`wrestler.jpg`:** *Masked wrestler triumphs in lively arena* by Juan TM, Santiago de Querétaro, Mexico. https://www.pexels.com/photo/30098566/ (Pexels License).
 - **`dancer.jpg`:** *Graceful contemporary dancer posing barefoot in a flowing black skirt* by Gustavo Fring. https://www.pexels.com/photo/7447230/ (Pexels License).
 - **`handstand.jpg`:** *Energetic breakdancer in urban setting performing a handstand mid-move* by Gabriel Jiménez. https://www.pexels.com/photo/26870547/ (Pexels License).
+- **`breakfast.jpg`:** *Top view of a vibrant Oaxacan breakfast with various dishes on a wooden table* by Jorge Acre, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/17061842/ (Pexels License).
+- **`desk.jpg`:** *flat-lay photography of MacBook, coffee-filled cup, book, and wristwatch* by Ben Kolde, Oxford, United States. https://unsplash.com/photos/H29h6a8j8QM (Unsplash License).
 - **Licenses:** Unsplash License (https://unsplash.com/license); Pexels License (https://www.pexels.com/license/)
 
 > Both licenses grant a free, worldwide license to download, copy, modify, and
@@ -316,7 +318,11 @@ redistributed inside this repository.
 > sRGB, and re-encoded as JPEG with its metadata (location included) removed.
 > The four faces were also cropped square around the subject, and `reaching`
 > was cropped to bring the figure up in the frame; the other three figures keep
-> the whole frame the photographer shot. No other edits. The licenses ride on the photographs, not on Ollin's code,
+> the whole frame the photographer shot. Both tables were cropped square, the
+> desk cropped in far enough that the print on the notebook can be read. No
+> other edits. The desk photograph carries a notebook whose printed cover names
+> its maker, which the text recognizer reads aloud in the `TextScan` example;
+> that is incidental to a photograph of a desk and is not an endorsement. The licenses ride on the photographs, not on Ollin's code,
 > which stays MIT. The root [`LICENSE`](LICENSE) is unaffected.
 
 ---

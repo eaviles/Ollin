@@ -1,14 +1,14 @@
 // figure: frame=0 themed
 //
-// Docs diagram (Drawing/SamplePhotos.md): the eight bundled sample photographs,
-// the four faces above and the four figures below, each under its name and its
+// Docs diagram (Drawing/SamplePhotos.md): the ten bundled sample photographs,
+// four faces, then four figures, then two tables, each under its name and its
 // photographer, so the page shows what every `SamplePhoto` loads.
 import Ollin
 import OllinDiagram
 import OllinSamplePhotos
 
 final class SamplePhotos: Sketch {
-    override var canvasSize: CanvasSize { .size(880, 580) }
+    override var canvasSize: CanvasSize { .size(880, 850) }
 
     @Param var darkTheme = false
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }

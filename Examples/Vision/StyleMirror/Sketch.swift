@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// The camera through *your own* style-transfer model — a live painted mirror.
@@ -36,12 +37,11 @@ final class StyleMirror: Sketch {
         modelPaths.first { FileManager.default.fileExists(atPath: $0) }
     }
 
-    let camera = Camera()
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a face to paint. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.portrait.load())
     var styler: ModelTracker?
-
-    override func setup() {
-        try? camera.start()
-    }
 
     override func draw() {
         background(Color(white: 0.04))
@@ -49,14 +49,14 @@ final class StyleMirror: Sketch {
         // The model is trained, not fetched — keep looking for it, so saving
         // the Create ML export while the sketch runs picks it up live.
         if styler == nil, let path = Self.modelPath {
-            styler = ModelTracker(camera, modelAt: URL(fileURLWithPath: path))
+            styler = ModelTracker(feed, modelAt: URL(fileURLWithPath: path))
         }
 
         // While a notice sits over the feed, dim the feed so the text reads.
         let showsNotice = styler == nil || styler?.unavailableReason != nil
             || styler?.isLoaded == false
         if showsNotice { tint(Color(white: 0.25)) }
-        guard let rect = drawFrame(camera) else { return noTint() }
+        guard let rect = drawFrame(feed) else { return noTint() }
         noTint()
 
         guard let styler else {

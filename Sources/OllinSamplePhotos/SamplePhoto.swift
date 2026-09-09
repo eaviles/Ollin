@@ -5,14 +5,15 @@ import Ollin
 /// and for any sketch that wants a real picture to work on before it has one of
 /// its own.
 ///
-/// Eight pictures, 1600 pixels on the long side. Four faces, each a square: a
+/// Ten pictures, 1600 pixels on the long side. Four faces, each a square: a
 /// frontal `portrait`, an older face in a `scarf`, a `profile` on a plain
 /// ground, and a woman before a wall of `marigolds`. Four whole figures, framed
 /// so no limb runs off the edge: someone `reaching` up a concrete wall, a
 /// masked `wrestler` with both arms raised, a `dancer` on white, and a
-/// breakdancer holding a `handstand`. Each carries its `credit`: who made it,
-/// where, and the terms it is used under, so a sketch can draw the line the
-/// photographer is owed.
+/// breakdancer holding a `handstand`. And two tables seen from above, for the
+/// readers that want things to name and print to read: a `breakfast` and a
+/// `desk`. Each carries its `credit`: who made it, where, and the terms it is
+/// used under, so a sketch can draw the line the photographer is owed.
 ///
 ///     let picture = SamplePhoto.portrait.load()
 ///     drawImage(picture, in: canvasRectangle, fit: .cover)
@@ -129,7 +130,31 @@ public struct SamplePhoto: Hashable, Sendable {
                        source: "https://www.pexels.com/photo/26870547/",
                        license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
 
-    /// Every bundled photograph: the four faces first, then the four figures.
+    /// An Oaxacan breakfast from above: plates, bowls, cups, cutlery, a napkin,
+    /// glasses, a phone. The densest table here for anything that names things.
+    /// The object detector finds five (two cups, two bowls, a sandwich) where a
+    /// person in a scene gives it three.
+    public static let breakfast = SamplePhoto(
+        name: "breakfast",
+        subject: "an Oaxacan breakfast seen from above, plates and bowls on a wooden table",
+        credit: Credit(photographer: "Jorge Acre", place: "Oaxaca de Juárez, Mexico",
+                       source: "https://www.pexels.com/photo/17061842/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
+    /// A desk from above: a laptop, earbuds, a plant, a watch, a cup of coffee,
+    /// and a notebook whose cover is printed. The one with text small enough to
+    /// be real and large enough to read, so it is what the text recognizer and
+    /// the rectangle detector are pointed at.
+    public static let desk = SamplePhoto(
+        name: "desk",
+        subject: "a desk seen from above, a laptop and a printed notebook among other things",
+        credit: Credit(photographer: "Ben Kolde", place: "Oxford, United States",
+                       source: "https://unsplash.com/photos/H29h6a8j8QM",
+                       license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
+
+    /// Every bundled photograph: the four faces, then the four figures, then the
+    /// two tables.
     public static let all: [SamplePhoto] = [.portrait, .scarf, .profile, .marigolds,
-                                            .reaching, .wrestler, .dancer, .handstand]
+                                            .reaching, .wrestler, .dancer, .handstand,
+                                            .breakfast, .desk]
 }

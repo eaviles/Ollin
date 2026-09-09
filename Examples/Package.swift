@@ -741,11 +741,11 @@ let package = Package(
         // feed, shift-click trims, C clears (fetched model).
         example("Vision/PointLift", [.vision, .samplePhotos]),
         // Rectangular shapes (paper, screens, cards) highlighted as quads.
-        example("Vision/RectangleScan", [.vision]),
+        example("Vision/RectangleScan", [.vision, .samplePhotos]),
         // Barcodes / QR codes outlined and their payload printed.
         example("Vision/BarcodeReader", [.vision]),
         // OCR — text read from the feed, each line boxed and printed.
-        example("Vision/TextScan", [.vision]),
+        example("Vision/TextScan", [.vision, .samplePhotos]),
         // Object tracking — click to lock onto a patch and follow it across frames.
         example("Vision/ObjectTracking", [.vision]),
         // Optical flow — the camera's motion as a field of arrows, with dust
@@ -781,7 +781,7 @@ let package = Package(
         example("Vision/DigitReader", [.vision]),
         // The camera through a Create ML style-transfer model you train
         // yourself (no download — the model is the user's own work).
-        example("Vision/StyleMirror", [.vision]),
+        example("Vision/StyleMirror", [.vision, .samplePhotos]),
         // Typed phrases as live parameters (ConceptTracker): two phrases pull on
         // one rope by how well each matches the frame. The model weights
         // download via Scripts/fetch-models.sh (never committed).

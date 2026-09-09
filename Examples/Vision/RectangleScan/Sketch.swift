@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Rectangles, found in the live feed. A `RectangleDetector` looks for
@@ -11,17 +12,16 @@ import OllinVision
 /// drawn as a highlight over whatever rectangle you point at.
 @main
 final class RectangleScan: Sketch {
-    let camera = Camera()
-    lazy var rectangles = RectangleDetector(camera)
-
-    override func setup() {
-        try? camera.start()
-    }
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a sheet, a card and a screen to find. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.desk.load())
+    lazy var rectangles = RectangleDetector(feed)
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let rect = drawFrame(camera) else { return }
+        guard let rect = drawFrame(feed) else { return }
 
         let accent = Color(red: 0.3, green: 1.0, blue: 0.6)
         let detected = rectangles.rectangles

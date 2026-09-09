@@ -30,9 +30,9 @@ final class ObjectDetection: Sketch {
     static let modelPath = modelsPath("YOLOv3TinyFP16.mlmodel")
 
     // A camera where this Mac has one, and a bundled photograph where it does
-    // not, so there is always people to find. `--photo` takes the picture even
+    // not, so there is always a tableful of things to find. `--photo` takes the picture even
     // where a camera would have worked, which is how a still of this sketch is made.
-    let feed = Camera.orStill(SamplePhoto.wrestler.load())
+    let feed = Camera.orStill(SamplePhoto.breakfast.load())
     lazy var detector = ModelTracker(feed, modelAt: URL(fileURLWithPath: Self.modelPath))
 
     /// Below this the model is guessing more often than seeing.

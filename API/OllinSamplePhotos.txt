@@ -6,7 +6,9 @@ struct SamplePhoto: Equatable, Hashable, Sendable
   let name: String
   let subject: String
   static let all: [SamplePhoto]
+  static let breakfast: SamplePhoto
   static let dancer: SamplePhoto
+  static let desk: SamplePhoto
   static let handstand: SamplePhoto
   static let marigolds: SamplePhoto
   static let portrait: SamplePhoto
