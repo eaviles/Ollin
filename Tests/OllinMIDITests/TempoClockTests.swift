@@ -192,15 +192,22 @@ struct TempoClockLoopbackTests {
 
         output.send(MIDIMessage(.start))
 
-        // ~250 BPM nominal: 10 ms per tick, 30 ticks. Sleep overshoot only
-        // slows it down, so assert a generous band rather than a value.
+        // ~250 BPM nominal: 10 ms per tick, 30 ticks. A loaded machine
+        // oversleeps, and a train sent slower *is* a slower tempo, so the
+        // check is against the train this run actually sent rather than
+        // against the one it asked for: a fixed band fails on a busy runner
+        // for being right about a clock that was fed at 40 BPM.
+        let started = Date()
         for _ in 0..<30 {
             output.send(MIDIMessage(.clock))
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
+        let perTick = Date().timeIntervalSince(started) / 30
+        let sent = 60 / (24 * max(perTick, 1e-6))
         let advanced = await waitFor { clock.beatCount >= 1 ? true : nil }
         #expect(advanced == true)
         #expect(clock.isPlaying)
-        #expect(clock.tempo > 60 && clock.tempo < 400)
+        #expect(clock.tempo > sent / 2 && clock.tempo < sent * 2,
+                "the clock reads \(clock.tempo) from a train sent at \(sent)")
     }
 }
