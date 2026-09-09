@@ -106,6 +106,17 @@ runner='OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinScree
 # wall-clock suites above.
 loopback='OllinMIDITests.MIDILoopbackTests|OllinMIDITests.TempoClockLoopbackTests|OllinLinkTests.LinkLoopbackTests|OllinLaserTests.EtherDreamLoopbackTests'
 
+# The same phase for the same reason, one target over: two suites inside
+# OllinTests that cannot share three cores with two shards of themselves.
+# PushFeedTests drives a real local HTTP server and measures what arrives
+# against deadlines, and beside the shards its tasks resume so late that seven
+# of them expired together at three minutes on a stopwatch none of them got to
+# read (2026-09-09, run 34299549773). MaterialSourceTests spawns a swiftc to
+# typecheck the source it prints, which is a minute of compiler on a quiet
+# machine and neither finished nor useful on a crowded one. Run alone they cost
+# a couple of minutes and say what they mean.
+crowded='OllinTests.PushFeedTests|OllinTests.MaterialSourceTests'
+
 phases() {
     echo "test.sh: phase 1 of 2, the wall-clock and device suites alone"
     swift test --filter "$sensitive" || exit 1
@@ -146,15 +157,15 @@ ci)
     # priority one shard's main thread got no time for six minutes while the
     # third process drained its own queue (the heartbeat showed it sitting at
     # zero). Each line says which of the three wrote it.
-    echo "test.sh: the runner's recipe; the loopback suites alone, then OllinTests as ${OLLIN_CI_SHARDS:-2} shards with the other targets beside them"
+    echo "test.sh: the runner's recipe; the suites that need the machine alone, then OllinTests as ${OLLIN_CI_SHARDS:-2} shards with the other targets beside them"
     swift build --build-tests || exit 1
-    echo "test.sh: phase 1 of 2, the loopback suites alone"
-    swift test --skip-build --filter "$loopback" || exit 1
+    echo "test.sh: phase 1 of 2, the suites that need the machine to themselves"
+    swift test --skip-build --filter "$loopback|$crowded" || exit 1
     echo "test.sh: phase 2 of 2, the shards and the rest"
-    export OLLIN_SHARD_SKIP="$sensitive|$runner"
+    export OLLIN_SHARD_SKIP="$sensitive|$runner|$crowded"
     Scripts/shard-tests.sh "${OLLIN_CI_SHARDS:-2}" > >(sed -l 's/^/[shards] /') 2>&1 &
     shardsPid=$!
-    nice -n 10 swift test --skip-build --skip "$sensitive|$runner|$loopback|^OllinTests\\." > >(sed -l 's/^/[rest] /') 2>&1 &
+    nice -n 10 swift test --skip-build --skip "$sensitive|$runner|$loopback|$crowded|^OllinTests\\." > >(sed -l 's/^/[rest] /') 2>&1 &
     restPid=$!
     failed=0
     wait $shardsPid || failed=1

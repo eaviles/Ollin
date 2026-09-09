@@ -377,7 +377,7 @@ import Testing
         let room = ImpulseResponse.decay(seconds: 0.2, sampleRate: 48000, seed: 1)
         #expect(Effect.reverb(Reverb(.hall)).kind == .reverb)
         #expect(Effect.reverb(Reverb(room)).kind == .convolution)
-        #expect(Effect.Kind.allCases.count == 10)
+        #expect(Effect.Kind.allCases.count == 13)   // the four motions and the three levels included
 
         let synth = Synth(.pluck)
         synth.reverb = Reverb(room, mix: 0.4)
