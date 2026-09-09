@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVideo
 import OllinVision
 
@@ -9,7 +10,10 @@ import OllinVision
 /// kind you could send straight to a pen plotter (or hatch, or reshape).
 ///
 /// By default the detector reads the camera; point it at high-contrast subjects
-/// (a face, hands, objects on a light desk) for the cleanest lines. Pass a clip
+/// (a face, hands, objects on a light desk) for the cleanest lines. Where there
+/// is no camera it reads the film that ships with Ollin, a dancer on a plain
+/// ground, which is about the cleanest silhouette a tracer can be given, and
+/// `--photo` takes that film even where a camera would have worked. Pass a clip
 /// path on launch and the same detector traces the footage as it plays instead:
 ///
 /// ```
@@ -29,19 +33,34 @@ final class ContourTrace: Sketch {
     var contours: ContourDetector?
 
     override func setup() {
+        // A clip named on launch wins, then a camera, then the bundled film, so
+        // there is always something moving to trace.
         if let path = clipPath(), let player = try? VideoPlayer(path: path) {
-            // Recorded footage benefits from a contrast boost before tracing.
-            player.loops = true
-            player.isMuted = true
-            player.play()
-            feed = player
-            contours = ContourDetector(player, contrastAdjustment: 3)
-        } else {
-            let camera = Camera()
-            try? camera.start()
+            trace(player)
+        } else if let camera = liveCamera() {
             feed = camera
             contours = ContourDetector(camera)
+        } else {
+            trace(VideoPlayer(url: SampleClip.dance.url))
         }
+    }
+
+    /// A running camera, or nothing: `--photo` refuses one the way it does
+    /// everywhere else, and a Mac without one falls through to the film.
+    private func liveCamera() -> Camera? {
+        guard !CommandLine.arguments.contains("--photo") else { return nil }
+        let camera = Camera()
+        guard (try? camera.start()) != nil, camera.isRunning else { return nil }
+        return camera
+    }
+
+    /// Recorded footage benefits from a contrast boost before tracing.
+    private func trace(_ player: VideoPlayer) {
+        player.loops = true
+        player.isMuted = true
+        player.play()
+        feed = player
+        contours = ContourDetector(player, contrastAdjustment: 3)
     }
 
     /// A readable file path passed on launch, if any; it swaps the camera for a

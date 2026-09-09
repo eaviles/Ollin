@@ -4,7 +4,7 @@
 
 ## Sample photographs
 
-Nineteen pictures travel with Ollin so that an image technique, a filter, or a reader of any kind can be tried on something real before you have one of your own. Four are faces, four are whole figures, two are tables seen from above, four are streets, two are landscapes at dusk, one is a page with the light falling unevenly across it, and two are surfaces to wrap a form in. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
+Nineteen pictures and one short film travel with Ollin so that an image technique, a filter, or a reader of any kind can be tried on something real before you have one of your own. Four are faces, four are whole figures, two are tables seen from above, four are streets, two are landscapes at dusk, one is a page with the light falling unevenly across it, and two are surfaces to wrap a form in. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
 
 ```swift
 import OllinSamplePhotos
@@ -36,6 +36,7 @@ final class Portrait: Sketch {
 - [The landscapes](#landscapes) - the two wide ones, and why they share a shape
 - [The page](#page) - print under uneven light
 - [The surfaces](#surfaces) - two textures, and why they are not 1600
+- [The film](#film) - thirty seconds of motion, for what a still cannot show
 - [SamplePhoto](#samplephoto) - `load`, `credit`, `all`
 - [Working copies](#copies) - `resized(width:height:)`, `cropped(x:y:width:height:)`, `cropped(toAspect:)`
 - [Terms](#terms) - the licenses the pictures are used under
@@ -114,6 +115,24 @@ Two textures rather than two pictures, and they are sized as textures: 1024-pixe
 - **`.talavera`** is Mexican tilework, straight on and evenly lit, and it is the one bundled picture that **repeats seamlessly**: the frame is cut to two whole periods of the motif, so laying it edge to edge leaves no join. That matters for a triplanar projection, which tiles whatever it is given whatever the wrap setting says, so a picture that does not join up shows its own grid. The relief in it is painted rather than moulded, so a normal map taken off its light and shade embosses the design.
 - **`.stone`** is a dry-stone wall close up under an even sky. The relief one: deep mortar gaps and faceted faces give a height or normal map something to bite on, and it is nearly colorless, so it reads as material rather than as a picture of a thing. Its own brightness is a height map with no work at all, which is what the parallax study reads it as. It does not repeat, so a surface that tiles it wants mirror wrapping or a projection that covers the form once.
 
+<a name="film"></a>
+
+### The film
+
+Some techniques need motion and a still cannot stand in for it: optical flow measures what moved between two frames, a contour tracer is only interesting when the outline changes, and a skeleton or a matte is worth watching rather than looking at. One film ships for those.
+
+- **`SampleClip.dance`** is a man dancing on a plain studio ground, thirty seconds at 960 square and 25 frames a second, 1.5 MB, no sound. The camera is locked off, which is the property that matters: nearly two thirds of the frame never changes, so every vector optical flow reports belongs to the dancer rather than to a moving lens. The body model finds all nineteen joints in every frame sampled across the whole run.
+
+It is vended as a URL rather than as a player, because opening a film belongs to `OllinVideo` and no satellite depends on another:
+
+```swift
+let film = VideoPlayer(url: SampleClip.dance.url)
+film.loops = true
+film.play()
+```
+
+A `VideoPlayer` is both a `FrameSource` and a `VideoFeed`, so it goes wherever a camera goes and every tracker reads it unchanged. That is how `Examples/Vision/OpticalFlow` and `Examples/Vision/ContourTrace` run on a Mac with no camera, and `--photo` takes the film even where a camera would have worked.
+
 <a name="samplephoto"></a>
 
 ### SamplePhoto
@@ -177,7 +196,7 @@ A filter that runs on the GPU reads the full picture as it is: draw it into a la
 
 ### Terms
 
-The scarf, the profile, the desk, the textiles, the city, and the boats come from Unsplash under the [Unsplash License](https://unsplash.com/license); the other thirteen come from Pexels under the [Pexels License](https://www.pexels.com/license/). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was resized, converted to sRGB, and re-encoded with its metadata removed, the faces, the tables, and the streets cropped square, two of the figures cropped in, and the headland trimmed from four to three down to three to two by dropping its darkest foreground. The page keeps its whole frame. The talavera is cut to two whole periods of its motif so that it repeats without a join, and the stone to a square; both are 1024 rather than 1600, since they are textures. The desk photograph carries a notebook whose printed cover names its maker, which the text recognizer reads aloud; that is incidental to a photograph of a desk rather than an endorsement. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
+The scarf, the profile, the desk, the textiles, the city, and the boats come from Unsplash under the [Unsplash License](https://unsplash.com/license); the other thirteen photographs and the film come from Pexels under the [Pexels License](https://www.pexels.com/license/). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was resized, converted to sRGB, and re-encoded with its metadata removed, the faces, the tables, and the streets cropped square, two of the figures cropped in, and the headland trimmed from four to three down to three to two by dropping its darkest foreground. The page keeps its whole frame. The talavera is cut to two whole periods of its motif so that it repeats without a join, and the stone to a square; both are 1024 rather than 1600, since they are textures. The film was cut to its first thirty seconds and to a square, the window and the crop chosen together because the dancer leaves a square frame later in the original and never once inside that window; it was scaled to 960, its sound removed, and re-encoded. The desk photograph carries a notebook whose printed cover names its maker, which the text recognizer reads aloud; that is incidental to a photograph of a desk rather than an endorsement. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
 
 ---
 

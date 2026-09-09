@@ -293,7 +293,7 @@ redistributed inside this repository.
 
 ## Sample photographs (example assets)
 
-- **Used for:** the `OllinSamplePhotos` library, which the `Images`, `Color`, and `Effects` example sketches and the Guide's and reference's figures read so a filter, a mosaic, a dither, or a winding can be shown on a real picture. A product of its own, so an app that never imports it ships none of them; the `Ollin` framework itself bundles no photograph.
+- **Used for:** the `OllinSamplePhotos` library (photographs and one short film), which the `Images`, `Color`, and `Effects` example sketches and the Guide's and reference's figures read so a filter, a mosaic, a dither, or a winding can be shown on a real picture. A product of its own, so an app that never imports it ships none of them; the `Ollin` framework itself bundles no photograph.
 - **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), nineteen JPEGs, re-encoded at quality 72 to 95 with the metadata stripped. The seventeen photographs are 1600 pixels on the long side: four faces cropped square from their originals, four whole figures kept in whatever frame holds the body, two tables seen from above, cropped square, four streets cropped to the largest square each original held, two landscapes at dusk kept wide at three to two, and a book page in its whole frame. The two surface textures are 1024-pixel squares, the size a GPU mips evenly. Each credit is also carried in code as `SamplePhoto.credit`.
 - **`portrait.jpg`:** *Vibrant portrait of a woman in traditional Oaxaca attire* by Jhovani Morales, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/13402074/ (Pexels License).
 - **`scarf.jpg`:** *An elderly woman with a scarf looks directly at viewer* by Matthew Stephenson, Oaxaca, Mexico. https://unsplash.com/photos/j6OYgSMVuiI — Unsplash License.
@@ -309,6 +309,7 @@ redistributed inside this repository.
 - **`street.jpg`:** *Colorful Decorations over Street* by Jorge Acre, San Miguel de Allende, Mexico. https://www.pexels.com/photo/16625366/ (Pexels License).
 - **`textiles.jpg`:** *multicolored textiles lot* by analuisa gamboa, Teotitlán del Valle, Oaxaca, Mexico. https://unsplash.com/photos/0ohjyDUIUq0 (Unsplash License).
 - **`city.jpg`:** *people walking on street near brown concrete building during daytime* by Gerardo Martin Fernandez Vallejo, Guanajuato, Mexico. https://unsplash.com/photos/ukIew--AEOc (Unsplash License).
+- **`dance.mp4`:** *Video of a Man Dancing* by Antoni Shkraba. https://www.pexels.com/video/video-of-a-man-dancing-7571381/ (Pexels License). Cut to its first thirty seconds and to a square, scaled to 960, sound removed.
 - **`page.jpg`:** *Shadows on Open Book* by Saliha Öner. https://www.pexels.com/photo/8466090/ (Pexels License).
 - **`talavera.jpg`:** *Traditional tin glazed tilework with colorful pattern* by rotekirsche 20. https://www.pexels.com/photo/5438689/ (Pexels License).
 - **`stone.jpg`:** *Textured Stone Wall Surface Close-Up* by Memet Öz. https://www.pexels.com/photo/36023243/ (Pexels License).

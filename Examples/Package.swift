@@ -722,7 +722,7 @@ let package = Package(
         // Traces the feed's edges into vector contours (Shapes): the camera by
         // default, or a clip path passed on launch through a VideoPlayer (the
         // frame-source seam).
-        example("Vision/ContourTrace", [.vision, .video]),
+        example("Vision/ContourTrace", [.vision, .video, .samplePhotos]),
         // Hand skeletons (21 joints, up to two hands) drawn over the live feed.
         example("Vision/HandTracking", [.vision, .samplePhotos]),
         // A person's 2D pose drawn as a stick figure over the live feed.
@@ -750,7 +750,7 @@ let package = Package(
         example("Vision/ObjectTracking", [.vision]),
         // Optical flow — the camera's motion as a field of arrows, with dust
         // particles riding it.
-        example("Vision/OpticalFlow", [.vision]),
+        example("Vision/OpticalFlow", [.vision, .video, .samplePhotos]),
         // Image classification — what the camera sees, named live as animated
         // label bars.
         example("Vision/SceneLabels", [.vision, .samplePhotos]),

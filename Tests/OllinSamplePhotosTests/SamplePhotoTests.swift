@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import OllinSamplePhotos
 
@@ -76,5 +77,27 @@ import Testing
     @Test func theNamesAreDistinct() {
         #expect(Set(SamplePhoto.all.map(\.name)).count == SamplePhoto.all.count)
         #expect(SamplePhoto.all.count == 19)
+    }
+}
+
+/// The bundled film: it resolves inside the library's own bundle, and its
+/// credit names the maker and the terms the way every photograph's does.
+@Suite struct SampleClipTests {
+    @Test func theFilmIsInTheBundle() {
+        for clip in SampleClip.all {
+            let url = clip.url
+            #expect(FileManager.default.fileExists(atPath: url.path), "\(clip.name)")
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+            let size = (attributes?[.size] as? NSNumber)?.intValue ?? 0
+            #expect(size > 200_000, "\(clip.name) is suspiciously small")
+        }
+    }
+
+    @Test func everyCreditIsComplete() {
+        for clip in SampleClip.all {
+            #expect(!clip.credit.photographer.isEmpty, "\(clip.name)")
+            #expect(clip.credit.source.hasPrefix("https://"), "\(clip.name)")
+            #expect(clip.credit.line.contains(clip.credit.photographer), "\(clip.name)")
+        }
     }
 }
