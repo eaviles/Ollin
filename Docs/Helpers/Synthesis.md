@@ -651,6 +651,9 @@ The voice side of this library is routing as a value. A [`Patch`](#patch) says w
 | `.flanger(Flanger)` | the sound and a copy a hair apart, the gap sweeping a comb of notches through it |
 | `.phaser(Phaser)` | a few notches swept up and down the spectrum |
 | `.tremolo(Tremolo)` | the level breathing |
+| `.compressor(Compressor)` | holding the loud parts down so the quiet ones can come up ([the three that hold a level](#the-three-that-hold-a-level)) |
+| `.limiter(Limiter)` | a ceiling nothing gets over |
+| `.gate(Gate)` | silence between the notes |
 | `.custom(...)` | [one you wrote yourself](#an-effect-of-your-own), as a closure over the samples |
 
 #### The two that were here first
@@ -752,6 +755,25 @@ Each of these is one slow wave and the thing it moves. `rate` is how many times 
 
 Turn any setting while the sound plays and the motion carries on from where it was: the wave keeps its phase, and a copy keeps sliding. A setting change never restarts the effect.
 
+#### The three that hold a level
+
+```swift
+synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeup: 6))]
+synth.effects = [.gate(Gate(threshold: -40, hold: 0.08)), .limiter(Limiter())]
+```
+
+Where the four above move the sound, these three watch how loud it is and act on that. Every threshold is in decibels below full scale, where 0 is as loud as a sample can be and a level you would mix at sits somewhere under -12.
+
+| Level | What it does | Settings |
+|---|---|---|
+| `Compressor` | above `threshold`, lets the sound through at a fraction of what it does: a `ratio` of 4 means four decibels over arrive as one. What that buys is a narrower sound rather than a quieter one, so `makeup` brings the whole thing back up with the loud parts still held. `knee` is how wide the bend at the threshold is, and a wide one starts working before the threshold, which is what makes a compressor hard to hear working | `threshold`, `ratio`, `attack`, `release`, `knee`, `makeup` |
+| `Limiter` | a promise rather than a shape: whatever arrives, nothing leaves above `ceiling`. It turns the level down the instant a peak asks for it, so a single loud note ducks the sound around it for a `release` rather than tearing. The last thing in a chain | `ceiling`, `release` |
+| `Gate` | below `threshold`, turns the sound down by `depth`, which takes hiss, hum, and room out of the gaps. `hold` is how long it stays open after the level drops, which is what keeps a decaying note from being chopped off | `threshold`, `attack`, `hold`, `release`, `depth` |
+
+`attack` is how long the holding down takes and `release` how long the letting go takes, both in seconds, and between them they are most of what a compressor sounds like. A fast attack flattens every transient, and a slow release breathes. The level is read from both sides at once, so a loud note on one side pulls the other down with it and the image stays where you put it.
+
+Two footnotes. The compressor follows the level from crest to crest rather than reading each sample, so a tone lands where its ratio says it should rather than a decibel short of it. And a key from somewhere else, the trick where one sound ducks another, is not here: each `Synth` runs its own engine, so there is nothing for a detector on one to listen to on another.
+
 #### An effect of your own
 
 ```swift
@@ -807,6 +829,7 @@ These limits are said plainly, so you can plan around them rather than go lookin
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
 - **A patch is oscillators, not a whole modular rack.** Operators push each other and mix. There is no filter, envelope, or effect inside a patch. Those live in the `Voice` around it, one per voice rather than one per operator.
 - **The chain is on the instrument, not on a note.** Every note a `Synth` plays goes through the same effects. Two different treatments means two `Synth`s.
+- **No key from another sound.** A compressor or a gate listens to what passes through it and nothing else. Ducking a pad under a voice, or gating a sound off a drum, needs a detector on one instrument reading another, and each `Synth` owns its own engine.
 - **No sequencer.** You ask for notes from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) decides which notes and when. To run on someone else's clock, use [`TempoClock`](../Integration/MIDI.md).
 - **A sampler, but not a sample editor.** [Recordings](#sampled-instruments) are read and played. Nothing here trims them, loops them by ear, or lays out a map for you. The map is the `.sfz`.
 - **One recording at a time per note.** There is no crossfading between velocity layers, or between neighboring recordings. A change of layer is a step rather than a fade.

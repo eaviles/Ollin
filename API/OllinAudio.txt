@@ -6,22 +6,28 @@ enum AudioError: CustomStringConvertible, Error, Sendable
   var description: String { get }
 enum Effect: Decodable, Encodable, Equatable, Hashable, Sendable
   case chorus(Chorus)
+  case compressor(Compressor)
   case custom(CustomEffect)
   case delay(Delay)
   case distortion(Distortion)
   case equalizer(Equalizer)
   case flanger(Flanger)
+  case gate(Gate)
+  case limiter(Limiter)
   case phaser(Phaser)
   case reverb(Reverb)
   case tremolo(Tremolo)
   enum Kind: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
     case chorus
+    case compressor
     case convolution
     case custom
     case delay
     case distortion
     case equalizer
     case flanger
+    case gate
+    case limiter
     case phaser
     case reverb
     case tremolo
@@ -314,6 +320,14 @@ struct Chorus: Decodable, Encodable, Equatable, Hashable, Sendable
   var depth: Double { get set }
   var mix: Double { get set }
   var rate: Double { get set }
+struct Compressor: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(threshold: Double = default, ratio: Double = default, attack: Double = default, release: Double = default, knee: Double = default, makeup: Double = default)
+  var attack: Double { get set }
+  var knee: Double { get set }
+  var makeup: Double { get set }
+  var ratio: Double { get set }
+  var release: Double { get set }
+  var threshold: Double { get set }
 struct CustomEffect: Decodable, Encodable, Equatable, Hashable, Sendable
   func encode(to: any Encoder) throws
   func hash(into: Hasher)
@@ -371,6 +385,13 @@ struct Flanger: Decodable, Encodable, Equatable, Hashable, Sendable
   var feedback: Double { get set }
   var mix: Double { get set }
   var rate: Double { get set }
+struct Gate: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(threshold: Double = default, attack: Double = default, hold: Double = default, release: Double = default, depth: Double = default)
+  var attack: Double { get set }
+  var depth: Double { get set }
+  var hold: Double { get set }
+  var release: Double { get set }
+  var threshold: Double { get set }
 struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   func reversed() -> ImpulseResponse
   init(_: [Float], sampleRate: Double)
@@ -386,6 +407,10 @@ struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   var duration: Double { get }
   var frameCount: Int { get }
   var sampleRate: Double { get set }
+struct Limiter: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(ceiling: Double = default, release: Double = default)
+  var ceiling: Double { get set }
+  var release: Double { get set }
 struct MarkovChain<Element where Element : Hashable, Element : Sendable>: Sendable
   func continuations(after: [Element]) -> [(element: Element, probability: Double)]
   init(learning: [Element], order: Int = default, seed: Int = default, loops: Bool = default)

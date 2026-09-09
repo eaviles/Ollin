@@ -186,6 +186,32 @@ A **phaser** makes fewer notches, and makes them differently. The sound goes thr
 
 None of them invents a sound. Each is the sound and a copy of itself, or the sound and a wave, so a `mix` of 0 is the plain sound exactly. Turn a setting while the sound plays and the motion carries on from where it was. [`Examples/Audio/Movement`](../Examples/Audio/Movement/Sketch.swift) plays one phrase through each of the four, every setting on a parameter, with the wave drawn over the trace.
 
+### Something that holds a level: compressor, limiter, gate
+
+Those four move a sound. Three more watch how loud it is and act on that.
+
+```swift
+synth.effects = [.compressor(Compressor(threshold: -18, ratio: 4, makeup: 6))]
+synth.effects = [.gate(Gate(threshold: -40, hold: 0.08)), .limiter(Limiter())]
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/Levels-dark.jpg">
+  <img src="Images/29-MakingSound/Levels.jpg" alt="Three panels: the curve a compressor puts between the level coming in and the level leaving, with a threshold, two ratios, a knee and a ceiling; a level stepping up and the gain reduction answering it over an attack and a release; and a note decaying through a gate's threshold, held open by the hold and chopped without it" width="680">
+</picture>
+
+Every threshold here is in decibels below full scale, where 0 is as loud as a sample can be. It is a scale worth getting used to: a level you would mix at sits somewhere under -12, and a difference of 6 is a halving.
+
+A **compressor** works on what is over its `threshold`. A `ratio` of 4 means four decibels over the line arrive as one. The first panel is the whole of it: below the threshold nothing happens, above it the curve tilts. What that buys is not a quieter sound but a narrower one, which is why `makeup` matters, since it brings the whole thing back up with the loud parts still held. A `knee` bends the corner, so the holding starts before the threshold rather than at it, and that is most of what makes a compressor hard to hear working.
+
+`attack` and `release` are the other half, and the second panel is them: how long the holding takes to come on, and how long it takes to let go. A fast attack catches the very front of a note, which is where a plucked or struck sound has most of its level. A slow release keeps holding through the notes after the loud one, so the whole phrase breathes together. Neither is right; they are the difference between a phrase that keeps its shape and one that pumps.
+
+A **limiter** is a promise rather than a shape. Nothing leaves above its `ceiling`, whatever arrives. It gets there by turning the level down the instant a peak asks for it, so a single loud note ducks the sound around it for a `release` rather than tearing. It belongs last in a chain, after a distortion or anything else that can hand it more than it bargained for.
+
+A **gate** works on what is under its threshold, and turns it down by `depth`. That takes hiss, hum, and room out of the gaps between notes. The catch is a decaying note, which passes under the threshold long before it is finished, and `hold` is the answer: how long the gate stays open after the level drops. The third panel is a note with the hold and without it, and the one without is missing its tail.
+
+The level is read from both sides at once, so a loud note on one side pulls the other down with it and the sound stays where you put it. Turn a setting while it plays and the gain carries on from where it is. One thing is not here: a key from somewhere else, the trick where one sound ducks another, needs a detector on one instrument listening to a different one, and each `Synth` runs its own engine. [`Examples/Audio/Levels`](../Examples/Audio/Levels/Sketch.swift) plays a phrase with accents in it through each of the three, with the threshold drawn across the meter so you can watch the accents meet it.
+
 ## An instrument somebody recorded
 
 Everything in this chapter so far is worked out as it goes. The other way round is to start from a recording.

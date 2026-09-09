@@ -584,6 +584,7 @@ let package = Package(
         example("Audio/Shaping", [.audio]),
         example("Audio/Rooms", [.audio]),
         example("Audio/Movement", [.audio]),
+        example("Audio/Levels", [.audio]),
         example("Audio/Sampler", [.audio]),
         example("Audio/Wavetable", [.audio]),
         example("Audio/Spectrum", [.audio]),

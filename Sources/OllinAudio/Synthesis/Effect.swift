@@ -39,6 +39,13 @@ public enum Effect: Sendable, Hashable, Codable {
     case phaser(Phaser)
     /// The level breathing. See ``Tremolo``.
     case tremolo(Tremolo)
+    /// Holding the loud parts down so the quiet ones can come up. See
+    /// ``Compressor``.
+    case compressor(Compressor)
+    /// A ceiling nothing gets over. See ``Limiter``.
+    case limiter(Limiter)
+    /// Silence between the notes. See ``Gate``.
+    case gate(Gate)
     /// One you wrote yourself: a closure over the samples. See ``CustomEffect``.
     case custom(CustomEffect)
 
@@ -50,7 +57,8 @@ public enum Effect: Sendable, Hashable, Codable {
     /// its own is a reverb's room: a ``Reverb`` carrying an ``ImpulseResponse``
     /// runs on its own unit, so it reads as `.convolution` here.
     public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
-        case delay, reverb, equalizer, distortion, chorus, flanger, phaser, tremolo, custom
+        case delay, reverb, equalizer, distortion, chorus, flanger, phaser, tremolo
+        case compressor, limiter, gate, custom
         /// A reverb of a recorded or drawn room, `Reverb(impulse)`.
         case convolution
     }
@@ -66,6 +74,9 @@ public enum Effect: Sendable, Hashable, Codable {
         case .flanger:    return .flanger
         case .phaser:     return .phaser
         case .tremolo:    return .tremolo
+        case .compressor: return .compressor
+        case .limiter:    return .limiter
+        case .gate:       return .gate
         case .custom:     return .custom
         }
     }
@@ -82,6 +93,17 @@ public enum Effect: Sendable, Hashable, Codable {
         }
     }
 
+    /// The level work this effect is, for the unit that carries one, or nil
+    /// for an effect that leaves the level alone.
+    var dynamics: DynamicsEffect.Settings? {
+        switch self {
+        case .compressor(let compressor): return .compressor(compressor)
+        case .limiter(let limiter):       return .limiter(limiter)
+        case .gate(let gate):             return .gate(gate)
+        default:                          return nil
+        }
+    }
+
     /// A unit that can do this kind of work. The settings are applied
     /// separately, so one unit serves every setting of its kind. For a custom
     /// effect the closure itself is the setting, which is what lets a sketch
@@ -95,6 +117,8 @@ public enum Effect: Sendable, Hashable, Codable {
         case .equalizer:   return AVAudioUnitEQ(numberOfBands: 3)
         case .distortion:  return AVAudioUnitDistortion()
         case .chorus, .flanger, .phaser, .tremolo:
+            return ClosureAudioUnit.makeUnit()
+        case .compressor, .limiter, .gate:
             return ClosureAudioUnit.makeUnit()
         case .custom:      return ClosureAudioUnit.makeUnit()
         case .convolution: return ClosureAudioUnit.makeUnit()
@@ -125,6 +149,10 @@ public enum Effect: Sendable, Hashable, Codable {
             guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit,
                   let motion else { return }
             closureUnit.setMotion(motion, sampleRate: sampleRate)
+        case .compressor, .limiter, .gate:
+            guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit,
+                  let dynamics else { return }
+            closureUnit.setDynamics(dynamics, sampleRate: sampleRate)
         case .custom(let custom):
             guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit else { return }
             closureUnit.slot.set(custom.runner)

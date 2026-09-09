@@ -253,6 +253,24 @@ final class ClosureAudioUnit: AUAudioUnit {
         slot.set(CustomEffectRunner { block in made.process(block) })
     }
 
+    /// The level work a compressor, limiter, or gate runs on this unit, kept
+    /// for the same reason the motion is: a turn of a setting rides the
+    /// follower's own level and the gain it has reached rather than dropping
+    /// them and starting over.
+    var dynamics: DynamicsEffect?
+
+    /// Puts a level's settings onto this unit: the standing one when it is the
+    /// same kind at the same rate, a new one otherwise.
+    func setDynamics(_ settings: DynamicsEffect.Settings, sampleRate: Double) {
+        if let dynamics, dynamics.serves(settings, at: sampleRate) {
+            dynamics.update(settings)
+            return
+        }
+        let made = DynamicsEffect(settings, sampleRate: sampleRate)
+        dynamics = made
+        slot.set(CustomEffectRunner { block in made.process(block) })
+    }
+
     private var inputBus: AUAudioUnitBus!
     private var outputBus: AUAudioUnitBus!
     private var inputBusArray: AUAudioUnitBusArray!
