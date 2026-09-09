@@ -44,7 +44,7 @@ struct TransparentOutputTests {
         return (Int(bytes[i]), Int(bytes[i + 1]), Int(bytes[i + 2]), Int(bytes[i + 3]))
     }
 
-    private func image(ground: Color, ink: Color = Color(red: 1, green: 0, blue: 0),
+    private func render(ground: Color, ink: Color = Color(red: 1, green: 0, blue: 0),
                        map: ToneMap? = nil) -> CGImage? {
         let sketch = Disk()
         sketch.ground = ground
@@ -56,7 +56,7 @@ struct TransparentOutputTests {
     // MARK: Stills
 
     @Test func aClearCanvasExportsItsCoverageAsAlpha() throws {
-        let image = try #require(image(ground: .clear))
+        let image = try #require(render(ground: .clear))
         #expect(image.alphaInfo == .premultipliedFirst)
         let corner = stored(image, x: 4, y: 4)
         #expect(corner.a == 0)
@@ -67,7 +67,7 @@ struct TransparentOutputTests {
     }
 
     @Test func anOpaqueCanvasKeepsItsTagAndBytes() throws {
-        let image = try #require(image(ground: .white))
+        let image = try #require(render(ground: .white))
         #expect(image.alphaInfo == .noneSkipFirst)
         let corner = stored(image, x: 4, y: 4)
         #expect(corner.r == 255 && corner.g == 255 && corner.b == 255)
@@ -77,7 +77,7 @@ struct TransparentOutputTests {
     /// divides it back out: the red byte is the alpha byte, not the sRGB encode
     /// of half of linear red.
     @Test func halfCoverIsPremultipliedInTheEncodedDomain() throws {
-        let image = try #require(image(ground: .clear, ink: Color(red: 1, green: 0, blue: 0, alpha: 0.5)))
+        let image = try #require(render(ground: .clear, ink: Color(red: 1, green: 0, blue: 0, alpha: 0.5)))
         let center = stored(image, x: 64, y: 64)
         #expect(abs(center.a - 128) <= 1)
         #expect(abs(center.r - center.a) <= 1)
@@ -89,8 +89,8 @@ struct TransparentOutputTests {
     /// the same gray an opaque one does, at half the alpha.
     @Test func theToneMapSeesTheStraightColor() throws {
         let gray = Color(white: 0.5)
-        let opaque = try #require(image(ground: .black, ink: gray, map: .reinhard))
-        let seeThrough = try #require(image(ground: .clear, ink: Color(white: 0.5, alpha: 0.5), map: .reinhard))
+        let opaque = try #require(render(ground: .black, ink: gray, map: .reinhard))
+        let seeThrough = try #require(render(ground: .clear, ink: Color(white: 0.5, alpha: 0.5), map: .reinhard))
         let solid = stored(opaque, x: 64, y: 64)
         let half = stored(seeThrough, x: 64, y: 64)
         #expect(abs(half.a - 128) <= 1)
@@ -102,7 +102,7 @@ struct TransparentOutputTests {
     /// A background with any alpha under 1 counts; the rest of the color is the
     /// premultiplied ground the canvas composites over.
     @Test func aTranslucentGroundIsSeeThroughToo() throws {
-        let image = try #require(image(ground: Color(red: 0, green: 0, blue: 1, alpha: 0.25)))
+        let image = try #require(render(ground: Color(red: 0, green: 0, blue: 1, alpha: 0.25)))
         #expect(image.alphaInfo == .premultipliedFirst)
         let corner = stored(image, x: 4, y: 4)
         #expect(abs(corner.a - 64) <= 1)
