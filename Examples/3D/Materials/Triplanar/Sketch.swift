@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 
 /// Triplanar projection: texture for meshes that have no uvs at all.
 ///
@@ -16,8 +17,15 @@ import Ollin
 /// from its good side: three separate boxes, drawn separately, continue one
 /// another's pattern because they share the one projection. `tile` is the
 /// size of one texture tile in world units; `relief` is the normal map's
-/// strength. The maps are authored in setup from a vein function, no image
-/// files.
+/// strength.
+///
+/// The picture is a bundled photograph of Mexican talavera, and it is the one
+/// bundled surface that **repeats seamlessly**: its frame is cut to two whole
+/// periods of the motif. That matters here more than anywhere, because a
+/// triplanar projection tiles whatever it is given regardless of any wrap
+/// setting, so a photograph that does not join up shows its own grid. The
+/// normal map is taken off the same picture's own light and shade, which
+/// reads the painted design as relief and moulds the tile.
 @main
 final class Triplanar: Sketch {
 
@@ -28,47 +36,40 @@ final class Triplanar: Sketch {
     var veins = Image(width: 1, height: 1, color: .white)
     var balls = Metaballs()
 
-    /// The vein field: 0 in a vein's floor, 1 on open stone. Sine-warped
-    /// bands raised to a sharp power, so the veins run thin, tile both ways,
-    /// and every run is identical.
-    func veinField(_ u: Double, _ v: Double) -> Double {
-        let warp = 0.09 * sin(v * 2 * .tau) + 0.05 * sin(u * 3 * .tau + 1.7)
-        let a = unipolar(sin((u * 3 + warp) * .tau))
-        let b = unipolar(sin((v * 4 + 0.14 * sin(u * 2 * .tau) + 0.31) * .tau))
-        return min(pow(a, 0.16), pow(b, 0.22))
-    }
-
-    func makeMaps() {
+    /// The normal map, taken off the picture's own light and shade: the slope
+    /// of its brightness at each texel, green-up, which is the field the vein
+    /// function used to supply. A small working copy carries the slopes well
+    /// enough, and the reads wrap, so the normal map tiles exactly as the
+    /// color map does.
+    func makeNormals() {
         let size = 256
-        var color = [UInt8](repeating: 255, count: size * size * 4)
+        let small = stone.resized(width: size, height: size)
+        var field = [Double](repeating: 0, count: size * size)
+        for y in 0 ..< size {
+            for x in 0 ..< size { field[y * size + x] = small[x, y].luminance }
+        }
+        func height(_ x: Int, _ y: Int) -> Double {
+            field[(((y % size) + size) % size) * size + (((x % size) + size) % size)]
+        }
         var normal = [UInt8](repeating: 255, count: size * size * 4)
-        let d = 1.0 / Double(size)
-        for y in 0..<size {
-            for x in 0..<size {
-                let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
-                let h = veinField(u, v)
-                // Warm sand over darker seams.
-                let t = 0.45 + 0.55 * h
-                let i = (y * size + x) * 4
-                color[i]     = UInt8(214 * t)
-                color[i + 1] = UInt8(196 * t)
-                color[i + 2] = UInt8(168 * t)
-                // The veins engraved: slopes of the same field, green-up.
-                let strength = 0.3
-                let dx = (veinField(u + d, v) - veinField(u - d, v)) / (2 * d) * strength
-                let dy = (veinField(u, v + d) - veinField(u, v - d)) / (2 * d) * strength
+        let gain = 3.0
+        for y in 0 ..< size {
+            for x in 0 ..< size {
+                let dx = (height(x + 1, y) - height(x - 1, y)) * gain
+                let dy = (height(x, y + 1) - height(x, y - 1)) * gain
                 let len = (dx * dx + dy * dy + 1).squareRoot()
+                let i = (y * size + x) * 4
                 normal[i]     = UInt8((-dx / len * 0.5 + 0.5) * 255)
                 normal[i + 1] = UInt8((dy / len * 0.5 + 0.5) * 255)
                 normal[i + 2] = UInt8((1 / len * 0.5 + 0.5) * 255)
             }
         }
-        stone = Image(width: size, height: size, premultipliedRGBA: color)!
         veins = Image(width: size, height: size, premultipliedRGBA: normal)!
     }
 
     override func setup() {
-        makeMaps()
+        stone = SamplePhoto.talavera.load()
+        makeNormals()
     }
 
     /// The morphing blob: three balls on slow circling paths.

@@ -15,11 +15,14 @@ struct SamplePhoto: Equatable, Hashable, Sendable
   static let handstand: SamplePhoto
   static let headland: SamplePhoto
   static let marigolds: SamplePhoto
+  static let page: SamplePhoto
   static let portrait: SamplePhoto
   static let profile: SamplePhoto
   static let reaching: SamplePhoto
   static let scarf: SamplePhoto
+  static let stone: SamplePhoto
   static let street: SamplePhoto
+  static let talavera: SamplePhoto
   static let textiles: SamplePhoto
   static let wrestler: SamplePhoto
   struct Credit: Equatable, Hashable, Sendable

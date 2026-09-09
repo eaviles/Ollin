@@ -5,11 +5,27 @@ import Testing
 /// a credit that names the photographer, the place, the page it came from, and
 /// the license it is used under.
 @Suite struct SamplePhotoTests {
+    /// The two surfaces are textures rather than pictures, so they are sized
+    /// for a GPU rather than for a page.
+    static let surfaces: [SamplePhoto] = [.talavera, .stone]
+
     @Test func everyPhotographDecodesAt1600OnItsLongSide() {
-        for photo in SamplePhoto.all {
+        for photo in SamplePhoto.all where !SamplePhotoTests.surfaces.contains(photo) {
             let image = photo.load()
             #expect(max(image.width, image.height) == 1600, "\(photo.name)")
             #expect(min(image.width, image.height) >= 1000, "\(photo.name)")
+        }
+    }
+
+    /// A texture is magnified on a surface and repeats, so it is a square of a
+    /// power of two rather than 1600 on its long side: that is the size a GPU
+    /// mips evenly, and at 1600 neither of these fits the size budget without
+    /// artifacts a magnified surface would show.
+    @Test func theSurfacesAreSquarePowersOfTwo() {
+        for photo in SamplePhotoTests.surfaces {
+            let image = photo.load()
+            #expect(image.width == image.height, "\(photo.name)")
+            #expect(image.width == 1024, "\(photo.name)")
         }
     }
 
@@ -59,6 +75,6 @@ import Testing
 
     @Test func theNamesAreDistinct() {
         #expect(Set(SamplePhoto.all.map(\.name)).count == SamplePhoto.all.count)
-        #expect(SamplePhoto.all.count == 16)
+        #expect(SamplePhoto.all.count == 19)
     }
 }

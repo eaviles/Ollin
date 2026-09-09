@@ -103,8 +103,8 @@ This group covers what surfaces are made of: stylized finishes, physically based
 | [SurfaceMaps](Materials/SurfaceMaps/) | The rest of the surface-map set: metallic-roughness, occlusion, and emissive maps, each varying a finish per pixel. |
 | [NormalMaps](Materials/NormalMaps/) | Normal maps: per-pixel surface relief without per-pixel geometry. |
 | [Detail](Materials/Detail/) | Detail maps: texture that stays sharp under a close look. |
-| [Parallax](Materials/Parallax/) | One height map read two ways: parallax occlusion and real displacement. |
-| [Triplanar](Materials/Triplanar/) | Texture for meshes with no uvs at all, projected from three directions. |
+| [Parallax](Materials/Parallax/) | A photographed stone wall read two ways: parallax occlusion and real displacement. |
+| [Triplanar](Materials/Triplanar/) | Talavera tilework on meshes with no uvs at all, projected from three directions. |
 | [Decals](Materials/Decals/) | Pictures stamped onto the scene, projected rather than mapped. |
 | [Glass](Materials/Glass/) | Physically-based transmission and refraction. |
 | [SeeThrough](Materials/SeeThrough/) | The scene showing through glass, with no ray tracing. |

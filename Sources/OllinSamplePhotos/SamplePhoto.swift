@@ -5,7 +5,10 @@ import Ollin
 /// and for any sketch that wants a real picture to work on before it has one of
 /// its own.
 ///
-/// Sixteen pictures, 1600 pixels on the long side. Four faces, each a square: a
+/// Nineteen pictures. The seventeen photographs are 1600 pixels on the long
+/// side; the two surface textures are 1024-pixel squares, since a texture is
+/// magnified on a surface and wants clean pixels at a size the GPU mips
+/// evenly rather than the largest ones that fit. Four faces, each a square: a
 /// frontal `portrait`, an older face in a `scarf`, a `profile` on a plain
 /// ground, and a woman before a wall of `marigolds`. Four whole figures, framed
 /// so no limb runs off the edge: someone `reaching` up a concrete wall, a
@@ -14,11 +17,13 @@ import Ollin
 /// readers that want things to name and print to read: a `breakfast` and a
 /// `desk`. Four streets, each the largest square its original held, for
 /// everything that wants a whole scene: an `alley`, a `street`, a wall of
-/// `textiles`, and a `city` under its hills. And two landscapes at dusk, the
-/// only wide pictures here and both the same shape: a `headland` in
-/// silhouette, and `boats` on calm water. Each carries its `credit`: who made
-/// it, where, and the terms it is used under, so a sketch can draw the line the
-/// photographer is owed.
+/// `textiles`, and a `city` under its hills. Two landscapes at dusk, the only
+/// wide pictures here and both the same shape: a `headland` in silhouette, and
+/// `boats` on calm water. A `page` with the light falling unevenly across it.
+/// And two surfaces to wrap a form in: `talavera` tilework that repeats
+/// seamlessly, and rough `stone` that carries real relief. Each carries its
+/// `credit`: who made it, where, and the terms it is used under, so a sketch
+/// can draw the line the photographer is owed.
 ///
 ///     let picture = SamplePhoto.portrait.load()
 ///     drawImage(picture, in: canvasRectangle, fit: .cover)
@@ -221,11 +226,50 @@ public struct SamplePhoto: Hashable, Sendable {
                        source: "https://unsplash.com/photos/ACQmpRYafPg",
                        license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
 
-    /// Every bundled photograph: the four faces, the four figures, the two
-    /// tables, the four streets, then the two landscapes.
+    /// A book held open with dappled shadow across the right half of the page,
+    /// the type large and crisp under it. The uneven light: one global
+    /// threshold loses whole bands of the text to black, and reading each pixel
+    /// against its own neighborhood brings all of it back, which is the case
+    /// adaptive thresholding exists for. The recognizer takes sixty lines off
+    /// it at 0.91 confidence, the most of anything here.
+    public static let page = SamplePhoto(
+        name: "page",
+        subject: "an open book with dappled shadow falling across the page",
+        credit: Credit(photographer: "Saliha Öner", place: "location not given",
+                       source: "https://www.pexels.com/photo/8466090/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
+    /// Mexican talavera tilework, straight on and evenly lit. **It repeats
+    /// seamlessly**: the frame is cut to two whole periods of the motif, so
+    /// laying it side by side leaves no seam, which is what a projection that
+    /// tiles regardless of any wrap setting needs. The relief in it is painted
+    /// rather than moulded, so a normal map taken off it embosses the design.
+    public static let talavera = SamplePhoto(
+        name: "talavera",
+        subject: "Mexican talavera tilework, a seamless repeat",
+        credit: Credit(photographer: "rotekirsche 20", place: "location not given",
+                       source: "https://www.pexels.com/photo/5438689/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
+    /// A dry-stone wall close up, square on under an even sky. The relief one:
+    /// deep mortar gaps and faceted faces give a height or normal map something
+    /// to bite on, and it is nearly colorless, so it reads as material rather
+    /// than as a picture of a thing. It does not repeat, so a surface that
+    /// tiles it wants mirror wrapping or a projection large enough to cover the
+    /// form once.
+    public static let stone = SamplePhoto(
+        name: "stone",
+        subject: "a dry-stone wall close up, even light and deep relief",
+        credit: Credit(photographer: "Memet Öz", place: "location not given",
+                       source: "https://www.pexels.com/photo/36023243/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
+    /// Every bundled picture: the four faces, the four figures, the two tables,
+    /// the four streets, the two landscapes, the page, then the two surfaces.
     public static let all: [SamplePhoto] = [.portrait, .scarf, .profile, .marigolds,
                                             .reaching, .wrestler, .dancer, .handstand,
                                             .breakfast, .desk,
                                             .alley, .street, .textiles, .city,
-                                            .headland, .boats]
+                                            .headland, .boats,
+                                            .page, .talavera, .stone]
 }
