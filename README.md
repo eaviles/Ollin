@@ -88,38 +88,15 @@ You can also skip the package entirely: a single loose `.swift` file runs on its
 
 ## Why Ollin exists
 
-<!--
-  PLACEHOLDER: @eaviles to write. Target 150-250 words, three short paragraphs.
-  Delete the visible placeholder line below when this is filled in.
+I make sketches in code, mostly for myself. Some months there are a lot of them and some months there are none. Along the way I collected the parts I kept needing: techniques I had read about and written out myself, shaders I copied from one sketch into the next, and small tools for starting a new sketch.
 
-  Prompts to answer:
-    - What were you making when you hit the wall, and what actually stopped you?
-    - Was there a specific moment? A piece you couldn't finish, an export you lost,
-      a set that broke mid-performance.
-    - What did you get tired of rebuilding?
-    - Why Swift, when you already had a working practice somewhere else?
-    - Who else do you picture using this?
+Those parts were spread across several tools. I drew in openFrameworks, shared each window through a browser so I could mix it live in Hydra, and wrote filters in OPENRNDR. In my setup I could only keep four sketches going at once, and what I could do live was whatever that chain allowed. Anything past drawing, a 3D camera for example, meant an add-on maintained on its own schedule, and sometimes I had to get it compiling before I could start. I liked how much of OPENRNDR felt organized and part of one thing.
 
-  Decisions already in the repo that this section can point at, since each one
-  only gets made by someone solving a real problem:
-    - plotter SVG with hatching, riso separations, true-to-size PDF
-        -> the work is meant to end up on paper
-    - Syphon both directions, a virtual camera, MIDI clock sync, the live-coding host
-        -> the work gets performed, inside a rig other people already run
-    - seeds recorded in every export, contact sheets, reproducibility recipes
-        -> a good result is worthless if you can't get it back
-    - the sheer breadth of the technique catalog
-        -> tired of reimplementing the same things before starting
-    - nineteen on-device trackers and a custom iPhone capture app
-        -> the room belongs in the work
+I wanted that in one native framework: drawing that looks right at full resolution by default, Metal and compute shaders available directly, current Apple hardware supported, and the parts kept working together. I also wanted what p5 has in the browser, where a change shows on screen as soon as you save, instead of a rebuild and a wait. And I wanted to write it in Swift.
 
-  Voice: written as the one first-person section on the page (everything else is
-  third person). End it with a short signed line so the shift reads as deliberate.
-  If you'd rather keep the whole page third person, rewrite as "@eaviles built..."
-  and drop the signature.
--->
+Working this way also brings the phone in. Its cameras and its lidar feed a sketch running on the Mac, so the room in front of it, a face, or a pair of hands can drive the drawing, and a sketch can also run on the phone itself.
 
-> **[Placeholder: the origin story goes here.]**
+Ollin is that collection, rewritten as a single framework. I built it for my own work first. It is public because most of what is in it is not specific to me, and because I would like other people drawn to creative coding to learn along with me, collecting examples, writing sketches, and adding to the framework.
 
 ## What's in it
 
