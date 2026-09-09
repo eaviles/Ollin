@@ -47,7 +47,7 @@ Four steps sit between your draw calls and the file, and a machine needs each on
 - **Touching ends merge.** Open paths whose ends meet within `joinTolerance` millimeters become one path. The pen then stays down across a line that you drew as many short calls. A merged path whose own ends meet closes into a loop.
 - **The order is planned.** `ordered` is on by default. With it on, a greedy nearest-neighbor walk from the origin reorders the paths. The walk reverses a path when its far end is closer, and it enters a closed loop at whichever point is nearest. Ordering changes only the travel, never what is drawn.
 
-Raster images have no line work, so they are skipped, and the file's header notes this. The header also records the [reproduction recipe](./Export.md#reproducibility-metadata), the canvas-to-millimeter mapping, and the measured draw and travel lengths.
+Raster images have no line work, so they are skipped, and the file's header notes this. A 3D scene has none either, until [`lineDrawing(of:)`](../3D/LineDrawing.md) writes it down as paths with what the surfaces hide taken out; those are drawn like any other line work and come out here with everything else. The header also records the [reproduction recipe](./Export.md#reproducibility-metadata), the canvas-to-millimeter mapping, and the measured draw and travel lengths.
 
 ### Previewing the route
 

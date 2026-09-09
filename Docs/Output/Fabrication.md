@@ -14,6 +14,8 @@ That is the whole call. The format comes from the file extension. Ollin prepares
 
 ### Size is yours to set
 
+> A mesh leaves here as a solid. To send the same scene to a *plotter* instead, as the lines a draughtsman would draw, see [line drawing](../3D/LineDrawing.md).
+
 A `Mesh` carries bare numbers, and a printer needs millimeters. To join the two, you declare what one model unit means, and you scale the mesh to the size you want:
 
 ```swift

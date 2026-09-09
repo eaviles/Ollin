@@ -2151,6 +2151,8 @@ open class Sketch: Sendable
   func light(_: Light)
   func lightingPreset(_: LightingPreset)
   func lights()
+  func lineDrawing(of: Mesh, creaseAngle: Double = default, spacing: Double = default) -> LineDrawing
+  func lineDrawing(of: [Mesh], creaseAngle: Double = default, spacing: Double = default) -> LineDrawing
   func lloyd(_: [Vector2], in: Rectangle? = default, iterations: Int = default) -> [Vector2]
   func loadCues(from: String) throws
   func loadImage(_: Foundation.URL) -> Image?
@@ -4236,6 +4238,10 @@ struct LightingPreset: ParamChoices, ParamValue, Equatable, Sendable
   static var paramChoices: [(name: String, value: LightingPreset)] { get }
   var ambient: Color { get set }
   var lights: [Light] { get set }
+struct LineDrawing: Sendable
+  init(of: [Mesh], camera: Camera3D, size: Vector2, creaseAngle: Double = default, spacing: Double = default)
+  var hidden: [Contour] { get set }
+  var paths: [Contour] { get set }
 struct MarbledInk: Equatable, Sendable
   init(shape: Shape, color: Color)
   var color: Color { get set }
@@ -4419,6 +4425,8 @@ struct Mesh: Sendable
   func subdivided(_: SubdivisionScheme = default, levels: Int = default) -> Mesh
   func surfaceMapped(metallicRoughness: Image? = default, occlusion: Image? = default, occlusionStrength: Double = default, emissive: Image? = default, emissiveColor: Color? = default) -> Mesh
   func textured(_: Image, baseColor: Color = default, wrap: TextureWrap = default) -> Mesh
+  func transformed(by: MeshInstance) -> Mesh
+  func transformed(by: simd.simd_float4x4) -> Mesh
   func triplanarTextured(_: Image, normal: Image? = default, scale: Double = default, normalScale: Double = default, baseColor: Color = default) -> Mesh
   init(positions: [Vector3], normals: [Vector3] = default, indices: [UInt32], uvs: [Vector2] = default, colors: [Color] = default, material: MeshMaterial? = default, tangents: [MeshTangent] = default)
   init?(contentsOf: Foundation.URL)

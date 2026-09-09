@@ -2086,6 +2086,50 @@ open class Sketch {
         drawer.drawDepthScene(metricFrame: frame, in: rect ?? canvasRectangle)
     }
 
+    /// The meshes drawn as line work, with everything the surface hides taken
+    /// out: the silhouette where a surface turns away, the creases where faces
+    /// meet at more than `creaseAngle`, and the boundary where one ends.
+    ///
+    /// What comes back is ordinary 2D line work in canvas points, so it draws
+    /// with `drawPolyline` and reaches a pen plotter, a laser, or a vector file
+    /// the way any other path does. The active camera and the current 3D
+    /// transform place it, the way they place `drawMesh`, and every mesh in one
+    /// call occludes every other, which is why they go in together.
+    ///
+    /// ```swift
+    /// camera(Camera3D(eye: Vector3(3, 2, 4), target: .zero))
+    /// stroke(.black)
+    /// noFill()
+    /// for line in lineDrawing(of: .box(size: 2)).paths {
+    ///     drawPolyline(line.points, closed: line.isClosed)
+    /// }
+    /// ```
+    ///
+    /// What comes back also holds `hidden`, the stretches something covers,
+    /// for the draughtsman's dashed line. A `creaseAngle` of 0 keeps every edge,
+    /// which is the wireframe rather than a drawing. `spacing` is how far apart, in canvas points, an edge is
+    /// tested for whether it is hidden. It costs what it sounds like, and the
+    /// ends of a visible stretch are pinned down to a fraction of a point
+    /// whatever it is set to. See [`LineDrawing`](../3D/LineDrawing.md).
+    public func lineDrawing(of meshes: [Mesh], creaseAngle: Double = .pi / 6,
+                            spacing: Double = 2) -> LineDrawing {
+        guard let camera = activeCamera, width > 0, height > 0 else {
+            return LineDrawing(of: [], camera: Camera3D(eye: .zero, target: Vector3(0, 0, -1)),
+                               size: Vector2(1, 1))
+        }
+        let placed = drawer.modelMatrix == matrix_identity_float4x4
+            ? meshes : meshes.map { $0.transformed(by: drawer.modelMatrix) }
+        return LineDrawing(of: placed, camera: camera, size: Vector2(width, height),
+                           creaseAngle: creaseAngle, spacing: spacing)
+    }
+
+    /// One mesh drawn as line work, with everything it hides of itself taken
+    /// out. See ``lineDrawing(of:creaseAngle:spacing:)-[[Mesh]]``.
+    public func lineDrawing(of mesh: Mesh, creaseAngle: Double = .pi / 6,
+                            spacing: Double = 2) -> LineDrawing {
+        lineDrawing(of: [mesh], creaseAngle: creaseAngle, spacing: spacing)
+    }
+
     /// Project a world point through the active camera to its position on the canvas
     /// (top-left origin, points), or `nil` if there's no camera or the point is
     /// behind it. The screen place to draw a 2D billboard for a 3D point.

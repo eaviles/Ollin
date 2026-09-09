@@ -183,6 +183,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-shock",
                  note: "The coherence-enhancing filter over the same fixed still life as effects-xdog: the default three rounds, one round, the layer itself, and eight rounds with the sign read through a blur of 2. Pins the round's six passes (the color tensor kept from the previous estimate where the picture went flat, its blur, the convolution along the flow, the tensor again, the shock across it) and the final edge smoothing.",
                  make: { EffectsShock() }),
+    SnapshotCase("line-drawing",
+                 note: "A slab with a cylinder, a ball and a box on it, written down as line work by lineDrawing(of:) at a fixed camera: the visible paths in ink over the hidden stretches in gray. Pins the whole hidden-line path (the weld, the silhouette/crease/boundary classification, the screen-space depth test with its grid, the halving that lands a visible stretch's ends, and the chaining), and that the paths reach the 2D drawing side at all.",
+                 make: { SceneLineDrawing() }),
     SnapshotCase("effects-hatching",
                  note: "The flow hatching over the same fixed still life as effects-xdog: the default pen, a fine pen hatching one way only, the layer itself, and a fine three-direction pen on cream paper. Pins the three passes (the normalized color structure tensor, its blur, the walk that lays the strokes), the rank that turns a convolution of noise into a tone, and the capped layers that let a second direction cross the first.",
                  make: { EffectsHatching() }),
@@ -6921,6 +6924,37 @@ private final class EffectsShock: Sketch {
         drawImage(scene.filtered(.shock(iterations: 1)).image, in: tile(1, 0))
         drawImage(scene.image, in: tile(0, 1))
         drawImage(scene.filtered(.shock(iterations: 8, smoothing: 2)).image, in: tile(1, 1))
+    }
+}
+
+/// A fixed scene written down as line work: the visible paths over the hidden
+/// stretches. No time and no random, so it pins the hidden-line path exactly.
+private final class SceneLineDrawing: Sketch {
+    override var canvasSize: CanvasSize { .size(420, 300) }
+
+    override func draw() {
+        background(Color(hex: 0xF4F1E8))
+        camera(Camera3D(eye: Vector3(5.2, 3.6, 6.0), target: Vector3(0, 0.6, 0)))
+        let scene: [Mesh] = [
+            Mesh.box(width: 5, height: 0.4, depth: 5)
+                .transformed(by: MeshInstance(position: Vector3(0, -0.2, 0))),
+            Mesh.cylinder(radius: 0.55, height: 1.7, segments: 20)
+                .transformed(by: MeshInstance(position: Vector3(-1.1, 0.85, 0.5))),
+            Mesh.sphere(radius: 0.75, segments: 24, rings: 12)
+                .transformed(by: MeshInstance(position: Vector3(1.0, 0.75, -0.3))),
+            Mesh.box(size: 0.8)
+                .transformed(by: MeshInstance(position: Vector3(0.3, 0.4, 1.4),
+                                              rotation: Vector3(0, 0.5, 0))),
+        ]
+        let drawing = lineDrawing(of: scene)
+        noFill()
+        strokeJoin(.round)
+        stroke(Color(white: 0.55))
+        strokeWeight(1)
+        for line in drawing.hidden { drawPolyline(line.points, closed: line.isClosed) }
+        stroke(Color(hex: 0x1A1A1A))
+        strokeWeight(2)
+        for line in drawing.paths { drawPolyline(line.points, closed: line.isClosed) }
     }
 }
 

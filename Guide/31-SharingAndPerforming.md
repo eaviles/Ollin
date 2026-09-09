@@ -150,6 +150,32 @@ The exporter records each draw call at its own level, before any pixels exist. C
 
 The same recording writes as a **PDF** with `--export-pdf plot.pdf`, and that is the path to paper. One canvas pixel maps to one PDF point, so the paper presets on `CanvasSize` come out true to size. Declare `override var canvasSize: CanvasSize { .a4 }` and the exported page *is* that sheet, vector-sharp at any printer's resolution. `.usLetter` and `.a5` are there too, and `.landscape` turns the sheet. If the raster export should be print-grade too, `.a4.dpi(300)` renders the pixels at 300 dots per inch. The PDF page stays exactly A4. Everything the SVG carries, the PDF carries the same way, hatching included.
 
+## A 3D scene on the plotter
+
+A vector file has nowhere to put a lit surface, so everything [Chapter 21](21-3DGently.md) and [Chapter 22](22-Meshes.md) drew stops at the raster. `lineDrawing(of:)` is the way across. It takes the same meshes and the same camera and hands back 2D paths: the lines a draughtsman would draw, with everything the surfaces hide taken out.
+
+```swift
+camera(Camera3D(eye: Vector3(6, 4, 7), target: .zero))
+stroke(.black)
+noFill()
+for line in lineDrawing(of: scene).paths {
+    drawPolyline(line.points, closed: line.isClosed)
+}
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/SceneAsLines-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/SceneAsLines.jpg" alt="Two panels of the same scene, a slab with a cylinder, a cube and a ball on it: on the left every edge the drawing considers, with the covered ones ghosted in gray, and on the right the drawing with those taken out" width="680">
+</picture>
+
+Three kinds of line are kept, and between them they are what makes a drawing rather than a wireframe. The **silhouette**, where a surface turns away from the camera, which is the outline of a ball or a cylinder. A **crease**, where two faces meet at more than `creaseAngle`, which is the edge of a cube and the rim of a cap. And a **boundary**, where a surface ends. The tessellation inside a smooth surface is left out, which is why the ball above is a circle rather than a net. Lower the crease angle and gentler ridges start to show; set it to 0 and every edge is kept, which is the wireframe.
+
+Everything handed to one call hides everything else in it, which is why it takes an array of meshes rather than one at a time. `Mesh.transformed(by:)` puts each where it belongs first, taking the same `MeshInstance` the instanced draws take. Two separate calls are two drawings that know nothing of each other, and the near one will not hide the far one.
+
+The paths are ordinary line work, so everything in this chapter applies to them: `--export-svg` for the plotter's own tooling, `--export-gcode` to drive the machine directly, `--export-dxf` for the shop. They are also just paths on the canvas, so a brush, a wobble, or a hand-drawn stroke can go on them, which is how a technical drawing stops looking like one.
+
+What the drawing leaves out is kept: `lineDrawing(of:).hidden` is the covered stretches, and drawing them faintly, or dashed, is the draughtsman's way of showing what is behind. That is the left panel above. The full reference is [`Docs/3D/LineDrawing.md`](../Docs/3D/LineDrawing.md).
+
 ## A page that plays it
 
 A video carries pixels, and a page can carry what made them. `--export-web` records what the sketch draws over a duration, frame by frame at a fixed rate. It writes a page that plays the recording back in a browser:
@@ -940,6 +966,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
 - [DXF](../Docs/Output/DXF.md): a frame as the drawing a shop program opens, each color on its own layer, with circles kept as circles and touching paths merged.
+- [Line drawing](../Docs/3D/LineDrawing.md): a 3D scene as the line work a machine can follow, which edges are kept and why, placing several meshes so they hide each other, and what the hidden set is for.
 - [Embroidery](../Docs/Output/Embroidery.md): a frame as the stitches a machine sews, with strokes as running stitch, fills as rows, and each color as its own thread.
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
