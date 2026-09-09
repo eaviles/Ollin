@@ -5,18 +5,20 @@ import Ollin
 /// and for any sketch that wants a real picture to work on before it has one of
 /// its own.
 ///
-/// Fourteen pictures, 1600 pixels on the long side. Four faces, each a square: a
+/// Sixteen pictures, 1600 pixels on the long side. Four faces, each a square: a
 /// frontal `portrait`, an older face in a `scarf`, a `profile` on a plain
 /// ground, and a woman before a wall of `marigolds`. Four whole figures, framed
 /// so no limb runs off the edge: someone `reaching` up a concrete wall, a
 /// masked `wrestler` with both arms raised, a `dancer` on white, and a
 /// breakdancer holding a `handstand`. Two tables seen from above, for the
 /// readers that want things to name and print to read: a `breakfast` and a
-/// `desk`. And four streets, each the largest square its original held, for
+/// `desk`. Four streets, each the largest square its original held, for
 /// everything that wants a whole scene: an `alley`, a `street`, a wall of
-/// `textiles`, and a `city` under its hills. Each carries its `credit`: who
-/// made it, where, and the terms it is used under, so a sketch can draw the
-/// line the photographer is owed.
+/// `textiles`, and a `city` under its hills. And two landscapes at dusk, the
+/// only wide pictures here and both the same shape: a `headland` in
+/// silhouette, and `boats` on calm water. Each carries its `credit`: who made
+/// it, where, and the terms it is used under, so a sketch can draw the line the
+/// photographer is owed.
 ///
 ///     let picture = SamplePhoto.portrait.load()
 ///     drawImage(picture, in: canvasRectangle, fit: .cover)
@@ -197,10 +199,33 @@ public struct SamplePhoto: Hashable, Sendable {
                        source: "https://unsplash.com/photos/ukIew--AEOc",
                        license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
 
+    /// A headland at dusk over the water at Loreto, cardón cacti in silhouette
+    /// along a dark shore. The silhouette: one hard dark mass and one smooth
+    /// wide gradient in the same frame, which is what a threshold, a halftone,
+    /// an edge finder, and a dither read best.
+    public static let headland = SamplePhoto(
+        name: "headland",
+        subject: "a headland at dusk over calm water, cacti in silhouette on the shore",
+        credit: Credit(photographer: "Joe Leineweber", place: "Loreto, Baja California Sur, Mexico",
+                       source: "https://www.pexels.com/photo/12848727/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
+    /// Small boats moored off Cozumel under a pink sky, turquoise water below a
+    /// dead straight horizon. The calm one: almost none of it is near black, and
+    /// it varies far more in color than in brightness, which is the backdrop
+    /// gradient-domain compositing asks for and the widest plain band here.
+    public static let boats = SamplePhoto(
+        name: "boats",
+        subject: "small boats on turquoise water under a pink sky at dusk",
+        credit: Credit(photographer: "Elesban Landero Berriozábal", place: "Cozumel, Quintana Roo, Mexico",
+                       source: "https://unsplash.com/photos/ACQmpRYafPg",
+                       license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
+
     /// Every bundled photograph: the four faces, the four figures, the two
-    /// tables, then the four streets.
+    /// tables, the four streets, then the two landscapes.
     public static let all: [SamplePhoto] = [.portrait, .scarf, .profile, .marigolds,
                                             .reaching, .wrestler, .dancer, .handstand,
                                             .breakfast, .desk,
-                                            .alley, .street, .textiles, .city]
+                                            .alley, .street, .textiles, .city,
+                                            .headland, .boats]
 }

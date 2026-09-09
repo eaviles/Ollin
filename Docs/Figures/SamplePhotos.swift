@@ -1,9 +1,9 @@
 // figure: frame=0 themed
 //
-// Docs diagram (Drawing/SamplePhotos.md): the fourteen bundled sample
+// Docs diagram (Drawing/SamplePhotos.md): the sixteen bundled sample
 // photographs, four faces, then four figures, then two tables, then four
-// streets, each under its name and its photographer, so the page shows what
-// every `SamplePhoto` loads.
+// streets, then two landscapes, each under its name and its photographer, so
+// the page shows what every `SamplePhoto` loads.
 import Ollin
 import OllinDiagram
 import OllinSamplePhotos

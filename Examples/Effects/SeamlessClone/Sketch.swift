@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 
 /// `.seamlessClone` drops one layer into another so the join disappears. The patch
 /// keeps every mark you drew into it and gives up its own color and brightness,
@@ -12,15 +13,23 @@ import Ollin
 /// correction that reaches it. Only the slow, low part of the patch's color is
 /// replaced, which is why the detail survives.
 ///
-/// Here a slab of pebbles rides across a drifting wash of color. It is the same
-/// slab twice: on the left as a plain paste, on the right cloned. Watch the right
-/// one take the color it lands in without ever changing its pebbles. The slider along the bottom sweeps `amount` from a plain paste to a
-/// full clone once a cycle, so the seam closes in front of you.
+/// Here a slab of pebbles rides across a photograph of Cozumel at dusk. It is
+/// the same slab twice: on the left as a plain paste, on the right cloned. Watch
+/// the right one take the color it lands in without ever changing its pebbles,
+/// while the left keeps a hard rim it never earned. `amount` sweeps from a plain
+/// paste to a full clone once a cycle, so the seam closes in front of you.
 ///
-/// Try it: hold `amount` at 1 and drag `patchHue`, or drop the patch on a backdrop
-/// with a hard edge running under its rim and watch that edge smear inward. That
-/// last one is the technique's own limit rather than a bug, and it is why a rim is
-/// best kept on quiet ground.
+/// The photograph is chosen and framed for one reason: a rim wants quiet ground.
+/// The correction is measured around the rim and spread inward, so a rim laid
+/// across a hard edge spreads that edge into the patch and the whole thing blows
+/// out. This picture keeps its brightness in a narrow band while its color runs
+/// from grey-violet to pink, which is what a clone is for, and the frame here is
+/// the left square of it, since the sun in the right third is the one hard thing
+/// in it. Both slabs ride well above the horizon for the same reason.
+///
+/// Try it: hold `amount` at 1 and drag `patchHue`, or move a slab down onto the
+/// horizon and watch that line smear inward. That is the technique's own limit
+/// rather than a bug.
 @main
 final class SeamlessClone_Example: Sketch {
 
@@ -33,7 +42,16 @@ final class SeamlessClone_Example: Sketch {
     @Param("Sweep the amount", icon: "repeat")
     var sweeping = false
 
-    override func setup() { seed(7) }
+    private var backdropPicture = Image(width: 1, height: 1)
+
+    override func setup() {
+        seed(7)
+        // The left square of the photograph. The sun sits in its right third,
+        // and a rim laid across something that bright spreads it inward, so the
+        // crop takes the calm end and leaves the glare out of the frame.
+        let whole = SamplePhoto.boats.load()
+        backdropPicture = whole.cropped(x: 0, y: 0, width: whole.height, height: whole.height)
+    }
 
     override func draw() {
         background(Color(white: 0.05))
@@ -41,25 +59,18 @@ final class SeamlessClone_Example: Sketch {
         let sweep = sweeping ? (0.5 - 0.5 * cos(time * 0.6)) : amount
         let drift = sin(time * 0.35)
 
-        // The backdrop: a broad wash of color at a fairly even brightness. Even
-        // brightness on purpose. The clone keeps the patch's own range of tone and
-        // only moves where that range sits, so a patch dropped somewhere much
-        // darker than itself has its shadows pushed below black and clips. That is
-        // the technique being honest rather than failing, and a backdrop that
-        // varies mostly in *color* shows the effect without running into it.
+        // The backdrop is a photograph, and which one matters. The clone keeps
+        // the patch's own range of tone and only moves where that range sits, so
+        // a patch dropped somewhere much darker than itself has its shadows
+        // pushed below black and clips. That is the technique being honest
+        // rather than failing, and it is why this picture is the one here whose
+        // brightness stays in a narrow band while its color runs from pink to
+        // turquoise: the slab travels from sky to water and lands in a different
+        // color every time without ever landing in the dark.
         let backdrop = makeRenderTarget()
         withTarget(backdrop) {
-            noStroke()
-            for i in 0 ..< 5 {
-                let t = Double(i) / 4
-                let a = time * 0.12 + t * .tau * 0.8
-                fill(Color(hue: 0.52 + t * 0.42, saturation: 0.55, brightness: 0.62,
-                           alpha: i == 0 ? 1 : 0.6))
-                drawCircle(width * (0.5 + cos(a) * 0.42),
-                           height * (0.5 + sin(a * 1.3) * 0.42), 620)
-            }
+            drawImage(backdropPicture, in: canvasRectangle, fit: .cover)
         }
-        let washed = backdrop.filtered(.gaussianBlur(radius: 90))
 
         // The patch, drawn twice at two places. Its own color is deliberately wrong
         // for where it lands: cool and flat against a warm, graded backdrop.
@@ -82,8 +93,13 @@ final class SeamlessClone_Example: Sketch {
             }
         }
 
-        let leftAt = Vector2(width * 0.27, height * 0.45 + drift * height * 0.20)
-        let rightAt = Vector2(width * 0.73, height * 0.45 + drift * height * 0.20)
+        // Both slabs ride in the sky, well above the horizon. The rim is where
+        // the correction is measured, so a rim laid across a hard edge spreads
+        // that edge inward and the patch blows out. The sky is the quiet ground
+        // this picture offers, and it still runs from grey-violet on the left to
+        // the sun's pink on the right, which is the color the clone has to take.
+        let leftAt = Vector2(width * 0.27, height * 0.30 + drift * height * 0.10)
+        let rightAt = Vector2(width * 0.73, height * 0.30 + drift * height * 0.10)
 
         let plain = makeRenderTarget()
         withTarget(plain) { pebbles(at: leftAt) }
@@ -91,7 +107,7 @@ final class SeamlessClone_Example: Sketch {
         withTarget(clone) { pebbles(at: rightAt) }
 
         // The left slab is pasted with the seam left in, the right one cloned.
-        let pasted = washed.combined(with: plain, .seamlessClone(amount: 0))
+        let pasted = backdrop.combined(with: plain, .seamlessClone(amount: 0))
         let healed = pasted.combined(with: clone, .seamlessClone(amount: sweep))
         drawImage(healed.image, 0, 0)
 

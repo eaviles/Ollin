@@ -38,7 +38,7 @@ import OllinSamplePhotos
 let feed = Camera.orStill(SamplePhoto.reaching.load())
 ```
 
-Ollin bundles [fourteen photographs](../Docs/Drawing/SamplePhotos.md) for exactly this. Four faces, four whole figures, two tables from above, and four streets, so a sketch that reads people has people to read. The vision examples all do it this way, which is why they run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked, which is how you get a still of a sketch that is normally live.
+Ollin bundles [fourteen photographs](../Docs/Drawing/SamplePhotos.md) for exactly this. Four faces, four whole figures, two tables from above, four streets, and two landscapes, so a sketch that reads people has people to read. The vision examples all do it this way, which is why they run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked, which is how you get a still of a sketch that is normally live.
 
 ## Trackers: attach, then read
 

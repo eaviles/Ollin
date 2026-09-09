@@ -156,7 +156,7 @@ let package = Package(
         example("Effects/Droste"),
         example("Effects/DomainColoring"),
         example("Effects/DiffusionCurves"),
-        example("Effects/SeamlessClone"),
+        example("Effects/SeamlessClone", [.samplePhotos]),
         example("Effects/SummedArea"),
         example("Effects/GeneratorCatalog"),
         example("Effects/Cellular"),

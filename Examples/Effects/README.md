@@ -35,7 +35,7 @@ These examples show layered effects. You draw into off-screen layers, filter the
 | [Light](Light/Sketch.swift) | a room, a lamp that follows the pointer, and the light that reaches every pixel of the room: soft shadows, falloff, beams through a comb, and walls that spill their color back into the room (`combined(with:.light)`) |
 | [Droste](Droste/Sketch.swift) | a ring of lit windows that repeats inside itself without end: the copies twist into one spiral, and holding the mouse unwinds them to plain rings (`.droste(inner:twist:zoom:)`) |
 | [DomainColoring](DomainColoring/Sketch.swift) | a complex function colored over the plane it acts on, so you can read its zeros and poles off the color wheels |
-| [SeamlessClone](SeamlessClone/Sketch.swift) | one layer pasted into another so the join disappears: the patch keeps its own marks and takes on the color of its surroundings |
+| [SeamlessClone](SeamlessClone/Sketch.swift) | a slab of pebbles pasted and cloned onto a photograph of Cozumel at dusk, so the join disappears: the patch keeps its own marks and takes on the color of its surroundings |
 | [PigmentMix](PigmentMix/Sketch.swift) | the same yellow wash over the same blue field, combined as light on one side and as paint on the other: the linear dissolve mixes to gray, while the pigment mix gives green and leaves the unpainted ground alone (`.mix` / `.paintMix`) |
 | [SummedArea](SummedArea/Sketch.swift) | one table that turns the average of any square into four lookups, so a 400-pixel blur costs the same as a 4-pixel one, and each pixel can be thresholded against its own neighborhood instead of one number for the whole page (`.boxBlur`, `.adaptiveThreshold`) |
 

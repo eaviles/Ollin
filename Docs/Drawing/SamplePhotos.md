@@ -4,7 +4,7 @@
 
 ## Sample photographs
 
-Fourteen photographs travel with Ollin so that an image technique, a filter, or a reader of any kind can be tried on a real picture before you have one of your own. Four are faces, four are whole figures, two are tables seen from above, and four are streets. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
+Sixteen photographs travel with Ollin so that an image technique, a filter, or a reader of any kind can be tried on a real picture before you have one of your own. Four are faces, four are whole figures, two are tables seen from above, four are streets, and two are landscapes at dusk. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
 
 ```swift
 import OllinSamplePhotos
@@ -24,7 +24,7 @@ final class Portrait: Sketch {
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/SamplePhotos-dark.jpg">
-  <img src="../Images/SamplePhotos.jpg" alt="Fourteen photographs in four rows. First, four square faces: a young woman in a lace headdress, an elderly woman in a yellow scarf, a woman in profile against a plain tan ground, and a woman before a wall of orange marigolds. Then four whole figures: a dancer reaching up a concrete wall, a masked wrestler with both arms raised, a dancer on white, and a breakdancer upside down on one hand. Then two tables seen from above, a breakfast and a desk. Last, four streets: a pastel alley under clouds, a street strung with papel picado, a wall of woven blankets, and rooftops running back to the hills. Each is labeled with its name and its photographer" width="680">
+  <img src="../Images/SamplePhotos.jpg" alt="Sixteen photographs in four rows. First, four square faces: a young woman in a lace headdress, an elderly woman in a yellow scarf, a woman in profile against a plain tan ground, and a woman before a wall of orange marigolds. Then four whole figures: a dancer reaching up a concrete wall, a masked wrestler with both arms raised, a dancer on white, and a breakdancer upside down on one hand. Then two tables seen from above, a breakfast and a desk, and two of the four streets: a pastel alley under clouds and a street strung with papel picado. Last, a wall of woven blankets, rooftops running back to the hills, and two wide dusk landscapes: a headland over calm water, and boats under a pink sky. Each is labeled with its name and its photographer" width="680">
 </picture>
 
 ### Contents
@@ -33,6 +33,7 @@ final class Portrait: Sketch {
 - [The figures](#figures) - four whole bodies, and what each is good for
 - [The tables](#tables) - two from above, for naming things and reading print
 - [The streets](#streets) - four whole scenes, and what each is good for
+- [The landscapes](#landscapes) - the two wide ones, and why they share a shape
 - [SamplePhoto](#samplephoto) - `load`, `credit`, `all`
 - [Working copies](#copies) - `resized(width:height:)`, `cropped(x:y:width:height:)`, `cropped(toAspect:)`
 - [Terms](#terms) - the licenses the pictures are used under
@@ -85,6 +86,17 @@ Four squares, each the largest square its original held, so two of the photograp
 - **`.textiles`** is woven blankets hung side by side at Teotitlán del Valle. Pattern at a scale the eye can follow, and a dozen saturated colors, which makes it the one to point a frequency transform at. It is also the one where red sits next to green oftenest, so it is what a color-vision simulation collapses hardest.
 - **`.city`** is Guanajuato seen along a street, rooftops running back to the hills under a warm sky. Depth without a subject: mostly middle distance, which is the awkward case for anything that wants a foreground. A round dome sits in the middle of it, and a round shape is the fastest way to see a picture stretched.
 
+<a name="landscapes"></a>
+
+### The landscapes
+
+Two at dusk, and the only wide pictures here. Everything else is a square or an upright, so a sketch that wants a landscape has to crop one and throw away the frame the photographer chose. These two are three to two, and they are the same shape as each other on purpose: either one drops into the same box, the way any face drops into a square.
+
+- **`.headland`** is a headland at dusk over the water at Loreto, with cardón cacti in silhouette along a dark shore. One hard dark mass and one smooth wide gradient in the same frame, which is the pairing a threshold, an edge finder, or a tone curve reads clearest. It is the only silhouette in the set.
+- **`.boats`** is small boats moored off Cozumel under a pink sky, turquoise water below a dead straight horizon. The calm one. Almost none of it is near black and it varies far more in color than in brightness, which is what gradient-domain compositing wants under a patch, and the water is the widest plain band in the whole set.
+
+The `boats` frame is the one thing here chosen by a filter's own requirement rather than by eye. A seamless clone measures its correction around the patch's rim and spreads it inward, so a rim laid across a hard edge drags that edge into the patch. This picture keeps its brightness in a narrow band while its color runs from grey-violet to pink, which is exactly the ground a clone wants.
+
 <a name="samplephoto"></a>
 
 ### SamplePhoto
@@ -99,6 +111,7 @@ struct SamplePhoto {
     static let reaching, wrestler, dancer, handstand: SamplePhoto
     static let breakfast, desk: SamplePhoto
     static let alley, street, textiles, city: SamplePhoto
+    static let headland, boats: SamplePhoto
     static let all: [SamplePhoto]
 }
 
@@ -121,7 +134,7 @@ drawText(SamplePhoto.scarf.credit.line, 24, height - 24)
 // Photograph by Matthew Stephenson, Oaxaca, Mexico (Unsplash License)
 ```
 
-`all` lists all fourteen: the faces, the figures, the tables, then the streets.
+`all` lists all sixteen: the faces, the figures, the tables, the streets, then the landscapes.
 
 <a name="copies"></a>
 
@@ -146,8 +159,8 @@ A filter that runs on the GPU reads the full picture as it is: draw it into a la
 
 ### Terms
 
-The scarf, the profile, the desk, the textiles, and the city come from Unsplash under the [Unsplash License](https://unsplash.com/license); the other nine come from Pexels under the [Pexels License](https://www.pexels.com/license/). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was resized, converted to sRGB, and re-encoded with its metadata removed, the faces, the tables, and the streets cropped square and two of the figures cropped in. The desk photograph carries a notebook whose printed cover names its maker, which the text recognizer reads aloud; that is incidental to a photograph of a desk rather than an endorsement. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
+The scarf, the profile, the desk, the textiles, the city, and the boats come from Unsplash under the [Unsplash License](https://unsplash.com/license); the other ten come from Pexels under the [Pexels License](https://www.pexels.com/license/). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was resized, converted to sRGB, and re-encoded with its metadata removed, the faces, the tables, and the streets cropped square, two of the figures cropped in, and the headland trimmed from four to three down to three to two by dropping its darkest foreground. The desk photograph carries a notebook whose printed cover names its maker, which the text recognizer reads aloud; that is incidental to a photograph of a desk rather than an endorsement. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
 
 ---
 
-Example sketches: every sketch in [`Examples/Images`](../../Examples/Images/README.md), plus [`Examples/Color/ColorVision`](../../Examples/Color/ColorVision/Sketch.swift), [`Examples/Color/Dithering`](../../Examples/Color/Dithering/Sketch.swift), [`Examples/Color/PaletteFromImage`](../../Examples/Color/PaletteFromImage/Sketch.swift), [`Examples/Effects/InkDrawing`](../../Examples/Effects/InkDrawing/Sketch.swift), [`Examples/Effects/Brushwork`](../../Examples/Effects/Brushwork/Sketch.swift), [`Examples/Effects/Coherence`](../../Examples/Effects/Coherence/Sketch.swift), [`Examples/Effects/FilterCatalog`](../../Examples/Effects/FilterCatalog/Sketch.swift), and [`Examples/Effects/Fourier`](../../Examples/Effects/Fourier/Sketch.swift). For the figures, see [body pose](../Vision/Vision.md).
+Example sketches: every sketch in [`Examples/Images`](../../Examples/Images/README.md), plus [`Examples/Color/ColorVision`](../../Examples/Color/ColorVision/Sketch.swift), [`Examples/Color/Dithering`](../../Examples/Color/Dithering/Sketch.swift), [`Examples/Color/PaletteFromImage`](../../Examples/Color/PaletteFromImage/Sketch.swift), [`Examples/Effects/InkDrawing`](../../Examples/Effects/InkDrawing/Sketch.swift), [`Examples/Effects/Brushwork`](../../Examples/Effects/Brushwork/Sketch.swift), [`Examples/Effects/Coherence`](../../Examples/Effects/Coherence/Sketch.swift), [`Examples/Effects/FilterCatalog`](../../Examples/Effects/FilterCatalog/Sketch.swift), [`Examples/Effects/Fourier`](../../Examples/Effects/Fourier/Sketch.swift), and [`Examples/Effects/SeamlessClone`](../../Examples/Effects/SeamlessClone/Sketch.swift). For the figures, see [body pose](../Vision/Vision.md).

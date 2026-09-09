@@ -44,8 +44,21 @@ import Testing
         }
     }
 
+    /// The two landscapes are the only wide pictures here, and they share one
+    /// shape so a sketch can put either into the same box. Cropping one of them
+    /// to match cost eleven percent of its height, all of it dark foreground.
+    @Test func theLandscapesShareOneWideShape() {
+        let shapes = [SamplePhoto.headland, .boats].map { photo -> (Int, Int) in
+            let image = photo.load()
+            return (image.width, image.height)
+        }
+        #expect(shapes.allSatisfy { $0 == shapes[0] })
+        let aspect = Double(shapes[0].0) / Double(shapes[0].1)
+        #expect(abs(aspect - 1.5) < 0.01, "\(aspect)")
+    }
+
     @Test func theNamesAreDistinct() {
         #expect(Set(SamplePhoto.all.map(\.name)).count == SamplePhoto.all.count)
-        #expect(SamplePhoto.all.count == 14)
+        #expect(SamplePhoto.all.count == 16)
     }
 }
