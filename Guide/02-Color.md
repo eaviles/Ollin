@@ -242,16 +242,18 @@ let seen = Color.red.simulated(.deuteranopia)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/ColorVision-dark.jpg">
-  <img src="Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
+  <img src="Images/02-Color/ColorVision.jpg" alt="A photograph of woven blankets and two palettes, each drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. The blankets' reds and greens flatten into one olive band in the middle two columns while the blues hold. In the chart set the orange, green and red arrive as that same olive. The safe set stays separable" width="680">
 </picture>
 
-The top block is a palette you have met in a hundred charts. Under the two commonest kinds its orange, green and red land on one olive. The bottom block is `Palette.colorblindSafe`, eight colors published for exactly this, and it holds together.
+The picture at the top is a wall of woven blankets, where red sits beside green in nearly every stripe. Under the two commonest kinds those stripes arrive as one olive band, and only the blues survive. The middle block is a palette you have met in a hundred charts, and its orange, green and red land on that same olive. The bottom block is `Palette.colorblindSafe`, eight colors published for exactly this, and it holds together.
 
 To see a whole sketch rather than a swatch, put the reading over the frame:
 
 ```swift
 postProcess(.colorVision(.deuteranopia))
 ```
+
+The picture row above is the same filter run over one layer per column, which is how you check a photograph rather than a whole canvas.
 
 Behind a `@Param` toggle that becomes a switch you flick while you work.
 

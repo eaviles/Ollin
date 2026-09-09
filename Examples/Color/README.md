@@ -9,7 +9,7 @@ These examples cover palettes, colormaps, and color driven by a value or by time
 | Example | What it shows |
 |---|---|
 | [Colormaps](Colormaps/Sketch.swift) | the eight perceptual `Colormap` ramps drawn as horizontal bands that map a value to a color, with the seven cosine-gradient `CosinePalette` presets scrolling in a labeled section below |
-| [ColorVision](ColorVision/Sketch.swift) | two palettes shown four ways, with a bar that marks every pair of colors that merge, and `Filter.colorVision` applied to the whole canvas when a parameter turns it on |
+| [ColorVision](ColorVision/Sketch.swift) | a photograph of woven blankets and two palettes shown four ways, with a bar that marks every pair of colors that merge, and `Filter.colorVision` applied to the whole canvas when a parameter turns it on |
 | [ColorWaves](ColorWaves/Sketch.swift) | a row of circles colored by a sine wave, with the circles flowing back and forth with `time` |
 | [Dithering](Dithering/Sketch.swift) | a bundled photograph reduced to four extracted colors in six ways: plain nearest-color, ordered Bayer, blue noise, and three error-diffusion kernels |
 | [Gradients](Gradients/Sketch.swift) | gradient paint used throughout: a linear gradient for the sky, a radial gradient for the sun, ramps along the path of a Bézier and a polyline, a conic sweep around a ring, and per-vertex shading on a star and a curved shape |

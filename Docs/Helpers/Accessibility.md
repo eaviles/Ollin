@@ -83,7 +83,7 @@ About one man in twelve and one woman in two hundred sees color differently from
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/ColorVision-dark.jpg">
-  <img src="../../Guide/Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
+  <img src="../../Guide/Images/02-Color/ColorVision.jpg" alt="A photograph of woven blankets and two palettes, each drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. The blankets' reds and greens flatten into one olive band in the middle two columns while the blues hold. In the chart set the orange, green and red arrive as that same olive. The safe set stays separable" width="680">
 </picture>
 
 ```swift

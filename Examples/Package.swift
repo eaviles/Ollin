@@ -393,7 +393,7 @@ let package = Package(
         example("Data/Quakes"),
         example("Data/Edits"),
         example("Data/Outside"),
-        example("Color/ColorVision"),
+        example("Color/ColorVision", [.samplePhotos]),
         example("Color/ColorWaves"),
         example("Color/HSBWheel"),
         example("Color/Mixing"),
