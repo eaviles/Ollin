@@ -4,7 +4,7 @@
 
 ## Sample photographs
 
-Nineteen pictures and one short film travel with Ollin so that an image technique, a filter, or a reader of any kind can be tried on something real before you have one of your own. Four are faces, four are whole figures, two are tables seen from above, four are streets, two are landscapes at dusk, one is a page with the light falling unevenly across it, and two are surfaces to wrap a form in. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
+Twenty pictures and one short film travel with Ollin so that an image technique, a filter, or a reader of any kind can be tried on something real before you have one of your own. Four are faces, four are whole figures, two are tables seen from above, four are streets, two are landscapes at dusk, one is a page with the light falling unevenly across it, one is a pair of open hands, and two are surfaces to wrap a form in. They live in their own library, `OllinSamplePhotos`, rather than in the framework, so an app that never imports it ships none of them.
 
 ```swift
 import OllinSamplePhotos
@@ -24,7 +24,7 @@ final class Portrait: Sketch {
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/SamplePhotos-dark.jpg">
-  <img src="../Images/SamplePhotos.jpg" alt="Nineteen pictures in five rows. First, four square faces: a young woman in a lace headdress, an elderly woman in a yellow scarf, a woman in profile against a plain tan ground, and a woman before a wall of orange marigolds. Then four whole figures: a dancer reaching up a concrete wall, a masked wrestler with both arms raised, a dancer on white, and a breakdancer upside down on one hand. Then two tables seen from above and two streets, a pastel alley and a street strung with papel picado. Then woven blankets, rooftops running to the hills, and two wide dusk landscapes, a headland over calm water and boats under a pink sky. Last, a book page with shadow across it, a panel of Mexican talavera tilework, and a dry-stone wall. Each is labeled with its name and its photographer" width="680">
+  <img src="../Images/SamplePhotos.jpg" alt="Twenty pictures in five rows. First, four square faces: a young woman in a lace headdress, an elderly woman in a yellow scarf, a woman in profile against a plain tan ground, and a woman before a wall of orange marigolds. Then four whole figures: a dancer reaching up a concrete wall, a masked wrestler with both arms raised, a dancer on white, and a breakdancer upside down on one hand. Then two tables seen from above and two streets, a pastel alley and a street strung with papel picado. Then woven blankets, rooftops running to the hills, a headland over calm water and boats under a pink sky. Last, a book page with shadow across it, two open palms on a dark ground, a panel of Mexican talavera tilework, and a dry-stone wall. Each is labeled with its name and its photographer" width="680">
 </picture>
 
 ### Contents
@@ -35,6 +35,7 @@ final class Portrait: Sketch {
 - [The streets](#streets) - four whole scenes, and what each is good for
 - [The landscapes](#landscapes) - the two wide ones, and why they share a shape
 - [The page](#page) - print under uneven light
+- [The hands](#hands) - two open palms, for the hand tracker
 - [The surfaces](#surfaces) - two textures, and why they are not 1600
 - [The film](#film) - thirty seconds of motion, for what a still cannot show
 - [SamplePhoto](#samplephoto) - `load`, `credit`, `all`
@@ -106,6 +107,12 @@ The `boats` frame is the one thing here chosen by a filter's own requirement rat
 
 - **`.page`** is a book held open with dappled shadow falling across the right half of it, the type large and crisp underneath. It is here for the case adaptive thresholding exists for: one number for the whole page loses entire bands of the text to black, and reading each pixel against its own neighborhood brings all of it back. The recognizer also takes sixty lines off it at 0.91 confidence, more than anything else here, and it does that straight through the shadow, which is worth knowing before you reach for a threshold to help it.
 
+<a name="hands"></a>
+
+### The hands
+
+- **`.hands`** is two open palms held up against a dark ground, every finger separated and nothing overlapping. Both hands come back with all twenty-one joints, which is what the fingertip dots and the finger chains need: ten chains running straight out to ten separated tips. It was chosen by drawing the tracker's own overlay over the candidates rather than by eye, because a hand that grips or rests still gives the tracker something to find and gives that drawing almost nothing to show. The breakdancer it replaced in `HandTracking` reads two hands, but they are planted and half closed, so the chains bunch into a knot.
+
 <a name="surfaces"></a>
 
 ### The surfaces
@@ -148,7 +155,7 @@ struct SamplePhoto {
     static let breakfast, desk: SamplePhoto
     static let alley, street, textiles, city: SamplePhoto
     static let headland, boats: SamplePhoto
-    static let page, talavera, stone: SamplePhoto
+    static let page, hands, talavera, stone: SamplePhoto
     static let all: [SamplePhoto]
 }
 
@@ -171,7 +178,7 @@ drawText(SamplePhoto.scarf.credit.line, 24, height - 24)
 // Photograph by Matthew Stephenson, Oaxaca, Mexico (Unsplash License)
 ```
 
-`all` lists all nineteen: the faces, the figures, the tables, the streets, the landscapes, the page, then the two surfaces.
+`all` lists all twenty: the faces, the figures, the tables, the streets, the landscapes, the page and the hands, then the two surfaces.
 
 <a name="copies"></a>
 
@@ -196,7 +203,7 @@ A filter that runs on the GPU reads the full picture as it is: draw it into a la
 
 ### Terms
 
-The scarf, the profile, the desk, the textiles, the city, and the boats come from Unsplash under the [Unsplash License](https://unsplash.com/license); the other thirteen photographs and the film come from Pexels under the [Pexels License](https://www.pexels.com/license/). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was resized, converted to sRGB, and re-encoded with its metadata removed, the faces, the tables, and the streets cropped square, two of the figures cropped in, and the headland trimmed from four to three down to three to two by dropping its darkest foreground. The page keeps its whole frame. The talavera is cut to two whole periods of its motif so that it repeats without a join, and the stone to a square; both are 1024 rather than 1600, since they are textures. The film was cut to its first thirty seconds and to a square, the window and the crop chosen together because the dancer leaves a square frame later in the original and never once inside that window; it was scaled to 960, its sound removed, and re-encoded. The desk photograph carries a notebook whose printed cover names its maker, which the text recognizer reads aloud; that is incidental to a photograph of a desk rather than an endorsement. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
+The scarf, the profile, the desk, the textiles, the city, and the boats come from Unsplash under the [Unsplash License](https://unsplash.com/license); the other fourteen photographs and the film come from Pexels under the [Pexels License](https://www.pexels.com/license/). Both allow free use, commercial use included, and modification, and neither requires attribution, which is given all the same. Both forbid selling unaltered copies and compiling the pictures into a competing stock service, and the Pexels License adds that an identifiable person may not be shown in a bad light or as endorsing anything. The photographs are credited in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md), with what was changed: each was resized, converted to sRGB, and re-encoded with its metadata removed, the faces, the tables, and the streets cropped square, two of the figures cropped in, and the headland trimmed from four to three down to three to two by dropping its darkest foreground. The page keeps its whole frame. The talavera is cut to two whole periods of its motif so that it repeats without a join, and the stone to a square; both are 1024 rather than 1600, since they are textures. The film was cut to its first thirty seconds and to a square, the window and the crop chosen together because the dancer leaves a square frame later in the original and never once inside that window; it was scaled to 960, its sound removed, and re-encoded. The desk photograph carries a notebook whose printed cover names its maker, which the text recognizer reads aloud; that is incidental to a photograph of a desk rather than an endorsement. The licenses ride on the photographs, not on Ollin's code, which stays MIT.
 
 ---
 

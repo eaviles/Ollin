@@ -191,7 +191,7 @@ let wide = SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)   // a 3:2 slice o
 let corner = photo.cropped(x: 0, y: 0, width: 512, height: 512)
 ```
 
-For a picture to try any of this on, `import OllinSamplePhotos` bundles [nineteen pictures](./SamplePhotos.md) with their credits.
+For a picture to try any of this on, `import OllinSamplePhotos` bundles [twenty pictures](./SamplePhotos.md) with their credits.
 
 **Transparency works.** Ollin honors a PNG's alpha channel, so transparent regions show what is behind them, and the edges composite cleanly.
 

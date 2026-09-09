@@ -10,12 +10,18 @@ import OllinVision
 /// The joints are the raw material for gesture sketches: the distance between
 /// `.thumbTip` and `.indexTip` is a pinch, `.indexTip` alone is a cursor, the
 /// spread of the fingertips is an open/closed hand.
+///
+/// The bundled photograph is two open palms on a dark ground, chosen because
+/// every finger is separated and nothing overlaps: both hands come back with
+/// all twenty-one joints, so ten chains run straight out to ten tips. A hand
+/// that grips or rests still gives the tracker something to find, and gives
+/// this drawing almost nothing to show.
 @main
 final class HandTracking: Sketch {
     // A camera where this Mac has one, and a bundled photograph where it does
-    // not, so there is always hands to find. `--photo` takes the picture even
+    // not, so there are always hands to find. `--photo` takes the picture even
     // where a camera would have worked, which is how a still of this sketch is made.
-    let feed = Camera.orStill(SamplePhoto.handstand.load())
+    let feed = Camera.orStill(SamplePhoto.hands.load())
     lazy var hands = HandTracker(feed, maximumHandCount: 2)
 
     override func draw() {

@@ -76,7 +76,7 @@ import Testing
 
     @Test func theNamesAreDistinct() {
         #expect(Set(SamplePhoto.all.map(\.name)).count == SamplePhoto.all.count)
-        #expect(SamplePhoto.all.count == 19)
+        #expect(SamplePhoto.all.count == 20)
     }
 }
 

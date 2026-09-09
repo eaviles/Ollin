@@ -5,7 +5,7 @@ import Ollin
 /// and for any sketch that wants a real picture to work on before it has one of
 /// its own.
 ///
-/// Nineteen pictures. The seventeen photographs are 1600 pixels on the long
+/// Twenty pictures. The eighteen photographs are 1600 pixels on the long
 /// side; the two surface textures are 1024-pixel squares, since a texture is
 /// magnified on a surface and wants clean pixels at a size the GPU mips
 /// evenly rather than the largest ones that fit. Four faces, each a square: a
@@ -19,8 +19,9 @@ import Ollin
 /// everything that wants a whole scene: an `alley`, a `street`, a wall of
 /// `textiles`, and a `city` under its hills. Two landscapes at dusk, the only
 /// wide pictures here and both the same shape: a `headland` in silhouette, and
-/// `boats` on calm water. A `page` with the light falling unevenly across it.
-/// And two surfaces to wrap a form in: `talavera` tilework that repeats
+/// `boats` on calm water. A `page` with the light falling unevenly across it,
+/// and two open `hands` for the tracker that counts their joints. And two
+/// surfaces to wrap a form in: `talavera` tilework that repeats
 /// seamlessly, and rough `stone` that carries real relief. Each carries its
 /// `credit`: who made it, where, and the terms it is used under, so a sketch
 /// can draw the line the photographer is owed.
@@ -204,6 +205,19 @@ public struct SamplePhoto: Hashable, Sendable {
                        source: "https://unsplash.com/photos/ukIew--AEOc",
                        license: "Unsplash License", licenseURL: "https://unsplash.com/license"))
 
+    /// Two open palms held up against a dark ground, every finger separated and
+    /// nothing overlapping. The hand model finds both hands and all
+    /// twenty-one joints in each, which is what the fingertip dots and the
+    /// finger chains need: ten chains running straight out to ten separated
+    /// tips. A hand that grips or rests gives the tracker something to find and
+    /// the drawing nothing to show.
+    public static let hands = SamplePhoto(
+        name: "hands",
+        subject: "two open palms against a dark ground, fingers apart",
+        credit: Credit(photographer: "Luis Quintero", place: "location not given",
+                       source: "https://www.pexels.com/photo/2258247/",
+                       license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
+
     /// A headland at dusk over the water at Loreto, cardón cacti in silhouette
     /// along a dark shore. The silhouette: one hard dark mass and one smooth
     /// wide gradient in the same frame, which is what a threshold, a halftone,
@@ -265,11 +279,12 @@ public struct SamplePhoto: Hashable, Sendable {
                        license: "Pexels License", licenseURL: "https://www.pexels.com/license/"))
 
     /// Every bundled picture: the four faces, the four figures, the two tables,
-    /// the four streets, the two landscapes, the page, then the two surfaces.
+    /// the four streets, the two landscapes, the page and the hands, then the
+    /// two surfaces.
     public static let all: [SamplePhoto] = [.portrait, .scarf, .profile, .marigolds,
                                             .reaching, .wrestler, .dancer, .handstand,
                                             .breakfast, .desk,
                                             .alley, .street, .textiles, .city,
                                             .headland, .boats,
-                                            .page, .talavera, .stone]
+                                            .page, .hands, .talavera, .stone]
 }

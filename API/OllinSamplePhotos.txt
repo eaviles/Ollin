@@ -19,6 +19,7 @@ struct SamplePhoto: Equatable, Hashable, Sendable
   static let city: SamplePhoto
   static let dancer: SamplePhoto
   static let desk: SamplePhoto
+  static let hands: SamplePhoto
   static let handstand: SamplePhoto
   static let headland: SamplePhoto
   static let marigolds: SamplePhoto
