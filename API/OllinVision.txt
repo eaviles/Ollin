@@ -125,6 +125,7 @@ final class Camera: FrameSource, VideoFeed, Sendable
   func start() throws
   func stop()
   init(_: Camera.Device = default)
+  static func orStill(_: () -> Image, rate: Double = default) -> any FrameSource & VideoFeed
   var frame: Image? { get }
   var frameSize: Vector2? { get }
   var frameTap: FrameTap? { get set }

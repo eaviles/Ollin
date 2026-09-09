@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Where the eye goes, made visible: a `SaliencyTracker` maps each frame's
@@ -9,9 +10,12 @@ import OllinVision
 /// discrete objects are.
 @main
 final class EyeCatcher: Sketch {
-    let camera = Camera()
-    lazy var attention = SaliencyTracker(camera, mode: .attention)
-    lazy var objectness = SaliencyTracker(camera, mode: .objectness)
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a face whose gaze can be read. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.portrait.load())
+    lazy var attention = SaliencyTracker(feed, mode: .attention)
+    lazy var objectness = SaliencyTracker(feed, mode: .objectness)
     var showingAttention = true
 
     var active: SaliencyTracker { showingAttention ? attention : objectness }
@@ -19,10 +23,6 @@ final class EyeCatcher: Sketch {
     /// The marker's displayed position, eased toward the hottest sampled spot
     /// so it glides instead of jumping.
     var marker: Vector2?
-
-    override func setup() {
-        try? camera.start()
-    }
 
     override func mousePressed() {
         showingAttention.toggle()
@@ -33,7 +33,7 @@ final class EyeCatcher: Sketch {
 
         // The room, dimmed — the heat is the bright thing here.
         tint(Color(white: 0.4))
-        guard let rect = drawFrame(camera) else { return noTint() }
+        guard let rect = drawFrame(feed) else { return noTint() }
         noTint()
 
         // If the model can't run on this Mac (no compute device), say so on the

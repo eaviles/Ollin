@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// What the camera sees, named: an `ImageClassifier` reads each frame against
@@ -7,16 +8,15 @@ import OllinVision
 /// No boxes or positions, just *what's in the picture* and how confidently.
 @main
 final class SceneLabels: Sketch {
-    let camera = Camera()
-    lazy var classifier = ImageClassifier(camera)
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a scene to name. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.marigolds.load())
+    lazy var classifier = ImageClassifier(feed)
 
     /// Displayed confidence per label, eased toward the live values so bars
     /// grow, shrink, and fade instead of popping.
     var shown: [String: Double] = [:]
-
-    override func setup() {
-        try? camera.start()
-    }
 
     override func draw() {
         background(Color(white: 0.04))
@@ -25,7 +25,7 @@ final class SceneLabels: Sketch {
         let margin = 24 * scale
         let videoArea = Rectangle(x: margin, y: margin,
                                   width: width - margin * 2, height: height * 0.56)
-        guard let rect = drawFrame(camera, in: videoArea) else { return }
+        guard let rect = drawFrame(feed, in: videoArea) else { return }
 
         // If the model can't run on this Mac (no compute device), say so on the
         // canvas instead of silently never naming anything — in the bar band,

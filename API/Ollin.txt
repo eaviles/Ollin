@@ -1447,6 +1447,14 @@ final class SpatialHash: Sendable
   let origin: Vector2
   let sortedIndices: ComputeBuffer<UInt32>
   let worldSize: Vector2
+final class StillFrames: FrameSource, VideoFeed, Sendable
+  func start()
+  init(_: Image, rate: Double = default)
+  let picture: Image
+  let rate: Double
+  var frame: Image? { get }
+  var frameSize: Vector2? { get }
+  var frameTap: FrameTap? { get set }
 final class StringArt
   @discardableResult func step() -> StringArt.Chord?
   @discardableResult func step(_: Int) -> [StringArt.Chord]

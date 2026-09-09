@@ -43,6 +43,7 @@ final class Faces: Sketch {
 
 - [Camera](#camera) - capture the webcam (built-in, Continuity, or external)
 - [Frame sources](#frame-sources) - trackers over any source of frames (a video, your own)
+- [When there is no camera](#nocamera) - `Camera.orStill` and `StillFrames`, so a sketch still has something to read
 - [FaceTracker](#facetracker) - find faces, landmarks, and head pose
 - [Face](#face) - one detected face, and reading its parts
 - [ContourDetector](#contourdetector) - trace edges into vector contours
@@ -157,6 +158,51 @@ final class Traced: Sketch {
 Trackers attached to the same source share one analysis engine, so the source is tapped once and its frames fan out to every tracker. Analysis is throttled to what the machine keeps up with, and frames are skipped rather than queued. A paused video stops producing frames, so its trackers hold their last results.
 
 A type of your own can be a frame source too. Conform to `FrameSource`: hold the closure, and call it with each new `CGImage` from whatever thread produces them. Every tracker then accepts it. `Examples/Vision/TrajectoryTracking` does exactly that, because its "camera" is a small ball-launching simulation that the example renders itself.
+
+<a name="nocamera"></a>
+
+### When there is no camera
+
+A sketch that reads the world has nothing to show on a machine with no camera attached, or one where permission was refused. `Camera.orStill(_:)` picks: a running camera when there is one, and a still picture when there is not.
+
+```swift
+import OllinSamplePhotos
+
+final class Poses: Sketch {
+    var feed: (any FrameSource & VideoFeed)?
+    var bodies: BodyTracker?
+
+    override func setup() {
+        let feed = Camera.orStill(SamplePhoto.reaching.load())
+        self.feed = feed
+        bodies = BodyTracker(feed)
+    }
+
+    override func draw() {
+        background(.black)
+        guard let feed, let bodies, let rect = drawFrame(feed) else { return }
+        for body in bodies.bodies {
+            for (a, b) in body.bones(in: rect) { drawLine(a, b) }
+        }
+    }
+}
+```
+
+Everything downstream takes either one, because both are a `FrameSource` and a `VideoFeed`, so nothing but that one line knows which it got. The picture is only built when it is needed, so a machine with a camera never decodes it. The [sample photographs](../Drawing/SamplePhotos.md) are what the examples fall back to, but any `Image` works.
+
+**`--photo` on launch takes the picture even where a camera would have worked.** That is how a still is made of a sketch that is normally live: a screenshot, a gallery thumbnail, a figure.
+
+`StillFrames` is the feed underneath, and it is public, for the case where the choice is not the camera's to make:
+
+```swift
+StillFrames(_ picture: Image, rate: Double = 4)
+    var picture: Image
+    var frame: Image?           // the picture, so drawFrame never waits
+    var frameSize: Vector2?
+    func start()
+```
+
+It publishes the picture over and over rather than once, four times a second by default. That is because an analyzer drops frames it cannot keep up with, as every tracker does, so a source that published a single frame could have that one frame dropped and never be read at all. Four times a second is far below what a camera asks of the same analyzer.
 
 <a name="facetracker"></a>
 

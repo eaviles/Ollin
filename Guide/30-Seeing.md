@@ -30,6 +30,16 @@ final class Mirror: Sketch {
 
 Run it and you're on the canvas. `drawFrame(camera)` draws the latest frame letterboxed into the canvas, fitted without stretching like a photo in a mat. It shows a standard "Waiting for camera…" notice until the first frame arrives. Then it returns the rectangle the picture landed in. Keep that rectangle, because it matters more than it looks. Using the camera needs permission, like the microphone did, and macOS asks once, the first time `start()` runs. `Camera(.continuity)` uses a nearby iPhone as the camera, and `.external` a USB webcam.
 
+Not every Mac has a camera, and not every one that has a camera will lend it to you. `Camera.orStill(_:)` gives back a camera where there is one and a still picture where there is not, and everything after that line takes either, because both are a feed:
+
+```swift
+import OllinSamplePhotos
+
+let feed = Camera.orStill(SamplePhoto.reaching.load())
+```
+
+Ollin bundles [eight photographs](../Docs/Drawing/SamplePhotos.md) for exactly this, four faces and four whole figures, so a sketch that reads people has people to read. The vision examples all do it this way, which is why they run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked, which is how you get a still of a sketch that is normally live.
+
 ## Trackers: attach, then read
 
 Seeing more than pixels is the job of the **trackers**. Each one attaches to a frame source and runs one kind of perception over its frames, publishing typed results your sketch reads every frame:

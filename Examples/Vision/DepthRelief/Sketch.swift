@@ -1,12 +1,13 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Depth from a plain webcam, painted as relief: a `ModelTracker` runs a
 /// monocular depth model over the live feed, and a grid of disks reads the map
 /// through `value(at:in:)` — nearer is bigger and warmer, farther smaller and
-/// cooler. The Mac has no depth sensor; a neural model estimates one from any
-/// camera. The model weights aren't in the repo — run `Scripts/fetch-models.sh`
+/// cooler. The Mac has no depth sensor; a neural model estimates one from an
+/// ordinary picture. The weights aren't in the repo: run `Scripts/fetch-models.sh`
 /// once and relaunch (the sketch says so on the canvas until then).
 ///
 /// Model: Depth Anything V2 (small) — Apple's official Core ML conversion,
@@ -25,12 +26,11 @@ private func modelsPath(_ name: String) -> String {
 final class DepthRelief: Sketch {
     static let modelPath = modelsPath("DepthAnythingV2SmallF16.mlpackage")
 
-    let camera = Camera()
-    lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath: Self.modelPath))
-
-    override func setup() {
-        try? camera.start()
-    }
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a figure standing off a wall. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.reaching.load())
+    lazy var depth = ModelTracker(feed, modelAt: URL(fileURLWithPath: Self.modelPath))
 
     override func draw() {
         background(Color(white: 0.04))
@@ -45,7 +45,7 @@ final class DepthRelief: Sketch {
 
         // The room, dimmed — the relief carries the picture.
         tint(Color(white: 0.35))
-        guard let rect = drawFrame(camera) else { return noTint() }
+        guard let rect = drawFrame(feed) else { return noTint() }
         noTint()
 
         if let reason = depth.unavailableReason {

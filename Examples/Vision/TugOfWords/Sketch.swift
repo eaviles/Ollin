@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Typed phrases as live parameters: two phrases pull on one rope. A
@@ -35,9 +36,12 @@ final class TugOfWords: Sketch {
     @Param(icon: "text.bubble", group: "Phrases") var left = "a person smiling at the camera"
     @Param(icon: "text.bubble.fill", group: "Phrases") var right = "an empty room"
 
-    let camera = Camera()
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a picture to weigh words against. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.marigolds.load())
     lazy var ideas = ConceptTracker(
-        camera,
+        feed,
         imageModelAt: URL(fileURLWithPath: Self.imageModelPath),
         textModelAt: URL(fileURLWithPath: Self.textModelPath),
         vocabularyAt: URL(fileURLWithPath: Self.vocabPath),
@@ -49,10 +53,6 @@ final class TugOfWords: Sketch {
 
     let leftColor = Color(red: 0.72, green: 0.45, blue: 1.0, alpha: 1)
     let rightColor = Color(red: 1.0, green: 0.72, blue: 0.25, alpha: 1)
-
-    override func setup() {
-        try? camera.start()
-    }
 
     override func draw() {
         background(Color(white: 0.04))
@@ -74,7 +74,7 @@ final class TugOfWords: Sketch {
         let margin = 24 * scale
         let videoArea = Rectangle(x: margin, y: margin,
                                   width: width - margin * 2, height: height * 0.62)
-        guard let rect = drawFrame(camera, in: videoArea) else { return }
+        guard let rect = drawFrame(feed, in: videoArea) else { return }
 
         if let reason = ideas.unavailableReason {
             return drawStatus(reason, style: .warning,
@@ -145,6 +145,6 @@ final class TugOfWords: Sketch {
         drawText(scored ? "\(Int((rightShare * 100).rounded()))%   cos \(String(format: "%.2f", ideas.similarity(of: right)))" : "…",
                  ropeRight, ropeY + 70 * scale)
 
-        drawCaption("TugOfWords: two phrases pull on what the camera sees")
+        drawCaption("TugOfWords: two phrases pull on what the feed shows")
     }
 }

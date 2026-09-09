@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Every pixel named and painted — a `ModelTracker` running a semantic-
@@ -28,15 +29,14 @@ private func modelsPath(_ name: String) -> String {
 final class PaintByClass: Sketch {
     static let modelPath = modelsPath("DeepLabV3FP16.mlmodel")
 
-    let camera = Camera()
-    lazy var segmenter = ModelTracker(camera, modelAt: URL(fileURLWithPath: Self.modelPath))
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a person and a scene to tell apart. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.wrestler.load())
+    lazy var segmenter = ModelTracker(feed, modelAt: URL(fileURLWithPath: Self.modelPath))
 
     /// Below this share of the picture a class is probably noise.
     let coverageFloor = 0.002
-
-    override func setup() {
-        try? camera.start()
-    }
 
     override func draw() {
         background(Color(white: 0.04))
@@ -52,7 +52,7 @@ final class PaintByClass: Sketch {
         // While a notice sits over the feed, dim the feed so the text reads.
         let showsNotice = segmenter.unavailableReason != nil || !segmenter.isLoaded
         if showsNotice { tint(Color(white: 0.25)) }
-        guard let rect = drawFrame(camera) else { return noTint() }
+        guard let rect = drawFrame(feed) else { return noTint() }
         noTint()
 
         if let reason = segmenter.unavailableReason {

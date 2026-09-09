@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Click a thing and it lifts out of the live feed: a `PointSegmenter` segments
@@ -28,9 +29,12 @@ final class PointLift: Sketch {
                              "SAM2_1SmallPromptEncoderFLOAT16.mlpackage",
                              "SAM2_1SmallMaskDecoderFLOAT16.mlpackage"].map(modelsPath)
 
-    let camera = Camera()
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a figure to cut out. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.dancer.load())
     lazy var picker = PointSegmenter(
-        camera,
+        feed,
         imageEncoderAt: URL(fileURLWithPath: Self.modelPaths[0]),
         promptEncoderAt: URL(fileURLWithPath: Self.modelPaths[1]),
         maskDecoderAt: URL(fileURLWithPath: Self.modelPaths[2]))
@@ -39,12 +43,8 @@ final class PointLift: Sketch {
     /// on its way.
     var lastClick: Vector2?
 
-    override func setup() {
-        try? camera.start()
-    }
-
     override func mousePressed() {
-        guard let rect = camera.fittedRectangle(in: bounds) else { return }
+        guard let rect = feed.fittedRectangle(in: bounds) else { return }
         let point = mouse
         if modifiers.contains(.shift) {
             picker.exclude(point, in: rect)
@@ -74,7 +74,7 @@ final class PointLift: Sketch {
 
         // The room, dimmed to a murmur; the picked thing gets the light.
         tint(Color(white: 0.3))
-        guard let rect = drawFrame(camera) else { return noTint() }
+        guard let rect = drawFrame(feed) else { return noTint() }
         noTint()
 
         if let reason = picker.unavailableReason {

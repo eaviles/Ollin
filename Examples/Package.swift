@@ -714,32 +714,32 @@ let package = Package(
         // Vision — the Mac's camera plus Apple Vision perception. WebcamFeed draws
         // the live feed; FaceTracking overlays detected faces and landmarks. Both
         // need a camera and grant camera permission on first run.
-        example("Vision/WebcamFeed", [.vision]),
-        example("Vision/FaceTracking", [.vision]),
+        example("Vision/WebcamFeed", [.vision, .samplePhotos]),
+        example("Vision/FaceTracking", [.vision, .samplePhotos]),
         // The camera transformed so the face stays locked level and centered —
         // the room moves, not the head.
-        example("Vision/FaceAlign", [.vision]),
+        example("Vision/FaceAlign", [.vision, .samplePhotos]),
         // Traces the feed's edges into vector contours (Shapes): the camera by
         // default, or a clip path passed on launch through a VideoPlayer (the
         // frame-source seam).
         example("Vision/ContourTrace", [.vision, .video]),
         // Hand skeletons (21 joints, up to two hands) drawn over the live feed.
-        example("Vision/HandTracking", [.vision]),
+        example("Vision/HandTracking", [.vision, .samplePhotos]),
         // A person's 2D pose drawn as a stick figure over the live feed.
-        example("Vision/BodyPose", [.vision]),
+        example("Vision/BodyPose", [.vision, .samplePhotos]),
         // The 3D pose: the skeleton in meters, overlaid on the feed and re-drawn
         // from the side — a view no camera is at.
-        example("Vision/BodyPose3D", [.vision]),
+        example("Vision/BodyPose3D", [.vision, .samplePhotos]),
         // Lifted off the background, two ways (a parameter switches): people over a
         // drawn gradient with the matte as drop shadow, or the salient subject
         // in a spotlight over the dimmed feed.
-        example("Vision/Lift", [.vision]),
+        example("Vision/Lift", [.vision, .samplePhotos]),
         // The person matte as a reaction-diffusion regime map: maze chemistry on
         // your silhouette, spots everywhere else, one continuous field.
         example("Vision/TuringMirror", [.vision]),
         // Click a thing and it lifts out: point-prompted segmentation over the
         // feed, shift-click trims, C clears (fetched model).
-        example("Vision/PointLift", [.vision]),
+        example("Vision/PointLift", [.vision, .samplePhotos]),
         // Rectangular shapes (paper, screens, cards) highlighted as quads.
         example("Vision/RectangleScan", [.vision]),
         // Barcodes / QR codes outlined and their payload printed.
@@ -753,14 +753,14 @@ let package = Package(
         example("Vision/OpticalFlow", [.vision]),
         // Image classification — what the camera sees, named live as animated
         // label bars.
-        example("Vision/SceneLabels", [.vision]),
+        example("Vision/SceneLabels", [.vision, .samplePhotos]),
         // Saliency — where the eye goes, as a warm heat-map glow over the feed
         // with the salient regions boxed and a marker gliding to the hottest spot.
-        example("Vision/EyeCatcher", [.vision]),
+        example("Vision/EyeCatcher", [.vision, .samplePhotos]),
         // A custom Core ML model (monocular depth) over the live feed — the
         // depth map sampled into a relief of disks. The model weights download
         // via Scripts/fetch-models.sh (never committed).
-        example("Vision/DepthRelief", [.vision]),
+        example("Vision/DepthRelief", [.vision, .samplePhotos]),
         // Depth that holds still: contour lines of depth from a video depth
         // model that reads each frame against the ones before it, with the
         // single-image model one toggle away for comparison. Both models come
@@ -770,11 +770,11 @@ let package = Package(
         // Object detection (YOLOv3-tiny) — labeled boxes over the live feed.
         // The model weights download via Scripts/fetch-models.sh (never
         // committed).
-        example("Vision/ObjectDetection", [.vision]),
+        example("Vision/ObjectDetection", [.vision, .samplePhotos]),
         // Semantic segmentation (DeepLabV3) — every pixel painted by class.
         // The model weights download via Scripts/fetch-models.sh (never
         // committed).
-        example("Vision/PaintByClass", [.vision]),
+        example("Vision/PaintByClass", [.vision, .samplePhotos]),
         // A model reading the sketch's own pixels — draw a digit with the
         // mouse, MNIST classifies it; no camera at all. The model weights
         // download via Scripts/fetch-models.sh (never committed).
@@ -785,7 +785,7 @@ let package = Package(
         // Typed phrases as live parameters (ConceptTracker): two phrases pull on
         // one rope by how well each matches the frame. The model weights
         // download via Scripts/fetch-models.sh (never committed).
-        example("Vision/TugOfWords", [.vision]),
+        example("Vision/TugOfWords", [.vision, .samplePhotos]),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         example("Vision/TrajectoryTracking", [.vision]),

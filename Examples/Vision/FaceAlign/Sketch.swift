@@ -5,6 +5,7 @@
 //  @Smoothed, withState).
 
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// The overlay idea turned inside out: instead of drawing results *on* the
@@ -19,8 +20,11 @@ import OllinVision
 /// three lines of transform stack inside `withState`.
 @main
 final class FaceAlign: Sketch {
-    let camera = Camera()
-    lazy var faces = FaceTracker(camera)
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a face to square up. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.portrait.load())
+    lazy var faces = FaceTracker(feed)
 
     /// Eye centers in canvas coordinates. Lower `minCutoff` smooths harder at
     /// rest; the filter loosens on its own when the head moves fast.
@@ -28,17 +32,13 @@ final class FaceAlign: Sketch {
     @Smoothed(minCutoff: 0.5) var rightEye = Vector2.zero
     var hasLock = false
 
-    override func setup() {
-        try? camera.start()
-    }
-
     override func draw() {
         background(Color(white: 0.06))
 
         // The rectangle the feed would land in un-aligned — eyes and picture
         // are both placed in this one space, so the math stays consistent.
-        guard let rect = camera.fittedRectangle(in: bounds) else {
-            drawFrame(camera)
+        guard let rect = feed.fittedRectangle(in: bounds) else {
+            drawFrame(feed)
             return
         }
 
@@ -56,7 +56,7 @@ final class FaceAlign: Sketch {
         }
 
         guard hasLock else {
-            drawFrame(camera)
+            drawFrame(feed)
             drawCaption("FaceAlign — looking for a face…")
             return
         }
@@ -74,7 +74,7 @@ final class FaceAlign: Sketch {
             rotate(-atan2(across.y, across.x))
             scale(width * 0.19 / max(across.length, 1))
             translate(-mid.x, -mid.y)
-            drawFrame(camera, in: bounds)
+            drawFrame(feed, in: bounds)
         }
 
         drawCaption("FaceAlign — eyes locked level; the room does the moving")

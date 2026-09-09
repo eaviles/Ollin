@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// One webcam, but the skeleton lands in space: a `BodyTracker3D` places all 17
@@ -14,17 +15,16 @@ import OllinVision
 /// at a desk and it still stands you up in the side view).
 @main
 final class BodyPose3D: Sketch {
-    let camera = Camera()
-    lazy var tracker = BodyTracker3D(camera)
-
-    override func setup() {
-        try? camera.start()
-    }
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a body to place in space. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.reaching.load())
+    lazy var tracker = BodyTracker3D(feed)
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let rect = drawFrame(camera) else { return }
+        guard let rect = drawFrame(feed) else { return }
 
         // If the model can't run on this Mac (no compute device), say so on the
         // canvas instead of silently showing no skeleton.

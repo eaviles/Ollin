@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Something lifted off the background, two ways. A `PersonSegmenter` turns the
@@ -16,18 +17,17 @@ import OllinVision
 final class Lift: Sketch {
     enum Segmenter: String, CaseIterable, ParamOption { case person, subject }
 
-    let camera = Camera()
-    lazy var people = PersonSegmenter(camera)
-    lazy var subjects = SubjectSegmenter(camera)
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a person to cut out. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.dancer.load())
+    lazy var people = PersonSegmenter(feed)
+    lazy var subjects = SubjectSegmenter(feed)
     let backdrop = Ramp(stops: [(0.0, Color(hex: 0x16275B)),
                                 (0.5, Color(hex: 0x3C6DD0)),
                                 (1.0, Color(hex: 0xF7B267))], in: .oklch)
 
     @Param var segmenter = Segmenter.person
-
-    override func setup() {
-        try? camera.start()
-    }
 
     override func draw() {
         switch segmenter {
@@ -49,8 +49,8 @@ final class Lift: Sketch {
         // The raw frame never draws here (only its matte and cutout do), so this
         // takes the typed path: `fittedRectangle` for the rectangle and
         // `drawStatus` for the waiting notice, instead of `drawFrame`.
-        guard let rect = camera.fittedRectangle(in: bounds) else {
-            return drawStatus(camera.waitingMessage)
+        guard let rect = feed.fittedRectangle(in: bounds) else {
+            return drawStatus(feed.waitingMessage)
         }
 
         // If the segmentation model can't run on this Mac (no compute device),
@@ -72,17 +72,17 @@ final class Lift: Sketch {
             drawImage(cutout, in: rect)
         }
 
-        drawCaption("Lift: the camera's people over a drawn background")
+        drawCaption("Lift: the feed's people over a drawn background")
     }
 
-    /// The subject mode: whatever stands out to the camera, lifted into a
+    /// The subject mode: whatever stands out to the feed, lifted into a
     /// spotlight against the dimmed room.
     func drawSubjects() {
         background(Color(white: 0.04))
 
         // The room, dimmed to a murmur.
         tint(Color(white: 0.3))
-        guard let rect = drawFrame(camera) else { return noTint() }
+        guard let rect = drawFrame(feed) else { return noTint() }
         noTint()
 
         // The same guard as the person mode: name the reason on the canvas.

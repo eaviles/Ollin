@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Hands, drawn as skeletons over the live feed. A `HandTracker` finds up to two
@@ -11,17 +12,16 @@ import OllinVision
 /// spread of the fingertips is an open/closed hand.
 @main
 final class HandTracking: Sketch {
-    let camera = Camera()
-    lazy var hands = HandTracker(camera, maximumHandCount: 2)
-
-    override func setup() {
-        try? camera.start()
-    }
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always hands to find. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.handstand.load())
+    lazy var hands = HandTracker(feed, maximumHandCount: 2)
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let rect = drawFrame(camera) else { return }
+        guard let rect = drawFrame(feed) else { return }
 
         let detected = hands.hands
         for hand in detected {

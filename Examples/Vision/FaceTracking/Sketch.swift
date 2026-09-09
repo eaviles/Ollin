@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Faces, found and drawn over the live feed. A `FaceTracker` attached to the
@@ -13,17 +14,16 @@ import OllinVision
 /// the natural selfie orientation.
 @main
 final class FaceTracking: Sketch {
-    let camera = Camera()
-    lazy var faces = FaceTracker(camera)
-
-    override func setup() {
-        try? camera.start()
-    }
+    // A camera where this Mac has one, and a bundled photograph where it does
+    // not, so there is always a face to find. `--photo` takes the picture even
+    // where a camera would have worked, which is how a still of this sketch is made.
+    let feed = Camera.orStill(SamplePhoto.portrait.load())
+    lazy var faces = FaceTracker(feed)
 
     override func draw() {
         background(Color(white: 0.06))
 
-        guard let rect = drawFrame(camera) else { return }
+        guard let rect = drawFrame(feed) else { return }
 
         let accent = Color(red: 0.3, green: 1.0, blue: 0.6)
         let detected = faces.faces

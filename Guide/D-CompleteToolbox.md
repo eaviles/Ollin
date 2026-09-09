@@ -86,7 +86,8 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Atlas text | `textMode(.atlas)` for fast, crisp text when there's a lot of it | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
 | Images | Load PNG/JPEG/HEIC and friends, draw, tint, and scale them | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
-| Sample photographs | Four bundled photographs with their credits, one import away, to try a technique on | [Ch 9](09-Pictures.md) | [Sample photographs](../Docs/Drawing/SamplePhotos.md) |
+| Sample photographs | Eight bundled photographs with their credits, one import away, to try a technique on | [Ch 9](09-Pictures.md) | [Sample photographs](../Docs/Drawing/SamplePhotos.md) |
+| A feed with no camera | `Camera.orStill` and `StillFrames`, so a sketch that reads the world runs with nothing plugged in | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md#nocamera) |
 | Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | [Ch 9](09-Pictures.md) | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
 | Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | [Ch 9](09-Pictures.md) | [PixelSorting](../Docs/Drawing/PixelSorting.md) |
 | Seam carving | A picture made narrower or wider by taking away or duplicating the paths that carry the least, so what carries texture keeps its shape | [Ch 9](09-Pictures.md) | [SeamCarving](../Docs/Drawing/SeamCarving.md) |
