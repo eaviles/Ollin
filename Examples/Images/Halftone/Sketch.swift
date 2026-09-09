@@ -15,9 +15,10 @@ import OllinSamplePhotos
 /// pen-plotter reading of the same frame. Hold the mouse for the inverted
 /// screen: light marks sized by brightness on a dark canvas.
 ///
-/// The source is one of the bundled sample photographs, an elderly woman in a
-/// yellow scarf, whose face runs through every tone the screen can render. A
-/// halftone reads one value per dot, so it is handed a small copy.
+/// The source is one of the bundled sample photographs, a young woman in a
+/// white lace headdress over a dark embroidered blouse, so the screen runs from
+/// bare paper to solid ink across one face. A halftone reads one value per
+/// dot, so it is handed a small copy.
 @main
 final class Halftone: Sketch {
     override var loopDuration: Double? { 12 }
@@ -25,7 +26,7 @@ final class Halftone: Sketch {
     private var source = Image(width: 1, height: 1)
 
     override func setup() {
-        source = SamplePhoto.scarf.load().resized(width: 360, height: 360)
+        source = SamplePhoto.portrait.load().resized(width: 360, height: 360)
     }
 
     override func draw() {

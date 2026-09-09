@@ -8,9 +8,9 @@ import Ollin
 import OllinSamplePhotos
 
 final class FilterSheet: Sketch {
-    // Three columns by four rows of square cells, so the square photograph
-    // keeps its shape in every tile.
-    override var canvasSize: CanvasSize { .size(1080, 1440) }
+    // Four columns by three rows of square cells, so the square photograph
+    // keeps its shape in every tile and the sheet lies across the page.
+    override var canvasSize: CanvasSize { .size(1440, 1080) }
 
     var photograph = Image(width: 1, height: 1)
 
@@ -44,14 +44,16 @@ final class FilterSheet: Sketch {
                                        background: Color(hex: 0xF3EBDD))),
         ]
 
-        let cols = 3, rows = 4
+        let cols = 4, rows = 3
         let gutter = width * 0.012
-        let cellW = (width - gutter * Double(cols + 1)) / Double(cols)
-        let cellH = cellW
+        let cell = min((width - gutter * Double(cols + 1)) / Double(cols),
+                       (height - gutter * Double(rows + 1)) / Double(rows))
+        let cellW = cell, cellH = cell
+        let left = (width - cellW * Double(cols) - gutter * Double(cols + 1)) / 2
         let top = (height - cellH * Double(rows) - gutter * Double(rows + 1)) / 2
         let font = OutlineFont.system
         for (i, tile) in tiles.enumerated() {
-            let x = gutter + Double(i % cols) * (cellW + gutter)
+            let x = left + gutter + Double(i % cols) * (cellW + gutter)
             let y = top + gutter + Double(i / cols) * (cellH + gutter)
             let layer = tile.1.map { scene.filtered($0) } ?? scene
             drawImage(layer.image, in: Rectangle(x: x, y: y, width: cellW, height: cellH), fit: .cover)

@@ -1122,6 +1122,7 @@ final class Image
   func mosaic(of: [Image], columns: Int, rows: Int, maxUses: Int? = default) -> PhotoMosaic
   func outOfGamutFraction(_: SoftProof) -> Double
   func pixelSorted(_: PixelSortDirection = default, by: PixelSortKey = default, threshold: ClosedRange<Double> = default, reversed: Bool = default) -> Image
+  func resized(width: Int, height: Int) -> Image
   func seamCarved(toWidth: Int? = default, toHeight: Int? = default, energy: SeamEnergy = default, protecting: Image? = default, discarding: Image? = default) -> Image
   func seamEnergy(_: SeamEnergy = default, along: SeamDirection = default) -> Image?
   func seamMap(along: SeamDirection = default, energy: SeamEnergy = default, protecting: Image? = default, discarding: Image? = default) -> SeamMap?

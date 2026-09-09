@@ -14,9 +14,10 @@ import OllinSamplePhotos
 /// line work: try `--export-svg out.svg --frame 900` (the full-tree moment),
 /// each chain one pen-down stroke.
 ///
-/// The picture is one of the bundled sample photographs, an elderly woman in
-/// a yellow scarf, handed over as a small copy: the stipple reads density,
-/// not detail.
+/// The picture is one of the bundled sample photographs, a woman in profile on
+/// a plain ground, handed over as a small copy: the stipple reads density, not
+/// detail, and a bold silhouette is what a stipple reads best. A mid-toned
+/// face stipples nearly even, and an even stipple grows an even maze.
 @main
 final class SpanningTree: Sketch {
     override var loopDuration: Double? { 24 }
@@ -28,8 +29,10 @@ final class SpanningTree: Sketch {
     override func setup() {
         seed(6)
         let frame = canvasRectangle.inset(by: 120)
-        let picture = SamplePhoto.scarf.load().resized(width: 340, height: 340)
-        chains = spanningTree(of: picture, points: 4000, in: frame, iterations: 45)
+        let picture = SamplePhoto.profile.load().resized(width: 340, height: 340)
+        // The cutoff rounds the plain ground up to paper, so the tree grows
+        // through the head and the braid and leaves the rest of the frame empty.
+        chains = spanningTree(of: picture, points: 4000, in: frame, iterations: 45, cutoff: 0.62)
         lengths = chains.map { chain in
             var length = 0.0
             for i in 1 ..< chain.points.count {

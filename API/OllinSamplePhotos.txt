@@ -1,0 +1,19 @@
+// OllinSamplePhotos: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+struct SamplePhoto: Equatable, Hashable, Sendable
+  func load() -> Image
+  let credit: SamplePhoto.Credit
+  let name: String
+  let subject: String
+  static let all: [SamplePhoto]
+  static let marigolds: SamplePhoto
+  static let portrait: SamplePhoto
+  static let profile: SamplePhoto
+  static let scarf: SamplePhoto
+  struct Credit: Equatable, Hashable, Sendable
+    let license: String
+    let licenseURL: String
+    let photographer: String
+    let place: String
+    let source: String
+    var line: String { get }

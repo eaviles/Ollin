@@ -40,9 +40,9 @@ final class Portrait: Sketch {
 
 Each is a 1600-pixel square, cropped from the original around its subject.
 
-- **`.portrait`** is a young woman in a lace headdress and an embroidered blouse, smiling at the camera. The frontal face: what the face and eye trackers, the person matte, the mosaics, and the filter catalog read best.
-- **`.scarf`** is an elderly woman in a yellow scarf, looking straight at the camera. The face with the most in it, every tone from the lit cheek to the shadow of the scarf: what the ink drawing, the halftone, the dithers, and the spanning tree show best.
-- **`.profile`** is a woman in profile against a plain tan ground. The silhouette, bold masses on nothing: what the stipple, the single line, and the string art read best. The head sits left of center on purpose, the way a profile is framed, and the braid runs to the right edge.
+- **`.portrait`** is a young woman in a lace headdress and an embroidered blouse, smiling at the camera. The frontal face, and the widest tonal range, from bare paper to solid ink: what the face and eye trackers, the person matte, the mosaics, the halftone, and the filter catalog read best.
+- **`.scarf`** is an elderly woman in a yellow scarf, looking straight at the camera. The face with the most in it, every line of it an edge: what the ink drawing and the dithers show best. Its tones sit in the middle, so a stipple of it comes out nearly even.
+- **`.profile`** is a woman in profile against a plain tan ground. The silhouette, bold masses on nothing: what the stipple, the single line, the spanning tree, and the string art read best. The head sits left of center on purpose, the way a profile is framed, and the braid runs to the right edge.
 - **`.marigolds`** is a woman before a wall of cempasúchil, the marigolds of Día de Muertos. The color and texture picture: what palette extraction, the color-vision simulation, the shock filter, and the frequency domain show best.
 
 The examples in `Examples/Images`, `Examples/Color`, and `Examples/Effects` read them, and so do the Guide's ink, brushwork, shock, filter-sheet, thread, and photo-mosaic figures.
