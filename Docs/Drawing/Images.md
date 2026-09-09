@@ -31,7 +31,7 @@ final class Photo: Sketch {
 - [drawImage](#drawimage) - draw at native size, scaled, or into a rectangle
 - [Fitting a picture to a box](#fit) - `.stretch`, `.contain`, `.cover`
 - [tint](#tint) - recolor and fade images as you draw them
-- [Image](#image) - the value type, and loading from data or a bundle
+- [Image](#image) - the value type, loading from data or a bundle, and `resized`
 - [Pixels](#pixels) - author or sample an image pixel by pixel
 
 <a name="loadimage"></a>
@@ -177,6 +177,14 @@ let texture = Image(resource: "paper", withExtension: "png", in: .module)
 ```
 
 `Image(cgImage:)` wraps a `CGImage` you already have in memory. It can be one you rendered yourself, decoded elsewhere, or built procedurally, so anything that produces a `CGImage` becomes drawable.
+
+`resized(width:height:)` hands back a copy at another pixel size, resampled with high-quality interpolation. It is the call to make before handing a large picture to something that reads every pixel, such as a stipple, a dither, a mosaic, or a string-art winding, which want a copy of a few hundred pixels a side. It reads the CPU pixels, so it applies to a picture decoded from a file or authored pixel by pixel; an image wrapping a live texture comes back as a blank of the requested size. Setup-time work, so keep the result.
+
+```swift
+let small = SamplePhoto.scarf.load().resized(width: 300, height: 300)
+```
+
+For a picture to try any of this on, `import OllinSamplePhotos` bundles [four photographs](./SamplePhotos.md) with their credits.
 
 **Transparency works.** Ollin honors a PNG's alpha channel, so transparent regions show what is behind them, and the edges composite cleanly.
 

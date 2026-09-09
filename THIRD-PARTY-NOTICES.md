@@ -291,6 +291,30 @@ redistributed inside this repository.
 
 ---
 
+## Sample photographs (example assets)
+
+- **Used for:** the `OllinSamplePhotos` library, which the `Images`, `Color`, and `Effects` example sketches and the Guide's and reference's figures read so a filter, a mosaic, a dither, or a winding can be shown on a real picture. A product of its own, so an app that never imports it ships none of them; the `Ollin` framework itself bundles no photograph.
+- **Location in this repo:** [`Sources/OllinSamplePhotos/Resources/`](Sources/OllinSamplePhotos/Resources/), four JPEGs, each a 1600-pixel square cropped from the original and re-encoded at quality 78 with the metadata stripped. Each credit is also carried in code as `SamplePhoto.credit`.
+- **`portrait.jpg`:** *Vibrant portrait of a woman in traditional Oaxaca attire* by Jhovani Morales, Oaxaca de Juárez, Mexico. https://www.pexels.com/photo/13402074/ — Pexels License.
+- **`scarf.jpg`:** *An elderly woman with a scarf looks directly at viewer* by Matthew Stephenson, Oaxaca, Mexico. https://unsplash.com/photos/j6OYgSMVuiI — Unsplash License.
+- **`profile.jpg`:** *Profile of a woman with a braided ponytail against a solid tan background* by Jessica Felicio, Berrien County, United States. https://unsplash.com/photos/QS9ZX5UnS14 — Unsplash License.
+- **`marigolds.jpg`:** *Portrait of an elderly Mexican woman with vibrant cempasuchil flowers for Día de Muertos celebration* by Fernando Paleta, Mexico City, Mexico. https://www.pexels.com/photo/29302608/ — Pexels License.
+- **Licenses:** Unsplash License — https://unsplash.com/license; Pexels License — https://www.pexels.com/license/
+
+> Both licenses grant a free, worldwide license to download, copy, modify, and
+> use the photographs, commercial use included, with no attribution required;
+> the photographers are credited here and in code all the same. Both forbid
+> selling unaltered copies and compiling the pictures into a competing stock
+> service, and the Pexels License adds that an identifiable person may not be
+> shown in a bad light or as endorsing anything, which is how they are used:
+> as the picture under a filter, a screen, or a winding. **Changes:** each was
+> cropped to a square around the subject, resized to 1600 pixels, converted to
+> sRGB, and re-encoded as JPEG with its metadata (location included) removed;
+> no other edits. The licenses ride on the photographs, not on Ollin's code,
+> which stays MIT. The root [`LICENSE`](LICENSE) is unaffected.
+
+---
+
 ## Video Depth Anything, small (example model, built locally, not bundled)
 
 - **Used for:** the `DepthContours` and `FootageDepth` example sketches and the `DepthTracker` and `DepthClip` they demonstrate: temporally consistent video depth over the live feed, and over a whole recording read ahead of time. Not part of the Ollin framework; Ollin (and `OllinVision`) bundle no model weights themselves.

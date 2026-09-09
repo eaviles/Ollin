@@ -33,6 +33,8 @@ final class Photo: Sketch {
 
 `loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends) and returns an optional, since a path can be wrong. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
 
+For a picture to try right now, Ollin bundles four photographs. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square; `.scarf`, `.profile`, and `.marigolds` are the other three, and each carries its `credit`, the photographer and the terms it is used under. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. A large picture is more than a stipple or a dither needs, and `resized(width:height:)` makes the small working copy: `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call.
+
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 
 ```swift
@@ -99,7 +101,7 @@ let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 
 and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. ([Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one, since averaging the channels instead makes yellows read too dark and blues too bright.) Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components. The handwritten weights are the idea, and the property is the everyday spelling.
 
-You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how this chapter's figures work. The repository ships no photograph, so the sunset on the left is *authored*, about twenty lines of [Chapter 2](02-Color.md) ramps, one `smoothstep` sun, and [Chapter 5](05-Noise.md) noise for the water, written pixel by pixel in `setup()`. The listing below contains the whole recipe, and everything in this section works identically on a photo you load with `loadImage`.
+You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how the sunset in this chapter's figures is made. It is *authored*, about twenty lines of [Chapter 2](02-Color.md) ramps, one `smoothstep` sun, and [Chapter 5](05-Noise.md) noise for the water, written pixel by pixel in `setup()`, so you can see a picture come out of code before you read one in. The listing below contains the whole recipe, and everything in this section works identically on a photograph, the bundled ones included.
 
 ## A picture as marks
 
@@ -142,7 +144,7 @@ The marks so far have been characters and dots. They can be pictures.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PicturesFromPictures-dark.jpg">
-  <img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a soft target picture of two lit blobs, the same picture rebuilt as a grid of small colored tiles, and seven of those cells enlarged so each is visibly its own little picture of dots, bars and triangles" width="680">
+  <img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a photograph of a young woman in a lace headdress, the same picture rebuilt as a grid of small tiles cut from four photographs, and seven of those cells enlarged so each is visibly a piece of a real picture" width="680">
 </picture>
 
 ```swift
@@ -217,7 +219,7 @@ String art takes the same idea to its most physical extreme. Ring the canvas wit
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/WoundFromThread-dark.jpg">
-  <img src="Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a bold crescent picture, the first 350 chords of its winding crowding into the crescent, and the finished winding where the crescent is dense thread and the rest a light veil" width="680">
+  <img src="Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a photograph of a woman in profile on a plain ground, the first 350 chords of its winding crowding into the dark of the head, and the finished winding where the profile is dense thread and the ground a light veil" width="680">
 </picture>
 
 ```swift
@@ -238,7 +240,7 @@ Each chord is a greedy choice. From the pin the thread is on, `StringArt` scores
 
 It is a stepper you hold on to, like the growth systems of [Chapter 13](13-GrowingThings.md). Each `step` winds a few more chords onto a never-clearing canvas, so the figure knits itself over the first seconds of a run. And the result is honest thread: `art.thread` is one open polyline. `art.sequence` is the winding order itself, pin numbers you could follow on a real rim.
 
-One honest note, and it is why the figure gets a crescent instead of the sunset. Bold tonal masses knit into a clear figure. The sunset would wind into fuzz: its tone changes gently everywhere. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
+One honest note, and it is why the figure gets the profile photograph instead of the sunset. Bold tonal masses knit into a clear figure. The sunset would wind into fuzz: its tone changes gently everywhere. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
 
 ## Sorting the pixels
 
@@ -576,7 +578,7 @@ Run it with `swift run OllinLive MySketches/TypeMosaic.swift` and take it apart:
 
 Then make it yours:
 
-- Swap the source for a photo: `source = loadImage("/path/to/portrait.jpg")` is the whole change. Faces work beautifully at 60 to 80 columns.
+- Swap the source for a photo: `source = SamplePhoto.portrait.load()` or `loadImage("/path/to/portrait.jpg")` is the whole change. Faces work beautifully at 60 to 80 columns.
 - Change the alphabet. A message of `"·•●"` becomes halftone dots, and `textFont(BitmapFont.builtIn)` in `setup()` makes it a terminal.
 - Sample with an offset. Read the pixel at `u + time * 0.01` (wrapped with `fract`) and the picture slides through the words.
 - Recolor by replacing the sampled color with `Colormap.magma.color(at: brightness)` for a duotone poster.
@@ -590,7 +592,8 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 
 ## Go deeper
 
-- [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for a picture bundled with a sketch, the sampling helpers, and authoring an image in code.
+- [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for a picture bundled with a sketch, `resized` for a working copy, the sampling helpers, and authoring an image in code.
+- [Sample photographs](../Docs/Drawing/SamplePhotos.md): the four bundled pictures, what each is good for, the credit each carries, and the terms they are used under.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured coverage behind the glyph ramp, the dot shapes and screen angles, and the duotone options.
 - [Photo mosaic](../Docs/Drawing/PhotoMosaic.md): `averageColor` and its linear-light rule, the match, the tint and repeat parameters, and drawing the placements yourself.
 - [Autostereogram](../Docs/Drawing/Autostereogram.md): the repeat and relief settings, the pattern, and why a scaled one stops working.

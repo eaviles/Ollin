@@ -13,6 +13,7 @@
 - [`Layered effects`](./Effects.md) - `renderTarget`/`withTarget` draw into off-screen layers. `filtered`/`postProcess` run GPU filters over them (blur, bloom, color grade, gradient map, edges, halftone, …), and the result composites back with blend modes. `combined` combines two layers (mask, displace, mix, depth-of-field defocus). `generate` makes procedural pattern sources, `feedback` makes trails and tunnels, and `compose { }` (with `aside` helper layers) declares a stack of layers as one block.
 - [`Text`](./Text.md) - `drawText` draws with bitmap, outline (`.ttf`/`.otf`), and stroke (single-line / plotter) fonts. `textToShapes` turns text into geometry.
 - [`Images`](./Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access. Load or author a raster image, draw it scaled or transformed, and recolor it.
+- [`Sample photographs`](./SamplePhotos.md) - `SamplePhoto`, four bundled photographs with their credits, for trying an image technique or a filter on a real picture.
 - [`Glyph mosaic`](./GlyphMosaic.md) - `drawGlyphMosaic` rebuilds an image as a grid of text glyphs. Each cell's character is chosen by its measured ink in the active font.
 - [`Halftone`](./Halftone.md) - `drawHalftone` rebuilds an image as the classic print dot screen. The dots are area-exact, sit on a rotated grid, and are real circles for the plotter path.
 - [`Autostereogram`](./Autostereogram.md) - `Image.autostereogram` hides a depth map in a repeating pattern. When the repeats are paired, a surface nobody drew stands out of the page.

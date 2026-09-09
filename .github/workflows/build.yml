@@ -36,7 +36,7 @@ name: Build
 # costing anything: standard runners, macOS among them, are free there.
 #
 # The flip to public is therefore also the moment to add the push trigger
-# @eaviles has already called (2026-09-09): once the runners are free, every
+# @eaviles has already called (2026-09-08): once the runners are free, every
 # merge and every direct push to main runs this, so a break is found by the
 # commit that made it rather than by whoever dispatches next. Add it here as
 #

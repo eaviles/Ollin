@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/HalftoneScreen-dark.jpg">
-  <img src="../Images/HalftoneScreen.jpg" alt="A small sunset over water beside the same picture as a halftone screen: black dots on cream, small in the bright sky, leaving the sun as clean paper, and swelling in the dark water until they merge into checkered diamonds" width="680">
+  <img src="../Images/HalftoneScreen.jpg" alt="A photograph of an elderly woman in a yellow scarf beside the same picture as a halftone screen: black dots on cream, small on the lit cheek and swelling in the shadows of the scarf until they merge into checkered diamonds" width="680">
 </picture>
 
 ### Contents

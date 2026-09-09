@@ -1,10 +1,12 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 9): a picture wound from one thread. A bold
-// crescent, the same picture mid-winding, and the finished winding, so the
-// greedy chord choice and the accumulation both read.
+// Guide diagram (Chapter 9): a picture wound from one thread. A profile on a
+// plain ground (one of the bundled sample photographs), the same picture
+// mid-winding, and the finished winding, so the greedy chord choice and the
+// accumulation both read.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
 
 final class WoundFromThread: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
@@ -27,7 +29,7 @@ final class WoundFromThread: Sketch {
     var finishedPins: [Vector2] = []
 
     override func setup() {
-        picture = makeCrescent(size: 160)
+        picture = SamplePhoto.profile.load().resized(width: 160, height: 160)
         let panels = Self.panels
         let midway = StringArt(of: picture,
                                center: panels[1].center,
@@ -94,24 +96,5 @@ final class WoundFromThread: Sketch {
         textSize(17)
         textAlign(.left, .middle)
         drawText(title, r.x, r.y - 20)
-    }
-
-    /// A bold crescent on white: the strong tonal masses the winding reads
-    /// best.
-    func makeCrescent(size: Int) -> Image {
-        let image = Image(width: size, height: size, color: .white)
-        for py in 0 ..< size {
-            for px in 0 ..< size {
-                let u = (Double(px) + 0.5) / Double(size) * 2 - 1
-                let v = (Double(py) + 0.5) / Double(size) * 2 - 1
-                let disk = (u * u + v * v).squareRoot()
-                guard disk < 0.72 else { continue }
-                let inDisk = 1 - smoothstep(0.68, 0.72, disk)
-                let bite = dist(u, v, 0.32, -0.26)
-                let crescent = inDisk * smoothstep(0.56, 0.66, bite)
-                image[px, py] = Color(white: 0.84 - 0.7 * crescent)
-            }
-        }
-        return image
     }
 }

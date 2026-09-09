@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../Images/StippleTone-dark.jpg">
-  <img src="../Images/StippleTone.jpg" alt="A small sunset over water beside the same picture as a stipple: black dots on cream, packed tight in the dark water, sparser in the bright sky, and absent where the sun leaves clean paper" width="680">
+  <img src="../Images/StippleTone.jpg" alt="A photograph of a woman in profile against a plain tan ground beside the same picture as a stipple: black dots on cream, packed tight where the head and the braid are dark, and spread thin across the ground" width="680">
 </picture>
 
 The method behind it is a weighted centroidal Voronoi iteration. It seeds the dots by rejection-sampling the darkness, then it moves every dot to the darkness-weighted centroid of its cell, over and over. Each pass evens out the spacing, while the weighting keeps the dots on the tone. Close up the dots are as even as blue noise, and at full size they take the shape of the image.

@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 
 /// A picture, what it is made of, and the way back.
 ///
@@ -15,6 +16,12 @@ import Ollin
 /// family of blur and sharpen filters does, because scale is what the spectrum
 /// is laid out by.
 ///
+/// The picture is one of the bundled sample photographs, a woman before a wall
+/// of marigolds: the petals are the fine detail out at the spectrum's edges, the
+/// face and the blouse the broad tones near its middle. A photograph's spectrum
+/// falls off from the center the way every natural picture's does, so the
+/// mask's radius is a slider through that falloff.
+///
 /// The transform works on a square layer whose side is a power of two, so the
 /// panels here are 512, and it reads one channel: the linear brightness unless
 /// another is named.
@@ -27,30 +34,25 @@ final class FourierPanels: Sketch {
 
     override var canvasSize: CanvasSize { .size(1080, 520) }
 
+    private var photograph = Image(width: 1, height: 1)
+
+    override func setup() {
+        photograph = SamplePhoto.marigolds.load().resized(width: 512, height: 512)
+    }
+
     override func draw() {
         background(Color(hex: 0x0B0E14))
 
-        // The picture: a few hard shapes and one fine grating, so the spectrum
-        // has both broad tones and sharp detail to show.
+        // The picture, turned by `turn` so the spectrum can be seen turning
+        // with it: a rotation of the picture is a rotation of its spectrum.
         let plate = makeRenderTarget(width: 512, height: 512)
         withTarget(plate) {
             background(Color(hex: 0x101010))
-            noStroke()
             withState {
                 translate(256, 256)
                 rotate(turn * .tau)
                 translate(-256, -256)
-                fill(Color(hex: 0xF2E8D5))
-                drawCircle(190, 200, 96)
-                fill(Color(hex: 0x8FB6D4))
-                drawRect(250, 250, 170, 170)
-                fill(Color(hex: 0xE0684A))
-                drawTriangle(Vector2(120, 420), Vector2(220, 330), Vector2(240, 450))
-            }
-            // Fine stripes: one wavelength, so it lands as one pair of spots.
-            fill(Color(white: 0.85))
-            for i in 0 ..< 32 {
-                drawRect(Double(i) * 16 + 4, 24, 6, 70)
+                drawImage(photograph, 0, 0, 512, 512)
             }
         }
 

@@ -1,31 +1,31 @@
 // figure: frame=0
 //
-// Guide figure (Chapter 16): one scene through a sample of the filter catalog,
-// one tile per family. The scene is drawn once into a layer; every tile is
-// that same layer through a different filter.
+// Guide figure (Chapter 16): one picture through a sample of the filter
+// catalog, one tile per family. A photograph (one of the bundled sample
+// photographs) is drawn once into a layer; every tile is that same layer
+// through a different filter.
 import Ollin
+import OllinSamplePhotos
 
 final class FilterSheet: Sketch {
+    // Three columns by four rows of square cells, so the square photograph
+    // keeps its shape in every tile.
+    override var canvasSize: CanvasSize { .size(1080, 1440) }
+
+    var photograph = Image(width: 1, height: 1)
+
+    override func setup() {
+        photograph = SamplePhoto.portrait.load()
+    }
+
     override func draw() {
         background(Color(hex: 0x0C0E13))
 
-        // A small landscape with smooth tone, color, and crisp edges, so every
+        // A face with smooth skin, fine lace, and saturated embroidery, so every
         // filter family has something to bite on.
-        let scene = makeRenderTarget()
+        let scene = makeRenderTarget(width: 1080, height: 1080)
         withTarget(scene) {
-            noStroke()
-            fill(.linear(from: Vector2(0, 0), to: Vector2(0, height),
-                         Ramp([Color(hex: 0x2A2E5E), Color(hex: 0xC65B7C), Color(hex: 0xF2B36A)])))
-            drawRect(0, 0, width, height)
-            fill(Color(hex: 0xFFE9B8)); drawCircle(width * 0.62, height * 0.38, 130)
-            fill(Color(hex: 0x2E2440))
-            drawTriangle(Vector2(-60, height), Vector2(width * 0.38, height * 0.52),
-                         Vector2(width * 0.78, height))
-            fill(Color(hex: 0x1A1430))
-            drawTriangle(Vector2(width * 0.4, height), Vector2(width * 0.85, height * 0.62),
-                         Vector2(width + 80, height))
-            stroke(.white); strokeWeight(9); noFill()
-            drawCircle(width * 0.62, height * 0.38, 190)
+            drawImage(photograph, in: Rectangle(x: 0, y: 0, width: 1080, height: 1080))
         }
 
         let tiles: [(String, Filter?)] = [
@@ -47,13 +47,14 @@ final class FilterSheet: Sketch {
         let cols = 3, rows = 4
         let gutter = width * 0.012
         let cellW = (width - gutter * Double(cols + 1)) / Double(cols)
-        let cellH = (height - gutter * Double(rows + 1)) / Double(rows)
+        let cellH = cellW
+        let top = (height - cellH * Double(rows) - gutter * Double(rows + 1)) / 2
         let font = OutlineFont.system
         for (i, tile) in tiles.enumerated() {
             let x = gutter + Double(i % cols) * (cellW + gutter)
-            let y = gutter + Double(i / cols) * (cellH + gutter)
+            let y = top + gutter + Double(i / cols) * (cellH + gutter)
             let layer = tile.1.map { scene.filtered($0) } ?? scene
-            drawImage(layer.image, in: Rectangle(x: x, y: y, width: cellW, height: cellH))
+            drawImage(layer.image, in: Rectangle(x: x, y: y, width: cellW, height: cellH), fit: .cover)
             withState {
                 blendMode(.normal)
                 noStroke()

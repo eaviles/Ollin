@@ -1,4 +1,5 @@
 import Ollin
+import OllinSamplePhotos
 
 /// Reducing a picture to four colors, six ways.
 ///
@@ -27,7 +28,9 @@ final class Dithering: Sketch {
 
     override func setup() {
         noStroke()
-        let source = paint()
+        // One of the bundled sample photographs, at the size the panels are
+        // drawn: a dithered pixel has to land on one screen pixel to read.
+        let source = SamplePhoto.scarf.load().resized(width: 320, height: 320)
 
         // The colors the picture is mostly made of, then the picture redrawn in
         // them. Extraction and dithering are the two halves of one idea.
@@ -49,7 +52,7 @@ final class Dithering: Sketch {
         // Panels at 1:1, so a dithered pixel is a screen pixel and the grain
         // reads as it really is.
         let cols = 3, rows = 2
-        let panelW = 320.0, panelH = 240.0
+        let panelW = 320.0, panelH = 320.0
         let gutter = 30.0
         let plate = 26.0
         let totalW = Double(cols) * panelW + Double(cols - 1) * gutter
@@ -78,29 +81,5 @@ final class Dithering: Sketch {
         }
 
         drawCaption("one picture, four extracted colors, six ways of spending them")
-    }
-
-    /// A single soft light falling off into darkness: the kind of gentle gradient
-    /// that bands badly the moment you quantize it, which is exactly what makes
-    /// the dithering visible. The falloff is spread wide enough that the dark end
-    /// covers real area, so the extraction keeps a dark color instead of spending
-    /// all four on the highlight.
-    private func paint() -> Image {
-        let w = 320, h = 240
-        let image = Image(width: w, height: h)
-        let deep = Color(hex: 0x14203A)
-        let mid = Color(hex: 0xBF3100)
-        let warm = Color(hex: 0xF7DFA5)
-        for y in 0..<h {
-            for x in 0..<w {
-                let u = Double(x) / Double(w - 1)
-                let v = Double(y) / Double(h - 1)
-                let t = clamp(1 - dist(u, v, 0.28, 0.78) * 1.35, 0, 1)
-                image[x, y] = t < 0.5
-                    ? Color.mix(deep, mid, t * 2)
-                    : Color.mix(mid, warm, (t - 0.5) * 2)
-            }
-        }
-        return image
     }
 }

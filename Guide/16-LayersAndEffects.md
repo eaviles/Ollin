@@ -58,9 +58,9 @@ That `.filtered(.gaussianBlur(radius: 45))` in the first listing was a **filter*
 let moody = art.filtered(.posterize(levels: 5)).filtered(.vignette())
 ```
 
-Ollin ships fifty-some of them, grouped into families. The families are blur and glow, color and tone, stylize, retro, and the warps that bend an image's coordinates. Here is one scene through a sample, one tile per family:
+Ollin ships fifty-some of them, grouped into families. The families are blur and glow, color and tone, stylize, retro, and the warps that bend an image's coordinates. Here is one photograph, a young woman in a lace headdress, through a sample, one tile per family:
 
-<img src="Images/16-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one sunset landscape shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
+<img src="Images/16-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one portrait of a young woman in a lace headdress shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
 
 A sheet like that is itself one call: `drawSheet` lays a list of labeled items into a near-square grid of tiles, drawing each through a closure and setting each label on its plate, so comparing a family is a list and a line.
 
@@ -74,7 +74,7 @@ One filter in the stylize family deserves a closer look, because it turns a pict
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/InkLines-dark.jpg">
-  <img src="Images/16-LayersAndEffects/InkLines.jpg" alt="Two panels: a small still life of a jug and three shaded balls on a table, and the same layer drawn as pen and ink, with a line along every edge and solid ink on the shadow side of each ball" width="680">
+  <img src="Images/16-LayersAndEffects/InkLines.jpg" alt="Two panels: a photograph of an elderly woman in a yellow scarf, and the same layer drawn as pen and ink, with a line along every fold and wrinkle and solid ink in the shadows of the scarf" width="680">
 </picture>
 
 ```swift
@@ -93,7 +93,7 @@ A second stylize filter turns the layer into a painting rather than a drawing. `
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Brushwork-dark.jpg">
-  <img src="Images/16-LayersAndEffects/Brushwork.jpg" alt="Two panels: a small hillside of grass blades under a sky with a cloud, and the same layer painted as brushwork, each blade widened into a stroke that follows its bend and the sky flattened into soft patches" width="680">
+  <img src="Images/16-LayersAndEffects/Brushwork.jpg" alt="Two panels: a photograph of a woman before a wall of marigolds, and the same layer painted as brushwork, each flower flattened into a dab that follows its own edges and the skin into soft patches" width="680">
 </picture>
 
 ```swift
@@ -112,7 +112,7 @@ A third stylize filter flattens the picture rather than drawing or painting it. 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/FlatRegions-dark.jpg">
-  <img src="Images/16-LayersAndEffects/FlatRegions.jpg" alt="Two panels: a small still life of an orange, a plum, and a lemon on a grained table, and the same layer through the shock filter, the shading of each fruit snapped into flat bands with crisp edges and the grain drawn out into smooth strokes" width="680">
+  <img src="Images/16-LayersAndEffects/FlatRegions.jpg" alt="Two panels: a photograph of a young woman in a lace headdress and an embroidered blouse, and the same layer through the shock filter, the shading of her face snapped into flat bands with crisp edges and the lace drawn out into smooth strokes" width="680">
 </picture>
 
 ```swift

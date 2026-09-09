@@ -1,18 +1,22 @@
 import Ollin
+import OllinSamplePhotos
 
 /// The whole `Filter` catalog on one switchable contact sheet: a segmented parameter
 /// picks a family (blur, color & tone, stylize & optical, retro, distortion,
 /// design), and every tile is `scene.filtered(...)` resolved on the GPU, laid
 /// out with `drawSheet`.
 ///
-/// Two scenes feed the tiles. Most families read one detailed picture (flat
-/// regions with crisp edges, thin rings and small dots, a wide range of hue and
-/// brightness), so what each filter keeps and what it throws away reads at a
-/// glance. The design family's alpha readers (`liquidMetal`, `heatmap`,
-/// `gemSmoke`) instead read the *shape* drawn into a transparent layer (draw a
-/// shape, filter it), so their tiles get a plain heart. The retro glitch and
-/// grain ride their `seed`s, and the distortion family animates its warp
-/// parameters, so those sheets move.
+/// Two scenes feed the tiles. Most families read one of the bundled sample
+/// photographs, a young woman in a lace headdress and an embroidered blouse
+/// (fine lace, flat skin, a wide range of hue and brightness), with one bright
+/// breathing ring and a faint grid drawn over it so the retro looks have
+/// something to tear and every warp's geometry stays easy to read; what each
+/// filter keeps and what it throws away then reads at a glance. The design
+/// family's alpha readers (`liquidMetal`, `heatmap`, `gemSmoke`) instead read
+/// the *shape* drawn into a transparent layer (draw a shape, filter it), so
+/// their tiles get a plain heart. The retro glitch and grain ride their
+/// `seed`s, and the distortion family animates its warp parameters, so those
+/// sheets move.
 ///
 /// Three catalog entries with a dedicated study of their own are left to it:
 /// `.relight` (`Effects/Relight`), `.chromaticAberration` (`Effects/Dispersion`),
@@ -27,6 +31,11 @@ final class FilterCatalog_Example: Sketch {
     @Param(style: .segmented, icon: "camera.filters") var family = Family.blur
 
     private let labelFont = OutlineFont.system
+    private var photograph = Image(width: 1, height: 1)
+
+    override func setup() {
+        photograph = SamplePhoto.portrait.load()
+    }
 
     /// The design tiles that read the layer's alpha shape rather than its picture.
     private let alphaReaders: Set<String> = ["liquidMetal", "heatmap", "gemSmoke"]
@@ -128,53 +137,21 @@ final class FilterCatalog_Example: Sketch {
 
         textFont(labelFont)
         drawSheet(sheet) { layer, cell in
-            drawImage(layer.image, in: cell)
+            drawImage(layer.image, in: cell, fit: .cover)
         }
     }
 
-    /// The detailed picture most families read: flat regions and crisp edges for
-    /// the blurs and warps, a wide hue and brightness range for the grades, fine
-    /// rings and dots for the edge and screen passes, one bright breathing ring
-    /// for the retro looks to tear and scan.
+    /// The picture most families read: the photograph, one bright breathing ring
+    /// for the retro looks to tear and scan, and a faint grid so each warp's
+    /// geometry stays easy to read.
     private func makeScene() -> RenderTarget {
         let scene = makeRenderTarget()
         withTarget(scene) {
-            background(Color(hex: 0x101826))
-            noStroke()
-            fill(.linear(from: Vector2(0, 0), to: Vector2(width, height),
-                         Ramp([Color(hex: 0x1A2A6C), Color(hex: 0xB21F66), Color(hex: 0xFDBB2D)])))
-            drawRect(0, 0, width, height)
+            drawImage(photograph, in: canvasRectangle, fit: .cover)
 
-            // Bold flat shapes with crisp edges.
-            fill(Color(hex: 0xFF5252)); drawCircle(width * 0.32, height * 0.36, 150)
-            fill(Color(hex: 0x40C4FF)); drawRect(width * 0.52, height * 0.48, width * 0.30, height * 0.28)
-            fill(Color(hex: 0xFFD740)); drawTriangle(width * 0.30, height * 0.80,
-                                                     width * 0.16, height * 0.58,
-                                                     width * 0.46, height * 0.58)
-
-            // A slow orbit of hue circles, so every grade has color to bite on.
-            for i in 0 ..< 6 {
-                let t = time * 0.25 + Double(i) * .tau / 6
-                fill(Color(hue: Double(i) / 6, saturation: 0.8, brightness: 0.95))
-                drawCircle(width * 0.5 + cos(t) * width * 0.28,
-                           height * 0.5 + sin(t * 1.3) * height * 0.28, 130)
-            }
-
-            // Fine high-frequency detail: thin rings and a rim of small dots.
-            stroke(Color(white: 1, alpha: 0.7)); strokeWeight(2); noFill()
-            for i in 1 ... 8 { drawCircle(width * 0.5, height * 0.5, Double(i) * 55) }
-            noStroke(); fill(.white)
-            for i in 0 ..< 80 {
-                let a = Double(i) * .tau / 80
-                drawCircle(width * 0.5 + cos(a) * width * 0.44,
-                           height * 0.5 + sin(a) * height * 0.44, 5)
-            }
-
-            // One bright breathing ring, high contrast against the ground.
             stroke(Color(hex: 0x66FFE0)); strokeWeight(9); noFill()
             drawCircle(width * 0.5, height * 0.5, 165 + sin(time) * 26)
 
-            // A faint grid, so each warp's geometry stays easy to read.
             stroke(Color(white: 1, alpha: 0.3)); strokeWeight(3)
             for i in 1 ..< 8 {
                 let g = width * Double(i) / 8

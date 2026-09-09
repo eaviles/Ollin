@@ -46,6 +46,7 @@ enum Satellite: String, CaseIterable {
     case controller = "OllinController"
     case haptics = "OllinHaptics"
     case bluetooth = "OllinBluetooth"
+    case samplePhotos = "OllinSamplePhotos"
 
     var dependency: Target.Dependency { .byName(name: rawValue) }
 }
@@ -176,6 +177,11 @@ let package = Package(
         // view, so unlike the mouse and keyboard it needs no AppKit/UIKit
         // seam, and the core stays free of the framework.
         .library(name: "OllinController", targets: ["OllinController"]),
+        // The sample photographs the examples and the Guide's figures read (a
+        // portrait, a profile, a face in a scarf, a wall of marigolds), each with
+        // its credit. A product of its own so an app that never imports it ships
+        // none of them; the framework itself bundles no photograph.
+        .library(name: "OllinSamplePhotos", targets: ["OllinSamplePhotos"]),
         // The shared CPU/GPU struct header as an importable module. A sketch
         // driving the raw `SpatialHash` builds `OllinParticle` buffers itself and
         // needs the declarations, which is why the compute examples `import
@@ -742,6 +748,15 @@ let package = Package(
             name: "OllinBluetooth",
             dependencies: ["Ollin"]
         ),
+        // The bundled sample photographs, as `SamplePhoto` values that load
+        // through the library's own bundle. The JPEGs are `.process`ed so they
+        // land flat in the bundle root, within reach of `url(forResource:)`.
+        // Their credits and terms are in THIRD-PARTY-NOTICES.md.
+        .target(
+            name: "OllinSamplePhotos",
+            dependencies: ["Ollin"],
+            resources: [.process("Resources")]
+        ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
@@ -1024,6 +1039,12 @@ let package = Package(
         .testTarget(
             name: "OllinProjectsTests",
             dependencies: ["OllinProjects"]
+        ),
+        // The sample photographs: every one decodes from the bundle at its
+        // declared size, and every credit names a photographer and a source.
+        .testTarget(
+            name: "OllinSamplePhotosTests",
+            dependencies: ["OllinSamplePhotos"]
         ),
         // The headless-browser gate the web tests share: a browser as a GLSL
         // compiler and as a page renderer. A regular target kept under `Tests/`
