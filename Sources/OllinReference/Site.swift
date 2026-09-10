@@ -545,7 +545,7 @@ public struct SiteBuilder {
         if !entry.summary.isEmpty {
             body += "<p class=\"lede\">\(HTML.escape(entry.summary))</p>\n"
         }
-        if let media = plan.media[entry.path] {
+        if let media = plan.media[entry.path], media.loop != nil {
             body += Self.clip(media, in: plan.media, named: entry.name) + "\n"
         }
         body += facts + "\n"
@@ -567,10 +567,15 @@ public struct SiteBuilder {
     /// controls back to anyone who has asked their system for less motion,
     /// which no stylesheet can do for a video.
     static func clip(_ entry: ExampleMedia.Entry, in media: ExampleMedia, named name: String) -> String {
-        """
+        guard let loop = entry.loop else { return "" }
+        // A sketch with its own music plays muted like the rest, since no
+        // browser lets a page make noise unasked, and gains the controls that
+        // let a reader turn it on.
+        let controls = entry.sound == true ? " controls" : ""
+        return """
         <figure class="example-clip">
-        <video src="\(media.address(of: entry.loop))" poster="\(media.address(of: entry.still))" \
-        width="\(entry.width)" height="\(entry.height)" autoplay muted loop playsinline \
+        <video src="\(media.address(of: loop))" poster="\(media.address(of: entry.still))" \
+        width="\(entry.width)" height="\(entry.height)" autoplay muted loop playsinline\(controls) \
         aria-label="\(HTML.escape(name)) running"></video>
         </figure>
         <script>if(matchMedia('(prefers-reduced-motion: reduce)').matches){\

@@ -10,13 +10,19 @@ On the way in, there are three sources: `AudioInput` for the microphone, `AudioP
 
 The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/Helpers/Synthesis.md), [Composition](../../Docs/Helpers/Composition.md), [Sonification](../../Docs/Helpers/Sonification.md), and [Listening](../../Docs/Helpers/Listening.md).
 
-| [![ChordSymbols](https://media.ollin.art/examples/Audio/ChordSymbols/still-640.jpg)](ChordSymbols/) | [![FilePlayer](https://media.ollin.art/examples/Audio/FilePlayer/still-640.jpg)](FilePlayer/) | [![Generative](https://media.ollin.art/examples/Audio/Generative/still-640.jpg)](Generative/) | [![Movement](https://media.ollin.art/examples/Audio/Movement/still-640.jpg)](Movement/) |
+| [![Bowing](https://media.ollin.art/examples/Audio/Bowing/still-640.jpg?v=4bfbdb26)](Bowing/) | [![Changes](https://media.ollin.art/examples/Audio/Changes/still-640.jpg?v=5bebeaf9)](Changes/) | [![ChladniResonance](https://media.ollin.art/examples/Audio/ChladniResonance/still-640.jpg?v=7ea709c5)](ChladniResonance/) | [![ChordSymbols](https://media.ollin.art/examples/Audio/ChordSymbols/still-640.jpg?v=fddd30ee)](ChordSymbols/) |
 |---|---|---|---|
-| [ChordSymbols](ChordSymbols/) | [FilePlayer](FilePlayer/) | [Generative](Generative/) | [Movement](Movement/) |
-| [![OwnSampler](https://media.ollin.art/examples/Audio/OwnSampler/still-640.jpg)](OwnSampler/) | [![Sampler](https://media.ollin.art/examples/Audio/Sampler/still-640.jpg)](Sampler/) | [![SoundInAnExport](https://media.ollin.art/examples/Audio/SoundInAnExport/still-640.jpg)](SoundInAnExport/) | [![Spatial](https://media.ollin.art/examples/Audio/Spatial/still-640.jpg)](Spatial/) |
-| [OwnSampler](OwnSampler/) | [Sampler](Sampler/) | [SoundInAnExport](SoundInAnExport/) | [Spatial](Spatial/) |
-| [![Strings](https://media.ollin.art/examples/Audio/Strings/still-640.jpg)](Strings/) |  |  |  |
-| [Strings](Strings/) |  |  |  |
+| [Bowing](Bowing/) | [Changes](Changes/) | [ChladniResonance](ChladniResonance/) | [ChordSymbols](ChordSymbols/) |
+| [![FilePlayer](https://media.ollin.art/examples/Audio/FilePlayer/still-640.jpg?v=75561170)](FilePlayer/) | [![Generative](https://media.ollin.art/examples/Audio/Generative/still-640.jpg?v=84388996)](Generative/) | [![Levels](https://media.ollin.art/examples/Audio/Levels/still-640.jpg?v=eb28c921)](Levels/) | [![Movement](https://media.ollin.art/examples/Audio/Movement/still-640.jpg?v=eb5c98b5)](Movement/) |
+| [FilePlayer](FilePlayer/) | [Generative](Generative/) | [Levels](Levels/) | [Movement](Movement/) |
+| [![OwnSampler](https://media.ollin.art/examples/Audio/OwnSampler/still-640.jpg?v=b108e67e)](OwnSampler/) | [![Patching](https://media.ollin.art/examples/Audio/Patching/still-640.jpg?v=cb1749a4)](Patching/) | [![Rooms](https://media.ollin.art/examples/Audio/Rooms/still-640.jpg?v=6d3036ed)](Rooms/) | [![Sampler](https://media.ollin.art/examples/Audio/Sampler/still-640.jpg?v=6df8895e)](Sampler/) |
+| [OwnSampler](OwnSampler/) | [Patching](Patching/) | [Rooms](Rooms/) | [Sampler](Sampler/) |
+| [![Shaping](https://media.ollin.art/examples/Audio/Shaping/still-640.jpg?v=d6cb6131)](Shaping/) | [![Sonification](https://media.ollin.art/examples/Audio/Sonification/still-640.jpg?v=43ca6b0a)](Sonification/) | [![SoundInAnExport](https://media.ollin.art/examples/Audio/SoundInAnExport/still-640.jpg?v=7ecb82cc)](SoundInAnExport/) | [![Spatial](https://media.ollin.art/examples/Audio/Spatial/still-640.jpg?v=cdd4286a)](Spatial/) |
+| [Shaping](Shaping/) | [Sonification](Sonification/) | [SoundInAnExport](SoundInAnExport/) | [Spatial](Spatial/) |
+| [![Spectrum](https://media.ollin.art/examples/Audio/Spectrum/still-640.jpg?v=db294efb)](Spectrum/) | [![Strings](https://media.ollin.art/examples/Audio/Strings/still-640.jpg?v=eb5b447b)](Strings/) | [![StruckShapes](https://media.ollin.art/examples/Audio/StruckShapes/still-640.jpg?v=fdc7872a)](StruckShapes/) | [![Synth](https://media.ollin.art/examples/Audio/Synth/still-640.jpg?v=e056fd72)](Synth/) |
+| [Spectrum](Spectrum/) | [Strings](Strings/) | [StruckShapes](StruckShapes/) | [Synth](Synth/) |
+| [![Tunings](https://media.ollin.art/examples/Audio/Tunings/still-640.jpg?v=ce9b7f09)](Tunings/) | [![Wavetable](https://media.ollin.art/examples/Audio/Wavetable/still-640.jpg?v=93a2b8ee)](Wavetable/) |  |  |
+| [Tunings](Tunings/) | [Wavetable](Wavetable/) |  |  |
 
 | Example | What it shows |
 |---|---|

@@ -27,3 +27,7 @@ Learn more:
 
 These sketches are homages after Vera Molnár, made for learning. They are not reproductions of specific works. They are not affiliated with or endorsed by the artist or her estate.
 
+
+| [![DesOrdres](https://media.ollin.art/examples/Recreations/VeraMolnar/DesOrdres/still-640.jpg?v=18751e3f)](DesOrdres/) | [![Interruptions](https://media.ollin.art/examples/Recreations/VeraMolnar/Interruptions/still-640.jpg?v=45d718bd)](Interruptions/) |  |  |
+|---|---|---|---|
+| [DesOrdres](DesOrdres/) | [Interruptions](Interruptions/) |  |  |

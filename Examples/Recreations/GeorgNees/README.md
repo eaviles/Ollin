@@ -22,3 +22,7 @@ Learn more:
   swift run Example-Recreations-GeorgNees-Schotter
   ```
 
+
+| [![Schotter](https://media.ollin.art/examples/Recreations/GeorgNees/Schotter/still-640.jpg?v=01911a6c)](Schotter/) |  |  |  |
+|---|---|---|---|
+| [Schotter](Schotter/) |  |  |  |

@@ -30,6 +30,6 @@ Learn more:
 
 These are homages after Osamu Sato, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.
 
-| [![Alphabet](https://media.ollin.art/examples/Recreations/OsamuSato/Alphabet/still-640.jpg)](Alphabet/) | [![Totem](https://media.ollin.art/examples/Recreations/OsamuSato/Totem/still-640.jpg)](Totem/) |  |  |
+| [![Alphabet](https://media.ollin.art/examples/Recreations/OsamuSato/Alphabet/still-640.jpg?v=543c2329)](Alphabet/) | [![Totem](https://media.ollin.art/examples/Recreations/OsamuSato/Totem/still-640.jpg?v=538b7d5a)](Totem/) |  |  |
 |---|---|---|---|
 | [Alphabet](Alphabet/) | [Totem](Totem/) |  |  |

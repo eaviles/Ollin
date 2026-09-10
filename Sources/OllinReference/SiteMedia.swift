@@ -13,18 +13,23 @@ import Foundation
 /// pictures, exactly as it did before any existed.
 public struct ExampleMedia: Sendable {
 
-    /// What one example's row says. The four paths are relative to `base`.
+    /// What one example's row says. The paths are relative to `base`.
+    ///
+    /// A sketch that draws one picture and holds it keeps its stills and has
+    /// no clip, so both clip paths are absent from its row.
     public struct Entry: Sendable, Decodable {
         /// The clip at the canvas size, for the example's own page.
-        public var loop: String
+        public var loop: String?
         /// The small clip a grid plays under the pointer.
-        public var loopSmall: String
+        public var loopSmall: String?
         /// The still at the canvas size, which is also the clip's poster.
         public var still: String
         /// The still at grid size.
         public var stillSmall: String
         public var width: Int
         public var height: Int
+        /// Whether the clip carries the sketch's own music.
+        public var sound: Bool?
     }
 
     /// Where the files are served from, with no trailing slash.

@@ -6,15 +6,17 @@
 
 This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, and the map set that varies any of them per pixel.
 
-| [![BrushedMetal](https://media.ollin.art/examples/3D/Materials/BrushedMetal/still-640.jpg)](BrushedMetal/) | [![CoatAndCloth](https://media.ollin.art/examples/3D/Materials/CoatAndCloth/still-640.jpg)](CoatAndCloth/) | [![Decals](https://media.ollin.art/examples/3D/Materials/Decals/still-640.jpg)](Decals/) | [![Detail](https://media.ollin.art/examples/3D/Materials/Detail/still-640.jpg)](Detail/) |
+| [![BrushedMetal](https://media.ollin.art/examples/3D/Materials/BrushedMetal/still-640.jpg?v=819826df)](BrushedMetal/) | [![CoatAndCloth](https://media.ollin.art/examples/3D/Materials/CoatAndCloth/still-640.jpg?v=9dc6bd1e)](CoatAndCloth/) | [![Decals](https://media.ollin.art/examples/3D/Materials/Decals/still-640.jpg?v=f04fed92)](Decals/) | [![Detail](https://media.ollin.art/examples/3D/Materials/Detail/still-640.jpg?v=013fca2f)](Detail/) |
 |---|---|---|---|
 | [BrushedMetal](BrushedMetal/) | [CoatAndCloth](CoatAndCloth/) | [Decals](Decals/) | [Detail](Detail/) |
-| [![Explorer](https://media.ollin.art/examples/3D/Materials/Explorer/still-640.jpg)](Explorer/) | [![Glass](https://media.ollin.art/examples/3D/Materials/Glass/still-640.jpg)](Glass/) | [![Matcap](https://media.ollin.art/examples/3D/Materials/Matcap/still-640.jpg)](Matcap/) | [![Materials](https://media.ollin.art/examples/3D/Materials/Materials/still-640.jpg)](Materials/) |
-| [Explorer](Explorer/) | [Glass](Glass/) | [Matcap](Matcap/) | [Materials](Materials/) |
-| [![NormalMaps](https://media.ollin.art/examples/3D/Materials/NormalMaps/still-640.jpg)](NormalMaps/) | [![Parallax](https://media.ollin.art/examples/3D/Materials/Parallax/still-640.jpg)](Parallax/) | [![PhysicalMaterials](https://media.ollin.art/examples/3D/Materials/PhysicalMaterials/still-640.jpg)](PhysicalMaterials/) | [![SeeThrough](https://media.ollin.art/examples/3D/Materials/SeeThrough/still-640.jpg)](SeeThrough/) |
-| [NormalMaps](NormalMaps/) | [Parallax](Parallax/) | [PhysicalMaterials](PhysicalMaterials/) | [SeeThrough](SeeThrough/) |
-| [![Subsurface](https://media.ollin.art/examples/3D/Materials/Subsurface/still-640.jpg)](Subsurface/) | [![SurfaceMaps](https://media.ollin.art/examples/3D/Materials/SurfaceMaps/still-640.jpg)](SurfaceMaps/) | [![ThinFilm](https://media.ollin.art/examples/3D/Materials/ThinFilm/still-640.jpg)](ThinFilm/) | [![Triplanar](https://media.ollin.art/examples/3D/Materials/Triplanar/still-640.jpg)](Triplanar/) |
-| [Subsurface](Subsurface/) | [SurfaceMaps](SurfaceMaps/) | [ThinFilm](ThinFilm/) | [Triplanar](Triplanar/) |
+| [![Explorer](https://media.ollin.art/examples/3D/Materials/Explorer/still-640.jpg?v=1eb85080)](Explorer/) | [![Glass](https://media.ollin.art/examples/3D/Materials/Glass/still-640.jpg?v=155ce580)](Glass/) | [![LiveSurface](https://media.ollin.art/examples/3D/Materials/LiveSurface/still-640.jpg?v=d831912b)](LiveSurface/) | [![Matcap](https://media.ollin.art/examples/3D/Materials/Matcap/still-640.jpg?v=907c3afc)](Matcap/) |
+| [Explorer](Explorer/) | [Glass](Glass/) | [LiveSurface](LiveSurface/) | [Matcap](Matcap/) |
+| [![Materials](https://media.ollin.art/examples/3D/Materials/Materials/still-640.jpg?v=136060de)](Materials/) | [![NormalMaps](https://media.ollin.art/examples/3D/Materials/NormalMaps/still-640.jpg?v=d852fdd3)](NormalMaps/) | [![Parallax](https://media.ollin.art/examples/3D/Materials/Parallax/still-640.jpg?v=cc9d1a39)](Parallax/) | [![PhysicalMaterials](https://media.ollin.art/examples/3D/Materials/PhysicalMaterials/still-640.jpg?v=efde6f57)](PhysicalMaterials/) |
+| [Materials](Materials/) | [NormalMaps](NormalMaps/) | [Parallax](Parallax/) | [PhysicalMaterials](PhysicalMaterials/) |
+| [![SeeThrough](https://media.ollin.art/examples/3D/Materials/SeeThrough/still-640.jpg?v=4a4cc60b)](SeeThrough/) | [![Subsurface](https://media.ollin.art/examples/3D/Materials/Subsurface/still-640.jpg?v=4875baea)](Subsurface/) | [![SurfaceMaps](https://media.ollin.art/examples/3D/Materials/SurfaceMaps/still-640.jpg?v=77317ef9)](SurfaceMaps/) | [![ThinFilm](https://media.ollin.art/examples/3D/Materials/ThinFilm/still-640.jpg?v=e54f079c)](ThinFilm/) |
+| [SeeThrough](SeeThrough/) | [Subsurface](Subsurface/) | [SurfaceMaps](SurfaceMaps/) | [ThinFilm](ThinFilm/) |
+| [![Triplanar](https://media.ollin.art/examples/3D/Materials/Triplanar/still-640.jpg?v=800a89ba)](Triplanar/) |  |  |  |
+| [Triplanar](Triplanar/) |  |  |  |
 
 | Sketch | What it shows |
 | --- | --- |

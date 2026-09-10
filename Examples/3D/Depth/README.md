@@ -6,9 +6,9 @@
 
 This group covers depth feeds and depth-aware compositing: cameras, recordings, and metric space.
 
-| [![ClosedLoopScan](https://media.ollin.art/examples/3D/Depth/ClosedLoopScan/still-640.jpg)](ClosedLoopScan/) | [![DepthCompositing](https://media.ollin.art/examples/3D/Depth/DepthCompositing/still-640.jpg)](DepthCompositing/) |  |  |
+| [![ClosedLoopScan](https://media.ollin.art/examples/3D/Depth/ClosedLoopScan/still-640.jpg?v=1ea29b94)](ClosedLoopScan/) | [![DepthCloud](https://media.ollin.art/examples/3D/Depth/DepthCloud/still-640.jpg?v=683508e7)](DepthCloud/) | [![DepthCompositing](https://media.ollin.art/examples/3D/Depth/DepthCompositing/still-640.jpg?v=52ae3f2f)](DepthCompositing/) |  |
 |---|---|---|---|
-| [ClosedLoopScan](ClosedLoopScan/) | [DepthCompositing](DepthCompositing/) |  |  |
+| [ClosedLoopScan](ClosedLoopScan/) | [DepthCloud](DepthCloud/) | [DepthCompositing](DepthCompositing/) |  |
 
 | Sketch | What it shows |
 | --- | --- |

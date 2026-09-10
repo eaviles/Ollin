@@ -6,7 +6,7 @@
 
 Sketches made for a web page. Each one uses only the shapes and shaders a browser can carry, and its colors are parameters, so a page can set its own theme.
 
-| [![BreathingRing](https://media.ollin.art/examples/Web/BreathingRing/still-640.jpg)](BreathingRing/) |  |  |  |
+| [![BreathingRing](https://media.ollin.art/examples/Web/BreathingRing/still-640.jpg?v=592802a2)](BreathingRing/) |  |  |  |
 |---|---|---|---|
 | [BreathingRing](BreathingRing/) |  |  |  |
 

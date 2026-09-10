@@ -35,6 +35,6 @@ Learn more:
 
 This is a homage after Josef Albers, made for learning. It isn't a reproduction of a specific work, and it isn't affiliated with or endorsed by the artist or the Josef and Anni Albers Foundation.
 
-| [![Homage](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg)](Homage/) |  |  |  |
+| [![Homage](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg?v=bd118fab)](Homage/) |  |  |  |
 |---|---|---|---|
 | [Homage](Homage/) |  |  |  |

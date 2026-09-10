@@ -6,12 +6,14 @@
 
 These examples draw text with `drawText`, using bitmap (pixel-grid) fonts and outline (`.ttf`/`.otf`) fonts.
 
-| [![GlyphContours](https://media.ollin.art/examples/Text/GlyphContours/still-640.jpg)](GlyphContours/) | [![GlyphWave](https://media.ollin.art/examples/Text/GlyphWave/still-640.jpg)](GlyphWave/) | [![HelloText](https://media.ollin.art/examples/Text/HelloText/still-640.jpg)](HelloText/) | [![PlaydateFont](https://media.ollin.art/examples/Text/PlaydateFont/still-640.jpg)](PlaydateFont/) |
+| [![Columns](https://media.ollin.art/examples/Text/Columns/still-640.jpg?v=a7c68465)](Columns/) | [![GlyphContours](https://media.ollin.art/examples/Text/GlyphContours/still-640.jpg?v=632b62f2)](GlyphContours/) | [![GlyphWave](https://media.ollin.art/examples/Text/GlyphWave/still-640.jpg?v=0bca0f69)](GlyphWave/) | [![HangingStops](https://media.ollin.art/examples/Text/HangingStops/still-640.jpg?v=daddad8f)](HangingStops/) |
 |---|---|---|---|
-| [GlyphContours](GlyphContours/) | [GlyphWave](GlyphWave/) | [HelloText](HelloText/) | [PlaydateFont](PlaydateFont/) |
-| [![StrokeText](https://media.ollin.art/examples/Text/StrokeText/still-640.jpg)](StrokeText/) | [![TextBox](https://media.ollin.art/examples/Text/TextBox/still-640.jpg)](TextBox/) | [![TextMetrics](https://media.ollin.art/examples/Text/TextMetrics/still-640.jpg)](TextMetrics/) | [![TextOnPath](https://media.ollin.art/examples/Text/TextOnPath/still-640.jpg)](TextOnPath/) |
+| [Columns](Columns/) | [GlyphContours](GlyphContours/) | [GlyphWave](GlyphWave/) | [HangingStops](HangingStops/) |
+| [![HelloText](https://media.ollin.art/examples/Text/HelloText/still-640.jpg?v=719a7cba)](HelloText/) | [![MongolianColumns](https://media.ollin.art/examples/Text/MongolianColumns/still-640.jpg?v=7dc0806a)](MongolianColumns/) | [![PlaydateFont](https://media.ollin.art/examples/Text/PlaydateFont/still-640.jpg?v=fb1b8844)](PlaydateFont/) | [![Scripts](https://media.ollin.art/examples/Text/Scripts/still-640.jpg?v=7ee2602d)](Scripts/) |
+| [HelloText](HelloText/) | [MongolianColumns](MongolianColumns/) | [PlaydateFont](PlaydateFont/) | [Scripts](Scripts/) |
+| [![StrokeText](https://media.ollin.art/examples/Text/StrokeText/still-640.jpg?v=b62bbb34)](StrokeText/) | [![TextBox](https://media.ollin.art/examples/Text/TextBox/still-640.jpg?v=382a3297)](TextBox/) | [![TextMetrics](https://media.ollin.art/examples/Text/TextMetrics/still-640.jpg?v=77b3658e)](TextMetrics/) | [![TextOnPath](https://media.ollin.art/examples/Text/TextOnPath/still-640.jpg?v=aa8a4bcd)](TextOnPath/) |
 | [StrokeText](StrokeText/) | [TextBox](TextBox/) | [TextMetrics](TextMetrics/) | [TextOnPath](TextOnPath/) |
-| [![TextVolume](https://media.ollin.art/examples/Text/TextVolume/still-640.jpg)](TextVolume/) | [![TypeAsGeometry](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg)](TypeAsGeometry/) | [![VariableFont](https://media.ollin.art/examples/Text/VariableFont/still-640.jpg)](VariableFont/) |  |
+| [![TextVolume](https://media.ollin.art/examples/Text/TextVolume/still-640.jpg?v=9dd686c8)](TextVolume/) | [![TypeAsGeometry](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg?v=537eb2e7)](TypeAsGeometry/) | [![VariableFont](https://media.ollin.art/examples/Text/VariableFont/still-640.jpg?v=bf979f74)](VariableFont/) |  |
 | [TextVolume](TextVolume/) | [TypeAsGeometry](TypeAsGeometry/) | [VariableFont](VariableFont/) |  |
 
 | Example | What it shows |

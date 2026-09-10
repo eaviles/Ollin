@@ -6,13 +6,15 @@
 
 This group covers the scene-wide realism passes over the 3D frame.
 
-| [![AmbientOcclusion](https://media.ollin.art/examples/3D/Effects/AmbientOcclusion/still-640.jpg)](AmbientOcclusion/) | [![Atmosphere](https://media.ollin.art/examples/3D/Effects/Atmosphere/still-640.jpg)](Atmosphere/) | [![ContactShadows](https://media.ollin.art/examples/3D/Effects/ContactShadows/still-640.jpg)](ContactShadows/) | [![FrameInterpolation](https://media.ollin.art/examples/3D/Effects/FrameInterpolation/still-640.jpg)](FrameInterpolation/) |
+| [![AmbientOcclusion](https://media.ollin.art/examples/3D/Effects/AmbientOcclusion/still-640.jpg?v=58a7c12d)](AmbientOcclusion/) | [![Atmosphere](https://media.ollin.art/examples/3D/Effects/Atmosphere/still-640.jpg?v=9ddb09d3)](Atmosphere/) | [![ContactShadows](https://media.ollin.art/examples/3D/Effects/ContactShadows/still-640.jpg?v=666d2617)](ContactShadows/) | [![FrameInterpolation](https://media.ollin.art/examples/3D/Effects/FrameInterpolation/still-640.jpg?v=ff8e6ab9)](FrameInterpolation/) |
 |---|---|---|---|
 | [AmbientOcclusion](AmbientOcclusion/) | [Atmosphere](Atmosphere/) | [ContactShadows](ContactShadows/) | [FrameInterpolation](FrameInterpolation/) |
-| [![LensFlare](https://media.ollin.art/examples/3D/Effects/LensFlare/still-640.jpg)](LensFlare/) | [![MotionBlur](https://media.ollin.art/examples/3D/Effects/MotionBlur/still-640.jpg)](MotionBlur/) | [![PathTraced](https://media.ollin.art/examples/3D/Effects/PathTraced/still-640.jpg)](PathTraced/) | [![SceneDefocus](https://media.ollin.art/examples/3D/Effects/SceneDefocus/still-640.jpg)](SceneDefocus/) |
-| [LensFlare](LensFlare/) | [MotionBlur](MotionBlur/) | [PathTraced](PathTraced/) | [SceneDefocus](SceneDefocus/) |
-| [![ScreenSpaceReflections](https://media.ollin.art/examples/3D/Effects/ScreenSpaceReflections/still-640.jpg)](ScreenSpaceReflections/) | [![SpecularAntialias](https://media.ollin.art/examples/3D/Effects/SpecularAntialias/still-640.jpg)](SpecularAntialias/) | [![TemporalAA](https://media.ollin.art/examples/3D/Effects/TemporalAA/still-640.jpg)](TemporalAA/) | [![Upscaling](https://media.ollin.art/examples/3D/Effects/Upscaling/still-640.jpg)](Upscaling/) |
-| [ScreenSpaceReflections](ScreenSpaceReflections/) | [SpecularAntialias](SpecularAntialias/) | [TemporalAA](TemporalAA/) | [Upscaling](Upscaling/) |
+| [![LensFlare](https://media.ollin.art/examples/3D/Effects/LensFlare/still-640.jpg?v=eb7e0717)](LensFlare/) | [![MotionBlur](https://media.ollin.art/examples/3D/Effects/MotionBlur/still-640.jpg?v=33b9dfa5)](MotionBlur/) | [![PathTraced](https://media.ollin.art/examples/3D/Effects/PathTraced/still-640.jpg?v=6cc33dd0)](PathTraced/) | [![RayTracedReflections](https://media.ollin.art/examples/3D/Effects/RayTracedReflections/still-640.jpg?v=5a07a8cf)](RayTracedReflections/) |
+| [LensFlare](LensFlare/) | [MotionBlur](MotionBlur/) | [PathTraced](PathTraced/) | [RayTracedReflections](RayTracedReflections/) |
+| [![SceneDefocus](https://media.ollin.art/examples/3D/Effects/SceneDefocus/still-640.jpg?v=7fa5dce5)](SceneDefocus/) | [![ScreenSpaceReflections](https://media.ollin.art/examples/3D/Effects/ScreenSpaceReflections/still-640.jpg?v=e167c52e)](ScreenSpaceReflections/) | [![SpecularAntialias](https://media.ollin.art/examples/3D/Effects/SpecularAntialias/still-640.jpg?v=fc004d3a)](SpecularAntialias/) | [![TemporalAA](https://media.ollin.art/examples/3D/Effects/TemporalAA/still-640.jpg?v=e0b0f49e)](TemporalAA/) |
+| [SceneDefocus](SceneDefocus/) | [ScreenSpaceReflections](ScreenSpaceReflections/) | [SpecularAntialias](SpecularAntialias/) | [TemporalAA](TemporalAA/) |
+| [![Upscaling](https://media.ollin.art/examples/3D/Effects/Upscaling/still-640.jpg?v=80242487)](Upscaling/) |  |  |  |
+| [Upscaling](Upscaling/) |  |  |  |
 
 | Sketch | What it shows |
 | --- | --- |

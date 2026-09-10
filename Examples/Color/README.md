@@ -6,12 +6,14 @@
 
 These examples cover palettes, colormaps, and color driven by a value or by time.
 
-| [![ColorWaves](https://media.ollin.art/examples/Color/ColorWaves/still-640.jpg)](ColorWaves/) | [![Colormaps](https://media.ollin.art/examples/Color/Colormaps/still-640.jpg)](Colormaps/) | [![Gradients](https://media.ollin.art/examples/Color/Gradients/still-640.jpg)](Gradients/) | [![HSBWheel](https://media.ollin.art/examples/Color/HSBWheel/still-640.jpg)](HSBWheel/) |
+| [![ColorVision](https://media.ollin.art/examples/Color/ColorVision/still-640.jpg?v=576f2f37)](ColorVision/) | [![ColorWaves](https://media.ollin.art/examples/Color/ColorWaves/still-640.jpg?v=c29d2429)](ColorWaves/) | [![Colormaps](https://media.ollin.art/examples/Color/Colormaps/still-640.jpg?v=4e06b898)](Colormaps/) | [![Dithering](https://media.ollin.art/examples/Color/Dithering/still-640.jpg?v=0d647cc9)](Dithering/) |
 |---|---|---|---|
-| [ColorWaves](ColorWaves/) | [Colormaps](Colormaps/) | [Gradients](Gradients/) | [HSBWheel](HSBWheel/) |
-| [![Mixing](https://media.ollin.art/examples/Color/Mixing/still-640.jpg)](Mixing/) | [![PaletteFile](https://media.ollin.art/examples/Color/PaletteFile/still-640.jpg)](PaletteFile/) | [![PaletteFromImage](https://media.ollin.art/examples/Color/PaletteFromImage/still-640.jpg)](PaletteFromImage/) | [![SoftProof](https://media.ollin.art/examples/Color/SoftProof/still-640.jpg)](SoftProof/) |
-| [Mixing](Mixing/) | [PaletteFile](PaletteFile/) | [PaletteFromImage](PaletteFromImage/) | [SoftProof](SoftProof/) |
-| [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg)](Swatchbook/) |  |  |  |
+| [ColorVision](ColorVision/) | [ColorWaves](ColorWaves/) | [Colormaps](Colormaps/) | [Dithering](Dithering/) |
+| [![Gradients](https://media.ollin.art/examples/Color/Gradients/still-640.jpg?v=ce8739f0)](Gradients/) | [![HSBWheel](https://media.ollin.art/examples/Color/HSBWheel/still-640.jpg?v=ec947957)](HSBWheel/) | [![Harmonies](https://media.ollin.art/examples/Color/Harmonies/still-640.jpg?v=4908872e)](Harmonies/) | [![Mixing](https://media.ollin.art/examples/Color/Mixing/still-640.jpg?v=9d733025)](Mixing/) |
+| [Gradients](Gradients/) | [HSBWheel](HSBWheel/) | [Harmonies](Harmonies/) | [Mixing](Mixing/) |
+| [![PaletteFile](https://media.ollin.art/examples/Color/PaletteFile/still-640.jpg?v=baf88afa)](PaletteFile/) | [![PaletteFromImage](https://media.ollin.art/examples/Color/PaletteFromImage/still-640.jpg?v=3f3d36fc)](PaletteFromImage/) | [![PrintSeparation](https://media.ollin.art/examples/Color/PrintSeparation/still-640.jpg?v=4aad09ce)](PrintSeparation/) | [![SoftProof](https://media.ollin.art/examples/Color/SoftProof/still-640.jpg?v=768b9eef)](SoftProof/) |
+| [PaletteFile](PaletteFile/) | [PaletteFromImage](PaletteFromImage/) | [PrintSeparation](PrintSeparation/) | [SoftProof](SoftProof/) |
+| [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg?v=581862c5)](Swatchbook/) |  |  |  |
 | [Swatchbook](Swatchbook/) |  |  |  |
 
 | Example | What it shows |

@@ -17,8 +17,10 @@ still one edit.
 
 A listing whose sketches all live on pages of their own, like the examples
 front page or the 3D and recreations indexes, shows one picture per group
-instead. Which sketch stands for a group is a choice rather than a rule, so
-it is written down in the manifest under `covers` and read from there.
+instead, and that picture is a 2x2 of four of the group's sketches so a cell
+reads as a group rather than as a sketch that happened to be first. Which
+four is a choice rather than a rule, so it is written down in the manifest
+under `covers` and drawn by `Scripts/example-covers.py`.
 
 An example with no row in the manifest has no picture and simply does not
 appear in the grid; it is still in the listing table underneath with the
@@ -57,11 +59,10 @@ def grid(listing, media):
     home = listing.parent
     cells = []
     for group in delegated(listing):
-        cover = media.get("covers", {}).get(group.relative_to(EXAMPLES).as_posix())
-        entry = media["examples"].get(cover) if cover else None
-        if entry:
+        cover = media.get("groups", {}).get(group.relative_to(EXAMPLES).as_posix())
+        if cover:
             here = group.relative_to(home).as_posix()
-            cells.append((f"[![{group.name}]({media['base']}/{entry['stillSmall']})]({here}/)",
+            cells.append((f"[![{group.name}]({media['base']}/{cover['imageSmall']})]({here}/)",
                           f"[{group.name}]({here}/)"))
     for folder in owned(listing):
         name = folder.name

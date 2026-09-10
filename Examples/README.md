@@ -10,17 +10,21 @@ The examples are small, runnable sketches. Together they form a learning path, i
 
 Examples are grouped into **category** folders, and each example gets its own folder inside its category. One example is one executable target, because SwiftPM allows only one `@main` per target. The sketch file is always `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`. The folder name is therefore the example's identity, and the folder also holds the sketch's own resources (fonts, images, shaders). A category that has grown large can group its sketches one level deeper, at `Examples/<Category>/<Group>/<Name>/Sketch.swift`. `3D/` is grouped by topic this way, and `Recreations/` is grouped by artist. The group name also becomes part of the target name (`Example-<Category>-<Group>-<Name>`). Each category has its own README that lists the sketches inside it:
 
-| [![3D](https://media.ollin.art/examples/3D/Geometry/Planet/still-640.jpg)](3D/) | [![Audio](https://media.ollin.art/examples/Audio/OwnSampler/still-640.jpg)](Audio/) | [![Basic](https://media.ollin.art/examples/Basic/Describing/still-640.jpg)](Basic/) | [![Color](https://media.ollin.art/examples/Color/HSBWheel/still-640.jpg)](Color/) |
+| [![3D](https://media.ollin.art/groups/3D-640.jpg?v=93086923)](3D/) | [![Audio](https://media.ollin.art/groups/Audio-640.jpg?v=40ac009a)](Audio/) | [![Basic](https://media.ollin.art/groups/Basic-640.jpg?v=87cc5110)](Basic/) | [![Color](https://media.ollin.art/groups/Color-640.jpg?v=d25edf72)](Color/) |
 |---|---|---|---|
 | [3D](3D/) | [Audio](Audio/) | [Basic](Basic/) | [Color](Color/) |
-| [![Compute](https://media.ollin.art/examples/Compute/ReactionDiffusion/still-640.jpg)](Compute/) | [![Effects](https://media.ollin.art/examples/Effects/Droste/still-640.jpg)](Effects/) | [![Export](https://media.ollin.art/examples/Export/Cutout/still-640.jpg)](Export/) | [![Images](https://media.ollin.art/examples/Images/PhotoMosaic/still-640.jpg)](Images/) |
-| [Compute](Compute/) | [Effects](Effects/) | [Export](Export/) | [Images](Images/) |
-| [![Motion](https://media.ollin.art/examples/Motion/Mandala/still-640.jpg)](Motion/) | [![Patterns](https://media.ollin.art/examples/Patterns/Truchet/still-640.jpg)](Patterns/) | [![Physics](https://media.ollin.art/examples/Physics/RigidBodies/still-640.jpg)](Physics/) | [![Randomness](https://media.ollin.art/examples/Randomness/Variations/still-640.jpg)](Randomness/) |
-| [Motion](Motion/) | [Patterns](Patterns/) | [Physics](Physics/) | [Randomness](Randomness/) |
-| [![Recreations](https://media.ollin.art/examples/Recreations/OsamuSato/Totem/still-640.jpg)](Recreations/) | [![Rendering](https://media.ollin.art/examples/Rendering/Grassland/still-640.jpg)](Rendering/) | [![Shaders](https://media.ollin.art/examples/Shaders/VisualSynth/still-640.jpg)](Shaders/) | [![Shapes](https://media.ollin.art/examples/Shapes/Primitives/still-640.jpg)](Shapes/) |
-| [Recreations](Recreations/) | [Rendering](Rendering/) | [Shaders](Shaders/) | [Shapes](Shapes/) |
-| [![Simulation](https://media.ollin.art/examples/Simulation/GrayScott/still-640.jpg)](Simulation/) | [![Text](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg)](Text/) | [![Video](https://media.ollin.art/examples/Video/VideoPlayback/still-640.jpg)](Video/) | [![Web](https://media.ollin.art/examples/Web/BreathingRing/still-640.jpg)](Web/) |
-| [Simulation](Simulation/) | [Text](Text/) | [Video](Video/) | [Web](Web/) |
+| [![Compute](https://media.ollin.art/groups/Compute-640.jpg?v=3598dc09)](Compute/) | [![Data](https://media.ollin.art/groups/Data-640.jpg?v=0a0bcb08)](Data/) | [![Effects](https://media.ollin.art/groups/Effects-640.jpg?v=fcc855ce)](Effects/) | [![Export](https://media.ollin.art/groups/Export-640.jpg?v=2db81306)](Export/) |
+| [Compute](Compute/) | [Data](Data/) | [Effects](Effects/) | [Export](Export/) |
+| [![Images](https://media.ollin.art/groups/Images-640.jpg?v=7bf66de8)](Images/) | [![Input](https://media.ollin.art/groups/Input-640.jpg?v=af47f1e4)](Input/) | [![Installation](https://media.ollin.art/groups/Installation-640.jpg?v=f10e701f)](Installation/) | [![Integration](https://media.ollin.art/groups/Integration-640.jpg?v=b8331369)](Integration/) |
+| [Images](Images/) | [Input](Input/) | [Installation](Installation/) | [Integration](Integration/) |
+| [![Live](https://media.ollin.art/groups/Live-640.jpg?v=7773d6c6)](Live/) | [![Motion](https://media.ollin.art/groups/Motion-640.jpg?v=e8371af0)](Motion/) | [![Patterns](https://media.ollin.art/groups/Patterns-640.jpg?v=32f094b0)](Patterns/) | [![Physics](https://media.ollin.art/groups/Physics-640.jpg?v=df823330)](Physics/) |
+| [Live](Live/) | [Motion](Motion/) | [Patterns](Patterns/) | [Physics](Physics/) |
+| [![Randomness](https://media.ollin.art/groups/Randomness-640.jpg?v=9d05d269)](Randomness/) | [![Recreations](https://media.ollin.art/groups/Recreations-640.jpg?v=96c0051c)](Recreations/) | [![Rendering](https://media.ollin.art/groups/Rendering-640.jpg?v=7445816c)](Rendering/) | [![Shaders](https://media.ollin.art/groups/Shaders-640.jpg?v=91f273a5)](Shaders/) |
+| [Randomness](Randomness/) | [Recreations](Recreations/) | [Rendering](Rendering/) | [Shaders](Shaders/) |
+| [![Shapes](https://media.ollin.art/groups/Shapes-640.jpg?v=ee7af08f)](Shapes/) | [![Simulation](https://media.ollin.art/groups/Simulation-640.jpg?v=5287eafb)](Simulation/) | [![Text](https://media.ollin.art/groups/Text-640.jpg?v=8ed01466)](Text/) | [![Video](https://media.ollin.art/groups/Video-640.jpg?v=76b194e7)](Video/) |
+| [Shapes](Shapes/) | [Simulation](Simulation/) | [Text](Text/) | [Video](Video/) |
+| [![Vision](https://media.ollin.art/groups/Vision-640.jpg?v=cbe152e5)](Vision/) | [![Web](https://media.ollin.art/groups/Web-640.jpg?v=fd88be70)](Web/) |  |  |
+| [Vision](Vision/) | [Web](Web/) |  |  |
 
 | Category | What's inside |
 |---|---|

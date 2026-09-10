@@ -6,6 +6,12 @@
 
 These pieces are made to be left running: on a wall, in a shop window, or at a stand for the length of a fair.
 
+| [![Fitted](https://media.ollin.art/examples/Installation/Fitted/still-640.jpg?v=8ee22ea3)](Fitted/) | [![Hours](https://media.ollin.art/examples/Installation/Hours/still-640.jpg?v=9dd33c57)](Hours/) | [![ManyDisplays](https://media.ollin.art/examples/Installation/ManyDisplays/still-640.jpg?v=f6285962)](ManyDisplays/) | [![ManyWindows](https://media.ollin.art/examples/Installation/ManyWindows/still-640.jpg?v=8ce3c977)](ManyWindows/) |
+|---|---|---|---|
+| [Fitted](Fitted/) | [Hours](Hours/) | [ManyDisplays](ManyDisplays/) | [ManyWindows](ManyWindows/) |
+| [![Unattended](https://media.ollin.art/examples/Installation/Unattended/still-640.jpg?v=e221aa84)](Unattended/) | [![Watched](https://media.ollin.art/examples/Installation/Watched/still-640.jpg?v=bf750f02)](Watched/) |  |  |
+| [Unattended](Unattended/) | [Watched](Watched/) |  |  |
+
 | Example | What it shows |
 |---|---|
 | [Unattended](Unattended/Sketch.swift) | `installation`, the one line that fills the screen, hides the pointer, and keeps the display awake. It also shows the clock restart that a run of weeks needs |

@@ -6,7 +6,7 @@
 
 These examples use recorded footage as drawing material. Video playback lives in a separate library, so add `import OllinVideo`. The library provides a `VideoPlayer`, which presents each decoded frame as a GPU-textured `Image`. A sketch then draws that image with `drawImage`. See the [Video reference](../../Docs/Video/Video.md).
 
-| [![SoundReactive](https://media.ollin.art/examples/Video/SoundReactive/still-640.jpg)](SoundReactive/) | [![VideoPlayback](https://media.ollin.art/examples/Video/VideoPlayback/still-640.jpg)](VideoPlayback/) |  |  |
+| [![SoundReactive](https://media.ollin.art/examples/Video/SoundReactive/still-640.jpg?v=876903b9)](SoundReactive/) | [![VideoPlayback](https://media.ollin.art/examples/Video/VideoPlayback/still-640.jpg?v=617a629f)](VideoPlayback/) |  |  |
 |---|---|---|---|
 | [SoundReactive](SoundReactive/) | [VideoPlayback](VideoPlayback/) |  |  |
 

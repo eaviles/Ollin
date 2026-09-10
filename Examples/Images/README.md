@@ -6,13 +6,15 @@
 
 These examples load, draw, tint, and author raster images through the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript. They also cover the image-as-input renderings, which turn a picture into glyphs, streaks, halftone dots, a single line, a branching tree of veins, a wound thread, or a molten field.
 
-| [![Autostereogram](https://media.ollin.art/examples/Images/Autostereogram/still-640.jpg)](Autostereogram/) | [![GlyphMosaic](https://media.ollin.art/examples/Images/GlyphMosaic/still-640.jpg)](GlyphMosaic/) | [![Halftone](https://media.ollin.art/examples/Images/Halftone/still-640.jpg)](Halftone/) | [![LuminanceMelt](https://media.ollin.art/examples/Images/LuminanceMelt/still-640.jpg)](LuminanceMelt/) |
+| [![Autostereogram](https://media.ollin.art/examples/Images/Autostereogram/still-640.jpg?v=a02b4c97)](Autostereogram/) | [![Dropped](https://media.ollin.art/examples/Images/Dropped/still-640.jpg?v=bf8292af)](Dropped/) | [![Fit](https://media.ollin.art/examples/Images/Fit/still-640.jpg?v=0b369e71)](Fit/) | [![GlyphMosaic](https://media.ollin.art/examples/Images/GlyphMosaic/still-640.jpg?v=56f962ea)](GlyphMosaic/) |
 |---|---|---|---|
-| [Autostereogram](Autostereogram/) | [GlyphMosaic](GlyphMosaic/) | [Halftone](Halftone/) | [LuminanceMelt](LuminanceMelt/) |
-| [![PhotoMosaic](https://media.ollin.art/examples/Images/PhotoMosaic/still-640.jpg)](PhotoMosaic/) | [![PixelField](https://media.ollin.art/examples/Images/PixelField/still-640.jpg)](PixelField/) | [![PixelSort](https://media.ollin.art/examples/Images/PixelSort/still-640.jpg)](PixelSort/) | [![SeamCarve](https://media.ollin.art/examples/Images/SeamCarve/still-640.jpg)](SeamCarve/) |
-| [PhotoMosaic](PhotoMosaic/) | [PixelField](PixelField/) | [PixelSort](PixelSort/) | [SeamCarve](SeamCarve/) |
-| [![SingleLine](https://media.ollin.art/examples/Images/SingleLine/still-640.jpg)](SingleLine/) | [![SlitScan](https://media.ollin.art/examples/Images/SlitScan/still-640.jpg)](SlitScan/) | [![SpanningTree](https://media.ollin.art/examples/Images/SpanningTree/still-640.jpg)](SpanningTree/) | [![StringArt](https://media.ollin.art/examples/Images/StringArt/still-640.jpg)](StringArt/) |
-| [SingleLine](SingleLine/) | [SlitScan](SlitScan/) | [SpanningTree](SpanningTree/) | [StringArt](StringArt/) |
+| [Autostereogram](Autostereogram/) | [Dropped](Dropped/) | [Fit](Fit/) | [GlyphMosaic](GlyphMosaic/) |
+| [![Halftone](https://media.ollin.art/examples/Images/Halftone/still-640.jpg?v=d453baa5)](Halftone/) | [![LuminanceMelt](https://media.ollin.art/examples/Images/LuminanceMelt/still-640.jpg?v=97bd1adb)](LuminanceMelt/) | [![PhotoMosaic](https://media.ollin.art/examples/Images/PhotoMosaic/still-640.jpg?v=ca5adb0b)](PhotoMosaic/) | [![PixelField](https://media.ollin.art/examples/Images/PixelField/still-640.jpg?v=700607e1)](PixelField/) |
+| [Halftone](Halftone/) | [LuminanceMelt](LuminanceMelt/) | [PhotoMosaic](PhotoMosaic/) | [PixelField](PixelField/) |
+| [![PixelSort](https://media.ollin.art/examples/Images/PixelSort/still-640.jpg?v=a03fd15a)](PixelSort/) | [![SeamCarve](https://media.ollin.art/examples/Images/SeamCarve/still-640.jpg?v=a5c915bf)](SeamCarve/) | [![SingleLine](https://media.ollin.art/examples/Images/SingleLine/still-640.jpg?v=47ebfb44)](SingleLine/) | [![SlitScan](https://media.ollin.art/examples/Images/SlitScan/still-640.jpg?v=0aa946a5)](SlitScan/) |
+| [PixelSort](PixelSort/) | [SeamCarve](SeamCarve/) | [SingleLine](SingleLine/) | [SlitScan](SlitScan/) |
+| [![SpanningTree](https://media.ollin.art/examples/Images/SpanningTree/still-640.jpg?v=7674d7bc)](SpanningTree/) | [![StringArt](https://media.ollin.art/examples/Images/StringArt/still-640.jpg?v=36d57253)](StringArt/) |  |  |
+| [SpanningTree](SpanningTree/) | [StringArt](StringArt/) |  |  |
 
 | Example | What it shows |
 |---|---|

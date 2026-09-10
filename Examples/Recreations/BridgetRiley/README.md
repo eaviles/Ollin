@@ -31,6 +31,6 @@ Learn more:
 
 These are homages after Bridget Riley, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.
 
-| [![Current](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg)](Current/) | [![Fragment3](https://media.ollin.art/examples/Recreations/BridgetRiley/Fragment3/still-640.jpg)](Fragment3/) |  |  |
+| [![Current](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg?v=514967fc)](Current/) | [![Fragment3](https://media.ollin.art/examples/Recreations/BridgetRiley/Fragment3/still-640.jpg?v=bf51efdf)](Fragment3/) |  |  |
 |---|---|---|---|
 | [Current](Current/) | [Fragment3](Fragment3/) |  |  |

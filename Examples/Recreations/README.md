@@ -27,8 +27,10 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**John Whitney**](JohnWhitney/). Points on concentric circles, each turning at a whole-number multiple of the first, so the fan gathers into a star at every simple fraction of the cycle and comes back to one spoke at the end of it.
 
 
-| [![BridgetRiley](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg)](BridgetRiley/) | [![JaredTarbell](https://media.ollin.art/examples/Recreations/JaredTarbell/Substrate/still-640.jpg)](JaredTarbell/) | [![JohnWhitney](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg)](JohnWhitney/) | [![JosefAlbers](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg)](JosefAlbers/) |
+| [![BridgetRiley](https://media.ollin.art/groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab)](BridgetRiley/) | [![FriederNake](https://media.ollin.art/groups/Recreations-FriederNake-640.jpg?v=61e41a0e)](FriederNake/) | [![GeorgNees](https://media.ollin.art/groups/Recreations-GeorgNees-640.jpg?v=7288a62b)](GeorgNees/) | [![JaredTarbell](https://media.ollin.art/groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52)](JaredTarbell/) |
 |---|---|---|---|
-| [BridgetRiley](BridgetRiley/) | [JaredTarbell](JaredTarbell/) | [JohnWhitney](JohnWhitney/) | [JosefAlbers](JosefAlbers/) |
-| [![ManfredMohr](https://media.ollin.art/examples/Recreations/ManfredMohr/CubicLimit/still-640.jpg)](ManfredMohr/) | [![ManuelFelguerez](https://media.ollin.art/examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg)](ManuelFelguerez/) | [![OsamuSato](https://media.ollin.art/examples/Recreations/OsamuSato/Totem/still-640.jpg)](OsamuSato/) |  |
-| [ManfredMohr](ManfredMohr/) | [ManuelFelguerez](ManuelFelguerez/) | [OsamuSato](OsamuSato/) |  |
+| [BridgetRiley](BridgetRiley/) | [FriederNake](FriederNake/) | [GeorgNees](GeorgNees/) | [JaredTarbell](JaredTarbell/) |
+| [![JohnWhitney](https://media.ollin.art/groups/Recreations-JohnWhitney-640.jpg?v=1f957730)](JohnWhitney/) | [![JosefAlbers](https://media.ollin.art/groups/Recreations-JosefAlbers-640.jpg?v=b6022648)](JosefAlbers/) | [![ManfredMohr](https://media.ollin.art/groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af)](ManfredMohr/) | [![ManuelFelguerez](https://media.ollin.art/groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3)](ManuelFelguerez/) |
+| [JohnWhitney](JohnWhitney/) | [JosefAlbers](JosefAlbers/) | [ManfredMohr](ManfredMohr/) | [ManuelFelguerez](ManuelFelguerez/) |
+| [![OsamuSato](https://media.ollin.art/groups/Recreations-OsamuSato-640.jpg?v=44f367b6)](OsamuSato/) | [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) |  |  |
+| [OsamuSato](OsamuSato/) | [VeraMolnar](VeraMolnar/) |  |  |

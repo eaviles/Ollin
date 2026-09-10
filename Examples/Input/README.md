@@ -6,6 +6,10 @@
 
 Sketches driven by the mouse and the keyboard.
 
+| [![Drag](https://media.ollin.art/examples/Input/Drag/still-640.jpg?v=1c322e5c)](Drag/) | [![Keys](https://media.ollin.art/examples/Input/Keys/still-640.jpg?v=dcc31a0b)](Keys/) | [![PanAndZoom](https://media.ollin.art/examples/Input/PanAndZoom/still-640.jpg?v=03ea91e2)](PanAndZoom/) | [![RepelGrid](https://media.ollin.art/examples/Input/RepelGrid/still-640.jpg?v=8cfa1fd9)](RepelGrid/) |
+|---|---|---|---|
+| [Drag](Drag/) | [Keys](Keys/) | [PanAndZoom](PanAndZoom/) | [RepelGrid](RepelGrid/) |
+
 | Example | What it shows |
 |---|---|
 | [PanAndZoom](PanAndZoom/Sketch.swift) | a generated chart that holds more than one screen shows, so you drag to pan and scroll to zoom. The place names are set at a text size of four units, six for the larger places, which reads as a smudge at the opening view and is crisp four zoom steps in (`viewControl`, `viewZoom`) |

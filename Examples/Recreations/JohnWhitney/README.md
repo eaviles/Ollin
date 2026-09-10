@@ -37,6 +37,6 @@ Learn more:
 
 This is a homage after John Whitney, made for learning. It isn't a reproduction of a specific film, and it isn't affiliated with or endorsed by the artist or his estate.
 
-| [![Permutations](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg)](Permutations/) |  |  |  |
+| [![Permutations](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg?v=a2722897)](Permutations/) |  |  |  |
 |---|---|---|---|
 | [Permutations](Permutations/) |  |  |  |

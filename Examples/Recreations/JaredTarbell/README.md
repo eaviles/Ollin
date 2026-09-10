@@ -23,6 +23,6 @@ Learn more:
 
 These are homages after Jared Tarbell, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.
 
-| [![Substrate](https://media.ollin.art/examples/Recreations/JaredTarbell/Substrate/still-640.jpg)](Substrate/) |  |  |  |
+| [![Substrate](https://media.ollin.art/examples/Recreations/JaredTarbell/Substrate/still-640.jpg?v=eb89a361)](Substrate/) |  |  |  |
 |---|---|---|---|
 | [Substrate](Substrate/) |  |  |  |

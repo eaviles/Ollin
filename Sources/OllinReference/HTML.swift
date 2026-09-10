@@ -487,10 +487,11 @@ public enum HTML {
       for (const figure of document.querySelectorAll('.gallery figure')) {
         const still = figure.querySelector('img');
         if (!still) continue;
-        const clip = still.src.replace(/still-640\\.jpg$/, 'loop-640.mp4');
+        let clip = still.src.replace(/still-640\\.jpg$/, 'loop-640.mp4');
         if (clip === still.src) continue;
         let video = null, waiting = null;
         figure.addEventListener('pointerenter', () => {
+          if (!clip) return;
           waiting = setTimeout(() => {
             if (!video) {
               video = document.createElement('video');
@@ -501,7 +502,14 @@ public enum HTML {
             }
             video.hidden = false;
             still.hidden = true;
-            video.play().catch(() => { video.hidden = true; still.hidden = false; });
+            video.play().catch(() => {
+            // A sketch that holds still has no clip, so the derived address
+            // is not there; give up on this cell rather than ask again.
+            video.remove();
+            video = null;
+            clip = null;
+            still.hidden = false;
+          });
           }, 120);
         });
         figure.addEventListener('pointerleave', () => {

@@ -10,6 +10,10 @@ Each integration lives in its own library, so a sketch links only what it uses. 
 
 Several of these run both ends themselves, so they need no second app and no hardware. The round trip you watch travels over a real loopback connection.
 
+| [![VirtualCamera](https://media.ollin.art/examples/Integration/VirtualCamera/still-640.jpg?v=1abb1500)](VirtualCamera/) |  |  |  |
+|---|---|---|---|
+| [VirtualCamera](VirtualCamera/) |  |  |  |
+
 | Example | What it shows |
 |---|---|
 | [OSCLoopback](OSCLoopback/Sketch.swift) | a self-contained round trip: the sketch sends an animated position to itself on `127.0.0.1` and draws the dot from what it *receives*, so the picture shows the round trip, and no second app is needed (`OSCSender`, `OSCReceiver`) |

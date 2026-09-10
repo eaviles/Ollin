@@ -6,12 +6,12 @@
 
 This group covers the light kinds, curated rigs, and cast shadows.
 
-| [![AreaLights](https://media.ollin.art/examples/3D/Lighting/AreaLights/still-640.jpg)](AreaLights/) | [![Caustics](https://media.ollin.art/examples/3D/Lighting/Caustics/still-640.jpg)](Caustics/) | [![GlobalIllumination](https://media.ollin.art/examples/3D/Lighting/GlobalIllumination/still-640.jpg)](GlobalIllumination/) | [![LightShaping](https://media.ollin.art/examples/3D/Lighting/LightShaping/still-640.jpg)](LightShaping/) |
+| [![AreaLights](https://media.ollin.art/examples/3D/Lighting/AreaLights/still-640.jpg?v=26651171)](AreaLights/) | [![Caustics](https://media.ollin.art/examples/3D/Lighting/Caustics/still-640.jpg?v=7e80ac52)](Caustics/) | [![GlobalIllumination](https://media.ollin.art/examples/3D/Lighting/GlobalIllumination/still-640.jpg?v=d0d77e2f)](GlobalIllumination/) | [![LightShaping](https://media.ollin.art/examples/3D/Lighting/LightShaping/still-640.jpg?v=03521fd0)](LightShaping/) |
 |---|---|---|---|
 | [AreaLights](AreaLights/) | [Caustics](Caustics/) | [GlobalIllumination](GlobalIllumination/) | [LightShaping](LightShaping/) |
-| [![Lighting](https://media.ollin.art/examples/3D/Lighting/Lighting/still-640.jpg)](Lighting/) | [![LightingPresets](https://media.ollin.art/examples/3D/Lighting/LightingPresets/still-640.jpg)](LightingPresets/) | [![ManyCasters](https://media.ollin.art/examples/3D/Lighting/ManyCasters/still-640.jpg)](ManyCasters/) | [![PointShadow](https://media.ollin.art/examples/3D/Lighting/PointShadow/still-640.jpg)](PointShadow/) |
+| [![Lighting](https://media.ollin.art/examples/3D/Lighting/Lighting/still-640.jpg?v=d9b4e3a4)](Lighting/) | [![LightingPresets](https://media.ollin.art/examples/3D/Lighting/LightingPresets/still-640.jpg?v=bc241a49)](LightingPresets/) | [![ManyCasters](https://media.ollin.art/examples/3D/Lighting/ManyCasters/still-640.jpg?v=df8f82ec)](ManyCasters/) | [![PointShadow](https://media.ollin.art/examples/3D/Lighting/PointShadow/still-640.jpg?v=8c544921)](PointShadow/) |
 | [Lighting](Lighting/) | [LightingPresets](LightingPresets/) | [ManyCasters](ManyCasters/) | [PointShadow](PointShadow/) |
-| [![Shadows](https://media.ollin.art/examples/3D/Lighting/Shadows/still-640.jpg)](Shadows/) | [![SpotShadow](https://media.ollin.art/examples/3D/Lighting/SpotShadow/still-640.jpg)](SpotShadow/) | [![VolumetricLight](https://media.ollin.art/examples/3D/Lighting/VolumetricLight/still-640.jpg)](VolumetricLight/) |  |
+| [![Shadows](https://media.ollin.art/examples/3D/Lighting/Shadows/still-640.jpg?v=cdacd4a7)](Shadows/) | [![SpotShadow](https://media.ollin.art/examples/3D/Lighting/SpotShadow/still-640.jpg?v=f3b187db)](SpotShadow/) | [![VolumetricLight](https://media.ollin.art/examples/3D/Lighting/VolumetricLight/still-640.jpg?v=3a7e02d7)](VolumetricLight/) |  |
 | [Shadows](Shadows/) | [SpotShadow](SpotShadow/) | [VolumetricLight](VolumetricLight/) |  |
 
 | Sketch | What it shows |

@@ -752,7 +752,8 @@ struct SiteTests {
         #expect(entry.width == 1080)
         // The trailing slash is trimmed on the way in, so joining never
         // doubles it, and a row a later field joins still decodes.
-        #expect(media.address(of: entry.loop) == "https://media.example/examples/Patterns/Kaleidoscope/loop.mp4")
+        #expect(media.address(of: try #require(entry.loop))
+                == "https://media.example/examples/Patterns/Kaleidoscope/loop.mp4")
         #expect(media["Patterns/Nothing"] == nil)
     }
 
@@ -787,7 +788,7 @@ struct SiteTests {
     func clipAttributes() {
         let entry = ExampleMedia.Entry(loop: "e/loop.mp4", loopSmall: "e/loop-640.mp4",
                                        still: "e/still.jpg", stillSmall: "e/still-640.jpg",
-                                       width: 1080, height: 1080)
+                                       width: 1080, height: 1080, sound: nil)
         let media = ExampleMedia(base: "https://media.example", entries: [:])
         let html = SiteBuilder.clip(entry, in: media, named: "Kaleidoscope")
         // Without `playsinline` iOS Safari takes a playing video fullscreen,
