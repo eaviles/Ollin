@@ -1,0 +1,195 @@
+{
+  "base": "https://media.ollin.art",
+  "examples": {
+    "3D/Lighting/GlobalIllumination": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "01bf409860b9324e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1249540,
+        "loopSmall": 262600,
+        "still": 33602,
+        "stillSmall": 13205
+      },
+      "loop": "examples/3D/Lighting/GlobalIllumination/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/GlobalIllumination/loop-640.mp4",
+      "still": "examples/3D/Lighting/GlobalIllumination/still.jpg",
+      "stillSmall": "examples/3D/Lighting/GlobalIllumination/still-640.jpg"
+    },
+    "Effects/Feedback": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "298a2c5059032e1e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 990524,
+        "loopSmall": 159049,
+        "still": 32498,
+        "stillSmall": 13772
+      },
+      "loop": "examples/Effects/Feedback/loop.mp4",
+      "loopSmall": "examples/Effects/Feedback/loop-640.mp4",
+      "still": "examples/Effects/Feedback/still.jpg",
+      "stillSmall": "examples/Effects/Feedback/still-640.jpg"
+    },
+    "Motion/FlowField": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "d6ffea3b4f488286",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 6163063,
+        "loopSmall": 1692209,
+        "still": 163474,
+        "stillSmall": 82108
+      },
+      "loop": "examples/Motion/FlowField/loop.mp4",
+      "loopSmall": "examples/Motion/FlowField/loop-640.mp4",
+      "still": "examples/Motion/FlowField/still.jpg",
+      "stillSmall": "examples/Motion/FlowField/still-640.jpg"
+    },
+    "Motion/PerfectLoop": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "dfe396ff3937589c",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 907753,
+        "loopSmall": 174770,
+        "still": 43651,
+        "stillSmall": 17814
+      },
+      "loop": "examples/Motion/PerfectLoop/loop.mp4",
+      "loopSmall": "examples/Motion/PerfectLoop/loop-640.mp4",
+      "still": "examples/Motion/PerfectLoop/still.jpg",
+      "stillSmall": "examples/Motion/PerfectLoop/still-640.jpg"
+    },
+    "Patterns/Dendrite": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "30e2a4b88eecb449",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1619288,
+        "loopSmall": 612663,
+        "still": 369058,
+        "stillSmall": 125428
+      },
+      "loop": "examples/Patterns/Dendrite/loop.mp4",
+      "loopSmall": "examples/Patterns/Dendrite/loop-640.mp4",
+      "still": "examples/Patterns/Dendrite/still.jpg",
+      "stillSmall": "examples/Patterns/Dendrite/still-640.jpg"
+    },
+    "Patterns/Kaleidoscope": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "47b6c45db4e40f73",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 4852391,
+        "loopSmall": 1165195,
+        "still": 221312,
+        "stillSmall": 87312
+      },
+      "loop": "examples/Patterns/Kaleidoscope/loop.mp4",
+      "loopSmall": "examples/Patterns/Kaleidoscope/loop-640.mp4",
+      "still": "examples/Patterns/Kaleidoscope/still.jpg",
+      "stillSmall": "examples/Patterns/Kaleidoscope/still-640.jpg"
+    },
+    "Recreations/VeraMolnar/Interruptions": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "17ef7406eddd92ba",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1019300,
+        "loopSmall": 518655,
+        "still": 303813,
+        "stillSmall": 112862
+      },
+      "loop": "examples/Recreations/VeraMolnar/Interruptions/loop.mp4",
+      "loopSmall": "examples/Recreations/VeraMolnar/Interruptions/loop-640.mp4",
+      "still": "examples/Recreations/VeraMolnar/Interruptions/still.jpg",
+      "stillSmall": "examples/Recreations/VeraMolnar/Interruptions/still-640.jpg"
+    },
+    "Shapes/Primitives": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "ef19a5dd3f6d52f1",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1902685,
+        "loopSmall": 455671,
+        "still": 135372,
+        "stillSmall": 57453
+      },
+      "loop": "examples/Shapes/Primitives/loop.mp4",
+      "loopSmall": "examples/Shapes/Primitives/loop-640.mp4",
+      "still": "examples/Shapes/Primitives/still.jpg",
+      "stillSmall": "examples/Shapes/Primitives/still-640.jpg"
+    },
+    "Simulation/Physarum": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "4606ea14a7c3a939",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2535100,
+        "loopSmall": 665300,
+        "still": 101582,
+        "stillSmall": 44485
+      },
+      "loop": "examples/Simulation/Physarum/loop.mp4",
+      "loopSmall": "examples/Simulation/Physarum/loop-640.mp4",
+      "still": "examples/Simulation/Physarum/still.jpg",
+      "stillSmall": "examples/Simulation/Physarum/still-640.jpg"
+    },
+    "Text/TypeAsGeometry": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "source": "3c8bf9b00b7e93d9",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2610639,
+        "loopSmall": 556794,
+        "still": 75007,
+        "stillSmall": 32023
+      },
+      "loop": "examples/Text/TypeAsGeometry/loop.mp4",
+      "loopSmall": "examples/Text/TypeAsGeometry/loop-640.mp4",
+      "still": "examples/Text/TypeAsGeometry/still.jpg",
+      "stillSmall": "examples/Text/TypeAsGeometry/still-640.jpg"
+    }
+  }
+}

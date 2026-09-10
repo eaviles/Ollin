@@ -1,0 +1,56 @@
+import Foundation
+
+/// The clips and stills rendered for the examples, as `Examples/media.json`
+/// names them.
+///
+/// The files themselves are not in the repository. They are rendered by
+/// `Scripts/media.sh` and served from one host the manifest names once, so
+/// moving that host is a single edit rather than a rewrite of every page that
+/// shows one. An example with no row simply has no picture, which is what
+/// lets the set fill in a folder at a time instead of all at once.
+///
+/// A missing or unreadable manifest is not an error. The site builds without
+/// pictures, exactly as it did before any existed.
+public struct ExampleMedia: Sendable {
+
+    /// What one example's row says. The four paths are relative to `base`.
+    public struct Entry: Sendable, Decodable {
+        /// The clip at the canvas size, for the example's own page.
+        public var loop: String
+        /// The small clip a grid plays under the pointer.
+        public var loopSmall: String
+        /// The still at the canvas size, which is also the clip's poster.
+        public var still: String
+        /// The still at grid size.
+        public var stillSmall: String
+        public var width: Int
+        public var height: Int
+    }
+
+    /// Where the files are served from, with no trailing slash.
+    public var base: String
+    /// Rows by example path, as `Patterns/Kaleidoscope`.
+    public var entries: [String: Entry]
+
+    public static let none = ExampleMedia(base: "", entries: [:])
+
+    private struct File: Decodable {
+        var base: String
+        var examples: [String: Entry]
+    }
+
+    /// Read the manifest beside the examples.
+    public static func read(inExamples examples: URL) -> ExampleMedia {
+        let url = examples.appendingPathComponent("media.json")
+        guard let data = try? Data(contentsOf: url),
+              let file = try? JSONDecoder().decode(File.self, from: data) else { return .none }
+        var base = file.base
+        while base.hasSuffix("/") { base.removeLast() }
+        return ExampleMedia(base: base, entries: file.examples)
+    }
+
+    public subscript(example: String) -> Entry? { entries[example] }
+
+    /// The full address of one file the manifest named.
+    public func address(of path: String) -> String { "\(base)/\(path)" }
+}

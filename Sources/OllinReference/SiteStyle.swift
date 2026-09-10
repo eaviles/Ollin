@@ -170,6 +170,8 @@ enum SiteStyle {
     .prose td:first-child { white-space: nowrap; }
     .prose a[name], .prose a[id] { display: block; position: relative; top: -72px; visibility: hidden; }
 
+    .example-clip { margin: 0 0 1.75rem; }
+    .example-clip video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.45rem 1.25rem; font-size: 15px; margin: 0 0 1.75rem; padding: 1rem 1.25rem; background: var(--surface); border-radius: 14px; }
     .facts dt { color: var(--text-2); }
     .facts dd { margin: 0; overflow-wrap: anywhere; }

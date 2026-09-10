@@ -720,6 +720,70 @@ struct SiteTests {
         return text
     }
 
+    // MARK: - The example media
+
+    @Test("The manifest reads, and its absence is not a failure")
+    func mediaManifest() throws {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-media-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+
+        #expect(ExampleMedia.read(inExamples: folder).entries.isEmpty,
+                "a checkout with no manifest builds without pictures")
+
+        let json = """
+        {
+          "base": "https://media.example/",
+          "examples": {
+            "Patterns/Kaleidoscope": {
+              "loop": "examples/Patterns/Kaleidoscope/loop.mp4",
+              "loopSmall": "examples/Patterns/Kaleidoscope/loop-640.mp4",
+              "still": "examples/Patterns/Kaleidoscope/still.jpg",
+              "stillSmall": "examples/Patterns/Kaleidoscope/still-640.jpg",
+              "width": 1080, "height": 1080, "seconds": 8.0, "frame": 120
+            }
+          }
+        }
+        """
+        try json.write(to: folder.appendingPathComponent("media.json"), atomically: true, encoding: .utf8)
+        let media = ExampleMedia.read(inExamples: folder)
+        let entry = try #require(media["Patterns/Kaleidoscope"])
+        #expect(entry.width == 1080)
+        // The trailing slash is trimmed on the way in, so joining never
+        // doubles it, and a row a later field joins still decodes.
+        #expect(media.address(of: entry.loop) == "https://media.example/examples/Patterns/Kaleidoscope/loop.mp4")
+        #expect(media["Patterns/Nothing"] == nil)
+    }
+
+    @Test("A clip carries what a phone needs to play it inline")
+    func clipAttributes() {
+        let entry = ExampleMedia.Entry(loop: "e/loop.mp4", loopSmall: "e/loop-640.mp4",
+                                       still: "e/still.jpg", stillSmall: "e/still-640.jpg",
+                                       width: 1080, height: 1080)
+        let media = ExampleMedia(base: "https://media.example", entries: [:])
+        let html = SiteBuilder.clip(entry, in: media, named: "Kaleidoscope")
+        // Without `playsinline` iOS Safari takes a playing video fullscreen,
+        // and without `muted` it refuses to start at all.
+        #expect(html.contains("playsinline"))
+        #expect(html.contains("muted"))
+        #expect(html.contains("loop"))
+        #expect(html.contains("poster=\"https://media.example/e/still.jpg\""))
+        #expect(html.contains("width=\"1080\" height=\"1080\""), "a stated size stops the page jumping")
+        #expect(html.contains("prefers-reduced-motion"))
+    }
+
+    @Test("Every row in the manifest names an example that is still there")
+    func mediaRowsAreNotStale() throws {
+        let root = try #require(Self.repositoryRoot())
+        let media = ExampleMedia.read(inExamples: root.appendingPathComponent("Examples"))
+        for example in media.entries.keys.sorted() {
+            let sketch = root.appendingPathComponent("Examples/\(example)/Sketch.swift")
+            #expect(FileManager.default.fileExists(atPath: sketch.path),
+                    "media.json names \(example), which is not in the checkout")
+        }
+    }
+
     /// Every `href`, `src`, and `srcset` on a page.
     static func targets(in html: String) -> [String] {
         var found: [String] = []

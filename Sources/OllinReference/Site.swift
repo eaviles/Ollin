@@ -109,6 +109,9 @@ public struct SiteBuilder {
         /// writes: the social card and the touch icon.
         var hasSocialCard = false
         var hasTouchIcon = false
+        /// The clips and stills the examples have, which is however many
+        /// `Scripts/media.sh` has rendered so far.
+        var media = ExampleMedia.none
     }
 
     /// The pages the site will hold, with their titles read ahead of time so
@@ -174,6 +177,7 @@ public struct SiteBuilder {
         // every sketch.
         let examples = root.appendingPathComponent("Examples")
         add("Examples/README.md", .examples)
+        plan.media = ExampleMedia.read(inExamples: examples)
         plan.exampleCategories = Self.categories(readingIndexAt: examples.appendingPathComponent("README.md"))
         for listing in readmeFiles(under: "Examples").sorted() where listing != "Examples/README.md" {
             add(listing, .examples)
@@ -535,6 +539,9 @@ public struct SiteBuilder {
         if !entry.summary.isEmpty {
             body += "<p class=\"lede\">\(HTML.escape(entry.summary))</p>\n"
         }
+        if let media = plan.media[entry.path] {
+            body += Self.clip(media, in: plan.media, named: entry.name) + "\n"
+        }
         body += facts + "\n"
         body += HTML.codeBlock(source, language: "swift") + "\n"
         body += "</article>"
@@ -542,6 +549,28 @@ public struct SiteBuilder {
         let description = entry.summary.isEmpty ? "An Ollin example sketch." : entry.summary
         return layout(page: page, title: entry.name, description: description, trail: trail,
                       body: body, headings: [], plan: plan)
+    }
+
+    /// One example's clip, with its own still as the poster.
+    ///
+    /// It plays on arrival because it is silent and short. `muted` and
+    /// `playsinline` are what make that work on a phone: without the second,
+    /// iOS Safari takes any playing video fullscreen. The poster is a real
+    /// rendered frame, so a reader in low power mode, where nothing
+    /// autoplays at all, still sees the sketch. The small script hands the
+    /// controls back to anyone who has asked their system for less motion,
+    /// which no stylesheet can do for a video.
+    static func clip(_ entry: ExampleMedia.Entry, in media: ExampleMedia, named name: String) -> String {
+        """
+        <figure class="example-clip">
+        <video src="\(media.address(of: entry.loop))" poster="\(media.address(of: entry.still))" \
+        width="\(entry.width)" height="\(entry.height)" autoplay muted loop playsinline \
+        aria-label="\(HTML.escape(name)) running"></video>
+        </figure>
+        <script>if(matchMedia('(prefers-reduced-motion: reduce)').matches){\
+        document.querySelectorAll('.example-clip video').forEach(v=>{\
+        v.autoplay=false;v.controls=true;v.pause();});}</script>
+        """
     }
 
     // MARK: - Resolving what a page points at
