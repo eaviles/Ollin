@@ -412,7 +412,15 @@ public struct SiteBuilder {
 
         let openingRendered = HTML.render(opening, resolve: resolveHome)
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: openingRendered))
-        let opened = Self.playingHeroes(in: openingRendered.body, media: plan.media)
+        // The README's opening picture is dropped here rather than shown: the
+        // front page already opens on the ring, and a second wall of sketches
+        // under it is one hero too many. The picture stays in the README,
+        // where it is the only one.
+        var opened = Self.playingHeroes(in: openingRendered.body, media: plan.media)
+        if let start = opened.range(of: "<figure class=\"page-hero\">"),
+           let end = opened.range(of: "</figure>", range: start.upperBound ..< opened.endIndex) {
+            opened.removeSubrange(start.lowerBound ..< end.upperBound)
+        }
         var body = "<section class=\"home-section home-opening\">\n\(opened)\n</section>\n"
 
         func block(_ heading: String) -> String {
@@ -439,7 +447,8 @@ public struct SiteBuilder {
         }
 
         return layout(page: page, title: page.title, description: Self.tagline, trail: "",
-                      body: "\(hero)\n<article class=\"prose home\">\n\(body)</article>", headings: [], plan: plan)
+                      body: "\(hero)\n<article class=\"prose home\">\n\(body)</article>",
+                      headings: [], plan: plan)
     }
 
     /// The front page's opening, lifted off the README and set as the hero:

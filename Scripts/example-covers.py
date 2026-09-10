@@ -84,7 +84,12 @@ def main():
             print(f"{group}: {len(rows[:4])} of {len(examples)}")
 
     data["groups"] = dict(sorted(written.items()))
-    ordered = {k: data[k] for k in ("base", "covers", "groups", "examples", "passedOver") if k in data}
+    # Ordered for reading, but nothing is dropped: a key this script does not
+    # know about is still the manifest's, and rewriting the file without it
+    # deleted the page heroes once already.
+    first = ("base", "heroes", "covers", "groups")
+    ordered = {k: data[k] for k in first if k in data}
+    ordered.update({k: v for k, v in data.items() if k not in ordered})
     with open(MANIFEST, "w") as f:
         json.dump(ordered, f, indent=2)
         f.write("\n")

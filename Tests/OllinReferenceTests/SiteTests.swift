@@ -825,6 +825,17 @@ struct SiteTests {
         #expect(SiteBuilder.playingHeroes(in: "<p>plain</p>", media: media) == "<p>plain</p>")
     }
 
+    @Test("The checkout's own manifest still names both heroes")
+    func heroesSurviveTheTools() throws {
+        // The tools that rewrite this file reorder it, and one of them used to
+        // drop any key it did not know about, which deleted the heroes and
+        // quietly turned the guide's playing grid back into a still.
+        let root = try #require(Self.repositoryRoot())
+        let media = ExampleMedia.read(inExamples: root.appendingPathComponent("Examples"))
+        #expect(media.heroes["guide"] != nil, "the guide lost its opening clip")
+        #expect(media.heroes["readme"] != nil, "the README lost its opening clip")
+    }
+
     @Test("Every row in the manifest names an example that is still there")
     func mediaRowsAreNotStale() throws {
         let root = try #require(Self.repositoryRoot())
