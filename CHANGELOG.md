@@ -2,7 +2,7 @@
 
 Notable changes to Ollin, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version numbers follow semantic versioning at major zero: a breaking change or a new feature bumps the minor, and a fix bumps the patch. Each release names its breaking renames here, so pin `.upToNextMinor` and read the entry before you move up.
 
-## [Unreleased]
+## [0.3.0] - 2026-09-10
 
 ### Added
 
