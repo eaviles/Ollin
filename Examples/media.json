@@ -1857,6 +1857,246 @@
       "still": "examples/Motion/Sway/still.jpg",
       "stillSmall": "examples/Motion/Sway/still-640.jpg"
     },
+    "Patterns/AntColony": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.014,
+      "source": "de0a590632f9ab19",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 7777492,
+        "loopSmall": 1451544,
+        "still": 296976,
+        "stillSmall": 78879
+      },
+      "loop": "examples/Patterns/AntColony/loop.mp4",
+      "loopSmall": "examples/Patterns/AntColony/loop-640.mp4",
+      "still": "examples/Patterns/AntColony/still.jpg",
+      "stillSmall": "examples/Patterns/AntColony/still-640.jpg"
+    },
+    "Patterns/Apollonian": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 36.382,
+      "source": "e764af979440c09c",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3021425,
+        "loopSmall": 915357,
+        "still": 89189,
+        "stillSmall": 32823
+      },
+      "loop": "examples/Patterns/Apollonian/loop.mp4",
+      "loopSmall": "examples/Patterns/Apollonian/loop-640.mp4",
+      "still": "examples/Patterns/Apollonian/still.jpg",
+      "stillSmall": "examples/Patterns/Apollonian/still-640.jpg"
+    },
+    "Patterns/Buddhabrot": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.617,
+      "source": "51050ed7d308135c",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 4600300,
+        "loopSmall": 1220029,
+        "still": 220636,
+        "stillSmall": 56188
+      },
+      "loop": "examples/Patterns/Buddhabrot/loop.mp4",
+      "loopSmall": "examples/Patterns/Buddhabrot/loop-640.mp4",
+      "still": "examples/Patterns/Buddhabrot/still.jpg",
+      "stillSmall": "examples/Patterns/Buddhabrot/still-640.jpg"
+    },
+    "Patterns/Caustic": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.934,
+      "source": "d498b2683d5254bd",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 11043627,
+        "loopSmall": 3259023,
+        "still": 291637,
+        "stillSmall": 92477
+      },
+      "loop": "examples/Patterns/Caustic/loop.mp4",
+      "loopSmall": "examples/Patterns/Caustic/loop-640.mp4",
+      "still": "examples/Patterns/Caustic/still.jpg",
+      "stillSmall": "examples/Patterns/Caustic/still-640.jpg"
+    },
+    "Patterns/ChaoticMaps": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.354,
+      "source": "7c69775e78d6de3b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2737471,
+        "loopSmall": 568818,
+        "still": 203973,
+        "stillSmall": 58634
+      },
+      "loop": "examples/Patterns/ChaoticMaps/loop.mp4",
+      "loopSmall": "examples/Patterns/ChaoticMaps/loop-640.mp4",
+      "still": "examples/Patterns/ChaoticMaps/still.jpg",
+      "stillSmall": "examples/Patterns/ChaoticMaps/still-640.jpg"
+    },
+    "Patterns/Chladni": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 62.568,
+      "source": "e88a4385c7fce3fd",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 23723798,
+        "loopSmall": 25512352,
+        "still": 469869,
+        "stillSmall": 112501
+      },
+      "loop": "examples/Patterns/Chladni/loop.mp4",
+      "loopSmall": "examples/Patterns/Chladni/loop-640.mp4",
+      "still": "examples/Patterns/Chladni/still.jpg",
+      "stillSmall": "examples/Patterns/Chladni/still-640.jpg"
+    },
+    "Patterns/CirclePacking": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.394,
+      "source": "b005ca1c648d38f1",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8042025,
+        "loopSmall": 2668451,
+        "still": 461504,
+        "stillSmall": 184688
+      },
+      "loop": "examples/Patterns/CirclePacking/loop.mp4",
+      "loopSmall": "examples/Patterns/CirclePacking/loop-640.mp4",
+      "still": "examples/Patterns/CirclePacking/still.jpg",
+      "stillSmall": "examples/Patterns/CirclePacking/still-640.jpg"
+    },
+    "Patterns/ContourMap": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.42,
+      "source": "06c0c1f589223b52",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 9562489,
+        "loopSmall": 3652279,
+        "still": 297183,
+        "stillSmall": 94960
+      },
+      "loop": "examples/Patterns/ContourMap/loop.mp4",
+      "loopSmall": "examples/Patterns/ContourMap/loop-640.mp4",
+      "still": "examples/Patterns/ContourMap/still.jpg",
+      "stillSmall": "examples/Patterns/ContourMap/still-640.jpg"
+    },
+    "Patterns/Cracks": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.234,
+      "source": "094061186dc541d2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 5428761,
+        "loopSmall": 1274531,
+        "still": 746122,
+        "stillSmall": 223887
+      },
+      "loop": "examples/Patterns/Cracks/loop.mp4",
+      "loopSmall": "examples/Patterns/Cracks/loop-640.mp4",
+      "still": "examples/Patterns/Cracks/still.jpg",
+      "stillSmall": "examples/Patterns/Cracks/still-640.jpg"
+    },
+    "Patterns/CreasePattern": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.26,
+      "source": "cbbddc05565590f6",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1931050,
+        "loopSmall": 416524,
+        "still": 125641,
+        "stillSmall": 48802
+      },
+      "loop": "examples/Patterns/CreasePattern/loop.mp4",
+      "loopSmall": "examples/Patterns/CreasePattern/loop-640.mp4",
+      "still": "examples/Patterns/CreasePattern/still.jpg",
+      "stillSmall": "examples/Patterns/CreasePattern/still-640.jpg"
+    },
+    "Patterns/DeBruijn": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.306,
+      "source": "14a5e2efbb778904",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1579637,
+        "loopSmall": 345129,
+        "still": 82161,
+        "stillSmall": 33453
+      },
+      "loop": "examples/Patterns/DeBruijn/loop.mp4",
+      "loopSmall": "examples/Patterns/DeBruijn/loop-640.mp4",
+      "still": "examples/Patterns/DeBruijn/still.jpg",
+      "stillSmall": "examples/Patterns/DeBruijn/still-640.jpg"
+    },
+    "Patterns/Delaunay": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.583,
+      "source": "7ff33dfa6196d025",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3241205,
+        "loopSmall": 750995,
+        "still": 167410,
+        "stillSmall": 62655
+      },
+      "loop": "examples/Patterns/Delaunay/loop.mp4",
+      "loopSmall": "examples/Patterns/Delaunay/loop-640.mp4",
+      "still": "examples/Patterns/Delaunay/still.jpg",
+      "stillSmall": "examples/Patterns/Delaunay/still-640.jpg"
+    },
     "Patterns/Dendrite": {
       "width": 1080,
       "height": 1080,
@@ -1876,6 +2116,266 @@
       "still": "examples/Patterns/Dendrite/still.jpg",
       "stillSmall": "examples/Patterns/Dendrite/still-640.jpg"
     },
+    "Patterns/DifferentialGrowth": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.212,
+      "source": "145c6939224948ee",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2544828,
+        "loopSmall": 385261,
+        "still": 89374,
+        "stillSmall": 32465
+      },
+      "loop": "examples/Patterns/DifferentialGrowth/loop.mp4",
+      "loopSmall": "examples/Patterns/DifferentialGrowth/loop-640.mp4",
+      "still": "examples/Patterns/DifferentialGrowth/still.jpg",
+      "stillSmall": "examples/Patterns/DifferentialGrowth/still-640.jpg"
+    },
+    "Patterns/ElementaryCA": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 50.755,
+      "source": "1ccc1d36c35e8e58",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1279690,
+        "loopSmall": 665750,
+        "still": 576100,
+        "stillSmall": 185030
+      },
+      "loop": "examples/Patterns/ElementaryCA/loop.mp4",
+      "loopSmall": "examples/Patterns/ElementaryCA/loop-640.mp4",
+      "still": "examples/Patterns/ElementaryCA/still.jpg",
+      "stillSmall": "examples/Patterns/ElementaryCA/still-640.jpg"
+    },
+    "Patterns/Flocking": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.868,
+      "source": "2a0d10c4d046e4e2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 7998059,
+        "loopSmall": 2095262,
+        "still": 181357,
+        "stillSmall": 70743
+      },
+      "loop": "examples/Patterns/Flocking/loop.mp4",
+      "loopSmall": "examples/Patterns/Flocking/loop-640.mp4",
+      "still": "examples/Patterns/Flocking/still.jpg",
+      "stillSmall": "examples/Patterns/Flocking/still-640.jpg"
+    },
+    "Patterns/ForceGraph": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.168,
+      "source": "4d7a71e135a29912",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1365593,
+        "loopSmall": 156137,
+        "still": 33280,
+        "stillSmall": 12653
+      },
+      "loop": "examples/Patterns/ForceGraph/loop.mp4",
+      "loopSmall": "examples/Patterns/ForceGraph/loop-640.mp4",
+      "still": "examples/Patterns/ForceGraph/still.jpg",
+      "stillSmall": "examples/Patterns/ForceGraph/still-640.jpg"
+    },
+    "Patterns/FordCircles": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 19.956,
+      "source": "050f2dcd385bde6f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 4264076,
+        "loopSmall": 877226,
+        "still": 120394,
+        "stillSmall": 47821
+      },
+      "loop": "examples/Patterns/FordCircles/loop.mp4",
+      "loopSmall": "examples/Patterns/FordCircles/loop-640.mp4",
+      "still": "examples/Patterns/FordCircles/still.jpg",
+      "stillSmall": "examples/Patterns/FordCircles/still-640.jpg"
+    },
+    "Patterns/FractalFlame": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 12.165,
+      "source": "368d7e3bae086e94",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 4844000,
+        "loopSmall": 1103429,
+        "still": 435596,
+        "stillSmall": 139066
+      },
+      "loop": "examples/Patterns/FractalFlame/loop.mp4",
+      "loopSmall": "examples/Patterns/FractalFlame/loop-640.mp4",
+      "still": "examples/Patterns/FractalFlame/still.jpg",
+      "stillSmall": "examples/Patterns/FractalFlame/still-640.jpg"
+    },
+    "Patterns/Girih": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.674,
+      "source": "8820b5d01b75127e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 9483549,
+        "loopSmall": 2979277,
+        "still": 511071,
+        "stillSmall": 186786
+      },
+      "loop": "examples/Patterns/Girih/loop.mp4",
+      "loopSmall": "examples/Patterns/Girih/loop-640.mp4",
+      "still": "examples/Patterns/Girih/still.jpg",
+      "stillSmall": "examples/Patterns/Girih/still-640.jpg"
+    },
+    "Patterns/Grid": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.887,
+      "source": "f684b6c50a0e9947",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2307513,
+        "loopSmall": 909165,
+        "still": 225860,
+        "stillSmall": 90064
+      },
+      "loop": "examples/Patterns/Grid/loop.mp4",
+      "loopSmall": "examples/Patterns/Grid/loop-640.mp4",
+      "still": "examples/Patterns/Grid/still.jpg",
+      "stillSmall": "examples/Patterns/Grid/still-640.jpg"
+    },
+    "Patterns/Guilloche": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 17.149,
+      "source": "1eaf4a188d651b28",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8013106,
+        "loopSmall": 3066705,
+        "still": 560447,
+        "stillSmall": 187084
+      },
+      "loop": "examples/Patterns/Guilloche/loop.mp4",
+      "loopSmall": "examples/Patterns/Guilloche/loop-640.mp4",
+      "still": "examples/Patterns/Guilloche/still.jpg",
+      "stillSmall": "examples/Patterns/Guilloche/still-640.jpg"
+    },
+    "Patterns/HexGrid": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 22.466,
+      "source": "88576deb1826d4a9",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2541668,
+        "loopSmall": 627566,
+        "still": 186978,
+        "stillSmall": 69155
+      },
+      "loop": "examples/Patterns/HexGrid/loop.mp4",
+      "loopSmall": "examples/Patterns/HexGrid/loop-640.mp4",
+      "still": "examples/Patterns/HexGrid/still.jpg",
+      "stillSmall": "examples/Patterns/HexGrid/still-640.jpg"
+    },
+    "Patterns/Hitomezashi": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.021,
+      "source": "d7ed94cf995dfa1e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 742953,
+        "loopSmall": 263331,
+        "still": 219828,
+        "stillSmall": 100417
+      },
+      "loop": "examples/Patterns/Hitomezashi/loop.mp4",
+      "loopSmall": "examples/Patterns/Hitomezashi/loop-640.mp4",
+      "still": "examples/Patterns/Hitomezashi/still.jpg",
+      "stillSmall": "examples/Patterns/Hitomezashi/still-640.jpg"
+    },
+    "Patterns/HyperbolicTiling": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.065,
+      "source": "fcf9704bb2c26e0e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 14067732,
+        "loopSmall": 2870856,
+        "still": 172414,
+        "stillSmall": 65037
+      },
+      "loop": "examples/Patterns/HyperbolicTiling/loop.mp4",
+      "loopSmall": "examples/Patterns/HyperbolicTiling/loop-640.mp4",
+      "still": "examples/Patterns/HyperbolicTiling/still.jpg",
+      "stillSmall": "examples/Patterns/HyperbolicTiling/still-640.jpg"
+    },
+    "Patterns/IteratedFunctions": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.482,
+      "source": "1e73565bcbea7873",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2792230,
+        "loopSmall": 680442,
+        "still": 99527,
+        "stillSmall": 32632
+      },
+      "loop": "examples/Patterns/IteratedFunctions/loop.mp4",
+      "loopSmall": "examples/Patterns/IteratedFunctions/loop-640.mp4",
+      "still": "examples/Patterns/IteratedFunctions/still.jpg",
+      "stillSmall": "examples/Patterns/IteratedFunctions/still-640.jpg"
+    },
     "Patterns/Kaleidoscope": {
       "width": 1080,
       "height": 1080,
@@ -1894,6 +2394,666 @@
       "loopSmall": "examples/Patterns/Kaleidoscope/loop-640.mp4",
       "still": "examples/Patterns/Kaleidoscope/still.jpg",
       "stillSmall": "examples/Patterns/Kaleidoscope/still-640.jpg"
+    },
+    "Patterns/Lichtenberg": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.206,
+      "source": "c42d9f56ef2c4ff2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 645229,
+        "loopSmall": 194505,
+        "still": 108705,
+        "stillSmall": 38888
+      },
+      "loop": "examples/Patterns/Lichtenberg/loop.mp4",
+      "loopSmall": "examples/Patterns/Lichtenberg/loop-640.mp4",
+      "still": "examples/Patterns/Lichtenberg/still.jpg",
+      "stillSmall": "examples/Patterns/Lichtenberg/still-640.jpg"
+    },
+    "Patterns/LowDiscrepancy": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.542,
+      "source": "3ecfac39c34b47b2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2243034,
+        "loopSmall": 773394,
+        "still": 336862,
+        "stillSmall": 127090
+      },
+      "loop": "examples/Patterns/LowDiscrepancy/loop.mp4",
+      "loopSmall": "examples/Patterns/LowDiscrepancy/loop-640.mp4",
+      "still": "examples/Patterns/LowDiscrepancy/still.jpg",
+      "stillSmall": "examples/Patterns/LowDiscrepancy/still-640.jpg"
+    },
+    "Patterns/Maze": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.895,
+      "source": "529879be6f8e5300",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 588150,
+        "loopSmall": 180940,
+        "still": 132423,
+        "stillSmall": 64330
+      },
+      "loop": "examples/Patterns/Maze/loop.mp4",
+      "loopSmall": "examples/Patterns/Maze/loop-640.mp4",
+      "still": "examples/Patterns/Maze/still.jpg",
+      "stillSmall": "examples/Patterns/Maze/still-640.jpg"
+    },
+    "Patterns/Meander": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.781,
+      "source": "211954850af57408",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 924324,
+        "loopSmall": 189334,
+        "still": 68349,
+        "stillSmall": 24729
+      },
+      "loop": "examples/Patterns/Meander/loop.mp4",
+      "loopSmall": "examples/Patterns/Meander/loop-640.mp4",
+      "still": "examples/Patterns/Meander/still.jpg",
+      "stillSmall": "examples/Patterns/Meander/still-640.jpg"
+    },
+    "Patterns/ParquetDeformation": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.475,
+      "source": "40ec5b5b51ff5f09",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 5677540,
+        "loopSmall": 1395351,
+        "still": 439327,
+        "stillSmall": 177311
+      },
+      "loop": "examples/Patterns/ParquetDeformation/loop.mp4",
+      "loopSmall": "examples/Patterns/ParquetDeformation/loop-640.mp4",
+      "still": "examples/Patterns/ParquetDeformation/still.jpg",
+      "stillSmall": "examples/Patterns/ParquetDeformation/still-640.jpg"
+    },
+    "Patterns/Penrose": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.496,
+      "source": "34ded6ad5d060740",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3063533,
+        "loopSmall": 829488,
+        "still": 392656,
+        "stillSmall": 142177
+      },
+      "loop": "examples/Patterns/Penrose/loop.mp4",
+      "loopSmall": "examples/Patterns/Penrose/loop-640.mp4",
+      "still": "examples/Patterns/Penrose/still.jpg",
+      "stillSmall": "examples/Patterns/Penrose/still-640.jpg"
+    },
+    "Patterns/Pentominoes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.842,
+      "source": "58fd793a2f2f3238",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 680903,
+        "loopSmall": 127702,
+        "still": 86727,
+        "stillSmall": 42566
+      },
+      "loop": "examples/Patterns/Pentominoes/loop.mp4",
+      "loopSmall": "examples/Patterns/Pentominoes/loop-640.mp4",
+      "still": "examples/Patterns/Pentominoes/still.jpg",
+      "stillSmall": "examples/Patterns/Pentominoes/still-640.jpg"
+    },
+    "Patterns/Percolation": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.953,
+      "source": "16c189d1dcab48d0",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 942506,
+        "loopSmall": 526237,
+        "still": 392456,
+        "stillSmall": 179247
+      },
+      "loop": "examples/Patterns/Percolation/loop.mp4",
+      "loopSmall": "examples/Patterns/Percolation/loop-640.mp4",
+      "still": "examples/Patterns/Percolation/still.jpg",
+      "stillSmall": "examples/Patterns/Percolation/still-640.jpg"
+    },
+    "Patterns/Phyllotaxis": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 103.232,
+      "source": "7c6e731f7703678d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8039090,
+        "loopSmall": 2136904,
+        "still": 279027,
+        "stillSmall": 125065
+      },
+      "loop": "examples/Patterns/Phyllotaxis/loop.mp4",
+      "loopSmall": "examples/Patterns/Phyllotaxis/loop-640.mp4",
+      "still": "examples/Patterns/Phyllotaxis/still.jpg",
+      "stillSmall": "examples/Patterns/Phyllotaxis/still-640.jpg"
+    },
+    "Patterns/PowerDiagram": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.861,
+      "source": "abec4934fb84438d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 4621680,
+        "loopSmall": 1434072,
+        "still": 400575,
+        "stillSmall": 152232
+      },
+      "loop": "examples/Patterns/PowerDiagram/loop.mp4",
+      "loopSmall": "examples/Patterns/PowerDiagram/loop-640.mp4",
+      "still": "examples/Patterns/PowerDiagram/still.jpg",
+      "stillSmall": "examples/Patterns/PowerDiagram/still-640.jpg"
+    },
+    "Patterns/Pursuit": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.888,
+      "source": "4eddc577ac4dcc64",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2925160,
+        "loopSmall": 712047,
+        "still": 310918,
+        "stillSmall": 84507
+      },
+      "loop": "examples/Patterns/Pursuit/loop.mp4",
+      "loopSmall": "examples/Patterns/Pursuit/loop-640.mp4",
+      "still": "examples/Patterns/Pursuit/still.jpg",
+      "stillSmall": "examples/Patterns/Pursuit/still-640.jpg"
+    },
+    "Patterns/RidgeLines": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.261,
+      "source": "944494a63901190f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 6910966,
+        "loopSmall": 1861552,
+        "still": 117423,
+        "stillSmall": 44999
+      },
+      "loop": "examples/Patterns/RidgeLines/loop.mp4",
+      "loopSmall": "examples/Patterns/RidgeLines/loop-640.mp4",
+      "still": "examples/Patterns/RidgeLines/still.jpg",
+      "stillSmall": "examples/Patterns/RidgeLines/still-640.jpg"
+    },
+    "Patterns/Roses": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.532,
+      "source": "cf0643ce10296ea1",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3644172,
+        "loopSmall": 863089,
+        "still": 117706,
+        "stillSmall": 48038
+      },
+      "loop": "examples/Patterns/Roses/loop.mp4",
+      "loopSmall": "examples/Patterns/Roses/loop-640.mp4",
+      "still": "examples/Patterns/Roses/still.jpg",
+      "stillSmall": "examples/Patterns/Roses/still-640.jpg"
+    },
+    "Patterns/Schottky": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.746,
+      "source": "c10f09364aa1d997",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 18608339,
+        "loopSmall": 13220849,
+        "still": 346149,
+        "stillSmall": 114469
+      },
+      "loop": "examples/Patterns/Schottky/loop.mp4",
+      "loopSmall": "examples/Patterns/Schottky/loop-640.mp4",
+      "still": "examples/Patterns/Schottky/still.jpg",
+      "stillSmall": "examples/Patterns/Schottky/still-640.jpg"
+    },
+    "Patterns/ShapeGrammar": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 25.964,
+      "source": "9fccec9d1f682a80",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1070173,
+        "loopSmall": 360181,
+        "still": 256821,
+        "stillSmall": 97900
+      },
+      "loop": "examples/Patterns/ShapeGrammar/loop.mp4",
+      "loopSmall": "examples/Patterns/ShapeGrammar/loop-640.mp4",
+      "still": "examples/Patterns/ShapeGrammar/still.jpg",
+      "stillSmall": "examples/Patterns/ShapeGrammar/still-640.jpg"
+    },
+    "Patterns/ShapePacking": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.618,
+      "source": "a98b7ecbb11916bd",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1183054,
+        "loopSmall": 547848,
+        "still": 439522,
+        "stillSmall": 165709
+      },
+      "loop": "examples/Patterns/ShapePacking/loop.mp4",
+      "loopSmall": "examples/Patterns/ShapePacking/loop-640.mp4",
+      "still": "examples/Patterns/ShapePacking/still.jpg",
+      "stillSmall": "examples/Patterns/ShapePacking/still-640.jpg"
+    },
+    "Patterns/Spectre": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.324,
+      "source": "3ba32034502e4e97",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2511056,
+        "loopSmall": 776505,
+        "still": 292299,
+        "stillSmall": 111729
+      },
+      "loop": "examples/Patterns/Spectre/loop.mp4",
+      "loopSmall": "examples/Patterns/Spectre/loop-640.mp4",
+      "still": "examples/Patterns/Spectre/still.jpg",
+      "stillSmall": "examples/Patterns/Spectre/still-640.jpg"
+    },
+    "Patterns/Spirograph": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 19.086,
+      "source": "aaccefdb95aebce4",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 9320252,
+        "loopSmall": 2427486,
+        "still": 394070,
+        "stillSmall": 119685
+      },
+      "loop": "examples/Patterns/Spirograph/loop.mp4",
+      "loopSmall": "examples/Patterns/Spirograph/loop-640.mp4",
+      "still": "examples/Patterns/Spirograph/still.jpg",
+      "stillSmall": "examples/Patterns/Spirograph/still-640.jpg"
+    },
+    "Patterns/Spirolateral": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.111,
+      "source": "cd55f0564276780e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 956817,
+        "loopSmall": 204483,
+        "still": 119304,
+        "stillSmall": 55510
+      },
+      "loop": "examples/Patterns/Spirolateral/loop.mp4",
+      "loopSmall": "examples/Patterns/Spirolateral/loop-640.mp4",
+      "still": "examples/Patterns/Spirolateral/still.jpg",
+      "stillSmall": "examples/Patterns/Spirolateral/still-640.jpg"
+    },
+    "Patterns/Stippling": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.504,
+      "source": "c963030d66a8ad6b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3355503,
+        "loopSmall": 902461,
+        "still": 309915,
+        "stillSmall": 97127
+      },
+      "loop": "examples/Patterns/Stippling/loop.mp4",
+      "loopSmall": "examples/Patterns/Stippling/loop-640.mp4",
+      "still": "examples/Patterns/Stippling/still.jpg",
+      "stillSmall": "examples/Patterns/Stippling/still-640.jpg"
+    },
+    "Patterns/Streamlines": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.325,
+      "source": "c8f5ef4b9bae4103",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3038302,
+        "loopSmall": 1028053,
+        "still": 789050,
+        "stillSmall": 270900
+      },
+      "loop": "examples/Patterns/Streamlines/loop.mp4",
+      "loopSmall": "examples/Patterns/Streamlines/loop-640.mp4",
+      "still": "examples/Patterns/Streamlines/still.jpg",
+      "stillSmall": "examples/Patterns/Streamlines/still-640.jpg"
+    },
+    "Patterns/Subdivision": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 65.947,
+      "source": "a2208d011c58131e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 460652,
+        "loopSmall": 76199,
+        "still": 32067,
+        "stillSmall": 14038
+      },
+      "loop": "examples/Patterns/Subdivision/loop.mp4",
+      "loopSmall": "examples/Patterns/Subdivision/loop-640.mp4",
+      "still": "examples/Patterns/Subdivision/still.jpg",
+      "stillSmall": "examples/Patterns/Subdivision/still-640.jpg"
+    },
+    "Patterns/TenPrint": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.603,
+      "source": "240bb371c613df15",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 9467459,
+        "loopSmall": 3066738,
+        "still": 921676,
+        "stillSmall": 317030
+      },
+      "loop": "examples/Patterns/TenPrint/loop.mp4",
+      "loopSmall": "examples/Patterns/TenPrint/loop-640.mp4",
+      "still": "examples/Patterns/TenPrint/still.jpg",
+      "stillSmall": "examples/Patterns/TenPrint/still-640.jpg"
+    },
+    "Patterns/Topography": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.558,
+      "source": "6e2ef2afd27334df",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3380126,
+        "loopSmall": 745247,
+        "still": 223485,
+        "stillSmall": 68897
+      },
+      "loop": "examples/Patterns/Topography/loop.mp4",
+      "loopSmall": "examples/Patterns/Topography/loop-640.mp4",
+      "still": "examples/Patterns/Topography/still.jpg",
+      "stillSmall": "examples/Patterns/Topography/still-640.jpg"
+    },
+    "Patterns/TriangleGrid": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.394,
+      "source": "cee27a8030c485ae",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2351503,
+        "loopSmall": 750170,
+        "still": 300291,
+        "stillSmall": 109952
+      },
+      "loop": "examples/Patterns/TriangleGrid/loop.mp4",
+      "loopSmall": "examples/Patterns/TriangleGrid/loop-640.mp4",
+      "still": "examples/Patterns/TriangleGrid/still.jpg",
+      "stillSmall": "examples/Patterns/TriangleGrid/still-640.jpg"
+    },
+    "Patterns/Truchet": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.289,
+      "source": "d670be170351016f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3350096,
+        "loopSmall": 1242694,
+        "still": 354298,
+        "stillSmall": 134880
+      },
+      "loop": "examples/Patterns/Truchet/loop.mp4",
+      "loopSmall": "examples/Patterns/Truchet/loop-640.mp4",
+      "still": "examples/Patterns/Truchet/still.jpg",
+      "stillSmall": "examples/Patterns/Truchet/still-640.jpg"
+    },
+    "Patterns/Turmites": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.957,
+      "source": "d5b0635a7a065988",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2034208,
+        "loopSmall": 751953,
+        "still": 435417,
+        "stillSmall": 140834
+      },
+      "loop": "examples/Patterns/Turmites/loop.mp4",
+      "loopSmall": "examples/Patterns/Turmites/loop-640.mp4",
+      "still": "examples/Patterns/Turmites/still.jpg",
+      "stillSmall": "examples/Patterns/Turmites/still-640.jpg"
+    },
+    "Patterns/UlamSpiral": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 15.593,
+      "source": "00961bce5ce6d7ab",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 12627767,
+        "loopSmall": 2441025,
+        "still": 272070,
+        "stillSmall": 110936
+      },
+      "loop": "examples/Patterns/UlamSpiral/loop.mp4",
+      "loopSmall": "examples/Patterns/UlamSpiral/loop-640.mp4",
+      "still": "examples/Patterns/UlamSpiral/still.jpg",
+      "stillSmall": "examples/Patterns/UlamSpiral/still-640.jpg"
+    },
+    "Patterns/Venation": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.661,
+      "source": "f20632d666c8c98d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1078117,
+        "loopSmall": 358509,
+        "still": 165860,
+        "stillSmall": 64309
+      },
+      "loop": "examples/Patterns/Venation/loop.mp4",
+      "loopSmall": "examples/Patterns/Venation/loop-640.mp4",
+      "still": "examples/Patterns/Venation/still.jpg",
+      "stillSmall": "examples/Patterns/Venation/still-640.jpg"
+    },
+    "Patterns/Voronoi": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 32.634,
+      "source": "48da332a6e41dfcd",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 6494885,
+        "loopSmall": 1535304,
+        "still": 324246,
+        "stillSmall": 132980
+      },
+      "loop": "examples/Patterns/Voronoi/loop.mp4",
+      "loopSmall": "examples/Patterns/Voronoi/loop-640.mp4",
+      "still": "examples/Patterns/Voronoi/still.jpg",
+      "stillSmall": "examples/Patterns/Voronoi/still-640.jpg"
+    },
+    "Patterns/WangTiles": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 72.079,
+      "source": "269354804d69dcae",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 788831,
+        "loopSmall": 415339,
+        "still": 183934,
+        "stillSmall": 127349
+      },
+      "loop": "examples/Patterns/WangTiles/loop.mp4",
+      "loopSmall": "examples/Patterns/WangTiles/loop-640.mp4",
+      "still": "examples/Patterns/WangTiles/still.jpg",
+      "stillSmall": "examples/Patterns/WangTiles/still-640.jpg"
+    },
+    "Patterns/WaveFunctionCollapse": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.928,
+      "source": "2d0d19de14f15c2d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 827468,
+        "loopSmall": 178051,
+        "still": 140978,
+        "stillSmall": 59793
+      },
+      "loop": "examples/Patterns/WaveFunctionCollapse/loop.mp4",
+      "loopSmall": "examples/Patterns/WaveFunctionCollapse/loop-640.mp4",
+      "still": "examples/Patterns/WaveFunctionCollapse/still.jpg",
+      "stillSmall": "examples/Patterns/WaveFunctionCollapse/still-640.jpg"
+    },
+    "Patterns/Wavefront": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.418,
+      "source": "cc9815fddc620794",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1385453,
+        "loopSmall": 487574,
+        "still": 329172,
+        "stillSmall": 132808
+      },
+      "loop": "examples/Patterns/Wavefront/loop.mp4",
+      "loopSmall": "examples/Patterns/Wavefront/loop-640.mp4",
+      "still": "examples/Patterns/Wavefront/still.jpg",
+      "stillSmall": "examples/Patterns/Wavefront/still-640.jpg"
     },
     "Physics/Blobs": {
       "width": 1080,
@@ -2555,6 +3715,346 @@
       "still": "examples/Shaders/VisualSynth/still.jpg",
       "stillSmall": "examples/Shaders/VisualSynth/still-640.jpg"
     },
+    "Shapes/Arrows": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.05,
+      "source": "30f79cec583acd13",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1762587,
+        "loopSmall": 379188,
+        "still": 112088,
+        "stillSmall": 43442
+      },
+      "loop": "examples/Shapes/Arrows/loop.mp4",
+      "loopSmall": "examples/Shapes/Arrows/loop-640.mp4",
+      "still": "examples/Shapes/Arrows/still.jpg",
+      "stillSmall": "examples/Shapes/Arrows/still-640.jpg"
+    },
+    "Shapes/Booleans": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.096,
+      "source": "5d5b0b68b18f8f8f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2534593,
+        "loopSmall": 578035,
+        "still": 86075,
+        "stillSmall": 34696
+      },
+      "loop": "examples/Shapes/Booleans/loop.mp4",
+      "loopSmall": "examples/Shapes/Booleans/loop-640.mp4",
+      "still": "examples/Shapes/Booleans/still.jpg",
+      "stillSmall": "examples/Shapes/Booleans/still-640.jpg"
+    },
+    "Shapes/Brushes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 31.221,
+      "source": "9ffcdd74e66ccca8",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3091765,
+        "loopSmall": 614896,
+        "still": 123252,
+        "stillSmall": 50536
+      },
+      "loop": "examples/Shapes/Brushes/loop.mp4",
+      "loopSmall": "examples/Shapes/Brushes/loop-640.mp4",
+      "still": "examples/Shapes/Brushes/still.jpg",
+      "stillSmall": "examples/Shapes/Brushes/still-640.jpg"
+    },
+    "Shapes/Clipping": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.853,
+      "source": "cb4adce948e165dd",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2031442,
+        "loopSmall": 465442,
+        "still": 100213,
+        "stillSmall": 41544
+      },
+      "loop": "examples/Shapes/Clipping/loop.mp4",
+      "loopSmall": "examples/Shapes/Clipping/loop-640.mp4",
+      "still": "examples/Shapes/Clipping/still.jpg",
+      "stillSmall": "examples/Shapes/Clipping/still-640.jpg"
+    },
+    "Shapes/Combinators": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.515,
+      "source": "c9646a7eb87a6fee",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 849583,
+        "loopSmall": 189443,
+        "still": 48392,
+        "stillSmall": 21480
+      },
+      "loop": "examples/Shapes/Combinators/loop.mp4",
+      "loopSmall": "examples/Shapes/Combinators/loop-640.mp4",
+      "still": "examples/Shapes/Combinators/still.jpg",
+      "stillSmall": "examples/Shapes/Combinators/still-640.jpg"
+    },
+    "Shapes/CombinatorsGradient": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.134,
+      "source": "e3f56637cda54008",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1348946,
+        "loopSmall": 293035,
+        "still": 86918,
+        "stillSmall": 37073
+      },
+      "loop": "examples/Shapes/CombinatorsGradient/loop.mp4",
+      "loopSmall": "examples/Shapes/CombinatorsGradient/loop-640.mp4",
+      "still": "examples/Shapes/CombinatorsGradient/still.jpg",
+      "stillSmall": "examples/Shapes/CombinatorsGradient/still-640.jpg"
+    },
+    "Shapes/CombinatorsJoinery": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.625,
+      "source": "9c6061c1af1d6aa3",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 869839,
+        "loopSmall": 158316,
+        "still": 70864,
+        "stillSmall": 31110
+      },
+      "loop": "examples/Shapes/CombinatorsJoinery/loop.mp4",
+      "loopSmall": "examples/Shapes/CombinatorsJoinery/loop-640.mp4",
+      "still": "examples/Shapes/CombinatorsJoinery/still.jpg",
+      "stillSmall": "examples/Shapes/CombinatorsJoinery/still-640.jpg"
+    },
+    "Shapes/CombinatorsStretch": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.874,
+      "source": "8a2ef08d7d5982d3",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 725344,
+        "loopSmall": 141783,
+        "still": 40190,
+        "stillSmall": 17505
+      },
+      "loop": "examples/Shapes/CombinatorsStretch/loop.mp4",
+      "loopSmall": "examples/Shapes/CombinatorsStretch/loop-640.mp4",
+      "still": "examples/Shapes/CombinatorsStretch/still.jpg",
+      "stillSmall": "examples/Shapes/CombinatorsStretch/still-640.jpg"
+    },
+    "Shapes/CornerCutting": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.011,
+      "source": "0f94afb042736c90",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1921864,
+        "loopSmall": 375873,
+        "still": 85407,
+        "stillSmall": 31828
+      },
+      "loop": "examples/Shapes/CornerCutting/loop.mp4",
+      "loopSmall": "examples/Shapes/CornerCutting/loop-640.mp4",
+      "still": "examples/Shapes/CornerCutting/still.jpg",
+      "stillSmall": "examples/Shapes/CornerCutting/still-640.jpg"
+    },
+    "Shapes/DashedStrokes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.234,
+      "source": "15d2dfeb87927014",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2944725,
+        "loopSmall": 586957,
+        "still": 123643,
+        "stillSmall": 48328
+      },
+      "loop": "examples/Shapes/DashedStrokes/loop.mp4",
+      "loopSmall": "examples/Shapes/DashedStrokes/loop-640.mp4",
+      "still": "examples/Shapes/DashedStrokes/still.jpg",
+      "stillSmall": "examples/Shapes/DashedStrokes/still-640.jpg"
+    },
+    "Shapes/HobbySpline": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.751,
+      "source": "d69e56dc4c79a398",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1371735,
+        "loopSmall": 264003,
+        "still": 65194,
+        "stillSmall": 24497
+      },
+      "loop": "examples/Shapes/HobbySpline/loop.mp4",
+      "loopSmall": "examples/Shapes/HobbySpline/loop-640.mp4",
+      "still": "examples/Shapes/HobbySpline/still.jpg",
+      "stillSmall": "examples/Shapes/HobbySpline/still-640.jpg"
+    },
+    "Shapes/HollowShapes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 30.16,
+      "source": "bd46e93e75e17dda",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3769872,
+        "loopSmall": 1070856,
+        "still": 172619,
+        "stillSmall": 77279
+      },
+      "loop": "examples/Shapes/HollowShapes/loop.mp4",
+      "loopSmall": "examples/Shapes/HollowShapes/loop-640.mp4",
+      "still": "examples/Shapes/HollowShapes/still.jpg",
+      "stillSmall": "examples/Shapes/HollowShapes/still-640.jpg"
+    },
+    "Shapes/InkRibbon": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 12.552,
+      "source": "72a51a49dd073a5a",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2781264,
+        "loopSmall": 493220,
+        "still": 192530,
+        "stillSmall": 57991
+      },
+      "loop": "examples/Shapes/InkRibbon/loop.mp4",
+      "loopSmall": "examples/Shapes/InkRibbon/loop-640.mp4",
+      "still": "examples/Shapes/InkRibbon/still.jpg",
+      "stillSmall": "examples/Shapes/InkRibbon/still-640.jpg"
+    },
+    "Shapes/Markers": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.68,
+      "source": "cb2bf53b2e001e57",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1643996,
+        "loopSmall": 367136,
+        "still": 102996,
+        "stillSmall": 44906
+      },
+      "loop": "examples/Shapes/Markers/loop.mp4",
+      "loopSmall": "examples/Shapes/Markers/loop-640.mp4",
+      "still": "examples/Shapes/Markers/still.jpg",
+      "stillSmall": "examples/Shapes/Markers/still-640.jpg"
+    },
+    "Shapes/MedialAxis": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.645,
+      "source": "ac5210f3eac49043",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1174982,
+        "loopSmall": 342714,
+        "still": 109734,
+        "stillSmall": 37989
+      },
+      "loop": "examples/Shapes/MedialAxis/loop.mp4",
+      "loopSmall": "examples/Shapes/MedialAxis/loop-640.mp4",
+      "still": "examples/Shapes/MedialAxis/still.jpg",
+      "stillSmall": "examples/Shapes/MedialAxis/still-640.jpg"
+    },
+    "Shapes/Neighbors": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.404,
+      "source": "58f2560d101f7c99",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 5913661,
+        "loopSmall": 1640883,
+        "still": 291287,
+        "stillSmall": 94941
+      },
+      "loop": "examples/Shapes/Neighbors/loop.mp4",
+      "loopSmall": "examples/Shapes/Neighbors/loop-640.mp4",
+      "still": "examples/Shapes/Neighbors/still.jpg",
+      "stillSmall": "examples/Shapes/Neighbors/still-640.jpg"
+    },
+    "Shapes/Polygons": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.079,
+      "source": "c6bf2629b930972d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1758500,
+        "loopSmall": 469499,
+        "still": 80482,
+        "stillSmall": 35690
+      },
+      "loop": "examples/Shapes/Polygons/loop.mp4",
+      "loopSmall": "examples/Shapes/Polygons/loop-640.mp4",
+      "still": "examples/Shapes/Polygons/still.jpg",
+      "stillSmall": "examples/Shapes/Polygons/still-640.jpg"
+    },
     "Shapes/Primitives": {
       "width": 1080,
       "height": 1080,
@@ -2573,6 +4073,166 @@
       "loopSmall": "examples/Shapes/Primitives/loop-640.mp4",
       "still": "examples/Shapes/Primitives/still.jpg",
       "stillSmall": "examples/Shapes/Primitives/still-640.jpg"
+    },
+    "Shapes/SVGImport": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.731,
+      "source": "8bab67700232f179",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2391414,
+        "loopSmall": 453618,
+        "still": 81248,
+        "stillSmall": 28011
+      },
+      "loop": "examples/Shapes/SVGImport/loop.mp4",
+      "loopSmall": "examples/Shapes/SVGImport/loop-640.mp4",
+      "still": "examples/Shapes/SVGImport/still.jpg",
+      "stillSmall": "examples/Shapes/SVGImport/still-640.jpg"
+    },
+    "Shapes/Scattered": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 20.786,
+      "source": "77ae6868860af5b3",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1912581,
+        "loopSmall": 305429,
+        "still": 53180,
+        "stillSmall": 21480
+      },
+      "loop": "examples/Shapes/Scattered/loop.mp4",
+      "loopSmall": "examples/Shapes/Scattered/loop-640.mp4",
+      "still": "examples/Shapes/Scattered/still.jpg",
+      "stillSmall": "examples/Shapes/Scattered/still-640.jpg"
+    },
+    "Shapes/Star": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 29.102,
+      "source": "6e4aacea85eefa44",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1600418,
+        "loopSmall": 444013,
+        "still": 60594,
+        "stillSmall": 25519
+      },
+      "loop": "examples/Shapes/Star/loop.mp4",
+      "loopSmall": "examples/Shapes/Star/loop-640.mp4",
+      "still": "examples/Shapes/Star/still.jpg",
+      "stillSmall": "examples/Shapes/Star/still-640.jpg"
+    },
+    "Shapes/StrokeAlignment": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.374,
+      "source": "5a4b34bd7c579565",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1119202,
+        "loopSmall": 240688,
+        "still": 72233,
+        "stillSmall": 28876
+      },
+      "loop": "examples/Shapes/StrokeAlignment/loop.mp4",
+      "loopSmall": "examples/Shapes/StrokeAlignment/loop-640.mp4",
+      "still": "examples/Shapes/StrokeAlignment/still.jpg",
+      "stillSmall": "examples/Shapes/StrokeAlignment/still-640.jpg"
+    },
+    "Shapes/StrokeJoinsAndCaps": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.962,
+      "source": "6e82d394dcb48dd7",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1466148,
+        "loopSmall": 324008,
+        "still": 100867,
+        "stillSmall": 37296
+      },
+      "loop": "examples/Shapes/StrokeJoinsAndCaps/loop.mp4",
+      "loopSmall": "examples/Shapes/StrokeJoinsAndCaps/loop-640.mp4",
+      "still": "examples/Shapes/StrokeJoinsAndCaps/still.jpg",
+      "stillSmall": "examples/Shapes/StrokeJoinsAndCaps/still-640.jpg"
+    },
+    "Shapes/Superellipse": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.291,
+      "source": "fe74a0087c96ed4b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1337853,
+        "loopSmall": 243102,
+        "still": 147674,
+        "stillSmall": 56532
+      },
+      "loop": "examples/Shapes/Superellipse/loop.mp4",
+      "loopSmall": "examples/Shapes/Superellipse/loop-640.mp4",
+      "still": "examples/Shapes/Superellipse/still.jpg",
+      "stillSmall": "examples/Shapes/Superellipse/still-640.jpg"
+    },
+    "Shapes/Supershape": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.401,
+      "source": "52633806ef664320",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1747565,
+        "loopSmall": 354802,
+        "still": 74679,
+        "stillSmall": 25296
+      },
+      "loop": "examples/Shapes/Supershape/loop.mp4",
+      "loopSmall": "examples/Shapes/Supershape/loop-640.mp4",
+      "still": "examples/Shapes/Supershape/still.jpg",
+      "stillSmall": "examples/Shapes/Supershape/still-640.jpg"
+    },
+    "Shapes/Triangles": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.773,
+      "source": "afbdd50d2e5a9923",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 784840,
+        "loopSmall": 154733,
+        "still": 29020,
+        "stillSmall": 11861
+      },
+      "loop": "examples/Shapes/Triangles/loop.mp4",
+      "loopSmall": "examples/Shapes/Triangles/loop-640.mp4",
+      "still": "examples/Shapes/Triangles/still.jpg",
+      "stillSmall": "examples/Shapes/Triangles/still-640.jpg"
     },
     "Simulation/Attractor": {
       "width": 1080,
@@ -3562,6 +5222,91 @@
       "rendered": "2026-09-10",
       "source": "29e882c101822e5a"
     },
+    "Patterns/Anamorphosis": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "bc3eff5c544d3182"
+    },
+    "Patterns/Bifurcation": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "138bf32c20bc43c0"
+    },
+    "Patterns/Billiards": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "9d3180004e92a99b"
+    },
+    "Patterns/BlueNoise": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "11aa4ec0fb51c55c"
+    },
+    "Patterns/Clothoid": {
+      "reason": "barely moves: 0.130 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "dcd3189ab48f6ec9"
+    },
+    "Patterns/InversionFractal": {
+      "reason": "barely moves: 0.246 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "089220cc95bb622e"
+    },
+    "Patterns/Kleinian": {
+      "reason": "barely moves: 0.896 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "4b3521e10c93afd6"
+    },
+    "Patterns/Knotwork": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "0b1ae1690e1bb779"
+    },
+    "Patterns/Kolam": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "04e949f6367dbcec"
+    },
+    "Patterns/LSystem": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "04f16242901c1d37"
+    },
+    "Patterns/LevyFlight": {
+      "reason": "barely moves: 0.538 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "ab58437343135368"
+    },
+    "Patterns/Marbling": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "ce11b0a6e4458779"
+    },
+    "Patterns/ParametricLSystem": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "10cae6ab6525bd76"
+    },
+    "Patterns/Rivers": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "7a722327c6cda4ee"
+    },
+    "Patterns/SelfAvoidingWalk": {
+      "reason": "barely moves: 0.649 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "8aa2f246edd39311"
+    },
+    "Patterns/TextureSynthesis": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "9b843933331dc2e8"
+    },
+    "Patterns/WarpGrid": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "6cbf1baeb7a9ea83"
+    },
     "Randomness/NoiseField": {
       "reason": "barely moves: 0.000 against a floor of 1.0",
       "rendered": "2026-09-10",
@@ -3622,6 +5367,36 @@
     "Rendering/LineSpray": {
       "reason": "barely moves: 0.018 against a floor of 1.0",
       "source": "44feca85bc68ae89"
+    },
+    "Shapes/Brushwork": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "bbd1c3fc297acf7f"
+    },
+    "Shapes/CombinatorsDetailing": {
+      "reason": "barely moves: 0.093 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "4fbe2a63c003d243"
+    },
+    "Shapes/Hulls": {
+      "reason": "barely moves: 0.695 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "51a451ff92420ce9"
+    },
+    "Shapes/StraightSkeleton": {
+      "reason": "barely moves: 0.525 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "4fee49235784f36a"
+    },
+    "Shapes/StrokeProfiles": {
+      "reason": "barely moves: 0.847 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "328f99b0c55ea726"
+    },
+    "Shapes/Watercolor": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "9f762914907d8aab"
     },
     "Simulation/Breeding": {
       "reason": "barely moves: 0.000 against a floor of 1.0",
