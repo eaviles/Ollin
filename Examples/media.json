@@ -1,6 +1,486 @@
 {
   "base": "https://media.ollin.art",
   "examples": {
+    "3D/Camera/CameraControl": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.686,
+      "source": "47f4ce095a080890",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 730077,
+        "loopSmall": 133600,
+        "still": 47531,
+        "stillSmall": 19196
+      },
+      "loop": "examples/3D/Camera/CameraControl/loop.mp4",
+      "loopSmall": "examples/3D/Camera/CameraControl/loop-640.mp4",
+      "still": "examples/3D/Camera/CameraControl/still.jpg",
+      "stillSmall": "examples/3D/Camera/CameraControl/still-640.jpg"
+    },
+    "3D/Camera/CameraMoves": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.354,
+      "source": "179017aee7d4b413",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1552929,
+        "loopSmall": 324191,
+        "still": 48700,
+        "stillSmall": 19131
+      },
+      "loop": "examples/3D/Camera/CameraMoves/loop.mp4",
+      "loopSmall": "examples/3D/Camera/CameraMoves/loop-640.mp4",
+      "still": "examples/3D/Camera/CameraMoves/still.jpg",
+      "stillSmall": "examples/3D/Camera/CameraMoves/still-640.jpg"
+    },
+    "3D/Camera/SceneViews": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.214,
+      "source": "351a8d958e992be4",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1462351,
+        "loopSmall": 272697,
+        "still": 49581,
+        "stillSmall": 21359
+      },
+      "loop": "examples/3D/Camera/SceneViews/loop.mp4",
+      "loopSmall": "examples/3D/Camera/SceneViews/loop-640.mp4",
+      "still": "examples/3D/Camera/SceneViews/still.jpg",
+      "stillSmall": "examples/3D/Camera/SceneViews/still-640.jpg"
+    },
+    "3D/Depth/ClosedLoopScan": {
+      "width": 1080,
+      "height": 608,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.613,
+      "source": "5dfc01d6feb3714f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1253140,
+        "loopSmall": 305945,
+        "still": 155189,
+        "stillSmall": 50166
+      },
+      "loop": "examples/3D/Depth/ClosedLoopScan/loop.mp4",
+      "loopSmall": "examples/3D/Depth/ClosedLoopScan/loop-640.mp4",
+      "still": "examples/3D/Depth/ClosedLoopScan/still.jpg",
+      "stillSmall": "examples/3D/Depth/ClosedLoopScan/still-640.jpg"
+    },
+    "3D/Depth/DepthCompositing": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.616,
+      "source": "6ab487515c387d1b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 5419695,
+        "loopSmall": 910729,
+        "still": 123334,
+        "stillSmall": 43954
+      },
+      "loop": "examples/3D/Depth/DepthCompositing/loop.mp4",
+      "loopSmall": "examples/3D/Depth/DepthCompositing/loop-640.mp4",
+      "still": "examples/3D/Depth/DepthCompositing/still.jpg",
+      "stillSmall": "examples/3D/Depth/DepthCompositing/still-640.jpg"
+    },
+    "3D/Effects/AmbientOcclusion": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 17.207,
+      "source": "db69e96903e6774a",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2540429,
+        "loopSmall": 532562,
+        "still": 100526,
+        "stillSmall": 38882
+      },
+      "loop": "examples/3D/Effects/AmbientOcclusion/loop.mp4",
+      "loopSmall": "examples/3D/Effects/AmbientOcclusion/loop-640.mp4",
+      "still": "examples/3D/Effects/AmbientOcclusion/still.jpg",
+      "stillSmall": "examples/3D/Effects/AmbientOcclusion/still-640.jpg"
+    },
+    "3D/Effects/Atmosphere": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 104.402,
+      "source": "928da4020f89d319",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1306359,
+        "loopSmall": 268500,
+        "still": 41857,
+        "stillSmall": 16443
+      },
+      "loop": "examples/3D/Effects/Atmosphere/loop.mp4",
+      "loopSmall": "examples/3D/Effects/Atmosphere/loop-640.mp4",
+      "still": "examples/3D/Effects/Atmosphere/still.jpg",
+      "stillSmall": "examples/3D/Effects/Atmosphere/still-640.jpg"
+    },
+    "3D/Effects/ContactShadows": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.374,
+      "source": "1734009604e6ebaf",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 899245,
+        "loopSmall": 160330,
+        "still": 34578,
+        "stillSmall": 13793
+      },
+      "loop": "examples/3D/Effects/ContactShadows/loop.mp4",
+      "loopSmall": "examples/3D/Effects/ContactShadows/loop-640.mp4",
+      "still": "examples/3D/Effects/ContactShadows/still.jpg",
+      "stillSmall": "examples/3D/Effects/ContactShadows/still-640.jpg"
+    },
+    "3D/Effects/FrameInterpolation": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.046,
+      "source": "deb2003dfe6fda4f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2052285,
+        "loopSmall": 519525,
+        "still": 68699,
+        "stillSmall": 27289
+      },
+      "loop": "examples/3D/Effects/FrameInterpolation/loop.mp4",
+      "loopSmall": "examples/3D/Effects/FrameInterpolation/loop-640.mp4",
+      "still": "examples/3D/Effects/FrameInterpolation/still.jpg",
+      "stillSmall": "examples/3D/Effects/FrameInterpolation/still-640.jpg"
+    },
+    "3D/Effects/LensFlare": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.07,
+      "source": "ef527ee76b06e497",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 790290,
+        "loopSmall": 146177,
+        "still": 38476,
+        "stillSmall": 15423
+      },
+      "loop": "examples/3D/Effects/LensFlare/loop.mp4",
+      "loopSmall": "examples/3D/Effects/LensFlare/loop-640.mp4",
+      "still": "examples/3D/Effects/LensFlare/still.jpg",
+      "stillSmall": "examples/3D/Effects/LensFlare/still-640.jpg"
+    },
+    "3D/Effects/MotionBlur": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.816,
+      "source": "88f32459519177d5",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1144328,
+        "loopSmall": 234540,
+        "still": 36623,
+        "stillSmall": 14327
+      },
+      "loop": "examples/3D/Effects/MotionBlur/loop.mp4",
+      "loopSmall": "examples/3D/Effects/MotionBlur/loop-640.mp4",
+      "still": "examples/3D/Effects/MotionBlur/still.jpg",
+      "stillSmall": "examples/3D/Effects/MotionBlur/still-640.jpg"
+    },
+    "3D/Effects/PathTraced": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.747,
+      "source": "ff4355a85f2abeb4",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1521358,
+        "loopSmall": 320382,
+        "still": 102280,
+        "stillSmall": 39432
+      },
+      "loop": "examples/3D/Effects/PathTraced/loop.mp4",
+      "loopSmall": "examples/3D/Effects/PathTraced/loop-640.mp4",
+      "still": "examples/3D/Effects/PathTraced/still.jpg",
+      "stillSmall": "examples/3D/Effects/PathTraced/still-640.jpg"
+    },
+    "3D/Effects/SceneDefocus": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.132,
+      "source": "aeaaf3e51f1f615d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1060530,
+        "loopSmall": 206057,
+        "still": 48008,
+        "stillSmall": 18801
+      },
+      "loop": "examples/3D/Effects/SceneDefocus/loop.mp4",
+      "loopSmall": "examples/3D/Effects/SceneDefocus/loop-640.mp4",
+      "still": "examples/3D/Effects/SceneDefocus/still.jpg",
+      "stillSmall": "examples/3D/Effects/SceneDefocus/still-640.jpg"
+    },
+    "3D/Effects/ScreenSpaceReflections": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.563,
+      "source": "af19a75d920cc370",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1849077,
+        "loopSmall": 417185,
+        "still": 78505,
+        "stillSmall": 30111
+      },
+      "loop": "examples/3D/Effects/ScreenSpaceReflections/loop.mp4",
+      "loopSmall": "examples/3D/Effects/ScreenSpaceReflections/loop-640.mp4",
+      "still": "examples/3D/Effects/ScreenSpaceReflections/still.jpg",
+      "stillSmall": "examples/3D/Effects/ScreenSpaceReflections/still-640.jpg"
+    },
+    "3D/Effects/SpecularAntialias": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.121,
+      "source": "c85623e425c2fa32",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 7807029,
+        "loopSmall": 1937467,
+        "still": 307573,
+        "stillSmall": 90039
+      },
+      "loop": "examples/3D/Effects/SpecularAntialias/loop.mp4",
+      "loopSmall": "examples/3D/Effects/SpecularAntialias/loop-640.mp4",
+      "still": "examples/3D/Effects/SpecularAntialias/still.jpg",
+      "stillSmall": "examples/3D/Effects/SpecularAntialias/still-640.jpg"
+    },
+    "3D/Effects/TemporalAA": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.611,
+      "source": "8c84b4441bc463bc",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1326207,
+        "loopSmall": 310656,
+        "still": 70392,
+        "stillSmall": 29343
+      },
+      "loop": "examples/3D/Effects/TemporalAA/loop.mp4",
+      "loopSmall": "examples/3D/Effects/TemporalAA/loop-640.mp4",
+      "still": "examples/3D/Effects/TemporalAA/still.jpg",
+      "stillSmall": "examples/3D/Effects/TemporalAA/still-640.jpg"
+    },
+    "3D/Effects/Upscaling": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.759,
+      "source": "813e72fc77f53313",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2305930,
+        "loopSmall": 414555,
+        "still": 129249,
+        "stillSmall": 46962
+      },
+      "loop": "examples/3D/Effects/Upscaling/loop.mp4",
+      "loopSmall": "examples/3D/Effects/Upscaling/loop-640.mp4",
+      "still": "examples/3D/Effects/Upscaling/still.jpg",
+      "stillSmall": "examples/3D/Effects/Upscaling/still-640.jpg"
+    },
+    "3D/Environments/Cloudscape": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.816,
+      "source": "6428391718f09e2b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 812062,
+        "loopSmall": 160782,
+        "still": 47628,
+        "stillSmall": 18014
+      },
+      "loop": "examples/3D/Environments/Cloudscape/loop.mp4",
+      "loopSmall": "examples/3D/Environments/Cloudscape/loop-640.mp4",
+      "still": "examples/3D/Environments/Cloudscape/still.jpg",
+      "stillSmall": "examples/3D/Environments/Cloudscape/still-640.jpg"
+    },
+    "3D/Environments/EnvironmentGallery": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 55.715,
+      "source": "243065441255c3ea",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1463059,
+        "loopSmall": 324988,
+        "still": 87207,
+        "stillSmall": 32481
+      },
+      "loop": "examples/3D/Environments/EnvironmentGallery/loop.mp4",
+      "loopSmall": "examples/3D/Environments/EnvironmentGallery/loop-640.mp4",
+      "still": "examples/3D/Environments/EnvironmentGallery/still.jpg",
+      "stillSmall": "examples/3D/Environments/EnvironmentGallery/still-640.jpg"
+    },
+    "3D/Environments/ImageBasedLighting": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 31.823,
+      "source": "23de0569c2cb0314",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1957503,
+        "loopSmall": 451674,
+        "still": 97906,
+        "stillSmall": 37449
+      },
+      "loop": "examples/3D/Environments/ImageBasedLighting/loop.mp4",
+      "loopSmall": "examples/3D/Environments/ImageBasedLighting/loop-640.mp4",
+      "still": "examples/3D/Environments/ImageBasedLighting/still.jpg",
+      "stillSmall": "examples/3D/Environments/ImageBasedLighting/still-640.jpg"
+    },
+    "3D/Environments/ProceduralSky": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.964,
+      "source": "da0b55cba3bebc97",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1077864,
+        "loopSmall": 217849,
+        "still": 45186,
+        "stillSmall": 17862
+      },
+      "loop": "examples/3D/Environments/ProceduralSky/loop.mp4",
+      "loopSmall": "examples/3D/Environments/ProceduralSky/loop-640.mp4",
+      "still": "examples/3D/Environments/ProceduralSky/still.jpg",
+      "stillSmall": "examples/3D/Environments/ProceduralSky/still-640.jpg"
+    },
+    "3D/Environments/RemoteEnvironment": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 20.377,
+      "source": "432fc8dd096fd31e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2345497,
+        "loopSmall": 599100,
+        "still": 167935,
+        "stillSmall": 63067
+      },
+      "loop": "examples/3D/Environments/RemoteEnvironment/loop.mp4",
+      "loopSmall": "examples/3D/Environments/RemoteEnvironment/loop-640.mp4",
+      "still": "examples/3D/Environments/RemoteEnvironment/still.jpg",
+      "stillSmall": "examples/3D/Environments/RemoteEnvironment/still-640.jpg"
+    },
+    "3D/Lighting/AreaLights": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.425,
+      "source": "650c5722ab006ee0",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1218929,
+        "loopSmall": 245458,
+        "still": 75493,
+        "stillSmall": 29559
+      },
+      "loop": "examples/3D/Lighting/AreaLights/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/AreaLights/loop-640.mp4",
+      "still": "examples/3D/Lighting/AreaLights/still.jpg",
+      "stillSmall": "examples/3D/Lighting/AreaLights/still-640.jpg"
+    },
+    "3D/Lighting/Caustics": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.186,
+      "source": "03520c8da0465cd4",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3057655,
+        "loopSmall": 371633,
+        "still": 73392,
+        "stillSmall": 25270
+      },
+      "loop": "examples/3D/Lighting/Caustics/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/Caustics/loop-640.mp4",
+      "still": "examples/3D/Lighting/Caustics/still.jpg",
+      "stillSmall": "examples/3D/Lighting/Caustics/still-640.jpg"
+    },
     "3D/Lighting/GlobalIllumination": {
       "width": 1080,
       "height": 1080,
@@ -19,6 +499,166 @@
       "loopSmall": "examples/3D/Lighting/GlobalIllumination/loop-640.mp4",
       "still": "examples/3D/Lighting/GlobalIllumination/still.jpg",
       "stillSmall": "examples/3D/Lighting/GlobalIllumination/still-640.jpg"
+    },
+    "3D/Lighting/LightShaping": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.643,
+      "source": "77870456fa9b806f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 752668,
+        "loopSmall": 155040,
+        "still": 43158,
+        "stillSmall": 17424
+      },
+      "loop": "examples/3D/Lighting/LightShaping/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/LightShaping/loop-640.mp4",
+      "still": "examples/3D/Lighting/LightShaping/still.jpg",
+      "stillSmall": "examples/3D/Lighting/LightShaping/still-640.jpg"
+    },
+    "3D/Lighting/Lighting": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 12.712,
+      "source": "b203953ceee15697",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1710678,
+        "loopSmall": 401128,
+        "still": 80279,
+        "stillSmall": 31333
+      },
+      "loop": "examples/3D/Lighting/Lighting/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/Lighting/loop-640.mp4",
+      "still": "examples/3D/Lighting/Lighting/still.jpg",
+      "stillSmall": "examples/3D/Lighting/Lighting/still-640.jpg"
+    },
+    "3D/Lighting/LightingPresets": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.6,
+      "source": "e852b52e368e6848",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 889705,
+        "loopSmall": 177078,
+        "still": 55234,
+        "stillSmall": 22053
+      },
+      "loop": "examples/3D/Lighting/LightingPresets/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/LightingPresets/loop-640.mp4",
+      "still": "examples/3D/Lighting/LightingPresets/still.jpg",
+      "stillSmall": "examples/3D/Lighting/LightingPresets/still-640.jpg"
+    },
+    "3D/Lighting/ManyCasters": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.508,
+      "source": "6f0d8f5942f23296",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1617599,
+        "loopSmall": 352655,
+        "still": 73839,
+        "stillSmall": 29664
+      },
+      "loop": "examples/3D/Lighting/ManyCasters/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/ManyCasters/loop-640.mp4",
+      "still": "examples/3D/Lighting/ManyCasters/still.jpg",
+      "stillSmall": "examples/3D/Lighting/ManyCasters/still-640.jpg"
+    },
+    "3D/Lighting/PointShadow": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 56.089,
+      "source": "807535f9b0fc9d68",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2850837,
+        "loopSmall": 619088,
+        "still": 104611,
+        "stillSmall": 40527
+      },
+      "loop": "examples/3D/Lighting/PointShadow/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/PointShadow/loop-640.mp4",
+      "still": "examples/3D/Lighting/PointShadow/still.jpg",
+      "stillSmall": "examples/3D/Lighting/PointShadow/still-640.jpg"
+    },
+    "3D/Lighting/Shadows": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 27.438,
+      "source": "ea98b496846ec8c9",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1796843,
+        "loopSmall": 388461,
+        "still": 72370,
+        "stillSmall": 29350
+      },
+      "loop": "examples/3D/Lighting/Shadows/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/Shadows/loop-640.mp4",
+      "still": "examples/3D/Lighting/Shadows/still.jpg",
+      "stillSmall": "examples/3D/Lighting/Shadows/still-640.jpg"
+    },
+    "3D/Lighting/SpotShadow": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 18.187,
+      "source": "d11698a8e45620e3",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1574672,
+        "loopSmall": 333657,
+        "still": 66437,
+        "stillSmall": 26431
+      },
+      "loop": "examples/3D/Lighting/SpotShadow/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/SpotShadow/loop-640.mp4",
+      "still": "examples/3D/Lighting/SpotShadow/still.jpg",
+      "stillSmall": "examples/3D/Lighting/SpotShadow/still-640.jpg"
+    },
+    "3D/Lighting/VolumetricLight": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.329,
+      "source": "daf63b389251b37d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 953587,
+        "loopSmall": 188692,
+        "still": 29830,
+        "stillSmall": 12026
+      },
+      "loop": "examples/3D/Lighting/VolumetricLight/loop.mp4",
+      "loopSmall": "examples/3D/Lighting/VolumetricLight/loop-640.mp4",
+      "still": "examples/3D/Lighting/VolumetricLight/still.jpg",
+      "stillSmall": "examples/3D/Lighting/VolumetricLight/still-640.jpg"
     },
     "Audio/ChordSymbols": {
       "width": 1080,
@@ -4874,6 +5514,111 @@
     }
   },
   "passedOver": {
+    "3D/Depth/DepthCloud": {
+      "reason": "waits on hardware: imports OllinVision",
+      "rendered": "2026-09-10",
+      "source": "9884ab8d3643a17f"
+    },
+    "3D/Depth/DepthLiftedPose": {
+      "reason": "waits on hardware: imports OllinVision",
+      "rendered": "2026-09-10",
+      "source": "557b65d3aa6ac8e1"
+    },
+    "3D/Depth/DepthOcclusion": {
+      "reason": "waits on hardware: imports OllinVision",
+      "rendered": "2026-09-10",
+      "source": "45683d3ebd9f9354"
+    },
+    "3D/Depth/Record3DCloud": {
+      "reason": "waits on hardware: imports OllinRecord3D",
+      "rendered": "2026-09-10",
+      "source": "9b23623f9aa477a4"
+    },
+    "3D/Effects/RayTracedReflections": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "8e9c374c6c84671e"
+    },
+    "3D/Environments/LiveEnvironment": {
+      "reason": "waits on hardware: imports OllinVision",
+      "rendered": "2026-09-10",
+      "source": "5bb491a94a4c4d78"
+    },
+    "3D/Phone/PhoneAttention": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "ef230f21f15bc0e1"
+    },
+    "3D/Phone/PhoneBodyFigure": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "83c51a3bc48fcc96"
+    },
+    "3D/Phone/PhoneBodyPose": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "3034971cf166d2a8"
+    },
+    "3D/Phone/PhoneCostume": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "9653bab73bf66efd"
+    },
+    "3D/Phone/PhoneDepthCloud": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "2cf1012cb626f3bf"
+    },
+    "3D/Phone/PhoneFace": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "c0566bed6cbc8a37"
+    },
+    "3D/Phone/PhoneGaze": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "4f517f6ba2dd3aa7"
+    },
+    "3D/Phone/PhoneHands": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "34bd7373dcc9e815"
+    },
+    "3D/Phone/PhoneMarkers": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "966b996b36dfc10c"
+    },
+    "3D/Phone/PhonePointer": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "911accf03ea88c57"
+    },
+    "3D/Phone/PhoneRoomMesh": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "dc8256f7137dbd8a"
+    },
+    "3D/Phone/PhoneRoomPlanes": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "d8de12d57f01c4c9"
+    },
+    "3D/Phone/PhoneSegmentation": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "e3d39c5f60b0df4c"
+    },
+    "3D/Phone/PhoneWorldScan": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "53aa3ef959bd1cb0"
+    },
+    "3D/Phone/PhoneWorldText": {
+      "reason": "waits on hardware: imports OllinPhone",
+      "rendered": "2026-09-10",
+      "source": "71c74d55e11d11fb"
+    },
     "Audio/Bowing": {
       "reason": "barely moves: 0.000 against a floor of 1.0",
       "rendered": "2026-09-10",
