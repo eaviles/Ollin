@@ -14,7 +14,7 @@ The API borrows the friendly `setup()`/`draw()` feel of [p5.js](https://p5js.org
 
 Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
 
-- **Platform:** macOS 26+ with a Metal-capable GPU, Swift 6.3+ (Xcode 26); a sketch also runs on iOS 26 as an app, [worked on from the Mac](Docs/Tools/OnThePhone.md); Apple platforms only, [by design](#why-apple-only)
+- **Platform:** macOS 26+ and Swift 6.3+ (Xcode 26), on any Mac that runs them. There is no separate graphics requirement: every hardware feature is asked for at run time and steps down when it is missing, so an M1 runs everything, tracing rays in software where an M3 and later have dedicated units for it. A sketch also runs on iOS 26 as an app, [worked on from the Mac](Docs/Tools/OnThePhone.md). Apple platforms only, [by design](#why-apple-only)
 - **Rendering:** Metal, built on Foundation / SwiftUI / MetalKit / simd; no package dependencies; the C/C++ libraries it does use (Box2D, Jolt, libtess2, Clipper2, Syphon, and a few smaller pieces) are vendored under `External/` with licenses intact and provenance recorded ([details](ATTRIBUTION.md#bundled-third-party-code))
 - **License:** MIT
 - **Built with:** an AI coding assistant (Claude) under [@eaviles](https://github.com/eaviles)'s direction; see [Built with AI](#built-with-ai)
