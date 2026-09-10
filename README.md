@@ -1,9 +1,4 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Logo/ollin-mark-dark.svg">
-  <img src="Logo/ollin-mark.svg" alt="" width="96">
-</picture>
-
-# Ollin
+# <picture><source media="(prefers-color-scheme: dark)" srcset="Logo/ollin-mark-dark.svg"><img src="Logo/ollin-mark.svg" alt="" height="40" align="top"></picture> Ollin
 
 **A Metal-rendered creative-coding framework for Swift on Apple platforms.**
 
