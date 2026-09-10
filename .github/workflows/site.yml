@@ -50,6 +50,12 @@ jobs:
   build:
     name: Build the site
     runs-on: macos-26
+    # The guard that skipped this while the repository was private: a macOS
+    # runner bills at ten times the rate there and Pages needs a paid plan, so
+    # a push built nothing and only a hand-dispatch did. Public since
+    # 2026-09-10, so it answers true on its own and every push that touches
+    # the site's sources publishes. Kept rather than deleted because it is
+    # what makes a fork of this repository behave the same way.
     if: ${{ !github.event.repository.private || github.event_name == 'workflow_dispatch' }}
     timeout-minutes: 30
     steps:

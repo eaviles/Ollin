@@ -35,20 +35,16 @@ name: Build
 # once the repo is public, from a contributor. Public is also when this stops
 # costing anything: standard runners, macOS among them, are free there.
 #
-# The flip to public is therefore also the moment to add the push trigger
-# @eaviles has already called (2026-09-08): once the runners are free, every
-# merge and every direct push to main runs this, so a break is found by the
-# commit that made it rather than by whoever dispatches next. Add it here as
-#
-#     push:
-#       branches: [main]
-#
-# and nothing else needs to move: the concurrency group already supersedes an
-# in-flight run of the same ref, the timeout still caps a wedged runner, and
-# the Examples job's own path check already skips its build step when nothing
-# an example compiles against was touched. Doing it before the flip is the one
-# thing to avoid, since it is the volume that exhausted a month's allowance in
-# three days, twice.
+# The repository went public on 2026-09-10, so the push trigger @eaviles
+# called for that moment (2026-09-08) is in below: the runners are free here,
+# and every merge and every direct push to main runs this, so a break is found
+# by the commit that made it rather than by whoever dispatches next. Nothing
+# else had to move: the concurrency group already supersedes an in-flight run
+# of the same ref, the timeout still caps a wedged runner, and the Examples
+# job's own path check already skips its build step when nothing an example
+# compiles against was touched. Adding it while the repository was private is
+# the thing that was avoided, since that volume exhausted a month's allowance
+# in three days, twice.
 #
 # Every pull request, with no path filter, because both jobs are required
 # checks on main and a required check that never runs is a merge that can never
@@ -61,6 +57,8 @@ name: Build
 # the same need from inside: it always runs and reports, and skips its build
 # step when the pull request touched nothing an example compiles against.
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
