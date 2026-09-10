@@ -6,6 +6,14 @@
 
 These examples cover palettes, colormaps, and color driven by a value or by time.
 
+| [![ColorWaves](https://media.ollin.art/examples/Color/ColorWaves/still-640.jpg)](ColorWaves/) | [![Colormaps](https://media.ollin.art/examples/Color/Colormaps/still-640.jpg)](Colormaps/) | [![Gradients](https://media.ollin.art/examples/Color/Gradients/still-640.jpg)](Gradients/) | [![HSBWheel](https://media.ollin.art/examples/Color/HSBWheel/still-640.jpg)](HSBWheel/) |
+|---|---|---|---|
+| [ColorWaves](ColorWaves/) | [Colormaps](Colormaps/) | [Gradients](Gradients/) | [HSBWheel](HSBWheel/) |
+| [![Mixing](https://media.ollin.art/examples/Color/Mixing/still-640.jpg)](Mixing/) | [![PaletteFile](https://media.ollin.art/examples/Color/PaletteFile/still-640.jpg)](PaletteFile/) | [![PaletteFromImage](https://media.ollin.art/examples/Color/PaletteFromImage/still-640.jpg)](PaletteFromImage/) | [![SoftProof](https://media.ollin.art/examples/Color/SoftProof/still-640.jpg)](SoftProof/) |
+| [Mixing](Mixing/) | [PaletteFile](PaletteFile/) | [PaletteFromImage](PaletteFromImage/) | [SoftProof](SoftProof/) |
+| [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg)](Swatchbook/) |  |  |  |
+| [Swatchbook](Swatchbook/) |  |  |  |
+
 | Example | What it shows |
 |---|---|
 | [Colormaps](Colormaps/Sketch.swift) | the eight perceptual `Colormap` ramps drawn as horizontal bands that map a value to a color, with the seven cosine-gradient `CosinePalette` presets scrolling in a labeled section below |

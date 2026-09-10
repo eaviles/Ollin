@@ -26,3 +26,4 @@ Learn more:
   ```
 
 These sketches are homages after Vera Molnár, made for learning. They are not reproductions of specific works. They are not affiliated with or endorsed by the artist or her estate.
+

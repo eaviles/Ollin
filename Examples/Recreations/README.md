@@ -25,3 +25,4 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**Manfred Mohr**](ManfredMohr/). A cube taken apart and used as an alphabet, and walks through its four-dimensional counterpart.
 - [**Josef Albers**](JosefAlbers/). Three or four nested squares set low in the panel, and a new set of colors on them every few seconds, each chosen so the squares change one another.
 - [**John Whitney**](JohnWhitney/). Points on concentric circles, each turning at a whole-number multiple of the first, so the fan gathers into a star at every simple fraction of the cycle and comes back to one spoke at the end of it.
+

@@ -49,3 +49,7 @@ Learn more:
   ```
 
 These are homages after Manfred Mohr, made for learning. They are not reproductions of specific works, and they are not affiliated with or endorsed by the artist. No source of his was used, because his programs ran on a mainframe and are not published.
+
+| [![CubicLimit](https://media.ollin.art/examples/Recreations/ManfredMohr/CubicLimit/still-640.jpg)](CubicLimit/) | [![DiagonalPath](https://media.ollin.art/examples/Recreations/ManfredMohr/DiagonalPath/still-640.jpg)](DiagonalPath/) |  |  |
+|---|---|---|---|
+| [CubicLimit](CubicLimit/) | [DiagonalPath](DiagonalPath/) |  |  |

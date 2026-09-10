@@ -6,6 +6,10 @@
 
 Sketches made for a web page. Each one uses only the shapes and shaders a browser can carry, and its colors are parameters, so a page can set its own theme.
 
+| [![BreathingRing](https://media.ollin.art/examples/Web/BreathingRing/still-640.jpg)](BreathingRing/) |  |  |  |
+|---|---|---|---|
+| [BreathingRing](BreathingRing/) |  |  |  |
+
 | Example | What it shows |
 |---|---|
 | [BreathingRing](BreathingRing/Sketch.swift) | a ring of drifting, breathing circles that loops without a seam: the picture the site opens on, written as a sketch |

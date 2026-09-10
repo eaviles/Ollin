@@ -10,6 +10,14 @@ On the way in, there are three sources: `AudioInput` for the microphone, `AudioP
 
 The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/Helpers/Synthesis.md), [Composition](../../Docs/Helpers/Composition.md), [Sonification](../../Docs/Helpers/Sonification.md), and [Listening](../../Docs/Helpers/Listening.md).
 
+| [![ChordSymbols](https://media.ollin.art/examples/Audio/ChordSymbols/still-640.jpg)](ChordSymbols/) | [![FilePlayer](https://media.ollin.art/examples/Audio/FilePlayer/still-640.jpg)](FilePlayer/) | [![Generative](https://media.ollin.art/examples/Audio/Generative/still-640.jpg)](Generative/) | [![Movement](https://media.ollin.art/examples/Audio/Movement/still-640.jpg)](Movement/) |
+|---|---|---|---|
+| [ChordSymbols](ChordSymbols/) | [FilePlayer](FilePlayer/) | [Generative](Generative/) | [Movement](Movement/) |
+| [![OwnSampler](https://media.ollin.art/examples/Audio/OwnSampler/still-640.jpg)](OwnSampler/) | [![Sampler](https://media.ollin.art/examples/Audio/Sampler/still-640.jpg)](Sampler/) | [![SoundInAnExport](https://media.ollin.art/examples/Audio/SoundInAnExport/still-640.jpg)](SoundInAnExport/) | [![Spatial](https://media.ollin.art/examples/Audio/Spatial/still-640.jpg)](Spatial/) |
+| [OwnSampler](OwnSampler/) | [Sampler](Sampler/) | [SoundInAnExport](SoundInAnExport/) | [Spatial](Spatial/) |
+| [![Strings](https://media.ollin.art/examples/Audio/Strings/still-640.jpg)](Strings/) |  |  |  |
+| [Strings](Strings/) |  |  |  |
+
 | Example | What it shows |
 |---|---|
 | [Spectrum](Spectrum/Sketch.swift) | a radial ring of normalized `bands` driven by the live microphone, with the central disc flashing on each detected `beat` (clap at it). Until permission is granted, a generated sawtooth `Tone` stands in. It glides in pitch, and the disc pulses on the level. This shows how permission works, because `AudioInput.start()` asks for it and the picture plays either way (`AudioInput`, `Tone`, `bands`, `beat`) |

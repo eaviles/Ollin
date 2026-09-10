@@ -12,6 +12,12 @@ to write Metal. See [Shaders](../../Docs/Shaders/Shaders.md),
 the [shader library reference](../../Docs/Shaders/ShaderLibrary.md), and
 [Visuals](../../Docs/Shaders/Visuals.md).
 
+| [![DomainWarp](https://media.ollin.art/examples/Shaders/DomainWarp/still-640.jpg)](DomainWarp/) | [![HelloShader](https://media.ollin.art/examples/Shaders/HelloShader/still-640.jpg)](HelloShader/) | [![ShaderBlend](https://media.ollin.art/examples/Shaders/ShaderBlend/still-640.jpg)](ShaderBlend/) | [![ShaderFilter](https://media.ollin.art/examples/Shaders/ShaderFilter/still-640.jpg)](ShaderFilter/) |
+|---|---|---|---|
+| [DomainWarp](DomainWarp/) | [HelloShader](HelloShader/) | [ShaderBlend](ShaderBlend/) | [ShaderFilter](ShaderFilter/) |
+| [![VisualCatalog](https://media.ollin.art/examples/Shaders/VisualCatalog/still-640.jpg)](VisualCatalog/) | [![VisualSynth](https://media.ollin.art/examples/Shaders/VisualSynth/still-640.jpg)](VisualSynth/) |  |  |
+| [VisualCatalog](VisualCatalog/) | [VisualSynth](VisualSynth/) |  |  |
+
 | Example | What it shows |
 |---|---|
 | [HelloShader](HelloShader/Sketch.swift) | the smallest user shader, written both ways: an inline `Shader("...")` plasma beside the same shader loaded from a `.metal` file with `Shader(resource:in:)`. The file version hot-reloads on save under OllinLive, with no swiftc pass |

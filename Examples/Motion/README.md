@@ -6,6 +6,22 @@
 
 Animation driven by `time`. The draw loop runs continuously by default, so nothing has to start it.
 
+| [![ArcModes](https://media.ollin.art/examples/Motion/ArcModes/still-640.jpg)](ArcModes/) | [![Attractor](https://media.ollin.art/examples/Motion/Attractor/still-640.jpg)](Attractor/) | [![Automation](https://media.ollin.art/examples/Motion/Automation/still-640.jpg)](Automation/) | [![DerivedCurves](https://media.ollin.art/examples/Motion/DerivedCurves/still-640.jpg)](DerivedCurves/) |
+|---|---|---|---|
+| [ArcModes](ArcModes/) | [Attractor](Attractor/) | [Automation](Automation/) | [DerivedCurves](DerivedCurves/) |
+| [![DoublePendulum](https://media.ollin.art/examples/Motion/DoublePendulum/still-640.jpg)](DoublePendulum/) | [![Easing](https://media.ollin.art/examples/Motion/Easing/still-640.jpg)](Easing/) | [![EasingGallery](https://media.ollin.art/examples/Motion/EasingGallery/still-640.jpg)](EasingGallery/) | [![EllipseField](https://media.ollin.art/examples/Motion/EllipseField/still-640.jpg)](EllipseField/) |
+| [DoublePendulum](DoublePendulum/) | [Easing](Easing/) | [EasingGallery](EasingGallery/) | [EllipseField](EllipseField/) |
+| [![FlowField](https://media.ollin.art/examples/Motion/FlowField/still-640.jpg)](FlowField/) | [![Formula](https://media.ollin.art/examples/Motion/Formula/still-640.jpg)](Formula/) | [![FormulaParts](https://media.ollin.art/examples/Motion/FormulaParts/still-640.jpg)](FormulaParts/) | [![Harmonograph](https://media.ollin.art/examples/Motion/Harmonograph/still-640.jpg)](Harmonograph/) |
+| [FlowField](FlowField/) | [Formula](Formula/) | [FormulaParts](FormulaParts/) | [Harmonograph](Harmonograph/) |
+| [![InverseKinematics](https://media.ollin.art/examples/Motion/InverseKinematics/still-640.jpg)](InverseKinematics/) | [![Lissajous](https://media.ollin.art/examples/Motion/Lissajous/still-640.jpg)](Lissajous/) | [![Mandala](https://media.ollin.art/examples/Motion/Mandala/still-640.jpg)](Mandala/) | [![Morphing](https://media.ollin.art/examples/Motion/Morphing/still-640.jpg)](Morphing/) |
+| [InverseKinematics](InverseKinematics/) | [Lissajous](Lissajous/) | [Mandala](Mandala/) | [Morphing](Morphing/) |
+| [![Myriad](https://media.ollin.art/examples/Motion/Myriad/still-640.jpg)](Myriad/) | [![NBody](https://media.ollin.art/examples/Motion/NBody/still-640.jpg)](NBody/) | [![Orbits](https://media.ollin.art/examples/Motion/Orbits/still-640.jpg)](Orbits/) | [![PerfectLoop](https://media.ollin.art/examples/Motion/PerfectLoop/still-640.jpg)](PerfectLoop/) |
+| [Myriad](Myriad/) | [NBody](NBody/) | [Orbits](Orbits/) | [PerfectLoop](PerfectLoop/) |
+| [![Petals](https://media.ollin.art/examples/Motion/Petals/still-640.jpg)](Petals/) | [![SineSweep](https://media.ollin.art/examples/Motion/SineSweep/still-640.jpg)](SineSweep/) | [![Smoothing](https://media.ollin.art/examples/Motion/Smoothing/still-640.jpg)](Smoothing/) | [![Spokes](https://media.ollin.art/examples/Motion/Spokes/still-640.jpg)](Spokes/) |
+| [Petals](Petals/) | [SineSweep](SineSweep/) | [Smoothing](Smoothing/) | [Spokes](Spokes/) |
+| [![Springs](https://media.ollin.art/examples/Motion/Springs/still-640.jpg)](Springs/) | [![Sway](https://media.ollin.art/examples/Motion/Sway/still-640.jpg)](Sway/) |  |  |
+| [Springs](Springs/) | [Sway](Sway/) |  |  |
+
 | Example | What it shows |
 |---|---|
 | [ArcModes](ArcModes/Sketch.swift) | the three `drawArc` closing modes (open, chord, pie) side by side under an animated sweep |

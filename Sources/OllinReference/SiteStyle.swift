@@ -170,6 +170,10 @@ enum SiteStyle {
     .prose td:first-child { white-space: nowrap; }
     .prose a[name], .prose a[id] { display: block; position: relative; top: -72px; visibility: hidden; }
 
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin: 0 0 2rem; }
+    .gallery figure { margin: 0; }
+    .gallery img, .gallery video { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 12px; background: var(--surface); }
+    .gallery figcaption { margin-top: 0.4rem; font-size: 13px; line-height: 1.3; color: var(--text-2); }
     .example-clip { margin: 0 0 1.75rem; }
     .example-clip video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.45rem 1.25rem; font-size: 15px; margin: 0 0 1.75rem; padding: 1rem 1.25rem; background: var(--surface); border-radius: 14px; }

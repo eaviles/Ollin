@@ -6,6 +6,14 @@
 
 These examples load, draw, tint, and author raster images through the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript. They also cover the image-as-input renderings, which turn a picture into glyphs, streaks, halftone dots, a single line, a branching tree of veins, a wound thread, or a molten field.
 
+| [![Autostereogram](https://media.ollin.art/examples/Images/Autostereogram/still-640.jpg)](Autostereogram/) | [![GlyphMosaic](https://media.ollin.art/examples/Images/GlyphMosaic/still-640.jpg)](GlyphMosaic/) | [![Halftone](https://media.ollin.art/examples/Images/Halftone/still-640.jpg)](Halftone/) | [![LuminanceMelt](https://media.ollin.art/examples/Images/LuminanceMelt/still-640.jpg)](LuminanceMelt/) |
+|---|---|---|---|
+| [Autostereogram](Autostereogram/) | [GlyphMosaic](GlyphMosaic/) | [Halftone](Halftone/) | [LuminanceMelt](LuminanceMelt/) |
+| [![PhotoMosaic](https://media.ollin.art/examples/Images/PhotoMosaic/still-640.jpg)](PhotoMosaic/) | [![PixelField](https://media.ollin.art/examples/Images/PixelField/still-640.jpg)](PixelField/) | [![PixelSort](https://media.ollin.art/examples/Images/PixelSort/still-640.jpg)](PixelSort/) | [![SeamCarve](https://media.ollin.art/examples/Images/SeamCarve/still-640.jpg)](SeamCarve/) |
+| [PhotoMosaic](PhotoMosaic/) | [PixelField](PixelField/) | [PixelSort](PixelSort/) | [SeamCarve](SeamCarve/) |
+| [![SingleLine](https://media.ollin.art/examples/Images/SingleLine/still-640.jpg)](SingleLine/) | [![SlitScan](https://media.ollin.art/examples/Images/SlitScan/still-640.jpg)](SlitScan/) | [![SpanningTree](https://media.ollin.art/examples/Images/SpanningTree/still-640.jpg)](SpanningTree/) | [![StringArt](https://media.ollin.art/examples/Images/StringArt/still-640.jpg)](StringArt/) |
+| [SingleLine](SingleLine/) | [SlitScan](SlitScan/) | [SpanningTree](SpanningTree/) | [StringArt](StringArt/) |
+
 | Example | What it shows |
 |---|---|
 | [Dropped](Dropped/Sketch.swift) | pictures dropped on the window from the Finder, each landing where it was dropped: `filesDropped()` and `droppedFiles()` hand over the paths, `loadImage` reads them, and a file that is not a picture is named instead |

@@ -434,6 +434,7 @@ public enum HTML {
             cells.append(trimmed)
         }
         guard let header = cells.first else { return "" }
+        if header.allSatisfy({ $0.hasPrefix("[![") }) { return gallery(cells, resolve: resolve) }
 
         var out = "<div class=\"table\"><table>\n<thead><tr>"
         for cell in header { out += "<th>\(inline(cell, resolve: resolve))</th>" }
@@ -449,6 +450,72 @@ public enum HTML {
         out += "</tbody>\n</table></div>"
         return out
     }
+
+    /// A listing's picture grid, which a table of linked stills is written as
+    /// in the markdown so that GitHub shows the same file.
+    ///
+    /// The rows come in pairs, a row of pictures and the row of names under
+    /// it, and each pair becomes one figure, so the grid reflows to the width
+    /// of the screen instead of scrolling sideways as a table would. The
+    /// script swaps a cell's still for its small clip while the pointer rests
+    /// on it: nothing is fetched until then, a moment's delay means sweeping
+    /// across the grid asks for nothing, and a reader who has asked for less
+    /// motion or is on a screen with no pointer keeps the still. The clip's
+    /// address is the still's with its name changed, which is the pipeline's
+    /// own convention (`Scripts/media.sh`); a name that does not match simply
+    /// stays a picture.
+    static func gallery(_ cells: [[String]], resolve: Resolver) -> String {
+        var out = "<div class=\"gallery\">\n"
+        for pair in stride(from: 0, to: cells.count - 1, by: 2) {
+            let pictures = cells[pair], names = cells[pair + 1]
+            for column in 0 ..< pictures.count where !pictures[column].isEmpty {
+                let caption = column < names.count ? names[column] : ""
+                out += "<figure>\(inline(pictures[column], resolve: resolve))"
+                out += "<figcaption>\(inline(caption, resolve: resolve))</figcaption></figure>\n"
+            }
+        }
+        out += "</div>\n"
+        out += galleryScript
+        return out
+    }
+
+    static let galleryScript = """
+    <script>
+    (() => {
+      if (!matchMedia('(hover: hover)').matches) return;
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      for (const figure of document.querySelectorAll('.gallery figure')) {
+        const still = figure.querySelector('img');
+        if (!still) continue;
+        const clip = still.src.replace(/still-640\\.jpg$/, 'loop-640.mp4');
+        if (clip === still.src) continue;
+        let video = null, waiting = null;
+        figure.addEventListener('pointerenter', () => {
+          waiting = setTimeout(() => {
+            if (!video) {
+              video = document.createElement('video');
+              video.src = clip;
+              video.muted = video.loop = video.playsInline = true;
+              video.setAttribute('playsinline', '');
+              still.after(video);
+            }
+            video.hidden = false;
+            still.hidden = true;
+            video.play().catch(() => { video.hidden = true; still.hidden = false; });
+          }, 120);
+        });
+        figure.addEventListener('pointerleave', () => {
+          clearTimeout(waiting);
+          if (!video) return;
+          video.pause();
+          video.currentTime = 0;
+          video.hidden = true;
+          still.hidden = false;
+        });
+      }
+    })();
+    </script>
+    """
 
     // MARK: - Code
 

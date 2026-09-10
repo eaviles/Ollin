@@ -6,6 +6,12 @@
 
 These examples get a sketch out of the window, four ways. They save the rendered frame as a raster image. They serialize the draw calls behind that frame to vector paths for a pen plotter, with hatching where a fill has to become line work. They plan those paths as a G-code toolpath for a machine, and draw the plan so you can see the route first. They also record a run as it plays, picture and sound together. See the [Export reference](../../Docs/Output/Export.md).
 
+| [![Capture](https://media.ollin.art/examples/Export/Capture/still-640.jpg)](Capture/) | [![Cutout](https://media.ollin.art/examples/Export/Cutout/still-640.jpg)](Cutout/) | [![Hatching](https://media.ollin.art/examples/Export/Hatching/still-640.jpg)](Hatching/) | [![LineDrawing](https://media.ollin.art/examples/Export/LineDrawing/still-640.jpg)](LineDrawing/) |
+|---|---|---|---|
+| [Capture](Capture/) | [Cutout](Cutout/) | [Hatching](Hatching/) | [LineDrawing](LineDrawing/) |
+| [![Record](https://media.ollin.art/examples/Export/Record/still-640.jpg)](Record/) |  |  |  |
+| [Record](Record/) |  |  |  |
+
 | Example | What it shows |
 |---|---|
 | [Capture](Capture/Sketch.swift) | the frame-grab seam: an extension that saves the rendered frame to a PNG when you press **S** |

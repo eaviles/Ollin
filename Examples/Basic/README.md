@@ -6,6 +6,10 @@
 
 These examples are the smallest starting point. They cover a first breathing circle, the shape of a sketch, and the `extend(...)` seam.
 
+| [![Describing](https://media.ollin.art/examples/Basic/Describing/still-640.jpg)](Describing/) | [![Guides](https://media.ollin.art/examples/Basic/Guides/still-640.jpg)](Guides/) | [![HelloCircle](https://media.ollin.art/examples/Basic/HelloCircle/still-640.jpg)](HelloCircle/) | [![NormalizedCoordinates](https://media.ollin.art/examples/Basic/NormalizedCoordinates/still-640.jpg)](NormalizedCoordinates/) |
+|---|---|---|---|
+| [Describing](Describing/) | [Guides](Guides/) | [HelloCircle](HelloCircle/) | [NormalizedCoordinates](NormalizedCoordinates/) |
+
 | Example | What it shows |
 |---|---|
 | [HelloCircle](HelloCircle/Sketch.swift) | the smallest program: a breathing circle. `draw()` runs continuously, so the motion is one `time` term and there is no `loop()` call |

@@ -6,6 +6,10 @@
 
 `random`, Perlin `noise`, and the scatter helpers. All of them take a seed, so a run can be repeated exactly.
 
+| [![Gaussian](https://media.ollin.art/examples/Randomness/Gaussian/still-640.jpg)](Gaussian/) | [![Ring](https://media.ollin.art/examples/Randomness/Ring/still-640.jpg)](Ring/) | [![Variations](https://media.ollin.art/examples/Randomness/Variations/still-640.jpg)](Variations/) | [![Walk](https://media.ollin.art/examples/Randomness/Walk/still-640.jpg)](Walk/) |
+|---|---|---|---|
+| [Gaussian](Gaussian/) | [Ring](Ring/) | [Variations](Variations/) | [Walk](Walk/) |
+
 | Example | What it shows |
 |---|---|
 | [Gaussian](Gaussian/Sketch.swift) | 2000 dots a frame, placed by `randomGaussian`, so the bell curve becomes visible |

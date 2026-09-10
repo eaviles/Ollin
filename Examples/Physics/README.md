@@ -6,6 +6,12 @@
 
 These sketches get their motion from simulation. Physics lives in a separate library, so add `import OllinPhysics`. The library is built around one `World` with two sides. The **soft** side is a Verlet simulation of particles and the springs between them. The **rigid** side holds bodies, colliders, and joints. Both sides share the world's gravity, container, bounce, and drag. Build the world in `setup()`, `step` it each frame, and draw from its particles and bodies. See the [Physics reference](../../Docs/Simulation/Physics.md). These examples use the 2D world. For rigid bodies inside the 3D scene, see the [3D physics examples](../3D/README.md#physics). The 3D group keeps the same scenarios on the 3D engine under their own names: [`3D/Physics/Stack`](../3D/Physics/Stack/), [`Tumble`](../3D/Physics/Tumble/), and [`Chain`](../3D/Physics/Chain/). Here the first two are folded into the one `RigidBodies` sketch below.
 
+| [![Blobs](https://media.ollin.art/examples/Physics/Blobs/still-640.jpg)](Blobs/) | [![Chain](https://media.ollin.art/examples/Physics/Chain/still-640.jpg)](Chain/) | [![Forces](https://media.ollin.art/examples/Physics/Forces/still-640.jpg)](Forces/) | [![Joints](https://media.ollin.art/examples/Physics/Joints/still-640.jpg)](Joints/) |
+|---|---|---|---|
+| [Blobs](Blobs/) | [Chain](Chain/) | [Forces](Forces/) | [Joints](Joints/) |
+| [![Packing](https://media.ollin.art/examples/Physics/Packing/still-640.jpg)](Packing/) | [![RigidBodies](https://media.ollin.art/examples/Physics/RigidBodies/still-640.jpg)](RigidBodies/) |  |  |
+| [Packing](Packing/) | [RigidBodies](RigidBodies/) |  |  |
+
 | Example | What it shows |
 |---|---|
 | [Packing](Packing/Sketch.swift) | 256 discs of mixed sizes drift with no gravity and bounce off the walls and each other. Each disc is drawn as a slowly spinning crosshair token, and the spin reacts to the disc's own speed. This is the main example for `World.particlesCollide`, a pairwise disk-collision pass. Gravity is off and `drag = 0`, so the motion never slows down (`World`, `Particle`, `collisions`). The scene composition follows @eaviles's sketch 2025.037. The physics is Ollin's own. |

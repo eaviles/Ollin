@@ -32,3 +32,7 @@ Learn more:
   ```
 
 This is a homage after Manuel Felguérez, made for learning. It is not a reproduction of a specific work, and it is not affiliated with or endorsed by the artist or his estate.
+
+| [![MaquinaEstetica](https://media.ollin.art/examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg)](MaquinaEstetica/) |  |  |  |
+|---|---|---|---|
+| [MaquinaEstetica](MaquinaEstetica/) |  |  |  |

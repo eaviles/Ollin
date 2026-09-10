@@ -6,6 +6,12 @@
 
 These examples show how the frame composites. Every frame is built in a linear floating-point canvas, and a final pass tone-maps that canvas to the screen. Because the canvas is linear and floating-point, light can sum past white and blend modes add as light. Marks can also accumulate across frames instead of clearing, which is the "sandpainting" track. See the [Drawing](../../Docs/Drawing/Drawing.md), [HDR & tone mapping](../../Docs/Drawing/HDR.md), [Accumulation](../../Docs/Drawing/Accumulation.md), and [Retained batches](../../Docs/Drawing/Batches.md) references.
 
+| [![ColorOutput](https://media.ollin.art/examples/Rendering/ColorOutput/still-640.jpg)](ColorOutput/) | [![Grassland](https://media.ollin.art/examples/Rendering/Grassland/still-640.jpg)](Grassland/) | [![InstancedMesh](https://media.ollin.art/examples/Rendering/InstancedMesh/still-640.jpg)](InstancedMesh/) | [![MeshField](https://media.ollin.art/examples/Rendering/MeshField/still-640.jpg)](MeshField/) |
+|---|---|---|---|
+| [ColorOutput](ColorOutput/) | [Grassland](Grassland/) | [InstancedMesh](InstancedMesh/) | [MeshField](MeshField/) |
+| [![RetainedBatch](https://media.ollin.art/examples/Rendering/RetainedBatch/still-640.jpg)](RetainedBatch/) | [![ToneMapping](https://media.ollin.art/examples/Rendering/ToneMapping/still-640.jpg)](ToneMapping/) | [![ViewBoxes](https://media.ollin.art/examples/Rendering/ViewBoxes/still-640.jpg)](ViewBoxes/) |  |
+| [RetainedBatch](RetainedBatch/) | [ToneMapping](ToneMapping/) | [ViewBoxes](ViewBoxes/) |  |
+
 | Example | What it shows |
 |---|---|
 | [Accumulation](Accumulation/Sketch.swift) | a persistent canvas that builds up over frames: slow pens and a soft mouse spray add faint light to a surface that is never cleared (`noClear()`) |

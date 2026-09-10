@@ -6,6 +6,14 @@
 
 These examples draw text with `drawText`, using bitmap (pixel-grid) fonts and outline (`.ttf`/`.otf`) fonts.
 
+| [![GlyphContours](https://media.ollin.art/examples/Text/GlyphContours/still-640.jpg)](GlyphContours/) | [![GlyphWave](https://media.ollin.art/examples/Text/GlyphWave/still-640.jpg)](GlyphWave/) | [![HelloText](https://media.ollin.art/examples/Text/HelloText/still-640.jpg)](HelloText/) | [![PlaydateFont](https://media.ollin.art/examples/Text/PlaydateFont/still-640.jpg)](PlaydateFont/) |
+|---|---|---|---|
+| [GlyphContours](GlyphContours/) | [GlyphWave](GlyphWave/) | [HelloText](HelloText/) | [PlaydateFont](PlaydateFont/) |
+| [![StrokeText](https://media.ollin.art/examples/Text/StrokeText/still-640.jpg)](StrokeText/) | [![TextBox](https://media.ollin.art/examples/Text/TextBox/still-640.jpg)](TextBox/) | [![TextMetrics](https://media.ollin.art/examples/Text/TextMetrics/still-640.jpg)](TextMetrics/) | [![TextOnPath](https://media.ollin.art/examples/Text/TextOnPath/still-640.jpg)](TextOnPath/) |
+| [StrokeText](StrokeText/) | [TextBox](TextBox/) | [TextMetrics](TextMetrics/) | [TextOnPath](TextOnPath/) |
+| [![TextVolume](https://media.ollin.art/examples/Text/TextVolume/still-640.jpg)](TextVolume/) | [![TypeAsGeometry](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg)](TypeAsGeometry/) | [![VariableFont](https://media.ollin.art/examples/Text/VariableFont/still-640.jpg)](VariableFont/) |  |
+| [TextVolume](TextVolume/) | [TypeAsGeometry](TypeAsGeometry/) | [VariableFont](VariableFont/) |  |
+
 | Example | What it shows |
 |---|---|
 | [HelloText](HelloText/Sketch.swift) | a title that grows and shrinks, a multi-line caption, and the character set scrolling along the bottom (`drawText`, `textSize`/`textAlign`/`textWidth`) |

@@ -15,6 +15,29 @@ struct HTMLTests {
 
     static var identity: HTML.Resolver { { target, _ in target } }
 
+    // MARK: - The picture grid
+
+    @Test("A table of linked stills becomes a grid of figures, and an ordinary table stays a table")
+    func gallery() {
+        let markdown = """
+        | [![One](a/still-640.jpg)](One/) | [![Two](b/still-640.jpg)](Two/) |
+        |---|---|
+        | [One](One/) | [Two](Two/) |
+        """
+        let html = HTML.render(markdown, resolve: Self.identity).body
+        #expect(html.contains("<div class=\"gallery\">"))
+        #expect(html.contains("<figcaption>"))
+        #expect(!html.contains("<table>"), "a grid is not laid out as a table, or it scrolls sideways on a phone")
+        // The clip's address is the still's with its name changed, which is
+        // the pipeline's own convention, so the hover swap needs nothing else.
+        #expect(html.contains("loop-640.mp4"))
+
+        let plain = HTML.render("| Example | What it shows |\n|---|---|\n| [One](One/) | a thing |",
+                                resolve: Self.identity).body
+        #expect(plain.contains("<table>"))
+        #expect(!plain.contains("gallery"))
+    }
+
     // MARK: - Inline
 
     @Test("Markers become tags and text is escaped")

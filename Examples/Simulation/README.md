@@ -6,6 +6,18 @@
 
 These examples run systems that change on the GPU each frame. They cover three areas: the built-in `Sim` field catalog, the [artificial-life](../../Docs/Simulation/ArtificialLife.md) particle systems, and the [particle fluids & soft bodies](../../Docs/Simulation/Fluids.md). A `Sim` field is a stateful texture that you draw into to seed or force it; see the [Layered effects reference](../../Docs/Drawing/Effects.md). This folder is separate from [Physics](../Physics/), which covers CPU rigid and soft bodies, and from [Compute](../Compute/), which covers raw kernels over buffers and textures.
 
+| [![Attractor](https://media.ollin.art/examples/Simulation/Attractor/still-640.jpg)](Attractor/) | [![Automata](https://media.ollin.art/examples/Simulation/Automata/still-640.jpg)](Automata/) | [![Evolution](https://media.ollin.art/examples/Simulation/Evolution/still-640.jpg)](Evolution/) | [![Fluid](https://media.ollin.art/examples/Simulation/Fluid/still-640.jpg)](Fluid/) |
+|---|---|---|---|
+| [Attractor](Attractor/) | [Automata](Automata/) | [Evolution](Evolution/) | [Fluid](Fluid/) |
+| [![GrayScott](https://media.ollin.art/examples/Simulation/GrayScott/still-640.jpg)](GrayScott/) | [![LifeQuilt](https://media.ollin.art/examples/Simulation/LifeQuilt/still-640.jpg)](LifeQuilt/) | [![MultiScaleTuring](https://media.ollin.art/examples/Simulation/MultiScaleTuring/still-640.jpg)](MultiScaleTuring/) | [![ParticleFluid](https://media.ollin.art/examples/Simulation/ParticleFluid/still-640.jpg)](ParticleFluid/) |
+| [GrayScott](GrayScott/) | [LifeQuilt](LifeQuilt/) | [MultiScaleTuring](MultiScaleTuring/) | [ParticleFluid](ParticleFluid/) |
+| [![ParticleLenia](https://media.ollin.art/examples/Simulation/ParticleLenia/still-640.jpg)](ParticleLenia/) | [![ParticleLife](https://media.ollin.art/examples/Simulation/ParticleLife/still-640.jpg)](ParticleLife/) | [![Physarum](https://media.ollin.art/examples/Simulation/Physarum/still-640.jpg)](Physarum/) | [![PrimordialParticles](https://media.ollin.art/examples/Simulation/PrimordialParticles/still-640.jpg)](PrimordialParticles/) |
+| [ParticleLenia](ParticleLenia/) | [ParticleLife](ParticleLife/) | [Physarum](Physarum/) | [PrimordialParticles](PrimordialParticles/) |
+| [![Ripples](https://media.ollin.art/examples/Simulation/Ripples/still-640.jpg)](Ripples/) | [![SelfWarp](https://media.ollin.art/examples/Simulation/SelfWarp/still-640.jpg)](SelfWarp/) | [![SoftBodies](https://media.ollin.art/examples/Simulation/SoftBodies/still-640.jpg)](SoftBodies/) | [![Swarm](https://media.ollin.art/examples/Simulation/Swarm/still-640.jpg)](Swarm/) |
+| [Ripples](Ripples/) | [SelfWarp](SelfWarp/) | [SoftBodies](SoftBodies/) | [Swarm](Swarm/) |
+| [![SwarmChemistry](https://media.ollin.art/examples/Simulation/SwarmChemistry/still-640.jpg)](SwarmChemistry/) | [![Watercolor](https://media.ollin.art/examples/Simulation/Watercolor/still-640.jpg)](Watercolor/) |  |  |
+| [SwarmChemistry](SwarmChemistry/) | [Watercolor](Watercolor/) |  |  |
+
 | Example | What it shows |
 |---|---|
 | [GrayScott](GrayScott/Sketch.swift) | a Gray-Scott reaction-diffusion field that evolves on the GPU (`makeSimField(.reactionDiffusion(...))`) |

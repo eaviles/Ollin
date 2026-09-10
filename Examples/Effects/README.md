@@ -6,6 +6,20 @@
 
 These examples show layered effects. You draw into off-screen layers, filter them on the GPU, and composite them back with blend modes. They cover filters (`filtered(_:)` / `postProcess(_:)`), procedural sources (`generate(_:)`), previous-frame feedback (`withFeedback`), the declarative `compose { }` stack, and the two-input combine path (`combined(with:)` / `aside { }`). See the [Layered effects reference](../../Docs/Drawing/Effects.md).
 
+| [![Antialias](https://media.ollin.art/examples/Effects/Antialias/still-640.jpg)](Antialias/) | [![Aside](https://media.ollin.art/examples/Effects/Aside/still-640.jpg)](Aside/) | [![Cellular](https://media.ollin.art/examples/Effects/Cellular/still-640.jpg)](Cellular/) | [![Defocus](https://media.ollin.art/examples/Effects/Defocus/still-640.jpg)](Defocus/) |
+|---|---|---|---|
+| [Antialias](Antialias/) | [Aside](Aside/) | [Cellular](Cellular/) | [Defocus](Defocus/) |
+| [![DiffusionCurves](https://media.ollin.art/examples/Effects/DiffusionCurves/still-640.jpg)](DiffusionCurves/) | [![DistanceField](https://media.ollin.art/examples/Effects/DistanceField/still-640.jpg)](DistanceField/) | [![DomainColoring](https://media.ollin.art/examples/Effects/DomainColoring/still-640.jpg)](DomainColoring/) | [![Droste](https://media.ollin.art/examples/Effects/Droste/still-640.jpg)](Droste/) |
+| [DiffusionCurves](DiffusionCurves/) | [DistanceField](DistanceField/) | [DomainColoring](DomainColoring/) | [Droste](Droste/) |
+| [![EscapeTime](https://media.ollin.art/examples/Effects/EscapeTime/still-640.jpg)](EscapeTime/) | [![Feedback](https://media.ollin.art/examples/Effects/Feedback/still-640.jpg)](Feedback/) | [![FlowStreaks](https://media.ollin.art/examples/Effects/FlowStreaks/still-640.jpg)](FlowStreaks/) | [![GaborNoise](https://media.ollin.art/examples/Effects/GaborNoise/still-640.jpg)](GaborNoise/) |
+| [EscapeTime](EscapeTime/) | [Feedback](Feedback/) | [FlowStreaks](FlowStreaks/) | [GaborNoise](GaborNoise/) |
+| [![GeneratorCatalog](https://media.ollin.art/examples/Effects/GeneratorCatalog/still-640.jpg)](GeneratorCatalog/) | [![Glitter](https://media.ollin.art/examples/Effects/Glitter/still-640.jpg)](Glitter/) | [![Hatching](https://media.ollin.art/examples/Effects/Hatching/still-640.jpg)](Hatching/) | [![Layers](https://media.ollin.art/examples/Effects/Layers/still-640.jpg)](Layers/) |
+| [GeneratorCatalog](GeneratorCatalog/) | [Glitter](Glitter/) | [Hatching](Hatching/) | [Layers](Layers/) |
+| [![Light](https://media.ollin.art/examples/Effects/Light/still-640.jpg)](Light/) | [![MeshGradient](https://media.ollin.art/examples/Effects/MeshGradient/still-640.jpg)](MeshGradient/) | [![NewtonBasins](https://media.ollin.art/examples/Effects/NewtonBasins/still-640.jpg)](NewtonBasins/) | [![PigmentMix](https://media.ollin.art/examples/Effects/PigmentMix/still-640.jpg)](PigmentMix/) |
+| [Light](Light/) | [MeshGradient](MeshGradient/) | [NewtonBasins](NewtonBasins/) | [PigmentMix](PigmentMix/) |
+| [![Relight](https://media.ollin.art/examples/Effects/Relight/still-640.jpg)](Relight/) | [![SeamlessClone](https://media.ollin.art/examples/Effects/SeamlessClone/still-640.jpg)](SeamlessClone/) | [![SoapFilm](https://media.ollin.art/examples/Effects/SoapFilm/still-640.jpg)](SoapFilm/) | [![SummedArea](https://media.ollin.art/examples/Effects/SummedArea/still-640.jpg)](SummedArea/) |
+| [Relight](Relight/) | [SeamlessClone](SeamlessClone/) | [SoapFilm](SoapFilm/) | [SummedArea](SummedArea/) |
+
 | Example | What it shows |
 |---|---|
 | [Layers](Layers/Sketch.swift) | layered effects written both ways: the imperative `makeRenderTarget` + `filtered` + `drawImage` path and the `compose { }` DSL produce the same frame, and a parameter switches between them |

@@ -6,6 +6,22 @@
 
 These examples cover the shape-drawing vocabulary. They show every primitive and the stroke and hollow modes. They also show two ways to compose shapes: boolean set operations on filled outlines, and SDF combinators that merge distance fields.
 
+| [![Arrows](https://media.ollin.art/examples/Shapes/Arrows/still-640.jpg)](Arrows/) | [![Booleans](https://media.ollin.art/examples/Shapes/Booleans/still-640.jpg)](Booleans/) | [![Brushes](https://media.ollin.art/examples/Shapes/Brushes/still-640.jpg)](Brushes/) | [![Clipping](https://media.ollin.art/examples/Shapes/Clipping/still-640.jpg)](Clipping/) |
+|---|---|---|---|
+| [Arrows](Arrows/) | [Booleans](Booleans/) | [Brushes](Brushes/) | [Clipping](Clipping/) |
+| [![Combinators](https://media.ollin.art/examples/Shapes/Combinators/still-640.jpg)](Combinators/) | [![CombinatorsGradient](https://media.ollin.art/examples/Shapes/CombinatorsGradient/still-640.jpg)](CombinatorsGradient/) | [![CombinatorsJoinery](https://media.ollin.art/examples/Shapes/CombinatorsJoinery/still-640.jpg)](CombinatorsJoinery/) | [![CombinatorsStretch](https://media.ollin.art/examples/Shapes/CombinatorsStretch/still-640.jpg)](CombinatorsStretch/) |
+| [Combinators](Combinators/) | [CombinatorsGradient](CombinatorsGradient/) | [CombinatorsJoinery](CombinatorsJoinery/) | [CombinatorsStretch](CombinatorsStretch/) |
+| [![CornerCutting](https://media.ollin.art/examples/Shapes/CornerCutting/still-640.jpg)](CornerCutting/) | [![DashedStrokes](https://media.ollin.art/examples/Shapes/DashedStrokes/still-640.jpg)](DashedStrokes/) | [![HobbySpline](https://media.ollin.art/examples/Shapes/HobbySpline/still-640.jpg)](HobbySpline/) | [![HollowShapes](https://media.ollin.art/examples/Shapes/HollowShapes/still-640.jpg)](HollowShapes/) |
+| [CornerCutting](CornerCutting/) | [DashedStrokes](DashedStrokes/) | [HobbySpline](HobbySpline/) | [HollowShapes](HollowShapes/) |
+| [![InkRibbon](https://media.ollin.art/examples/Shapes/InkRibbon/still-640.jpg)](InkRibbon/) | [![Markers](https://media.ollin.art/examples/Shapes/Markers/still-640.jpg)](Markers/) | [![MedialAxis](https://media.ollin.art/examples/Shapes/MedialAxis/still-640.jpg)](MedialAxis/) | [![Neighbors](https://media.ollin.art/examples/Shapes/Neighbors/still-640.jpg)](Neighbors/) |
+| [InkRibbon](InkRibbon/) | [Markers](Markers/) | [MedialAxis](MedialAxis/) | [Neighbors](Neighbors/) |
+| [![Polygons](https://media.ollin.art/examples/Shapes/Polygons/still-640.jpg)](Polygons/) | [![Primitives](https://media.ollin.art/examples/Shapes/Primitives/still-640.jpg)](Primitives/) | [![SVGImport](https://media.ollin.art/examples/Shapes/SVGImport/still-640.jpg)](SVGImport/) | [![Scattered](https://media.ollin.art/examples/Shapes/Scattered/still-640.jpg)](Scattered/) |
+| [Polygons](Polygons/) | [Primitives](Primitives/) | [SVGImport](SVGImport/) | [Scattered](Scattered/) |
+| [![Star](https://media.ollin.art/examples/Shapes/Star/still-640.jpg)](Star/) | [![StrokeAlignment](https://media.ollin.art/examples/Shapes/StrokeAlignment/still-640.jpg)](StrokeAlignment/) | [![StrokeJoinsAndCaps](https://media.ollin.art/examples/Shapes/StrokeJoinsAndCaps/still-640.jpg)](StrokeJoinsAndCaps/) | [![Superellipse](https://media.ollin.art/examples/Shapes/Superellipse/still-640.jpg)](Superellipse/) |
+| [Star](Star/) | [StrokeAlignment](StrokeAlignment/) | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/) | [Superellipse](Superellipse/) |
+| [![Supershape](https://media.ollin.art/examples/Shapes/Supershape/still-640.jpg)](Supershape/) | [![Triangles](https://media.ollin.art/examples/Shapes/Triangles/still-640.jpg)](Triangles/) |  |  |
+| [Supershape](Supershape/) | [Triangles](Triangles/) |  |  |
+
 | Example | What it shows |
 |---|---|
 | [Arrows](Arrows/Sketch.swift) | a field of `drawArrow` marks that lean toward the cursor, and a turning ring that sweeps `headLength`/`headWidth`. The ring is translucent because each arrow lays one even coat: the shaft stops at the base of the head |
