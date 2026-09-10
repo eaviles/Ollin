@@ -8757,6 +8757,58 @@ stacked planes at different heights; do not reintroduce it.
 
 ---
 
+## Example media: the pictures, the clips, and the grids
+
+Every example sketch has a picture, most have a clip, and every listing opens
+on a grid of them; so do the guide and the README. None of it is in the
+repository. The files are served from one host, and `Examples/media.json` is
+the only place that address is written down, so moving the host is one edit.
+
+Four commands keep it current, and they run in that order because each reads
+what the one before it wrote:
+
+| When | Run |
+|---|---|
+| A sketch changed, or a new one landed | `Scripts/media.sh --all` |
+| A group's four-up picture needs redrawing | `Scripts/example-covers.py` |
+| A listing's grid needs rewriting | `Scripts/example-grids.py` |
+| The guide's or the README's opening grid | `Scripts/example-heroes.sh both` |
+
+All four are safe to run again. An example whose folder digest is unchanged is
+skipped, and a grid that is already right is left alone, so a sweep over
+everything costs almost nothing the second time.
+
+**What decides what.** A sketch earns a clip if it moves or makes a sound.
+Movement is measured rather than judged: the master is sampled once a second
+and the largest change between samples must clear `MOTION_FLOOR`. A static
+print scores about 0.2 there and a sketch that merely grows slowly scores
+about 3, so the floor separates them with room to spare. Below it the sketch
+keeps its still and loses only the clip, and a sketch with its own music earns
+a clip whatever its picture does. A sketch that needs something plugged in is
+held back instead of drawn, read off its own imports, and the manifest records
+what it is waiting for. Nothing is decided in silence: every example is under
+one heading or the other with its reason.
+
+**What is a choice rather than a rule** is written down in the manifest, not
+computed: `covers` names the four sketches that stand for a group,
+`heroes.readme.sketches` names the cells of the README's grid, and
+`heroes.guide.leads` gives a chapter's sketch an age of its own where the
+default reads badly. A row's own `seconds` or `frame` overrides how long that
+example records or which frame its still comes from, and survives every later
+run. The guide's cells are *not* a choice: each chapter figure marks its own
+payoff sketch in source, so the list is the book's and there are exactly as
+many cells as chapters.
+
+**Two things that bite.** An address carries a token taken from the file's own
+bytes, because the files are served as immutable for a year: right for a
+picture nobody edits, wrong the moment one is redrawn, and a hand-written
+address will not do it. And a tool that rewrites the manifest must keep what it
+does not understand; one of them dropped an unknown key and deleted both page
+heroes, which turned the guide's playing grid back into a still.
+
+Uploading reads `~/.config/ollin/r2.env`, outside the repository. Without it,
+`--no-upload` writes the files locally.
+
 ## Status of this document
 
 The sections above are the current contents.
