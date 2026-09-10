@@ -4,6 +4,10 @@
 
 ## Manfred Mohr
 
+| [![CubicLimit](https://media.ollin.art/examples/Recreations/ManfredMohr/CubicLimit/still-640.jpg?v=7ad32943)](CubicLimit/) | [![DiagonalPath](https://media.ollin.art/examples/Recreations/ManfredMohr/DiagonalPath/still-640.jpg?v=40742459)](DiagonalPath/) |  |  |
+|---|---|---|---|
+| [CubicLimit](CubicLimit/) | [DiagonalPath](DiagonalPath/) |  |  |
+
 **Manfred Mohr** (born 1938 in Pforzheim, Germany) started out as a jazz musician and an action painter. In 1961 he read Max Bense on a rational aesthetics, and it changed what he thought a picture was. A picture could be stated as information, so its statement could be examined. In 1967 he met the composer Pierre Barbaud in Paris, who told him to go and use a computer. He wrote his first drawing programs in Fortran in 1969.
 
 The computer was not his. He asked the Paris institute of meteorology for time on theirs. In 1970 they gave him a CDC 6400 and a Benson 1284 flatbed plotter, and that arrangement lasted eleven years. In May 1971 the ARC at the Musée d'Art Moderne de la Ville de Paris gave him a solo show. It was called *Computer Graphics: Une esthétique programmée*. It is remembered since as the first solo museum exhibition of work calculated and drawn entirely by a computer. He put the plotter in the gallery and let it draw while people watched. Almost none of them had seen that before.
@@ -49,7 +53,3 @@ Learn more:
   ```
 
 These are homages after Manfred Mohr, made for learning. They are not reproductions of specific works, and they are not affiliated with or endorsed by the artist. No source of his was used, because his programs ran on a mainframe and are not published.
-
-| [![CubicLimit](https://media.ollin.art/examples/Recreations/ManfredMohr/CubicLimit/still-640.jpg?v=7ad32943)](CubicLimit/) | [![DiagonalPath](https://media.ollin.art/examples/Recreations/ManfredMohr/DiagonalPath/still-640.jpg?v=40742459)](DiagonalPath/) |  |  |
-|---|---|---|---|
-| [CubicLimit](CubicLimit/) | [DiagonalPath](DiagonalPath/) |  |  |

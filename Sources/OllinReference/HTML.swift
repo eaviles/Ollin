@@ -541,6 +541,9 @@ public enum HTML {
         let lineComment: String
         var blockComments = true
         var hashComments = false
+        // A capital means a type in Swift and in C; in a shell line it is far
+        // more likely to be part of a URL or a path.
+        var typesFromCase = true
         switch language {
         case "swift":
             keywords = swiftKeywords
@@ -549,7 +552,9 @@ public enum HTML {
             keywords = metalKeywords
             lineComment = "//"
         case "sh", "bash", "zsh", "shell":
-            keywords = []
+            keywords = ["swift", "run", "build", "test", "git", "clone", "cd", "ollin",
+                        "open", "brew", "xcrun", "sudo", "echo", "curl", "chmod", "mkdir"]
+            typesFromCase = false
             lineComment = "#"
             blockComments = false
             hashComments = true
@@ -632,6 +637,21 @@ public enum HTML {
                 continue
             }
 
+            // A command's flags, which are what a reader scans a shell line for.
+            if hashComments, character == "-", index + 1 < characters.count,
+               characters[index + 1] == "-" || characters[index + 1].isLetter,
+               index == 0 || characters[index - 1] == " " || characters[index - 1] == "\n" {
+                var end = index + 1
+                while end < characters.count,
+                      characters[end].isLetter || characters[end].isNumber
+                        || characters[end] == "-" || characters[end] == "_" {
+                    end += 1
+                }
+                span("attribute", String(characters[index ..< end]))
+                index = end
+                continue
+            }
+
             // Words: attributes, keywords, and type names.
             if character.isLetter || character == "_" || character == "@" {
                 var end = index + 1
@@ -643,7 +663,7 @@ public enum HTML {
                     span("attribute", word)
                 } else if keywords.contains(word) {
                     span("keyword", word)
-                } else if let first = word.first, first.isUppercase, !keywords.isEmpty {
+                } else if let first = word.first, first.isUppercase, typesFromCase, !keywords.isEmpty {
                     span("type", word)
                 } else {
                     out += escape(word)

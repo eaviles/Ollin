@@ -4,8 +4,6 @@
 
 ## Raymarching
 
-This group covers the 3D SDF combinators: distance fields that merge, sphere-traced beside the meshes.
-
 | [![RaymarchedCastShadow](https://media.ollin.art/examples/3D/Raymarching/RaymarchedCastShadow/still-640.jpg?v=55fc1d64)](RaymarchedCastShadow/) | [![RaymarchedClay](https://media.ollin.art/examples/3D/Raymarching/RaymarchedClay/still-640.jpg?v=73230297)](RaymarchedClay/) | [![RaymarchedDetailing](https://media.ollin.art/examples/3D/Raymarching/RaymarchedDetailing/still-640.jpg?v=130026b5)](RaymarchedDetailing/) | [![RaymarchedDistort](https://media.ollin.art/examples/3D/Raymarching/RaymarchedDistort/still-640.jpg?v=9235b361)](RaymarchedDistort/) |
 |---|---|---|---|
 | [RaymarchedCastShadow](RaymarchedCastShadow/) | [RaymarchedClay](RaymarchedClay/) | [RaymarchedDetailing](RaymarchedDetailing/) | [RaymarchedDistort](RaymarchedDistort/) |
@@ -17,6 +15,8 @@ This group covers the 3D SDF combinators: distance fields that merge, sphere-tra
 | [RaymarchedSDF](RaymarchedSDF/) | [RaymarchedSculpt](RaymarchedSculpt/) | [RaymarchedShadow](RaymarchedShadow/) | [RaymarchedShapes](RaymarchedShapes/) |
 | [![RaymarchedStretch](https://media.ollin.art/examples/3D/Raymarching/RaymarchedStretch/still-640.jpg?v=c0911f44)](RaymarchedStretch/) |  |  |  |
 | [RaymarchedStretch](RaymarchedStretch/) |  |  |  |
+
+This group covers the 3D SDF combinators: distance fields that merge, sphere-traced beside the meshes.
 
 | Sketch | What it shows |
 | --- | --- |

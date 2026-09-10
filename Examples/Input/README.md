@@ -4,11 +4,11 @@
 
 ## Input
 
-Sketches driven by the mouse and the keyboard.
-
 | [![Drag](https://media.ollin.art/examples/Input/Drag/still-640.jpg?v=1c322e5c)](Drag/) | [![Keys](https://media.ollin.art/examples/Input/Keys/still-640.jpg?v=dcc31a0b)](Keys/) | [![PanAndZoom](https://media.ollin.art/examples/Input/PanAndZoom/still-640.jpg?v=03ea91e2)](PanAndZoom/) | [![RepelGrid](https://media.ollin.art/examples/Input/RepelGrid/still-640.jpg?v=8cfa1fd9)](RepelGrid/) |
 |---|---|---|---|
 | [Drag](Drag/) | [Keys](Keys/) | [PanAndZoom](PanAndZoom/) | [RepelGrid](RepelGrid/) |
+
+Sketches driven by the mouse and the keyboard.
 
 | Example | What it shows |
 |---|---|

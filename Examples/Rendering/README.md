@@ -4,8 +4,6 @@
 
 ## Rendering
 
-These examples show how the frame composites. Every frame is built in a linear floating-point canvas, and a final pass tone-maps that canvas to the screen. Because the canvas is linear and floating-point, light can sum past white and blend modes add as light. Marks can also accumulate across frames instead of clearing, which is the "sandpainting" track. See the [Drawing](../../Docs/Drawing/Drawing.md), [HDR & tone mapping](../../Docs/Drawing/HDR.md), [Accumulation](../../Docs/Drawing/Accumulation.md), and [Retained batches](../../Docs/Drawing/Batches.md) references.
-
 | [![Accumulation](https://media.ollin.art/examples/Rendering/Accumulation/still-640.jpg?v=da9d2e69)](Accumulation/) | [![ColorOutput](https://media.ollin.art/examples/Rendering/ColorOutput/still-640.jpg?v=77208b6b)](ColorOutput/) | [![DepthOfField](https://media.ollin.art/examples/Rendering/DepthOfField/still-640.jpg?v=43c520e8)](DepthOfField/) | [![Grassland](https://media.ollin.art/examples/Rendering/Grassland/still-640.jpg?v=5b003151)](Grassland/) |
 |---|---|---|---|
 | [Accumulation](Accumulation/) | [ColorOutput](ColorOutput/) | [DepthOfField](DepthOfField/) | [Grassland](Grassland/) |
@@ -13,6 +11,8 @@ These examples show how the frame composites. Every frame is built in a linear f
 | [InstancedMesh](InstancedMesh/) | [LineSpray](LineSpray/) | [MeshField](MeshField/) | [RetainedBatch](RetainedBatch/) |
 | [![ToneMapping](https://media.ollin.art/examples/Rendering/ToneMapping/still-640.jpg?v=96c4a92f)](ToneMapping/) | [![ViewBoxes](https://media.ollin.art/examples/Rendering/ViewBoxes/still-640.jpg?v=4cef24c5)](ViewBoxes/) |  |  |
 | [ToneMapping](ToneMapping/) | [ViewBoxes](ViewBoxes/) |  |  |
+
+These examples show how the frame composites. Every frame is built in a linear floating-point canvas, and a final pass tone-maps that canvas to the screen. Because the canvas is linear and floating-point, light can sum past white and blend modes add as light. Marks can also accumulate across frames instead of clearing, which is the "sandpainting" track. See the [Drawing](../../Docs/Drawing/Drawing.md), [HDR & tone mapping](../../Docs/Drawing/HDR.md), [Accumulation](../../Docs/Drawing/Accumulation.md), and [Retained batches](../../Docs/Drawing/Batches.md) references.
 
 | Example | What it shows |
 |---|---|

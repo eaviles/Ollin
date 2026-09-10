@@ -4,12 +4,6 @@
 
 ## Audio
 
-These sketches listen to sound or play it. Audio lives in a separate library, so add `import OllinAudio`.
-
-On the way in, there are three sources: `AudioInput` for the microphone, `AudioPlayer` for files, and `Tone` for an oscillator. Ollin analyzes each one into `amplitude`, a frequency `spectrum`, and band values that a sketch reads in `draw()`. It also recognizes speech and named sounds. On the way out, a `Synth` plays shaped voices through effects, and a composition tier works out what to play. Four physical models cover struck, plucked, bowed, and blown sounds. A sampler plays recordings, and sonification reads data out as notes. You can place sound in the 3D scene, and an export can render its sound into the video.
-
-The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/Helpers/Synthesis.md), [Composition](../../Docs/Helpers/Composition.md), [Sonification](../../Docs/Helpers/Sonification.md), and [Listening](../../Docs/Helpers/Listening.md).
-
 | [![Bowing](https://media.ollin.art/examples/Audio/Bowing/still-640.jpg?v=4bfbdb26)](Bowing/) | [![Changes](https://media.ollin.art/examples/Audio/Changes/still-640.jpg?v=5bebeaf9)](Changes/) | [![ChladniResonance](https://media.ollin.art/examples/Audio/ChladniResonance/still-640.jpg?v=7ea709c5)](ChladniResonance/) | [![ChordSymbols](https://media.ollin.art/examples/Audio/ChordSymbols/still-640.jpg?v=fddd30ee)](ChordSymbols/) |
 |---|---|---|---|
 | [Bowing](Bowing/) | [Changes](Changes/) | [ChladniResonance](ChladniResonance/) | [ChordSymbols](ChordSymbols/) |
@@ -23,6 +17,12 @@ The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/
 | [Spectrum](Spectrum/) | [Strings](Strings/) | [StruckShapes](StruckShapes/) | [Synth](Synth/) |
 | [![Tunings](https://media.ollin.art/examples/Audio/Tunings/still-640.jpg?v=ce9b7f09)](Tunings/) | [![Wavetable](https://media.ollin.art/examples/Audio/Wavetable/still-640.jpg?v=93a2b8ee)](Wavetable/) |  |  |
 | [Tunings](Tunings/) | [Wavetable](Wavetable/) |  |  |
+
+These sketches listen to sound or play it. Audio lives in a separate library, so add `import OllinAudio`.
+
+On the way in, there are three sources: `AudioInput` for the microphone, `AudioPlayer` for files, and `Tone` for an oscillator. Ollin analyzes each one into `amplitude`, a frequency `spectrum`, and band values that a sketch reads in `draw()`. It also recognizes speech and named sounds. On the way out, a `Synth` plays shaped voices through effects, and a composition tier works out what to play. Four physical models cover struck, plucked, bowed, and blown sounds. A sampler plays recordings, and sonification reads data out as notes. You can place sound in the 3D scene, and an export can render its sound into the video.
+
+The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/Helpers/Synthesis.md), [Composition](../../Docs/Helpers/Composition.md), [Sonification](../../Docs/Helpers/Sonification.md), and [Listening](../../Docs/Helpers/Listening.md).
 
 | Example | What it shows |
 |---|---|

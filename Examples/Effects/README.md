@@ -4,8 +4,6 @@
 
 ## Effects
 
-These examples show layered effects. You draw into off-screen layers, filter them on the GPU, and composite them back with blend modes. They cover filters (`filtered(_:)` / `postProcess(_:)`), procedural sources (`generate(_:)`), previous-frame feedback (`withFeedback`), the declarative `compose { }` stack, and the two-input combine path (`combined(with:)` / `aside { }`). See the [Layered effects reference](../../Docs/Drawing/Effects.md).
-
 | [![Antialias](https://media.ollin.art/examples/Effects/Antialias/still-640.jpg?v=4be8b3d2)](Antialias/) | [![Aside](https://media.ollin.art/examples/Effects/Aside/still-640.jpg?v=a4edb23d)](Aside/) | [![Brushwork](https://media.ollin.art/examples/Effects/Brushwork/still-640.jpg?v=2e9f6b8e)](Brushwork/) | [![Cellular](https://media.ollin.art/examples/Effects/Cellular/still-640.jpg?v=59068a76)](Cellular/) |
 |---|---|---|---|
 | [Antialias](Antialias/) | [Aside](Aside/) | [Brushwork](Brushwork/) | [Cellular](Cellular/) |
@@ -23,6 +21,8 @@ These examples show layered effects. You draw into off-screen layers, filter the
 | [NewtonBasins](NewtonBasins/) | [PigmentMix](PigmentMix/) | [Relight](Relight/) | [SeamlessClone](SeamlessClone/) |
 | [![SoapFilm](https://media.ollin.art/examples/Effects/SoapFilm/still-640.jpg?v=cc0d88e3)](SoapFilm/) | [![SummedArea](https://media.ollin.art/examples/Effects/SummedArea/still-640.jpg?v=56e55d42)](SummedArea/) |  |  |
 | [SoapFilm](SoapFilm/) | [SummedArea](SummedArea/) |  |  |
+
+These examples show layered effects. You draw into off-screen layers, filter them on the GPU, and composite them back with blend modes. They cover filters (`filtered(_:)` / `postProcess(_:)`), procedural sources (`generate(_:)`), previous-frame feedback (`withFeedback`), the declarative `compose { }` stack, and the two-input combine path (`combined(with:)` / `aside { }`). See the [Layered effects reference](../../Docs/Drawing/Effects.md).
 
 | Example | What it shows |
 |---|---|

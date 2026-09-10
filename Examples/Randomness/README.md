@@ -4,8 +4,6 @@
 
 ## Randomness
 
-`random`, Perlin `noise`, and the scatter helpers. All of them take a seed, so a run can be repeated exactly.
-
 | [![Gaussian](https://media.ollin.art/examples/Randomness/Gaussian/still-640.jpg?v=40859ee8)](Gaussian/) | [![NoiseField](https://media.ollin.art/examples/Randomness/NoiseField/still-640.jpg?v=801ed839)](NoiseField/) | [![NoiseKinds](https://media.ollin.art/examples/Randomness/NoiseKinds/still-640.jpg?v=72d1a7b4)](NoiseKinds/) | [![NoiseWave](https://media.ollin.art/examples/Randomness/NoiseWave/still-640.jpg?v=286d2d6b)](NoiseWave/) |
 |---|---|---|---|
 | [Gaussian](Gaussian/) | [NoiseField](NoiseField/) | [NoiseKinds](NoiseKinds/) | [NoiseWave](NoiseWave/) |
@@ -13,6 +11,8 @@
 | [RandomBand](RandomBand/) | [Ring](Ring/) | [TilingNoise](TilingNoise/) | [Variations](Variations/) |
 | [![Walk](https://media.ollin.art/examples/Randomness/Walk/still-640.jpg?v=eb2a85d6)](Walk/) |  |  |  |
 | [Walk](Walk/) |  |  |  |
+
+`random`, Perlin `noise`, and the scatter helpers. All of them take a seed, so a run can be repeated exactly.
 
 | Example | What it shows |
 |---|---|

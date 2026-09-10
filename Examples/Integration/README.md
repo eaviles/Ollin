@@ -4,15 +4,15 @@
 
 ## Integration
 
+| [![VirtualCamera](https://media.ollin.art/examples/Integration/VirtualCamera/still-640.jpg?v=1abb1500)](VirtualCamera/) |  |  |  |
+|---|---|---|---|
+| [VirtualCamera](VirtualCamera/) |  |  |  |
+
 These sketches talk to the other apps and gear in a rig. Control comes in over OSC, MIDI, a shared network tempo session, a serial board, a Bluetooth device, a game controller, or a phone's browser. Visuals go out (and come in) over Syphon, as a system-wide virtual camera, as stage light, as LEDs, or as a laser. The Mac's own screen can be taken as material. Several machines can join into one room and draw one piece. Touch can go back under the hand as a felt pattern.
 
 Each integration lives in its own library, so a sketch links only what it uses. The imports are `import OllinOSC`, `import OllinMIDI`, `import OllinLink`, `import OllinSerial`, `import OllinBluetooth`, `import OllinRemote`, `import OllinRoom`, `import OllinDMX`, `import OllinLaser`, `import OllinSyphon`, `import OllinCamera`, `import OllinScreen`, `import OllinController`, `import OllinHaptics`. The references are [OSC](../../Docs/Integration/OSC.md), [TUIO](../../Docs/Integration/TUIO.md), [MIDI](../../Docs/Integration/MIDI.md), [Link](../../Docs/Integration/Link.md), [Serial](../../Docs/Integration/Serial.md), [Bluetooth](../../Docs/Integration/Bluetooth.md), [Remote](../../Docs/Integration/Remote.md), [Room](../../Docs/Integration/Room.md), [DMX](../../Docs/Integration/DMX.md), [Laser](../../Docs/Integration/Laser.md), [Syphon](../../Docs/Integration/Syphon.md), [Virtual camera](../../Docs/Integration/VirtualCamera.md), [Screen capture](../../Docs/Integration/ScreenCapture.md), [Game controllers](../../Docs/Integration/Controller.md), and [Haptics](../../Docs/Integration/Haptics.md).
 
 Several of these run both ends themselves, so they need no second app and no hardware. The round trip you watch travels over a real loopback connection.
-
-| [![VirtualCamera](https://media.ollin.art/examples/Integration/VirtualCamera/still-640.jpg?v=1abb1500)](VirtualCamera/) |  |  |  |
-|---|---|---|---|
-| [VirtualCamera](VirtualCamera/) |  |  |  |
 
 | Example | What it shows |
 |---|---|

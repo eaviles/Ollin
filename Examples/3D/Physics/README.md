@@ -4,8 +4,6 @@
 
 ## Physics
 
-This group covers bodies inside the scene, rigid and soft: stacks and joints, cloth, rope, and floating. A Jolt-backed `World3D` is stepped each frame (`import OllinPhysics`), and every body is drawn from its pose with `withBody`. See the [3D physics reference](../../../Docs/Simulation/Physics3D.md).
-
 | [![Bagatelle](https://media.ollin.art/examples/3D/Physics/Bagatelle/still-640.jpg?v=98434c21)](Bagatelle/) | [![Cape](https://media.ollin.art/examples/3D/Physics/Cape/still-640.jpg?v=0c0401c0)](Cape/) | [![Chain](https://media.ollin.art/examples/3D/Physics/Chain/still-640.jpg?v=429fabf7)](Chain/) | [![Contraption](https://media.ollin.art/examples/3D/Physics/Contraption/still-640.jpg?v=84107917)](Contraption/) |
 |---|---|---|---|
 | [Bagatelle](Bagatelle/) | [Cape](Cape/) | [Chain](Chain/) | [Contraption](Contraption/) |
@@ -19,6 +17,8 @@ This group covers bodies inside the scene, rigid and soft: stacks and joints, cl
 | [Stroll](Stroll/) | [Tensegrity](Tensegrity/) | [Trigger](Trigger/) | [Tumble](Tumble/) |
 | [![Windmill](https://media.ollin.art/examples/3D/Physics/Windmill/still-640.jpg?v=3670bfc1)](Windmill/) | [![Yard](https://media.ollin.art/examples/3D/Physics/Yard/still-640.jpg?v=e0b297d0)](Yard/) |  |  |
 | [Windmill](Windmill/) | [Yard](Yard/) |  |  |
+
+This group covers bodies inside the scene, rigid and soft: stacks and joints, cloth, rope, and floating. A Jolt-backed `World3D` is stepped each frame (`import OllinPhysics`), and every body is drawn from its pose with `withBody`. See the [3D physics reference](../../../Docs/Simulation/Physics3D.md).
 
 | Sketch | What it shows |
 | --- | --- |

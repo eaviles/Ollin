@@ -4,8 +4,6 @@
 
 ## Materials
 
-This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, and the map set that varies any of them per pixel.
-
 | [![BrushedMetal](https://media.ollin.art/examples/3D/Materials/BrushedMetal/still-640.jpg?v=819826df)](BrushedMetal/) | [![CoatAndCloth](https://media.ollin.art/examples/3D/Materials/CoatAndCloth/still-640.jpg?v=9dc6bd1e)](CoatAndCloth/) | [![Decals](https://media.ollin.art/examples/3D/Materials/Decals/still-640.jpg?v=f04fed92)](Decals/) | [![Detail](https://media.ollin.art/examples/3D/Materials/Detail/still-640.jpg?v=013fca2f)](Detail/) |
 |---|---|---|---|
 | [BrushedMetal](BrushedMetal/) | [CoatAndCloth](CoatAndCloth/) | [Decals](Decals/) | [Detail](Detail/) |
@@ -17,6 +15,8 @@ This group covers what surfaces are made of: stylized finishes, physically based
 | [SeeThrough](SeeThrough/) | [Subsurface](Subsurface/) | [SurfaceMaps](SurfaceMaps/) | [ThinFilm](ThinFilm/) |
 | [![Triplanar](https://media.ollin.art/examples/3D/Materials/Triplanar/still-640.jpg?v=800a89ba)](Triplanar/) |  |  |  |
 | [Triplanar](Triplanar/) |  |  |  |
+
+This group covers what surfaces are made of: stylized finishes, physically based metal, glass, subsurface, thin film, and the map set that varies any of them per pixel.
 
 | Sketch | What it shows |
 | --- | --- |

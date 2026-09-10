@@ -4,8 +4,6 @@
 
 ## Motion
 
-Animation driven by `time`. The draw loop runs continuously by default, so nothing has to start it.
-
 | [![ArcModes](https://media.ollin.art/examples/Motion/ArcModes/still-640.jpg?v=35a41b75)](ArcModes/) | [![Attractor](https://media.ollin.art/examples/Motion/Attractor/still-640.jpg?v=df51de68)](Attractor/) | [![Automation](https://media.ollin.art/examples/Motion/Automation/still-640.jpg?v=62c9ce7c)](Automation/) | [![Beats](https://media.ollin.art/examples/Motion/Beats/still-640.jpg?v=0d0c4001)](Beats/) |
 |---|---|---|---|
 | [ArcModes](ArcModes/) | [Attractor](Attractor/) | [Automation](Automation/) | [Beats](Beats/) |
@@ -23,6 +21,8 @@ Animation driven by `time`. The draw loop runs continuously by default, so nothi
 | [Smoothing](Smoothing/) | [Spokes](Spokes/) | [Springs](Springs/) | [Steering](Steering/) |
 | [![Sway](https://media.ollin.art/examples/Motion/Sway/still-640.jpg?v=1a48b2c8)](Sway/) | [![Timeline](https://media.ollin.art/examples/Motion/Timeline/still-640.jpg?v=01088d88)](Timeline/) | [![Trail](https://media.ollin.art/examples/Motion/Trail/still-640.jpg?v=ed83413e)](Trail/) |  |
 | [Sway](Sway/) | [Timeline](Timeline/) | [Trail](Trail/) |  |
+
+Animation driven by `time`. The draw loop runs continuously by default, so nothing has to start it.
 
 | Example | What it shows |
 |---|---|

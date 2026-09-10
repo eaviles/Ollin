@@ -4,8 +4,6 @@
 
 ## Vision
 
-Computer vision on the Mac. Vision lives in a separate library, so add `import OllinVision`. It covers the Mac's camera (built-in, a Continuity Camera iPhone, or an external webcam) plus Apple's on-device perception. Build a `Camera` in `setup()` and `start()` it. Draw `camera.frame` in `draw()`. Then attach a tracker (like `FaceTracker`) to the same camera to read recognition results. See the [Vision reference](../../Docs/Vision/Vision.md).
-
 | [![BarcodeReader](https://media.ollin.art/examples/Vision/BarcodeReader/still-640.jpg?v=29377b8f)](BarcodeReader/) | [![BodyPose](https://media.ollin.art/examples/Vision/BodyPose/still-640.jpg?v=32fb207e)](BodyPose/) | [![BodyPose3D](https://media.ollin.art/examples/Vision/BodyPose3D/still-640.jpg?v=8574f74d)](BodyPose3D/) | [![ContourTrace](https://media.ollin.art/examples/Vision/ContourTrace/still-640.jpg?v=5246c208)](ContourTrace/) |
 |---|---|---|---|
 | [BarcodeReader](BarcodeReader/) | [BodyPose](BodyPose/) | [BodyPose3D](BodyPose3D/) | [ContourTrace](ContourTrace/) |
@@ -21,6 +19,8 @@ Computer vision on the Mac. Vision lives in a separate library, so add `import O
 | [StyleMirror](StyleMirror/) | [TextScan](TextScan/) | [TrajectoryTracking](TrajectoryTracking/) | [TugOfWords](TugOfWords/) |
 | [![TuringMirror](https://media.ollin.art/examples/Vision/TuringMirror/still-640.jpg?v=5313816d)](TuringMirror/) | [![WebcamFeed](https://media.ollin.art/examples/Vision/WebcamFeed/still-640.jpg?v=64b00ba8)](WebcamFeed/) |  |  |
 | [TuringMirror](TuringMirror/) | [WebcamFeed](WebcamFeed/) |  |  |
+
+Computer vision on the Mac. Vision lives in a separate library, so add `import OllinVision`. It covers the Mac's camera (built-in, a Continuity Camera iPhone, or an external webcam) plus Apple's on-device perception. Build a `Camera` in `setup()` and `start()` it. Draw `camera.frame` in `draw()`. Then attach a tracker (like `FaceTracker`) to the same camera to read recognition results. See the [Vision reference](../../Docs/Vision/Vision.md).
 
 | Example | What it shows |
 |---|---|

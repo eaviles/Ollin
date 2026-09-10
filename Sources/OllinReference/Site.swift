@@ -506,7 +506,7 @@ public struct SiteBuilder {
           <div class="hero-text">
             <p class="eyebrow">Ollin</p>
             <h1>\(HTML.escape(tagline))</h1>
-            <p class="hero-actions"><a class="button" href="\(guide)">Start with the Guide</a><a class="button quiet" href="\(HTML.escape(repository))" rel="noopener">View on GitHub</a></p>
+            <p class="hero-actions"><a class="button" href="#run-it">Run a sketch</a><a class="button quiet" href="\(guide)">Start with the Guide</a></p>
           </div>
         \(ring)</section>
         <section class="cards">

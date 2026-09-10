@@ -4,8 +4,6 @@
 
 ## Text
 
-These examples draw text with `drawText`, using bitmap (pixel-grid) fonts and outline (`.ttf`/`.otf`) fonts.
-
 | [![Columns](https://media.ollin.art/examples/Text/Columns/still-640.jpg?v=a7c68465)](Columns/) | [![GlyphContours](https://media.ollin.art/examples/Text/GlyphContours/still-640.jpg?v=632b62f2)](GlyphContours/) | [![GlyphWave](https://media.ollin.art/examples/Text/GlyphWave/still-640.jpg?v=0bca0f69)](GlyphWave/) | [![HangingStops](https://media.ollin.art/examples/Text/HangingStops/still-640.jpg?v=daddad8f)](HangingStops/) |
 |---|---|---|---|
 | [Columns](Columns/) | [GlyphContours](GlyphContours/) | [GlyphWave](GlyphWave/) | [HangingStops](HangingStops/) |
@@ -15,6 +13,8 @@ These examples draw text with `drawText`, using bitmap (pixel-grid) fonts and ou
 | [StrokeText](StrokeText/) | [TextBox](TextBox/) | [TextMetrics](TextMetrics/) | [TextOnPath](TextOnPath/) |
 | [![TextVolume](https://media.ollin.art/examples/Text/TextVolume/still-640.jpg?v=9dd686c8)](TextVolume/) | [![TypeAsGeometry](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg?v=537eb2e7)](TypeAsGeometry/) | [![VariableFont](https://media.ollin.art/examples/Text/VariableFont/still-640.jpg?v=bf979f74)](VariableFont/) |  |
 | [TextVolume](TextVolume/) | [TypeAsGeometry](TypeAsGeometry/) | [VariableFont](VariableFont/) |  |
+
+These examples draw text with `drawText`, using bitmap (pixel-grid) fonts and outline (`.ttf`/`.otf`) fonts.
 
 | Example | What it shows |
 |---|---|

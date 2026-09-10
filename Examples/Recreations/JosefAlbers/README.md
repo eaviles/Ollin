@@ -4,6 +4,10 @@
 
 ## Josef Albers
 
+| [![Homage](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg?v=bd118fab)](Homage/) |  |  |  |
+|---|---|---|---|
+| [Homage](Homage/) |  |  |  |
+
 **Josef Albers** (1888, Bottrop, Germany; 1976, New Haven, Connecticut) taught color for fifty years and painted the same square for the last twenty-six of them. He came to the Bauhaus as a student in 1920, taught its preliminary course from 1923, and left Germany when the school closed in 1933. He taught at Black Mountain College in North Carolina until 1949, then at Yale, where he ran the design department until 1958. His course became the book *Interaction of Color* (1963), whose plates show that no color is seen as it is: what a color looks like depends on the colors beside it. In 1971 the Metropolitan Museum of Art gave him a retrospective, the first it had given a living artist.
 
 He began **Homage to the Square** in 1950, at 62, and made more than a thousand of them before he died. Each one is three or four flat squares of color nested inside one another. The format never changes. On a grid of ten units the squares measure ten, eight, six, and four; each is centered across the panel and set low in it, so the band under an inner square is half the band at its sides and the band above is one and a half times it. He used four arrangements: all four squares, or three of them with one of the inner three left out. He said the downward shift *"gives additional weight, but also enhanced movement"* and that it keeps the picture from settling into a symmetry that would hold it still.
@@ -34,7 +38,3 @@ Learn more:
   ```
 
 This is a homage after Josef Albers, made for learning. It isn't a reproduction of a specific work, and it isn't affiliated with or endorsed by the artist or the Josef and Anni Albers Foundation.
-
-| [![Homage](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg?v=bd118fab)](Homage/) |  |  |  |
-|---|---|---|---|
-| [Homage](Homage/) |  |  |  |

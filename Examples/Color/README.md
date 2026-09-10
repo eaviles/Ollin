@@ -4,8 +4,6 @@
 
 ## Color
 
-These examples cover palettes, colormaps, and color driven by a value or by time.
-
 | [![ColorVision](https://media.ollin.art/examples/Color/ColorVision/still-640.jpg?v=576f2f37)](ColorVision/) | [![ColorWaves](https://media.ollin.art/examples/Color/ColorWaves/still-640.jpg?v=c29d2429)](ColorWaves/) | [![Colormaps](https://media.ollin.art/examples/Color/Colormaps/still-640.jpg?v=4e06b898)](Colormaps/) | [![Dithering](https://media.ollin.art/examples/Color/Dithering/still-640.jpg?v=0d647cc9)](Dithering/) |
 |---|---|---|---|
 | [ColorVision](ColorVision/) | [ColorWaves](ColorWaves/) | [Colormaps](Colormaps/) | [Dithering](Dithering/) |
@@ -15,6 +13,8 @@ These examples cover palettes, colormaps, and color driven by a value or by time
 | [PaletteFile](PaletteFile/) | [PaletteFromImage](PaletteFromImage/) | [PrintSeparation](PrintSeparation/) | [SoftProof](SoftProof/) |
 | [![Swatchbook](https://media.ollin.art/examples/Color/Swatchbook/still-640.jpg?v=581862c5)](Swatchbook/) |  |  |  |
 | [Swatchbook](Swatchbook/) |  |  |  |
+
+These examples cover palettes, colormaps, and color driven by a value or by time.
 
 | Example | What it shows |
 |---|---|

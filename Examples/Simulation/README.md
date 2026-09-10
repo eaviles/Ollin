@@ -4,8 +4,6 @@
 
 ## Simulation
 
-These examples run systems that change on the GPU each frame. They cover three areas: the built-in `Sim` field catalog, the [artificial-life](../../Docs/Simulation/ArtificialLife.md) particle systems, and the [particle fluids & soft bodies](../../Docs/Simulation/Fluids.md). A `Sim` field is a stateful texture that you draw into to seed or force it; see the [Layered effects reference](../../Docs/Drawing/Effects.md). This folder is separate from [Physics](../Physics/), which covers CPU rigid and soft bodies, and from [Compute](../Compute/), which covers raw kernels over buffers and textures.
-
 | [![Attractor](https://media.ollin.art/examples/Simulation/Attractor/still-640.jpg?v=31fb728b)](Attractor/) | [![Automata](https://media.ollin.art/examples/Simulation/Automata/still-640.jpg?v=11a15ae9)](Automata/) | [![Breeding](https://media.ollin.art/examples/Simulation/Breeding/still-640.jpg?v=d1c47ace)](Breeding/) | [![Evolution](https://media.ollin.art/examples/Simulation/Evolution/still-640.jpg?v=d94560fe)](Evolution/) |
 |---|---|---|---|
 | [Attractor](Attractor/) | [Automata](Automata/) | [Breeding](Breeding/) | [Evolution](Evolution/) |
@@ -17,6 +15,8 @@ These examples run systems that change on the GPU each frame. They cover three a
 | [PrimordialParticles](PrimordialParticles/) | [Ripples](Ripples/) | [SelfWarp](SelfWarp/) | [SoftBodies](SoftBodies/) |
 | [![Swarm](https://media.ollin.art/examples/Simulation/Swarm/still-640.jpg?v=aece2131)](Swarm/) | [![SwarmChemistry](https://media.ollin.art/examples/Simulation/SwarmChemistry/still-640.jpg?v=c59c8fd8)](SwarmChemistry/) | [![Watercolor](https://media.ollin.art/examples/Simulation/Watercolor/still-640.jpg?v=c450ffd5)](Watercolor/) |  |
 | [Swarm](Swarm/) | [SwarmChemistry](SwarmChemistry/) | [Watercolor](Watercolor/) |  |
+
+These examples run systems that change on the GPU each frame. They cover three areas: the built-in `Sim` field catalog, the [artificial-life](../../Docs/Simulation/ArtificialLife.md) particle systems, and the [particle fluids & soft bodies](../../Docs/Simulation/Fluids.md). A `Sim` field is a stateful texture that you draw into to seed or force it; see the [Layered effects reference](../../Docs/Drawing/Effects.md). This folder is separate from [Physics](../Physics/), which covers CPU rigid and soft bodies, and from [Compute](../Compute/), which covers raw kernels over buffers and textures.
 
 | Example | What it shows |
 |---|---|

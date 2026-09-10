@@ -4,9 +4,6 @@
 
 ## Patterns
 
-Generative patterns: grids, tessellations, and rule-based repetition. Shape *primitives* and
-shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
-
 | [![Anamorphosis](https://media.ollin.art/examples/Patterns/Anamorphosis/still-640.jpg?v=b206285e)](Anamorphosis/) | [![AntColony](https://media.ollin.art/examples/Patterns/AntColony/still-640.jpg?v=d8d552dd)](AntColony/) | [![Apollonian](https://media.ollin.art/examples/Patterns/Apollonian/still-640.jpg?v=f6187fc5)](Apollonian/) | [![Bifurcation](https://media.ollin.art/examples/Patterns/Bifurcation/still-640.jpg?v=e346e58f)](Bifurcation/) |
 |---|---|---|---|
 | [Anamorphosis](Anamorphosis/) | [AntColony](AntColony/) | [Apollonian](Apollonian/) | [Bifurcation](Bifurcation/) |
@@ -48,6 +45,9 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [Voronoi](Voronoi/) | [WangTiles](WangTiles/) | [WarpGrid](WarpGrid/) | [WaveFunctionCollapse](WaveFunctionCollapse/) |
 | [![Wavefront](https://media.ollin.art/examples/Patterns/Wavefront/still-640.jpg?v=8a15c1da)](Wavefront/) |  |  |  |
 | [Wavefront](Wavefront/) |  |  |  |
+
+Generative patterns: grids, tessellations, and rule-based repetition. Shape *primitives* and
+shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 
 | Example | What it shows |
 |---|---|

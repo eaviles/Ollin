@@ -4,8 +4,6 @@
 
 ## Images
 
-These examples load, draw, tint, and author raster images through the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript. They also cover the image-as-input renderings, which turn a picture into glyphs, streaks, halftone dots, a single line, a branching tree of veins, a wound thread, or a molten field.
-
 | [![Autostereogram](https://media.ollin.art/examples/Images/Autostereogram/still-640.jpg?v=a02b4c97)](Autostereogram/) | [![Dropped](https://media.ollin.art/examples/Images/Dropped/still-640.jpg?v=bf8292af)](Dropped/) | [![Fit](https://media.ollin.art/examples/Images/Fit/still-640.jpg?v=0b369e71)](Fit/) | [![GlyphMosaic](https://media.ollin.art/examples/Images/GlyphMosaic/still-640.jpg?v=56f962ea)](GlyphMosaic/) |
 |---|---|---|---|
 | [Autostereogram](Autostereogram/) | [Dropped](Dropped/) | [Fit](Fit/) | [GlyphMosaic](GlyphMosaic/) |
@@ -15,6 +13,8 @@ These examples load, draw, tint, and author raster images through the `Image` va
 | [PixelSort](PixelSort/) | [SeamCarve](SeamCarve/) | [SingleLine](SingleLine/) | [SlitScan](SlitScan/) |
 | [![SpanningTree](https://media.ollin.art/examples/Images/SpanningTree/still-640.jpg?v=7674d7bc)](SpanningTree/) | [![StringArt](https://media.ollin.art/examples/Images/StringArt/still-640.jpg?v=36d57253)](StringArt/) |  |  |
 | [SpanningTree](SpanningTree/) | [StringArt](StringArt/) |  |  |
+
+These examples load, draw, tint, and author raster images through the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript. They also cover the image-as-input renderings, which turn a picture into glyphs, streaks, halftone dots, a single line, a branching tree of veins, a wound thread, or a molten field.
 
 | Example | What it shows |
 |---|---|

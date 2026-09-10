@@ -4,6 +4,10 @@
 
 ## Jared Tarbell
 
+| [![Substrate](https://media.ollin.art/examples/Recreations/JaredTarbell/Substrate/still-640.jpg?v=eb89a361)](Substrate/) |  |  |  |
+|---|---|---|---|
+| [Substrate](Substrate/) |  |  |  |
+
 **Jared Tarbell** is an American generative artist and programmer from New Mexico, and a co-founder of Etsy. On **complexification.net** (2003) he published a gallery of algorithmic works that became one of the reference points of early generative art. His pieces grow from simple local rules run at scale, so thousands of small marks build up into cities, sand paintings, and swarms.
 
 **"Substrate" (2003)** is his best-known work. Straight cracks move across the plane and stop where they meet an older crack. A new crack then starts at a right angle to the existing pattern. As this repeats, the surface divides into blocks, like the street map of an unplanned city. A translucent wash he calls a *sand painter* shades the open space beside each line, in colors sampled from a painting.
@@ -22,7 +26,3 @@ Learn more:
   ```
 
 These are homages after Jared Tarbell, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.
-
-| [![Substrate](https://media.ollin.art/examples/Recreations/JaredTarbell/Substrate/still-640.jpg?v=eb89a361)](Substrate/) |  |  |  |
-|---|---|---|---|
-| [Substrate](Substrate/) |  |  |  |

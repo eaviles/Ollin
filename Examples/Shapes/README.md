@@ -4,8 +4,6 @@
 
 ## Shapes
 
-These examples cover the shape-drawing vocabulary. They show every primitive and the stroke and hollow modes. They also show two ways to compose shapes: boolean set operations on filled outlines, and SDF combinators that merge distance fields.
-
 | [![Arrows](https://media.ollin.art/examples/Shapes/Arrows/still-640.jpg?v=7129651c)](Arrows/) | [![Booleans](https://media.ollin.art/examples/Shapes/Booleans/still-640.jpg?v=e9545bf1)](Booleans/) | [![Brushes](https://media.ollin.art/examples/Shapes/Brushes/still-640.jpg?v=3d541644)](Brushes/) | [![Brushwork](https://media.ollin.art/examples/Shapes/Brushwork/still-640.jpg?v=8773c62f)](Brushwork/) |
 |---|---|---|---|
 | [Arrows](Arrows/) | [Booleans](Booleans/) | [Brushes](Brushes/) | [Brushwork](Brushwork/) |
@@ -23,6 +21,8 @@ These examples cover the shape-drawing vocabulary. They show every primitive and
 | [StraightSkeleton](StraightSkeleton/) | [StrokeAlignment](StrokeAlignment/) | [StrokeJoinsAndCaps](StrokeJoinsAndCaps/) | [StrokeProfiles](StrokeProfiles/) |
 | [![Superellipse](https://media.ollin.art/examples/Shapes/Superellipse/still-640.jpg?v=5d1a3834)](Superellipse/) | [![Supershape](https://media.ollin.art/examples/Shapes/Supershape/still-640.jpg?v=5ce79b23)](Supershape/) | [![Triangles](https://media.ollin.art/examples/Shapes/Triangles/still-640.jpg?v=0c166e76)](Triangles/) |  |
 | [Superellipse](Superellipse/) | [Supershape](Supershape/) | [Triangles](Triangles/) |  |
+
+These examples cover the shape-drawing vocabulary. They show every primitive and the stroke and hollow modes. They also show two ways to compose shapes: boolean set operations on filled outlines, and SDF combinators that merge distance fields.
 
 | Example | What it shows |
 |---|---|

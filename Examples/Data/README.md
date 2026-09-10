@@ -4,13 +4,13 @@
 
 ## Data
 
-These sketches draw from data. The first two read a file once in `setup()`, and the file decides what the picture looks like. The scale, the colors, and the labels all come out of the file, so none of them is typed into the sketch. The third sketch asks an address again and again, so the picture shows something happening now. The fourth holds one connection open, so every event arrives the moment it happens. The fifth asks about the sky over one city, and draws it.
-
 | [![Edits](https://media.ollin.art/examples/Data/Edits/still-640.jpg?v=91deec75)](Edits/) | [![Outside](https://media.ollin.art/examples/Data/Outside/still-640.jpg?v=a786f3b0)](Outside/) | [![Places](https://media.ollin.art/examples/Data/Places/still-640.jpg?v=9840da9a)](Places/) | [![Quakes](https://media.ollin.art/examples/Data/Quakes/still-640.jpg?v=6e704331)](Quakes/) |
 |---|---|---|---|
 | [Edits](Edits/) | [Outside](Outside/) | [Places](Places/) | [Quakes](Quakes/) |
 | [![Readings](https://media.ollin.art/examples/Data/Readings/still-640.jpg?v=5fb2928c)](Readings/) |  |  |  |
 | [Readings](Readings/) |  |  |  |
+
+These sketches draw from data. The first two read a file once in `setup()`, and the file decides what the picture looks like. The scale, the colors, and the labels all come out of the file, so none of them is typed into the sketch. The third sketch asks an address again and again, so the picture shows something happening now. The fourth holds one connection open, so every event arrives the moment it happens. The fifth asks about the sky over one city, and draws it.
 
 | Example | What it shows |
 |---|---|

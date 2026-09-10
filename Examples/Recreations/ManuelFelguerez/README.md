@@ -4,6 +4,10 @@
 
 ## Manuel Felguérez
 
+| [![MaquinaEstetica](https://media.ollin.art/examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg?v=6305ae9f)](MaquinaEstetica/) |  |  |  |
+|---|---|---|---|
+| [MaquinaEstetica](MaquinaEstetica/) |  |  |  |
+
 **Manuel Felguérez** (1928-2020) was a Mexican painter and sculptor, born in Valparaíso, Zacatecas. He was one of the leading figures of the *Generación de la Ruptura*, the generation that broke with muralism in the middle of the century. He worked in hard-edge geometric abstraction, in sober tones, on canvas and in metal. In 1998 he opened the country's first museum of abstract art in his home state.
 
 **"La máquina estética" (1975-1977)** is the reason he belongs in this set. Felguérez held that the information in a picture sits in the balance between its forms, not in the forms themselves. He had tested that idea on his own work: he cut the shapes out of his paintings and weighed the pieces. With a Guggenheim Fellowship he went to Harvard, and with the systems engineer Mayer Sasson he turned that theory into a program. The program carried an alphabet of eight geometric elements, and the compositional rules his own paintings kept to. The design lay in a field of six by eight units. Each of the four invisible edges of that field had to be touched by at least one element. A random term made every design different, and the balance decided which ones passed. A plotter drew one design every eleven seconds, up to two hundred in a day.
@@ -32,7 +36,3 @@ Learn more:
   ```
 
 This is a homage after Manuel Felguérez, made for learning. It is not a reproduction of a specific work, and it is not affiliated with or endorsed by the artist or his estate.
-
-| [![MaquinaEstetica](https://media.ollin.art/examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg?v=6305ae9f)](MaquinaEstetica/) |  |  |  |
-|---|---|---|---|
-| [MaquinaEstetica](MaquinaEstetica/) |  |  |  |

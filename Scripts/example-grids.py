@@ -87,22 +87,29 @@ def grid(listing, media):
 
 
 def place(lines, table):
-    """Put the grid where the last one was, or above the listing table."""
-    start = next((i for i, l in enumerate(lines) if l.startswith("| [![")), None)
-    if start is not None:
-        end = start
-        while end < len(lines) and lines[end].startswith("|"):
-            end += 1
-        if not table:                     # every example here lost its picture
-            while end < len(lines) and not lines[end].strip():
-                end += 1
-            return lines[:start] + lines[end:]
-        return lines[:start] + table + lines[end:]
+    """Put the grid straight under the title, wherever the last one sat."""
+    lines = list(lines)
+    # Any grid already there comes out first, so a run that moves the grid
+    # moves it rather than leaving one behind and adding another.
+    at = next((i for i, l in enumerate(lines) if l.startswith("| [![")), None)
+    if at is not None:
+        stop = at
+        while stop < len(lines) and lines[stop].startswith("|"):
+            stop += 1
+        while stop < len(lines) and not lines[stop].strip():
+            stop += 1
+        del lines[at:stop]
     if not table:
         return lines
-    # Above the first table, with a blank line between it and the prose.
-    first = next((i for i, l in enumerate(lines) if l.startswith("|")), len(lines))
-    return lines[:first] + table + [""] + lines[first:]
+    # Under the title, so the sketches are the first thing seen rather than
+    # four paragraphs down the page.
+    title = next((i for i, l in enumerate(lines) if l.startswith("## ")), None)
+    if title is None:
+        title = max(next((i for i, l in enumerate(lines) if l.startswith("|")), len(lines)) - 1, 0)
+    put = title + 1
+    while put < len(lines) and not lines[put].strip():
+        put += 1
+    return lines[:put] + table + [""] + lines[put:]
 
 
 def main():

@@ -4,6 +4,10 @@
 
 ## John Whitney
 
+| [![Permutations](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg?v=a2722897)](Permutations/) |  |  |  |
+|---|---|---|---|
+| [Permutations](Permutations/) |  |  |  |
+
 **John Whitney** (1917, Pasadena, California; 1995, Los Angeles) spent fifty years making motion out of arithmetic. With his brother James he made *Five Film Exercises* (1940-45), which won a prize for sound in Belgium in 1949. In the late 1950s he converted the mechanism of a World War II M-5 antiaircraft gun director into a mechanical analog computer, later adding an M-7 to it, until the rig stood twelve feet high. He founded Motion Graphics Incorporated in 1960 and ran film and television titles and commercials through that machine. He worked on the title sequence of *Vertigo* (1958) with Saul Bass. In 1966 IBM made him its first artist in residence, and the films he made from then on, *Permutations* (1968) among them, are the ones that demonstrate what he called harmonic progression. *Arabesque* (1975) was made with Larry Cuba as its programmer. He set the theory down in *Digital Harmony: On the Complementarity of Music and Visual Art* (Byte Books/McGraw-Hill, 1980), which prints his own sample programs in the back.
 
 His claim was that motion has harmony in it the way sound does, and that the harmony comes from whole numbers. The rule is one paragraph of that book:
@@ -36,7 +40,3 @@ Learn more:
   ```
 
 This is a homage after John Whitney, made for learning. It isn't a reproduction of a specific film, and it isn't affiliated with or endorsed by the artist or his estate.
-
-| [![Permutations](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg?v=a2722897)](Permutations/) |  |  |  |
-|---|---|---|---|
-| [Permutations](Permutations/) |  |  |  |

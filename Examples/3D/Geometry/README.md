@@ -4,8 +4,6 @@
 
 ## Geometry
 
-This group covers meshes, point clouds, and the 3D transform stack.
-
 | [![AnimatedScene](https://media.ollin.art/examples/3D/Geometry/AnimatedScene/still-640.jpg?v=d2631355)](AnimatedScene/) | [![Fabrication](https://media.ollin.art/examples/3D/Geometry/Fabrication/still-640.jpg?v=aca68699)](Fabrication/) | [![HopfFibration](https://media.ollin.art/examples/3D/Geometry/HopfFibration/still-640.jpg?v=d4647092)](HopfFibration/) | [![LoadedMesh](https://media.ollin.art/examples/3D/Geometry/LoadedMesh/still-640.jpg?v=4c133c2f)](LoadedMesh/) |
 |---|---|---|---|
 | [AnimatedScene](AnimatedScene/) | [Fabrication](Fabrication/) | [HopfFibration](HopfFibration/) | [LoadedMesh](LoadedMesh/) |
@@ -21,6 +19,8 @@ This group covers meshes, point clouds, and the 3D transform stack.
 | [SubdivisionSurfaces](SubdivisionSurfaces/) | [SurfaceFromPoints](SurfaceFromPoints/) | [SurfaceScatter](SurfaceScatter/) | [Terrain](Terrain/) |
 | [![TexturedMesh](https://media.ollin.art/examples/3D/Geometry/TexturedMesh/still-640.jpg?v=b0c35cde)](TexturedMesh/) | [![Transforms](https://media.ollin.art/examples/3D/Geometry/Transforms/still-640.jpg?v=e2fc0089)](Transforms/) | [![Wireframe](https://media.ollin.art/examples/3D/Geometry/Wireframe/still-640.jpg?v=e69ea91c)](Wireframe/) |  |
 | [TexturedMesh](TexturedMesh/) | [Transforms](Transforms/) | [Wireframe](Wireframe/) |  |
+
+This group covers meshes, point clouds, and the 3D transform stack.
 
 | Sketch | What it shows |
 | --- | --- |

@@ -4,8 +4,6 @@
 
 ## Export
 
-These examples get a sketch out of the window, four ways. They save the rendered frame as a raster image. They serialize the draw calls behind that frame to vector paths for a pen plotter, with hatching where a fill has to become line work. They plan those paths as a G-code toolpath for a machine, and draw the plan so you can see the route first. They also record a run as it plays, picture and sound together. See the [Export reference](../../Docs/Output/Export.md).
-
 | [![Capture](https://media.ollin.art/examples/Export/Capture/still-640.jpg?v=23b0f63d)](Capture/) | [![Cutout](https://media.ollin.art/examples/Export/Cutout/still-640.jpg?v=37be503f)](Cutout/) | [![Drafting](https://media.ollin.art/examples/Export/Drafting/still-640.jpg?v=f29a25aa)](Drafting/) | [![Embroidery](https://media.ollin.art/examples/Export/Embroidery/still-640.jpg?v=b75d065a)](Embroidery/) |
 |---|---|---|---|
 | [Capture](Capture/) | [Cutout](Cutout/) | [Drafting](Drafting/) | [Embroidery](Embroidery/) |
@@ -13,6 +11,8 @@ These examples get a sketch out of the window, four ways. They save the rendered
 | [Hatching](Hatching/) | [LineDrawing](LineDrawing/) | [Record](Record/) | [Toolpath](Toolpath/) |
 | [![VectorExport](https://media.ollin.art/examples/Export/VectorExport/still-640.jpg?v=3e7635ca)](VectorExport/) |  |  |  |
 | [VectorExport](VectorExport/) |  |  |  |
+
+These examples get a sketch out of the window, four ways. They save the rendered frame as a raster image. They serialize the draw calls behind that frame to vector paths for a pen plotter, with hatching where a fill has to become line work. They plan those paths as a G-code toolpath for a machine, and draw the plan so you can see the route first. They also record a run as it plays, picture and sound together. See the [Export reference](../../Docs/Output/Export.md).
 
 | Example | What it shows |
 |---|---|

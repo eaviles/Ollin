@@ -4,6 +4,10 @@
 
 ## Bridget Riley
 
+| [![Current](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg?v=514967fc)](Current/) | [![Fragment3](https://media.ollin.art/examples/Recreations/BridgetRiley/Fragment3/still-640.jpg?v=bf51efdf)](Fragment3/) |  |  |
+|---|---|---|---|
+| [Current](Current/) | [Fragment3](Fragment3/) |  |  |
+
 **Bridget Riley** (b. 1931) is a British painter and a central figure of **Op art**. She is best known for her black-and-white work of the 1960s, in which precise geometry produces vivid optical movement and shimmer. In 1965 her work was shown in MoMA's landmark exhibition *The Responsive Eye*, which brought Op art to international attention.
 
 The **"Fragments" (1965)** were her first prints. They are a series of black-and-white screenprints on **Plexiglas**, printed at Kelpra Studio, London, and published by the Robert Fraser Gallery. The series is *"composed of horizontal lines bent at altering angles across the picture surface"*. That chevron motif is the one recreated here. **"Current" (1964)** is one of her best-known black-and-white paintings. The whole board is filled with closely spaced parallel lines that undulate. The wavelength tightens toward the center, so the surface seems to ripple.
@@ -30,7 +34,3 @@ Learn more:
   ```
 
 These are homages after Bridget Riley, made for learning. They aren't reproductions of specific works, and they aren't affiliated with or endorsed by the artist.
-
-| [![Current](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg?v=514967fc)](Current/) | [![Fragment3](https://media.ollin.art/examples/Recreations/BridgetRiley/Fragment3/still-640.jpg?v=bf51efdf)](Fragment3/) |  |  |
-|---|---|---|---|
-| [Current](Current/) | [Fragment3](Fragment3/) |  |  |

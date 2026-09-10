@@ -4,14 +4,6 @@
 
 ## 3D
 
-These sketches opt into Ollin's 3D mode. 2D stays the default. A sketch becomes
-3D when it sets a `camera` (`perspective`/`ortho`/`camera`). The renderer then
-adds a depth buffer and draws 3D geometry through that camera. World space is
-right-handed and y-up.
-
-The section is large, so the sketches are grouped by topic, one page each.
-
-
 | [![Camera](https://media.ollin.art/groups/3D-Camera-640.jpg?v=c76cca23)](Camera/) | [![Depth](https://media.ollin.art/groups/3D-Depth-640.jpg?v=ba453c33)](Depth/) | [![Effects](https://media.ollin.art/groups/3D-Effects-640.jpg?v=113e3b33)](Effects/) | [![Environments](https://media.ollin.art/groups/3D-Environments-640.jpg?v=fa8ce933)](Environments/) |
 |---|---|---|---|
 | [Camera](Camera/) | [Depth](Depth/) | [Effects](Effects/) | [Environments](Environments/) |
@@ -19,6 +11,14 @@ The section is large, so the sketches are grouped by topic, one page each.
 | [Geometry](Geometry/) | [Lighting](Lighting/) | [Materials](Materials/) | [Physics](Physics/) |
 | [![Raymarching](https://media.ollin.art/groups/3D-Raymarching-640.jpg?v=fb0b045e)](Raymarching/) |  |  |  |
 | [Raymarching](Raymarching/) |  |  |  |
+
+These sketches opt into Ollin's 3D mode. 2D stays the default. A sketch becomes
+3D when it sets a `camera` (`perspective`/`ortho`/`camera`). The renderer then
+adds a depth buffer and draws 3D geometry through that camera. World space is
+right-handed and y-up.
+
+The section is large, so the sketches are grouped by topic, one page each.
+
 
 | Group | What it covers |
 | --- | --- |

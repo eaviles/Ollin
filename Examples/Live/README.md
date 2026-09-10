@@ -4,11 +4,11 @@
 
 ## Live
 
-Sketches that show OllinLive features.
-
 | [![Cues](https://media.ollin.art/examples/Live/Cues/still-640.jpg?v=af1e1234)](Cues/) | [![DragToEdit](https://media.ollin.art/examples/Live/DragToEdit/still-640.jpg?v=808bb7cd)](DragToEdit/) | [![Parameters](https://media.ollin.art/examples/Live/Parameters/still-640.jpg?v=e274f8ca)](Parameters/) |  |
 |---|---|---|---|
 | [Cues](Cues/) | [DragToEdit](DragToEdit/) | [Parameters](Parameters/) |  |
+
+Sketches that show OllinLive features.
 
 | Example | What it shows |
 |---|---|

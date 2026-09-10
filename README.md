@@ -6,7 +6,7 @@
 
 [Guide](Guide/README.md) · [Docs](Docs/README.md) · [Examples](Examples/) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md) · [Attribution](ATTRIBUTION.md) · [Contributing](CONTRIBUTING.md)
 
-Ollin is for generative art, live visuals, and installations. The techniques are built in: Voronoi and L-systems, raymarched signed-distance fields, GPU fluids, on-device computer vision, and [the rest of the catalog](Docs/README.md#the-catalog). The renderer sits directly on Metal and composites in linear light. The tooling covers the work up to a finished piece: live reload while you edit, a typed parameter inspector for tuning, deterministic headless export for the final render.
+Ollin is for generative art, live visuals, and installations. A sketch runs on the Mac and on iPhone, written and worked on from the Mac. The techniques are built in: Voronoi and L-systems, raymarched signed-distance fields, GPU fluids, on-device computer vision, and [the rest of the catalog](Docs/README.md#the-catalog). The renderer sits directly on Metal and composites in linear light. The tooling covers the work up to a finished piece: live reload while you edit, a typed parameter inspector for tuning, deterministic headless export for the final render, as a still, a video, a vector file, or a web page.
 
 <img src="https://media.ollin.art/heroes/readme-hero.jpg?v=d4678db0" alt="Thirty-two of the example sketches running at once, from every area of the framework" width="880">
 

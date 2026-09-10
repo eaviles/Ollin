@@ -4,8 +4,6 @@
 
 ## Effects
 
-This group covers the scene-wide realism passes over the 3D frame.
-
 | [![AmbientOcclusion](https://media.ollin.art/examples/3D/Effects/AmbientOcclusion/still-640.jpg?v=58a7c12d)](AmbientOcclusion/) | [![Atmosphere](https://media.ollin.art/examples/3D/Effects/Atmosphere/still-640.jpg?v=9ddb09d3)](Atmosphere/) | [![ContactShadows](https://media.ollin.art/examples/3D/Effects/ContactShadows/still-640.jpg?v=666d2617)](ContactShadows/) | [![FrameInterpolation](https://media.ollin.art/examples/3D/Effects/FrameInterpolation/still-640.jpg?v=ff8e6ab9)](FrameInterpolation/) |
 |---|---|---|---|
 | [AmbientOcclusion](AmbientOcclusion/) | [Atmosphere](Atmosphere/) | [ContactShadows](ContactShadows/) | [FrameInterpolation](FrameInterpolation/) |
@@ -15,6 +13,8 @@ This group covers the scene-wide realism passes over the 3D frame.
 | [SceneDefocus](SceneDefocus/) | [ScreenSpaceReflections](ScreenSpaceReflections/) | [SpecularAntialias](SpecularAntialias/) | [TemporalAA](TemporalAA/) |
 | [![Upscaling](https://media.ollin.art/examples/3D/Effects/Upscaling/still-640.jpg?v=80242487)](Upscaling/) |  |  |  |
 | [Upscaling](Upscaling/) |  |  |  |
+
+This group covers the scene-wide realism passes over the 3D frame.
 
 | Sketch | What it shows |
 | --- | --- |

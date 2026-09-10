@@ -4,6 +4,10 @@
 
 ## Vera Molnár
 
+| [![DesOrdres](https://media.ollin.art/examples/Recreations/VeraMolnar/DesOrdres/still-640.jpg?v=18751e3f)](DesOrdres/) | [![Interruptions](https://media.ollin.art/examples/Recreations/VeraMolnar/Interruptions/still-640.jpg?v=45d718bd)](Interruptions/) |  |  |
+|---|---|---|---|
+| [DesOrdres](DesOrdres/) | [Interruptions](Interruptions/) |  |  |
+
 **Vera Molnár** (1924-2023) was a Hungarian-French artist and a pioneer of generative computer art. She was among the first women to use computers in a fine-art practice. From the late 1960s she wrote programs in Fortran and BASIC and drew the results with plotters. Her programs explored simple geometric forms (squares, lines, rule-based compositions) and, above all, the tension between **order and controlled disorder**. She introduced small, deliberate amounts of randomness into rigorous grids, which she called her "1% disorder", the phrase she is best known for.
 
 Learn more:
@@ -27,7 +31,3 @@ Learn more:
 
 These sketches are homages after Vera Molnár, made for learning. They are not reproductions of specific works. They are not affiliated with or endorsed by the artist or her estate.
 
-
-| [![DesOrdres](https://media.ollin.art/examples/Recreations/VeraMolnar/DesOrdres/still-640.jpg?v=18751e3f)](DesOrdres/) | [![Interruptions](https://media.ollin.art/examples/Recreations/VeraMolnar/Interruptions/still-640.jpg?v=45d718bd)](Interruptions/) |  |  |
-|---|---|---|---|
-| [DesOrdres](DesOrdres/) | [Interruptions](Interruptions/) |  |  |

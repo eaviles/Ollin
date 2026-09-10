@@ -4,12 +4,6 @@
 
 ## Ollin examples
 
-The examples are small, runnable sketches. Together they form a learning path, in the style of openFrameworks. Each example is one self-contained `@main` file that shows a single idea. The examples are maintained and versioned with the API, so they always build against current Ollin.
-
-### Layout
-
-Examples are grouped into **category** folders, and each example gets its own folder inside its category. One example is one executable target, because SwiftPM allows only one `@main` per target. The sketch file is always `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`. The folder name is therefore the example's identity, and the folder also holds the sketch's own resources (fonts, images, shaders). A category that has grown large can group its sketches one level deeper, at `Examples/<Category>/<Group>/<Name>/Sketch.swift`. `3D/` is grouped by topic this way, and `Recreations/` is grouped by artist. The group name also becomes part of the target name (`Example-<Category>-<Group>-<Name>`). Each category has its own README that lists the sketches inside it:
-
 | [![3D](https://media.ollin.art/groups/3D-640.jpg?v=93086923)](3D/) | [![Audio](https://media.ollin.art/groups/Audio-640.jpg?v=40ac009a)](Audio/) | [![Basic](https://media.ollin.art/groups/Basic-640.jpg?v=87cc5110)](Basic/) | [![Color](https://media.ollin.art/groups/Color-640.jpg?v=d25edf72)](Color/) |
 |---|---|---|---|
 | [3D](3D/) | [Audio](Audio/) | [Basic](Basic/) | [Color](Color/) |
@@ -25,6 +19,12 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Shapes](Shapes/) | [Simulation](Simulation/) | [Text](Text/) | [Video](Video/) |
 | [![Vision](https://media.ollin.art/groups/Vision-640.jpg?v=cbe152e5)](Vision/) | [![Web](https://media.ollin.art/groups/Web-640.jpg?v=fd88be70)](Web/) |  |  |
 | [Vision](Vision/) | [Web](Web/) |  |  |
+
+The examples are small, runnable sketches. Together they form a learning path, in the style of openFrameworks. Each example is one self-contained `@main` file that shows a single idea. The examples are maintained and versioned with the API, so they always build against current Ollin.
+
+### Layout
+
+Examples are grouped into **category** folders, and each example gets its own folder inside its category. One example is one executable target, because SwiftPM allows only one `@main` per target. The sketch file is always `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`. The folder name is therefore the example's identity, and the folder also holds the sketch's own resources (fonts, images, shaders). A category that has grown large can group its sketches one level deeper, at `Examples/<Category>/<Group>/<Name>/Sketch.swift`. `3D/` is grouped by topic this way, and `Recreations/` is grouped by artist. The group name also becomes part of the target name (`Example-<Category>-<Group>-<Name>`). Each category has its own README that lists the sketches inside it:
 
 | Category | What's inside |
 |---|---|
