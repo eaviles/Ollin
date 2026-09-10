@@ -15,6 +15,11 @@ rest, and because GitHub has to show the same file. The addresses come from
 `Examples/media.json`, so nothing here is typed by hand and moving the host is
 still one edit.
 
+A listing whose sketches all live on pages of their own, like the examples
+front page or the 3D and recreations indexes, shows one picture per group
+instead. Which sketch stands for a group is a choice rather than a rule, so
+it is written down in the manifest under `covers` and read from there.
+
 An example with no row in the manifest has no picture and simply does not
 appear in the grid; it is still in the listing table underneath with the
 sentence that says what it shows. Running this twice changes nothing: an
@@ -27,6 +32,11 @@ import sys
 
 COLUMNS = 4
 EXAMPLES = pathlib.Path("Examples")
+
+
+def delegated(listing):
+    """The folders under this listing that have a page of their own."""
+    return sorted(nested.parent for nested in listing.parent.glob("*/README.md"))
 
 
 def owned(listing):
@@ -42,10 +52,18 @@ def owned(listing):
     return sorted(found)
 
 
-def grid(rows, media, home):
-    """The table, or nothing when none of these examples has a picture."""
+def grid(listing, media):
+    """The table, or nothing when nothing under this listing has a picture."""
+    home = listing.parent
     cells = []
-    for folder in rows:
+    for group in delegated(listing):
+        cover = media.get("covers", {}).get(group.relative_to(EXAMPLES).as_posix())
+        entry = media["examples"].get(cover) if cover else None
+        if entry:
+            here = group.relative_to(home).as_posix()
+            cells.append((f"[![{group.name}]({media['base']}/{entry['stillSmall']})]({here}/)",
+                          f"[{group.name}]({here}/)"))
+    for folder in owned(listing):
         name = folder.name
         entry = media["examples"].get(folder.relative_to(EXAMPLES).as_posix())
         if entry:
@@ -91,11 +109,9 @@ def main():
     only = sys.argv[1] if len(sys.argv) > 1 else None
     written = 0
     for listing in sorted(EXAMPLES.rglob("README.md")):
-        if listing.parent == EXAMPLES:
-            continue                      # the top page is a page of groups
         if only and only not in listing.parent.as_posix():
             continue
-        table = grid(owned(listing), media, listing.parent)
+        table = grid(listing, media)
         text = listing.read_text()
         lines = text.split("\n")
         placed = place(lines, table)

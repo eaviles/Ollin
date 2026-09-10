@@ -12,6 +12,14 @@ right-handed and y-up.
 The section is large, so the sketches are grouped by topic, one page each.
 
 
+| [![Camera](https://media.ollin.art/examples/3D/Camera/CameraMoves/still-640.jpg)](Camera/) | [![Depth](https://media.ollin.art/examples/3D/Depth/DepthCompositing/still-640.jpg)](Depth/) | [![Effects](https://media.ollin.art/examples/3D/Effects/PathTraced/still-640.jpg)](Effects/) | [![Environments](https://media.ollin.art/examples/3D/Environments/RemoteEnvironment/still-640.jpg)](Environments/) |
+|---|---|---|---|
+| [Camera](Camera/) | [Depth](Depth/) | [Effects](Effects/) | [Environments](Environments/) |
+| [![Geometry](https://media.ollin.art/examples/3D/Geometry/Solids/still-640.jpg)](Geometry/) | [![Lighting](https://media.ollin.art/examples/3D/Lighting/AreaLights/still-640.jpg)](Lighting/) | [![Materials](https://media.ollin.art/examples/3D/Materials/Materials/still-640.jpg)](Materials/) | [![Physics](https://media.ollin.art/examples/3D/Physics/Contraption/still-640.jpg)](Physics/) |
+| [Geometry](Geometry/) | [Lighting](Lighting/) | [Materials](Materials/) | [Physics](Physics/) |
+| [![Raymarching](https://media.ollin.art/examples/3D/Raymarching/RaymarchedFractals/still-640.jpg)](Raymarching/) |  |  |  |
+| [Raymarching](Raymarching/) |  |  |  |
+
 | Group | What it covers |
 | --- | --- |
 | [Geometry](Geometry/) | This group covers meshes, point clouds, and the 3D transform stack. (27 sketches) |

@@ -26,3 +26,9 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**Josef Albers**](JosefAlbers/). Three or four nested squares set low in the panel, and a new set of colors on them every few seconds, each chosen so the squares change one another.
 - [**John Whitney**](JohnWhitney/). Points on concentric circles, each turning at a whole-number multiple of the first, so the fan gathers into a star at every simple fraction of the cycle and comes back to one spoke at the end of it.
 
+
+| [![BridgetRiley](https://media.ollin.art/examples/Recreations/BridgetRiley/Current/still-640.jpg)](BridgetRiley/) | [![JaredTarbell](https://media.ollin.art/examples/Recreations/JaredTarbell/Substrate/still-640.jpg)](JaredTarbell/) | [![JohnWhitney](https://media.ollin.art/examples/Recreations/JohnWhitney/Permutations/still-640.jpg)](JohnWhitney/) | [![JosefAlbers](https://media.ollin.art/examples/Recreations/JosefAlbers/Homage/still-640.jpg)](JosefAlbers/) |
+|---|---|---|---|
+| [BridgetRiley](BridgetRiley/) | [JaredTarbell](JaredTarbell/) | [JohnWhitney](JohnWhitney/) | [JosefAlbers](JosefAlbers/) |
+| [![ManfredMohr](https://media.ollin.art/examples/Recreations/ManfredMohr/CubicLimit/still-640.jpg)](ManfredMohr/) | [![ManuelFelguerez](https://media.ollin.art/examples/Recreations/ManuelFelguerez/MaquinaEstetica/still-640.jpg)](ManuelFelguerez/) | [![OsamuSato](https://media.ollin.art/examples/Recreations/OsamuSato/Totem/still-640.jpg)](OsamuSato/) |  |
+| [ManfredMohr](ManfredMohr/) | [ManuelFelguerez](ManuelFelguerez/) | [OsamuSato](OsamuSato/) |  |

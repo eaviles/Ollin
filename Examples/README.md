@@ -10,6 +10,18 @@ The examples are small, runnable sketches. Together they form a learning path, i
 
 Examples are grouped into **category** folders, and each example gets its own folder inside its category. One example is one executable target, because SwiftPM allows only one `@main` per target. The sketch file is always `Sketch.swift`, at `Examples/<Category>/<Name>/Sketch.swift`. The folder name is therefore the example's identity, and the folder also holds the sketch's own resources (fonts, images, shaders). A category that has grown large can group its sketches one level deeper, at `Examples/<Category>/<Group>/<Name>/Sketch.swift`. `3D/` is grouped by topic this way, and `Recreations/` is grouped by artist. The group name also becomes part of the target name (`Example-<Category>-<Group>-<Name>`). Each category has its own README that lists the sketches inside it:
 
+| [![3D](https://media.ollin.art/examples/3D/Geometry/Planet/still-640.jpg)](3D/) | [![Audio](https://media.ollin.art/examples/Audio/OwnSampler/still-640.jpg)](Audio/) | [![Basic](https://media.ollin.art/examples/Basic/Describing/still-640.jpg)](Basic/) | [![Color](https://media.ollin.art/examples/Color/HSBWheel/still-640.jpg)](Color/) |
+|---|---|---|---|
+| [3D](3D/) | [Audio](Audio/) | [Basic](Basic/) | [Color](Color/) |
+| [![Compute](https://media.ollin.art/examples/Compute/ReactionDiffusion/still-640.jpg)](Compute/) | [![Effects](https://media.ollin.art/examples/Effects/Droste/still-640.jpg)](Effects/) | [![Export](https://media.ollin.art/examples/Export/Cutout/still-640.jpg)](Export/) | [![Images](https://media.ollin.art/examples/Images/PhotoMosaic/still-640.jpg)](Images/) |
+| [Compute](Compute/) | [Effects](Effects/) | [Export](Export/) | [Images](Images/) |
+| [![Motion](https://media.ollin.art/examples/Motion/Mandala/still-640.jpg)](Motion/) | [![Patterns](https://media.ollin.art/examples/Patterns/Truchet/still-640.jpg)](Patterns/) | [![Physics](https://media.ollin.art/examples/Physics/RigidBodies/still-640.jpg)](Physics/) | [![Randomness](https://media.ollin.art/examples/Randomness/Variations/still-640.jpg)](Randomness/) |
+| [Motion](Motion/) | [Patterns](Patterns/) | [Physics](Physics/) | [Randomness](Randomness/) |
+| [![Recreations](https://media.ollin.art/examples/Recreations/OsamuSato/Totem/still-640.jpg)](Recreations/) | [![Rendering](https://media.ollin.art/examples/Rendering/Grassland/still-640.jpg)](Rendering/) | [![Shaders](https://media.ollin.art/examples/Shaders/VisualSynth/still-640.jpg)](Shaders/) | [![Shapes](https://media.ollin.art/examples/Shapes/Primitives/still-640.jpg)](Shapes/) |
+| [Recreations](Recreations/) | [Rendering](Rendering/) | [Shaders](Shaders/) | [Shapes](Shapes/) |
+| [![Simulation](https://media.ollin.art/examples/Simulation/GrayScott/still-640.jpg)](Simulation/) | [![Text](https://media.ollin.art/examples/Text/TypeAsGeometry/still-640.jpg)](Text/) | [![Video](https://media.ollin.art/examples/Video/VideoPlayback/still-640.jpg)](Video/) | [![Web](https://media.ollin.art/examples/Web/BreathingRing/still-640.jpg)](Web/) |
+| [Simulation](Simulation/) | [Text](Text/) | [Video](Video/) | [Web](Web/) |
+
 | Category | What's inside |
 |---|---|
 | [3D](3D/) | the 3D mode: meshes, camera, materials, lighting, environments, raymarched SDFs, depth feeds |

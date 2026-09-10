@@ -255,10 +255,16 @@ public struct SiteBuilder {
         var found: [(name: String, path: String)] = []
         for rawLine in text.components(separatedBy: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
-            guard line.hasPrefix("| ["), let link = ReferenceLibrary.firstLink(in: line) else { continue }
+            // A picture grid's rows start the same way, and their first link
+            // is the still rather than the category, so they are stepped over.
+            guard line.hasPrefix("| ["), !line.hasPrefix("| [!["),
+                  let link = ReferenceLibrary.firstLink(in: line) else { continue }
             let name = Markdown.plain(String(line.dropFirst(3).prefix { $0 != "]" }))
             var path = link.target
             while path.hasSuffix("/") { path.removeLast() }
+            // The grid's names sit under its pictures and link the same
+            // folders, so a category reached twice is still one category.
+            guard !found.contains(where: { $0.path == path }) else { continue }
             found.append((name, path))
         }
         return found

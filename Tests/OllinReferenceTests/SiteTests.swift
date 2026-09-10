@@ -756,6 +756,33 @@ struct SiteTests {
         #expect(media["Patterns/Nothing"] == nil)
     }
 
+    @Test("The category order steps over the picture grid above it")
+    func categoriesSkipTheGrid() throws {
+        let file = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-index-\(UUID().uuidString).md")
+        defer { try? FileManager.default.removeItem(at: file) }
+        // The grid's rows open the same way a category row does, and their
+        // first link is the picture, so reading them would name the site's
+        // sections after image files.
+        try """
+        ## Examples
+
+        | [![Patterns](https://media.example/still-640.jpg)](Patterns/) | [![3D](https://media.example/b.jpg)](3D/) |
+        |---|---|
+        | [Patterns](Patterns/) | [3D](3D/) |
+
+        | Category | What it holds |
+        |---|---|
+        | [Patterns](Patterns/) | rule-based repetition |
+        | [3D](3D/) | scenes with a camera |
+        """.write(to: file, atomically: true, encoding: .utf8)
+
+        let found = SiteBuilder.categories(readingIndexAt: file)
+        #expect(found.map(\.name) == ["Patterns", "3D"], "actual: \(found)")
+        #expect(found.allSatisfy { !$0.path.contains("media.example") },
+                "a picture's address is not a category")
+    }
+
     @Test("A clip carries what a phone needs to play it inline")
     func clipAttributes() {
         let entry = ExampleMedia.Entry(loop: "e/loop.mp4", loopSmall: "e/loop-640.mp4",
