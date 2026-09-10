@@ -232,8 +232,10 @@ for example in $list; do
     ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 1080) -q:v 2 $OUT/$key-still.jpg
     ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 640) -q:v 3 $OUT/$key-still-640.jpg
     for suffix in still.jpg still-640.jpg; do
-      (( upload )) && rclone copyto $OUT/$key-$suffix "r2:$R2_BUCKET/examples/$example/$suffix" \
-        --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
+      if (( upload )); then
+        rclone copyto $OUT/$key-$suffix "r2:$R2_BUCKET/examples/$example/$suffix" \
+          --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
+      fi
     done
     python3 $ROOT/Scripts/media-manifest.py still $MANIFEST "$example" "$size" "$want_frame" \
       "0" $OUT/$key-still.jpg $OUT/$key-still-640.jpg "$digest" "too slow to film on this machine"
@@ -256,8 +258,10 @@ for example in $list; do
     ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 1080) -q:v 2 $OUT/$key-still.jpg
     ffmpeg -y -loglevel error -i $OUT/$key.png -vf $(cap 640) -q:v 3 $OUT/$key-still-640.jpg
     for suffix in still.jpg still-640.jpg; do
-      (( upload )) && rclone copyto $OUT/$key-$suffix "r2:$R2_BUCKET/examples/$example/$suffix" \
-        --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
+      if (( upload )); then
+        rclone copyto $OUT/$key-$suffix "r2:$R2_BUCKET/examples/$example/$suffix" \
+          --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
+      fi
     done
     echo "  holds still ($motion), so a picture and no clip"
     python3 $ROOT/Scripts/media-manifest.py still $MANIFEST "$example" "$size" "$want_frame" \

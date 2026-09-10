@@ -13,7 +13,7 @@ import OllinVision
 /// the thing leaves the frame or moves too fast; click to re-lock.
 @main
 final class ObjectTracking: Sketch {
-    // The tracker needs something to lock onto, so with no feed it reads the bundled picture.
+    // The tracker needs something to lock onto, so with no camera it reads the bundled picture.
     let feed = Camera.orStill(SamplePhoto.wrestler.load())
     lazy var tracker = ObjectTracker(feed)
 

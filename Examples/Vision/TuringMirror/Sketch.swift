@@ -5,7 +5,7 @@ import OllinVision
 //  Inspired by Zach Lieberman's reaction-diffusion daily sketches (2026).
 //  Original interpretation of the technique; no source code ported.
 
-/// A mirror that grows Turing patterns on you: the feed's person matte drives a
+/// A mirror that grows Turing patterns on you: the camera's person matte drives a
 /// reaction-diffusion field's **modulation layer**, so the chemistry runs in the
 /// maze/coral regime wherever you stand and the spot regime everywhere else. It is
 /// one continuous simulation wearing both patterns, so the boundary between them is
@@ -17,7 +17,7 @@ import OllinVision
 /// `.reactionDiffusion(feed:kill:toFeed:toKill:)` and `SimField.modulation`.
 @main
 final class TuringMirror: Sketch {
-    // A mirror needs a person in front of it, so with no feed it wears the bundled dancer.
+    // A mirror needs a person in front of it, so with no camera it wears the bundled dancer.
     let feed = Camera.orStill(SamplePhoto.dancer.load())
     lazy var people = PersonSegmenter(feed)
     private var rd: SimField!

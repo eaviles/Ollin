@@ -99,11 +99,19 @@ for hero in $which; do
   # Uploaded under the name the manifest already uses.
   for suffix in mp4 jpg; do
     cp $OUT/$hero.$suffix $OUT/$hero-hero.$suffix
-    (( upload )) && rclone copyto $OUT/$hero-hero.$suffix "r2:$R2_BUCKET/heroes/$hero-hero.$suffix" \
-      --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
+    if (( upload )); then
+      rclone copyto $OUT/$hero-hero.$suffix "r2:$R2_BUCKET/heroes/$hero-hero.$suffix" \
+        --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
+    fi
   done
-  python3 $ROOT/Scripts/media-heroes.py record $MANIFEST $hero $OUT/$hero-hero.jpg $OUT/$hero-hero.mp4
+  # Only a run that uploaded may write the address down: recording one for a
+  # file that was never sent points the manifest at nothing.
+  if (( upload )); then
+    python3 $ROOT/Scripts/media-heroes.py record $MANIFEST $hero $OUT/$hero-hero.jpg $OUT/$hero-hero.mp4
+  else
+    echo "  not uploaded, so the manifest is left alone"
+  fi
   printf "  %s: %.2f MB\n" $hero "$(( $(stat -f%z $OUT/$hero.mp4) / 1048576.0 ))"
 done
 
-echo "heroes: written into $MANIFEST; the markdown reads the address from there"
+echo "heroes: the manifest holds the addresses; the markdown reads them from there"
