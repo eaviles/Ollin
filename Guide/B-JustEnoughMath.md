@@ -334,7 +334,7 @@ Take a formula, feed it a point, feed it its own answer, and keep going, and the
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/FlowArrows-dark.jpg">
-  <img src="Images/30-Seeing/FlowArrows.jpg" alt="A camera frame of two hands, one overlaid with arrows showing its measured motion" width="680">
+  <img src="Images/30-Seeing/FlowArrows.jpg" alt="A frame of a dancer, with arrows along the arm he is swinging and none on the rest of him" width="680">
 </picture>
 
 Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, advect particles through, or paint with, exactly like a noise-built one. The camera becomes a field generator in [Chapter 30](30-Seeing.md).

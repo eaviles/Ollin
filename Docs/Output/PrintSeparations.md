@@ -16,7 +16,7 @@ drawImage(separation.layers[0].master)   // pink's master: black = full ink
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/Separations-dark.jpg">
-  <img src="../../Guide/Images/31-SharingAndPerforming/Separations.jpg" alt="Four panels: three grayscale masters labeled fluorescent pink, blue, and yellow, each carrying a different part of the same image, followed by the color preview of the three overprinted" width="680">
+  <img src="../../Guide/Images/31-SharingAndPerforming/Separations.jpg" alt="Four panels: three grayscale masters labeled fluorescent pink, blue, and yellow, each carrying a different part of one photograph of a woman before a wall of marigolds, followed by the color preview of the three overprinted, which reads as the photograph again" width="680">
 </picture>
 
 For every pixel, `separated(into:paper:)` finds the ink coverages whose overprint comes closest to the pixel's color. `paper:` defaults to white, so the ink list alone is enough. The model follows the physics. Each ink is a translucent filter, coverage mixes in linear light, and layers multiply on the paper. Ollin judges which mix looks closest perceptually, in OKLab. The [dithering](../Drawing/Color.md) pass uses the same split between physical mixing and perceptual judging. A pixel drawn in an ink's own color separates exactly. Every other color lands on the nearest mix the inks can reach, so gradients, overlaps, and photographs all separate into the same few drums.

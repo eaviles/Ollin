@@ -2,49 +2,58 @@
 //
 // Guide figure (Chapter 22): triplanar projection dressing surfaces that have
 // no uvs. A grown, folded ball (the previous section's output, which no one
-// unwrapped) wears an authored vein texture and its normal map through the
-// three-axis projection, and a cairn of three separate boxes continues one
-// standing pattern across their abutting faces.
+// unwrapped) wears a photograph of glazed tilework and a normal map taken off
+// the picture's own light and shade, both through the three-axis projection,
+// and a cairn of three separate boxes continues one standing pattern across
+// their abutting faces. The picture is the one bundled surface that repeats
+// seamlessly, which a triplanar projection needs: it tiles whatever it is
+// given whatever the wrap setting says.
 import Ollin
+import OllinSamplePhotos
 
 final class TriplanarSkin: Sketch {
 
     override var canvasSize: CanvasSize { .size(880, 380) }
 
-    /// The vein field both maps derive from: thin seams over open stone,
-    /// tiling both ways. Pure math, no rng.
-    func veinField(_ u: Double, _ v: Double) -> Double {
-        let warp = 0.09 * sin(v * 2 * .tau) + 0.05 * sin(u * 3 * .tau + 1.7)
-        let a = 0.5 + 0.5 * sin((u * 3 + warp) * .tau)
-        let b = 0.5 + 0.5 * sin((v * 4 + 0.14 * sin(u * 2 * .tau) + 0.31) * .tau)
-        return min(pow(a, 0.16), pow(b, 0.22))
-    }
-
-    var stone = Image(width: 1, height: 1, color: .white)
-    var veins = Image(width: 1, height: 1, color: .white)
+    var tiles = Image(width: 1, height: 1, color: .white)
+    var relief = Image(width: 1, height: 1, color: .white)
     var grown = Mesh(positions: [], normals: [], indices: [])
 
-    override func setup() {
+    /// The normal map, taken off the picture's own light and shade: the slope
+    /// of its brightness at each texel, green-up. A small working copy carries
+    /// the slopes well enough, and the reads wrap, so the normal map tiles
+    /// exactly as the color map does. Built here on the CPU rather than on the
+    /// GPU, because a render target filled at the top of `draw` would land on
+    /// the canvas rather than on the meshes.
+    func makeRelief() {
         let size = 256
-        var color = [UInt8](repeating: 255, count: size * size * 4)
+        let small = tiles.resized(width: size, height: size)
+        var field = [Double](repeating: 0, count: size * size)
+        for y in 0 ..< size {
+            for x in 0 ..< size { field[y * size + x] = small[x, y].luminance }
+        }
+        func height(_ x: Int, _ y: Int) -> Double {
+            field[(((y % size) + size) % size) * size + (((x % size) + size) % size)]
+        }
         var normal = [UInt8](repeating: 255, count: size * size * 4)
-        let d = 1.0 / Double(size)
-        for y in 0..<size {
-            for x in 0..<size {
-                let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
-                let t = 0.45 + 0.55 * veinField(u, v)
-                let i = (y * size + x) * 4
-                color[i] = UInt8(214 * t); color[i + 1] = UInt8(196 * t); color[i + 2] = UInt8(168 * t)
-                let dx = (veinField(u + d, v) - veinField(u - d, v)) / (2 * d) * 0.3
-                let dy = (veinField(u, v + d) - veinField(u, v - d)) / (2 * d) * 0.3
+        let gain = 3.0
+        for y in 0 ..< size {
+            for x in 0 ..< size {
+                let dx = (height(x + 1, y) - height(x - 1, y)) * gain
+                let dy = (height(x, y + 1) - height(x, y - 1)) * gain
                 let len = (dx * dx + dy * dy + 1).squareRoot()
-                normal[i] = UInt8((-dx / len * 0.5 + 0.5) * 255)
+                let i = (y * size + x) * 4
+                normal[i]     = UInt8((-dx / len * 0.5 + 0.5) * 255)
                 normal[i + 1] = UInt8((dy / len * 0.5 + 0.5) * 255)
                 normal[i + 2] = UInt8((1 / len * 0.5 + 0.5) * 255)
             }
         }
-        stone = Image(width: size, height: size, premultipliedRGBA: color)!
-        veins = Image(width: size, height: size, premultipliedRGBA: normal)!
+        relief = Image(width: size, height: size, premultipliedRGBA: normal)!
+    }
+
+    override func setup() {
+        tiles = SamplePhoto.talavera.load()
+        makeRelief()
 
         // The previous section's surface: a ball grown until it folds. No
         // uvs anywhere in it, which is the point.
@@ -65,7 +74,7 @@ final class TriplanarSkin: Sketch {
         material(.dielectric(roughness: 0.65))
         withState {
             translate(-2.3, 0.35, 0)
-            drawMesh(grown.triplanarTextured(stone, normal: veins, scale: 1.3))
+            drawMesh(grown.triplanarTextured(tiles, normal: relief, scale: 2.2))
         }
         withState {
             translate(2.5, -0.55, 0)
@@ -73,7 +82,7 @@ final class TriplanarSkin: Sketch {
                 withState {
                     translate(0, y, 0)
                     drawMesh(Mesh.box(width: w, height: 0.95, depth: 1.5)
-                        .triplanarTextured(stone, normal: veins, scale: 1.3))
+                        .triplanarTextured(tiles, normal: relief, scale: 2.2))
                 }
             }
         }

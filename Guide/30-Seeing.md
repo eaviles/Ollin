@@ -4,7 +4,7 @@
 
 # 30. Seeing
 
-<img src="Images/30-Seeing/MotionBrush.jpg" alt="A dark canvas holding a wreath of thousands of small green and magenta strokes, dense and bright where motion was recent, fading where it was long ago" width="560">
+<img src="Images/30-Seeing/MotionBrush.jpg" alt="A dark canvas covered in thousands of short colored strokes, greens and magentas and blues, gathered into the sweeping shapes a dancer's arms and legs made and empty where nothing moved" width="560">
 
 A camera pointed at the world is the richest input a sketch can have. Whoever stands in front of it brings their face, their hands, their whole moving body to the piece. This chapter is about reading that. The Mac already finds faces, hands, bodies, edges, text, and motion in a picture, on the machine, with no cloud in the loop. Ollin wraps that perception as values you read in `draw()`, the same way you read the mouse. The painting above was made by motion alone, and by the end you'll have built it.
 
@@ -141,16 +141,16 @@ Two more trackers see *qualities* of the picture rather than things in it, and b
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/Contours-dark.jpg">
-  <img src="Images/30-Seeing/Contours.jpg" alt="Two panels: a black ink study of merged blobs beside a ring, and the same forms traced as orange vector outlines with the ring's hole preserved" width="680">
+  <img src="Images/30-Seeing/Contours.jpg" alt="Two panels: a photograph of two open palms lit against a black ground, and the same hands traced as orange vector outlines, fingers and all, with the creases of each palm coming back as holes inside it" width="680">
 </picture>
 
-The picture on the left was built pixel by pixel by the committed figure, standing in for a camera frame. The shapes on the right are what `ContourDetector.detect(in:)` traced out of it. Once a camera frame is `Shape`s, everything from [Chapter 15](15-ShapesAsMaterial.md) applies. Boolean it, offset it, hatch it, warp it, or export it as SVG for a plotter. A webcam pointed at high-contrast subjects becomes a live vectorizer.
+The picture on the left is one of the bundled photographs, two palms lit against a black ground, which is what a tracer wants: one clear boundary between light and dark. The shapes on the right are what `ContourDetector.detect(in:)` traced out of it, and the creases of each palm come back as holes inside the hand. The subject here is the *light* half of the picture, so the figure asks for `detectsDarkOnLight: false`. Get that backwards and you trace the room instead of the hands. Once a camera frame is `Shape`s, everything from [Chapter 15](15-ShapesAsMaterial.md) applies. Boolean it, offset it, hatch it, warp it, or export it as SVG for a plotter. A webcam pointed at high-contrast subjects becomes a live vectorizer.
 
 **`FlowTracker`** measures **optical flow**, meaning how every part of the picture moved since the previous frame. [Chapter 14](14-FieldsAndFlow.md) taught fields as "an answer at every point", and this is that exact idea. The difference is that the answers are measured from the world, not computed from noise:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/FlowArrows-dark.jpg">
-  <img src="Images/30-Seeing/FlowArrows.jpg" alt="Two panels: a dark frame holding two pale speckled hands, and the same frame with orange arrows on one hand showing its measured motion. The other hand, mid-turnaround, gets no arrows" width="680">
+  <img src="Images/30-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. His body and his planted legs get no arrows at all" width="680">
 </picture>
 
 ```swift
@@ -161,7 +161,7 @@ if let field = flow.field {
 }
 ```
 
-`field` is `nil` until the second analyzed frame, because flow needs a pair. After that you can ask it anywhere. `vector(at:in:)` gives the motion under a point, `samples(in:every:)` a grid of arrows, and `averageFlow(in:)` the whole picture's drift. Look closely at the figure and you'll see that only one hand grew arrows. The other was turning around at that instant, nearly still. Flow reports *motion*, not presence, so a hand at rest is invisible to it.
+`field` is `nil` until the second analyzed frame, because flow needs a pair. After that you can ask it anywhere. `vector(at:in:)` gives the motion under a point, `samples(in:every:)` a grid of arrows, and `averageFlow(in:)` the whole picture's drift. Look closely at the figure and you'll see the arrows gathered on the two arms and thinning to almost nothing across the rest of him. His chest and his planted feet are just as present, and nearly still, so the field has next to nothing to report there. Flow reports *motion*, not presence, so a person standing quietly is invisible to it.
 
 Motion is only measurable where the picture has texture. A featureless area, a blank wall or a solid backdrop, doesn't politely read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the magnitudes as a signal to scale by a gain of your own rather than a calibrated speed. The measured field has its own name, `MotionField`, so you won't confuse it with [Chapter 14](14-FieldsAndFlow.md)'s generative `FlowField`. One is a rule you invent. The other is motion the camera actually saw.
 
@@ -170,8 +170,8 @@ Motion is only measurable where the picture has texture. A featureless area, a b
 The next three trackers aren't looking for people. They look for the flat printed things the world is full of, and none of them needs Apple silicon. Two are classical computer vision with no neural model at all, and the third, the text reader, runs on a model every Mac already has.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/ReadingACard-dark.jpg">
-  <img src="Images/30-Seeing/ReadingACard.jpg" alt="Two panels: a printed card lying at an angle on a speckled desk, and the same picture with an orange quad on the card's four corners and dark boxes around the two lines of type" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/ReadingTheDesk-dark.jpg">
+  <img src="Images/30-Seeing/ReadingTheDesk.jpg" alt="Two panels: a photograph of a desk from above with a laptop, a cup, a plant and a notebook, and the same picture with orange quads on the trackpad, the cup and the notebook, and boxes around the five lines printed on the notebook's cover" width="680">
 </picture>
 
 **`RectangleDetector`** finds rectangular things, a sheet of paper, a screen, a card on a desk, and reports each one's four corners. It works on them at an angle, so the corners come back in perspective rather than as an upright box. That is what a document scanner needs to flatten a page.
@@ -190,7 +190,7 @@ A `DetectedRectangle` also offers `center(in:)`, `bounds(in:)`, the upright box 
 
 **`BarcodeScanner`** decodes barcodes and QR codes. A `DetectedBarcode` gives you the decoded `payload`, the `symbology` that says which kind of code it was, and `corners(in:)` for where it sits. Pointing a webcam at a QR code is a friendly way to hand a running installation some input. Anyone in the room can make one on their phone.
 
-The figure above used no camera and no photograph. The committed figure [`ReadingACard.swift`](Figures/30-Seeing/ReadingACard.swift) draws the desk, the card and the type into a picture pixel by pixel. The letters are [Chapter 8](08-Words.md)'s `textToShapes` outlines, filled in by hand. It then hands that picture to the two real detectors through `waitFor`. Its right-hand caption is written from the words that came back. If the reader ever came back with something else, the figure would say so rather than keep the old claim.
+The figure above needed no camera. The committed figure [`ReadingTheDesk.swift`](Figures/30-Seeing/ReadingTheDesk.swift) takes one of the bundled photographs, a desk seen from above, and hands it to the two real detectors through `waitFor`. Both of its captions are written from what came back: the counts on the right, and the five lines the reader found on the notebook's cover, printed underneath in the order it read them. If either request ever answered differently, the figure would say so rather than keep the old claim. Notice what the rectangle detector counts as a rectangle. The trackpad and the notebook, yes, and also the rim of the coffee cup, which is round.
 
 ### Following one thing
 
@@ -244,7 +244,7 @@ Two trackers answer a question about the whole picture rather than finding thing
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/AttentionAndLabels-dark.jpg">
-  <img src="Images/30-Seeing/AttentionAndLabels.jpg" alt="Two panels: a dimmed picture of the card with an orange saliency glow concentrated on the word SEEING, and a bar chart with document and printed page at 21 percent reaching past a dashed line, and six fainter labels below it starting with sticky note at 8 percent" width="680">
+  <img src="Images/30-Seeing/AttentionAndLabels.jpg" alt="Two panels: a photograph of a woman standing before a wall of orange marigolds with an orange saliency glow concentrated on her face, and a bar chart with people and adult at 91 percent reaching well past a dashed line, then clothing, plant, maple tree and tree, with flower and marigold at 7 percent falling below it" width="680">
 </picture>
 
 **`ImageClassifier`** names what's in view, from a fixed vocabulary of about 1,300 everyday words. It reports no positions at all, only labels and how confident it is about each. That is the right shape for a sketch that reacts to its surroundings instead of drawing on top of them.
@@ -258,7 +258,7 @@ for (i, found) in classifier.labels.prefix(5).enumerated() {
 }
 ```
 
-The bars on the right of the figure are that list, drawn for the made-up card. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `document` and `printed page` tie. And the classifier scores every word it knows on every frame, nearly all of them near zero. `minConfidence`, `0.1` by default, is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
+The bars on the right of the figure are that list, drawn for a bundled photograph of a woman standing in front of a wall of marigolds. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `people` and `adult` tie. Read the tail, though: the picture is more marigold than anything else, and `marigold` comes back at seven percent, under the default floor. A classifier tells you what it was trained to notice, which is not the same as what the picture is of. And the classifier scores every word it knows on every frame, nearly all of them near zero. `minConfidence`, `0.1` by default, is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
 
 The other way to read the same result suits parameters better. `confidence(of: "plant")` answers for any word in the vocabulary, whether or not it cleared the floor. So "how much does this look like a plant" can drive a color or a speed straight from the room.
 
@@ -468,10 +468,10 @@ The closure is the whole idea. It receives a pixel's position as fractions acros
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/SlitScanDelay-dark.jpg">
-  <img src="Images/30-Seeing/SlitScanDelay.jpg" alt="Two panels: a synthetic clip's newest frame showing horizontal stripes with one bright horizontal band, and the slit-scanned version where that band has become a clean diagonal and the stripes have sheared" width="680">
+  <img src="Images/30-Seeing/SlitScanDelay.jpg" alt="Two panels: the newest frame of a dancer with one arm crossing his chest, and the slit-scanned version of the same two seconds, where that arm has become a fan of a dozen sleeves sweeping out to the right" width="680">
 </picture>
 
-The figure uses a made-up clip rather than a webcam so it can be reproduced, and it shows what the delay actually does. A bright band that was sweeping down the frame becomes a diagonal line, because each column caught it at a different height. Any delay map works, so `1 - uv.y` puts now at the bottom, and `dist(uv.x, uv.y, 0.5, 0.5) / 0.71` makes time ripple outward from the center. There's also a form that takes an `Image` as the delay map, which means you can paint where time runs slow.
+The figure uses the bundled film rather than a webcam so it can be reproduced, and it shows what the delay actually does. Forty-eight of its frames, just under two seconds, go into the history. The arm that swung through those two seconds comes back as a comb of sleeves, because each column caught it somewhere else along the way, while the leg he kept planted comes back looking ordinary. Any delay map works, so `1 - uv.y` puts now at the bottom, and `dist(uv.x, uv.y, 0.5, 0.5) / 0.71` makes time ripple outward from the center. There's also a form that takes an `Image` as the delay map, which means you can paint where time runs slow.
 
 Two practical notes. The history costs width times height times four bytes per frame, so push modest sizes rather than full-resolution stills. And the first push fixes the size, after which differently sized frames are skipped with a one-time note in the console.
 
@@ -479,7 +479,7 @@ Two practical notes. The history costs width times height times four bytes per f
 
 ## Putting it together: motion paints
 
-The finished piece is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/30-Seeing/MotionBrush.swift) carries `StagePerformer`, the pretend dancer that stands in for a webcam. The figure therefore renders without you, while the listing below is the sketch as you'd run it live:
+The finished piece is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/30-Seeing/MotionBrush.swift) reads the bundled film instead of a webcam, one of its frames per drawn frame, so it renders the same picture on any machine and without you. The listing below is the sketch as you'd run it live:
 
 ```swift
 import Ollin
@@ -504,25 +504,31 @@ final class MotionBrush: Sketch {
 
         guard let field = flow.field else { return }
 
+        // How far a picture moves between two frames depends on what it is, so
+        // the brush reads speed against this frame's own fastest sample, with a
+        // floor under it so a still room paints nothing at all.
+        let fastest = max(field.samples(in: bounds, every: 40).map(\.flow.length).max() ?? 0, 0.001)
+        let cut = max(fastest * 0.22, 3)
+
         // Fling brushes at random spots; paint only where the picture moved.
         for _ in 0 ..< 900 {
             let p = Vector2(random(0, width), random(0, height))
             let v = field.vector(at: p, in: bounds, mirrored: true)
             let strength = v.length
-            guard strength > 4 else { continue }
+            guard strength > cut else { continue }
             let hue = v.angle / .tau + 0.5              // direction picks the color
             stroke(Color(hue: hue, saturation: 0.75, brightness: 1)
-                .withAlpha(min(0.5, strength * 0.02)))
-            strokeWeight((1.2 + min(5, strength * 0.07)) * scale)
-            drawLine(p, p + v.limited(to: 110 * scale) * 3)
+                .withAlpha(min(0.5, strength / fastest * 0.3)))
+            strokeWeight((1.2 + strength / fastest * 4) * scale)
+            drawLine(p, p + v * (36 * scale / fastest))
         }
     }
 }
 ```
 
-<img src="Images/30-Seeing/MotionBrush.jpg" alt="The finished motion painting: a swirling wreath of green and magenta strokes tracing where the pretend dancer's hands moved, dense where recent, faded where old" width="560">
+<img src="Images/30-Seeing/MotionBrush.jpg" alt="The finished motion painting: thousands of colored strokes tracing where the dancer's arms and legs swept over sixteen seconds, each color a direction, faint where the motion was long ago" width="560">
 
-The committed figure swaps the camera block for the pretend dancer, and the painting code is identical. `StagePerformer.step()` stands where `flow.field` stands, feeding the same kind of field from a synthesized dance, with nobody to mirror. [Chapter 16](16-LayersAndEffects.md)'s accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
+The committed figure swaps the camera block for the film, and the painting code is identical. `StageFilm.step()` stands where `flow.field` stands, decoding the next frame and measuring it against the one before, with nobody to mirror. That relative scale matters more than it looks: a hand waved at a webcam crosses tens of pixels between frames and a dancer filmed across the room crosses a few, so a brush tuned to one paints nothing for the other. [Chapter 16](16-LayersAndEffects.md)'s accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
 
 Then make it yours:
 

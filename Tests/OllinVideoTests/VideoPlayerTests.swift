@@ -204,6 +204,36 @@ import os
         #expect(abs(wrapped - mid) < 0.01)
     }
 
+    /// A sketch that wants one exact moment of a clip asks for it rather than
+    /// playing to it. Under the headless driver `seek(to:)` and then
+    /// `snapshot()` decodes at the virtual playhead, which is what a
+    /// still-image detector needs offline and what three of the Guide's
+    /// figures read the bundled film with. The process-global flag is set and
+    /// cleared with no suspension in between, so no other test can see it up.
+    @Test func headlessSnapshotFollowsTheSeek() async throws {
+        guard MTLCreateSystemDefaultDevice() != nil else { return }   // soft-skip: no Metal
+        // Clip frame k (12 fps) is blue = 10 + k*20 over black.
+        guard let url = await writeTestClip(color: { (blue: UInt8(10 + $0 * 20), green: 0, red: 0) })
+        else { return }                                               // soft-skip: no encoder
+        defer { try? FileManager.default.removeItem(at: url) }
+        let player = VideoPlayer(url: url)
+
+        OllinApp.isRenderingHeadless = true
+        player.seek(to: 6.5 / 12)          // inside clip frame 6: blue 130
+        let sixth = player.snapshot()
+        player.seek(to: 1.5 / 12)          // back to clip frame 1: blue 30
+        let first = player.snapshot()
+        OllinApp.isRenderingHeadless = false
+
+        // Required rather than soft-skipped: past the two guards above, a nil
+        // here means the headless path stopped decoding at the playhead, which
+        // is the thing this pins.
+        let atSix = try #require(sixth)
+        let atOne = try #require(first)
+        #expect(abs(atSix[32, 32].blue - 130.0 / 255) < 0.03)
+        #expect(abs(atOne[32, 32].blue - 30.0 / 255) < 0.03)
+    }
+
     /// End-to-end soundtrack tap: play the repository's bundled musical clip
     /// and expect mono PCM with real signal energy to arrive through
     /// `audioTap`. Runs off the example's own asset via a repo-relative path;

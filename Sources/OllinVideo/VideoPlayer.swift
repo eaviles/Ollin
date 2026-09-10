@@ -343,8 +343,15 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
     /// Unlike `frame` (a live GPU texture), the result supports the CPU paths —
     /// pixel reads via `image[x, y]`, `cgImage`, and a vision tracker's
     /// `detect(in:)` — at the cost of a GPU→CPU copy, so take one when needed
-    /// rather than every frame.
+    /// rather than every frame. Under a headless export it reads the same
+    /// virtual playhead `frame` does, so `seek(to:)` then `snapshot()` hands
+    /// back exactly the moment asked for.
     public func snapshot() -> Image? {
+        // Under a headless driver there is no runloop decoding into the output,
+        // so the copy below has nothing to take. Pull the playhead's own frame
+        // first: that is what fills the buffer, and it costs a decode only when
+        // the sketch has not already drawn this moment.
+        if OllinApp.isRenderingHeadless { _ = headlessFrame() }
         let itemTime = output.itemTime(forHostTime: CACurrentMediaTime())
         var buffer: CVPixelBuffer?
         if itemTime.isValid {

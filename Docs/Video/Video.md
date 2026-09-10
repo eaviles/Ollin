@@ -120,7 +120,7 @@ For **depth over a recording**, use [`DepthClip`](../Vision/Vision.md#depthclip)
 func snapshot() -> Image?
 ```
 
-For **one-shot pixel access**, `frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) do nothing. When you need the pixels, take a `snapshot()`. That is a CPU-backed copy of the current frame, and it supports all of those paths. Use it to sample colors, or to feed a tracker's still-image `detect(in:)`. A snapshot costs a GPU→CPU copy, so take one only when you need it, not on every frame. Every few frames is plenty.
+For **one-shot pixel access**, `frame` is a live GPU texture, so the CPU paths on it (`image[x, y]`, `cgImage`) do nothing. When you need the pixels, take a `snapshot()`. That is a CPU-backed copy of the current frame, and it supports all of those paths. Use it to sample colors, or to feed a tracker's still-image `detect(in:)`. A snapshot costs a GPU→CPU copy, so take one only when you need it, not on every frame. Every few frames is plenty. Under a headless export it follows the same virtual playhead the frame does, so `seek(to:)` and then `snapshot()` hands back exactly the moment you asked for. That is how a still-image `detect(in:)` gets a frame of a clip offline, where a live tracker reads nothing.
 
 ```swift
 // OCR over a paused frame:

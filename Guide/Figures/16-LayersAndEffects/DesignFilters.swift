@@ -5,6 +5,7 @@
 // that silhouette to build a material out of it. The bottom row starts from a
 // picture, and three filters put something in front of it.
 import Ollin
+import OllinSamplePhotos
 
 final class DesignFilters: Sketch {
     override var canvasSize: CanvasSize { .size(880, 706) }
@@ -25,16 +26,17 @@ final class DesignFilters: Sketch {
             return layer
         }
 
-        // A picture for the bottom row to work on. A continuous field rather than
-        // a pattern of discrete marks: a strong refraction samples past the
-        // layer's edge, and on a field that reads as a stretch instead of as a
-        // stray dark blot.
+        // A picture for the bottom row to work on: a bundled photograph, since
+        // these three are all things you put in front of something you want the
+        // viewer to half see. A strong refraction samples past the layer's
+        // edge, so the frame is filled corner to corner and `edges` is held low.
         func backdrop() -> RenderTarget {
-            generate(.meshGradient(
-                colors: [Color(hex: 0xE4572E), Color(hex: 0x2B6C8C),
-                         Color(hex: 0xE8B44A), Color(hex: 0x7C3B5E)],
-                phase: 5.1),
-                width: 268, height: 268)
+            let layer = makeRenderTarget(width: 268, height: 268)
+            withTarget(layer) {
+                drawImage(SamplePhoto.city.load(),
+                          in: Rectangle(x: 0, y: 0, width: 268, height: 268), fit: .cover)
+            }
+            return layer
         }
 
         let rows: [(String, [(String, RenderTarget)])] = [

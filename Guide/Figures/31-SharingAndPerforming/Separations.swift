@@ -1,10 +1,13 @@
 // figure: frame=0 themed
 //
 // Guide diagram (Chapter 31): separating artwork into printable inks. One
-// drawing, the three masters a print shop would need (black means full ink),
-// and the overprint preview showing how those three drums will read together.
+// picture, a bundled photograph with almost nothing in it any of the three
+// inks can carry alone, the three masters a print shop would need (black means
+// full ink), and the overprint preview showing how those three drums will read
+// together.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
 
 final class Separations: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
@@ -21,7 +24,9 @@ final class Separations: Sketch {
     var names: [String] = []
 
     override func setup() {
-        let artwork = poster(size: 240)
+        // A photograph rather than flat shapes: every pixel is a hard pixel
+        // for the search, which is the case a print shop actually brings it.
+        let artwork = SamplePhoto.marigolds.load().resized(width: 240, height: 240)
         let inks: [Ink] = [.fluorescentPink, .blue, .yellow]
         let separation = artwork.separated(into: inks)
         plates = separation.layers.map(\.master)
@@ -48,28 +53,8 @@ final class Separations: Sketch {
         fill(ink)
         textSize(21)
         textAlign(.center, .top)
-        drawText("one drawing, one grayscale master per drum, and the result",
+        drawText("one picture, one grayscale master per drum, and the result",
                  width / 2, 288)
-    }
-
-    /// Something with flat colors, overlaps, and a gradient, so the search has
-    /// both easy and hard pixels to place.
-    func poster(size: Int) -> Image {
-        let image = Image(width: size, height: size)
-        let sky = Ramp([Color(hex: 0xFDE74C), Color(hex: 0xF06292)])
-        for y in 0 ..< size {
-            for x in 0 ..< size {
-                let u = Double(x) / Double(size - 1)
-                let v = Double(y) / Double(size - 1)
-                var c = sky.color(at: v)
-                if dist(u, v, 0.38, 0.42) < 0.24 { c = Color(hex: 0x2B5DD7) }
-                if dist(u, v, 0.64, 0.62) < 0.20 {
-                    c = Color.mix(c, Color(hex: 0x1B1B3A), 0.7)
-                }
-                image[x, y] = c
-            }
-        }
-        return image
     }
 
     func frame(_ r: Rectangle, title: String) {

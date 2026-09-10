@@ -303,10 +303,10 @@ Some presses can't print a full-color image at all. A risograph or a screen-prin
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/Separations-dark.jpg">
-  <img src="Images/31-SharingAndPerforming/Separations.jpg" alt="Four panels: three grayscale masters labeled fluorescent pink, blue, and yellow, each carrying a different part of the same image, followed by the color preview of the three overprinted" width="680">
+  <img src="Images/31-SharingAndPerforming/Separations.jpg" alt="Four panels: three grayscale masters labeled fluorescent pink, blue, and yellow, each carrying a different part of one photograph of a woman before a wall of marigolds, followed by the color preview of the three overprinted, which reads as the photograph again" width="680">
 </picture>
 
-Each ink gets a **master**, a grayscale image where black means "lay down full ink here" and white means "leave the paper bare". The press runs the paper through once per master, and the inks stack up. Because printing inks are translucent rather than opaque, overlapping them mixes: pink over blue makes a purple neither drum could print alone. That's why the three plain-looking plates above produce a picture with more colors in it than three.
+Each ink gets a **master**, a grayscale image where black means "lay down full ink here" and white means "leave the paper bare". The press runs the paper through once per master, and the inks stack up. Because printing inks are translucent rather than opaque, overlapping them mixes: pink over blue makes a purple neither drum could print alone. That's why the three plain-looking plates above produce a picture with more colors in it than three. The plates are worth reading against the photograph: the flowers take nearly all the yellow drum has, the blue one leaves them bare and spends itself on her instead, and the pink drum runs mid-gray almost everywhere, which is what a warm picture asks of it.
 
 ```swift
 override var printInks: [Ink]? { [.fluorescentPink, .blue, .yellow] }

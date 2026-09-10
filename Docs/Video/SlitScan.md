@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-Seeing/SlitScanDelay-dark.jpg">
-  <img src="../../Guide/Images/30-Seeing/SlitScanDelay.jpg" alt="Two panels: a synthetic clip's newest frame showing horizontal stripes with one bright horizontal band, and the slit-scanned version where that band has become a clean diagonal and the stripes have sheared" width="680">
+  <img src="../../Guide/Images/30-Seeing/SlitScanDelay.jpg" alt="Two panels: the newest frame of a dancer with one arm crossing his chest, and the slit-scanned version of the same two seconds, where that arm has become a fan of a dozen sleeves sweeping out to the right" width="680">
 </picture>
 
 ### Contents

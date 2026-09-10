@@ -262,7 +262,7 @@ for face in faces.faces {
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-Seeing/Contours-dark.jpg">
-  <img src="../../Guide/Images/30-Seeing/Contours.jpg" alt="Two panels: a black ink study of merged blobs beside a ring, and the same forms traced as orange vector outlines with the ring's hole preserved" width="680">
+  <img src="../../Guide/Images/30-Seeing/Contours.jpg" alt="Two panels: a photograph of two open palms lit against a black ground, and the same hands traced as orange vector outlines, fingers and all, with the creases of each palm coming back as holes inside it" width="680">
 </picture>
 
 ```swift
@@ -550,8 +550,8 @@ struct Segmentation {
 ### RectangleDetector
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-Seeing/ReadingACard-dark.jpg">
-  <img src="../../Guide/Images/30-Seeing/ReadingACard.jpg" alt="Two panels: a printed card lying at an angle on a speckled desk, and the same picture with an orange quad on the card's four corners and dark boxes around the two lines of type" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-Seeing/ReadingTheDesk-dark.jpg">
+  <img src="../../Guide/Images/30-Seeing/ReadingTheDesk.jpg" alt="Two panels: a photograph of a desk from above with a laptop, a cup, a plant and a notebook, and the same picture with orange quads on the trackpad, the cup and the notebook, and boxes around the five lines printed on the notebook's cover" width="680">
 </picture>
 
 ```swift
@@ -737,7 +737,7 @@ An arc keeps its `id` as more of it comes into view. Accumulate results by `id` 
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-Seeing/FlowArrows-dark.jpg">
-  <img src="../../Guide/Images/30-Seeing/FlowArrows.jpg" alt="Two panels: a dark frame holding two pale speckled hands, and the same frame with orange arrows on one hand showing its measured motion. The other hand, mid-turnaround, gets no arrows" width="680">
+  <img src="../../Guide/Images/30-Seeing/FlowArrows.jpg" alt="Two panels: a dancer on a plain studio ground with one arm swung out sideways, and the same frame with orange arrows running along both arms in opposite directions. His body and his planted legs get no arrows at all" width="680">
 </picture>
 
 ```swift
@@ -845,7 +845,7 @@ var name: String { get }        // "blue sky", ready to draw
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/30-Seeing/AttentionAndLabels-dark.jpg">
-  <img src="../../Guide/Images/30-Seeing/AttentionAndLabels.jpg" alt="Two panels: a dimmed picture of the card with an orange saliency glow concentrated on the word SEEING, and a bar chart with document and printed page at 21 percent reaching past a dashed line, and six fainter labels below it starting with sticky note at 8 percent" width="680">
+  <img src="../../Guide/Images/30-Seeing/AttentionAndLabels.jpg" alt="Two panels: a photograph of a woman standing before a wall of orange marigolds with an orange saliency glow concentrated on her face, and a bar chart with people and adult at 91 percent reaching well past a dashed line, then clothing, plant, maple tree and tree, with flower and marigold at 7 percent falling below it" width="680">
 </picture>
 
 ```swift

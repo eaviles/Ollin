@@ -6,6 +6,7 @@
 // picture, which is why the result reads as dyed rather than only smeared.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
 
 final class Melt: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
@@ -17,14 +18,22 @@ final class Melt: Sketch {
     var ink: Color { theme.ink }
     var soft: Color { theme.ink(0.12) }
 
+    private var photograph = Image(width: 1, height: 1)
+
+    override func setup() {
+        photograph = SamplePhoto.headland.load()
+    }
+
     override func draw() {
         background(paper)
 
         let left = Rectangle(x: 110, y: 56, width: 300, height: 300)
         let right = Rectangle(x: 470, y: 56, width: 300, height: 300)
 
-        let scene = makeRenderTarget(scale: 0.5)
-        withTarget(scene) { paint() }
+        // Square, because the panels are: a canvas-shaped layer drawn into a
+        // square panel would squeeze the photograph rather than crop it.
+        let scene = makeRenderTarget(width: 600, height: 600)
+        withTarget(scene) { paint(in: Rectangle(x: 0, y: 0, width: 600, height: 600)) }
 
         drawImage(scene.image, in: left)
         drawImage(scene.filtered(.melt(phase: 2.4)).image, in: right)
@@ -40,22 +49,10 @@ final class Melt: Sketch {
                  width / 2, 396)
     }
 
-    /// A dusk scene: a graded sky, a low sun, and a dark headland.
-    func paint() {
-        let sky = Ramp([Color(hex: 0x1B2A4A), Color(hex: 0x6A4E7C),
-                        Color(hex: 0xE07A5F), Color(hex: 0xF2CC8F)])
-        noStroke()
-        for i in 0 ..< 90 {
-            let t = Double(i) / 89
-            fill(sky.color(at: t))
-            drawRect(0, t * height, width, height / 89 + 1)
-        }
-        fill(Color(hex: 0xFFF3D6))
-        drawCircle(width * 0.62, height * 0.58, width * 0.11)
-        fill(Color(hex: 0x14202E))
-        drawPolygon([Vector2(0, height * 0.74), Vector2(width * 0.34, height * 0.6),
-                     Vector2(width * 0.7, height * 0.78), Vector2(width, height * 0.68),
-                     Vector2(width, height), Vector2(0, height)])
+    /// A dusk landscape: one of the bundled photographs, a headland in
+    /// silhouette under a graded sky, covering the square without stretching.
+    func paint(in frame: Rectangle) {
+        drawImage(photograph, in: frame, fit: .cover)
     }
 
     func frame(_ r: Rectangle, title: String) {

@@ -53,7 +53,7 @@ Each is a 1600-pixel square, cropped from the original around its subject.
 - **`.profile`** is a woman in profile against a plain tan ground. The silhouette, bold masses on nothing: what the stipple, the single line, the spanning tree, and the string art read best. The head sits left of center on purpose, the way a profile is framed, and the braid runs to the right edge.
 - **`.marigolds`** is a woman before a wall of cempasúchil, the marigolds of Día de Muertos. The color and texture picture: what palette extraction, the color-vision simulation, the shock filter, and the frequency domain show best.
 
-The examples in `Examples/Images`, `Examples/Color`, and `Examples/Effects` read them, and so do the Guide's ink, brushwork, shock, filter-sheet, thread, and photo-mosaic figures.
+The examples in `Examples/Images`, `Examples/Color`, and `Examples/Effects` read them, and so do twenty-five of the Guide's and the reference's figures, which would otherwise have to author in code the very thing they teach.
 
 <a name="figures"></a>
 
@@ -139,6 +139,8 @@ film.play()
 ```
 
 A `VideoPlayer` is both a `FrameSource` and a `VideoFeed`, so it goes wherever a camera goes and every tracker reads it unchanged. That is how `Examples/Vision/OpticalFlow` and `Examples/Vision/ContourTrace` run on a Mac with no camera, and `--photo` takes the film even where a camera would have worked.
+
+A sketch that wants one exact moment of it asks for that moment instead of playing to it. `seek(to:)` and then [`snapshot()`](../Video/Video.md#pixels-and-analysis) hands back that frame's pixels, offline as well as live. Chapter 30's optical-flow and slit-scan figures are built that way, which is why they render the same picture on any machine.
 
 <a name="samplephoto"></a>
 

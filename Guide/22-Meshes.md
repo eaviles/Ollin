@@ -310,14 +310,14 @@ The last two sections left you holding a small problem. A texture maps through u
 `triplanarTextured` sidesteps the question instead of answering it. Rather than asking the mesh where the picture goes, it projects the picture through the world three times, once along each axis, like three slide projectors aimed down x, y, and z. Every point on the surface blends the three by how squarely it faces each projector. A wall takes nearly everything from the projector facing it. A 45-degree slope takes half and half, and the handoff is gradual enough that you cannot find the line.
 
 ```swift
-drawMesh(grown.triplanarTextured(stone, normal: veins, scale: 0.9))
+drawMesh(grown.triplanarTextured(tiles, normal: relief, scale: 2.2))
 ```
 
-<img src="Images/22-Meshes/TriplanarSkin.jpg" alt="Two sand-colored carved forms against black: a grown, folded ball completely covered in a continuous engraved vein pattern with no visible seam, and a cairn of three stacked boxes whose shared pattern runs unbroken across all three" width="680">
+<img src="Images/22-Meshes/TriplanarSkin.jpg" alt="Two forms against black, both dressed in blue and orange glazed tilework: a grown, folded ball wearing the pattern over every lobe with no visible seam, and a cairn of three stacked boxes whose tile grid runs unbroken across all three" width="680">
 
-`scale` is the size of one tile in world units, and a `normal:` map rides the same projection. So the veins in the figure are engraved relief, not just darker paint. Notice what you did *not* do. There are no uvs, no tangent basis, and no unwrapping, and the projection works on any mesh you can make or load.
+`scale` is the size of one tile in world units, and a `normal:` map rides the same projection. The figure's map is a photograph of glazed talavera, one of the pictures Ollin bundles, and its normal map is nothing but the slope of that photograph's own brightness, which is why the painted design reads as moulded rather than printed on. Notice what you did *not* do. There are no uvs, no tangent basis, and no unwrapping, and the projection works on any mesh you can make or load.
 
-One thing the projection asks of you in return: **the picture has to tile.** It repeats across the whole surface, so if the left edge and the right edge of your map disagree, every wrap draws a straight line. Authoring a map with `fbm(u * 8, v * 8)` does exactly that, because the field at u=0 and the field at u=1 are unrelated. Use `tilingFbm` instead, which closes on itself in both directions:
+One thing the projection asks of you in return: **the picture has to tile.** It repeats across the whole surface whatever any wrap setting says, so if the left edge and the right edge of your map disagree, every wrap draws a straight line. That is why the figure uses the tilework and not the other bundled surface: its frame is cut to two whole periods of the motif, so it joins up. Authoring a map with `fbm(u * 8, v * 8)` does exactly that, because the field at u=0 and the field at u=1 are unrelated. Use `tilingFbm` instead, which closes on itself in both directions:
 
 ```swift
 // u and v run 0...1 across the map you are filling
@@ -343,9 +343,9 @@ drawMesh(boulder
     .detailMapped(grain, normal: grainBumps, scale: 12))
 ```
 
-<img src="Images/22-Meshes/SurfaceGrain.jpg" alt="Two warm-toned spheres side by side against black, seen close: the left one smooth and soft where its texture has run out of resolution, the right one carrying fine woven grain across the same large forms" width="680">
+<img src="Images/22-Meshes/SurfaceGrain.jpg" alt="Two gray stone spheres side by side against black, seen close: the left one soft and blurred where its map has run out of resolution, the right one carrying fine chipped grain across the same blocks" width="680">
 
-Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps ride the large forms the base map already shaped, the way real grain follows the rock it is part of.
+The figure makes both maps out of one bundled photograph of a dry-stone wall. The base is that picture cut down to the resolution a single map covering a whole form would really have, which is why the left sphere is soft. The detail pair is a patch of the same wall seen close, mirrored into a tile so it repeats without drawing a grid. Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image. Darker speckles darken, lighter ones lighten, and a flat gray image changes nothing. Author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it. The fine bumps ride the large forms the base map already shaped, the way real grain follows the rock it is part of.
 
 `scale` is how many times the pair repeats across the base, and `strength` fades it out, with zero the honest off switch. A pair tiled dozens of times over is the first thing that would break up in the distance, so those maps read their smaller copies like every other map does. Keep the scale in the range your framing actually shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres, the detail pair on one of them, and the tile count and strength on parameters while the camera sways close.
 
@@ -466,9 +466,9 @@ func draw() {
 
 Walk past the camera and the reflections move with you. Hold up something red and the whole scene warms. A webcam only brings a window, and lighting needs a whole sphere of surroundings, so the half the camera can't see is filled with the mirror image of the half it can. That's plausible rather than true, and plausible is exactly what lighting needs.
 
-<img src="Images/22-Meshes/LiveRoom.jpg" alt="Three spheres floating in front of a picture of a room: a warm amber wall on the left, a cool blue one on the right, a bright window pane upper right, a dark floor band below. The chrome sphere on the left reflects the window and the two-toned wall, the middle sphere smears the same reflection into a satin sheen, and the white matte sphere on the right reads warm on its left side and cool on its right" width="680">
+<img src="Images/22-Meshes/LiveRoom.jpg" alt="Three spheres floating in front of a photograph of a narrow street under a bright cloudy sky. The chrome sphere on the left carries the whole street wrapped around it, buildings and clouds and all, the middle sphere smears the same reflection into a satin sheen, and the white matte sphere on the right just takes the daylight" width="680">
 
-That figure fakes the webcam with one authored picture, so the guide reproduces; everything after the frame is the real path. The picture behind the spheres is also the light on them, which is the whole point: show the feed yourself with `drawFrame`, and the picture and the lighting stay one world. The feed deliberately never draws as its own backdrop the way an HDRI does, because the wrap is made for lighting, not for looking at. Any `VideoFeed` works the same way (a playing video, a screen capture, the phone's camera), and until the first frame arrives a neutral sky stands in. The `3D/Environments/LiveEnvironment` example is this section, live.
+That figure holds one bundled photograph where the webcam would be, so the guide reproduces; everything after the frame is the real path. The picture behind the spheres is also the light on them, which is the whole point: show the feed yourself with `drawFrame`, and the picture and the lighting stay one world. The feed deliberately never draws as its own backdrop the way an HDRI does, because the wrap is made for lighting, not for looking at. Any `VideoFeed` works the same way (a playing video, a screen capture, the phone's camera), and until the first frame arrives a neutral sky stands in. The `3D/Environments/LiveEnvironment` example is this section, live.
 
 The frame can be the *surface* too. A camera frame is an `Image`, and you already know where an image goes on a mesh: `textured(_:)`. So the room you are sitting in can be wrapped around a globe, and lit by itself, in two lines:
 
@@ -479,7 +479,7 @@ if let frame = camera.frame {
 }
 ```
 
-<img src="Images/22-Meshes/LiveSurface.jpg" alt="A large sphere wearing the same authored room picture as the figure above, its warm wall and cool window wrapped around the globe, beside a small chrome ball reflecting that room. Both are lit by the picture they show" width="680">
+<img src="Images/22-Meshes/LiveSurface.jpg" alt="A large sphere wearing the same street photograph as the figure above, a pink wall and its window and balcony wrapped around the globe, beside a small chrome ball reflecting the same street. Both are lit by the picture they show" width="680">
 
 Set the material every frame, because each capture arrives as a fresh image, and a fresh image uploads to the GPU the first time it is drawn. That is one upload per new frame, nothing while the frame holds, cheap for one surface and worth counting across many. So wear the feed on the thing that matters and let the same feed light the rest. The `3D/Materials/LiveSurface` example does exactly that, with the webcam.
 

@@ -267,7 +267,7 @@ blend in sRGB so designer colors read true. Three of them read the layer's
 The others transform the whole layer. `Effects/FilterCatalog`'s design family shows six of
 them, and `Images/LuminanceMelt` shows the melt.
 
-<img src="../../Guide/Images/16-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same orange and teal mesh gradient behind angled glass flutes, refracted through rippling water, and embossed onto a crumpled paper sheet" width="680">
+<img src="../../Guide/Images/16-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
 
 - **`.liquidMetal(repetition:softness:dispersion:distortion:contour:angle:tint:phase:)`**
   render the alpha shape as flowing chrome. Reflectance bands compress and wrap

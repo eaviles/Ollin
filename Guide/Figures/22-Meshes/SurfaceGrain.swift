@@ -1,10 +1,13 @@
 // figure: frame=0
 //
 // Guide figure (Chapter 22): detail maps. Two spheres wear the same base
-// texture and base normal map, seen close enough that the base has run out
-// of texels; the right one also carries a fine detail pair (color + normal)
-// tiled across the base, so it keeps grain where the left dissolves soft.
+// texture and base normal map, a photograph of a dry-stone wall cut down to
+// the resolution a map covering a whole boulder would really have, seen close
+// enough that it has run out of texels; the right one also carries a fine
+// detail pair (color + normal) tiled across the base, so it keeps grain where
+// the left dissolves soft.
 import Ollin
+import OllinSamplePhotos
 
 final class SurfaceGrain: Sketch {
 
@@ -15,51 +18,89 @@ final class SurfaceGrain: Sketch {
     var grain = Image(width: 1, height: 1, color: .white)
     var grainBumps = Image(width: 1, height: 1, color: .white)
 
-    /// Broad blotches for the base, a fine deterministic speckle for the
-    /// detail. Pure math, no rng.
-    func blotch(_ u: Double, _ v: Double) -> Double {
-        0.5 + 0.25 * sin(u * 2 * .tau + 1.3) * sin(v * 2 * .tau)
-            + 0.25 * sin((u + v) * 3 * .tau)
-    }
-
-    func speckle(_ u: Double, _ v: Double) -> Double {
-        let a = sin(u * 9 * .tau) * sin(v * 7 * .tau)
-        let b = sin((u * 5 + v * 6) * .tau + 2.1)
-        return 0.5 + 0.28 * a + 0.22 * b
-    }
-
-    func makeMap(_ size: Int, field: (Double, Double) -> Double,
-                 tint: (Double) -> (UInt8, UInt8, UInt8)) -> (Image, Image) {
-        var color = [UInt8](repeating: 255, count: size * size * 4)
+    /// A picture and the normal map its own light and shade imply: the slope
+    /// of its brightness at each texel, green-up. The reads wrap, so a map cut
+    /// from a picture that tiles keeps tiling.
+    func maps(_ picture: Image, size: Int, relief: Double) -> (Image, Image) {
+        let small = picture.resized(width: size, height: size)
+        var field = [Double](repeating: 0, count: size * size)
+        for y in 0 ..< size {
+            for x in 0 ..< size { field[y * size + x] = small[x, y].luminance }
+        }
+        func height(_ x: Int, _ y: Int) -> Double {
+            field[(((y % size) + size) % size) * size + (((x % size) + size) % size)]
+        }
         var normal = [UInt8](repeating: 255, count: size * size * 4)
-        let d = 1.0 / Double(size)
-        for y in 0..<size {
-            for x in 0..<size {
-                let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
-                let h = min(max(field(u, v), 0), 1)
-                let i = (y * size + x) * 4
-                let (r, g, b) = tint(h)
-                color[i] = r; color[i + 1] = g; color[i + 2] = b
-                let dx = (field(u + d, v) - field(u - d, v)) / (2 * d) * 0.2
-                let dy = (field(u, v + d) - field(u, v - d)) / (2 * d) * 0.2
+        for y in 0 ..< size {
+            for x in 0 ..< size {
+                let dx = (height(x + 1, y) - height(x - 1, y)) * relief
+                let dy = (height(x, y + 1) - height(x, y - 1)) * relief
                 let len = (dx * dx + dy * dy + 1).squareRoot()
-                normal[i] = UInt8((-dx / len * 0.5 + 0.5) * 255)
+                let i = (y * size + x) * 4
+                normal[i]     = UInt8((-dx / len * 0.5 + 0.5) * 255)
                 normal[i + 1] = UInt8((dy / len * 0.5 + 0.5) * 255)
                 normal[i + 2] = UInt8((1 / len * 0.5 + 0.5) * 255)
             }
         }
-        return (Image(width: size, height: size, premultipliedRGBA: color)!,
-                Image(width: size, height: size, premultipliedRGBA: normal)!)
+        return (small, Image(width: size, height: size, premultipliedRGBA: normal)!)
     }
 
     override func setup() {
-        (base, baseBumps) = makeMap(256, field: blotch) { h in
-            (UInt8(120 + 100 * h), UInt8(96 + 80 * h), UInt8(70 + 60 * h))
+        // The base is deliberately small: this is the budget a single map
+        // covering a whole form actually has, and it is what runs out.
+        (base, baseBumps) = maps(SamplePhoto.stone.load(), size: 96, relief: 3)
+        // The detail pair comes off the same photograph, close in: a patch of
+        // its rough face, mirrored into a tile so it repeats without a grid.
+        // Its color map is taken to gray and pulled in toward the middle,
+        // because a detail color map multiplies the base and 128 is its
+        // neutral, so a tinted one would paint the surface over instead of
+        // adding a finer scale to it.
+        let patch = SurfaceGrain.mirroredTile(
+            SamplePhoto.stone.load().cropped(x: 310, y: 520, width: 200, height: 200))
+        let (fine, fineBumps) = maps(patch, size: 200, relief: 3.5)
+        grain = SurfaceGrain.towardGray(fine, swing: 1.1)
+        grainBumps = fineBumps
+    }
+
+    /// A patch mirrored into a tile that repeats seamlessly: every edge meets
+    /// its own reflection, so no join can disagree with itself.
+    static func mirroredTile(_ patch: Image) -> Image {
+        let n = patch.width * 2
+        var bytes = [UInt8](repeating: 255, count: n * n * 4)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let color = patch[min(x, n - 1 - x), min(y, n - 1 - y)]
+                let i = (y * n + x) * 4
+                bytes[i] = UInt8(min(max(color.red, 0), 1) * 255)
+                bytes[i + 1] = UInt8(min(max(color.green, 0), 1) * 255)
+                bytes[i + 2] = UInt8(min(max(color.blue, 0), 1) * 255)
+            }
         }
-        (grain, grainBumps) = makeMap(96, field: speckle) { h in
-            let v = UInt8(min(max(88 + 80 * h, 0), 255))
-            return (v, v, v)
+        return Image(width: n, height: n, premultipliedRGBA: bytes)!
+    }
+
+    /// A color map taken to gray and pulled toward the middle, the form a
+    /// detail map wants: it darkens and lightens the base without tinting it.
+    static func towardGray(_ picture: Image, swing: Double) -> Image {
+        let n = picture.width
+        var luminance = [Double](repeating: 0, count: n * n)
+        for y in 0 ..< n {
+            for x in 0 ..< n { luminance[y * n + x] = picture[x, y].luminance }
         }
+        // Centered on the patch's own average, not on the middle of the range,
+        // so the map darkens and lightens the base in equal measure and the
+        // surface keeps the tone the base gave it.
+        let average = luminance.reduce(0, +) / Double(n * n)
+        var bytes = [UInt8](repeating: 255, count: n * n * 4)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let value = 0.5 + (luminance[y * n + x] - average) * swing
+                let v = UInt8(min(max(value, 0), 1) * 255)
+                let i = (y * n + x) * 4
+                bytes[i] = v; bytes[i + 1] = v; bytes[i + 2] = v
+            }
+        }
+        return Image(width: n, height: n, premultipliedRGBA: bytes)!
     }
 
     override func draw() {

@@ -1,18 +1,21 @@
-// figure: frame=156 themed
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 30): optical flow as a field of arrows. Left: one
-// frame from the pretend performer (two speckled hands on a dim speckled
-// backdrop). Right: the same frame with the measured flow drawn on top, one
-// arrow per grid sample, pointing the way the picture moved since the frame
-// before. The field is measured by the real Vision request.
+// frame of the film that ships with Ollin, a dancer on a plain ground with the
+// camera locked off. Right: the same frame with the measured flow drawn on
+// top, one arrow per grid sample, pointing the way the picture moved since the
+// frame a twenty-fifth of a second earlier. The field is measured by the real
+// Vision request, so the arm that swings gets arrows and the leg that stays
+// planted gets none.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
+import OllinVideo
 import OllinVision
 
 final class FlowArrows: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let performer = StagePerformer()
     var field: MotionField?
     var picture: Image?
 
@@ -25,10 +28,22 @@ final class FlowArrows: Sketch {
     var soft: Color { theme.ink(0.6) }
     var accent: Color { theme.accent }
 
-    override func draw() {
-        field = performer.step()
-        picture = performer.lastFrame
+    override func setup() {
+        // A moment where one arm sweeps across the frame while the far leg
+        // holds still: the two cases the field has to tell apart.
+        let clip = VideoPlayer(url: SampleClip.dance.url)
+        clip.isMuted = true
+        clip.seek(to: 1.5)
+        guard let before = clip.snapshot() else { return }
+        clip.seek(to: 1.54)                       // the next frame, at 25 a second
+        guard let after = clip.snapshot() else { return }
+        picture = after
+        field = try? waitFor(before, after) {
+            try await FlowTracker.detect(from: $0, to: $1, quality: .high)
+        }
+    }
 
+    override func draw() {
         background(paper)
         textSize(19)
 
@@ -41,12 +56,16 @@ final class FlowArrows: Sketch {
         }
 
         if let field {
+            // How far a picture moves between two frames depends on what it is,
+            // so the arrows are drawn against this frame's own fastest sample
+            // rather than a fixed number of pixels.
+            let samples = field.samples(in: rightPanel, every: 16)
+            let fastest = max(samples.map(\.flow.length).max() ?? 0, 0.001)
             stroke(accent)
-            for sample in field.samples(in: rightPanel, every: 14) {
-                let v = sample.flow
-                guard v.length > 0.5 else { continue }
-                let tip = sample.position + v.limited(to: 4) * 12
-                strokeWeight(2)
+            strokeWeight(2)
+            for sample in samples {
+                guard sample.flow.length > fastest * 0.18 else { continue }
+                let tip = sample.position + sample.flow * (13 / fastest)
                 drawLine(sample.position, tip)
                 let dir = (tip - sample.position).normalized
                 drawLine(tip, tip - dir * 6 + dir.perpendicular * 4)
@@ -68,74 +87,5 @@ final class FlowArrows: Sketch {
         fill(soft)
         drawText("a direction and a speed at every point: Chapter 14's field, measured from the world",
                  width / 2, 512)
-    }
-}
-
-/// A pretend performer for a guide that can't film you: two speckled "hands"
-/// wave along looping paths in a small dark frame, and each new frame is
-/// measured against the previous one with the real Vision optical-flow
-/// request. `step()` returns the same `MotionField` a live `FlowTracker`
-/// publishes; only the camera has been replaced.
-final class StagePerformer {
-    private let size = 240
-    private var previous: Image?
-    private var frame = 0
-
-    /// The most recent synthesized frame, for drawing beside the field.
-    private(set) var lastFrame: Image?
-
-    /// Advance the dance one frame and measure how the picture moved.
-    func step() -> MotionField? {
-        let t = Double(frame) / 60
-        frame += 1
-        let current = render(t: t)
-        lastFrame = current
-        defer { previous = current }
-        guard let previous else { return nil }
-        return StagePerformer.measureFlow(from: previous, to: current)
-    }
-
-    /// Draw the two hands into a small CPU pixel buffer. Each hand carries a
-    /// speckle texture that moves with it, so the flow request has something
-    /// to grab onto (motion is only measurable where the picture has texture).
-    private func render(t: Double) -> Image {
-        let n = size
-        var bytes = [UInt8](repeating: 0, count: n * n * 4)
-        let hands = [
-            Vector2(120 + sin(t * 0.9) * 74, 120 + sin(t * 1.4 + 1.1) * 62),
-            Vector2(120 + sin(t * 1.1 + 2.6) * 68, 120 + cos(t * 0.7) * 70),
-        ]
-        for y in 0 ..< n {
-            for x in 0 ..< n {
-                // A dim, static speckle: flow needs texture even where nothing
-                // moves, or the empty background reads as noise.
-                var value = 14.0 + 14.0 * Self.hash(x / 2, y / 2)
-                for hand in hands {
-                    let dx = Double(x) - hand.x
-                    let dy = Double(y) - hand.y
-                    let d = (dx * dx + dy * dy).squareRoot()
-                    guard d < 26 else { continue }
-                    let falloff = 1 - d / 26
-                    let speckle = 0.55 + 0.45 * Self.hash(Int(dx / 3), Int(dy / 3))
-                    value = max(value, 235 * falloff * speckle)
-                }
-                let i = (y * n + x) * 4
-                let v = UInt8(min(255, value))
-                bytes[i] = v; bytes[i + 1] = v; bytes[i + 2] = v; bytes[i + 3] = 255
-            }
-        }
-        return Image(width: n, height: n, premultipliedRGBA: bytes)!
-    }
-
-    private static func hash(_ x: Int, _ y: Int) -> Double {
-        var h = UInt64(truncatingIfNeeded: x &* 374_761_393 &+ y &* 668_265_263)
-        h = (h ^ (h >> 13)) &* 1_274_126_177
-        return Double((h ^ (h >> 16)) % 1000) / 999
-    }
-
-    /// Run the one-shot flow measurement and wait for it, so a figure renders
-    /// deterministically frame by frame.
-    private static func measureFlow(from a: Image, to b: Image) -> MotionField? {
-        try? waitFor(a, b) { try await FlowTracker.detect(from: $0, to: $1, quality: .high) }
     }
 }

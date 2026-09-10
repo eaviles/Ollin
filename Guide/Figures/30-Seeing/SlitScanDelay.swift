@@ -1,12 +1,15 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 30): a slit scan. A synthetic clip (a bar sweeping
-// across a striped ground) is pushed into a frame history, then read back
-// with a delay that varies across the picture, so each column shows a
-// different moment. Left, the newest frame; right, the same history read
-// with time running across it.
+// Guide diagram (Chapter 30): a slit scan. Forty-eight consecutive frames of
+// the bundled film, just under two seconds of a dancer with the camera locked
+// off, are pushed into a frame history and read back with a delay that varies
+// across the picture, so each column shows a different moment. Left, the
+// newest frame; right, the same history read with time running across it: the
+// arm that swung through those two seconds comes back as a comb of sleeves.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
+import OllinVideo
 
 final class SlitScanDelay: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
@@ -22,11 +25,19 @@ final class SlitScanDelay: Sketch {
     var scanned: Image?
 
     override func setup() {
+        let clip = VideoPlayer(url: SampleClip.dance.url)
+        clip.isMuted = true
+
         let history = Ollin.SlitScan(capacity: 48)
         for step in 0 ..< 48 {
-            history.append(clipFrame(at: Double(step) / 47))
+            // The film's own frames, one after the next, at the size the panel
+            // draws: a history holds every frame whole, so its depth times its
+            // frame size is what it costs.
+            clip.seek(to: 1 + Double(step) / 25)
+            guard let shot = clip.snapshot()?.resized(width: 300, height: 300) else { continue }
+            history.append(shot)
+            newest = shot
         }
-        newest = clipFrame(at: 1)
         scanned = history.image(delay: { uv in uv.x })
     }
 
@@ -47,27 +58,6 @@ final class SlitScanDelay: Sketch {
         textAlign(.center, .top)
         drawText("every column is a different moment of the same clip",
                  width / 2, 396)
-    }
-
-    /// One frame of a synthetic clip: horizontal stripes scrolling downward,
-    /// with one bright band sweeping down the frame. Both change everywhere
-    /// at once, which is what a slit scan can actually show.
-    func clipFrame(at t: Double) -> Image {
-        let size = 220
-        let image = Image(width: size, height: size)
-        let bandY = 0.14 + t * 0.72
-        for y in 0 ..< size {
-            for x in 0 ..< size {
-                let v = Double(y) / Double(size - 1)
-                let stripe = sin((v + t * 0.55) * 30) * 0.5 + 0.5
-                var color = Color.mix(Color(hex: 0x16202E), Color(hex: 0x2C4260),
-                                      stripe)
-                let band = 1 - smoothstep(0.015, 0.045, abs(v - bandY))
-                color = Color.mix(color, Color(hex: 0xF2C14E), band)
-                image[x, y] = color
-            }
-        }
-        return image
     }
 
     func frame(_ r: Rectangle, title: String) {

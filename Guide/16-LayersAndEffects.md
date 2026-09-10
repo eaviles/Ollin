@@ -537,9 +537,9 @@ That's deliberate rather than an oversight. Because the motion is a number you p
 
 The filters' design set splits into two rows that work in opposite directions:
 
-<img src="Images/16-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same orange and teal mesh gradient behind angled glass flutes, refracted through rippling water, and embossed onto a crumpled paper sheet" width="680">
+<img src="Images/16-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same photograph of a hillside town behind angled glass flutes, refracted through rippling water, and pressed into a crumpled paper sheet" width="680">
 
-The bottom row is what you'd expect from a filter. Hand it a picture, and get the picture back changed. `.flutedGlass` puts ribbed glass in front of it, `.water` refracts it through ripples, `.paperTexture` lays it onto a sheet with tooth and creases.
+The bottom row is what you'd expect from a filter. Hand it a picture, a bundled photograph of a hillside town in these three tiles, and get the picture back changed. `.flutedGlass` puts ribbed glass in front of it, `.water` refracts it through ripples, `.paperTexture` lays it onto a sheet with tooth and creases.
 
 The top row works the other way, and this is the part that isn't obvious from the names. `.liquidMetal`, `.heatmap`, and `.gemSmoke` mostly ignore your layer's colors and read its **alpha**, the silhouette. All three tiles above started as one white heart on a transparent layer, and each filter built a whole material out of that outline. So the working method for these is simple. Draw a shape into a layer, then filter the layer.
 
@@ -564,14 +564,14 @@ One of the design filters deserves singling out, because it does something the o
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Melt-dark.jpg">
-  <img src="Images/16-LayersAndEffects/Melt.jpg" alt="Two panels: a simple painted dusk scene with a graded sky, a low sun, and a dark headland, and the same layer after the melt filter, poured into swirling violet and white marbling in which the sun survives as a bright knot" width="680">
+  <img src="Images/16-LayersAndEffects/Melt.jpg" alt="Two panels: a photograph of a headland at dusk with cacti in silhouette over calm water, and the same layer after the melt filter, poured into swirling violet and white marbling in which the bright sky and the dark shore still divide the picture" width="680">
 </picture>
 
 ```swift
 drawImage(scene.filtered(.melt(phase: time)).image, 0, 0)
 ```
 
-Underneath, the filter builds a swirling noise field and uses one displacement vector for two jobs at once. That vector warps the field's own coordinates, and it also shifts where the filter reads your layer. Because the same vector does both, the picture and the swirl move together instead of one sliding over the other. The result reads as the image having been *dyed* rather than just smeared. The layer's brightness mixes back into the field before it goes through a color ramp, so bright regions stay bright and structural. The sun in the figure is still recognizably the sun.
+Underneath, the filter builds a swirling noise field and uses one displacement vector for two jobs at once. That vector warps the field's own coordinates, and it also shifts where the filter reads your layer. Because the same vector does both, the picture and the swirl move together instead of one sliding over the other. The result reads as the image having been *dyed* rather than just smeared. The layer's brightness mixes back into the field before it goes through a color ramp, so bright regions stay bright and structural. The lit sky in the figure comes through the pour as the pale half of the picture, with the dark shore still holding the bottom.
 
 It is a strong effect at its defaults, and `liquify`, `warp`, and `blend` dial back how far it takes the picture. The sway that animates it uses frequencies that don't divide evenly into each other, so it never perfectly repeats. It drifts forever, but it won't give you a seamless loop.
 

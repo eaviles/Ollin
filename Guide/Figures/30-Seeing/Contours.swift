@@ -1,12 +1,15 @@
 // figure: frame=0 probe themed
 //
-// Guide diagram (Chapter 30): a picture becomes geometry. Left: a generated
-// ink study (blobby splashes and a ring, built pixel by pixel, standing in
-// for a camera frame). Right: what ContourDetector traces out of it, drawn as
-// stroked vector shapes, with the ring's hole preserved. The detection is the
-// real Vision request, run once on the still image.
+// Guide diagram (Chapter 30): a picture becomes geometry. Left: a bundled
+// photograph, two open palms lit against a black ground, which is the kind of
+// high-contrast subject the tracer wants. Right: what ContourDetector traces
+// out of it, drawn as stroked vector shapes, the creases of each palm coming
+// back as holes inside the hand. The subject is the light half of this picture
+// rather than the dark one, which is what `detectsDarkOnLight: false` says.
+// The detection is the real Vision request, run once on the still image.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
 import OllinVision
 
 final class Contours: Sketch {
@@ -27,7 +30,9 @@ final class Contours: Sketch {
     let rightPanel = Rectangle(x: 460, y: 100, width: 360, height: 360)
 
     override func setup() {
-        let image = Contours.paintStudy()
+        // Cut square first, so the traced shapes land on the panel exactly
+        // where the picture beside them does.
+        let image = SamplePhoto.hands.load().cropped(toAspect: 1)
         picture = image
         traced = Contours.trace(image, into: rightPanel)
     }
@@ -60,37 +65,12 @@ final class Contours: Sketch {
                  width / 2, 512)
     }
 
-    /// An ink study built pixel by pixel: three blobby splashes (a metaball
-    /// field, thresholded) and a ring, dark on white, the kind of high-contrast
-    /// subject the contour tracer loves.
-    static func paintStudy() -> Image {
-        let n = 340
-        var bytes = [UInt8](repeating: 255, count: n * n * 4)
-        let blobs = [(105.0, 120.0, 42.0), (170.0, 95.0, 30.0), (135.0, 175.0, 34.0)]
-        for y in 0 ..< n {
-            for x in 0 ..< n {
-                let px = Double(x), py = Double(y)
-                var fieldSum = 0.0
-                for (bx, by, r) in blobs {
-                    let d2 = (px - bx) * (px - bx) + (py - by) * (py - by)
-                    fieldSum += r * r / max(d2, 1)
-                }
-                let ringDistance = ((px - 252) * (px - 252) + (py - 256) * (py - 256))
-                    .squareRoot()
-                let isInk = fieldSum > 1 || abs(ringDistance - 52) < 16
-                if isInk {
-                    let i = (y * n + x) * 4
-                    bytes[i] = 30; bytes[i + 1] = 30; bytes[i + 2] = 34
-                }
-            }
-        }
-        return Image(width: n, height: n, premultipliedRGBA: bytes)!
-    }
-
     /// Run the one-shot contour detection and wait for it, mapping the result
     /// into the panel where the figure draws it.
     static func trace(_ image: Image, into panel: Rectangle) -> [Shape] {
-        let result = try? waitFor(image) { try await ContourDetector.detect(in: $0) }
+        let result = try? waitFor(image) {
+            try await ContourDetector.detect(in: $0, detectsDarkOnLight: false)
+        }
         return result?.shapes(in: panel) ?? []
     }
 }
