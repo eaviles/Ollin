@@ -1480,6 +1480,726 @@
       "still": "examples/3D/Materials/Triplanar/still.jpg",
       "stillSmall": "examples/3D/Materials/Triplanar/still-640.jpg"
     },
+    "3D/Physics/Bagatelle": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.436,
+      "source": "51fcbe825a19e50e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1047742,
+        "loopSmall": 207479,
+        "still": 60831,
+        "stillSmall": 22609
+      },
+      "loop": "examples/3D/Physics/Bagatelle/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Bagatelle/loop-640.mp4",
+      "still": "examples/3D/Physics/Bagatelle/still.jpg",
+      "stillSmall": "examples/3D/Physics/Bagatelle/still-640.jpg"
+    },
+    "3D/Physics/Cape": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.469,
+      "source": "ed54070d8881f34b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1144996,
+        "loopSmall": 253097,
+        "still": 44730,
+        "stillSmall": 17020
+      },
+      "loop": "examples/3D/Physics/Cape/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Cape/loop-640.mp4",
+      "still": "examples/3D/Physics/Cape/still.jpg",
+      "stillSmall": "examples/3D/Physics/Cape/still-640.jpg"
+    },
+    "3D/Physics/Contraption": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.901,
+      "source": "000d6e1fecea5826",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1437033,
+        "loopSmall": 285680,
+        "still": 92252,
+        "stillSmall": 34395
+      },
+      "loop": "examples/3D/Physics/Contraption/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Contraption/loop-640.mp4",
+      "still": "examples/3D/Physics/Contraption/still.jpg",
+      "stillSmall": "examples/3D/Physics/Contraption/still-640.jpg"
+    },
+    "3D/Physics/Crawler": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.019,
+      "source": "f0f24edef45fbcbf",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 926489,
+        "loopSmall": 218196,
+        "still": 54358,
+        "stillSmall": 21714
+      },
+      "loop": "examples/3D/Physics/Crawler/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Crawler/loop-640.mp4",
+      "still": "examples/3D/Physics/Crawler/still.jpg",
+      "stillSmall": "examples/3D/Physics/Crawler/still-640.jpg"
+    },
+    "3D/Physics/Drape": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.19,
+      "source": "713b23ae630d055e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1289431,
+        "loopSmall": 281647,
+        "still": 44598,
+        "stillSmall": 17467
+      },
+      "loop": "examples/3D/Physics/Drape/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Drape/loop-640.mp4",
+      "still": "examples/3D/Physics/Drape/still.jpg",
+      "stillSmall": "examples/3D/Physics/Drape/still-640.jpg"
+    },
+    "3D/Physics/Flotsam": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.984,
+      "source": "3215968f6256e449",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2161953,
+        "loopSmall": 458886,
+        "still": 73255,
+        "stillSmall": 27320
+      },
+      "loop": "examples/3D/Physics/Flotsam/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Flotsam/loop-640.mp4",
+      "still": "examples/3D/Physics/Flotsam/still.jpg",
+      "stillSmall": "examples/3D/Physics/Flotsam/still-640.jpg"
+    },
+    "3D/Physics/Joyride": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.19,
+      "source": "4ad17480b2a55fa6",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 709245,
+        "loopSmall": 145817,
+        "still": 45023,
+        "stillSmall": 17977
+      },
+      "loop": "examples/3D/Physics/Joyride/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Joyride/loop-640.mp4",
+      "still": "examples/3D/Physics/Joyride/still.jpg",
+      "stillSmall": "examples/3D/Physics/Joyride/still-640.jpg"
+    },
+    "3D/Physics/Raft": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.904,
+      "source": "a9bd7948ee75800d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1356145,
+        "loopSmall": 281438,
+        "still": 57516,
+        "stillSmall": 22673
+      },
+      "loop": "examples/3D/Physics/Raft/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Raft/loop-640.mp4",
+      "still": "examples/3D/Physics/Raft/still.jpg",
+      "stillSmall": "examples/3D/Physics/Raft/still-640.jpg"
+    },
+    "3D/Physics/Ragdoll": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.267,
+      "source": "8a6712145c40468e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 736279,
+        "loopSmall": 159363,
+        "still": 48771,
+        "stillSmall": 19595
+      },
+      "loop": "examples/3D/Physics/Ragdoll/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Ragdoll/loop-640.mp4",
+      "still": "examples/3D/Physics/Ragdoll/still.jpg",
+      "stillSmall": "examples/3D/Physics/Ragdoll/still-640.jpg"
+    },
+    "3D/Physics/Rigging": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.881,
+      "source": "47da4de35d226971",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1370319,
+        "loopSmall": 280332,
+        "still": 95031,
+        "stillSmall": 36131
+      },
+      "loop": "examples/3D/Physics/Rigging/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Rigging/loop-640.mp4",
+      "still": "examples/3D/Physics/Rigging/still.jpg",
+      "stillSmall": "examples/3D/Physics/Rigging/still-640.jpg"
+    },
+    "3D/Physics/Rockslide": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.454,
+      "source": "8cb24e72c17d7eb0",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1286558,
+        "loopSmall": 269255,
+        "still": 55390,
+        "stillSmall": 19796
+      },
+      "loop": "examples/3D/Physics/Rockslide/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Rockslide/loop-640.mp4",
+      "still": "examples/3D/Physics/Rockslide/still.jpg",
+      "stillSmall": "examples/3D/Physics/Rockslide/still-640.jpg"
+    },
+    "3D/Physics/Sieve": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.102,
+      "source": "90c3c683d2bd5c3a",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1797210,
+        "loopSmall": 332503,
+        "still": 61522,
+        "stillSmall": 22528
+      },
+      "loop": "examples/3D/Physics/Sieve/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Sieve/loop-640.mp4",
+      "still": "examples/3D/Physics/Sieve/still.jpg",
+      "stillSmall": "examples/3D/Physics/Sieve/still-640.jpg"
+    },
+    "3D/Physics/Sightlines": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.297,
+      "source": "d7b044a3e7b3ecf2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2088498,
+        "loopSmall": 394361,
+        "still": 68547,
+        "stillSmall": 25554
+      },
+      "loop": "examples/3D/Physics/Sightlines/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Sightlines/loop-640.mp4",
+      "still": "examples/3D/Physics/Sightlines/still.jpg",
+      "stillSmall": "examples/3D/Physics/Sightlines/still-640.jpg"
+    },
+    "3D/Physics/Stack": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.265,
+      "source": "74dd4b87568b0724",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 828086,
+        "loopSmall": 132873,
+        "still": 27417,
+        "stillSmall": 10338
+      },
+      "loop": "examples/3D/Physics/Stack/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Stack/loop-640.mp4",
+      "still": "examples/3D/Physics/Stack/still.jpg",
+      "stillSmall": "examples/3D/Physics/Stack/still-640.jpg"
+    },
+    "3D/Physics/Stroll": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.844,
+      "source": "3c11035e8bf58a43",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 670019,
+        "loopSmall": 159385,
+        "still": 55023,
+        "stillSmall": 20544
+      },
+      "loop": "examples/3D/Physics/Stroll/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Stroll/loop-640.mp4",
+      "still": "examples/3D/Physics/Stroll/still.jpg",
+      "stillSmall": "examples/3D/Physics/Stroll/still-640.jpg"
+    },
+    "3D/Physics/Tensegrity": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.035,
+      "source": "e015c2bf03bfb329",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1876197,
+        "loopSmall": 419813,
+        "still": 126573,
+        "stillSmall": 44394
+      },
+      "loop": "examples/3D/Physics/Tensegrity/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Tensegrity/loop-640.mp4",
+      "still": "examples/3D/Physics/Tensegrity/still.jpg",
+      "stillSmall": "examples/3D/Physics/Tensegrity/still-640.jpg"
+    },
+    "3D/Physics/Trigger": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.84,
+      "source": "b741f3e958197921",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1049555,
+        "loopSmall": 255504,
+        "still": 49040,
+        "stillSmall": 19445
+      },
+      "loop": "examples/3D/Physics/Trigger/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Trigger/loop-640.mp4",
+      "still": "examples/3D/Physics/Trigger/still.jpg",
+      "stillSmall": "examples/3D/Physics/Trigger/still-640.jpg"
+    },
+    "3D/Physics/Tumble": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.611,
+      "source": "3e7b5de7fbafc428",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1197932,
+        "loopSmall": 297518,
+        "still": 41458,
+        "stillSmall": 16101
+      },
+      "loop": "examples/3D/Physics/Tumble/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Tumble/loop-640.mp4",
+      "still": "examples/3D/Physics/Tumble/still.jpg",
+      "stillSmall": "examples/3D/Physics/Tumble/still-640.jpg"
+    },
+    "3D/Physics/Windmill": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.022,
+      "source": "791e7e1fc82ed08f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1442328,
+        "loopSmall": 304302,
+        "still": 43692,
+        "stillSmall": 17086
+      },
+      "loop": "examples/3D/Physics/Windmill/loop.mp4",
+      "loopSmall": "examples/3D/Physics/Windmill/loop-640.mp4",
+      "still": "examples/3D/Physics/Windmill/still.jpg",
+      "stillSmall": "examples/3D/Physics/Windmill/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedCastShadow": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 12.713,
+      "source": "5726e0301312f39e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1121474,
+        "loopSmall": 217730,
+        "still": 47557,
+        "stillSmall": 18672
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedCastShadow/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedCastShadow/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedCastShadow/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedCastShadow/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedClay": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.577,
+      "source": "0c20a57cc5ec8ee2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 824383,
+        "loopSmall": 138452,
+        "still": 35013,
+        "stillSmall": 13976
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedClay/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedClay/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedClay/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedClay/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedDetailing": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 12.964,
+      "source": "2dfd2e8295fb5f59",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1780851,
+        "loopSmall": 341577,
+        "still": 62956,
+        "stillSmall": 24825
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedDetailing/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedDetailing/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedDetailing/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedDetailing/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedDistort": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.207,
+      "source": "e44960f7cc622dc8",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1680533,
+        "loopSmall": 335351,
+        "still": 55285,
+        "stillSmall": 23085
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedDistort/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedDistort/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedDistort/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedDistort/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedDomain": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 43.326,
+      "source": "51ebfbd456ad8ebe",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3253362,
+        "loopSmall": 762764,
+        "still": 111894,
+        "stillSmall": 48917
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedDomain/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedDomain/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedDomain/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedDomain/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedEnvironment": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 48.284,
+      "source": "a03251ad902ac0d5",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2809898,
+        "loopSmall": 611914,
+        "still": 92580,
+        "stillSmall": 35198
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedEnvironment/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedEnvironment/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedEnvironment/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedEnvironment/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedFractals": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 11.352,
+      "source": "c8a0321a41037386",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8026922,
+        "loopSmall": 1403772,
+        "still": 346109,
+        "stillSmall": 96235
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedFractals/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedFractals/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedFractals/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedFractals/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedGradient": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.724,
+      "source": "0775826882659204",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 754303,
+        "loopSmall": 125345,
+        "still": 32897,
+        "stillSmall": 13221
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedGradient/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedGradient/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedGradient/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedGradient/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedJoinery": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.213,
+      "source": "d80cf9fd4d8f9126",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1700048,
+        "loopSmall": 324692,
+        "still": 60522,
+        "stillSmall": 22737
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedJoinery/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedJoinery/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedJoinery/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedJoinery/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedPlane": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.93,
+      "source": "a1776fc119d46471",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1213787,
+        "loopSmall": 167557,
+        "still": 46478,
+        "stillSmall": 17029
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedPlane/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedPlane/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedPlane/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedPlane/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedRadial": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.188,
+      "source": "04ca407ba7f6c72f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1756648,
+        "loopSmall": 347605,
+        "still": 77456,
+        "stillSmall": 29462
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedRadial/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedRadial/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedRadial/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedRadial/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedReceiveShadow": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 35.148,
+      "source": "cef665d56ab1980f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1462599,
+        "loopSmall": 303497,
+        "still": 61539,
+        "stillSmall": 24621
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedReceiveShadow/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedReceiveShadow/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedReceiveShadow/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedReceiveShadow/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedSDF": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 32.292,
+      "source": "485ca012ef16056c",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1772553,
+        "loopSmall": 345542,
+        "still": 49654,
+        "stillSmall": 19970
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedSDF/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedSDF/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedSDF/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedSDF/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedSculpt": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.319,
+      "source": "8efed3861df8e92e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 963042,
+        "loopSmall": 146206,
+        "still": 36320,
+        "stillSmall": 15119
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedSculpt/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedSculpt/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedSculpt/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedSculpt/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedShadow": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 18.5,
+      "source": "9c7aa2d86b3f32e2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1433171,
+        "loopSmall": 265376,
+        "still": 49813,
+        "stillSmall": 18681
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedShadow/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedShadow/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedShadow/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedShadow/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedShapes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.677,
+      "source": "e9315fc287e905ec",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 884485,
+        "loopSmall": 160078,
+        "still": 45943,
+        "stillSmall": 16921
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedShapes/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedShapes/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedShapes/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedShapes/still-640.jpg"
+    },
+    "3D/Raymarching/RaymarchedStretch": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 27.053,
+      "source": "34e90d15beeb354f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 916972,
+        "loopSmall": 228059,
+        "still": 44819,
+        "stillSmall": 17590
+      },
+      "loop": "examples/3D/Raymarching/RaymarchedStretch/loop.mp4",
+      "loopSmall": "examples/3D/Raymarching/RaymarchedStretch/loop-640.mp4",
+      "still": "examples/3D/Raymarching/RaymarchedStretch/still.jpg",
+      "stillSmall": "examples/3D/Raymarching/RaymarchedStretch/still-640.jpg"
+    },
     "Audio/ChordSymbols": {
       "width": 1080,
       "height": 1080,
@@ -6453,6 +7173,21 @@
       "reason": "waits on hardware: imports OllinPhone",
       "rendered": "2026-09-10",
       "source": "71c74d55e11d11fb"
+    },
+    "3D/Physics/Chain": {
+      "reason": "barely moves: 0.020 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "f061eb06e91544f0"
+    },
+    "3D/Physics/Imported": {
+      "reason": "barely moves: 0.752 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "48ba945dfc91ef5e"
+    },
+    "3D/Physics/Yard": {
+      "reason": "barely moves: 0.421 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "11b73fb040267106"
     },
     "Audio/Bowing": {
       "reason": "barely moves: 0.000 against a floor of 1.0",
