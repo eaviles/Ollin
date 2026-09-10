@@ -1,21 +1,5 @@
 {
   "base": "https://media.ollin.art",
-  "heroes": {
-    "guide": {
-      "image": "heroes/guide-hero.jpg?v=08c6ada7",
-      "clip": "heroes/guide-hero.mp4?v=5903abc1",
-      "width": 1600,
-      "height": 800,
-      "of": "the sketch each chapter builds, in chapter order"
-    },
-    "readme": {
-      "image": "heroes/readme-hero.jpg?v=d4678db0",
-      "clip": "heroes/readme-hero.mp4?v=31dec33e",
-      "width": 1600,
-      "height": 800,
-      "of": "thirty-two of the example sketches, from every area of the framework"
-    }
-  },
   "covers": {
     "3D": [
       "3D/Geometry/Ocean",
@@ -9478,7 +9462,7 @@
       "stillBecause": "holds still",
       "frame": 480,
       "motion": 0.67,
-      "source": "1ff154efd03e62d7",
+      "source": "63dd818d44819cb7",
       "rendered": "2026-09-10",
       "bytes": {
         "still": 22168,
@@ -9493,20 +9477,20 @@
       "length": "10.0s",
       "seconds": 10.0,
       "frame": 480,
-      "motion": 2.756,
+      "motion": 8.304,
       "sound": false,
-      "source": "486558a1e538a012",
+      "source": "bad9b856c185602c",
       "rendered": "2026-09-10",
       "bytes": {
-        "loop": 1007148,
-        "loopSmall": 253772,
-        "still": 114551,
-        "stillSmall": 47032
+        "loop": 2061019,
+        "loopSmall": 771126,
+        "still": 215905,
+        "stillSmall": 73860
       },
-      "loop": "examples/Vision/DepthContours/loop.mp4?v=1d39bd2c",
-      "loopSmall": "examples/Vision/DepthContours/loop-640.mp4?v=0cdb59c6",
-      "still": "examples/Vision/DepthContours/still.jpg?v=b53f23c3",
-      "stillSmall": "examples/Vision/DepthContours/still-640.jpg?v=d3c4be4d"
+      "loop": "examples/Vision/DepthContours/loop.mp4?v=4b0fc257",
+      "loopSmall": "examples/Vision/DepthContours/loop-640.mp4?v=11a34a03",
+      "still": "examples/Vision/DepthContours/still.jpg?v=23e55a94",
+      "stillSmall": "examples/Vision/DepthContours/still-640.jpg?v=2d4e1ebc"
     },
     "Vision/DepthRelief": {
       "width": 1080,
@@ -9673,15 +9657,15 @@
       "length": "still",
       "stillBecause": "holds still",
       "frame": 480,
-      "motion": 0.337,
-      "source": "3051eddfd6ae407c",
+      "motion": 0.0,
+      "source": "88d29bb8b83c234c",
       "rendered": "2026-09-10",
       "bytes": {
-        "still": 78975,
-        "stillSmall": 20719
+        "still": 189356,
+        "stillSmall": 68168
       },
-      "still": "examples/Vision/ObjectTracking/still.jpg?v=c46b4d5e",
-      "stillSmall": "examples/Vision/ObjectTracking/still-640.jpg?v=b99c88b0"
+      "still": "examples/Vision/ObjectTracking/still.jpg?v=6d5c8344",
+      "stillSmall": "examples/Vision/ObjectTracking/still-640.jpg?v=b5066731"
     },
     "Vision/OpticalFlow": {
       "width": 1080,
@@ -9813,18 +9797,23 @@
     "Vision/TrajectoryTracking": {
       "width": 1080,
       "height": 1080,
-      "length": "still",
-      "stillBecause": "holds still",
-      "frame": 480,
-      "motion": 0.961,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 900,
+      "motion": 1.1,
+      "sound": false,
       "source": "96cdf9b36891ca13",
       "rendered": "2026-09-10",
       "bytes": {
-        "still": 30811,
-        "stillSmall": 10638
+        "loop": 586373,
+        "loopSmall": 124045,
+        "still": 30826,
+        "stillSmall": 10723
       },
-      "still": "examples/Vision/TrajectoryTracking/still.jpg?v=0448c861",
-      "stillSmall": "examples/Vision/TrajectoryTracking/still-640.jpg?v=91b94937"
+      "loop": "examples/Vision/TrajectoryTracking/loop.mp4?v=8e553ead",
+      "loopSmall": "examples/Vision/TrajectoryTracking/loop-640.mp4?v=b0335747",
+      "still": "examples/Vision/TrajectoryTracking/still.jpg?v=efe5d617",
+      "stillSmall": "examples/Vision/TrajectoryTracking/still-640.jpg?v=92adf064"
     },
     "Vision/TugOfWords": {
       "width": 1080,
@@ -9852,16 +9841,16 @@
       "height": 1080,
       "length": "still",
       "stillBecause": "holds still",
-      "frame": 480,
+      "frame": 2400,
       "motion": 0.0,
-      "source": "6ea8559e2c29a1e9",
+      "source": "dd0d552f05042897",
       "rendered": "2026-09-10",
       "bytes": {
-        "still": 52892,
-        "stillSmall": 22133
+        "still": 214444,
+        "stillSmall": 84575
       },
-      "still": "examples/Vision/TuringMirror/still.jpg?v=b42d61cf",
-      "stillSmall": "examples/Vision/TuringMirror/still-640.jpg?v=327f4dcd"
+      "still": "examples/Vision/TuringMirror/still.jpg?v=0b88a180",
+      "stillSmall": "examples/Vision/TuringMirror/still-640.jpg?v=5313816d"
     },
     "Vision/WebcamFeed": {
       "width": 1080,

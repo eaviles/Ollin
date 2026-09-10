@@ -1,10 +1,11 @@
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 //  Inspired by Zach Lieberman's reaction-diffusion daily sketches (2026).
 //  Original interpretation of the technique; no source code ported.
 
-/// A mirror that grows Turing patterns on you: the camera's person matte drives a
+/// A mirror that grows Turing patterns on you: the feed's person matte drives a
 /// reaction-diffusion field's **modulation layer**, so the chemistry runs in the
 /// maze/coral regime wherever you stand and the spot regime everywhere else. It is
 /// one continuous simulation wearing both patterns, so the boundary between them is
@@ -16,8 +17,9 @@ import OllinVision
 /// `.reactionDiffusion(feed:kill:toFeed:toKill:)` and `SimField.modulation`.
 @main
 final class TuringMirror: Sketch {
-    let camera = Camera()
-    lazy var people = PersonSegmenter(camera)
+    // A mirror needs a person in front of it, so with no feed it wears the bundled dancer.
+    let feed = Camera.orStill(SamplePhoto.dancer.load())
+    lazy var people = PersonSegmenter(feed)
     private var rd: SimField!
     private var mask: RenderTarget!
     private var seeded = false
@@ -33,7 +35,6 @@ final class TuringMirror: Sketch {
                                     (1.00, Color(hex: 0xFFF6EC))], in: .oklch)
 
     override func setup() {
-        try? camera.start()
         // The map's black end is the spot regime, its white end the worm maze; both
         // are living regimes, so the background stays patterned while your
         // silhouette wears a different texture.
@@ -50,7 +51,7 @@ final class TuringMirror: Sketch {
         // are per-frame, so an undrawn map would fall back to the uniform field.
         withTarget(mask) {
             background(.black)
-            if let matte = people.matte, let size = camera.frameSize {
+            if let matte = people.matte, let size = feed.frameSize {
                 drawImage(matte, in: Rectangle(covering: size, in: bounds))
             }
         }
@@ -64,8 +65,8 @@ final class TuringMirror: Sketch {
         }
         drawImage(rd.filtered(.gradientMap(look)).image, 0, 0)
 
-        if camera.frame == nil {
-            drawStatus(camera.waitingMessage)
+        if feed.frame == nil {
+            drawStatus(feed.waitingMessage)
         } else if let reason = people.unavailableReason {
             drawStatus(reason, style: .warning)
         }

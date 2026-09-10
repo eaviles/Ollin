@@ -736,7 +736,7 @@ let package = Package(
         example("Vision/Lift", [.vision, .samplePhotos]),
         // The person matte as a reaction-diffusion regime map: maze chemistry on
         // your silhouette, spots everywhere else, one continuous field.
-        example("Vision/TuringMirror", [.vision]),
+        example("Vision/TuringMirror", [.vision, .samplePhotos]),
         // Click a thing and it lifts out: point-prompted segmentation over the
         // feed, shift-click trims, C clears (fetched model).
         example("Vision/PointLift", [.vision, .samplePhotos]),
@@ -747,7 +747,7 @@ let package = Package(
         // OCR — text read from the feed, each line boxed and printed.
         example("Vision/TextScan", [.vision, .samplePhotos]),
         // Object tracking — click to lock onto a patch and follow it across frames.
-        example("Vision/ObjectTracking", [.vision]),
+        example("Vision/ObjectTracking", [.vision, .samplePhotos]),
         // Optical flow — the camera's motion as a field of arrows, with dust
         // particles riding it.
         example("Vision/OpticalFlow", [.vision, .video, .samplePhotos]),
@@ -765,7 +765,7 @@ let package = Package(
         // model that reads each frame against the ones before it, with the
         // single-image model one toggle away for comparison. Both models come
         // from Scripts/fetch-models.sh (never committed).
-        example("Vision/DepthContours", [.vision]),
+        example("Vision/DepthContours", [.vision, .samplePhotos]),
         example("Vision/FootageDepth", [.vision, .video], resources: [.copy("voladores.mp4")]),
         // Object detection (YOLOv3-tiny) — labeled boxes over the live feed.
         // The model weights download via Scripts/fetch-models.sh (never

@@ -1,5 +1,6 @@
 import Foundation
 import Ollin
+import OllinSamplePhotos
 import OllinVision
 
 /// Depth that holds still: contour lines of depth drawn over the live feed,
@@ -8,7 +9,7 @@ import OllinVision
 /// `perFrame` parameter in the inspector (⌘/) to draw the same lines from the
 /// single-image model instead and watch them crawl on a still scene; that
 /// difference is the whole point of a video model. Press R to re-anchor the
-/// depth scale when the camera moves to a different scene. The model weights
+/// depth scale when the feed moves to a different scene. The model weights
 /// aren't in the repo: run `Scripts/fetch-models.sh` once and relaunch (the
 /// sketch says so on the canvas until then).
 ///
@@ -38,14 +39,11 @@ final class DepthContours: Sketch {
     /// How many contour levels between far and near.
     @Param(3 ... 16, icon: "lines.measurement.horizontal") var levels = 8
 
-    let camera = Camera()
-    lazy var depth = DepthTracker(camera, modelAt: URL(fileURLWithPath: Self.videoModelPath))
+    // Depth wants a scene with distance in it, so with no feed it reads the bundled street.
+    let feed = Camera.orStill(SamplePhoto.street.load())
+    lazy var depth = DepthTracker(feed, modelAt: URL(fileURLWithPath: Self.videoModelPath))
     /// Made on first use, so the comparison model runs only once asked for.
-    lazy var still = ModelTracker(camera, modelAt: URL(fileURLWithPath: Self.stillModelPath))
-
-    override func setup() {
-        try? camera.start()
-    }
+    lazy var still = ModelTracker(feed, modelAt: URL(fileURLWithPath: Self.stillModelPath))
 
     override func keyPressed() {
         if key == "r" || key == "R" { depth.reset() }
@@ -64,7 +62,7 @@ final class DepthContours: Sketch {
 
         // The room, dimmed; the lines carry the picture.
         tint(Color(white: 0.3))
-        guard let rect = drawFrame(camera) else { return noTint() }
+        guard let rect = drawFrame(feed) else { return noTint() }
         noTint()
 
         if perFrame {

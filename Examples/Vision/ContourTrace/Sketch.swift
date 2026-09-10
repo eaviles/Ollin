@@ -39,7 +39,7 @@ final class ContourTrace: Sketch {
             trace(player)
         } else if let camera = liveCamera() {
             feed = camera
-            contours = ContourDetector(camera)
+            contours = ContourDetector(camera, detectsDarkOnLight: false)
         } else {
             trace(VideoPlayer(url: SampleClip.dance.url))
         }
@@ -60,7 +60,7 @@ final class ContourTrace: Sketch {
         player.isMuted = true
         player.play()
         feed = player
-        contours = ContourDetector(player, contrastAdjustment: 3)
+        contours = ContourDetector(player, detectsDarkOnLight: false, contrastAdjustment: 3)
     }
 
     /// A readable file path passed on launch, if any; it swaps the camera for a
