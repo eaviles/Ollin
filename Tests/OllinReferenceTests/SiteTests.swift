@@ -801,6 +801,30 @@ struct SiteTests {
         #expect(html.contains("prefers-reduced-motion"))
     }
 
+    @Test("A page's opening picture becomes the clip it stands in for")
+    func heroPlays() {
+        let media = ExampleMedia(
+            base: "https://media.example", entries: [:],
+            heroes: ["guide": .init(image: "heroes/g.jpg?v=1", clip: "heroes/g.mp4?v=2",
+                                    width: 1600, height: 800, of: "every chapter's sketch")])
+        let body = """
+        <p>before</p>
+        <img src="https://media.example/heroes/g.jpg?v=1" alt="Every chapter" width="880">
+        <p>after</p>
+        """
+        let out = SiteBuilder.playingHeroes(in: body, media: media)
+        #expect(out.contains("<video src=\"https://media.example/heroes/g.mp4?v=2\""))
+        // The picture becomes the poster, so a reader who blocks video or has
+        // asked for less motion sees what the markdown promised.
+        #expect(out.contains("poster=\"https://media.example/heroes/g.jpg?v=1\""))
+        #expect(out.contains("aria-label=\"Every chapter\""), "the alt text carries over")
+        #expect(!out.contains("<img"))
+        #expect(out.contains("<p>before</p>") && out.contains("<p>after</p>"))
+
+        // A page with no hero of its own is left exactly as it was.
+        #expect(SiteBuilder.playingHeroes(in: "<p>plain</p>", media: media) == "<p>plain</p>")
+    }
+
     @Test("Every row in the manifest names an example that is still there")
     func mediaRowsAreNotStale() throws {
         let root = try #require(Self.repositoryRoot())

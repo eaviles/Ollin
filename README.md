@@ -7,6 +7,8 @@
 
 **A Metal-rendered creative-coding framework for Swift on Apple platforms.**
 
+<img src="https://media.ollin.art/heroes/readme-hero.jpg?v=d4678db0" alt="Thirty-two of the example sketches running at once, from every area of the framework" width="880">
+
 ![Platform: macOS 26+](https://img.shields.io/badge/platform-macOS_26%2B-blue) ![Swift 6.3+](https://img.shields.io/badge/Swift-6.3%2B-F05138?logo=swift&logoColor=white) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [Guide](Guide/README.md) · [Docs](Docs/README.md) · [Examples](Examples/) · [Roadmap](ROADMAP.md) · [Architecture](ARCHITECTURE.md) · [Attribution](ATTRIBUTION.md) · [Contributing](CONTRIBUTING.md)

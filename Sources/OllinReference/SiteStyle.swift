@@ -170,6 +170,8 @@ enum SiteStyle {
     .prose td:first-child { white-space: nowrap; }
     .prose a[name], .prose a[id] { display: block; position: relative; top: -72px; visibility: hidden; }
 
+    .page-hero { margin: 0 0 2rem; }
+    .page-hero video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin: 0 0 2rem; }
     .gallery figure { margin: 0; }
     .gallery img, .gallery video { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 12px; background: var(--surface); }

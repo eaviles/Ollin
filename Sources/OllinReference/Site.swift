@@ -374,7 +374,7 @@ public struct SiteBuilder {
             resolve(target, image: image, from: page, plan: plan, log: log)
         }
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: rendered))
-        let body = "<article class=\"prose\">\n\(rendered.body)\n</article>"
+        let body = "<article class=\"prose\">\n\(Self.playingHeroes(in: rendered.body, media: plan.media))\n</article>"
         let title = page.title
         let description = page.summary.isEmpty ? Self.tagline : page.summary
         return layout(page: page, title: title, description: description, trail: rendered.trail,
@@ -412,7 +412,8 @@ public struct SiteBuilder {
 
         let openingRendered = HTML.render(opening, resolve: resolveHome)
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: openingRendered))
-        var body = "<section class=\"home-section home-opening\">\n\(openingRendered.body)\n</section>\n"
+        let opened = Self.playingHeroes(in: openingRendered.body, media: plan.media)
+        var body = "<section class=\"home-section home-opening\">\n\(opened)\n</section>\n"
 
         func block(_ heading: String) -> String {
             guard let section = sections.first(where: { $0.heading == heading }) else {
@@ -582,6 +583,36 @@ public struct SiteBuilder {
         document.querySelectorAll('.example-clip video').forEach(v=>{\
         v.autoplay=false;v.controls=true;v.pause();});}</script>
         """
+    }
+
+    /// A page's opening picture, swapped for the clip it stands in for.
+    ///
+    /// The markdown carries the picture rather than the clip, because that is
+    /// what GitHub and a plain clone can show and because a page should say
+    /// something before a megabyte of video has arrived. On the site the
+    /// picture becomes that clip playing, with itself as the poster, so a
+    /// reader who blocks video or has asked for less motion sees exactly what
+    /// the markdown promised.
+    static func playingHeroes(in body: String, media: ExampleMedia) -> String {
+        var out = body
+        for hero in media.heroes.values {
+            let picture = "\(media.base)/\(hero.image)"
+            guard let start = out.range(of: "<img src=\"\(picture)\"") else { continue }
+            guard let close = out[start.lowerBound...].range(of: ">") else { continue }
+            let tag = String(out[start.lowerBound ..< close.upperBound])
+            let alt = tag.range(of: "alt=\"").flatMap { from in
+                tag[from.upperBound...].firstIndex(of: "\"").map { String(tag[from.upperBound ..< $0]) }
+            } ?? hero.of
+            let video = """
+                <figure class="page-hero">
+                <video src="\(media.base)/\(hero.clip)" poster="\(picture)" \
+                width="\(hero.width)" height="\(hero.height)" autoplay muted loop playsinline \
+                aria-label="\(HTML.escape(alt))"></video>
+                </figure>
+                """
+            out.replaceSubrange(start.lowerBound ..< close.upperBound, with: video)
+        }
+        return out
     }
 
     // MARK: - Resolving what a page points at

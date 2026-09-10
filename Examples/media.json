@@ -1,5 +1,21 @@
 {
   "base": "https://media.ollin.art",
+  "heroes": {
+    "guide": {
+      "image": "heroes/guide-hero.jpg?v=08c6ada7",
+      "clip": "heroes/guide-hero.mp4?v=5903abc1",
+      "width": 1600,
+      "height": 800,
+      "of": "the sketch each chapter builds, in chapter order"
+    },
+    "readme": {
+      "image": "heroes/readme-hero.jpg?v=d4678db0",
+      "clip": "heroes/readme-hero.mp4?v=31dec33e",
+      "width": 1600,
+      "height": 800,
+      "of": "thirty-two of the example sketches, from every area of the framework"
+    }
+  },
   "covers": {
     "3D": [
       "3D/Geometry/Ocean",

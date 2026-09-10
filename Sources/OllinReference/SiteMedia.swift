@@ -32,16 +32,32 @@ public struct ExampleMedia: Sendable {
         public var sound: Bool?
     }
 
+    /// A picture that opens a page, and the clip it stands in for.
+    ///
+    /// The markdown carries the picture, since that is what GitHub and a
+    /// plain clone can show, and the site swaps in the clip.
+    public struct Hero: Sendable, Decodable {
+        public var image: String
+        public var clip: String
+        public var width: Int
+        public var height: Int
+        /// What the cells are, for the page to say out loud.
+        public var of: String
+    }
+
     /// Where the files are served from, with no trailing slash.
     public var base: String
     /// Rows by example path, as `Patterns/Kaleidoscope`.
     public var entries: [String: Entry]
+    /// The pictures that open a page, by the page they open.
+    public var heroes: [String: Hero] = [:]
 
-    public static let none = ExampleMedia(base: "", entries: [:])
+    public static let none = ExampleMedia(base: "", entries: [:], heroes: [:])
 
     private struct File: Decodable {
         var base: String
         var examples: [String: Entry]
+        var heroes: [String: Hero]?
     }
 
     /// Read the manifest beside the examples.
@@ -51,7 +67,7 @@ public struct ExampleMedia: Sendable {
               let file = try? JSONDecoder().decode(File.self, from: data) else { return .none }
         var base = file.base
         while base.hasSuffix("/") { base.removeLast() }
-        return ExampleMedia(base: base, entries: file.examples)
+        return ExampleMedia(base: base, entries: file.examples, heroes: file.heroes ?? [:])
     }
 
     public subscript(example: String) -> Entry? { entries[example] }
