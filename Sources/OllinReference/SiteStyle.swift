@@ -259,7 +259,9 @@ enum SiteStyle {
       main { padding-top: 1.75rem; padding-bottom: 2.5rem; }
       .hero { grid-template-columns: minmax(0, 1fr); }
       .hero-canvas { max-width: 320px; order: -1; }
-      .cards { grid-template-columns: minmax(0, 1fr); }
+      /* Stacked, the cards' own spacing already separates them from what
+         follows, so the margin under the row reads as a hole, not a break. */
+      .cards { grid-template-columns: minmax(0, 1fr); margin-bottom: 1.5rem; }
       .home-section { padding: 2.5rem 0; }
       .home-section > h2:first-child, .home-pair h2 { font-size: 28px; }
       .home-opening > p:first-child { font-size: 19px; }
