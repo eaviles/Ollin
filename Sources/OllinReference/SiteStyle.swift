@@ -170,6 +170,16 @@ enum SiteStyle {
     .prose td:first-child { white-space: nowrap; }
     .prose a[name], .prose a[id] { display: block; position: relative; top: -72px; visibility: hidden; }
 
+    .showcase { max-width: 1180px; margin: 0 auto clamp(3rem, 7vw, 5rem); padding: 0 1.5rem; }
+    .showcase-head { margin: 0 0 2rem; }
+    .showcase-head h2 { font-size: 34px; letter-spacing: -0.025em; margin: 0 0 0.4rem; }
+    .showcase-head p { color: var(--text-2); margin: 0; }
+    .showpiece { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 1.75rem; align-items: center; margin-bottom: 1.75rem; }
+    .showpiece figure { margin: 0; }
+    .showpiece video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
+    .showpiece-code pre { margin: 0; font-size: 12.5px; line-height: 1.55; }
+    .showpiece-note { margin: 0.75rem 0 0; font-size: 14px; color: var(--text-2); }
+    .showcase-more { margin: 0.5rem 0 0; }
     .page-hero { margin: 0 0 2rem; }
     .page-hero video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin: 0 0 2rem; }
@@ -262,6 +272,10 @@ enum SiteStyle {
       /* Stacked, the cards' own spacing already separates them from what
          follows, so the margin under the row reads as a hole, not a break. */
       .cards { grid-template-columns: minmax(0, 1fr); margin-bottom: 1.5rem; }
+      /* The band pairs a sketch with its whole source, which on a phone
+         stacks into a wall of code. The sketch's own page is where to read
+         it there, so the band is not shown at all. */
+      .showcase { display: none; }
       .home-section { padding: 2.5rem 0; }
       .home-section > h2:first-child, .home-pair h2 { font-size: 28px; }
       .home-opening > p:first-child { font-size: 19px; }

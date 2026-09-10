@@ -836,6 +836,23 @@ struct SiteTests {
         #expect(media.heroes["readme"] != nil, "the README lost its opening clip")
     }
 
+    @Test("The front page's band names three sketches that are all still there")
+    func showcaseIsWhole() throws {
+        let root = try #require(Self.repositoryRoot())
+        let media = ExampleMedia.read(inExamples: root.appendingPathComponent("Examples"))
+        #expect(!media.showcase.isEmpty, "the front page lost its band of sketches")
+        for piece in media.showcase {
+            let entry = media[piece.example]
+            #expect(entry != nil, "the band names \(piece.example), which has no media")
+            // Without a clip there is nothing to show running, and the band's
+            // whole claim is that these are running.
+            #expect(entry?.loopSmall != nil, "\(piece.example) has no clip to play")
+            let source = root.appendingPathComponent("Examples/\(piece.example)/Sketch.swift")
+            #expect(FileManager.default.fileExists(atPath: source.path),
+                    "the band names \(piece.example), which is not in the checkout")
+        }
+    }
+
     @Test("Every row in the manifest names an example that is still there")
     func mediaRowsAreNotStale() throws {
         let root = try #require(Self.repositoryRoot())

@@ -64,6 +64,20 @@
       ]
     }
   },
+  "showcase": [
+    {
+      "example": "Motion/Spokes",
+      "note": "Sixty-four spokes, each breathing on its own phase."
+    },
+    {
+      "example": "Shaders/VisualSynth",
+      "note": "A chain of visual operators, with no shader file to write."
+    },
+    {
+      "example": "Simulation/Physarum",
+      "note": "Two hundred and twenty thousand agents, on the GPU."
+    }
+  ],
   "covers": {
     "3D": [
       "3D/Geometry/Ocean",

@@ -45,19 +45,28 @@ public struct ExampleMedia: Sendable {
         public var of: String
     }
 
+    /// One sketch the front page shows running beside its whole source.
+    public struct Showpiece: Sendable, Decodable {
+        public var example: String
+        public var note: String
+    }
+
     /// Where the files are served from, with no trailing slash.
     public var base: String
     /// Rows by example path, as `Patterns/Kaleidoscope`.
     public var entries: [String: Entry]
     /// The pictures that open a page, by the page they open.
     public var heroes: [String: Hero] = [:]
+    /// The sketches the front page shows running beside their source.
+    public var showcase: [Showpiece] = []
 
-    public static let none = ExampleMedia(base: "", entries: [:], heroes: [:])
+    public static let none = ExampleMedia(base: "", entries: [:], heroes: [:], showcase: [])
 
     private struct File: Decodable {
         var base: String
         var examples: [String: Entry]
         var heroes: [String: Hero]?
+        var showcase: [Showpiece]?
     }
 
     /// Read the manifest beside the examples.
@@ -67,7 +76,8 @@ public struct ExampleMedia: Sendable {
               let file = try? JSONDecoder().decode(File.self, from: data) else { return .none }
         var base = file.base
         while base.hasSuffix("/") { base.removeLast() }
-        return ExampleMedia(base: base, entries: file.examples, heroes: file.heroes ?? [:])
+        return ExampleMedia(base: base, entries: file.examples, heroes: file.heroes ?? [:],
+                            showcase: file.showcase ?? [])
     }
 
     public subscript(example: String) -> Entry? { entries[example] }

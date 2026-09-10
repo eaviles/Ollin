@@ -447,7 +447,7 @@ public struct SiteBuilder {
         }
 
         return layout(page: page, title: page.title, description: Self.tagline, trail: "",
-                      body: "\(hero)\n<article class=\"prose home\">\n\(body)</article>",
+                      body: "\(hero)\n\(showcase(plan.media, plan: plan, page: page))<article class=\"prose home\">\n\(body)</article>",
                       headings: [], plan: plan)
     }
 
@@ -622,6 +622,55 @@ public struct SiteBuilder {
             out.replaceSubrange(start.lowerBound ..< close.upperBound, with: video)
         }
         return out
+    }
+
+    /// The front page's band of sketches: each one running beside the whole
+    /// program that draws it, which is the claim prose cannot make.
+    ///
+    /// The small clip rather than the full one, since three at canvas size
+    /// would be nine megabytes on the page a stranger arrives at, and the
+    /// cells are half that wide anyway. Nothing is fetched until it plays,
+    /// and the band is hidden below the phone breakpoint, where the code
+    /// beside the picture would stack into a wall: on a phone the sketch's
+    /// own page is the place to read it.
+    func showcase(_ media: ExampleMedia, plan: Plan, page: Page) -> String {
+        var rows = ""
+        for piece in media.showcase {
+            guard let entry = media[piece.example], let clip = entry.loopSmall else { continue }
+            let source = (try? String(contentsOf: root.appendingPathComponent("Examples/\(piece.example)/Sketch.swift"),
+                                      encoding: .utf8)) ?? ""
+            let code = source.split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+                .drop { $0.trimmingCharacters(in: .whitespaces).isEmpty }
+                .joined(separator: "\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !code.isEmpty else { continue }
+            let target = plan.examples["Examples/\(piece.example)"]
+                .map { relative(from: page.siteDirectory, to: $0.sitePath) }
+            let name = piece.example.split(separator: "/").last.map(String.init) ?? piece.example
+            let link = target.map { " <a href=\"\($0)\">Run it</a>" } ?? ""
+            rows += """
+            <div class="showpiece">
+            <figure><video src="\(media.address(of: clip))" poster="\(media.address(of: entry.stillSmall))" \
+            width="\(entry.width)" height="\(entry.height)" autoplay muted loop playsinline preload="none" \
+            aria-label="\(HTML.escape(name)) running"></video></figure>
+            <div class="showpiece-code">\(HTML.codeBlock(code, language: "swift"))
+            <p class="showpiece-note">\(HTML.escape(piece.note))\(link)</p>
+            </div>
+            </div>
+
+            """
+        }
+        guard !rows.isEmpty else { return "" }
+        let all = relative(from: page.siteDirectory, to: "examples/index.html")
+        return """
+        <section class="showcase" aria-label="What a sketch looks like">
+        <div class="showcase-head"><h2>What a sketch looks like</h2>
+        <p>Every one of these is the whole program.</p></div>
+        \(rows)<p class="showcase-more"><a class="button quiet" href="\(all)">All \(plan.examples.count) examples</a></p>
+        </section>
+
+        """
     }
 
     // MARK: - Resolving what a page points at
