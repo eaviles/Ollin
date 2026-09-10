@@ -279,18 +279,26 @@ public struct SiteBuilder {
         let log = LinkLog()
         var report = Report()
 
+        try write(llmsIndex(plan: plan), to: output.appendingPathComponent("llms.txt"))
+
         for page in plan.pages {
             let html: String
+            // Every page is written twice: once rendered, once as the
+            // markdown behind it, which is what an agent should be reading.
+            let twin: String
             switch page.kind {
             case .example(let entry):
                 html = examplePage(entry, page: page, plan: plan, log: log)
+                twin = markdownTwin(of: entry)
                 report.examples += 1
             default:
                 let markdown = try String(contentsOf: root.appendingPathComponent(page.repoPath), encoding: .utf8)
                 html = markdownPage(markdown, page: page, plan: plan, log: log)
+                twin = markdownTwin(markdown, page: page, plan: plan, log: log)
                 report.pages += 1
             }
             try write(html, to: output.appendingPathComponent(page.sitePath))
+            try write(twin, to: output.appendingPathComponent(Self.markdownPath(for: page.sitePath)))
         }
 
         for (repoPath, sitePath) in log.images {
@@ -673,6 +681,142 @@ public struct SiteBuilder {
         """
     }
 
+    // MARK: - The markdown a machine reads
+
+    /// Where a page's markdown twin sits: the same address with `.md` in
+    /// place of `.html`, which is one of the two spellings the convention
+    /// allows and the one that keeps a folder's index readable as
+    /// `index.md`.
+    static func markdownPath(for sitePath: String) -> String {
+        sitePath.hasSuffix(".html") ? String(sitePath.dropLast(5)) + ".md" : sitePath + ".md"
+    }
+
+    /// The same page as clean markdown, beside the rendered one.
+    ///
+    /// An agent fetching a documentation page gets navigation, styling and
+    /// script wrapped around the few paragraphs it wanted, and turning that
+    /// back into text is lossy. Here the source already *is* markdown, so the
+    /// honest answer is to publish it: `docs/drawing/color.html` has
+    /// `docs/drawing/color.md` beside it, holding what was actually written.
+    ///
+    /// Only the link targets change, rewritten through the same resolver the
+    /// HTML uses and then pointed at the markdown twin, so a machine
+    /// following them keeps getting markdown rather than falling back into
+    /// HTML halfway through.
+    func markdownTwin(_ markdown: String, page: Page, plan: Plan, log: LinkLog) -> String {
+        var out = ""
+        var rest = Substring(markdown)
+        while let open = rest.firstIndex(of: "(") {
+            // A link's target is what sits between "](" and the closing ")".
+            guard open > rest.startIndex, rest[rest.index(before: open)] == "]",
+                  let close = rest[open...].firstIndex(of: ")") else {
+                out += rest[...open]
+                rest = rest[rest.index(after: open)...]
+                continue
+            }
+            let target = String(rest[rest.index(after: open) ..< close])
+            let quiet = LinkLog()          // a twin reports nothing the page has not already
+            var href = resolve(target, image: false, from: page, plan: plan, log: quiet)
+            if href.hasSuffix(".html") { href = String(href.dropLast(5)) + ".md" }
+            else if let hash = href.firstIndex(of: "#"), href[..<hash].hasSuffix(".html") {
+                href = href[..<hash].dropLast(5) + ".md" + href[hash...]
+            }
+            out += rest[..<rest.index(after: open)] + href
+            rest = rest[close...]
+        }
+        out += rest
+        return out
+    }
+
+    /// An example as markdown: what it shows, how to run it, and its source.
+    func markdownTwin(of entry: ExampleEntry) -> String {
+        let source = (try? String(contentsOf: entry.sketch, encoding: .utf8)) ?? ""
+        var out = "# \(entry.name)\n\n"
+        if !entry.summary.isEmpty { out += "\(entry.summary)\n\n" }
+        out += "Run it with `swift run --package-path Examples \(entry.target)`.\n\n"
+        out += "```swift\n\(source.trimmingCharacters(in: .whitespacesAndNewlines))\n```\n"
+        return out
+    }
+
+    /// The first sentence of a summary, ending at a full stop that is
+    /// followed by a space and a capital, so `0...1.` and `p5.js` do not end
+    /// one. The same rule the search excerpts use.
+    static func firstSentence(of text: String) -> String? {
+        let characters = Array(text)
+        var index = 0
+        while index + 2 < characters.count {
+            if characters[index] == ".", characters[index + 1] == " ",
+               characters[index + 2].isUppercase,
+               index > 0, characters[index - 1].isLetter || characters[index - 1] == ")" {
+                return String(characters[...index])
+            }
+            index += 1
+        }
+        return nil
+    }
+
+    /// The site's index for an agent: `/llms.txt`.
+    ///
+    /// A convention rather than a standard, proposed in 2024 and now served
+    /// by enough documentation sites to be worth following. It is one
+    /// markdown file: a title, a sentence of what this is, then lists of
+    /// links. The links point at the **markdown** twins rather than the
+    /// pages, so anything that follows them keeps reading markdown.
+    ///
+    /// It is a *curated* map, not a sitemap. Five hundred examples would
+    /// bury the reference under a list nobody needs in context, so the
+    /// examples are one link to their index and the detail lives behind it.
+    func llmsIndex(plan: Plan) -> String {
+        let base = domain.map { "https://\($0)/" } ?? Self.pagesAddress(of: repository) ?? ""
+        // One sentence per page. The index's whole purpose is to be small
+        // enough to hold in context while the detail waits behind the links,
+        // and the reference's own summaries run to several sentences.
+        func link(_ page: Page) -> String {
+            let path = Self.markdownPath(for: page.sitePath)
+            var summary = page.summary
+            if let stop = Self.firstSentence(of: summary) { summary = stop }
+            // A summary written as one long sentence still has to fit, so it
+            // is cut at a word rather than mid-word and marked as cut.
+            if summary.count > 180 {
+                let cut = summary.prefix(180)
+                let word = cut.lastIndex(of: " ").map { String(cut[..<$0]) } ?? String(cut)
+                summary = word.trimmingCharacters(in: CharacterSet(charactersIn: " ,;:")) + "…"
+            }
+            return "- [\(page.title)](\(base)\(path))" + (summary.isEmpty ? "" : ": \(summary)")
+        }
+        var out = """
+        # Ollin
+
+        > \(Self.tagline) Sketches are Swift classes with a `setup()` and a `draw()` that runs every frame; the renderer sits on Metal and composites in linear light.
+
+        Every page on this site has a markdown twin at the same address with `.md` in place of `.html`, which is what these links point at. The reference is the authority on what exists and how it behaves; the guide teaches it in order; the examples are runnable sketches.
+
+        """
+        let chapters = plan.pages.filter { $0.repoPath.hasPrefix("Guide/") && $0.repoPath.dropFirst(6).first?.isNumber == true }
+        if !chapters.isEmpty {
+            out += "## Guide\n\n" + chapters.map(link).joined(separator: "\n") + "\n\n"
+        }
+        for group in plan.docsGroups {
+            let pages = group.topics.compactMap { plan.byRepoPath["Docs/\($0).md"] }
+            guard !pages.isEmpty else { continue }
+            out += "## \(group.name)\n\n" + pages.map(link).joined(separator: "\n") + "\n\n"
+        }
+        var project: [String] = []
+        if let examples = plan.byRepoPath["Examples/README.md"] {
+            project.append("- [Examples](\(base)\(Self.markdownPath(for: examples.sitePath))): \(plan.examples.count) runnable sketches by category, each with its whole source")
+        }
+        for name in ["ARCHITECTURE.md", "CAPABILITIES.md", "CHANGELOG.md"] {
+            if let page = plan.byRepoPath[name] { project.append(link(page)) }
+        }
+        if !project.isEmpty { out += "## The project\n\n" + project.joined(separator: "\n") + "\n\n" }
+        var optional: [String] = []
+        for name in ["ROADMAP.md", "DESIGN-NOTES.md", "ATTRIBUTION.md", "CONTRIBUTING.md"] {
+            if let page = plan.byRepoPath[name] { optional.append(link(page)) }
+        }
+        if !optional.isEmpty { out += "## Optional\n\n" + optional.joined(separator: "\n") + "\n" }
+        return out
+    }
+
     // MARK: - Resolving what a page points at
 
     /// Where a target a page wrote goes on the site.
@@ -788,6 +932,13 @@ public struct SiteBuilder {
         let fullTitle = isHome ? "Ollin" : "\(title) · Ollin"
         let pagePath = page.sitePath == "index.html" ? "" : page.sitePath
         let canonical = domain.map { "<link rel=\"canonical\" href=\"https://\($0)/\(pagePath)\">" } ?? ""
+        // The two relations the convention asks for, so a machine that lands
+        // on the rendered page can find the markdown behind it and the index
+        // that describes the site, without being told either address.
+        let machine = """
+        <link rel="alternate" type="text/markdown" href="\(asset(Self.markdownPath(for: page.sitePath)))">
+        <link rel="describedby" type="text/markdown" href="\(asset("llms.txt"))">
+        """
         // What a link to the page unfurls as, in a message or a feed: the
         // page's title and line, and the social card. A card has to be an
         // absolute address, so it is written against the custom domain or,
@@ -868,6 +1019,7 @@ public struct SiteBuilder {
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="Ollin">
         \(share)\(canonical)
+        \(machine)
         \(icons)<link rel="stylesheet" href="\(asset("assets/site.css"))">
         </head>
         <body>

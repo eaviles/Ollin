@@ -720,6 +720,44 @@ struct SiteTests {
         return text
     }
 
+    @Test("The site carries an index for an agent, and it points at markdown")
+    func llmsIndex() throws {
+        let root = try #require(Self.repositoryRoot())
+        let output = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-llms-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: output) }
+        let builder = SiteBuilder(root: root, domain: "ollin.example")
+        _ = try builder.build(into: output)
+
+        let index = try String(contentsOf: output.appendingPathComponent("llms.txt"), encoding: .utf8)
+        #expect(index.hasPrefix("# Ollin"), "the convention wants a title first")
+        #expect(index.contains("\n> "), "and a blockquote saying what this is")
+        // Every link has to reach markdown, or an agent following one falls
+        // back into HTML halfway through.
+        var links = 0
+        var index2 = Substring(index)
+        while let open = index2.range(of: "](https://") {
+            guard let close = index2[open.upperBound...].firstIndex(of: ")") else { break }
+            let url = String(index2[open.upperBound ..< close])
+            #expect(url.hasSuffix(".md"), "\(url) is not markdown")
+            links += 1
+            index2 = index2[close...]
+        }
+        #expect(links > 100, "found only \(links) links")
+
+        // The page and its twin sit at the same address but for the suffix,
+        // and the page says where its twin is.
+        let page = output.appendingPathComponent("docs/drawing/color.html")
+        let twin = output.appendingPathComponent("docs/drawing/color.md")
+        #expect(FileManager.default.fileExists(atPath: twin.path))
+        let html = try String(contentsOf: page, encoding: .utf8)
+        #expect(html.contains("rel=\"alternate\" type=\"text/markdown\" href=\"color.md\""))
+        #expect(html.contains("rel=\"describedby\""))
+        let markdown = try String(contentsOf: twin, encoding: .utf8)
+        #expect(!markdown.contains("<html"), "the twin is markdown, not a page")
+        #expect(markdown.contains(".md)"), "its own links reach markdown too")
+    }
+
     // MARK: - The example media
 
     @Test("The manifest reads, and its absence is not a failure")

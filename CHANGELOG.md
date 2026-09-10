@@ -2,6 +2,12 @@
 
 Notable changes to Ollin, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version numbers follow semantic versioning at major zero: a breaking change or a new feature bumps the minor, and a fix bumps the patch. Each release names its breaking renames here, so pin `.upToNextMinor` and read the entry before you move up.
 
+## [Unreleased]
+
+### Added
+
+- **The site can be read by a machine, not just rendered for a person.** Every page now has a markdown twin at the same address with `.md` in place of `.html`, holding what was actually written rather than navigation and styling wrapped around it, and `/llms.txt` is a curated index of the whole site pointing at those twins. Each page also says where its own twin is. This follows the `llms.txt` convention, which is what an agent with a browsing tool looks for; nothing fetches it automatically.
+
 ## [0.3.0] - 2026-09-10
 
 ### Added
