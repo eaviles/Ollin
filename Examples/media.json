@@ -441,6 +441,506 @@
       "still": "examples/3D/Environments/RemoteEnvironment/still.jpg",
       "stillSmall": "examples/3D/Environments/RemoteEnvironment/still-640.jpg"
     },
+    "3D/Geometry/AnimatedScene": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.559,
+      "source": "64572c6fa1dffc89",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 913021,
+        "loopSmall": 186045,
+        "still": 41220,
+        "stillSmall": 17005
+      },
+      "loop": "examples/3D/Geometry/AnimatedScene/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/AnimatedScene/loop-640.mp4",
+      "still": "examples/3D/Geometry/AnimatedScene/still.jpg",
+      "stillSmall": "examples/3D/Geometry/AnimatedScene/still-640.jpg"
+    },
+    "3D/Geometry/Fabrication": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.521,
+      "source": "f41df96ee41e2fb5",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1288416,
+        "loopSmall": 287396,
+        "still": 92644,
+        "stillSmall": 35229
+      },
+      "loop": "examples/3D/Geometry/Fabrication/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Fabrication/loop-640.mp4",
+      "still": "examples/3D/Geometry/Fabrication/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Fabrication/still-640.jpg"
+    },
+    "3D/Geometry/HopfFibration": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 17.067,
+      "source": "c65a00f0d76d51ad",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8035639,
+        "loopSmall": 2378708,
+        "still": 372220,
+        "stillSmall": 123286
+      },
+      "loop": "examples/3D/Geometry/HopfFibration/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/HopfFibration/loop-640.mp4",
+      "still": "examples/3D/Geometry/HopfFibration/still.jpg",
+      "stillSmall": "examples/3D/Geometry/HopfFibration/still-640.jpg"
+    },
+    "3D/Geometry/LoadedMesh": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 15.006,
+      "source": "ec5a28e005b34e4d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2350882,
+        "loopSmall": 463245,
+        "still": 109409,
+        "stillSmall": 43157
+      },
+      "loop": "examples/3D/Geometry/LoadedMesh/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/LoadedMesh/loop-640.mp4",
+      "still": "examples/3D/Geometry/LoadedMesh/still.jpg",
+      "stillSmall": "examples/3D/Geometry/LoadedMesh/still-640.jpg"
+    },
+    "3D/Geometry/MeshGrowth": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 21.812,
+      "source": "4a69d9a61611f620",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2794085,
+        "loopSmall": 625683,
+        "still": 112042,
+        "stillSmall": 42922
+      },
+      "loop": "examples/3D/Geometry/MeshGrowth/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/MeshGrowth/loop-640.mp4",
+      "still": "examples/3D/Geometry/MeshGrowth/still.jpg",
+      "stillSmall": "examples/3D/Geometry/MeshGrowth/still-640.jpg"
+    },
+    "3D/Geometry/Metaballs": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 18.953,
+      "source": "06ebe32da4039b5d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1646570,
+        "loopSmall": 378064,
+        "still": 62141,
+        "stillSmall": 23547
+      },
+      "loop": "examples/3D/Geometry/Metaballs/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Metaballs/loop-640.mp4",
+      "still": "examples/3D/Geometry/Metaballs/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Metaballs/still-640.jpg"
+    },
+    "3D/Geometry/Ocean": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 29.83,
+      "source": "1fc872c44b6ad662",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1960616,
+        "loopSmall": 420923,
+        "still": 79813,
+        "stillSmall": 27677
+      },
+      "loop": "examples/3D/Geometry/Ocean/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Ocean/loop-640.mp4",
+      "still": "examples/3D/Geometry/Ocean/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Ocean/still-640.jpg"
+    },
+    "3D/Geometry/Planet": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.023,
+      "source": "93ffff6f36d47e70",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2550012,
+        "loopSmall": 587081,
+        "still": 187772,
+        "stillSmall": 65873
+      },
+      "loop": "examples/3D/Geometry/Planet/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Planet/loop-640.mp4",
+      "still": "examples/3D/Geometry/Planet/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Planet/still-640.jpg"
+    },
+    "3D/Geometry/PointCloud": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.645,
+      "source": "33b45be5c7548b05",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 4325398,
+        "loopSmall": 532605,
+        "still": 128595,
+        "stillSmall": 27623
+      },
+      "loop": "examples/3D/Geometry/PointCloud/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/PointCloud/loop-640.mp4",
+      "still": "examples/3D/Geometry/PointCloud/still.jpg",
+      "stillSmall": "examples/3D/Geometry/PointCloud/still-640.jpg"
+    },
+    "3D/Geometry/SceneExplorer": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.07,
+      "source": "547c0437e94c29a5",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 827010,
+        "loopSmall": 132994,
+        "still": 35317,
+        "stillSmall": 13813
+      },
+      "loop": "examples/3D/Geometry/SceneExplorer/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SceneExplorer/loop-640.mp4",
+      "still": "examples/3D/Geometry/SceneExplorer/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SceneExplorer/still-640.jpg"
+    },
+    "3D/Geometry/ShadowArt": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 7.582,
+      "source": "be4f19c2e4ae1918",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2278361,
+        "loopSmall": 461191,
+        "still": 80746,
+        "stillSmall": 32050
+      },
+      "loop": "examples/3D/Geometry/ShadowArt/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/ShadowArt/loop-640.mp4",
+      "still": "examples/3D/Geometry/ShadowArt/still.jpg",
+      "stillSmall": "examples/3D/Geometry/ShadowArt/still-640.jpg"
+    },
+    "3D/Geometry/ShapeFactory": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.902,
+      "source": "188ac20c175e0555",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1882127,
+        "loopSmall": 342542,
+        "still": 79741,
+        "stillSmall": 32178
+      },
+      "loop": "examples/3D/Geometry/ShapeFactory/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/ShapeFactory/loop-640.mp4",
+      "still": "examples/3D/Geometry/ShapeFactory/still.jpg",
+      "stillSmall": "examples/3D/Geometry/ShapeFactory/still-640.jpg"
+    },
+    "3D/Geometry/SharpFields": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.286,
+      "source": "0316588810fcbcaa",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 829888,
+        "loopSmall": 202595,
+        "still": 33944,
+        "stillSmall": 13738
+      },
+      "loop": "examples/3D/Geometry/SharpFields/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SharpFields/loop-640.mp4",
+      "still": "examples/3D/Geometry/SharpFields/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SharpFields/still-640.jpg"
+    },
+    "3D/Geometry/SkinnedScene": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.932,
+      "source": "33666fccc2fc1366",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 776307,
+        "loopSmall": 169747,
+        "still": 77851,
+        "stillSmall": 31252
+      },
+      "loop": "examples/3D/Geometry/SkinnedScene/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SkinnedScene/loop-640.mp4",
+      "still": "examples/3D/Geometry/SkinnedScene/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SkinnedScene/still-640.jpg"
+    },
+    "3D/Geometry/SolidType": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.138,
+      "source": "5d64641fa75b57f0",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1177369,
+        "loopSmall": 232501,
+        "still": 47042,
+        "stillSmall": 18593
+      },
+      "loop": "examples/3D/Geometry/SolidType/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SolidType/loop-640.mp4",
+      "still": "examples/3D/Geometry/SolidType/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SolidType/still-640.jpg"
+    },
+    "3D/Geometry/Solids": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.497,
+      "source": "63603e053846f56a",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2342842,
+        "loopSmall": 458709,
+        "still": 105770,
+        "stillSmall": 41993
+      },
+      "loop": "examples/3D/Geometry/Solids/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Solids/loop-640.mp4",
+      "still": "examples/3D/Geometry/Solids/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Solids/still-640.jpg"
+    },
+    "3D/Geometry/SpatialExport": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.832,
+      "source": "2eaece15d4c872aa",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3029278,
+        "loopSmall": 578658,
+        "still": 83384,
+        "stillSmall": 33570
+      },
+      "loop": "examples/3D/Geometry/SpatialExport/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SpatialExport/loop-640.mp4",
+      "still": "examples/3D/Geometry/SpatialExport/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SpatialExport/still-640.jpg"
+    },
+    "3D/Geometry/StrangeAttractor": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.776,
+      "source": "da3d4ac04400248b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 7938278,
+        "loopSmall": 3926639,
+        "still": 842836,
+        "stillSmall": 238084
+      },
+      "loop": "examples/3D/Geometry/StrangeAttractor/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/StrangeAttractor/loop-640.mp4",
+      "still": "examples/3D/Geometry/StrangeAttractor/still.jpg",
+      "stillSmall": "examples/3D/Geometry/StrangeAttractor/still-640.jpg"
+    },
+    "3D/Geometry/SubdivisionSurfaces": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.3,
+      "source": "0b08050f82859840",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1874309,
+        "loopSmall": 337711,
+        "still": 74817,
+        "stillSmall": 26854
+      },
+      "loop": "examples/3D/Geometry/SubdivisionSurfaces/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SubdivisionSurfaces/loop-640.mp4",
+      "still": "examples/3D/Geometry/SubdivisionSurfaces/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SubdivisionSurfaces/still-640.jpg"
+    },
+    "3D/Geometry/SurfaceFromPoints": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.481,
+      "source": "87607e51325fbc59",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3023676,
+        "loopSmall": 437660,
+        "still": 85803,
+        "stillSmall": 30984
+      },
+      "loop": "examples/3D/Geometry/SurfaceFromPoints/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SurfaceFromPoints/loop-640.mp4",
+      "still": "examples/3D/Geometry/SurfaceFromPoints/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SurfaceFromPoints/still-640.jpg"
+    },
+    "3D/Geometry/SurfaceScatter": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 11.958,
+      "source": "75641dab72543d66",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3832662,
+        "loopSmall": 713086,
+        "still": 161194,
+        "stillSmall": 60050
+      },
+      "loop": "examples/3D/Geometry/SurfaceScatter/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/SurfaceScatter/loop-640.mp4",
+      "still": "examples/3D/Geometry/SurfaceScatter/still.jpg",
+      "stillSmall": "examples/3D/Geometry/SurfaceScatter/still-640.jpg"
+    },
+    "3D/Geometry/Terrain": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 15.353,
+      "source": "7baa568d7ba5c567",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1688663,
+        "loopSmall": 359713,
+        "still": 96203,
+        "stillSmall": 32607
+      },
+      "loop": "examples/3D/Geometry/Terrain/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Terrain/loop-640.mp4",
+      "still": "examples/3D/Geometry/Terrain/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Terrain/still-640.jpg"
+    },
+    "3D/Geometry/TexturedMesh": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.904,
+      "source": "8859489d32cd680f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 7570828,
+        "loopSmall": 1489002,
+        "still": 292771,
+        "stillSmall": 103062
+      },
+      "loop": "examples/3D/Geometry/TexturedMesh/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/TexturedMesh/loop-640.mp4",
+      "still": "examples/3D/Geometry/TexturedMesh/still.jpg",
+      "stillSmall": "examples/3D/Geometry/TexturedMesh/still-640.jpg"
+    },
+    "3D/Geometry/Transforms": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.784,
+      "source": "a3d79e978c70e704",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8078989,
+        "loopSmall": 1953815,
+        "still": 164614,
+        "stillSmall": 51105
+      },
+      "loop": "examples/3D/Geometry/Transforms/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Transforms/loop-640.mp4",
+      "still": "examples/3D/Geometry/Transforms/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Transforms/still-640.jpg"
+    },
+    "3D/Geometry/Wireframe": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.687,
+      "source": "fe3513b3b035852c",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 7992537,
+        "loopSmall": 2016656,
+        "still": 202485,
+        "stillSmall": 60896
+      },
+      "loop": "examples/3D/Geometry/Wireframe/loop.mp4",
+      "loopSmall": "examples/3D/Geometry/Wireframe/loop-640.mp4",
+      "still": "examples/3D/Geometry/Wireframe/still.jpg",
+      "stillSmall": "examples/3D/Geometry/Wireframe/still-640.jpg"
+    },
     "3D/Lighting/AreaLights": {
       "width": 1080,
       "height": 1080,
@@ -659,6 +1159,326 @@
       "loopSmall": "examples/3D/Lighting/VolumetricLight/loop-640.mp4",
       "still": "examples/3D/Lighting/VolumetricLight/still.jpg",
       "stillSmall": "examples/3D/Lighting/VolumetricLight/still-640.jpg"
+    },
+    "3D/Materials/BrushedMetal": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.6,
+      "source": "8e08a49c1926b513",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1378699,
+        "loopSmall": 312107,
+        "still": 85741,
+        "stillSmall": 32579
+      },
+      "loop": "examples/3D/Materials/BrushedMetal/loop.mp4",
+      "loopSmall": "examples/3D/Materials/BrushedMetal/loop-640.mp4",
+      "still": "examples/3D/Materials/BrushedMetal/still.jpg",
+      "stillSmall": "examples/3D/Materials/BrushedMetal/still-640.jpg"
+    },
+    "3D/Materials/CoatAndCloth": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.324,
+      "source": "97f7c05483144a86",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1328431,
+        "loopSmall": 282518,
+        "still": 79062,
+        "stillSmall": 28547
+      },
+      "loop": "examples/3D/Materials/CoatAndCloth/loop.mp4",
+      "loopSmall": "examples/3D/Materials/CoatAndCloth/loop-640.mp4",
+      "still": "examples/3D/Materials/CoatAndCloth/still.jpg",
+      "stillSmall": "examples/3D/Materials/CoatAndCloth/still-640.jpg"
+    },
+    "3D/Materials/Decals": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.524,
+      "source": "35c825f34be9aa6b",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1462595,
+        "loopSmall": 302922,
+        "still": 59794,
+        "stillSmall": 24853
+      },
+      "loop": "examples/3D/Materials/Decals/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Decals/loop-640.mp4",
+      "still": "examples/3D/Materials/Decals/still.jpg",
+      "stillSmall": "examples/3D/Materials/Decals/still-640.jpg"
+    },
+    "3D/Materials/Detail": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.924,
+      "source": "a2696724756c31dd",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2209456,
+        "loopSmall": 417868,
+        "still": 156560,
+        "stillSmall": 53166
+      },
+      "loop": "examples/3D/Materials/Detail/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Detail/loop-640.mp4",
+      "still": "examples/3D/Materials/Detail/still.jpg",
+      "stillSmall": "examples/3D/Materials/Detail/still-640.jpg"
+    },
+    "3D/Materials/Explorer": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 30.049,
+      "source": "9acfc2fcf713573d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1086795,
+        "loopSmall": 231045,
+        "still": 49487,
+        "stillSmall": 19534
+      },
+      "loop": "examples/3D/Materials/Explorer/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Explorer/loop-640.mp4",
+      "still": "examples/3D/Materials/Explorer/still.jpg",
+      "stillSmall": "examples/3D/Materials/Explorer/still-640.jpg"
+    },
+    "3D/Materials/Glass": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.37,
+      "source": "b00a88d6e6b6654d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1215415,
+        "loopSmall": 236122,
+        "still": 79074,
+        "stillSmall": 29245
+      },
+      "loop": "examples/3D/Materials/Glass/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Glass/loop-640.mp4",
+      "still": "examples/3D/Materials/Glass/still.jpg",
+      "stillSmall": "examples/3D/Materials/Glass/still-640.jpg"
+    },
+    "3D/Materials/Matcap": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.944,
+      "source": "46f50a7d15dc9c13",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2630896,
+        "loopSmall": 448178,
+        "still": 102825,
+        "stillSmall": 39341
+      },
+      "loop": "examples/3D/Materials/Matcap/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Matcap/loop-640.mp4",
+      "still": "examples/3D/Materials/Matcap/still.jpg",
+      "stillSmall": "examples/3D/Materials/Matcap/still-640.jpg"
+    },
+    "3D/Materials/Materials": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 11.683,
+      "source": "4aeeb95bc59db4af",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 4301632,
+        "loopSmall": 743730,
+        "still": 156443,
+        "stillSmall": 56414
+      },
+      "loop": "examples/3D/Materials/Materials/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Materials/loop-640.mp4",
+      "still": "examples/3D/Materials/Materials/still.jpg",
+      "stillSmall": "examples/3D/Materials/Materials/still-640.jpg"
+    },
+    "3D/Materials/NormalMaps": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.878,
+      "source": "7882bf1f874eb699",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3177857,
+        "loopSmall": 584931,
+        "still": 90388,
+        "stillSmall": 29966
+      },
+      "loop": "examples/3D/Materials/NormalMaps/loop.mp4",
+      "loopSmall": "examples/3D/Materials/NormalMaps/loop-640.mp4",
+      "still": "examples/3D/Materials/NormalMaps/still.jpg",
+      "stillSmall": "examples/3D/Materials/NormalMaps/still-640.jpg"
+    },
+    "3D/Materials/Parallax": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.584,
+      "source": "90f7fcd86c73b0ee",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3537417,
+        "loopSmall": 463909,
+        "still": 143601,
+        "stillSmall": 41681
+      },
+      "loop": "examples/3D/Materials/Parallax/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Parallax/loop-640.mp4",
+      "still": "examples/3D/Materials/Parallax/still.jpg",
+      "stillSmall": "examples/3D/Materials/Parallax/still-640.jpg"
+    },
+    "3D/Materials/PhysicalMaterials": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.44,
+      "source": "ae0a5a990ca39256",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1367521,
+        "loopSmall": 251570,
+        "still": 69284,
+        "stillSmall": 26351
+      },
+      "loop": "examples/3D/Materials/PhysicalMaterials/loop.mp4",
+      "loopSmall": "examples/3D/Materials/PhysicalMaterials/loop-640.mp4",
+      "still": "examples/3D/Materials/PhysicalMaterials/still.jpg",
+      "stillSmall": "examples/3D/Materials/PhysicalMaterials/still-640.jpg"
+    },
+    "3D/Materials/SeeThrough": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.711,
+      "source": "1b7aa4790569cb83",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1253636,
+        "loopSmall": 249601,
+        "still": 81623,
+        "stillSmall": 30268
+      },
+      "loop": "examples/3D/Materials/SeeThrough/loop.mp4",
+      "loopSmall": "examples/3D/Materials/SeeThrough/loop-640.mp4",
+      "still": "examples/3D/Materials/SeeThrough/still.jpg",
+      "stillSmall": "examples/3D/Materials/SeeThrough/still-640.jpg"
+    },
+    "3D/Materials/Subsurface": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.766,
+      "source": "2969aba421677d48",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 961950,
+        "loopSmall": 174860,
+        "still": 42101,
+        "stillSmall": 16161
+      },
+      "loop": "examples/3D/Materials/Subsurface/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Subsurface/loop-640.mp4",
+      "still": "examples/3D/Materials/Subsurface/still.jpg",
+      "stillSmall": "examples/3D/Materials/Subsurface/still-640.jpg"
+    },
+    "3D/Materials/SurfaceMaps": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.941,
+      "source": "b0b7973dc1c31002",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1078352,
+        "loopSmall": 214337,
+        "still": 60404,
+        "stillSmall": 22441
+      },
+      "loop": "examples/3D/Materials/SurfaceMaps/loop.mp4",
+      "loopSmall": "examples/3D/Materials/SurfaceMaps/loop-640.mp4",
+      "still": "examples/3D/Materials/SurfaceMaps/still.jpg",
+      "stillSmall": "examples/3D/Materials/SurfaceMaps/still-640.jpg"
+    },
+    "3D/Materials/ThinFilm": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.387,
+      "source": "28968c142a94af08",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2546242,
+        "loopSmall": 515673,
+        "still": 133653,
+        "stillSmall": 47452
+      },
+      "loop": "examples/3D/Materials/ThinFilm/loop.mp4",
+      "loopSmall": "examples/3D/Materials/ThinFilm/loop-640.mp4",
+      "still": "examples/3D/Materials/ThinFilm/still.jpg",
+      "stillSmall": "examples/3D/Materials/ThinFilm/still-640.jpg"
+    },
+    "3D/Materials/Triplanar": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.771,
+      "source": "bd0954ae79d1fcb1",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 5166730,
+        "loopSmall": 762005,
+        "still": 195562,
+        "stillSmall": 60390
+      },
+      "loop": "examples/3D/Materials/Triplanar/loop.mp4",
+      "loopSmall": "examples/3D/Materials/Triplanar/loop-640.mp4",
+      "still": "examples/3D/Materials/Triplanar/still.jpg",
+      "stillSmall": "examples/3D/Materials/Triplanar/still-640.jpg"
     },
     "Audio/ChordSymbols": {
       "width": 1080,
@@ -5543,6 +6363,21 @@
       "reason": "waits on hardware: imports OllinVision",
       "rendered": "2026-09-10",
       "source": "5bb491a94a4c4d78"
+    },
+    "3D/Geometry/LoadedScene": {
+      "reason": "barely moves: 0.019 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "f631594f7297a30c"
+    },
+    "3D/Geometry/SpatialVideo": {
+      "reason": "barely moves: 0.832 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "11221d2ff3e74419"
+    },
+    "3D/Materials/LiveSurface": {
+      "reason": "waits on hardware: imports OllinVision",
+      "rendered": "2026-09-10",
+      "source": "55ac280aed16d6ac"
     },
     "3D/Phone/PhoneAttention": {
       "reason": "waits on hardware: imports OllinPhone",
