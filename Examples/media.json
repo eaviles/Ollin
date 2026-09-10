@@ -20,6 +20,146 @@
       "still": "examples/3D/Lighting/GlobalIllumination/still.jpg",
       "stillSmall": "examples/3D/Lighting/GlobalIllumination/still-640.jpg"
     },
+    "Basic/Describing": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 35.04,
+      "source": "e77bdd312b755b48",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2555016,
+        "loopSmall": 470279,
+        "still": 77199,
+        "stillSmall": 28619
+      },
+      "loop": "examples/Basic/Describing/loop.mp4",
+      "loopSmall": "examples/Basic/Describing/loop-640.mp4",
+      "still": "examples/Basic/Describing/still.jpg",
+      "stillSmall": "examples/Basic/Describing/still-640.jpg"
+    },
+    "Basic/Guides": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.844,
+      "source": "92909c458539454a",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 379261,
+        "loopSmall": 54215,
+        "still": 23806,
+        "stillSmall": 11009
+      },
+      "loop": "examples/Basic/Guides/loop.mp4",
+      "loopSmall": "examples/Basic/Guides/loop-640.mp4",
+      "still": "examples/Basic/Guides/still.jpg",
+      "stillSmall": "examples/Basic/Guides/still-640.jpg"
+    },
+    "Basic/HelloCircle": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.424,
+      "source": "7f040928c137a6e0",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 463796,
+        "loopSmall": 98763,
+        "still": 23009,
+        "stillSmall": 9522
+      },
+      "loop": "examples/Basic/HelloCircle/loop.mp4",
+      "loopSmall": "examples/Basic/HelloCircle/loop-640.mp4",
+      "still": "examples/Basic/HelloCircle/still.jpg",
+      "stillSmall": "examples/Basic/HelloCircle/still-640.jpg"
+    },
+    "Basic/NormalizedCoordinates": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 29.219,
+      "source": "ee0919569d5dd182",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 787627,
+        "loopSmall": 162359,
+        "still": 31795,
+        "stillSmall": 12535
+      },
+      "loop": "examples/Basic/NormalizedCoordinates/loop.mp4",
+      "loopSmall": "examples/Basic/NormalizedCoordinates/loop-640.mp4",
+      "still": "examples/Basic/NormalizedCoordinates/still.jpg",
+      "stillSmall": "examples/Basic/NormalizedCoordinates/still-640.jpg"
+    },
+    "Compute/CurlField": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 15.061,
+      "source": "ec57ed43d2664f70",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8061893,
+        "loopSmall": 22283012,
+        "still": 1871596,
+        "stillSmall": 514381
+      },
+      "loop": "examples/Compute/CurlField/loop.mp4",
+      "loopSmall": "examples/Compute/CurlField/loop-640.mp4",
+      "still": "examples/Compute/CurlField/still.jpg",
+      "stillSmall": "examples/Compute/CurlField/still-640.jpg"
+    },
+    "Compute/NeighborSearch": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 19.549,
+      "source": "07676e424b1aa795",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3828015,
+        "loopSmall": 1864469,
+        "still": 25625,
+        "stillSmall": 10666
+      },
+      "loop": "examples/Compute/NeighborSearch/loop.mp4",
+      "loopSmall": "examples/Compute/NeighborSearch/loop-640.mp4",
+      "still": "examples/Compute/NeighborSearch/still.jpg",
+      "stillSmall": "examples/Compute/NeighborSearch/still-640.jpg"
+    },
+    "Compute/ReactionDiffusion": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.752,
+      "source": "282e652f5659a75f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1342243,
+        "loopSmall": 442033,
+        "still": 172406,
+        "stillSmall": 74655
+      },
+      "loop": "examples/Compute/ReactionDiffusion/loop.mp4",
+      "loopSmall": "examples/Compute/ReactionDiffusion/loop-640.mp4",
+      "still": "examples/Compute/ReactionDiffusion/still.jpg",
+      "stillSmall": "examples/Compute/ReactionDiffusion/still-640.jpg"
+    },
     "Effects/Feedback": {
       "width": 1080,
       "height": 1080,
@@ -38,6 +178,106 @@
       "loopSmall": "examples/Effects/Feedback/loop-640.mp4",
       "still": "examples/Effects/Feedback/still.jpg",
       "stillSmall": "examples/Effects/Feedback/still-640.jpg"
+    },
+    "Export/Capture": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.605,
+      "source": "4e2a542b6260ea2d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1311853,
+        "loopSmall": 296015,
+        "still": 49341,
+        "stillSmall": 20572
+      },
+      "loop": "examples/Export/Capture/loop.mp4",
+      "loopSmall": "examples/Export/Capture/loop-640.mp4",
+      "still": "examples/Export/Capture/still.jpg",
+      "stillSmall": "examples/Export/Capture/still-640.jpg"
+    },
+    "Export/Cutout": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 21.634,
+      "source": "bc2dafdc53cb2488",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1806307,
+        "loopSmall": 444302,
+        "still": 114520,
+        "stillSmall": 43946
+      },
+      "loop": "examples/Export/Cutout/loop.mp4",
+      "loopSmall": "examples/Export/Cutout/loop-640.mp4",
+      "still": "examples/Export/Cutout/still.jpg",
+      "stillSmall": "examples/Export/Cutout/still-640.jpg"
+    },
+    "Export/Hatching": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.593,
+      "source": "b3a01a5cd094c70a",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3690916,
+        "loopSmall": 746370,
+        "still": 165262,
+        "stillSmall": 49032
+      },
+      "loop": "examples/Export/Hatching/loop.mp4",
+      "loopSmall": "examples/Export/Hatching/loop-640.mp4",
+      "still": "examples/Export/Hatching/still.jpg",
+      "stillSmall": "examples/Export/Hatching/still-640.jpg"
+    },
+    "Export/LineDrawing": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 5.382,
+      "source": "6d0d24d2eed85564",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1864674,
+        "loopSmall": 491787,
+        "still": 58647,
+        "stillSmall": 23995
+      },
+      "loop": "examples/Export/LineDrawing/loop.mp4",
+      "loopSmall": "examples/Export/LineDrawing/loop-640.mp4",
+      "still": "examples/Export/LineDrawing/still.jpg",
+      "stillSmall": "examples/Export/LineDrawing/still-640.jpg"
+    },
+    "Export/Record": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.173,
+      "source": "eab3559169f82efa",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 894865,
+        "loopSmall": 296332,
+        "still": 25364,
+        "stillSmall": 9760
+      },
+      "loop": "examples/Export/Record/loop.mp4",
+      "loopSmall": "examples/Export/Record/loop-640.mp4",
+      "still": "examples/Export/Record/still.jpg",
+      "stillSmall": "examples/Export/Record/still-640.jpg"
     },
     "Motion/FlowField": {
       "width": 1080,
@@ -115,24 +355,465 @@
       "still": "examples/Patterns/Kaleidoscope/still.jpg",
       "stillSmall": "examples/Patterns/Kaleidoscope/still-640.jpg"
     },
-    "Recreations/VeraMolnar/Interruptions": {
+    "Physics/Blobs": {
       "width": 1080,
       "height": 1080,
       "length": "10s",
       "seconds": 10.0,
       "frame": 480,
-      "source": "17ef7406eddd92ba",
+      "motion": 40.184,
+      "source": "4562865e8588a539",
       "rendered": "2026-09-10",
       "bytes": {
-        "loop": 1019300,
-        "loopSmall": 518655,
-        "still": 303813,
-        "stillSmall": 112862
+        "loop": 2034904,
+        "loopSmall": 382330,
+        "still": 63298,
+        "stillSmall": 25371
       },
-      "loop": "examples/Recreations/VeraMolnar/Interruptions/loop.mp4",
-      "loopSmall": "examples/Recreations/VeraMolnar/Interruptions/loop-640.mp4",
-      "still": "examples/Recreations/VeraMolnar/Interruptions/still.jpg",
-      "stillSmall": "examples/Recreations/VeraMolnar/Interruptions/still-640.jpg"
+      "loop": "examples/Physics/Blobs/loop.mp4",
+      "loopSmall": "examples/Physics/Blobs/loop-640.mp4",
+      "still": "examples/Physics/Blobs/still.jpg",
+      "stillSmall": "examples/Physics/Blobs/still-640.jpg"
+    },
+    "Physics/Chain": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.609,
+      "source": "4e34ae46fbc1b0ce",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1235142,
+        "loopSmall": 189303,
+        "still": 39120,
+        "stillSmall": 15343
+      },
+      "loop": "examples/Physics/Chain/loop.mp4",
+      "loopSmall": "examples/Physics/Chain/loop-640.mp4",
+      "still": "examples/Physics/Chain/still.jpg",
+      "stillSmall": "examples/Physics/Chain/still-640.jpg"
+    },
+    "Physics/Forces": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.984,
+      "source": "4cd6962c05a0418f",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2178168,
+        "loopSmall": 477739,
+        "still": 83062,
+        "stillSmall": 31279
+      },
+      "loop": "examples/Physics/Forces/loop.mp4",
+      "loopSmall": "examples/Physics/Forces/loop-640.mp4",
+      "still": "examples/Physics/Forces/still.jpg",
+      "stillSmall": "examples/Physics/Forces/still-640.jpg"
+    },
+    "Physics/Joints": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.353,
+      "source": "ef48856855b4682d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1085808,
+        "loopSmall": 180390,
+        "still": 38456,
+        "stillSmall": 15983
+      },
+      "loop": "examples/Physics/Joints/loop.mp4",
+      "loopSmall": "examples/Physics/Joints/loop-640.mp4",
+      "still": "examples/Physics/Joints/still.jpg",
+      "stillSmall": "examples/Physics/Joints/still-640.jpg"
+    },
+    "Physics/Packing": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 75.042,
+      "source": "d48b2fd3c4bb0425",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8016359,
+        "loopSmall": 2532924,
+        "still": 262089,
+        "stillSmall": 105053
+      },
+      "loop": "examples/Physics/Packing/loop.mp4",
+      "loopSmall": "examples/Physics/Packing/loop-640.mp4",
+      "still": "examples/Physics/Packing/still.jpg",
+      "stillSmall": "examples/Physics/Packing/still-640.jpg"
+    },
+    "Physics/RigidBodies": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.251,
+      "source": "ca71dad6e8cafe24",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3298140,
+        "loopSmall": 837591,
+        "still": 195447,
+        "stillSmall": 81836
+      },
+      "loop": "examples/Physics/RigidBodies/loop.mp4",
+      "loopSmall": "examples/Physics/RigidBodies/loop-640.mp4",
+      "still": "examples/Physics/RigidBodies/still.jpg",
+      "stillSmall": "examples/Physics/RigidBodies/still-640.jpg"
+    },
+    "Randomness/Gaussian": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.043,
+      "source": "2913135a202651fa",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8097940,
+        "loopSmall": 4862392,
+        "still": 164729,
+        "stillSmall": 68168
+      },
+      "loop": "examples/Randomness/Gaussian/loop.mp4",
+      "loopSmall": "examples/Randomness/Gaussian/loop-640.mp4",
+      "still": "examples/Randomness/Gaussian/still.jpg",
+      "stillSmall": "examples/Randomness/Gaussian/still-640.jpg"
+    },
+    "Randomness/Ring": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 6.494,
+      "source": "8bea6bbbe95857fd",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8082959,
+        "loopSmall": 3703045,
+        "still": 119190,
+        "stillSmall": 50129
+      },
+      "loop": "examples/Randomness/Ring/loop.mp4",
+      "loopSmall": "examples/Randomness/Ring/loop-640.mp4",
+      "still": "examples/Randomness/Ring/still.jpg",
+      "stillSmall": "examples/Randomness/Ring/still-640.jpg"
+    },
+    "Randomness/Variations": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.046,
+      "source": "d8d51996a36ec3dc",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2483117,
+        "loopSmall": 521668,
+        "still": 198306,
+        "stillSmall": 83077
+      },
+      "loop": "examples/Randomness/Variations/loop.mp4",
+      "loopSmall": "examples/Randomness/Variations/loop-640.mp4",
+      "still": "examples/Randomness/Variations/still.jpg",
+      "stillSmall": "examples/Randomness/Variations/still-640.jpg"
+    },
+    "Randomness/Walk": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.295,
+      "source": "6f0e01498db61f9e",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1110474,
+        "loopSmall": 250854,
+        "still": 175708,
+        "stillSmall": 59835
+      },
+      "loop": "examples/Randomness/Walk/loop.mp4",
+      "loopSmall": "examples/Randomness/Walk/loop-640.mp4",
+      "still": "examples/Randomness/Walk/still.jpg",
+      "stillSmall": "examples/Randomness/Walk/still-640.jpg"
+    },
+    "Rendering/ColorOutput": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.436,
+      "source": "a7d9bc89180a887c",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 158381,
+        "loopSmall": 67495,
+        "still": 59671,
+        "stillSmall": 25840
+      },
+      "loop": "examples/Rendering/ColorOutput/loop.mp4",
+      "loopSmall": "examples/Rendering/ColorOutput/loop-640.mp4",
+      "still": "examples/Rendering/ColorOutput/still.jpg",
+      "stillSmall": "examples/Rendering/ColorOutput/still-640.jpg"
+    },
+    "Rendering/Grassland": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.247,
+      "source": "16e6735eacfc7a92",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8076605,
+        "loopSmall": 6432375,
+        "still": 383650,
+        "stillSmall": 98945
+      },
+      "loop": "examples/Rendering/Grassland/loop.mp4",
+      "loopSmall": "examples/Rendering/Grassland/loop-640.mp4",
+      "still": "examples/Rendering/Grassland/still.jpg",
+      "stillSmall": "examples/Rendering/Grassland/still-640.jpg"
+    },
+    "Rendering/InstancedMesh": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 31.531,
+      "source": "81d9bdebf1eace49",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8040086,
+        "loopSmall": 2934222,
+        "still": 371791,
+        "stillSmall": 117129
+      },
+      "loop": "examples/Rendering/InstancedMesh/loop.mp4",
+      "loopSmall": "examples/Rendering/InstancedMesh/loop-640.mp4",
+      "still": "examples/Rendering/InstancedMesh/still.jpg",
+      "stillSmall": "examples/Rendering/InstancedMesh/still-640.jpg"
+    },
+    "Rendering/MeshField": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.939,
+      "source": "74f2a15ab9053506",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 8077532,
+        "loopSmall": 2123985,
+        "still": 117135,
+        "stillSmall": 40799
+      },
+      "loop": "examples/Rendering/MeshField/loop.mp4",
+      "loopSmall": "examples/Rendering/MeshField/loop-640.mp4",
+      "still": "examples/Rendering/MeshField/still.jpg",
+      "stillSmall": "examples/Rendering/MeshField/still-640.jpg"
+    },
+    "Rendering/RetainedBatch": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.204,
+      "source": "cd0ebbe6d88e2b7d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 30581160,
+        "loopSmall": 14889490,
+        "still": 432935,
+        "stillSmall": 103659
+      },
+      "loop": "examples/Rendering/RetainedBatch/loop.mp4",
+      "loopSmall": "examples/Rendering/RetainedBatch/loop-640.mp4",
+      "still": "examples/Rendering/RetainedBatch/still.jpg",
+      "stillSmall": "examples/Rendering/RetainedBatch/still-640.jpg"
+    },
+    "Rendering/ToneMapping": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 67.758,
+      "source": "e2eff99c93bc9ece",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1481203,
+        "loopSmall": 375453,
+        "still": 75301,
+        "stillSmall": 28878
+      },
+      "loop": "examples/Rendering/ToneMapping/loop.mp4",
+      "loopSmall": "examples/Rendering/ToneMapping/loop-640.mp4",
+      "still": "examples/Rendering/ToneMapping/still.jpg",
+      "stillSmall": "examples/Rendering/ToneMapping/still-640.jpg"
+    },
+    "Rendering/ViewBoxes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.463,
+      "source": "c2b6e98b233f1841",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1730326,
+        "loopSmall": 396387,
+        "still": 82334,
+        "stillSmall": 30833
+      },
+      "loop": "examples/Rendering/ViewBoxes/loop.mp4",
+      "loopSmall": "examples/Rendering/ViewBoxes/loop-640.mp4",
+      "still": "examples/Rendering/ViewBoxes/still.jpg",
+      "stillSmall": "examples/Rendering/ViewBoxes/still-640.jpg"
+    },
+    "Shaders/DomainWarp": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.429,
+      "source": "58268fdc9880f1e7",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1243876,
+        "loopSmall": 298609,
+        "still": 98702,
+        "stillSmall": 39407
+      },
+      "loop": "examples/Shaders/DomainWarp/loop.mp4",
+      "loopSmall": "examples/Shaders/DomainWarp/loop-640.mp4",
+      "still": "examples/Shaders/DomainWarp/still.jpg",
+      "stillSmall": "examples/Shaders/DomainWarp/still-640.jpg"
+    },
+    "Shaders/HelloShader": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 79.723,
+      "source": "ccbb33dae67bddec",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3488641,
+        "loopSmall": 1372087,
+        "still": 367391,
+        "stillSmall": 153682
+      },
+      "loop": "examples/Shaders/HelloShader/loop.mp4",
+      "loopSmall": "examples/Shaders/HelloShader/loop-640.mp4",
+      "still": "examples/Shaders/HelloShader/still.jpg",
+      "stillSmall": "examples/Shaders/HelloShader/still-640.jpg"
+    },
+    "Shaders/ShaderBlend": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.061,
+      "source": "bc048022947a856d",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1127184,
+        "loopSmall": 437610,
+        "still": 306155,
+        "stillSmall": 133464
+      },
+      "loop": "examples/Shaders/ShaderBlend/loop.mp4",
+      "loopSmall": "examples/Shaders/ShaderBlend/loop-640.mp4",
+      "still": "examples/Shaders/ShaderBlend/still.jpg",
+      "stillSmall": "examples/Shaders/ShaderBlend/still-640.jpg"
+    },
+    "Shaders/ShaderFilter": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 22.913,
+      "source": "2bd1585a4726b834",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 3567025,
+        "loopSmall": 669001,
+        "still": 210375,
+        "stillSmall": 82015
+      },
+      "loop": "examples/Shaders/ShaderFilter/loop.mp4",
+      "loopSmall": "examples/Shaders/ShaderFilter/loop-640.mp4",
+      "still": "examples/Shaders/ShaderFilter/still.jpg",
+      "stillSmall": "examples/Shaders/ShaderFilter/still-640.jpg"
+    },
+    "Shaders/VisualCatalog": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.183,
+      "source": "4d967786fa523460",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1070868,
+        "loopSmall": 222312,
+        "still": 88355,
+        "stillSmall": 39638
+      },
+      "loop": "examples/Shaders/VisualCatalog/loop.mp4",
+      "loopSmall": "examples/Shaders/VisualCatalog/loop-640.mp4",
+      "still": "examples/Shaders/VisualCatalog/still.jpg",
+      "stillSmall": "examples/Shaders/VisualCatalog/still-640.jpg"
+    },
+    "Shaders/VisualSynth": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 93.127,
+      "source": "3daac580ca625d81",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2210328,
+        "loopSmall": 527319,
+        "still": 151244,
+        "stillSmall": 55421
+      },
+      "loop": "examples/Shaders/VisualSynth/loop.mp4",
+      "loopSmall": "examples/Shaders/VisualSynth/loop-640.mp4",
+      "still": "examples/Shaders/VisualSynth/still.jpg",
+      "stillSmall": "examples/Shaders/VisualSynth/still-640.jpg"
     },
     "Shapes/Primitives": {
       "width": 1080,
@@ -190,6 +871,401 @@
       "loopSmall": "examples/Text/TypeAsGeometry/loop-640.mp4",
       "still": "examples/Text/TypeAsGeometry/still.jpg",
       "stillSmall": "examples/Text/TypeAsGeometry/still-640.jpg"
+    },
+    "Video/SoundReactive": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 86.498,
+      "source": "317115ce87fca1c2",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 1690187,
+        "loopSmall": 457306,
+        "still": 54724,
+        "stillSmall": 22468
+      },
+      "loop": "examples/Video/SoundReactive/loop.mp4",
+      "loopSmall": "examples/Video/SoundReactive/loop-640.mp4",
+      "still": "examples/Video/SoundReactive/still.jpg",
+      "stillSmall": "examples/Video/SoundReactive/still-640.jpg"
+    },
+    "Video/VideoPlayback": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.013,
+      "source": "3325c69e3ac327e3",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 2489966,
+        "loopSmall": 749457,
+        "still": 82459,
+        "stillSmall": 34445
+      },
+      "loop": "examples/Video/VideoPlayback/loop.mp4",
+      "loopSmall": "examples/Video/VideoPlayback/loop-640.mp4",
+      "still": "examples/Video/VideoPlayback/still.jpg",
+      "stillSmall": "examples/Video/VideoPlayback/still-640.jpg"
+    },
+    "Web/BreathingRing": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.106,
+      "source": "aba42677207d7515",
+      "rendered": "2026-09-10",
+      "bytes": {
+        "loop": 7855636,
+        "loopSmall": 1987167,
+        "still": 40147,
+        "stillSmall": 16129
+      },
+      "loop": "examples/Web/BreathingRing/loop.mp4",
+      "loopSmall": "examples/Web/BreathingRing/loop-640.mp4",
+      "still": "examples/Web/BreathingRing/still.jpg",
+      "stillSmall": "examples/Web/BreathingRing/still-640.jpg"
+    }
+  },
+  "passedOver": {
+    "Data/Edits": {
+      "reason": "waits on a hand: the Data folder is driven by the person at the machine",
+      "source": "e169d80616497820"
+    },
+    "Data/Outside": {
+      "reason": "waits on a hand: the Data folder is driven by the person at the machine",
+      "source": "9bab271b13662084"
+    },
+    "Data/Places": {
+      "reason": "waits on a hand: the Data folder is driven by the person at the machine",
+      "source": "30236b93117e3065"
+    },
+    "Data/Quakes": {
+      "reason": "waits on a hand: the Data folder is driven by the person at the machine",
+      "source": "33d3aa387abb0422"
+    },
+    "Data/Readings": {
+      "reason": "waits on a hand: the Data folder is driven by the person at the machine",
+      "source": "7bf81b2bf084ed50"
+    },
+    "Export/Drafting": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "source": "b1b0b92e3a8f53c3"
+    },
+    "Export/Embroidery": {
+      "reason": "barely moves: 0.075 against a floor of 1.0",
+      "source": "0b6497f36a3a46fd"
+    },
+    "Export/Toolpath": {
+      "reason": "barely moves: 0.127 against a floor of 1.0",
+      "source": "c0db9b7ccb30edf2"
+    },
+    "Export/VectorExport": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "source": "fb691a3edeb3d20d"
+    },
+    "Input/Drag": {
+      "reason": "waits on a hand: the Input folder is driven by the person at the machine",
+      "source": "35016f7a79d9ec0e"
+    },
+    "Input/Keys": {
+      "reason": "waits on a hand: the Input folder is driven by the person at the machine",
+      "source": "344478df3e2a446b"
+    },
+    "Input/PanAndZoom": {
+      "reason": "waits on a hand: the Input folder is driven by the person at the machine",
+      "source": "c0a60b8d0c95d8fb"
+    },
+    "Input/Pen": {
+      "reason": "waits on a hand: the Input folder is driven by the person at the machine",
+      "source": "de8c79df9df13b54"
+    },
+    "Input/RepelGrid": {
+      "reason": "waits on a hand: the Input folder is driven by the person at the machine",
+      "source": "8a74e3259d93f278"
+    },
+    "Installation/Fitted": {
+      "reason": "waits on a hand: the Installation folder is driven by the person at the machine",
+      "source": "f61bd99efa5e19f0"
+    },
+    "Installation/Hours": {
+      "reason": "waits on a hand: the Installation folder is driven by the person at the machine",
+      "source": "55bbf7c1c8715473"
+    },
+    "Installation/ManyDisplays": {
+      "reason": "waits on a hand: the Installation folder is driven by the person at the machine",
+      "source": "3153b9009f4223d1"
+    },
+    "Installation/ManyWindows": {
+      "reason": "waits on a hand: the Installation folder is driven by the person at the machine",
+      "source": "9c60234ee56084f8"
+    },
+    "Installation/Unattended": {
+      "reason": "waits on a hand: the Installation folder is driven by the person at the machine",
+      "source": "55a3b76b39191b42"
+    },
+    "Installation/Watched": {
+      "reason": "waits on a hand: the Installation folder is driven by the person at the machine",
+      "source": "91d5080eccf71404"
+    },
+    "Integration/BluetoothRoom": {
+      "reason": "waits on hardware: imports OllinBluetooth",
+      "source": "4de14c0cb5627eb6"
+    },
+    "Integration/BluetoothSensor": {
+      "reason": "waits on hardware: imports OllinBluetooth",
+      "source": "d2e3db648fe03fcc"
+    },
+    "Integration/ControllerInput": {
+      "reason": "waits on hardware: imports OllinController",
+      "source": "48b4ea64fe566f1d"
+    },
+    "Integration/DMXLoopback": {
+      "reason": "waits on hardware: imports OllinDMX",
+      "source": "5db471e025a83ed9"
+    },
+    "Integration/Firmata": {
+      "reason": "waits on hardware: imports OllinSerial",
+      "source": "c7a2a99f80c22c14"
+    },
+    "Integration/HapticRidges": {
+      "reason": "waits on hardware: imports OllinHaptics",
+      "source": "4ea7be2878750d57"
+    },
+    "Integration/LEDMapping": {
+      "reason": "waits on hardware: imports OllinDMX",
+      "source": "18fc09fd63fda600"
+    },
+    "Integration/LaserPreview": {
+      "reason": "waits on hardware: imports OllinLaser",
+      "source": "d86d0033bf2e566c"
+    },
+    "Integration/MIDILoopback": {
+      "reason": "waits on hardware: imports OllinMIDI",
+      "source": "5c9b111fc047841a"
+    },
+    "Integration/MIDIMonitor": {
+      "reason": "waits on hardware: imports OllinMIDI",
+      "source": "365cccdcca8e22e1"
+    },
+    "Integration/OSCLoopback": {
+      "reason": "waits on hardware: imports OllinOSC",
+      "source": "fab2c40753f5616b"
+    },
+    "Integration/OSCMonitor": {
+      "reason": "waits on hardware: imports OllinOSC",
+      "source": "80877b646365d82e"
+    },
+    "Integration/RemoteSurface": {
+      "reason": "waits on hardware: imports OllinRemote",
+      "source": "006d163b828eb522"
+    },
+    "Integration/RoomCanvas": {
+      "reason": "waits on hardware: imports OllinRoom",
+      "source": "e014bc6513b0d7f2"
+    },
+    "Integration/RoomLoopback": {
+      "reason": "waits on hardware: imports OllinRoom",
+      "source": "d5d2dfd56375ce76"
+    },
+    "Integration/ScreenCapture": {
+      "reason": "waits on hardware: imports OllinScreen",
+      "source": "b07a3d66bf2b9d4c"
+    },
+    "Integration/SerialLoopback": {
+      "reason": "waits on hardware: imports OllinSerial",
+      "source": "2a49a210b924e869"
+    },
+    "Integration/SerialMonitor": {
+      "reason": "waits on hardware: imports OllinSerial",
+      "source": "f8523e8b94495101"
+    },
+    "Integration/SyphonLoopback": {
+      "reason": "waits on hardware: imports OllinSyphon",
+      "source": "35f3093dcbf87405"
+    },
+    "Integration/SyphonViewer": {
+      "reason": "waits on hardware: imports OllinSyphon",
+      "source": "a7f9ab12c9a780a3"
+    },
+    "Integration/TUIOSurface": {
+      "reason": "waits on hardware: imports OllinOSC",
+      "source": "7836cf91b736df80"
+    },
+    "Integration/Tempo": {
+      "reason": "waits on hardware: imports OllinMIDI",
+      "source": "9fe583409f509f0a"
+    },
+    "Integration/Timecode": {
+      "reason": "waits on hardware: imports OllinMIDI",
+      "source": "f35e966b8c6082fd"
+    },
+    "Integration/VirtualCamera": {
+      "reason": "waits on hardware: imports OllinCamera",
+      "source": "53626dcf1f8deefd"
+    },
+    "Live/Cues": {
+      "reason": "waits on a hand: the Live folder is driven by the person at the machine",
+      "source": "7497213e09216643"
+    },
+    "Live/DragToEdit": {
+      "reason": "waits on a hand: the Live folder is driven by the person at the machine",
+      "source": "3db94e3909134890"
+    },
+    "Live/Parameters": {
+      "reason": "waits on a hand: the Live folder is driven by the person at the machine",
+      "source": "e10159588087e8f1"
+    },
+    "Randomness/NoiseField": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "970df041b604ea49"
+    },
+    "Randomness/NoiseKinds": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "6f5c3bb58ea8b80e"
+    },
+    "Randomness/NoiseWave": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "6db2ce8eab2237e0"
+    },
+    "Randomness/RandomBand": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "8a04effc99e4bf27"
+    },
+    "Randomness/TilingNoise": {
+      "reason": "barely moves: 0.000 against a floor of 1.0",
+      "rendered": "2026-09-10",
+      "source": "cfffa4935d79cd7b"
+    },
+    "Recreations/VeraMolnar/Interruptions": {
+      "reason": "barely moves: 0.205 against a floor of 1.0",
+      "source": "17ef7406eddd92ba"
+    },
+    "Rendering/Accumulation": {
+      "reason": "barely moves: 0.795 against a floor of 1.0",
+      "source": "09034b5cb40b0dc8"
+    },
+    "Rendering/DepthOfField": {
+      "reason": "barely moves: 0.084 against a floor of 1.0",
+      "source": "05dc5f286a8972fe"
+    },
+    "Rendering/LineSpray": {
+      "reason": "barely moves: 0.018 against a floor of 1.0",
+      "source": "44feca85bc68ae89"
+    },
+    "Vision/BarcodeReader": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "4138948602ed6684"
+    },
+    "Vision/BodyPose": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "d6fd2ca69a2a0abb"
+    },
+    "Vision/BodyPose3D": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "ffc58f07401208a8"
+    },
+    "Vision/ContourTrace": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "1ff154efd03e62d7"
+    },
+    "Vision/DepthContours": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "486558a1e538a012"
+    },
+    "Vision/DepthRelief": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "54823de973d83cf8"
+    },
+    "Vision/DigitReader": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "f311b43239794d50"
+    },
+    "Vision/EyeCatcher": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "d1f8af29d88dfbc1"
+    },
+    "Vision/FaceAlign": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "9655fe7f1f812099"
+    },
+    "Vision/FaceTracking": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "f679f685f3f705ce"
+    },
+    "Vision/FootageDepth": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "5d0bd1ad05eb2f56"
+    },
+    "Vision/HandTracking": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "a7865b96ef408184"
+    },
+    "Vision/Lift": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "c8ae0168ad62a774"
+    },
+    "Vision/ObjectDetection": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "fb24212270696712"
+    },
+    "Vision/ObjectTracking": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "3051eddfd6ae407c"
+    },
+    "Vision/OpticalFlow": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "add26230997a9564"
+    },
+    "Vision/PaintByClass": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "7a216ad258825910"
+    },
+    "Vision/PointLift": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "474afba5174fbc40"
+    },
+    "Vision/RectangleScan": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "06dda1d495e943f7"
+    },
+    "Vision/SceneLabels": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "a0061e1d469a1ae0"
+    },
+    "Vision/StyleMirror": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "09a5de034e9a760b"
+    },
+    "Vision/TextScan": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "968397b4fedeb425"
+    },
+    "Vision/TrajectoryTracking": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "96cdf9b36891ca13"
+    },
+    "Vision/TugOfWords": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "1c5b8d12c9ebf5dc"
+    },
+    "Vision/TuringMirror": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "6ea8559e2c29a1e9"
+    },
+    "Vision/WebcamFeed": {
+      "reason": "waits on hardware: imports OllinVision",
+      "source": "bd55aeb7107b7b4a"
     }
   }
 }
