@@ -1,0 +1,33 @@
+name: Propose a change
+description: Something should exist, or should work differently
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Contributing asks you to open an issue and talk a change through before writing it, and this is that issue. A half-formed thought is welcome in [Ideas](https://github.com/eaviles/Ollin/discussions/categories/ideas) instead.
+  - type: textarea
+    id: making
+    attributes:
+      label: What you are trying to make
+      description: The sketch or the piece, not the API. Most proposals are answered better by a call that already exists, and the picture you are after is what finds it.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today
+      description: What the framework makes you write instead, or where it stops you.
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: How a sketch would call it
+      description: A few lines of the sketch you wish you could write. Rough is fine; this is about the shape of the call, not the signature.
+      render: swift
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Prior art, a paper, a sketch elsewhere that does it, a picture of what you mean.

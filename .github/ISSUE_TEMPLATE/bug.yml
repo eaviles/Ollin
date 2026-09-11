@@ -45,8 +45,8 @@ body:
   - type: input
     id: commit
     attributes:
-      label: Ollin commit
-      description: Run `git rev-parse --short HEAD` in your checkout.
+      label: Ollin version or commit
+      description: The version you depend on, or `git rev-parse --short HEAD` in your checkout.
     validations:
       required: true
   - type: textarea

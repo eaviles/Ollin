@@ -1,0 +1,18 @@
+# What the "New issue" button offers, and what it sends elsewhere.
+#
+# Issues are for work on the framework: something is broken, or something
+# should change. Everything else is a conversation, and a conversation in a
+# tracker reads as an open task nobody is going to close. The two links below
+# hand those to Discussions, which is where they belong and where other people
+# can answer them.
+#
+# Blank issues are off because both kinds of issue have a form, and a blank
+# one arrives without the machine it happened on, which is most of the triage.
+blank_issues_enabled: false
+contact_links:
+  - name: Question, or help with a sketch
+    url: https://github.com/eaviles/Ollin/discussions/categories/q-a
+    about: How do I do X, why does this look wrong, what is the right call to reach for. Answers stay searchable there.
+  - name: Show what you made
+    url: https://github.com/eaviles/Ollin/discussions/categories/show-and-tell
+    about: A sketch, a piece, an installation. Pictures welcome.

@@ -2,6 +2,12 @@
 
 Notable changes to Ollin, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version numbers follow semantic versioning at major zero: a breaking change or a new feature bumps the minor, and a fix bumps the patch. Each release names its breaking renames here, so pin `.upToNextMinor` and read the entry before you move up.
 
+## [Unreleased]
+
+### Added
+
+- **The site tells a search engine what it holds.** `/sitemap.xml` lists every page the build writes, each at the same address the page's own canonical link claims, and `/robots.txt` names the sitemap, which is the only way a crawler is told it is there. The markdown twins are left out, being the same words at a second address. It is the opposite of `llms.txt` and sits beside it: that one stays a short curated map for an agent, this one the exhaustive list for a machine deciding what to fetch. Neither is written when the site has no address of its own.
+
 ## [0.4.0] - 2026-09-11
 
 ### Added

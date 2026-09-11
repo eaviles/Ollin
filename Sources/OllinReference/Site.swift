@@ -41,6 +41,16 @@ public struct SiteBuilder {
     /// makes every page's canonical address absolute.
     public var domain: String?
 
+    /// The absolute address the site is served at, ending in a slash: the
+    /// custom domain when there is one, else the address GitHub Pages serves
+    /// the repository at, and nil when neither is known.
+    ///
+    /// Three things need it and none of them may disagree with the others: a
+    /// page's canonical link, the card a link unfurls as, and the sitemap.
+    var siteBase: String? {
+        domain.map { "https://\($0)/" } ?? Self.pagesAddress(of: repository)
+    }
+
     public init(root: URL,
                 repository: String = "https://github.com/eaviles/Ollin",
                 branch: String = "main",
@@ -280,6 +290,15 @@ public struct SiteBuilder {
         var report = Report()
 
         try write(llmsIndex(plan: plan), to: output.appendingPathComponent("llms.txt"))
+        // A crawler wants the whole list and the file that names it, and both
+        // have to carry absolute addresses, so neither is written until the
+        // site knows the one it is served at.
+        if let base = siteBase {
+            try write(sitemap(plan: plan, base: base), to: output.appendingPathComponent("sitemap.xml"))
+            try write(robots(base: base), to: output.appendingPathComponent("robots.txt"))
+        } else {
+            report.notes.append("no sitemap and no robots.txt: the site does not know its own address; pass --domain")
+        }
 
         for page in plan.pages {
             let html: String
@@ -870,7 +889,7 @@ public struct SiteBuilder {
     /// bury the reference under a list nobody needs in context, so the
     /// examples are one link to their index and the detail lives behind it.
     func llmsIndex(plan: Plan) -> String {
-        let base = domain.map { "https://\($0)/" } ?? Self.pagesAddress(of: repository) ?? ""
+        let base = siteBase ?? ""
         // One sentence per page. The index's whole purpose is to be small
         // enough to hold in context while the detail waits behind the links,
         // and the reference's own summaries run to several sentences.
@@ -918,6 +937,57 @@ public struct SiteBuilder {
         }
         if !optional.isEmpty { out += "## Optional\n\n" + optional.joined(separator: "\n") + "\n" }
         return out
+    }
+
+    /// The page's own path from the site's root, which is empty for the front
+    /// page: it is addressed as the site itself rather than as the file that
+    /// serves it. The canonical link, the card a link unfurls as, and the line
+    /// in the sitemap all read this, so the three cannot drift apart.
+    static func pagePath(of page: Page) -> String {
+        page.sitePath == "index.html" ? "" : page.sitePath
+    }
+
+    /// Every rendered page, for a search engine: `/sitemap.xml`.
+    ///
+    /// The other half of `llms.txt`, and the opposite of it. That one is
+    /// curated and small, because an agent reads it into a context window
+    /// with the work; this one is exhaustive and shaped for a machine that
+    /// is only deciding what to fetch.
+    ///
+    /// The markdown twins are left out. They are the same words at a second
+    /// address, which is the one thing a sitemap should not hand a crawler;
+    /// a machine that wants them is told where they are by the page itself.
+    ///
+    /// There is no `lastmod`. The only date a build can read is the
+    /// checkout's, and a checkout writes every file at once, so every page
+    /// would claim to have changed on the morning of the build. A date that
+    /// is wrong teaches a crawler to stop believing the file.
+    func sitemap(plan: Plan, base: String) -> String {
+        var out = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+        """
+        for page in plan.pages {
+            out += "  <url><loc>\(HTML.escape(base + Self.pagePath(of: page)))</loc></url>\n"
+        }
+        return out + "</urlset>\n"
+    }
+
+    /// What a crawler reads before anything else: `/robots.txt`.
+    ///
+    /// Nothing is closed, which is already what a missing file means. The
+    /// line that earns the file is the last one: a sitemap sitting at a
+    /// well-known address is still not looked for, and this is how a crawler
+    /// is told it is there.
+    func robots(base: String) -> String {
+        """
+        User-agent: *
+        Allow: /
+
+        Sitemap: \(base)sitemap.xml
+
+        """
     }
 
     // MARK: - Resolving what a page points at
@@ -1033,7 +1103,7 @@ public struct SiteBuilder {
         let isHome: Bool
         if case .home = page.kind { isHome = true } else { isHome = false }
         let fullTitle = isHome ? "Ollin" : "\(title) · Ollin"
-        let pagePath = page.sitePath == "index.html" ? "" : page.sitePath
+        let pagePath = Self.pagePath(of: page)
         let canonical = domain.map { "<link rel=\"canonical\" href=\"https://\($0)/\(pagePath)\">" } ?? ""
         // The two relations the convention asks for, so a machine that lands
         // on the rendered page can find the markdown behind it and the index
@@ -1048,7 +1118,7 @@ public struct SiteBuilder {
         // before there is one, the address GitHub Pages serves the repository
         // at, and left out when neither is known.
         var share = ""
-        if let base = domain.map({ "https://\($0)/" }) ?? Self.pagesAddress(of: repository) {
+        if let base = siteBase {
             share += "<meta property=\"og:url\" content=\"\(HTML.escape(base + pagePath))\">\n"
             if plan.hasSocialCard {
                 share += """

@@ -790,6 +790,81 @@ struct SiteTests {
 
     // MARK: - The example media
 
+    @Test("The site lists every page for a crawler, at the addresses the pages claim")
+    func sitemapAndRobots() throws {
+        let root = try #require(Self.repositoryRoot())
+        let output = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-sitemap-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: output) }
+        let builder = SiteBuilder(root: root, domain: "ollin.example")
+        let report = try builder.build(into: output)
+
+        let base = "https://ollin.example/"
+        let sitemap = try String(contentsOf: output.appendingPathComponent("sitemap.xml"), encoding: .utf8)
+        #expect(sitemap.hasPrefix("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"), "a sitemap opens with the declaration")
+        #expect(sitemap.contains("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"))
+        #expect(sitemap.hasSuffix("</urlset>\n"))
+
+        var addresses: [String] = []
+        var rest = Substring(sitemap)
+        while let open = rest.range(of: "<loc>") {
+            guard let close = rest[open.upperBound...].range(of: "</loc>") else { break }
+            addresses.append(String(rest[open.upperBound ..< close.lowerBound]))
+            rest = rest[close.upperBound...]
+        }
+        #expect(addresses.count == report.pages + report.examples,
+                "listed \(addresses.count) of \(report.pages + report.examples) pages")
+        #expect(Set(addresses).count == addresses.count, "a page is listed twice")
+        // The twins are the same words at a second address, which is the one
+        // thing a sitemap must not hand a crawler.
+        #expect(!addresses.contains { $0.hasSuffix(".md") }, "a markdown twin is listed")
+        for address in addresses {
+            #expect(address.hasPrefix(base), "\(address) is not absolute under the site")
+            #expect(address == base || address.hasSuffix(".html"), "\(address) is not a page")
+        }
+        #expect(addresses.contains(base), "the front page is missing, or listed as its file")
+
+        // The whole point of the file is that a crawler and the page agree on
+        // where the page lives, so one listed address is read back off the
+        // page's own canonical link.
+        let page = output.appendingPathComponent("docs/drawing/color.html")
+        let html = try String(contentsOf: page, encoding: .utf8)
+        let mark = "<link rel=\"canonical\" href=\""
+        let start = try #require(html.range(of: mark))
+        let end = try #require(html[start.upperBound...].firstIndex(of: "\""))
+        let canonical = String(html[start.upperBound ..< end])
+        #expect(addresses.contains(canonical), "\(canonical) is not in the sitemap")
+
+        let robots = try String(contentsOf: output.appendingPathComponent("robots.txt"), encoding: .utf8)
+        #expect(robots.contains("User-agent: *"))
+        #expect(robots.contains("Sitemap: \(base)sitemap.xml"), "the file exists to name the sitemap")
+
+        // Without an address there is nothing absolute to write, and neither
+        // file is written rather than written wrong. A checkout of one page is
+        // enough to see it, and renders in no time.
+        let bare = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-bare-\(UUID().uuidString)")
+        let anonymous = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ollin-sitemap-\(UUID().uuidString)")
+        defer {
+            try? FileManager.default.removeItem(at: bare)
+            try? FileManager.default.removeItem(at: anonymous)
+        }
+        // The four indexes a plan always names, and nothing else.
+        for index in ["README.md", "Docs/README.md", "Guide/README.md", "Examples/README.md"] {
+            let file = bare.appendingPathComponent(index)
+            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try "# Ollin\n\nA sketch.\n".write(to: file, atomically: true, encoding: .utf8)
+        }
+        var nowhere = SiteBuilder(root: bare)
+        nowhere.repository = "https://example.com/ollin"
+        #expect(nowhere.siteBase == nil, "a repository off GitHub with no domain has no address")
+        let quiet = try nowhere.build(into: anonymous)
+        #expect(!FileManager.default.fileExists(atPath: anonymous.appendingPathComponent("sitemap.xml").path))
+        #expect(!FileManager.default.fileExists(atPath: anonymous.appendingPathComponent("robots.txt").path))
+        #expect(quiet.notes.contains { $0.contains("no sitemap") }, "and the build says so")
+    }
+
     @Test("The manifest reads, and its absence is not a failure")
     func mediaManifest() throws {
         let folder = URL(fileURLWithPath: NSTemporaryDirectory())
