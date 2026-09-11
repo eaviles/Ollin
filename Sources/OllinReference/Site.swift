@@ -675,6 +675,11 @@ public struct SiteBuilder {
     /// wide anyway, and only the sketch on screen plays: the others are not
     /// fetched at all until they are paged to, which is a megabyte and a half
     /// nobody pays for on arrival.
+    /// The band's own heading. The README's heading names one sketch and the
+    /// band holds several, so the section is titled here and carries its own
+    /// anchor, as the README's sections do.
+    static let bandHeading = "Examples"
+
     func band(lead: SiteHome.Section, running example: String, resolve: @escaping HTML.Resolver,
               plan: Plan, page: Page) -> String {
         let media = plan.media
@@ -755,7 +760,7 @@ public struct SiteBuilder {
         }.joined(separator: "\n")
         return """
             <section class="home-section home-band">
-            <h2>Sample sketches</h2>
+            <h2 id="\(HTML.slug(Self.bandHeading))">\(HTML.escape(Self.bandHeading))</h2>
             <p class="band-lede">Every one of these is the whole program.</p>
             <div class="band" data-band>
             <div class="band-track" tabindex="0" role="region" aria-label="Sketches, one at a time">
