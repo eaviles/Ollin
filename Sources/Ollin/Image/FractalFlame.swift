@@ -129,7 +129,8 @@ public struct FractalFlame: Sendable {
     /// per frame.
     ///
     /// - Parameters:
-    ///   - width, height: The output size in pixels.
+    ///   - width: The output width in pixels.
+    ///   - height: The output height in pixels.
     ///   - quality: Chaos-game samples per output pixel.
     ///   - supersample: Histogram buckets per output pixel side (2 sharpens
     ///     edges at 4x the memory; the sample budget stays the same).

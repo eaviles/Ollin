@@ -201,13 +201,16 @@ public final class World3D {
 
     /// Add a rigid `Body3D` with `collider` at `position` and return it.
     /// - Parameters:
+    ///   - collider: the shape it collides with.
+    ///   - position: where it starts, in world units.
     ///   - kind: `.dynamic` (default) is moved by forces; `.static` is
     ///     immovable; `.kinematic` follows only the velocity you set.
     ///   - isSensor: make it a detector volume instead of a solid: it reports
     ///     what overlaps it through `contacts` and `Body3D.touching` but never
     ///     pushes anything, never falls, and can't be grabbed. A sensor sets
     ///     its own `kind`.
-    ///   - rotated: an opening rotation about `axis`, in radians.
+    ///   - angle: an opening rotation about `axis`, in radians.
+    ///   - axis: the axis that opening rotation turns about.
     ///   - density: relative mass per volume (`1` is the default material);
     ///     heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.
@@ -364,7 +367,10 @@ public final class World3D {
     /// - Parameters:
     ///   - radius: how wide the capsule is; also how far it stays off walls.
     ///   - height: the whole standing height, both caps included.
+    ///   - position: where it stands to begin with, in world units.
     ///   - stepHeight: the tallest step it walks up without jumping.
+    ///   - stickToFloorDistance: how far below its feet it keeps reaching for
+    ///     the floor, so walking off a lip is a step down rather than a fall.
     ///   - maxSlope: the steepest slope it can climb, in radians.
     ///   - mass: what it presses down with, in kilograms.
     ///   - pushStrength: the hardest it can shove a dynamic body, in newtons
@@ -409,6 +415,7 @@ public final class World3D {
     ///
     /// - Parameters:
     ///   - chassis: the body's shape. Anything a `Body3D` can wear.
+    ///   - position: where it starts, in world units.
     ///   - wheels: where the wheels are bolted on and what each one does.
     ///     Wheels level with each other along the vehicle share an axle.
     ///   - mass: the whole machine's weight in kilograms, whatever the
@@ -419,9 +426,14 @@ public final class World3D {
     ///   - centerOfMass: where the weight hangs, in the chassis's local space.
     ///     `nil` (the default) drops it to the height of the wheel mounts,
     ///     which is what keeps a vehicle from rolling over in a turn.
+    ///   - angle: an opening rotation about `axis`, in radians.
+    ///   - axis: the axis that opening rotation turns about.
+    ///   - friction: how hard the chassis grips what it scrapes against. The
+    ///     wheels carry their own grip.
     ///   - balances: a two-wheeler that holds itself up, leaning into turns
     ///     instead of falling over.
-    ///   - tracked: a machine on two tracks rather than steered wheels. The
+    ///   - maxLeanAngle: how far such a two-wheeler may lean, in radians.
+    ///   - isTracked: a machine on two tracks rather than steered wheels. The
     ///     wheels become road wheels, split into a left and a right band by
     ///     which side of the hull they sit on, and `steering` runs one band
     ///     faster than the other rather than turning anything.
@@ -488,8 +500,8 @@ public final class World3D {
     /// - Parameters:
     ///   - scene: the figure, in the pose the ragdoll is built from (usually as
     ///     loaded, its rest pose).
-    ///   - at: where to stand its root joint; `nil` keeps the pose the file
-    ///     authored.
+    ///   - position: where to stand its root joint; `nil` keeps the pose the
+    ///     file authored.
     ///   - joints: the names of the joints that get their own body. `nil` (the
     ///     default) gives every joint one. A named subset always keeps the
     ///     root, and every joint left out rides the nearest one that is in, so
@@ -548,9 +560,9 @@ public final class World3D {
     ///   - mesh: the rest shape. An open surface is cloth; a closed one can be
     ///     pressurised into a ball.
     ///   - position: where the rest shape is placed in the world.
-    ///   - rotated: how far the rest shape is turned, in radians, about
+    ///   - angle: how far the rest shape is turned, in radians, about
     ///     `axis`, applied before it is placed.
-    ///   - axis: the axis `rotated` turns about.
+    ///   - axis: the axis that turn is about.
     ///   - mass: the whole body's weight in kilograms, split evenly between its
     ///     particles.
     ///   - stiffness: how hard the surface resists being stretched, `0` slack
@@ -567,12 +579,12 @@ public final class World3D {
     ///   - iterations: solver passes per step; more is stiffer and steadier.
     ///   - vertexRadius: how far each particle's body reaches past its
     ///     position, which lifts a draped surface clear of what it lies on.
-    ///   - isTwoSided: collide with the back of every face as well as the front.
+    ///   - twoSided: collide with the back of every face as well as the front.
     ///   - pinned: given a vertex of `mesh` in the mesh's own space, whether it
     ///     is held in place. This is how a flag hangs from its corners. A
     ///     pinned vertex a joint carries is held by the *figure* rather than by
     ///     the world, which is how a cape stays on the shoulders.
-    ///   - skinnedTo: a skinned scene whose skeleton carries part of the
+    ///   - scene: a skinned scene whose skeleton carries part of the
     ///     surface. The pose it is standing in right now is the bind pose, so
     ///     hang the cloth where it belongs and then build it.
     ///   - carriedBy: given a vertex of `mesh`, the name of the joint that
@@ -685,7 +697,8 @@ public final class World3D {
     ///   - points: the rope's rest shape, in its own local space. Two points
     ///     make the shortest usable rope; more make it bend in more places.
     ///   - position: where the rest shape stands in the world.
-    ///   - rotated: how far the rest shape is turned, in radians, about `axis`.
+    ///   - angle: how far the rest shape is turned, in radians, about `axis`.
+    ///   - axis: the axis that turn is about.
     ///   - thickness: the rope's radius, which is both what it draws as and how
     ///     far it stands off whatever it lies on.
     ///   - sides: how many sides the drawn tube has.

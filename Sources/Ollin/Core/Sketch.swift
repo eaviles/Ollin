@@ -2132,7 +2132,7 @@ open class Sketch {
     }
 
     /// One mesh drawn as line work, with everything it hides of itself taken
-    /// out. See ``lineDrawing(of:creaseAngle:spacing:)-[[Mesh]]``.
+    /// out. See ``lineDrawing(of:creaseAngle:spacing:)-([Mesh],_,_)``.
     public func lineDrawing(of mesh: Mesh, creaseAngle: Double = .pi / 6,
                             spacing: Double = 2) -> LineDrawing {
         lineDrawing(of: [mesh], creaseAngle: creaseAngle, spacing: spacing)

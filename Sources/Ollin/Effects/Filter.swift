@@ -1102,7 +1102,7 @@ public struct Filter: Sendable {
     ///     is exactly back where it started, so `zoom: time * 0.2` is an endless fall that
     ///     loops every five seconds.
     ///   - center: Where the middle sits, in fractions of the layer (top-left origin).
-    ///   - rotation: Turn the whole thing, in radians.
+    ///   - angle: Turn the whole thing, in radians.
     public static func droste(inner: Double = 0.35, twist: Double = 1, zoom: Double = 0,
                               center: Vector2 = Vector2(0.5, 0.5),
                               angle: Double = 0) -> Filter {

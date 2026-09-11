@@ -35,6 +35,10 @@
 #       -> xcodebuild for generic iOS (nothing else compiles the framework
 #          for the phone, and a macOS-only call in a core file broke it
 #          silently within a day of the last hand check; about 30 s warm)
+#       -> Scripts/api-docs.sh (the generated API reference, the one gate
+#          that reads doc comments: a link at a symbol that has gone, or a
+#          parameter documented under a name the signature dropped; about a
+#          minute and a half warm)
 #   the ring sketch, the web exporter, the shader rewriter, or the shaders
 #   changed
 #       -> Scripts/site-hero.sh (the site's front-page ring is the sketch's
@@ -180,6 +184,16 @@ if [[ -n "$framework" || $milestone -eq 1 ]]; then
     run "api-surface" Scripts/api-surface.sh
 else
     skip "api-surface" "no framework change"
+fi
+
+# The generated API reference: DocC over every module `.spi.yml` publishes.
+# Nothing else here reads a doc comment, and the two things this catches are a
+# link at a symbol that no longer exists and a parameter documented under a
+# name the signature dropped. Warm, about a minute and a half.
+if [[ -n "$framework" || $milestone -eq 1 ]]; then
+    run "api-docs" Scripts/api-docs.sh
+else
+    skip "api-docs" "no framework change"
 fi
 
 # The iOS build: nothing else compiles the framework for the phone, so a

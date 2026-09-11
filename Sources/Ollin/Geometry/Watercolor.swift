@@ -55,6 +55,8 @@ public struct Watercolor: Equatable, Sendable {
     ///   - variance: The Gaussian scale of the first-round midpoint jumps,
     ///     in canvas units; defaults to a quarter of the mean edge length.
     ///   - rounds: Shared deformation rounds baked into the base.
+    ///   - detail: The detail floor, in canvas units. An edge shorter than
+    ///     this stops subdividing, which is what bounds the point count.
     ///   - rng: The random source; seed it to reproduce the blob.
     public init<R: RandomNumberGenerator>(polygon: [Vector2],
                                           variance: Double? = nil,

@@ -105,7 +105,9 @@ public final class CrackGrowth {
     /// A fresh field of cracks over a `width` by `height` canvas.
     ///
     /// - Parameters:
-    ///   - cracks: how many cracks start moving at once.
+    ///   - width: the canvas width the cracks run across, in canvas units.
+    ///   - height: the canvas height, in canvas units.
+    ///   - startCount: how many cracks start moving at once.
     ///   - seedAngles: how many phantom angles are scattered on the empty
     ///     grid, so the first cracks have somewhere to start.
     ///   - maxCracks: the population cap.

@@ -117,6 +117,7 @@ public final class World {
     /// Add a particle at `position` and return it (so you can pin it, push it,
     /// or wire it into a spring).
     /// - Parameters:
+    ///   - position: where it starts, in canvas units.
     ///   - radius: collision radius; `0` (the default) is a non-colliding point.
     ///   - mass: heavier particles resist being pushed; must be `> 0`.
     @discardableResult
@@ -309,6 +310,8 @@ public final class World {
     /// shares the world's `gravity`, `bounds` (as walls), and `restitution` (used as
     /// the wall and default contact restitution).
     /// - Parameters:
+    ///   - collider: the shape it collides with.
+    ///   - position: where it starts, in canvas units.
     ///   - kind: `.dynamic` (default) is moved by forces; `.static` is immovable.
     ///   - density: mass per area; heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.

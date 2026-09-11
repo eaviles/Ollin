@@ -227,7 +227,7 @@ public struct Sim: Sendable {
     /// ```
     ///
     /// - Parameters:
-    ///   - strength: How far the history rides the measured motion each frame, as a
+    ///   - amount: How far the history rides the measured motion each frame, as a
     ///     multiple of it, and the dial that picks the look. Below 1 the picture
     ///     outruns its history and stretches it into ribbons trailing the motion
     ///     (the default regime); at 1 the carried ghost lands exactly back under the

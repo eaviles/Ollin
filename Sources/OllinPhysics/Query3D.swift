@@ -51,12 +51,14 @@ extension World3D {
     /// ```
     ///
     /// - Parameters:
+    ///   - origin: where the ray starts, in world units.
+    ///   - end: where it stops. The ray is the segment between the two.
     ///   - ignoring: bodies the ray looks straight through, usually the one it
     ///     started inside.
     ///   - includingSensors: report detector volumes too. A sensor is a region
     ///     to be inside rather than a surface to hit, so a ray passes through
     ///     one by default.
-    ///   - as: ask as a body of this collision group would: the ray looks
+    ///   - group: ask as a body of this collision group would: the ray looks
     ///     straight through whatever that group passes through. `.default`
     ///     sees the whole world.
     public func raycast(from origin: Vector3, to end: Vector3,

@@ -19,7 +19,7 @@ import Foundation
 ///
 /// The built-in rules are the moves the classic grammars are written from:
 ///
-/// - ``Rule/cut(_:into:balance:sides:avoidingCorners:minArea:weight:)``
+/// - ``Rule/cut(_:into:balance:sides:avoidingCorners:tries:minArea:weight:)``
 ///   draws one straight line between two edges of the piece. This is the
 ///   ice-ray move, the one behind the lattice window frames whose bars look
 ///   like cracks in river ice.
@@ -125,7 +125,7 @@ public struct ShapeGrammar: Sendable {
     // MARK: - A rule
 
     /// One rule: a label on the left, and what that label turns into on the
-    /// right. Build one with ``Rule/cut(_:into:balance:sides:avoidingCorners:minArea:weight:)``
+    /// right. Build one with ``Rule/cut(_:into:balance:sides:avoidingCorners:tries:minArea:weight:)``
     /// and its siblings.
     public struct Rule: Sendable {
         /// The label this rule rewrites.
@@ -243,7 +243,7 @@ public extension ShapeGrammar.Rule {
     ///
     /// - Parameters:
     ///   - label: the pieces this rule cuts.
-    ///   - into: the labels the two parts take.
+    ///   - parts: the labels the two parts take.
     ///   - balance: how uneven the two parts may be, as a fraction of the
     ///     piece's area. At 0 they take exactly half each. At 0.2 one of them
     ///     may take up to 60 percent. The cut lands inside that band or the

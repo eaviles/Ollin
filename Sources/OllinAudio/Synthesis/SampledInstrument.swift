@@ -16,9 +16,10 @@ import Ollin
 /// ```
 ///
 /// Ollin bundles one small instrument (``builtIn``) so a sketch can hear this
-/// work without downloading anything. For real instruments, see the sources
-/// listed in the [documentation](doc:); the format to look for is **SFZ**,
-/// which is what most freely licensed libraries ship in.
+/// work without downloading anything. For real instruments, the reference page
+/// on [synthesis](https://ollin.art/docs/helpers/synthesis.html) lists the
+/// libraries worth starting from; the format to look for is **SFZ**, which is
+/// what most freely licensed ones ship in.
 ///
 /// ### Why this is a reference rather than a value
 ///

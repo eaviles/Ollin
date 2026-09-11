@@ -36,7 +36,7 @@ import os
 ///
 /// Capturing the screen needs the user's consent, which is the one thing here a
 /// drawing framework cannot arrange for itself. ``isAvailable`` says whether the
-/// consent is in place, ``unavailableReason`` says what to do about it when it is
+/// consent is in place, ``unavailableReason-swift.type.property`` says what to do about it when it is
 /// not, and ``requestAccess()`` asks. A capture with no permission draws its
 /// waiting notice and takes no frames, rather than failing silently. See
 /// `Docs/Integration/ScreenCapture.md` for what the prompt actually looks like

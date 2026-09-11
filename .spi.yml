@@ -1,0 +1,28 @@
+# What the Swift Package Index builds, and which modules it writes and hosts
+# API documentation for. The file has a 1,500 byte ceiling, so it stays terse.
+# Schema: github.com/SwiftPackageIndex/SPIManifest
+version: 1
+builder:
+  configs:
+    - documentation_targets:
+        - Ollin
+        - OllinAudio
+        - OllinBluetooth
+        - OllinCamera
+        - OllinController
+        - OllinDMX
+        - OllinHaptics
+        - OllinLaser
+        - OllinLink
+        - OllinMIDI
+        - OllinOSC
+        - OllinPhone
+        - OllinPhysics
+        - OllinRecord3D
+        - OllinRemote
+        - OllinRoom
+        - OllinScreen
+        - OllinSerial
+        - OllinSyphon
+        - OllinVideo
+        - OllinVision

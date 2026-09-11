@@ -9,7 +9,7 @@ import Ollin
 /// ```
 ///
 /// A chord is a root and a shape stacked on it, so moving one is a matter of
-/// moving its root and nothing else. ``Scale/chord(on:notes:spacing:)`` is the
+/// moving its root and nothing else. ``Scale/chord(on:noteCount:spacing:)`` is the
 /// other way to arrive at one: build it out of a key rather than name it, and
 /// the quality comes out of where in the scale you started.
 public struct Chord: Sendable, Hashable {

@@ -297,7 +297,7 @@ public struct Combine: Sendable {
     /// - Parameters:
     ///   - radius: the hemisphere radius the gather samples, in world units. Larger
     ///     reaches into broader cavities; smaller picks out fine contact shadows.
-    ///   - intensity: how strongly the occlusion darkens (0 = none, 1 = the default).
+    ///   - amount: how strongly the occlusion darkens (0 = none, 1 = the default).
     ///   - bias: rejects self-occlusion just off a flat surface, in world units. Raise
     ///     it if flat faces show faint speckle (acne), lower it if contacts look weak.
     ///   - quality: the sample-count tier (`.default`/`.performance`/`.detail`,
@@ -364,7 +364,7 @@ public struct Combine: Sendable {
     /// ```
     ///
     /// - Parameters:
-    ///   - intensity: overall reflection strength (0 = off, 1 = a full mirror at the
+    ///   - amount: overall reflection strength (0 = off, 1 = a full mirror at the
     ///     reflecting angle).
     ///   - maxDistance: how far a reflection ray travels, in world units (the depth layer
     ///     carries the camera scale). Longer reaches farther reflections at more cost.
@@ -378,6 +378,9 @@ public struct Combine: Sendable {
     ///   - edgeFade: fraction of the layer over which a reflection fades as its hit nears
     ///     the screen border, hiding the screen-space cutoff.
     ///   - quality: the ray-march step-count tier (`.default`/`.performance`/`.detail`).
+    ///   - file: the compiler fills this in. With `line` it gives the call its own
+    ///     identity, so a pass rebuilt every frame keeps the same layer.
+    ///   - line: the compiler fills this in; see `file`.
     public static func screenSpaceReflections(
         amount: Double = 0.6, maxDistance: Double = 8, thickness: Double = 0.025,
         roughness: Double = 0, fresnel: Double = 0.5, edgeFade: Double = 0.1,

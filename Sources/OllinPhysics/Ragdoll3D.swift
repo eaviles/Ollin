@@ -220,6 +220,8 @@ public final class Ragdoll3D {
     /// whole: the motors hold its *shape*, not its place.
     ///
     /// - Parameters:
+    ///   - scene: the pose to drive toward, in the skeleton the ragdoll was
+    ///     built from.
     ///   - frequency: how fast a joint pulls, in Hz. 20 holds a pose firmly;
     ///     2 is a slow, rubbery recovery.
     ///   - damping: 1 settles cleanly, lower overshoots and wobbles.

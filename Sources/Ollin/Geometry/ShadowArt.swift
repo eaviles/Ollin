@@ -122,6 +122,8 @@ public struct ShadowArt: Sendable {
 ///   - resolution: voxels along each edge. The cost is the cube of it.
 ///   - threshold: how bright a pixel has to be to count as solid.
 ///   - inverted: read dark as solid instead.
+///   - bounds: the box the solid is carved inside. With none, it is the cube
+///     from -1 to 1 on every axis.
 public func shadowArt(fromFront front: Image? = nil,
                       fromSide side: Image? = nil,
                       fromAbove above: Image? = nil,

@@ -41,7 +41,7 @@ import Ollin
 /// the weaker of the two, though, and deliberately does nothing unless asked:
 /// how loud something sounds depends on how high it is as well as how strong
 /// it is, so a series read out on loudness alone is read out through a
-/// distortion. Reach for pitch first and use ``amplified(by:)`` for a second
+/// distortion. Reach for pitch first and use ``amplified(by:bounds:levels:)`` for a second
 /// series, not to say the same thing twice.
 public struct Sonification: Sendable, Equatable {
 
@@ -82,7 +82,7 @@ public struct Sonification: Sendable, Equatable {
     public var noteLength: NoteLength
 
     /// A second series read out as loudness, or nil to play everything at full
-    /// level. See ``amplified(by:)``.
+    /// level. See ``amplified(by:bounds:levels:)``.
     public var loudness: [Double]?
     /// Which values of that second series land at the ends of ``levels``.
     public var loudnessDomain: ClosedRange<Double>

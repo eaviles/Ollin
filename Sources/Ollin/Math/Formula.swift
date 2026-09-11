@@ -12,13 +12,13 @@ import Foundation
 ///
 /// A formula is a pure function of the values you hand it: the same inputs
 /// always give the same number, which is why an automation reading one renders
-/// the same on every pass. The one call that reaches outside is ``noise(_:)``,
+/// the same on every pass. The one call that reaches outside is `noise`,
 /// and it reads a field you supply (a sketch hands over its own, so
 /// `noiseSeed()` reproduces it).
 ///
 /// Names are resolved while parsing, not while evaluating, so a formula
 /// evaluated per frame touches no dictionary at all. ``variables`` reports the
-/// names it found, in the order it met them, and ``value(_:noise:)`` takes the
+/// names it found, in the order it met them, and ``value(_:noise:)-([Double],_)`` takes the
 /// numbers in that order.
 ///
 /// See `Docs/Helpers/Formula.md` for the whole vocabulary.
@@ -33,7 +33,7 @@ public struct Formula: Sendable, CustomStringConvertible {
     public let source: String
 
     /// The free names in the formula, in the order parsing met them. Hand
-    /// ``value(_:noise:)`` the numbers in this order.
+    /// ``value(_:noise:)-([Double],_)`` the numbers in this order.
     public let variables: [String]
 
     let tree: Node
@@ -52,7 +52,7 @@ public struct Formula: Sendable, CustomStringConvertible {
     /// Read a formula against a known list of names. A name outside the list is
     /// refused, and the message says what was available, which is what a typed
     /// formula wants. The order of `variables` is kept, so the numbers handed
-    /// to ``value(_:noise:)`` line up with the list you gave.
+    /// to ``value(_:noise:)-([Double],_)`` line up with the list you gave.
     public init(_ source: String, variables: [String]) throws {
         try self.init(source, variables: Optional(variables))
     }

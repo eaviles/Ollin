@@ -747,10 +747,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// resources — the heart of live reload. The new instance starts clean:
     /// `setup()` runs again and the clock resets on the next frame. **Call on the
     /// main thread**, since the draw callback runs there and reads `sketch`.
-    /// - Parameter keepClock: when `true`, the new sketch keeps the old one's
-    ///   `time`/`frameCount` advancing across the swap instead of resetting to
-    ///   zero — so an animation's phase doesn't visibly jump on reload. Instance
-    ///   state still resets (it's a fresh instance either way).
+    /// - Parameters:
+    ///   - newSketch: the freshly loaded instance, run from the next frame on.
+    ///   - keepClock: when `true`, the new sketch keeps the old one's
+    ///     `time`/`frameCount` advancing across the swap instead of resetting to
+    ///     zero, so an animation's phase doesn't visibly jump on reload. Instance
+    ///     state still resets (it's a fresh instance either way).
     public func reload(to newSketch: Sketch, keepClock: Bool = false) {
         // A reload ends the take on either side of the transport: an edited
         // sketch is a different run (its take is written out, so nothing is
@@ -2120,6 +2122,9 @@ public struct SketchView: View {
     @AppStorage(OllinHUD.showAxisKey) private var showAxis = false
 
     /// - Parameters:
+    ///   - sketch: the sketch this view runs, advances, and draws.
+    ///   - stats: the frame counters a host owns and reads; with none, the view
+    ///     keeps a set of its own.
     ///   - showsInspectorPanel: whether this view honors the "Show Inspector"
     ///     toggle by summoning the detached inspector panel. A host with its own
     ///     inspector surface (the live host's sidebar, the gallery's) passes
@@ -2130,6 +2135,8 @@ public struct SketchView: View {
     ///   - showsKeyboardHint: under `.onClick`, whether to float the
     ///     "Click the sketch to use the keyboard" prompt while the canvas is
     ///     unfocused. Pass `true` only for sketches that actually read keys.
+    ///   - onRunner: handed the `SketchRunner` once it exists, so a host can
+    ///     reload the sketch, record a take, or read the clock.
     public init(_ sketch: Sketch,
                 stats: FrameStats? = nil,
                 showsInspectorPanel: Bool = true,

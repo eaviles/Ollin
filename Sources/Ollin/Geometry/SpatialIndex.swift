@@ -30,7 +30,7 @@ import Foundation
 ///
 /// The kind is a speed choice and never a correctness one: every query that
 /// answers with an array answers identically, down to the order. The two forms
-/// that hand back one point at a time (``forEachNeighbor(of:within:_:)`` and
+/// that hand back one point at a time (``forEachNeighbor(of:within:_:)-(Vector2,_,_)`` and
 /// ``anyNeighbor(of:within:)``) each walk in their own kind's fixed order, which
 /// reproduces from run to run but is not the same between the kinds.
 ///

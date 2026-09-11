@@ -36,6 +36,8 @@ public final class Spring {
 
     /// Create a link between `a` and `b`.
     /// - Parameters:
+    ///   - a: one end of the link.
+    ///   - b: the other end.
     ///   - length: the rest distance; defaults to the current distance between
     ///     the two particles, so connecting two placed particles keeps their
     ///     spacing.

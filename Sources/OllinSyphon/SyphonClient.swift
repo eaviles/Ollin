@@ -32,8 +32,9 @@ public struct SyphonServerInfo {
     }
 }
 
-/// Receives live visuals from a **Syphon source** — any Syphon-capable app on
-/// the Mac, or another Ollin sketch — as an ``Image`` you draw with `drawImage`.
+/// Receives live visuals from a **Syphon source**, meaning any Syphon-capable
+/// app on the Mac or another Ollin sketch, as an `Image` you draw with
+/// `drawImage`.
 ///
 /// ```swift
 /// final class Viewer: Sketch {
@@ -80,13 +81,14 @@ public final class SyphonClient {
     }
 
     /// Whether the client has a live connection to a source. Once `false`, no
-    /// further frames will arrive (the source went away); call ``connect()``.
+    /// further frames will arrive (the source went away); call
+    /// ``connect(named:appName:)``.
     public var isActive: Bool { client?.isValid ?? false }
 
     /// Whether a new frame has arrived since the last read of ``frame``.
     public var hasNewFrame: Bool { client?.hasNewFrame ?? false }
 
-    /// The latest frame as a texture-backed ``Image``, or `nil` if not connected
+    /// The latest frame as a texture-backed `Image`, or `nil` if not connected
     /// or no frame has arrived yet. Read it each frame in `draw()` and `drawImage`
     /// the result; don't hold the returned image across frames.
     public var frame: Image? {
