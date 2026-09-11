@@ -469,6 +469,17 @@ drawShape(wobbled)
 if shape.contains(Vector2(mouseX, mouseY)) { fill(.red) }
 ```
 
+**Measuring one.** `area` is how much ground the fill covers, resolved under the shape's own `winding` rule, so a ring measures as the difference between its circles whichever way its hole was wound. `centroid` is the balance point of that region, where the shape would sit on a pin, with holes pulling it the way a bite out of a biscuit does. `bounds` is the axis-aligned box around every point, `nil` when there are none:
+
+```swift
+let middle = shape.centroid                  // where a body for this shape belongs
+if let box = shape.bounds {
+    let cover = shape.area / (box.width * box.height)   // how much of its box it fills
+}
+```
+
+**Islands.** `separated()` splits a shape into its separate regions, one `Shape` each, with every hole kept in the island it belongs to. A boolean that cut a bar in two, or a [break](../Generators/Fracture.md) that left a piece in two places, comes back as one value holding both; this is how to treat each region as its own thing. A shape that is already one island comes back alone.
+
 <a name="shape-booleans"></a>
 
 **Set operations.** Two shapes combine like sets, each call returning a new `Shape`:

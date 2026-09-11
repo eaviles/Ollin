@@ -1734,6 +1734,7 @@ func clothoidCorners(_: [Vector2], radius: Double, easement: Double, closed: Boo
 func clothoidSpline(through: [Vector2], closed: Bool = default) -> [Clothoid]
 func concaveHull(of: [Vector2], concavity: Double = default) -> [Vector2]
 func convexHull(of: [Vector2]) -> [Vector2]
+func convexHull(of: [Vector3]) -> Mesh
 func deBruijnSequence(symbols: Int, window: Int) -> [Int]
 func dist(_: Double, _: Double, _: Double, _: Double) -> Double
 func elementaryCA(rule: Int, width: Int, generations: Int, from: [Bool]? = default, wrap: Bool = default) -> [[Bool]]
@@ -4428,8 +4429,11 @@ struct Mesh: Sendable
   func data(as: MeshFileFormat, unit: ModelUnit = default, upAxis: UpAxis = default) -> Foundation.Data?
   func detailMapped(_: Image? = default, normal: Image? = default, scale: Double = default, strength: Double = default) -> Mesh
   func displaced(by: Image, scale: Double) -> Mesh
+  func fractured(into: Int, around: Vector3, seed: Int = default) -> [Mesh]
+  func fractured(into: Int, seed: Int = default) -> [Mesh]
   func generatingSmoothNormals() -> Mesh
   func generatingTangents() -> Mesh
+  func mapPositions(_: (Vector3) -> Vector3) -> Mesh
   func normalMapped(_: Image, scale: Double = default) -> Mesh
   func normalized(scale: Double = default) -> Mesh
   func parallaxMapped(_: Image, scale: Double = default) -> Mesh
@@ -4475,6 +4479,7 @@ struct Mesh: Sendable
   static func tube(along: [Vector3], radius: Double = default, sides: Int = default, closed: Bool = default) -> Mesh
   var bounds: Box3 { get }
   var center: Vector3 { get }
+  var centroid: Vector3 { get }
   var colors: [Color] { get set }
   var indices: [UInt32] { get set }
   var isEmpty: Bool { get }
@@ -4486,6 +4491,7 @@ struct Mesh: Sendable
   var tangents: [MeshTangent] { get set }
   var triangleCount: Int { get }
   var uvs: [Vector2] { get set }
+  var volume: Double { get }
 struct MeshInstance: Sendable
   init(position: Vector3 = default, rotation: Vector3 = default, scale: Double, color: Color? = default)
   init(position: Vector3 = default, rotation: Vector3 = default, scale: Vector3 = default, color: Color? = default)
@@ -5366,11 +5372,14 @@ struct ShadowArt: Sendable
 struct Shape: Tweenable, Equatable, Sendable
   func contains(_: Vector2) -> Bool
   func dashed(_: StrokeDash) -> Shape
+  func fractured(into: Int, around: Vector2, seed: Int = default) -> [Shape]
+  func fractured(into: Int, seed: Int = default) -> [Shape]
   func intersection(_: Shape) -> Shape
   func mapPoints(_: (Vector2) -> Vector2) -> Shape
   func morphed(toward: Shape, _: Double, spacing: Double? = default) -> Shape
   func offset(by: Double, join: StrokeJoin = default) -> Shape
   func resampled(spacing: Double) -> Shape
+  func separated() -> [Shape]
   func smoothed(iterations: Int = default) -> Shape
   func stroked(width: Double, join: StrokeJoin = default, cap: StrokeCap = default) -> Shape
   func subtracting(_: Shape) -> Shape
@@ -5381,6 +5390,9 @@ struct Shape: Tweenable, Equatable, Sendable
   init(curveThrough: [Vector2], closed: Bool = default, spline: Spline = default)
   init(outer: [Vector2], holes: [[Vector2]])
   static func lerp(_: Shape, _: Shape, _: Double) -> Shape
+  var area: Double { get }
+  var bounds: Rectangle? { get }
+  var centroid: Vector2 { get }
   var contours: [Contour] { get set }
   var winding: FillWinding { get set }
 struct ShapeGrammar: Sendable

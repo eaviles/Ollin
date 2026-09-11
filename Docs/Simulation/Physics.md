@@ -74,11 +74,14 @@ func addParticle(at position: Vector2, radius: Double = 0, mass: Double = 1) -> 
 func connect(_ a: Particle, _ b: Particle, length: Double? = nil, stiffness: Double = 1) -> Spring
 func remove(_ spring: Spring)
 func remove(_ particle: Particle)
+func remove(_ body: Body)
 func removeAll()
 
 var particles: [Particle] { get }
 var springs: [Spring] { get }
 ```
+
+`remove(_ body:)` takes one rigid body out along with any joints holding it. The `Body` value is spent afterwards, so read anything you still need from it (its velocity, its angle) **before** the call and drop your reference to it after: a shard that inherits the motion of the thing it came from is the everyday case, and that is a read of a body about to leave. See [breaking things](../Generators/Fracture.md#bodies).
 
 `addParticle` returns the new [`Particle`](#particle), so you can pin it, push it, or connect it to a spring. A `radius` of `0` (the default) makes a point that does not collide. A positive radius makes the particle collide as a disk. `connect` links two particles with a [`Spring`](#spring). By default the spring's rest length is the distance between the two particles at that moment.
 

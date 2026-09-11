@@ -359,6 +359,19 @@ public final class World {
         return body
     }
 
+    /// Take one rigid body out of the world, along with any joints holding it.
+    ///
+    /// What a body that has served its turn needs: a shard fallen off the
+    /// bottom of the canvas, a crate the sketch is done with. The `Body` value
+    /// is spent afterwards, so drop your reference to it with the same stroke.
+    public func remove(_ body: Body) {
+        // Box2D takes a body's joints down with it, so the world's own list is
+        // pruned by asking which of them are still real.
+        b2DestroyBody(body.id)
+        joints.removeAll { !b2Joint_IsValid($0.id) }
+        bodies.removeAll { $0 === body }
+    }
+
     /// Link two rigid bodies with a `Joint` and return it — a hinge, rod, weld, or
     /// slider (see `JointKind`). Anchors are world points at the moment of
     /// connecting.

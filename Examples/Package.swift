@@ -210,6 +210,7 @@ let package = Package(
         example("3D/Physics/Rigging", [.physics]),
         example("3D/Physics/Tensegrity", [.physics]),
         example("3D/Physics/Rockslide", [.physics]),
+        example("3D/Physics/Burst", [.physics]),
         example("3D/Physics/Stroll", [.physics]),
         example("3D/Physics/Trigger", [.physics]),
         example("3D/Physics/Joyride", [.physics]),
@@ -695,6 +696,7 @@ let package = Package(
         example("Physics/Packing", [.physics]),
         example("Physics/Blobs", [.physics]),
         example("Physics/RigidBodies", [.physics]),
+        example("Physics/Burst", [.physics]),
         // All four joint kinds side by side, each a small rig you can poke.
         example("Physics/Joints", [.physics]),
         // Force, impulse, and torque made visible, with a kinematic sweeper

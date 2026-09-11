@@ -333,6 +333,7 @@ final class World
   @discardableResult func connect(_: Particle, _: Particle, length: Double? = default, stiffness: Double = default) -> Spring
   @discardableResult func grab(_: Body, at: Vector2) -> Joint
   func advance(by: Double)
+  func remove(_: Body)
   func remove(_: Particle)
   func remove(_: Spring)
   func removeAll()

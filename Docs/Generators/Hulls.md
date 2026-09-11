@@ -6,6 +6,8 @@
 
 These are three answers to the question "what shape are these points?", each closer to the scatter than the last. The loosest is [`convexHull`](../Drawing/Geometry.md#convex-hull), which wraps a rubber band around a scatter. Then **`concaveHull`** lets that band sink into the gaps between clusters, and it stays one simple polygon with every point inside. Finally, **`alphaShape`** rolls a probe disk over the points and keeps only what the disk cannot pass through. The same scatter can therefore come back as several islands with holes.
 
+In space the question has one answer rather than three: [`convexHull(of:)`](Fracture.md#hull) takes a cloud of `Vector3` and returns the solid around it as a `Mesh`.
+
 The concave hull is the characteristic-shape construction of Duckham, Kulik, Worboys, and Galton, which is also called the chi-shape. The alpha shape is Edelsbrunner's alpha complex. Both are built from the same [Delaunay triangulation](../Drawing/Voronoi.md#delaunay) that Voronoi diagrams and the spanning tree use.
 
 <picture>

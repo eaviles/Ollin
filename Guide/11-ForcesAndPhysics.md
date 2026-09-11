@@ -504,9 +504,120 @@ Then push it around:
 
 Where does this leave the hand-rolled forces from the start of the chapter? Both are yours now, and they don't compete. When one or two things move and you want full control of the feel, write the forces yourself. That covers a chase, a flutter, or a custom bounce, in four lines you own completely. The moment bodies need to *negotiate*, piling, stacking, hanging, colliding, let a `World` do the negotiating. Plenty of good sketches do both in the same `draw()`, and the three ready-made systems sit alongside both.
 
+## Breaking things
+
+A body does not have to stay one body. `fractured(into:seed:)` cuts a `Shape` into pieces that fit back together exactly, with no gap between them and no overlap. Each piece is a shape like any other. The cut is a Voronoi diagram of a few seeds scattered inside the outline, which is why every piece comes out convex, and convex is what a rigid body wants.
+
+Pass a point and the seeds crowd around it:
+
+```swift
+let pieces = outline.fractured(into: 11, around: hit, seed: 4)
+```
+
+Small chips at the point of impact, long wedges away from it. That is what a break looks like.
+
+Turning a piece into a body takes two lines, and they are the same two every time. A body's outline lives in the body's own coordinates, around its origin, so the piece moves onto its `centroid` first and the solver gets what is left:
+
+```swift
+let middle = piece.centroid
+let local = piece.mapPoints { $0 - middle }
+let shard = world.addBody(.polygon(local.contours[0].points), at: here + middle)
+```
+
+Here is the whole idea in one sketch. A disc is thrown up the canvas, and at the top of its arc, where it is on its way down again, it lets go. Make `MySketches/Break.swift`:
+
+```swift
+import Ollin
+import OllinPhysics
+
+final class Break: Sketch {
+    let world = World()
+
+    /// What a body draws as: its outline in its own coordinates and its color.
+    /// A whole shape is the only kind that breaks.
+    final class Look {
+        let shape: Shape
+        let color: Color
+        let whole: Bool
+        init(_ shape: Shape, _ color: Color, whole: Bool = false) {
+            self.shape = shape
+            self.color = color
+            self.whole = whole
+        }
+    }
+
+    override func setup() {
+        seed(4)
+        world.gravity = Vector2(0, 2200)
+        noStroke()
+
+        let outline = (0 ..< 40).map { i -> Vector2 in
+            let a = Double(i) / 40 * .tau
+            return Vector2(cos(a), sin(a)) * 170
+        }
+        let thrown = world.addBody(.circle(radius: 170), at: Vector2(width / 2, height + 220))
+        thrown.velocity = Vector2(0, -1750)
+        thrown.userData = Look(Shape(outline), Color(hex: 0xF2A93B), whole: true)
+    }
+
+    /// Break one body into pieces, each piece a body of its own.
+    func burst(_ body: Body, _ look: Look) {
+        let here = body.position
+        let motion = body.velocity
+        let impact = Vector2(random(-60, 60), random(-60, 60))
+        let pieces = look.shape.fractured(into: 11, around: impact, seed: 4)
+        world.remove(body)
+
+        for piece in pieces {
+            let middle = piece.centroid
+            let local = piece.mapPoints { $0 - middle }
+            guard let corners = local.contours.first?.points else { continue }
+            let shard = world.addBody(.polygon(corners), at: here + middle)
+            shard.velocity = motion + (middle - impact).normalized * 300
+            shard.angularVelocity = random(-6, 6)
+            shard.userData = Look(local, look.color.mixed(with: .white, random(0, 0.2)))
+        }
+    }
+
+    override func draw() {
+        background(Color(hex: 0x14161C))
+        world.advance(by: deltaTime)
+
+        // At the top of the arc it is on its way down, and that is when it goes.
+        for body in world.bodies {
+            guard let look = body.userData as? Look, look.whole else { continue }
+            if body.velocity.y >= 0 { burst(body, look) }
+        }
+
+        for body in world.bodies {
+            guard let look = body.userData as? Look else { continue }
+            withState {
+                translate(body.position)
+                rotate(body.angle)
+                fill(look.color)
+                drawShape(look.shape)
+            }
+        }
+    }
+}
+```
+
+<img src="Images/11-ForcesAndPhysics/Break.jpg" alt="An orange disc caught the instant it comes apart: eleven wedges and chips still holding the round outline, dark gaps opening between them" width="560">
+
+The pieces inherit the motion of the thing they came from, which is what sells it. Each one leaves with the parent's velocity plus a push away from the break, so the cloud keeps travelling while it spreads. Take the push away and the pieces fall straight down together, still in the shape of the disc. That reads as a shape dissolving rather than a shape breaking.
+
+Try this:
+
+- Raise the piece count to 40. The break turns to gravel, and the small pieces tumble faster than the big ones because the solver gives them less inertia.
+- Move the impact point to the edge of the disc (`Vector2(150, 0)`) and the break reads as a strike off one side.
+- Break the pieces again on a second collision, and you have a crack that runs.
+- Solids break the same way: `Mesh.fractured(into:around:seed:)` cuts a 3D mesh into convex cells, and `.hull(points)` makes each one a `Body3D`. `Examples/3D/Physics/Burst` is that sketch.
+
 ## Where this comes from
 
 The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard. Accumulate forces, divide by mass, and let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls simple and stable. Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine. Ollin bundles it and wraps it in the same `World`.
+
+Breaking a shape into pieces is a Voronoi fracture. The diagram is named for Georgy Voronoy, who described it in 1908. Cutting a solid along one to break it is the standard approach in every graphics toolkit that shatters something. Ollin's own implementation cuts each cell against the shape, in 2D and in 3D alike.
 
 The self-arranging graph is the *spring embedder*, an idea Peter Eades published in 1984. Replace the vertices with steel rings, the edges with springs, and let go. The version Ollin implements is Thomas Fruchterman and Edward Reingold's 1991 refinement "Graph Drawing by Force-Directed Placement". It added the even-spacing forces and the cooling temperature. It is still the layout behind most of the network diagrams you've ever seen.
 
@@ -516,9 +627,10 @@ The three ready-made systems each have a paper behind them. The default IK solve
 
 - [Physics](../Docs/Simulation/Physics.md): the full `World` / `Particle` / `Spring` / `Body` reference, including the parts this chapter left out: masses and forces on particles, `strain` for tinting springs by stress, soft blobs, and the other joint kinds.
 - [Articulated and chaotic motion](../Docs/Simulation/Motion.md): the full `IKChain`, `DoublePendulum`, and `NBody` reference, including both IK solvers, `maxBend`, the pendulum's `energy` check, and the n-body factories.
+- [Breaking things](../Docs/Generators/Fracture.md): the full `fractured` reference for shapes and for solids, what a piece is guaranteed to be, and how a piece becomes a rigid body in either dimension.
 - [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's parameters, and the pin-and-drag idiom.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
-- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), `Chain` (hanging chains to grab and fling), `Joints` (the four joint kinds side by side, one rig each), and `Forces` (a windy yard where every push, kick, and spin is a force call).
+- Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `RigidBodies` (a pyramid to knock down into a rain of mixed shapes), `Chain` (hanging chains to grab and fling), `Joints` (the four joint kinds side by side, one rig each), `Forces` (a windy yard where every push, kick, and spin is a force call), and `Burst` (shapes thrown up the canvas that break at the top of the arc, the pieces falling on their own).
 - The ready-made systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK parameters live), `DoublePendulum` (a fan of twenty-four pendulums pulling apart), and `NBody` (two galaxies on a grazing orbit).
 - A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. [Chapter 12](12-FlocksAndSwarms.md) builds it.
 

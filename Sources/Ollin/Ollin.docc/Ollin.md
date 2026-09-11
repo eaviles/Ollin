@@ -231,7 +231,8 @@ The technique catalog: tilings, fractals, packings, growth, flow, agents, and th
 - ``clothoidCorners(_:radius:easement:closed:)``
 - ``clothoidSpline(through:closed:)``
 - ``concaveHull(of:concavity:)``
-- ``convexHull(of:)``
+- ``convexHull(of:)->[Vector2]``
+- ``convexHull(of:)->Mesh``
 - ``elementaryCA(rule:width:generations:from:wrap:)``
 - ``envelope(of:closed:)``
 - ``epitrochoid(ring:wheel:pen:samples:)``

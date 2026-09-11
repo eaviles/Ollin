@@ -183,3 +183,159 @@ public extension Shape {
         return winding == .evenOdd ? crossings % 2 == 1 : windingNumber != 0
     }
 }
+
+public extension Shape {
+    /// The axis-aligned box around every point, `nil` when the shape has no
+    /// points at all. Open contours count: this is the box the outline
+    /// occupies, not the box its fill occupies.
+    var bounds: Rectangle? {
+        var minX = Double.infinity, minY = Double.infinity
+        var maxX = -Double.infinity, maxY = -Double.infinity
+        for contour in contours {
+            for point in contour.points {
+                minX = Swift.min(minX, point.x); maxX = Swift.max(maxX, point.x)
+                minY = Swift.min(minY, point.y); maxY = Swift.max(maxY, point.y)
+            }
+        }
+        guard minX <= maxX else { return nil }
+        return Rectangle(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    /// How much area the fill covers.
+    ///
+    /// The shape's own `winding` rule decides what counts, so a ring comes
+    /// back as the difference between its two circles whichever way its hole
+    /// was wound, and a self-overlapping outline is counted once. Open
+    /// contours are ignored, the way a fill ignores them.
+    var area: Double {
+        abs(resolvedFill().contours.reduce(0) { $0 + Shape.signedArea($1.points) })
+    }
+
+    /// The balance point of the filled region: where the shape would sit on a
+    /// pin. Holes pull it the way a bite out of a biscuit does.
+    ///
+    /// A shape with no area at all (a single open path, one straight line of
+    /// points) has no such point, so the average of its points comes back
+    /// instead.
+    var centroid: Vector2 {
+        var weighted = Vector2.zero
+        var total = 0.0
+        for contour in resolvedFill().contours where contour.points.count >= 3 {
+            let signed = Shape.signedArea(contour.points)
+            weighted += Shape.centroid(of: contour.points) * signed
+            total += signed
+        }
+        guard abs(total) > 1e-12 else {
+            let points = contours.flatMap(\.points)
+            guard !points.isEmpty else { return .zero }
+            return points.reduce(.zero, +) / Double(points.count)
+        }
+        return weighted / total
+    }
+
+    /// The filled region resolved under the shape's own winding rule, so the
+    /// contours that come back are outer boundaries and holes wound against
+    /// each other. One contour already means what it says, so it passes
+    /// through untouched rather than paying for the resolve.
+    private func resolvedFill() -> Shape {
+        let closed = contours.filter { $0.isClosed && $0.points.count >= 3 }
+        guard closed.count > 1 else { return Shape(contours: closed, winding: winding) }
+        return union(Shape(contours: []))
+    }
+
+    /// The shape's separate islands, one `Shape` each, holes kept with the
+    /// island they belong to.
+    ///
+    /// A boolean or a fracture can leave several regions in one value (a bar
+    /// cut in two, a cell that straddles the waist of an hourglass). This is
+    /// how to treat each of them as its own thing: give one to a rigid body,
+    /// measure one's area, drop the crumbs. A shape that is already one island
+    /// comes back alone.
+    func separated() -> [Shape] {
+        let closed = contours.filter { $0.isClosed && $0.points.count >= 3 }
+        guard closed.count > 1 else { return contours.isEmpty ? [] : [self] }
+
+        // Nesting decides what is an island and what is a hole in it, rather
+        // than which way a contour is wound: the two fill rules disagree about
+        // winding, and a shape built by hand may not follow either. The test
+        // point sits on the contour's own edge, not inside it, so a ring's
+        // outer boundary is not read as living inside its own hole.
+        let probes = closed.map { Shape.edgeProbe(of: $0.points) }
+        var depth = [Int](repeating: 0, count: closed.count)
+        var parent = [Int?](repeating: nil, count: closed.count)
+        for i in closed.indices {
+            let probe = probes[i]
+            var smallest = Double.infinity
+            for j in closed.indices where j != i {
+                guard Shape.contains(closed[j].points, probe) else { continue }
+                depth[i] += 1
+                let size = abs(Shape.signedArea(closed[j].points))
+                if size < smallest { smallest = size; parent[i] = j }
+            }
+        }
+
+        var islands: [Int: [Contour]] = [:]
+        var order: [Int] = []
+        for i in closed.indices where depth[i] % 2 == 0 {
+            islands[i] = [closed[i]]
+            order.append(i)
+        }
+        for i in closed.indices where depth[i] % 2 == 1 {
+            guard let owner = parent[i], islands[owner] != nil else { continue }
+            islands[owner]?.append(closed[i])
+        }
+        return order.compactMap { islands[$0] }.map { Shape(contours: $0, winding: winding) }
+    }
+
+    /// Twice the signed area of a closed polygon, halved: positive one way
+    /// around, negative the other.
+    internal static func signedArea(_ points: [Vector2]) -> Double {
+        guard points.count >= 3 else { return 0 }
+        var sum = 0.0
+        for i in points.indices {
+            let a = points[i], b = points[(i + 1) % points.count]
+            sum += a.x * b.y - b.x * a.y
+        }
+        return sum / 2
+    }
+
+    /// The area centroid of one closed polygon.
+    internal static func centroid(of points: [Vector2]) -> Vector2 {
+        var sum = Vector2.zero
+        var total = 0.0
+        for i in points.indices {
+            let a = points[i], b = points[(i + 1) % points.count]
+            let cross = a.x * b.y - b.x * a.y
+            sum += (a + b) * cross
+            total += cross
+        }
+        guard abs(total) > 1e-12 else {
+            return points.reduce(.zero, +) / Double(points.count)
+        }
+        return sum / (3 * total)
+    }
+
+    /// Whether a closed polygon contains a point (even-odd crossings).
+    internal static func contains(_ points: [Vector2], _ point: Vector2) -> Bool {
+        var crossings = 0
+        for i in points.indices {
+            let a = points[i], b = points[(i + 1) % points.count]
+            guard (a.y > point.y) != (b.y > point.y) else { continue }
+            let t = (point.y - a.y) / (b.y - a.y)
+            if a.x + (b.x - a.x) * t > point.x { crossings += 1 }
+        }
+        return crossings % 2 == 1
+    }
+
+    /// A point on a closed polygon's own boundary: the middle of its first
+    /// real edge. Two contours of one shape never cross, so this is enough to
+    /// tell which one lies inside which, and unlike an interior point it is
+    /// not swallowed by the contour's own hole.
+    internal static func edgeProbe(of points: [Vector2]) -> Vector2 {
+        for i in points.indices {
+            let a = points[i], b = points[(i + 1) % points.count]
+            if a.distanceSquared(to: b) > 0 { return (a + b) / 2 }
+        }
+        return points.first ?? .zero
+    }
+}

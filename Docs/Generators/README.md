@@ -26,6 +26,7 @@
 - [`Isosurfaces`](./Isosurface.md) - `isosurface` / `Metaballs`, the surface where a field over space crosses a level, marched into a `Mesh`, by marching cubes or by dual contouring where the field has corners to keep. This gives soft spheres that fuse, noise volumes, and gyroids
 - [`Subdivision surfaces`](./SubdivisionSurfaces.md) - `mesh.subdivided`, a low-poly control cage refined into a smooth solid by the Catmull-Clark or Loop rules. Welding and open-edge handling are built in
 - [`Mesh growth`](./MeshGrowth.md) - `MeshGrowth` / `MeshReactionDiffusion`, a surface that grows more area than it has room for, so it folds. The results include brain coral, branching coral, and a ruffled leaf margin
+- [`Fracture`](./Fracture.md) - `fractured`, breaking a `Shape` or a `Mesh` into pieces that fit back together exactly, spread evenly or crowded around the point of a blow. Every piece is convex, which is what a rigid body wants, and `convexHull(of:)` in space is on the same page.
 - [`Hulls`](./Hulls.md) - `concaveHull` / `alphaShape`, the tighter answers to the question "what shape are these points?". The first returns one simple polygon that follows the inlets, and the second returns the true footprint of the scatter, islands and holes included
 - [`Medial axis`](./MedialAxis.md) - `medialAxis`, a shape reduced to its skeleton, where every point carries the radius of its inscribed disk
 - [`Straight skeleton`](./StraightSkeleton.md) - `straightSkeleton`, the ridge network that a shrinking boundary traces, with faces and exact mitered insets (`inset(by:)`)
