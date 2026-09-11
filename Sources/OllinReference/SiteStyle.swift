@@ -174,6 +174,8 @@ enum SiteStyle {
        that draws it, paged by the dots under it. The track is a scroller
        that snaps, so a swipe is the browser's own and no script is needed
        to move between them. */
+    .home-band > h2 { margin-bottom: 0.4rem; }
+    .band-lede { margin: 0 0 2rem; color: var(--text-2); }
     .band-track { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
     .band-track::-webkit-scrollbar { display: none; }
     .band-track:focus-visible { outline: 2px solid var(--text); outline-offset: 8px; border-radius: 14px; }
@@ -181,6 +183,7 @@ enum SiteStyle {
     .band-slide figure { margin: 0; }
     .band-slide video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .band-code { min-width: 0; }
+    .band-code > h3 { margin: 0 0 0.85rem; font-size: 19px; font-weight: 600; letter-spacing: -0.015em; }
     .band-code pre { margin: 0; font-size: 12.5px; line-height: 1.55; }
     .band-code > p { margin: 1rem 0 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
     .band-code > p code { background: var(--surface-2); }
@@ -406,6 +409,12 @@ enum SiteStyle {
       const show = (index) => {
         at = index;
         dots.forEach((dot, n) => dot.setAttribute('aria-current', String(n === index)));
+        // The run command further down the page names the sketch on screen.
+        // Looked up on each move rather than held, since this runs while the
+        // page is still being parsed and that section is not there yet.
+        const command = document.querySelector('[data-run-target]');
+        const target = slides[index].dataset.target;
+        if (command && target) command.textContent = target;
         slides.forEach((slide, n) => {
           const clip = slide.querySelector('video');
           if (!clip) return;

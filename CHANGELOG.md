@@ -10,7 +10,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Changed
 
-- **The front page's sketches are a band you page through, and a phone gets them too.** *Hello, circle* now leads a row of sketches you move between with the dots under it, each running beside the whole program that draws it, starting with the circle the README opens on. The separate band of three below it is gone. Moving between them is the browser's own scrolling, so a swipe, a trackpad, and the arrow keys work with no script running, and only the sketch on screen plays: the rest are not fetched until you page to them, which is a megabyte and a half nobody pays for on arrival. One sketch at a time is what puts the band back on a phone, where three of them stacked was a wall of code and the whole thing had to be hidden.
+- **The front page's sketches are a band you page through, and a phone gets them too.** *Hello, circle* now leads a row of sketches you move between with the dots under it, each running beside the whole program that draws it, starting with the circle the README opens on. The separate band of three below it is gone. Moving between them is the browser's own scrolling, so a swipe, a trackpad, and the arrow keys work with no script running, and only the sketch on screen plays: the rest are not fetched until you page to them, which is a megabyte and a half nobody pays for on arrival. One sketch at a time is what puts the band back on a phone, where three of them stacked was a wall of code and the whole thing had to be hidden. The command under *Run it* names whichever sketch you are looking at, so what you copy runs what you see.
 
 ### Fixed
 

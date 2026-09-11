@@ -435,13 +435,31 @@ public struct SiteBuilder {
         }
         var body = "<section class=\"home-section home-opening\">\n\(opened)\n</section>\n"
 
+        // The README's run command names the sketch the band opens on, which
+        // is what lets the band rewrite that one word as you page through it.
+        // It is marked here rather than written: the README's own text stands
+        // on the page, on the About page, and in the markdown twin, and only
+        // this copy is told which word is the target.
+        let led = SiteHome.rows.compactMap { row -> String? in
+            if case .carousel(_, let example) = row { return example } else { return nil }
+        }.first
+        var runTarget: String? = led.flatMap {
+            if case .example(let entry)? = plan.examples["Examples/\($0)"]?.kind { return entry.target }
+            return nil
+        }
+
         func block(_ heading: String) -> String {
             guard let section = sections.first(where: { $0.heading == heading }) else {
                 log.notes.append("the front page names a README section that is not there: \(heading)")
                 return ""
             }
             let rendered = HTML.render(section.markdown, resolve: resolveHome)
-            return "<section class=\"home-section home-\(section.anchor)\">\n\(rendered.body)\n</section>\n"
+            var html = rendered.body
+            if let target = runTarget, let found = html.range(of: target) {
+                html.replaceSubrange(found, with: "<span data-run-target>\(target)</span>")
+                runTarget = nil
+            }
+            return "<section class=\"home-section home-\(section.anchor)\">\n\(html)\n</section>\n"
         }
         for row in SiteHome.rows {
             switch row {
@@ -661,8 +679,18 @@ public struct SiteBuilder {
               plan: Plan, page: Page) -> String {
         let media = plan.media
         let lines = lead.markdown.components(separatedBy: "\n")
-        let heading = HTML.render(lines.first ?? "", resolve: resolve).body
+        // The README's heading names the sketch, not the band, so it goes
+        // inside the slide it belongs to, one level down and carrying its own
+        // anchor. The band's own heading has to cover all of them.
+        let led = HTML.render("#" + (lines.first ?? ""), resolve: resolve).body
         let opening = HTML.render(lines.dropFirst().joined(separator: "\n"), resolve: resolve).body
+
+        /// The target `swift run` takes for one example, when the site has a
+        /// page for it.
+        func target(running sketch: String) -> String? {
+            guard case .example(let entry)? = plan.examples["Examples/\(sketch)"]?.kind else { return nil }
+            return entry.target
+        }
 
         /// One sketch playing, with the program that draws it beside it.
         func slide(_ sketch: String, showing body: String, first: Bool) -> String {
@@ -679,15 +707,18 @@ public struct SiteBuilder {
 
                     """
             }
+            // The command under *Run it* names whichever of these is on
+            // screen, so the target it takes rides the slide.
+            let runs = target(running: sketch).map { " data-target=\"\(HTML.escape($0))\"" } ?? ""
             return """
-                <article class="band-slide">
+                <article class="band-slide"\(runs)>
                 \(figure)<div class="band-code">\(body)</div>
                 </article>
 
                 """
         }
 
-        var slides = slide(example, showing: opening, first: true)
+        var slides = slide(example, showing: led + "\n" + opening, first: true)
         var labels = [lead.heading]
         for piece in media.showcase where piece.example != example {
             guard let entry = media[piece.example], entry.loopSmall != nil else { continue }
@@ -702,9 +733,11 @@ public struct SiteBuilder {
             let target = plan.examples["Examples/\(piece.example)"]
                 .map { relative(from: page.siteDirectory, to: $0.sitePath) }
             let link = target.map { " <a href=\"\($0)\">Run it</a>" } ?? ""
-            let name = piece.example.split(separator: "/").last.map(String.init) ?? piece.example
-            let told = "<p class=\"band-note\">\(HTML.escape(piece.note))\(link)</p>"
-            slides += slide(piece.example, showing: HTML.codeBlock(code, language: "swift") + "\n" + told, first: false)
+            let name = plan.examples["Examples/\(piece.example)"]?.title
+                ?? piece.example.split(separator: "/").last.map(String.init) ?? piece.example
+            let told = "<h3>\(HTML.escape(name))</h3>\n" + HTML.codeBlock(code, language: "swift")
+                + "\n<p class=\"band-note\">\(HTML.escape(piece.note))\(link)</p>"
+            slides += slide(piece.example, showing: told, first: false)
             labels.append(name)
         }
         let all = relative(from: page.siteDirectory, to: "examples/index.html")
@@ -712,7 +745,7 @@ public struct SiteBuilder {
         // One sketch is not a band: the dots and the arrows would have
         // nowhere to go, so the section is the lead on its own.
         guard labels.count > 1 else {
-            return "<section class=\"home-section home-band\">\n\(heading)\n\(slides)\(everything)\n</section>\n"
+            return "<section class=\"home-section home-band\">\n\(slides)\(everything)\n</section>\n"
         }
         let dots = labels.enumerated().map { index, label in
             """
@@ -722,7 +755,8 @@ public struct SiteBuilder {
         }.joined(separator: "\n")
         return """
             <section class="home-section home-band">
-            \(heading)
+            <h2>Sample sketches</h2>
+            <p class="band-lede">Every one of these is the whole program.</p>
             <div class="band" data-band>
             <div class="band-track" tabindex="0" role="region" aria-label="Sketches, one at a time">
             \(slides)</div>

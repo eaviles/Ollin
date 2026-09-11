@@ -212,8 +212,11 @@ struct SiteTests {
             // The band wears its own class and leads with the section's
             // heading, which is the program a stranger reads first.
             if case .carousel(let heading, _) = row {
+                // The band's own heading covers every sketch in it, and the
+                // README's heading names the one it came with, a level down
+                // and keeping its anchor.
                 #expect(home.contains("<section class=\"home-section home-band\">"), "the front page has no band")
-                #expect(home.contains("<h2 id=\"\(HTML.slug(heading))\">"), "the band lost \(heading)")
+                #expect(home.contains("<h3 id=\"\(HTML.slug(heading))\">"), "the band lost \(heading)")
                 continue
             }
             for heading in row.headings {
@@ -224,11 +227,18 @@ struct SiteTests {
         // Every sketch in the band has a dot, and only the one on arrival
         // carries `autoplay`: the rest are not even fetched until somebody
         // pages to them, which is what keeps the page light.
-        let slides = home.components(separatedBy: "<article class=\"band-slide\">").count - 1
+        let slides = home.components(separatedBy: "<article class=\"band-slide\"").count - 1
         #expect(slides > 1, "the band is not a band")
         #expect(home.components(separatedBy: "<button class=\"band-dot\"").count - 1 == slides, "a sketch in the band has no dot")
         #expect(home.components(separatedBy: " autoplay ").count - 1 == 1, "more than one sketch plays on arrival")
         #expect(home.components(separatedBy: "preload=\"none\"").count - 1 == slides, "a clip in the band is fetched unasked")
+        // The run command names the sketch on screen, so every slide carries
+        // the target that runs it and the README's own command is marked
+        // once, with the README's text untouched everywhere else.
+        #expect(home.components(separatedBy: "<article class=\"band-slide\" data-target=\"").count - 1 == slides,
+                "a sketch in the band cannot say how to run it")
+        #expect(home.components(separatedBy: "<span data-run-target>").count - 1 == 1, "the run command is not marked once")
+        #expect(!about.contains("data-run-target"), "the About page carries the front page's marking")
         #expect(home.contains("<div class=\"home-pair\">"))
         #expect(home.contains("<section class=\"home-section home-opening\">"))
         #expect(home.contains("<section class=\"home-section home-more\">"))
