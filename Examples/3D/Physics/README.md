@@ -4,20 +4,19 @@
 
 ## Physics
 
-| [![Bagatelle](https://media.ollin.art/examples/3D/Physics/Bagatelle/still-640.jpg?v=98434c21)](Bagatelle/) | [![Cape](https://media.ollin.art/examples/3D/Physics/Cape/still-640.jpg?v=0c0401c0)](Cape/) | [![Chain](https://media.ollin.art/examples/3D/Physics/Chain/still-640.jpg?v=429fabf7)](Chain/) | [![Contraption](https://media.ollin.art/examples/3D/Physics/Contraption/still-640.jpg?v=84107917)](Contraption/) |
+| [![Bagatelle](https://media.ollin.art/examples/3D/Physics/Bagatelle/still-640.jpg?v=98434c21)](Bagatelle/) | [![Burst](https://media.ollin.art/examples/3D/Physics/Burst/still-640.jpg?v=580f1def)](Burst/) | [![Cape](https://media.ollin.art/examples/3D/Physics/Cape/still-640.jpg?v=0c0401c0)](Cape/) | [![Chain](https://media.ollin.art/examples/3D/Physics/Chain/still-640.jpg?v=429fabf7)](Chain/) |
 |---|---|---|---|
-| [Bagatelle](Bagatelle/) | [Cape](Cape/) | [Chain](Chain/) | [Contraption](Contraption/) |
-| [![Crawler](https://media.ollin.art/examples/3D/Physics/Crawler/still-640.jpg?v=aeb07aa1)](Crawler/) | [![Drape](https://media.ollin.art/examples/3D/Physics/Drape/still-640.jpg?v=d0f34bc0)](Drape/) | [![Flotsam](https://media.ollin.art/examples/3D/Physics/Flotsam/still-640.jpg?v=f2956aab)](Flotsam/) | [![Imported](https://media.ollin.art/examples/3D/Physics/Imported/still-640.jpg?v=6442f492)](Imported/) |
-| [Crawler](Crawler/) | [Drape](Drape/) | [Flotsam](Flotsam/) | [Imported](Imported/) |
-| [![Joyride](https://media.ollin.art/examples/3D/Physics/Joyride/still-640.jpg?v=f9bcd168)](Joyride/) | [![Raft](https://media.ollin.art/examples/3D/Physics/Raft/still-640.jpg?v=158f1a55)](Raft/) | [![Ragdoll](https://media.ollin.art/examples/3D/Physics/Ragdoll/still-640.jpg?v=02579f17)](Ragdoll/) | [![Rigging](https://media.ollin.art/examples/3D/Physics/Rigging/still-640.jpg?v=d83ddc9b)](Rigging/) |
-| [Joyride](Joyride/) | [Raft](Raft/) | [Ragdoll](Ragdoll/) | [Rigging](Rigging/) |
-| [![Rockslide](https://media.ollin.art/examples/3D/Physics/Rockslide/still-640.jpg?v=43fc87d2)](Rockslide/) | [![Sieve](https://media.ollin.art/examples/3D/Physics/Sieve/still-640.jpg?v=401e573e)](Sieve/) | [![Sightlines](https://media.ollin.art/examples/3D/Physics/Sightlines/still-640.jpg?v=64317a52)](Sightlines/) | [![Stack](https://media.ollin.art/examples/3D/Physics/Stack/still-640.jpg?v=0cec8b06)](Stack/) |
-| [Rockslide](Rockslide/) | [Sieve](Sieve/) | [Sightlines](Sightlines/) | [Stack](Stack/) |
-| [Burst](Burst/) | Solids thrown up through the view, each breaking at the top of its arc into pieces that tumble back down. Click one to break it early. Shows `Mesh.fractured` and a piece handed to the solver as a `.hull` collider, drawn from the very mesh the solver was given. |
-| [![Stroll](https://media.ollin.art/examples/3D/Physics/Stroll/still-640.jpg?v=356f7091)](Stroll/) | [![Tensegrity](https://media.ollin.art/examples/3D/Physics/Tensegrity/still-640.jpg?v=641cb217)](Tensegrity/) | [![Trigger](https://media.ollin.art/examples/3D/Physics/Trigger/still-640.jpg?v=617df5d6)](Trigger/) | [![Tumble](https://media.ollin.art/examples/3D/Physics/Tumble/still-640.jpg?v=5f15e49c)](Tumble/) |
-| [Stroll](Stroll/) | [Tensegrity](Tensegrity/) | [Trigger](Trigger/) | [Tumble](Tumble/) |
-| [![Windmill](https://media.ollin.art/examples/3D/Physics/Windmill/still-640.jpg?v=3670bfc1)](Windmill/) | [![Yard](https://media.ollin.art/examples/3D/Physics/Yard/still-640.jpg?v=e0b297d0)](Yard/) |  |  |
-| [Windmill](Windmill/) | [Yard](Yard/) |  |  |
+| [Bagatelle](Bagatelle/) | [Burst](Burst/) | [Cape](Cape/) | [Chain](Chain/) |
+| [![Contraption](https://media.ollin.art/examples/3D/Physics/Contraption/still-640.jpg?v=84107917)](Contraption/) | [![Crawler](https://media.ollin.art/examples/3D/Physics/Crawler/still-640.jpg?v=aeb07aa1)](Crawler/) | [![Drape](https://media.ollin.art/examples/3D/Physics/Drape/still-640.jpg?v=d0f34bc0)](Drape/) | [![Flotsam](https://media.ollin.art/examples/3D/Physics/Flotsam/still-640.jpg?v=f2956aab)](Flotsam/) |
+| [Contraption](Contraption/) | [Crawler](Crawler/) | [Drape](Drape/) | [Flotsam](Flotsam/) |
+| [![Imported](https://media.ollin.art/examples/3D/Physics/Imported/still-640.jpg?v=6442f492)](Imported/) | [![Joyride](https://media.ollin.art/examples/3D/Physics/Joyride/still-640.jpg?v=f9bcd168)](Joyride/) | [![Raft](https://media.ollin.art/examples/3D/Physics/Raft/still-640.jpg?v=158f1a55)](Raft/) | [![Ragdoll](https://media.ollin.art/examples/3D/Physics/Ragdoll/still-640.jpg?v=02579f17)](Ragdoll/) |
+| [Imported](Imported/) | [Joyride](Joyride/) | [Raft](Raft/) | [Ragdoll](Ragdoll/) |
+| [![Rigging](https://media.ollin.art/examples/3D/Physics/Rigging/still-640.jpg?v=d83ddc9b)](Rigging/) | [![Rockslide](https://media.ollin.art/examples/3D/Physics/Rockslide/still-640.jpg?v=43fc87d2)](Rockslide/) | [![Sieve](https://media.ollin.art/examples/3D/Physics/Sieve/still-640.jpg?v=401e573e)](Sieve/) | [![Sightlines](https://media.ollin.art/examples/3D/Physics/Sightlines/still-640.jpg?v=64317a52)](Sightlines/) |
+| [Rigging](Rigging/) | [Rockslide](Rockslide/) | [Sieve](Sieve/) | [Sightlines](Sightlines/) |
+| [![Stack](https://media.ollin.art/examples/3D/Physics/Stack/still-640.jpg?v=0cec8b06)](Stack/) | [![Stroll](https://media.ollin.art/examples/3D/Physics/Stroll/still-640.jpg?v=356f7091)](Stroll/) | [![Tensegrity](https://media.ollin.art/examples/3D/Physics/Tensegrity/still-640.jpg?v=641cb217)](Tensegrity/) | [![Trigger](https://media.ollin.art/examples/3D/Physics/Trigger/still-640.jpg?v=617df5d6)](Trigger/) |
+| [Stack](Stack/) | [Stroll](Stroll/) | [Tensegrity](Tensegrity/) | [Trigger](Trigger/) |
+| [![Tumble](https://media.ollin.art/examples/3D/Physics/Tumble/still-640.jpg?v=5f15e49c)](Tumble/) | [![Windmill](https://media.ollin.art/examples/3D/Physics/Windmill/still-640.jpg?v=3670bfc1)](Windmill/) | [![Yard](https://media.ollin.art/examples/3D/Physics/Yard/still-640.jpg?v=e0b297d0)](Yard/) |  |
+| [Tumble](Tumble/) | [Windmill](Windmill/) | [Yard](Yard/) |  |
 
 This group covers bodies inside the scene, rigid and soft: stacks and joints, cloth, rope, and floating. A Jolt-backed `World3D` is stepped each frame (`import OllinPhysics`), and every body is drawn from its pose with `withBody`. See the [3D physics reference](../../../Docs/Simulation/Physics3D.md).
 

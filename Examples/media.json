@@ -2330,6 +2330,27 @@
       "still": "examples/3D/Physics/Bagatelle/still.jpg?v=3c41516a",
       "stillSmall": "examples/3D/Physics/Bagatelle/still-640.jpg?v=98434c21"
     },
+    "3D/Physics/Burst": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 14.271,
+      "sound": false,
+      "source": "4a077e3760623c0f",
+      "rendered": "2026-09-11",
+      "bytes": {
+        "loop": 2871223,
+        "loopSmall": 640334,
+        "still": 52578,
+        "stillSmall": 20256
+      },
+      "loop": "examples/3D/Physics/Burst/loop.mp4?v=8a04d7ff",
+      "loopSmall": "examples/3D/Physics/Burst/loop-640.mp4?v=ceeb83ec",
+      "still": "examples/3D/Physics/Burst/still.jpg?v=bc2d8c7b",
+      "stillSmall": "examples/3D/Physics/Burst/still-640.jpg?v=580f1def"
+    },
     "3D/Physics/Cape": {
       "width": 1080,
       "height": 1080,
@@ -7355,6 +7376,27 @@
       "loopSmall": "examples/Physics/Blobs/loop-640.mp4?v=16b8d075",
       "still": "examples/Physics/Blobs/still.jpg?v=b4e6a495",
       "stillSmall": "examples/Physics/Blobs/still-640.jpg?v=8a834782"
+    },
+    "Physics/Burst": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 23.907,
+      "sound": false,
+      "source": "6fef3e18ce40d8b5",
+      "rendered": "2026-09-11",
+      "bytes": {
+        "loop": 2732482,
+        "loopSmall": 664155,
+        "still": 36959,
+        "stillSmall": 14218
+      },
+      "loop": "examples/Physics/Burst/loop.mp4?v=9c99478e",
+      "loopSmall": "examples/Physics/Burst/loop-640.mp4?v=9aabbed1",
+      "still": "examples/Physics/Burst/still.jpg?v=e6e717fc",
+      "stillSmall": "examples/Physics/Burst/still-640.jpg?v=ff4dd298"
     },
     "Physics/Chain": {
       "width": 1080,
