@@ -27,6 +27,7 @@
 	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#import "OllinSyphonPrefix.h"
 #import "SyphonMessageQueue.h"
 #import <stdatomic.h>
 #import <os/lock.h>

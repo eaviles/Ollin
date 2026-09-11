@@ -27,6 +27,7 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "OllinSyphonPrefix.h"
 #import "SyphonMetalClient.h"
 #import "SyphonSubclassing.h"
 #import <os/lock.h>

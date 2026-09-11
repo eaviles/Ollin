@@ -15,6 +15,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **The Syphon satellite works from a package dependency again.** Any project that pulled Ollin in by version, which is what `ollin new --remote` writes, could not use `OllinSyphon` at all: the build stopped at resolution with `the target 'CSyphon' in product 'OllinSyphon' contains unsafe build flags`. The vendored engine needed a prefix header forced into every file, which SwiftPM can only pass as an unsafe flag. Each file now imports that prefix itself, so the flag is gone and nothing about the running code changed.
 - **The site's favicon no longer sits in a white box in Safari's tabs.** Safari draws a light plate behind an icon whose own tone reads too close to the bar it sits on, which is what an icon carrying a near-black tile gets on a dark tab bar. The mark is drawn on nothing now, in near-black for a light bar and paper for a dark one, and the page picks between the two files: Safari ignores a color-scheme media query written inside an SVG favicon, so the drawing cannot change its own ink.
 
 ## [0.3.0] - 2026-09-10

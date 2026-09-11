@@ -516,9 +516,14 @@ let package = Package(
         // Ollin's public surface. `include/` holds a curated umbrella +
         // module.modulemap exposing only the Metal server/client + directory;
         // the implementation headers sit in the target root (found via the `.`
-        // header search path). The upstream `Syphon_Prefix.pch` is supplied with
-        // `-include` (it defines SYPHONLOG and imports Cocoa for every `.m`) and
-        // excluded from the source set. Syphon is ARC, so no `-fno-objc-arc`.
+        // header search path). The upstream `Syphon_Prefix.pch` is excluded from
+        // the source set: a prefix header can only be forced into every file
+        // with `-include`, which is an unsafe flag, and a target carrying one
+        // cannot be reached through a package depended on by version, so
+        // `import OllinSyphon` failed to resolve for anybody outside this
+        // checkout. Each `.m` imports `OllinSyphonPrefix.h` instead, which is
+        // ours and does what the prefix did. Syphon is ARC, so no
+        // `-fno-objc-arc`.
         .target(
             name: "CSyphon",
             path: "External/CSyphon",
@@ -526,12 +531,7 @@ let package = Package(
             publicHeadersPath: "include",
             cSettings: [
                 .headerSearchPath("."),
-                .headerSearchPath("include"),
-                // `-include` the prefix (SYPHONLOG + Cocoa for every `.m`).
-                // `-UDEBUG` undefines the debug-build DEBUG macro *for Syphon only*,
-                // so its SYPHONLOG connection-lifecycle NSLogs stay quiet in a
-                // `swift run`/`swift test` debug build (they'd otherwise spam).
-                .unsafeFlags(["-include", "Syphon_Prefix.pch", "-UDEBUG"])
+                .headerSearchPath("include")
             ],
             linkerSettings: [
                 .linkedFramework("Metal"),

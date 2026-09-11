@@ -31,8 +31,8 @@ and those files would pull in legacy OpenGL. The dependency closure of the Metal
 classes was verified to not reach any OpenGL file.
 
 The files are otherwise upstream source, with the per-file copyright headers and
-`License.txt` kept intact. Two kinds of local change were unavoidable for the
-SwiftPM `swift run` build and are noted here so the copy stays auditable:
+`License.txt` kept intact. The local changes below were unavoidable for the
+SwiftPM build and are noted here so the copy stays auditable:
 
 1. **Flat layout + quoted imports.** Upstream's framework-style
    `#import <Syphon/SyphonServerBase.h>` / `<Syphon/SyphonClientBase.h>` angle
@@ -50,16 +50,27 @@ SwiftPM `swift run` build and are noted here so the copy stays auditable:
    is created with `MTLTextureUsagePixelFormatView` added, so the consumer can read
    the surface's display-ready bytes through an sRGB view (Ollin shades in linear
    and expects sRGB textures to decode on sample). The change is marked inline.
+4. **One added import per implementation file.** Each `.m` opens with
+   `#import "OllinSyphonPrefix.h"`, inserted after the file's own copyright
+   header and before its first upstream import. Upstream relies on a prefix
+   header instead, which Xcode forces into every translation unit with
+   `-include`. SwiftPM can pass that only as an unsafe build flag, and a target
+   carrying one cannot be reached through a package somebody depends on by
+   version, so `import OllinSyphon` failed to resolve outside this repository
+   before the change. Nothing else in those files moved.
 
 Added files (not upstream source): `include/CSyphon.h` (a curated umbrella
-exposing only the Metal API) and `include/module.modulemap` (so Swift can
-`import CSyphon`). The upstream `Syphon_Prefix.pch` is kept and supplied to the
-compiler via `-include` (it defines `SYPHONLOG` and imports Cocoa for every
-`.m`); it is excluded from the SwiftPM source set.
+exposing only the Metal API), `include/module.modulemap` (so Swift can
+`import CSyphon`), and `OllinSyphonPrefix.h`, which does for each `.m` what the
+prefix header did: import Cocoa and define `SYPHONLOG`, empty as it is in any
+build without `DEBUG`. The upstream `Syphon_Prefix.pch` is kept for reference
+and excluded from the SwiftPM source set; nothing includes it.
 
 ## Updating
 
 Re-clone the upstream repo at the desired commit, copy the Metal-subset files
-over the ones here, re-apply the two local changes above (and the quoted-import
-rewrite), restore `include/CSyphon.h` + `include/module.modulemap`, and update
+over the ones here, re-apply the local changes above (the quoted-import rewrite,
+the runtime shader compilation, the pixel-format-view usage, and the added
+prefix import at the top of every `.m`), restore `include/CSyphon.h` +
+`include/module.modulemap` + `OllinSyphonPrefix.h`, and update
 the commit/date. Keep the OpenGL files out.

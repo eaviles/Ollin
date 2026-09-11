@@ -27,6 +27,7 @@
      SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "OllinSyphonPrefix.h"
 #import "SyphonPrivate.h"
 
 NSString * const SyphonServerDescriptionDictionaryVersionKey = @"SyphonServerDescriptionDictionaryVersionKey";

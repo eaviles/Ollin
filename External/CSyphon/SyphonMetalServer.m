@@ -27,6 +27,7 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "OllinSyphonPrefix.h"
 #import "SyphonMetalServer.h"
 #import "SyphonServerRendererMetal.h"
 #import "SyphonPrivate.h"

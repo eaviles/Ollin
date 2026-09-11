@@ -28,6 +28,7 @@
  */
 
 
+#import "OllinSyphonPrefix.h"
 #import "SyphonClientConnectionManager.h"
 #import "SyphonPrivate.h"
 #import "SyphonMessaging.h"

@@ -27,6 +27,7 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "OllinSyphonPrefix.h"
 #import "SyphonMessageReceiver.h"
 #import "SyphonMessaging.h"
 #import "SyphonCFMessageReceiver.h"
