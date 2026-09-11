@@ -86,4 +86,29 @@ struct PolygonColliderTests {
         let heights = shards.map(\.position.y)
         #expect((heights.max() ?? 0) - (heights.min() ?? 0) > 10)
     }
+    @Test func theSolidPiecesLandOnTheGroundAndOnEachOther() {
+        // The 3D side never had the flat side's corner limit: a hull collider
+        // takes as many points as it is handed. This says so out loud.
+        let world = World3D()
+        world.ground = 0
+        var shards: [Body3D] = []
+        for piece in Mesh.icosphere(radius: 0.6, subdivisions: 1).fractured(into: 9, seed: 5) {
+            let middle = piece.centroid
+            let local = piece.mapPositions { $0 - middle }
+            #expect(local.positions.count > 8, "the piece is not past the flat side's limit")
+            shards.append(world.addBody(.hull(local.positions), at: Vector3(0, 3, 0) + middle,
+                                        friction: 0.6, restitution: 0.05))
+        }
+        #expect(shards.count > 5)
+        #expect(shards.allSatisfy { $0.mass > 0 })
+
+        for _ in 0 ..< 420 { world.advance(by: 1.0 / 60) }
+        for shard in shards {
+            #expect(shard.position.y > 0, "a piece fell through the ground")
+            #expect(shard.position.y < 1, "a piece never fell at all")
+        }
+        let heights = shards.map(\.position.y)
+        #expect((heights.max() ?? 0) - (heights.min() ?? 0) > 0.05,
+                "nine pieces resting at one height are not resting on each other")
+    }
 }
