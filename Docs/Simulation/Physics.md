@@ -242,7 +242,7 @@ enum Collider {
 }
 ```
 
-Geometry is given in body-local points, centered on the body's origin. The body's `position` and `angle` then place it in the world. A `.polygon` is made convex for you by taking its convex hull, so a concave outline is expanded to that hull rather than rejected.
+Geometry is given in body-local points, centered on the body's origin. The body's `position` and `angle` then place it in the world. A `.polygon` is made convex for you by taking its convex hull, so a concave outline is expanded to that hull rather than rejected. It is brought within the eight-corner limit for you too, by dropping the corner whose own triangle is smallest until eight are left, so an outline with more corners is simulated as a slightly plainer version of itself rather than refused.
 
 <a name="body"></a>
 

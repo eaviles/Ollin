@@ -125,7 +125,7 @@ Fewer than four points, or points that all lie on one plane, enclose no volume, 
 ### Practical notes
 
 - **Cost grows with the square of the piece count**, because every cell is cut against every other seed. A few dozen pieces is comfortable at a break or two a frame; a few hundred is a one-off, not something to do every frame. In 3D the source mesh's own faces are cut once and shared by every cell, so a coarse mesh breaks faster than a finely tessellated one that looks the same.
-- **The 2D solver caps a convex polygon at eight corners.** A cell with more is simulated as eight of them while it is drawn in full. Cells of a disc or a box average five or six corners, so this rarely shows; keep the piece count healthy and it never does.
+- **The 2D solver caps a convex polygon at eight corners.** A cell with more is simulated as the eight that keep the most of its outline, while it is drawn in full. Cells of a disc or a box average five or six corners, so the difference rarely shows.
 - **Break in the shape's own coordinates**, before any `translate` or `rotate`, and place the pieces with the transform you were going to use anyway. Breaking a shape you have already moved works, but then every piece carries the offset and the centroids are in the wrong frame for a body.
 - **The seed is the identity of a break.** Roll it once, remember it, and the same break comes back on the next run, in an export, and in a [variation](../Core/Variations.md) grid.
 

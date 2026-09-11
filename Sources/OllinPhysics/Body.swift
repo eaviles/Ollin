@@ -125,7 +125,13 @@ public enum Collider {
     /// A capsule (stadium): a line between two local-space points, thickened to
     /// `radius` with rounded ends.
     case capsule(from: Vector2, to: Vector2, radius: Double)
-    /// A convex polygon from local-space points (its convex hull is taken, up to
-    /// 8 vertices). Pass at least three points.
+    /// A convex polygon from local-space points. Pass at least three.
+    ///
+    /// The solver holds eight corners at most. An outline with more is reduced
+    /// to the eight that keep the most of it, dropping the corner whose own
+    /// triangle is smallest each round, so a many-cornered piece is simulated
+    /// as a slightly plainer version of what it draws as. The reduction matters
+    /// because the solver itself is not forgiving here: handed nine corners it
+    /// builds nothing, and the body would have no collider and no mass at all.
     case polygon([Vector2])
 }

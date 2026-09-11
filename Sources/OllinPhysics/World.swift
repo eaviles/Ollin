@@ -344,7 +344,7 @@ public final class World {
                                     radius: meters(from: r))
             _ = b2CreateCapsuleShape(bodyId, &shapeDef, &capsule)
         case .polygon(let points):
-            let verts = points.map { meters(from: $0) }
+            let verts = World.cornersForPolygon(points).map { meters(from: $0) }
             var hull = verts.withUnsafeBufferPointer { buffer in
                 b2ComputeHull(buffer.baseAddress, Int32(buffer.count))
             }
@@ -511,5 +511,34 @@ public final class World {
     }
     func points(from v: b2Vec2) -> Vector2 {
         Vector2(Double(v.x) * pixelsPerMeter, Double(v.y) * pixelsPerMeter)
+    }
+}
+
+extension World {
+    /// The corners a polygon collider can actually be built from: the convex
+    /// hull of what was given, brought down to the eight the solver allows.
+    ///
+    /// The limit is not negotiable and it is not forgiving: handed nine points,
+    /// the solver's own hull builder returns nothing at all rather than a
+    /// simplified shape, and the body then has no collider, no mass, and no
+    /// motion. So the reduction happens here, before it is asked. The corner
+    /// dropped each round is the one whose own triangle is smallest, which is
+    /// the corner that changes the outline least; a shape at or under the
+    /// limit passes through untouched.
+    static func cornersForPolygon(_ points: [Vector2], limit: Int = 8) -> [Vector2] {
+        var corners = points.count > limit ? convexHull(of: points) : points
+        guard corners.count > limit else { return corners }
+        while corners.count > limit {
+            var smallest = Double.infinity
+            var drop = 0
+            for i in corners.indices {
+                let before = corners[(i + corners.count - 1) % corners.count]
+                let after = corners[(i + 1) % corners.count]
+                let ear = abs((before - corners[i]).cross(after - corners[i])) / 2
+                if ear < smallest { smallest = ear; drop = i }
+            }
+            corners.remove(at: drop)
+        }
+        return corners
     }
 }
