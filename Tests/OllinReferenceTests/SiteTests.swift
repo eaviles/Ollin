@@ -208,9 +208,27 @@ struct SiteTests {
         // About page, which is the README whole; every link the front page
         // makes at a README section lands on a page that carries the anchor.
         let about = try String(contentsOf: output.appendingPathComponent("about.html"), encoding: .utf8)
-        for heading in SiteHome.shown {
-            #expect(home.contains("<section class=\"home-section home-\(HTML.slug(heading))\">"), "the front page has no block for \(heading)")
+        for row in SiteHome.rows {
+            // The band wears its own class and leads with the section's
+            // heading, which is the program a stranger reads first.
+            if case .carousel(let heading, _) = row {
+                #expect(home.contains("<section class=\"home-section home-band\">"), "the front page has no band")
+                #expect(home.contains("<h2 id=\"\(HTML.slug(heading))\">"), "the band lost \(heading)")
+                continue
+            }
+            for heading in row.headings {
+                #expect(home.contains("<section class=\"home-section home-\(HTML.slug(heading))\">"),
+                        "the front page has no block for \(heading)")
+            }
         }
+        // Every sketch in the band has a dot, and only the one on arrival
+        // carries `autoplay`: the rest are not even fetched until somebody
+        // pages to them, which is what keeps the page light.
+        let slides = home.components(separatedBy: "<article class=\"band-slide\">").count - 1
+        #expect(slides > 1, "the band is not a band")
+        #expect(home.components(separatedBy: "<button class=\"band-dot\"").count - 1 == slides, "a sketch in the band has no dot")
+        #expect(home.components(separatedBy: " autoplay ").count - 1 == 1, "more than one sketch plays on arrival")
+        #expect(home.components(separatedBy: "preload=\"none\"").count - 1 == slides, "a clip in the band is fetched unasked")
         #expect(home.contains("<div class=\"home-pair\">"))
         #expect(home.contains("<section class=\"home-section home-opening\">"))
         #expect(home.contains("<section class=\"home-section home-more\">"))
@@ -876,11 +894,19 @@ struct SiteTests {
         #expect(media.heroes["readme"] != nil, "the README lost its opening clip")
     }
 
-    @Test("The front page's band names three sketches that are all still there")
+    @Test("The front page's band names sketches that are all still there")
     func showcaseIsWhole() throws {
         let root = try #require(Self.repositoryRoot())
         let media = ExampleMedia.read(inExamples: root.appendingPathComponent("Examples"))
         #expect(!media.showcase.isEmpty, "the front page lost its band of sketches")
+        // The sketch the band leads with is named beside the section it leads,
+        // and it plays there like any other.
+        for case .carousel(_, let lead) in SiteHome.rows {
+            let entry = media[lead]
+            #expect(entry?.loopSmall != nil, "the band leads with \(lead), which has no clip to play")
+            #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("Examples/\(lead)/Sketch.swift").path),
+                    "the band leads with \(lead), which is not in the checkout")
+        }
         for piece in media.showcase {
             let entry = media[piece.example]
             #expect(entry != nil, "the band names \(piece.example), which has no media")

@@ -170,16 +170,33 @@ enum SiteStyle {
     .prose td:first-child { white-space: nowrap; }
     .prose a[name], .prose a[id] { display: block; position: relative; top: -72px; visibility: hidden; }
 
-    .showcase { max-width: 1180px; margin: 0 auto clamp(3rem, 7vw, 5rem); padding: 0 1.5rem; }
-    .showcase-head { margin: 0 0 2rem; }
-    .showcase-head h2 { font-size: 34px; letter-spacing: -0.025em; margin: 0 0 0.4rem; }
-    .showcase-head p { color: var(--text-2); margin: 0; }
-    .showpiece { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 1.75rem; align-items: center; margin-bottom: 1.75rem; }
-    .showpiece figure { margin: 0; }
-    .showpiece video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
-    .showpiece-code pre { margin: 0; font-size: 12.5px; line-height: 1.55; }
-    .showpiece-note { margin: 0.75rem 0 0; font-size: 14px; color: var(--text-2); }
-    .showcase-more { margin: 0.5rem 0 0; }
+    /* The front page's band: one sketch at a time beside the whole program
+       that draws it, paged by the dots under it. The track is a scroller
+       that snaps, so a swipe is the browser's own and no script is needed
+       to move between them. */
+    .band-track { display: grid; grid-auto-flow: column; grid-auto-columns: 100%; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+    .band-track::-webkit-scrollbar { display: none; }
+    .band-track:focus-visible { outline: 2px solid var(--text); outline-offset: 8px; border-radius: 14px; }
+    .band-slide { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 1.75rem; align-items: center; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; }
+    .band-slide figure { margin: 0; }
+    .band-slide video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
+    .band-code { min-width: 0; }
+    .band-code pre { margin: 0; font-size: 12.5px; line-height: 1.55; }
+    .band-code > p { margin: 1rem 0 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+    .band-code > p code { background: var(--surface-2); }
+    .band-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-top: 1.75rem; }
+    .band-pager { display: flex; align-items: center; gap: 0.3rem; }
+    .band-arrow { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--text-2); cursor: pointer; transition: color 150ms var(--ease), background 150ms var(--ease); }
+    .band-arrow:hover { color: var(--text); background: var(--surface); }
+    .band-arrow .icon { width: 16px; height: 16px; }
+    .band-arrow[data-band-step="-1"] .icon { transform: scaleX(-1); }
+    .band-dots { display: flex; align-items: center; margin: 0 0.35rem; }
+    /* The mark is small and the button is not: a dot you can hit with a
+       thumb is 22px of target around 8px of ink. */
+    .band-dot { position: relative; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: none; cursor: pointer; }
+    .band-dot::before { content: ''; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 999px; background: var(--border); transition: background 150ms var(--ease), transform 150ms var(--ease); }
+    .band-dot:hover::before { background: var(--text-2); }
+    .band-dot[aria-current="true"]::before { background: var(--text); transform: scale(1.25); }
     .page-hero { margin: 0 0 2rem; }
     .page-hero video { width: 100%; height: auto; border-radius: 14px; background: var(--surface); }
     .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin: 0 0 2rem; }
@@ -228,10 +245,6 @@ enum SiteStyle {
     .home-opening > ul > li { margin: 0; padding: 1.1rem 1.25rem; background: var(--surface); border-radius: 14px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
     .home-opening > ul > li strong { color: var(--text); }
     .home-opening > ul > li code { background: var(--surface-2); }
-    .home-hello-circle { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 1.5rem 3rem; align-items: start; }
-    .home-hello-circle > h2 { grid-column: 1 / -1; margin-bottom: 0.25rem; }
-    .home-hello-circle > pre { margin: 0; }
-    .home-hello-circle > p { margin: 0; font-size: 18px; line-height: 1.5; }
     .home-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3rem; padding: 3.5rem 0; border-top: 1px solid var(--border); }
     .home-pair > .home-section { border-top: 0; padding: 0; min-width: 0; }
     .home-pair p:last-child, .home-pair pre:last-child { margin-bottom: 0; }
@@ -272,14 +285,17 @@ enum SiteStyle {
       /* Stacked, the cards' own spacing already separates them from what
          follows, so the margin under the row reads as a hole, not a break. */
       .cards { grid-template-columns: minmax(0, 1fr); margin-bottom: 1.5rem; }
-      /* The band pairs a sketch with its whole source, which on a phone
-         stacks into a wall of code. The sketch's own page is where to read
-         it there, so the band is not shown at all. */
-      .showcase { display: none; }
+      /* Stacked, the sketch goes over its program rather than beside it,
+         and the clip is capped so the two together still read as one
+         screenful. One at a time is what makes that fit at all. */
+      .band-slide { grid-template-columns: minmax(0, 1fr); gap: 1.1rem; }
+      .band-slide figure { width: 100%; max-width: 340px; margin: 0 auto; }
+      .band-code pre { font-size: 11.5px; }
+      .band-controls { justify-content: center; margin-top: 1.25rem; }
       .home-section { padding: 2.5rem 0; }
       .home-section > h2:first-child, .home-pair h2 { font-size: 28px; }
       .home-opening > p:first-child { font-size: 19px; }
-      .home-opening > ul, .home-hello-circle, .home-pair, .home-whats-in-it { grid-template-columns: minmax(0, 1fr); }
+      .home-opening > ul, .home-pair, .home-whats-in-it { grid-template-columns: minmax(0, 1fr); }
       .home-pair { gap: 2.5rem; padding: 2.5rem 0; }
       .prose h1 { font-size: 32px; }
       .prose h2 { font-size: 24px; }
@@ -356,6 +372,78 @@ enum SiteStyle {
     /// search box.
     static let searchIcon = """
     <svg class="icon" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.75" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12.75 12.75 17 17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    """
+
+    /// The arrow on the band's buttons, pointing right; the button that goes
+    /// back turns it over in the stylesheet rather than carrying a second
+    /// drawing.
+    static let chevron = """
+    <svg class="icon" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><path d="m7.75 4.5 7 5.5-7 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    """
+
+    /// The front page's band of sketches, paged one at a time.
+    ///
+    /// The moving is the browser's own: the track is a scroller that snaps,
+    /// so a swipe, a trackpad, and the arrow keys all work with the script
+    /// turned off, and what the script adds is the buttons, the dots that
+    /// say where you are, and the rule that only the sketch on screen plays.
+    /// That last one is why the other clips carry neither `autoplay` nor a
+    /// preload: they are not asked for until somebody pages to them.
+    ///
+    /// A reader who asked for less motion gets no sketch playing at all and
+    /// the controls to start one, which is the same bargain the clips on an
+    /// example's own page strike.
+    static let bandScript = """
+    <script>
+    (() => {
+      const band = document.querySelector('[data-band]');
+      if (!band) return;
+      const track = band.querySelector('.band-track');
+      const slides = Array.from(track.children);
+      const dots = Array.from(band.querySelectorAll('.band-dot'));
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let at = 0;
+      const show = (index) => {
+        at = index;
+        dots.forEach((dot, n) => dot.setAttribute('aria-current', String(n === index)));
+        slides.forEach((slide, n) => {
+          const clip = slide.querySelector('video');
+          if (!clip) return;
+          if (n !== index) { clip.pause(); return; }
+          if (still) return;
+          const playing = clip.play();
+          if (playing) playing.catch(() => {});
+        });
+      };
+      const go = (index) => {
+        const wanted = Math.max(0, Math.min(slides.length - 1, index));
+        track.scrollTo({ left: wanted * track.clientWidth, behavior: still ? 'auto' : 'smooth' });
+        show(wanted);
+      };
+      band.querySelectorAll('[data-band-step]').forEach((button) => {
+        button.addEventListener('click', () => go(at + Number(button.dataset.bandStep)));
+      });
+      dots.forEach((dot, n) => dot.addEventListener('click', () => go(n)));
+      let settling;
+      track.addEventListener('scroll', () => {
+        clearTimeout(settling);
+        settling = setTimeout(() => {
+          const landed = Math.round(track.scrollLeft / track.clientWidth);
+          if (landed !== at) show(landed);
+        }, 90);
+      }, { passive: true });
+      if (still) {
+        slides.forEach((slide) => {
+          const clip = slide.querySelector('video');
+          if (!clip) return;
+          clip.autoplay = false;
+          clip.controls = true;
+          clip.pause();
+        });
+      }
+      show(0);
+    })();
+    </script>
     """
 
     /// The library that does the matching, MiniSearch (MIT), pinned to one

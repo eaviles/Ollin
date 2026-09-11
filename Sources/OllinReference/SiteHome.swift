@@ -20,10 +20,13 @@ enum SiteHome {
         case section(String)
         /// Two sections side by side.
         case pair(String, String)
+        /// One section leading a band of sketches you page through, its own
+        /// program the first of them, playing as the example named here.
+        case carousel(String, running: String)
 
         var headings: [String] {
             switch self {
-            case .section(let heading): return [heading]
+            case .section(let heading), .carousel(let heading, _): return [heading]
             case .pair(let left, let right): return [left, right]
             }
         }
@@ -32,7 +35,7 @@ enum SiteHome {
     /// The README sections the front page shows, in the README's order, by
     /// their `## ` headings.
     static let rows: [Row] = [
-        .section("Hello, circle"),
+        .carousel("Hello, circle", running: "Basic/HelloCircle"),
         .pair("Run it", "Install"),
         .section("What's in it"),
     ]

@@ -449,6 +449,12 @@ public struct SiteBuilder {
                 body += block(heading)
             case .pair(let left, let right):
                 body += "<div class=\"home-pair\">\n\(block(left))\(block(right))</div>\n"
+            case .carousel(let heading, let example):
+                guard let section = sections.first(where: { $0.heading == heading }) else {
+                    log.notes.append("the front page names a README section that is not there: \(heading)")
+                    continue
+                }
+                body += band(lead: section, running: example, resolve: resolveHome, plan: plan, page: page)
             }
         }
 
@@ -459,7 +465,7 @@ public struct SiteBuilder {
         }
 
         return layout(page: page, title: page.title, description: Self.tagline, trail: "",
-                      body: "\(hero)\n\(showcase(plan.media, plan: plan, page: page))<article class=\"prose home\">\n\(body)</article>",
+                      body: "\(hero)\n<article class=\"prose home\">\n\(body)</article>",
                       headings: [], plan: plan)
     }
 
@@ -639,16 +645,52 @@ public struct SiteBuilder {
     /// The front page's band of sketches: each one running beside the whole
     /// program that draws it, which is the claim prose cannot make.
     ///
-    /// The small clip rather than the full one, since three at canvas size
-    /// would be nine megabytes on the page a stranger arrives at, and the
-    /// cells are half that wide anyway. Nothing is fetched until it plays,
-    /// and the band is hidden below the phone breakpoint, where the code
-    /// beside the picture would stack into a wall: on a phone the sketch's
-    /// own page is the place to read it.
-    func showcase(_ media: ExampleMedia, plan: Plan, page: Page) -> String {
-        var rows = ""
-        for piece in media.showcase {
-            guard let entry = media[piece.example], let clip = entry.loopSmall else { continue }
+    /// One at a time, with dots under it, so the band costs the page the
+    /// height of a single sketch however narrow the window is. That is what
+    /// puts it back on a phone, where three of them stacked was a wall of
+    /// code and the whole band had to be hidden instead.
+    ///
+    /// The README's own first program leads, since it is the one a stranger
+    /// should read first and it arrives with its explanation attached; the
+    /// rest come from the manifest, each with the note it carries there. The
+    /// small clip rather than the full one, since the cell is half the canvas
+    /// wide anyway, and only the sketch on screen plays: the others are not
+    /// fetched at all until they are paged to, which is a megabyte and a half
+    /// nobody pays for on arrival.
+    func band(lead: SiteHome.Section, running example: String, resolve: @escaping HTML.Resolver,
+              plan: Plan, page: Page) -> String {
+        let media = plan.media
+        let lines = lead.markdown.components(separatedBy: "\n")
+        let heading = HTML.render(lines.first ?? "", resolve: resolve).body
+        let opening = HTML.render(lines.dropFirst().joined(separator: "\n"), resolve: resolve).body
+
+        /// One sketch playing, with the program that draws it beside it.
+        func slide(_ sketch: String, showing body: String, first: Bool) -> String {
+            var figure = ""
+            if let entry = media[sketch], let clip = entry.loopSmall {
+                let name = sketch.split(separator: "/").last.map(String.init) ?? sketch
+                // Only the first one carries `autoplay`, so a reader running
+                // no script still sees the sketch that leads run; the rest are
+                // started by the script as they are paged to.
+                figure = """
+                    <figure><video src="\(media.address(of: clip))" poster="\(media.address(of: entry.stillSmall))" \
+                    width="\(entry.width)" height="\(entry.height)"\(first ? " autoplay" : "") muted loop playsinline \
+                    preload="none" aria-label="\(HTML.escape(name)) running"></video></figure>
+
+                    """
+            }
+            return """
+                <article class="band-slide">
+                \(figure)<div class="band-code">\(body)</div>
+                </article>
+
+                """
+        }
+
+        var slides = slide(example, showing: opening, first: true)
+        var labels = [lead.heading]
+        for piece in media.showcase where piece.example != example {
+            guard let entry = media[piece.example], entry.loopSmall != nil else { continue }
             let source = (try? String(contentsOf: root.appendingPathComponent("Examples/\(piece.example)/Sketch.swift"),
                                       encoding: .utf8)) ?? ""
             let code = source.split(separator: "\n", omittingEmptySubsequences: false)
@@ -659,30 +701,48 @@ public struct SiteBuilder {
             guard !code.isEmpty else { continue }
             let target = plan.examples["Examples/\(piece.example)"]
                 .map { relative(from: page.siteDirectory, to: $0.sitePath) }
-            let name = piece.example.split(separator: "/").last.map(String.init) ?? piece.example
             let link = target.map { " <a href=\"\($0)\">Run it</a>" } ?? ""
-            rows += """
-            <div class="showpiece">
-            <figure><video src="\(media.address(of: clip))" poster="\(media.address(of: entry.stillSmall))" \
-            width="\(entry.width)" height="\(entry.height)" autoplay muted loop playsinline preload="none" \
-            aria-label="\(HTML.escape(name)) running"></video></figure>
-            <div class="showpiece-code">\(HTML.codeBlock(code, language: "swift"))
-            <p class="showpiece-note">\(HTML.escape(piece.note))\(link)</p>
+            let name = piece.example.split(separator: "/").last.map(String.init) ?? piece.example
+            let told = "<p class=\"band-note\">\(HTML.escape(piece.note))\(link)</p>"
+            slides += slide(piece.example, showing: HTML.codeBlock(code, language: "swift") + "\n" + told, first: false)
+            labels.append(name)
+        }
+        let all = relative(from: page.siteDirectory, to: "examples/index.html")
+        let everything = "<a class=\"button quiet\" href=\"\(all)\">All \(plan.examples.count) examples</a>"
+        // One sketch is not a band: the dots and the arrows would have
+        // nowhere to go, so the section is the lead on its own.
+        guard labels.count > 1 else {
+            return "<section class=\"home-section home-band\">\n\(heading)\n\(slides)\(everything)\n</section>\n"
+        }
+        let dots = labels.enumerated().map { index, label in
+            """
+            <button class="band-dot" type="button" aria-current="\(index == 0)" \
+            aria-label="\(HTML.escape(label))"></button>
+            """
+        }.joined(separator: "\n")
+        return """
+            <section class="home-section home-band">
+            \(heading)
+            <div class="band" data-band>
+            <div class="band-track" tabindex="0" role="region" aria-label="Sketches, one at a time">
+            \(slides)</div>
+            <div class="band-controls">
+            <div class="band-pager">
+            <button class="band-arrow" type="button" data-band-step="-1" aria-label="Previous sketch">\
+            \(SiteStyle.chevron)</button>
+            <div class="band-dots">
+            \(dots)
+            </div>
+            <button class="band-arrow" type="button" data-band-step="1" aria-label="Next sketch">\
+            \(SiteStyle.chevron)</button>
+            </div>
+            \(everything)
             </div>
             </div>
+            \(SiteStyle.bandScript)
+            </section>
 
             """
-        }
-        guard !rows.isEmpty else { return "" }
-        let all = relative(from: page.siteDirectory, to: "examples/index.html")
-        return """
-        <section class="showcase" aria-label="What a sketch looks like">
-        <div class="showcase-head"><h2>What a sketch looks like</h2>
-        <p>Every one of these is the whole program.</p></div>
-        \(rows)<p class="showcase-more"><a class="button quiet" href="\(all)">All \(plan.examples.count) examples</a></p>
-        </section>
-
-        """
     }
 
     // MARK: - The markdown a machine reads

@@ -8,6 +8,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 - **The site can be read by a machine, not just rendered for a person.** Every page now has a markdown twin at the same address with `.md` in place of `.html`, holding what was actually written rather than navigation and styling wrapped around it, and `/llms.txt` is a curated index of the whole site pointing at those twins. Each page also says where its own twin is. This follows the `llms.txt` convention, which is what an agent with a browsing tool looks for; nothing fetches it automatically.
 
+### Changed
+
+- **The front page's sketches are a band you page through, and a phone gets them too.** *Hello, circle* now leads a row of sketches you move between with the dots under it, each running beside the whole program that draws it, starting with the circle the README opens on. The separate band of three below it is gone. Moving between them is the browser's own scrolling, so a swipe, a trackpad, and the arrow keys work with no script running, and only the sketch on screen plays: the rest are not fetched until you page to them, which is a megabyte and a half nobody pays for on arrival. One sketch at a time is what puts the band back on a phone, where three of them stacked was a wall of code and the whole thing had to be hidden.
+
 ### Fixed
 
 - **The site's favicon no longer sits in a white box in Safari's tabs.** Safari draws a light plate behind an icon whose own tone reads too close to the bar it sits on, which is what an icon carrying a near-black tile gets on a dark tab bar. The mark is drawn on nothing now, in near-black for a light bar and paper for a dark one, and the page picks between the two files: Safari ignores a color-scheme media query written inside an SVG favicon, so the drawing cannot change its own ink.
