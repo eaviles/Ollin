@@ -34,6 +34,30 @@ if [ ${#targets[@]} -eq 0 ]; then
 fi
 
 mkdir -p "$out"
+
+# The manifest and the package must not drift apart. A library product added to
+# Package.swift and forgotten in .spi.yml would ship with no reference at all,
+# and nothing else would say so. Only checked on a full run, since naming a
+# target on the command line is how you look at one in isolation.
+if [ $# -eq 0 ] || [ "${1:-}" = "--open" ]; then
+    swift package dump-package > "$out/package.json"
+    python3 - "$out/package.json" <<'CHECK'
+import json, re, sys
+# The C shim carries the shared CPU/GPU struct header and no API of its own.
+skip = {"COllinShaders"}
+products = {p["name"] for p in json.load(open(sys.argv[1]))["products"]
+            if "library" in json.dumps(p["type"])} - skip
+listed = set(re.findall(r"^ *- ([A-Za-z][A-Za-z0-9]*)$", open(".spi.yml").read(), re.M))
+missing = sorted(products - listed)
+extra = sorted(listed - products - skip)
+if missing:
+    print("api-docs: .spi.yml documents no reference for: " + ", ".join(missing))
+if extra:
+    print("api-docs: .spi.yml names something that is not a library product: " + ", ".join(extra))
+sys.exit(1 if missing or extra else 0)
+CHECK
+fi
+
 echo "==> symbol graphs for the whole package"
 swift package dump-symbol-graph > "$out/symbol-graph.log" 2>&1 || {
     tail -20 "$out/symbol-graph.log"; exit 1; }
