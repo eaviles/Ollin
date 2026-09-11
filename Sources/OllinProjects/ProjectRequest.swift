@@ -139,7 +139,7 @@ public enum FrameworkSource: Sendable, Hashable {
     case remote(url: String, version: String)
 
     /// The newest tagged release. Bump when a new minor is tagged.
-    public static let latestRelease = "0.3.0"
+    public static let latestRelease = "0.4.0"
 
     /// The `packages:` entry this source becomes in an Xcode project spec,
     /// indented to sit under the package's name. The path form is absolute,

@@ -3,5 +3,5 @@
 /// standalone stats panel; the single source of truth for "what build is this".
 public enum OllinVersion {
     /// Semantic version string.
-    public static let current = "0.3.0"
+    public static let current = "0.4.0"
 }

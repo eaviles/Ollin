@@ -2,11 +2,11 @@
 
 Notable changes to Ollin, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version numbers follow semantic versioning at major zero: a breaking change or a new feature bumps the minor, and a fix bumps the patch. Each release names its breaking renames here, so pin `.upToNextMinor` and read the entry before you move up.
 
-## [Unreleased]
+## [0.4.0] - 2026-09-11
 
 ### Added
 
-- **The API reference is generated from the source as well as written by hand.** Every public symbol of the twenty-one modules now has a page built by DocC, and the core's four hundred and seventy top-level names are grouped on one landing page rather than sorted by kind. A `.spi.yml` file tells the Swift Package Index which modules to build that documentation for, and `Scripts/api-docs.sh` builds the same thing locally. It fails on a documentation warning, which is how forty stale doc comments came to light: links pointing at symbols that had been renamed away, and parameters documented under names their signatures no longer carry.
+- **The API reference is generated from the source as well as written by hand.** Every public symbol of the twenty-one modules now has a page built by DocC, and the core's four hundred and seventy top-level names are grouped on one landing page rather than sorted by kind. A `.spi.yml` file tells the Swift Package Index which modules to build that documentation for, and `Scripts/api-docs.sh` builds the same thing locally. It fails on a documentation warning, which is how forty stale doc comments came to light: links pointing at symbols that had been renamed away, and parameters documented under names their signatures no longer carry. It also refuses to pass if a library module of the package is missing from that file, so a new satellite cannot ship with no reference at all.
 - **The site can be read by a machine, not just rendered for a person.** Every page now has a markdown twin at the same address with `.md` in place of `.html`, holding what was actually written rather than navigation and styling wrapped around it, and `/llms.txt` is a curated index of the whole site pointing at those twins. Each page also says where its own twin is. This follows the `llms.txt` convention, which is what an agent with a browsing tool looks for; nothing fetches it automatically.
 
 ### Changed
@@ -181,6 +181,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/eaviles/Ollin/compare/0.3.0...0.4.0
+[0.3.0]: https://github.com/eaviles/Ollin/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/eaviles/Ollin/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/eaviles/Ollin/releases/tag/0.1.0
