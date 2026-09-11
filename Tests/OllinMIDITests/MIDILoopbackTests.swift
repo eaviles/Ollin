@@ -122,33 +122,24 @@ struct MIDILoopbackTests {
 
         let clock = TimecodeClock(from: input)
         let code = Timecode(hours: 1, minutes: 2, seconds: 3, frames: 4, frameRate: .fps25)
-        // Sent from inside the wait, and sent again until it lands, the way the
-        // warmup is. An input connects to every source on the Mac, so anything
-        // else opening or closing one is a setup change that reconnects this
-        // input, and a walk that needs eight messages in a row is the thing a
-        // reconnect lands in the middle of. Resending the same eight is free:
-        // they spell one frame, so a set assembled across a retry spells it too.
-        func sendTheWalk() {
-            for piece in 0 ..< 8 {
-                output.send(MIDIMessage(.timecodeQuarterFrame(piece: piece, value: code.quarterFrameValue(piece: piece))))
-            }
+        // Sent once, never from inside the wait. The clock counts the frames a
+        // walk takes, so a second set does not repeat the answer, it advances
+        // it: resending until it lands reads two frames late (verified on a
+        // runner, 01:02:03:07 for a walk that spells 01:02:03:04).
+        for piece in 0 ..< 8 {
+            output.send(MIDIMessage(.timecodeQuarterFrame(piece: piece, value: code.quarterFrameValue(piece: piece))))
         }
         // `isReceiving` is a one-second window, so it is read in the same probe
         // that sees the frame land: a starved run can hand the task back
         // seconds after the wait returned, with the window already closed.
-        let landed = await waitFor { () -> (Timecode, Bool)? in
-            sendTheWalk()
-            return clock.timecode.map { ($0, clock.isReceiving) }
-        }
+        let landed = await waitFor { clock.timecode.map { ($0, clock.isReceiving) } }
         #expect(landed?.0.frameRate == .fps25)
         #expect(landed?.0 == code.advanced(by: 1))
         #expect(landed?.1 == true)
 
         let parked = Timecode(hours: 9, minutes: 0, seconds: 0, frames: 0, frameRate: .fps30)
-        let located = await waitFor { () -> Timecode? in
-            output.send(timecode: parked)
-            return clock.timecode == parked ? parked : nil
-        }
+        output.send(timecode: parked)
+        let located = await waitFor { clock.timecode == parked ? parked : nil }
         #expect(located == parked)
         #expect(clock.frameRate == .fps30)
     }

@@ -157,7 +157,11 @@ struct TempoEngineTests {
 /// End-to-end over Core MIDI in-process: a `MIDIOutput` virtual source feeding a
 /// `TempoClock` through a `MIDIInput`. Soft-skips when Core MIDI isn't
 /// available (the engine tests above are the always-on guard).
-@Suite
+///
+/// Serialized for the reason `MIDILoopbackTests` is: the endpoints are
+/// machine-global and an input connects to every source, so two of these at
+/// once share each other's link and each teardown reconnects the other.
+@Suite(.serialized)
 struct TempoClockLoopbackTests {
 
     /// The probe comes before the clock is read: a starved task can wake past
