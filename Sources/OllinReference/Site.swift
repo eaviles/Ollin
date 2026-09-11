@@ -319,10 +319,14 @@ public struct SiteBuilder {
         report.sections = entries.count
 
         try write(SiteStyle.css, to: output.appendingPathComponent("assets/site.css"))
-        // The favicon is the small form in paper on an ink tile: a tab bar
-        // is whatever color the browser makes it, so the icon brings its own.
+        // The favicon is the small form on nothing, written twice: Safari
+        // draws a light plate behind an icon it reads as too close in tone to
+        // the tab bar, which is what puts an icon on a dark tile inside a
+        // white box there. No one ink clears that on both a white bar and a
+        // near-black one, so the page picks the file on the reader's scheme.
         if let small = SiteLogo.read(root.appendingPathComponent(SiteLogo.small)) {
-            try write(SiteLogo.tiled(small, ink: SiteLogo.paper, tile: SiteLogo.ink), to: output.appendingPathComponent("favicon.svg"))
+            try write(SiteLogo.colored(small, ink: SiteLogo.ink), to: output.appendingPathComponent("favicon.svg"))
+            try write(SiteLogo.colored(small, ink: SiteLogo.paper), to: output.appendingPathComponent("favicon-dark.svg"))
         } else {
             report.notes.append("the site has no favicon: \(SiteLogo.small) is not in the checkout")
         }
@@ -958,7 +962,18 @@ public struct SiteBuilder {
                 """
             }
         }
+        // Safari ignores a color-scheme media query written inside an SVG
+        // favicon, so the page swaps the file instead of the drawing swapping
+        // its own ink: the near-black mark on a light bar, the paper one on a
+        // dark bar, and again whenever the reader changes scheme.
         var icons = "<link rel=\"icon\" href=\"\(asset("favicon.svg"))\" type=\"image/svg+xml\">\n"
+        icons += """
+        <script>(function(){var d=matchMedia('(prefers-color-scheme: dark)'),\
+        l=document.querySelector('link[rel=icon]');if(!l)return;\
+        var p=function(){l.href=d.matches?'\(asset("favicon-dark.svg"))':'\(asset("favicon.svg"))';};\
+        d.addEventListener('change',p);p();})();</script>
+
+        """
         icons += "<link rel=\"mask-icon\" href=\"\(asset("mask-icon.svg"))\" color=\"\(SiteLogo.ink)\">\n"
         if plan.hasTouchIcon {
             icons += "<link rel=\"apple-touch-icon\" href=\"\(asset("apple-touch-icon.png"))\">\n"

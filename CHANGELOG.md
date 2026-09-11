@@ -8,6 +8,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 - **The site can be read by a machine, not just rendered for a person.** Every page now has a markdown twin at the same address with `.md` in place of `.html`, holding what was actually written rather than navigation and styling wrapped around it, and `/llms.txt` is a curated index of the whole site pointing at those twins. Each page also says where its own twin is. This follows the `llms.txt` convention, which is what an agent with a browsing tool looks for; nothing fetches it automatically.
 
+### Fixed
+
+- **The site's favicon no longer sits in a white box in Safari's tabs.** Safari draws a light plate behind an icon whose own tone reads too close to the bar it sits on, which is what an icon carrying a near-black tile gets on a dark tab bar. The mark is drawn on nothing now, in near-black for a light bar and paper for a dark one, and the page picks between the two files: Safari ignores a color-scheme media query written inside an SVG favicon, so the drawing cannot change its own ink.
+
 ## [0.3.0] - 2026-09-10
 
 ### Added

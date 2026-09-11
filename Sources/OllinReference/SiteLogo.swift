@@ -12,14 +12,19 @@ import Foundation
 ///   the bar's mark takes the page's own text color and one file serves the
 ///   light scheme and the dark one.
 /// - `colored` writes a drawing in one color, for a place that cannot pass
-///   one in: the README's dark twin on GitHub, where the picture is an image.
-/// - `tiled` puts a drawing in one color on a square tile of another, which
-///   is the favicon: a tab bar is whatever color the browser makes it, so
-///   the icon carries its own ground.
+///   one in: the README's dark twin on GitHub, where the picture is an image,
+///   and the two favicons, one inked for a light tab bar and one for a dark.
+///
+/// A favicon carries no ground of its own. Safari draws a light plate behind
+/// an icon it reads as too close in tone to the bar it sits on, so an icon on
+/// a near-black tile comes out of a dark bar in a white box, and a mark on
+/// nothing gives that plate no edge to frame. No one ink clears the test on
+/// both a white bar and a near-black one, so the site writes both files and
+/// the page picks between them on the reader's scheme.
 ///
 /// The bar wears the full mark. The small form (heavier lines, four dots in
 /// place of the satellites) is for the places that show the logo at icon
-/// size: the favicon and Safari's pinned-tab icon, which is the one that
+/// size: the favicons and Safari's pinned-tab icon, which is the one that
 /// reads at 16 px. Two pictures the site cannot draw from the masters at
 /// build time, since they have to be bitmaps, are written by `Scripts/logo.sh`
 /// beside them and copied in: the social card a link preview shows, and the
@@ -36,7 +41,7 @@ enum SiteLogo {
     /// The touch icon, 180 by 180, the same on a square tile.
     static let touchIcon = "Logo/ollin-touch.png"
 
-    /// The site's ink and paper, which the favicon is drawn in.
+    /// The site's ink and paper, which the favicons are drawn in.
     static let ink = "#0B0F14"
     static let paper = "#F4F3F0"
 
@@ -74,20 +79,12 @@ enum SiteLogo {
         rewrite(svg, compact: false, namespace: true, trailing: " fill=\"\(ink)\"")
     }
 
-    /// A drawing in one color on a square tile of another, as a file. The
-    /// tile fills the viewport whatever the box, so it needs no numbers.
-    static func tiled(_ svg: String, ink: String, tile: String) -> String {
-        rewrite(svg, compact: false, namespace: true, trailing: " fill=\"\(ink)\"",
-                afterRoot: "\n  <rect width=\"100%\" height=\"100%\" fill=\"\(tile)\"/>")
-    }
-
     /// The drawing with its root tag rewritten: `leading` attributes right
     /// after `svg`, `trailing` ones at the end, the namespace kept or not,
-    /// `afterRoot` placed as the first child, and any written-out black
-    /// dropped from the shapes. Anything before the root tag (an XML prolog)
-    /// goes. Empty when the text holds no root tag.
+    /// and any written-out black dropped from the shapes. Anything before the
+    /// root tag (an XML prolog) goes. Empty when the text holds no root tag.
     private static func rewrite(_ svg: String, compact: Bool, namespace: Bool,
-                                leading: String = "", trailing: String = "", afterRoot: String = "") -> String {
+                                leading: String = "", trailing: String = "") -> String {
         let text = compact ? compacted(svg) : svg
         guard let open = text.range(of: "<svg"), let close = text[open.upperBound...].firstIndex(of: ">") else { return "" }
         var attributes = String(text[open.upperBound ..< close])
@@ -98,7 +95,7 @@ enum SiteLogo {
         for black in writtenBlacks {
             body = body.replacingOccurrences(of: black, with: "")
         }
-        return "<svg" + leading + attributes + trailing + ">" + afterRoot + body
+        return "<svg" + leading + attributes + trailing + ">" + body
     }
 
     /// The text with its indentation and blank lines gone, for a page.

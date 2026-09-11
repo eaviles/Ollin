@@ -167,13 +167,17 @@ struct SiteTests {
         #expect(example.contains("language-swift"))
         #expect(example.contains("Example-Basic-HelloCircle"))
 
-        // The logo: the favicon is the small form in paper on an ink tile,
+        // The logo: the favicon is the small form on nothing in two inks,
         // Safari's pinned-tab icon the small form alone, every page's bar
         // wears the full mark in the page's own color, and the README's own
         // picture of the mark stays off the front page, whose bar has it.
         let favicon = try String(contentsOf: output.appendingPathComponent("favicon.svg"), encoding: .utf8)
+        let faviconDark = try String(contentsOf: output.appendingPathComponent("favicon-dark.svg"), encoding: .utf8)
         let small = try String(contentsOf: root.appendingPathComponent(SiteLogo.small), encoding: .utf8)
-        #expect(favicon == SiteLogo.tiled(small, ink: SiteLogo.paper, tile: SiteLogo.ink), "the favicon is not the small form on its tile")
+        #expect(favicon == SiteLogo.colored(small, ink: SiteLogo.ink), "the favicon is not the small form in ink")
+        #expect(faviconDark == SiteLogo.colored(small, ink: SiteLogo.paper), "the dark favicon is not the small form in paper")
+        #expect(!favicon.contains("<rect") && !faviconDark.contains("<rect"),
+                "a favicon carries a ground, which is what Safari draws a plate around")
         let pinned = try String(contentsOf: output.appendingPathComponent("mask-icon.svg"), encoding: .utf8)
         #expect(pinned == SiteLogo.colored(small, ink: SiteLogo.ink), "the pinned-tab icon is not the small form in ink")
         for (name, page) in [("the front page", home), ("a chapter", chapter), ("an example", example)] {
@@ -182,6 +186,8 @@ struct SiteTests {
             #expect(!page.contains("viewBox=\"0 0 14 14\""), "\(name) wears the small form somewhere")
             #expect(page.contains("<link rel=\"mask-icon\" href=") && page.contains("<link rel=\"apple-touch-icon\" href="),
                     "\(name) names no pinned-tab or touch icon")
+            #expect(page.contains("prefers-color-scheme: dark)'),") && page.contains("favicon-dark.svg"),
+                    "\(name) never swaps its favicon for a dark tab bar")
             #expect(!page.contains(SiteLogo.paper) && !page.contains("fill=\"#000"),
                     "\(name) draws the mark in its own ink, not the page's")
         }
@@ -529,8 +535,9 @@ struct SiteTests {
         """, "\(inline)")
 
         // A color set on the root reaches every shape, so a file keeps its
-        // layout and gains one attribute; the tile is the first child and
-        // fills the viewport whatever the box.
+        // layout and gains one attribute, and nothing is put in front of the
+        // drawing: a favicon that brought its own ground is what Safari draws
+        // its contrast plate around.
         #expect(SiteLogo.colored(master, ink: "#F4F3F0") == """
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="#F4F3F0">
           <path d="M1 1h3v3z"/>
@@ -539,11 +546,6 @@ struct SiteTests {
         </svg>
 
         """)
-        #expect(SiteLogo.tiled(master, ink: "#F4F3F0", tile: "#0B0F14").hasPrefix("""
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="#F4F3F0">
-          <rect width="100%" height="100%" fill="#0B0F14"/>
-          <path d="M1 1h3v3z"/>
-        """))
 
         // A raw export writes its black out and carries a prolog; both go,
         // or the color set on the root would reach nothing.
