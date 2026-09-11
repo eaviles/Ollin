@@ -1239,6 +1239,48 @@
       "still": "examples/3D/Geometry/AnimatedScene/still.jpg?v=86316ed1",
       "stillSmall": "examples/3D/Geometry/AnimatedScene/still-640.jpg?v=d2631355"
     },
+    "3D/Geometry/Carved": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.543,
+      "sound": false,
+      "source": "e7d6bd1bbdabb7e7",
+      "rendered": "2026-09-11",
+      "bytes": {
+        "loop": 2398181,
+        "loopSmall": 600004,
+        "still": 51961,
+        "stillSmall": 20745
+      },
+      "loop": "examples/3D/Geometry/Carved/loop.mp4?v=c75d5d65",
+      "loopSmall": "examples/3D/Geometry/Carved/loop-640.mp4?v=10d7b0ec",
+      "still": "examples/3D/Geometry/Carved/still.jpg?v=476672b8",
+      "stillSmall": "examples/3D/Geometry/Carved/still-640.jpg?v=a41905dd"
+    },
+    "3D/Geometry/CutAndJoin": {
+      "width": 1080,
+      "height": 1080,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.48,
+      "sound": false,
+      "source": "b32403538856e5d7",
+      "rendered": "2026-09-11",
+      "bytes": {
+        "loop": 2452722,
+        "loopSmall": 527610,
+        "still": 61106,
+        "stillSmall": 23618
+      },
+      "loop": "examples/3D/Geometry/CutAndJoin/loop.mp4?v=ff5719a7",
+      "loopSmall": "examples/3D/Geometry/CutAndJoin/loop-640.mp4?v=b91d6ac7",
+      "still": "examples/3D/Geometry/CutAndJoin/still.jpg?v=603995dc",
+      "stillSmall": "examples/3D/Geometry/CutAndJoin/still-640.jpg?v=06b56840"
+    },
     "3D/Geometry/Fabrication": {
       "width": 1080,
       "height": 1080,

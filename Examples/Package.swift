@@ -191,6 +191,8 @@ let package = Package(
         example("3D/Geometry/PointCloud"),
         example("3D/Geometry/StrangeAttractor"),
         example("3D/Geometry/Transforms"),
+        example("3D/Geometry/Carved"),
+        example("3D/Geometry/CutAndJoin"),
         example("3D/Geometry/Solids"),
         example("3D/Geometry/SolidType"),
         example("3D/Geometry/HopfFibration"),

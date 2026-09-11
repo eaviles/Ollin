@@ -241,7 +241,39 @@ White stays put in both readings, one convention doing quiet work. A height map'
 
 ## Meshes made from other meshes
 
-Two more ways to get geometry, and both start from a mesh you already have.
+Three more ways to get geometry, and all of them start from a mesh you already have.
+
+### Cutting one solid with another
+
+The oldest way to make a shape is to start with a block and take material off it. Two solids combine four ways, and they are the same four a filled `Shape` gives you on the plane:
+
+```swift
+let cube = Mesh.box(size: 1.3)
+let ball = Mesh.sphere(radius: 0.88)
+
+cube.union(ball)          // everything either one covers
+cube.intersection(ball)   // only what both cover
+cube.subtracting(ball)    // the cube, with the ball taken out of it
+```
+
+<img src="Images/22-Meshes/CutSolids.jpg" alt="Four solids in a row against black: a blue cube with an orange ball showing through it, labeled a cube and a ball; an orange cube with a dome bulging from each face, labeled union; a yellow-green cube with every edge and corner rounded off, labeled intersection; and a green cube with a round hole bitten through each face, labeled cube minus ball" width="880">
+
+Look at the third one. That is a cube and a ball. It is also a block with every edge and every corner rounded at once, which by hand means modeling twelve fillets. That is the thing to take from this. You are not cutting because you want a hole. You are cutting because a shape that is hard to describe is often easy to *catch* between two shapes that are not.
+
+What comes back is an ordinary mesh. It draws the same and takes a material and a shadow the same. It can be broken apart, handed to the physics solver, or written out for a printer. That makes this different from the `subtract { }` block you met in the [fields chapter](26-SculptingWithFields.md). The block melts distance fields on the GPU while the frame is drawn, and leaves no geometry behind. Reach for it when you want a blobby form that moves. Reach for these when you want the shape itself.
+
+Three things to know before you cut.
+
+**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give, and what comes back is meaningless rather than merely ugly. Every built-in generator closes. If you are unsure, `printCheck()` will tell you, the same examination the [printing chapter](31-SharingAndPerforming.md) uses.
+
+**A cutter has to be the right way out.** Mirroring a mesh turns it inside out, whether you swap two of its coordinates or scale an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead:
+
+```swift
+let shaft = Mesh.cylinder(radius: 0.2, height: 2)
+block.subtracting(shaft.mapPositions { Vector3($0.y, -$0.x, $0.z) })   // a quarter turn
+```
+
+**Cut once.** This is work your processor does, not your graphics card. Solids of a few thousand triangles take a few tenths of a second, and denser ones take longer. So cut in `setup()`, or when a parameter moves, and keep the mesh for `draw()` to draw. That is the same advice as the cage below, for the same reason.
 
 ### Smooth from a cage
 
@@ -870,6 +902,7 @@ The measured finishes are the Cook-Torrance microfacet model, in the metallic-ro
 - [The Hopf fibration](../Docs/3D/HopfFibration.md): the base sets, taking the color from the base point, the straight one, and what it costs to draw.
 - [Scenes](../Docs/3D/Scenes.md): the whole `loadScene` reference, what carries over from a glTF file (nodes, cameras, punctual lights, animations, skins, and morph targets) and from a USD file (nodes, cameras, its UsdLux lights, its transform animation, and its UsdSkel skins and blend shapes), how intensities are normalized, and building a `Scene` in code.
 - [Bringing a scene over](../Docs/Tools/SceneImport.md): `ollin new --from-scene` writes the sketch instead of loading the file, so the camera, the lights and every placement become source you own. What it leaves behind, and why, is listed there.
+- [Cutting solids](../Docs/3D/3D.md#booleans): the four set operations on a `Mesh`, what has to be true of the two solids, what rides along with the result, and the two shapes that come out honestly awkward.
 - [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md): both schemes, what happens at an open boundary, and when to pick which.
 - [Mesh growth](../Docs/Generators/MeshGrowth.md): the differential-growth and reaction-diffusion forms, their parameters, and how to keep a growth stable.
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highRes` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky parameters.

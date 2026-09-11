@@ -4433,17 +4433,21 @@ struct Mesh: Sendable
   func fractured(into: Int, seed: Int = default) -> [Mesh]
   func generatingSmoothNormals() -> Mesh
   func generatingTangents() -> Mesh
+  func intersection(_: Mesh) -> Mesh
   func mapPositions(_: (Vector3) -> Vector3) -> Mesh
   func normalMapped(_: Image, scale: Double = default) -> Mesh
   func normalized(scale: Double = default) -> Mesh
   func parallaxMapped(_: Image, scale: Double = default) -> Mesh
   func printCheck(upAxis: UpAxis = default) -> MeshPrintCheck
   func subdivided(_: SubdivisionScheme = default, levels: Int = default) -> Mesh
+  func subtracting(_: Mesh) -> Mesh
   func surfaceMapped(metallicRoughness: Image? = default, occlusion: Image? = default, occlusionStrength: Double = default, emissive: Image? = default, emissiveColor: Color? = default) -> Mesh
+  func symmetricDifference(_: Mesh) -> Mesh
   func textured(_: Image, baseColor: Color = default, wrap: TextureWrap = default) -> Mesh
   func transformed(by: MeshInstance) -> Mesh
   func transformed(by: simd.simd_float4x4) -> Mesh
   func triplanarTextured(_: Image, normal: Image? = default, scale: Double = default, normalScale: Double = default, baseColor: Color = default) -> Mesh
+  func union(_: Mesh) -> Mesh
   init(positions: [Vector3], normals: [Vector3] = default, indices: [UInt32], uvs: [Vector2] = default, colors: [Color] = default, material: MeshMaterial? = default, tangents: [MeshTangent] = default)
   init?(contentsOf: Foundation.URL)
   init?(objSource: String)
