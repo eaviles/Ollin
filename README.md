@@ -14,12 +14,12 @@ The API borrows the friendly `setup()`/`draw()` feel of [p5.js](https://p5js.org
 
 Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
 
-- **Platform:** macOS 26+ and Swift 6.3+ (Xcode 26), on any Mac that runs them. There is no separate graphics requirement: every hardware feature is asked for at run time and steps down when it is missing, so an M1 runs everything, tracing rays in software where an M3 and later have dedicated units for it. A sketch also runs on iOS 26 as an app, [worked on from the Mac](Docs/Tools/OnThePhone.md). Apple platforms only, [by design](#why-apple-only)
+- **Platform:** macOS 26+ and Swift 6.3+ (Xcode 26), on any Mac that runs them. Apple platforms only, [by design](#why-apple-only)
 - **Rendering:** Metal, built on Foundation / SwiftUI / MetalKit / simd; no package dependencies; the C/C++ libraries it does use (Box2D, Jolt, libtess2, Clipper2, Syphon, and a few smaller pieces) are vendored under `External/` with licenses intact and provenance recorded ([details](ATTRIBUTION.md#bundled-third-party-code))
 - **License:** MIT
 - **Built with:** an AI coding assistant (Claude) under [@eaviles](https://github.com/eaviles)'s direction; see [Built with AI](#built-with-ai)
 
-> **Status: alpha, pre-1.0, built in public.** The rendering, the color, and the output are production-grade. The API is not frozen yet. Everything documented below runs today, but names and signatures still change between commits, and there's no stability or support guarantee. See [Status & contributing](#status--contributing).
+> **Status: alpha, pre-1.0, built in public.** The rendering, the color, and the output are production-grade. The API is not frozen yet: names and signatures still change, and there's no stability or support guarantee. [Choose a release or pin a minor version](#install), and read the [changelog](CHANGELOG.md) before upgrading. See [Status & contributing](#status--contributing) for what to expect.
 
 ## Hello, circle
 
@@ -46,7 +46,9 @@ That's the whole program: a black circle outline, breathing on a white canvas. `
 
 ## Run it
 
-From the terminal, no Xcode required:
+**Before you start:** macOS 26 or later, and Xcode 26 installed for its Swift 6.3+ toolchain. You never have to open Xcode itself. Any Mac that runs macOS 26 has the graphics support Ollin needs. Check the compiler with `swift --version`. The first build compiles the framework from source and may take several minutes; later builds are incremental.
+
+Then, in a terminal:
 
 ```sh
 git clone https://github.com/eaviles/Ollin.git
@@ -54,13 +56,34 @@ cd Ollin
 swift run --package-path Examples Example-Basic-HelloCircle
 ```
 
-That builds the package and opens a window running the sketch above. The first build compiles the whole framework from source, so give it a few minutes; every build after that is incremental and quick. Nearly five hundred runnable sketches live in [`Examples/`](Examples/), grouped by topic; `swift run` inside `Examples/` with no argument lists every example target, and from the repo root `swift run OllinExamples` opens a gallery with all of them in a sidebar.
+You should see a black circle outline breathing on a white canvas. **Try one edit:** close the window, open [`Examples/Basic/HelloCircle/Sketch.swift`](Examples/Basic/HelloCircle/Sketch.swift), change `stroke(.black)` to `stroke(.red)`, and run the last command again. The circle now breathes in red.
+
+More than five hundred runnable sketches live in [`Examples/`](Examples/README.md), grouped by topic. From the repo root, `swift run OllinExamples` opens a gallery with all of them in a sidebar. The [examples' running guide](Examples/README.md#running) covers individual targets and browsing from the terminal.
 
 The canvas is 1080×1080 by default, previewed fit to your screen. `canvasSize` sets the resolution a sketch renders and exports at, and `windowMode` sizes the preview window. The [Canvas](Docs/Core/Canvas.md) page covers the presets and how to write resolution-independent sketches. Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR; [Where a point is](Docs/Concepts/Coordinates.md) covers units and other frames.
 
 ## Install
 
-To use Ollin from your own package:
+### For a standalone sketch
+
+From the clone created above, install the command:
+
+```sh
+Scripts/ollin install
+```
+
+Follow any `PATH` instruction it prints. Then, in the folder where you keep sketches:
+
+```sh
+ollin new dots.swift        # write a starter sketch
+ollin dots.swift            # open a live window; edit the file and save to reload
+```
+
+Keep the clone: `ollin` links to it and uses its framework version. Its first run builds a release host, so allow a few minutes even if you already ran Hello Circle. To stay on a release rather than the tip, check out the newest tag in that clone, and read the [changelog](CHANGELOG.md) before moving to a later one. [Single-file sketches](Docs/Tools/SingleFile.md) covers assets, extra imports, directly executable files, and growing into a package.
+
+### In an existing Swift package
+
+Add these entries to your `Package.swift`, then put a sketch like [Hello, circle](#hello-circle) in `Sources/MySketch/Sketch.swift` and run `swift run MySketch`:
 
 ```swift
 // Package.swift
@@ -79,9 +102,7 @@ targets: [
 ]
 ```
 
-The `platforms` entry matters: without it SwiftPM targets its oldest macOS default, and the build fails against Ollin's macOS 26 floor.
-
-You can also skip the package entirely: a single loose `.swift` file runs on its own. See [Single-file sketches](Docs/Tools/SingleFile.md), or the [Live reload](#live-reload) section below for the `ollin` command that runs a loose file.
+The `platforms` entry matters: without it SwiftPM targets its oldest macOS default, and the build fails against Ollin's macOS 26 floor. `.upToNextMinor(from: "0.4.0")` accepts 0.4.x fixes and keeps out 0.5.0, where APIs may change. Read the [changelog](CHANGELOG.md) before raising that bound.
 
 ## Why Ollin exists
 
@@ -101,114 +122,86 @@ All of it is one API with the same conventions throughout.
 
 - **The output is production-grade.** Every frame composites in linear light with HDR tone mapping, dithered output, analytic anti-aliasing, and up to 8× MSAA. Color is OKLab with real gamut mapping, not HSB approximations. Exports are deterministic and carry a reproducibility recipe: the seed, the parameter values, the commit. Rendering is snapshot-tested against committed reference images.
 
-- **The edit-to-see loop is instant.** `swift run OllinLive Sketch.swift` watches the file and hot-swaps each save into the running window, and a typo never closes it. `@Param` properties become typed inspector controls (sliders, steppers, toggles, menus, color wells, palette and gradient strips) in grouped cards, and they keep their values across reloads. It also reads out [what the frame cost](Docs/Tools/Profiling.md): CPU against GPU, draws, and passes. And a shape placed by plain numbers can be [handled with the pointer](Docs/Tools/DragToEdit.md): hold Command to move it, pull a corner to resize it, or take the knob above it to turn it, and those numbers change in your own file.
+- **Edit, save, see it change.** [Live reload](#live-reload) recompiles just the sketch and swaps it into the running window. Typed `@Param` controls keep their values across reloads, and [dragging a shape](Docs/Tools/DragToEdit.md) changes the numbers in your own source. The inspector also shows [what the frame cost](Docs/Tools/Profiling.md): CPU against GPU, draws, and passes.
 
-- **Live coding on stage.** `swift run OllinLiveCoding` is a performance instrument: the sketch fills the window, the code rides over it as translucent text, and ⌘↩ (Command-Return) recompiles the buffer mid-motion, with the clock and tuned parameters carrying across the swap. A typo shows as a strip at the bottom while the last good sketch keeps playing.
+- **Live coding on stage.** [OllinLiveCoding](Docs/Tools/LiveCoding.md) puts the code over the visuals for the audience. Evaluate on command, mid-motion, with the clock and tuned parameters carrying across the swap. A typo leaves the last good sketch playing.
 
-- **A Metal core you can extend.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, frames composite through an [HDR float pipeline](Docs/Drawing/HDR.md), and when you outgrow the built-ins you write your own fragment shader or compute kernel without leaving the framework.
+- **A Metal core you can extend.** Most shapes render as analytic signed-distance fields (one instanced quad each, so thousands of moving shapes stay cheap), strokes carry their own anti-aliasing fringe, and frames composite through an [HDR float pipeline](Docs/Drawing/HDR.md). When you outgrow the built-ins, write your own [fragment shader](Docs/Shaders/Shaders.md) or [compute kernel](Docs/Shaders/Compute.md) without leaving the framework.
 
 - **Motion is the default.** `draw()` runs at the display's refresh rate from the first line, so `120 + sin(time) * 40` is already an animation. Under that is a motion layer: frame-rate-independent easing and springs, keyframe timelines, [parameters on their own curves](Docs/Core/Automation.md), input smoothing, noise that closes exactly over a lap, perfect-loop export, and motion locked to MIDI clock.
 
-- **Output that leaves the screen.** Headless PNG stills and deterministic sequences, MP4 and GIF straight from the CLI (and [slowed down](Docs/Output/Export.md#slow-motion) on the way out, by a finer clock or by frames the machine makes between the drawn ones), a [web page](Docs/Output/Web.md) that plays what the sketch drew back in a browser, vector SVG and PDF with optional hatched fills for pen plotters, [G-code programs](Docs/Output/GCode.md) that a pen plotter, laser cutter, or CNC router runs directly, [DXF drawings](Docs/Output/DXF.md) that a CAD program or a laser's software opens with each color on its own layer, [embroidery files](Docs/Output/Embroidery.md) that a sewing machine stitches, [print separations](Docs/Output/PrintSeparations.md) with a real ink model for riso and screen printing, [print color management](Docs/Output/PrintColor.md) that proofs the canvas against a press profile and splits it into process plates, [fabrication files](Docs/Output/Fabrication.md) (STL, OBJ, 3MF) so a generated mesh can be 3D-printed at a real size, and [spatial output](Docs/Output/Spatial.md): USDZ so a 3D piece opens in Quick Look, sends in a message, and stands on a real table through AR, or spatial video so its motion plays in depth on a headset.
+- **Output that leaves the screen.** [Export](#export) stills, sequences, video, GIF, recorded web pages, or vector SVG and PDF. Physical work has its own formats: [G-code](Docs/Output/GCode.md), [DXF](Docs/Output/DXF.md), [embroidery](Docs/Output/Embroidery.md), [print separations](Docs/Output/PrintSeparations.md) with a real ink model, [press proofing](Docs/Output/PrintColor.md), and [STL, OBJ, and 3MF](Docs/Output/Fabrication.md) at a real size. [Spatial output](Docs/Output/Spatial.md) carries a piece into Quick Look and AR as USDZ, or onto a headset as spatial video.
 
-- **Or running in the system.** `ollin new --kind mac-app` wraps a finished piece as a signed, double-clickable [Mac app](Docs/Output/App.md) that runs where the toolchain never was, with a frame of itself as its icon; `--kind screen-saver` wraps it as the machine's [screen saver](Docs/Output/ScreenSaver.md), so the work runs when nobody is at the desk; `--kind wallpaper` runs it as the [desktop wallpaper](Docs/Output/Wallpaper.md), behind the icons on every display; and `--kind menu-bar` puts a small live strip of it [in the menu bar](Docs/Output/MenuBar.md), beside the clock all day. One script builds, signs, and installs any of them; the sketch itself stays an ordinary sketch. A sketch also runs on a phone: `ollin phone` puts it on a paired [iPhone or iPad](Docs/Tools/OnThePhone.md), installed again on every save with its clock and parameters carried across, and `--kind ios-app` writes it as an [app of your own](Docs/Tools/OnThePhone.md#in-an-app-of-your-own) for the phone and the tablet.
+- **Or running in the system.** The project generator wraps a sketch as a signed [Mac app](Docs/Output/App.md), [screen saver](Docs/Output/ScreenSaver.md), [desktop wallpaper](Docs/Output/Wallpaper.md), or [menu-bar piece](Docs/Output/MenuBar.md). Each comes with a script to build, sign, and install it; the sketch stays ordinary Swift. `ollin phone` runs it on a paired [iPhone or iPad](Docs/Tools/OnThePhone.md), reinstalling on save with its clock and parameters carried across. You can also generate an [iOS app of your own](Docs/Tools/OnThePhone.md#in-an-app-of-your-own).
 
-- **Made to be left running.** A piece on a wall declares [installation mode](Docs/Output/Installation.md) in one line. The screen fills, the pointer is hidden, and the display stays awake with the screen saver held off. The clock survives a night of display sleep and a week of running, which is where a long run usually breaks. Mark the state `@Saved` and a relaunch picks the piece up where it was. A watch starts it again after a crash. A schedule gives it the building's hours. Command-K lines the picture up with the wall it is thrown onto, and two projectors can share one wall without a bright bar down the join. One machine can drive both of them, or spread one canvas over every display it has.
+- **Made to be left running.** [Installation mode](Docs/Output/Installation.md) fills the screen, hides the pointer, and keeps the display awake. The clock survives display sleep and long runs; `@Saved` state survives a relaunch. A watch restarts a crashed piece, a schedule gives it the building's hours, and projection calibration and edge blending fit one canvas across displays or projectors.
 
-Everything above ships in this repository. [The catalog](Docs/README.md#the-catalog) lists all of it area by area, with the reference page for each: shapes and geometry, text and color, shapes that merge, sixty-six generative techniques, layered effects, your own shaders, GPU compute, simulation and physics, the opt-in 3D layer, perception, data as material, sound, control surfaces, and the rig it plays in.
+Everything above ships in this repository. [The catalog](Docs/README.md#the-catalog) is the full capability map, with a reference page for each area. Beyond drawing and shaders, browse [sixty-six generative techniques](Docs/Generators/README.md), [simulation and physics](Docs/Simulation/README.md), the [opt-in 3D layer](Docs/3D/README.md), [on-device perception](Docs/Vision/Vision.md), [data](Docs/Helpers/Data.md), [sound](Docs/Helpers/Audio.md), and [control surfaces and rig integration](Docs/Integration/README.md).
 
 ## Live reload
 
-In creative coding, you want to see the result of an edit as soon as you can. So you run a sketch once and keep editing it. On each save, Ollin recompiles that one file and swaps it into the running window:
+To keep a window open while you edit, run a sketch through OllinLive from the repo root:
 
 ```sh
 swift run OllinLive Examples/Basic/HelloCircle/Sketch.swift
 ```
 
-The window never closes. If an edit doesn't compile, the error prints and the old sketch keeps running.
+Save an edit in your editor and Ollin recompiles just that file, then swaps it into the running window. If it doesn't compile, the error shows and the old sketch keeps running. A standalone file started with `ollin dots.swift` uses this same host.
 
-Hold Command over the window, and Ollin outlines the shape under the pointer, names the line that drew it, and puts handles on it. You can then [drag the shape](Docs/Tools/DragToEdit.md) to move it, pull a corner to resize it, or turn the knob above it to rotate it. Each of those writes the new numbers into that line. `⌘]` or `⌘[` moves the line itself past its neighbor's line, so the shape draws in front of or behind that neighbor. Laying something out by eye is then no longer a matter of guessing at coordinates. The performance host has the same drag, and there it rewrites the code on the stage and evaluates it.
+[`@Param` properties](Docs/Helpers/Parameters.md) become typed inspector controls: sliders, steppers, toggles, menus, color wells, palette and gradient strips. They keep their tuned values across reloads. Hold Command over a shape drawn with plain numbers to [move, resize, or rotate it](Docs/Tools/DragToEdit.md); the handles write the new numbers into your source.
 
-Each reload starts the sketch fresh by default. `--keep-clock` carries `time` and `frameCount` across the reload, so an animation doesn't jump back to the start. There is also a `reloaded()` hook.
+Each reload starts the sketch fresh by default. `--keep-clock` carries `time` and `frameCount` across the reload, so an animation doesn't jump back to the start. There is also a `reloaded()` hook. The sketch compiles optimized; `--no-optimize` enables assertions and clearer backtraces for debugging. For a heavy sketch, `Scripts/OllinLive` runs the host in release too.
 
-The sketch file always compiles optimized, so a sketch that does heavy CPU work each frame runs at release speed under the live window. `--no-optimize` compiles it plain when you're debugging it, so asserts fire and a crash names every frame. For a heavy sketch, `Scripts/OllinLive` runs the host in release too. Saves stay fast either way, because only the sketch file recompiles.
+For a live performance, `swift run OllinLiveCoding` opens the editor over the visuals in one fullscreen-capable window. Press ⌘↩ (Command-Return) to evaluate the buffer, carrying the clock and parameters across the swap. [Live coding](Docs/Tools/LiveCoding.md) covers the stage controls, recovery, and how evaluation differs from saving a file.
 
-The same engine also powers a performance instrument, [OllinLiveCoding](Docs/Tools/LiveCoding.md). It is a single window that can go fullscreen, and the code shows over the visuals for the audience. Pressing ⌘↩ evaluates the buffer in place, and the clock and the tuned `@Param` parameters carry across each swap. OllinLive is the development loop, with your own editor and a file watcher. OllinLiveCoding is the on-stage loop, with the editor in the window and evaluation on command.
-
-A sketch doesn't need a package at all. `Scripts/ollin install` puts an `ollin` command on your PATH. After that, one `.swift` file anywhere on disk is a whole sketch:
-
-```sh
-ollin new dots.swift        # write a starter sketch
-ollin dots.swift            # live window, hot-reload on save
-./dots.swift                # the file is directly executable (hashbang + chmod +x)
-ollin dots.swift --export-gif dots.gif --seconds 4
-ollin dots.swift --installation   # put it up: its own window, left running
-```
-
-See [Single-file sketches](Docs/Tools/SingleFile.md) for assets, for the extra `import`s (audio, MIDI, physics, and the rest), and for growing a file into a package.
-
-When a piece outgrows one file, the [project generator](Docs/Tools/ProjectGenerator.md) makes the folder for you, already wired for what you're about to use:
+When a piece outgrows one file, the [project generator](Docs/Tools/ProjectGenerator.md) makes a folder already wired for what you're about to use:
 
 ```sh
 ollin new MyPiece --template shader --with audio   # a folder that builds and runs
 ollin generate                                     # the same, in a window
 ```
 
-`ollin generate` shows each starting point by *running* it, so you pick a template by watching it rather than by reading its name.
-
-The same `ollin` command also reads the documentation and the examples out of your own checkout, so you can look something up without a browser:
-
-```sh
-ollin docs color            # the page, in the terminal
-ollin docs --search "long exposure"   # every place the reference says it
-ollin examples ocean        # what it shows, and how to run it
-```
-
-See [The reference offline](Docs/Tools/Reference.md) for sections, filters, and reading an example's source. `ollin site` writes the same pages out as a website.
-
-The same command also starts a library that other people's sketches can import, with the layout every extension shares. See [Writing an extension](Docs/Tools/Extensions.md) for the `ollinx-` naming convention and for the seams a third party can build on.
-
-```sh
-ollin new Halftone --kind extension --seam filter
-```
-
-There are other ways to iterate. You can tweak and re-run an example with `swift run --package-path Examples Example-Basic-HelloCircle`, and incremental builds keep that quick. Or you can open the examples package in Xcode with `open Examples/Package.swift`, which gives you ⌘R (Command-R), breakpoints, and the debugger.
+`ollin generate` shows each starting point by *running* it, so you pick a template by watching it. If you prefer Xcode, open `Examples/Package.swift` for ⌘R (Command-R), breakpoints, and the debugger.
 
 ## Export
 
-Any sketch renders headlessly, with no window needed. Stills, deterministic PNG sequences, video, GIF, a web page, and vector SVG and PDF all come from the same run command:
+Any sketch renders headlessly, with no window needed. From the repo root, render a still or a movie of Hello Circle:
 
 ```sh
 swift run --package-path Examples Example-Basic-HelloCircle --export frame.png --frame 120
-swift run --package-path Examples Example-Basic-HelloCircle --export-sequence frames/ --seconds 20 --fps 60
 swift run --package-path Examples Example-Basic-HelloCircle --export-video breathing.mp4 --seconds 6
-swift run --package-path Examples Example-Basic-HelloCircle --export-gif breathing.gif --seconds 4
-swift run --package-path Examples Example-Web-BreathingRing --export-web ring.html          # a page that plays it in a browser
-swift run --package-path Examples Example-Basic-HelloCircle --export-svg still.svg   # vector, for pen plotters
-swift run --package-path Examples Example-Basic-HelloCircle --export-pdf still.pdf   # vector, for print (paper-size presets)
-swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # a loose file, same flags
 ```
 
-Sequence, video, and GIF exports advance the clock at a fixed timestep rather than by wall-clock time, so a slow render still plays back smoothly. In code these are `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`. Codec and quality settings, the `--skip` warmup, GIF sizing, `--slow-motion`, and the `--hatch` fills for pen plotters are all in [`Docs/Output/Export.md`](Docs/Output/Export.md).
-
-A web page is the same kind of export. `--export-web` records what the sketch drew over a duration and writes a page that plays it back. The framework's own shape shader is translated to GLSL for that page. The page is one self-contained file or a fragment for a page of your own ([`Docs/Output/Web.md`](Docs/Output/Web.md)).
-
-A 3D scene can also render its export by tracing light paths instead of rasterizing. `--path-traced` spends seconds per frame on shadows that soften as they would in the physical world, color bleed, mirror-in-mirror reflections, and a lens model. It renders from the same sketch the window tunes live ([`Docs/Output/PathTraced.md`](Docs/Output/PathTraced.md)).
-
-An export reproduces a sketch, and a recording keeps a performance. You start a recording with `startRecording()` in a sketch, with ⌘⇧R (Command-Shift-R) in the live hosts, or with `--record` on OllinLive. It writes the run as it happens: the picture and the sketch's own sound (or the room's sound) in one movie, in real time. In the live-coding host, an evaluate does not interrupt the movie. See [`Docs/Output/Recording.md`](Docs/Output/Recording.md).
-
-A recording keeps the pixels, and a *take* keeps the performance itself. `--record-take take.json` writes a run's seed, clock, inputs, and parameter moves as one small JSON file. `--replay take.json` plays it back exactly, in the window or through any export flag above. In the window, the keyboard becomes a transport: pause, step, scrub. Through an export flag, a session of live tweaking re-renders offline frame for frame, even path-traced. `--seed` beside `--replay` plays the same gestures onto a different variation. See [`Docs/Core/Replay.md`](Docs/Core/Replay.md).
-
-A take keeps what you did, and an *automation* writes down what should happen. `automate($radius) { ... }` puts a parameter on a curve, with one value placed at each moment. Every frame, the parameter is where the curve says it is. Numbers, colors, and points blend from one value to the next, and a switch steps. The tracks read the sketch clock, so `--export-video` renders the piece exactly as it plays, and `--automation file.json` drives the same parameters from a file. In OllinLive, the [timeline panel](Docs/Tools/Timeline.md) lets you author those tracks by hand: scrub the playhead, set the parameter, then click the diamond in its row. See [`Docs/Core/Automation.md`](Docs/Core/Automation.md).
-
-A curve says where a parameter is at a few moments, and a *formula* says what it is at every moment. `drive($radius, "190 + sin(time * tau / 6) * 80")` reads the rule from text rather than from Swift source. So the rule can come from a file, from a typed field, or from a parameter worked out from another one. It is the same kind of track, so it loops, plays at any speed, and renders frame for frame. A parameter that holds more than one number takes one rule for each part. A part you leave out stays free for you to move. See [`Docs/Helpers/Formula.md`](Docs/Helpers/Formula.md).
-
-A seeded sketch is a generator, so Ollin names the seed of each run ([`variation`](Docs/Core/Variations.md)). It also gives you tools to explore the space of seeds. You can step, roll, or jump through seeds from the inspector's Variation card. You can proof a whole range as a labeled contact sheet, then re-render the one you keep at full size.
+The same flags work on a standalone sketch created with `ollin new dots.swift`:
 
 ```sh
-swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25  # proof 25 variations
-swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10       # render the one you liked
+ollin dots.swift --export-gif dots.gif --seconds 4
 ```
+
+[Export](Docs/Output/Export.md) covers PNG sequences (`--export-sequence`), vector SVG and PDF (`--export-svg`, `--export-pdf`), codecs, quality, warmup, slow motion, and hatched fills for pen plotters. Sequence, video, and GIF exports advance the clock at a fixed timestep, so a slow render still plays back smoothly. In code these are `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`.
+
+For a [web page](Docs/Output/Web.md), `--export-web` records what the sketch draws and writes a self-contained page or an inline fragment. Shapes and supported shaders play back in WebGL2, with Metal translated to GLSL. This is a recorded export, so a drawing call it cannot carry stops it, and the exporter names that call. A ready-made example:
+
+```sh
+swift run --package-path Examples Example-Web-BreathingRing --export-web ring.html
+```
+
+A 3D scene can also [trace light paths](Docs/Output/PathTraced.md) for its export. `--path-traced` spends seconds per frame on soft shadows, color bleed, mirror-in-mirror reflections, and a lens model, from the same sketch you tune live.
+
+To keep or direct a performance:
+
+- **Record a movie.** ⌘⇧R (Command-Shift-R) in the live hosts, `--record` on OllinLive, or `startRecording()` in a sketch captures the picture and the sketch's or room's sound in real time. Evaluating in the live-coding host does not interrupt it. See [Recording](Docs/Output/Recording.md).
+- **Keep a take.** `--record-take take.json` saves the seed, clock, inputs, and parameter moves. `--replay take.json` plays them back with pause, step, and scrub controls, or re-renders them offline through an export flag, even path-traced. Add `--seed` to try the same gestures on another variation. See [Record & replay](Docs/Core/Replay.md).
+- **Compose the parameter moves.** [Automation](Docs/Core/Automation.md) puts parameters on keyframed curves, authored in code, in JSON, or in the [timeline panel](Docs/Tools/Timeline.md). A [formula](Docs/Helpers/Formula.md) sets a parameter from a rule such as `190 + sin(time * tau / 6) * 80`. Both read the sketch clock and render frame for frame.
+
+To explore a seeded sketch, the inspector's [Variation card](Docs/Core/Variations.md) steps, rolls, or jumps through seeds. Or proof a range as a contact sheet, then render the one you keep at full size:
+
+```sh
+swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25
+swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10
+```
+
+To hand over a piece that keeps running, follow [Sharing and performing](Guide/31-SharingAndPerforming.md) for app bundles and other output surfaces, or [Installations](Guide/32-Installations.md) for work left on a wall. A loose file runs in installation mode with `ollin dots.swift --installation`; that gives it its own window and runs the code it started with, without reloading on save.
 
 ## Documentation
 
@@ -232,6 +225,16 @@ Good places to start:
 
 If you are new to Swift, the [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`. The Guide's [Appendix A](Guide/A-JustEnoughSwift.md) covers the same ground more slowly, as narrative.
 
+You can also read the reference and examples from your checkout without a browser:
+
+```sh
+ollin docs color                     # read a reference page
+ollin docs --search "long exposure"  # search the reference
+ollin examples ocean                 # find an example and its run command
+```
+
+[The reference offline](Docs/Tools/Reference.md) covers sections, filters, and reading source. `ollin site` writes the same pages out as a website.
+
 ## How it works
 
 `Sketch.draw()` calls the bare drawing functions, and they forward to a `Drawer` state machine. Most primitives take a signed-distance-field path: each one is a single quad, with its fill, stroke, and anti-aliasing computed analytically in the fragment shader. The rest tessellate into triangles. The `Drawer` records both kinds into call-ordered batches. Once a frame, `MetalRenderer` uploads those batches and issues one draw per batch, so shapes composite in the order you drew them.
@@ -243,6 +246,8 @@ The renderer is heavily commented, because you will be extending it. For how the
 p5.js, OPENRNDR, and openFrameworks run everywhere. Ollin runs only on Apple hardware, and that is a trade it makes on purpose.
 
 Ollin sits directly on Metal, so the rendering limit is whatever the GPU can do. It stays native, so the rest of the platform is within reach. Vision on the Neural Engine is already here, and so are an iPhone's depth sensors feeding a sketch that the Mac renders. Meanwhile, visionOS and AR are still ahead. The core is built to grow into those things rather than be retrofitted for them.
+
+Every hardware feature is asked for at run time and steps down when it is missing, so an M1 runs everything, tracing rays in software where an M3 and later have dedicated units. A sketch also runs on iOS 26 as an app, [worked on from the Mac](Docs/Tools/OnThePhone.md). There is no Linux or Windows path, by design.
 
 The same trade rules out a browser version. The web has no Metal, so a web build would need a second, lesser renderer on WebGPU. You share a piece by exporting it, not by running Ollin in a tab. The formats are video, GIF, USDZ, SVG, PDF, and a recorded web page.
 
@@ -272,12 +277,11 @@ The full record lives in [`ATTRIBUTION.md`](ATTRIBUTION.md): the framework influ
 
 Ollin is **alpha and pre-1.0**, developed in the open. That means two different things:
 
-- **The output is production-grade.** It has linear-light rendering, analytic anti-aliasing, OKLab color, deterministic and reproducible export, and snapshot-tested rendering. Work made with Ollin is meant to be finished and shown.
-- **The API is not.** Names, signatures, and structure still change. Releases follow semantic versioning at major zero: a breaking change or a new feature bumps the minor, and a fix bumps the patch. Pin `.upToNextMinor` and read the [changelog](CHANGELOG.md) when you move up. Deprecation shims and a settled surface arrive at 1.0.
+- **The output is production-grade.** Work made with Ollin is meant to be finished and shown; rendering is snapshot-tested and exports are reproducible.
+- **The API is not frozen.** Names, signatures, and structure still change. Releases follow semantic versioning at major zero: a breaking change or a new feature bumps the minor, and a fix bumps the patch. [Pin `.upToNextMinor` in a package or keep the CLI's checkout on a release tag](#install), and read the [changelog](CHANGELOG.md) when you move up. Deprecation shims and a settled surface are the 1.0 milestone.
 
-Beyond that:
+This is built nights and weekends, with **no support guarantee**. Issues and [discussions](https://github.com/eaviles/Ollin/discussions) get read, but a response time isn't promised. Report vulnerabilities privately through the process in [`SECURITY.md`](SECURITY.md).
 
-- **No support guarantee.** This is built nights and weekends. Issues and [discussions](https://github.com/eaviles/Ollin/discussions) get read, but a response time isn't promised.
-- **macOS 26+ and a Metal-capable GPU are required.** That is the trade described above, not a gap to be filled later. So there is no Linux or Windows path, by design. A sketch also runs on iOS 26 as an app built from the Mac, and [the sketch on the phone](Docs/Tools/OnThePhone.md) says how.
+Contributions and ideas are welcome. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) and the roadmap's [Up next](ROADMAP.md#up-next) section for small, self-contained pull requests. For a larger change, open an issue to discuss it first. The [code of conduct](CODE_OF_CONDUCT.md) applies to all project spaces.
 
-Even so, contributions and ideas are welcome. The practical details are in [`CONTRIBUTING.md`](CONTRIBUTING.md). The best source of small pieces of work is [`ROADMAP.md`](ROADMAP.md), and its [Up next](ROADMAP.md#up-next) section maps onto small, self-contained pull requests. For anything larger, please open an issue to discuss it before sending a big change. Three documents give you your bearings before you touch one of the bigger systems. Everything shipped has one bullet in [`CAPABILITIES.md`](CAPABILITIES.md), with pointers to its example, tests, and docs. How the larger systems work inside is in [`ARCHITECTURE.md`](ARCHITECTURE.md). The intent behind what's still planned is in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The [code of conduct](CODE_OF_CONDUCT.md) applies to all of it.
+Before changing a larger system, read [`CAPABILITIES.md`](CAPABILITIES.md) for what's shipped and the invariants it must keep, [`ARCHITECTURE.md`](ARCHITECTURE.md) for how it works inside, and [`DESIGN-NOTES.md`](DESIGN-NOTES.md) for the intent behind planned work. To build a library other people's sketches can import, see [Writing an extension](Docs/Tools/Extensions.md) for the `ollinx-` convention and generator starters.
