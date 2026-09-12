@@ -9,7 +9,7 @@
 # A page opens on a grid of sketches playing at once. The markdown carries the
 # still, since that is what GitHub and a plain clone can show, and the site
 # swaps in the clip; both files are written here and both are named in
-# `Examples/media.json` under `heroes`, which is also where what each is made
+# `Media/media.json` under `heroes`, which is also where what each is made
 # of is written down, so a hero is rebuilt rather than remembered.
 #
 # The guide's cells are the sketch each chapter of the Guide builds. Nothing
@@ -26,7 +26,7 @@
 set -e
 cd ${0:A:h}/..
 ROOT=$PWD
-MANIFEST=$ROOT/Examples/media.json
+MANIFEST=$ROOT/Media/media.json
 OUT=$(mktemp -d /tmp/ollin-hero.XXXXXX)
 trap 'rm -rf $OUT' EXIT
 

@@ -12,7 +12,7 @@ The grid is a plain markdown table of linked stills, four across, with the
 names on the row beneath each row of pictures. It is markdown rather than HTML
 because the site's own renderer passes only a few tags through and escapes the
 rest, and because GitHub has to show the same file. The addresses come from
-`Examples/media.json`, so nothing here is typed by hand and moving the host is
+`Media/media.json`, so nothing here is typed by hand and moving the host is
 still one edit.
 
 A listing whose sketches all live on pages of their own, like the examples
@@ -113,7 +113,7 @@ def place(lines, table):
 
 
 def main():
-    media = json.load(open(EXAMPLES / "media.json"))
+    media = json.load(open(EXAMPLES.parent / "Media" / "media.json"))
     only = sys.argv[1] if len(sys.argv) > 1 else None
     written = 0
     for listing in sorted(EXAMPLES.rglob("README.md")):

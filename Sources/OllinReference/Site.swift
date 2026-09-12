@@ -187,7 +187,7 @@ public struct SiteBuilder {
         // every sketch.
         let examples = root.appendingPathComponent("Examples")
         add("Examples/README.md", .examples)
-        plan.media = ExampleMedia.read(inExamples: examples)
+        plan.media = ExampleMedia.read(inRepository: examples.deletingLastPathComponent())
         plan.exampleCategories = Self.categories(readingIndexAt: examples.appendingPathComponent("README.md"))
         for listing in readmeFiles(under: "Examples").sorted() where listing != "Examples/README.md" {
             add(listing, .examples)

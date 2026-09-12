@@ -10,7 +10,7 @@
 # Each example that earns one gets four files: a clip at the canvas size for
 # its own page, a small clip for a grid to play under the pointer, and a still
 # at both sizes. They live in Cloudflare R2 behind media.ollin.art rather than
-# in git, and `Examples/media.json` is the one place their address is written
+# in git, and `Media/media.json` is the one place their address is written
 # down, so moving the host is one edit there.
 #
 # A sketch that declares `loopDuration` records exactly one lap. Everything
@@ -69,7 +69,7 @@ ROOT=$PWD
 OUT=$(mktemp -d /tmp/ollin-media.XXXXXX)
 trap 'rm -rf $OUT' EXIT
 
-MANIFEST=$ROOT/Examples/media.json
+MANIFEST=$ROOT/Media/media.json
 BIN=$ROOT/Examples/.build/out/Products/Release
 SECONDS_DEFAULT=10
 FPS=60

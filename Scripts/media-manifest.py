@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read and write Examples/media.json, the one place the example media's
+"""Read and write Media/media.json, the one place the site media's
 address is written down.
 
     media-manifest.py read  <manifest> <example>

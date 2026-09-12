@@ -8761,7 +8761,7 @@ stacked planes at different heights; do not reintroduce it.
 
 Every example sketch has a picture, most have a clip, and every listing opens
 on a grid of them; so do the guide and the README. None of it is in the
-repository. The files are served from one host, and `Examples/media.json` is
+repository. The files are served from one host, and `Media/media.json` is
 the only place that address is written down, so moving the host is one edit.
 
 Four commands keep it current, and they run in that order because each reads

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The clips and stills rendered for the examples, as `Examples/media.json`
+/// The clips and stills the site plays, as `Media/media.json`
 /// names them.
 ///
 /// The files themselves are not in the repository. They are rendered by
@@ -85,9 +85,11 @@ public struct ExampleMedia: Sendable {
         var chapters: [String: Chapter]?
     }
 
-    /// Read the manifest beside the examples.
-    public static func read(inExamples examples: URL) -> ExampleMedia {
-        let url = examples.appendingPathComponent("media.json")
+    /// Read the manifest. It sits at `Media/media.json` in the repository
+    /// rather than under `Examples/`, because it now carries the Guide's
+    /// chapter clips and the site's own heroes as well as the examples'.
+    public static func read(inRepository root: URL) -> ExampleMedia {
+        let url = root.appendingPathComponent("Media/media.json")
         guard let data = try? Data(contentsOf: url),
               let file = try? JSONDecoder().decode(File.self, from: data) else { return .none }
         var base = file.base

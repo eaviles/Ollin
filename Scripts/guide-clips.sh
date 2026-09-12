@@ -25,7 +25,7 @@ set -e
 cd "$(dirname "$0")/.." || exit 1
 ROOT=$(pwd)
 OUT=${TMPDIR:-/tmp}/ollin-guide-clips
-MANIFEST=$ROOT/Examples/media.json
+MANIFEST=$ROOT/Media/media.json
 FPS=30
 SECONDS_DEFAULT=10
 BUDGET=5000000    # bytes; what the two shipping heroes already weigh

@@ -9,7 +9,7 @@ one of them, so it reads as a group rather than as a sketch that happens to be
 first. A group with fewer than four keeps the 2x2 and fills what it has, since
 the shape is what carries the meaning.
 
-Which four is a choice, not a rule, so the list lives in `Examples/media.json`
+Which four is a choice, not a rule, so the list lives in `Media/media.json`
 under `covers` and this only draws it. The pictures come from the same stills
 the grids use, fetched at their versioned addresses so a re-rendered sketch is
 never taken from a cache, and the result is uploaded beside the examples as
@@ -23,7 +23,7 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "Examples" / "media.json"
+MANIFEST = ROOT / "Media" / "media.json"
 SIZES = {"": 1080, "-640": 640}
 
 

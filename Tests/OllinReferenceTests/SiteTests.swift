@@ -872,7 +872,7 @@ struct SiteTests {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
 
-        #expect(ExampleMedia.read(inExamples: folder).entries.isEmpty,
+        #expect(ExampleMedia.read(inRepository: folder).entries.isEmpty,
                 "a checkout with no manifest builds without pictures")
 
         let json = """
@@ -889,8 +889,10 @@ struct SiteTests {
           }
         }
         """
-        try json.write(to: folder.appendingPathComponent("media.json"), atomically: true, encoding: .utf8)
-        let media = ExampleMedia.read(inExamples: folder)
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("Media"),
+                                                withIntermediateDirectories: true)
+        try json.write(to: folder.appendingPathComponent("Media/media.json"), atomically: true, encoding: .utf8)
+        let media = ExampleMedia.read(inRepository: folder)
         let entry = try #require(media["Patterns/Kaleidoscope"])
         #expect(entry.width == 1080)
         // The trailing slash is trimmed on the way in, so joining never
@@ -974,7 +976,7 @@ struct SiteTests {
         // drop any key it did not know about, which deleted the heroes and
         // quietly turned the guide's playing grid back into a still.
         let root = try #require(Self.repositoryRoot())
-        let media = ExampleMedia.read(inExamples: root.appendingPathComponent("Examples"))
+        let media = ExampleMedia.read(inRepository: root)
         #expect(media.heroes["guide"] != nil, "the guide lost its opening clip")
         #expect(media.heroes["readme"] != nil, "the README lost its opening clip")
     }
@@ -982,7 +984,7 @@ struct SiteTests {
     @Test("The front page's band names sketches that are all still there")
     func showcaseIsWhole() throws {
         let root = try #require(Self.repositoryRoot())
-        let media = ExampleMedia.read(inExamples: root.appendingPathComponent("Examples"))
+        let media = ExampleMedia.read(inRepository: root)
         #expect(!media.showcase.isEmpty, "the front page lost its band of sketches")
         // The sketch the band leads with is named beside the section it leads,
         // and it plays there like any other.
@@ -1007,11 +1009,11 @@ struct SiteTests {
     @Test("Every row in the manifest names an example that is still there")
     func mediaRowsAreNotStale() throws {
         let root = try #require(Self.repositoryRoot())
-        let media = ExampleMedia.read(inExamples: root.appendingPathComponent("Examples"))
+        let media = ExampleMedia.read(inRepository: root)
         for example in media.entries.keys.sorted() {
             let sketch = root.appendingPathComponent("Examples/\(example)/Sketch.swift")
             #expect(FileManager.default.fileExists(atPath: sketch.path),
-                    "media.json names \(example), which is not in the checkout")
+                    "Media/media.json names \(example), which is not in the checkout")
         }
     }
 
