@@ -12,7 +12,7 @@ final class PaletteShelf: Sketch {
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
     var paper: Color { theme.paper }
-    var label: Color { theme.ink(0.55) }
+    var label: Color { theme.ink(0.72) }
 
     override func draw() {
         background(paper)
@@ -24,7 +24,7 @@ final class PaletteShelf: Sketch {
         let barHeight = 46.0
 
         // A discrete built-in palette, one swatch per color.
-        caption("Palette(.set2)", 55)
+        caption("Palette.set2", 55)
         let set2 = Palette.set2
         for i in 0..<8 {
             fill(set2[i])
@@ -32,7 +32,7 @@ final class PaletteShelf: Sketch {
         }
 
         // A harmony built from one base color.
-        caption("Palette.triadic(of: coral)", 150)
+        caption("Palette.triadic(of: .coral)", 150)
         let triad = Palette.triadic(of: .coral)
         for i in 0..<3 {
             fill(triad[i])

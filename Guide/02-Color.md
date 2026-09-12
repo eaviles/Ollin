@@ -6,7 +6,7 @@
 
 <img src="Images/02-Color/ColorField.jpg" alt="A quilt of colored cells running diagonally from deep indigo through coral to warm cream, on a dark ground" width="560">
 
-Color is where a sketch gets its voice, and it's also where beginners lose the most time. Mixes turn to mud, palettes fight each other, and colors read brighter or darker than their numbers say they should. This chapter gives you the tools that avoid all of that. You'll learn the ways to name a color, how to think in hue rather than in amounts of light, how to mix in a way that trusts your eye instead of the machine's arithmetic, how to carry palettes and ramps around as ready-made kits, and how to paint with a gradient. It ends in the poster above, which redraws itself as a fresh variation on every click.
+Color is where a sketch gets its voice, and it is also where the arithmetic quietly works against you. Mixes turn to mud, palettes fight each other, and colors read brighter or darker than their numbers say they should. This chapter is the set of tools that avoid all of that. You'll learn the ways to name a color, how to think in hue rather than in amounts of light, how to mix in a way that trusts your eye instead of the machine's arithmetic, how to carry palettes and ramps around as ready-made kits, and how to paint with a gradient. It ends in the poster above, which redraws itself as a fresh variation on every click.
 
 Everything here builds on [Chapter 1](01-HelloOllin.md); keep working the same way, one file under `OllinLive`, saving as you go.
 
@@ -22,7 +22,7 @@ fill(Color(white: 0.15))                       // a quick gray
 fill(Color(red: 0.95, green: 0.45, blue: 0.25))
 ```
 
-The named constants cover the essentials (`.white`, `.black`, `.red`, …) plus the standard CSS list, so `.coral`, `.teal`, `.crimson`, and `.lavender` all read like what they are. The integer hex form is the everyday workhorse: any color picker gives you those six digits. Go back to `FirstCircle.swift` and try a few of these in its `fill` line; this chapter is best read with a sketch open.
+The named constants cover the essentials (`.white`, `.black`, `.red`, …) plus a selected set of the CSS names, so `.coral`, `.teal`, `.crimson`, and `.lavender` all read like what they are. The integer hex form is the one you will use most, because any color picker gives you those six digits. Go back to `FirstCircle.swift` and try a few of these in its `fill` line; this chapter is best read with a sketch open.
 
 Colors can also arrive as *strings*, `Color(hex: "#ff0066")`, which matters once a color comes from somewhere else (a file, a website's palette). Strings can be malformed, so this form can fail, and Swift makes that visible:
 
@@ -41,7 +41,7 @@ RGB is how the machine stores color, as three amounts of light. That's good for 
 fill(Color(hue: 0.07, saturation: 0.85, brightness: 0.95))   // a warm orange
 ```
 
-All three run from 0 to 1, and hue *wraps*, so 1.2 means the same as 0.2, a full turn around the wheel plus a bit. That makes hue safe to drive with `time` directly, with no bookkeeping to keep it in range. Try it on [Chapter 1](01-HelloOllin.md)'s swinging circle (`FirstMotion.swift`), replacing its `fill` line:
+All three run from 0 to 1, and hue *wraps*, so 1.2 means the same as 0.2, a full turn around the wheel plus a bit. That makes hue safe to drive with `time` directly, with no bookkeeping to keep it in range. Try it in `FirstCircle.swift`, replacing its `fill` line:
 
 ```swift
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 0.95))
@@ -51,7 +51,7 @@ The circle now cycles through the whole rainbow every ten seconds while it swing
 
 ## Mixing you can trust
 
-Here's the trap every beginner falls into. Take a blue and a yellow, average their RGB numbers to get the halfway color, and you get… mud. Averaging the machine's storage format tells you nothing about what the *eye* considers halfway:
+Take a blue and a yellow, average their RGB numbers to get the halfway color, and you get… mud. Averaging the machine's storage format tells you nothing about what the *eye* considers halfway:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/MixingSpaces-dark.jpg">
@@ -74,9 +74,19 @@ Try it live on the swinging circle:
 fill(Color.mix(Color(hex: 0x2050C8), Color(hex: 0xFFC800), sin(time) * 0.5 + 0.5))
 ```
 
-The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into the `0...1` that `t` wants, so the circle breathes between the two colors. That squeeze is worth remembering, and [Chapter 3](03-MotionAndTime.md) turns it into a proper tool with a name.
+The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into the `0...1` that `t` wants, so the circle breathes between the two colors. Remember that squeeze. [Chapter 3](03-MotionAndTime.md) turns it into a proper tool with a name.
 
-The same perceptual model comes in two more shapes worth knowing about. **OKLCH** turns OKLab into dials for lightness, chroma, and hue, so nudging a hue leaves the lightness alone, and mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** guarantees that everything you ask for is actually displayable, which makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked. Three everyday moves come ready-made on top of OKLCH. `ink.lighter()` and `ink.darker(by: 0.25)` step a color's lightness while its hue stays put. `ink.complement` is the opposite hue at the same weight. So a shadow, a highlight, and an accent can all come from the one color you chose. Here's the trick this chapter likes it for, which is hues that genuinely match in weight.
+The same perceptual model comes in two more shapes. **OKLCH** turns OKLab into dials for lightness, chroma, and hue, so nudging a hue leaves the lightness alone, and mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** guarantees that everything you ask for is actually displayable, which makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked.
+
+Three everyday moves come ready-made on top of OKLCH, so a shadow, a highlight, and an accent can all come from the one color you chose:
+
+```swift
+ink.lighter()          // same hue, a step up in lightness
+ink.darker(by: 0.25)   // and down, by as much as you ask for
+ink.complement         // the opposite hue at the same weight
+```
+
+OKHSL earns its place here for something else: hues that match in weight.
 
 ```swift
 for i in 0..<12 {
@@ -146,13 +156,13 @@ The palette shows in the inspector as its colors side by side. Click one and the
 
 ## Palettes from a file
 
-Typing hex codes gets old, and two calls let you skip it.
+Typing hex codes gets tiring, and two calls let you skip it.
 
-The first reads a palette someone else already made. `loadPalettes` returns every palette in a file, while `loadPalette` returns just the first one. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
+The first reads a palette someone else already made. `loadPalettes` returns every palette in a file, while `loadPalette` returns just the first one, or nothing if the file will not read. You never have to say what format the file is in, because the loader looks at the bytes and works it out. It reads a plain list of hex codes one per line, a CSV or TSV with a palette on each line, JSON, and Adobe `.ase` swatch files from Illustrator or Photoshop.
 
 ```swift
-let sets = loadPalettes("1000.json")     // however many the file holds
-let one  = loadPalette("sunset.hex")     // just the first
+let sets = loadPalettes("1000.json")      // however many the file holds
+let one  = loadPalette("sunset.hex")!     // just the first
 ```
 
 A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), a JSON file of a thousand of them in exactly the shape `loadPalettes` expects. Download it next to your sketch and the call above reads it as is. Two things to know about that file. Its palettes were collected from COLOURlovers, whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a startling amount of generative art. If you want your work to look like yours, that is a reason to keep reading.
@@ -196,7 +206,7 @@ if let photo {
 
 Every pixel of the result is one of your five colors. (`bounds` there is the whole canvas as a rectangle, which every sketch has ready to hand, so it's a convenient way to say "fill the frame".)
 
-The interesting word in that listing is `dithered`, and it's worth understanding rather than just calling, because it is the answer to a problem you will meet constantly: you have fewer colors than the picture needs.
+`dithered` is the word to understand rather than just call, because it answers a problem you will meet constantly. You have fewer colors than the picture needs.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/Dithering-dark.jpg">
@@ -209,7 +219,7 @@ There are two families, and they look different on purpose.
 
 **Threshold maps** decide each pixel from its position alone, using a repeating tile. `.ordered(size: 8)` uses a Bayer matrix and lays down the regular crosshatch of retro graphics and old newsprint, while `.blueNoise` uses a tile with no structure in it and gives an even, pattern-free grain. Because the decision is positional, these are cheap and completely local.
 
-**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the third panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black, a look worth knowing by name.
+**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the third panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
 
 A few practical notes. `.none` skips the scattering entirely, which is what the first panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
 
@@ -265,7 +275,7 @@ if !myPalette.isColorblindSafe() {
 }
 ```
 
-Here is the part worth carrying away. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Measured on a matched pair, they sit 0.281 apart for average vision and 0.014 apart under the worst kind. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
+The rule underneath all of this is short. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Measured on a matched pair, they sit 0.281 apart for average vision and 0.014 apart under the worst kind. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
 
 ## A recipe borrowed early: random
 
@@ -315,16 +325,18 @@ final class ColorField: Sketch {
 }
 ```
 
+<img src="Images/02-Color/ColorField.jpg" alt="A quilt of colored cells running diagonally from deep indigo through coral to warm cream, on a dark ground" width="560">
+
 Run it and walk the interesting lines:
 
 - `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Now click the canvas. `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters, giving you the same poster as a fresh variation, as many as you care to click through.
 - Two loops, one inside the other, visit every column and row, and `diagonal` turns each cell's position into the `0...1` the ramp wants.
-- The `t` line carries the whole look: position, plus seeded jitter scaled by the parameter, plus a slow shimmer. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a look worth keeping in its own right.
+- The `t` line carries the whole look: position, plus seeded jitter scaled by the parameter, plus a slow shimmer. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a good look in its own right.
 - The parameters do a lot of work here. `Columns` changes the piece's whole character, chunky at 5 and woven at 28, and `Jitter` takes it from formal to painterly.
 
 > **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive from one frame to the next. A `let` or `var` written inside `draw()` is born and dies with that frame. `mousePressed()` is another function Ollin calls for you, once per click, alongside `setup()` and `draw()`. And a loop inside a loop does what it sounds like: for every column, visit every row.
 
-Directions worth a try before [Chapter 3](03-MotionAndTime.md):
+Directions to try before [Chapter 3](03-MotionAndTime.md):
 
 - Swap the ramp for `Colormap.viridis` or `CosinePalette.sunset` (both answer `color(at:)`, so it's a one-line change).
 - Make the cells circles, or shrink each one by a little `random(0, cell * 0.3)` for a hand-placed feel.
@@ -340,7 +352,7 @@ The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published
 - [Color](../Docs/Drawing/Color.md): the complete reference, including color temperature (`Color(kelvin:)`) and the string-hex grammar.
 - [Light and color](../Docs/Concepts/Light.md): one screen on why the middle of a frame is linear light, and what the last pass does to it before the screen.
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `Palettes`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, and `ColorVision`.
+- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, `Dithering`, and `ColorVision`.
 - [Accessibility](../Docs/Helpers/Accessibility.md): the color-vision simulation, the palette check, and the reduce-motion setting.
 - [Drawing](../Docs/Drawing/Drawing.md): every place a `Paint` can go.
 

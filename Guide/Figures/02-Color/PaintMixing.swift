@@ -15,7 +15,7 @@ final class PaintMixing: Sketch {
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
     var paper: Color { theme.paper }
-    var label: Color { theme.ink(0.55) }
+    var label: Color { theme.ink(0.72) }
 
     override func draw() {
         background(paper)

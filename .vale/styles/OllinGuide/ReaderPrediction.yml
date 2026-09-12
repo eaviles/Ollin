@@ -24,3 +24,9 @@ tokens:
   - "you (might|may) be wondering"
   - "you'?ll (find|probably find) (this|that|it)"
   - "everyone (gets|trips over) this"
+  # The same claim aimed at a class of reader rather than at "you". Found
+  # in chapter 2 on 2026-09-12, by the rule above missing it.
+  - "(every |most |many )?beginners? (lose|fall|find|get|struggle|trip|make|often)"
+  - "every beginner"
+  - "the trap (every|most|that)"
+  - "newcomers? (lose|fall|find|get|struggle|trip)"

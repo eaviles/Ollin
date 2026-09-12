@@ -13,7 +13,7 @@ final class HueWheels: Sketch {
 
     var paper: Color { theme.paper }
     var ink: Color { theme.ink }
-    var label: Color { theme.ink(0.55) }
+    var label: Color { theme.ink(0.72) }
 
     override func draw() {
         background(paper)
