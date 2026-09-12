@@ -61,17 +61,30 @@ if let only { pages = pages.filter { $0.localizedCaseInsensitiveContains(only) }
 
 struct Job { var block: Block; var source: String; var preambleLines: Range<Int> }
 var jobs: [Job] = []
-var sharedImports: Set<String> = []
 var skipped: [(Block, String)] = []
 var shellBlocks: [Block] = []
 var nameProblems: [NameProblem] = []
+
+/// Every satellite any preamble imports, read from all of them rather than from
+/// the pages this run happens to be checking. A block's error must not depend on
+/// what else was checked beside it: with the union taken over the selection,
+/// `--only 22-Meshes` had no `OllinPhysics` in scope, one block there gave a
+/// different first error than in the whole-Guide run, and the recorded baseline
+/// then read as broken for a chapter nobody had touched.
+let sharedImports: Set<String> = {
+    let stems = (try? FileManager.default.contentsOfDirectory(atPath: preambleDir)) ?? []
+    var found: Set<String> = []
+    for file in stems where file.hasSuffix(".swift") {
+        found.formUnion(preamble(for: "Guide/" + file.replacingOccurrences(of: ".swift", with: ".md")).imports)
+    }
+    return found
+}()
 
 for page in pages {
     guard let text = read(repo + "/" + page) else {
         FileHandle.standardError.write(Data("guide-snippets: cannot read \(page)\n".utf8)); exit(1)
     }
-    let (pre, imports) = preamble(for: page)
-    sharedImports.formUnion(imports)
+    let (pre, _) = preamble(for: page)
     nameProblems += exampleNameProblems(page: page, text: text, repo: repo)
     for block in blocks(in: page, text: text) {
         if block.language == "sh" { shellBlocks.append(block); continue }

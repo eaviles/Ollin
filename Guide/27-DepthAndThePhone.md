@@ -179,7 +179,7 @@ Sweep for a minute and the scan starts to fog. The camera's estimate of where it
 `add(_:correcting:)` is the answer. It slides and turns each arriving frame onto the surfaces already fused, then merges it:
 
 ```swift
-world.add(cloud, correcting: reportedPose)
+let fix = world.add(cloud, correcting: reportedPose)
 ```
 
 <img src="Images/27-DepthAndThePhone/DriftFixed.jpg" alt="The same staged room fused twice side by side: on the left a blurred, doubled ball and a ghosted crate over a smeared checkered floor, on the right the same ball and crate crisp and single, the checker squares clean" width="680">

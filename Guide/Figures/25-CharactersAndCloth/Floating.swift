@@ -1,6 +1,6 @@
 // figure: frame=600
 //
-// Guide listing (Chapter 25): buoyancyScale. Four identical crates settled on still
+// Guide listing (Chapter 25): buoyancy. Four identical crates settled on still
 // water, differing only in the density each was built with, so how much of
 // each one is left above the line is the answer the water worked out. Still
 // water rather than a swell, so the waterline is one clean horizontal and the

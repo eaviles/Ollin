@@ -398,8 +398,9 @@ That last one is worth a moment, because it is the one that looks impossible. A 
 
 ```swift
 world.restore(saved)
-figure = world.ragdolls.first     // the bodies are new ones
-skin.apply(figure)                // your mesh, over the restored pose
+if let ragdoll = world.ragdolls.first {   // the bodies are new ones
+    figure.apply(ragdoll)                 // your mesh, over the restored pose
+}
 ```
 
 One thing to watch throughout. Restoring empties the world first, so any `Body3D`, `Vehicle3D`, or `Character3D` you were holding onto is gone. Take them from `world.bodies`, `world.vehicles`, and `world.characters` again. They come back in the order they were saved, and each body still knows its own `collider`, which is usually all a drawing loop needs.

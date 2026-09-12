@@ -156,10 +156,10 @@ db8431ac70a1  Guide/24-WorldsWithWeight.md:317  cannot find 'world' in scope
 5a7e6948dfec  Guide/24-WorldsWithWeight.md:342  cannot find 'world' in scope
 3b24b2bd1c66  Guide/24-WorldsWithWeight.md:367  cannot find 'world' in scope
 11274cdabc98  Guide/24-WorldsWithWeight.md:375  cannot find 'world' in scope
-b79c3a5a18a3  Guide/24-WorldsWithWeight.md:399  cannot find 'world' in scope
-ab56176ee878  Guide/24-WorldsWithWeight.md:409  cannot find 'island' in scope
-02698ee714d5  Guide/24-WorldsWithWeight.md:416  cannot find 'world' in scope
-a2328aeea45a  Guide/24-WorldsWithWeight.md:426  cannot find 'world' in scope
+ba741ed44437  Guide/24-WorldsWithWeight.md:399  cannot find 'world' in scope
+ab56176ee878  Guide/24-WorldsWithWeight.md:410  cannot find 'island' in scope
+02698ee714d5  Guide/24-WorldsWithWeight.md:417  cannot find 'world' in scope
+a2328aeea45a  Guide/24-WorldsWithWeight.md:427  cannot find 'world' in scope
 4b48a4fd78e8  Guide/25-CharactersAndCloth.md:19  cannot find 'walker' in scope
 53fd73cffbb5  Guide/25-CharactersAndCloth.md:25  cannot find 'walker' in scope
 67103fd950f6  Guide/25-CharactersAndCloth.md:42  cannot find 'walker' in scope
@@ -204,7 +204,7 @@ d2508b320c31  Guide/27-DepthAndThePhone.md:44  cannot find 'StageCamera' in scop
 b760d3343e21  Guide/27-DepthAndThePhone.md:62  cannot find 'frame' in scope
 1660684f91f0  Guide/27-DepthAndThePhone.md:87  cannot find 'anchor' in scope
 07246d9df10a  Guide/27-DepthAndThePhone.md:161  cannot find 'StageCamera' in scope
-462f58c13cd5  Guide/27-DepthAndThePhone.md:181  cannot find 'world' in scope
+be9a2123e4c1  Guide/27-DepthAndThePhone.md:181  cannot find 'world' in scope
 569e7c8b005c  Guide/27-DepthAndThePhone.md:199  cannot find 'cloud' in scope
 2ea9865ab333  Guide/27-DepthAndThePhone.md:223  cannot find 'world' in scope
 feb0fef1800b  Guide/27-DepthAndThePhone.md:248  cannot find 'device' in scope

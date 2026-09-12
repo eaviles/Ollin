@@ -358,7 +358,7 @@ world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
               density: 3)     // stone
 ```
 
-The cork bobs, the stone goes to the bottom, and the interesting part is what happens in between. A body of density `0.5` settles with exactly half of itself under the surface. One at `0.8` rides low with a fifth of it dry. **The waterline is not a setting, it is an answer.** A body sinks until the water it has pushed out of the way weighs the same as it does, which is the whole of buoyancyScale in one sentence.
+The cork bobs, the stone goes to the bottom, and the interesting part is what happens in between. A body of density `0.5` settles with exactly half of itself under the surface. One at `0.8` rides low with a fifth of it dry. **The waterline is not a setting, it is an answer.** A body sinks until the water it has pushed out of the way weighs the same as it does, which is the whole of buoyancy in one sentence.
 
 Here are four identical crates that differ in nothing but that number.
 
@@ -601,7 +601,7 @@ The cloth and the ropes are the one part with an academic line you can follow. P
 
 ## Go deeper
 
-- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles, ragdolls, soft bodies, ropes and buoyancyScale, including every parameter on the suspension and the cloth solver, and what a snapshot keeps for each.
+- [3D physics](../Docs/Simulation/Physics3D.md): the full reference for characters, vehicles, ragdolls, soft bodies, ropes and buoyancy, including every parameter on the suspension and the cloth solver, and what a snapshot keeps for each.
 - Appendix B draws what the solvers are doing: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), and [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure) for the constraint relaxation.
 - Worked examples, in [`Examples/3D/Physics/`](../Examples/3D/Physics/): `Stroll` and `Crawler` (a character and a tracked machine), `Joyride` (the vehicle with its parameters live), `Ragdoll` and `Cape` (a figure and the cloth on its back), `Drape`, `Raft` and `Rigging` (cloth, cloth on water, and ropes), `Chain` and `Bagatelle` (ropes and degrees of freedom), and `Yard`, which is this sketch with a saved world, an animated figure, and rather more going on.
 

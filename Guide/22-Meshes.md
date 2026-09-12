@@ -260,11 +260,11 @@ cube.subtracting(ball)    // the cube, with the ball taken out of it
 
 Look at the third one. That is a cube and a ball. It is also a block with every edge and every corner rounded at once, which by hand means modeling twelve fillets. That is the thing to take from this. You are not cutting because you want a hole. You are cutting because a shape that is hard to describe is often easy to *catch* between two shapes that are not.
 
-What comes back is an ordinary mesh. It draws the same and takes a material and a shadow the same. It can be broken apart, handed to the physics solver, or written out for a printer. That makes this different from the `subtract { }` block you met in the [fields chapter](26-SculptingWithFields.md). The block melts distance fields on the GPU while the frame is drawn, and leaves no geometry behind. Reach for it when you want a blobby form that moves. Reach for these when you want the shape itself.
+What comes back is an ordinary mesh. It draws the same and takes a material and a shadow the same. It can be broken apart, handed to the physics solver, or written out for a printer. That makes this different from the `subtract { }` block [Chapter 26](26-SculptingWithFields.md) carves fields with. The block melts distance fields on the GPU while the frame is drawn, and leaves no geometry behind. Reach for it when you want a blobby form that moves. Reach for these when you want the shape itself.
 
 Three things to know before you cut.
 
-**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give, and what comes back is meaningless rather than merely ugly. Every built-in generator closes. If you are unsure, `printCheck()` will tell you, the same examination the [printing chapter](31-SharingAndPerforming.md) uses.
+**Both sides have to close.** A boolean asks what is inside each solid, so a surface with a hole in it has no answer to give, and what comes back is meaningless rather than merely ugly. Every built-in generator closes. If you are unsure, `printCheck()` will tell you, the same examination [Chapter 31](31-SharingAndPerforming.md) runs before it writes a mesh for a printer.
 
 **A cutter has to be the right way out.** Mirroring a mesh turns it inside out, whether you swap two of its coordinates or scale an axis by a negative number. An inside-out cutter takes away everything it should have left. Turn it instead:
 
