@@ -263,7 +263,7 @@ The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`)
 
 ## The trick that keeps it cheap
 
-That "spatial trick" is worth a minute, because it is not really about flocks.
+That "spatial trick" deserves a minute, because it is not really about flocks.
 
 Ask 300 boids to look at every other boid and you have made 90,000 comparisons this frame. At 3,000 boids it is 9 million, and the window starts to stutter. But nearly all of that work is spent proving that two creatures on opposite sides of the canvas are, in fact, far apart.
 

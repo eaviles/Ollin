@@ -59,7 +59,7 @@ if let only { pages = pages.filter { $0.localizedCaseInsensitiveContains(only) }
 
 // MARK: - Collect
 
-struct Job { var block: Block; var source: String }
+struct Job { var block: Block; var source: String; var preambleLines: Range<Int> }
 var jobs: [Job] = []
 var sharedImports: Set<String> = []
 var skipped: [(Block, String)] = []
@@ -78,7 +78,9 @@ for page in pages {
         guard block.language == "swift" else { continue }
         if let reason = block.skip { skipped.append((block, reason)); continue }
         if isElided(block.body) { skipped.append((block, "elided with ...")); continue }
-        jobs.append(Job(block: block, source: wrapped(block, preamble: pre)))
+        let source = wrapped(block, preamble: pre)
+        jobs.append(Job(block: block, source: source,
+                        preambleLines: preambleSpan(of: pre, in: source)))
     }
 }
 
@@ -113,7 +115,7 @@ DispatchQueue.concurrentPerform(iterations: jobs.count) { index in
     lock.lock()
     done += 1
     if case .failure(let error) = result {
-        failures.append((job.block, "\(error)"))
+        failures.append((job.block, firstError("\(error)", preambleLines: job.preambleLines)))
     }
     if !quiet && done % 25 == 0 {
         FileHandle.standardError.write(Data("  \(done)/\(total)\r".utf8))
@@ -123,13 +125,34 @@ DispatchQueue.concurrentPerform(iterations: jobs.count) { index in
 
 // MARK: - Report
 
+/// Where the chapter's preamble sits in the wrapped file, so an error inside it
+/// is reported as the preamble's rather than blamed on the reader's block.
+func preambleSpan(of preamble: String, in source: String) -> Range<Int> {
+    guard !preamble.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return 0..<0 }
+    let lines = source.components(separatedBy: "\n")
+    let first = preamble.components(separatedBy: "\n").first(where: {
+        !$0.trimmingCharacters(in: .whitespaces).isEmpty
+    }) ?? ""
+    guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces)
+                                                 == first.trimmingCharacters(in: .whitespaces) })
+    else { return 0..<0 }
+    let count = preamble.components(separatedBy: "\n").count
+    return (start + 1)..<(start + 1 + count)   // 1-based, as the compiler counts
+}
+
 /// The compiler says a great deal; the first real error is what a person acts on.
-func firstError(_ log: String) -> String {
+func firstError(_ log: String, preambleLines: Range<Int> = 0..<0) -> String {
     for line in log.components(separatedBy: "\n") where line.contains(": error:") {
         if let range = line.range(of: ": error: ") {
             let message = String(line[range.upperBound...])
             let place = line[..<range.lowerBound]
-            let column = place.components(separatedBy: ":").dropFirst(1).prefix(2).joined(separator: ":")
+            let parts = place.components(separatedBy: ":").dropFirst(1).prefix(2)
+            let column = parts.joined(separator: ":")
+            let row = Int(parts.first ?? "") ?? -1
+            if preambleLines.contains(row) {
+                return "\(message)   [in this chapter's Guide/Snippets preamble, "
+                     + "not in the block]"
+            }
             return "\(message)   [in the block, at \(column)]"
         }
     }
@@ -192,7 +215,7 @@ if let text = read(gapsPath) {
 }
 
 let failedNow = Dictionary(uniqueKeysWithValues: failures.map {
-    (fingerprint($0.0), (block: $0.0, message: firstError($0.1)))
+    (fingerprint($0.0), (block: $0.0, message: $0.1))
 })
 
 if record {

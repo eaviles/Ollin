@@ -38,7 +38,7 @@ velocity += acceleration * deltaTime
 position += velocity * deltaTime
 ```
 
-Two of those force lines are worth a second look. Gravity is written `* mass` because the real pull of the earth is stronger on heavier things, in exact proportion. Divide by mass a moment later and it cancels out. That is why a hammer and a feather fall at the same rate in a vacuum. Drag is the reason they don't fall at the same rate in air. It grows with speed, it points backward along the velocity, and it does *not* care about mass. So after the division it slows a light body much more than a heavy one. A feather drifts because drag wins early. A hammer plummets because it barely notices.
+Two of those force lines repay a second look. Gravity is written `* mass` because the real pull of the earth is stronger on heavier things, in exact proportion. Divide by mass a moment later and it cancels out. That is why a hammer and a feather fall at the same rate in a vacuum. Drag is the reason they don't fall at the same rate in air. It grows with speed, it points backward along the velocity, and it does *not* care about mass. So after the division it slows a light body much more than a heavy one. A feather drifts because drag wins early. A hammer plummets because it barely notices.
 
 You can watch all of this at once. Make `MySketches/Confetti.swift`:
 
@@ -153,7 +153,7 @@ final class Pile: Sketch {
 
 Two hundred forty discs fall, land on each other, shuffle for space, and settle into the heap above, like gumballs in a jar. The sketch never mentions a collision. It scatters particles in `setup()`, and in `draw()` it does exactly two things. It steps the world, then draws what's there.
 
-The shape of every physics sketch in this chapter is in those few lines. Build the world once in `setup()`. Each frame, `step(dt: deltaTime)` advances it, and you draw from its bodies wherever they happen to be.
+The shape of every physics sketch in this chapter is in those few lines. Build the world once in `setup()`. Each frame, `advance(by: deltaTime)` moves it on, and you draw from its bodies wherever they happen to be.
 
 The rules you set at the top deserve a word each. `world.bounds = bounds` gives the world walls, and without it bodies are free to leave. `bounds` is the whole canvas as a `Rectangle`, one of the sketch's built-in properties. `particlesCollide = true` makes particles push each other apart as solid disks. It's off by default because plenty of things you'll build, a cloth, a chain, don't want their own points colliding. There's also `world.gravity`, which you'll change in a moment. `world.restitution` is how much speed survives hitting a wall. `world.drag` is the same air resistance you wrote by hand a page ago, now built in.
 
@@ -221,7 +221,7 @@ final class Strand: Sketch {
 
 Fifteen beads, each connected to the one before, the first pinned. The strand starts laid out on a diagonal, so on launch it swings down and sways until the built-in drag calms it. Hold the mouse anywhere and the last bead sticks to your cursor, so you can drag, let go, and watch the whole strand whip. That's a rope in about thirty lines, and nothing in `draw()` knows anything about ropes.
 
-`place(at:)` is the right way to move a particle by hand. The reason is worth knowing, because it explains how this world moves things at all. A particle here doesn't store a velocity. It remembers where it was last frame, and the gap between then and now *is* its velocity. This style of simulation is called Verlet integration, and it's a big part of why springs and piles hold together so calmly here. But it means "just set the position" would secretly also set a velocity, because you'd be widening that gap. `place(at:)` moves the particle *and* its memory together, so the bead lands at your cursor without picking up any speed from the move. (If you do want to throw a particle, `p.push(_:)` does that.)
+`place(at:)` is the right way to move a particle by hand. The reason explains how this world moves things at all. A particle here doesn't store a velocity. It remembers where it was last frame, and the gap between then and now *is* its velocity. This style of simulation is called Verlet integration, and it's a big part of why springs and piles hold together so calmly here. But it means "just set the position" would secretly also set a velocity, because you'd be widening that gap. `place(at:)` moves the particle *and* its memory together, so the bead lands at your cursor without picking up any speed from the move. (If you do want to throw a particle, `p.push(_:)` does that.)
 
 > **Swift note.** `beads.last` is an optional, because a list might be empty and have no last element. The `?.` after it means "if it's there, do this, and if not, quietly do nothing", which saves an `if let` when nothing needs to happen in the empty case. And `beads.map(\.position)` builds a new list by pulling one property out of every element, so fifteen particles go in and fifteen positions come out, ready for `drawPolyline`.
 
@@ -309,13 +309,13 @@ Two parameters decide the character, and the first is an aesthetic choice rather
 
 ### The classic chaos machine: DoublePendulum
 
-Two weights swing on two rigid arms under gravity. That really is all it takes to get motion nobody can predict. You set the arm lengths, the masses, and the starting angles. Then call `step()` each frame and read `bob1` and `bob2`, both measured from the pivot. Tracing `bob2` is where the drama is, and the middle panel above is a few seconds of exactly that.
+Two weights swing on two rigid arms under gravity. That really is all it takes to get motion nobody can predict. You set the arm lengths, the masses, and the starting angles. Then call `advance()` each frame and read `bob1` and `bob2`, both measured from the pivot. Tracing `bob2` is where the drama is, and the middle panel above is a few seconds of exactly that.
 
-The part worth pausing on is that this is *deterministic*. `step()` advances one 60 fps frame in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos actually means. A fan of near-identical pendulums is the cheapest way to watch it happen.
+The part to slow down for is that this is *deterministic*. `advance()` moves one 60 fps frame on in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos actually means. A fan of near-identical pendulums is the cheapest way to watch it happen.
 
 ### Gravity at scale: NBody
 
-In an `NBody`, every body pulls on every other. That one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. It holds a `bodies` array you can read and rearrange between steps, and `step()` advances the lot:
+In an `NBody`, every body pulls on every other. That one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. It holds a `bodies` array you can read and rearrange between steps, and `advance()` moves the lot on:
 
 ```swift
 let galaxy = NBody.disk(count: 2000, center: center, radius: 380)
