@@ -25,7 +25,7 @@ Guides like this tend to fail in known ways. A concept appears out of nowhere an
 3. **Every image is made by the code next to it.** Ollin itself renders every figure and diagram from committed source. You can open any of them, run it, and change it.
 4. **Practice first.** You see something on your canvas within the first page of every chapter. Everything a chapter teaches ends up in one finished piece.
 
-Both kinds of image are already on this page. The piece above is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift) rendered at a fixed frame. The [Chapter 1](01-HelloOllin.md) diagram below is a sketch too, [`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift):
+Both kinds of image are already on this page. The grid above is the piece each chapter builds, thirty-two committed figures at one frame each, and its first cell is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift). The [Chapter 1](01-HelloOllin.md) diagram below is a sketch too, [`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift):
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/CoordinateSystem-dark.jpg">
@@ -39,8 +39,8 @@ Read the chapters in order the first time, because each one builds only on the o
 - **Part I, chapters 1 to 9.** Around 120 pages. It is the base everything else stands on, so it is the one part you cannot skip.
 - **Part II, chapters 10 to 15.** Around 90 pages. The rest of the guide depends on chapter 10 more than on any other chapter, so do not skim it.
 - **Part III, chapters 16 to 20.** Around 80 pages, the shortest part. Chapter 17 is its gate, because chapters 18, 19 and 20 all assume you can read a shader.
-- **Part IV, chapters 21 to 26.** Around 135 pages, the longest part. Chapter 21 is its gate, and chapter 24 also wants the physics from chapter 11.
-- **Part V, chapters 27 to 32.** Around 125 pages, and the loosest part. Its chapters barely depend on each other, so read the ones you need in any order.
+- **Part IV, chapters 21 to 26.** Around 130 pages. Chapter 21 is its gate, and chapter 24 also wants the physics from chapter 11.
+- **Part V, chapters 27 to 32.** Around 135 pages, the longest part, and the loosest. Its chapters barely depend on each other, so read the ones you need in any order.
 
 Four chapters are better with hardware beyond the Mac, and every one of them starts with what you can do on the Mac alone. For [Chapter 27](27-DepthAndThePhone.md) you want an iPhone with a LiDAR sensor, and for [Chapter 28](28-SoundAndControl.md) a microphone and later a MIDI controller. For [Chapter 30](30-Seeing.md) you want a webcam, and for [Chapter 32](32-Installations.md) a lighting node or a projector. You can skip any of them, and nothing later in the guide breaks.
 
@@ -68,7 +68,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 11. **[Forces and physics](11-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
 12. **[Flocks and swarms](12-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), then flocking from three local rules, then a line that grows into coral.
 13. **[Growing things](13-GrowingThings.md).** A recursive tree, L-system grammars, the chaos game and the fractals related to it, growth that fills empty space, frost from frozen walkers, and tiles that must agree.
-14. **[Fields and flow](14-FieldsAndFlow.md).** A direction at every point: streamlines, evenly spaced flow, particles carried by the field, and attractors found in formulas.
+14. **[Fields and flow](14-FieldsAndFlow.md).** A direction at every point: contours where a field equals something, streamlines, evenly spaced flow, particles carried along, and a field you pin down yourself.
 15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you keep and edit as data: booleans, offsets, strokes as regions, Voronoi mosaics, packing, and hatching for pen plotters.
 
 ### Part III: Pixels and light
@@ -81,12 +81,12 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part IV: The third dimension
 
-21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and materials, air you can see, meshes and their maps, and the depth buffer's own effects.
+21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and the shadows they throw, air you can see, materials and matcaps, and the depth buffer's own effects.
 22. **[Meshes, maps, and materials](22-Meshes.md).** Meshes loaded from a file and built from other meshes, pictures that set what a surface is, texel by texel, and finishes you set with numbers: metal and dielectric, environments as the light source, glass, coated paint, cloth, and skin.
 23. **[Landscapes and multitudes](23-Landscapes.md).** Ground grown from noise and weathered by rain, then the four ways to draw more copies of something than you could place by hand: a field of particles, instanced meshes, a world cut down to what the camera sees, and grass that is drawn without ever being built.
 24. **[Worlds with weight](24-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, structures that stand on their own cables, and snapshots of a settled world.
 25. **[Characters, vehicles, and cloth](25-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
-26. **[Sculpting with fields](26-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
+26. **[Sculpting with fields](26-SculptingWithFields.md).** Distance fields that merge, carve, and fold, in 2D and raymarched 3D, sculpted like clay or grown as fractals, then the traced light they deserve: mirrors that see off screen, bounce, caustics, and the flare a lens leaves.
 
 ### Part V: Out into the world
 
