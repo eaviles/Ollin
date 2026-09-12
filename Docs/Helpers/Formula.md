@@ -24,7 +24,7 @@ This matters because a string can arrive at runtime, and Swift source cannot. So
 - [A parameter of more than one number](#a-parameter-of-more-than-one-number)
 - [What a formula can read](#what-a-formula-can-read)
 - [The vocabulary](#the-vocabulary)
-- [Two rules that surprise people](#two-rules-that-surprise-people)
+- [Two rules that differ from Swift](#two-rules-that-differ-from-swift)
 - [Using one on its own](#using-one-on-its-own)
 - [When the text is wrong](#when-the-text-is-wrong)
 - [How it sits beside the rest](#how-it-sits-beside-the-rest)
@@ -145,7 +145,7 @@ The shaping names use the same spelling and the same argument order as [the fram
 
 `if` picks its branch before evaluating it, so the branch not taken never runs.
 
-### Two rules that surprise people
+### Two rules that differ from Swift
 
 **`^` binds tighter than a minus sign.** `-2^2` is `-4`, and `2^3^2` is `2^9`. A calculator does the same. Ollin has one *other* small language, the one that writes the productions of a [parametric L-system](../Generators/LSystem.md). That language binds the minus tighter, because the published formalism says so. Neither is a mistake, and the two do not have to agree.
 

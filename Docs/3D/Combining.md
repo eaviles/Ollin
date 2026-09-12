@@ -77,7 +77,7 @@ Shadows (with [`castShadows()`](./3D.md#shadows)), the two reflection systems, a
 | Raymarched fields | yes | yes | no | yes, with a PBR finish | yes | yes |
 | 2D drawing placed in depth | no | no | no | no | yes | no |
 
-Some of those differences surprise people:
+Those differences, spelled out:
 
 - **Geometry drawn in bulk is shaded, but not traced.** The ray-tracing acceleration structure holds solid mesh batches only. Instanced meshes, mesh fields and strand fields are absent from it, so they never appear inside a traced mirror. On a ray-tracing GPU a point light's shadow doesn't see them either, because that shadow is traced too. Their shadows from directional and spot lights are ordinary shadow maps, and those work normally. Strand fields receive shadows without casting any, which is what keeps a field of grass affordable.
 
@@ -106,7 +106,7 @@ Under [`castShadows()`](./3D.md#shadows) every light casts a shadow, up to **fou
 | A light with `castsShadow: false` | no | You said so |
 | The fill and rim of a `lightingPreset(_:)` rig | no | The rigs set `castsShadow: false` on them. See [Lighting presets](./3D.md#lights) |
 
-The last row is the one that surprises people. `lightingPreset(.studio)` installs three lights, and you get one shadow rather than three. A fill light exists to open the shadow side, not to make a shadow of its own. Every caster also costs a pass over the scene from its own point of view, so the rigs stay at one. To change that, copy the rig and set the flag yourself.
+The last row is the one to read twice. `lightingPreset(.studio)` installs three lights, and you get one shadow rather than three. A fill light exists to open the shadow side, not to make a shadow of its own. Every caster also costs a pass over the scene from its own point of view, so the rigs stay at one. To change that, copy the rig and set the flag yourself.
 
 <a id="primary-caster"></a>
 Almost everything follows the whole list of casters. One feature reads a single caster instead, and that caster is the **primary** one. Ollin picks it in this order: the first directional light, then the first spot, then the first point, then the first rect or disk panel.

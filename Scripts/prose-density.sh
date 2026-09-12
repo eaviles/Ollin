@@ -20,9 +20,25 @@
 #   ASIDES   parentheses per paragraph (the repo writes one paragraph per
 #            line). One aside per paragraph reads as a voice; three read as a
 #            footnote pile. 1.5 or below.
+#   FRAMES   framing constructions per 100 prose lines, with the one that
+#            fires most named beside it. These are the sentence shapes that
+#            comment on the material instead of teaching it, and unlike the
+#            three above they are a *report, not a bar*: a page uses some of
+#            them legitimately, and the number only says whether one has
+#            become a tic. Reference points, measured over the Guide: median
+#            6, highest chapter 12. Chapter 1 sat at 14 before its 2026-09-11
+#            revision pass, with "worth" carrying the same move twelve times,
+#            and came out at 3.
 #
 # A page over a bar is not a defect to fix in one pass. Fix the page you are
 # already editing, and watch the number come down over time.
+#
+# Why a construction and not a word: the tic reworded itself every time
+# ("it's worth two minutes", "a habit worth forming", "worth having under
+# your hand"), so a repeated-phrase measure missed it, and a repeated-word
+# measure just surfaced whatever the chapter was about. Vale cannot see any
+# of this either, because every OllinGuide rule matches vocabulary and these
+# are ordinary words in a shape. Guide/AUTHORING.md, "Voice and style".
 
 cd "$(dirname "$0")/.." || exit 1
 
@@ -34,7 +50,26 @@ fi
 python3 - "${files[@]}" <<'PY'
 import pathlib, re, sys
 
-print(f'{"FILE":32} {"LINES":>6} {"COLONS":>7} {"SEMIS":>6} {"DENSITY":>8} {"LONG%":>6} {"ASIDES":>7}')
+# The framing constructions counted by the FRAMES column. Each one comments on
+# the material or on the reader instead of teaching, and each is built from
+# ordinary words, which is why no Vale rule can see it. Keep this list short
+# and each entry defensible: it is a report, so a loose pattern costs the
+# column its meaning. `reader` overlaps OllinGuide.ReaderPrediction on purpose,
+# so a page shows the habit here even where a single instance passed there.
+FRAMES = {
+    "worth":     r"\bworth\s+(?!of\b)\w",
+    "reader":    r"\b(trips?\s+(you|people|almost everyone|everyone|up)"
+                 r"|will confuse you|confuses?\s+(you|people)"
+                 r"|(will |might |may )?surprises?\s+(you|people)"
+                 r"|catch(es)? (you|people) out|you'?ll find (this|that|it))",
+    "thething":  r"\b(the thing (to|worth|about)|is what it (is|isn'?t))\b",
+    "turnsout":  r"\bturns? out\b",
+    "ofcourse":  r"\b(of course|needless to say|as you might expect)\b",
+    "noticethat": r"\b(notice that|note that|remember that|bear in mind)\b",
+}
+
+print(f'{"FILE":32} {"LINES":>6} {"COLONS":>7} {"SEMIS":>6} {"DENSITY":>8} '
+      f'{"LONG%":>6} {"ASIDES":>7} {"FRAMES":>7}  TOP')
 
 over_bar = 0
 for name in sys.argv[1:]:
@@ -69,15 +104,28 @@ for name in sys.argv[1:]:
     long_share = 100 * sum(1 for s in sentences if len(s.split()) > 25) / max(1, len(sentences))
     asides = parens / lines
 
+    # FRAMES is reported, never starred: some of these are the right sentence
+    # to write, and only their pile-up is the habit.
+    lower = text.lower()
+    hits = {name: len(re.findall(pat, lower)) for name, pat in FRAMES.items()}
+    frames = 100 * sum(hits.values()) / lines
+    top = max(hits.items(), key=lambda kv: kv[1])
+    top_shown = f"{top[0]}:{top[1]}" if top[1] else "-"
+
     flag = " *" if ((density is not None and density < 2.0)
                     or long_share > 35 or asides > 2.0) else ""
     over_bar += 1 if flag else 0
     shown = f"{density:8.1f}" if density is not None else f'{"-":>8}'
     print(f"{path.name[:32]:32} {lines:6} {colons:7} {semis:6} "
-          f"{shown} {long_share:6.0f} {asides:7.2f}{flag}")
+          f"{shown} {long_share:6.0f} {asides:7.2f} {frames:7.1f}  {top_shown}{flag}")
 
 print()
 print("goal: DENSITY 2.5 or above, LONG% 20 or below, ASIDES 1.5 or below")
 print(f"    * marks a page well past one of them "
       f"(under 2.0, over 35, or over 2.0): {over_bar} page(s)")
+print("FRAMES is a report, not a bar: framing constructions per 100 prose "
+      "lines, the")
+print("    commonest named. Guide median 6, highest chapter 12. Read the page "
+      "when one")
+print("    construction carries most of the count.")
 PY

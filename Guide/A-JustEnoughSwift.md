@@ -180,7 +180,7 @@ The deeper split behind the keyword is **who copies**. Swift types come in two k
 - **Structs are values.** Assigning one, or passing it to a function, copies it, and the copy and the original then lead separate lives. `Vector2`, `Color`, `Rectangle`, and `Shape` are structs, which is why you can hand a position to a function without worrying it'll be changed behind your back.
 - **Classes are references.** Assigning one shares it, so both names point at the same object. Ollin's living, stateful things are classes: the physics `World` and its particles, trackers, your sketch itself. [Chapter 11](11-ForcesAndPhysics.md) leans on this when a `Particle` added to the world and kept in your own array is one object seen from two places.
 
-One consequence trips everyone once: `let` on a class instance means the *reference* can't be reassigned, but the object it points to can still change. `let world = World()` happily accepts `world.gravity = ...` forever. On the struct side the fine print runs the other way, because many Ollin structs are immutable, so instead of assigning into `p.x` you build a changed copy with arithmetic (`p + Vector2(2.3, 0)`) or a helper like `p.with(x: 0)`.
+One consequence is easy to miss: `let` on a class instance means the *reference* can't be reassigned, but the object it points to can still change. `let world = World()` happily accepts `world.gravity = ...` forever. On the struct side the fine print runs the other way, because many Ollin structs are immutable, so instead of assigning into `p.x` you build a changed copy with arithmetic (`p + Vector2(2.3, 0)`) or a helper like `p.with(x: 0)`.
 
 ## Closures: functions as values
 

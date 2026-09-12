@@ -79,7 +79,7 @@ In return for that strictness, the compiler catches typos and wrong-type mistake
 
 ### `Double` vs `Int` (and why `1/2 == 0`)
 
-This is the rule that surprises people most. Swift separates whole numbers (`Int`) from decimals (`Double`), and **integer division throws away the remainder**:
+Swift separates whole numbers (`Int`) from decimals (`Double`), and **integer division throws away the remainder**:
 
 ```swift
 1 / 2        // 0,   Int division
@@ -219,7 +219,7 @@ override var title: String { "Pulse \(frameCount)" }
 
 ### Where to go next
 
-Those are the differences that trip people up, and they are enough Swift to read and write Ollin sketches. For the rest of the language, which includes structs and enums, protocols, generics, and error handling, Apple's free book is the canonical reference:
+Those are the differences that matter most, and they are enough Swift to read and write Ollin sketches. For the rest of the language, which includes structs and enums, protocols, generics, and error handling, Apple's free book is the canonical reference:
 
 - [*The Swift Programming Language*](https://docs.swift.org/swift-book/), the official guide.
 

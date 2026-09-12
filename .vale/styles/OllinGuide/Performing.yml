@@ -22,6 +22,7 @@ tokens:
   - 'a nice (way|touch|property)'
   - 'earn(s|ed|ing)? (its|their) keep'
   - 'pays? the debt'
+  - 'pays? for itself'
   # Framing the reader's learning as a wager or an investment return
   # (Guide/AUTHORING.md, "prefer plain words for a concept's payoff").
   - 'the payoff'

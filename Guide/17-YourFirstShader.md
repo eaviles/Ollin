@@ -6,7 +6,7 @@
 
 <img src="Images/17-YourFirstShader/Aurora.jpg" alt="An aurora: teal and green curtains of light swaying against a violet night sky full of small stars, above a black mountain ridge" width="560">
 
-That aurora is about forty lines of code and no assets, and it runs at full resolution at full frame rate because the drawing isn't happening one shape at a time. It's a **shader**, a small function the GPU runs at every pixel of the canvas at once. This chapter teaches you to write one, and by the end you'll find that most of what you need was already taught chapters ago. It just changes costume.
+That aurora is about forty lines of code and no assets, and it runs at full resolution at full frame rate because the drawing isn't happening one shape at a time. It's a **shader**, a small function the GPU runs at every pixel of the canvas at once. This chapter teaches you to write one, and most of what it takes was already taught chapters ago. It just changes costume.
 
 ## One question, a million times
 

@@ -13,7 +13,7 @@ A drawing call measures every number from the **top-left corner of the canvas**,
 
 So `drawCircle(380, 240, 60)` sits 380 across and 240 down from that corner. Inside `draw()`, `width` and `height` hold the canvas size. That is why `drawCircle(width / 2, height / 2, 200)` lands in the center of any canvas.
 
-y growing downward is the part that surprises people, because school graphs grow upward. Screens have been addressed this way since text terminals, and p5.js, Processing, and OPENRNDR all count the same. One consequence is worth keeping in mind. A positive angle, which the math convention calls counter-clockwise, turns **clockwise** on screen.
+y grows downward, where school graphs grow upward. Screens have been addressed this way since text terminals, and p5.js, Processing, and OPENRNDR all count the same. One consequence is worth keeping in mind. A positive angle, which the math convention calls counter-clockwise, turns **clockwise** on screen.
 
 ### Points are not pixels
 

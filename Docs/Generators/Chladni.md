@@ -87,7 +87,7 @@ A physical plate picks its figure by frequency. Each `(m, n)` mode rings at its 
 - **Pick `m ≠ n`, and watch the diagonal.** Equal modes cancel at the default amplitudes. The sand style then floods the whole plate, which is an honest reading of a plate that is not ringing. When you animate between modes, keep `m > n` at every stop. The morph then never crosses the degenerate diagonal.
 - **`(m, n)` and `(n, m)` draw the same figure.** The swap negates the field, and both readings are symmetric in sign. Because of that, treat a mode pair as unordered.
 - **The result is deterministic.** The field is a pure function, and the generator animates only by `phase`, so a fixed phase exports byte-identically. The sand speckle is a hash of the pixel position and the phase, with no random state.
-- **The wave style is the debugging view.** When a figure surprises you, switch to `.wave`. The signed field shows which regions move together and where the sign flips, which makes the mode numbers easy to read.
+- **The wave style is the debugging view.** When a figure comes out wrong, switch to `.wave`. The signed field shows which regions move together and where the sign flips, which makes the mode numbers easy to read.
 
 ---
 

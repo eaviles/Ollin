@@ -1,0 +1,26 @@
+# Prose that tells the reader how they are about to feel (Guide/AUTHORING.md,
+# "don't predict the reader's experience"). "This trips up almost everyone
+# once" and "one piece of behavior will confuse you" make a claim about the
+# reader that no reader can check, and they talk down to the one who was not
+# confused. State the fact instead, and where something is a common mistake,
+# say what goes wrong.
+#
+# Deliberately narrow. Measured across the Guide before this rule existed, the
+# whole family ran at about one instance per chapter, so a hit here is nearly
+# always the real thing rather than a phrasing that happens to match. Warning,
+# not error: a chapter may keep one on purpose.
+extends: existence
+message: "Predicts the reader's reaction ('%s'): state the fact instead (Guide/AUTHORING.md)."
+level: warning
+ignorecase: true
+tokens:
+  - "trips? (you|people|almost everyone|everyone|up)"
+  - "will confuse you"
+  - "confuses? (you|people|almost everyone|everyone)"
+  - "confusing at first"
+  - "(will |might |may )?surprises? (you|people|almost everyone|everyone)"
+  - "catch(es)? (you|people) out"
+  - "if nobody (mentions|tells you)"
+  - "you (might|may) be wondering"
+  - "you'?ll (find|probably find) (this|that|it)"
+  - "everyone (gets|trips over) this"
