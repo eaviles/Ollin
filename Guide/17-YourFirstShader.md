@@ -366,8 +366,6 @@ final class Aurora: Sketch {
 }
 ```
 
-<img src="Images/17-YourFirstShader/Aurora.jpg" alt="The finished aurora: swaying teal-green curtains over a starred violet night and a black ridge" width="560">
-
 Read the shader top to bottom and count the old friends: `fbm` ([Chapter 5](05-Noise.md)) bends and builds the curtains, `smoothstep` ([Chapter 3](03-MotionAndTime.md)) shapes every transition, from the curtain edges to the height fade to the two-pixel horizon line, `hash12` ([Chapter 4](04-Randomness.md)'s determinism, per pixel) places the stars, `palette` designs the color, and `mix` (lerp by another name) blends every layer of the picture. Nothing new happened here except *where the code runs*.
 
 Then make it yours:

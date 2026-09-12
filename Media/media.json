@@ -2,193 +2,193 @@
   "base": "https://media.ollin.art",
   "chapters": {
     "01-HelloOllin": {
-      "clip": "guide/01-HelloOllin.mp4",
+      "clip": "guide/01-HelloOllin.mp4?v=310b645e",
       "height": 1080,
       "still": "Images/01-HelloOllin/HelloMotion.jpg",
       "width": 1080
     },
     "02-Color": {
-      "clip": "guide/02-Color.mp4",
+      "clip": "guide/02-Color.mp4?v=ddf6a401",
       "height": 1080,
       "still": "Images/02-Color/ColorField.jpg",
       "width": 1080
     },
     "03-MotionAndTime": {
-      "clip": "guide/03-MotionAndTime.mp4",
+      "clip": "guide/03-MotionAndTime.mp4?v=0c85dd7c",
       "height": 1080,
       "still": "Images/03-MotionAndTime/RingPulse.gif",
       "width": 1080
     },
     "04-Randomness": {
-      "clip": "guide/04-Randomness.mp4",
+      "clip": "guide/04-Randomness.mp4?v=45d3cc4d",
       "height": 1080,
       "still": "Images/04-Randomness/DisorderGrid.jpg",
       "width": 1080
     },
     "05-Noise": {
-      "clip": "guide/05-Noise.mp4",
+      "clip": "guide/05-Noise.mp4?v=f1bf4a58",
       "height": 1080,
       "still": "Images/05-Noise/Meadow.jpg",
       "width": 1080
     },
     "06-GridsAndRepetition": {
-      "clip": "guide/06-GridsAndRepetition.mp4",
+      "clip": "guide/06-GridsAndRepetition.mp4?v=0e222c2f",
       "height": 1080,
       "still": "Images/06-GridsAndRepetition/RoseWall.jpg",
       "width": 1080
     },
     "07-Tiles": {
-      "clip": "guide/07-Tiles.mp4",
+      "clip": "guide/07-Tiles.mp4?v=35068d5c",
       "height": 1080,
       "still": "Images/07-Tiles/Meander.jpg",
       "width": 1080
     },
     "08-Words": {
-      "clip": "guide/08-Words.mp4",
+      "clip": "guide/08-Words.mp4?v=e2e9266d",
       "height": 1080,
       "still": "Images/08-Words/Specimen.jpg",
       "width": 1080
     },
     "09-Pictures": {
-      "clip": "guide/09-Pictures.mp4",
+      "clip": "guide/09-Pictures.mp4?v=1f96c921",
       "height": 1080,
       "still": "Images/09-Pictures/TypeMosaic.jpg",
       "width": 1080
     },
     "10-Vectors": {
-      "clip": "guide/10-Vectors.mp4",
+      "clip": "guide/10-Vectors.mp4?v=5ab39aae",
       "height": 1080,
       "still": "Images/10-Vectors/Swarm.jpg",
       "width": 1080
     },
     "11-ForcesAndPhysics": {
-      "clip": "guide/11-ForcesAndPhysics.mp4",
+      "clip": "guide/11-ForcesAndPhysics.mp4?v=9d1a829d",
       "height": 1080,
       "still": "Images/11-ForcesAndPhysics/Wrecker.jpg",
       "width": 1080
     },
     "12-FlocksAndSwarms": {
-      "clip": "guide/12-FlocksAndSwarms.mp4",
+      "clip": "guide/12-FlocksAndSwarms.mp4?v=760124c8",
       "height": 1080,
       "still": "Images/12-FlocksAndSwarms/Flock.jpg",
       "width": 1080
     },
     "13-GrowingThings": {
-      "clip": "guide/13-GrowingThings.mp4",
+      "clip": "guide/13-GrowingThings.mp4?v=7948ae45",
       "height": 1080,
       "still": "Images/13-GrowingThings/Garden.jpg",
       "width": 1080
     },
     "14-FieldsAndFlow": {
-      "clip": "guide/14-FieldsAndFlow.mp4",
+      "clip": "guide/14-FieldsAndFlow.mp4?v=4a9b3be4",
       "height": 1080,
       "still": "Images/14-FieldsAndFlow/FlowPrint.jpg",
       "width": 1080
     },
     "15-ShapesAsMaterial": {
-      "clip": "guide/15-ShapesAsMaterial.mp4",
+      "clip": "guide/15-ShapesAsMaterial.mp4?v=0eb0b644",
       "height": 1080,
       "still": "Images/15-ShapesAsMaterial/Plate.jpg",
       "width": 1080
     },
     "16-LayersAndEffects": {
-      "clip": "guide/16-LayersAndEffects.mp4",
+      "clip": "guide/16-LayersAndEffects.mp4?v=ccd1053d",
       "height": 1080,
       "still": "Images/16-LayersAndEffects/Comets.jpg",
       "width": 1080
     },
     "17-YourFirstShader": {
-      "clip": "guide/17-YourFirstShader.mp4",
+      "clip": "guide/17-YourFirstShader.mp4?v=076a0ddf",
       "height": 1080,
       "still": "Images/17-YourFirstShader/Aurora.jpg",
       "width": 1080
     },
     "18-IteratedForms": {
-      "clip": "guide/18-IteratedForms.mp4",
+      "clip": "guide/18-IteratedForms.mp4?v=c4f64df5",
       "height": 1080,
       "still": "Images/18-IteratedForms/OrbitPlate.jpg",
       "width": 1080
     },
     "19-GridSimulations": {
-      "clip": "guide/19-GridSimulations.mp4",
+      "clip": "guide/19-GridSimulations.mp4?v=1402c584",
       "height": 1080,
       "still": "Images/19-GridSimulations/Organism.jpg",
       "width": 1080
     },
     "20-ParticleSimulations": {
-      "clip": "guide/20-ParticleSimulations.mp4",
+      "clip": "guide/20-ParticleSimulations.mp4?v=94a6e27c",
       "height": 1080,
       "still": "Images/20-ParticleSimulations/Drift.jpg",
       "width": 1080
     },
     "21-3DGently": {
-      "clip": "guide/21-3DGently.mp4",
+      "clip": "guide/21-3DGently.mp4?v=410d7ebb",
       "height": 1080,
       "still": "Images/21-3DGently/Plaza.jpg",
       "width": 1080
     },
     "22-Meshes": {
-      "clip": "guide/22-Meshes.mp4",
+      "clip": "guide/22-Meshes.mp4?v=1481b342",
       "height": 1080,
       "still": "Images/22-Meshes/Bench.jpg",
       "width": 1080
     },
     "23-Landscapes": {
-      "clip": "guide/23-Landscapes.mp4",
+      "clip": "guide/23-Landscapes.mp4?v=975bde40",
       "height": 1080,
       "still": "Images/23-Landscapes/Valley.jpg",
       "width": 1080
     },
     "24-WorldsWithWeight": {
-      "clip": "guide/24-WorldsWithWeight.mp4",
+      "clip": "guide/24-WorldsWithWeight.mp4?v=843e4835",
       "height": 1080,
       "still": "Images/24-WorldsWithWeight/Contraption.jpg",
       "width": 1080
     },
     "25-CharactersAndCloth": {
-      "clip": "guide/25-CharactersAndCloth.mp4",
+      "clip": "guide/25-CharactersAndCloth.mp4?v=c4a85930",
       "height": 1080,
       "still": "Images/25-CharactersAndCloth/Yard.jpg",
       "width": 1080
     },
     "26-SculptingWithFields": {
-      "clip": "guide/26-SculptingWithFields.mp4",
+      "clip": "guide/26-SculptingWithFields.mp4?v=286a551c",
       "height": 1080,
       "still": "Images/26-SculptingWithFields/Molten.jpg",
       "width": 1080
     },
     "27-DepthAndThePhone": {
-      "clip": "guide/27-DepthAndThePhone.mp4",
+      "clip": "guide/27-DepthAndThePhone.mp4?v=62759e32",
       "height": 1080,
       "still": "Images/27-DepthAndThePhone/GhostRoom.jpg",
       "width": 1080
     },
     "28-SoundAndControl": {
-      "clip": "guide/28-SoundAndControl.mp4",
+      "clip": "guide/28-SoundAndControl.mp4?v=352c0e43",
       "height": 1080,
       "still": "Images/28-SoundAndControl/Resonator.jpg",
       "width": 1080
     },
     "29-MakingSound": {
-      "clip": "guide/29-MakingSound.mp4",
+      "clip": "guide/29-MakingSound.mp4?v=80f843d4",
       "height": 1080,
       "still": "Images/29-MakingSound/MusicBox.jpg",
       "width": 1080
     },
     "30-Seeing": {
-      "clip": "guide/30-Seeing.mp4",
+      "clip": "guide/30-Seeing.mp4?v=7f67a97c",
       "height": 1080,
       "still": "Images/30-Seeing/MotionBrush.jpg",
       "width": 1080
     },
     "31-SharingAndPerforming": {
-      "clip": "guide/31-SharingAndPerforming.mp4",
+      "clip": "guide/31-SharingAndPerforming.mp4?v=ba900a49",
       "height": 1080,
       "still": "Images/31-SharingAndPerforming/Finale.jpg",
       "width": 1080
     },
     "32-Installations": {
-      "clip": "guide/32-Installations.mp4",
+      "clip": "guide/32-Installations.mp4?v=ec68411d",
       "height": 720,
       "still": "Images/32-Installations/WallPiece.jpg",
       "width": 1280

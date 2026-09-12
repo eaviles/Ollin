@@ -526,8 +526,6 @@ final class MotionBrush: Sketch {
 }
 ```
 
-<img src="Images/30-Seeing/MotionBrush.jpg" alt="The finished motion painting: thousands of colored strokes tracing where the dancer's arms and legs swept over sixteen seconds, each color a direction, faint where the motion was long ago" width="560">
-
 The committed figure swaps the camera block for the film, and the painting code is identical. `StageFilm.step()` stands where `flow.field` stands, decoding the next frame and measuring it against the one before, with nobody to mirror. That relative scale matters more than it looks: a hand waved at a webcam crosses tens of pixels between frames and a dancer filmed across the room crosses a few, so a brush tuned to one paints nothing for the other. [Chapter 16](16-LayersAndEffects.md)'s accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
 
 Then make it yours:

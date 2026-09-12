@@ -460,8 +460,6 @@ final class Organism: Sketch {
 }
 ```
 
-<img src="Images/19-GridSimulations/Organism.jpg" alt="The finished organism: a wall-to-wall teal labyrinth of reaction-diffusion ridges with wet highlights, grown from a scatter of dots" width="560">
-
 Run it live and draw. Your marks don't appear on the canvas; they enter the chemistry, and thirty frames later something is growing where your hand was. That's the strange, slightly gardening-like pleasure of simulation pieces. You don't control the picture, you control the conditions.
 
 Then make it yours:

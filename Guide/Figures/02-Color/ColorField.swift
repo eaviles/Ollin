@@ -29,7 +29,7 @@ final class ColorField: Sketch {
                 let diagonal = Double(c + r) / Double(columns * 2 - 2)
                 let t = diagonal
                     + random(-0.5, 0.5) * jitter * 0.5
-                    + sin(time * 0.4 + diagonal * 3) * 0.05
+                    + sin(time * .tau / 5 + diagonal * 4) * 0.16
                 fill(ramp.color(at: t))
                 drawRect(x, y, cell, cell)
             }

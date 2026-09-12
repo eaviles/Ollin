@@ -427,8 +427,6 @@ final class HelloMotion: Sketch {
 }
 ```
 
-<img src="Images/01-HelloOllin/HelloMotion.jpg" alt="Twenty-eight circles in warm and cool colors form a ring, at different sizes and with their edges overlapping" width="560">
-
 Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through what each line contributes:
 
 - `Double(i) / Double(count) * .tau` divides the full turn into one slot per circle. Adding `time * speed` grows every angle together, so the whole ring rotates.

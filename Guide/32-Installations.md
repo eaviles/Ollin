@@ -617,8 +617,6 @@ The second part is the drawing, and it holds nothing between frames. Every bar's
 }
 ```
 
-<img src="Images/32-Installations/WallPiece.jpg" alt="The finished wall piece at dusk: a slow field of bars from deep plum through red to orange, with the plain band along the bottom that the lamps read" width="680">
-
 Read the declaration back and it is a list of the things this chapter is about. The screen saver never comes on. A power cut costs at most a minute. A stall fixes itself in the small hours with nobody there. The sketch is dark outside opening hours, and it is a different color at dawn than at dusk. And the strip of lamps under it is lit by the same drawing, because an `LEDMap` reads the canvas rather than being told about it.
 
 Then make it yours:

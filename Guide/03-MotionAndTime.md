@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-[Chapter 1](01-HelloOllin.md) handed you `sin` as a recipe and promised an explanation later, and this is later. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. It all comes together in the sketch above, a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
+[Chapter 1](01-HelloOllin.md) handed you `sin` as a recipe and left the explanation for here. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. It all comes together in the sketch above, a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
 
 ## The clock
 
@@ -23,12 +23,10 @@ Every sketch carries a clock, and you've already used it: `time` is the seconds 
   <img src="Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
 </picture>
 
-There are two reliable ways to move, and this guide uses both:
+The first two strips are that bare step, on a slow display and a fast one, and they are what to avoid. A step written per frame silently bakes your display's refresh rate into the artwork. The third strip is the fix, and there are two ways to reach it:
 
 - **Derive positions from `time`.** `width / 2 + time * 120` is at the same place after one second on any display. It says where to *be*, not how far to *step*. Most of what you've written so far works this way, and it's the default habit to build.
-- **Scale steps by `deltaTime`.** Some values have to accumulate, like a particle that remembers where it was, which is most of Part II. Write the speed per second and multiply, as in `x += 120 * deltaTime`. Now a fast display takes more, smaller steps and lands in the same place.
-
-What you want to avoid is the third way, a bare per-frame step, which silently bakes your display's refresh rate into the artwork.
+- **Scale steps by `deltaTime`.** Some values have to accumulate, like a particle that remembers where it was, which is most of Part II. Write the speed per second and multiply, as in `x += 120 * deltaTime`. That is the third strip: a fast display takes more, smaller steps and lands in the same place.
 
 ## When a frame takes too long
 
@@ -44,13 +42,13 @@ Here is a sketch drawing more and more circles, reading its own clock as it goes
 
 Read across and you can see which of the three properties to trust. `frameRate` falls, because that is what it measures. `deltaTime` grows to match, because it is the real gap between this frame and the last. And `time` keeps counting real seconds throughout, because it is a clock rather than a frame counter.
 
-That is the whole reason for the two habits above. Motion derived from `time`, or stepped by `deltaTime`, keeps its speed as the rate falls. It gets choppier, and it does not get slower. A bare `x += 3` gets both.
+That is the whole reason for the two habits above. Motion derived from `time`, or stepped by `deltaTime`, keeps its speed as the rate falls. It gets choppier, and it does not get slower.
 
-Two things are worth knowing beyond that. If the machine falls far enough behind, the window drops a refresh rather than queuing work it cannot finish, so `draw()` is not called at all that time; skipping a frame is better than a window that stops answering the mouse. And an export does not have this problem in the first place: it runs on a fixed clock, giving every frame exactly `1 / fps` however long the drawing takes, so a sketch too heavy to play smoothly still exports at full speed. The [profiler](../Docs/Tools/Profiling.md) is what tells you where the time went, and [Chapter 32](32-Installations.md) uses it in anger.
+Two things are worth knowing beyond that. If the machine falls far enough behind, the window drops a refresh rather than queuing work it cannot finish, so `draw()` is not called at all that time; skipping a frame is better than a window that stops answering the mouse. And an export does not have this problem in the first place: it runs on a fixed clock, giving every frame exactly `1 / fps` however long the drawing takes, so a sketch too heavy to play smoothly still exports at full speed. The [profiler](../Docs/Tools/Profiling.md) is what tells you where the time went, and [Chapter 32](32-Installations.md) puts it to work on a real piece.
 
-## The circle behind sin
+## The circle behind `sin`
 
-Here is where the wave comes from, and it's the promise [Chapter 1](01-HelloOllin.md) made:
+Here is where the wave comes from, which [Chapter 1](01-HelloOllin.md) left for this chapter:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/CircleToSine-dark.jpg">
@@ -96,7 +94,7 @@ for i in 0..<24 {
 
 Run that and you've built the bottom half of the diagram, live. You've also seen the move before, because [Chapter 1](01-HelloOllin.md)'s breathing ring offset each circle's swing with `+ Double(i) * 0.5`. That was phase, used before it had a name. It's the cheapest way there is to make many things feel alive together. The finished sketch at the end of this chapter leans on it heavily.
 
-## map and lerp: moving between ranges
+## `map` and `lerp`: moving between ranges
 
 That was the chapter's first act, a clock and the wave it drives. The second act shapes what they produce, and it starts with the ranges themselves. `sin` hands you `-1...1`, but that's rarely the range you actually want. You want 40 to 220 pixels of radius, or `0...1` to feed a color ramp. [Chapter 2](02-Color.md) patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The proper tool is `map`, which carries a value from one range into another by keeping its *fraction along*:
 

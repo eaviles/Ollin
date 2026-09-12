@@ -785,8 +785,6 @@ The second part is the drawing, and it knows nothing about sound. Every note the
 }
 ```
 
-<img src="Images/29-MakingSound/MusicBox.jpg" alt="The finished music box: gold bars low for the plucked string, blue through the middle for the bell, long pink ones across the top for breath, over faint bar lines with a playhead at the right" width="560">
-
 Read the picture back against the code and every part of the chapter is in it. The gold marks land on three of the sixteen steps, as far apart as sixteen lets them be. The blue ones walk up and back down because an arpeggio is read at the step rather than restarted. The pink ones hold for two and a half beats each, which is why they overlap.
 
 Then make it yours:

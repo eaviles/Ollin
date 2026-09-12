@@ -64,7 +64,7 @@ A chapter is one markdown file, `NN-PascalCase.md`, and reads like this:
 
 1. **The hook.** An image of the finished piece and two or three sentences on where the chapter is going. No throat-clearing.
 2. **Steps.** Small numbered or titled sections, each introducing one idea, each with visible output. Code appears as a full small sketch first, then deltas. Swift-language notes appear as short callout blocks (`> **Swift note.** ...`) at the exact moment the reader first needs them, and only for what the step needs.
-3. **Putting it together.** The finished sketch, built from the chapter's steps, with its full listing (it lives in `Figures/` like everything else) and a rendered image. End by inviting two or three specific variations to try.
+3. **Putting it together.** The finished sketch, built from the chapter's steps, with its full listing (it lives in `Figures/` like everything else). The rendered image is the one the chapter opened on, so it is not shown again here: the same picture twice on one page teaches nothing the second time, and on the site the opening one is the sketch playing. End by inviting two or three specific variations to try.
 4. **Where this comes from.** A short paragraph crediting the technique's originators and canonical sources, consistent with `ATTRIBUTION.md`. This is a feature of the guide: readers learn the field's history and where to read more.
 5. **Go deeper.** Links into `Docs/` pages (this is also how the coverage audit works) and related `Examples/`.
 

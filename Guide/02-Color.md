@@ -155,7 +155,7 @@ let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
 fill(dusk.color(at: t))
 ```
 
-Two kinds of ramp come pre-made. **`Colormap`** holds [eight scientific maps](../Docs/Drawing/Color.md#colormap) such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work beautifully when fed with `time`. Both answer to the same `color(at:)`.
+Two kinds of ramp come pre-made. **`Colormap`** holds [eight scientific maps](../Docs/Drawing/Color.md#colormap) such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work well when fed with `time`. Both answer to the same `color(at:)`.
 
 Either one can be a `@Param`, which saves a lot of editing and rerunning. A parameter is a value with a control in the inspector, so you turn it while the sketch runs instead of editing a number and saving. [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) declared four of them, and [Parameters](../Docs/Helpers/Parameters.md) is the whole family.
 
@@ -298,7 +298,7 @@ The rule underneath all of this is short. Red and green do look alike to a prota
 
 ## Putting it together: a color field
 
-The sketch is one ramp and a quilt of cells, with three ideas layered on top. Each cell samples the ramp according to its *diagonal position*, so the top-left corner is 0 and the bottom-right is 1. Seeded randomness then jitters every sample, which is what makes the field read as organic rather than mechanical. And a slow `sin` shimmer keeps the whole thing alive. Make `MySketches/ColorField.swift`:
+The sketch is one ramp and a quilt of cells, with three ideas layered on top. Each cell samples the ramp according to its *diagonal position*, so the top-left corner is 0 and the bottom-right is 1. Seeded randomness then jitters every sample, which is what makes the field read as organic rather than mechanical. And a `sin` wave rolls across the quilt, so the colors travel rather than sit. Make `MySketches/ColorField.swift`:
 
 ```swift
 import Ollin
@@ -327,7 +327,7 @@ final class ColorField: Sketch {
                 let diagonal = Double(c + r) / Double(columns * 2 - 2)
                 let t = diagonal
                     + random(-0.5, 0.5) * jitter * 0.5
-                    + sin(time * 0.4 + diagonal * 3) * 0.05
+                    + sin(time * .tau / 5 + diagonal * 4) * 0.16
                 fill(ramp.color(at: t))
                 drawRect(x, y, cell, cell)
             }
@@ -340,13 +340,11 @@ final class ColorField: Sketch {
 }
 ```
 
-<img src="Images/02-Color/ColorField.jpg" alt="A quilt of colored cells running diagonally from deep indigo through coral to warm cream, on a dark ground" width="560">
-
 Run it and walk the interesting lines:
 
 - `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Now click the canvas. `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters, giving you the same sketch as a fresh variation, as many as you care to click through.
 - Two loops, one inside the other, visit every column and row, and `diagonal` turns each cell's position into the `0...1` the ramp wants.
-- The `t` line carries the whole look: position, plus seeded jitter scaled by the parameter, plus a slow shimmer. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a good look in its own right.
+- The `t` line carries the whole look: position, plus seeded jitter scaled by the parameter, plus the rolling wave. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a good look in its own right.
 - The parameters do a lot of work here. `Columns` changes the sketch's whole character, chunky at 5 and woven at 28, and `Jitter` takes it from formal to painterly.
 
 > **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive from one frame to the next. A `let` or `var` written inside `draw()` is born and dies with that frame. `mousePressed()` is another function Ollin calls for you, once per click, alongside `setup()` and `draw()`. And a loop inside a loop does what it sounds like: for every column, visit every row.

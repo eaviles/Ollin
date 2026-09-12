@@ -882,8 +882,6 @@ The third part is the frame. There is one directional light and one environment,
 }
 ```
 
-<img src="Images/22-Meshes/Bench.jpg" alt="The finished bench: a translucent crystal on a black lacquered plinth, a silver cushion, a teal ball worn through to gold, a carved tile, and a cream egg on a rust cushion, all on mottled stone under warm interior light" width="560">
-
 Five specimens, ten pictures, one light. Three of those specimens have no detail you could find in a vertex. The ball is a plain sphere, the tile is a single flat quad, and the slab is a box, and everything you can see on them was written into a picture.
 
 Then make it yours:

@@ -496,8 +496,6 @@ final class GhostRoom: Sketch {
 }
 ```
 
-<img src="Images/27-DepthAndThePhone/GhostRoom.jpg" alt="The finished ghost room: the fused sweep drawn as additive scan-lines of light, walls and floor woven from points, the ball and crate solid amid dark unseen voids" width="560">
-
 The woven texture is the scan lines of nine viewpoints interleaving. The solid patches are where many frames agree, and the voids are what no camera reached. Watch it run live and the room knits itself together, then the orbit lets you wander what was scanned.
 
 Then make it yours:

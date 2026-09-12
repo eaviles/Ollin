@@ -20,6 +20,11 @@
 #
 # Upload reads ~/.config/ollin/r2.env and pushes with rclone, exactly as
 # Scripts/media.sh does; `--no-upload` renders and stops.
+#
+# The address in the manifest carries `?v=<digest of the clip>`, because the
+# files are served immutable for a year: without it a re-recorded chapter is
+# never seen again by anybody whose browser or the CDN already has the old one.
+# Same reason and same shape as the examples' rows.
 
 set -e
 cd "$(dirname "$0")/.." || exit 1
@@ -104,13 +109,14 @@ for chapter in Guide/[0-9]*.md; do
       --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
   fi
 
-  python3 - "$MANIFEST" "$stem" "guide/$stem.mp4" "$hook" "$w" "$h" <<'PY'
+  version=$(shasum -a 256 $clip | cut -c1-8)
+  python3 - "$MANIFEST" "$stem" "guide/$stem.mp4?v=$version" "$hook" "$w" "$h" <<'PY'
 import json, sys
 manifest, stem, clip, still, w, h = sys.argv[1:7]
 d = json.load(open(manifest))
 d.setdefault("chapters", {})[stem] = {"clip": clip, "still": still,
                                       "width": int(w), "height": int(h)}
-json.dump(d, open(manifest, "w"), indent=2, sort_keys=True)
+open(manifest, "w").write(json.dumps(d, indent=2, sort_keys=True) + "\n")
 PY
 done
 

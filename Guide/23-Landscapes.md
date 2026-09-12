@@ -499,8 +499,6 @@ The third part is the frame. It draws the land, then the meadow, then the whole 
 }
 ```
 
-<img src="Images/23-Landscapes/Valley.jpg" alt="The finished valley: a wide meadow of curved grass blades running to a stand of pines, tan hills either side, a pale scree of boulders on the pass, under a clear sky" width="560">
-
 Four hundred and twenty thousand blades of grass, 109,000 solids in the field, and about 4,300 pines in the near stand, out of one `Heightfield` and three draw calls. The one number that never appears is a coordinate. Move the seed and the whole valley moves with it, camera included. Nothing in the sketch knows where anything is until it asks the ground.
 
 Then make it yours:
