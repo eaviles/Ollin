@@ -61,7 +61,7 @@ final class ManyDisplays: Sketch {
         textAlign(.center, .top)
         for part in 0..<3 {
             let middle = canvas.x + canvas.width * (Double(part) + 0.5) / 3
-            drawText("shows \(part == 0 ? "0" : part == 1 ? "0.33" : "0.66") to "
+            drawText("visibleRegion \(part == 0 ? "0" : part == 1 ? "0.33" : "0.66") to "
                      + "\(part == 0 ? "0.33" : part == 1 ? "0.66" : "1")",
                      middle, canvas.y + canvas.height + 10)
         }

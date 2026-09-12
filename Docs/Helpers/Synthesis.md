@@ -302,8 +302,8 @@ One nonlinearity is what makes it sound bowed. Rosin grips harder when the bow a
 
 Two things fall out of the model rather than being settings, and both are worth knowing:
 
-- **Bow too fast for the force and the tone breaks.** The string tears loose twice a cycle instead of once. The note jumps to the octave, which is exactly what over-bowing sounds like on a real instrument. Raise `force` or lower `drive` and it settles back.
-- **Loudness comes from force as much as from speed.** Across the whole range of `drive` the level moves by about 8 dB. `force` moves it further. That is also true of a real bow, and it means `force` is the loudness parameter while `drive` is the expressive one.
+- **Bow too fast for the force and the tone breaks.** The string tears loose twice a cycle instead of once. The note jumps to the octave, which is exactly what over-bowing sounds like on a real instrument. Raise `force` or lower `pressure` and it settles back.
+- **Loudness comes from force as much as from speed.** Across the whole range of `pressure` the level moves by about 8 dB. `force` moves it further. That is also true of a real bow, and it means `force` is the loudness parameter while `pressure` is the expressive one.
 
 #### A blown tube
 
@@ -336,9 +336,9 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 synth.pressure = 0.3 + 0.5 * abs(sin(time * 2))
 ```
 
-`drive` is `0...1`, read every sample, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked.
+`pressure` is `0...1`, read every sample, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked.
 
-This is the control an envelope cannot give you. An envelope is decided when the note starts, while `drive` is whatever you are doing right now.
+This is the control an envelope cannot give you. An envelope is decided when the note starts, while `pressure` is whatever you are doing right now.
 
 ---
 

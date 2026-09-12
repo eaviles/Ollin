@@ -302,7 +302,7 @@ That spreads one canvas over every display the machine has, in the arrangement t
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/ManyDisplays-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled shows 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
+  <img src="../../Guide/Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled visibleRegion 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
 </picture>
 
 The gap between two monitors is given a part of the canvas that nobody sees, because that is how the arrangement looks from in front. The alternative is a picture with a piece cut out of the middle.

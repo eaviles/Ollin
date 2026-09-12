@@ -248,7 +248,7 @@ Installation(projection: .init(visibleRegion: Rectangle(x: 0, y: 0, width: 0.6, 
                                blend: Insets(right: 0.2)))
 ```
 
-The one on the right declares the mirror of that: `shows` starting at 0.4, and the same 0.2 fading in from its left. They are told the same number about the same band. Their two fades add up to one coat, so no bright bar runs down the join.
+The one on the right declares the mirror of that: `visibleRegion` starting at 0.4, and the same 0.2 fading in from its left. They are told the same number about the same band. Their two fades add up to one coat, so no bright bar runs down the join.
 
 None of this reaches an export. A file has no wall to fit.
 
@@ -264,7 +264,7 @@ override var installation: Installation {
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/ManyDisplays-dark.jpg">
-  <img src="Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled shows 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
+  <img src="Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled visibleRegion 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
 </picture>
 
 That spreads one canvas over every display the machine has, in the arrangement they are actually in. Two monitors side by side carry a half each. One above the other carries a band each. You declare no numbers at all, because the desk already says them.
@@ -356,7 +356,7 @@ withState {
 }
 ```
 
-That is a different tool from the `shows` rectangle earlier in this chapter, and they get on. `shows` cuts a finished canvas for a projector that is hung where it is hung. A seat tells the sketch which part of the wall it *is*, so the drawing itself can be wider than one screen. Ask for a fixed seat, as above, and a machine that restarts comes back to the same slice.
+That is a different tool from the `visibleRegion` rectangle earlier in this chapter, and they get on. `visibleRegion` cuts a finished canvas for a projector that is hung where it is hung. A seat tells the sketch which part of the wall it *is*, so the drawing itself can be wider than one screen. Ask for a fixed seat, as above, and a machine that restarts comes back to the same slice.
 
 **One set of parameters.** `room.shareAll()` makes every `@Param` travel; `room.share("speed", "hue")` picks. Change a parameter on any machine and the rest follow within a frame. Two people adjusting one parameter at the same moment is settled by the room's clock: the later turn wins everywhere.
 
@@ -623,7 +623,7 @@ Then make it yours:
 
 - Take `showing` off `"dusk"` by setting it to nil, and the piece follows the real clock. Set it to `"dawn"` to see the morning at any hour.
 - Add `projection:` and press Command-K, then drag the corners onto a wall that is not square to the projector.
-- Give it a second display with `displays: .spanning`, and make the piece read `displayIndex` so the two halves are not the same picture.
+- Give it a second display with `displays: .spanning` and a canvas twice as wide. The bars carry on across both screens, because the wall divides one canvas rather than running the sketch twice.
 - Put the strip on a curve instead of a line, or add a matrix over the middle of the canvas.
 - Run it as `swift run --package-path Examples Example-Installation-Unattended --no-installation` first, so you can work on it in an ordinary window.
 
