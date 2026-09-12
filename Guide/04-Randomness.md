@@ -41,7 +41,7 @@ Run it and you'll notice immediately that the canvas *boils*. Nothing is wrong. 
 
 ## Seeds: randomness you can keep
 
-Here's the secret. There are no dice. A computer's `random` is a *pseudo-random* generator, a completely deterministic scramble that walks a fixed sequence of numbers so thoroughly shuffled they pass for chance. Where the walk starts is called the **seed**. Ordinarily the seed is grabbed from entropy at launch, so every run differs. But set it yourself, and the "randomness" replays exactly:
+There are no dice. A computer's `random` is a *pseudo-random* generator, a completely deterministic scramble that walks a fixed sequence of numbers so thoroughly shuffled they pass for chance. Where the walk starts is called the **seed**. Ordinarily the seed is grabbed from entropy at launch, so every run differs. But set it yourself, and the "randomness" replays exactly:
 
 ```swift
 randomSeed(5)   // the same rolls, in the same order, every time
@@ -54,13 +54,13 @@ Add that line at the top of `Scatter`'s `draw()` and the boiling stops. Every fr
   <img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles, each a small constellation of orange dots joined by faint lines, labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
 </picture>
 
-This is the working rhythm of generative art, so it's worth spelling out. The code decides everything the piece *could* be, and a seed picks one of them. You write the rules, then flip through seeds the way a photographer reads a contact sheet (the image above is exactly that), and keep the ones you like. Reproducibility is what turns the whole thing into art direction instead of a slot machine: a keeper is never lost, because code plus seed *is* the piece. Render it twice and the files match pixel for pixel.
+This is the working rhythm of generative art. The code decides everything the piece *could* be, and a seed picks one of them. You write the rules, then flip through seeds the way a photographer reads a contact sheet (the image above is exactly that), and keep the ones you like. Reproducibility is what turns the whole thing into art direction instead of a slot machine: a keeper is never lost, because code plus seed *is* the piece. Render it twice and the files match pixel for pixel.
 
-There's one relative worth knowing. `seed(5)`, without the `random` prefix, seeds `random` *and* its smooth cousin `noise` in one go. Noise is [Chapter 5](05-Noise.md)'s whole subject, and until then the two calls do the same job.
+One relative comes with it. `seed(5)`, without the `random` prefix, seeds `random` *and* its smooth cousin `noise` in one go. Noise is [Chapter 5](05-Noise.md)'s whole subject, and until then the two calls do the same job.
 
 ## Finding a seed worth keeping
 
-Flipping through seeds by editing the number and rebuilding gets old fast, so Ollin does the flipping for you. Every sketch is born on a seed, called its `variation`, and you can read it while the sketch runs. `drawCaption` prints a line of text along the bottom of the canvas, which is all you need to see the number:
+Flipping through seeds by editing the number and rebuilding gets tiring, so Ollin does the flipping for you. Every sketch is born on a seed, called its `variation`, and you can read it while the sketch runs. `drawCaption` prints a line of text along the bottom of the canvas, which is all you need to see the number:
 
 ```swift
 override func draw() {
@@ -77,7 +77,7 @@ swift run --package-path Examples Example-Randomness-Variations --export-grid sh
 swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10   # render the one you liked
 ```
 
-One rule makes this worth doing. A seed is worth flipping through only when it decides something structural: which palette, how dense, how large. Make those choices in `setup()`, where the seeded rolls happen once, and let `draw()` animate what `setup()` decided. Do it in `draw()` instead and every seed gives you the same piece, shaken slightly differently.
+One rule makes this pay. A seed is only worth flipping through when it decides something structural: which palette, how dense, how large. Make those choices in `setup()`, where the seeded rolls happen once, and let `draw()` animate what `setup()` decided. Do it in `draw()` instead and every seed gives you the same piece, shaken slightly differently.
 
 ## Letting chance decide
 
@@ -180,7 +180,7 @@ The walk's core move is a value carried forward and nudged (`x = nx`), and it's 
 
 ## Three walks, three rules
 
-Writing that walk by hand is worth doing, and after that Ollin has it ready, along with two relatives that each change exactly one rule about what the next step is allowed to be.
+Write that walk by hand once, and after that Ollin has it ready, along with two relatives that each change exactly one rule about what the next step is allowed to be.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/WalkFamily-dark.jpg">
@@ -301,18 +301,18 @@ Then push it somewhere new:
 - Let the disorder grow left to right instead, by building `unrest` from `c` and `columns`.
 - Give the inner squares more license than the outer ones, by scaling `d` with `Double(k + 1) / 4`.
 - Put the motion back. Writing `let d = unrest * cell * 0.35 * (sin(time * .tau / 8) * 0.5 + 0.5)` breathes the piece between order and chaos every eight seconds, and [Chapter 3](03-MotionAndTime.md)'s loop rule means a `--export-gif` of it loops seamlessly.
-- Retune the accents. At `0.02` they read as stray errors, and at `0.3` as confetti. Both are worth trying.
+- Retune the accents. At `0.02` they read as stray errors, and at `0.3` as confetti. Try both.
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár, who began making combinatorial drawings by hand in 1959 with what she called her *machine imaginaire* (dice standing in for the computer she didn't yet have), spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished piece borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Percolation entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone, and the square-lattice threshold this chapter leans on is the value Mark Newman and Robert Ziff measured in 2000. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished piece borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Percolation entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone, and the square-lattice threshold this chapter leans on is the value Mark Newman and Robert Ziff measured in 2000. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle), `ring` (a roll inside a ring, great for halos), and the seeded `shuffled`.
 - [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
 - [Why a run repeats](../Docs/Concepts/Determinism.md): one screen on the seed and the export's fixed clock, and the four habits that break a repeat.
-- [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives worth meeting. `levyFlight` mostly shuffles and occasionally leaps, which is how foraging animals actually move, and `selfAvoidingWalk` refuses to cross its own path.
+- [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives that each change one rule. `levyFlight` mostly shuffles and occasionally leaps, which is how foraging animals actually move, and `selfAvoidingWalk` refuses to cross its own path.
 - [Percolation](../Docs/Generators/Percolation.md): the crowd game in full, including the outline tracing and reading clusters off any boolean grid.
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.
 - Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#randomness).

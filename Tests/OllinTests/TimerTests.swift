@@ -62,6 +62,18 @@ struct TimerTests {
         #expect(hits == [0])
     }
 
+    /// The live window's first frame has no previous frame to measure against,
+    /// so it hands `deltaTime` of zero where every export driver hands `1 / fps`.
+    /// That difference used to decide whether the beat at zero happened at all:
+    /// the window missed it and an export of the same sketch fired it, which is
+    /// exactly the disagreement the clock is supposed to rule out.
+    @Test func theFirstFrameIsABeatEvenWithNoDeltaTimeYet() {
+        let sketch = Sketch()
+        sketch.advance(time: 0, deltaTime: 0, frameRate: 60)
+        #expect(sketch.every(5), "the window's own first frame is a beat too")
+        #expect(sketch.after(0), "and a one-shot at zero fires there")
+    }
+
     /// `phase` shifts the beat by a fraction of its own length, matching what
     /// the same argument does to a lap in `loopProgress(over:phase:)`. Half a
     /// phase on a two-second beat puts it on the odd seconds.

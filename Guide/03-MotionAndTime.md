@@ -16,7 +16,7 @@ Every sketch carries a clock, and you've already used it: `time` is the seconds 
 - `deltaTime` is the seconds since the previous frame, around 0.0167 at 60 fps.
 - `frameRate` is the current frames-per-second estimate.
 
-`deltaTime` is worth understanding early, because your sketch's frame rate is not a constant of the universe. `draw()` runs at whatever your display refreshes at, which is 60 times a second on many screens and 120 on recent MacBooks. A step like `x += 3` happens once per *frame*. That means the same sketch covers twice the distance on the faster display:
+`deltaTime` matters early, because your sketch's frame rate is not a constant of the universe. `draw()` runs at whatever your display refreshes at, which is 60 times a second on many screens and 120 on recent MacBooks. A step like `x += 3` happens once per *frame*. That means the same sketch covers twice the distance on the faster display:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/DeltaTime-dark.jpg">
@@ -121,7 +121,7 @@ Look at what those last few lines did. Wrap the clock into a lap, fold the lap s
 drawCircle(width / 2, height / 2, sway(over: 4, in: 100...300))
 ```
 
-The circle breathes between a radius of 100 and 300, once every four seconds. `sway` leaves the low end, reaches the high end halfway through the lap, and is back at the low end as the lap closes. With no range it hands you a plain `0...1`, and `phase` staggers a row of them into a traveling wave, the same argument doing the same job it did above.
+The circle breathes between a radius of 100 and 300, once every four seconds. `sway` leaves the low end, reaches the high end halfway through the lap, and is back at the low end as the lap closes. With no range it hands you a plain `0...1`, and `phase` offsets a row of them into a traveling wave, the same argument doing the same job it did above.
 
 When you would rather keep the raw sine spelling, `wave` names its parts instead: `wave(0.8, amplitude: 40, around: 150)` is `150 + sin(time * 0.8) * 40` with the center and the swing said out loud. `sway` thinks in seconds per lap and always closes one; `wave` thinks in the sine's own rate, the spelling to carry over when you already have one.
 
@@ -135,7 +135,7 @@ sway(over: 4, in: 100...300, shape: .triangle)
 
 The four worked-out shapes all start at the low end, so changing your mind about the path never moves where the value begins. `.triangle` and `.saw` are the `pingPong` and `loopProgress` you just met, carried into a range. `.square` does not travel at all: it sits at one end for half the lap and the other end for the rest, which is how you switch something rather than move it.
 
-`.wander` is the one worth pausing on. It drifts through the noise field of [Chapter 5](05-Noise.md) rather than following a curve, so it never repeats inside a lap, and it still arrives home at the end of one. That is not free. A drift taken straight off the clock, `signedNoise(time)`, can never come home, because the clock only ever grows. A wander walks a closed circle through the field instead, so the end of the lap is the same place as its start. Every shape here keeps that promise, which is what lets a swaying sketch declare a `loopDuration` and export a loop nobody can see the seam in.
+`.wander` is the one to slow down for. It drifts through the noise field of [Chapter 5](05-Noise.md) rather than following a curve, so it never repeats inside a lap, and it still arrives home at the end of one. That is not free. A drift taken straight off the clock, `signedNoise(time)`, can never come home, because the clock only ever grows. A wander walks a closed circle through the field instead, so the end of the lap is the same place as its start. Every shape here keeps that promise, which is what lets a swaying sketch declare a `loopDuration` and export a loop nobody can see the seam in.
 
 ## Shaping time
 
@@ -281,7 +281,7 @@ The hand-rolled version is a counter plus a variable you keep updating, and it g
 ```swift
 if every(2) { dots.append(Vector2(random(width), random(height))) }
 if after(3) { revealed = true }
-if everyFrames(10) { grid.step() }
+if everyFrames(10) { sim.step() }
 ```
 
 `every(2)` is true on the one frame that crosses each two-second mark, and false on all the rest. The clock starts at zero, and zero is a crossing, so your first dot arrives at once rather than two seconds late. `phase` shifts the beat by a fraction of its own length, the same argument `loopProgress` takes, so two rhythms of one period can take turns:

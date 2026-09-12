@@ -4094,7 +4094,17 @@ open class Sketch {
         takeRecorder?.recordFrame(of: self, time: time, deltaTime: deltaTime,
                                   frameRate: frameRate)
         frameCount += 1
-        self.previousTime = frameCount > 1 ? self.time : time - deltaTime
+        // The first frame has no frame before it. Every export driver hands a
+        // real `deltaTime` here, but the live window's first frame has none yet,
+        // and `time - 0` puts the start of the clock *on* the crossing at zero
+        // rather than before it, so `every(_:)` missed its first beat in the
+        // window while firing it in every export of the same sketch. A nominal
+        // frame stands in, the same one an export at 60 fps hands over, rather
+        // than the smallest step there is: divided by a period, a subnormal
+        // underflows to negative zero, which is not on the far side of anything.
+        self.previousTime = frameCount > 1
+            ? self.time
+            : time - (deltaTime > 0 ? deltaTime : 1.0 / 60)
         self.time = time
         self.deltaTime = deltaTime
         self.frameRate = frameRate

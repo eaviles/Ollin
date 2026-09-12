@@ -13,6 +13,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **`every(_:)` missed its beat at zero in the live window, while every export of the same sketch fired it.** The clock's first frame has no frame before it, so it borrows `time - deltaTime`; the window hands `deltaTime` of zero there where an export hands a real frame, which put the start of the clock *on* the crossing at zero rather than before it. A sketch that added a dot on `every(2)` got its first dot two seconds late on screen and immediately in the file. The window now borrows a nominal frame when it has no measured one, so the two agree. `after(0)` fires on the first frame for the same reason.
 - **A 2D body built from an outline of more than eight corners had no collider at all.** The solver holds eight, and handed more it builds nothing rather than something simpler, so the body had no shape, no mass, and never moved or collided: it hung in the air where it was born. An outline past the limit is now reduced to the eight corners that keep the most of it before the solver sees it. This is what a piece of a broken shape hangs on, since a cell can easily have nine.
 
 ## [0.4.0] - 2026-09-11

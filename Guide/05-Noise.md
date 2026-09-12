@@ -122,7 +122,7 @@ let y = height / 2 + signedNoise(time * 0.3, 99) * 300
 drawCircle(x, y, 44)
 ```
 
-You get a dot wandering *around the center*, drifting up to 300 pixels in any direction and always coming back. There's a small trick in those second arguments worth keeping. Both coordinates stroll the field at the same speed, but along different rows of it, `10` and `99`. Far-apart rows are unrelated terrain, so `x` and `y` drift independently from one shared field. Any time you need several unrelated glides, don't reach for several noises; ask one noise in several far-apart places.
+You get a dot wandering *around the center*, drifting up to 300 pixels in any direction and always coming back. There is a small trick in those second arguments. Both coordinates stroll the field at the same speed, but along different rows of it, `10` and `99`. Far-apart rows are unrelated terrain, so `x` and `y` drift independently from one shared field. Any time you need several unrelated glides, don't reach for several noises; ask one noise in several far-apart places.
 
 ## Layering: shape plus detail
 
@@ -139,7 +139,7 @@ let n = noise(x * 0.004) * 0.7 + noise(x * 0.03) * 0.3
 
 The big-scale sample carries most of the weight and decides the composition; the small-scale sample gets the rest and supplies the grain. The weights should sum to about 1 so `n` stays in `0...1`. Graphics people call these layers *octaves* and stack four or five of them, each layer half the size and half the weight of the last. The technique has a grand name, fractal noise, but as you can see it's two lines of arithmetic and you now own it.
 
-Because you'll reach for it constantly, Ollin also packages the stack as one call: `fbm(x * 0.004)` layers four octaves (each half the size and half the weight of the one before) and still fills `0...1`. Its parameters are `octaves:`, `gain:` (how fast the weights shrink), and `lacunarity:` (how fast the features shrink), and `fbm(x, octaves: 1)` is plain `noise` again, so nothing new to unlearn. It comes in the same shapes as `noise` does: `fbm(x, y)`, `signedFbm`, even `fbm(x, y, loop:)` for layered weather that comes home each lap.
+Because you'll reach for it constantly, Ollin also packages the stack as one call. `fbm(x * 0.004)` layers four octaves, each half the size and half the weight of the one before, and still fills `0...1`. Three parameters tune it: `octaves:` is how many layers, `gain:` is how fast the weights shrink, and `lacunarity:` is how fast the features shrink. `fbm(x, octaves: 1)` is plain `noise` again, so there is nothing new to unlearn. It comes in the same shapes as `noise` does: `fbm(x, y)`, `signedFbm`, even `fbm(x, y, loop:)` for layered weather that comes home each lap.
 
 ## A family of fields
 
@@ -246,7 +246,7 @@ final class Meadow: Sketch {
 
 Run it with `swift run OllinLive MySketches/Meadow.swift` and take it apart:
 
-- [Chapter 4](04-Randomness.md) and this chapter share the work here, and it's worth seeing who does what. The grid plants a blade every 26 pixels, and seeded `random` jitter (the `random(-1, 1) * 8` pair, under `randomSeed(3)` so the planting holds still) breaks the rows so it reads as sown rather than tiled. Random scatters; noise flows.
+- [Chapter 4](04-Randomness.md) and this chapter share the work here, so it helps to see who does what. The grid plants a blade every 26 pixels, and seeded `random` jitter (the `random(-1, 1) * 8` pair, under `randomSeed(3)` so the planting holds still) breaks the rows so it reads as sown rather than tiled. Random scatters; noise flows.
 - Each blade really is [Chapter 4](04-Randomness.md)'s walker, minus the jitter. The inner loop is the same: keep a position, step, repeat. But the step direction now comes from `signedNoise` *at the blade's current position*, so the walk is steered by a smooth field instead of jumping at random. Six steps of 8 pixels, each leaning up to almost a fifth of a turn off vertical at full `Sway` (`up` is minus a quarter of `.tau`, the angle that points straight up on this canvas), and because the field is smooth, the blade *curves*.
 - `weather` is the layering idea doing the composing, a much bigger-scale ask (`0.0011`, about one feature per canvas) that colors whole regions warm or cool through the `Ramp` and thickens their strokes. Two zoom levels of one field: one composes, one textures.
 - The tip-light is [Chapter 2](02-Color.md) at work, with each segment mixing the blade color toward warm white by `Glow`, brightening toward the tip.
