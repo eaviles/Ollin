@@ -43,7 +43,7 @@ final class Compass: Sketch {
 
 <img src="Images/14-FieldsAndFlow/Compass.jpg" alt="A grid of small pale needles on a dark canvas, each tipped with a gold dot, their directions changing smoothly across the canvas so currents and swirls show in the pattern" width="560">
 
-`field.angle(p)` is the raw answer in radians, and `field.direction(at: p)` is the same answer as a unit vector, ready for [Chapter 10](10-Vectors.md)'s arithmetic. The `z` argument is the third noise dimension doing its usual job from [Chapter 5](05-Noise.md). Nudge it over time and the whole weather system drifts. Two things are worth noticing before moving on. The needles are only *samples*, and the field has an answer between them too, at every point you could ever ask. The field is also cheap, because nothing is simulated or stored, so asking is all it ever costs.
+`field.angle(p)` is the raw answer in radians, and `field.direction(at: p)` is the same answer as a unit vector, ready for [Chapter 10](10-Vectors.md)'s arithmetic. The `z` argument is the third noise dimension doing its usual job from [Chapter 5](05-Noise.md). Nudge it over time and the whole weather system drifts. Two things to notice before moving on. The needles are only *samples*, and the field has an answer between them too, at every point you could ever ask. The field is also cheap, because nothing is simulated or stored, so asking is all it ever costs.
 
 One habit keeps the sugar honest. `flowField` reads the sketch's seeded noise, so call `seed(...)` first and build the field fresh each frame. You can also trace what you need once and keep the *results*. It's a lens over the noise, not a stored grid.
 
@@ -66,7 +66,7 @@ noFill()
 for ring in rings { drawPolyline(ring.points, closed: ring.isClosed) }
 ```
 
-The method is worth a sentence, because it's unusually easy to picture. Sample the field on a grid, then look at one little square at a time. Note which of its four corners are above the level and which are below. There are only sixteen ways that can come out, and each one tells you exactly how the curve crosses that square. Do that everywhere and stitch the crossings together, and the contours fall out. It's called marching squares. `resolution` is how many cells go across the longer side, so raising it tightens the curves at a proportional cost in samples.
+The method deserves a sentence, because it's unusually easy to picture. Sample the field on a grid, then look at one little square at a time. Note which of its four corners are above the level and which are below. There are only sixteen ways that can come out, and each one tells you exactly how the curve crosses that square. Do that everywhere and stitch the crossings together, and the contours fall out. It's called marching squares. `resolution` is how many cells go across the longer side, so raising it tightens the curves at a proportional cost in samples.
 
 For a map you want many levels, and there's a form for that which matters more than it looks:
 
@@ -124,7 +124,7 @@ particles = field.advected(particles, stepLength: 7)
 
 <img src="Images/14-FieldsAndFlow/Drift.gif" alt="Short teal streaks swimming along invisible currents on a dark canvas, each dragging a brief trail, like eels riding an unseen river" width="480">
 
-The figure gives each particle a short stored trail ([Chapter 12](12-FlocksAndSwarms.md)'s array trick) and respawns any swimmer that leaves the canvas. It rides `curlField`, a second field builder worth knowing. Curl noise is built so the flow only ever swirls, never piling up or draining away. That keeps a drifting population evenly spread forever. It's the field of choice for smoke, ink, and anything that should feel fluid without simulating fluid.
+The figure gives each particle a short stored trail ([Chapter 12](12-FlocksAndSwarms.md)'s array trick) and respawns any swimmer that leaves the canvas. It rides `curlField`, a second field builder. Curl noise is built so the flow only ever swirls, never piling up or draining away. That keeps a drifting population evenly spread forever. It's the field of choice for smoke, ink, and anything that should feel fluid without simulating fluid.
 
 ## The whole field at once
 
@@ -177,7 +177,7 @@ One habit. Fitting solves a system that grows with the cube of how many points y
 
 ### Going the other way
 
-The third panel is the reverse trick, and it is worth knowing about even though it is not a field at all.
+The third panel is the reverse trick, and it belongs here even though it is not a field at all.
 
 Those pale dots are scattered around a circle. Nothing in the sketch knows where that circle is. `Fit.minimize` takes three numbers, a middle and a radius, and a way of saying how wrong they are, and walks them downhill until they stop being wrong:
 

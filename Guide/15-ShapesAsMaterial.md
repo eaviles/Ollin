@@ -89,7 +89,7 @@ guilloche(rings: 36, innerRadius: 90, outerRadius: 320,
           bumps: 8, amplitude: 24)                    // [Contour], one per ring
 ```
 
-**Phyllotaxis** is how a sunflower packs its seeds. Seed number `i` sits `i` golden angles around the center and `spacing * sqrt(i)` out from it. That one rule fills the disk evenly at any count. The golden angle, about 137.5 degrees, is doing all the work here. It's the fraction of a turn that never lines back up with itself, so no seed ever lands behind an earlier one. Nudge the angle by a hundredth of a degree and the whole thing collapses into spokes. That is worth trying once just to watch it happen.
+**Phyllotaxis** is how a sunflower packs its seeds. Seed number `i` sits `i` golden angles around the center and `spacing * sqrt(i)` out from it. That one rule fills the disk evenly at any count. The golden angle, about 137.5 degrees, is doing all the work here. It's the fraction of a turn that never lines back up with itself, so no seed ever lands behind an earlier one. Nudge the angle by a hundredth of a degree and the whole thing collapses into spokes. Try it once just to watch it happen.
 
 **Lissajous figures** are what two sine waves make when one drives the horizontal and the other the vertical. A point swings side to side `a` times while it bobs up and down `b` times. The ratio between them is the whole character of the figure. **Roses** come from one polar equation, `r = radius * cos(k * theta)`. An odd `n` gives you `n` petals, and an even `n` gives you `2n`.
 
@@ -125,7 +125,7 @@ Follow one run and you turn seven times, which leaves you facing a quarter turn 
 
 Now try an order of eight. Eight quarter turns is two full turns, so the run ends facing exactly the way it set off. Every repeat leaves in the same direction as the last, and the walk marches off the page forever. **At a quarter turn, the orders that never close are the multiples of four, and nothing else.** `closes` tells you, `closingRepeats` says how many runs it takes, and `center` is the point the figure turns about, which is nil when there isn't one.
 
-One warning worth having before you animate it: the turn has to be an exact fraction of a full turn. Sweep it smoothly from a quarter to a third and nothing in between closes at all. Animate the order instead. Or hand `reversed:` a set of steps whose turns go the other way, which changes both the figure and the count.
+One warning before you animate it: the turn has to be an exact fraction of a full turn. Sweep it smoothly from a quarter to a third and nothing in between closes at all. Animate the order instead. Or hand `reversed:` a set of steps whose turns go the other way, which changes both the figure and the count.
 
 ### The curve a family of lines draws
 
@@ -149,9 +149,9 @@ let rays = reflectedRays(off: wall, from: .point(lamp))
 drawCaustic(off: wall, from: .point(lamp))
 ```
 
-Two answers are worth knowing, because they tell you whether your picture came out right. A circle lit from far away draws a **nephroid**, with two cusps, reaching from half the radius out to the mirror. A circle lit from a point on its own rim draws a **cardioid**, with one. A source at the dead center gives no curve at all, since every ray comes straight back.
+Two answers tell you whether your picture came out right. A circle lit from far away draws a **nephroid**, with two cusps, reaching from half the radius out to the mirror. A circle lit from a point on its own rim draws a **cardioid**, with one. A source at the dead center gives no curve at all, since every ray comes straight back.
 
-One trap is worth naming, because it makes a picture look broken rather than wrong. **Hand in only the stretch of wall the light reaches.** A whole circle has two families of bounces, the near side and the far side, and they lean on different curves. Filtering a ring down to the lit part also has to keep it *unbroken*: if the lit stretch wraps around the end of your array, the two ends land next to each other and the lines between them are not rays at all.
+One trap makes a picture look broken rather than wrong. **Hand in only the stretch of wall the light reaches.** A whole circle has two families of bounces, the near side and the far side, and they lean on different curves. Filtering a ring down to the lit part also has to keep it *unbroken*: if the lit stretch wraps around the end of your array, the two ends land next to each other and the lines between them are not rays at all.
 
 `refractedRays` does the same job for light bending into glass instead of bouncing off it, and a ray that meets the surface too steeply is left out rather than faked, which is total internal reflection doing what it does.
 
@@ -191,10 +191,14 @@ Two more things fall out of the same curve. `clothoidSpline(through:)` fits one 
 
 ```swift
 let along = (time * 260).truncatingRemainder(dividingBy: route.length)
-let here = route.point(at: along)         // where you are
-let facing = route.heading(at: along)     // which way you face
-let bend = route.curvature(at: along)     // where the wheel is
+if let here = route.point(at: along),           // where you are
+   let facing = route.heading(at: along),       // which way you face
+   let bend = route.curvature(at: along) {      // where the wheel is
+    // draw the vehicle at `here`, turned to `facing`
+}
 ```
+
+The three reads are optional, because a distance past the end of the chain has no point on it. `along` never goes past the end here, since it wraps on `route.length`, so one `if let` over the three is the whole ceremony.
 
 Steady time in, steady ground covered. Read `curvature(at:)` while you drive and you are holding the steering wheel. That is the whole idea again, from the driver's seat rather than the graph's.
 
@@ -202,7 +206,9 @@ Drawn whole, the curve is the Cornu spiral: two arms winding into two eyes they 
 
 ### Circles all the way down
 
-Here is a fact that sounds false. Any closed outline at all, however irregular, is exactly a sum of circles. Each spins at a whole-number rate, riding on the tip of the one before it. That's Fourier's idea, and Ollin will do the decomposition for you.
+Here is a fact that sounds false. Any closed outline at all, however irregular, is exactly a sum of circles. Each spins at a whole-number rate, riding on the tip of the one before it. That's
+
+Fourier's idea, and Ollin will do the decomposition for you.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/EpicycleTerms-dark.jpg">
@@ -242,7 +248,7 @@ override func draw() {
 
 Build it once and keep it. Working out which part of the first shape corresponds to which part of the second is the expensive step. Doing it in `setup()` makes every frame afterward cheap. At `0` and `1` you get your original shapes back exactly, not a re-derived approximation of them.
 
-The holes are the part worth watching. When the two shapes don't have the same number of contours, the unmatched ones grow out of their own center, or shrink into it. That is why the ring's hole opens from nothing in the middle, instead of flying in from off-screen. Timing lives outside the morph, so pass it an eased phase, a `pingPong` for there-and-back, or a `Timeline`'s progress. For a one-off blend with no state to keep, `star.morphed(toward: ring, 0.5)` gives you the single shape.
+The holes are the part to watch. When the two shapes don't have the same number of contours, the unmatched ones grow out of their own center, or shrink into it. That is why the ring's hole opens from nothing in the middle, instead of flying in from off-screen. Timing lives outside the morph, so pass it an eased phase, a `pingPong` for there-and-back, or a `Timeline`'s progress. For a one-off blend with no state to keep, `star.morphed(toward: ring, 0.5)` gives you the single shape.
 
 ### A drawing only a mirror can read
 
@@ -273,7 +279,7 @@ drawCircle(mirror.footprint)                     // the circle to stand it on
 
 Two things follow from that, and you can read both off the picture. The marks land on the near side, between the glass and you, so you read the plate by looking *over* it at the mirror. And they spread as they go out. A point higher up the picture is reached by a shallower bounce, and a shallower bounce travels farther before it meets the page.
 
-There is a limit worth knowing before you compose rather than after. Two tangent lines run from your eye to the cylinder, and everything past them is turned away. So the picture has an arc it must live inside. `mirror.widestPicture` is that arc in your own units and `mirror.fits` is the yes or no. Standing closer takes some of it away. That is the trade the whole piece is made of: the nearer the viewer, the less of the mirror they can use.
+There is a limit, and it is better met before you compose than after. Two tangent lines run from your eye to the cylinder, and everything past them is turned away. So the picture has an arc it must live inside. `mirror.widestPicture` is that arc in your own units and `mirror.fits` is the yes or no. Standing closer takes some of it away. That is the trade the whole piece is made of: the nearer the viewer, the less of the mirror they can use.
 
 `plate(of:)` takes a point, a `Contour`, or a `Shape`. The map bends straight lines, so a contour is walked at an even spacing first and the bend is carried by the extra points. What comes back is ordinary geometry, so a plate prints. A real mirrored tube standing on a real printed circle is the whole apparatus.
 
@@ -359,7 +365,7 @@ Ten lines, and you can paint. `record(into:)` hands the mark where the pointer i
 
 The figure is one curve walked three times by the same pretend hand, nearly still at the ends and flicking through the middle. Only what the pace is allowed to *drive* changes.
 
-Which is the thing worth remembering here: **width and opacity are separate axes, and you say so.**
+Which is the thing to remember here: **width and opacity are separate axes, and you say so.**
 
 ```swift
 StrokeDynamics(width: .pressure(light: 0.1),      // press for a fat mark
@@ -410,7 +416,7 @@ It is drawing state, like `strokeCap` or a profile, and `noStrokeBrush()` puts t
   <img src="Images/15-ShapesAsMaterial/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
 </picture>
 
-The first panel is the thing worth noticing. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the parameter that decides whether a brush is a mark or a scatter. It is measured in *stamp sizes* rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
+The first panel is the one to look at. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the parameter that decides whether a brush is a mark or a scatter. It is measured in *stamp sizes* rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
 
 The rest of the parameters are what you would guess. `sizeJitter` and `opacityJitter` vary each print, and `angle` faces it down the path, at a fixed angle, or anywhere. `scatter` throws it off the line, and `count` lays down several at each step. Every one of them is a fraction of the stamp's size. Everything random comes from a `seed`, so a mark stays exactly where it was frame after frame.
 
@@ -506,7 +512,7 @@ let mosaic = voronoi(sites, in: bounds)     // mosaic.cells is one Shape per sit
 let mesh = delaunay(sites)                  // mesh.triangles, each a real Triangle
 ```
 
-Every Voronoi cell is a `Shape`, so the whole chapter applies per cell. You can inset them for grout lines, subtract things from them, or hatch them, and the plate does all three. One companion helper is worth naming. `lloyd(sites, in: bounds)` nudges every site to its cell's center and re-tessellates. Each pass makes the mosaic calmer and more even, like a pan of bubbles settling.
+Every Voronoi cell is a `Shape`, so the whole chapter applies per cell. You can inset them for grout lines, subtract things from them, or hatch them, and the plate does all three. One companion helper comes with it. `lloyd(sites, in: bounds)` nudges every site to its cell's center and re-tessellates. Each pass makes the mosaic calmer and more even, like a pan of bubbles settling.
 
 There is one question a Voronoi diagram answers badly, and it comes up as soon as the things being divided have sizes. A boundary halfway between two centers is fair between two points. Between a large circle and a small one it is not: it falls inside the large one.
 
@@ -554,7 +560,7 @@ let packed = packShapes(bag, count: 160, minRadius: 7, maxRadius: 62, padding: 2
 
 Both panels are the same packing. The left one also draws each shape's bounding circle, and the giveaway is that **those circles overlap**, which a circle packing could never allow. That overlap is the whole feature. The fit was measured to the outlines. A small star can settle into a big star's notch, or lie along a triangle's edge. It uses space a circle would have reserved and wasted.
 
-The parameters beyond `count` and the radius range are worth knowing, because they change the character rather than just the density. `padding` opens a consistent gap between shapes, which helps when they'll be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
+The parameters beyond `count` and the radius range change the character rather than just the density. `padding` opens a consistent gap between shapes, which helps when they'll be cut or plotted. `rotation` is the range each placement is randomly turned within. So `0 ... 0` keeps everything upright and gives a much stiffer, more typographic result. And `scale` is how much of its own bounding circle a shape fills. Anything under `1` shrinks every placement a little and loosens the whole field.
 
 The output is `[Shape]`, so it flows straight into everything earlier in this chapter. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
 
@@ -614,7 +620,9 @@ What makes this more than a line drawing is that the skeleton remembers thicknes
 
 Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from [Chapter 8](08-Words.md)'s `textToShapes` skeletonize as they are, counters and all. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
 
-### The straight skeleton
+###
+
+The straight skeleton
 
 There is a second skeleton, built from a different thought experiment. Shrink the boundary inward at a steady pace, every edge sliding parallel to itself, and watch the corners. Each one travels in a straight line, edges shorten and vanish, and narrow places pinch shut. The paths the corners trace are the **straight skeleton**. Where the medial axis curves around a reflex corner, this one is made entirely of straight segments. Where the medial axis is approximated from a boundary sampling, this one is exact.
 
@@ -683,7 +691,7 @@ bath.swirl(at: center, strength: 400, falloff: 96)
 
 `tine` pulls one stylus along a line, and that is the stroke that drags a bull's-eye into a heart. `comb` pulls a whole row of teeth spaced `spacing` apart. It feathers rows of drops into the pattern marblers call nonpareil. Keep a comb's `falloff` well under its tooth spacing, or the teeth blur together into one broad shear. The circular `tine` drags the stylus around a ring. `swirl` stirs a vortex that spins hardest at its middle, which is the tight curl at the heart of French-curl papers.
 
-Stirring a vortex at the exact center of a bull's-eye does nothing whatsoever. That is worth knowing before you spend an evening wondering why the swirl has no effect. Spinning a set of concentric circles about their shared center maps every circle onto itself. The fourth panel above is stirred slightly off-center, which is what a real hand would have done anyway.
+Stirring a vortex at the exact center of a bull's-eye does nothing whatsoever. Know that before you spend an evening wondering why the swirl has no effect. Spinning a set of concentric circles about their shared center maps every circle onto itself. The fourth panel above is stirred slightly off-center, which is what a real hand would have done anyway.
 
 `bath.add(shape, color:)` floats an outline you already have, so text outlines can go into the bath and get combed with their counters intact. Nothing in here is random either, so the same operations always produce the same sheet. Randomize the drop positions with the sketch's seeded `random` and the whole paper still comes back from its seed.
 
@@ -717,7 +725,7 @@ drawWatercolor(center: center, radius: 300, layers: 60, opacity: 0.03, variance:
 
 This is deliberately heavy drawing, since each layer is a full concave fill. Paint in `setup()` or behind `noLoop()` rather than every frame. The cost is one reason, and the other is that regenerating every frame re-rolls the layers and makes the blob shimmer.
 
-Two moves are worth knowing once the basic pool works. For two pigments that mix instead of one covering the other, build a typed `Watercolor` base per pool. Interleave their layers a few at a time, so overlaps glaze in both directions. And for the grainy look of pigment settling into paper, speckle small translucent circles inside a `withClip` of the pool's own outline.
+Two more moves open up once the basic pool works. For two pigments that mix instead of one covering the other, build a typed `Watercolor` base per pool. Interleave their layers a few at a time, so overlaps glaze in both directions. And for the grainy look of pigment settling into paper, speckle small translucent circles inside a `withClip` of the pool's own outline.
 
 ## Toward the pen
 
@@ -768,7 +776,7 @@ for (i, shape) in fitted.shapes.enumerated() {
 }
 ```
 
-A logo, a scanned drawing auto-traced to paths, a file another sketch exported, and they all arrive the same way. They can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things are worth knowing before you lean on it. Text doesn't import, so convert it to outlines in the design tool first. A gradient fill falls back to flat gray, so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists exactly what the importer reads and skips.
+A logo, a scanned drawing auto-traced to paths, a file another sketch exported, and they all arrive the same way. They can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things matter before you lean on it. Text doesn't import, so convert it to outlines in the design tool first. A gradient fill falls back to flat gray, so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists exactly what the importer reads and skips.
 
 ## Record it once: batches
 
@@ -874,7 +882,21 @@ Then make it yours:
 
 The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library. It is one of the few pieces of bundled code in Ollin, credited in full in the project notices.
 
-The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers. The trochoids are the mathematics behind the Spirograph toy. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model. Spirolaterals were named and studied by Frank Odds in 1973, and Harold Abelson and Andrea diSessa set them as a turtle-geometry exercise in 1981. The curve a family of lines leans on is classical differential geometry, and the caustics of a circle were worked out in the seventeenth century, with Ehrenfried Walther von Tschirnhaus and Christiaan Huygens among the names attached. Corner cutting is George Chaikin's, from 1974. The clothoid was described by Leonhard Euler in 1744, and rediscovered by Augustin-Jean Fresnel, whose integrals give its shape. Arthur Talbot brought it into railway practice in 1890. The fit that joins two points and two headings follows Enrico Bertolazzi and Marco Frego's 2015 reduction. Mirror anamorphosis is older than the mathematics that describes it: Renaissance workshops ruled the construction out by hand, and Jean-Francois Niceron wrote it down in 1638. Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
+The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers.
+
+The trochoids are the mathematics behind the Spirograph toy. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model.
+
+Spirolaterals were named and studied by Frank Odds in 1973, and Harold Abelson and Andrea diSessa set them as a turtle-geometry exercise in 1981. The curve a family of lines leans on is classical differential geometry, and the caustics of a circle were worked out in the seventeenth century, with Ehrenfried Walther von Tschirnhaus and Christiaan Huygens among the names attached.
+
+Corner cutting is George Chaikin's, from 1974.
+
+The clothoid was described by Leonhard Euler in 1744, and rediscovered by Augustin-Jean Fresnel, whose integrals give its shape. Arthur Talbot brought it into railway practice in 1890. The fit that joins two points and two headings follows Enrico Bertolazzi and Marco Frego's 2015 reduction.
+
+Mirror anamorphosis is older than the mathematics that describes it: Renaissance workshops ruled the construction out by hand, and Jean-Francois Niceron wrote it down in 1638.
+
+Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets.
+
+The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
 
 The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape. It is approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The straight skeleton is Oswin Aichholzer, Franz Aurenhammer, David Alberts, and Bernd Gärtner's, from 1995. It is computed by the shrinking-wavefront method that Petr Felkel and Štěpán Obdržálek formulated, and Tom Kelly hardened against simultaneous events. Roofers and origami folders knew the construction long before it had a name. The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor recipe is Tyler Hobbs', from a generous written guide to simulating paint with generative art. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
