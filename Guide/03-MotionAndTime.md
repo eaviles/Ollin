@@ -10,13 +10,13 @@
 
 ## The clock
 
-Every sketch carries a clock, and you've already used it: `time` is the seconds since the sketch started. It has three siblings, all free to read inside `draw()`:
+Every sketch carries a clock, and you've already used it: `time` is the seconds since the sketch started. Three more properties come with it, and you read them inside `draw()` the same way:
 
 - `frameCount` is how many frames have been drawn so far, and it reads 1 on the first.
 - `deltaTime` is the seconds since the previous frame, around 0.0167 at 60 fps.
 - `frameRate` is the current frames-per-second estimate.
 
-`deltaTime` matters early, because your sketch's frame rate is not a constant of the universe. `draw()` runs at whatever your display refreshes at, which is 60 times a second on many screens and 120 on recent MacBooks. A step like `x += 3` happens once per *frame*. That means the same sketch covers twice the distance on the faster display:
+`deltaTime` matters early, because you cannot count on the frame rate. `draw()` runs at whatever your display refreshes at, which is 60 times a second on many screens and 120 on recent MacBooks. A step like `x += 3` happens once per *frame*. That means the same sketch covers twice the distance on the faster display:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/DeltaTime-dark.jpg">
@@ -29,6 +29,24 @@ There are two reliable ways to move, and this guide uses both:
 - **Scale steps by `deltaTime`.** Some values have to accumulate, like a particle that remembers where it was, which is most of Part II. Write the speed per second and multiply, as in `x += 120 * deltaTime`. Now a fast display takes more, smaller steps and lands in the same place.
 
 What you want to avoid is the third way, a bare per-frame step, which silently bakes your display's refresh rate into the artwork.
+
+## When a frame takes too long
+
+The refresh rate is the ceiling, not a promise. Give `draw()` more work than fits in a frame and it simply takes longer, so fewer frames land each second. Nothing warns you and nothing is skipped inside your `draw()`: the frame you asked for is drawn in full, just later.
+
+Here is a sketch drawing more and more circles, reading its own clock as it goes:
+
+| circles per frame | `frameRate` | `deltaTime` |
+| --- | --- | --- |
+| none | 60 | 0.017 |
+| 100,000 | 51 | 0.021 |
+| 160,000 | 41 | 0.047 |
+
+Read across and you can see which of the three properties to trust. `frameRate` falls, because that is what it measures. `deltaTime` grows to match, because it is the real gap between this frame and the last. And `time` keeps counting real seconds throughout, because it is a clock rather than a frame counter.
+
+That is the whole reason for the two habits above. Motion derived from `time`, or stepped by `deltaTime`, keeps its speed as the rate falls. It gets choppier, and it does not get slower. A bare `x += 3` gets both.
+
+Two things are worth knowing beyond that. If the machine falls far enough behind, the window drops a refresh rather than queuing work it cannot finish, so `draw()` is not called at all that time; skipping a frame is better than a window that stops answering the mouse. And an export does not have this problem in the first place: it runs on a fixed clock, giving every frame exactly `1 / fps` however long the drawing takes, so a sketch too heavy to play smoothly still exports at full speed. The [profiler](../Docs/Tools/Profiling.md) is what tells you where the time went, and [Chapter 32](32-Installations.md) uses it in anger.
 
 ## The circle behind sin
 

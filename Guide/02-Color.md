@@ -254,7 +254,7 @@ Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a r
 
 ## Will everybody see it?
 
-Pick two colors that read as clearly different to you, and there is a fair chance somebody cannot tell them apart. About one person in twenty sees color differently from the palette most work is designed against. It is carried on the X chromosome, so among men it is nearer one in twelve. That is not a rare edge case. In a room of twenty people it is one of them.
+Pick two colors that read as clearly different to you, and there is a fair chance somebody cannot tell them apart. About one person in twenty sees color differently from the palette most work is designed against. That is not a rare edge case. In a room of twenty people it is one of them.
 
 You can look at your own colors through that difference:
 

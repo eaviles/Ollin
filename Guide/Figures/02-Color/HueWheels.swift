@@ -74,20 +74,22 @@ final class HueWheels: Sketch {
             drawCircle(center: center + Vector2(94, 0), radius: 5)
             textSize(15)
             textAlign(.right, .middle)
-            drawText("hue 0 = red", width - 8, center.y)
+            drawText("hue 0", width - 8, center.y)
 
-            // The sweep from 0 to 1, drawn as the quarter it opens with.
+            // The sweep, starting where 0 is rather than somewhere along the
+            // way, so the reader can see which end the numbers count from.
             noFill()
             stroke(theme.accent)
             strokeWeight(2.5)
-            drawArc(center.x, center.y, 158, 158, start: -.tau * 0.20, stop: -.tau * 0.055)
+            drawArc(center.x, center.y, 152, 152, start: .tau * 0.012, stop: .tau * 0.125)
             fill(theme.accent)
-            let head = center + Vector2(angle: -.tau * 0.045, length: 158)
-            drawArrow(from: center + Vector2(angle: -.tau * 0.075, length: 158),
-                      to: head, headLength: 16, headWidth: 13)
-            textSize(18)
-            textAlign(.center, .bottom)
-            drawText("0 to 1 runs clockwise", center.x + 4, center.y - 176)
+            drawCircle(center: center + Vector2(152, 0), radius: 4.5)
+            drawArrow(from: center + Vector2(angle: .tau * 0.10, length: 152),
+                      to: center + Vector2(angle: .tau * 0.145, length: 152),
+                      headLength: 15, headWidth: 12)
+            textSize(17)
+            textAlign(.left, .middle)
+            drawText("0 to 1", center.x + 138, center.y + 126)
         }
 
         for i in 0..<9 {
