@@ -31,6 +31,9 @@ on:
       - "Docs/**"
       - "Examples/**/README.md"
       - "Examples/**/Sketch.swift"
+      # The media manifest decides what every example page and every chapter
+      # hero renders, so a change to it changes pages without touching one.
+      - "Examples/media.json"
       - "Sources/OllinReference/**"
       - "Sources/OllinDocs/**"
       - "Sources/OllinProjects/**"
