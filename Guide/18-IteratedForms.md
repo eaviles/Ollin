@@ -31,7 +31,7 @@ fill(Color(hex: 0x2E5E3A))
 drawPoints(fitted(cloud, in: canvasRectangle.inset(by: .all(80))), size: 1.5)
 ```
 
-The reason this works is worth sitting with for a second, because it feels like it shouldn't. Every one of the four rules *shrinks* the plane. So wherever your dot started, a few jumps later that starting position has been squashed down to nothing and forgotten. What's left is the only set of points that the four rules, taken together, map exactly onto itself. The dot can't escape it and can't stay away from it, so given enough jumps it traces it out. That set is called the attractor, and the collection of rules is an **iterated function system**.
+The reason this works repays a second's thought, because it feels like it shouldn't. Every one of the four rules *shrinks* the plane. So wherever your dot started, a few jumps later that starting position has been squashed down to nothing and forgotten. What's left is the only set of points that the four rules, taken together, map exactly onto itself. The dot can't escape it and can't stay away from it, so given enough jumps it traces it out. That set is called the attractor, and the collection of rules is an **iterated function system**.
 
 The picture also explains what the weights are for. The fern's rules aren't chosen with equal probability. The one drawing the main body gets picked about 85 percent of the time. That keeps the fine tip as well drawn as the base. Ollin ships `.barnsleyFern`, `.sierpinskiTriangle`, and `.sierpinskiCarpet`, and a system of your own is six numbers per rule plus a weight.
 
@@ -109,7 +109,7 @@ noFill()
 drawCircles(schottkyCircles(pairing: pairings))
 ```
 
-One thing decides whether that picture comes out full or nearly empty, and it is worth knowing before you touch any of the numbers. When a pairing's two circles *touch*, its map holds the point where they touch perfectly still. Near that point it barely shrinks anything at all. So the orbit keeps handing back large circles generation after generation. They pile into the fan you can see at the left and right of the third panel. Separate that pair by even a third of its radius and every application shrinks harder. The arrangement that gave back nine thousand circles gives back fewer than three thousand. Same code, same four circles, and most of the picture is gone.
+One thing decides whether that picture comes out full or nearly empty, and it is better known before you touch any of the numbers. When a pairing's two circles *touch*, its map holds the point where they touch perfectly still. Near that point it barely shrinks anything at all. So the orbit keeps handing back large circles generation after generation. They pile into the fan you can see at the left and right of the third panel. Separate that pair by even a third of its radius and every application shrinks harder. The arrangement that gave back nine thousand circles gives back fewer than three thousand. Same code, same four circles, and most of the picture is gone.
 
 That is why `schottkyCuspedPairs` builds its four circles as two touching pairs. It also tells you which dial to reach for when you want motion. `lean` swings each pair around its own tangency point, so the pair goes on touching however far it swings. The picture stays full while the figure opens and closes. `twist`, which rotates a pairing off that setting, gives you spirals instead, and thins the lace as it goes. The `Patterns/Schottky` example walks `lean` back and forth and never drops below ten thousand circles.
 
@@ -190,7 +190,7 @@ Billiard(.stadium(center: middle, straight: 380, radius: 240))
 Billiard(.polygon(outline), obstacles: [Circle(center: middle, radius: 150)])
 ```
 
-Where a ball is let go matters as much as the room. In a circle it decides how big the hole is, and a ball let go at the exact middle leaves no hole at all. `room.contains(start)` is worth asking first, since the middle of a room with a post in it is inside the post.
+Where a ball is let go matters as much as the room. In a circle it decides how big the hole is, and a ball let go at the exact middle leaves no hole at all. `room.contains(start)` is the first thing to ask, since the middle of a room with a post in it is inside the post.
 
 ## Iteration without memory: escape-time fractals
 
@@ -209,7 +209,7 @@ Here is the entire method. Every pixel stands for a complex number, and the pixe
 
 The first two panels are the same loop, differing only in which of its two numbers is held still. In the **Mandelbrot set**, the added number varies from pixel to pixel and the orbit always starts at zero. In a **Julia set**, that added number is fixed for the whole image, and you pass it as `c`. Each pixel then starts its orbit at its own position instead.
 
-That is why the red mark matters. It sits at `c = -0.79 + 0.15i`, and the middle panel is the Julia set for exactly that `c`. Move the mark and you get a different Julia set. The rule of thumb worth keeping is that points near the Mandelbrot set's *edge* give the richest ones. Deep inside gives a plain blob, far outside gives dust. Every Julia set is a portrait of one point of the Mandelbrot set.
+That is why the red mark matters. It sits at `c = -0.79 + 0.15i`, and the middle panel is the Julia set for exactly that `c`. Move the mark and you get a different Julia set. The rule of thumb is that points near the Mandelbrot set's *edge* give the richest ones. Deep inside gives a plain blob, far outside gives dust. Every Julia set is a portrait of one point of the Mandelbrot set.
 
 The bands look stepless rather than like contour lines, because the coloring uses a smoothed escape count rather than a whole number. `cycles` sets how many times the palette repeats across the range. `phase` walks the colors along the bands, which is the drifting-color animation. It costs nothing, because it recolors rather than recomputes.
 
@@ -261,7 +261,7 @@ The right panel is the warning. Newton's method is not promised to land. For the
 
 ## A picture of a function: domain coloring
 
-Everything so far asked a question about a **loop**. There is one more thing worth doing with this plane, and it asks about a single step.
+Everything so far asked a question about a **loop**. One more thing can be done with this plane, and it asks about a single step.
 
 A complex function takes a point of the plane and hands back another point. Graphing it the way you graph a sine wave would need four axes: two for what goes in, two for what comes out. Nobody has four axes. **Domain coloring** spends the two you have on the input, and paints the answer as a color:
 
@@ -286,7 +286,7 @@ You place them yourself, which is what makes this one to play with rather than t
 .domainColoring(.rational(zeros: [Vector2(-0.55, 0)], poles: [Vector2(0.55, 0)]))
 ```
 
-Move a zero and the whole field reorganizes around it. Repeat a point for a double zero. Leave the poles out and you have a polynomial. There are named functions too: `.power`, `.exponential`, `.sine`, `.tangent`, and `.logarithm`. Two of them draw something you may have only been told about. A fractional `.power` and the `.logarithm` both leave a **branch cut**. That is a line where the colors jump, because the answer had to pick one of two equally good values. It is worth seeing once.
+Move a zero and the whole field reorganizes around it. Repeat a point for a double zero. Leave the poles out and you have a polynomial. There are named functions too: `.power`, `.exponential`, `.sine`, `.tangent`, and `.logarithm`. Two of them draw something you may have only been told about. A fractional `.power` and the `.logarithm` both leave a **branch cut**. That is a line where the colors jump, because the answer had to pick one of two equally good values. See it once.
 
 The size you threw away can come back as shading. `.modulus` ramps from dark to light between one doubling of the value and the next, which draws contour rings. `.conformal` rules the direction the same way, and the two rulings cross. That is the right panel, and away from the interesting points its tiles are little squares. Squares are not a coincidence. A function like this one turns and stretches small shapes but never shears them, and the grid is that fact made visible.
 

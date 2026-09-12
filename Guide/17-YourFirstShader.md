@@ -81,7 +81,14 @@ This is the sentence at the heart of nearly every shader ever written: *measure 
 
 ## Time, mouse, and parameters
 
-The `info` argument carries the outside world in: `info.time` (seconds, so anything you feed it moves), `info.mouse` (in canvas points), `info.resolution` (the layer's pixel size), and `info.frame`. A pulsing disc is the disc shader with one line changed:
+The `info` argument carries the outside world in, and it holds four things:
+
+- `info.time` is seconds, so anything you feed it moves.
+- `info.mouse` is the cursor, in canvas points.
+- `info.resolution` is the layer's pixel size.
+- `info.frame` is the frame count.
+
+A pulsing disc is the disc shader with one line changed:
 
 ```metal
 float r = 0.3 + 0.05 * sin(info.time * 2.0);
@@ -135,7 +142,7 @@ drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
 
 There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 15](15-ShapesAsMaterial.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [Chapter 19](19-GridSimulations.md) comes back to and [Chapter 28](28-SoundAndControl.md) plays with sound.
 
-Here's the part worth doing rather than reading. Take the gyroid, which is genuinely one line: a sum of three `sin` and `cos` products, read at a fixed slice through space.
+This is the part to do rather than read. Take the gyroid, which is genuinely one line: a sum of three `sin` and `cos` products, read at a fixed slice through space.
 
 ```swift
 let mine = Shader("""
@@ -156,7 +163,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 Not identical, and the differences are instructive. The bands run a different way because the built-in slices along another axis, and it adds a dimmed second copy behind the first to suggest depth, which is where those little dark seeds come from. But it's plainly the same animal, and you wrote it with five lines of vocabulary from earlier in this chapter: coordinates recentered, `sin` and `cos`, `smoothstep` for the edge, `mix` for the color.
 
-Nothing about `z = info.time` is special either. Reading a 3D field at a moving slice is a general trick worth keeping: it's why the bands crawl and reconnect instead of just sliding.
+Nothing about `z = info.time` is special either. Reading a 3D field at a moving slice is a general trick to keep: it's why the bands crawl and reconnect instead of just sliding.
 
 Two conventions apply across the whole design and pattern-field set. Their palettes blend in **sRGB**, the space design tools work in, so mixes look like what a design tool would show rather than what physically correct light would do. And centered compositions stay centered and round whatever the canvas shape, so a tall layer doesn't get a squashed crystal.
 
@@ -196,7 +203,7 @@ ollin new Plasma --from-shader plasma.glsl
 
 That writes a project with the translated shader in `imported.metal` beside the sketch, ready to build. A shader you have just copied can go straight in with `pbpaste | ollin new Plasma --from-shader -`. How many inputs it reads decides what it becomes. One that reads nothing is a generator. One that reads `iChannel0` is a filter over a layer, which is [Chapter 16](16-LayersAndEffects.md)'s vocabulary again.
 
-Most of the translation is renaming. `vec3` becomes `float3`, `atan(y, x)` becomes `atan2(y, x)`. Three of the changes are worth knowing, because they change what you *see* rather than whether the file compiles.
+Most of the translation is renaming. `vec3` becomes `float3`, `atan(y, x)` becomes `atan2(y, x)`. Three of the changes matter, because they change what you *see* rather than whether the file compiles.
 
 **`mod` rounds the other way.** GLSL floors the quotient where Metal truncates it, so the two disagree the moment either side goes negative. That is the ordinary case. Tiling a plane that reaches left of the origin is the first thing this kind of shader does. So the translation writes the flooring version out by hand instead of calling Metal's built-in.
 
@@ -231,7 +238,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 The path is relative to the file that names it, so a helper sitting in the same folder is just its name. It works from an inline Swift string too. The folder there is the one your `.swift` file is in. A [compute kernel](../Docs/Shaders/Compute.md) can do it as well, so a kernel and a shader can share one file.
 
-Three things are worth knowing.
+Three things to know.
 
 A file is read once, however many times it is named. Two shaders that both include the same helper do not end up defining it twice.
 
@@ -260,7 +267,7 @@ Ripple.metal: ok
 
 It compiles the file on this machine's GPU, the same way a sketch would, and reports at your own line numbers when something is wrong. It also says three things you cannot see by reading the file quickly.
 
-What the shader is. A shader that reads no layer is a generator, one layer makes it a filter, two make it a combine, and the check works that out from the readers you call. It is worth seeing before you wire the shader into a chain that expects something else. You can name the shape yourself with `--as filter` if you want it compiled a particular way.
+What the shader is. A shader that reads no layer is a generator, one layer makes it a filter, two make it a combine, and the check works that out from the readers you call. See it before you wire the shader into a chain that expects something else. You can name the shape yourself with `--as filter` if you want it compiled a particular way.
 
 Which parameters it reads, so you know how many floats to pass. A gap gets called out, because an index nothing writes reads as zero and is usually a slip.
 

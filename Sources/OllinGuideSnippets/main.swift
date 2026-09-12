@@ -175,6 +175,20 @@ failures.sort { ($0.0.page, $0.0.line) < ($1.0.page, $1.0.line) }
 // spliced into every probe from that page. The listing is the backlog, and it is
 // meant to go down.
 
+/// What is recorded and compared, with everything volatile taken out.
+///
+/// The compiler names the throwaway module it built (`OllinRuntimeCheck_` and a
+/// fresh UUID) and the line inside the wrapped file, and both change without the
+/// block changing: the module name every single run, the line whenever the
+/// chapter's preamble grows. Comparing the raw text made the gate report a
+/// change on every run and after every unrelated edit.
+func stableMessage(_ message: String) -> String {
+    var out = message.replacingOccurrences(of: #"OllinRuntimeCheck_[A-Fa-f0-9]+"#,
+                                           with: "the probe", options: .regularExpression)
+    if let bracket = out.range(of: "   [in ") { out = String(out[..<bracket.lowerBound]) }
+    return out.trimmingCharacters(in: .whitespaces)
+}
+
 /// Keyed on the block's own text, so editing the prose above it moves nothing.
 func fingerprint(_ block: Block) -> String {
     let normalized = block.body.components(separatedBy: "\n")
@@ -223,7 +237,8 @@ if record {
     for (print_, entry) in failedNow.sorted(by: {
         ($0.value.block.page, $0.value.block.line) < ($1.value.block.page, $1.value.block.line)
     }) {
-        lines.append("\(print_)  \(entry.block.page):\(entry.block.line)  \(entry.message)")
+        lines.append("\(print_)  \(entry.block.page):\(entry.block.line)  "
+                     + stableMessage(entry.message))
     }
     try? (lines.joined(separator: "\n") + "\n").write(toFile: gapsPath, atomically: true, encoding: .utf8)
     print("guide-snippets: recorded \(failedNow.count) known gaps into \(gapsPath)")
@@ -239,7 +254,7 @@ for (key, entry) in failedNow.sorted(by: {
         problems.append("\(entry.block.page):\(entry.block.line): \(entry.message)")
         continue
     }
-    if known.message != entry.message {
+    if known.message != stableMessage(entry.message) {
         problems.append("\(entry.block.page):\(entry.block.line): the error changed"
                         + "\n    was: \(known.message)\n    now: \(entry.message)")
     }

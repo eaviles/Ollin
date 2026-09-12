@@ -127,10 +127,14 @@ func partition(_ body: String) -> (members: [String], statements: [String]) {
         $0.trimmingCharacters(in: .whitespaces).hasPrefix("override ")
     }
     var carry: [String]?        // the member currently being consumed, brace by brace
+    // Depth counts every bracket, not just braces: a property whose value is a
+    // call spread over several lines is one declaration, and counting `{` alone
+    // let each continuation line be read as its own statement, which is a parse
+    // error rather than anything the chapter did.
     for line in body.components(separatedBy: "\n") {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
-        let opens = line.filter { $0 == "{" }.count
-        let closes = line.filter { $0 == "}" }.count
+        let opens = line.filter { "{([".contains($0) }.count
+        let closes = line.filter { "})]".contains($0) }.count
         if carry != nil {
             carry!.append(line)
             depth += opens - closes

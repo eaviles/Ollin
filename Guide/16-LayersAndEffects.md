@@ -41,7 +41,7 @@ final class FirstLayer: Sketch {
 
 Three calls carry the whole idea. `makeRenderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 8](08-Words.md)'s `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
 
-Two habits worth forming now. A `makeRenderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
+Two habits to form now. A `makeRenderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
 
 Here's the same idea as a picture, one thumbnail per stage:
 
@@ -83,7 +83,7 @@ drawImage(scene.filtered(.xdog()).image, 0, 0)
 
 Underneath is a difference of two blurs. Blur the brightness a little, then blur it a little more. The two agree everywhere except at an edge, where the wider blur reaches across and the narrower one does not. Subtracting them leaves the edges. The filter pushes that difference hard over the picture's own tone, then cuts the result at a threshold: paper above it, ink below. The cut is what puts solid ink into the shadows. A dark region sits under the threshold on its own, with no edge needed.
 
-The part that makes the lines read as drawn rather than detected is the flow. Before the blur is taken, the filter works out which way each edge runs. It then takes the blur *across* that direction and gathers the response *along* it. A line then runs the length of its edge instead of breaking into the speckle a plain edge detector leaves on a noisy picture. `flow` is how far along the edge it gathers. Setting it to 0 turns that off, which is worth doing once to see what it buys.
+The part that makes the lines read as drawn rather than detected is the flow. Before the blur is taken, the filter works out which way each edge runs. It then takes the blur *across* that direction and gathers the response *along* it. A line then runs the length of its edge instead of breaking into the speckle a plain edge detector leaves on a noisy picture. `flow` is how far along the edge it gathers. Setting it to 0 turns that off, so do it once to see what it buys.
 
 The dials: `radius` is the line scale in pixels, and `sharpening` how far the edges are pushed over the tone. `threshold` is where paper turns to ink, and `softness` the ramp under that cut. At 0 the cut is a hard two-tone print. The default of 0.2 keeps a gray wash below the threshold, which is the look the technique is known for. `foreground` and `background` are the ink and the paper. The filter reads the picture as the brightness a display would show. An edge in a shadow then counts as much as one in the light. Empty space on a transparent layer reads as paper rather than ink, so a shape drawn alone gets an outline and nothing else. [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) puts every dial on a parameter over a still life with a moving lamp.
 
@@ -102,7 +102,7 @@ drawImage(scene.filtered(.brushwork()).image, 0, 0)
 
 Underneath is a brush divided into eight overlapping sectors, like slices of a pie. For each pixel the filter takes the average color of every sector and measures how much each one varies. The flattest sectors win. So a pixel beside an edge takes its color from the sectors on its own side, and the edge never smears. Away from any edge every sector is much the same, and the pixel becomes a broad average. That is what flattens detail into patches.
 
-The part that makes the patches read as strokes is the shape of the brush. The filter first works out which way the picture runs at each pixel, from the same structure tensor `xdog` follows. Where there is a clear direction, the brush is drawn out along it and squeezed across it. At most it is four times as long as it is wide. Along a blade of grass the patch is a stroke along the blade. In a flat sky the brush stays round. `stretch` is the most an edge can draw the brush out. Set it to 1 and the brush is always round, which is worth doing once. The picture turns into square dabs.
+The part that makes the patches read as strokes is the shape of the brush. The filter first works out which way the picture runs at each pixel, from the same structure tensor `xdog` follows. Where there is a clear direction, the brush is drawn out along it and squeezed across it. At most it is four times as long as it is wide. Along a blade of grass the patch is a stroke along the blade. In a flat sky the brush stays round. `stretch` is the most an edge can draw the brush out. Set it to 1 and the brush is always round, which is a useful thing to see once. The picture turns into square dabs.
 
 The dials: `radius` is the brush size in pixels, and the cost grows with its square. `sharpness` is how decisively the flattest sector wins. Higher is flatter and more poster-like. At 0 every sector counts alike, and the filter is only a soft blur. The picture is read as the colors a display shows over white paper. Empty space on a transparent layer counts as paper, and the result keeps the layer's alpha. [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) paints a hillside in a breeze with every dial on a parameter.
 
@@ -146,7 +146,7 @@ The dials: `spacing` is the distance between strokes, and so how fine the pen is
 
 ## Filters that read the layer as something else
 
-Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those are worth meeting individually, because what you feed them matters more than the parameters.
+Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those repay meeting individually, because what you feed them matters more than the parameters.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/SpecialFilters-dark.jpg">
@@ -216,9 +216,9 @@ layer.filtered(.chromaticAberration(amount: 0.018, spectral: true))
 
 **`.edges` puts the fringe only where there is an edge.** It slides along the local brightness gradient and scales by how strong that gradient is, so flat areas keep their exact color. Real fringing is only visible at high-contrast edges. Putting it there and nowhere else is what stops it reading as a filter laid over the picture. The thin lines go green because a three-pixel line is all edge. Red slides off one side, blue off the other, and green is what stays.
 
-**`.axial` changes focus instead of position.** One end of the spectrum stays sharp while the other softens, which is most of the look of a fast lens wide open. A positive amount keeps red sharp, and a negative one keeps blue sharp. That sign is the difference between a highlight going green and going magenta, and it is worth trying both.
+**`.axial` changes focus instead of position.** One end of the spectrum stays sharp while the other softens, which is most of the look of a fast lens wide open. A positive amount keeps red sharp, and a negative one keeps blue sharp. That sign is the difference between a highlight going green and going magenta, so try both.
 
-Two more things worth knowing. Every mode hands the layer straight back at `amount: 0`, so an A/B costs nothing and the parameter never lies to you. And `spectral: true` takes the split over a whole set of wavelengths instead of three. That is the difference between the last panel and the first: three hard ghosts become one continuous smear. It costs more taps, and `quality:` sets how many.
+Two more things to know. Every mode hands the layer straight back at `amount: 0`, so an A/B costs nothing and the parameter never lies to you. And `spectral: true` takes the split over a whole set of wavelengths instead of three. That is the difference between the last panel and the first: three hard ghosts become one continuous smear. It costs more taps, and `quality:` sets how many.
 
 There is a two-layer version too. `.dispersed(by:)` in a `compose` block, or `Combine.disperse` on its own, scales the amount by a second layer's brightness. Draw white where you want the color to come apart and black everywhere else, and the fringe lands only there.
 
@@ -239,7 +239,7 @@ Three lines, and the canvas is a printed poster. It is a mesh gradient of soft c
 
 ## The edges a generated layer has no coverage for
 
-A layer like that one comes with a catch, and it is worth knowing before it bites you.
+A layer like that one comes with a catch, and it is better met before it bites you.
 
 When you draw a circle, Ollin knows it is a circle. It works out how much of each edge pixel the shape covers, and paints that pixel part-way. That is what keeps the edge smooth instead of built out of little squares.
 
@@ -289,7 +289,7 @@ drawImage(marks.filtered(.diffuse()).image, 0, 0)
   <img src="Images/16-LayersAndEffects/Diffusion.jpg" alt="Three dark panels. A black field with a thin two-color curve and two dots; the same marks after diffusing into a smooth dusk sky over deep water with a glowing sun; and the same again with a second curve added low down, which reorganizes the whole lower half into a lit shore" width="680">
 </picture>
 
-The rule the solve follows is worth knowing, because everything the picture does follows from it. **Away from the marks, every pixel ends up the average of its four neighbors.** That is the rule a soap film obeys when you dip a bent wire in it. Nothing overshoots, no color appears that was not put there, and a mark's influence falls away smoothly in every direction at once.
+The rule the solve follows matters, because everything the picture does follows from it. **Away from the marks, every pixel ends up the average of its four neighbors.** That is the rule a soap film obeys when you dip a bent wire in it. Nothing overshoots, no color appears that was not put there, and a mark's influence falls away smoothly in every direction at once.
 
 `drawDiffusionCurve` is the form the technique is named for. It draws the same path twice, a hair apart, with a different color on each side. The field jumps across the curve and stays smooth everywhere else. Left and right are named from walking the path in the order its points come, so reversing the points swaps the colors.
 
@@ -299,7 +299,7 @@ Two practical notes. A pixel counts as a source when its alpha reaches `threshol
 
 ## Putting a piece of one picture into another
 
-The same settling does a second job, and it is worth meeting here because the trick behind it is the same one.
+The same settling does a second job, and it belongs here because the trick behind it is the same one.
 
 You have a patch you want to drop into a picture: a slab of texture, a cut-out, something from elsewhere. Paste it and it reads as pasted. The rim gives it away, and so does the color, because the patch was lit differently wherever it came from.
 
@@ -323,7 +323,7 @@ Here is what it does, in one sentence, because everything else follows from it. 
 
 Spreading a difference as smoothly as possible is the diffusion above, wearing a different hat. The marks are the rim, and the field between them is the correction.
 
-Two things follow, and both are worth meeting here rather than by surprise. The patch keeps its own **range of tone** and only moves where that range sits. Drop a contrasty patch somewhere much darker than itself and its shadows go below black. And the rim is where the entire answer comes from, so a rim laid across a **hard edge** drags that edge inward. Keep the rim on quiet ground and neither one comes up.
+Two things follow, and both are better met here than by surprise. The patch keeps its own **range of tone** and only moves where that range sits. Drop a contrasty patch somewhere much darker than itself and its shadows go below black. And the rim is where the entire answer comes from, so a rim laid across a **hard edge** drags that edge inward. Keep the rim on quiet ground and neither one comes up.
 
 `amount` runs from 0 to 1. One is the full clone. Zero leaves the seam in, which is the picture you want beside it when you are deciding whether it worked.
 
@@ -435,7 +435,7 @@ The [reference](../Docs/Drawing/Fourier.md) has the cost and the rest of the rul
 
 ## Light that works itself out
 
-The measured field above is the hard half of a much bigger trick, and the trick is worth having on its own. Draw a scene into one layer and some lamps into another, and ask what light reaches every pixel.
+The measured field above is the hard half of a much bigger trick, and the trick is one to have on its own. Draw a scene into one layer and some lamps into another, and ask what light reaches every pixel.
 
 ```swift
 let lit = scene.combined(with: lamps, .light())
@@ -459,7 +459,7 @@ scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
 
 At `0` every surface stays black and only the lamps are seen. That is the middle panel, and a good look in its own right. At `1`, the default, light comes back off whatever it lands on, carrying that surface's color with it. Each further bounce costs another pass, and past one or two you will not see the difference.
 
-Two more parameters are worth knowing early. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed parameter.
+Two more parameters matter early. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed parameter.
 
 Speed is the thing to say plainly. This is the most expensive effect in the chapter. It is also the one whose cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`makeRenderTarget(scale: 0.5)`), or pass `quality: .performance`.
 
@@ -518,7 +518,7 @@ Two costs, and neither one grows with the window. Building the table is about tw
 
 ## The design family
 
-Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. It comes in two halves, generators that invent a picture and filters that transform one, and they behave differently enough to meet separately.
+Two lines of that listing came from a set that is best met as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. It comes in two halves, generators that invent a picture and filters that transform one, and they behave differently enough to meet separately.
 
 ### The design generators
 
@@ -854,7 +854,13 @@ Then make it yours:
 
 ## Where this comes from
 
-Off-screen layers are as old as computer graphics has had memory to spare. The shape they take here, layers plus a filter catalog plus explicit compositing, follows the model OPENRNDR refined for creative coding. The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper *Compositing Digital Images*. Image editors standardized the everyday blend-mode vocabulary of multiply, screen, and friends in the decades after. Tone mapping comes from photography by way of Erik Reinhard and colleagues' 2002 *Photographic Tone Reproduction for Digital Images*. The film-like curve Ollin uses is the Academy's ACES, in Krzysztof Narkowicz's widely used approximation. The picture inside itself is named after a Dutch cocoa tin from 1904, whose label showed a nurse holding a tray with the same tin on it. Escher took the idea somewhere stranger in *Print Gallery* (1956), where a man in a gallery looks at a picture that contains the gallery, and left a hole in the middle he signed rather than finished. Hendrik Lenstra and Bart de Smit worked out in 2003 what belonged in the hole, and the straighten-repeat-curl construction the filter runs is theirs. Video feedback is the analog ancestor of the `Feedback` layer. Point a camera at its own monitor, as Nam June Paik and the Vasulkas did in the 1960s and 70s. The transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Off-screen layers are as old as computer graphics has had memory to spare. The shape they take here, layers plus a filter catalog plus explicit compositing, follows the model OPENRNDR refined for creative coding.
+
+The compositing arithmetic descends from Thomas Porter and Tom Duff's 1984 paper *Compositing Digital Images*. Image editors standardized the everyday blend-mode vocabulary of multiply, screen, and friends in the decades after.
+
+Tone mapping comes from photography by way of Erik Reinhard and colleagues' 2002 *Photographic Tone Reproduction for Digital Images*. The film-like curve Ollin uses is the Academy's ACES, in Krzysztof Narkowicz's widely used approximation.
+
+The picture inside itself is named after a Dutch cocoa tin from 1904, whose label showed a nurse holding a tray with the same tin on it. Escher took the idea somewhere stranger in *Print Gallery* (1956), where a man in a gallery looks at a picture that contains the gallery, and left a hole in the middle he signed rather than finished. Hendrik Lenstra and Bart de Smit worked out in 2003 what belonged in the hole, and the straighten-repeat-curl construction the filter runs is theirs. Video feedback is the analog ancestor of the `Feedback` layer. Point a camera at its own monitor, as Nam June Paik and the Vasulkas did in the 1960s and 70s. The transform is whatever the room does to the signal. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

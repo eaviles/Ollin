@@ -108,7 +108,7 @@ Two parameters set the search's temperament. `evaporation` is the forgetting rat
 
 ## Matter that decides what shape to be: Particle Lenia
 
-The three systems above are written as forces: something pushes, something pulls. **Particle Lenia** is written a different way, and it is worth seeing because the difference is the whole idea. There is no force law. There is a landscape, and particles walk downhill on it.
+The three systems above are written as forces: something pushes, something pulls. **Particle Lenia** is written a different way, and the difference matters because it is the whole idea. There is no force law. There is a landscape, and particles walk downhill on it.
 
 Each particle adds up a ring-shaped kernel over its neighbors to get one number, how crowded it is. A growth function scores that crowding. There is a level of company a particle likes, and the further from it in either direction, the worse things are. A repulsion term makes being stood on very bad indeed. Add those into one energy, and a particle simply moves whichever way that energy improves.
 
@@ -124,7 +124,7 @@ drawParticles(lenia)
 
 The three panels above are that same code. The only difference between them is which crowding the growth function is asking for and how fussy it is about getting it: `muG` and `sigmaG`. Two numbers are the difference between a cell with a fringed skin, a coral, and a smooth solid body.
 
-It is worth knowing which term does what, because they pull against each other on the same thing. Growth is the only term that attracts, so with it switched off, particles drift apart. Repulsion is the only term with an opinion at very short range, so with *it* switched off, they end up standing on each other. The reason for that second one is the kernel's shape. It is a *ring*, so two particles in exactly the same place add almost nothing to each other's crowding. Growth is perfectly happy to let them coincide.
+Which term does what matters, because they pull against each other on the same thing. Growth is the only term that attracts, so with it switched off, particles drift apart. Repulsion is the only term with an opinion at very short range, so with *it* switched off, they end up standing on each other. The reason for that second one is the kernel's shape. It is a *ring*, so two particles in exactly the same place add almost nothing to each other's crowding. Growth is perfectly happy to let them coincide.
 
 The color in those panels is the crowding itself, measured against what the rule asked for. That is why the membrane reads differently from the inside. Particles on the rim have nobody beyond them, so their field is permanently short of the target, however well the rule is working. The membrane is not a feature anybody wrote. It is just where the population runs out.
 
@@ -211,7 +211,7 @@ Nowhere in that do you say how to get there. You place a start, a target, and th
 
 The three panels are the same search a few seconds apart. Generation 1 is a spray with no idea. By generation 8 a plume has found the gap and is pouring through it. By generation 23 the population is a single arc that threads the gap and ends in the ring. Nothing improved a genome. All that happened is that the ones that did badly had fewer children.
 
-Choosing the parents is the interesting part. Each parent is picked by holding a small tournament. Grab four individuals at random, and keep whichever scored highest. That sounds like a shortcut for the fairer method, where a genome's share of the parents is its share of everyone's total score. It is better suited here, for a reason worth knowing. A tournament never adds anything up. It only ever asks *which of these two is higher*. So thirty thousand children can each pick their own parents at the same instant, with nothing to agree on and nothing to wait for. That is exactly what a GPU is. It also means the scale of a score is irrelevant. Only its order matters.
+Choosing the parents is the interesting part. Each parent is picked by holding a small tournament. Grab four individuals at random, and keep whichever scored highest. That sounds like a shortcut for the fairer method, where a genome's share of the parents is its share of everyone's total score. It is better suited here, for a reason. A tournament never adds anything up. It only ever asks *which of these two is higher*. So thirty thousand children can each pick their own parents at the same instant, with nothing to agree on and nothing to wait for. That is exactly what a GPU is. It also means the scale of a score is irrelevant. Only its order matters.
 
 The pace comes out of the geometry rather than out of numbers you tune. Top speed crosses the distance to the target in about two seconds, and the trial is long enough to go the long way round. One gene pushes hard enough to reach top speed in a quarter of a trial. All of it is worked out from how far apart the two points are. That is why the sketch above names a population, a genome length, and two points, and nothing else. It is also why dragging the target repaces the whole run.
 
@@ -266,7 +266,7 @@ drawParticles(chem)
 
 The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Six lines, then two, then very nearly one. Nobody chose the winner, and nobody could have told you in advance which it would be.
 
-`competition` is the one parameter that says what winning even means, and it is the whole character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added. That is a fixed mixture of six kinds, worth looking at on its own.
+`competition` is the one parameter that says what winning even means, and it is the whole character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe, and gives you the model before any of this was added. That is a fixed mixture of six kinds, and it repays a look on its own.
 
 Mutation here is a chance *per contact*, not per generation, and a particle in a crowd makes contact several times a second. So the rate is far below the one `Evolution` uses. Set it as high as a generational search would, and the recipes take dozens of nudges inside a single takeover. They arrive as noise, which you see immediately. The structures dissolve, and the whole thing flattens into an even gas.
 
