@@ -226,11 +226,11 @@ Drawing pours a material. The field stores the four materials at four gray level
 
 The cone on the shelf is not drawn. Grains land, roll down the slope, and stop where the slope is as steep as it can stand. Once the heap is wider than the shelf, grains slump off both ends and fall into the pool. They sink through it, heap up on the floor, and the water they push aside rises to the top. `friction` sets how steep a heap can stand. At 0 every grain that can roll does, and the heaps slump flat. At 1 no grain ever rolls, so the stream stacks straight up into a tower.
 
-`passes` is the pacing dial, in passes per frame. A grain falls one cell every two passes, so the default moves it eight cells a frame. Drop it to slow the fall down and watch a single grain find its way. The `Simulation/Automata` example's sand rule is this piece with a brush. Pour sand, water, or wall with the mouse and see what the rule does with it.
+`passes` is the pacing dial, in passes per frame. A grain falls one cell every two passes, so the default moves it eight cells a frame. Drop it to slow the fall down and watch a single grain find its way. The `Simulation/Automata` example's sand rule is this sketch with a brush. Pour sand, water, or wall with the mouse and see what the rule does with it.
 
 ## Two chemicals: reaction-diffusion
 
-Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished piece. The idea comes from Alan Turing. Two chemicals spread through a surface and react, one feeding the pattern and one killing it. In the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
+Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished sketch. The idea comes from Alan Turing. Two chemicals spread through a surface and react, one feeding the pattern and one killing it. In the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/FeedKillMap-dark.jpg">
@@ -422,7 +422,7 @@ One practical note: the motion is measured from the picture's own shading, so th
 
 ## Putting it together: the organism
 
-The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 16](16-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
+The finished sketch grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 16](16-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
 
 ```swift
 import Ollin

@@ -479,7 +479,7 @@ Two practical notes. The history costs width times height times four bytes per f
 
 ## Putting it together: motion paints
 
-The finished piece is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/30-Seeing/MotionBrush.swift) reads the bundled film instead of a webcam, one of its frames per drawn frame, so it renders the same picture on any machine and without you. The listing below is the sketch as you'd run it live:
+The finished sketch is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/30-Seeing/MotionBrush.swift) reads the bundled film instead of a webcam, one of its frames per drawn frame, so it renders the same picture on any machine and without you. The listing below is the sketch as you'd run it live:
 
 ```swift
 import Ollin

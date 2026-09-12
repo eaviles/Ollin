@@ -480,7 +480,7 @@ Exports never interpolate. What you keep is the frames you drew, so no file ever
 
 ## Putting it together: molten
 
-The finished piece is a single body of four melted lobes, twisted a little. It's finished as glass under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:
+The finished sketch is a single body of four melted lobes, twisted a little. It's finished as glass under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:
 
 ```swift
 import Ollin

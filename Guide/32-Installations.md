@@ -8,7 +8,7 @@
 
 Nobody is sitting in front of that. It is on a wall, it has been there since Tuesday, and it will still be there when the building shuts on Sunday. The band along its bottom edge is not decoration either. A strip of lamps is reading that band and lighting the wall under the screen with it.
 
-[Chapter 31](31-SharingAndPerforming.md) sent work out as files and feeds. This chapter is the other way a piece leaves your desk: it stays where it is, and you go home. That turns out to be a different job. The output may not even be a screen, the frame budget stops being a preference, and a room does things to a sketch that a desk never does. By the end you'll have built the piece above, declared for a room rather than a window.
+[Chapter 31](31-SharingAndPerforming.md) sent work out as files and feeds. This chapter is the other way a piece leaves your desk: it stays where it is, and you go home. That turns out to be a different job. The output may not even be a screen, the frame budget stops being a preference, and a room does things to a sketch that a desk never does. By the end you'll have built the sketch above, declared for a room rather than a window.
 
 ## Light instead of pixels: DMX
 
@@ -119,7 +119,7 @@ A single file goes up the same way. It has no target of its own, and the host th
 ollin piece.swift --installation
 ```
 
-That host does not reload on save. On a wall that is what you want: the piece runs the code you started it with. Plain `ollin piece.swift` is still where you work on it.
+That host does not reload on save. On a wall that is what you want: the sketch runs the code you started it with. Plain `ollin piece.swift` is still where you work on it.
 
 ### What actually breaks is the clock
 
@@ -143,7 +143,7 @@ override var installation: Installation { .on }
 override var loopDuration: Double? { 120 }     // two minutes a lap
 ```
 
-Nothing moves at the restart, because the piece is back at the start of a lap anyway. A sketch with no declared loop keeps counting, since there is no free moment to jump at. Say `Installation(clock: .restarting(every: 600))` if you know one, or leave it alone.
+Nothing moves at the restart, because the sketch is back at the start of a lap anyway. A sketch with no declared loop keeps counting, since there is no free moment to jump at. Say `Installation(clock: .restarting(every: 600))` if you know one, or leave it alone.
 
 ### Picking up where it left off
 
@@ -290,7 +290,7 @@ swift run --package-path Examples Example-Installation-ManyDisplays --rehearse 3
 
 That opens one window per part on the desk you are at, side by side, each carrying its own part. It shows you the layout rather than the light. Two beams sharing a band add up to one coat; two windows sharing one would only hide each other.
 
-The piece is drawn once a frame however many displays it goes on. What grows is the size it is drawn at, since each display wants its own part at its own resolution.
+The sketch is drawn once a frame however many displays it goes on. What grows is the size it is drawn at, since each display wants its own part at its own resolution.
 
 ### Several windows, one world
 
@@ -360,7 +360,7 @@ That is a different tool from the `shows` rectangle earlier in this chapter, and
 
 **One set of parameters.** `room.shareAll()` makes every `@Param` travel; `room.share("speed", "hue")` picks. Change a parameter on any machine and the rest follow within a frame. Two people adjusting one parameter at the same moment is settled by the room's clock: the later turn wins everywhere.
 
-Anything else the piece wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 28](28-SoundAndControl.md):
+Anything else the sketch wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 28](28-SoundAndControl.md):
 
 ```swift
 room.send("bird", position, reliable: false)      // sent every frame
@@ -396,7 +396,7 @@ Ollin installation [2026-08-16 03:12:08]: the screens woke
 
 ## Tuning it from the floor
 
-The piece is on the wall and the Mac is behind it. The right place to judge a speed or a color is in front of the wall, twenty steps from the keyboard. One line serves every parameter the sketch declares to your phone.
+The sketch is on the wall and the Mac is behind it. The right place to judge a speed or a color is in front of the wall, twenty steps from the keyboard. One line serves every parameter the sketch declares to your phone.
 
 ```swift
 import OllinRemote
@@ -506,7 +506,7 @@ Both kinds write the same wrapper the next section describes, plus one line that
 
 ## An app to hand somebody
 
-The screen saver lives on your own machine. The other thing a finished piece wants is to leave. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.
+The screen saver lives on your own machine. The other thing a finished sketch wants is to leave. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.
 
 ```sh
 ollin new Orbit --kind mac-app
@@ -531,9 +531,9 @@ The app is also how the wall piece below reaches its wall. A sketch that declare
 
 ## Putting it together: the wall piece
 
-The finished piece is one you could hang. Everything a room needs is in its declaration, and the drawing itself is deliberately calm, because a piece that stays up for a week is a different kind of thing from one that has to hold a scroll. Make `MySketches/WallPiece.swift`.
+The finished sketch is one you could hang. Everything a room needs is in its declaration, and the drawing itself is deliberately calm, because a piece that stays up for a week is a different kind of thing from one that has to hold a scroll. Make `MySketches/WallPiece.swift`.
 
-The first part is what the room needs to know. One `Installation` says fill the screen and keep it awake, write a checkpoint every minute, restart if you ever stall, and open and close with the building. `loopDuration` says the piece repeats every three minutes, which is what lets a shader clock stay small and a viewer feel the piece has a shape.
+The first part is what the room needs to know. One `Installation` says fill the screen and keep it awake, write a checkpoint every minute, restart if you ever stall, and open and close with the building. `loopDuration` says the piece repeats every three minutes, which is what lets a shader clock stay small and a viewer feel the sketch has a shape.
 
 ```swift
 import Ollin
@@ -579,7 +579,7 @@ final class WallPiece: Sketch {
 
 ```
 
-The second part is the drawing, and it holds nothing between frames. Every bar's height comes from where it stands and how far along the lap the piece is, so a restart in the small hours puts it back exactly where the checkpoint left it. Nothing accumulates, so nothing drifts over a week.
+The second part is the drawing, and it holds nothing between frames. Every bar's height comes from where it stands and how far along the lap the sketch is, so a restart in the small hours puts it back exactly where the checkpoint left it. Nothing accumulates, so nothing drifts over a week.
 
 ```swift
     override func draw() {
@@ -619,7 +619,7 @@ The second part is the drawing, and it holds nothing between frames. Every bar's
 
 <img src="Images/32-Installations/WallPiece.jpg" alt="The finished wall piece at dusk: a slow field of bars from deep plum through red to orange, with the plain band along the bottom that the lamps read" width="680">
 
-Read the declaration back and it is a list of the things this chapter is about. The screen saver never comes on. A power cut costs at most a minute. A stall fixes itself in the small hours with nobody there. The piece is dark outside opening hours, and it is a different color at dawn than at dusk. And the strip of lamps under it is lit by the same drawing, because an `LEDMap` reads the canvas rather than being told about it.
+Read the declaration back and it is a list of the things this chapter is about. The screen saver never comes on. A power cut costs at most a minute. A stall fixes itself in the small hours with nobody there. The sketch is dark outside opening hours, and it is a different color at dawn than at dusk. And the strip of lamps under it is lit by the same drawing, because an `LEDMap` reads the canvas rather than being told about it.
 
 Then make it yours:
 

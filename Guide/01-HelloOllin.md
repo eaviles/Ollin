@@ -6,7 +6,7 @@
 
 <img src="Images/01-HelloOllin/HelloMotion.jpg" alt="A ring of circles in warm and cool colors, drifting and breathing on a dark ground" width="560">
 
-By the end of this chapter you'll have built the piece above. It's twenty-eight circles drifting around a ring, each one breathing a little out of step with its neighbors, with a small panel of parameters you can turn while it runs. Every dot is placed and moved by code you'll understand line by line. Getting there takes a working toolchain, one new file, and three shapes, and along the way you'll meet the idea that runs through the whole guide: in Ollin, things move by default.
+By the end of this chapter you'll have built the sketch above. It's twenty-eight circles drifting around a ring, each one breathing a little out of step with its neighbors, with a small panel of parameters you can turn while it runs. Every dot is placed and moved by code you'll understand line by line. Getting there takes a working toolchain, one new file, and three shapes, and along the way you'll meet the idea that runs through the whole guide: in Ollin, things move by default.
 
 ## What you need
 
@@ -389,7 +389,7 @@ None of this needs a network. [The reference offline](../Docs/Tools/Reference.md
 
 ## Putting it together: a breathing ring
 
-Now we can build the piece from the top of the chapter. A loop places 28 circles around a ring using the `cos` and `sin` recipe. `time` inside the angle makes the whole ring drift, and `sin` swings both the ring's radius and each circle's size so that the piece breathes.
+Now we can build the sketch from the top of the chapter. A loop places 28 circles around a ring using the `cos` and `sin` recipe. `time` inside the angle makes the whole ring drift, and `sin` swings both the ring's radius and each circle's size so that the sketch breathes.
 
 Two things in the listing are new. The circles run inside a `for` loop, which repeats the drawing commands once per circle. And each color carries an `alpha`, which is how opaque it is: 1 is solid, 0 is invisible, and 0.85 lets overlapping circles show a little of each other.
 
@@ -438,7 +438,7 @@ Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through 
 
 That leaves the four `@Param` lines. Look at the sidebar of the `OllinLive` window and you'll find they became a small control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a parameter with a label, a range, and a starting value, and the sketch reads it like any other property. Each parameter arrived as the control its type calls for. Speed and Size hold `Double`s, so they are sliders. Circles holds a whole number, so it is a stepper. Ground holds a `Color`, so it is a swatch you click to open a picker. There are more of these, including a toggle for a `Bool` and a draggable pad for a point, and you'll meet them as the guide goes on. Beside a numeric control the value itself is live, so you can drag it sideways to scrub or click it to type one in.
 
-Play the panel while the piece runs. Your tuned values survive a save, which means you can edit the code, save, and find your parameter positions carried over into the reloaded sketch instead of snapping back to the defaults. Build that habit early, because a number you find yourself trying three values of is a number that wants to be a parameter.
+Play the panel while the sketch runs. Your tuned values survive a save, which means you can edit the code, save, and find your parameter positions carried over into the reloaded sketch instead of snapping back to the defaults. Build that habit early, because a number you find yourself trying three values of is a number that wants to be a parameter.
 
 ### Saving the values you tuned
 

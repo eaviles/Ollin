@@ -303,7 +303,7 @@ Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a regi
 let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap: .round)
 ```
 
-That one call is the hinge of this chapter's finished piece. Once a stroke is a region, everything above applies to it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a fragile stroke attribute. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
+That one call is the hinge of this chapter's finished sketch. Once a stroke is a region, everything above applies to it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a fragile stroke attribute. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
 
 ## Marks and brushes
 
@@ -743,7 +743,7 @@ Spacing is the pen's whole idea of tone. Holes and concavities are respected, be
 
 ### Shapes from a file
 
-There's one more source of material before the finished piece, which is shapes you didn't draw at all. SVG is the plain-text vector format every design tool exports. `loadSVG` reads a file into the same types this chapter has been editing. Each element arrives as a `Shape` carrying the fill and stroke it was authored with:
+There's one more source of material before the finished sketch, which is shapes you didn't draw at all. SVG is the plain-text vector format every design tool exports. `loadSVG` reads a file into the same types this chapter has been editing. Each element arrives as a `Shape` carrying the fill and stroke it was authored with:
 
 ```swift
 if let art = loadSVG("boat.svg") {

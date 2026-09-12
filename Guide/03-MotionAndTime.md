@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-[Chapter 1](01-HelloOllin.md) handed you `sin` as a recipe and promised an explanation later, and this is later. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. It all comes together in the piece above, a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
+[Chapter 1](01-HelloOllin.md) handed you `sin` as a recipe and promised an explanation later, and this is later. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. It all comes together in the sketch above, a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
 
 ## The clock
 
@@ -76,7 +76,7 @@ for i in 0..<24 {
 }
 ```
 
-Run that and you've built the bottom half of the diagram, live. You've also seen the move before, because [Chapter 1](01-HelloOllin.md)'s breathing ring offset each circle's swing with `+ Double(i) * 0.5`. That was phase, used before it had a name. It's the cheapest way there is to make many things feel alive together. The finished piece at the end of this chapter leans on it heavily.
+Run that and you've built the bottom half of the diagram, live. You've also seen the move before, because [Chapter 1](01-HelloOllin.md)'s breathing ring offset each circle's swing with `+ Double(i) * 0.5`. That was phase, used before it had a name. It's the cheapest way there is to make many things feel alive together. The finished sketch at the end of this chapter leans on it heavily.
 
 ## map and lerp: moving between ranges
 
@@ -309,7 +309,7 @@ Nothing changes on its own, and that is deliberate. Only you know which of your 
 
 ## Putting it together: a loop that never ends
 
-Here's the piece from the top of the chapter, and it needs one new idea, the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first the motion reads as endless. The recipe comes straight out of the circle-to-sine picture. Since `sin` repeats every full turn, you *pick a loop length and make every time-driven term complete a whole number of turns within it*. In code that means choosing a `loopTime`, then building one beat from it with `loopProgress(over: loopTime) * .tau` so the beat turns exactly once per lap. That beat, or a whole multiple of it, is then the only source of time in the sketch. Phase offsets cost you nothing here, since they only shift where each swing starts. Space follows the same rule bent into a circle. A wave wrapped around a ring has to fit a whole number of times, or it won't meet itself where the ring closes.
+Here's the sketch from the top of the chapter, and it needs one new idea, the **perfect loop**. A GIF plays its frames in a ring, so if the last frame flows into the first the motion reads as endless. The recipe comes straight out of the circle-to-sine picture. Since `sin` repeats every full turn, you *pick a loop length and make every time-driven term complete a whole number of turns within it*. In code that means choosing a `loopTime`, then building one beat from it with `loopProgress(over: loopTime) * .tau` so the beat turns exactly once per lap. That beat, or a whole multiple of it, is then the only source of time in the sketch. Phase offsets cost you nothing here, since they only shift where each swing starts. Space follows the same rule bent into a circle. A wave wrapped around a ring has to fit a whole number of times, or it won't meet itself where the ring closes.
 
 That's the entire theory of the piece. Make `MySketches/RingPulse.swift`:
 
@@ -357,7 +357,7 @@ Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the intere
 - `wave` is the phase trick from earlier, bent into a circle. Each dot's head start is its angle times the wave count, so the crests *travel* around the ring. That count has to stay a whole number, or the wave won't meet itself where the ring closes. That is why `waves` starts at `3` rather than `3.0`. A whole-number property makes a whole-number parameter, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as [Chapter 1](01-HelloOllin.md)'s `Double(i)`.
 - `lit` is the window cutter from the shaping section, working here as a **soft spotlight**. The wave lives in `-1...1`, and smoothstep's edges carve out its crest. That gives 0 below the threshold, 1 at the peak, and soft shoulders in between. The dots swell and fade rather than switching on and off. Widen `Pulse width` and the lower edge drops, which opens the window until the whole ring breathes at once.
 - Everything `lit` touches is a `lerp` in spirit. The color leans toward warm white by `lit * 0.4`, using [Chapter 2](02-Color.md)'s `Color.mix`. The dot lifts outward by `lit * 18`, and it swells from 6 up to 26. One shaped value drives all three.
-- `direction` flips alternate rings, and that alone is most of why the piece feels alive rather than mechanical.
+- `direction` flips alternate rings, and that alone is most of why the sketch feels alive rather than mechanical.
 
 When it feels right in the live window, export it. Anything Ollin can run it can also render to a file without opening a window. The live host accepts the same export flags the example targets do:
 
@@ -365,7 +365,7 @@ When it feels right in the live window, export it. Anything Ollin can run it can
 swift run OllinLive MySketches/RingPulse.swift --export-loop ring.gif --gif-width 540
 ```
 
-That's one lap at the default 25 fps, scaled to 540 pixels, which makes a small file that loops forever. Notice there's no duration on the command. The sketch declares its own through `loopDuration`, the one-line override in the listing. `--export-loop` renders exactly one period, so the file and the loop can't drift apart. This is your first export, and it's the piece at the top of this chapter, made by this same command. For a sketch that doesn't declare a loop, `--export-gif ring.gif --seconds 4` is the general form. `--export-video ring.mp4` writes a real video instead, and `--export frame.png` grabs a single still. The whole menu is in [Export](../Docs/Output/Export.md).
+That's one lap at the default 25 fps, scaled to 540 pixels, which makes a small file that loops forever. Notice there's no duration on the command. The sketch declares its own through `loopDuration`, the one-line override in the listing. `--export-loop` renders exactly one period, so the file and the loop can't drift apart. This is your first export, and it's the sketch at the top of this chapter, made by this same command. For a sketch that doesn't declare a loop, `--export-gif ring.gif --seconds 4` is the general form. `--export-video ring.mp4` writes a real video instead, and `--export frame.png` grabs a single still. The whole menu is in [Export](../Docs/Output/Export.md).
 
 Then make it yours:
 

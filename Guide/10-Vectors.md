@@ -6,7 +6,7 @@
 
 <img src="Images/10-Vectors/Swarm.jpg" alt="A school of hundreds of small colored streaks on a dark canvas, wheeling together in mid-turn as they chase a small white dot, warm orange leaders ahead of cool blue stragglers" width="560">
 
-Part II begins here, and so does a new kind of sketch, one where things *remember where they were going*. The tool for that is the vector, which sounds like math class and is actually one friendly idea, an arrow you can add, stretch, and point. By the end of this chapter three of those arrows will make anything move like it's alive, and a few hundred of them become the piece above: a swarm wheeling after a lure, ready to chase your mouse.
+Part II begins here, and so does a new kind of sketch, one where things *remember where they were going*. The tool for that is the vector, which sounds like math class and is actually one friendly idea, an arrow you can add, stretch, and point. By the end of this chapter three of those arrows will make anything move like it's alive, and a few hundred of them become the sketch above: a swarm wheeling after a lure, ready to chase your mouse.
 
 ## An arrow you can draw
 
@@ -149,7 +149,7 @@ final class Thrown: Sketch {
 
 Run it and a ball arcs across, bounces, and settles. Notice what's stored and what isn't: `position` and `velocity` are properties, alive between frames, because motion with memory *is* stored state. That's the line Part I never needed to cross. `gravity` never changes, but every frame it bends `velocity` a little, and the bend is what makes the arc. The bounce is two honest lines: put the ball back on the floor, flip the vertical part of its velocity and keep a bit less than all of it (`0.82` is the bounciness). And both `+=` lines scale by `deltaTime`, so the throw is identical at 60 and 120 frames a second.
 
-The other classic edge policy is **wrapping**: leave the right edge, come back on the left, the canvas bent into a loop. You'll see it in the finished piece, four `if`s with `with(x:)` and `with(y:)`.
+The other classic edge policy is **wrapping**: leave the right edge, come back on the left, the canvas bent into a loop. You'll see it in the finished sketch, four `if`s with `with(x:)` and `with(y:)`.
 
 ## Steering: the chase
 
@@ -218,7 +218,7 @@ Every line is arithmetic you already have: a subtraction pointing from here to t
 
 ## Putting it together: the swarm
 
-One chaser is a pet; a few hundred are weather. The piece at the top of the chapter runs the steering recipe over parallel lists of positions and velocities, gives every mover its own top speed so the crowd stretches into leaders and stragglers, and draws each as a streak along its own velocity, so the drawing *is* the motion made visible. The lure wanders on [Chapter 5](05-Noise.md)'s noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
+One chaser is a pet; a few hundred are weather. The sketch at the top of the chapter runs the steering recipe over parallel lists of positions and velocities, gives every mover its own top speed so the crowd stretches into leaders and stragglers, and draws each as a streak along its own velocity, so the drawing *is* the motion made visible. The lure wanders on [Chapter 5](05-Noise.md)'s noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
 
 ```swift
 import Ollin

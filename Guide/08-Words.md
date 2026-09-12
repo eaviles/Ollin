@@ -238,7 +238,7 @@ Two more calls help when you go looking. `fontsUsed(for:)`, asked of the font it
 
 ## Putting it together: a type specimen
 
-Now you can build the sheet at the top. A specimen is what type designers make to show a face off, which makes it the right shape for this piece: one word set large, the three kinds of letter under it, and a passage set properly. The headline is the part that matters. It isn't text at all by the time it reaches the canvas. Make a new file, `MySketches/Specimen.swift`:
+Now you can build the sheet at the top. A specimen is what type designers make to show a face off, which makes it the right shape for this sketch: one word set large, the three kinds of letter under it, and a passage set properly. The headline is the part that matters. It isn't text at all by the time it reaches the canvas. Make a new file, `MySketches/Specimen.swift`:
 
 ```swift
 import Ollin

@@ -1,14 +1,15 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 2): what dithering is for. One smooth color field
-// reduced to the same five colors three ways. Snapping each pixel to its
-// nearest color bands; a threshold map and error diffusion both trade those
-// bands for texture the eye reads back as the original tone.
+// Guide diagram (Chapter 2): what dithering is for. One smooth color field,
+// then the same field reduced to five colors three ways. Snapping each pixel
+// to its nearest color bands; a threshold map and error diffusion both trade
+// those bands for texture the eye reads back as the tone that was there. The
+// source panel is what the other three are trying to keep.
 import Ollin
 import OllinDiagram
 
 final class Dithering: Sketch {
-    override var canvasSize: CanvasSize { .size(880, 400) }
+    override var canvasSize: CanvasSize { .size(880, 350) }
 
     @Param var darkTheme = false
     var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
@@ -28,7 +29,8 @@ final class Dithering: Sketch {
         let five = Palette([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
                             Color(hex: 0xE56B6F), Color(hex: 0xFFB703),
                             Color(hex: 0xF7F5F1)])
-        panelsOut = [source.dithered(.none, to: five),
+        panelsOut = [source,
+                     source.dithered(.none, to: five),
                      source.dithered(.ordered(size: 8), to: five),
                      source.dithered(.floydSteinberg, to: five)]
     }
@@ -36,10 +38,11 @@ final class Dithering: Sketch {
     override func draw() {
         background(paper)
 
-        let titles = [".none (just snap)", ".ordered(size: 8)", ".floydSteinberg"]
+        let titles = ["the picture itself", ".none (just snap)",
+                      ".ordered(size: 8)", ".floydSteinberg"]
         for (i, picture) in panelsOut.enumerated() {
-            let panel = Rectangle(x: 25 + Double(i) * 284, y: 62,
-                                  width: 262, height: 262)
+            let panel = Rectangle(x: 24 + Double(i) * 212, y: 58,
+                                  width: 194, height: 194)
             drawImage(picture, in: panel)
             frame(panel, title: titles[i])
         }
@@ -48,8 +51,8 @@ final class Dithering: Sketch {
         fill(ink)
         textSize(21)
         textAlign(.center, .top)
-        drawText("same five colors; only the arrangement changes",
-                 width / 2, 348)
+        drawText("one picture, then the same five colors arranged three ways",
+                 width / 2, 284)
     }
 
     /// A smooth two-way gradient, the hardest thing to quantize cleanly.
@@ -78,6 +81,6 @@ final class Dithering: Sketch {
         fill(ink)
         textSize(17)
         textAlign(.left, .middle)
-        drawText(title, r.x, r.y - 18)
+        drawText(title, r.x, r.y - 16)
     }
 }

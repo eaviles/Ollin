@@ -62,6 +62,34 @@ final class HueWheels: Sketch {
         textAlign(.center, .middle)
         drawText("hue", center.x, center.y)
 
+        // Where the wheel starts, and which way it turns. Hue 0 sits at the
+        // right because angle zero points right, and the numbers climb
+        // clockwise because y grows downward on this canvas.
+        withState {
+            stroke(ink)
+            strokeWeight(2)
+            drawLine(center + Vector2(134, 0), center + Vector2(144, 0))
+            noStroke()
+            fill(ink)
+            drawCircle(center: center + Vector2(94, 0), radius: 5)
+            textSize(15)
+            textAlign(.right, .middle)
+            drawText("hue 0 = red", width - 8, center.y)
+
+            // The sweep from 0 to 1, drawn as the quarter it opens with.
+            noFill()
+            stroke(theme.accent)
+            strokeWeight(2.5)
+            drawArc(center.x, center.y, 158, 158, start: -.tau * 0.20, stop: -.tau * 0.055)
+            fill(theme.accent)
+            let head = center + Vector2(angle: -.tau * 0.045, length: 158)
+            drawArrow(from: center + Vector2(angle: -.tau * 0.075, length: 158),
+                      to: head, headLength: 16, headWidth: 13)
+            textSize(18)
+            textAlign(.center, .bottom)
+            drawText("0 to 1 runs clockwise", center.x + 4, center.y - 176)
+        }
+
         for i in 0..<9 {
             let t = Double(i) / 8
             fill(Color(hue: 0.07, saturation: t, brightness: 0.95))

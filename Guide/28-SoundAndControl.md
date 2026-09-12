@@ -6,7 +6,7 @@
 
 <img src="Images/28-SoundAndControl/Resonator.jpg" alt="A glowing amber orb wearing a crown of spectrum spokes, magenta at the quiet ends and pale gold at the loud ones, with sparks drifting outward from a recent beat" width="560">
 
-Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first. A microphone or a song becomes a handful of numbers you read in `draw()`, and the picture moves with the music. Then come the hands. A hardware knob, a phone fader, the inspector slider, or a sensor you wired yourself drives the same parameters. A running sketch becomes something you play. The piece above is doing both at once, and by the end you'll have built it. Making sound rather than hearing it is [Chapter 29](29-MakingSound.md), which picks up where the ears leave off.
+Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first. A microphone or a song becomes a handful of numbers you read in `draw()`, and the picture moves with the music. Then come the hands. A hardware knob, a phone fader, the inspector slider, or a sensor you wired yourself drives the same parameters. A running sketch becomes something you play. The sketch above is doing both at once, and by the end you'll have built it. Making sound rather than hearing it is [Chapter 29](29-MakingSound.md), which picks up where the ears leave off.
 
 ## The first listening sketch
 
@@ -82,7 +82,7 @@ source.beatCount       // how many beats so far
 source.timeSinceBeat   // seconds of audio since the last one
 ```
 
-`beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is. Onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want. When it isn't, `beatSensitivity` is the parameter, and a higher value asks for stronger arrivals before firing. The detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers. The same recording always beats in the same places.
+`beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished sketch spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is. Onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want. When it isn't, `beatSensitivity` is the parameter, and a higher value asks for stronger arrivals before firing. The detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers. The same recording always beats in the same places.
 
 ## Four places sound comes from
 
@@ -450,7 +450,7 @@ The rest is familiar. `strap.bind(.heartRateMeasurement, to: $radius, from: 50..
 
 ## Putting it together: a playable instrument
 
-The finished piece wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` parameters wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/28-SoundAndControl/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/28-SoundAndControl/Resonator.swift):
+The finished sketch wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` parameters wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/28-SoundAndControl/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/28-SoundAndControl/Resonator.swift):
 
 ```swift
 import Ollin

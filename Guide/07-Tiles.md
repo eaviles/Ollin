@@ -37,7 +37,7 @@ drawTruchet(columns: 8, rows: 8, tile: .arcs)
 
 The arc tile touches its cell's boundary in only four places, the edge midpoints, no matter which way it's spun. Think of the midpoints as doorways. Every tile has a doorway in the middle of each wall. So whatever your neighbor did, your marks and theirs meet at the doorway and flow through. Local rule, global order. Each tile only promises to hit its own doorways. The loops, corridors, and long wandering strands emerge across the whole canvas, with no tile knowing about them.
 
-The tiling is drawn from the seeded `random`, so it's reproducible like everything since [Chapter 4](04-Randomness.md). Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them. That is one list of points per arc, which is exactly what the finished piece wants.
+The tiling is drawn from the seeded `random`, so it's reproducible like everything since [Chapter 4](04-Randomness.md). Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them. That is one list of points per arc, which is exactly what the finished sketch wants.
 
 ## One coin per line: hitomezashi
 
@@ -375,7 +375,7 @@ Run it, watch the colors migrate, and click for a fresh tangle. What each piece 
 
 Before moving on, make it yours:
 
-- Swap the ramp. Four colors change this piece more than anything else in it; try an all-warm set, or two blues and a shock of yellow.
+- Swap the ramp. Four colors change this sketch more than anything else in it; try an all-warm set, or two blues and a shock of yellow.
 - Color by strand *position* instead of noise: `mid.y / height` as the ramp's input turns the weather into a sunset gradient.
 - Drop the rim pass's width to `cell * 0.55` and the color to `cell * 0.1` for wire-thin strands floating in fat shadows.
 - Drive `strokeWeight` in the color pass from the same `weather` value, so warm patches also swell.

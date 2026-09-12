@@ -419,7 +419,7 @@ One more thing to keep straight as you combine features. Ollin draws several *ki
 
 ## Putting it together: the plaza
 
-The finished piece is a small sculpture court you curate yourself. There are five plinths and five pieces, each wearing a different finish, under golden-hour light with soft shadows. The camera orbits until you take over. Make `MySketches/Plaza.swift`:
+The finished sketch is a small sculpture court you curate yourself. There are five plinths and five pieces, each wearing a different finish, under golden-hour light with soft shadows. The camera orbits until you take over. Make `MySketches/Plaza.swift`:
 
 ```swift
 import Ollin

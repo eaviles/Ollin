@@ -432,7 +432,7 @@ Run it, then click. What each piece contributes:
 
 Before moving on, make it yours:
 
-- Redraw `drawArm`. It is the one place the piece has a personality, and a straighter or busier arm changes all twenty-five medallions at once.
+- Redraw `drawArm`. It is the one place the sketch has a personality, and a straighter or busier arm changes all twenty-five medallions at once.
 - Swap `[5, 6, 8, 12]` for `[3, 4]` and the wall goes from lace to heraldry.
 - Give the disc a stroke in `ink` and drop the gutter to `4`, so the medallions crowd their neighbors like tiles rather than floating.
 - Drive `reach` from `noise` at the cell center instead of the diagonal, and the color arrives in patches ([Chapter 5](05-Noise.md)) rather than a clean gradient.

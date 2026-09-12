@@ -266,7 +266,7 @@ out again and again, which a still can show if the patch is small. The
 
 ## Putting it together: the valley
 
-The finished piece is a valley you could stand in, and every part of it is this chapter. The land is grown and weathered, the meadow is grass that does not exist between frames, the far world is a culled field, and the trees near the camera are an instanced draw the wind can reach. Make `MySketches/Valley.swift`. It is long enough to be worth taking in three parts.
+The finished sketch is a valley you could stand in, and every part of it is this chapter. The land is grown and weathered, the meadow is grass that does not exist between frames, the far world is a culled field, and the trees near the camera are an instanced draw the wind can reach. Make `MySketches/Valley.swift`. It is long enough to be worth taking in three parts.
 
 The first part grows the ground. Ridged noise across the whole grid, rained on, then settled by gravity, with the lowest third of the heights held at one level so a meadow has somewhere flat to sit. The `Ramp` that becomes the terrain's texture starts at that flood plain rather than at zero, which is what keeps the low ground green while the ridges go pale.
 

@@ -274,7 +274,7 @@ The color is the recipe itself, three of its numbers read as red, green and blue
 
 ## Putting it together: the drift
 
-Now you can build the piece at the top. It is the plainest thing in the chapter, deliberately, because the point is to see the machinery with nothing in the way. One field, one update program, and three kinds that differ by a single number. Make a new file, `MySketches/Drift.swift`:
+Now you can build the sketch at the top. It is the plainest thing in the chapter, deliberately, because the point is to see the machinery with nothing in the way. One field, one update program, and three kinds that differ by a single number. Make a new file, `MySketches/Drift.swift`:
 
 ```swift
 import Ollin

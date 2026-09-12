@@ -296,7 +296,7 @@ One parameter is free. `phase` turns the palette around the wheel without recomp
 
 ## Putting it together: a plate of four orbits
 
-Now you can build the plate at the top. It is a naturalist's specimen sheet, four systems laid out under one hand, and the reason it works as a finished piece rather than a figure is that the four panels really do share their machinery. One function turns a rule into a cloud of points. One other function fits that cloud into a panel and lays it down. Make a new file, `MySketches/OrbitPlate.swift`:
+Now you can build the plate at the top. It is a naturalist's specimen sheet, four systems laid out under one hand, and the reason it works as a finished sketch rather than a figure is that the four panels really do share their machinery. One function turns a rule into a cloud of points. One other function fits that cloud into a panel and lays it down. Make a new file, `MySketches/OrbitPlate.swift`:
 
 ```swift
 import Ollin

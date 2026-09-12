@@ -461,7 +461,7 @@ One thing to set up before you build on it. The room's origin is wherever the ph
 
 ## Putting it together: the ghost room
 
-The finished piece turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/27-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/27-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):
+The finished sketch turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/27-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/27-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):
 
 ```swift
 import Ollin
@@ -502,7 +502,7 @@ The woven texture is the scan lines of nine viewpoints interleaving. The solid p
 
 Then make it yours:
 
-- Point it at reality. With a LiDAR iPhone, swap `StageCamera` for `device.latestFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this piece with the pretend camera removed).
+- Point it at reality. With a LiDAR iPhone, swap `StageCamera` for `device.latestFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this sketch with the pretend camera removed).
 - Restage the set. `StageCamera.scene` is a distance field, so everything [Chapter 26](26-SculptingWithFields.md) taught works in it, and you can melt a blob into the room and scan that.
 - Color by height instead of by image, rebuilding the cloud with each point tinted by its `y`, and the scan becomes a contour map.
 - Slow the reveal to one frame every five seconds and export a video, because the assembly is the piece.

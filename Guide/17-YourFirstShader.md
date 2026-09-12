@@ -98,7 +98,7 @@ var sky: Shader {
 }
 ```
 
-Rebuilding the `Shader` value every frame is the normal pattern and costs nothing, because the compiled pipeline is cached by the source text, so only the numbers travel. (The finished piece below uses exactly this shape.)
+Rebuilding the `Shader` value every frame is the normal pattern and costs nothing, because the compiled pipeline is cached by the source text, so only the numbers travel. (The finished sketch below uses exactly this shape.)
 
 ## The library in your pocket
 

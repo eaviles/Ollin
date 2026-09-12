@@ -626,7 +626,7 @@ Put the light behind your subject and this carries the picture. A body about one
 
 ## Putting it together: the bench
 
-The finished piece is five specimens on a stone slab, and each one is here to carry a different part of the chapter. Make `MySketches/Bench.swift`. It comes in three parts: the pictures, the objects they dress, and the frame.
+The finished sketch is five specimens on a stone slab, and each one is here to carry a different part of the chapter. Make `MySketches/Bench.swift`. It comes in three parts: the pictures, the objects they dress, and the frame.
 
 The first part is the pictures, and every one of them is written rather than loaded. A normal map is a height function read for its slopes, which is the recipe from the normal-map section. A color picture is a function of the tile's own coordinates. The two height functions under them are named `bareness`, which decides where paint has worn back to metal, and `device`, the wheel cut into the tile.
 

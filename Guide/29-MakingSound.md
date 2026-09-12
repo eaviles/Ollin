@@ -627,7 +627,7 @@ The two halves of this section meet, which is worth saying because it would be e
 
 ## Putting it together: the music box
 
-The finished piece plays by itself and draws what it plays. Three voices, one clock, three rhythms, one key. Make `MySketches/MusicBox.swift` and run it, because the picture is the smaller half of this one.
+The finished sketch plays by itself and draws what it plays. Three voices, one clock, three rhythms, one key. Make `MySketches/MusicBox.swift` and run it, because the picture is the smaller half of this one.
 
 The first part is the piece. The bell is patched by hand rather than picked from the presets, the string is the model from earlier, and the breath is a preset. Everything about *when* comes from three Euclidean rhythms read at the same step number, and everything about *which* comes from the scale, so no note in it can be out of key. The low line's degrees come from the chain, which was taught an eight-note motif and now wanders inside its habits.
 

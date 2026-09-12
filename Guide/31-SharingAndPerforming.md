@@ -6,7 +6,7 @@
 
 <img src="Images/31-SharingAndPerforming/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core, like a printed topographic map of a wave" width="560">
 
-Thirty chapters of pieces have lived on your screen. This chapter is about handing them over. Out as files, meaning a poster, a video, a GIF, a plotter drawing, a print, or something you can hold. Out as live feeds, into a VJ rig or a video call. Out as a package somebody else can build on. And out on a stage, where writing the code is the performance. The piece above is the final state of a live-coded set you'll build in five evaluations. Every road out of the framework starts from the same place, the sketch you already have. The one road that does not leave, a piece that stays where it is and runs for a month, is [Chapter 32](32-Installations.md).
+Thirty chapters of pieces have lived on your screen. This chapter is about handing them over. Out as files, meaning a poster, a video, a GIF, a plotter drawing, a print, or something you can hold. Out as live feeds, into a VJ rig or a video call. Out as a package somebody else can build on. And out on a stage, where writing the code is the performance. The sketch above is the final state of a live-coded set you'll build in five evaluations. Every road out of the framework starts from the same place, the sketch you already have. The one road that does not leave, a piece that stays where it is and runs for a month, is [Chapter 32](32-Installations.md).
 
 ## Leaving as files
 
@@ -371,7 +371,7 @@ artwork.outOfGamutFraction(press)                              // 0…1, how muc
 
 Print that fraction while you tune a palette. A few percent is ordinary. A third of the canvas means you are drawing in colors that will not survive, and it is easier to hear that now.
 
-When the piece is ready, the same profile splits it into **plates**, one grayscale image per ink, black where that ink lands:
+When the sketch is ready, the same profile splits it into **plates**, one grayscale image per ink, black where that ink lands:
 
 ```swift
 override var printProfile: ICCProfile? { .genericCMYK }
@@ -489,7 +489,7 @@ override var stereoGeometry: StereoGeometry {
 }
 ```
 
-Leave either one out and it is worked out from the camera. The convergence distance defaults to whatever the camera is already pointing at. The reasoning is that you are looking at the thing the piece is about. Either can also be overridden for one export with `--interocular` and `--convergence`, which is the fastest way to find out what they do. Push the near pillar of that example until it stops being pleasant, and you will have learned more than this section can tell you.
+Leave either one out and it is worked out from the camera. The convergence distance defaults to whatever the camera is already pointing at. The reasoning is that you are looking at the thing the sketch is about. Either can also be overridden for one export with `--interocular` and `--convergence`, which is the fastest way to find out what they do. Push the near pillar of that example until it stops being pleasant, and you will have learned more than this section can tell you.
 
 One detail is worth knowing because it explains something that could otherwise look like a bug. The frame is **drawn once and rendered twice**. Not drawn twice. Drawing again would roll the sketch's randomness a second time, and step every simulation a second time. Some of them are honest about not repeating exactly, so the two eyes would end up looking at different worlds. One draw, two cameras, and both eyes see the same instant.
 
@@ -890,7 +890,7 @@ override func setup() {
   <img src="Images/31-SharingAndPerforming/ParameterAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
 </picture>
 
-That is a *formula*, and the thing to notice is the quotation marks. The rule is text, not Swift source. Text can arrive at runtime. It can be typed into a field, read out of a file, or changed while the piece is playing. None of that needs a recompile. That is the whole reason this exists beside the curves.
+That is a *formula*, and the thing to notice is the quotation marks. The rule is text, not Swift source. Text can arrive at runtime. It can be typed into a field, read out of a file, or changed while the sketch is playing. None of that needs a recompile. That is the whole reason this exists beside the curves.
 
 The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, `smoothstep`, `noise`, `pi` and `tau`, spelled and ordered exactly as they are in `draw()` and in a shader. A formula reads `time`, which is where the pass stands, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and any of your other parameters by name:
 
@@ -974,7 +974,7 @@ Then make it yours:
 - Play the set differently by reordering the moves, or swap step 2's fold for `.repeated(x: 3, y: 3)` and the mandala becomes wallpaper.
 - Wire [Chapter 28](28-SoundAndControl.md) in: `@Param` the oscillator frequency, bind it to a MIDI parameter, and the set gets a second instrument.
 - Feed it eyes: `.displaced(by: .layer(feed), amount: 0.1)` over a layer you draw the webcam into, and the audience melts the piece.
-- Perform an old friend, since any finished piece from this guide runs in the host as-is. Try evaluating changes into [Chapter 19](19-GridSimulations.md)'s reaction-diffusion while it grows.
+- Perform an old friend, since any finished sketch from this guide runs in the host as-is. Try evaluating changes into [Chapter 19](19-GridSimulations.md)'s reaction-diffusion while it grows.
 
 ## Where this comes from
 

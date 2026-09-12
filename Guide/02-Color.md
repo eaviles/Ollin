@@ -6,7 +6,7 @@
 
 <img src="Images/02-Color/ColorField.jpg" alt="A quilt of colored cells running diagonally from deep indigo through coral to warm cream, on a dark ground" width="560">
 
-Color is where a sketch gets its voice, and it is also where the arithmetic quietly works against you. Mixes turn to mud, palettes fight each other, and colors read brighter or darker than their numbers say they should. This chapter is the set of tools that avoid all of that. You'll learn the ways to name a color, how to think in hue rather than in amounts of light, how to mix in a way that trusts your eye instead of the machine's arithmetic, how to carry palettes and ramps around as ready-made kits, and how to paint with a gradient. It ends in the poster above, which redraws itself as a fresh variation on every click.
+Color is where a sketch gets its voice, and it is also where the arithmetic quietly works against you. Mixes turn to mud, palettes fight each other, and colors read brighter or darker than their numbers say they should. This chapter is the set of tools that avoid all of that. You'll learn the ways to name a color, how to think in hue rather than in amounts of light, how to mix in a way that trusts your eye instead of the machine's arithmetic, how to carry palettes and ramps around as ready-made kits, and how to paint with a gradient. It ends in the sketch above, which redraws itself as a fresh variation on every click.
 
 Everything here builds on [Chapter 1](01-HelloOllin.md); keep working the same way, one file under `OllinLive`, saving as you go.
 
@@ -30,7 +30,11 @@ Colors can also arrive as *strings*, `Color(hex: "#ff0066")`, which matters once
 
 ## Thinking in hue
 
-RGB is how the machine stores color, as three amounts of light. That's good for storing but hard to choose with, because nobody thinks "a little less green" when what they want is a warmer orange. The painter's version is HSB, where you pick the hue on a wheel and then decide how vivid it is (saturation) and how bright (brightness):
+A **color model** is a set of dials for naming a color. Pick how many dials there are and what each one does, and you have a model. There is no single right answer, because a set of dials that suits a screen does not suit a hand mixing paint, and neither suits an eye judging whether two colors match.
+
+RGB has three dials, one per amount of light, because that is what a screen emits and a sensor measures. It goes back to nineteenth-century experiments on how three lights can be matched against a fourth, and it is how the machine stores color. That makes it good for storing and poor for choosing, because nobody thinks "a little less green" when what they want is a warmer orange.
+
+HSB rearranges the same colors onto dials a person can steer: pick the hue on a wheel, then decide how vivid it is (saturation) and how bright (brightness). It arrived with computer graphics in the 1970s, as the model you could actually put under a designer's hand. Later in this chapter you will meet a third family, the OK models, which arrange the dials so that equal moves *look* equal.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/HueWheels-dark.jpg">
@@ -114,11 +118,19 @@ Color.mix(blue, yellow, 0.5, in: .paint)   // green, the way a palette gives it
 
 Behind the call, each color becomes the reflectance curve of a surface painted with it. The two curves then mix the way scattering pigments mix, wavelength by wavelength. The mixes also darken a little, because pigment only ever absorbs, and that darkening is half of what makes the result read as paint. It's the same trade as before, one level up: `.oklab` gives you even steps, `.paint` gives you a medium's honesty. Pick by what the piece needs.
 
-The curve itself is a type you can hold, called `Spectrum`, and mixing is only its first door. It also holds the pure hue of one wavelength, a heated body's glow, filtered light, and three GPU effects that split light for real. The [Spectral color](../Docs/Drawing/Spectrum.md) reference holds all of it.
+That curve is a type you can hold, called `Spectrum`, and paint mixing is only the first thing it is good for. Three more come with it, and each is one call:
+
+```swift
+Color(wavelength: 590)        // the single wavelength the eye reads as yellow
+Color(.blackbody(1800))       // the color of a thing heated to candle temperature
+Spectrum.blackbody(6500)      // and as a curve: roughly daylight
+```
+
+`Color(wavelength:)` sweeps a physical rainbow if you run it from 400 to 700 nanometers, which is not the same rainbow a hue wheel gives you. `blackbody` is why a candle is orange and a hot star is blue, from one number in kelvin. There are also three GPU effects that work wavelength by wavelength instead of channel by channel: `.thinFilm` for the colors in a soap bubble, `.diffraction` for the rainbow split off a grating, and `.paintMix` for the paint mixing above, run over a whole layer. The [Spectral color](../Docs/Drawing/Spectrum.md) reference has all of it.
 
 ## Kits you carry: Palette and Ramp
 
-Individual colors get you started, but finished pieces usually run on a kit of colors chosen once and used throughout. Ollin has two kinds, plus two ready-made variants of the second:
+Individual colors get you started, but finished sketches usually run on a kit of colors chosen once and used throughout. Ollin has two kinds, plus two ready-made variants of the second:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/PaletteShelf-dark.jpg">
@@ -143,9 +155,9 @@ let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
 fill(dusk.color(at: t))
 ```
 
-Two kinds of ramp come pre-made. **`Colormap`** holds eight scientific maps such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work beautifully when fed with `time`. Both answer to the same `color(at:)`.
+Two kinds of ramp come pre-made. **`Colormap`** holds [eight scientific maps](../Docs/Drawing/Color.md#colormap) such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work beautifully when fed with `time`. Both answer to the same `color(at:)`.
 
-Either one can be a parameter, which saves a lot of editing and rerunning:
+Either one can be a `@Param`, which saves a lot of editing and rerunning. A parameter is a value with a control in the inspector, so you turn it while the sketch runs instead of editing a number and saving. [Chapter 1](01-HelloOllin.md#putting-it-together-a-breathing-ring) declared four of them, and [Parameters](../Docs/Helpers/Parameters.md) is the whole family.
 
 ```swift
 @Param var inks = Palette(.red, .white, .black)      // a strip of blocks
@@ -165,7 +177,7 @@ let sets = loadPalettes("1000.json")      // however many the file holds
 let one  = loadPalette("sunset.hex")!     // just the first
 ```
 
-A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), a JSON file of a thousand of them in exactly the shape `loadPalettes` expects. Download it next to your sketch and the call above reads it as is. Two things to know about that file. Its palettes were collected from COLOURlovers, whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a startling amount of generative art. If you want your work to look like yours, that is a reason to keep reading.
+A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), an npm package carrying a thousand of them as JSON, in exactly the shape `loadPalettes` expects. You do not need npm to use it: the repository holds the files, so take `100.json` or `1000.json` from it, drop the file next to your sketch, and the call above reads it as is. Two things to know about that file. Its palettes were collected from [COLOURlovers](https://www.colourlovers.com), whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a great deal of generative art. If you want your work to look like yours, that is a reason to keep reading.
 
 ## Palettes from a photograph
 
@@ -210,18 +222,18 @@ Every pixel of the result is one of your five colors. (`bounds` there is the who
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/Dithering-dark.jpg">
-  <img src="Images/02-Color/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
+  <img src="Images/02-Color/Dithering.jpg" alt="Four panels: a smooth color gradient, then the same gradient reduced to five colors three ways. The first reduction shows wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, and both of the latter read as the original gradient from a distance" width="680">
 </picture>
 
-Snapping each pixel to the nearest available color is the obvious approach, and the first panel shows what it costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was actually there. The picture keeps its gradients using colors it doesn't have.
+The first panel is the picture as it came. Snapping each pixel to the nearest available color is the obvious way to fit it into five, and the second panel shows what that costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was actually there. The picture keeps its gradients using colors it doesn't have.
 
 There are two families, and they look different on purpose.
 
 **Threshold maps** decide each pixel from its position alone, using a repeating tile. `.ordered(size: 8)` uses a Bayer matrix and lays down the regular crosshatch of retro graphics and old newsprint, while `.blueNoise` uses a tile with no structure in it and gives an even, pattern-free grain. Because the decision is positional, these are cheap and completely local.
 
-**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the third panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
+**Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the last panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black. That look has a name because people go looking for it.
 
-A few practical notes. `.none` skips the scattering entirely, which is what the first panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
+A few practical notes. `.none` skips the scattering entirely, which is what the second panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
 
 ## Gradients as paint
 
@@ -242,7 +254,7 @@ Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a r
 
 ## Will everybody see it?
 
-Pick two colors that read as clearly different to you, and there is a fair chance somebody cannot tell them apart. About one man in twelve sees color differently from the palette most work is designed against. That is not a rare edge case. In a room of twenty people it is one or two of them.
+Pick two colors that read as clearly different to you, and there is a fair chance somebody cannot tell them apart. About one person in twenty sees color differently from the palette most work is designed against. It is carried on the X chromosome, so among men it is nearer one in twelve. That is not a rare edge case. In a room of twenty people it is one of them.
 
 You can look at your own colors through that difference:
 
@@ -257,15 +269,18 @@ let seen = Color.red.simulated(.deuteranopia)
 
 The picture at the top is a wall of woven blankets, where red sits beside green in nearly every stripe. Under the two commonest kinds those stripes arrive as one olive band, and only the blues survive. The middle block is a palette you have met in a hundred charts, and its orange, green and red land on that same olive. The bottom block is `Palette.colorblindSafe`, eight colors published for exactly this, and it holds together.
 
-To see a whole sketch rather than a swatch, put the reading over the frame:
+To see a whole sketch rather than a swatch, put the reading over the frame. `postProcess` filters the finished frame just before it is shown, so it belongs in `draw()` rather than `setup()`, and the usual place is the last line:
 
 ```swift
-postProcess(.colorVision(.deuteranopia))
+override func draw() {
+    // everything you were drawing anyway
+    postProcess(.colorVision(.deuteranopia))
+}
 ```
 
-The picture row above is the same filter run over one layer per column, which is how you check a photograph rather than a whole canvas.
+Put it behind a `@Param` toggle and it becomes a switch you flick while you work.
 
-Behind a `@Param` toggle that becomes a switch you flick while you work.
+The picture row above is the same filter run over one layer per column, which is how you check a photograph rather than a whole canvas.
 
 You can also ask, rather than look:
 
@@ -281,9 +296,9 @@ The rule underneath all of this is short. Red and green do look alike to a prota
 
 [Chapter 1](01-HelloOllin.md) borrowed `sin` from [Chapter 3](03-MotionAndTime.md), and this chapter's finale borrows `random` from [Chapter 4](04-Randomness.md). Three sentences will get you through it. `random(-1, 1)` hands you a fresh unpredictable number in that range every time you call it. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is `randomSeed(n)`, which restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices, which holds the picture still; change the seed and you get a brand-new variation that's just as coherent. [Chapter 4](04-Randomness.md) tells the whole story, and this is enough to be going on with.
 
-## Putting it together: a color field poster
+## Putting it together: a color field
 
-The poster is one ramp and a quilt of cells, with three ideas layered on top. Each cell samples the ramp according to its *diagonal position*, so the top-left corner is 0 and the bottom-right is 1. Seeded randomness then jitters every sample, which is what makes the field read as organic rather than mechanical. And a slow `sin` shimmer keeps the whole thing alive. Make `MySketches/ColorField.swift`:
+The sketch is one ramp and a quilt of cells, with three ideas layered on top. Each cell samples the ramp according to its *diagonal position*, so the top-left corner is 0 and the bottom-right is 1. Seeded randomness then jitters every sample, which is what makes the field read as organic rather than mechanical. And a slow `sin` shimmer keeps the whole thing alive. Make `MySketches/ColorField.swift`:
 
 ```swift
 import Ollin
@@ -329,10 +344,10 @@ final class ColorField: Sketch {
 
 Run it and walk the interesting lines:
 
-- `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Now click the canvas. `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters, giving you the same poster as a fresh variation, as many as you care to click through.
+- `randomSeed(fieldSeed)` runs at the top of every frame, so all the `random(-0.5, 0.5)` calls that follow roll the same numbers each time and the quilt holds still. Now click the canvas. `mousePressed()` bumps the seed, and the next frame rolls an entirely new set of jitters, giving you the same sketch as a fresh variation, as many as you care to click through.
 - Two loops, one inside the other, visit every column and row, and `diagonal` turns each cell's position into the `0...1` the ramp wants.
 - The `t` line carries the whole look: position, plus seeded jitter scaled by the parameter, plus a slow shimmer. Comment out one term at a time to see what each contributes. With jitter at zero you get a clean mechanical gradient, which is a good look in its own right.
-- The parameters do a lot of work here. `Columns` changes the piece's whole character, chunky at 5 and woven at 28, and `Jitter` takes it from formal to painterly.
+- The parameters do a lot of work here. `Columns` changes the sketch's whole character, chunky at 5 and woven at 28, and `Jitter` takes it from formal to painterly.
 
 > **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive from one frame to the next. A `let` or `var` written inside `draw()` is born and dies with that frame. `mousePressed()` is another function Ollin calls for you, once per click, alongside `setup()` and `draw()`. And a loop inside a loop does what it sounds like: for every column, visit every row.
 

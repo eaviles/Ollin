@@ -586,7 +586,7 @@ So far every mark has simply covered what was under it. `blendMode(_:)` changes 
 
 The one that changes how you think is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Because Ollin blends color as physical amounts of light, the sum behaves like real lamps overlapping. Against a dark background, additive drawing stops reading as paint and starts reading as luminance. `.multiply` is the opposite temperament, stacking color like layered ink or gels, at home on light backgrounds. The rest are variations on lighter and darker, and the figure is the honest catalog.
 
-Here's the pairing to remember. Bloom output composited with `blendMode(.add)` reads as added light instead of a covering sticker. The finished piece uses exactly that.
+Here's the pairing to remember. Bloom output composited with `blendMode(.add)` reads as added light instead of a covering sticker. The finished sketch uses exactly that.
 
 ## The whole stack in one block
 
@@ -764,7 +764,7 @@ var trail: Feedback?
 override func setup() { trail = makeFeedback() }
 ```
 
-Then each frame runs the loop. It reads, transforms, redraws, and adds. This is the heart of the finished piece below:
+Then each frame runs the loop. It reads, transforms, redraws, and adds. This is the heart of the finished sketch below:
 
 ```swift
 withFeedback(trail) { prev in                 // prev = last frame, as an image
@@ -841,7 +841,7 @@ final class Comets: Sketch {
 }
 ```
 
-<img src="Images/16-LayersAndEffects/Comets.jpg" alt="The finished piece: comet swarms of glowing dots in orange, pink, and green, each flock dragging soft curved tails of light through the dark" width="560">
+<img src="Images/16-LayersAndEffects/Comets.jpg" alt="The finished sketch: comet swarms of glowing dots in orange, pink, and green, each flock dragging soft curved tails of light through the dark" width="560">
 
 Read it as three acts. The flock is untouched [Chapter 12](12-FlocksAndSwarms.md), still steering by the same three rules. The middle act is the feedback loop from the last section. The boids are drawn inside it, so their light lands *in* the layer that remembers. And the final act is one line of compositing. The trail layer comes back bloomed, added as light, and rolled off by the tone map set back in `setup()`. Every hue still means a heading, and now it also smears into a wake that shows where the heading has been.
 

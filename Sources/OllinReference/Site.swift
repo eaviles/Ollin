@@ -405,7 +405,8 @@ public struct SiteBuilder {
             resolve(target, image: image, from: page, plan: plan, log: log)
         }
         log.search.append(contentsOf: SiteSearch.entries(for: page, rendered: rendered))
-        let body = "<article class=\"prose\">\n\(Self.playingHeroes(in: rendered.body, media: plan.media))\n</article>"
+        let played = Self.playingChapterHook(in: rendered.body, page: page, media: plan.media)
+        let body = "<article class=\"prose\">\n\(Self.playingHeroes(in: played, media: plan.media))\n</article>"
         let title = page.title
         let description = page.summary.isEmpty ? Self.tagline : page.summary
         return layout(page: page, title: title, description: description, trail: rendered.trail,
@@ -676,6 +677,46 @@ public struct SiteBuilder {
                 """
             out.replaceSubrange(start.lowerBound ..< close.upperBound, with: video)
         }
+        return out
+    }
+
+    /// A chapter opens on the sketch it builds. In the markdown that is the
+    /// committed still, which is what a clone, GitHub and `ollin docs` can
+    /// show and what keeps the guide readable with no network. On the site the
+    /// still becomes the sketch actually running, postered by itself, so a
+    /// reader who blocks video or has asked for less motion still sees the
+    /// picture the markdown promised rather than a hole.
+    ///
+    /// Keyed on the chapter's own stem, and a chapter with no clip recorded
+    /// yet is left exactly as written, which is why this can land before the
+    /// clips do.
+    static func playingChapterHook(in body: String, page: Page, media: ExampleMedia) -> String {
+        let stem = (page.repoPath as NSString).lastPathComponent
+            .replacingOccurrences(of: ".md", with: "")
+        guard let chapter = media.chapters[stem] else { return body }
+        // The still is written relative to the chapter, and the site rewrites
+        // that path when it renders, lowercasing it on the way, so match on the
+        // file name without case rather than on the whole address.
+        let file = (chapter.still as NSString).lastPathComponent
+        guard let open = body.range(of: "<img src=\""),
+              let close = body[open.lowerBound...].range(of: ">") else { return body }
+        let tag = String(body[open.lowerBound ..< close.upperBound])
+        guard tag.range(of: file, options: .caseInsensitive) != nil else { return body }
+        let alt = tag.range(of: "alt=\"").flatMap { from in
+            tag[from.upperBound...].firstIndex(of: "\"").map { String(tag[from.upperBound ..< $0]) }
+        } ?? "The sketch this chapter builds"
+        let poster = tag.range(of: "src=\"").flatMap { from in
+            tag[from.upperBound...].firstIndex(of: "\"").map { String(tag[from.upperBound ..< $0]) }
+        } ?? ""
+        let video = """
+            <figure class="page-hero">
+            <video src="\(media.address(of: chapter.clip))" poster="\(poster)" \
+            width="\(chapter.width)" height="\(chapter.height)" autoplay muted loop playsinline \
+            aria-label="\(HTML.escape(alt))"></video>
+            </figure>
+            """
+        var out = body
+        out.replaceSubrange(open.lowerBound ..< close.upperBound, with: video)
         return out
     }
 

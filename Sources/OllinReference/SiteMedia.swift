@@ -59,6 +59,21 @@ public struct ExampleMedia: Sendable {
     public var heroes: [String: Hero] = [:]
     /// The sketches the front page shows running beside their source.
     public var showcase: [Showpiece] = []
+    /// A clip of the sketch each Guide chapter builds, by chapter stem
+    /// (`01-HelloOllin`). The committed still stays the poster, so a clone,
+    /// GitHub and the offline reference all show exactly what they always did.
+    public var chapters: [String: Chapter] = [:]
+
+    /// One chapter's finished sketch, recorded.
+    public struct Chapter: Sendable, Decodable {
+        /// The clip, as a path under `base`.
+        public var clip: String
+        /// The committed still it stands in for, as it is written in the
+        /// chapter: `Images/01-HelloOllin/HelloMotion.jpg`.
+        public var still: String
+        public var width: Int
+        public var height: Int
+    }
 
     public static let none = ExampleMedia(base: "", entries: [:], heroes: [:], showcase: [])
 
@@ -67,6 +82,7 @@ public struct ExampleMedia: Sendable {
         var examples: [String: Entry]
         var heroes: [String: Hero]?
         var showcase: [Showpiece]?
+        var chapters: [String: Chapter]?
     }
 
     /// Read the manifest beside the examples.
@@ -77,7 +93,7 @@ public struct ExampleMedia: Sendable {
         var base = file.base
         while base.hasSuffix("/") { base.removeLast() }
         return ExampleMedia(base: base, entries: file.examples, heroes: file.heroes ?? [:],
-                            showcase: file.showcase ?? [])
+                            showcase: file.showcase ?? [], chapters: file.chapters ?? [:])
     }
 
     public subscript(example: String) -> Entry? { entries[example] }

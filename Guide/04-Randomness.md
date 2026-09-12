@@ -6,7 +6,7 @@
 
 <img src="Images/04-Randomness/DisorderGrid.jpg" alt="A nine-by-nine grid of nested square outlines on warm paper, perfectly ordered at the top and dissolving into tangled quadrilaterals toward the bottom, with a few red, blue, and ochre accents" width="560">
 
-Randomness is the "generative" in generative art. You stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call, and all the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. [Chapter 2](02-Color.md) used all of this in its poster and promised the full story later. This chapter is that story, and it ends in the piece above: a grid that begins in perfect order and comes apart one row at a time.
+Randomness is the "generative" in generative art. You stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call, and all the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. [Chapter 2](02-Color.md) used all of this in its poster and promised the full story later. This chapter is that story, and it ends in the sketch above: a grid that begins in perfect order and comes apart one row at a time.
 
 ## Rolling dice
 
@@ -224,7 +224,7 @@ for cell in grid.cellRects(of: 0, in: bounds) { drawRect(cell) }
 
 ## Putting it together: order, with a pinch of disorder
 
-This is the piece from the top of the chapter, and it holds still on purpose, because its motion lives *between* variations, one click apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked exactly this way. You take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here each square's corners get a random nudge, and the permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
+This is the sketch from the top of the chapter, and it holds still on purpose, because its motion lives *between* variations, one click apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked exactly this way. You take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here each square's corners get a random nudge, and the permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
 
 ```swift
 import Ollin
@@ -285,10 +285,10 @@ final class DisorderGrid: Sketch {
 Run it with `swift run OllinLive MySketches/DisorderGrid.swift` and take it apart:
 
 - `randomSeed(gridSeed)` runs first, so the whole drawing is one seed's variation, held perfectly still. The `Seed` parameter picks which one, and you can click the canvas to step to the next variation or click the parameter's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number parameter, the same move as [Chapter 3](03-MotionAndTime.md)'s `Waves`.
-- `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` parameter, and every row between gets its share. One line decides the piece's entire top-to-bottom structure.
+- `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` parameter, and every row between gets its share. One line decides the sketch's entire top-to-bottom structure.
 - Each quadrilateral is four corners sitting on the posts of a perfect square, `inset` deep into its cell, and every corner coordinate rolls its own `random(-1, 1)` nudge, scaled by the row's reach `d`. That's eight rolls per shape, so the squares don't just shift, they *deform*. Four `drawLine` calls close the loop.
 - The accent is a gate and a pick working together, straight from this chapter, with eight percent of quads trading ink for `randomChoice(accents)`.
-- Turn `Disorder` to zero and the grid snaps to perfect order: the piece contains its own before picture. Because the *pattern* of rolls never changes with the parameter (only their reach), the same tangles grow back in the same places as you turn it up again.
+- Turn `Disorder` to zero and the grid snaps to perfect order: the sketch contains its own before picture. Because the *pattern* of rolls never changes with the parameter (only their reach), the same tangles grow back in the same places as you turn it up again.
 
 When a seed earns it, export the still:
 
@@ -305,7 +305,7 @@ Then push it somewhere new:
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished piece borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Percolation entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone, and the square-lattice threshold this chapter leans on is the value Mark Newman and Robert Ziff measured in 2000. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár began making combinatorial drawings by hand in 1959, with what she called her *machine imaginaire*: dice standing in for the computer she did not yet have. She spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished sketch's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished sketch borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Percolation entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone, and the square-lattice threshold this chapter leans on is the value Mark Newman and Robert Ziff measured in 2000. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
