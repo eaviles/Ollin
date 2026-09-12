@@ -16,6 +16,7 @@ final class Gallery: Sketch {
     var paper: Color { theme.paper }
     var ink: Color { theme.ink }
     var soft: Color { theme.ink(0.45) }
+    var note: Color { theme.ink(0.66) }
     var faint: Color { theme.ink(0.13) }
     var accent: Color { theme.accent }
     var wash: Color { theme.ink(0.05) }
@@ -107,7 +108,7 @@ final class Gallery: Sketch {
         drawText("the sketch, running", stage.x + stage.width / 2, window.y + window.height + 14)
         drawText("its parameters", inspector.x + inspector.width / 2, window.y + window.height + 14)
 
-        fill(soft)
+        fill(note)
         textSize(14)
         textAlign(.center, .top)
         drawText("arrow keys move through the list, because the canvas takes the keyboard only when you click it",

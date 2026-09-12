@@ -71,11 +71,11 @@ final class ParametersToSource: Sketch {
             strokeWeight(1.5)
             drawRect(button, cornerRadius: 8)
         }
-        drawText("Save parameters to Sketch.swift", button.x + button.width / 2, button.y + 20,
-                 size: 17, color: pressed ? theme.accent : theme.ink(0.6),
+        drawText("Save parameters to HelloMotion.swift", button.x + button.width / 2, button.y + 20,
+                 size: 15, color: pressed ? theme.accent : theme.ink(0.6),
                  align: .center, .middle)
         if pressed {
-            drawText("Saved 1 value into Sketch.swift.", button.x, button.y + button.height + 22,
+            drawText("Saved 1 value into HelloMotion.swift.", button.x, button.y + button.height + 22,
                      size: 14, color: theme.muted, align: .left, .middle)
         }
     }

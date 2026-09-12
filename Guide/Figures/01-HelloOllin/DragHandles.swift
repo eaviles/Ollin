@@ -31,7 +31,7 @@ final class DragHandles: Sketch {
 
         code(["drawCircle(", "200", ", ", "300", ", 40)"], accent: [1, 3], at: panels[0])
         code(["drawCircle(200, 300, ", "60", ")"], accent: [1], at: panels[1])
-        code(["drawLine(", "50", ", ", "-50", ", ", "50", ", ", "50", ")"],
+        code(["drawLine(", "50", ", ", "90", ", ", "250", ", ", "90", ")"],
              accent: [1, 3, 5, 7], at: panels[2])
 
         diagramCaption("the handles a shape offers are the ones its own line can answer for",
