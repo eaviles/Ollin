@@ -606,7 +606,7 @@ final class ComposeStack: Sketch {
                 fill(Color(hex: 0x6B2C58)); drawCircle(width * 0.45, height * 0.78, 240)
             }
             .post(.gaussianBlur(radius: 60))
-            .scale(0.5)
+            .scaled(0.5)
 
             layer {                                   // on top: lights that glow
                 noStroke()
@@ -627,7 +627,7 @@ final class ComposeStack: Sketch {
 
 <img src="Images/16-LayersAndEffects/ComposeStack.jpg" alt="A ring of fifteen small warm lights and a thin gold circle glowing over a deeply blurred field of indigo, teal, and plum" width="560">
 
-Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blend(_:)` sets its mode, and `.scale(0.5)` renders it at half resolution. That is free money for a layer a blur will soften anyway. It's pure shorthand, since everything `compose` does, the calls you already know can do by hand. When an effect needs *two* layers, a mask or a displacement map, the same block takes an `aside { }`. That is a helper layer drawn only to feed another one. That's a rabbit hole for another day, and the [effects reference](../Docs/Drawing/Effects.md#aside) goes all the way down.
+Layers composite bottom to top in the order written. `.post(_:)` filters a layer, `.blended(_:)` sets its mode, and `.scaled(0.5)` renders it at half resolution. That is free money for a layer a blur will soften anyway. It's pure shorthand, since everything `compose` does, the calls you already know can do by hand. When an effect needs *two* layers, a mask or a displacement map, the same block takes an `aside { }`. That is a helper layer drawn only to feed another one. That's a rabbit hole for another day, and the [effects reference](../Docs/Drawing/Effects.md#aside) goes all the way down.
 
 ## The canvas that keeps everything
 

@@ -288,6 +288,20 @@ let package = Package(
         // nonzero when any figure fails, so a stale Guide listing breaks here
         // instead of in front of a reader. Needs -export_dynamic + the satellite
         // links for the same reasons OllinLive does (figures load as dylibs).
+        // The Guide's code gate: `swift run OllinGuideSnippets` typechecks every
+        // Swift block a reader could type, wrapping a fragment in whatever its
+        // shape needs and compiling it against the framework. The navigation
+        // gates never open a code block, which is how a chapter shipped with a
+        // radius wrong by a factor of a thousand. Needs the satellite links so a
+        // chapter that imports one still compiles.
+        .executableTarget(
+            name: "OllinGuideSnippets",
+            dependencies: ["Ollin", "OllinRuntime"] + Satellite.allCases.map(\.dependency),
+            path: "Sources/OllinGuideSnippets",
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-export_dynamic"])
+            ]
+        ),
         .executableTarget(
             name: "OllinGuideFigures",
             // The generator's own targets ride along so a figure can show what it

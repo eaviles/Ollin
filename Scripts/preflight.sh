@@ -21,6 +21,8 @@
 #       -> the parked-thread net over Tests/
 #   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
+#     a Guide prose or framework change
+#       -> Scripts/check-snippets.sh (the code in the prose, compiled)
 #   Guide/ or Docs/ prose changed
 #       -> Scripts/prose-lint.sh over just those files
 #   the expander's sources changed (Sources/OllinExpander, the wasm entry,
@@ -98,6 +100,7 @@ images=$(grep -E '^(Guide|Docs)/Images/' <<<"$changed")
 prose=$(grep -E '\.md$' <<<"$changed")
 examples=$(grep -E '^Examples/' <<<"$changed")
 reader_prose=$(grep -E '^(Guide|Docs)/.*\.md$' <<<"$changed" | grep -vE '^Guide/(PLAN|AUTHORING)\.md$')
+guide_prose=$(grep -E '^Guide/.*\.md$' <<<"$changed" | grep -vE '^Guide/(PLAN|AUTHORING)\.md$')
 hero=$(grep -E '^(Examples/Web/BreathingRing/|Sources/Ollin/Export/Web|Sources/OllinShaderText/|Sources/Ollin/Renderer/Shader|Scripts/site-hero\.sh$)' <<<"$changed")
 expander=$(grep -E '^(Sources/OllinExpander/|Scripts/web-expander/|External/CLibtess2/|Scripts/build-web-expander\.sh$)' <<<"$changed")
 
@@ -154,6 +157,16 @@ if [[ -n "$prose" || -n "$images" || -n "$examples" || $milestone -eq 1 ]]; then
     run "guide-coverage" Scripts/guide-coverage.sh
 else
     skip "check-links and guide-coverage" "no prose, image, or example change"
+fi
+
+# The code inside the prose. A Guide change can break a snippet outright, and a
+# framework change can rename what every snippet in the book calls, so both buy
+# this one. About 35 seconds for the whole Guide, so it runs whole rather than
+# scoped: a rename in Sources/ shows up in a chapter the diff never touched.
+if [[ -n "$guide_prose" || -n "$framework" || $milestone -eq 1 ]]; then
+    run "check-snippets" Scripts/check-snippets.sh
+else
+    skip "check-snippets" "no Guide prose or framework change"
 fi
 
 # Vale, scoped to the reader-facing files actually touched.

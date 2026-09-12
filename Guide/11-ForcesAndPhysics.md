@@ -321,7 +321,7 @@ In an `NBody`, every body pulls on every other. That one rule is enough to produ
 let galaxy = NBody.disk(count: 2000, center: center, radius: 380)
 
 // each frame:
-galaxy.step()
+galaxy.advance()
 for p in galaxy.positions { drawCircle(center: p, radius: 2) }
 ```
 
@@ -384,7 +384,7 @@ final class Wrecker: Sketch {
 
     override func setup() {
         world.gravity = Vector2(0, 2600)
-        world.bounce = 0.05
+        world.restitution = 0.05
         world.bounds = bounds
         build()
         strokeCap(.round)

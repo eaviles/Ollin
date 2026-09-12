@@ -461,7 +461,7 @@ final class Contraption: Sketch {
 
     override func setup() {
         world.ground = 0
-        world.bounce = 0.15
+        world.restitution = 0.15
 
         // Gear teeth have to mesh, and two cylinders that touch would jam
         // instead. Nothing in the frame needs to collide with the rest of it.

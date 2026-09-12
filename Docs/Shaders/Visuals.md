@@ -11,7 +11,7 @@ override func draw() {
     drawVisual(
         .oscillator(frequency: 40, colorShift: 0.15)
             .rotated(0.4)
-            .kaleidoscope(6)
+            .kaleidoscope(segments: 6)
             .displaced(by: .noise(scale: 3), amount: 0.08)
     )
 }
@@ -60,7 +60,7 @@ These transforms warp *where* the chain beneath them samples. They compose in th
 .scaled(1.5)                          // zoom about the center; x:/y: multiply per axis (negative mirrors)
 .pixelated(20)                        // snap sampling to a coarse grid; or .pixelated(x: 40, y: 8)
 .repeated(x: 3, y: 3)                 // tile; offsetX/offsetY stagger alternate rows (a brick layout)
-.kaleidoscope(6)                      // fold into n mirrored wedges about the center
+.kaleidoscope(segments: 6)            // fold into n mirrored wedges about the center
 .scrolled(x: 0.25, speedX: 0.1)       // slide, drifting per second, wrapping at the edges
 ```
 
@@ -118,7 +118,7 @@ The driver is itself a full chain, so a source displaced by `.layer(feed).channe
 ```swift
 let scene = makeRenderTarget()
 withTarget(scene) { /* draw anything */ }
-drawVisual(.layer(scene).kaleidoscope(8).hueShifted(time * 0.1))
+drawVisual(.layer(scene).kaleidoscope(segments: 8).hueShifted(time * 0.1))
 ```
 
 A chain may read up to **two distinct layers**, so any layer past the second samples as transparent black. To mix more than two, flatten a sub-chain with `generate(_:)` and read the result.

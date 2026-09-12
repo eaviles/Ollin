@@ -556,7 +556,7 @@ final class TypeMosaic: Sketch {
                     let streak = noise(u * 5, v * 120)
                     let path = 1 - smoothstep(0.02, 0.16 + w * 0.3, abs(u - sunX))
                     color = Color.mix(dark, Color(hex: 0xFFD98A),
-                                      t: min(1, path * (0.2 + streak * 0.8)))
+                                      min(1, path * (0.2 + streak * 0.8)))
                 }
                 image[px, py] = color
             }

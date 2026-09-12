@@ -941,7 +941,7 @@ What you'll build here is a short performed set. Open the host with a fresh buff
 </picture>
 
 1. Start with breath. Type `drawVisual(.oscillator(frequency: 11, speed: 0.6, colorShift: 0.5))`, press ⌘↩, and drifting bands fill the stage.
-2. Fold space by adding `.kaleidoscope(5)`, which turns the bands into a five-pointed mandala, still breathing.
+2. Fold space by adding `.kaleidoscope(segments: 5)`, which turns the bands into a five-pointed mandala, still breathing.
 3. Melt the fold with `.displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)`.
 4. Make it a print with `.posterized(levels: 6, gamma: 0.75)`, and the melt hardens into contour bands like a screen print.
 5. Set it flying with `.rotated(time * 0.03)` and `.colorCycled(time * 0.04)`, a slow spin through the whole color wheel.
@@ -955,7 +955,7 @@ final class Finale: Sketch {
     override func draw() {
         drawVisual(
             .oscillator(frequency: 11, speed: 0.6, colorShift: 0.5)
-                .kaleidoscope(5)
+                .kaleidoscope(segments: 5)
                 .displaced(by: .noise(scale: 3, speed: 0.25), amount: 0.09)
                 .posterized(levels: 6, gamma: 0.75)
                 .rotated(time * 0.03)

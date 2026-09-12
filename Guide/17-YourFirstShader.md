@@ -169,7 +169,7 @@ Sometimes you want a shader's texture without writing one. A `Visual` chain comp
 ```swift
 drawVisual(
     .oscillator(frequency: 24, colorShift: 0.12)
-        .kaleidoscope(6)
+        .kaleidoscope(segments: 6)
         .displaced(by: .noise(scale: 3), amount: 0.12)
 )
 ```
