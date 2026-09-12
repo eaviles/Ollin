@@ -33,7 +33,7 @@ final class Photo: Sketch {
 
 `loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends) and returns an optional, since a path can be wrong. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
 
-For a picture to try right now, Ollin bundles twenty pictures. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. `.headland` and `.boats` are two landscapes at dusk, the only wide ones, and they share a shape so either drops into the same box. `.page` is print under uneven light, and `.talavera` and `.stone` are surfaces to wrap a form in. Each carries its `credit`, the photographer and the terms it is used under. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. A large picture is more than a stipple or a dither needs, and `resized(width:height:)` makes the small working copy: `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call. `cropped(toAspect:)` is its companion for the other kind of change. `SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)` takes the largest 3:2 piece out of a square, scaling nothing.
+For a picture to try right now, Ollin bundles twenty pictures. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. `.headland` and `.boats` are two landscapes at dusk, the only wide ones, and they share a shape so either drops into the same box. `.page` is print under uneven light, `.hands` is a pair of open palms for the readers that track one, and `.talavera` and `.stone` are surfaces to wrap a form in. Each carries its `credit`, the photographer and the terms it is used under. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. A large picture is more than a stipple or a dither needs, and `resized(width:height:)` makes the small working copy: `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call. `cropped(toAspect:)` is its companion for the other kind of change. `SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)` takes the largest 3:2 piece out of a square, scaling nothing.
 
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 
@@ -120,7 +120,7 @@ fill(.white)
 drawGlyphMosaic(picture, columns: 72)
 ```
 
-The interesting part is how it picks the character. It doesn't use a ramp somebody typed out from memory. It *measures* every character you offer it in the font you're currently using, counting lit pixels for a bitmap font, outline area for an outline font, pen travel for a stroke font, and then matches each cell to the character whose ink comes closest. So any string works as a ramp, in any font, and the tones stay honest. `GlyphSet.technical`, `.classic`, and `.blocks` are curated sets to start from, and `glyphScale` is the fraction of its cell a glyph draws at, defaulting to 0.85 so gutters keep even the densest characters reading as separate marks.
+The part to understand is how it picks the character. It doesn't use a ramp somebody typed out from memory. It *measures* every character you offer it in the font you're currently using, counting lit pixels for a bitmap font, outline area for an outline font, pen travel for a stroke font, and then matches each cell to the character whose ink comes closest. So any string works as a ramp, in any font, and the tones stay honest. `GlyphSet.technical`, `.classic`, and `.blocks` are curated sets to start from, and `glyphScale` is the fraction of its cell a glyph draws at, defaulting to 0.85 so gutters keep even the densest characters reading as separate marks.
 
 `drawHalftone` does the same job with the printing industry's answer, which is one dot per cell, grown until it covers the right fraction of that cell:
 
@@ -349,7 +349,7 @@ let length = (row.number("visits") ?? 0) / most * 250
 
 Once the numbers come from a file, the drawing changes when the file does, and you never touch the sketch.
 
-Two things about the format are worth knowing, and the figure above shows both. A cell wrapped in double quotes may hold commas and line breaks, so `"Bath, Maine"` is one cell and arrives without its quotes. And a first row holding no numbers is read as the header. When that guess is wrong, say so with `header: false` and read cells by position instead.
+Two things about the format matter, and the figure above shows both. A cell wrapped in double quotes may hold commas and line breaks, so `"Bath, Maine"` is one cell and arrives without its quotes. And a first row holding no numbers is read as the header. When that guess is wrong, say so with `header: false` and read cells by position instead.
 
 JSON works the same way, for documents with a shape rather than rows:
 
@@ -593,7 +593,7 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 ## Go deeper
 
 - [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for a picture bundled with a sketch, `resized` for a working copy, the sampling helpers, and authoring an image in code.
-- [Sample photographs](../Docs/Drawing/SamplePhotos.md): the four bundled pictures, what each is good for, the credit each carries, and the terms they are used under.
+- [Sample photographs](../Docs/Drawing/SamplePhotos.md): all twenty bundled pictures, what each is good for, the credit each carries, and the terms they are used under.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured coverage behind the glyph ramp, the dot shapes and screen angles, and the duotone options.
 - [Photo mosaic](../Docs/Drawing/PhotoMosaic.md): `averageColor` and its linear-light rule, the match, the tint and repeat parameters, and drawing the placements yourself.
 - [Autostereogram](../Docs/Drawing/Autostereogram.md): the repeat and relief settings, the pattern, and why a scaled one stops working.

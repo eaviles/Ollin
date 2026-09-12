@@ -26,9 +26,9 @@
 #            three above they are a *report, not a bar*: a page uses some of
 #            them legitimately, and the number only says whether one has
 #            become a tic. Reference points, measured over the Guide: median
-#            6, highest chapter 12. Chapter 1 sat at 14 before its 2026-09-11
+#            7, highest chapter 12. Chapter 1 sat at 19 before its 2026-09-11
 #            revision pass, with "worth" carrying the same move twelve times,
-#            and came out at 3.
+#            and came out at 4.
 #
 # A page over a bar is not a defect to fix in one pass. Fix the page you are
 # already editing, and watch the number come down over time.
@@ -81,7 +81,13 @@ for name in sys.argv[1:]:
         if line.startswith("```"):
             in_code = not in_code
             continue
-        if in_code or line.startswith(("<img", "#", ">", "|")):
+        # A figure's markup is not prose. The tags are indented inside a
+        # <picture> block, so the test has to strip first: without that, every
+        # themed figure fed its <source> and <img> lines into the counts, and
+        # alt text is full of the colons, semicolons and parentheses this
+        # measures. That was 612 lines across 33 Guide pages reading as prose.
+        stripped = line.lstrip()
+        if in_code or stripped.startswith(("<", "#", ">", "|")):
             continue
         if line.strip():
             prose.append(line)
@@ -125,7 +131,7 @@ print(f"    * marks a page well past one of them "
       f"(under 2.0, over 35, or over 2.0): {over_bar} page(s)")
 print("FRAMES is a report, not a bar: framing constructions per 100 prose "
       "lines, the")
-print("    commonest named. Guide median 6, highest chapter 12. Read the page "
+print("    commonest named. Guide median 7, highest chapter 12. Read the page "
       "when one")
 print("    construction carries most of the count.")
 PY
