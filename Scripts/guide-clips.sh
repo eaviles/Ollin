@@ -18,8 +18,8 @@
 # declares `loopDuration` records exactly one lap and loops seamlessly;
 # everything else records ten seconds.
 #
-# Upload needs R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY, the same pair
-# Scripts/media.sh uses. Without them the run renders and says so.
+# Upload reads ~/.config/ollin/r2.env and pushes with rclone, exactly as
+# Scripts/media.sh does; `--no-upload` renders and stops.
 
 set -e
 cd "$(dirname "$0")/.." || exit 1
@@ -28,6 +28,7 @@ OUT=${TMPDIR:-/tmp}/ollin-guide-clips
 MANIFEST=$ROOT/Examples/media.json
 FPS=30
 SECONDS_DEFAULT=10
+BUDGET=5000000    # bytes; what the two shipping heroes already weigh
 
 upload=1
 wanted=()
@@ -38,10 +39,14 @@ for arg in "$@"; do
   esac
 done
 
-if (( upload )) && [[ -z $R2_ACCESS_KEY_ID || -z $R2_SECRET_ACCESS_KEY ]]; then
-  echo "guide-clips: no R2 credentials in the environment, so rendering only."
-  echo "             set R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY to publish."
-  upload=0
+if (( upload )); then
+  [[ -f ~/.config/ollin/r2.env ]] || { echo "no ~/.config/ollin/r2.env; pass --no-upload to render only" >&2; exit 2; }
+  set -a; source ~/.config/ollin/r2.env; set +a
+  export RCLONE_CONFIG_R2_TYPE=s3 RCLONE_CONFIG_R2_PROVIDER=Cloudflare \
+         RCLONE_CONFIG_R2_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
+         RCLONE_CONFIG_R2_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+         RCLONE_CONFIG_R2_ENDPOINT="$R2_ENDPOINT" \
+         RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true
 fi
 
 mkdir -p $OUT
@@ -75,17 +80,28 @@ for chapter in Guide/[0-9]*.md; do
   if [[ -z $size ]]; then echo "    no film came back, leaving the still alone"; rm -f $master; continue; fi
   w=${size%,*}; h=${size#*,}
 
-  ffmpeg -y -loglevel error -i $master -vf "scale='min(1080,iw)':-2" \
-         -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart $clip
+  # A chapter hero autoplays the moment the page opens, so it answers to a
+  # budget the way an example clip on a page you chose to visit does not. The
+  # two heroes already shipping are 2.5 and 4.9 MB, so that is the shape of it.
+  # Noise fields and particle clouds blow past it at any fixed quality, so the
+  # quality steps down until the clip fits rather than the size being guessed.
+  encode() { ffmpeg -y -loglevel error -i $master -vf "scale='min(1080,iw)':-2" \
+               -c:v libx264 -profile:v high -preset slow -pix_fmt yuv420p \
+               -crf $1 -movflags +faststart $clip; }
+  quality=21
+  encode $quality
+  while (( $(stat -f%z $clip) > BUDGET && quality < 34 )); do
+    quality=$(( quality + 4 ))
+    encode $quality
+  done
   rm -f $master
-  echo "    $(du -h $clip | cut -f1) at ${w}x${h}"
+  note=""
+  (( quality > 21 )) && note=" (quality $quality to fit the budget)"
+  echo "    $(du -h $clip | cut -f1) at ${w}x${h}$note"
 
   if (( upload )); then
-    export RCLONE_CONFIG_R2_TYPE=s3 RCLONE_CONFIG_R2_PROVIDER=Cloudflare \
-           RCLONE_CONFIG_R2_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
-           RCLONE_CONFIG_R2_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
-           RCLONE_CONFIG_R2_ENDPOINT="$R2_ENDPOINT"
-    rclone copyto $clip R2:${R2_BUCKET:-ollin-media}/guide/$stem.mp4
+    rclone copyto $clip "r2:$R2_BUCKET/guide/$stem.mp4" \
+      --header-upload "Cache-Control: public, max-age=31536000, immutable" 2>/dev/null
   fi
 
   python3 - "$MANIFEST" "$stem" "guide/$stem.mp4" "$hook" "$w" "$h" <<'PY'
