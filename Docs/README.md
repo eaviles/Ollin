@@ -271,7 +271,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 
 ### Output
 
-- [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG for pen plotters, PDF for print)
+- [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), vector (SVG for pen plotters, PDF for print), or linear EXR with depth, for a compositor
 - [`Web page`](./Output/Web.md) - `--export-web` records what a sketch draws and writes a page that plays it back in a browser, as one self-contained file or as a fragment for a page of your own
 - [`Path-traced export`](./Output/PathTraced.md) - `--path-traced` renders the same 3D scene offline by tracing light paths, for soft shadows, color bleed, mirror-in-mirror reflections, and a real lens
 - [`Recording`](./Output/Recording.md) - record a live run as it happens, with the picture and the sketch's own sound (or the room's sound) in one movie, in real time

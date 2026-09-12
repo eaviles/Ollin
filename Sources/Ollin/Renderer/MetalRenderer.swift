@@ -941,6 +941,13 @@ final class MetalRenderer {
     /// ahead of the tone map. 1 (the default, and always the live window) renders
     /// exactly as before. `--render-scale` sets it through `OllinApp.exportRenderScale`.
     var renderScale = 1
+    /// Set while a linear-light export runs (`--export-exr`): the frame keeps the
+    /// float canvas the present pass is about to read, and the scene's own depth
+    /// beside it, in `lastLinearFrame`. Off otherwise, so no other export pays for
+    /// the copy.
+    var capturesLinearFrame = false
+    /// The frame kept by the last render under `capturesLinearFrame`.
+    var lastLinearFrame: LinearFrame?
     /// Whether the clamp notice was printed, so a sequence says it once, not per frame.
     private var reportedRenderScaleClamp = false
     /// The same, for the notice that a piling canvas does not take the supersample.
@@ -2341,6 +2348,12 @@ final class MetalRenderer {
                stencil: passHasStencil)
         encoder.endEncoding()
 
+        // The linear pile itself is what a linear-light export wants (a piling
+        // canvas draws no 3D, so it carries no depth).
+        let linearCapture = capturesLinearFrame
+            ? beginLinearCapture(resolve, depth: nil, into: commandBuffer,
+                                 width: width, height: height)
+            : nil
         // Tone-map the float pile into the sRGB display texture, then read that back.
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: display)) {
             encodePresent(from: resolve, drawer: drawer, into: presentEncoder,
@@ -2359,6 +2372,10 @@ final class MetalRenderer {
         blit.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
+        if let linearCapture {
+            lastLinearFrame = finishLinearCapture(linearCapture, drawer: drawer,
+                                                  width: width, height: height)
+        }
         return (readbackBuffer, bytesPerRow)
     }
 
@@ -2520,7 +2537,8 @@ final class MetalRenderer {
             passDepthFormat = depthPixelFormat
             // Slow motion out of made frames reads the same resolved depth the
             // blur and the flare do, so it joins them rather than adding a pass.
-            if motionBlurActive(drawer) || lensFlareActive(drawer) || exportMadeFrames,
+            if motionBlurActive(drawer) || lensFlareActive(drawer) || exportMadeFrames
+                || capturesLinearFrame,
                let resolve = makeDepthResolve(width: width, height: height) {
                 pass.depthAttachment.resolveTexture = resolve
                 pass.depthAttachment.storeAction = .multisampleResolve
@@ -2798,6 +2816,13 @@ final class MetalRenderer {
                          meshBuffer: meshBuf, into: commandBuffer,
                          inputWidth: width, inputHeight: height,
                          outputWidth: outWidth, outputHeight: outHeight)
+        // A linear-light export keeps what the present pass is about to read: the
+        // frame one step before the tone map, the dither, and the 8-bit
+        // quantization. Nothing is copied unless an export asked.
+        let linearCapture = capturesLinearFrame
+            ? beginLinearCapture(presented, depth: sceneDepthResolve, into: commandBuffer,
+                                 width: outWidth, height: outHeight)
+            : nil
         guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
         encodePresent(from: presented, drawer: drawer, into: presentEncoder,
                       keepsAlpha: drawer.hasTransparentBackground)
@@ -2816,6 +2841,10 @@ final class MetalRenderer {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 
+        if let linearCapture {
+            lastLinearFrame = finishLinearCapture(linearCapture, drawer: drawer,
+                                                  width: outWidth, height: outHeight)
+        }
         return (readback, bytesPerRow)
     }
 

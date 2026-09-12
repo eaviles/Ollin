@@ -4755,6 +4755,27 @@
       "still": "examples/Export/LineDrawing/still.jpg?v=3a7d8aa0",
       "stillSmall": "examples/Export/LineDrawing/still-640.jpg?v=877697b7"
     },
+    "Export/LinearFrame": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.5,
+      "sound": false,
+      "source": "d20a5e71f2ba7ec9",
+      "rendered": "2026-09-11",
+      "bytes": {
+        "loop": 803158,
+        "loopSmall": 141964,
+        "still": 53260,
+        "stillSmall": 20965
+      },
+      "loop": "examples/Export/LinearFrame/loop.mp4?v=fed0cf68",
+      "loopSmall": "examples/Export/LinearFrame/loop-640.mp4?v=44526149",
+      "still": "examples/Export/LinearFrame/still.jpg?v=bbf0b784",
+      "stillSmall": "examples/Export/LinearFrame/still-640.jpg?v=22decf44"
+    },
     "Export/Record": {
       "width": 1080,
       "height": 1080,

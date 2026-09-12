@@ -4,11 +4,12 @@
 
 ## Export
 
-Save what a sketch draws. The output comes in three families:
+Save what a sketch draws. The output comes in four families:
 
 - **Raster**, meaning PNG frames and image sequences.
 - **Motion**, meaning a video file or an animated GIF, encoded directly.
 - **Vector**, meaning SVG for pen plotters and any vector pipeline, and PDF for print.
+- **Linear**, meaning an OpenEXR frame for a compositor: the light before the tone map, with the scene's depth beside it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ExportMap-dark.jpg">
@@ -27,6 +28,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 ### Contents
 
 - [Raster: PNG and sequences](#raster-png-and-sequences) - `--export` (PNG, or HEIC to keep highlights), `--export-sequence`
+- [Linear frames: EXR](#linear-frames-exr) - `--export-exr`, `--export-sequence --exr`, the frame before the tone map, with depth
 - [Render quality](#render-quality) - `--render-quality`, the live vs. export default
 - [Render scale](#render-scale) - `--render-scale`, drawing a frame more finely than it is saved
 - [Path-traced render](PathTraced.md) - `--path-traced`, the offline light-tracing mode for 3D scenes (its own page)
@@ -85,6 +87,44 @@ swift run --package-path Examples Example-Rendering-ColorOutput --export /tmp/fr
 ```
 
 For an ordinary sketch, that is the same picture in a smaller file. For a sketch that declared [`colorOutput`](../Drawing/ColorOutput.md) `.extended`, HEIC is the only still format that keeps brightness above white. HEIC stores that brightness in a gain map beside the picture, and PNG has nowhere to put it.
+
+### Linear frames: EXR
+
+Every other still export ends at the same place. The frame is tone-mapped into the range a screen can show, then dithered, then quantized to eight bits per channel. That is the right file to look at and the wrong one to work on. `--export-exr` writes the frame one step earlier, in linear light, as an OpenEXR file:
+
+```sh
+swift run --package-path Examples Example-Export-LinearFrame --export-exr /tmp/frame.exr
+swift run --package-path Examples Example-Export-LinearFrame --export-exr /tmp/frame.exr --frame 90
+swift run --package-path Examples Example-Export-LinearFrame --export-sequence /tmp/frames --seconds 2 --exr
+```
+
+The sequence form writes `frame-00001.exr`, `frame-00002.exr`, and so on, from the same fixed-timestep drive the PNG sequence uses, so it takes `--frames` / `--seconds`, `--fps`, `--skip`, and `--start` unchanged. In code the same two calls are `OllinApp.exportEXR(_:to:frame:)` and `OllinApp.exportSequence(..., writesEXR: true)`.
+
+**What the file holds.** Five channels at most:
+
+| Channel | Type | What it is |
+|---|---|---|
+| `R`, `G`, `B` | half | The light the renderer composited, in linear light with Rec. 709 primaries, premultiplied by the coverage in `A`. Free to run above 1, which is where a highlight lives. |
+| `A` | half | The frame's own coverage, the same alpha [transparent output](#transparent-output) writes into a PNG. 1 everywhere on an opaque canvas. |
+| `Z` | float | Distance from the eye in the sketch's own world units, for a frame drawn through a 3D camera. A pixel nothing drew to carries the camera's far distance. |
+
+A flat sketch writes no `Z`. Its depth buffer holds a sort key rather than a distance, and a compositor reading that as depth would be wrong about the whole frame.
+
+The export prints what came through, which is worth reading before taking the file anywhere:
+
+```
+Ollin: exported frame 0 → /tmp/frame.exr (1080×1080, ABGRZ linear, 14.0 MB, peak 10.41× white, depth 3.358…40.000)
+```
+
+**What it is for.** Grading, glow, haze, and depth of field are all done better on the light than on the picture of it. A highlight ten times brighter than white is one number in this file and a flat 255 in the PNG. Pull the exposure down on each: the first has detail, the second a gray disk. The `Z` channel lets a compositor put fog or a defocus in afterward, at a distance chosen later. The alpha lets the frame sit over other footage. None of this needs the sketch re-rendered.
+
+**What it does not hold.** There is no surface-normal channel and no per-object matte. The renderer shades in one forward pass and keeps no geometry buffer to write them from. Producing either means a second pass that does not exist today. Beauty, coverage, and depth are what a frame can say about itself here.
+
+**The file is large.** It is written uncompressed, one scanline per block, which every reader opens and no reader has to guess at. That is about 14 MB for a 1080 square frame with depth, so a hundred-frame sequence runs well over a gigabyte. Keep sequences short, or export the moments you need.
+
+**Two notes.** Under `--render-scale`, the color is averaged down to canvas size as usual. Each canvas pixel's depth is then the nearest of the samples that covered it, which is the front-most surface. `--made-frames` cannot be combined with `--exr`: a made frame is built from two finished frames, and the linear frame is what comes before that.
+
+The recipe that reproduces the frame rides in the file's standard `comments` attribute, the same text the PNG carries in its own chunks. See [Reproducibility metadata](#reproducibility-metadata).
 
 ### Render quality
 

@@ -355,6 +355,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Linear frames for a compositor | `--export-exr` writes the frame before the tone map: light that runs past white, the frame's coverage, and the distance from the eye as a `Z` channel | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, real glass, glowing meshes as lights, textures in the bounces, a real lens | [Ch 31](31-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
 | Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 31](31-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |

@@ -98,6 +98,7 @@ let package = Package(
         example("Export/Drafting"),
         example("Export/LineDrawing"),
         example("Export/Cutout"),
+        example("Export/LinearFrame"),
         example("Installation/Unattended"),
         example("Installation/Watched"),
         example("Installation/Hours"),

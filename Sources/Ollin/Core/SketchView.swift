@@ -2668,7 +2668,8 @@ public enum OllinApp {
                                       frames: Int, fps: Double = 60,
                                       startFrame: Int = 1, skipSeconds: Double = 0,
                                       quality: RenderQuality = .detail,
-                                      slowMotion: SlowMotion? = nil) {
+                                      slowMotion: SlowMotion? = nil,
+                                      writesEXR: Bool = false) {
         guard frames > 0 else { return }
         do {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
@@ -2683,24 +2684,42 @@ public enum OllinApp {
         let clock = motion?.clockRate(playingAt: fps) ?? fps
         let skipFrames = max(0, Int((skipSeconds * clock).rounded()))
         let skipNote = skipFrames > 0 ? String(format: " (after %gs warmup)", skipSeconds) : ""
-        print("Ollin: exporting \(frames) frames at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
+        let kind = writesEXR ? " as linear EXR" : ""
+        print("Ollin: exporting \(frames) frames\(kind) at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
         if let motion { print(motion.note(written: frames, fps: fps)) }
 
         let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                   quality: quality, slowMotion: motion) { frame, index in
+                                   quality: quality, slowMotion: motion,
+                                   capturesLinear: writesEXR) { frame, index in
             // Captured per frame (cheap: the git lookup is cached) so each
             // file's recipe names the sketch-clock frame it shows.
             var meta = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: clock)
             meta.slowMotion = motion
             let recipe = meta.recipe
-            let name = String(format: "frame-%05d.png", startFrame + index)
+            let name = String(format: writesEXR ? "frame-%05d.exr" : "frame-%05d.png",
+                              startFrame + index)
             let path = (directory as NSString).appendingPathComponent(name)
-            guard let cgImage = frame.image, writePNG(cgImage, to: path, recipe: recipe) else {
-                fatalError("Ollin: failed to write \(path)")
+            if writesEXR {
+                // A made frame is built by the interpolator after the present, so
+                // it has no linear canvas behind it; the flag parsing refuses that
+                // pairing, and this is the backstop.
+                guard let linear = frame.linear, writeEXR(linear, to: path, recipe: recipe) != nil else {
+                    fatalError("Ollin: failed to write \(path)")
+                }
+            } else {
+                guard let cgImage = frame.image, writePNG(cgImage, to: path, recipe: recipe) else {
+                    fatalError("Ollin: failed to write \(path)")
+                }
             }
         }
 
         print(String(format: "Ollin: exported %d frames in %.1fs → %@", frames, elapsed, directory))
+        if writesEXR {
+            // No assembly line here: these are linear frames for a compositor,
+            // not something to hand a video encoder as they are.
+            print("Each file holds the frame in linear light, before the tone map.")
+            return
+        }
         print("Assemble with ffmpeg (or use --export-video / --export-gif directly):")
         print("  ffmpeg -framerate \(Int(fps)) -start_number \(startFrame) \\")
         print("    -i \(directory)/frame-%05d.png -c:v libx264 -pix_fmt yuv420p -crf 18 \\")
@@ -2742,6 +2761,11 @@ public enum OllinApp {
 
         /// The presented bytes themselves, `bytesPerRow * height` of them.
         var pixels: UnsafeRawPointer { UnsafeRawPointer(buffer.contents()) }
+
+        /// The same frame one step earlier, in linear light with its depth,
+        /// which the EXR sequence writes. Nil unless the render was asked to
+        /// keep it (`capturesLinear`).
+        var linear: MetalRenderer.LinearFrame? { renderer.lastLinearFrame }
     }
 
     @discardableResult
@@ -2749,6 +2773,7 @@ public enum OllinApp {
                              skipSeconds: Double, quality: RenderQuality = .detail,
                              encoding: PresentEncoding? = nil,
                              slowMotion: SlowMotion? = nil,
+                             capturesLinear: Bool = false,
                              write: (RenderedFrame, Int) -> Void) -> Double {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
@@ -2770,6 +2795,7 @@ public enum OllinApp {
         renderer.pathTracing = pathTracedExport
         renderer.renderScale = exportRenderScale
         renderer.pathTraceReportsProgress = false   // the loop below prints its own line
+        renderer.capturesLinearFrame = capturesLinear
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 
@@ -3224,12 +3250,21 @@ public extension OllinApp {
             let skip = value("--skip").flatMap(Double.init) ?? 0
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--skip S] [--start N] [--slow-motion N]\n".utf8))
+                    "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--skip S] [--start N] [--slow-motion N] [--exr]\n".utf8))
                 return true
+            }
+            // `--exr` writes each frame in linear light instead of as a PNG (see
+            // `--export-exr`). A made frame is built by the interpolator after the
+            // present pass, so there is no linear canvas behind it to write.
+            let writesEXR = args.contains("--exr")
+            if writesEXR, slowMotion?.source == .made {
+                FileHandle.standardError.write(Data(
+                    "--exr cannot use --made-frames: a made frame is built from two presented frames, and a linear frame is what comes before the present\n".utf8))
+                exit(1)
             }
             OllinApp.exportSequence(make(), to: dir, frames: frames, fps: fps,
                                     startFrame: start, skipSeconds: skip, quality: renderQuality,
-                                    slowMotion: slowMotion)
+                                    slowMotion: slowMotion, writesEXR: writesEXR)
             return true
         }
         // `--export-loop <path> [--fps F] [--skip S] [--gif-width PX] [--codec C]
@@ -3627,6 +3662,18 @@ public extension OllinApp {
                                   simulatesPaper: args.contains("--paper"), frame: frame,
                                   drawsRegistrationMarks: !args.contains("--no-marks"),
                                   quality: renderQuality, screen: screen)
+            return true
+        }
+        // `swift run Example-X --export-exr <path.exr> [--frame N]` writes one
+        // frame in linear light, before the tone map and the 8-bit quantization
+        // every other still export ends at, with the scene's depth beside the
+        // color when the frame was drawn through a 3D camera.
+        if let i = args.firstIndex(of: "--export-exr"), i + 1 < args.count {
+            var frame = 0
+            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
+                frame = Int(args[f + 1]) ?? 0
+            }
+            OllinApp.exportEXR(make(), to: args[i + 1], frame: frame, quality: renderQuality)
             return true
         }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {

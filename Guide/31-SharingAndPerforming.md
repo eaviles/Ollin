@@ -87,6 +87,28 @@ That figure is the call demonstrating itself. It's one sketch whose `draw()` ren
 
 It's also how this guide is made. Every image you've seen in it is a committed sketch under `Guide/Figures/`. A small tool walks the folder and calls `OllinApp.image(of:frame:)` on each one. That's the reason nothing here can quietly rot. A listing that stops compiling fails the render. A figure that stops matching its prose is a file someone can open and run.
 
+### The frame before the tone map
+
+A PNG is the end of a road. The renderer composites in linear light, with numbers that run past white wherever a highlight is. The last step folds all of that into the range a screen can show, dithers it, and rounds it to eight bits per channel. That is the right file to look at. It is the wrong file to work on, because the part that was folded away is exactly the part a colorist reaches for.
+
+`--export-exr` writes the frame one step earlier:
+
+```sh
+swift run OllinLive MySketches/StillLife.swift --export-exr frame.exr
+swift run OllinLive MySketches/StillLife.swift --export-sequence /tmp/frames --seconds 2 --exr
+```
+
+What lands is an OpenEXR file, which is what compositing programs read. Its red, green, and blue hold the light itself. A highlight ten times brighter than white is still ten times brighter than white in the file. Its alpha holds the frame's coverage, the same transparency `background(.clear)` gives a PNG. If the sketch drew through a 3D camera, a fifth channel holds `Z`, the distance from the eye at every pixel, in the sketch's own units.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/LinearFile-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/LinearFile.jpg" alt="Three panels of the same 3D scene of glossy spheres along a lane: the first as a screen shows it with flat white highlights, the second four stops darker where those highlights have shape and color, the third a gray depth image where nearer is darker and the distance is bright" width="680">
+</picture>
+
+That last one is worth sitting with. A compositor holding a depth channel can add fog after the fact, at a distance it picks. It can throw the background out of focus without the renderer knowing anything about lenses. A grade that pulls the exposure down finds the shape of a blown highlight instead of a flat white disk. None of it costs a re-render, which is the whole argument for the file.
+
+The cost is size. It is written uncompressed, so a 1080 square frame with depth is about 14 MB, and a sequence adds up fast. Export the moments you need rather than the whole run. Two things are not in the file: surface normals and per-object mattes. Ollin shades in one pass and keeps no geometry buffer to write them from. `Examples/Export/LinearFrame` is a lane of glossy spheres under one hard lamp. It is built so both halves show: highlights ten times over white, and depth running from five units to the far plane.
+
 ## Motion: video and GIF
 
 For a file you can post, skip the stitching and encode directly:
