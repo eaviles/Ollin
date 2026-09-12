@@ -249,7 +249,11 @@ The third grower has no goals at all. Freeze one particle in the middle. Release
 That's the entire algorithm, and it's called **diffusion-limited aggregation** (DLA). The shape it grows is not an accident. A wandering particle almost always bumps into a *tip* before it can thread its way into a hollow, so tips grow and hollows starve. Frost on a window, minerals crystallizing in stone, and coral all play this game, which is why the clusters look instantly familiar.
 
 ```swift
-let cluster = DiffusionLimitedAggregation(seeds: [center], seed: 7)
+var cluster: DiffusionLimitedAggregation!
+
+override func setup() {
+    cluster = DiffusionLimitedAggregation(seeds: [center], seed: 7)
+}
 
 override func draw() {
     cluster.step(12)          // a dozen new arrivals per frame
@@ -274,7 +278,11 @@ DLA's walkers are secretly measuring something. Where walkers arrive often, an e
 One number runs the show. Every frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a character dial DLA never had. At `1` you're back to DLA's furry bushes. Near `2` the favorites win so hard the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
 
 ```swift
-let bolt = DielectricBreakdown(seeds: [center], in: bounds, seed: 7)
+var bolt: DielectricBreakdown!
+
+override func setup() {
+    bolt = DielectricBreakdown(seeds: [center], in: bounds, seed: 7)
+}
 
 override func draw() {
     bolt.step(6)               // the field settles as it grows

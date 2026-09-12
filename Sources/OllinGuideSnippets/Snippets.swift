@@ -117,6 +117,15 @@ func partition(_ body: String) -> (members: [String], statements: [String]) {
     var members: [String] = []
     var statements: [String] = []
     var depth = 0
+    // A bare `let`/`var` is ambiguous: a `draw()` body is full of them, and so
+    // is a class body. When the block also declares an `override`, there is no
+    // room for a loose statement at type scope, so the declarations must be
+    // properties. Reading them as statements put `var light: Accumulator!`
+    // inside a method while `setup()` assigned it, and the name then resolved
+    // to `Sketch.light(_:)` instead: a failure the chapter did not have.
+    let declaresOverride = body.components(separatedBy: "\n").contains {
+        $0.trimmingCharacters(in: .whitespaces).hasPrefix("override ")
+    }
     var carry: [String]?        // the member currently being consumed, brace by brace
     for line in body.components(separatedBy: "\n") {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -128,7 +137,8 @@ func partition(_ body: String) -> (members: [String], statements: [String]) {
             if depth <= 0 { members.append(contentsOf: carry!); carry = nil; depth = 0 }
             continue
         }
-        if depth == 0 && isMemberHead(trimmed) {
+        if depth == 0 && (isMemberHead(trimmed)
+                          || (declaresOverride && isPropertyHead(trimmed))) {
             if opens > closes {
                 carry = [line]
                 depth = opens - closes
@@ -142,6 +152,12 @@ func partition(_ body: String) -> (members: [String], statements: [String]) {
     }
     if var unfinished = carry { members.append(contentsOf: unfinished); unfinished = [] }
     return (members, statements)
+}
+
+/// A stored-property declaration, read as a member only when the block's own
+/// `override` proves it is a type body rather than a function body.
+func isPropertyHead(_ trimmed: String) -> Bool {
+    trimmed.hasPrefix("var ") || trimmed.hasPrefix("let ")
 }
 
 /// A line that can only live in a type body. `let`/`var` are deliberately absent:

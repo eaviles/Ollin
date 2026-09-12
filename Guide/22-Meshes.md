@@ -388,7 +388,11 @@ Everything so far dressed one mesh. A sticker does not care about meshes. Slap i
 A `Decal` works like that. Wrap an image once, then place it each frame as a small projection box. Every surface inside the box receives the picture, composited over the surface's own color before lighting, so it shades like paint rather than a glowing overlay.
 
 ```swift
-let sticker = Decal(loadImage("label.png")!)!
+var sticker: Decal!
+
+override func setup() {
+    sticker = Decal(loadImage("label.png")!)
+}
 
 override func draw() {
     // camera, lights, floor, crates ...

@@ -249,7 +249,11 @@ Separation alone spaces them evenly, but every heading is private. Add alignment
 You could build all of that from `Vehicle` and three loops, and it would slow to a crawl at a few hundred creatures, because "look at every neighbor" naively means comparing everyone against everyone. Ollin ships the assembled version as `Boids`: the three rules, the perception and personal-space radii, the edge-turning, and a spatial trick that only compares true neighbors, so hundreds of boids stay cheap. It's another stateful stepper you hold:
 
 ```swift
-let flock = Boids(count: 520, in: bounds, seed: 7)
+var flock: Boids!
+
+override func setup() {
+    flock = Boids(count: 520, in: bounds, seed: 7)
+}
 
 override func draw() {
     flock.step()

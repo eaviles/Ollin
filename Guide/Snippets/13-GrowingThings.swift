@@ -3,8 +3,8 @@
 
 // Each grower the chapter holds while it runs.
 let lattice = ShapeGrammar(start: [], rules: [])
-let cluster = DiffusionLimitedAggregation(seeds: [.zero], seed: 7)
-let bolt = DielectricBreakdown(seeds: [.zero],
+let cluster = DiffusionLimitedAggregation(seeds: [Vector2(64, 64)], seed: 7)
+let bolt = DielectricBreakdown(seeds: [Vector2(64, 64)],
                                in: Rectangle(x: 0, y: 0, width: 100, height: 100), seed: 7)
 let field = CrackGrowth(width: 128, height: 128, seed: 7)
 let river = Meander.line(from: Vector2(0, 10), to: Vector2(100, 10))
