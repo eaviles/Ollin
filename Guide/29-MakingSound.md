@@ -399,6 +399,63 @@ Two things fall out of the models rather than being settings. Both are the kind 
 
 `Examples/Audio/Bowing` is both of them under the mouse. Hold to play, move up and down to lean on it, and press `B` to swap the bow for a reed.
 
+## A note under the finger: expression
+
+A keyboard's wheel bends every note at once. A finger on a polyphonic-expression surface, a Seaboard or a LinnStrument, bends one note, presses it, and slides along its key. The notes beside it are left alone. That is the whole of MIDI Polyphonic Expression, and it is a good way to think about a note whoever is playing it.
+
+`noteOn` hands the note back. Hold on to it, and the note can be told three things while it sounds.
+
+```swift
+let synth = Synth(.pad)
+var note: PlayingNote?
+
+override func mousePressed() { note = synth.noteOn("C4") }
+override func mouseReleased() { if let note { synth.noteOff(note) } }
+
+override func draw() {
+    guard let note else { return }
+    synth.bend(note, semitones: (mouseX / width - 0.5) * 4)   // across the window, two semitones each way
+    synth.slide(note, 1 - mouseY / height)                    // up opens the filter
+    synth.press(note, 0.8)
+}
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/Expression-dark.jpg">
+  <img src="Images/29-MakingSound/Expression.jpg" alt="Three panels: two notes on a time axis, one rising by a fifth and falling back while the other holds a straight line; a level rising from a struck level toward full as pressure runs from zero to one, at two slopes; and three lowpass curves on a frequency axis, one an octave below the note's own cutoff, one at it, one an octave above" width="680">
+</picture>
+
+`bend` moves the pitch, and every source follows it. The string is cut to a new length while it rings, and the tube too. A recording is read faster, and a wavetable and a patch run faster. The one that holds is the struck body, because its tones were decided by the strike, the way a bell rung cannot be retuned. `press` is the note's own bow or breath on the cello and the clarinet. On everything else it raises the note from the level it was struck at toward full, by the voice's `pressureAmount`. `slide` opens the filter above the middle of the key and closes it below, by the filter's `slideAmount`. Each glides over a few milliseconds, so a value handed over every frame moves the note rather than stepping it.
+
+A controller that speaks this way puts each note on a channel of its own. `MIDIInput` reads it back as `heldNotes`: every held note with its bend, its pressure, and its slide already sorted out. The wiring from there is a dozen lines. Start each note as it appears, let it go as it leaves, and hand each held note its three values every frame.
+
+```swift
+let synth = Synth(.pad)
+let midi = MIDIInput()
+var playing: [Int: PlayingNote] = [:]
+
+override func setup() { try? midi.start() }
+
+override func draw() {
+    let held = midi.heldNotes
+    for note in held where playing[note.id] == nil {
+        playing[note.id] = synth.noteOn(Pitch(Double(note.note)), velocity: note.velocity)
+    }
+    for (id, note) in playing where !held.contains(where: { $0.id == id }) {
+        synth.noteOff(note)
+        playing[id] = nil
+    }
+    for note in held {
+        guard let playing = playing[note.id] else { continue }
+        synth.bend(playing, semitones: note.pitchBend)
+        synth.press(playing, note.pressure)
+        synth.slide(playing, note.slide)
+    }
+}
+```
+
+The same read works on a plain keyboard, where the wheel and the aftertouch belong to every note on the channel. The wiring does not care what is plugged in. [`Examples/Audio/Expression`](../Examples/Audio/Expression/Sketch.swift) is a surface the mouse plays through a virtual MIDI source, so a bend from the mouse crosses Core MIDI the way a controller's does. A real controller plugged in joins the same picture. Switch its `bowed` parameter on, and pressure becomes the bow.
+
 ## Music the sketch works out for itself
 
 A synth answers what a note sounds like. It says nothing about which notes there are, or when. That half is the composition types, and the thing they have in common is that not one of them can tell the time.
@@ -834,6 +891,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 ## Go deeper
 
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb, [a room of your own](../Docs/Helpers/Synthesis.md#a-room-of-your-own), [the four that move](../Docs/Helpers/Synthesis.md#the-four-that-move), and the whole effects chain.
+- [Expression](../Docs/Helpers/Synthesis.md#expression): one note bent, pressed, or slid on its own, where each value goes on each source, and [reading a polyphonic-expression controller](../Docs/Integration/MIDI.md#per-note-expression-mpe).
 - [The two that work in the spectrum](../Docs/Helpers/Synthesis.md#the-two-that-work-in-the-spectrum): the pitch shift and the freeze, what a frame late means, and [stretching a recording](../Docs/Helpers/Synthesis.md#stretching-a-recording).
 - [Patches](../Docs/Helpers/Synthesis.md#patch): what an operator is, the named patches, and why eight.
 - [Sampled instruments](../Docs/Helpers/Synthesis.md#sampled-instruments): loading an SFZ instrument, what a recording being moved costs, and where to find instruments you are allowed to ship.
@@ -843,7 +901,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.
 - [Spatial audio](../Docs/Helpers/Synthesis.md#placing-a-sound): placing a source in the room, the listener, and what an export writes.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
+- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Expression` (a surface where each note is bent, pressed, and slid on its own), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
 
 ---
 

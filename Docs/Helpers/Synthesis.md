@@ -32,6 +32,7 @@ Two things in that sketch are worth noticing. Nothing starts the audio, because 
 ### Contents
 
 - [Synth](#synth) - the instrument, and how you ask for notes
+- [Expression](#expression) - one note bent, pressed, or slid on its own
 - [Pitch](#pitch) - names, numbers, and the pitches between them
 - [Voice](#voice) - what a note is made of
 - [Physical models](#physical-models) - a plucked string, a struck shape, a bowed string, and a blown tube
@@ -88,6 +89,7 @@ The rest of the surface:
 |---|---|
 | `voice` | the recipe new notes are built from. Changing it leaves notes that are already sounding alone |
 | `gain` | overall level, `0...1` |
+| `pitchBend` | a bend on every note at once, in semitones: a keyboard's wheel |
 | `delay`, `reverb` | effects on everything it plays, or nil |
 | `activeVoiceCount` | how many notes are sounding right now |
 | `isRunning` | whether the audio engine is going |
@@ -97,6 +99,47 @@ The rest of the surface:
 **When voices run out**, the next note takes one of them. A note that is already fading is taken before a held one. So a melody played over a held chord takes its voices from its own earlier notes rather than from the chord. A voice that is taken gets a few milliseconds to get out of the way, so it does not click.
 
 **Notes start on the next block of audio**, a few milliseconds after you ask. That comes from the hardware, not from a queue. The wait is shorter than a frame, so a note asked for in `draw()` lands with the frame that asked for it.
+
+---
+
+<a name="expression"></a>
+
+### Expression
+
+```swift
+@discardableResult func noteOn(_ pitch: Pitch, velocity: Double = 0.8) -> PlayingNote
+@discardableResult func play(_ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil) -> PlayingNote
+func noteOff(_ note: PlayingNote)
+
+func bend(_ note: PlayingNote, semitones: Double)   // this note's pitch, on top of pitchBend
+func press(_ note: PlayingNote, _ pressure: Double)  // 0...1: the drive of a bowed or blown note, the level of any other
+func slide(_ note: PlayingNote, _ position: Double)  // 0...1, half way at rest: the filter's cutoff
+var pitchBend: Double                                // every note at once, in semitones
+```
+
+A note is told three things while it sounds, and each reaches that note alone. `noteOn` hands back the note for the purpose. Hold it, and the note can be bent, pressed, slid, and let go, whatever it has been bent to since.
+
+```swift
+let note = synth.noteOn("C4")
+synth.bend(note, semitones: 1.5)     // a semitone and a half up
+synth.press(note, 0.7)
+synth.slide(note, 0.9)
+synth.noteOff(note)
+```
+
+Each value glides over a few milliseconds, so calling these every frame with a moving value moves the note smoothly. A value repeated is sent once, so a sketch that hands every held note its three values each frame costs the render thread nothing.
+
+| What | Where it goes |
+|---|---|
+| `bend` | the pitch, in semitones. Every source follows, the plucked string and the bowed one, the tube, a recording, a wavetable, a patch, all but the struck body, whose tones were decided by the strike |
+| `press` | on the bowed string and the blown tube, that note's drive: from the first press on, this replaces the instrument's `pressure` for that note, and pressed to nothing it goes quiet. On every other voice, the note's level, raised from where it was struck toward full by the voice's `pressureAmount` |
+| `slide` | the filter's cutoff, opened above the middle of the key and closed below by the filter's `slideAmount`, in octaves. A voice with no filter ignores it |
+
+`pitchBend` on the instrument bends every note at once, the way a keyboard's wheel does. It adds to whatever each note is bent by on its own.
+
+A note that is never bent, pressed, or slid sounds exactly as it did before, so nothing here changes an instrument that is not asked. `noteOff(_ pitch:)` still finds a bent note by the pitch it started on.
+
+This is what a polyphonic-expression controller sends. Each note is on a channel of its own, with its bend, its pressure, and where the finger sits along the key. [`MIDIInput.heldNotes`](../Integration/MIDI.md#per-note-expression-mpe) reads those, and the wiring from there to these three calls is a dozen lines, shown on that page. The **Expression** example (`Examples/Audio/Expression`) is a surface the mouse plays the same way.
 
 ---
 
@@ -148,6 +191,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
 | `detune` | a second oscillator this far away, in semitones |
 | `gain` | the voice's own level before the note's velocity |
+| `pressureAmount` | how far a note [pressed](#expression) harder rises above the level it was struck at, `0...1`, 1 by default. A note nobody presses sounds exactly as it did |
 
 **`detune` is smaller than it looks.** A few hundredths of a semitone is the useful range. Two oscillators slightly apart drift in and out of phase, and that beating makes a held note shimmer rather than sit still. A whole semitone gives an interval rather than a shimmer, and that is what `.bell` uses it for.
 
@@ -336,7 +380,7 @@ The tube is stopped at the reed and open at the far end, and that one fact is mo
 synth.pressure = 0.3 + 0.5 * abs(sin(time * 2))
 ```
 
-`pressure` is `0...1`, read every sample, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked.
+`pressure` is `0...1`, read every sample, and shared by every note the instrument is playing. That is right for one bow and one breath. At zero there is nothing to hear, because nothing is driving the model. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely. Adding it changed nothing that already worked. A note pressed on its own ([`press`](#expression)) is driven by that instead, from the first press on, which is what a surface with a finger on every note wants.
 
 This is the control an envelope cannot give you. An envelope is decided when the note starts, while `pressure` is whatever you are doing right now.
 
@@ -630,6 +674,7 @@ Voice.Filter.sweep(from: 400, by: 3.5, resonance: 0.35)     // opens, then close
 | `envelopeAmount` | how far `envelope` moves the cutoff, **in octaves**. Negative closes it as the note goes on |
 | `envelope` | the shape of that movement |
 | `keyTracking` | how far the cutoff follows the note being played, `0...1` |
+| `slideAmount` | how far a note's [slide](#expression) moves the cutoff, **in octaves** each way, 1 by default. A note nobody slides is filtered exactly as it was |
 
 `keyTracking` defaults to 0, so high notes come out duller than low ones, which is what real instruments do. At 1 the cutoff moves with the note step for step, and that is what makes an unpitched wave playable. A noise voice has no pitch of its own, so the filter is the only thing a note can move. That is how `.breath` works.
 
@@ -870,7 +915,6 @@ These limits are said plainly, so you can plan around them rather than go lookin
 - **One recording at a time per note.** There is no crossfading between velocity layers, or between neighboring recordings. A change of layer is a step rather than a fade.
 - **A wavetable's position is read when the note starts.** The sweep moves it over the note. The position itself is not a live control, the way `pressure` is. To move a held note by hand, use the sweep or play a new note.
 - **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.
-- **One drive per instrument.** Every note a `Synth` is playing is bowed or blown by the same hand, which is usually what you want. Two independently driven lines means two `Synth`s.
 - **One position per instrument.** A `Synth` is placed as a whole. Several sounds in several places means several `Synth`s, which is fine and cheap.
 - **No sound in a GIF.** The format has no way to hold any.
 

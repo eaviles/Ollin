@@ -24,6 +24,13 @@ struct WaveguideLine {
         buffer.update(repeating: 0, count: capacity)
     }
 
+    /// Changes the line's length in whole samples and keeps what is in it,
+    /// which is how a sounding note is bent: the wave already traveling the
+    /// line arrives a little sooner or later from here on.
+    mutating func setLength(_ length: Int) {
+        self.length = max(1, min(capacity - 1, length))
+    }
+
     /// Reads the sample that has traveled the whole line.
     var head: Double {
         let read = write >= length ? write - length : write + capacity - length
@@ -74,6 +81,8 @@ struct BowVoice {
     private var slipThreshold = 0.1
     /// The tuning allpass coefficient, on the bridge side only.
     private var eta = 0.0
+    /// Where along the string the bow sits, kept so a bend keeps the split.
+    private var split = 0.13
 
     private var lastFilterInput = 0.0
     private var lastAllpassInput = 0.0
@@ -103,9 +112,38 @@ struct BowVoice {
         // The two sides together are one round trip, so they add up to a period
         // once the loss filter's own delay is taken out of the budget. The bow
         // position is where the period is split between them.
+        split = min(max(0.02, spec.position), 0.5)
+        let (bridgeWhole, nutWhole, allpass) = lengths(frequency: frequency, sampleRate: sampleRate)
+        eta = allpass
+        bridgeSide.reset(length: bridgeWhole)
+        nutSide.reset(length: nutWhole)
+
+        let trips = max(1e-6, spec.decay * frequency)
+        loopGain = min(exp(-6.907_755_278_982_137 / trips), 0.999_99)
+
+        // More force means the rosin holds over a wider range of speeds, so the
+        // string stays stuck to the bow for longer in each cycle.
+        slipThreshold = 0.02 + 0.34 * min(max(0, spec.force), 1)
+    }
+
+    /// Moves a sounding string to another pitch without emptying it, which is
+    /// what a bend under the finger asks for. The bow position, the loss, and
+    /// the ring time stay what the note started with.
+    mutating func retune(frequency: Double, sampleRate: Double) {
+        let (bridgeWhole, nutWhole, allpass) = lengths(frequency: frequency, sampleRate: sampleRate)
+        eta = allpass
+        bridgeSide.setLength(bridgeWhole)
+        nutSide.setLength(nutWhole)
+    }
+
+    /// The two sides' whole-sample lengths and the allpass coefficient for
+    /// the fraction, for one period at `frequency`.
+    private func lengths(frequency: Double, sampleRate: Double) -> (bridge: Int, nut: Int, eta: Double) {
+        // The two sides together are one round trip, so they add up to a period
+        // once the loss filter's own delay is taken out of the budget. The bow
+        // position is where the period is split between them.
         let period = sampleRate / max(1e-6, frequency)
         let remaining = max(4, period - shade)
-        let split = min(max(0.02, spec.position), 0.5)
 
         // Only one of the two sides can be a whole number of samples and have
         // the loop still come out exactly one period long. So the nut side
@@ -119,17 +157,7 @@ struct BowVoice {
         let bridgeTotal = max(1.2, remaining - Double(nutWhole))
         let bridgeWhole = max(1, Int((bridgeTotal - 0.2).rounded(.down)))
         let fraction = min(max(0.2, bridgeTotal - Double(bridgeWhole)), 1.2)
-        eta = (1 - fraction) / (1 + fraction)
-
-        bridgeSide.reset(length: bridgeWhole)
-        nutSide.reset(length: nutWhole)
-
-        let trips = max(1e-6, spec.decay * frequency)
-        loopGain = min(exp(-6.907_755_278_982_137 / trips), 0.999_99)
-
-        // More force means the rosin holds over a wider range of speeds, so the
-        // string stays stuck to the bow for longer in each cycle.
-        slipThreshold = 0.02 + 0.34 * min(max(0, spec.force), 1)
+        return (bridgeWhole, nutWhole, (1 - fraction) / (1 + fraction))
     }
 
     /// One sample, with the bow moving at `bowVelocity`.
@@ -245,11 +273,8 @@ struct TubeVoice {
         // fraction goes to an allpass for the same reason it does on a string:
         // rounding the loop to whole samples is inaudible low down and most of
         // a semitone out at the top of the range.
-        let period = sampleRate / max(1e-6, frequency)
-        let target = max(2.2, period / 2 - shade)
-        let whole = max(1, Int((target - 0.2).rounded(.down)))
-        let fraction = min(max(0.2, target - Double(whole)), 1.2)
-        eta = (1 - fraction) / (1 + fraction)
+        let (whole, allpass) = length(frequency: frequency, sampleRate: sampleRate)
+        eta = allpass
         bore.reset(length: whole)
 
         // The loop runs twice per period, so a given fade takes twice as many
@@ -259,6 +284,24 @@ struct TubeVoice {
 
         // Biting harder shuts the reed at a lower pressure.
         closingPressure = 1.6 - 1.3 * min(max(0, spec.embouchure), 1)
+    }
+
+    /// Moves a sounding tube to another pitch without emptying it. The reed,
+    /// the loss, and the ring time stay what the note started with.
+    mutating func retune(frequency: Double, sampleRate: Double) {
+        let (whole, allpass) = length(frequency: frequency, sampleRate: sampleRate)
+        eta = allpass
+        bore.setLength(whole)
+    }
+
+    /// The bore's whole-sample length and the allpass coefficient for the
+    /// fraction, for half a period at `frequency`.
+    private func length(frequency: Double, sampleRate: Double) -> (whole: Int, eta: Double) {
+        let period = sampleRate / max(1e-6, frequency)
+        let target = max(2.2, period / 2 - shade)
+        let whole = max(1, Int((target - 0.2).rounded(.down)))
+        let fraction = min(max(0.2, target - Double(whole)), 1.2)
+        return (whole, (1 - fraction) / (1 + fraction))
     }
 
     /// One sample, with the player blowing at `breath`.

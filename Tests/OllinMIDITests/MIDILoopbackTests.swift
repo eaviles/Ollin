@@ -143,4 +143,40 @@ struct MIDILoopbackTests {
         #expect(located == parked)
         #expect(clock.frameRate == .fps30)
     }
+
+    /// A polyphonic-expression surface across the link: the zone it announces
+    /// lays the input out, and then a bend on one note's channel, a press on
+    /// another's, and a slide on the first reach only the note each was sent
+    /// for. Each message is sent once; the wait only reads.
+    @Test func expressionReachesOneNote() async {
+        guard let (output, input) = await makePair() else { return }   // soft-skip
+        defer { output.close(); input.stop() }
+
+        output.send(mpeZone: .lower())
+        let zones = await waitFor { input.mpeZones == [.lower()] ? input.mpeZones : nil }
+        #expect(zones == [.lower()])
+
+        output.noteOn(60, velocity: 100, channel: 2)
+        output.noteOn(64, velocity: 80, channel: 3)
+        output.pitchBend(8192 + 2048, channel: 2)          // a quarter of 48 semitones
+        output.channelPressure(127, channel: 3)
+        output.controlChange(74, value: 0, channel: 2)
+
+        let notes = await waitFor { () -> [HeldNote]? in
+            let held = input.heldNotes
+            guard held.count == 2, held[0].pitchBend > 11.9, held[1].pressure == 1, held[0].slide == 0
+            else { return nil }
+            return held
+        }
+        #expect(notes?.map(\.note) == [60, 64])
+        #expect(notes?.map(\.channel) == [2, 3])
+        #expect(abs((notes?[0].pitchBend ?? 0) - 12) < 1e-9)
+        #expect(notes?[1].pitchBend == 0)
+        #expect(notes?[0].pressure == 0)
+        #expect(notes?[1].pressure == 1)
+        #expect(notes?[0].slide == 0)
+        #expect(notes?[1].slide == 0.5)
+        #expect(abs((notes?[0].pitch ?? 0) - 72) < 1e-9)
+        #expect(abs((notes?[1].velocity ?? 0) - 80.0 / 127) < 1e-9)
+    }
 }

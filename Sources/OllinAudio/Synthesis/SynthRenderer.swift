@@ -36,6 +36,27 @@ final class SynthRenderer: @unchecked Sendable {
         var spec = Voice()
         var pitch: Double = 60
         var velocity: Double = 0
+        /// The number the sketch holds for this note, so a bend, a press, or
+        /// a slide finds the voice that owns it.
+        var noteID = 0
+        /// The pitch sounding this block: `pitch` with the bends folded in.
+        var sounding: Double = 60
+        /// Where the note is bent to, in semitones: where the sketch put it,
+        /// and where the glide has reached.
+        var bendTarget = 0.0
+        var bend = 0.0
+        /// The offset the model was last cut to, so a retune happens on a
+        /// move and not every block.
+        var tunedTo = 0.0
+        /// How hard the note is being pressed, `0...1`, and whether it has
+        /// been pressed at all: until then a driven voice takes the
+        /// instrument's own drive.
+        var pressureTarget = 0.0
+        var pressure = 0.0
+        var hasOwnPressure = false
+        /// Where the finger sits along the key, `0...1`, half way at rest.
+        var slideTarget = 0.5
+        var slide = 0.5
         /// Samples left before the note releases itself, or nil if it is held.
         var remaining: Int?
         /// Whether the note is still held, so a `noteOff` can find it.
@@ -72,6 +93,11 @@ final class SynthRenderer: @unchecked Sendable {
 
     /// The voice every new note is built from. Changed between notes.
     private var currentVoice: Voice
+
+    /// A bend on every note at once, in semitones: the wheel on a keyboard,
+    /// or the master channel of a polyphonic-expression surface. Arrives as
+    /// an event rather than an atomic so an export replays it where it fell.
+    private var bendAll = 0.0
 
     /// Master level, `0...1`.
     ///
@@ -188,6 +214,14 @@ final class SynthRenderer: @unchecked Sendable {
         // not a signal, and a block is a few milliseconds.
         let driving = pressure
 
+        // A note's own expression glides toward where the sketch put it, one
+        // step a block: a controller speaks every few milliseconds and a
+        // jump between two of its values would be heard as a step.
+        let step = 1 - exp(-Double(frameCount) / (0.008 * sampleRate))
+        for index in voices.indices where voices[index].isSounding {
+            settle(&voices[index], step: step)
+        }
+
         for frame in 0..<frameCount {
             var mix = 0.0
             for index in voices.indices where voices[index].isSounding {
@@ -217,13 +251,17 @@ final class SynthRenderer: @unchecked Sendable {
 
         let amplitude = voice.amplitude.next()
 
+        // A driven voice pressed on its own is driven by that; until a note
+        // is pressed, the instrument's one bow and one breath drive it.
+        let pressure = voice.hasOwnPressure ? voice.pressure : pressure
+
         var sample: Double
         switch voice.spec.source {
         case .wave(let waveform):
-            let increment = frequency(of: voice.pitch) / sampleRate
+            let increment = frequency(of: voice.sounding) / sampleRate
             sample = voice.oscillator.next(waveform, increment: increment)
             if voice.spec.detune != 0 {
-                let detuned = frequency(of: voice.pitch + voice.spec.detune) / sampleRate
+                let detuned = frequency(of: voice.sounding + voice.spec.detune) / sampleRate
                 sample = 0.5 * (sample + voice.second.next(waveform, increment: detuned))
             }
         case .plucked:
@@ -291,7 +329,12 @@ final class SynthRenderer: @unchecked Sendable {
             // it with the note, so both are multiples of where it started.
             var cutoff = spec.cutoff
             if spec.envelopeAmount != 0 { cutoff *= pow(2, spec.envelopeAmount * envelope) }
-            if spec.keyTracking != 0 { cutoff *= pow(2, spec.keyTracking * (voice.pitch - 60) / 12) }
+            if spec.keyTracking != 0 { cutoff *= pow(2, spec.keyTracking * (voice.sounding - 60) / 12) }
+            // A slide opens the filter above the middle of the key and closes
+            // it below, by the octaves the voice allows.
+            if spec.slideAmount != 0, voice.slide != 0.5 {
+                cutoff *= pow(2, spec.slideAmount * (voice.slide - 0.5) * 2)
+            }
             voice.filter.setCoefficients(cutoff: cutoff, resonance: spec.resonance, sampleRate: sampleRate)
             sample = voice.filter.next(sample, mode: spec.mode)
         }
@@ -300,10 +343,108 @@ final class SynthRenderer: @unchecked Sendable {
         // because how much of it is heard is one of its own settings: an
         // instrument whose recordings are already its dynamics should not be
         // scaled by velocity a second time. Every other source is scaled here
-        // as it always was.
+        // as it always was, and a note pressed on its own rises from its
+        // struck level toward full by the voice's pressure amount (a driven
+        // voice takes pressure as its drive instead, above).
         var struck = voice.velocity
-        if case .sampled = voice.spec.source { struck = 1 }
+        if case .sampled = voice.spec.source {
+            struck = 1
+        } else if voice.hasOwnPressure, !voice.spec.source.isDriven, voice.spec.pressureAmount > 0 {
+            struck += (1 - struck) * voice.spec.pressureAmount * voice.pressure
+        }
         return sample * amplitude * struck * voice.spec.gain
+    }
+
+    // MARK: Expression
+
+    /// Moves a voice's bend, pressure, and slide one step toward where the
+    /// sketch put them, and cuts a model to the pitch it now sounds.
+    private func settle(_ voice: inout RenderVoice, step: Double) {
+        voice.bend = approach(voice.bend, voice.bendTarget, by: step)
+        voice.pressure = approach(voice.pressure, voice.pressureTarget, by: step)
+        voice.slide = approach(voice.slide, voice.slideTarget, by: step)
+        let offset = voice.bend + bendAll
+        voice.sounding = voice.pitch + offset
+        guard abs(offset - voice.tunedTo) > 1e-5 else { return }
+        voice.tunedTo = offset
+        retune(&voice)
+    }
+
+    private func approach(_ value: Double, _ target: Double, by step: Double) -> Double {
+        let next = value + (target - value) * step
+        return abs(next - target) < 1e-6 ? target : next
+    }
+
+    /// Moves a model that was cut to length when the note started onto the
+    /// pitch the voice sounds now. An oscillator reads `sounding` every sample
+    /// and needs nothing here; a struck body's tones were decided by the
+    /// strike and hold, the way a bell rung cannot be retuned.
+    private func retune(_ voice: inout RenderVoice) {
+        let played = voice.sounding
+        let detune = voice.spec.detune
+        let floor = SynthRenderer.lowestStringFrequency
+        switch voice.spec.source {
+        case .wave, .struck:
+            break
+        case .plucked:
+            voice.string.retune(frequency: max(floor, frequency(of: played)), sampleRate: sampleRate)
+            if detune != 0 {
+                voice.secondString.retune(frequency: max(floor, frequency(of: played + detune)),
+                                          sampleRate: sampleRate)
+            }
+        case .bowed:
+            voice.bow.retune(frequency: max(floor, frequency(of: played)), sampleRate: sampleRate)
+            if detune != 0 {
+                voice.secondBow.retune(frequency: max(floor, frequency(of: played + detune)),
+                                       sampleRate: sampleRate)
+            }
+        case .blown:
+            voice.tube.retune(frequency: max(floor, frequency(of: played)), sampleRate: sampleRate)
+            if detune != 0 {
+                voice.secondTube.retune(frequency: max(floor, frequency(of: played + detune)),
+                                        sampleRate: sampleRate)
+            }
+        case .sampled:
+            voice.sampler.retune(semitones: voice.tunedTo)
+        case .patch:
+            voice.patch.retune(frequency: frequency(of: played), sampleRate: sampleRate)
+            if detune != 0 {
+                voice.secondPatch.retune(frequency: frequency(of: played + detune), sampleRate: sampleRate)
+            }
+        case .wavetable:
+            voice.table.retune(frequency: frequency(of: played), sampleRate: sampleRate)
+            if detune != 0 {
+                voice.secondTable.retune(frequency: frequency(of: played + detune), sampleRate: sampleRate)
+            }
+        }
+    }
+
+    /// Applies a bend, a press, or a slide to the voice that owns the note.
+    ///
+    /// A note that started in this same drain takes the value outright
+    /// rather than gliding from nothing: a controller says where a finger is
+    /// before it says the finger is down, and both arrive together.
+    private func express(_ event: SynthEvent) {
+        guard event.noteID != 0,
+              let index = voices.firstIndex(where: { $0.noteID == event.noteID && $0.isSounding })
+        else { return }
+        let fresh = voices[index].startedAt == clock
+        switch event.kind {
+        case .bend:
+            voices[index].bendTarget = event.amount
+            if fresh { voices[index].bend = event.amount }
+        case .press:
+            let pressed = min(max(0, event.amount), 1)
+            voices[index].pressureTarget = pressed
+            voices[index].hasOwnPressure = true
+            if fresh { voices[index].pressure = pressed }
+        case .slide:
+            let slid = min(max(0, event.amount), 1)
+            voices[index].slideTarget = slid
+            if fresh { voices[index].slide = slid }
+        default:
+            break
+        }
     }
 
     private func frequency(of midi: Double) -> Double { 440 * pow(2, (midi - 69) / 12) }
@@ -314,9 +455,13 @@ final class SynthRenderer: @unchecked Sendable {
         while let event = events.pop() {
             switch event.kind {
             case .noteOn:      start(event)
-            case .noteOff:     release(pitch: event.pitch)
+            case .noteOff:
+                if event.noteID != 0 { release(id: event.noteID) } else { release(pitch: event.pitch) }
             case .allNotesOff: for index in voices.indices { releaseVoice(&voices[index]) }
             case .changeVoice: currentVoice = event.voice
+            case .bend, .press, .slide:
+                // A bend with no note is the whole instrument's.
+                if event.kind == .bend, event.noteID == 0 { bendAll = event.amount } else { express(event) }
             }
         }
     }
@@ -331,6 +476,18 @@ final class SynthRenderer: @unchecked Sendable {
         voice.remaining = event.durationSamples > 0 ? event.durationSamples : nil
         voice.isHeld = event.durationSamples == 0
         voice.startedAt = clock
+        voice.noteID = event.noteID
+        // Cut to the plain pitch here; the settle before the first sample
+        // folds the instrument's bend in and retunes if there is one.
+        voice.sounding = event.pitch
+        voice.bend = 0
+        voice.bendTarget = 0
+        voice.tunedTo = 0
+        voice.pressure = 0
+        voice.pressureTarget = 0
+        voice.hasOwnPressure = false
+        voice.slide = 0.5
+        voice.slideTarget = 0.5
 
         voice.oscillator.reset()
         voice.second.reset()
@@ -467,6 +624,13 @@ final class SynthRenderer: @unchecked Sendable {
         // the envelope had reached, which is the other half of the same trick.
         voices[index].amplitude.steal()
         return index
+    }
+
+    /// Lets the note the sketch holds a number for go.
+    private func release(id: Int) {
+        guard let index = voices.firstIndex(where: { $0.noteID == id && $0.isHeld && $0.isSounding })
+        else { return }
+        releaseVoice(&voices[index])
     }
 
     private func release(pitch: Double) {

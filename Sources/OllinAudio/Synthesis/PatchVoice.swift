@@ -53,6 +53,14 @@ struct PatchVoice {
         outputScale = outputs > 0 ? 1 / outputs : 0
     }
 
+    /// Moves a sounding note to another pitch: every operator keeps its ratio
+    /// and its place in its cycle, and only the rate moves.
+    mutating func retune(frequency: Double, sampleRate: Double) {
+        for lane in 0..<patch.count {
+            increments[lane] = patch.ratios[lane] * frequency / max(1, sampleRate)
+        }
+    }
+
     /// One sample.
     mutating func next() -> Double {
         var mixed = 0.0

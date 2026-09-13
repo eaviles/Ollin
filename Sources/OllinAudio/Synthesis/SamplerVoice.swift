@@ -17,6 +17,8 @@ struct SamplerVoice {
     private var position = 0.0
     /// How far it moves per output sample.
     private var step = 1.0
+    /// The step the note started with, which a bend scales.
+    private var baseStep = 1.0
     private var gain = 1.0
     private var loop: (start: Int, end: Int)?
     private var finished = true
@@ -52,6 +54,7 @@ struct SamplerVoice {
         // The recording may not be at the rate this is playing at, and both
         // corrections are the same kind of thing, so they multiply.
         step = pow(2, semitones / 12) * (zone.sampleRate / max(1, sampleRate))
+        baseStep = step
 
         // At zero sensitivity a note is as loud as it was recorded, which is
         // right for an instrument whose recordings are already its dynamics.
@@ -64,6 +67,12 @@ struct SamplerVoice {
         }
         position = 0
         finished = false
+    }
+
+    /// Moves a playing recording `semitones` from the pitch the note started
+    /// on: the read head runs faster or slower from here.
+    mutating func retune(semitones: Double) {
+        step = baseStep * pow(2, semitones / 12)
     }
 
     /// One sample.

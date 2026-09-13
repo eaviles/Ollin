@@ -13,16 +13,23 @@ final class MIDIInput: Sendable
   func stop()
   func unbind(controlChange: Int, channel: Int? = default)
   init(name: String = default)
+  var heldNotes: [HeldNote] { get }
   var isRunning: Bool { get }
+  var mpeZones: [MPEZone] { get set }
   var sources: [MIDIEndpoint] { get }
 final class MIDIOutput: Sendable
+  func channelPressure(_: Int, channel: Int = default)
   func close()
   func controlChange(_: Int, value: Int, channel: Int = default)
   func noteOff(_: Int, velocity: Int = default, channel: Int = default)
   func noteOn(_: Int, velocity: Int = default, channel: Int = default)
   func open(matching: String? = default) throws
   func openVirtual(named: String? = default) throws
+  func pitchBend(_: Int, channel: Int = default)
+  func polyPressure(_: Int, pressure: Int, channel: Int = default)
+  func registeredParameter(_: Int, value: Int, fine: Int = default, channel: Int = default)
   func send(_: MIDIMessage)
+  func send(mpeZone: MPEZone)
   func send(sysEx: [UInt8])
   func send(timecode: Timecode)
   init(name: String = default)
@@ -50,6 +57,15 @@ final class TimecodeClock: Sendable
   var isReversed: Bool { get }
   var seconds: Double { get }
   var timecode: Timecode? { get }
+struct HeldNote: Equatable, Hashable, Identifiable, Sendable
+  let channel: Int
+  let note: Int
+  let pitchBend: Double
+  let pressure: Double
+  let slide: Double
+  let velocity: Double
+  var id: Int { get }
+  var pitch: Double { get }
 struct MIDIEndpoint: Equatable, Hashable, Identifiable, Sendable
   func hash(into: Hasher)
   let manufacturer: String?
@@ -85,6 +101,18 @@ struct MIDIMessage: CustomStringConvertible, Equatable, Sendable
   var umpWord: UInt32 { get }
   var value: Int? { get }
   var velocity: Int? { get }
+struct MPEZone: Equatable, Hashable, Sendable
+  func contains(channel: Int) -> Bool
+  func isMember(channel: Int) -> Bool
+  init(masterChannel: Int, memberChannels: ClosedRange<Int>, memberPitchBendRange: Double = default, masterPitchBendRange: Double = default)
+  static func lower(members: Int = default) -> MPEZone
+  static func upper(members: Int = default) -> MPEZone
+  var isLower: Bool { get }
+  var masterChannel: Int { get set }
+  var masterPitchBendRange: Double { get set }
+  var memberChannels: ClosedRange<Int> { get set }
+  var memberCount: Int { get }
+  var memberPitchBendRange: Double { get set }
 struct Timecode: CustomStringConvertible, Equatable, Hashable, Sendable
   enum FrameRate: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
     case fps24

@@ -6,11 +6,17 @@ import Synchronization
 /// slots, and anything that needed allocating or reference counting could not
 /// be written there.
 struct SynthEvent {
-    enum Kind: UInt8 { case noteOn, noteOff, allNotesOff, changeVoice }
+    enum Kind: UInt8 { case noteOn, noteOff, allNotesOff, changeVoice, bend, press, slide }
 
     var kind: Kind = .noteOn
     var pitch: Double = 60
     var velocity: Double = 0.8
+    /// Which note this is about: the number the sketch was handed when the
+    /// note started, so a bend finds the voice that owns it. Zero means the
+    /// event names its note by pitch instead, the way the first notes did.
+    var noteID: Int = 0
+    /// What a bend (semitones), a press, or a slide (both `0...1`) carries.
+    var amount: Double = 0
     /// How long to hold the note, in samples. Zero means hold it until a
     /// matching `noteOff` arrives.
     var durationSamples: Int = 0

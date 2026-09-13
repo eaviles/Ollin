@@ -37,6 +37,7 @@ final class Wired: Sketch {
 - [MIDIMessage & kinds](#midimessage--kinds) - the value you read and send
 - [MIDIInput](#midiinput) - read incoming MIDI three ways
 - [Binding to a `@Param`](#binding-to-a-param) - drive a parameter from a controller
+- [Per-note expression (MPE)](#per-note-expression-mpe) - a controller that bends, presses, and slides each note on its own
 - [Tempo sync (TempoClock)](#tempo-sync-tempoclock) - lock motion to the beat of whatever is playing
 - [Timecode (TimecodeClock)](#timecode-timecodeclock) - chase a timeline sent as MIDI Time Code
 - [MIDIOutput](#midioutput) - send notes and control changes
@@ -160,6 +161,72 @@ A bound parameter updates on its own as messages arrive, so you do not read it e
 
 `.eased` glides to each value over a fixed time along an `Easing` curve. `.smoothed` passes the value through a `OneEuroFilter`, which holds steady while the knob is still and responds faster as the knob moves. That response usually feels better than `.eased` for a hand on live hardware. Both are documented in [Animation](../Helpers/Animation.md), together with the `Easing` curves and the `@Smoothed` 1€ filter.
 
+<a name="per-note-expression-mpe"></a>
+
+### Per-note expression (MPE)
+
+```swift
+var heldNotes: [HeldNote]           // every held note, oldest first, its expression resolved
+var mpeZones: [MPEZone]             // the zones in force: what the controller announced, or what you set
+
+struct HeldNote {
+    let note: Int                   // the key, 0…127
+    let channel: Int                // 1…16
+    let velocity: Double            // how hard it was struck, 0…1
+    let pitchBend: Double           // semitones, the channel's range applied
+    var pitch: Double               // note + pitchBend, the MIDI number sounding
+    let pressure: Double            // 0…1, zero until the controller says
+    let slide: Double               // 0…1, controller 74, half way until the controller says
+    var id: Int                     // the note and its channel together
+}
+
+MPEZone.lower(members: Int = 15)    // channel 1 is the master, 2 up to 16 carry notes
+MPEZone.upper(members: Int = 15)    // channel 16 is the master, 15 down carry notes
+```
+
+A keyboard bends every note at once, because its wheel speaks for the whole channel. A polyphonic-expression surface (a Seaboard, a LinnStrument, a phone app that speaks MPE) puts each note on a channel of its own. The channel's pitch bend, pressure, and controller 74 then belong to that one note. `heldNotes` reads it that way: every note that is down, with what the controller has said about it since, resolved for the channel it arrived on.
+
+```swift
+for note in midi.heldNotes {
+    drawCircle(x(note.pitch), y(note.slide), 20 + 60 * note.pressure)
+}
+```
+
+On a plain keyboard the same read gives the wheel and the aftertouch, shared by every note on the channel. A key's own pressure (polyphonic aftertouch) counts where the keyboard sends it. Nothing changes in the sketch.
+
+**Zones.** MPE divides the sixteen channels into a lower zone running up from channel 1 and an upper zone running down from 16. Most controllers use the lower one alone. The channel at the edge is the *master*. What arrives there (a bend, a pressure, a slide) applies to every note in the zone, on top of each note's own. A controller announces its zone with a configuration message on the master channel, and the input lays itself out from it. So `mpeZones` is usually nothing to set. For a controller that does not announce, set it by hand: `midi.mpeZones = [.lower()]`.
+
+**Bend ranges.** A member channel's bend spans 48 semitones and the master's 2, the specification's defaults. A quarter of the wheel on a member channel is then twelve semitones. A controller that says otherwise (the pitch bend range as a registered parameter) is believed. On a member channel it sets every member's range, on the master the master's. On a channel outside any zone it sets that channel's, which is 2 semitones until told.
+
+**Playing an instrument from it.** Start each note as it appears, let it go as it leaves, and every frame hand each held note the three values. That is the whole wiring; [`Synth`](../Helpers/Synthesis.md#expression) does the rest.
+
+```swift
+var playing: [Int: PlayingNote] = [:]
+
+override func draw() {
+    let held = midi.heldNotes
+    for note in held where playing[note.id] == nil {
+        playing[note.id] = synth.noteOn(Pitch(Double(note.note)), velocity: note.velocity)
+    }
+    for (id, note) in playing where !held.contains(where: { $0.id == id }) {
+        synth.noteOff(note)
+        playing[id] = nil
+    }
+    for note in held {
+        guard let playing = playing[note.id] else { continue }
+        synth.bend(playing, semitones: note.pitchBend)
+        synth.press(playing, note.pressure)
+        synth.slide(playing, note.slide)
+    }
+}
+```
+
+A strike shorter than a frame is not in `heldNotes` by the time `draw()` reads it. A pad played that way is a discrete event, which is what `messages()` is for.
+
+`controlValue(74)` with no channel is whichever channel moved last, which on a surface is whichever finger moved last. The per-note value is on the held note.
+
+The **Expression** example (`Examples/Audio/Expression`) is a surface the mouse plays through a virtual source, so a bend, a press, and a slide cross Core MIDI the way a controller's do. A real controller plugged in joins the same picture.
+
 <a name="tempo-sync-tempoclock"></a>
 
 ### Tempo sync (TempoClock)
@@ -272,6 +339,11 @@ func send(_ message: MIDIMessage)
 func noteOn(_ note: Int, velocity: Int = 100, channel: Int = 1)
 func noteOff(_ note: Int, velocity: Int = 0, channel: Int = 1)
 func controlChange(_ controller: Int, value: Int, channel: Int = 1)
+func pitchBend(_ value: Int, channel: Int = 1)                   // 0…16383, 8192 at rest
+func channelPressure(_ pressure: Int, channel: Int = 1)          // aftertouch for the channel
+func polyPressure(_ note: Int, pressure: Int, channel: Int = 1)  // one key's pressure
+func registeredParameter(_ parameter: Int, value: Int, fine: Int = 0, channel: Int = 1)
+func send(mpeZone: MPEZone)          // announce a zone the way a controller does
 func send(sysEx body: [UInt8])       // a system exclusive, the bytes between its start and end
 func send(timecode: Timecode)         // a position whole, as a full-frame timecode message
 func close()

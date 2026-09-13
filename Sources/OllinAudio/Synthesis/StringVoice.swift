@@ -100,6 +100,17 @@ struct StringVoice {
         excite(spec: spec, velocity: velocity, sampleRate: sampleRate)
     }
 
+    /// Moves a ringing string to another pitch without emptying it: the loop
+    /// is cut to the new period from here on, and what is already traveling
+    /// it keeps going. The loss and the ring time stay what the pluck set.
+    mutating func retune(frequency: Double, sampleRate: Double) {
+        let period = sampleRate / max(1e-6, frequency)
+        let remaining = period - shade
+        delay = max(2, min(capacity - 1, Int((remaining - 0.2).rounded(.down))))
+        let fraction = min(max(0.2, remaining - Double(delay)), 1.2)
+        eta = (1 - fraction) / (1 + fraction)
+    }
+
     /// Fills the line with the disturbance a pluck leaves behind.
     private mutating func excite(spec: PluckedString, velocity: Double, sampleRate: Double) {
         let count = delay

@@ -158,16 +158,20 @@ final class SpeechListener: Sendable
   var transcript: String { get }
   var unavailableReason: String? { get }
 final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, TransportMutable, AudioSource, Sendable
+  @discardableResult func noteOn(_: Pitch, velocity: Double = default) -> PlayingNote
+  @discardableResult func play(_: Pitch, velocity: Double = default, for: Double? = default) -> PlayingNote
   func advance(by: Double)
   func allNotesOff()
+  func bend(_: PlayingNote, semitones: Double)
   func noteOff(_: Pitch)
-  func noteOn(_: Pitch, velocity: Double = default)
+  func noteOff(_: PlayingNote)
   func place(at: Vector3, heardFrom: Camera3D)
   func play(_: Note, tempo: Tempo = default)
-  func play(_: Pitch, velocity: Double = default, for: Double? = default)
   func play(_: Sonification, step: Int, tempo: Tempo = default)
   func play(_: [Note], tempo: Tempo = default)
   func play(chord: [Pitch], velocity: Double = default, for: Double? = default)
+  func press(_: PlayingNote, _: Double)
+  func slide(_: PlayingNote, _: Double)
   func start()
   func stop()
   func unplace()
@@ -180,6 +184,7 @@ final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, Transp
   var hearingRange: ClosedRange<Double> { get set }
   var instrument: SampledInstrument? { get set }
   var isRunning: Bool { get }
+  var pitchBend: Double { get set }
   var position: Vector3? { get }
   var pressure: Double { get set }
   var reverb: Reverb? { get set }
@@ -508,6 +513,8 @@ struct PitchShift: Decodable, Encodable, Equatable, Hashable, Sendable
   init(semitones: Double = default, mix: Double = default)
   var mix: Double { get set }
   var semitones: Double { get set }
+struct PlayingNote: Equatable, Hashable, Sendable
+  let pitch: Pitch
 struct PluckedString: Decodable, Encodable, Equatable, Hashable, Sendable
   init(position: Double = default, hardness: Double = default, decay: Double = default, damping: Double = default)
   static let harp: PluckedString
@@ -702,9 +709,9 @@ struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
   init(patch: Patch, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
   init(plucked: PluckedString, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
   init(sampled: Sampler, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
-  init(source: VoiceSource, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(source: VoiceSource, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default, pressureAmount: Double = default)
   init(struck: ModalBody, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
-  init(waveform: Waveform = default, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(waveform: Waveform = default, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default, pressureAmount: Double = default)
   init(wavetable: WavetableScan, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
   static let bar: Voice
   static let bass: Voice
@@ -737,7 +744,7 @@ struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
       case highpass
       case lowpass
       case notch
-    init(mode: Voice.Filter.Mode = default, cutoff: Double = default, resonance: Double = default, envelopeAmount: Double = default, envelope: Envelope = default, keyTracking: Double = default)
+    init(mode: Voice.Filter.Mode = default, cutoff: Double = default, resonance: Double = default, envelopeAmount: Double = default, envelope: Envelope = default, keyTracking: Double = default, slideAmount: Double = default)
     static func lowpass(cutoff: Double, resonance: Double = default) -> Voice.Filter
     static func sweep(from: Double, by: Double = default, resonance: Double = default, envelope: Envelope = default) -> Voice.Filter
     var cutoff: Double { get set }
@@ -746,12 +753,14 @@ struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
     var keyTracking: Double { get set }
     var mode: Voice.Filter.Mode { get set }
     var resonance: Double { get set }
+    var slideAmount: Double { get set }
   var detune: Double { get set }
   var envelope: Envelope { get set }
   var filter: Voice.Filter? { get set }
   var gain: Double { get set }
   var patch: Patch? { get set }
   var plucked: PluckedString? { get set }
+  var pressureAmount: Double { get set }
   var source: VoiceSource { get set }
   var struck: ModalBody? { get set }
   var waveform: Waveform { get set }

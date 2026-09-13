@@ -8,8 +8,14 @@ import OllinPhone
 /// the same laws the Mac's own classifier keeps (a level for every label, the
 /// strongest one whatever the threshold, an event only on a crossing from
 /// below). All GPU-free, so it runs anywhere.
+///
+/// No time limit, unlike its siblings: `PhoneSounds` lives on the main actor,
+/// so this suite does too, and on the runner every main-actor suite in the
+/// process takes its turn on one main actor. A limit here measured the queue
+/// ahead of it rather than the work (all fourteen tests expired together at
+/// 407 seconds on 2026-09-13); the process watchdog is what catches a wedge.
 @MainActor
-@Suite(.timeLimit(.minutes(1))) struct PhoneSoundsTests {
+@Suite struct PhoneSoundsTests {
 
     // MARK: The wire
 

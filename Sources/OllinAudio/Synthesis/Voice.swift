@@ -66,16 +66,27 @@ public struct Voice: Sendable, Hashable, Codable {
     public var detune: Double
     /// The voice's own level, `0...1`, before the note's velocity.
     public var gain: Double
+    /// How far a note pressed harder rises above the level it was struck at,
+    /// `0...1`.
+    ///
+    /// A note's level comes from its velocity. Pressing it (`Synth.press`, or
+    /// a controller's aftertouch read through `heldNotes`) raises it from
+    /// there: at 1 full pressure takes any note to full level, at 0 pressure
+    /// is ignored. A note nobody presses sounds exactly as it did. The bowed
+    /// string and the blown tube take pressure as their drive instead, so
+    /// this does not apply to them.
+    public var pressureAmount: Double
 
     public init(
         waveform: Waveform = .sawtooth,
         envelope: Envelope = .standard,
         filter: Filter? = nil,
         detune: Double = 0,
-        gain: Double = 0.8
+        gain: Double = 0.8,
+        pressureAmount: Double = 1
     ) {
         self.init(source: .wave(waveform), envelope: envelope, filter: filter,
-                  detune: detune, gain: gain)
+                  detune: detune, gain: gain, pressureAmount: pressureAmount)
     }
 
     /// A voice built on a plucked string rather than an oscillator.
@@ -178,13 +189,15 @@ public struct Voice: Sendable, Hashable, Codable {
         envelope: Envelope = .standard,
         filter: Filter? = nil,
         detune: Double = 0,
-        gain: Double = 0.8
+        gain: Double = 0.8,
+        pressureAmount: Double = 1
     ) {
         self.source = source
         self.envelope = envelope
         self.filter = filter
         self.detune = detune
         self.gain = min(max(0, gain), 1)
+        self.pressureAmount = min(max(0, pressureAmount), 1)
     }
 
     /// What is taken out of the wave, and how that moves while the note sounds.
@@ -222,6 +235,14 @@ public struct Voice: Sendable, Hashable, Codable {
         /// what makes an unpitched wave playable: a noise voice has no pitch of
         /// its own, so the filter is the only thing a note can move.
         public var keyTracking: Double
+        /// How far a note's slide moves the cutoff, in octaves each way.
+        ///
+        /// A slide (`Synth.slide`, or a finger along the key on a
+        /// polyphonic-expression surface, controller 74) runs `0...1` and
+        /// sits half way at rest. At 1 the top of the key opens the filter an
+        /// octave and the bottom closes it one; at 0 the slide is ignored. A
+        /// note nobody slides is filtered exactly as it was.
+        public var slideAmount: Double
 
         public init(
             mode: Mode = .lowpass,
@@ -229,7 +250,8 @@ public struct Voice: Sendable, Hashable, Codable {
             resonance: Double = 0.2,
             envelopeAmount: Double = 0,
             envelope: Envelope = .percussive,
-            keyTracking: Double = 0
+            keyTracking: Double = 0,
+            slideAmount: Double = 1
         ) {
             self.mode = mode
             self.cutoff = max(10, cutoff)
@@ -237,6 +259,7 @@ public struct Voice: Sendable, Hashable, Codable {
             self.envelopeAmount = envelopeAmount
             self.envelope = envelope
             self.keyTracking = min(max(0, keyTracking), 1)
+            self.slideAmount = max(0, slideAmount)
         }
 
         /// A plain lowpass that does not move.

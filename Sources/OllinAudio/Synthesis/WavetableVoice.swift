@@ -33,6 +33,13 @@ struct WavetableVoice {
         level = Wavetable.level(forIncrement: increment)
     }
 
+    /// Moves a sounding note to another pitch: the cycle is read faster or
+    /// slower from here, and the level of band limiting follows it.
+    mutating func retune(frequency: Double, sampleRate: Double) {
+        increment = frequency / max(1, sampleRate)
+        level = Wavetable.level(forIncrement: increment)
+    }
+
     /// One sample, with the scan's envelope at `travel` (`0...1`) moving the
     /// position by the scan's sweep.
     mutating func next(travel: Double) -> Double {

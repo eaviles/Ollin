@@ -48,6 +48,16 @@ public final class Synth: AudioSource {
     var exportClock: Double = 0
     /// The offline machine, once an export has asked for a soundtrack.
     var offline: OfflineRender?
+    /// The last note number handed out; each note gets its own.
+    private var noteCounter = 0
+    /// What each playing note was last bent, pressed, and slid to, so a value
+    /// repeated every frame is sent once.
+    private var expressed: [Int: Expressed] = [:]
+    private struct Expressed {
+        var bend: Double?
+        var pressure: Double?
+        var slide: Double?
+    }
     /// The voice and polyphony an offline render has to be built with.
     let startingVoice: Voice
     let polyphony: Int
@@ -138,10 +148,27 @@ public final class Synth: AudioSource {
     ///
     /// Every voice shares it, which is right: one bow and one breath. The
     /// sources that are set going once and then fade (a wave, a plucked string,
-    /// a struck body) ignore it entirely.
+    /// a struck body) ignore it entirely. A note pressed on its own
+    /// (``press(_:_:)``) is driven by that instead, from then on.
     public var pressure: Double {
         get { renderer.pressure }
         set { renderer.pressure = newValue }
+    }
+
+    /// A bend on every note at once, in semitones: the wheel on a keyboard,
+    /// or the master channel of a polyphonic-expression surface.
+    ///
+    /// ```swift
+    /// synth.pitchBend = 2 * wheel          // a wheel at -1...1, two semitones each way
+    /// ```
+    ///
+    /// Adds to whatever each note is bent by on its own (``bend(_:semitones:)``).
+    /// A struck body holds its pitch: its tones were decided by the strike.
+    public var pitchBend: Double = 0 {
+        didSet {
+            guard pitchBend != oldValue else { return }
+            emit(SynthEvent(kind: .bend, amount: pitchBend))
+        }
     }
 
     /// The recordings a sampled voice plays.
@@ -280,24 +307,108 @@ public final class Synth: AudioSource {
     ///   - pitch: a MIDI number (`60`), a name (`"C4"`), or a `Pitch`.
     ///   - velocity: how hard the note is struck, `0...1`.
     ///   - duration: seconds to hold it, or nil to hold it until let go.
-    public func play(_ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil) {
+    /// - Returns: the note, for bending, pressing, or sliding it while it
+    ///   sounds. Ignore it to play the note and forget it.
+    @discardableResult
+    public func play(_ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil) -> PlayingNote {
         // A duration is kept in seconds for an export, which may render at a
         // different rate from the one the hardware happens to be running at.
         let seconds = duration.map { max(0.001, $0) } ?? 0
+        let note = nextNote(pitch)
         emit(SynthEvent(
-            kind: .noteOn, pitch: pitch.midi, velocity: velocity,
+            kind: .noteOn, pitch: pitch.midi, velocity: velocity, noteID: note.id,
             durationSamples: seconds > 0 ? max(1, Int(seconds * sampleRate)) : 0
         ), seconds: seconds)
+        return note
     }
 
     /// Starts a note and holds it until `noteOff(_:)`.
-    public func noteOn(_ pitch: Pitch, velocity: Double = 0.8) {
-        emit(SynthEvent(kind: .noteOn, pitch: pitch.midi, velocity: velocity))
+    ///
+    /// - Returns: the note, for letting it go by that value (`noteOff(_:)`
+    ///   takes it as well as a pitch), and for bending, pressing, or sliding
+    ///   it while it sounds. Ignore it to let the note go by its pitch.
+    @discardableResult
+    public func noteOn(_ pitch: Pitch, velocity: Double = 0.8) -> PlayingNote {
+        let note = nextNote(pitch)
+        emit(SynthEvent(kind: .noteOn, pitch: pitch.midi, velocity: velocity, noteID: note.id))
+        return note
     }
 
     /// Lets a held note go, so it moves into its release.
+    ///
+    /// The nearest held note to `pitch` is the one let go, within half a
+    /// semitone, so a note bent further than that is let go by the value
+    /// ``noteOn(_:velocity:)`` handed back instead.
     public func noteOff(_ pitch: Pitch) {
         emit(SynthEvent(kind: .noteOff, pitch: pitch.midi))
+    }
+
+    /// Lets one note go, whatever it has been bent to.
+    public func noteOff(_ note: PlayingNote) {
+        expressed[note.id] = nil
+        emit(SynthEvent(kind: .noteOff, pitch: note.pitch.midi, noteID: note.id))
+    }
+
+    // MARK: Expression
+
+    /// Bends one note by `semitones`, on top of the instrument's ``pitchBend``.
+    ///
+    /// ```swift
+    /// let note = synth.noteOn("C4")
+    /// // in draw(), while it is held:
+    /// synth.bend(note, semitones: 2 * sin(time * 3))
+    /// ```
+    ///
+    /// The bend glides over a few milliseconds, so calling this every frame
+    /// with a moving value moves the note smoothly. Every source follows but
+    /// the struck body, whose tones were decided by the strike.
+    public func bend(_ note: PlayingNote, semitones: Double) {
+        express(note, kind: .bend, amount: semitones)
+    }
+
+    /// Presses one note, `0...1`.
+    ///
+    /// On the bowed string and the blown tube this is the note's own drive,
+    /// replacing the instrument's ``pressure`` for that note from the first
+    /// press on. On every other voice it raises the note's level above the
+    /// one it was struck at, by the voice's `pressureAmount`.
+    public func press(_ note: PlayingNote, _ pressure: Double) {
+        express(note, kind: .press, amount: min(max(0, pressure), 1))
+    }
+
+    /// Slides one note, `0...1`, half way at rest: where a finger sits along
+    /// the key on a polyphonic-expression surface. A voice with a filter opens
+    /// it above the middle and closes it below, by the filter's `slideAmount`.
+    public func slide(_ note: PlayingNote, _ position: Double) {
+        express(note, kind: .slide, amount: min(max(0, position), 1))
+    }
+
+    /// Hands out the next note number, which is what ties a bend to a voice.
+    private func nextNote(_ pitch: Pitch) -> PlayingNote {
+        noteCounter += 1
+        return PlayingNote(pitch: pitch, id: noteCounter)
+    }
+
+    /// Sends an expression only when it moved, so a sketch that repeats the
+    /// same value every frame costs the render thread nothing.
+    private func express(_ note: PlayingNote, kind: SynthEvent.Kind, amount: Double) {
+        if expressed.count > 1024 { expressed.removeAll(keepingCapacity: true) }
+        var sent = expressed[note.id] ?? Expressed()
+        switch kind {
+        case .bend:
+            guard sent.bend != amount else { return }
+            sent.bend = amount
+        case .press:
+            guard sent.pressure != amount else { return }
+            sent.pressure = amount
+        case .slide:
+            guard sent.slide != amount else { return }
+            sent.slide = amount
+        default:
+            return
+        }
+        expressed[note.id] = sent
+        emit(SynthEvent(kind: kind, pitch: note.pitch.midi, noteID: note.id, amount: amount))
     }
 
     /// Lets every held note go. Their tails still sound.
@@ -631,4 +742,21 @@ extension Synth: CaptureAudioSource {
     package func endAudioCapture() {
         captureRelay.set(nil)
     }
+}
+
+/// A note a `Synth` is playing, handed back when it starts.
+///
+/// Holding it is what lets a sketch bend, press, slide, and let go of one
+/// note among several, whatever pitch the note has been bent to since.
+///
+/// ```swift
+/// let note = synth.noteOn("C4")
+/// synth.bend(note, semitones: 1.5)
+/// synth.noteOff(note)
+/// ```
+public struct PlayingNote: Sendable, Hashable {
+    /// The pitch the note started on.
+    public let pitch: Pitch
+    /// Which note this is, among every note the instrument has played.
+    let id: Int
 }

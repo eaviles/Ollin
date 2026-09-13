@@ -121,6 +121,52 @@ public final class MIDIOutput: @unchecked Sendable {
         transmit(MIDIMessage(.controlChange(controller: controller, value: value), channel: channel))
     }
 
+    /// Sends a pitch bend. `value` 0…16383 with 8192 at rest; `channel` 1…16.
+    public func pitchBend(_ value: Int, channel: Int = 1) {
+        transmit(MIDIMessage(.pitchBend(value: value), channel: channel))
+    }
+
+    /// Sends a channel pressure (aftertouch for every note on the channel).
+    /// `pressure` 0…127; `channel` 1…16.
+    public func channelPressure(_ pressure: Int, channel: Int = 1) {
+        transmit(MIDIMessage(.channelPressure(pressure: pressure), channel: channel))
+    }
+
+    /// Sends one key's pressure (polyphonic aftertouch). `pressure` 0…127;
+    /// `channel` 1…16.
+    public func polyPressure(_ note: Int, pressure: Int, channel: Int = 1) {
+        transmit(MIDIMessage(.polyPressure(note: note, pressure: pressure), channel: channel))
+    }
+
+    /// Sets a registered parameter on the receiving end: the five control
+    /// changes that select it, enter `value` (and `fine`, its low seven bits),
+    /// and deselect it again. Parameter 0 is the pitch bend range, semitones
+    /// in `value` and cents in `fine`; 6 is the polyphonic-expression
+    /// configuration, which ``send(mpeZone:)`` spells for you.
+    public func registeredParameter(_ parameter: Int, value: Int, fine: Int = 0, channel: Int = 1) {
+        let number = max(0, min(16383, parameter))
+        controlChange(101, value: number >> 7, channel: channel)
+        controlChange(100, value: number & 0x7F, channel: channel)
+        controlChange(6, value: value, channel: channel)
+        controlChange(38, value: fine, channel: channel)
+        controlChange(101, value: 127, channel: channel)
+        controlChange(100, value: 127, channel: channel)
+    }
+
+    /// Announces a polyphonic-expression zone the way a controller does: the
+    /// configuration message on the zone's master channel, then the bend
+    /// ranges the zone carries, the members' on the first member channel and
+    /// the master's on its own.
+    public func send(mpeZone zone: MPEZone) {
+        registeredParameter(6, value: zone.memberCount, channel: zone.masterChannel)
+        let members = zone.memberPitchBendRange
+        registeredParameter(0, value: Int(members), fine: Int((members * 100).rounded()) % 100,
+                            channel: zone.memberChannels.lowerBound)
+        let master = zone.masterPitchBendRange
+        registeredParameter(0, value: Int(master), fine: Int((master * 100).rounded()) % 100,
+                            channel: zone.masterChannel)
+    }
+
     /// Sends a system exclusive message. `body` is the bytes between the
     /// exclusive's start and end (the 0xF0 and 0xF7 go on the wire around
     /// it); every byte must be under 0x80.

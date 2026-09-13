@@ -24,6 +24,10 @@ import os
 /// }
 /// ```
 ///
+/// A held note also carries what the controller has said about it since it
+/// went down (`heldNotes`): its bend, pressure, and slide, resolved per note
+/// on a polyphonic-expression surface (`mpeZones`).
+///
 /// Or bind a control straight onto a `@Param`, so a hardware fader drives the
 /// same parameter the inspector slider does (give the param `smoothing:` and the
 /// hardware moves glide instead of jumping):
@@ -54,7 +58,6 @@ public final class MIDIInput: @unchecked Sendable {
     private let core = OSAllocatedUnfairLock(initialState: CoreState())
 
     private struct ControlKey: Hashable, Sendable { let channel: Int; let controller: Int }
-    private struct NoteKey: Hashable, Sendable { let channel: Int; let note: Int }
     private struct ParamBinding: Sendable {
         let input: ClosedRange<Double>
         let output: ClosedRange<Double>
@@ -63,7 +66,8 @@ public final class MIDIInput: @unchecked Sendable {
 
     private struct State: Sendable {
         var latestControl: [ControlKey: Int] = [:]
-        var heldNotes: Set<NoteKey> = []
+        /// Which keys are down and what each channel has said about them.
+        var expression = ExpressionEngine()
         var inbox: [MIDIMessage] = []
         var bindings: [ControlKey: ParamBinding] = [:]
         var listeners: [@Sendable (MIDIMessage, Double) -> Void] = []
@@ -185,10 +189,43 @@ public final class MIDIInput: @unchecked Sendable {
     /// Whether a note (key or pad) is held down right now. Pass `channel` (1…16)
     /// to check one channel; omit it for any channel.
     public func isNoteOn(_ note: Int, channel: Int? = nil) -> Bool {
-        state.withLock { state in
-            if let channel { return state.heldNotes.contains(NoteKey(channel: channel, note: note)) }
-            return state.heldNotes.contains { $0.note == note }
-        }
+        state.withLock { $0.expression.isNoteOn(note, channel: channel) }
+    }
+
+    // MARK: Reading, held notes and their expression
+
+    /// Every note held right now, oldest first, each with its bend, pressure,
+    /// and slide resolved for the channel it arrived on.
+    ///
+    /// On a controller that gives each note its own channel (see
+    /// ``mpeZones``) these are the note's own; on a plain keyboard they are
+    /// the wheel and the aftertouch, shared by every note on the channel.
+    /// Read it each frame and the values move under a held note.
+    ///
+    /// ```swift
+    /// for note in midi.heldNotes {
+    ///     drawCircle(x(note.pitch), y(note.slide), 20 + 60 * note.pressure)
+    /// }
+    /// ```
+    public var heldNotes: [HeldNote] {
+        state.withLock { $0.expression.heldNotes() }
+    }
+
+    /// The zones in force for MIDI Polyphonic Expression: none until a
+    /// controller announces its layout, which its configuration message does
+    /// on its master channel, or a sketch sets one by hand for a controller
+    /// that does not announce.
+    ///
+    /// ```swift
+    /// midi.mpeZones = [.lower()]          // channel 1 master, 2 to 16 for notes
+    /// ```
+    ///
+    /// A zone is what makes ``heldNotes`` read a channel's bend, pressure, and
+    /// controller 74 as one note's, adds the master channel's on top, and
+    /// gives a member channel's bend the wide range the specification says.
+    public var mpeZones: [MPEZone] {
+        get { state.withLock { $0.expression.zones } }
+        set { state.withLock { $0.expression.setZones(newValue) } }
     }
 
     // MARK: Reading — event drain
@@ -355,13 +392,10 @@ public final class MIDIInput: @unchecked Sendable {
                     if let binding = state.bindings[exact] ?? state.bindings[wildcard] {
                         collected.append((binding, Double(value)))
                     }
-                case .noteOn(let note, _):
-                    state.heldNotes.insert(NoteKey(channel: message.channel, note: note))
-                case .noteOff(let note, _):
-                    state.heldNotes.remove(NoteKey(channel: message.channel, note: note))
                 default:
                     break
                 }
+                state.expression.apply(message)
                 state.inbox.append(message)
             }
             if state.inbox.count > inboxLimit {

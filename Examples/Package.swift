@@ -597,6 +597,10 @@ let package = Package(
         example("Audio/Movement", [.audio]),
         example("Audio/Levels", [.audio]),
         example("Audio/Spectral", [.audio]),
+        // A note under the finger: each held note bent, pressed, and slid on
+        // its own, drawn on a surface the mouse plays through a virtual MIDI
+        // source, or a polyphonic-expression controller plays for real.
+        example("Audio/Expression", [.audio, .midi]),
         example("Audio/Sampler", [.audio]),
         example("Audio/Wavetable", [.audio]),
         example("Audio/Spectrum", [.audio]),
