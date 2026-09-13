@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-12
+
 ### Added
 
 - **Every Guide chapter opens on its sketch running.** On the website a chapter's first picture is a clip of the sketch that chapter builds, with the committed still as its poster. The markdown is unchanged, so a clone, GitHub, and a reader who blocks video see the still they always saw. `Scripts/guide-clips.sh` records them, and the manifest moved to `Media/media.json`.
@@ -194,7 +196,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/eaviles/Ollin/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/eaviles/Ollin/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/eaviles/Ollin/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/eaviles/Ollin/compare/0.1.0...0.2.0
