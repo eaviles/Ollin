@@ -539,6 +539,13 @@ swift run --package-path Examples Example-Live-Parameters --export keeper.png --
 
 Each value is read against its own parameter. A number stays a number. A color is a hex string. A vector is two numbers with a comma between them. A menu choice is its name, spelled loosely: `easeOut`, `ease-out` and `"Ease Out"` all find the same one. The [Export page](../Docs/Output/Export.md#setting-a-parameter-for-the-run) lists every kind.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ParametersBackIn-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/ParametersBackIn.jpg" alt="Three square renders of the same rings-on-paper sketch: two small dark rings on cream under the plain export flag, two large dark rings under param radius equals 90, and four pale rings on near-black under radius 90, rings 4, and a dark paper. Under each render a small card labeled the file's recipe lists the seed and the same parameter values" width="680">
+</picture>
+
+The three panels are one sketch rendered three times, with nothing but the flags changed. Under each render is the recipe the file carries, and it names the values the run was drawn with. That is the loop closing: a file tells you its parameters, and the flag hands them back.
+
 The value lands after `setup()` and before the first frame. So it wins over a value the sketch sets for itself, and the new file's recipe names it. A frame can be rendered again from its own recipe, with the sketch on disk untouched.
 
 Ask for a parameter the sketch does not have, or a value its kind cannot read, and the run stops and says so. It never renders something you did not ask for.
@@ -763,11 +770,24 @@ The loop is different from the live-reload host you've used since [Chapter 1](01
 
 Evaluation never writes your file (⌘S does), so you can riff as recklessly as the room deserves and keep only what worked.
 
-A set has looks it comes back to, and a look is every parameter at once. Save one as a *cue*: `saveCue("night")` in code, or the Cues card under the parameters with a name typed in. `cue("night", over: 2)` brings every parameter back over two seconds, a switch flipping at the start and a number easing in, and `nextCue()` walks the sheet in order. The hosts keep the sheet in `Sketch.cues.json` beside the sketch, so a reload never loses one. On stage a MIDI program change calls a cue by number, `/ollin/cue` by name, and a pad learned onto **Next cue** steps through the set. `Examples/Live/Cues` carries five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
-
 The host's own actions answer to a controller too, beside the bindings your sketch makes for itself. Set a port in the inspector's Controls card and the host listens for OSC at `/ollin/evaluate`, `/ollin/code/hidden`, `/ollin/record`, and the rest. A second machine or a phone layout can run the show that way. For a pad or a fader, press Learn on an action and then press or move the control, and the host remembers it. Evaluate lands on a pad next to the ones playing the notes, and a fader rides the strip behind the code. None of this is in the sketch; it is the host's own preference. [Live coding](../Docs/Tools/LiveCoding.md#the-host-on-a-controller) lists the addresses.
 
 The drag from [Chapter 1](01-HelloOllin.md#moving-something-by-hand) works on the stage too, through the code. Hold Command, and the shape under the pointer is outlined over the text. Drag it, pull a corner, or turn the knob, and the numbers change in the code the room is reading. The host evaluates that for you, so the shape stays where you left it and the clock carries. If you have typed since the last evaluation, the host asks you to evaluate first rather than guess which line moved.
+
+### A look you come back to: cues
+
+A set has looks it comes back to, and a look is every parameter at once. Save one as a *cue*. `saveCue("night")` does it in code, and a name typed into the Cues card under the parameters does it by hand. `cue("night", over: 2)` brings every parameter back to it over two seconds, and `nextCue()` walks the sheet in order. A cue can be called from anywhere a sketch reads: a key, a beat, a sensor.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/CalledBack-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/CalledBack.jpg" alt="Three square looks of one ring of twelve dots: small violet dots on near-black labeled night, larger green dots with bright cores on gray labeled one second in, and large orange dots with bright cores on cream labeled dawn, with arrows between them under the call cue dawn over 2. Below, four lanes over two seconds: size rising along an eased curve, hue falling along one, ground as a band blending from navy to cream, and lit stepping up at the first frame; a small card at the left lists five cue names with dawn marked" width="680">
+</picture>
+
+What eases and what jumps is decided by the parameter's kind, the same way it is on a track. A number, a color, a point, and a range have values between two settings, so they ease there, slow at both ends. A switch, a menu choice, and a piece of text have nothing in between, so they take the cue's value on the first frame of the fade. That is why the middle look in the figure is already lit while its dots are still growing. A cue called while another is still fading starts from wherever the parameters are, so a change of mind never snaps back first.
+
+The hosts keep the sheet in `Sketch.cues.json` beside the sketch, so a reload never loses a look. On stage a MIDI program change calls a cue by number, `/ollin/cue` calls one by name, and a pad learned onto **Next cue** steps through the set. [`Examples/Live/Cues`](../Examples/Live/Cues/Sketch.swift) carries five looks on the number keys. [Cues](../Docs/Helpers/Cues.md) has the rest, including `--cue night` for a still at a saved look.
+
+A cue is not a default. The **Save parameters** button above the card writes the values you turned into the `@Param` lines, which is where the piece starts. A cue is where it goes back to.
 
 ## Keeping the take
 
@@ -801,6 +821,13 @@ Stopping is generous on purpose. Quitting the host finishes the movie first, and
 ## Playing the night again: replay
 
 A movie remembers what the performance looked like. A *take* remembers the performance itself: the seed the run rolled, the clock it followed, every pointer move, every parameter you adjusted. It is one small JSON file, and playing it back walks the sketch through the same frames, pixel for pixel.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/TheTake-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/TheTake.jpg" alt="A diagram of four lanes over twenty-four frames: a seed chip at frame 0, a bar of clock time per frame with slight jitter, two runs of pointer dots with a key press between them, and chips where two parameters changed. Below, five frames of a run and the same five replayed, each pair identical" width="680">
+</picture>
+
+Four lanes are the whole file. The seed is one number, rolled once. The clock is one sample per frame, written down as the display drove it, jitter included. So a replay never smooths the night into an idealized version of itself. The pointer lane holds every move, press, and key, each stamped with the frame it preceded. The parameter lane holds where every `@Param` started and each change after, on its frame. Nothing else drives a deterministic sketch, so a fresh instance fed the same four lanes walks through the same frames. The two rows under the lanes are five frames drawn from those lanes twice, which is all a replay is.
 
 ```sh
 swift run OllinLive MySketches/Finale.swift --record-take take.json   # play; quitting writes the file
@@ -869,9 +896,16 @@ Click **Timeline** in the title bar, or press **⌘T**, and a floating panel ope
 swift run OllinLive Examples/Motion/Automation/Sketch.swift
 ```
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/DirectingByHand-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/DirectingByHand.jpg" alt="An annotated diagram of the timeline panel beside a slice of the inspector. The inspector rows carry a diamond each: filled on Radius and Ground, hollow on Hue, and a function mark on Lit, whose rule sits in a field under the row. The panel shows a transport with a timecode readout, a ruler with a tinted loop region and a playhead, a Radius lane plotting an eased curve with three keys and two yellow handles on the selected one, a Ground lane drawing a cream-to-navy-to-cream band, a Lit lane stepping up at three seconds, and a footer naming the selected key's moment and curve beside the file it is saved to" width="680">
+</picture>
+
+Every parameter row in the inspector carries a small diamond, and the diamond says what drives the parameter. Radius and Ground have tracks, so theirs are filled. Hue has none yet, so its diamond is hollow. Lit is worked out from a rule typed into its row, so it wears a function mark instead, and the next section is about that.
+
 The loop has three moves. Scrub the ruler, or step a frame at a time, and the picture follows the playhead. Adjust a parameter in the inspector until the frame looks right. Then click the small diamond in that parameter's row, and a key lands at the playhead holding that value. A hollow diamond starts a track; a filled one already has one; clicking on a key takes it away.
 
-The lanes draw what will happen. A number lane plots its curve, a color lane shows the blend as a band, and a switch steps. Drag a key to move it in time. Click one to pick the curve that leaves it, and a Bezier grows two handles you shape by eye. The loop button repeats a stretch while you work on it, and that region never touches the piece itself.
+The lanes draw what will happen. A number lane plots its curve, a color lane shows the blend as a band, and a switch steps. Drag a key to move it in time. Click one to pick the curve that leaves it, and a Bezier grows two handles you shape by eye. Option-drag the ruler to choose a stretch, and the loop button repeats it while you work. That region is the transport's alone, the tinted band on the ruler in the figure, and it never touches the piece itself.
 
 Everything you place lands in `Sketch.automation.json` beside the sketch, the same file `--automation` and every export read. The live host reads it back on launch and across every reload, so the direction survives the edit loop. One rule to hold: a track your `setup()` writes for the same parameter wins that parameter, because the code is the artifact. The full tour is in [The parameter timeline](../Docs/Tools/Timeline.md).
 
@@ -995,6 +1029,8 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
 - [Cues](../Docs/Helpers/Cues.md): looks you saved and call back, over a fade, from a key, the card, a program change, or `--cue`.
+- [Replay](../Docs/Core/Replay.md): what a take holds, the transport keys, re-rendering a take through any export, and what stays live.
+- [The parameter timeline](../Docs/Tools/Timeline.md): the panel, its lanes and keys, the rule field in the row, the transport, and the file it writes.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
 - [Formula](../Docs/Helpers/Formula.md): the whole arithmetic vocabulary a parameter's rule speaks, what it can name, and what it reports rather than throws.
 - Worked examples: [`Examples/Export/`](../Examples/Export/), [`Examples/Live/`](../Examples/Live/), and [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift).

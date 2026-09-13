@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **Chapters 9 and 31 of the Guide teach six more of their tools.** Six figures join *Pictures* and *Sharing and performing*: what a take writes down beside the same frames it plays back, the timeline panel with its diamonds, lanes, handles, and footer, a cue called back over a fade with what eases and what flips, one sketch rendered three times under `--param` with each file's recipe, a file dropped on the window and what the sketch is told, and one bundled picture as loaded beside its working copy and its widest 3:2 piece.
+
 ## [0.6.0] - 2026-09-13
 
 ### Added

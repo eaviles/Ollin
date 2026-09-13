@@ -33,8 +33,6 @@ final class Photo: Sketch {
 
 `loadImage` reads anything the system can decode (PNG, JPEG, HEIC, and friends) and returns an optional, since a path can be wrong. `drawImage` places the image by its top-left corner, at native size or scaled into a box, and it composites in draw order with everything else, riding the transform stack like a shape. For an image that travels with your sketch, drop the file in the same folder and load it with `Image(resource: "leaf", withExtension: "jpg", in: .module)`.
 
-For a picture to try right now, Ollin bundles twenty pictures. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. `.headland` and `.boats` are two landscapes at dusk, the only wide ones, and they share a shape so either drops into the same box. `.page` is print under uneven light, `.hands` is a pair of open palms for the readers that track one, and `.talavera` and `.stone` are surfaces to wrap a form in. Each carries its `credit`, the photographer and the terms it is used under. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. A large picture is more than a stipple or a dither needs, and `resized(width:height:)` makes the small working copy: `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call. `cropped(toAspect:)` is its companion for the other kind of change. `SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)` takes the largest 3:2 piece out of a square, scaling nothing.
-
 One piece of state changes how images land: `tint`. It multiplies every pixel by a color as the image draws, so the RGB washes the image and the alpha fades it:
 
 ```swift
@@ -46,6 +44,21 @@ noTint()                                        // back to as-is
 ```
 
 Tint never edits the image itself, only how it's drawn, and `withState { }` scopes it like any other state.
+
+### Twenty pictures to start with
+
+For a picture to try right now, Ollin bundles twenty. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. `.headland` and `.boats` are two landscapes at dusk, the only wide ones. They share a shape, so either drops into the same box. `.page` is print under uneven light, `.hands` is a pair of open palms for the readers that track one, and `.talavera` and `.stone` are surfaces to wrap a form in. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. [Sample photographs](../Docs/Drawing/SamplePhotos.md) shows all twenty on one page, each under its name.
+
+A picture arrives at one size, and the size you work at is the next choice:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/WorkingCopy-dark.jpg">
+  <img src="Images/09-Pictures/WorkingCopy.jpg" alt="Three panels of the same photograph of a colonial street. Left, the picture as loaded at 1600 by 1600. Middle, its 300 by 300 working copy shown at the same scale as a small square and then up close, with the note that it has 28 times fewer pixels to read. Right, the picture faded to a ghost with its widest 3:2 piece drawn at full strength inside an orange frame, at 1600 by 1067. The credit the picture carries runs along the foot" width="680">
+</picture>
+
+A 1600-pixel square is more than a stipple, a dither, or a mosaic needs. Each of those reads every pixel, and they were tuned on a copy a few hundred pixels a side. `resized(width:height:)` makes that copy. `SamplePhoto.scarf.load().resized(width: 300, height: 300)` is the whole call, and the copy has twenty-eight times fewer pixels to read. Keep the small copy for the reading and the full picture for the drawing. `cropped(toAspect:)` is the other kind of change. `SamplePhoto.city.load().cropped(toAspect: 3.0 / 2)` takes the largest 3:2 piece out of the square and scales nothing, which is how a square photograph stands in for a wide one.
+
+Each picture carries its `credit`: the photographer, the place, the page it came from, and the terms it is used under. `SamplePhoto.city.credit.line` is the sentence at the foot of the figure, ready to draw. The terms do not ask for it. The Guide gives it anyway.
 
 ### A picture you drop on the window
 
@@ -59,7 +72,12 @@ override func filesDropped() {
 }
 ```
 
-`droppedFiles()` empties itself as you read it, so a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture, and a file the sketch cannot use is a path it can name. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DroppedOnTheWindow-dark.jpg">
+  <img src="Images/09-Pictures/DroppedOnTheWindow.jpg" alt="A diagram of a file tile labeled marigolds.jpg leaving the Finder on a dotted trail that arcs into a dark sketch window, where the picture sits a little turned on a white border under an orange crosshair labeled mouseX, mouseY. An orange line in the window's corner reads not a picture: notes.txt. Callouts say the Finder hands over a path, not a picture, and that a file that is not a picture is still a path to name" width="680">
+</picture>
+
+`droppedFiles()` empties itself as you read it, so a sketch that would rather poll can call it in `draw()` instead and get each drop once. Anything the Finder can hand over comes through, a clip or a font as readily as a picture. A file the sketch cannot use is still a path it can name, the way the orange line in the figure does. Every host takes the drop wherever the sketch is running: the live window, the gallery, and the performance stage with its code hidden. A drop is live input outside a take, so a replay from [Chapter 31](31-SharingAndPerforming.md#playing-the-night-again-replay) never repeats one. [`Examples/Images/Dropped`](../Examples/Images/Dropped/Sketch.swift) starts as an empty frame and lands every picture where you drop it.
 
 ## The box is never the right shape
 
@@ -594,6 +612,7 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 
 - [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for a picture bundled with a sketch, `resized` for a working copy, the sampling helpers, and authoring an image in code.
 - [Sample photographs](../Docs/Drawing/SamplePhotos.md): all twenty bundled pictures, what each is good for, the credit each carries, and the terms they are used under.
+- [Input](../Docs/Helpers/Input.md): the drop hook and the draining read beside the mouse and keyboard reads, and which host surfaces take a drop.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured coverage behind the glyph ramp, the dot shapes and screen angles, and the duotone options.
 - [Photo mosaic](../Docs/Drawing/PhotoMosaic.md): `averageColor` and its linear-light rule, the match, the tint and repeat parameters, and drawing the placements yourself.
 - [Autostereogram](../Docs/Drawing/Autostereogram.md): the repeat and relief settings, the pattern, and why a scaled one stops working.
