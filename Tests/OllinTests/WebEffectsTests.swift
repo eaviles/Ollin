@@ -333,6 +333,25 @@ import OllinWebGate
         }
     }
 
+    /// A lamp on a gray ground through halation, the third pass the page
+    /// owns, then through film grain, a single pass whose pattern moves with
+    /// the frame.
+    final class Filmed: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(Color(white: 0.05))
+            let lamp = makeRenderTarget()
+            withTarget(lamp) {
+                background(Color(white: 0.35))
+                noStroke()
+                fill(Color(red: 0.5, green: 0.42, blue: 0.3)); drawRect(0, 80, 120, 40)
+                fill(.white); drawCircle(60, 50, 14 + sin(time) * 2)
+            }
+            drawImage(lamp.filtered(.halation(threshold: 0.8, radius: 8))
+                          .filtered(.filmGrain(amount: 0.06, size: 2, seed: Double(frameCount))).image, 0, 0)
+        }
+    }
+
     /// A blurred layer under a bloomed one, the two passes the page owns.
     final class Blurred: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -515,6 +534,16 @@ import OllinWebGate
         }
         #expect(kinds == [WebPassNode.blur, WebPassNode.bloom])
         #expect(Set(blurred.frames[0].graph.fragmentRows.keys) == Set(WebPassNode.bloomFragments))
+        // The halation is the page's too, and its add-back binds two rows;
+        // the film grain behind it is one translated pass.
+        let filmed = try OllinApp.recordWebFrames(of: Filmed(), frames: 2, fps: 30)
+        let filmedKinds = filmed.frames[0].graph.layers.compactMap { layer -> String? in
+            if case let .filter(_, node) = layer.kind { return node.fragment }
+            return nil
+        }
+        #expect(filmedKinds == [WebPassNode.halation, "ollin_fx_film_grain"])
+        let filmedRows = filmed.frames[0].graph.fragmentRows
+        #expect(filmedRows == ["ollin_fx_brightpass": 1, "ollin_fx_halation_combine": 2, "ollin_fx_film_grain": 1])
         let flowing = try #require(refusal(Flowing()))
         #expect(flowing.call == "the fluid simulation")
         // A skip cannot stand in for the frames a state would have stepped.
@@ -544,6 +573,7 @@ import OllinWebGate
             ("Sorted", { Sorted() }, 8, 6),
             ("Posted", { Posted() }, 4, 2),
             ("Blurred and bloomed", { Blurred() }, 4, 2),
+            ("Filmed", { Filmed() }, 4, 2),
         ]
         var worst: [String] = []
         for c in cases {

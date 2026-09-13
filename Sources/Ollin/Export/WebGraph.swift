@@ -225,8 +225,12 @@ struct WebPassNode: Hashable {
 
     static let blur = "ollin_web_blur"
     static let bloom = "ollin_web_bloom"
+    static let halation = "ollin_web_halation"
     /// The translated fragments a page-owned pass runs beside its own blur.
     static let bloomFragments = ["ollin_fx_brightpass", "ollin_fx_bloom_combine"]
+    /// The halation's: the same bright pass, then its own add-back, which
+    /// binds two rows (the amount, then the tint).
+    static let halationFragments = ["ollin_fx_brightpass", "ollin_fx_halation_combine"]
     var isPageOwned: Bool { fragment.hasPrefix("ollin_web_") }
 }
 
@@ -942,6 +946,10 @@ final class WebGraphRecorder {
                     let r = rows([SIMD4(Float(max(0.1, radius)), Float(threshold), Float(intensity), 0)])
                     layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.bloom, inputs: [.layer(0)],
                                                                 paramOffset: r.offset, paramRows: r.rows))
+                } else if case let .halation(threshold, radius, tint, amount) = filter.kind {
+                    let r = rows([SIMD4(Float(max(0.1, radius)), Float(threshold), Float(amount), 0), tint])
+                    layer.kind = .filter(input: li, WebPassNode(fragment: WebPassNode.halation, inputs: [.layer(0)],
+                                                                paramOffset: r.offset, paramRows: r.rows))
                 } else {
                     throw refuse("the \(Self.caseName(filter.kind)) filter")
                 }
@@ -1237,6 +1245,12 @@ extension WebGraph {
         func note(_ n: WebPassNode) {
             if n.fragment == WebPassNode.bloom {
                 for name in WebPassNode.bloomFragments { rows[name] = max(rows[name] ?? 0, 1) }
+                return
+            }
+            if n.fragment == WebPassNode.halation {
+                for (name, count) in zip(WebPassNode.halationFragments, [1, 2]) {
+                    rows[name] = max(rows[name] ?? 0, count)
+                }
                 return
             }
             if n.isPageOwned { return }

@@ -169,6 +169,28 @@ A word on how the table is read, because it decides whether a neutral stays neut
 
 Two more things are worth knowing. A file that is not a `.cube` is refused with the line that stopped it, so a bad download says where. And the table runs the other way as well: `ColorLUT(size:title:_:)` builds a cube from a function of color, and `write(to:)` saves it as a `.cube` that any grading tool reads, so a look you tune in a sketch can travel out. [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) wipes the bundled look across a portrait, beside one written in code, and takes any `.cube` dropped on the window.
 
+### A film look: halation and grain
+
+A look grades the color. Two more filters give a frame the *texture* of film, the two things a stock does to a picture that a sensor does not.
+
+<img src="Images/16-LayersAndEffects/FilmLook.jpg" alt="Two panels and two strips: a night street of lamps over dark facades drawn plain on the left and through halation and film grain on the right, each lamp wearing a warm ring and the walls carrying a fine grain; below them one lamp magnified four times, plain and halated, its white core unchanged and an orange fringe around it, and a gray ramp drawn plain above and grained beneath, the grain absent at both ends and heaviest in the middle" width="680">
+
+The first is **halation**, the warm fringe film wears around its brightest highlights. Light that gets through the emulsion reflects off the base and exposes the layers again around the point it entered. The red-sensitive layer sits deepest, so it takes most of that second exposure, and the fringe comes out orange. `.halation(threshold:radius:tint:amount:)` builds it the way `.bloom` builds a glow. The pixels above `threshold` are blurred by `radius`, colored by `tint`, and added back. The difference is where the halo lands. Scattered light changes nothing in a layer that is already fully exposed, so each channel takes the halo in proportion to how far it sits below white. A white lamp keeps its white core and wears a ring, where a glow would have tinted the core too. Under the pictures, the same lamp is magnified four times, plain and halated, so you can see the core hold. A frame with nothing above the threshold comes back untouched, byte for byte.
+
+The second is **film grain**. A developed frame is a scatter of grains, each one developed or not, and that is what makes its noise follow the tone. Where nothing developed there is nothing to vary, and where every grain did there is nothing either. The grain lives in the middle, and its spread goes as the square root of the tone times what is left to white. `.filmGrain(amount:size:seed:)` applies that law to each channel on the displayed picture. `amount` is the spread at mid-gray as a fraction of the way to white, so 0.05 is about twelve levels of a display byte. `size` is how many pixels across a clump is, and a coarser grain is not a fainter one. The mean of any flat region is kept, so grain never lifts or darkens a picture. The ramp along the bottom shows the law: nothing at the black end, nothing at white, the most in the middle. Feed `seed` your `frameCount` and every frame gets the fresh grain a film has. The older `.grain` is plain per-pixel noise, the same at every tone, and it is still the right call for a static or a signal look.
+
+```swift
+override func draw() {
+    background(.black)
+    fill(.white)
+    drawCircle(width / 2, height / 2, 40)
+    postProcess(.halation(threshold: 0.8, radius: 24))
+    postProcess(.filmGrain(amount: 0.06, size: 2, seed: Double(frameCount)))
+}
+```
+
+[`Examples/Effects/FilmLook`](../Examples/Effects/FilmLook/Sketch.swift) draws a night street of lamps through both, with every dial a parameter and a switch that shows the raw frame on the left half.
+
 ## Filters that read the layer as something else
 
 Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those repay meeting individually, because what you feed them matters more than the parameters.

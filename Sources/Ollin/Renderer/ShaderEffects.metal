@@ -308,6 +308,31 @@ fragment float4 ollin_fx_bloom_combine(PresentOut in [[stage_in]],
     return float4(b.rgb + g.rgb * intensity, min(1.0, b.a + g.a * intensity));
 }
 
+// Halation combine: the original plus its blurred bright pass, colored by the
+// tint (params[1], linear) at `amount` (params[0].x), landing only where the
+// emulsion has room. Scattered light re-exposes a layer that is already fully
+// exposed to no effect, so each channel takes the halo in proportion to how
+// far it sits below white: a white core stays white and the halo reads as a
+// fringe around it, a mid-tone beside a highlight takes the whole tint. Where
+// the bright pass is empty the halo is exactly zero and the input passes
+// through byte for byte, which is what lets a frame with no highlight in it
+// go untouched. Alpha grows with the halo's own, as bloom's does, so a halo on
+// a transparent layer composites.
+fragment float4 ollin_fx_halation_combine(PresentOut in [[stage_in]],
+                                          texture2d<float> base [[texture(0)]],
+                                          texture2d<float> glow [[texture(1)]],
+                                          sampler samp [[sampler(0)]],
+                                          constant float4 *params [[buffer(0)]]) {
+    float4 b = base.sample(samp, in.uv);
+    float4 g = glow.sample(samp, in.uv);
+    float amount = params[0].x;
+    float3 tint = params[1].rgb;
+    float3 room = 1.0 - clamp(b.rgb, 0.0, 1.0);
+    float key = clamp(max(b.r, max(b.g, b.b)), 0.0, 1.0);
+    return float4(b.rgb + g.rgb * tint * amount * room,
+                  min(1.0, b.a + g.a * amount * (1.0 - key)));
+}
+
 // MARK: - Color & tone filters
 //
 // Each reads premultiplied-linear input, transforms straight color, and writes
@@ -957,6 +982,60 @@ fragment float4 ollin_fx_grain(PresentOut in [[stage_in]],
     float n = hash12(in.position.xy + seed * 113.0) - 0.5;  // [-0.5, 0.5]
     c += n * amount;
     return ollin_premul(max(c, 0.0), s.a);
+}
+
+// film grain: the noise a developed frame carries (params: amount, size,
+// pattern). A frame is a scatter of grains, each developed or not, so its
+// noise is that of a coverage: zero where nothing developed, zero where every
+// grain did, and largest in the middle, with a spread that goes as the square
+// root of tone times what is left to white. That is the stochastic grain
+// model's Gaussian limit, applied per channel on the displayed (encoded)
+// picture, the picture the model describes, with the same draw for all three
+// channels so a neutral stays neutral. `amount` is the spread at mid-gray, as
+// a fraction of the way to white.
+//
+// The draw is a lattice of `size`-pixel cells, one triangular value per node
+// (two hashes summed, so the grain reads soft rather than salt-and-pepper),
+// blended with a quintic fade. A blend of independent draws has less spread
+// than one draw, and how much less depends on where in the cell the pixel
+// sits, so the blend is divided by the spread its weights predict and every
+// pixel carries the same spread whatever its cell position. The lattice is
+// set half a pixel back so a size of 1 lands each pixel on its own node, and
+// so reads as plain white noise. The change is worked out on the encoded
+// picture and added to the linear one as a difference, so a value above white
+// (clamped to white on the encoded side, where it gets no grain) keeps its
+// excess.
+fragment float4 ollin_fx_film_grain(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, size = max(params[0].y, 0.5), pattern = params[0].z;
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float3 encoded = linearToSrgb(clamp(c, 0.0, 1.0));
+
+    float2 p = (in.position.xy - 0.5) / size;
+    float2 i = floor(p), f = p - i;
+    float2 w = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float weights[4] = { (1.0 - w.x) * (1.0 - w.y), w.x * (1.0 - w.y), (1.0 - w.x) * w.y, w.x * w.y };
+    float2 corners[4] = { float2(0.0, 0.0), float2(1.0, 0.0), float2(0.0, 1.0), float2(1.0, 1.0) };
+    float sum = 0.0, power = 0.0;
+    for (int k = 0; k < 4; k++) {
+        float3 h = hash33(float3(i + corners[k], pattern));
+        sum += weights[k] * (h.x + h.y - 1.0);          // triangular, mean 0, variance 1/6
+        power += weights[k] * weights[k];
+    }
+    float n = sum / sqrt(power / 6.0);                   // unit variance at every pixel
+
+    // The tone weight, with a dead zone at both ends: the encode of a white
+    // lands a float's rounding under 1, and any nonzero residue there flips
+    // eight-bit ties, so black and white must weigh exactly zero.
+    float3 tone = encoded * (1.0 - encoded);
+    tone = select(tone, float3(0.0), tone < 1e-6);
+    float3 spread = 2.0 * amount * sqrt(tone);
+    float3 grained = clamp(encoded + spread * n, 0.0, 1.0);
+    float3 change = srgbToLinear(grained) - srgbToLinear(encoded);
+    return ollin_premul(max(c + change, 0.0), s.a);
 }
 
 // pixelate (mosaic): snap to a block grid (params: cols, aspect, channel, hasTint;

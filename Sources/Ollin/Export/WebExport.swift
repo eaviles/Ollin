@@ -2183,13 +2183,19 @@ enum WebPlayer {
           gl.drawArrays(gl.TRIANGLES, 0, 3);
         }
       }
-      // The two passes the page owns: the blur, and the bloom as bright pass,
-      // blur, and add-back.
+      // The three passes the page owns: the blur, and the bloom and the
+      // halation as bright pass, blur, and their own add-back (the halation's
+      // binds the amount and then the tint).
       function runOwned(name, input, rows, out) {
         if (name === 'ollin_web_blur') { runBlur(input, rows[0], out); return; }
         var bright = acquire(out.w, out.h), blurred = acquire(out.w, out.h);
         runFragment('ollin_fx_brightpass', [input], [rows[1], 0, 0, 0], bright);
         runBlur(bright.tex, rows[0], blurred);
+        if (name === 'ollin_web_halation') {
+          runFragment('ollin_fx_halation_combine', [input, blurred.tex],
+                      [rows[2], 0, 0, 0, rows[4], rows[5], rows[6], rows[7]], out);
+          return;
+        }
         runFragment('ollin_fx_bloom_combine', [input, blurred.tex], [rows[2], 0, 0, 0], out);
       }
       var userPrograms = [];

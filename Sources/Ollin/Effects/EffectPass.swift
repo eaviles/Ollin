@@ -117,6 +117,12 @@ extension Filter {
             return pass("ollin_fx_dither_duo", [f(bias, pixelSize, 0, 0), dark, light])
         case let .grain(amount, seed):
             return pass("ollin_fx_grain", [f(amount, seed, 0, 0)])
+        case let .filmGrain(amount, size, seed):
+            // The seed reaches the shader as a small integer picked from its
+            // bits, so a fractional seed is its own pattern, a frame count past
+            // a few hours is not a float's rounding of one, and the page plays
+            // the same value the Mac drew.
+            return pass("ollin_fx_film_grain", [f(amount, size, Double(Filter.grainPattern(of: seed)), 0)])
         case let .pixelate(size, channel, tint):
             let cols = max(1, (Double(width) / size).rounded())
             return pass("ollin_fx_pixelate",
@@ -267,7 +273,7 @@ extension Filter {
 
         // Every pass that is more than one fragment, or reads what a page cannot
         // hold, stays with the renderer.
-        case .shader, .gaussianBlur, .bloom, .softProof, .fourier, .inverseFourier, .spectrum,
+        case .shader, .gaussianBlur, .bloom, .halation, .softProof, .fourier, .inverseFourier, .spectrum,
              .liquidMetal, .heatmap, .gemSmoke, .diffuse, .distanceField, .boxBlur,
              .adaptiveThreshold, .xdog, .brushwork, .shock, .hatching:
             return nil

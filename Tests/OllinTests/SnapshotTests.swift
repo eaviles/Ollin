@@ -552,6 +552,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("color-look",
                  note: "One poster (a hue sweep over a gray ramp with two disks) read four ways: as drawn, through the bundled WarmPrint cube, through a three-curve table that turns blue over, and through a cube built in code that swaps the channels. Pins the .cube reader on both forms, the encode in and the decode out, the tetrahedral read of a cube and the linear read of curves, and the amount mix. No rng and no time, so it is deterministic.",
                  make: { ColorLookScene() }),
+    SnapshotCase("film-look",
+                 note: "One night scene (a lamp and a moon over a sky ramp and a lit facade) read four ways: as drawn, through halation, through film grain, and through both. Pins the bright pass and blur shared with bloom, the halation add-back landing only where each channel has room (the lamp's core stays white, its ring is warm), the grain's tone weighting (none on the black sky or the white core, most on the facade), its spread normalization across the cell, and the seed's pattern. No rng and no time, so it is deterministic.",
+                 make: { FilmLookScene() }),
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
@@ -4106,6 +4109,40 @@ private final class ColorLookScene: Sketch {
         drawImage(layer.filtered(.lut(.warmPrint)).image, in: panel(1))
         drawImage(layer.filtered(.lut(curves)).image, in: panel(2))
         drawImage(layer.filtered(.lut(swapped, amount: 0.5)).image, in: panel(3))
+    }
+}
+
+/// One night scene read four ways at fixed values (no time, no random): as
+/// drawn, through halation, through film grain, and through both.
+private final class FilmLookScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        let layer = makeRenderTarget(width: 128, height: 128)
+        withTarget(layer) {
+            noStroke()
+            // A sky that runs from near black to a deep blue, a lit facade
+            // along the bottom, a white lamp, and a moon just under white.
+            for y in 0 ..< 96 {
+                fill(Color(red: 0.02, green: 0.03, blue: 0.06 + 0.16 * Double(y) / 95))
+                drawRect(0, Double(y), 128, 1)
+            }
+            fill(Color(red: 0.42, green: 0.36, blue: 0.30)); drawRect(0, 96, 128, 32)
+            fill(Color(red: 0.62, green: 0.50, blue: 0.30)); drawRect(20, 104, 12, 16); drawRect(88, 104, 12, 16)
+            fill(Color(white: 0.96)); drawCircle(104, 24, 9)
+            fill(.white); drawCircle(48, 70, 8)
+            fill(Color(red: 0.16, green: 0.15, blue: 0.14)); drawRect(46, 78, 4, 18)
+        }
+        func panel(_ index: Int) -> Rectangle {
+            Rectangle(x: Double(index % 2) * 128, y: Double(index / 2) * 128, width: 128, height: 128)
+        }
+        let halation = Filter.halation(threshold: 0.75, radius: 10)
+        let grain = Filter.filmGrain(amount: 0.12, size: 2, seed: 3)
+        drawImage(layer.image, in: panel(0))
+        drawImage(layer.filtered(halation).image, in: panel(1))
+        drawImage(layer.filtered(grain).image, in: panel(2))
+        drawImage(layer.filtered(halation).filtered(grain).image, in: panel(3))
     }
 }
 

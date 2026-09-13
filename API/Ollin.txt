@@ -3488,6 +3488,7 @@ struct Filter: Sendable
   static func exposure(stops: Double = default) -> Filter
   static func fieldMap(_: Colormap, from: Double = default, to: Double = default, repeating: Bool = default) -> Filter
   static func fieldMap(_: Ramp, from: Double = default, to: Double = default, repeating: Bool = default) -> Filter
+  static func filmGrain(amount: Double = default, size: Double = default, seed: Double = default) -> Filter
   static func flutedGlass(flutes: Double = default, shape: Filter.FluteShape = default, profile: Filter.FluteProfile = default, distortion: Double = default, shift: Double = default, stretch: Double = default, blur: Double = default, edges: Double = default, highlights: Double = default, shadows: Double = default, margins: Insets = default, angle: Double = default) -> Filter
   static func fourier(of: Filter.FourierChannel = default) -> Filter
   static func gaussianBlur(radius: Double) -> Filter
@@ -3497,6 +3498,7 @@ struct Filter: Sendable
   static func gradientMap(_: Colormap, amount: Double = default) -> Filter
   static func gradientMap(_: Ramp, amount: Double = default) -> Filter
   static func grain(amount: Double = default, seed: Double = default) -> Filter
+  static func halation(threshold: Double = default, radius: Double = default, tint: Color = default, amount: Double = default) -> Filter
   static func halftone(scale: Double = default, angle: Double = default) -> Filter
   static func hatching(spacing: Double = default, length: Double = default, directions: Int = default, foreground: Color = default, background: Color = default) -> Filter
   static func heatmap(colors: [Color] = default, contour: Double = default, innerGlow: Double = default, outerGlow: Double = default, angle: Double = default, noise: Double = default, phase: Double = default) -> Filter

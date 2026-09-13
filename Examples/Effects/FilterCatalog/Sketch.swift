@@ -45,6 +45,7 @@ final class FilterCatalog_Example: Sketch {
         case .blur:
             return [
                 ("gaussianBlur", .gaussianBlur(radius: 9)),
+                ("halation", .halation(threshold: 0.7, radius: 14)),
                 ("bilateral", .bilateral(radius: 6, sigma: 0.18)),
                 ("motionBlur", .motionBlur(angle: 0.4, distance: 0.06)),
                 ("radialBlur", .radialBlur(amount: 0.14)),
@@ -98,6 +99,7 @@ final class FilterCatalog_Example: Sketch {
                 ("glitch", .glitch(amount: 0.32, seed: t * 8)),
                 ("crt", .crt(curvature: 0.18, scanline: 0.35)),
                 ("grain", .grain(amount: 0.25, seed: t)),
+                ("filmGrain", .filmGrain(amount: 0.12, size: 2, seed: t)),
             ]
         case .distortion:
             return [

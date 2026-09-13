@@ -122,6 +122,7 @@ and `Effects/Glitter` shows the iridescence and glitter pair on shapes. The cata
 
 - **`.gaussianBlur(radius:)`** a Gaussian blur, where `radius` is the extent in pixels, so larger is softer. It runs on a hardware Gaussian kernel.
 - **`.bloom(threshold:amount:radius:)`** glow, where pixels brighter than `threshold` bleed light into their surroundings. Ollin extracts the bright parts, blurs them by `radius`, and adds them back at `intensity`. The result is the original **plus** its glow, ready to composite, often additively. Brightness here is the **max color channel** (HSV "value"), not luminance, so a vivid full-brightness mark blooms the same whatever its hue. `threshold` runs `0…1` over the linear-light frame, so HDR highlights (values above 1, from additive light) bloom hardest.
+- **`.halation(threshold:radius:tint:amount:)`** the fringe film wears around its brightest highlights. Light that gets through the emulsion reflects off the base and exposes the layers again around the point it entered, and it exposes the red-sensitive layer most, since that one sits deepest. The pixels above `threshold` (the max channel over the linear-light frame, as `.bloom` reads it) are blurred by `radius`, colored by `tint` (a warm orange by default), and added back at `amount`. What sets it apart from a glow is where the halo lands. Scattered light changes nothing in a layer that is already fully exposed, so each channel takes the halo in proportion to how far it sits below white. A white core stays white and wears a warm ring, a mid-tone beside a highlight takes the whole tint, and a frame with nothing above the threshold comes back byte for byte. See the `Effects/FilmLook` example.
 - **`.bilateral(radius:sigma:)`** edge-preserving smoothing that blurs flat areas while keeping edges sharp, the base for a cartoon or a denoise look. `sigma` is how different a neighbor's color may be before it stops blending, so a smaller value keeps more edges.
 - **`.motionBlur(angle:distance:)`** a directional smear along `angle`, where `distance` is a fraction of the layer. It gives you the streak of a moving subject.
 - **`.radialBlur(amount:)`** a zoom blur smearing outward from the center, where `amount` is a fraction of the layer.
@@ -129,6 +130,7 @@ and `Effects/Glitter` shows the iridescence and glitter pair on shapes. The cata
 ```swift
 layer.filtered(.gaussianBlur(radius: 24))
 layer.filtered(.bloom(threshold: 0.6, amount: 1.4, radius: 24))
+layer.filtered(.halation(threshold: 0.8, radius: 24))
 layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 ```
 
@@ -182,7 +184,8 @@ layer.filtered(.vibrance(amount: 0.6))
 - **`.halftone(scale:angle:)`** a rotated dot screen, dot size tracking brightness.
 - **`.dither(levels:)`** ordered dithering (Bayer 4×4), the retro look that fakes more shades than it has.
 - **`.dither(dark:light:bias:pixelSize:)`** the two-tone variant. The same ordered pattern is mapped onto exactly two chosen colors and cut by tone, which gives the 1-bit or newsprint look in any palette. `bias` shifts the cut (positive lightens), and either color may be transparent so the shadows drop out.
-- **`.grain(amount:seed:)`** film grain, so feed `seed` your `time` or `frameCount` for grain that moves.
+- **`.grain(amount:seed:)`** per-pixel noise, the same at every tone, so feed `seed` your `time` or `frameCount` for noise that moves.
+- **`.filmGrain(amount:size:seed:)`** the grain of a film stock. A developed frame is a scatter of grains, so its noise follows the tone: none where nothing developed, none where every grain did, most in the middle. Each channel is perturbed by `amount` times the square root of its tone times what is left to white, on the displayed picture rather than in linear light, so `amount` is the grain's spread at mid-gray as a fraction of the way to white (0.05 is about twelve levels of a display byte). `size` is how many pixels across a grain clump is, and the spread is the same at any size, so a coarser grain is not a fainter one. The mean of a flat region is kept, so grain never lifts or darkens a picture, and a value above white keeps its excess. `seed` picks the pattern; feed it `frameCount` for the fresh grain every frame of a film has. Black and white take no grain at all, byte for byte. See the `Effects/FilmLook` example.
 - **`.pixelate(size:channel:tint:)`** mosaic into blocks `size` canvas-pixels across, where `channel` can read one channel out as gray and `tint` can recolor it.
 - **`.lineScreen(scale:softness:angle:foreground:background:)`** a brightness-driven line screen. Each cell paints a centered bar whose width tracks that cell's brightness, in `foreground` over `background`.
 - **`.emboss(amount:angle:)`** light the luminance slope along `angle` as a gray relief, like stamped metal.

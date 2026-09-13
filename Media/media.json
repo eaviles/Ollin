@@ -4591,21 +4591,47 @@
       "stillSmall": "examples/Effects/Feedback/still-640.jpg?v=e5bbe686",
       "width": 1080
     },
+    "Effects/FilmLook": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 3.804,
+      "sound": false,
+      "source": "b9ba6724c6775b6a",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 8110347,
+        "loopSmall": 9419380,
+        "still": 356263,
+        "stillSmall": 100834
+      },
+      "loop": "examples/Effects/FilmLook/loop.mp4?v=2e823e59",
+      "loopSmall": "examples/Effects/FilmLook/loop-640.mp4?v=862efd7d",
+      "still": "examples/Effects/FilmLook/still.jpg?v=b208085b",
+      "stillSmall": "examples/Effects/FilmLook/still-640.jpg?v=85248d4e"
+    },
     "Effects/FilterCatalog": {
       "width": 1080,
       "height": 1080,
-      "length": "still",
-      "stillBecause": "holds still",
+      "length": "10s",
+      "seconds": 10.0,
       "frame": 480,
-      "motion": 0.977,
-      "source": "f1928be33c94244b",
+      "motion": 1.238,
+      "sound": false,
+      "source": "774fbbdd2c720f7d",
       "rendered": "2026-09-13",
       "bytes": {
-        "still": 279829,
-        "stillSmall": 107848
+        "loop": 1587044,
+        "loopSmall": 596135,
+        "still": 309517,
+        "stillSmall": 117561
       },
-      "still": "examples/Effects/FilterCatalog/still.jpg?v=a1291234",
-      "stillSmall": "examples/Effects/FilterCatalog/still-640.jpg?v=01b6ff25"
+      "loop": "examples/Effects/FilterCatalog/loop.mp4?v=82e1891a",
+      "loopSmall": "examples/Effects/FilterCatalog/loop-640.mp4?v=ffe239f6",
+      "still": "examples/Effects/FilterCatalog/still.jpg?v=1125de20",
+      "stillSmall": "examples/Effects/FilterCatalog/still-640.jpg?v=a55061dd"
     },
     "Effects/FlowStreaks": {
       "bytes": {

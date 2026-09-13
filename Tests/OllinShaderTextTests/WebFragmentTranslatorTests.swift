@@ -31,7 +31,7 @@ struct WebFragmentTranslatorTests {
         "ollin_fx_sepia", "ollin_fx_color_vision", "ollin_fx_duotone", "ollin_fx_gradient_map",
         "ollin_fx_antialias", "ollin_fx_edges", "ollin_fx_sharpen", "ollin_fx_vignette",
         "ollin_fx_chromatic", "ollin_fx_halftone", "ollin_fx_dither", "ollin_fx_dither_duo",
-        "ollin_fx_grain", "ollin_fx_pixelate", "ollin_fx_linescreen", "ollin_fx_solarize",
+        "ollin_fx_grain", "ollin_fx_film_grain", "ollin_fx_pixelate", "ollin_fx_linescreen", "ollin_fx_solarize",
         "ollin_fx_temperature", "ollin_fx_vibrance", "ollin_fx_exposure", "ollin_fx_levels",
         "ollin_fx_colorama", "ollin_fx_lumakey", "ollin_fx_motion_blur", "ollin_fx_radial_blur",
         "ollin_fx_bilateral", "ollin_fx_emboss", "ollin_fx_oilpaint", "ollin_fx_crosshatch",
@@ -42,7 +42,7 @@ struct WebFragmentTranslatorTests {
         "ollin_fx_bulge", "ollin_fx_wave", "ollin_fx_ripple", "ollin_fx_mirror", "ollin_fx_polar",
         "ollin_fx_tile", "ollin_fx_perturb", "ollin_fx_fluted_glass", "ollin_fx_water",
         "ollin_fx_paper_texture", "ollin_fx_melt", "ollin_fx_field_map",
-        "ollin_fx_brightpass", "ollin_fx_bloom_combine",
+        "ollin_fx_brightpass", "ollin_fx_bloom_combine", "ollin_fx_halation_combine",
         // Combines
         "ollin_fx_mask", "ollin_fx_displace", "ollin_fx_lic", "ollin_fx_mix", "ollin_fx_paint_mix",
         // Generators

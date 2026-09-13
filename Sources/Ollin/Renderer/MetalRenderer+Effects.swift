@@ -513,6 +513,19 @@ extension MetalRenderer {
             encodeEffectFragment("ollin_fx_bloom_combine", inputs: [input, blurred], output: output,
                                  params: [f(intensity, 0, 0, 0)], into: cb)
             return output
+        case let .halation(threshold, radius, tint, amount):
+            guard let bright = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let blurred = acquireFilterTexture(width: width, height: height, pooled: pooled),
+                  let output = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return nil }
+            // The same bright pass and blur as bloom; the add-back is the film's.
+            encodeEffectFragment("ollin_fx_brightpass", inputs: [input], output: bright,
+                                 params: [f(threshold, 0, 0, 0)], into: cb)
+            let blur = MPSImageGaussianBlur(device: device, sigma: Float(max(0.1, radius)))
+            blur.edgeMode = .clamp
+            blur.encode(commandBuffer: cb, sourceTexture: bright, destinationTexture: blurred)
+            encodeEffectFragment("ollin_fx_halation_combine", inputs: [input, blurred], output: output,
+                                 params: [f(amount, 0, 0, 0), tint], into: cb)
+            return output
 
         case let .softProof(lut, warning, amount):
             // A printing condition whose profiles could not be read leaves the
@@ -775,7 +788,7 @@ extension MetalRenderer {
         // above; the list stays exhaustive so a new kind must choose a side.
         case .colorGrade, .invert, .posterize, .threshold, .sepia, .colorVision, .duotone,
              .gradientMap, .antialias, .edges, .sharpen, .vignette, .chromaticAberration,
-             .halftone, .dither, .ditherDuo, .grain, .pixelate, .lineScreen, .solarize,
+             .halftone, .dither, .ditherDuo, .grain, .filmGrain, .pixelate, .lineScreen, .solarize,
              .temperature, .vibrance, .exposure, .develop, .levels, .colorama, .lumaKey, .motionBlur,
              .radialBlur, .bilateral, .emboss, .oilPaint, .crosshatch, .toon, .median,
              .contour, .cmykHalftone, .normalMap, .relight, .iridescence, .glitter,

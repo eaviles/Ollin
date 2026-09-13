@@ -151,6 +151,10 @@ public struct Filter: Sendable {
         /// Bloom: keep the part of the image above `threshold` brightness, blur it by
         /// `radius`, and add it back at `intensity`, a self-contained glowing copy.
         case bloom(threshold: Double, intensity: Double, radius: Double)
+        /// Halation: the part of the image above `threshold`, blurred by `radius`
+        /// and colored by `tint`, added back at `amount` only where the emulsion
+        /// still has room, so a highlight keeps its core and wears a fringe.
+        case halation(threshold: Double, radius: Double, tint: SIMD4<Float>, amount: Double)
 
         // Color & tone -------------------------------------------------------
         /// Brightness offset, contrast around mid-gray, saturation, hue rotation (turns).
@@ -246,8 +250,11 @@ public struct Filter: Sendable {
         /// finish (the cheap 2D cousin of the 3D materials).
         case relight(finish: RelightFinish, angle: Double, elevation: Double,
                      height: Double, intensity: Double, color: SIMD4<Float>?)
-        /// Add film grain at `amount`; `seed` shifts the noise (animate it per frame).
+        /// Add per-pixel noise at `amount`; `seed` shifts the noise (animate it per frame).
         case grain(amount: Double, seed: Double)
+        /// Film grain: tone-weighted clumps `size` pixels across, `amount` the
+        /// grain's spread at mid-gray, a fresh pattern per `seed`.
+        case filmGrain(amount: Double, size: Double, seed: Double)
         /// Mosaic into blocks `size` canvas-pixels across; `channel` and `tint`
         /// optionally read one channel out as gray and recolor it.
         case pixelate(size: Double, channel: PixelChannel, tint: SIMD4<Float>?)
@@ -437,6 +444,26 @@ public struct Filter: Sendable {
         Filter(kind: .bloom(threshold: max(0, threshold),
                             intensity: max(0, amount),
                             radius: max(0, radius)))
+    }
+
+    /// Halation, the fringe film wears around its brightest highlights. Light that
+    /// passes through the emulsion reflects off the base and exposes the layers
+    /// again around the point it entered, reddest because the red-sensitive
+    /// layer sits deepest. The pixels above `threshold` (the max channel, as
+    /// `.bloom` reads it, over the linear-light frame) are blurred by `radius`,
+    /// colored by `tint`, and added back at `amount`. Unlike a glow, the halo only
+    /// lands where the emulsion still has room: each channel takes it in
+    /// proportion to how far it sits below white, so a white core stays white and
+    /// wears a warm ring, and a frame with nothing above the threshold comes
+    /// back byte for byte.
+    public static func halation(threshold: Double = 0.8,
+                                radius: Double = 24,
+                                tint: Color = Color(red: 1, green: 0.35, blue: 0.1),
+                                amount: Double = 1) -> Filter {
+        Filter(kind: .halation(threshold: max(0, threshold),
+                               radius: max(0, radius),
+                               tint: tint.linearRGBA,
+                               amount: max(0, amount)))
     }
 
     // MARK: Color & tone
@@ -699,10 +726,36 @@ public struct Filter: Sendable {
                                 bias: min(max(bias, -1), 1), pixelSize: max(1, pixelSize)))
     }
 
-    /// Film grain: add per-pixel noise at `amount`. `seed` shifts the pattern; feed
-    /// it `time` or `frameCount` for grain that moves.
+    /// Per-pixel noise at `amount`, the same at every tone. `seed` shifts the
+    /// pattern; feed it `time` or `frameCount` for noise that moves. For the grain
+    /// of a film stock, see `filmGrain`.
     public static func grain(amount: Double = 0.08, seed: Double = 0) -> Filter {
         Filter(kind: .grain(amount: max(0, amount), seed: seed))
+    }
+
+    /// Film grain, the way a stock carries it. A developed frame is a scatter of
+    /// grains, so its noise follows the tone: none where nothing developed and
+    /// none where every grain did, most in the middle. Each channel is perturbed by
+    /// `amount` times the square root of its own tone times what is left to white,
+    /// on the displayed picture rather than in linear light, so `amount` is the
+    /// grain's spread at mid-gray as a fraction of the way to white (0.05 is about
+    /// twelve levels of a display byte). The grains are clumps `size` pixels
+    /// across, and the mean of any flat region is kept, so grain never lifts or
+    /// darkens a picture. `seed` picks the pattern; feed it `frameCount` for the
+    /// fresh grain every frame of a film has.
+    public static func filmGrain(amount: Double = 0.05, size: Double = 2, seed: Double = 0) -> Filter {
+        Filter(kind: .filmGrain(amount: max(0, amount), size: max(0.5, size), seed: seed))
+    }
+
+    /// The small integer a film-grain `seed` reaches the shader as: a hash of
+    /// the seed's bits reduced to under 4096, so every distinct seed, fractional
+    /// or a frame count in the millions, picks a pattern of its own, and the
+    /// value stays exact in a float on either side of the web door.
+    static func grainPattern(of seed: Double) -> Int {
+        var h = seed.bitPattern
+        h ^= h >> 33; h = h &* 0xFF51_AFD7_ED55_8CCD; h ^= h >> 33
+        h = h &* 0xC4CE_B9FE_1A85_EC53; h ^= h >> 33
+        return Int(h % 4093)
     }
 
     /// Pixelate (mosaic): collapse the image into square blocks `size` canvas-pixels
