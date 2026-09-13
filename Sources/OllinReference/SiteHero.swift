@@ -412,7 +412,7 @@ enum SiteHero {
         var fills = [s.a, s.b];
         for (var i = 0; i < 2; i++) {
           if (seedFill && seedFill.length) {
-            runFragment('ollin_sim_state_seed', [], [1 / w, 1 / h, 0, 0, seedFill[0], seedFill[1], 0, 0], fills[i]);
+            runFragment('ollin_sim_state_seed', [], [1 / w, 1 / h, 0, 0, seedFill[0], seedFill[1], seedFill.length > 2 ? seedFill[2] : -1, 0], fills[i]);
           } else {
             gl.bindFramebuffer(gl.FRAMEBUFFER, fills[i].fbo);
             gl.clearColor(rest[0], rest[1], rest[2], rest[3]);
