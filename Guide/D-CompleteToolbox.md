@@ -8,7 +8,7 @@ Everything Ollin can do, one line each. The guide teaches by building pieces, so
 
 Use it two ways. It is an index for the moment you remember the guide showing blur somewhere and want it again. It is also a map of what you haven't tried yet. If something you want isn't in these tables, it isn't in the framework yet. The [roadmap](../ROADMAP.md) is the list of what's ahead.
 
-**Contents:** [The ideas underneath](#the-ideas-underneath) · [The sketch and its window](#the-sketch-and-its-window) · [Drawing](#drawing) · [Color](#color) · [Text and images](#text-and-images) · [Geometry you can hold](#geometry-you-can-hold) · [Motion, math, and randomness](#motion-math-and-randomness) · [Generative systems](#generative-systems) · [Physics and simulation](#physics-and-simulation) · [Layers and effects](#layers-and-effects) · [Shaders and compute](#shaders-and-compute) · [3D](#3d) · [Sculpting with fields](#sculpting-with-fields) · [Depth and the phone](#depth-and-the-phone) · [Sound and control](#sound-and-control) · [Seeing and video](#seeing-and-video) · [Sharing and performing](#sharing-and-performing)
+**Contents:** [The ideas underneath](#the-ideas-underneath) · [The sketch and its window](#the-sketch-and-its-window) · [Drawing](#drawing) · [Color](#color) · [Text and images](#text-and-images) · [Geometry you can hold](#geometry-you-can-hold) · [Motion, math, and randomness](#motion-math-and-randomness) · [Generative systems](#generative-systems) · [Physics and simulation](#physics-and-simulation) · [Layers and effects](#layers-and-effects) · [Shaders and compute](#shaders-and-compute) · [3D](#3d) · [Sculpting with fields](#sculpting-with-fields) · [Depth and the phone](#depth-and-the-phone) · [Sound and control](#sound-and-control) · [Making sound](#making-sound) · [Seeing and video](#seeing-and-video) · [Sharing and performing](#sharing-and-performing) · [Installations](#installations)
 
 ## The ideas underneath
 
@@ -61,6 +61,9 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Accumulation | `noClear()`: a persistent canvas that piles up across frames; `Accumulator`: a layer that keeps the running mean, so a picture built from faint samples converges | [Ch 16](16-LayersAndEffects.md), [Ch 19](19-GridSimulations.md) | [Accumulation](../Docs/Drawing/Accumulation.md) |
 | Depth of field from light | `LineSpray` and `Bokeh`: lines drawn as millions of scattered points through a lens into a running mean until bokeh emerges; the `.light` particle style and the `develop` print underneath | [Ch 20](20-ParticleSimulations.md), [Ch 16](16-LayersAndEffects.md) | [Depth of field from light](../Docs/Drawing/DepthOfField.md) |
 | Stroke dynamics | `StrokeMark`/`drawMark`: width and opacity driven by how fast and how hard a mark is being made, rather than where you are along it; `pressure` reads a Force Touch trackpad or tablet | [Ch 15](15-ShapesAsMaterial.md) | [Marks](../Docs/Drawing/Marks.md) |
+| Variable-width strokes | `strokeProfile(_:)`: width shaped along the path, so a line tapers, swells, or carries a profile you wrote | [Ch 15](15-ShapesAsMaterial.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeProfile) |
+| Brushes | `strokeBrush(_:)`: a stamp repeated along the path instead of one continuous ribbon, with its own tip, spacing, jitter, and angle | [Ch 15](15-ShapesAsMaterial.md) | [Marks](../Docs/Drawing/Marks.md#brushes) |
+| Dashed strokes | `strokeDash(_:)`: a line with gaps, the pattern walked along the path so corners and curves keep their rhythm | [Ch 15](15-ShapesAsMaterial.md) | [Drawing](../Docs/Drawing/Drawing.md#strokeDash) |
 | Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | [Ch 15](15-ShapesAsMaterial.md) | [Retained batches](../Docs/Drawing/Batches.md) |
 | HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 16](16-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
 | Wide gamut and HDR output | `colorOutput`: Display P3 on screen, highlights brighter than white, HDR10 video; `Color(displayP3:)` for colors outside sRGB | [Ch 16](16-LayersAndEffects.md) | [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md) |
@@ -84,6 +87,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Three font kinds | Outline (any installed font), bitmap, and plotter stroke fonts | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
 | Text as geometry | `textToShapes`: letters become `Shape`s you can warp, resample, and rebuild | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
 | Atlas text | `textMode(.atlas)` for fast, crisp text when there's a lot of it | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md) |
+| Every script, and columns | Arabic, Devanagari, Thai, and Japanese shaped by the system; text set in columns either way down the page, justified, with hanging punctuation and vertical Mongolian lines | [Ch 8](08-Words.md) | [Text](../Docs/Drawing/Text.md#every-script) |
 | Images | Load PNG/JPEG/HEIC and friends, draw, tint, scale, and crop them | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Sample photographs | Twenty bundled pictures and a short film with their credits, one import away, to try a technique on | [Ch 9](09-Pictures.md) | [Sample photographs](../Docs/Drawing/SamplePhotos.md) |
@@ -93,7 +97,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Seam carving | A picture made narrower or wider by taking away or duplicating the paths that carry the least, so what carries texture keeps its shape | [Ch 9](09-Pictures.md) | [SeamCarving](../Docs/Drawing/SeamCarving.md) |
 | Halftone | A picture as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter | [Ch 9](09-Pictures.md) | [Halftone](../Docs/Drawing/Halftone.md) |
 | Tables and JSON | `loadTable` reads a CSV or TSV with typed reads by column name; `loadJSON` reads a document by name and index | [Ch 9](09-Pictures.md) | [Data](../Docs/Helpers/Data.md) |
-| Live data | `DataFeed` reads one address over and over in the background, counting only the answers that changed | [Ch 9](09-Pictures.md) | [LiveData](../Docs/Helpers/LiveData.md) |
+| Live data | `DataFeed` reads one address over and over in the background, counting only the answers that changed; `PushFeed` holds a connection open for messages that arrive on their own | [Ch 9](09-Pictures.md) | [LiveData](../Docs/Helpers/LiveData.md) |
 | The weather outside | `Weather` reads the sky over a place or a name in plain units, and `Place.sun(at:)` puts the sun where the clock says | [Ch 9](09-Pictures.md) | [Weather](../Docs/Helpers/Weather.md) |
 | Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 
@@ -247,7 +251,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| User shaders | Write `shade(uv, info)`; run it as a generator, filter, or two-input combine | [Ch 17](17-YourFirstShader.md) | [Shaders](../Docs/Shaders/Shaders.md) |
+| User shaders | Write `shade(uv, info)`; run it as a generator, filter, or two-input combine, with `#include` pulling in a helper file that several shaders share | [Ch 17](17-YourFirstShader.md) | [Shaders](../Docs/Shaders/Shaders.md) |
 | The shader library | Hashing, noise, SDFs, palettes, OKLab, spliced into every shader and kernel | [Ch 17](17-YourFirstShader.md) | [ShaderLibrary](../Docs/Shaders/ShaderLibrary.md) |
 | Visual chains | Fluent per-pixel composition: oscillators, warps, blends, modulation, one pass | [Ch 17](17-YourFirstShader.md) | [Visuals](../Docs/Shaders/Visuals.md) |
 | Compute kernels | Your own GPU code over buffers and textures, hot-reloadable | [Ch 20](20-ParticleSimulations.md) | [Compute](../Docs/Shaders/Compute.md) |
@@ -278,6 +282,11 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Environments | HDRI image-based lighting (eight bundled, twelve downloading) plus a zero-asset procedural sky; the surroundings become the light | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#environment-lighting) |
 | Shadows | Contact-hardening cast shadows with a softness dial, ray-traced for point lights on capable GPUs | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md#shadows) |
 | Ray-traced reflections | Metals that reflect the actual scene, off-screen parts included | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
+| Motion blur | `motionBlur(shutter:)`: the streak a real shutter leaves, worked out from how far each surface moved during the frame | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#motion-blur) |
+| Temporal anti-aliasing | `temporalAntialiasing()`: 3D edges refined past MSAA by jittering the projection a sub-pixel each frame and gathering the history | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#temporal-anti-aliasing) |
+| Specular anti-aliasing | `specularAntialiasing()`: highlights that hold still instead of crawling and sparkling as a surface turns | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#specular-anti-aliasing) |
+| Temporal upscaling | `temporalUpscaling(_:)`: render fewer pixels and let MetalFX put the frame back at full size | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#temporal-upscaling) |
+| Frames between the drawn ones | `frameInterpolation()`: `draw()` runs every other refresh and the platform builds the frame in between, for a heavy scene on a fast display | [Ch 26](26-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#frames-between-the-drawn-ones) |
 | Wireframe and textures | Any mesh as its triangle edges (which do not light); any mesh wrapped in an image through its UVs, or with no UVs at all through a triplanar projection | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#textures) |
 | Point clouds | Instanced splats by the hundred thousand, camera-facing | [Ch 27](27-DepthAndThePhone.md) | [3D](../Docs/3D/3D.md) |
 | Camera control and moves | Viewer orbiting, cinematic `CameraMove`s, the self-driving showcase, snap views | [Ch 21](21-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
@@ -286,7 +295,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | The Hopf fibration | A sphere's worth of circles, no two of which meet and every two of which are linked exactly once, handed back as 3D paths to sweep | [Ch 22](22-Meshes.md) | [The Hopf fibration](../Docs/3D/HopfFibration.md) |
 | Mesh fields | A retained world of placed meshes drawn by one call, GPU-culled per copy against the camera (`MeshField`/`drawMeshField`) | [Ch 23](23-Landscapes.md) | [Instancing](../Docs/3D/Instancing.md) |
 | Strand fields | Grass grown inside the draw call: bending, swaying blades with no geometry buffers, camera-culled and distance-graded (`StrandField`/`drawStrands`) | [Ch 23](23-Landscapes.md) | [Strands](../Docs/3D/Strands.md) |
-| The ocean | A sea built from its own wave spectrum: one inverse Fourier transform makes the surface, drawn as water with no geometry, its wave height a measurement in world units (`Ocean`/`oceanField`/`drawOcean`) | [Ch 23](23-Landscapes.md) | [The ocean](../Docs/3D/Ocean.md) |
+| The ocean | A sea built from its own wave spectrum: one inverse Fourier transform makes the surface, drawn as water with no geometry, its wave height a measurement in world units (`Ocean`/`makeOceanField`/`drawOcean`) | [Ch 23](23-Landscapes.md) | [The ocean](../Docs/3D/Ocean.md) |
 | Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 27](27-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
 | What stacks with what | The compatibility map across the 3D features | [Ch 21](21-3DGently.md), [Ch 26](26-SculptingWithFields.md) | [Combining](../Docs/3D/Combining.md) |
 
@@ -307,7 +316,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Recorded captures | Open `.r3d` depth recordings as point clouds with true intrinsics | [Ch 27](27-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
 | Live USB depth | A tethered phone's RGBD stream, frame by frame | [Ch 27](27-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
 | The capture app | Ollin's own iPhone app streams body, face, LiDAR depth, segmentation, and motion | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
-| World fusion | Sweep the phone; frames fuse into one fixed world cloud by pose | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
+| World fusion | Sweep the phone; frames fuse into one fixed world cloud by pose, and a place the sweep comes back to is recognized, so the cloud closes rather than drifting | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
 
 ## Sound and control
 
@@ -318,6 +327,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 28](28-SoundAndControl.md), [Ch 30](30-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 28](28-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
+| Timecode | `TimecodeClock` follows the MIDI Time Code a deck or an editing system sends, so a sketch rides the show's own position rather than its own clock | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md#timecode-timecodeclock) |
 | Link | The network's shared tempo session: one beat and one downbeat for every app in the room | [Ch 28](28-SoundAndControl.md) | [Link](../Docs/Integration/Link.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 28](28-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
 | TUIO | Touches, tagged pieces, and shapes from a marker table, a touch wall, or a phone app | [Ch 28](28-SoundAndControl.md) | [TUIO](../Docs/Integration/TUIO.md) |
@@ -333,7 +343,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, a room of your own from a recording or a rule (the convolution reverb), a wavetable read by position, two physical models (a plucked string and a struck shape), sound placed in the 3D scene, and a soundtrack in an export | [Ch 29](29-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
+| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, the four effects that move a sound and the three that hold its level, a room of your own from a recording or a rule (the convolution reverb), a wavetable read by position, four physical models (a plucked string, a struck shape, a bowed string, and a blown tube), an effect of your own in the chain, sound placed in the 3D scene, and a soundtrack in an export | [Ch 29](29-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
 | Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number, with a tempo and named note lengths to turn beats into seconds | [Ch 29](29-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
 | Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 29](29-MakingSound.md) | [Sonification](../Docs/Helpers/Sonification.md) |
 
@@ -355,9 +365,11 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Transparent output | `background(.clear)` keeps the canvas see-through, and every export carries that coverage as the file's alpha, so the piece lands over another layer | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#transparent-output) |
 | Linear frames for a compositor | `--export-exr` writes the frame before the tone map: light that runs past white, the frame's coverage, and the distance from the eye as a `Z` channel | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, real glass, glowing meshes as lights, textures in the bounces, a real lens | [Ch 31](31-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
 | Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Slow motion in an export | `--slow-motion` renders the extra frames a slowed shot needs, so the motion stays smooth rather than stepping | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#slow-motion) |
 | Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 31](31-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
 | Record & replay | `--record-take` writes a run's seed, clock, inputs, and parameters down; `--replay` plays it back exactly, scrubs it, and re-renders it through any export | [Ch 31](31-SharingAndPerforming.md) | [Replay](../Docs/Core/Replay.md) |
 | Keyframed parameters | `automate($parameter) { }` writes a parameter's values down over time, carried by named or Bezier curves, looped or run at any speed, and rendered exactly by any export | [Ch 31](31-SharingAndPerforming.md) | [Automation](../Docs/Core/Automation.md) |
@@ -383,6 +395,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Parameter timeline | OllinLive's panel: scrub, adjust a parameter, click its diamond to place a key; lanes, curves shaped by eye, and the automation file every export reads | [Ch 31](31-SharingAndPerforming.md) | [Timeline](../Docs/Tools/Timeline.md) |
 | Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 31](31-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
 | Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 31](31-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
+| Describable output | `describe(_:)` and `describe(_:as:in:)`: the piece says what it shows and what its parts are, so a screen reader has something to read | [Ch 31](31-SharingAndPerforming.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 | Accessibility | See your colors through the three kinds of color vision, check whether a palette holds apart, and read the reduce-motion setting | [Ch 2](02-Color.md), [Ch 3](03-MotionAndTime.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 
 ## Installations

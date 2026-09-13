@@ -35,7 +35,7 @@ This group covers meshes, point clouds, and the 3D transform stack.
 | [ShadowArt](ShadowArt/) | A solid carved so that it throws a ring from the front and a cross from the side. The shadow it really throws is drawn beside the shadow that was asked for (`shadowArt`, `shadow(from:)`). |
 | [ShapeFactory](ShapeFactory/) | The parametric and profile mesh set (Möbius, Klein, superellipsoid, supershape, extrude, lathe), morphing on `time`. |
 | [SolidType](SolidType/) | A word extruded into a solid that catches the light and throws a shadow. The same word is also drawn one letter at a time, and each letter nods about its own center (`drawText3D`, `Mesh.text`, `Mesh.textGlyphs`). |
-| [Ocean](Ocean/) | A sea built from its own wave spectrum. One inverse Fourier transform on the GPU makes the surface, which is drawn as water with no geometry anywhere (`oceanField`, `drawOcean`). |
+| [Ocean](Ocean/) | A sea built from its own wave spectrum. One inverse Fourier transform on the GPU makes the surface, which is drawn as water with no geometry anywhere (`makeOceanField`, `drawOcean`). |
 | [Planet](Planet/) | A world with nothing loaded. Six compute kernels bake its elevation, surface, relief, finish, city lights, and weather once. Spheres wear those maps under one sun, and the terminator decides both where the cities show and where the air glows. |
 | [LoadedMesh](LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…). Point it at your own file with `OLLIN_MESH=<path>`, or use the bundled crystal. Either way the mesh is recentered, scaled to fit, and lit. |
 | [TexturedMesh](TexturedMesh/) | A UV-gridded globe textured with an image, standing over a floor tinted by a base color. Both are lit. |

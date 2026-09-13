@@ -169,7 +169,7 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 
 | p5.js | Ollin | Notes |
 |---|---|---|
-| `loadImage("a.png")` | `loadImage("a.png")` | returns an optional, since a path can be wrong ([Chapter 8](08-Words.md)) |
+| `loadImage("a.png")` | `loadImage("a.png")` | returns an optional, since a path can be wrong ([Chapter 9](09-Pictures.md)) |
 | `image(img, x, y)` / `image(img, x, y, w, h)` | `drawImage(img, x, y)` / `drawImage(img, x, y, w, h)` | |
 | `tint(…)` / `noTint()` | `tint(_:)` / `noTint()` | |
 | `img.get(x, y)` / `img.set(x, y, c)` | `img[x, y]` | one subscript reads and writes |
@@ -183,7 +183,7 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 | `mouseX`, `mouseY`, `mouseIsPressed` | same names | |
 | `mousePressed()`, `mouseReleased()` | same names, as overrides | |
 | `mouseDragged()` | poll `mouseIsPressed` in `draw()` | dragging is state you read, not an event |
-| `pmouseX`, `pmouseY` | keep your own | store `Vector2(mouseX, mouseY)` in a property at the end of `draw()` |
+| `pmouseX`, `pmouseY` | `previousMouse` | one `Vector2` for where the mouse was last frame, beside `mouse` for where it is now |
 | `key`, `keyCode` | same names | typed: a `Character?` and a `KeyCode?` |
 | `keyPressed()`, `keyReleased()` | same names | |
 | `keyIsDown(LEFT_ARROW)` | `isKeyDown(.leftArrow)` | also by character: `isKeyDown("a")` |

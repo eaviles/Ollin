@@ -115,7 +115,7 @@ An animation loops invisibly when every time-driven term completes *whole* cycle
 
 <img src="Images/09-Pictures/TypeMosaic.jpg" alt="A sunset over water built entirely from one word repeated in a grid, colored and sized by the image beneath" width="560">
 
-To read an image at any grid's resolution, use fractions as the go-between. A cell 30% across and 60% down the grid reads the pixel 30% across and 60% down the image. Nothing needs to match in size, because the fractions do the translation. This is how [Chapter 8](08-Words.md) rebuilds a photo as a mosaic of letters, and it's the same idea as normalized coordinates wearing work clothes.
+To read an image at any grid's resolution, use fractions as the go-between. A cell 30% across and 60% down the grid reads the pixel 30% across and 60% down the image. Nothing needs to match in size, because the fractions do the translation. This is how [Chapter 9](09-Pictures.md) rebuilds a photo as a mosaic of letters, and it's the same idea as normalized coordinates wearing work clothes.
 
 ## Shaping a value
 
@@ -126,7 +126,7 @@ To read an image at any grid's resolution, use fractions as the go-between. A ce
   <img src="Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of dots spaced by the curve" width="680">
 </picture>
 
-A shaping function takes a 0…1 value and hands back a reshaped 0…1 value. Its graph shows input along the bottom and output up the side, and the straight diagonal means "unchanged". Where the curve is steep, the value moves fast. Where it's flat, the value lingers, which is why the dot strips under each curve bunch and spread. `step` is an if in curve form, 0 then 1 at an edge. `smoothstep` is the gentle S between two edges, with `t * t * (3 - 2 * t)` inside. Squaring a 0…1 value is a shaping curve too, since it pushes the middle down and keeps the ends. That's [Chapter 8](08-Words.md)'s one-line contrast boost. The whole toolkit lives in [Chapter 3](03-MotionAndTime.md).
+A shaping function takes a 0…1 value and hands back a reshaped 0…1 value. Its graph shows input along the bottom and output up the side, and the straight diagonal means "unchanged". Where the curve is steep, the value moves fast. Where it's flat, the value lingers, which is why the dot strips under each curve bunch and spread. `step` is an if in curve form, 0 then 1 at an edge. `smoothstep` is the gentle S between two edges, with `t * t * (3 - 2 * t)` inside. Squaring a 0…1 value is a shaping curve too, since it pushes the middle down and keeps the ends. That's [Chapter 9](09-Pictures.md)'s one-line contrast boost. The whole toolkit lives in [Chapter 3](03-MotionAndTime.md).
 
 ### Exponential decay
 
@@ -226,7 +226,7 @@ Natural forms have big shapes *and* fine texture. So take noise at both scales a
   <img src="Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
 </picture>
 
-Scatter points across a plane, then ask everywhere how far the nearest one is. The answers are small beside each point and peak on the walls between two, so shading them divides the plane into cells, one per point. Asking for the *second*-nearest distance instead gives a value that hits zero exactly on those walls, so the borders draw themselves. [Chapter 5](05-Noise.md) meets this as `worley`, the cellular member of the noise family.
+Scatter points across a plane, then ask everywhere how far the nearest one is. The answers are small beside each point and peak on the walls between two, so shading them divides the plane into cells, one per point. Asking instead how much *farther* the second-nearest point is gives a value that hits zero exactly on those walls, so the borders draw themselves. [Chapter 5](05-Noise.md) meets this as `worley`, the cellular member of the noise family.
 
 ## Moving the paper
 
@@ -328,7 +328,7 @@ To trace a line through a direction field, ask the field which way at your posit
 
 <img src="Images/18-IteratedForms/Plates.jpg" alt="Four glowing density plates: folded translucent attractor forms like X-rays of smoke" width="560">
 
-Take a formula, feed it a point, feed it its own answer, and keep going, and the visited points form an **orbit**. For most formulas the orbit shoots away or settles into a dot. For special ones it wanders forever inside a bounded shape, the **attractor**. Plotting a million faint visits reveals where it likes to be. The ghostly plates in [Chapter 14](14-FieldsAndFlow.md) are nothing but visit counts made luminous.
+Take a formula, feed it a point, feed it its own answer, and keep going, and the visited points form an **orbit**. For most formulas the orbit shoots away or settles into a dot. For special ones it wanders forever inside a bounded shape, the **attractor**. Plotting a million faint visits reveals where it likes to be. The ghostly plates in [Chapter 18](18-IteratedForms.md) are nothing but visit counts made luminous.
 
 ### Optical flow: a measured field
 
@@ -357,7 +357,7 @@ Distributed systems need a definition of "nearby". That's a perception radius ar
   <img src="Images/19-GridSimulations/LifeRules.jpg" alt="Three three-by-three neighborhoods and their outcomes: lonely cells die, comfortable cells live on, empty cells with three neighbors are born" width="680">
 </picture>
 
-No cell in the Game of Life knows what the board looks like. Each one asks only its eight neighbors and follows three lines of rules, and gliders, blinkers, and all the rest emerge unbidden. The same principle runs gentler machinery. Truchet tiles in [Chapter 6](06-GridsAndRepetition.md) agree only at their shared edges, yet loops and mazes appear. Boids in [Chapter 12](12-FlocksAndSwarms.md) know only their circle, yet the flock turns as one. Reaction-diffusion in [Chapter 19](19-GridSimulations.md) asks even less and builds coral. When a pattern looks globally planned, look for the local law first.
+No cell in the Game of Life knows what the board looks like. Each one asks only its eight neighbors and follows three lines of rules, and gliders, blinkers, and all the rest emerge unbidden. The same principle runs gentler machinery. Truchet tiles in [Chapter 7](07-Tiles.md) agree only at their shared edges, yet loops and mazes appear. Boids in [Chapter 12](12-FlocksAndSwarms.md) know only their circle, yet the flock turns as one. Reaction-diffusion in [Chapter 19](19-GridSimulations.md) asks even less and builds coral. When a pattern looks globally planned, look for the local law first.
 
 ### Recursion: a rule applied to its own output
 
@@ -399,13 +399,13 @@ Two parameters span a plane, where every pair of settings is a point. A system's
   <img src="Images/18-IteratedForms/FractalPair.jpg" alt="Three panels banded in blue, gold, and cream: the whole Mandelbrot set with a small red circle marking one point on its edge, the Julia set that same point produces, and a deep zoom into the Mandelbrot boundary" width="680">
 </picture>
 
-Iterate a formula at every pixel and ask one question. How many rounds until the value flies off past a bound? Points that never escape are painted the set's interior. Everywhere else the *count itself* becomes the color, so the smooth bands you see are equal-patience contours. The most famous images in mathematics are literally a loop counter, colorized. Which of the formula's two numbers you hold still decides which fractal you get. The marked point in the first panel is the one whose Julia set sits beside it. [Chapter 19](19-GridSimulations.md) shades both this way.
+Iterate a formula at every pixel and ask one question. How many rounds until the value flies off past a bound? Points that never escape are painted the set's interior. Everywhere else the *count itself* becomes the color, so the smooth bands you see are equal-patience contours. The most famous images in mathematics are literally a loop counter, colorized. Which of the formula's two numbers you hold still decides which fractal you get. The marked point in the first panel is the one whose Julia set sits beside it. [Chapter 18](18-IteratedForms.md) shades both this way.
 
 ### Density as tone
 
 <img src="Images/20-ParticleSimulations/MillionGrains.jpg" alt="The same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, a smooth field of light" width="560">
 
-Draw one faint dot and you see a dot. Draw a million and you see a *material*, because overlapping near-transparent marks add up to smooth tone exactly where they crowd. The count is the brush: each tenfold increase trades grain for cream. This is how attractor plates, sandpaintings, and [Chapter 19](19-GridSimulations.md)'s GPU grains all get their finish. It's also why they need so many particles.
+Draw one faint dot and you see a dot. Draw a million and you see a *material*, because overlapping near-transparent marks add up to smooth tone exactly where they crowd. The count is the brush: each tenfold increase trades grain for cream. This is how attractor plates, sandpaintings, and [Chapter 20](20-ParticleSimulations.md)'s GPU grains all get their finish. It's also why they need so many particles.
 
 ## Shapes as regions
 
@@ -457,7 +457,7 @@ Averaging two colors channel by channel gives the numeric midpoint, and your eye
   <img src="Images/09-Pictures/PixelSampling.jpg" alt="A small sunset image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
 </picture>
 
-The eye doesn't weigh channels equally. Green counts most, red less, blue least, and the standard weights are 0.2126, 0.7152, 0.0722. Averaging r, g, and b calls a saturated blue as bright as a green, and it visibly isn't. The weighted sum, luminance, matches what you see. Any effect driven by "how bright is this pixel", like the dot sizes here, needs the weighted version. [Chapter 8](08-Words.md) meets this the first time it reads pixels.
+The eye doesn't weigh channels equally. Green counts most, red less, blue least, and the standard weights are 0.2126, 0.7152, 0.0722. Averaging r, g, and b calls a saturated blue as bright as a green, and it visibly isn't. The weighted sum, luminance, matches what you see. Any effect driven by "how bright is this pixel", like the dot sizes here, needs the weighted version. [Chapter 9](09-Pictures.md) meets this the first time it reads pixels.
 
 ### Blend modes are arithmetic
 

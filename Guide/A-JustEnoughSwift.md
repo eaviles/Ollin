@@ -4,7 +4,7 @@
 
 # A. Just enough Swift
 
-The guide teaches Swift the way it teaches everything else: a short note at the exact moment you first need a construct, and no sooner. Those notes work well in the flow of a chapter, but they're scattered across twenty-two of them. This appendix is the same ground gathered into one continuous pass, for people who'd rather meet the language in order. It covers every piece of Swift the guide leans on, from `let` to `@Param`, with nothing that the guide doesn't actually use.
+The guide teaches Swift the way it teaches everything else: a short note at the exact moment you first need a construct, and no sooner. Those notes work well in the flow of a chapter, but they're scattered across sixteen of them. This appendix is the same ground gathered into one continuous pass, for people who'd rather meet the language in order. It covers every piece of Swift the guide leans on, from `let` to `@Param`, with nothing that the guide doesn't actually use.
 
 You don't need to have written Swift before. You do need to have programmed a little in something, because if loops and functions are familiar in any language, this is a translation job rather than a first language.
 
@@ -254,7 +254,7 @@ Triple quotes make a multiline string, verbatim, line breaks and all. That matte
 
 ## What the guide never needed
 
-Swift is a big language, and a working sketch touches a small, pleasant corner of it. Protocols, generics, enums with payloads, error handling with `throws`, and concurrency with `async` are all real, and all skippable here. The guide gets through twenty-two chapters without asking you to write any of them, and the framework's design keeps them off your side of the API. When you're curious, [*The Swift Programming Language*](https://docs.swift.org/swift-book/) is the canonical book, free and readable.
+Swift is a big language, and a working sketch touches a small, pleasant corner of it. Protocols, generics, enums with payloads, error handling with `throws`, and concurrency with `async` are all real, and nearly all skippable here. Across thirty-two chapters the guide asks for one of them once: reading a recorded file or a still picture is an `async` call, so [Chapter 28](28-SoundAndControl.md) and [Chapter 30](30-Seeing.md) write `try await` inside the framework's own `waitFor { }`. Otherwise the framework's design keeps all of it off your side of the API. When you're curious, [*The Swift Programming Language*](https://docs.swift.org/swift-book/) is the canonical book, free and readable.
 
 If a chapter's Swift ever still feels like the obstacle, that's a bug in this guide, not in you, and the same [issue tracker](https://github.com/eaviles/Ollin/issues) that takes confusing math takes confusing Swift.
 
