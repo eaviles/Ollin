@@ -221,7 +221,9 @@ a1f33f74fb89  Guide/27-DepthAndThePhone.md:368  cannot find 'device' in scope
 f3ae11ef787c  Guide/27-DepthAndThePhone.md:429  cannot find 'device' in scope
 d901f4c6af5b  Guide/27-DepthAndThePhone.md:435  cannot find 'balls' in scope
 1e7960fe4884  Guide/27-DepthAndThePhone.md:451  cannot find 'wand' in scope
-6c724ab7c6e1  Guide/27-DepthAndThePhone.md:466  cannot find 'StageCamera' in scope
+9fa02a3d86b8  Guide/27-DepthAndThePhone.md:468  cannot find 'device' in scope
+ec50b450c686  Guide/27-DepthAndThePhone.md:474  cannot find 'device' in scope
+6c724ab7c6e1  Guide/27-DepthAndThePhone.md:492  cannot find 'StageCamera' in scope
 8ebfa121735c  Guide/28-SoundAndControl.md:57  cannot find 'source' in scope
 6f439119170b  Guide/28-SoundAndControl.md:79  cannot find 'source' in scope
 4b84fec505da  Guide/28-SoundAndControl.md:91  cannot find 'AudioInput' in scope

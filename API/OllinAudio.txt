@@ -655,14 +655,6 @@ struct Sonification: Equatable, Sendable
   var scale: Scale? { get set }
   var valueDomain: ClosedRange<Double> { get set }
   var values: [Double] { get set }
-struct SoundClassification: Equatable, Sendable
-  init(label: String, confidence: Double)
-  let confidence: Double
-  let label: String
-struct SoundEvent: Equatable, Sendable
-  let confidence: Double
-  let label: String
-  let time: Double
 struct SpokenPhrase: Equatable, Sendable
   let duration: Double
   let start: Double

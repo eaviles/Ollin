@@ -124,6 +124,14 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// depth map and the camera pose, so the thing being looked at keeps a place
     /// in the room. Streams in Attention mode (rear camera).
     case saliency = 13
+    /// What the phone's microphone is hearing, named: one reading per window of
+    /// audio, every label the on-device sound classifier knows with how sure it
+    /// is of each, strongest first, on the phone's own audio clock. The phone
+    /// sends the whole judgment and the Mac decides what counts as a sound
+    /// starting, since the wire runs one way and a sketch sets its own
+    /// threshold. Needs no camera, so it rides beside every mode, behind the
+    /// app's own Hear switch (the microphone asks its own permission).
+    case sound = 14
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -933,6 +941,40 @@ public extension PhoneWire {
     }
 }
 
+/// One label the phone's sound classifier reports, and how sure it is of it.
+/// The label is the classifier's own spelling: the built-in vocabulary writes
+/// lower case with underscores (`"dog_bark"`, `"finger_snapping"`).
+public struct PhoneSoundClassification: Sendable, Equatable {
+    public var label: String
+    public var confidence: Float
+
+    public init(label: String, confidence: Float) {
+        self.label = label
+        self.confidence = confidence
+    }
+}
+
+/// What the phone heard in one window of microphone audio: every label its
+/// classifier knows, strongest first, each with its confidence.
+///
+/// `timestamp` is where the window starts, in seconds of audio since the phone
+/// began listening (the sample clock, so the same audio gives the same times),
+/// and `duration` is how much audio the judgment was made from. The Mac derives
+/// the level, the strongest label, and the threshold crossings from these on
+/// its own side.
+public struct PhoneSoundSample: Sendable, Equatable {
+    public var timestamp: Double
+    public var duration: Double
+    public var classifications: [PhoneSoundClassification]
+
+    public init(timestamp: Double, duration: Double,
+                classifications: [PhoneSoundClassification]) {
+        self.timestamp = timestamp
+        self.duration = duration
+        self.classifications = classifications
+    }
+}
+
 /// A decoded message of any kind, which the unit tests round-trip.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
@@ -974,6 +1016,10 @@ public enum PhoneMessage: Sendable, Equatable {
     /// Where the rear camera's picture draws the eye: the heat map, the regions
     /// it peaks in, and the matching color frame, one reading per analyzed frame.
     case saliency(PhoneSaliencySample)
+    /// What the microphone is hearing, named: every label with its confidence,
+    /// one reading per window of audio. Unlike the camera streams it needs no
+    /// mode, so it arrives beside whichever one is running.
+    case sound(PhoneSoundSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -990,6 +1036,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .markers: return .marker
         case .wand: return .wand
         case .saliency: return .saliency
+        case .sound: return .sound
         }
     }
 }
@@ -1044,6 +1091,7 @@ public extension PhoneWire {
         case .markers(let markers): payload = encodeMarkersPayload(markers)
         case .wand(let w): payload = encodeWandPayload(w)
         case .saliency(let s): payload = encodeSaliencyPayload(s)
+        case .sound(let s): payload = encodeSoundPayload(s)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1393,6 +1441,25 @@ public extension PhoneWire {
         }
     }
 
+    private static func encodeSoundPayload(_ s: PhoneSoundSample) -> Data {
+        var p = Data()
+        appendF64(&p, s.timestamp)
+        appendF64(&p, s.duration)
+        // A label count, then that many records. The built-in classifier reports
+        // three hundred-odd labels a window, so the count is two bytes (capped
+        // defensively at what two bytes hold); a record is the UTF-8 label behind
+        // its own byte count, then the confidence.
+        let labels = s.classifications.prefix(Int(UInt16.max))
+        appendU16(&p, UInt16(labels.count))
+        for entry in labels {
+            let utf8 = Data(entry.label.utf8.prefix(255))
+            p.append(UInt8(utf8.count))
+            p.append(utf8)
+            appendF32(&p, entry.confidence)
+        }
+        return p
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -1424,6 +1491,7 @@ public extension PhoneWire {
         case .marker: return decodeMarkers(payload).map(PhoneMessage.markers)
         case .wand: return decodeWand(payload).map(PhoneMessage.wand)
         case .saliency: return decodeSaliency(payload).map(PhoneMessage.saliency)
+        case .sound: return decodeSound(payload).map(PhoneMessage.sound)
         }
     }
 
@@ -1944,6 +2012,33 @@ public extension PhoneWire {
         return PhoneSalientRegionSample(x: x, y: y, width: width, height: height,
                                         confidence: confidence,
                                         hasWorldCenter: hasWorld, worldCenter: worldCenter)
+    }
+}
+
+// MARK: - The sound payload
+
+private extension PhoneWire {
+    static func decodeSound(_ data: Data) -> PhoneSoundSample? {
+        // Fixed prefix: timestamp(8) + duration(8) + count(2).
+        guard data.count >= 8 + 8 + 2 else { return nil }
+        let s = data.startIndex
+        var o = 0
+        let timestamp = readF64(data, s + o); o += 8
+        let duration = readF64(data, s + o); o += 8
+        let count = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+        var labels = [PhoneSoundClassification](); labels.reserveCapacity(count)
+        for _ in 0..<count {
+            // A record is byteCount(1) + the bytes + confidence(4); a short buffer
+            // anywhere in the list drops the whole reading rather than half of it.
+            guard data.count >= o + 1 else { return nil }
+            let byteCount = Int(data[s + o]); o += 1
+            guard data.count >= o + byteCount + 4 else { return nil }
+            let label = String(decoding: data[(s + o)..<(s + o + byteCount)], as: UTF8.self)
+            o += byteCount
+            let confidence = readF32(data, s + o); o += 4
+            labels.append(PhoneSoundClassification(label: label, confidence: confidence))
+        }
+        return PhoneSoundSample(timestamp: timestamp, duration: duration, classifications: labels)
     }
 }
 

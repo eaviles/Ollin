@@ -120,6 +120,7 @@ enum PhoneMessage: Equatable, Sendable
   case saliency(PhoneSaliencySample)
   case sceneMesh(PhoneSceneMeshSample)
   case segmentation(PhoneSegmentationSample)
+  case sound(PhoneSoundSample)
   case texts([PhoneTextSample])
   case wand(PhoneWandSample)
   var kind: PhoneMessageKind { get }
@@ -136,6 +137,7 @@ enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentabl
   case saliency
   case sceneMesh
   case segmentation
+  case sound
   case wand
 enum PhonePlaneAlignment: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case horizontal
@@ -172,6 +174,7 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   func start()
   func stop()
   init(port: UInt16 = default)
+  let sounds: PhoneSounds
   nonisolated static let streamPort: UInt16
   var frame: Image? { get }
   var frameSize: Vector2? { get }
@@ -203,6 +206,18 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   var sceneMesh: PhoneSceneMesh { get }
   var sceneMeshVersion: Int? { get }
   var waitingMessage: String { get }
+final class PhoneSounds: Sendable
+  func confidence(of: String) -> Double
+  func events() -> [SoundEvent]
+  func reset()
+  func timeSinceHearing(_: String) -> Double
+  init()
+  nonisolated func hear(_: [SoundClassification], at: Double, duration: Double = default)
+  var classifications: [SoundClassification] { get }
+  var isListening: Bool { get }
+  var readingCount: Int { get }
+  var threshold: Double { get set }
+  var topClassification: SoundClassification? { get }
 struct PhoneBody: Sendable
   func bones() -> [(Vector3, Vector3)]
   func cloud(jointSize: Double = default, boneSize: Double = default, color: Color = default) -> PointCloud
@@ -526,6 +541,15 @@ struct PhoneSegmentationSample: Equatable, Sendable
   var matteHeight: Int { get set }
   var matteWidth: Int { get set }
   var orientation: UInt8 { get set }
+  var timestamp: Double { get set }
+struct PhoneSoundClassification: Equatable, Sendable
+  init(label: String, confidence: Float)
+  var confidence: Float { get set }
+  var label: String { get set }
+struct PhoneSoundSample: Equatable, Sendable
+  init(timestamp: Double, duration: Double, classifications: [PhoneSoundClassification])
+  var classifications: [PhoneSoundClassification] { get set }
+  var duration: Double { get set }
   var timestamp: Double { get set }
 struct PhoneText: Sendable
   func bounds(in: Rectangle) -> Rectangle

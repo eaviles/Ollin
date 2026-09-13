@@ -58,6 +58,11 @@ import Darwin
 /// `latestLight` says how bright and how warm the room is. It arrives in every mode,
 /// so a sketch can match the light it is standing in.
 ///
+/// `sounds` is what the phone's microphone hears, named: the same level and
+/// trigger reads the Mac's own sound classifier gives, so a clap or a bark in the
+/// room can drive the sketch. It needs no camera, so it arrives beside whichever
+/// mode is running, once the app's **Hear** switch is on.
+///
 /// Launch the Ollin capture app on the iPhone and connect the cable; the device
 /// keeps retrying, so plugging in or starting the app mid-run just works. The
 /// transport is the standard `usbmuxd` tunnel (port 1338); the wire format is
@@ -70,6 +75,12 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     public nonisolated static let streamPort: UInt16 = PhoneWire.streamPort
 
     private let reader: PhoneStreamReader
+
+    /// What the phone hears, named: every label its sound classifier reports
+    /// with how sure it is, the strongest one, and the sounds that just started.
+    /// The phone listens only while its **Hear** switch is on; `isListening`
+    /// says whether readings are arriving.
+    public let sounds = PhoneSounds()
 
     // Build the drawable `RGBDFrame` lazily and cache it by the box's sequence, so
     // repeated reads in one `draw()` (frame, frameSize, pointCloud) reuse it.
@@ -94,7 +105,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
 
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
-        reader = PhoneStreamReader(port: port)
+        reader = PhoneStreamReader(port: port, sounds: sounds)
     }
 
     /// Begin connecting and streaming. Safe to call once; the reader retries on its
@@ -434,8 +445,14 @@ final class PhoneStreamReader: @unchecked Sendable {
 
     private let port: UInt16
     private let lock = OSAllocatedUnfairLock<State>(initialState: State())
+    /// The device's ears, fed straight from the read thread: the object keeps
+    /// its own lock and its reads happen on the main actor.
+    private let sounds: PhoneSounds
 
-    init(port: UInt16) { self.port = port }
+    init(port: UInt16, sounds: PhoneSounds) {
+        self.port = port
+        self.sounds = sounds
+    }
 
     // MARK: Public surface (read from the main actor)
 
@@ -565,6 +582,10 @@ final class PhoneStreamReader: @unchecked Sendable {
                         }
                         state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
                     }
+                case .message(.sound(let sample)):
+                    // The ears keep their own state under their own lock; the
+                    // threshold crossing is judged there, off the main actor.
+                    sounds.hear(sample)
                 case .message(.plane(let sample)):
                     // Place the surface into world space on this thread, off the main
                     // actor and outside the lock, the way a mesh block is.
@@ -595,7 +616,8 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .markers(let m): state.latestMarkers = m
                         case .wand(let w): state.latestWand = w
                         case .light(let l): state.latestLight = l
-                        case .depth, .segmentation, .saliency, .sceneMesh, .plane: break   // handled above
+                        case .depth, .segmentation, .saliency, .sceneMesh, .plane, .sound:
+                            break   // handled above
                         }
                     }
                 case .skip:

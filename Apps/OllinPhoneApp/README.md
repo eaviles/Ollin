@@ -5,8 +5,9 @@ tracking**, **rear-LiDAR scene depth**, **person segmentation**, and **scene
 reconstruction** on its Neural Engine, plus **hand pose**, **text reading**, and an
 **attention map** of where the picture draws the eye
 (Vision over the ARKit frames, lifted to 3D through the LiDAR depth), a
-**front-camera selfie matte** (Vision over a plain capture session), and
-**CoreMotion** device motion, and streams them to a tethered Mac over USB. An Ollin
+**front-camera selfie matte** (Vision over a plain capture session), the
+**sounds it hears, named** (SoundAnalysis over the microphone, behind a switch),
+and **CoreMotion** device motion, and streams them to a tethered Mac over USB. An Ollin
 sketch on the Mac reads the live skeleton, face, hands, text, attention map, depth
 cloud, person matte, room mesh, or motion in `draw()` through the
 [`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
@@ -31,7 +32,10 @@ Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention** toggle and
 one mode at a
 time. Device motion
 streams in all of them; the room's light in every mode except Selfie, which has no
-ARKit session to measure it.
+ARKit session to measure it. **Hear** is a switch under the modes rather than a
+mode: it needs no camera, so it names the sounds around the phone beside whichever
+mode is on, and the phone asks for the microphone once. Only the labels and how
+sure it is cross the cable, never the audio.
 
 ## How it fits together
 
@@ -115,7 +119,11 @@ Requirements:
    up, sliding the thumb to push it away. On **Attention**:
    `swift run --package-path Examples Example-3D-Phone-PhoneAttention`, then point
    the rear camera at anything and the heat map glows over the live frame where the
-   picture draws the eye, a bead trailing the strongest region. Before tracking begins, the
+   picture draws the eye, a bead trailing the strongest region. With **Hear** switched
+   on beside any mode:
+   `swift run --package-path Examples Example-3D-Phone-PhoneSounds`, then clap, talk,
+   or knock, and each sound the phone names rings out on the Mac's canvas as it
+   starts. Before tracking begins, the
    gravity readout proves the USB wire is alive (tilt the phone and it moves), and
    the light row reads the room's brightness and color in every ARKit mode.
 

@@ -459,6 +459,32 @@ Keeping last frame's number and comparing is the habit worth taking from this. A
 
 One thing to set up before you build on it. The room's origin is wherever the phone stood when Wand mode began. Lay your scene out in front of that spot, or expect to walk to it.
 
+### What the phone hears
+
+The phone has ears as well as eyes. Switch **Hear** on, under the modes, and it names the sounds around it: a dog, a kettle, applause, a knock at the door. The classifier runs on the phone, so only the names cross the cable, never the audio. It needs no camera, which is why it is a switch and not a mode. It runs beside whichever mode is on.
+
+Chapter 28 teaches the Mac's own [`SoundClassifier`](28-SoundAndControl.md#words-and-what-that-noise-was), and the phone's ears give you the same two reads over the same values. A level, for a question that rises and falls:
+
+```swift
+let music = device.sounds.confidence(of: "music")
+```
+
+And a trigger, for a thing that happens once:
+
+```swift
+for event in device.sounds.events() where event.label == "dog_bark" {
+    rings.append(Ring(at: place(for: event.label), born: time))
+}
+```
+
+<img src="Images/27-DepthAndThePhone/HeardAsMarks.jpg" alt="Four rows on a dark panel, one per sound: speech, dog bark, clapping, music. Each row is a stepped, filled curve of the phone's confidence over eight seconds with a dashed threshold line across it. A warm ring sits on the line a moment after each climb over it: one for speech, which then stays up, two for the dog, one for the clap, none for music, which hovers just under" width="680">
+
+The picture is eight seconds of staged readings, one window every three quarters of a second, run through the real `PhoneSounds`. Read the rings. Each sits at the end of the window that crossed, a moment after the curve climbed over the line, because the phone judges a second and a half of audio at a time. Speech climbs over the line once and stays there, and it rings once, not once per window. The dog barks, stops, and barks again, and rings twice. The clap rings once. Music hovers under the line the whole time and never rings at all, though its level is there for the asking.
+
+That is the rule worth keeping: an event is a crossing **from below**. The phone sends its whole judgment, every label with a number, and the Mac decides what counts as loud enough. The threshold is yours, `device.sounds.threshold`, and you can move it while the phone listens. Two sketches reading one phone can disagree about what counts.
+
+`timeSinceHearing(_:)` is the third read, for a mark that fades: it says how long ago a sound last crossed, and it does not drain. The `3D/Phone/PhoneSounds` example is this section live. Every sound that starts rings out in its own place on the canvas, a place found by hashing its name. A room settles into a map of its sounds.
+
 ## Putting it together: the ghost room
 
 The finished sketch turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/27-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/27-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):
@@ -515,11 +541,11 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 - [RGBD frames](../Docs/3D/RGBD.md): the frame type, unprojection, depth-lifted pose (a 2D-tracked skeleton placed at its true depth).
 - [3D](../Docs/3D/3D.md#point-clouds): `PointCloud` itself, its point sizing and colors, and how it sits beside the rest of the 3D path.
 - [Record3D](../Docs/3D/Record3D.md): recorded `.r3d` clips and the live USB stream, frame by frame.
-- [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, motion, and world fusion.
+- [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, motion, what the phone hears, and world fusion.
 - [Depth compositing](../Docs/3D/DepthCompositing.md): `depth(at:)`, billboards, `drawDepthScene`, and the metric camera.
 - [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md): rebuilding a scanned cloud as a mesh, skinning particle sets, and the holes and orientation details.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
-- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
+- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
 
 ---
 

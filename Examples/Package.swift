@@ -370,6 +370,9 @@ let package = Package(
         // glow over the live frame, a frame around each region the model picked out,
         // and an eased bead trailing where the attention has been.
         example("3D/Phone/PhoneAttention", [.phone]),
+        // What the phone hears, named: every sound its classifier notices rings out
+        // in its own place as it starts, and a few familiar ones run as levels.
+        example("3D/Phone/PhoneSounds", [.phone]),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),

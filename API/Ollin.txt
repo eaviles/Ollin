@@ -5575,6 +5575,15 @@ struct SoftProof: Equatable, Hashable, Sendable
   var intent: RenderingIntent { get set }
   var simulatesPaper: Bool { get set }
   var source: ICCProfile { get set }
+struct SoundClassification: Equatable, Sendable
+  init(label: String, confidence: Double)
+  let confidence: Double
+  let label: String
+struct SoundEvent: Equatable, Sendable
+  init(label: String, confidence: Double, time: Double)
+  let confidence: Double
+  let label: String
+  let time: Double
 struct SpatialIndex: Sendable
   @discardableResult mutating func insert(_: Vector2) -> Int
   enum Kind: Equatable, Hashable, Sendable

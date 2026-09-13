@@ -5,38 +5,6 @@ import Ollin
 import SoundAnalysis
 import os
 
-/// One thing the classifier thinks it is hearing, and how sure it is.
-///
-/// The label is one of *that classifier's* own names: the built-in vocabulary
-/// spells them in lower case with underscores (`"dog_bark"`, `"finger_snapping"`,
-/// `"electric_guitar"`), and a model you bring spells them however it was
-/// trained.
-public struct SoundClassification: Sendable, Equatable {
-    /// What the classifier heard.
-    public let label: String
-    /// How sure it is, `0...1`.
-    public let confidence: Double
-
-    public init(label: String, confidence: Double) {
-        self.label = label
-        self.confidence = confidence
-    }
-}
-
-/// A sound that just started: a label crossing the classifier's `threshold`
-/// after being under it. The trigger half of the surface, where
-/// `confidence(of:)` is the level half.
-public struct SoundEvent: Sendable, Equatable {
-    /// What was heard.
-    public let label: String
-    /// How sure the classifier was when it crossed.
-    public let confidence: Double
-    /// When it crossed, in seconds of audio since the classifier started. This
-    /// is the sample clock, not the wall clock, so the same audio always
-    /// produces the same times.
-    public let time: Double
-}
-
 /// Names sounds as they happen, so a clap, a bark, a siren, or a guitar can
 /// drive a sketch the way a face or a hand does on the seeing side.
 ///

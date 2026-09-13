@@ -81,7 +81,9 @@ struct FrameRateTests {
         // broadcast file uses.
         let ntsc = FrameRate.ntsc.mediaClock
         #expect(ntsc.timescale == 30_000 && ntsc.tick == 1001)
-        #expect(Double(10 * ntsc.tick) / Double(ntsc.timescale) == 10 * 1001.0 / 30000)
+        let tenFrames: Double = Double(10 * ntsc.tick) / Double(ntsc.timescale)
+        let expectedTen: Double = 10 * 1001.0 / 30000
+        #expect(tenFrames == expectedTen)
         // A decimal keeps its own fraction too.
         let decimal = FrameRate(29.97).mediaClock
         #expect(decimal.timescale == 2997 && decimal.tick == 100)

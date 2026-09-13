@@ -6,7 +6,7 @@
 
 A sketch that renders on the Mac can use what an iPhone connected by a cable detects on the phone itself. The phone side is **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)). The app runs ARKit on the phone's Neural Engine and streams the results over the USB cable. On the Mac, `PhoneDevice` reads them as typed values you use in `draw()`.
 
-Thirteen payloads come over the cable. The first is a **3D body skeleton**. Next are **faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view come as up to 4 skeletons of 21 joints each, lifted to metric 3D where the phone has LiDAR. The lines of **text** the phone can read arrive with their corners lifted the same way. The **pictures and objects it knows** each arrive as a named 6DoF placement in the room, with the real size. A map of **where the picture draws the eye** arrives as a heat map with the regions where it peaks. A world-facing **RGBD depth frame** from the rear LiDAR unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh** is the space itself, reconstructed as a labeled triangle surface. The **flat surfaces** in that room arrive beside it, as somewhere to stand something. The **room's light** reports how bright and how warm the space is. A **person-segmentation matte** from the rear camera comes as a silhouette and a cutout. **Device motion** streams too. The last payload is the phone itself **held as a pointer**, which is the one payload that describes the person rather than the room.
+Fourteen payloads come over the cable. The first is a **3D body skeleton**. Next are **faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view come as up to 4 skeletons of 21 joints each, lifted to metric 3D where the phone has LiDAR. The lines of **text** the phone can read arrive with their corners lifted the same way. The **pictures and objects it knows** each arrive as a named 6DoF placement in the room, with the real size. A map of **where the picture draws the eye** arrives as a heat map with the regions where it peaks. A world-facing **RGBD depth frame** from the rear LiDAR unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh** is the space itself, reconstructed as a labeled triangle surface. The **flat surfaces** in that room arrive beside it, as somewhere to stand something. The **room's light** reports how bright and how warm the space is. A **person-segmentation matte** from the rear camera comes as a silhouette and a cutout. **Device motion** streams too. The phone itself **held as a pointer** is the one payload that describes the person rather than the room. The last payload is **what the phone hears**: every sound its classifier names, with how sure it is, from the phone's own microphone.
 
 [`Record3D`](../3D/Record3D.md) reads the color-plus-depth feed from another app. Ollin Capture is Ollin's own app, so the stream carries ARKit's own results, and both ends of the link are Ollin code.
 
@@ -49,6 +49,7 @@ final class Pose: Sketch {
 - [The room's light](#the-rooms-light) - `latestLight`, how bright and how warm the room is
 - [Segmentation](#segmentation) - `latestSegmentationMatte`, `latestSegmentationCutout`, the Segment mode
 - [Where the eye goes](#where-the-eye-goes) - `latestSaliency`, the heat map, the salient regions
+- [What the phone hears](#what-the-phone-hears) - `sounds`, a level and a trigger for every sound the phone names
 - [Device motion](#device-motion) - `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) - the wire, coordinate space, what's ahead
 
@@ -669,6 +670,57 @@ On a LiDAR phone each region's **center** also lifts to a metric 3D position in 
 
 The model completes a few readings per second, which is below camera rate, and the last reading holds between them. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneAttention`.
 
+## What the phone hears
+
+Switch **Hear** on, under the modes, and the phone names the sounds around it. Apple's built-in sound classifier runs on the phone's Neural Engine over its own microphone, and the phone asks for the microphone once. It needs no camera, so it runs beside whichever mode is on. The audio never leaves the phone; only the labels and the confidences do. Every judged window, about twice a second, the phone sends every label it knows with how sure it is of each.
+
+`device.sounds` is the Mac's end. It gives the same two reads the Mac's own [`SoundClassifier`](../Helpers/Listening.md#sound-events) gives, over the same `SoundClassification` and `SoundEvent` values, so a sketch written against one reads the other unchanged.
+
+*Is this music?* is a level that rises and falls:
+
+```swift
+let musical = device.sounds.confidence(of: "music")     // Double 0…1
+let now = device.sounds.topClassification               // SoundClassification?, the strongest label
+let all = device.sounds.classifications                 // everything over `threshold`, strongest first
+```
+
+*Did somebody just clap?* is an event that happens once:
+
+```swift
+for event in device.sounds.events() { print(event.label, event.confidence, event.time) }
+let flash = max(0, 1 - device.sounds.timeSinceHearing("clapping") / 0.3)
+```
+
+An event fires when a label crosses `threshold` (0.6 by default) **from below**. A sound that keeps going is one event, not one per window, and a sound that stops and returns is two. `events()` drains what it returns, so read it in one place per frame. `timeSinceHearing(_:)` does not drain, which makes it the right read for a mark that fades.
+
+The threshold lives on the Mac, and you can set it while the phone listens:
+
+```swift
+device.sounds.threshold = 0.4
+```
+
+The phone sends its whole judgment and the Mac decides what counts as a sound starting. The wire runs one way, and the sketch is where a threshold belongs, so two sketches can read the same phone with different ideas of what is loud enough.
+
+Times run on the phone's audio clock, in seconds since it began listening. An event's `time` is the end of the window it crossed in. Between readings the Mac carries that clock forward with its own, so a fade runs smoothly rather than stepping once a window.
+
+The vocabulary is the same three hundred-odd everyday sounds the Mac's classifier knows, spelled the same way: `speech`, `music`, `clapping`, `dog_bark`, `knock`, `laughter`. The Mac's `SoundClassifier.labels` lists all of them. The classifier is happy to guess, and `"music"` turns up faintly under almost anything, so read `topClassification` and the threshold rather than believing every small number. It judges a second and a half of audio at a time, so a short sound is named a moment after it happens.
+
+```swift
+device.sounds.isListening                // Bool, readings are arriving (Hear is on, the cable is in)
+device.sounds.readingCount               // Int, judged windows since the device started
+device.sounds.reset()                    // forget what was heard; the threshold stays
+```
+
+`PhoneSounds` can be made on its own and fed by hand, so a sketch can be developed with no phone attached, and a test can say exactly what was heard:
+
+```swift
+let ears = PhoneSounds()
+ears.hear([SoundClassification(label: "dog_bark", confidence: 0.9)], at: 2, duration: 1.5)
+ears.events().first?.label      // "dog_bark"
+```
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneSounds`: every sound that starts rings out in its own place on the canvas, and the levels of a few familiar ones run along the bottom.
+
 ## Device motion
 
 `PhoneMotion` is the CoreMotion sample: attitude as a quaternion, gravity, rotation rate, and user acceleration. It is the cheap payload that proves the USB transport works before any model runs:
@@ -690,5 +742,5 @@ Tilt the phone and `gravity` swings. That is a one-line check that the connectio
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338. Record3D uses port 1337. Wi-Fi is deliberately left out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, with its root at the lens. The skeleton is in model space, with its root at the origin. The [world fusion](#world-fusion) step lifts a sweep into one fixed world cloud by applying each frame's `latestPose`. It fuses the clouds from several poses into a single *registered* scene. Two more steps, [keeping a long sweep registered](#drift) and [recognizing a place already scanned](#loops), correct ARKit's own drift on top of that. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed. A 256×192 frame is ~196 KB, which is comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **The catalog is still growing.** Today's payloads are body pose, face, hands, the text in view, the pictures and objects it knows, where the eye goes, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, motion, and the phone held as a pointer. Adding a richer sensor means the same app sends a new tagged payload, with no new pipeline.
+- **The catalog is still growing.** Today's payloads are body pose, face, hands, the text in view, the pictures and objects it knows, where the eye goes, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, motion, the phone held as a pointer, and what the phone hears. Adding a richer sensor means the same app sends a new tagged payload, with no new pipeline.
 - **A mesh block is carried raw.** Sending is what is throttled. The phone reads a block's geometry the moment ARKit hands it over, because those buffers belong to the session. Then it queues the block and sends a few blocks at a time. A block too big for one payload is skipped, and the app counts it on its own screen.

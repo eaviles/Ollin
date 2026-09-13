@@ -8,8 +8,9 @@ import simd
 /// Engine, plus the 21-joint hand skeletons, the readable text in view, and a map
 /// of where the picture draws the eye (Vision over the ARKit frames, lifted to 3D
 /// through the LiDAR depth), a front-camera
-/// selfie matte (Vision, no ARKit), and CoreMotion device motion, and streams them
-/// to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin
+/// selfie matte (Vision, no ARKit), the sounds its microphone hears, named on the
+/// phone (SoundAnalysis, behind the Hear switch), and CoreMotion device motion, and
+/// streams them to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin
 /// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
 struct OllinCaptureApp: App {
@@ -43,6 +44,10 @@ struct OllinCaptureApp: App {
 ///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
+///
+/// Hearing is not a mode either: the sound classifier needs no camera, so it runs
+/// beside whichever mode is on, behind its own switch, since the microphone asks
+/// its own permission.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case body = "Body"
     case face = "Face"
@@ -94,6 +99,27 @@ final class SensorStreamer {
     var markerNotes: [String] = []
     var lightInfo = ""
     var lightLive = false
+    /// Whether the phone is naming the sounds it hears. The switch on the screen
+    /// sets it; it is remembered across launches so an installation that wants
+    /// the ears keeps them.
+    var hearing = false {
+        didSet {
+            guard hearing != oldValue else { return }
+            UserDefaults.standard.set(hearing, forKey: Self.hearingKey)
+            if hearing {
+                soundLive = false
+                soundInfo = ""
+                sound.start()
+            } else {
+                sound.stop()
+                soundLive = false
+                soundInfo = ""
+            }
+        }
+    }
+    var soundLive = false
+    var soundInfo = ""
+    private static let hearingKey = "hearing"
     var gravity = SIMD3<Float>(0, 0, 0)
     var motionLive = false
     var status = "Starting…"
@@ -122,6 +148,7 @@ final class SensorStreamer {
     /// under the thumb is part of this sensor, so the view reaches it directly.
     let wand = WandStreamer()
     private let attention = SaliencyStreamer()
+    private let sound = SoundStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
@@ -287,6 +314,26 @@ final class SensorStreamer {
             self.markerNotes = library.notes
         }
 
+        // The ears need no camera, so they run beside every mode and are never
+        // stopped by a mode switch; only the Hear switch starts and stops them.
+        sound.onSound = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.sound(sample)))
+            self.soundLive = true
+            if let top = sample.classifications.first {
+                self.soundInfo = String(format: "%@ %.0f%%", top.label, top.confidence * 100)
+            } else {
+                self.soundInfo = "nothing named yet"
+            }
+        }
+        sound.onStatus = { [weak self] reason in
+            guard let self else { return }
+            if let reason {
+                self.soundLive = false
+                self.soundInfo = reason
+            }
+        }
+
         // Every ARKit session estimates the light, so they all report to the same
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
@@ -304,6 +351,7 @@ final class SensorStreamer {
         }
 
         applyMode()
+        hearing = UserDefaults.standard.bool(forKey: Self.hearingKey)
     }
 
     /// Switch the active camera/tracker. Only one ARKit session runs at a time, so
@@ -456,6 +504,10 @@ struct ContentView: View {
                     modeRow([.segment, .selfie, .room])
                     modeRow([.hands, .text, .markers])
                     modeRow([.wand, .attention], padTo: 3)
+                    // Hearing is a switch rather than a mode: it needs no camera,
+                    // so it rides beside whichever mode is on. Drawn as a chip so
+                    // it sits with the others, but it toggles rather than selects.
+                    hearRow
                 }
                 .padding(.horizontal, 28)
 
@@ -523,6 +575,10 @@ struct ContentView: View {
                             ? "looking for flat surfaces…" : "streaming · \(streamer.planeInfo)",
                             ok: !streamer.planeInfo.isEmpty)
                     }
+                    row("Sound", streamer.hearing
+                        ? (streamer.soundInfo.isEmpty ? "listening…" : streamer.soundInfo)
+                        : "off · tap Hear",
+                        ok: streamer.hearing && streamer.soundLive)
                     row("Light", streamer.mode == .selfie
                         ? "paused (Selfie runs no ARKit)"
                         : (streamer.lightLive ? streamer.lightInfo : "measuring…"),
@@ -642,6 +698,24 @@ struct ContentView: View {
         let x = min(max(Float(location.x / size.width) * 2 - 1, -1), 1)
         let y = min(max(1 - Float(location.y / size.height) * 2, -1), 1)
         return SIMD2<Float>(x, y)
+    }
+
+    /// The Hear switch, in the chips' own clothes: lit while the phone is naming
+    /// what it hears, dim while the microphone is closed. Padded like a short
+    /// mode row so the chip keeps every other chip's width.
+    private var hearRow: some View {
+        HStack(spacing: 8) {
+            Button(streamer.hearing ? "Hear · on" : "Hear") { streamer.hearing.toggle() }
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(streamer.hearing ? Color.black : Color.white.opacity(0.85))
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(streamer.hearing ? Color.white : Color.white.opacity(0.08),
+                            in: Capsule())
+            ForEach(1..<3, id: \.self) { _ in
+                Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+            }
+        }
     }
 
     /// One row of mode chips: the same one-of-many choice a segmented control
