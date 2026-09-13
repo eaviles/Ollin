@@ -448,7 +448,7 @@ Here is a frame drawn the ordinary way, beside the same frame written to a `.usd
 
 The surfaces come back exactly. The dust does not, and that is the rule worth carrying: **a model file holds surfaces**. Meshes travel, with their transforms, their colors, their textures, and as much of their finish as the format has a slot for. The camera and the lights travel too. A point cloud, a GPU particle system, and a raymarched field are not surfaces, so they stay behind. So does 2D drawing, which is why a labeled diagram arrives without its labels. Ollin prints one note for each thing it left, rather than letting you find out later.
 
-If you want a field or a cloud to travel, give it a surface first. [Chapter 26](26-SculptingWithFields.md)'s `isosurface(at:in:_:)` and [Chapter 27](27-DepthAndThePhone.md)'s `particleSurface(of:)` turn one into a mesh, and a mesh always goes.
+If you want a field or a cloud to travel, give it a surface first. [Chapter 26](26-SculptingWithFields.md)'s `isosurface(at:in:field:)` and [Chapter 27](27-DepthAndThePhone.md)'s `particleSurface(of:)` turn one into a mesh, and a mesh always goes.
 
 One number decides whether the model is furniture or a paperweight:
 

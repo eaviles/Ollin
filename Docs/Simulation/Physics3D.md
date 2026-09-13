@@ -506,7 +506,7 @@ let bead = world.addBody(.sphere(radius: 0.2), at: p, group: "beads")
 world.ignoreCollisions(between: "beads", and: "glass")
 ```
 
-That is the whole surface: `group:` wherever a thing is made, and one sentence for each rule. A rule is a fact about a pair rather than a direction. You cannot say that beads ignore the glass while the glass still collides with beads. `allowCollisions(between:and:)` withdraws a rule, and `collides(_:with:)` reads one back.
+That is the whole surface: `group:` wherever a thing is made, and one sentence for each rule. A rule is a fact about a pair rather than a direction. You cannot say that beads ignore the glass while the glass still collides with beads. `allowCollisions(between:and:)` withdraws a rule, and `collides(between:and:)` reads one back.
 
 **Everything starts in `.default`, and naming a group is not itself a rule.** A world with no rules behaves exactly like one with no groups. A group only means something once you have said something about it. That is why a group name is a plain string that needs no declaring.
 

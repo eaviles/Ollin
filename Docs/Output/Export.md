@@ -181,7 +181,7 @@ swift run --package-path Examples Example-Basic-HelloCircle --export-video breat
 swift run --package-path Examples Example-Motion-Orbits --export-video orbits.mov --seconds 10 --codec hevc --bitrate 8
 ```
 
-It runs on the same deterministic fixed-timestep drive as `--export-sequence`, so `--seconds` or `--frames`, `--fps`, and `--skip` work the same way. A render that takes ten minutes still writes a file that plays smoothly at the requested rate. In code it is `OllinApp.exportVideo(_:to:frames:fps:codec:bitsPerSecond:quality:skipSeconds:)`.
+It runs on the same deterministic fixed-timestep drive as `--export-sequence`, so `--seconds` or `--frames`, `--fps`, and `--skip` work the same way. A render that takes ten minutes still writes a file that plays smoothly at the requested rate. In code it is `OllinApp.exportVideo(_:to:frames:fps:codec:bitsPerSecond:encodeQuality:renderQuality:skipSeconds:slowMotion:)`.
 
 The flags:
 

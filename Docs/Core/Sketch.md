@@ -223,7 +223,7 @@ override func setup() {
 | `beforeDraw(_:)` | each frame, before `draw()` | set up per-frame state |
 | `afterDraw(_:)` | each frame, after `draw()`, before the render | draw *over* the sketch through the bare API |
 | `afterFrame(_:_:)` | each frame, after the render, with `FrameInfo` timing | observe (fps, frame time, geometry counts) without drawing |
-| `frameRendered(_:_:)` | each frame, after the render, with the rendered `CGImage` | grab the rendered pixels to save, record, or snapshot |
+| `frameRendered(_:image:)` | each frame, after the render, with the rendered `CGImage` | grab the rendered pixels to save, record, or snapshot |
 
 ```swift
 final class Guides: SketchExtension {
@@ -242,7 +242,7 @@ final class MySketch: Sketch {
 
 Extensions belong to one sketch instance, so register them in `setup()`. A fresh instance starts with none, and each live-reload swap makes a fresh instance. `Examples/Basic/Guides` is a worked example.
 
-`frameRendered(_:_:)` hands over the rendered frame as a `CGImage`. Reading those pixels back from the GPU to the CPU costs time, so the hook stays off by default. An extension opts in by returning `true` from `wantsRenderedFrame`. Ollin reads that property every frame, so an extension can arm and disarm capture while the sketch runs. `Examples/Export/Capture` uses it to save a frame to a PNG on a keypress. For a one-off capture without a window, `OllinApp.image(of: sketch, frame:)` renders a sketch headlessly and returns the `CGImage` directly. That is the same capture `--export` writes to disk, and the one the render-correctness snapshot tests compare against committed references.
+`frameRendered(_:image:)` hands over the rendered frame as a `CGImage`. Reading those pixels back from the GPU to the CPU costs time, so the hook stays off by default. An extension opts in by returning `true` from `wantsRenderedFrame`. Ollin reads that property every frame, so an extension can arm and disarm capture while the sketch runs. `Examples/Export/Capture` uses it to save a frame to a PNG on a keypress. For a one-off capture without a window, `OllinApp.image(of: sketch, frame:)` renders a sketch headlessly and returns the `CGImage` directly. That is the same capture `--export` writes to disk, and the one the render-correctness snapshot tests compare against committed references.
 
 <a name="configuration"></a>
 

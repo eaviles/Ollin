@@ -172,7 +172,7 @@ One chapter per session, in this order:
 6. Run `Scripts/guide-figures.sh` (all figures, not just the new ones).
 7. Humanizer pass over the chapter, plus the plain-words check from *Voice and style* (rare words, decorative metaphor, clever flow). Then run `Scripts/prose-lint.sh` and clear its errors.
 8. Update PLAN.md status, link the chapter in `Guide/README.md`'s contents.
-9. Run `Scripts/check-links.sh` and `Scripts/guide-coverage.sh`, and clear both. The first checks that the navigation is real (links, anchors, images, the footer chain, and every chapter pointer including the ones in CAPABILITIES.md); the second checks that the Guide teaches what Ollin ships.
+9. Run `Scripts/check-links.sh`, `Scripts/guide-coverage.sh`, and `Scripts/check-names.sh`, and clear all three. The first checks that the navigation is real (links, anchors, images, the footer chain, and every chapter pointer including the ones in CAPABILITIES.md); the second checks that the Guide teaches what Ollin ships; the third checks that every name in backticks is real: an identifier the tree has, a call whose labels match a public overload, a flag a host spells, a path that exists. A name the chapter invents for the reader is fine when the chapter's own fenced code defines it, or when it starts `My` or `Your`; a name from p5 or the platform goes in `Scripts/check-names-allow.txt` with its class.
 10. Run the docs audit, then commit (Guide chapters are milestones; commit and push per the repo convention).
 
 If the chapter's scope doesn't fit the session, cut whole steps and write the cut back into the PLAN.md brief. Never ship a half-explained concept to save time; that's the one unforgivable failure (principle 1).

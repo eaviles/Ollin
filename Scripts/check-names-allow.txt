@@ -1,0 +1,124 @@
+# Names the prose has reason to write that the tree never spells as an
+# identifier. Scripts/check-names.sh reads this file; one name per line, a
+# comment after a hash. Add a name here only when it belongs to one of the
+# classes below, and say which. A name that used to be Ollin's is never
+# allowed: fix the prose.
+
+# p5.js and Processing, named in prose outside the comparison tables of
+# Appendix C (the tables' p5 column is skipped without being listed).
+rectMode
+ellipseMode
+colorMode
+angleMode
+createCanvas
+createGraphics
+pushMatrix
+popMatrix
+pushStyle
+popStyle
+PVector
+CENTER
+
+# Other frameworks, formats, and languages the prose compares against or quotes.
+ofSignedNoise                   # openFrameworks
+dashoffset                      # SVG's stroke-dashoffset
+println                         # Arduino
+analogRead                      # Arduino
+PRINT                           # BASIC
+GOTO                            # BASIC
+
+# Apple types, constants, and log strings the code never spells as an
+# identifier (removed, reached through a different spelling, or quoted from
+# the platform's own output).
+MTKTextureLoader                # replaced by a hand-built texture load; named as gone
+CTRunGetTextMatrix
+SFSpeechRecognizer
+CBManager
+GCControllerLiveInput
+dpads                           # GCControllerLiveInput's property
+touchpadPrimary                 # GCDualShockGamepad's property
+SCContentSharingPicker
+CGImageDestination
+kColorSync1BitGamut
+hdrGainMapImage                 # the legacy gain-map auxiliary type
+motionVectorScale               # MetalFX's contract for the motion buffer
+uiTexture                       # MetalFX's overlay slot
+PreventUserIdleSystemSleep      # IOKit assertion names
+PreventUserIdleDisplaySleep
+UserIsActive
+screenLock                      # the OS log line about the saver
+MH_BUNDLE                       # a Mach-O file type
+appex                           # an app extension bundle
+sectcreate                      # a linker flag
+__TEXT                          # a Mach-O segment
+__info_plist                    # a Mach-O section
+Xswiftc                         # swift build -Xswiftc
+NO_COMPRESSION                  # OpenEXR's compression field
+adult                           # a Vision classification label
+beep                            # SoundAnalysis labels
+glass_breaking
+police_siren
+HasLeftStereoEyeView            # MV-HEVC extension keys
+HasRightStereoEyeView
+HorizontalFieldOfView
+StereoCameraBaseline
+HorizontalDisparityAdjustment
+MVHEVCVideoLayerIDs
+MVHEVCViewIDs
+MVHEVCLeftAndRightViewIDs
+HasLeft
+PrePhysicsUpdate                # a Jolt stage name
+NonSensorBodyFilter             # a Jolt filter
+usdPhysics                      # the UsdPhysics schema prefix
+assume_identity_transforms      # a MoltenVK/Metal argument-buffer option named as a comparison
+ArtDmxPacket                    # the Art-Net specification's packet name
+maxByteSize                     # SPIManifest's own limit
+createImageBitmap               # browser API on the exported page
+colorSpaceConversion            # its option
+iframe                          # the inline form of the exported page
+stream_side_data                # ffprobe's field
+refname                         # git for-each-ref's field
+
+# Tools, shells, and environment variables.
+exiftool
+oiiotool
+exrheader
+oscdump
+pbpaste
+zshrc
+PAGER
+TERM
+STOP                            # the signal
+
+# Techniques and other libraries' function names, cited as the published
+# technique rather than as Ollin's code.
+snoise                          # simplex noise as the literature spells it
+hash21
+grad4
+smoothStep                      # the GLSL spelling, cited against Metal's
+opElongate                      # hg_sdf's operator
+unpremul
+transfer_dep                    # the watercolor paper's terms
+transfer_pig
+
+# Notation in prose: a formula, pseudo-code, or a name the reader picks.
+recordedRate
+playRate
+invBind
+jointWorld_bind
+wFactor
+D_local
+pdf_neighbor
+mipCount
+flowSize
+startTime                       # `now - startTime`, the wrong way to count time
+materialRow                     # a slot in the page's item record
+whenTrue                        # the ternary explained
+whenFalse
+darw                            # a typo shown on purpose
+PascalCase
+drafted                         # a status word in the chapter table
+ChapterName                     # the figure naming pattern
+FigureName
+ExpressibleBy                   # the protocol family, named as a prefix
+StagePerformer                  # a removed type, named as gone

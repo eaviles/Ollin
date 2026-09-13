@@ -76,7 +76,7 @@ origin, and you move it with [`.at`](#placing).
 | Constructor | Shape |
 | --- | --- |
 | `SDF.circle(radius:)` | a circle |
-| `SDF.ellipse(rx:ry:)` | an axis-aligned ellipse |
+| `SDF.ellipse(radiusX:radiusY:)` | an axis-aligned ellipse |
 | `SDF.rect(width:height:cornerRadius:)` | a rectangle, optionally rounded |
 | `SDF.square(_:cornerRadius:)` | a square |
 | `SDF.ngon(radius:sides:)` | a regular polygon, one vertex up |
@@ -373,7 +373,7 @@ The leaf constructors are the common centered solids:
 | `SDF3D.cylinder(radius:height:)` | a cylinder along the y-axis |
 | `SDF3D.cone(radius:height:)` / `SDF3D.cone(bottomRadius:topRadius:height:)` | a cone / frustum along the y-axis |
 | `SDF3D.octahedron(radius:)` | an octahedron |
-| `SDF3D.ellipsoid(rx:ry:rz:)` | an ellipsoid |
+| `SDF3D.ellipsoid(radiusX:radiusY:radiusZ:)` | an ellipsoid |
 | `SDF3D.line(from:to:radius:)` | a capsule stroke between two free points (the armature primitive) |
 | `SDF3D.hexPrism(radius:height:)` | a hexagonal prism along the y-axis (`radius` to the flat sides) |
 | `SDF3D.pyramid(base:height:)` | a square pyramid |
@@ -436,7 +436,7 @@ modifiers (`.rounded` and `.onion`), the domain operators (`.mirrored(x:y:z:)`,
 `.repeated(spacing:count:)`, and `.repeatedRadially(count:around:)`), and `.colored`. The
 smooth ops blend the leaf colors across the seam, and the joint ops pick the color cleanly from
 the nearer side for the machined look. Positioning works in three dimensions, through
-`.at(x:y:z:)`, `.at(_ p: Vector3)`,
+`.at(_:_:_:)`, `.at(_ p: Vector3)`,
 `.rotated(_:axis:)` with `.rotatedX`, `.rotatedY`, and `.rotatedZ` beside it, and the uniform
 `.scaled(_:)`. The domain operators rewrite the query point as point-space scopes, so the whole
 mirrored, tiled, or radially repeated field is still one sphere-traced surface with no per-copy

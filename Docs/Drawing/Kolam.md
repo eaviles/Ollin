@@ -15,7 +15,7 @@ A **wall** placed between two neighboring dots turns the line there as well. Eac
   <img src="../../Guide/Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
 </picture>
 
-The line-work is geometry, not a picture. `loops` hands back closed `Contour`s. You can stroke them, feed them to the [shape booleans](./Geometry.md), hatch them, and export them to SVG for a pen plotter. The walk draws a kolam with square corners, and [`Contour.smoothed(_:)`](./Curves.md) rounds those corners into the drawn form.
+The line-work is geometry, not a picture. `loops` hands back closed `Contour`s. You can stroke them, feed them to the [shape booleans](./Geometry.md), hatch them, and export them to SVG for a pen plotter. The walk draws a kolam with square corners, and [`Contour.smoothed(iterations:)`](./Curves.md) rounds those corners into the drawn form.
 
 ### Contents
 

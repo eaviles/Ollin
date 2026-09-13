@@ -110,7 +110,7 @@ keep clear of the bottom:
 let bases = hopfBases(latitudes: 4, perCircle: 16) + [Vector3(0, -1, 0)]
 ```
 
-`hopfBases(spiral:)` already reaches the bottom on its own.
+`hopfBases(spiralCount:)` already reaches the bottom on its own.
 
 <a id="costs"></a>
 ### What it costs

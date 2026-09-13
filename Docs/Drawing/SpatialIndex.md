@@ -164,4 +164,4 @@ Runnable: [`Examples/Shapes/Neighbors`](../../Examples/Shapes/Neighbors/Sketch.s
 
 ---
 
-See also [`Geometry`](./Geometry.md) for the `Vector2` and `Rectangle` types the queries use. Read [`Voronoi & Delaunay`](./Voronoi.md) when the question is the whole partition rather than one neighborhood. Read [`Compute`](../Shaders/Compute.md) for `spatialHash`, the GPU form that lets thousands of particles find each other in a compute kernel.
+See also [`Geometry`](./Geometry.md) for the `Vector2` and `Rectangle` types the queries use. Read [`Voronoi & Delaunay`](./Voronoi.md) when the question is the whole partition rather than one neighborhood. Read [`Compute`](../Shaders/Compute.md) for `makeSpatialHash`, the GPU form that lets thousands of particles find each other in a compute kernel.

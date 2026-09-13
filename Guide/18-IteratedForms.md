@@ -386,7 +386,7 @@ Run it, then pull the ink alpha down and the point budget up. What each piece co
 Before moving on, make it yours:
 
 - Swap `ChaoticMap.clifford()` for `.deJong()`, `.gumowskiMira()`, or `.ikeda()`. Each has its own temperament, and the panel is one word wide.
-- Give the fern panel `.sierpinski` or one of the other systems, and watch `fitted` absorb the change with no other edit.
+- Give the fern panel `.sierpinskiTriangle` or one of the other systems, and watch `fitted` absorb the change with no other edit.
 - Feed the ring in panel three six mirrors instead of five, then separate them slightly. The lace tears, exactly as the section promised.
 - Drop to one panel at the full canvas and raise the budget to its ceiling. These are density plates, and they keep rewarding samples long past the point where a shape would be finished.
 

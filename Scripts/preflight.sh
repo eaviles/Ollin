@@ -19,6 +19,10 @@
 #   always
 #       -> the em-dash and invisible-character net over the added diff lines
 #       -> the parked-thread net over Tests/
+#       -> Scripts/check-names.sh (every backticked name in the prose is real,
+#          every labeled call matches a public overload, every pointer from
+#          the contributor files lands; a rename in Sources/ stales prose the
+#          diff never touched, so this one is not scoped to the diff; ~2 s)
 #   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #     a Guide prose or framework change
@@ -148,6 +152,11 @@ if [[ -n "$parked" ]]; then
     echo "$parked" >&2
     failures+=("parked thread in Tests/")
 fi
+
+# Every name the prose puts in backticks, against the tree and the public
+# surface. Not scoped to the diff on purpose: a rename in Sources/ stales a
+# Docs page the diff never touched, and that is the case it exists for.
+run "check-names" Scripts/check-names.sh
 
 # Navigation and coverage read the whole tree in seconds, so any prose or
 # image change buys both. A new example is a navigation change too: its folder

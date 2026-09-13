@@ -50,7 +50,7 @@ Three values are fixed when you build the fluid. `count` is the number of partic
 | `colorSlow` / `colorFast` / `speedForFastColor` | the tint ramp from slow to fast particles | blue → ice, 1 100 pt/s |
 | `restDensity` | target density relative to the seeded packing | 1 |
 
-`drawParticles(fluid)` draws each particle as a disc. With additive blending, the result looks like light through water. For a continuous liquid surface, draw the particles into a layer, blur it, and threshold the blur (`makeRenderTarget(...)` + `.gaussianBlur(radius:)` + `.threshold(value:softness:)`). This is the classic metaball technique.
+`drawParticles(fluid)` draws each particle as a disc. With additive blending, the result looks like light through water. For a continuous liquid surface, draw the particles into a layer, blur it, and threshold the blur (`makeRenderTarget(...)` + `.gaussianBlur(radius:)` + `.threshold(_:softness:)`). This is the classic metaball technique.
 
 Example: `Examples/Simulation/ParticleFluid`.
 

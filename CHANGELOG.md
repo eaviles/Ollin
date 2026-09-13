@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Fixed
+
+- **The reference and the Guide named calls the code no longer spells.** Seventy-odd backticked names had gone stale behind a rename: `.bloom(threshold:intensity:radius:)` where the label is `amount:`, `hopfBases(spiral:)` for `spiralCount:`, `frameRendered(_:_:)` for `frameRendered(_:image:)`, `Mesh(resource:extension:in:)` for `withExtension:`, and their kin across the effects, physics, and 3D pages. A gate reads every name in backticks against the tree and the public surface now, so the next rename cannot leave a page behind.
+
 ## [0.5.0] - 2026-09-12
 
 ### Added
