@@ -85,8 +85,9 @@ One match prints what it shows and how to run it:
 ```
 3D/Geometry/Ocean
 
-A sea built from its own wave spectrum: one inverse Fourier transform on the GPU
-makes the surface, drawn as water with no geometry anywhere (makeOceanField, drawOcean).
+A sea built from its own wave spectrum. One inverse Fourier transform on the GPU
+makes the surface, which is drawn as water with no geometry anywhere
+(makeOceanField, drawOcean).
 
   sketch   Examples/3D/Geometry/Ocean/Sketch.swift
   run      swift run --package-path Examples Example-3D-Geometry-Ocean
