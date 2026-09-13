@@ -11,7 +11,7 @@ let wobble = try Formula("120 + sin(time * 2) * 40")
 let radius = wobble.value(["time": time])
 ```
 
-This matters because a string can arrive at runtime, and Swift source cannot. So you can drive a parameter with a rule you typed. A file can carry the rule instead of a list of numbers. An editing surface can give you a field to type in. The arithmetic is the same as what you would write in `draw()`, and you spell it the same way. The difference is that Ollin reads it later, at runtime.
+This matters because a string can arrive at runtime, and Swift source cannot. So you can drive a parameter with a rule you typed. A file can carry the rule instead of a list of numbers. In OllinLive, the parameter's own row in the inspector is a field to type one in, and it points at the character a rule went wrong at. That field is covered in [The parameter timeline](../Tools/Timeline.md#writing-a-rule-in-the-row). The arithmetic is the same as what you would write in `draw()`, and you spell it the same way. The difference is that Ollin reads it later, at runtime.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/ParameterAsARule-dark.jpg">

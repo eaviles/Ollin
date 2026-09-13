@@ -892,6 +892,8 @@ override func setup() {
 
 That is a *formula*, and the thing to notice is the quotation marks. The rule is text, not Swift source. Text can arrive at runtime. It can be typed into a field, read out of a file, or changed while the sketch is playing. None of that needs a recompile. That is the whole reason this exists beside the curves.
 
+The field is real. In OllinLive, right-click the diamond of any number or switch in the inspector and choose **Write a Rule**, and a field opens under the row. Type the rule, press Return, and the parameter follows it from the next frame, with its diamond turned into a function mark and its slider dimmed. Get a character wrong and the row says so, with a caret under the character and the reason beneath, while the rule that was running keeps running. A rule written this way lands in the same automation file as the keys, so an export plays it. The panel page has the details in [Writing a rule in the row](../Docs/Tools/Timeline.md#writing-a-rule-in-the-row).
+
 The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, `smoothstep`, `noise`, `pi` and `tau`, spelled and ordered exactly as they are in `draw()` and in a shader. A formula reads `time`, which is where the pass stands, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and any of your other parameters by name:
 
 ```swift

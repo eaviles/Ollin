@@ -170,7 +170,7 @@ Standalone runs, every export path, and OllinLive all read the flag. When no fla
 ### How it sits beside the rest
 
 - **Smoothing.** A track sets its parameter directly rather than easing it in. So a `@Param` that carries `smoothing:` does not glide twice, because the curve already does the easing.
-- **The inspector.** A parameter under a track returns to its curve at the next frame. So dragging its slider only nudges the value for a frame instead of changing it. To tune by hand, take the track off with `automation = nil`.
+- **The inspector.** A parameter under a track returns to its curve at the next frame. So dragging its slider only nudges the value for a frame instead of changing it. To tune by hand, take the track off with `automation = nil`. In OllinLive a parameter under a rule shows the rule in its row, with its control dimmed, and the row is where you edit or remove it; see [the timeline page](../Tools/Timeline.md#writing-a-rule-in-the-row).
 - **Takes.** A run recorded with [`--record-take`](Replay.md) writes down the values the curves held. So the take replays the same run whether or not the automation is attached.
 - **Exports.** Every export flag drives the clock at a fixed step, so an automated piece renders frame for frame. `--export-video --seconds` decides how many passes the file holds.
 

@@ -1547,6 +1547,7 @@ final class Timeline<Value where Value : Tweenable>: FrameAdvancing
   var value: Value { get }
 final class TimelineModel: Observable, Sendable
   @discardableResult func moveKey(track: String, at: Int, to: Double) -> Int
+  @discardableResult func setRule(param: String, _: String) -> FormulaError?
   enum SaveState: Equatable
     case failed(String)
     case saved
@@ -1554,13 +1555,17 @@ final class TimelineModel: Observable, Sendable
   func addTrack(named: String)
   func addableParameters() -> [ParamHandle]
   func beginFollowingClock()
+  func beginRule(param: String)
+  func checkRule(_: String, param: String) -> FormulaError?
   func endFollowingClock()
   func hasKeyAtPlayhead(named: String) -> Bool
   func hasTrack(named: String) -> Bool
   func pause()
   func placeKey(param: String, at: Double, value: ParamStored, curve: Automation.Curve = default)
   func removeKey(track: String, at: Int)
+  func removeRule(param: String)
   func removeTrack(named: String)
+  func rule(param: String) -> String?
   func scrub(to: Double)
   func setCurve(track: String, at: Int, _: Automation.Curve)
   func setFile(_: Foundation.URL?)
@@ -1571,12 +1576,14 @@ final class TimelineModel: Observable, Sendable
   func togglePlay()
   func writeNow()
   init()
+  static func takesRule(_: ParamHandle) -> Bool
   struct KeySelection: Equatable
     init(track: String, index: Int)
     var index: Int { get set }
     var track: String { get set }
   var automation: Automation { get }
   var automationChanged: ((Automation?) -> Void)? { get set }
+  var automationVersion: Int { get }
   var contentDuration: Double { get }
   var editCount: Int { get }
   var fileURL: Foundation.URL? { get }
@@ -1585,6 +1592,7 @@ final class TimelineModel: Observable, Sendable
   var playhead: Double { get }
   var saveState: TimelineModel.SaveState { get }
   var selection: TimelineModel.KeySelection? { get set }
+  var writingRule: String? { get set }
 final class Turmite
   convenience init(_: Turmite.Preset, columns: Int, rows: Int, ants: [(column: Int, row: Int)]? = default)
   enum Preset: String, ParamOption, ParamValue, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable

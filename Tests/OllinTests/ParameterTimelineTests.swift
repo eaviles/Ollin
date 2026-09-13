@@ -10,7 +10,10 @@ import Testing
 /// step moves exactly one frame; the loop region wraps the running clock) and
 /// the timeline model's edits (a key placed at the playhead holds the parameter's
 /// value, tracks stay sorted, edits round-trip to the file, and a track worked
-/// out from a formula is left alone).
+/// out from a formula is left alone), and the rule field's laws (a rule typed
+/// for a parameter drives it and reaches the file, a rule that cannot be read is
+/// refused at its character and leaves the running one, a ring is refused where
+/// it is written, and only a number or a switch takes one).
 @Suite
 @MainActor
 struct ParameterTimelineTests {
@@ -30,6 +33,20 @@ struct ParameterTimelineTests {
     private final class ParameterProbe: Sketch {
         @Param(0...300) var radius = 120.0
         @Param var filled = true
+
+        override func draw() {}
+    }
+
+    /// The kinds the rule field meets: numbers that can name each other, a whole
+    /// number, a switch, and three that take no rule.
+    private final class RuleProbe: Sketch {
+        @Param(0...300) var radius = 120.0
+        @Param(0...100) var edge = 10.0
+        @Param(1...12) var rings = 5
+        @Param var filled = true
+        @Param var tint: Color = .red
+        @Param(x: 0...100, y: 0...100) var anchor = Vector2(10, 10)
+        @Param var caption = "hello"
 
         override func draw() {}
     }
@@ -271,6 +288,132 @@ struct ParameterTimelineTests {
         #expect(track.formula != nil, "and keeps its rule")
         model.setCurve(track: "radius", at: 0, .linear)
         #expect(probe.automation?.track(named: "radius")?.formula != nil)
+    }
+
+    // MARK: The rule field
+
+    @Test func aRuleTypedForAParameterDrivesItAndReachesTheFile() throws {
+        let probe = RuleProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rule-\(UUID().uuidString).automation.json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        model.setFile(file)
+
+        let rule = "190 + sin(time * tau / 6) * 80"
+        #expect(model.setRule(param: "radius", rule) == nil)
+        #expect(model.rule(param: "radius") == rule)
+        #expect(probe.automation?.track(named: "radius")?.formula?.source == rule)
+        harness.runner.draw(in: harness.view)
+        let expected = 190 + sin(probe.time * .pi * 2 / 6) * 80
+        #expect(abs(probe.radius - expected) < 1e-9, "the rule drives the parameter at the clock")
+
+        model.writeNow()
+        let written = try Automation.load(from: file)
+        #expect(written.track(named: "radius")?.formula?.source == rule)
+
+        #expect(model.setRule(param: "radius", "  ") == nil, "an emptied field is not an error")
+        #expect(model.rule(param: "radius") == nil, "and takes the rule away")
+        model.writeNow()
+        #expect(try Automation.load(from: file).track(named: "radius") == nil)
+    }
+
+    @Test func aRuleThatCannotBeReadIsRefusedAtItsCharacterAndLeavesTheRunningOne() throws {
+        let probe = RuleProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        #expect(model.setRule(param: "radius", "time * 10") == nil)
+
+        let typo = try #require(model.setRule(param: "radius", "190 + sin(tme * tau)"))
+        #expect(typo.offset == 10, "the misspelled name, not the start of the text")
+        #expect(typo.message.contains("tme"))
+        let unclosed = try #require(model.setRule(param: "radius", "190 + sin(time"))
+        #expect(unclosed.offset == 6)
+        let stray = try #require(model.setRule(param: "radius", "time $ 2"))
+        #expect(stray.offset == 5)
+        #expect(model.rule(param: "radius") == "time * 10", "every refusal leaves the running rule")
+        #expect(model.checkRule("time * 10", param: "edge") == nil)
+        #expect(model.rule(param: "edge") == nil, "a check installs nothing")
+    }
+
+    @Test func aRingIsRefusedWhereItIsWritten() throws {
+        let probe = RuleProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        let itself = try #require(model.setRule(param: "radius", "1 + radius"))
+        #expect(itself.offset == 4)
+        #expect(itself.message.contains("itself"))
+        #expect(model.rule(param: "radius") == nil)
+
+        #expect(model.setRule(param: "edge", "radius / 22") == nil, "the first half is fine")
+        let ring = try #require(model.setRule(param: "radius", "100 + edge * 2"))
+        #expect(ring.offset == 6, "the name that closes the ring")
+        #expect(ring.message.contains("edge"))
+        #expect(model.rule(param: "radius") == nil, "the ring writes nothing")
+        #expect(model.rule(param: "edge") == "radius / 22", "and leaves the first half")
+        #expect(model.setRule(param: "radius", "100 + rings * 2") == nil,
+                "a rule through a parameter with no rule is not a ring")
+    }
+
+    @Test func onlyANumberOrASwitchTakesARule() throws {
+        let probe = RuleProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        let handles = Dictionary(uniqueKeysWithValues: probe.parameters().map { ($0.name, $0) })
+        #expect(TimelineModel.takesRule(try #require(handles["radius"])))
+        #expect(TimelineModel.takesRule(try #require(handles["rings"])))
+        #expect(TimelineModel.takesRule(try #require(handles["filled"])))
+        #expect(!TimelineModel.takesRule(try #require(handles["tint"])))
+        #expect(!TimelineModel.takesRule(try #require(handles["anchor"])))
+        #expect(!TimelineModel.takesRule(try #require(handles["caption"])))
+
+        #expect(model.setRule(param: "rings", "3 + frame % 4") == nil)
+        #expect(model.setRule(param: "filled", "time % 6 < 3") == nil)
+        #expect(model.setRule(param: "tint", "time") != nil)
+        #expect(model.setRule(param: "caption", "1") != nil)
+        #expect(model.setRule(param: "anchor", "time") != nil,
+                "a parameter of parts takes its rules per part, in the sketch")
+        #expect(model.setRule(param: "nobody", "1") != nil)
+        #expect(model.setRule(param: "radius", "mouseX / width") == nil,
+                "the built-in names are always supplied")
+    }
+
+    @Test func aKeyedTrackKeepsItsKeysFromARule() throws {
+        let probe = RuleProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        model.toggleKey(param: "radius")
+        let refused = try #require(model.setRule(param: "radius", "time"))
+        #expect(refused.message.contains("keys"))
+        #expect(probe.automation?.track(named: "radius")?.keys.count == 1)
+        model.removeRule(param: "radius")
+        #expect(probe.automation?.track(named: "radius")?.keys.count == 1,
+                "removing a rule never touches keys")
+    }
+
+    @Test func openingARowForARuleIsStateNotAWrite() throws {
+        let probe = RuleProbe()
+        let harness = try makeModel(probe)
+        let model = harness.model
+        defer { withExtendedLifetime(harness) {} }
+        model.beginRule(param: "radius")
+        #expect(model.writingRule == "radius")
+        #expect(probe.automation == nil, "nothing is written until a rule is")
+        #expect(model.setRule(param: "radius", "time") == nil)
+        #expect(model.writingRule == nil, "a written rule closes the opening")
+        model.beginRule(param: "radius")
+        #expect(model.writingRule == nil, "a parameter with a rule needs no opening")
+        model.beginRule(param: "caption")
+        #expect(model.writingRule == nil, "a row that takes no rule never opens")
+        model.beginRule(param: "edge")
+        model.removeRule(param: "edge")
+        #expect(model.writingRule == nil, "removing closes the row")
     }
 
     @Test func removingATrackClearsItsSelection() throws {

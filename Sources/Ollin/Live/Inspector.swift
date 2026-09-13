@@ -1175,17 +1175,23 @@ struct KeyframeDiamond: View {
 
     var body: some View {
         if let timeline {
-            // The playhead and edit counter are what re-render this on a
-            // scrub or an edit; the automation itself is not observable.
+            // The playhead, the edit counter, and the automation version are
+            // what re-render this on a scrub, an edit, or a track the sketch
+            // wrote itself; the automation itself is not observable.
             let _ = timeline.editCount
             let _ = timeline.playhead
+            let _ = timeline.automationVersion
             let hasTrack = timeline.hasTrack(named: handle.name)
             let onKey = timeline.hasKeyAtPlayhead(named: handle.name)
+            let ruled = timeline.rule(param: handle.name) != nil
+            let takesRule = TimelineModel.takesRule(handle)
             Button {
                 timeline.toggleKey(param: handle.name)
             } label: {
-                SwiftUI.Image(systemName: hasTrack ? "diamond.fill" : "diamond")
-                    .font(.system(size: 8.5, weight: .semibold))
+                // A rule wears the function mark rather than a diamond, so the
+                // eye can tell a parameter worked out from one written down.
+                SwiftUI.Image(systemName: ruled ? "function" : hasTrack ? "diamond.fill" : "diamond")
+                    .font(.system(size: ruled ? 9.5 : 8.5, weight: .semibold))
                     .foregroundStyle(hasTrack ? OllinInspector.accent : palette.textTertiary)
                     .frame(width: 22, height: 22)
                     .background(onKey ? OllinInspector.accent.opacity(0.18) : .clear,
@@ -1197,12 +1203,20 @@ struct KeyframeDiamond: View {
             // taking it back on the trailing side leaves the row's own spacing
             // as the gap. Tied to the frame above: change one, change both.
             .padding(.trailing, tightensFollowingControl ? -7 : 0)
-            .help(hasTrack
+            .help(ruled
+                  ? "A rule drives this parameter: edit it in the row, or right-click to remove it"
+                  : hasTrack
                   ? "A key at the playhead: click to add or remove one"
+                  : takesRule
+                  ? "Start a track with a key at the playhead, or right-click to write a rule"
                   : "Start a track with a key at the playhead")
             .contextMenu {
-                if hasTrack {
+                if ruled {
+                    Button("Remove Rule") { timeline.removeRule(param: handle.name) }
+                } else if hasTrack {
                     Button("Remove Track") { timeline.removeTrack(named: handle.name) }
+                } else if takesRule {
+                    Button("Write a Rule") { timeline.beginRule(param: handle.name) }
                 }
             }
         }
@@ -1498,6 +1512,8 @@ private struct SliderParamRow: View {
     /// True while the value pill is scrubbed or typed in; parks the sync pull.
     @State private var isEditingField = false
 
+    @SwiftUI.Environment(\.automationTimeline) private var timeline
+
     init(handle: ParamHandle, control: ParamControl.Slider, palette: OllinInspector.Palette,
          iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
         self.handle = handle
@@ -1545,12 +1561,15 @@ private struct SliderParamRow: View {
                 valueField
             }
         } else {
+            let ruled = isRuled(handle, timeline)
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
                     Spacer()
                     KeyframeDiamond(handle: handle, palette: palette)
                     valueField
+                        .disabled(ruled)
+                        .opacity(ruled ? 0.45 : 1)
                 }
                 slider
                     .controlSize(.small)
@@ -1560,6 +1579,11 @@ private struct SliderParamRow: View {
                     // The -3 is tied to AppKit's private metrics; re-verify the row
                     // spacing on each macOS major.
                     .padding(.vertical, -3)
+                    // Under a rule the value is worked out every frame, so the
+                    // slider follows and a drag would be undone before it showed.
+                    .disabled(ruled)
+                    .opacity(ruled ? 0.45 : 1)
+                RuleLine(handle: handle, palette: palette)
             }
             .padding(.horizontal, 12)
             .padding(.top, 11)
@@ -1597,18 +1621,176 @@ private struct ControlRow<Control: View>: View {
     var labelWins = false
     @ViewBuilder let control: () -> Control
 
+    @SwiftUI.Environment(\.automationTimeline) private var timeline
+
     var body: some View {
-        HStack {
-            ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
-                .layoutPriority(labelWins ? 1 : 0)
-            // A floor on the gap so a wide control never crowds the label.
-            Spacer(minLength: 16)
-            KeyframeDiamond(handle: handle, palette: palette)
-            control()
+        let ruled = isRuled(handle, timeline)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                    .layoutPriority(labelWins ? 1 : 0)
+                // A floor on the gap so a wide control never crowds the label.
+                Spacer(minLength: 16)
+                KeyframeDiamond(handle: handle, palette: palette)
+                control()
+                    .disabled(ruled)
+                    .opacity(ruled ? 0.45 : 1)
+            }
+            .frame(minHeight: 22)
+            RuleLine(handle: handle, palette: palette)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(minHeight: 38)
+    }
+}
+
+/// Whether a rule drives `handle` right now. Read through the timeline's edit
+/// counter, so a rule written or removed re-renders the row that asks.
+@MainActor
+private func isRuled(_ handle: ParamHandle, _ timeline: TimelineModel?) -> Bool {
+    guard let timeline else { return false }
+    _ = timeline.editCount
+    _ = timeline.automationVersion
+    return timeline.rule(param: handle.name) != nil
+}
+
+/// The rule under a parameter's row: the formula driving it, editable where the
+/// parameter is set. Shown only where a timeline is injected and the parameter
+/// either has a rule or was opened for one from the diamond's menu; every other
+/// row is untouched. Return writes the rule and the file; an emptied field takes
+/// the rule away; Escape puts the running rule back. A rule that cannot be read
+/// is left in the field with a caret under the character it went wrong at and
+/// the reason beneath, and the rule that was running keeps running.
+private struct RuleLine: View {
+    let handle: ParamHandle
+    let palette: OllinInspector.Palette
+
+    @SwiftUI.Environment(\.automationTimeline) private var timeline
+    @State private var text = ""
+    @State private var error: FormulaError?
+    /// The rule the field was last set from, so an outside change (a reload,
+    /// the sketch's own `drive`) refreshes the text and a draft is left alone.
+    @State private var installed: String?
+    @FocusState private var isFocused: Bool
+
+    private static let font = Font.system(size: 11.5, design: .monospaced)
+
+    var body: some View {
+        if let timeline, TimelineModel.takesRule(handle) {
+            let _ = timeline.editCount
+            let _ = timeline.automationVersion
+            let rule = timeline.rule(param: handle.name)
+            let writing = timeline.writingRule == handle.name
+            if rule != nil || writing {
+                field(timeline, rule: rule, writing: writing)
+            }
+        }
+    }
+
+    private func field(_ timeline: TimelineModel, rule: String?, writing: Bool) -> some View {
+        let field = fieldBody(timeline, rule: rule, writing: writing)
+        #if os(macOS)
+        return field.onExitCommand {
+            // Escape puts the running rule back; the blur that follows
+            // commits it, which is a no-op.
+            text = installed ?? ""
+            error = nil
+            isFocused = false
+        }
+        #else
+        return field
+        #endif
+    }
+
+    private func fieldBody(_ timeline: TimelineModel, rule: String?, writing: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                mark
+                TextField("a rule, such as 190 + sin(time * tau / 6) * 80", text: $text)
+                    .textFieldStyle(.plain)
+                    .font(Self.font)
+                    .focused($isFocused)
+                    .autocorrectionDisabled()
+                    .onSubmit { commit(timeline) }
+                    // A rule longer than the row clips at rest; hovering
+                    // shows the whole of it.
+                    .help(text.count > 24 ? text : "")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .strokeBorder(error == nil ? palette.fieldStroke : OllinInspector.red.opacity(0.7),
+                              lineWidth: error == nil ? 0.5 : 1))
+            if let error {
+                // The caret sits in the field's own column grid: the same mark
+                // (unseen), the same padding, the same monospaced face, so it
+                // lands under the character the parser counted to.
+                HStack(spacing: 6) {
+                    mark.opacity(0)
+                    Text(String(repeating: " ", count: max(0, error.offset)) + "^")
+                        .font(Self.font)
+                        .foregroundStyle(OllinInspector.red)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, -2)
+                Text(error.message)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(OllinInspector.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 8)
+            }
+        }
+        .onChange(of: rule, initial: true) { _, rule in
+            // The running rule changed under the field (written here, or from
+            // outside): show it, and drop a draft that no longer applies.
+            guard rule != installed else { return }
+            installed = rule
+            text = rule ?? ""
+            error = nil
+        }
+        .onAppear {
+            // Opened from the menu with nothing written yet: take the keys.
+            guard writing, rule == nil else { return }
+            Task { @MainActor in isFocused = true }
+        }
+        .onChange(of: isFocused) { _, focused in
+            // A value pill commits when it is left, and so does a rule.
+            if !focused { commit(timeline) }
+        }
+    }
+
+    private var mark: some View {
+        SwiftUI.Image(systemName: "function")
+            .font(.system(size: 9.5, weight: .semibold))
+            .foregroundStyle(OllinInspector.accent)
+            .frame(width: 12)
+    }
+
+    private func commit(_ timeline: TimelineModel) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            error = nil
+            if installed == nil {
+                // Nothing was ever written: the field closes rather than
+                // removing a rule that does not exist.
+                if timeline.writingRule == handle.name { timeline.writingRule = nil }
+            } else {
+                timeline.removeRule(param: handle.name)
+            }
+            return
+        }
+        guard trimmed != installed else {
+            error = nil
+            return
+        }
+        error = timeline.setRule(param: handle.name, trimmed)
+        if error == nil {
+            installed = trimmed
+            text = trimmed
+        }
     }
 }
 

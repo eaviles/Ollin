@@ -16,7 +16,9 @@ import Observation
 public final class TimelineModel {
 
     /// The runner whose clock and sketch this timeline works on.
-    @ObservationIgnored package weak var runner: SketchRunner?
+    @ObservationIgnored package weak var runner: SketchRunner? {
+        didSet { beginWatchingAutomation() }
+    }
 
     /// Where edits write, or `nil` when this run keeps them in memory.
     public private(set) var fileURL: URL?
@@ -48,8 +50,20 @@ public final class TimelineModel {
     }
     public var selection: KeySelection?
 
+    /// The parameter whose row is open for a rule that does not exist yet: the
+    /// row shows an empty rule field until a rule is written there or the field
+    /// is left empty. A parameter that already has a rule needs no such state,
+    /// since its row shows the rule itself.
+    public var writingRule: String?
+
     /// Bumped on every edit, so a view that draws the automation re-reads it.
     public private(set) var editCount = 0
+
+    /// Bumped when the sketch's own automation changes under the model, which
+    /// no edit here announces: a `drive` or `automate` in `setup()`, a reload
+    /// carrying tracks. The rows read it beside `editCount`, so a rule the
+    /// sketch wrote shows in its row and a track it placed fills its diamond.
+    public private(set) var automationVersion = 0
 
     /// Told after every edit, with the automation as it now stands. A live
     /// session holds it here so the tracks survive a reload swap.
@@ -57,6 +71,8 @@ public final class TimelineModel {
 
     @ObservationIgnored private var writeTask: Task<Void, Never>?
     @ObservationIgnored private var ticker: Task<Void, Never>?
+    @ObservationIgnored private var watcher: Task<Void, Never>?
+    @ObservationIgnored private var lastSeenAutomation: Automation?
 
     /// How close to the playhead a key counts as being on it: half a frame
     /// at the transport's step rate.
@@ -194,6 +210,29 @@ public final class TimelineModel {
         ticker = nil
     }
 
+    /// Watch the sketch's automation for a change the model did not make. A
+    /// few tracks compare in no time, and the cadence only bounds how soon a
+    /// rule written in `setup()` reaches its row.
+    private func beginWatchingAutomation() {
+        watcher?.cancel()
+        watcher = nil
+        guard runner != nil else { return }
+        lastSeenAutomation = sketch?.automation
+        watcher = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(250))
+                self?.noteAutomation()
+            }
+        }
+    }
+
+    private func noteAutomation() {
+        let current = sketch?.automation
+        guard current != lastSeenAutomation else { return }
+        lastSeenAutomation = current
+        automationVersion += 1
+    }
+
     // MARK: Edits
 
     /// Put a key on `name`'s track at the playhead, holding the parameter's
@@ -301,10 +340,137 @@ public final class TimelineModel {
         toggleKey(param: name)
     }
 
+    // MARK: Rules
+
+    /// Whether a rule typed in the row can drive `handle`: a number, a whole
+    /// number, or a switch. A formula answers one number, so a parameter of
+    /// more than one takes its rules per part in the sketch, and a menu, a
+    /// piece of text, or a set of colors takes none.
+    public static func takesRule(_ handle: ParamHandle) -> Bool {
+        switch handle.control {
+        case .slider, .stepper, .toggle: return true
+        default: return false
+        }
+    }
+
+    /// The text of the rule driving `name`, when one does.
+    public func rule(param name: String) -> String? {
+        automation.track(named: name)?.formula?.source
+    }
+
+    /// Open `name`'s row for a rule. Nothing is written until one is.
+    public func beginRule(param name: String) {
+        guard let sketch, let handle = sketch.parameters().first(where: { $0.name == name }),
+              TimelineModel.takesRule(handle), rule(param: name) == nil else { return }
+        writingRule = name
+    }
+
+    /// Read `source` as the rule that would drive `name`, without installing it.
+    /// The answer is what the row points at: the character the text went wrong
+    /// at, a name nothing here supplies, the parameter naming itself or a ring
+    /// through another parameter, or a parameter this rule cannot drive. `nil`
+    /// means the rule can be written.
+    public func checkRule(_ source: String, param name: String) -> FormulaError? {
+        switch readRule(source, param: name) {
+        case .success: return nil
+        case .failure(let error): return error
+        }
+    }
+
+    /// Drive `name` from `source`, replacing the rule already there, and write
+    /// the file. Answers the error to point at, or `nil` when the rule took.
+    /// An empty text takes the rule away, the way an emptied field reads.
+    @discardableResult
+    public func setRule(param name: String, _ source: String) -> FormulaError? {
+        let text = source.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty {
+            removeRule(param: name)
+            return nil
+        }
+        let formula: Formula
+        switch readRule(text, param: name) {
+        case .success(let read): formula = read
+        case .failure(let error): return error
+        }
+        var automation = self.automation
+        automation.setTrack(Automation.Track(name: name, formula: formula))
+        if writingRule == name { writingRule = nil }
+        apply(automation)
+        return nil
+    }
+
+    /// Take away the rule driving `name`, and close its row if it was open for
+    /// one. A track of keys is not a rule, so it is left alone.
+    public func removeRule(param name: String) {
+        if writingRule == name { writingRule = nil }
+        guard automation.track(named: name)?.formula != nil else { return }
+        removeTrack(named: name)
+    }
+
+    private func readRule(_ source: String, param name: String) -> Result<Formula, FormulaError> {
+        guard let sketch else {
+            return .failure(FormulaError(message: "no sketch is running", offset: 0))
+        }
+        guard let handle = sketch.parameters().first(where: { $0.name == name }) else {
+            return .failure(FormulaError(message: "nothing here is called '\(name)'", offset: 0))
+        }
+        guard TimelineModel.takesRule(handle) else {
+            return .failure(FormulaError(message: "'\(name)' is not a number or a switch, "
+                                         + "so a rule cannot drive it", offset: 0))
+        }
+        if let track = automation.track(named: name), !track.isWorkedOut {
+            return .failure(FormulaError(message: "'\(name)' has keys; remove its track "
+                                         + "before writing a rule", offset: 0))
+        }
+        let formula: Formula
+        do {
+            formula = try Formula(source)
+        } catch let error as FormulaError {
+            return .failure(error)
+        } catch {
+            return .failure(FormulaError(message: "\(error)", offset: 0))
+        }
+        // A misspelled name parses as a variable, which would read as zero every
+        // frame and draw something rather than nothing. Point at it instead.
+        let known = sketch.readableNames()
+        if let unknown = formula.variables.first(where: { !known.contains($0) }) {
+            return .failure(FormulaError(message: "nothing here supplies '\(unknown)'",
+                                         offset: TimelineModel.offset(of: unknown, in: source)))
+        }
+        // A parameter naming itself, or two naming each other, cannot settle on
+        // one frame. The player would refuse the whole ring; refuse it here,
+        // where the text is, before anything is written.
+        var candidate = automation
+        candidate.setTrack(Automation.Track(name: name, formula: formula))
+        let rings = candidate.rings()
+        if rings.contains(name) {
+            let culprit = formula.variables.first { Automation.baseName(of: $0) == name }
+            if let culprit {
+                return .failure(FormulaError(message: "'\(name)' cannot name itself",
+                                             offset: TimelineModel.offset(of: culprit, in: source)))
+            }
+            let others = rings.filter { $0 != name }
+            let named = formula.variables.first { others.contains(Automation.baseName(of: $0)) }
+            return .failure(FormulaError(
+                message: "'\(name)' and '\(others.joined(separator: "', '"))' would name each other",
+                offset: named.map { TimelineModel.offset(of: $0, in: source) } ?? 0))
+        }
+        return .success(formula)
+    }
+
+    /// Where `name` first appears as a name in `source`, in the characters the
+    /// parser counts, so the row can point at it. Zero when it cannot be found,
+    /// which the parser having just read it rules out.
+    private static func offset(of name: String, in source: String) -> Int {
+        guard let tokens = try? formulaTokens(source) else { return 0 }
+        return tokens.first { $0.kind == .name(name) }?.offset ?? 0
+    }
+
     private func apply(_ automation: Automation) {
         guard let sketch else { return }
         sketch.automation = automation.tracks.isEmpty && automation.length == nil
             ? nil : automation
+        lastSeenAutomation = sketch.automation    // an edit announces itself
         editCount += 1
         automationChanged?(sketch.automation)
         scheduleWrite()

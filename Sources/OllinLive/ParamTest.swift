@@ -1,11 +1,16 @@
 import Foundation
+import Metal
+import MetalKit
 import Ollin
 
 /// `swift run OllinLive --paramtest`: a headless check of the `@Param` model.
 /// Reflection-based discovery, auto-derived vs explicit labels, declaration
 /// order, ranges, value clamping and step snapping, the typed control family
 /// (slider / stepper / toggle / menu / color well / swatch strip), group + icon metadata, and
-/// the stored-value round-trip the hosts persist across reloads. Needs no window.
+/// the stored-value round-trip the hosts persist across reloads; then the rule
+/// field, through the timeline model the rows write to: a rule typed for a
+/// parameter drives it and reaches the file, a rule that cannot be read is
+/// refused at its character, and the rules a row must never accept. Needs no window.
 enum ParamTest {
     enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
 
@@ -176,9 +181,105 @@ enum ParamTest {
         fresh.parameters()[0].param.restore(.boolean(true))
         check(fresh.radius == 0, "mismatched restore should be ignored")
 
+        ruleField()
+
         print("ParamTest: PASS. \(params.count) params discovered; labels, groups (folded too), "
-            + "clamping, steps, typed controls, show-rules, and stored round-trips correct.")
+            + "clamping, steps, typed controls, show-rules, stored round-trips, and the rule "
+            + "field (the write, the file, the error offsets, the refusals) correct.")
         exit(0)
+    }
+
+    /// The rule field's half: what the inspector row hands the timeline model
+    /// when Return is pressed, and what comes back to point at.
+    @MainActor
+    private static func ruleField() {
+        let subject = Subject()
+        guard let device = MTLCreateSystemDefaultDevice() else { fatal("no Metal device") }
+        let view = MTKView(frame: CGRect(x: 0, y: 0, width: 64, height: 64), device: device)
+        let runner = SketchRunner(sketch: subject, view: view, device: device)
+        runner.draw(in: view)                       // setup, so the parameters exist
+        let model = TimelineModel()
+        model.runner = runner
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ParamTest-\(getpid()).automation.json")
+        defer { try? FileManager.default.removeItem(at: file) }
+        model.setFile(file)
+
+        // Which rows take a rule: a number, a whole number, a switch; nothing else.
+        let handles = Dictionary(uniqueKeysWithValues: subject.parameters().map { ($0.name, $0) })
+        for name in ["radius", "rings", "visible", "iterations"] {
+            check(TimelineModel.takesRule(handles[name]!), "'\(name)' should take a rule")
+        }
+        for name in ["tint", "style", "anchor", "caption", "inks", "sizes"] {
+            check(!TimelineModel.takesRule(handles[name]!), "'\(name)' must not take a rule")
+        }
+
+        // The write: the rule drives the parameter and the file carries its text.
+        let rule = "190 + sin(time * tau / 6) * 80"
+        check(model.setRule(param: "radius", rule) == nil, "a good rule should take")
+        check(model.rule(param: "radius") == rule, "the rule should read back as typed")
+        check(subject.automation?.track(named: "radius")?.formula?.source == rule,
+              "the rule should be the sketch's own track")
+        runner.draw(in: view)
+        let expected = 190 + sin(subject.time * .pi * 2 / 6) * 80
+        check(abs(subject.radius - expected) < 1e-9,
+              "the rule should drive the parameter at the clock: \(subject.radius) vs \(expected)")
+        model.writeNow()
+        let written = try? Automation.load(from: file)
+        check(written?.track(named: "radius")?.formula?.source == rule,
+              "the file should carry the rule's text")
+
+        // The error offsets: the character the parser stopped at, the misspelled
+        // name, the parameter naming itself, and two naming each other. The rule
+        // that was running is left running each time.
+        let typo = model.setRule(param: "radius", "190 + sin(tme * tau / 6) * 80")
+        check(typo?.offset == 10 && typo?.message.contains("tme") == true,
+              "a misspelled name should be pointed at: \(String(describing: typo))")
+        check(model.rule(param: "radius") == rule, "a refused rule leaves the running one")
+        let unclosed = model.setRule(param: "radius", "190 + sin(time")
+        check(unclosed?.offset == 6, "an unclosed call should point at the call: \(String(describing: unclosed))")
+        let stray = model.setRule(param: "radius", "190 + sin(time) $ 2")
+        check(stray?.offset == 16, "a stray character should be pointed at: \(String(describing: stray))")
+        let selfNamed = model.setRule(param: "radius", "1 + radius")
+        check(selfNamed?.offset == 4 && selfNamed?.message.contains("itself") == true,
+              "a parameter naming itself should be refused at the name: \(String(describing: selfNamed))")
+        check(model.setRule(param: "noiseScale", "speed * 2") == nil, "the first half of a ring is fine")
+        let ring = model.setRule(param: "speed", "1 + noiseScale / 2")
+        check(ring?.offset == 4 && ring?.message.contains("noiseScale") == true,
+              "the second half of a ring should be refused at the name: \(String(describing: ring))")
+        check(model.rule(param: "speed") == nil, "a refused ring writes nothing")
+        check(model.rule(param: "noiseScale") == "speed * 2", "and leaves the first half alone")
+        check(model.checkRule("frame % 4 < 2", param: "visible") == nil, "a check does not install")
+        check(model.rule(param: "visible") == nil, "a check does not install")
+
+        // The refusals a row never offers, pinned at the model: a kind no rule
+        // can drive, and keys that would be thrown away.
+        check(model.setRule(param: "caption", "1") != nil, "text takes no rule")
+        check(model.setRule(param: "tint", "time") != nil, "a color takes no rule")
+        model.toggleKey(param: "jitter")
+        check(subject.automation?.track(named: "jitter")?.keys.count == 1, "a key should be placed")
+        let keyed = model.setRule(param: "jitter", "time")
+        check(keyed?.message.contains("keys") == true, "a keyed track refuses a rule")
+        check(subject.automation?.track(named: "jitter")?.keys.count == 1, "and keeps its keys")
+
+        // A whole number and a switch take a rule; an emptied field takes it away.
+        check(model.setRule(param: "rings", "3 + frame % 4") == nil, "a whole number takes a rule")
+        check(model.setRule(param: "visible", "time % 6 < 3") == nil, "a switch takes a rule")
+        check(model.setRule(param: "radius", "   ") == nil, "an empty rule is not an error")
+        check(model.rule(param: "radius") == nil, "an empty rule takes the rule away")
+        model.writeNow()
+        let after = try? Automation.load(from: file)
+        check(after?.track(named: "radius") == nil && after?.track(named: "rings")?.formula != nil,
+              "the file should follow the removal and keep the others")
+
+        // Opening a row for a rule is state, not a write; removing closes it.
+        model.beginRule(param: "iterations")
+        check(model.writingRule == "iterations", "the row should open")
+        check(model.rule(param: "iterations") == nil, "opening writes nothing")
+        model.removeRule(param: "iterations")
+        check(model.writingRule == nil, "removing closes the row")
+        model.beginRule(param: "caption")
+        check(model.writingRule == nil, "a row that takes no rule never opens")
     }
 
     private static func check(_ condition: Bool, _ message: @autoclosure () -> String) {

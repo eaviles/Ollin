@@ -120,7 +120,6 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 
 - **A visual node editor** over the effect, SDF-combinator, and shader graphs. It lives in the live host and round-trips to Swift source.
 - **Deeper live-coding evaluation.** Per-block evaluation and sub-second turnaround on small edits for the OllinLiveCoding performance host. This refines its evaluate-on-command loop.
-- **A field that takes a rule.** The inspector row for a parameter takes its rule as typed text. That way a rule is written where the parameter is set, rather than only in the sketch or the automation file. The row also points at where the text went wrong, because `FormulaError` carries the character offset for exactly that.
 
 See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 

@@ -26,9 +26,19 @@ A hollow diamond means nothing drives the parameter yet, and the first click sta
 
 ### Lanes and keys
 
-A number lane draws its track's sampled value, so the line shows what the parameter will do. A color lane draws the blend itself as a band. A switch steps between its two levels. A parameter driven by a [formula](../Helpers/Formula.md) shows the rule and takes no keys, and you edit its text in the sketch.
+A number lane draws its track's sampled value, so the line shows what the parameter will do. A color lane draws the blend itself as a band. A switch steps between its two levels. A parameter driven by a [formula](../Helpers/Formula.md) shows the rule and takes no keys. You edit that rule in the parameter's own row, which the next section covers.
 
 Drag a key along its lane to move it in time. Double-click a key to remove it. Click a key to select it. The footer then names the moment and the curve that leaves the key. It also gives you a menu to change the curve and a button to delete the key. Choosing **Bezier** shows two handles on the lane, and you drag them to shape the ease by eye. The handles bend the same `.bezier(x1:y1:x2:y2:)` curve the file carries.
+
+### Writing a rule in the row
+
+A parameter can be worked out from a rule instead of placed on keys, the way `drive($radius, "190 + sin(time * tau / 6) * 80")` does in a sketch. The inspector row is where you write one by hand. Right-click the diamond of a number, a whole number, or a switch and choose **Write a Rule**. A field opens under the row, in the same arithmetic the sketch speaks. Press Return, and the rule drives the parameter from the next frame on. The diamond turns into a function mark, and the slider or switch follows the rule and takes no hand, since a hand would be undone a frame later.
+
+The row points at what went wrong. A rule that cannot be read stays in the field with a caret under the character the parser stopped at and the reason beneath it, and the rule that was running keeps running. A misspelled name is refused the same way, at the name, because a name nothing supplies would read as zero every frame and draw something rather than nothing. A parameter cannot name itself, and two parameters cannot name each other, so those are refused where they are written rather than reported when the frames play.
+
+Empty the field and press Return to take the rule away. Escape puts the running rule back. Right-click the mark for **Remove Rule**. A parameter that already has keys keeps them: remove its track first if you want a rule there instead. A parameter of more than one number, such as a point or a color, takes its rules per part in the sketch with `drive($eye, x:y:)`, and the row leaves it alone.
+
+The rule lands in the same automation file as the keys, written as the text you typed, so a run that reads the file plays it. A rule the sketch itself writes in `setup()` shows in the row too, and you can edit it there for the run. The next reload puts the sketch's own rule back, because the code is the artifact.
 
 ### The transport
 

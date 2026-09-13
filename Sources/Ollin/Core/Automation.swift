@@ -617,7 +617,13 @@ final class AutomationPlayer {
     ///
     /// Depth-first over the tracks in the order they were given, so the plan is
     /// a function of the tracks and never of the order they happened to arrive.
-    private static func plan(for automation: Automation) -> Plan {
+    /// The parameters the plan would leave alone, for a surface that wants to
+    /// refuse a ring where it is written.
+    nonisolated fileprivate static func rings(in automation: Automation) -> [String] {
+        plan(for: automation).rings
+    }
+
+    nonisolated private static func plan(for automation: Automation) -> Plan {
         let tracks = automation.tracks
         var indexOf: [String: Int] = [:]
         for (i, track) in tracks.enumerated() where indexOf[track.name] == nil { indexOf[track.name] = i }
@@ -886,7 +892,7 @@ public extension Sketch {
 
     /// Every name a rule written on this sketch can read: the built-in ones,
     /// each parameter, and each part of a parameter that holds more than one number.
-    private func readableNames() -> Set<String> {
+    package func readableNames() -> Set<String> {
         var known = Set(Automation.readableNames)
         for handle in parameters() {
             known.insert(handle.name)
@@ -932,4 +938,14 @@ public extension Automation {
     /// A parameter spelled the same as one of these cannot be reached, because the
     /// built-in name wins.
     static let readableNames = ["time", "frame", "width", "height", "mouseX", "mouseY"]
+}
+
+extension Automation {
+    /// The parameters whose formulas lead back to themselves, which the player
+    /// would report and leave alone. A surface that takes a rule as it is typed
+    /// asks this before installing the track, so the ring is refused where it
+    /// is written rather than reported at play time.
+    package func rings() -> [String] {
+        AutomationPlayer.rings(in: self)
+    }
 }
