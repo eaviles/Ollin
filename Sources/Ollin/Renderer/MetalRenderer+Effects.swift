@@ -522,6 +522,13 @@ extension MetalRenderer {
                         [f(amount, warning == nil ? 0 : 1, 0, 0),
                          warning ?? SIMD4<Float>(repeating: 0)])
 
+        case let .lut(table, amount):
+            // The curves form was the single pass above; a cube reaches here,
+            // read through a 3D texture kept across frames by its contents.
+            guard let cube = colorLUTTexture(table) else { return nil }
+            return pass("ollin_fx_lut3d", [input, cube],
+                        [f(amount, 0, 0, 0), table.domainScale, table.domainOffset])
+
         case .fourier(let channel):
             // A layer the transform cannot work on comes back untouched rather
             // than empty; the note is printed where the filter is recorded, which
@@ -2285,6 +2292,39 @@ extension MetalRenderer {
             proofLUTTextures.removeValue(forKey: proofLUTTextures.keys.first!)
         }
         proofLUTTextures[id] = (owner: lut, texture: texture)
+        return texture
+    }
+
+    /// The 3D texture a cube look reads, one texel per node, read by the
+    /// fragment at whole coordinates (the tetrahedral read wants the corners
+    /// themselves, never the sampler's trilinear blend of them). Kept across
+    /// frames keyed by the table's contents, since a look is applied every
+    /// frame and re-uploading half a megabyte for that would be pure waste;
+    /// bounded, so sweeping a parameter through looks cannot grow it without
+    /// end.
+    private func colorLUTTexture(_ table: ColorLUT) -> MTLTexture? {
+        if let cached = colorLUTTextures[table.fingerprint] { return cached }
+        let n = table.size
+        guard table.form == .cube, table.samples.count == n * n * n else { return nil }
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type3D
+        desc.pixelFormat = .rgba32Float
+        desc.width = n
+        desc.height = n
+        desc.depth = n
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        guard let texture = device.makeTexture(descriptor: desc) else { return nil }
+        let rowBytes = n * MemoryLayout<SIMD4<Float>>.stride
+        table.samples.withUnsafeBytes {
+            texture.replace(region: MTLRegionMake3D(0, 0, 0, n, n, n),
+                            mipmapLevel: 0, slice: 0, withBytes: $0.baseAddress!,
+                            bytesPerRow: rowBytes, bytesPerImage: rowBytes * n)
+        }
+        if colorLUTTextures.count >= 8 {
+            colorLUTTextures.removeValue(forKey: colorLUTTextures.keys.first!)
+        }
+        colorLUTTextures[table.fingerprint] = texture
         return texture
     }
 

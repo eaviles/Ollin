@@ -64,6 +64,7 @@ final class FilterCatalog_Example: Sketch {
                 ("sepia", .sepia()),
                 ("duotone", .duotone(dark: Color(hex: 0x14233B), light: Color(hex: 0xFFD27D))),
                 ("gradientMap", .gradientMap(.turbo)),
+                ("lut", .lut(.warmPrint)),
                 ("colorama", .colorama(cycles: 3)),
                 ("lumaKey", .lumaKey(low: 0.35)),
             ]

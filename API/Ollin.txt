@@ -3022,6 +3022,28 @@ struct ColorConfusion: Equatable, Sendable
   var first: Int { get set }
   var second: Int { get set }
   var vision: ColorVision { get set }
+struct ColorLUT: Equatable, Sendable
+  enum Form: Equatable, Hashable, Sendable
+    case cube
+    case curves
+  func color(for: Color) -> Color
+  func write(to: String) throws
+  init(contentsOf: String) throws
+  init(data: Foundation.Data) throws
+  init(resource: String, withExtension: String? = default, in: Foundation.Bundle) throws
+  init(size: Int = default, title: String = default, _: (Color) -> Color)
+  init(text: String) throws
+  let form: ColorLUT.Form
+  let size: Int
+  let title: String
+  static func ==(_: ColorLUT, _: ColorLUT) -> Bool
+  static func identity(size: Int = default) -> ColorLUT
+  static let warmPrint: ColorLUT
+  struct ReadError: CustomStringConvertible, Equatable, Error, Sendable
+    let line: Int?
+    let problem: String
+    var description: String { get }
+  var cubeText: String { get }
 struct ColorVision: Equatable, Hashable, Sendable
   enum Kind: String, ParamOption, ParamValue, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
     case deuteranomaly
@@ -3465,6 +3487,7 @@ struct Filter: Sendable
   static func lineScreen(scale: Double = default, softness: Double = default, angle: Double = default, foreground: Color = default, background: Color = default) -> Filter
   static func liquidMetal(repetition: Double = default, softness: Double = default, dispersion: Double = default, distortion: Double = default, contour: Double = default, angle: Double = default, tint: Color = default, phase: Double = default) -> Filter
   static func lumaKey(low: Double = default, high: Double = default, invert: Bool = default) -> Filter
+  static func lut(_: ColorLUT, amount: Double = default) -> Filter
   static func median() -> Filter
   static func melt(colors: [Color] = default, scale: Double = default, warp: Double = default, liquify: Double = default, blend: Double = default, phase: Double = default) -> Filter
   static func mirror(vertical: Bool = default, flip: Bool = default) -> Filter

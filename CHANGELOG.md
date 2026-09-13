@@ -6,6 +6,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **A look from a `.cube` file.** `ColorLUT` reads the color table a grading tool exports, in both its forms, and `.lut(_:amount:)` applies it to a layer or the whole frame, a cube by tetrahedral interpolation. A look can also be built in code and written out as a `.cube`, and one warm print ships with the framework. [Looks](Docs/Drawing/Looks.md)
 - **The pitch moves without the length, an instant can be held, and a recording can be stretched.** `.pitchShift(PitchShift(semitones:mix:))` and `.freeze(Freeze(amount:))` join the effect chain, both a phase vocoder that keeps every partial whole, and `stretched(by:)` on a `Recording` or an `ImpulseResponse` gives it back longer at the same pitch. [The two that work in the spectrum](Docs/Helpers/Synthesis.md#the-two-that-work-in-the-spectrum)
 
 ### Fixed

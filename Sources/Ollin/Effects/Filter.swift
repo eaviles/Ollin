@@ -175,6 +175,9 @@ public struct Filter: Sendable {
         /// leaves the layer alone). `warning`, when present, replaces every color the
         /// destination cannot hold.
         case softProof(lut: ProofLUT?, warning: SIMD4<Float>?, amount: Double)
+        /// Move every color through a lookup table (a `.cube` look), blended
+        /// over the original by `amount`.
+        case lut(ColorLUT, amount: Double)
         /// Invert the tones above `value` (with a `softness`-wide fold) — the
         /// part-positive, part-negative darkroom solarization.
         case solarize(value: Double, softness: Double)
@@ -504,6 +507,21 @@ public struct Filter: Sendable {
     public static func gradientMap(_ colormap: Colormap, amount: Double = 1) -> Filter {
         Filter(kind: .gradientMap(lut: bakeLUT { colormap.color(at: $0) },
                                   amount: min(max(amount, 0), 1)))
+    }
+
+    /// A look from a lookup table: move every color through a `ColorLUT`, the
+    /// table a grading tool exports as a `.cube` file (a film emulation, a
+    /// grade, a print look) or one built in code, blended over the original by
+    /// `amount`. The table is read on the encoded picture, as it was authored,
+    /// and a cube by tetrahedral interpolation. Read the file once, in
+    /// `setup()`.
+    ///
+    /// ```swift
+    /// postProcess(.lut(.warmPrint))                 // the bundled look
+    /// layer.filtered(.lut(look, amount: 0.5))       // half way toward it
+    /// ```
+    public static func lut(_ table: ColorLUT, amount: Double = 1) -> Filter {
+        Filter(kind: .lut(table, amount: min(max(amount, 0), 1)))
     }
 
     /// Soft proof: show the layer as a printing condition will reproduce it. The

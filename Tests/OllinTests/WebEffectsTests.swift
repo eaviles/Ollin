@@ -49,6 +49,25 @@ import OllinWebGate
         }
     }
 
+    /// A layer through a three-curve table, the strip form of a look.
+    final class Curved: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        let curves = try! ColorLUT(text: "LUT_1D_SIZE 3\n0 0 1\n0.6 0.5 0.5\n1 1 0\n")
+        override func draw() {
+            background(.black)
+            drawImage(generate(.noise(scale: 3, sharpness: 0.2)).filtered(.lut(curves, amount: 0.8)).image, 0, 0)
+        }
+    }
+
+    /// A layer through a cube look, which the page does not carry.
+    final class Cubed: Sketch {
+        override var canvasSize: CanvasSize { .square(120) }
+        override func draw() {
+            background(.black)
+            drawImage(generate(.noise(scale: 3, sharpness: 0.2)).filtered(.lut(.warmPrint)).image, 0, 0)
+        }
+    }
+
     /// A generator recolored through a lookup strip.
     final class Mapped: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -341,6 +360,22 @@ import OllinWebGate
         #expect(track.uniqueFrames == 1)
     }
 
+    @Test func curvesCrossAsAStripAndACubeIsRefused() throws {
+        let recording = try OllinApp.recordWebFrames(of: Curved(), frames: 2, fps: 30)
+        #expect(recording.tables.count == 1)
+        #expect(recording.tables[0].count == 3)
+        guard case let .filter(_, node) = recording.frames[0].graph.layers[1].kind else { Issue.record("no filter"); return }
+        #expect(node.fragment == "ollin_fx_lut1d")
+        #expect(node.inputs == [.layer(0), .table(0)])
+        #expect(node.paramRows == 3)
+        do {
+            _ = try OllinApp.recordWebFrames(of: Cubed(), frames: 2, fps: 30)
+            Issue.record("a cube look crossed")
+        } catch let refusal as WebExportRefusal {
+            #expect(refusal.call == "the lut filter")
+        }
+    }
+
     @Test func aCombineNamesItsBaseAndAux() throws {
         let recording = try OllinApp.recordWebFrames(of: Combined(), frames: 2, fps: 30)
         let g = recording.frames[0].graph
@@ -434,6 +469,7 @@ import OllinWebGate
             ("Generated", { Generated() }, 8, 5),
             ("Filtered", { Filtered() }, 6, 3),
             ("Mapped", { Mapped() }, 2, 1),
+            ("Curved", { Curved() }, 2, 1),
             ("Combined", { Combined() }, 6, 4),
             ("UserGenerator", { UserGenerator() }, 4, 2),
             ("UserFilter", { UserFilter() }, 4, 3),

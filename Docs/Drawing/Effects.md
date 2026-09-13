@@ -141,6 +141,7 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 - **`.sepia(amount:)`** a warm monochrome tone, blended by `amount`.
 - **`.duotone(dark:light:amount:)`** map luminance between two colors (shadows → `dark`, highlights → `light`).
 - **`.gradientMap(_:amount:)`** read luminance and look its color up along a [`Ramp`](../Drawing/Color.md) or [`Colormap`](../Drawing/Color.md) (viridis, magma, turbo, …). It is a fast way to recolor a grayscale field or a whole scene.
+- **`.lut(_:amount:)`** move every color through a [`ColorLUT`](./Looks.md), the table a grading tool exports as a `.cube` file (a film look, a grade, a print emulation) or one built in code. The table is read on the encoded picture, a cube by tetrahedral interpolation, and `amount` fades it in. A curves table crosses to the [web page](../Output/Web.md); a cube stays with video. See [Looks](./Looks.md).
 - **`.softProof(_:warning:amount:)`** show the layer as a press will print it, through an ICC profile. The colors ink cannot reach are pulled in, and the blacks are lifted to what ink can do. `warning` paints what will not survive in that color instead, and `amount: 0` leaves the colors alone so only the flag shows. See [Print color](../Output/PrintColor.md).
 - **`.exposure(stops:)`** scale the light in linear-light stops (+1 doubles, −1 halves).
 - `.develop(exposure:ground:)` print a layer of accumulated light. The layer is scaled by `exposure`, rolled off through the Reinhard curve, and laid on `ground`. The ground is added after the curve as a display color, and written as the display value itself. This is what an [`Accumulator`](./Accumulation.md#accumulator)'s `developed` runs. See [Depth of field from light](./DepthOfField.md#develop).
@@ -154,6 +155,7 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 ```swift
 layer.filtered(.colorGrade(contrast: 1.3, saturation: 1.6, hue: 0.05))
 layer.filtered(.gradientMap(.turbo))
+layer.filtered(.lut(.warmPrint, amount: 0.8))
 layer.filtered(.levels(blackPoint: 0.08, whitePoint: 0.92, gamma: 1.4))
 layer.filtered(.vibrance(amount: 0.6))
 ```

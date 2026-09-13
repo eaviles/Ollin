@@ -74,15 +74,16 @@ bac6f70b2c26  Guide/15-ShapesAsMaterial.md:524  cannot find 'circles' in scope
 047e517a0320  Guide/15-ShapesAsMaterial.md:683  cannot find 'bath' in scope
 9e5a2696fc73  Guide/15-ShapesAsMaterial.md:696  cannot find 'bath' in scope
 ff3aae35a44a  Guide/15-ShapesAsMaterial.md:767  cannot find 'art' in scope
-54b8d0e8bcde  Guide/16-LayersAndEffects.md:156  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-ebf964e6cb2a  Guide/16-LayersAndEffects.md:179  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-030e9e03f6cb  Guide/16-LayersAndEffects.md:202  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-4de26771459c  Guide/16-LayersAndEffects.md:277  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
-2445b9b973de  Guide/16-LayersAndEffects.md:308  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
-9c093936bb4e  Guide/16-LayersAndEffects.md:355  cannot find 'bands' in scope
-00fa0d08039d  Guide/16-LayersAndEffects.md:440  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-4bab31797ad4  Guide/16-LayersAndEffects.md:456  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-7d52b883f390  Guide/16-LayersAndEffects.md:489  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+d06f4b81930b  Guide/16-LayersAndEffects.md:153  'module' is inaccessible due to 'internal' protection level
+54b8d0e8bcde  Guide/16-LayersAndEffects.md:181  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+ebf964e6cb2a  Guide/16-LayersAndEffects.md:204  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+030e9e03f6cb  Guide/16-LayersAndEffects.md:227  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+4de26771459c  Guide/16-LayersAndEffects.md:302  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
+2445b9b973de  Guide/16-LayersAndEffects.md:333  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
+9c093936bb4e  Guide/16-LayersAndEffects.md:380  cannot find 'bands' in scope
+00fa0d08039d  Guide/16-LayersAndEffects.md:465  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+4bab31797ad4  Guide/16-LayersAndEffects.md:481  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+7d52b883f390  Guide/16-LayersAndEffects.md:514  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 c32fa0ef7370  Guide/18-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
 4ec0ee8e2cd9  Guide/18-IteratedForms.md:168  cannot find 'start' in scope
 31bc91d6d2fb  Guide/18-IteratedForms.md:188  cannot find 'outline' in scope

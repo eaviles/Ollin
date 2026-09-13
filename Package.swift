@@ -846,6 +846,10 @@ let package = Package(
                 // resource LICENSE file and THIRD-PARTY-NOTICES.md.
                 .copy("Resources/Environments"),
                 .copy("Resources/LTC"),
+                // The bundled color look (`ColorLUT.warmPrint`), a `.cube` file
+                // written by Ollin itself; the rules it was made from are in
+                // its header.
+                .copy("Resources/Looks"),
                 // The stroke and fill expander compiled to WebAssembly, the
                 // player part a web page carries when its strokes and fills
                 // travel as points, with the manifest naming the toolchain and

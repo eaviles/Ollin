@@ -1165,6 +1165,8 @@ final class MetalRenderer {
     /// owner is held beside it, as the feedback slots do, so an identity can
     /// never be read as a match for a different lattice.
     var proofLUTTextures: [ObjectIdentifier: (owner: ProofLUT, texture: MTLTexture)] = [:]
+    /// The cube looks uploaded as 3D textures, by the table's contents (see `colorLUTTexture`).
+    var colorLUTTextures: [UInt64: MTLTexture] = [:]
 
     /// One fluid `SimField`'s persistent state: the velocity and dye ping-pong pairs
     /// that carry across frames. These are the only fields a fluid must keep — pressure,

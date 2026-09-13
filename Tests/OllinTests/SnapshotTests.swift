@@ -543,6 +543,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("soft-proof",
                  note: "A vivid poster read four ways: as drawn, soft-proofed for a four-ink press by the live GPU filter, the same proof at amount 0 so only the out-of-gamut flag shows, and the black plate. Pins the baked proofing lattice and its 3D lookup, the encode in and the linear values out, the gamut flag in the lattice's alpha, and the CPU separation through the same profile. No rng and no time, so it is deterministic.",
                  make: { SoftProofScene() }),
+    SnapshotCase("color-look",
+                 note: "One poster (a hue sweep over a gray ramp with two disks) read four ways: as drawn, through the bundled WarmPrint cube, through a three-curve table that turns blue over, and through a cube built in code that swaps the channels. Pins the .cube reader on both forms, the encode in and the decode out, the tetrahedral read of a cube and the linear read of curves, and the amount mix. No rng and no time, so it is deterministic.",
+                 make: { ColorLookScene() }),
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
@@ -4055,6 +4058,48 @@ private final class PrintSeparationScene: Sketch {
             }
         }
         return image
+    }
+}
+
+/// One poster read four ways at fixed values (no time, no random): as drawn,
+/// through the bundled WarmPrint cube, through curves that turn blue over,
+/// and through a cube built in code that swaps the channels, the last at
+/// half amount. Pins the `.cube` reader on both forms, the encode into the
+/// table and the decode out of it, the tetrahedral read of a cube and the
+/// linear read of curves, and the amount mix.
+private final class ColorLookScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private var curves = ColorLUT.identity(size: 2)
+    private let swapped = ColorLUT(size: 9, title: "swapped") { c in
+        Color(red: c.green, green: c.blue, blue: c.red)
+    }
+
+    override func setup() {
+        curves = (try? ColorLUT(text: "LUT_1D_SIZE 3\n0 0 1\n0.6 0.5 0.5\n1 1 0\n")) ?? curves
+    }
+
+    override func draw() {
+        background(.black)
+        let layer = makeRenderTarget()
+        withTarget(layer) {
+            noStroke()
+            for x in 0 ..< 128 {
+                fill(Color(hue: Double(x) / 128, saturation: 0.85, brightness: 0.9))
+                drawRect(Double(x) * 2, 0, 2, 128)
+                fill(Color(white: Double(x) / 127))
+                drawRect(Double(x) * 2, 128, 2, 128)
+            }
+            fill(Color(red: 0.31, green: 0.62, blue: 0.17)); drawCircle(84, 128, 40)
+            fill(Color(red: 0.05, green: 0.11, blue: 0.29)); drawCircle(172, 128, 40)
+        }
+        func panel(_ index: Int) -> Rectangle {
+            Rectangle(x: Double(index % 2) * 128, y: Double(index / 2) * 128, width: 128, height: 128)
+        }
+        drawImage(layer.image, in: panel(0))
+        drawImage(layer.filtered(.lut(.warmPrint)).image, in: panel(1))
+        drawImage(layer.filtered(.lut(curves)).image, in: panel(2))
+        drawImage(layer.filtered(.lut(swapped, amount: 0.5)).image, in: panel(3))
     }
 }
 

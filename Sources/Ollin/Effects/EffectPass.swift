@@ -81,6 +81,12 @@ extension Filter {
         case let .gradientMap(lut, amount):
             return pass("ollin_fx_gradient_map", [f(amount, 0, 0, 0)],
                         inputs: [.layer(0), .table(lut)])
+        case let .lut(table, amount):
+            // The curves form is a strip, the same kind of table a gradient
+            // map reads; a cube is a 3D texture the renderer keeps by contents.
+            guard table.form == .curves else { return nil }
+            return pass("ollin_fx_lut1d", [f(amount, 0, 0, 0), table.domainScale, table.domainOffset],
+                        inputs: [.layer(0), .table(table.samples)])
 
         case let .antialias(amount, threshold, quality):
             // The floor under the relative test is half of it. A ratio alone finds

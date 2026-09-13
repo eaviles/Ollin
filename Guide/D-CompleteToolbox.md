@@ -228,6 +228,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 |---|---|---|---|
 | Render targets | Off-screen layers: draw into them with `withTarget`, composite back | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | The filter catalog | ~55 GPU filters: blurs, glows, color, stylize, retro, distortion, design | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
+| A look from a file | `ColorLUT` reads a `.cube` color lookup table, the grade a color tool exports, and `Filter.lut` applies it to a layer or the frame; a cube is read by tetrahedral interpolation, and a look built in code writes out as a `.cube` | [Ch 16](16-LayersAndEffects.md) | [Looks](../Docs/Drawing/Looks.md) |
 | Generator fills | Procedural patterns into a layer: checkers, gradients, noise, cellular | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Design patterns | Composed graphic sources: mesh gradients, god rays, spirals, orbiting dots, grain gradients, pulsing borders | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Design filters | Fluted glass, water, and paper that transform a picture; liquid metal, heatmap, and gem smoke that read a shape's silhouette | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |

@@ -144,6 +144,31 @@ The tone is the other half. Under the strokes is a stroke texture made by combin
 
 The dials: `spacing` is the distance between strokes, and so how fine the pen is. `length` is how far one runs before it ends, with a short length making a stipple of dashes and a long one a comb. `directions` is how many layers stack as the tone darkens. One hatches a single way, which turns the deepest tones into fat merged marks; two crosses the first at right angles once one direction has laid all it may, which is what a pen does when a tone goes past what one direction can hold; three lays a third between them. Ink and paper are yours: `background: .clear` leaves the page bare where the picture was empty, so a hatched shape drops onto whatever is under it. [`Examples/Effects/Hatching`](../Examples/Effects/Hatching/Sketch.swift) puts every dial on a parameter over an engraved landscape with the sun crossing it.
 
+### A look from a colorist's suite
+
+The color filters above are dials. A **look** is the other way to grade: a table that says, for every color, which color to show instead. Color tools trade them as `.cube` files. A colorist builds one in a grading suite and hands it over, a film stock's character ships as one, a camera maker publishes one for its footage. Ollin reads that file into a `ColorLUT`, and `.lut` applies it to a layer or to the whole frame.
+
+<img src="Images/16-LayersAndEffects/Look.jpg" alt="Two panels and two strips: a portrait of a young woman in a lace headdress plain on the left and through a warm print look on the right, her skin warmer and the shadows cooler; below them a gray ramp and a sweep of hues, each drawn plain above and through the same look beneath, the ramp's black lifted and its white held short of paper, the hues warmed at the bright end" width="680">
+
+```swift
+var look = ColorLUT.warmPrint                       // the bundled look, a warm print
+
+override func setup() {
+    look = try! ColorLUT(resource: "kodachrome", withExtension: "cube", in: .module)
+}
+
+override func draw() {
+    drawImage(photo, 0, 0)
+    postProcess(.lut(look, amount: 0.8))
+}
+```
+
+Read the two strips before the portrait. The gray ramp says what the look does to tone: this one lifts black off the floor, holds white short of paper, and bends the middle into a gentle S. The sweep of hues says what it does to color: warm at the bright end, cool at the dark. Every look is those two things, and a ramp and a sweep through it tell you more than a portrait does.
+
+A word on how the table is read, because it decides whether a neutral stays neutral. A `.cube` holds a color at every node of a lattice, and an input between nodes has to be interpolated from the corners of its cell. Ollin cuts the cell into six tetrahedra along its gray diagonal and weighs the four corners of the one that holds the point, the way a grading suite does. Every one of those tetrahedra has the cell's black and white corners, so a gray input meets only the two gray corners, and a look that leaves gray alone does so between its nodes too. The plain trilinear read of a texture sampler would mix the colored corners in and tint a neutral.
+
+Two more things are worth knowing. A file that is not a `.cube` is refused with the line that stopped it, so a bad download says where. And the table runs the other way as well: `ColorLUT(size:title:_:)` builds a cube from a function of color, and `write(to:)` saves it as a `.cube` that any grading tool reads, so a look you tune in a sketch can travel out. [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) wipes the bundled look across a portrait, beside one written in code, and takes any `.cube` dropped on the window.
+
 ## Filters that read the layer as something else
 
 Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those repay meeting individually, because what you feed them matters more than the parameters.
@@ -863,6 +888,7 @@ The picture inside itself is named after a Dutch cocoa tin from 1904, whose labe
 ## Go deeper
 
 - [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar.
+- [Looks](../Docs/Drawing/Looks.md): the `.cube` format in both forms, the reader's refusals, the tetrahedral read, and writing a look of your own.
 - [Layers](../Docs/Concepts/Layers.md): one screen on what a layer is, what one costs, and when you do not need one.
 - [What survives a frame](../Docs/Concepts/Persistence.md): the whole list of what carries into the next frame, from the ink state to a checkpoint on disk.
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone mapping](../Docs/Drawing/HDR.md): the persistent canvas, the `Accumulator` that keeps a running mean, and the float pipeline underneath both.
@@ -874,7 +900,7 @@ The picture inside itself is named after a Dutch cocoa tin from 1904, whose labe
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (a still life as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (a hillside painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (fruit on a grained table flattened into regions by the shock filter), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Layers`](../Examples/Effects/Layers/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/InkDrawing`](../Examples/Effects/InkDrawing/Sketch.swift) (a still life as pen and ink), [`Examples/Effects/Brushwork`](../Examples/Effects/Brushwork/Sketch.swift) (a hillside painted as brushwork, every dial on a parameter), [`Examples/Effects/Coherence`](../Examples/Effects/Coherence/Sketch.swift) (fruit on a grained table flattened into regions by the shock filter), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Effects/PigmentMix`](../Examples/Effects/PigmentMix/Sketch.swift) (`.paintMix` and `.mix` over the same two layers at once), [`Examples/Color/Look`](../Examples/Color/Look/Sketch.swift) (a look from a `.cube` file wiped across a portrait), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), [`Examples/Rendering/DepthOfField`](../Examples/Rendering/DepthOfField/Sketch.swift) (a running mean of a million samples a frame), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---
 

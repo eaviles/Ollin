@@ -450,6 +450,116 @@ fragment float4 ollin_fx_soft_proof(PresentOut in [[stage_in]],
     return ollin_premul(proofed, s.a);
 }
 
+// The lookup filters' encode and decode, and how the answer is applied. The
+// table is authored on the encoded picture, so the layer goes through the
+// transfer curve on the way in and back on the way out, and a table that
+// changes nothing must hand back the very value it was given. A round trip
+// through pow cannot promise that: measured, it lands a few float steps off,
+// which is nothing to the eye but is enough to turn a pixel sitting on an
+// eight-bit rounding tie (a channel at 0.9 is 229.5) the other way after the
+// dither. So the table's answer is applied as a difference on the encoded
+// axis, and a difference under a millionth (a four-thousandth of a level) is
+// taken as no difference and left out of the sum exactly. An identity table
+// adds nothing, byte for byte; a look adds its change, and the round trip's
+// own error cancels out of it. A value above white gets what the table does
+// to white and keeps the rest, so a tone map still sees the highlight.
+static inline float3 ollin_lut_encode(float3 c) {
+    return linearToSrgb(c);
+}
+
+static inline float3 ollin_lut_decode(float3 c) {
+    return srgbToLinear(c);
+}
+
+static inline float4 ollin_lut_apply(float3 c, float3 encoded, float3 mapped, float amount, float alpha) {
+    float3 delta = mapped - encoded;
+    delta = select(delta, float3(0.0), abs(delta) < 1e-6);
+    float3 change = ollin_lut_decode(max(encoded + delta, 0.0)) - ollin_lut_decode(encoded);
+    return ollin_premul(max(c + change * amount, 0.0), alpha);
+}
+
+// lut3d: a color grade read from a three-dimensional table, the look a grading
+// tool exports as a `.cube` file, bound at texture(1) with one texel per node.
+// The table was authored on the encoded picture, so the layer is encoded on the
+// way in and decoded on the way out, and a value above white reads as white
+// (the table has no node past its last). The read is tetrahedral: the cell
+// around the input is cut into six tetrahedra along its gray diagonal, the
+// order of the three fractions says which one holds the point, and its four
+// corners are weighed. Every tetrahedron has the cell's black and white
+// corners, so a point on the diagonal reads through those two alone, which is
+// what keeps a gray input gray between the nodes of a table that leaves gray
+// alone; the sampler's trilinear read would pull the colored corners in.
+// params[0].x = amount; params[1].xyz and params[2].xyz scale and offset the
+// encoded value into the table's domain.
+fragment float4 ollin_fx_lut3d(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               texture3d<float> lut [[texture(1)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float3 encoded = ollin_lut_encode(c);
+    float3 t = clamp(encoded * params[1].xyz + params[2].xyz, 0.0, 1.0);
+    float n = float(lut.get_width());
+    float3 p = t * (n - 1.0);
+    float3 base = min(floor(p), n - 2.0);
+    float3 f = p - base;
+    uint3 i0 = uint3(base);
+    uint3 i1 = i0 + 1;
+    float3 c000 = lut.read(i0).rgb;
+    float3 c111 = lut.read(i1).rgb;
+    float3 mapped;
+    if (f.r > f.g) {
+        if (f.g > f.b) {            // r > g > b
+            mapped = (1.0 - f.r) * c000 + (f.r - f.g) * lut.read(uint3(i1.x, i0.y, i0.z)).rgb
+                   + (f.g - f.b) * lut.read(uint3(i1.x, i1.y, i0.z)).rgb + f.b * c111;
+        } else if (f.r > f.b) {     // r > b > g
+            mapped = (1.0 - f.r) * c000 + (f.r - f.b) * lut.read(uint3(i1.x, i0.y, i0.z)).rgb
+                   + (f.b - f.g) * lut.read(uint3(i1.x, i0.y, i1.z)).rgb + f.g * c111;
+        } else {                    // b > r > g
+            mapped = (1.0 - f.b) * c000 + (f.b - f.r) * lut.read(uint3(i0.x, i0.y, i1.z)).rgb
+                   + (f.r - f.g) * lut.read(uint3(i1.x, i0.y, i1.z)).rgb + f.g * c111;
+        }
+    } else {
+        if (f.b > f.g) {            // b > g > r
+            mapped = (1.0 - f.b) * c000 + (f.b - f.g) * lut.read(uint3(i0.x, i0.y, i1.z)).rgb
+                   + (f.g - f.r) * lut.read(uint3(i0.x, i1.y, i1.z)).rgb + f.r * c111;
+        } else if (f.b > f.r) {     // g > b > r
+            mapped = (1.0 - f.g) * c000 + (f.g - f.b) * lut.read(uint3(i0.x, i1.y, i0.z)).rgb
+                   + (f.b - f.r) * lut.read(uint3(i0.x, i1.y, i1.z)).rgb + f.r * c111;
+        } else {                    // g > r > b
+            mapped = (1.0 - f.g) * c000 + (f.g - f.r) * lut.read(uint3(i0.x, i1.y, i0.z)).rgb
+                   + (f.r - f.b) * lut.read(uint3(i1.x, i1.y, i0.z)).rgb + f.b * c111;
+        }
+    }
+    return ollin_lut_apply(c, encoded, mapped, params[0].x, s.a);
+}
+
+// lut1d: three curves, one per channel, from a `.cube` file with a LUT_1D_SIZE,
+// bound at texture(1) as a strip one texel per node. Each channel bends on its
+// own and none can see the others. The same encode in, decode out, and domain
+// as the cube; linear between nodes, which is all a curve wants.
+fragment float4 ollin_fx_lut1d(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               texture2d<float> lut [[texture(1)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float3 encoded = ollin_lut_encode(c);
+    float3 t = clamp(encoded * params[1].xyz + params[2].xyz, 0.0, 1.0);
+    float n = float(lut.get_width());
+    float3 p = t * (n - 1.0);
+    float3 base = min(floor(p), n - 2.0);
+    float3 f = p - base;
+    uint3 i0 = uint3(base);
+    float3 mapped = float3(
+        mix(lut.read(uint2(i0.x, 0u)).r, lut.read(uint2(i0.x + 1u, 0u)).r, f.r),
+        mix(lut.read(uint2(i0.y, 0u)).g, lut.read(uint2(i0.y + 1u, 0u)).g, f.g),
+        mix(lut.read(uint2(i0.z, 0u)).b, lut.read(uint2(i0.z + 1u, 0u)).b, f.b));
+    return ollin_lut_apply(c, encoded, mapped, params[0].x, s.a);
+}
+
 // MARK: - Stylize & optical filters
 
 // edges: Sobel magnitude over luminance (params[0].xy = texel size, .z = intensity).

@@ -409,6 +409,7 @@ let package = Package(
         example("Color/Dithering", [.samplePhotos]),
         example("Color/PrintSeparation"),
         example("Color/SoftProof"),
+        example("Color/Look", [.samplePhotos]),
         example("Color/Colormaps"),
         example("Motion/FlowField"),
         example("Motion/EllipseField"),
