@@ -49,6 +49,9 @@ public struct Sim: Sendable {
                         neighborhood: CellNeighborhood, seed: Double)
         case hodgepodge(states: Int, k1: Int, k2: Int, g: Int,
                         neighborhood: CellNeighborhood, seed: Double)
+        case wireworld
+        case schelling(preference: Double, vacancy: Double, mobility: Double,
+                       passes: Int, seed: Double)
         case selfWarp(SelfWarpConfig)
     }
 
@@ -533,16 +536,91 @@ public struct Sim: Sendable {
                               neighborhood: neighborhood, seed: seed))
     }
 
+    /// Silverman's **Wireworld**, the automaton that computes: every cell is empty, a
+    /// conductor, an electron head, or an electron tail. A head becomes a tail, a tail
+    /// becomes conductor, and a conductor becomes a head when exactly one or two of its
+    /// eight neighbors are heads. That last clause is the whole machine. One or two
+    /// lets a signal run down a wire and split at a fork; three or more stops it, which
+    /// is what a diode and a gate are built from. Draw a loop of wire with one
+    /// electron on it and it is a clock; tap the loop and it feeds a circuit; join two
+    /// wires and the junction is an OR. Everything a computer does has been laid out
+    /// in it.
+    ///
+    /// The field starts empty, so **draw the circuit**. A mark's brightness picks what
+    /// it lays down, snapped to the nearest of the four states: black erases, a third
+    /// gray is conductor, two thirds a tail, and white an electron head. `WireworldCell`
+    /// names those levels, so a sketch writes `fill(WireworldCell.conductor.color)`, and
+    /// a circuit drawn cell by cell from a few lines of text is the usual way in. One
+    /// texel is one cell (`scale` sets the size; make cells large enough to see), and
+    /// edges wrap.
+    ///
+    /// The raw `image` reads back the same four levels, made for `.gradientMap` with a
+    /// color per state; the classic picture is yellow wire with blue heads and red
+    /// tails on black.
+    public static func wireworld() -> Sim { Sim(kind: .wireworld) }
+
+    /// Schelling's model of **segregation**, the board that showed how a mild
+    /// preference sorts a neighborhood. Every cell is empty or holds one of two kinds
+    /// of agent. An agent is content when at least `preference` of its occupied
+    /// neighbors are its own kind, and one that is not moves to an empty cell nearby,
+    /// taking a cell where it would be content when there is one within reach and
+    /// stepping toward one otherwise. Nobody wants to live apart, and the board sorts
+    /// itself into patches anyway, more sharply than anyone on it asked for. That gap
+    /// between what each agent wants and what all of them get is the whole result.
+    ///
+    /// The field **needs no seeding**: it starts as a seeded random mix of the two kinds
+    /// with `vacancy` of the cells empty, because a board that is already sorted is a
+    /// fixed point. The same `seed` replays the same run. Drawing stamps states, snapped
+    /// to the nearest of the three levels: black empties the cells it covers, mid gray
+    /// places the first kind, and white the second (`SchellingCell` names them), and
+    /// the board sorts around the mark. The board has edges, as Schelling's did, so an
+    /// agent at the edge has fewer neighbors, and an agent with no neighbors at all is
+    /// content.
+    ///
+    /// The raw `image` is grayscale, empty black, the first kind mid, the second white,
+    /// made for `.gradientMap` with a color per kind. One texel is one cell (`scale`
+    /// sets the size).
+    ///
+    /// - Parameters:
+    ///   - preference: The share of its occupied neighbors an agent wants to be its own
+    ///     kind (0...1). At 0 everyone is content where they are and nothing moves; at
+    ///     0.3, Schelling's usual demand, the board sorts into patches; at 0.5 and
+    ///     above it sorts hard, and near 1 nobody can settle beside a neighbor of the
+    ///     other kind.
+    ///   - vacancy: The share of cells left empty at the start (0...1). The empties are
+    ///     where the movers go, so a board with few of them jams with agents that have
+    ///     nowhere to move to.
+    ///   - mobility: The chance an unhappy agent moves in a given pass (0...1), the pace
+    ///     of the whole run. At 1 every unhappy agent with somewhere to go moves at once
+    ///     and the board sorts in a few frames; at the default a board takes a couple of
+    ///     seconds, which is the sorting you can watch. At 0 nothing moves.
+    ///   - passes: How many moving passes run per frame (1...64). Each pass lets every
+    ///     unhappy agent step within an eight-cell block, and the blocks walk across the
+    ///     field from one pass to the next, so four passes reach every neighbor.
+    ///   - seed: Picks the random start and the coins, so the same seed replays the
+    ///     same run.
+    public static func schelling(preference: Double = 0.3, vacancy: Double = 0.25,
+                                 mobility: Double = 0.02, passes: Int = 4,
+                                 seed: Double = 1) -> Sim {
+        Sim(kind: .schelling(preference: max(0, min(1, preference)),
+                             vacancy: max(0, min(1, vacancy)),
+                             mobility: max(0, min(1, mobility)),
+                             passes: max(1, min(64, passes)), seed: seed))
+    }
+
     // MARK: Renderer hooks (internal)
 
     /// The seeded random start a state automaton needs, or `nil` for sims that rest
-    /// at a constant: how many evenly spaced state levels to fill and the seed that
-    /// picks them. Handed to the renderer's first-allocation fill, because a uniform
-    /// field is a fixed point for these rules and noise is the required start.
-    var stateSeedFill: (levels: Int, seed: Double)? {
+    /// at a constant: how many state levels to fill, the seed that picks them, and the
+    /// share of cells held at level 0, the rest split evenly over the higher levels
+    /// (Schelling's vacancy, which may be 0), or a negative share for an even split
+    /// over every level. Handed to the renderer's first-allocation fill, because a
+    /// uniform field is a fixed point for these rules and noise is the required start.
+    var stateSeedFill: (levels: Int, seed: Double, empty: Double)? {
         switch kind {
-        case let .cyclic(states, _, _, _, seed): return (states, seed)
-        case let .hodgepodge(states, _, _, _, _, seed): return (states + 1, seed)
+        case let .cyclic(states, _, _, _, seed): return (states, seed, -1)
+        case let .hodgepodge(states, _, _, _, _, seed): return (states + 1, seed, -1)
+        case let .schelling(_, vacancy, _, _, seed): return (3, seed, vacancy)
         default: return nil
         }
     }
@@ -597,6 +675,10 @@ public struct Sim: Sendable {
         case .briansBrain:       return 1
         case .forestFire:        return 1
         case .hodgepodge:        return 1
+        case .wireworld:         return 1
+        case let .schelling(_, _, _, passes, _):
+            return passes                   // the blocks walk one origin per pass, so
+                                            // four passes reach every neighbor once
         case .selfWarp:          return 1   // unused: self-warp runs its own pipeline
         }
     }
@@ -626,6 +708,9 @@ public struct Sim: Sendable {
                                                             // grows itself in
         case .hodgepodge:        return SIMD4(0, 0, 0, 1)   // unused: starts as seeded
                                                             // random states (stateSeedFill)
+        case .wireworld:         return SIMD4(0, 0, 0, 1)   // no wire anywhere
+        case .schelling:         return SIMD4(0, 0, 0, 1)   // unused: starts as a seeded
+                                                            // random mix (stateSeedFill)
         case .selfWarp:          return SIMD4(0, 0, 0, 0)   // unused: runSelfWarp clears
                                                             // and primes its own state
         }
@@ -648,6 +733,8 @@ public struct Sim: Sendable {
         case .briansBrain:       return "ollin_sim_brain"
         case .forestFire:        return "ollin_sim_forest_fire"
         case .hodgepodge:        return "ollin_sim_hodgepodge"
+        case .wireworld:         return "ollin_sim_wireworld"
+        case .schelling:         return "ollin_sim_schelling"
         case .selfWarp:          return ""   // unused: self-warp dispatches its own fragments
         }
     }
@@ -679,6 +766,8 @@ public struct Sim: Sendable {
         case .watercolor:       return ""   // unused: watercolor runs its own two injects
         case .excitable:        return "ollin_sim_inject_excite"
         case .briansBrain:      return "ollin_sim_inject_brain"
+        case .wireworld:        return "ollin_sim_inject_wire"     // four levels, snapped
+        case .schelling:        return "ollin_sim_inject_kinds"    // three levels, snapped
         default:                return "ollin_sim_inject"
         }
     }
@@ -727,6 +816,11 @@ public struct Sim: Sendable {
         case let .hodgepodge(states, k1, k2, g, neighborhood, _):
             return [SIMD4(Float(states), Float(k1), Float(k2), Float(g)),
                     SIMD4(neighborhood == .moore ? 1 : 0, 0, 0, 0)]
+        case .wireworld:
+            return []
+        case let .schelling(preference, _, mobility, passes, seed):
+            // The vacancy is read by the seed fill, not the step.
+            return [SIMD4(Float(preference), Float(mobility), Float(seed), Float(passes))]
         case .selfWarp:
             return []   // unused: self-warp binds per-pass parameters itself
         }
@@ -762,6 +856,47 @@ public enum SandMaterial: Int, Sendable, CaseIterable {
     /// The gray a mark uses to lay this material down (the level the field stores).
     public var color: Color {
         Color(white: Double(rawValue) / Double(SandMaterial.allCases.count - 1))
+    }
+}
+
+/// What a cell of a `Sim.wireworld` field holds, and the gray level that lays it
+/// down. The field stores one state per texel as a third-step gray, so a mark's
+/// brightness picks the state: `fill(WireworldCell.conductor.color)` before a
+/// `drawRect` lays wire, `.head` puts an electron on it, and the raw `image` reads
+/// back the same levels (empty black, conductor a third gray, tail two thirds,
+/// head white).
+public enum WireworldCell: Int, Sendable, CaseIterable {
+    /// Nothing. Drawn as black, it erases.
+    case empty = 0
+    /// Wire: it carries an electron, becoming a head when one or two neighbors are heads.
+    case conductor = 1
+    /// The back of an electron: it is conductor again next step, and cannot be re-lit.
+    case tail = 2
+    /// The front of an electron: it is a tail next step, and lights the wire ahead.
+    case head = 3
+
+    /// The gray a mark uses to lay this state down (the level the field stores).
+    public var color: Color {
+        Color(white: Double(rawValue) / Double(WireworldCell.allCases.count - 1))
+    }
+}
+
+/// What a cell of a `Sim.schelling` field holds, and the gray level that stamps it:
+/// empty, or an agent of one of the two kinds. `fill(SchellingCell.first.color)`
+/// before a mark settles a block of the first kind, black clears one, and the raw
+/// `image` reads back the same levels (empty black, the first kind mid gray, the
+/// second white).
+public enum SchellingCell: Int, Sendable, CaseIterable {
+    /// Nobody lives here; a mover can take it.
+    case empty = 0
+    /// An agent of the first kind.
+    case first = 1
+    /// An agent of the second kind.
+    case second = 2
+
+    /// The gray a mark uses to stamp this state (the level the field stores).
+    public var color: Color {
+        Color(white: Double(rawValue) / Double(SchellingCell.allCases.count - 1))
     }
 }
 

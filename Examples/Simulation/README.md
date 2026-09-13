@@ -21,7 +21,7 @@ These examples run systems that change on the GPU each frame. They cover three a
 | Example | What it shows |
 |---|---|
 | [GrayScott](GrayScott/Sketch.swift) | a Gray-Scott reaction-diffusion field that evolves on the GPU (`makeSimField(.reactionDiffusion(...))`) |
-| [Automata](Automata/Sketch.swift) | eight classic cellular automata under one rule picker: Game of Life, Brian's Brain, Griffeath's cyclic automaton, an excitable medium, the hodgepodge machine, the Abelian sandpile, Lenia, and falling sand. Each one has its own ramp, seeding recipe, and parameters. Drag to paint, and hold a key to erase (`makeSimField(...)`) |
+| [Automata](Automata/Sketch.swift) | ten classic cellular automata under one rule picker: Game of Life, Brian's Brain, Wireworld, Griffeath's cyclic automaton, an excitable medium, the hodgepodge machine, the forest fire, Schelling's segregation, the Abelian sandpile, Lenia, and falling sand. Each one has its own ramp, seeding recipe, and parameters. Drag to paint, and hold a key to erase (`makeSimField(...)`) |
 | [LifeQuilt](LifeQuilt/Sketch.swift) | the classic life rules stepped by hand on the CPU and drawn as a quilt of triangular wedges, colored by a radial cosine palette. It is the by-hand counterpart to the GPU rules in Automata (`drawTriangle`, SDF) |
 | [MultiScaleTuring](MultiScaleTuring/Sketch.swift) | McCabe's multi-scale Turing patterns: five scales compete at each pixel and organize themselves from noise into a relief that looks like a diatom. You can fold the result into a rosette (`makeSimField(.multiScaleTuring(...))`) |
 | [Fluid](Fluid/Sketch.swift) | a real-time incompressible fluid that carries color. Drag to swirl it (`makeSimField(.fluid(...))`) |

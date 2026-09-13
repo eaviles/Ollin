@@ -1934,7 +1934,8 @@ extension MetalRenderer {
             return { tex in
                 let texel = SIMD4<Float>(1 / Float(tex.width), 1 / Float(tex.height), 0, 0)
                 self.encodeEffectFragment("ollin_sim_state_seed", inputs: [], output: tex,
-                                          params: [texel, SIMD4(Float(fill.seed), Float(fill.levels), 0, 0)],
+                                          params: [texel, SIMD4(Float(fill.seed), Float(fill.levels),
+                                                                Float(fill.empty), 0)],
                                           into: cb)
             }
         }

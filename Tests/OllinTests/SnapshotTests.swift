@@ -285,6 +285,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("hodgepodge", frame: 300,
                  note: "A hodgepodge machine (the oscillating-chemical-reaction automaton; 100 states, k1 2, k2 3, g 25, the eight-cell block) from its seeded random start, run to frame 300 and recoloured with turbo. Pins the three-branch rule: the healthy cell's floored catch from infected and ill neighbors, the infected cell's averaged-sum climb plus g with the self-counting denominator, the instant recovery at the top, and the cap.",
                  make: { HodgepodgeScene() }),
+    SnapshotCase("wireworld", frame: 90,
+                 note: "A Wireworld circuit typed as text and stamped on frame 1 (a ring clock tapped through a diode into a wire that forks to two lamps), caught at frame 90 with electrons in flight, under the classic colors (yellow wire, blue heads, red tails). Pins the four-state rule (head to tail, tail to wire, wire to head on exactly one or two heads), the corner-cutting eight-cell count that gives the ring its period, the diode's three-head block, and the sRGB-snapping four-level inject.",
+                 make: { WireworldScene() }),
+    SnapshotCase("schelling", frame: 3,
+                 note: "Schelling's board from its seeded random start (a quarter empty, the rest an even mix, seed 4) at a preference of 0.3 and full mobility, one pass a frame, caught at frame 3 with the sort half done and recoloured with a color per kind. Pins the seeded three-level fill with its vacancy share, the eight-by-eight block walk, the raster pairing of unhappy agents with empty cells (content ones first), and the bounded board's edges.",
+                 make: { SchellingScene() }),
     SnapshotCase("watercolor-sim", frame: 140,
                  note: "A watercolor SimField painted by a fixed script: an ultramarine wash laid on frame 1 (its edge darkening as it sits), rose charged into it wet-in-wet on frame 30, the sheet dried on frame 60, and a hansa-yellow band glazed across everything on frame 62, caught at frame 140. Pins the whole three-layer wash pipeline: the staggered-grid shallow-water step with the paper's slope, the divergence relaxation, the blurred-mask edge darkening, upwind pigment advection, the density/staining/granulation exchange with the deposit layer, the capillary re-wet of damp paper, the dry() bake into the glaze stack, and the Kubelka-Munk rendering (wet wash over dried glazes over paper) whose optical mixing the crossing shows. WatercolorSimTests pins the behaviors a mean diff averages away.",
                  make: { WatercolorSimScene() }),
@@ -9613,6 +9619,76 @@ private final class HodgepodgeScene: Sketch {
     override func draw() {
         background(.black)
         drawImage(field.filtered(.gradientMap(.turbo)).image, 0, 0)
+    }
+}
+
+/// A Wireworld circuit typed as text and stamped on frame 1, four canvas pixels
+/// to a cell: a ring clock tapped through a diode into a wire that forks to two
+/// lamps. Deterministic from the text.
+private final class WireworldScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+
+    private let circuit = [
+        "..............................................................",
+        "..#tH######...................................................",
+        "..#.......#.......##..........................................",
+        "..#.......#########.###.......................................",
+        "..#.......#.......##..#.....................................##",
+        "..#########...........#.....................................##",
+        "......................#....................................#..",
+        "......................#####################################...",
+        "......................#....................................#..",
+        "......................#.....................................##",
+        "..#tH########.........#.....................................##",
+        "..#.........#.....##..#.......................................",
+        "..#.........#######.###.......................................",
+        "..#.........#.....##..........................................",
+        "..#.........#.................................................",
+        "..###########.................................................",
+    ]
+    private let levels: [Character: WireworldCell] = [".": .empty, "#": .conductor, "t": .tail, "H": .head]
+    private let colors = Ramp(stops: [(0.0, Color(hex: 0x0B0B0F)),
+                                      (1.0 / 3.0, Color(hex: 0xE8B923)),
+                                      (2.0 / 3.0, Color(hex: 0xE0432E)),
+                                      (1.0, Color(hex: 0x2E7BFF))])
+
+    override func setup() { field = makeSimField(.wireworld(), scale: 0.25) }
+
+    override func draw() {
+        background(.black)
+        withField(field) {
+            noStroke()
+            if frameCount == 1 {
+                for (y, row) in circuit.enumerated() {
+                    for (x, ch) in row.enumerated() where ch != "." {
+                        fill(levels[ch]!.color)
+                        drawRect(Double(x + 1) * 4, Double(y + 24) * 4, 4, 4)
+                    }
+                }
+            }
+        }
+        drawImage(field.filtered(.gradientMap(colors)).image, 0, 0)
+    }
+}
+
+/// Schelling's board from its seeded random start at full mobility, one pass a
+/// frame, caught with the sort half done. Deterministic: the start is the seeded
+/// fill and every unhappy agent that can move does.
+private final class SchellingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+    private let kinds = Ramp(stops: [(0.0, Color(hex: 0x14161C)),
+                                     (0.5, Color(hex: 0xE4572E)),
+                                     (1.0, Color(hex: 0x17BEBB))])
+
+    override func setup() {
+        field = makeSimField(.schelling(preference: 0.3, mobility: 1, passes: 1, seed: 4), scale: 0.5)
+    }
+
+    override func draw() {
+        background(.black)
+        drawImage(field.filtered(.gradientMap(kinds)).image, 0, 0)
     }
 }
 

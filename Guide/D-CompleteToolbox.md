@@ -245,6 +245,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Simulation fields | Game of Life, Gray-Scott reaction-diffusion, Lenia, the ripple pool, and real-time fluid, all seeded by drawing into them | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Grid automata | `.cyclic`, `.excitable`, `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, and `.schelling`: the classic state automata as fields, from spirals and gliders to a circuit and a neighborhood sorting itself | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 | Watercolor wash | `watercolor(pigments:)`: wet paint on rough paper, with real pigment behavior, darkened edges, backruns, dry-brush, and optical glazing | [Ch 19](19-GridSimulations.md) | [Watercolor](../Docs/Simulation/Watercolor.md) |
 | Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 17](17-YourFirstShader.md) | [Chladni](../Docs/Generators/Chladni.md) |
 

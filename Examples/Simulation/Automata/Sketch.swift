@@ -1,6 +1,6 @@
 import Ollin
 
-/// Eight classic **cellular automata** on one `SimField`, behind a rule picker.
+/// Ten classic **cellular automata** on one `SimField`, behind a rule picker.
 /// Each rule is one entry in a table: its sim and parameters, its ramp, its
 /// seeding recipe, and its parameters. Switching rules starts a fresh field with that
 /// rule's classic opening. One shared brush works everywhere: drag to paint the
@@ -12,6 +12,10 @@ import Ollin
 ///   • **brain**: Silverman's Brian's Brain; fire on exactly two, rest one
 ///     step, and loose soup explodes into permanent glider traffic (a solid
 ///     blob dies at once, so the brush sprinkles single cells).
+///   • **wire**: Silverman's Wireworld; a wire lights when one or two neighbors
+///     are electron heads and stays dark on three, which is enough to build a
+///     clock, a diode, and every gate; the opening circuit is typed as text, two
+///     clocks feeding a bus through diodes, and the pen lays wire or electrons.
 ///   • **cyclic**: Griffeath's cyclic automaton; each color eats the one
 ///     before it, and seeded noise self-organizes into turning spiral cores; a
 ///     closed hue wheel hands the top state back to state zero without a seam.
@@ -30,6 +34,9 @@ import Ollin
 ///   • **forest**: the Drossel-Schwabl forest fire; trees grow at random, a
 ///     rare strike lights one, and the fire runs the stand it can reach, so the
 ///     field settles at its own density and throws fires of every size.
+///   • **schelling**: Schelling's segregation; two kinds on a board with empty
+///     cells, each content with a share of like neighbors, the unhappy moving
+///     nearby, and a mild preference sorts the whole board into patches.
 ///   • **sand**: the falling-sand automaton; grains fall, roll off each other
 ///     into heaps, sink through water that spreads flat, and stop at walls; the
 ///     brush pours whichever material the parameter names, `friction` sets how steep
@@ -40,7 +47,12 @@ import Ollin
 final class Automata: Sketch {
 
     enum Rule: String, CaseIterable, ParamOption {
-        case life, brain, cyclic, excitable, hodgepodge, forest, sandpile, lenia, sand
+        case life, brain, wire, cyclic, excitable, hodgepodge, forest, schelling, sandpile, lenia, sand
+    }
+
+    /// What the Wireworld pen lays down: wire, or an electron on it.
+    enum Pen: String, CaseIterable, ParamOption {
+        case wire, electron
     }
 
     /// What the brush pours in the falling-sand rule.
@@ -73,11 +85,19 @@ final class Automata: Sketch {
     /// Toppling passes per frame: an avalanche front moves one cell per pass,
     /// so this is the pacing dial.
     @Param("Pace", 1 ... 128, icon: "speedometer", group: "Sandpile") var pace = 64.0
+    @Param("Pen", icon: "pencil.line", group: "Wireworld") var pen: Pen = .wire
     /// The chance an empty cell grows a tree in a step.
     @Param("Growth", 0.002 ... 0.06, icon: "leaf", group: "Forest") var growth = 0.015
     /// Strikes per million tree-steps. Far below the growth rate is what makes fires
     /// of every size; near it, every tree burns as soon as it grows.
     @Param("Lightning", 0.5 ... 200, icon: "bolt", group: "Forest") var strikes = 6.0
+    /// The share of its neighbors an agent wants to be its own kind. Raise it and the
+    /// settled board comes unsettled and sorts further.
+    @Param("Preference", 0 ... 1, icon: "person.2", group: "Schelling") var preference = 0.3
+    /// The share of empty cells the board starts with; changing it starts a fresh board.
+    @Param("Vacancy", 0.05 ... 0.6, icon: "square.dashed", group: "Schelling") var vacancy = 0.25
+    /// The chance an unhappy agent moves in a pass: the pace of the sort.
+    @Param("Mobility", 0.002 ... 1, icon: "figure.walk", group: "Schelling") var mobility = 0.02
     @Param("Growth center", 0.05 ... 0.3, icon: "target", group: "Lenia") var growthCenter = 0.15
     @Param("Growth width", 0.005 ... 0.05, icon: "slider.horizontal.below.rectangle", group: "Lenia") var growthWidth = 0.015
     @Param("Pour", icon: "paintbrush.pointed", group: "Sand") var grain: Grain = .sand
@@ -88,9 +108,42 @@ final class Automata: Sketch {
     private var field: SimField!
     private var active: Rule?
     private var fieldAge = 0
+    private var seededVacancy = 0.0
 
     /// Life's grid, in cells across: one texel is one chunky, visible cell.
     private let cells = 130
+
+    /// Wireworld's grid, coarser still: a circuit wants cells you can read.
+    private let wireCells = 96
+
+    /// The opening circuit, typed the way these circuits are shared: `#` wire,
+    /// `H` an electron head, `t` its tail. Two ring clocks of different periods,
+    /// each tapped through a diode (the two-wide bar with a gap under it, which an
+    /// electron crosses one way and dies at the other), meet on one bus that
+    /// forks into two lamps.
+    private let circuit = [
+        "................................................................",
+        "..#tH######.....................................................",
+        "..#.......#.......##............................................",
+        "..#.......#########.######......................................",
+        "..#.......#.......##.....#......................................",
+        "..#########..............#..................................##..",
+        ".........................#..................................##..",
+        ".........................#.................................#....",
+        ".........................##################################.....",
+        ".........................#.................................#....",
+        ".........................#..................................##..",
+        "..#tH########............#..................................##..",
+        "..#.........#.....##.....#......................................",
+        "..#.........#######.######......................................",
+        "..#.........#.....##............................................",
+        "..#.........#...................................................",
+        "..#.........#...................................................",
+        "..###########...................................................",
+        "................................................................",
+    ]
+    private let wireLevels: [Character: WireworldCell] = [".": .empty, "#": .conductor,
+                                                          "t": .tail, "H": .head]
 
     /// Brian's Brain: ready is the dark ground, resting the cool afterglow,
     /// firing the white spark.
@@ -120,6 +173,19 @@ final class Automata: Sketch {
                                      (0.5, Color(hex: 0x2F7D45)),
                                      (1.0, Color(hex: 0xFFC24A))])
 
+    /// Wireworld's classic colors: yellow wire, red tails, blue heads, on black,
+    /// at the four levels the field stores.
+    private let wire = Ramp(stops: [(0.0, Color(hex: 0x0B0B0F)),
+                                    (1.0 / 3.0, Color(hex: 0xE8B923)),
+                                    (2.0 / 3.0, Color(hex: 0xE0432E)),
+                                    (1.0, Color(hex: 0x2E7BFF))])
+
+    /// Schelling's board: empty ground and a color per kind, at the three levels
+    /// the field stores.
+    private let kinds = Ramp(stops: [(0.0, Color(hex: 0x14161C)),
+                                     (0.5, Color(hex: 0xE4572E)),
+                                     (1.0, Color(hex: 0x17BEBB))])
+
     /// Falling sand: one tone per material, at the thirds the field stores them
     /// on (empty, water, sand, wall).
     private let materials = Ramp(stops: [(0.000, Color(hex: 0x14161C)),
@@ -134,6 +200,7 @@ final class Automata: Sketch {
     override func draw() {
         background(.black)
         if rule != active { restart(with: rule) }   // a rule switch starts fresh
+        if rule == .schelling && vacancy != seededVacancy { restart(with: rule) }   // a new board
         field.sim = sim(for: rule)                  // the parameters retune the rule live
         fieldAge += 1
 
@@ -152,6 +219,7 @@ final class Automata: Sketch {
         field = makeSimField(sim(for: rule), scale: fieldScale(for: rule))
         active = rule
         fieldAge = 0
+        seededVacancy = vacancy
     }
 
     /// The table's sim column: each rule's `Sim` case under its parameters.
@@ -159,6 +227,7 @@ final class Automata: Sketch {
         switch rule {
         case .life: return .gameOfLife()
         case .brain: return .briansBrain()
+        case .wire: return .wireworld()
         case .cyclic: return .cyclic(states: hueStates, threshold: threshold,
                                      neighborhood: corners ? .moore : .vonNeumann,
                                      seed: Double(variation))
@@ -166,6 +235,8 @@ final class Automata: Sketch {
         case .hodgepodge: return .hodgepodge(infectionRate: speed, seed: Double(variation))
         case .forest: return .forestFire(growth: growth, lightning: strikes / 1_000_000,
                                         seed: Double(variation))
+        case .schelling: return .schelling(preference: preference, vacancy: vacancy,
+                                           mobility: mobility, seed: Double(variation))
         case .sandpile: return .sandpile(pour: 1024, topplings: Int(pace))
         case .lenia: return .lenia(growthCenter: growthCenter, growthWidth: growthWidth)
         case .sand: return .fallingSand(passes: 16, friction: friction)
@@ -177,17 +248,28 @@ final class Automata: Sketch {
     private func fieldScale(for rule: Rule) -> Double {
         switch rule {
         case .life: return Double(cells) / width
+        case .wire: return Double(wireCells) / width
         case .brain: return 0.15
-        case .cyclic, .excitable, .hodgepodge, .forest: return 0.25
+        case .cyclic, .excitable, .hodgepodge, .forest, .schelling: return 0.25
         case .sandpile, .lenia, .sand: return 0.5
         }
     }
 
     /// The table's seeding column, run inside the paint block: each rule's classic
-    /// opening at the age it calls for. Cyclic and hodgepodge need nothing (they
-    /// start from seeded random states picked by `variation`).
+    /// opening at the age it calls for. Cyclic, hodgepodge, and Schelling need
+    /// nothing (they start from seeded random states picked by `variation`).
     private func seedIfDue() {
         switch rule {
+        case .wire where fieldAge == 1:
+            // The circuit, one cell per character, centered on the grid.
+            let cw = width / Double(wireCells)
+            let left = (wireCells - circuit[0].count) / 2, top = (wireCells - circuit.count) / 2
+            for (y, row) in circuit.enumerated() {
+                for (x, ch) in row.enumerated() where ch != "." {
+                    fill(wireLevels[ch]!.color)
+                    drawRect(Double(left + x) * cw, Double(top + y) * cw, cw, cw)
+                }
+            }
         case .life where fieldAge == 1:
             // A random soup to get life going, cell-aligned so one mark is one cell.
             fill(.white)
@@ -248,6 +330,18 @@ final class Automata: Sketch {
             let cw = width / Double(cells)
             let gx = Double(Int(mouseX / cw)), gy = Double(Int(mouseY / cw))
             drawRect((gx - 1) * cw, (gy - 1) * cw, cw * 3, cw * 3)
+        case .wire:
+            // Cell-aligned: the pen lays one cell of wire or one electron head
+            // under the mouse, and a held key clears a three-by-three patch.
+            let cw = width / Double(wireCells)
+            let gx = Double(Int(mouseX / cw)), gy = Double(Int(mouseY / cw))
+            if keyIsPressed {
+                fill(WireworldCell.empty.color)
+                drawRect((gx - 1) * cw, (gy - 1) * cw, cw * 3, cw * 3)
+            } else {
+                fill(pen == .wire ? WireworldCell.conductor.color : WireworldCell.head.color)
+                drawRect(gx * cw, gy * cw, cw, cw)
+            }
         case .brain:
             // A solid blob dies at once, so the brush sprinkles loose cells.
             if keyIsPressed {
@@ -274,6 +368,11 @@ final class Automata: Sketch {
             // flames cannot cross (and the trees grow back into it).
             fill(keyIsPressed ? .black : .white)
             drawCircle(mouseX, mouseY, keyIsPressed ? 60 : 10)
+        case .schelling:
+            // A block settled by one kind, which the sort then answers; a held
+            // key clears a block, and the movers find the room.
+            fill(keyIsPressed ? SchellingCell.empty.color : SchellingCell.first.color)
+            drawCircle(mouseX, mouseY, 50)
         case .sandpile:
             // Sand cannot be unpoured (a dark mark adds no grains), so the held
             // key simply holds the torrent.
@@ -309,10 +408,12 @@ final class Automata: Sketch {
         switch rule {
         case .life: return field.image
         case .brain: return field.filtered(.gradientMap(glow)).image
+        case .wire: return field.filtered(.gradientMap(wire)).image
         case .cyclic: return field.filtered(.gradientMap(wheel)).image
         case .excitable: return field.filtered(.gradientMap(.inferno)).image
         case .hodgepodge: return field.filtered(.gradientMap(.turbo)).image
         case .forest: return field.filtered(.gradientMap(woods)).image
+        case .schelling: return field.filtered(.gradientMap(kinds)).image
         case .sandpile: return field.filtered(.gradientMap(counts)).image
         case .lenia: return field.filtered(.gradientMap(.magma)).image
         case .sand: return field.filtered(.gradientMap(materials)).image
@@ -325,6 +426,8 @@ final class Automata: Sketch {
             return "Game of Life · drag to draw cells, hold a key to erase"
         case .brain:
             return "Brian's Brain · fire on exactly two · drag to sprinkle, hold a key to clear"
+        case .wire:
+            return "Wireworld · one or two heads light a wire · drag to lay wire or electrons, hold a key to erase"
         case .cyclic:
             return "cyclic automaton · each color eats the one before it · drag to stamp"
         case .excitable:
@@ -333,6 +436,8 @@ final class Automata: Sketch {
             return "hodgepodge machine · infection chasing recovery · drag to infect, hold a key to heal"
         case .forest:
             return "forest fire · trees grow, lightning strikes · drag to set fires, hold a key to cut a break"
+        case .schelling:
+            return "Schelling's neighborhood · a mild preference sorts the board · drag to settle a block, hold a key to clear one"
         case .sandpile:
             return "Abelian sandpile · four grains at a time · hold to pour another mountain"
         case .lenia:

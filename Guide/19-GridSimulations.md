@@ -186,6 +186,67 @@ The ratio between the two rates is the whole dial, so keep `lightning` far below
 
 Drawing works as it does everywhere else here. White sets cells burning, so you can start a fire where you want one. Black clears a firebreak, and the flames stop at it while the trees grow back into it. The `Simulation/Automata` example's forest rule is that piece with both rates on parameters, which is the fastest way to feel what the ratio does.
 
+## A circuit made of cells
+
+Brian's Brain has a quieter sibling, built by the same Brian Silverman to compute with. Wireworld has four states: empty, wire, and the two halves of an electron, its head and its tail. A head becomes a tail. A tail becomes wire. Wire becomes a head when exactly one or two of its eight neighbors are heads. That is the whole rule, and the last clause is the whole machine. One or two lets a signal run down a wire, and the tail behind it cannot be re-lit, so it never runs back. Three or more stops it, and that refusal is what a diode and every logic gate are built from.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/Wireworld-dark.jpg">
+  <img src="Images/19-GridSimulations/Wireworld.jpg" alt="Left, four boxes in a column, empty, wire, head, and tail, with arrows down between the last three labeled one or two neighbors are heads and always, the next step, and an arrow back up the side from tail to wire. Right, a circuit of yellow wire on black: two ring clocks on the left feeding one long bus through diodes, blue electron heads with red tails running along it, and two small lamps at the end" width="700">
+</picture>
+
+There is nothing to seed here, in the other direction: the field starts empty and you draw the circuit. The usual way in is text, one character per cell, which is how these circuits have been shared since the 1980s. The `Simulation/Automata` example types its opening circuit that way and stamps it on the first frame:
+
+```swift
+var board: SimField!
+let circuit = ["#tH######.........",
+               "#.......#.........",
+               "#.......##########",
+               "#.......#.........",
+               "#########........."]
+let levels: [Character: WireworldCell] = [".": .empty, "#": .conductor, "t": .tail, "H": .head]
+
+override func setup() {
+    board = makeSimField(.wireworld(), scale: 0.1)   // ten canvas pixels to a cell
+}
+
+override func draw() {
+    background(.black)
+    withField(board) {
+        noStroke()
+        if frameCount == 1 {                          // stamp the circuit once
+            for (y, row) in circuit.enumerated() {
+                for (x, ch) in row.enumerated() where ch != "." {
+                    fill(levels[ch]!.color)
+                    drawRect(Double(x) * 10, Double(y) * 10, 10, 10)
+                }
+            }
+        }
+    }
+    drawImage(board.image, 0, 0)
+}
+```
+
+That ring with one electron on it is a clock. The electron laps the ring, and each time it passes the tap on the right it sends a pulse down the wire. The ring is nine cells by five, twenty-four around. The electron laps it in twenty, because the eight-cell neighborhood lets it cut the corners. Put a second ring of another size on the same bus and the two pulse trains interleave. The figure's diode is the two-wide bar with a gap under it. Coming from the wire's side an electron lights the bar as two heads and crosses the gap. Coming from the other side it lights three at once and dies there. `WireworldCell` names the four grays, so a pen that lays wire is `fill(WireworldCell.conductor.color)` and one that places an electron is `.head.color`. Keep the cells large enough to read, since a circuit is a picture of its own wiring.
+
+## A neighborhood sorting itself
+
+The last rule in this chapter is not about physics or chemistry. In 1971 the economist Thomas Schelling put coins of two kinds on a board and left some squares empty. Each coin got a mild wish: at least a third of its neighbors should be coins of its own kind. Any coin that was not content moved to the nearest empty square where it would be. He was asking a question about cities. The answer was the board sorting itself into solid blocks, sharply, from a wish nobody would call intolerant. `.schelling` is that board on the GPU:
+
+```swift
+var board: SimField!
+
+override func setup() {
+    board = makeSimField(.schelling(preference: 0.3), scale: 0.25)
+}
+```
+
+<img src="Images/19-GridSimulations/Schelling.jpg" alt="Three square panels of a board of orange and teal cells with dark empty cells scattered through them. Left, an even random mix. Middle, the same board fifteen steps later, the two colors beginning to gather into patches. Right, four hundred steps in, solid orange and teal regions with empty cells along their edges" width="700">
+
+There is nothing to seed. The field starts as a random mix of the two kinds with a quarter of the cells empty. The empties are the point, since they are where the movers go. An agent that is not content steps into an empty cell nearby, one where it would be content if there is one within reach. It keeps stepping until it is. `preference` is the wish. At 0.3, the figure's setting, the board settles into patches, and at 0.5 it sorts hard. Raise it while the board is settled and it comes unsettled and sorts further. `mobility` is the pace, the chance an unhappy agent moves in a pass. At the default the sort takes a couple of seconds, and that is the part to watch. At 1 it is over in a few frames.
+
+The measure to watch is the share of an agent's neighbors that are its own kind. It starts at half, because the mix is random, and at a preference of 0.3 it settles above two thirds. Nobody asked for two thirds. Each agent asked for a third and would have been content with it. The board is what all of those small wishes add up to. The gap between the wish and the result is what made the paper famous.
+
 ## Sand that falls
 
 The sandpile counts grains. The other sand automaton moves them. Every cell holds one material: empty, water, sand, or wall. Each pass, the grid is cut into 2x2 blocks, and every block settles on its own. A grain over an empty cell falls into it. A grain over water swaps with it, so it sinks and the water rises. A grain that cannot fall straight down rolls into an empty cell diagonally below it. Water swaps with the empty cell beside it, so a pool spreads until it lies flat. A wall never moves. Then the blocks shift by one cell and the next pass runs, so what one block could not see, the next one settles. That is the whole rule, and it makes heaps, slopes, and pools:
@@ -475,7 +536,7 @@ The Game of Life is John Horton Conway's, from 1970, and reached the world throu
 
 The multi-scale patterns are Jonathan McCabe's, from his 2010 Bridges paper "Cyclic Symmetric Multi-Scale Turing Patterns". It takes Turing's idea in a different direction from Gray-Scott. There is one substance rather than two, and several scales competing to act rather than one. He has been making artwork from the method for years, and it is his images, not the algorithm, that made it well known.
 
-The newer arrivals have their own names attached. The 256 elementary rules were cataloged and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life". Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults. The falling sand is a block automaton of the kind Tommaso Toffoli and Norman Margolus laid out in their 1987 book *Cellular Automata Machines*. Every 2x2 block settles on its own, and the blocks shift between passes. Its roll and friction follow the pass-parallel rule Jonathan Devlin and Micah Schuster described in 2020. The materials are the ones every falling-sand game has shipped since the early 2000s.
+The newer arrivals have their own names attached. Wireworld is Brian Silverman's, from 1987, and reached most people through A. K. Dewdney's *Scientific American* column in 1990; a full computer has since been built in it. Schelling's board is from his 1971 paper "Dynamic Models of Segregation", and the step-to-a-nearby-empty-cell rule here is the paper's move to the nearest satisfactory square, carried out one hop at a time. The 256 elementary rules were cataloged and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life". Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults. The falling sand is a block automaton of the kind Tommaso Toffoli and Norman Margolus laid out in their 1987 book *Cellular Automata Machines*. Every 2x2 block settles on its own, and the blocks shift between passes. Its roll and friction follow the pass-parallel rule Jonathan Devlin and Micah Schuster described in 2020. The materials are the ones every falling-sand game has shipped since the early 2000s.
 
 
 The two waves in this chapter are older than any of it. The ripple pool integrates the 2D wave equation, which Jean le Rond d'Alembert wrote down for a vibrating string in 1747. The interactive-water form of it circulated widely as demoscene and graphics-tutorial code through the 1990s. The closed form Ollin evaluates comes from the standard treatment of a square plate driven at its center. The self-warp's motion measurement is Bruce Lucas and Takeo Kanade's 1981 least-squares optical flow, run coarse to fine, and its history carry is the same semi-Lagrangian step the fluid uses. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
@@ -485,7 +546,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 - [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every parameter, seeding semantics, and field scale.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (eight rules on a picker, the falling sand among them), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
+- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/Automata`](../Examples/Simulation/Automata/Sketch.swift) (ten rules on a picker, Wireworld, Schelling's board, and the falling sand among them), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 
 ---
 

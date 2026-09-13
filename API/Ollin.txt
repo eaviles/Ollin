@@ -632,6 +632,11 @@ enum SceneFileFormat: CaseIterable, Equatable, Hashable, Sendable
   case usdz
   init?(fileExtension: String)
   var fileExtension: String { get }
+enum SchellingCell: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case empty
+  case first
+  case second
+  var color: Color { get }
 enum SchottkyPreset: CaseIterable, Equatable, Hashable, Sendable
   case cusped
   case dust
@@ -764,6 +769,12 @@ enum WindowMode: Sendable
   case auto
   case fixed(Double)
   case resizable
+enum WireworldCell: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case conductor
+  case empty
+  case head
+  case tail
+  var color: Color { get }
 enum WorleyFeature: Equatable, Hashable, Sendable
   case border
   case nearest
@@ -5493,8 +5504,10 @@ struct Sim: Sendable
   static func reactionDiffusion(feed: Double = default, kill: Double = default, toFeed: Double, toKill: Double) -> Sim
   static func ripples(speed: Double = default, damping: Double = default) -> Sim
   static func sandpile(pour: Int = default, topplings: Int = default) -> Sim
+  static func schelling(preference: Double = default, vacancy: Double = default, mobility: Double = default, passes: Int = default, seed: Double = default) -> Sim
   static func selfWarp(amount: Double = default, refresh: Double = default, decay: Double = default, smoothing: Double = default) -> Sim
   static func watercolor(pigments: [WatercolorPigment] = default, edgeDarkening: Double = default, backruns: Bool = default, dryBrush: Double = default, absorbency: Double = default, grain: Double = default, paperSeed: Double = default, paperColor: Color = default, substeps: Int = default) -> Sim
+  static func wireworld() -> Sim
 struct SketchDescription: Equatable, Sendable
   init(summary: String? = default, elements: [DescribedElement] = default)
   static func ==(_: SketchDescription, _: SketchDescription) -> Bool

@@ -243,8 +243,8 @@ struct WebSimNode: Hashable {
     var substeps: Int
     /// The state a fresh field starts at.
     var rest: [Float]
-    /// Rows (`ollin_sim_state_seed`'s seed and levels) for a field that starts
-    /// as seeded noise instead, or empty.
+    /// Rows (`ollin_sim_state_seed`'s seed, levels, and share of cells held at
+    /// level 0) for a field that starts as seeded noise instead, or empty.
     var seedFill: [Float]
     /// The sim's own rows, bound after the texel row.
     var paramOffset: Int
@@ -973,7 +973,9 @@ final class WebGraphRecorder {
                 let r = rows(sim.params)
                 let rest = sim.restState
                 var seedFill: [Float] = []
-                if let fill = sim.stateSeedFill { seedFill = [Float(fill.seed), Float(fill.levels)] }
+                if let fill = sim.stateSeedFill {
+                    seedFill = [Float(fill.seed), Float(fill.levels), Float(fill.empty)]
+                }
                 let simNode = WebSimNode(inject: sim.injectFragment, step: sim.stepFragment,
                                          substeps: max(1, sim.substeps),
                                          rest: [rest.x, rest.y, rest.z, rest.w], seedFill: seedFill,

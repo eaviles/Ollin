@@ -258,6 +258,68 @@ import OllinWebGate
         }
     }
 
+    /// A Wireworld circuit typed as text, stamped on frame 1, two pixels a cell:
+    /// a ring clock tapped down a wire.
+    final class Wired: Sketch {
+        override var canvasSize: CanvasSize { .square(96) }
+        var field: SimField!
+        let circuit = ["#tH######...................",
+                       "#.......#...................",
+                       "#.......####################",
+                       "#.......#...................",
+                       "#########..................."]
+        let levels: [Character: WireworldCell] = [".": .empty, "#": .conductor, "t": .tail, "H": .head]
+        override func setup() { field = makeSimField(.wireworld(), scale: 0.5) }
+        override func draw() {
+            background(.black)
+            withField(field) {
+                noStroke()
+                if frameCount == 1 {
+                    for (y, row) in circuit.enumerated() {
+                        for (x, ch) in row.enumerated() where ch != "." {
+                            fill(levels[ch]!.color)
+                            drawRect(Double(x + 8) * 2, Double(y + 20) * 2, 2, 2)
+                        }
+                    }
+                }
+            }
+            let wire = Ramp(stops: [(0.0, .black), (1.0 / 3.0, Color(hex: 0xE8B923)),
+                                    (2.0 / 3.0, Color(hex: 0xE0432E)), (1.0, Color(hex: 0x2E7BFF))])
+            drawImage(field.filtered(.gradientMap(wire)).image, 0, 0)
+        }
+    }
+
+    /// Schelling's board from a stamped start (so the page and the Mac share it
+    /// exactly) at full mobility, sorting itself.
+    final class Sorted: Sketch {
+        override var canvasSize: CanvasSize { .square(96) }
+        var field: SimField!
+        override func setup() {
+            field = makeSimField(.schelling(preference: 0.3, mobility: 1, passes: 2), scale: 0.5)
+        }
+        override func draw() {
+            background(.black)
+            withField(field) {
+                noStroke()
+                if frameCount == 1 {
+                    var state: UInt64 = 91
+                    for y in 0 ..< 48 {
+                        for x in 0 ..< 48 {
+                            state = state &* 6364136223846793005 &+ 1442695040888963407
+                            let r = Int((state >> 33) % 100)
+                            let cell: SchellingCell = r < 25 ? .empty : (r < 62 ? .first : .second)
+                            fill(cell.color)
+                            drawRect(Double(x) * 2, Double(y) * 2, 2, 2)
+                        }
+                    }
+                }
+            }
+            let kinds = Ramp(stops: [(0.0, Color(hex: 0x14161C)), (0.5, Color(hex: 0xE4572E)),
+                                     (1.0, Color(hex: 0x17BEBB))])
+            drawImage(field.filtered(.gradientMap(kinds)).image, 0, 0)
+        }
+    }
+
     /// Whole-frame filters after the canvas.
     final class Posted: Sketch {
         override var canvasSize: CanvasSize { .square(120) }
@@ -478,6 +540,8 @@ import OllinWebGate
             ("Composed", { Composed() }, 6, 4),
             ("Remembering", { Remembering() }, 12, 11),
             ("Living", { Living() }, 16, 15),
+            ("Wired", { Wired() }, 30, 28),
+            ("Sorted", { Sorted() }, 8, 6),
             ("Posted", { Posted() }, 4, 2),
             ("Blurred and bloomed", { Blurred() }, 4, 2),
         ]

@@ -106,6 +106,44 @@ fragment float4 ollin_sim_inject_brain(PresentOut in [[stage_in]],
     return float4(float3(v), 1.0);
 }
 
+// A drawn mark snapped to the nearest of `levels` flat states, in sRGB terms so the
+// gray a sketch names (`WireworldCell.conductor.color`, a third) is the state that
+// lands through the linear-light layer (the falling sand's rule), and alpha-gated so
+// a soft fringe writes nothing rather than a rim of the wrong state. The gate sits
+// at three quarters rather than the half the other injects use: these fields are
+// drawn cell by cell, and a rect the size of one texel leaves the neighboring texel
+// centers at about half coverage under its analytic rim, which at half would lay
+// a second wire beside every wire (a ring two cells wide carries electrons both
+// ways, and the circuit fills with them). A solid mark covers its own texel fully,
+// so it still lands. Black erases.
+static inline float4 ollin_sim_inject_levels(texture2d<float> state, texture2d<float> seed,
+                                             sampler samp, float2 uv, float levels) {
+    float4 s = state.sample(samp, uv);
+    float4 d = seed.sample(samp, uv);
+    float luma = dot(linearToSrgb(ollin_unpremul(d)), float3(0.2126, 0.7152, 0.0722));
+    float snapped = rint(luma * (levels - 1.0)) / (levels - 1.0);
+    float v = mix(s.r, snapped, step(0.75, d.a));
+    return float4(float3(v), 1.0);
+}
+
+// The Wireworld inject: four states (empty, conductor, tail, head), stored as thirds.
+fragment float4 ollin_sim_inject_wire(PresentOut in [[stage_in]],
+                                      texture2d<float> state [[texture(0)]],
+                                      texture2d<float> seed [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    return ollin_sim_inject_levels(state, seed, samp, in.uv, 4.0);
+}
+
+// The Schelling inject: three states (empty, the first kind, the second), as halves.
+fragment float4 ollin_sim_inject_kinds(PresentOut in [[stage_in]],
+                                       texture2d<float> state [[texture(0)]],
+                                       texture2d<float> seed [[texture(1)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    return ollin_sim_inject_levels(state, seed, samp, in.uv, 3.0);
+}
+
 // The interactive-water step: state is (height, velocity), both signed about
 // zero. Velocity accelerates toward the four-neighbor average (the coupling
 // gain is the wave speed), is damped a little so waves die away, and moves the
@@ -541,6 +579,138 @@ fragment float4 ollin_sim_forest_fire(PresentOut in [[stage_in]],
     return float4(float3(ns / top), 1.0);
 }
 
+// Silverman's Wireworld: empty (0), conductor (1), electron tail (2), electron head
+// (3), stored as thirds. Empty stays empty; a head becomes a tail; a tail becomes
+// conductor; a conductor becomes a head when exactly one or two of its eight
+// neighbors are heads. One or two is what lets a signal run down a wire without
+// running back (the tail behind it cannot be re-lit) and split at a fork; three or
+// more stops it, which is the clause a diode and every gate are built from. Edges
+// wrap, like the rest of the family.
+fragment float4 ollin_sim_wireworld(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float2 uv = in.uv;
+    const float top = 3.0;
+    float s = ollin_cell_state(src, samp, uv, top);
+    float ns = s;
+    if (s > 2.5) {
+        ns = 2.0;                                     // head: tail next
+    } else if (s > 1.5) {
+        ns = 1.0;                                     // tail: conductor again
+    } else if (s > 0.5) {
+        float heads = 0.0;
+        for (int dy = -1; dy <= 1; dy += 1) {
+            for (int dx = -1; dx <= 1; dx += 1) {
+                if (dx == 0 && dy == 0) { continue; }
+                float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+                heads += (ollin_cell_state(src, samp, p, top) > 2.5) ? 1.0 : 0.0;
+            }
+        }
+        ns = (heads == 1.0 || heads == 2.0) ? 3.0 : 1.0;
+    }
+    return float4(float3(ns / top), 1.0);
+}
+
+// The like and occupied counts around block cell (BX, BY) for an agent of KIND,
+// over a read-in Schelling block `c` (the 8x8 block with a one-cell rim, 10 to a
+// row, -1 off the board), with block cell SKIP counted as empty (a mover judging a
+// cell counts its own as vacated). A macro rather than a helper because the block
+// is a local array and the page's GLSL passes no pointers.
+#define OLLIN_SCHELLING_COUNT(BX, BY, KIND, SKIP, LIKE, OCCUPIED) \
+    LIKE = 0.0; OCCUPIED = 0.0; \
+    for (int dy_ = -1; dy_ <= 1; dy_ += 1) { \
+        for (int dx_ = -1; dx_ <= 1; dx_ += 1) { \
+            if (dx_ == 0 && dy_ == 0) { continue; } \
+            int nx_ = (BX) + dx_, ny_ = (BY) + dy_; \
+            bool inBlock_ = nx_ >= 0 && nx_ < 8 && ny_ >= 0 && ny_ < 8; \
+            if (inBlock_ && ny_ * 8 + nx_ == (SKIP)) { continue; } \
+            float v_ = c[(ny_ + 1) * 10 + (nx_ + 1)]; \
+            if (v_ > 0.5) { OCCUPIED += 1.0; LIKE += (v_ == (KIND)) ? 1.0 : 0.0; } \
+        } \
+    }
+
+// Schelling's segregation on a bounded board: 0 empty, 1 the first kind, 2 the
+// second, stored as halves. An agent is content when its like neighbors reach
+// `preference` of its occupied neighbors (eight, fewer at the edge, none at all
+// counting as content, since 0 >= 0), and one that is not moves to an empty cell
+// within its block. The moves run as a block automaton so no two agents take one cell and no
+// agent is copied: every cell settles its whole 8x8 block from the same reads and
+// writes back only its own state. Within a block the unhappy agents, in raster
+// order, each take the first untaken empty cell where they would be content (judged
+// on the neighborhood as it stands, their own cell counted as vacated) or, failing
+// that, the first untaken empty cell at all. The block origin walks half a block in
+// x every pass and in y every second pass, and the pass count runs on across frames
+// (params[0].w is the field age, params[1].w the passes per frame), which is what
+// lets an agent cross a block edge and reach any empty cell within seven. An
+// unhappy agent moves only when its coin, a hash of the cell, the pass, and the
+// seed, comes under `mobility`: at 1 the rule is deterministic, at 0 nothing moves.
+// params[1] = (preference, mobility, seed, passes).
+fragment float4 ollin_sim_schelling(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float2 size = rint(1.0 / t);
+    float pass = params[0].w * max(1.0, params[1].w) + params[0].z;
+    float preference = clamp(params[1].x, 0.0, 1.0);
+    float mobility = clamp(params[1].y, 0.0, 1.0);
+    float seed = params[1].z;
+    float2 cell = floor(in.uv * size);
+    float2 o = float2(fmod(pass, 2.0), fmod(floor(pass * 0.5), 2.0)) * 4.0;
+    float2 origin = floor((cell - o) / 8.0) * 8.0 + o;
+
+    float c[100];
+    for (int y = 0; y < 10; y += 1) {
+        for (int x = 0; x < 10; x += 1) {
+            float2 p = origin + float2(float(x) - 1.0, float(y) - 1.0);
+            bool inside = p.x >= 0.0 && p.y >= 0.0 && p.x < size.x && p.y < size.y;
+            c[y * 10 + x] = inside ? rint(src.sample(samp, (p + 0.5) * t, level(0.0)).r * 2.0) : -1.0;
+        }
+    }
+    int me = int(cell.y - origin.y) * 8 + int(cell.x - origin.x);
+    float ns = c[(me / 8 + 1) * 10 + (me % 8 + 1)];
+
+    bool mover[64];
+    bool taken[64];
+    for (int i = 0; i < 64; i += 1) {
+        int bx = i % 8, by = i / 8;
+        float v = c[(by + 1) * 10 + (bx + 1)];
+        taken[i] = false;
+        mover[i] = false;
+        if (v < 0.5) { continue; }
+        float like, occupied;
+        OLLIN_SCHELLING_COUNT(bx, by, v, -1, like, occupied)
+        if (like < preference * occupied) {           // unhappy: throw the coin
+            float2 at = origin + float2(float(bx), float(by));
+            float roll = hash12(at + float2(pass * 0.7331 + seed * 37.13 + 11.13,
+                                            pass * 1.3197 + seed * 11.71 + 3.71));
+            mover[i] = roll < mobility;
+        }
+    }
+    for (int m = 0; m < 64; m += 1) {
+        if (!mover[m]) { continue; }
+        float kind = c[(m / 8 + 1) * 10 + (m % 8 + 1)];
+        int pick = -1;
+        for (int h = 0; h < 64 && pick < 0; h += 1) {
+            if (taken[h] || c[(h / 8 + 1) * 10 + (h % 8 + 1)] != 0.0) { continue; }
+            float like, occupied;
+            OLLIN_SCHELLING_COUNT(h % 8, h / 8, kind, m, like, occupied)
+            if (like >= preference * occupied) { pick = h; }
+        }
+        for (int h = 0; h < 64 && pick < 0; h += 1) {
+            if (!taken[h] && c[(h / 8 + 1) * 10 + (h % 8 + 1)] == 0.0) { pick = h; }
+        }
+        if (pick < 0) { break; }                      // the block is out of empty cells
+        taken[pick] = true;
+        if (m == me) { ns = 0.0; }
+        if (pick == me) { ns = kind; }
+    }
+    return float4(float3(ns * 0.5), 1.0);
+}
+#undef OLLIN_SCHELLING_COUNT
+
 // Lenia: the continuous Game of Life. The state is a smooth 0…1 mass in .r. Each step
 // convolves the state with a soft ring kernel to get the neighborhood potential U (an
 // exponential bump copied into up to three concentric rings, normalized by the summed
@@ -880,15 +1050,26 @@ fragment float4 ollin_sim_turing_seed(PresentOut in [[stage_in]],
 // states, uniformly at random, quantized onto the shared s/(levels-1) encoding.
 // Applied once, when the field's ping-pong pair is first allocated; a uniform field
 // is a fixed point for these rules, so the random start is what sets them going.
-// (params[1] = (seed, levels).)
+// (params[1] = (seed, levels, share of cells held at level 0, negative for even).)
 fragment float4 ollin_sim_state_seed(PresentOut in [[stage_in]],
                                      constant float4 *params [[buffer(0)]]) {
     float2 t = params[0].xy;
     float seed = params[1].x;
     float levels = max(2.0, params[1].y);
+    float empty = params[1].z;
     float2 cell = floor(in.uv / max(t, float2(1e-6)));
     float n = hash12(cell + float2(seed * 0.7331, seed * 1.3197));
-    float state = min(floor(n * levels), levels - 1.0);
+    float state;
+    if (empty >= 0.0) {
+        // That share of the cells at level 0 (a share of 0 leaves none there), the
+        // rest split evenly over the higher levels: Schelling's board, where the
+        // share is the vacancy. A negative share is the even split over every level.
+        empty = min(empty, 1.0);
+        float u = (n - empty) / max(1.0 - empty, 1e-6);
+        state = (n < empty) ? 0.0 : 1.0 + min(floor(u * (levels - 1.0)), levels - 2.0);
+    } else {
+        state = min(floor(n * levels), levels - 1.0);
+    }
     return float4(float3(state / (levels - 1.0)), 1.0);
 }
 
