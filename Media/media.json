@@ -1,5 +1,729 @@
 {
   "base": "https://media.ollin.art",
+  "heroes": {
+    "guide": {
+      "across": 8,
+      "cell": 200,
+      "clip": "heroes/guide-hero.mp4?v=5903abc1",
+      "fps": 30,
+      "height": 800,
+      "image": "heroes/guide-hero.jpg?v=08c6ada7",
+      "kind": "guide-payoffs",
+      "lead": 6,
+      "leads": {
+        "10-Vectors/Swarm": 2,
+        "19-GridSimulations/Organism": 10,
+        "20-ParticleSimulations/Drift": 30
+      },
+      "of": "the sketch each chapter builds, in chapter order",
+      "seconds": 6,
+      "width": 1600
+    },
+    "readme": {
+      "across": 8,
+      "cell": 200,
+      "clip": "heroes/readme-hero.mp4?v=070642e7",
+      "height": 800,
+      "image": "heroes/readme-hero.jpg?v=d4678db0",
+      "kind": "example-clips",
+      "of": "thirty-two of the example sketches, from every area of the framework",
+      "sketches": [
+        "Patterns/Truchet",
+        "Patterns/FractalFlame",
+        "Patterns/Kaleidoscope",
+        "Patterns/Phyllotaxis",
+        "Motion/Mandala",
+        "Motion/Spokes",
+        "Motion/EllipseField",
+        "Motion/Petals",
+        "Effects/Droste",
+        "Effects/DiffusionCurves",
+        "Effects/NewtonBasins",
+        "Effects/Feedback",
+        "Simulation/GrayScott",
+        "Simulation/Physarum",
+        "Simulation/ParticleLife",
+        "Simulation/Fluid",
+        "3D/Geometry/Ocean",
+        "3D/Geometry/Planet",
+        "3D/Materials/Materials",
+        "3D/Effects/PathTraced",
+        "3D/Raymarching/RaymarchedFractals",
+        "3D/Lighting/AreaLights",
+        "3D/Physics/Contraption",
+        "3D/Geometry/MeshGrowth",
+        "Shapes/CombinatorsGradient",
+        "Shaders/VisualSynth",
+        "Rendering/Grassland",
+        "Text/GlyphWave",
+        "Images/LuminanceMelt",
+        "Physics/RigidBodies",
+        "Vision/PaintByClass",
+        "Web/BreathingRing"
+      ],
+      "width": 1600
+    }
+  },
+  "covers": {
+    "3D": [
+      "3D/Geometry/Ocean",
+      "3D/Materials/Materials",
+      "3D/Effects/PathTraced",
+      "3D/Raymarching/RaymarchedFractals"
+    ],
+    "3D/Camera": [
+      "3D/Camera/CameraMoves",
+      "3D/Camera/CameraControl",
+      "3D/Camera/SceneViews"
+    ],
+    "3D/Depth": [
+      "3D/Depth/DepthCompositing",
+      "3D/Depth/ClosedLoopScan",
+      "3D/Depth/DepthCloud"
+    ],
+    "3D/Effects": [
+      "3D/Effects/PathTraced",
+      "3D/Effects/ScreenSpaceReflections",
+      "3D/Effects/LensFlare",
+      "3D/Effects/SceneDefocus"
+    ],
+    "3D/Environments": [
+      "3D/Environments/RemoteEnvironment",
+      "3D/Environments/EnvironmentGallery",
+      "3D/Environments/ImageBasedLighting",
+      "3D/Environments/Cloudscape"
+    ],
+    "3D/Geometry": [
+      "3D/Geometry/Solids",
+      "3D/Geometry/Ocean",
+      "3D/Geometry/Planet",
+      "3D/Geometry/MeshGrowth"
+    ],
+    "3D/Lighting": [
+      "3D/Lighting/AreaLights",
+      "3D/Lighting/Caustics",
+      "3D/Lighting/PointShadow",
+      "3D/Lighting/VolumetricLight"
+    ],
+    "3D/Materials": [
+      "3D/Materials/Materials",
+      "3D/Materials/Glass",
+      "3D/Materials/ThinFilm",
+      "3D/Materials/Matcap"
+    ],
+    "3D/Physics": [
+      "3D/Physics/Contraption",
+      "3D/Physics/Rigging",
+      "3D/Physics/Crawler",
+      "3D/Physics/Tumble"
+    ],
+    "3D/Raymarching": [
+      "3D/Raymarching/RaymarchedFractals",
+      "3D/Raymarching/RaymarchedDomain",
+      "3D/Raymarching/RaymarchedSculpt",
+      "3D/Raymarching/RaymarchedRadial"
+    ],
+    "Audio": [
+      "Audio/OwnSampler",
+      "Audio/Spatial",
+      "Audio/Generative",
+      "Audio/Movement"
+    ],
+    "Basic": [
+      "Basic/Describing",
+      "Basic/NormalizedCoordinates",
+      "Basic/HelloCircle",
+      "Basic/Guides"
+    ],
+    "Color": [
+      "Color/HSBWheel",
+      "Color/Gradients",
+      "Color/Colormaps",
+      "Color/ColorWaves"
+    ],
+    "Compute": [
+      "Compute/ReactionDiffusion",
+      "Compute/CurlField",
+      "Compute/NeighborSearch"
+    ],
+    "Data": [
+      "Data/Places",
+      "Data/Readings",
+      "Data/Outside",
+      "Data/Quakes"
+    ],
+    "Effects": [
+      "Effects/Droste",
+      "Effects/DiffusionCurves",
+      "Effects/NewtonBasins",
+      "Effects/MeshGradient"
+    ],
+    "Export": [
+      "Export/Cutout",
+      "Export/LineDrawing",
+      "Export/Hatching",
+      "Export/Drafting"
+    ],
+    "Images": [
+      "Images/PhotoMosaic",
+      "Images/PixelSort",
+      "Images/LuminanceMelt",
+      "Images/StringArt"
+    ],
+    "Input": [
+      "Input/Drag",
+      "Input/Keys",
+      "Input/PanAndZoom",
+      "Input/RepelGrid"
+    ],
+    "Installation": [
+      "Installation/ManyWindows",
+      "Installation/Fitted",
+      "Installation/Hours",
+      "Installation/Unattended"
+    ],
+    "Integration": [
+      "Integration/VirtualCamera"
+    ],
+    "Live": [
+      "Live/DragToEdit",
+      "Live/Cues",
+      "Live/Parameters"
+    ],
+    "Motion": [
+      "Motion/Mandala",
+      "Motion/Spokes",
+      "Motion/EllipseField",
+      "Motion/Petals"
+    ],
+    "Patterns": [
+      "Patterns/Truchet",
+      "Patterns/FractalFlame",
+      "Patterns/Phyllotaxis",
+      "Patterns/Girih"
+    ],
+    "Physics": [
+      "Physics/RigidBodies",
+      "Physics/Blobs",
+      "Physics/Packing",
+      "Physics/Chain"
+    ],
+    "Randomness": [
+      "Randomness/Variations",
+      "Randomness/Ring",
+      "Randomness/Gaussian",
+      "Randomness/Walk"
+    ],
+    "Recreations": [
+      "Recreations/OsamuSato/Totem",
+      "Recreations/JaredTarbell/Substrate",
+      "Recreations/BridgetRiley/Current",
+      "Recreations/ManfredMohr/CubicLimit"
+    ],
+    "Recreations/BridgetRiley": [
+      "Recreations/BridgetRiley/Current",
+      "Recreations/BridgetRiley/Fragment3"
+    ],
+    "Recreations/FriederNake": [
+      "Recreations/FriederNake/HommageAPaulKlee"
+    ],
+    "Recreations/GeorgNees": [
+      "Recreations/GeorgNees/Schotter"
+    ],
+    "Recreations/JaredTarbell": [
+      "Recreations/JaredTarbell/Substrate"
+    ],
+    "Recreations/JohnWhitney": [
+      "Recreations/JohnWhitney/Permutations"
+    ],
+    "Recreations/JosefAlbers": [
+      "Recreations/JosefAlbers/Homage"
+    ],
+    "Recreations/ManfredMohr": [
+      "Recreations/ManfredMohr/CubicLimit",
+      "Recreations/ManfredMohr/DiagonalPath"
+    ],
+    "Recreations/ManuelFelguerez": [
+      "Recreations/ManuelFelguerez/MaquinaEstetica"
+    ],
+    "Recreations/OsamuSato": [
+      "Recreations/OsamuSato/Totem",
+      "Recreations/OsamuSato/Alphabet"
+    ],
+    "Recreations/SolLeWitt": [
+      "Recreations/SolLeWitt/FiftyPoints",
+      "Recreations/SolLeWitt/ArcsCirclesGrids"
+    ],
+    "Recreations/VeraMolnar": [
+      "Recreations/VeraMolnar/DesOrdres",
+      "Recreations/VeraMolnar/Interruptions"
+    ],
+    "Rendering": [
+      "Rendering/Grassland",
+      "Rendering/MeshField",
+      "Rendering/InstancedMesh",
+      "Rendering/ToneMapping"
+    ],
+    "Shaders": [
+      "Shaders/VisualSynth",
+      "Shaders/DomainWarp",
+      "Shaders/ShaderBlend",
+      "Shaders/ShaderFilter"
+    ],
+    "Shapes": [
+      "Shapes/Primitives",
+      "Shapes/CombinatorsGradient",
+      "Shapes/Markers",
+      "Shapes/Superellipse"
+    ],
+    "Simulation": [
+      "Simulation/GrayScott",
+      "Simulation/Physarum",
+      "Simulation/ParticleLife",
+      "Simulation/Fluid"
+    ],
+    "Text": [
+      "Text/TypeAsGeometry",
+      "Text/GlyphWave",
+      "Text/PlaydateFont",
+      "Text/TextVolume"
+    ],
+    "Video": [
+      "Video/VideoPlayback",
+      "Video/SoundReactive"
+    ],
+    "Vision": [
+      "Vision/BodyPose",
+      "Vision/HandTracking",
+      "Vision/SceneLabels",
+      "Vision/FaceTracking"
+    ],
+    "Web": [
+      "Web/BreathingRing"
+    ]
+  },
+  "groups": {
+    "3D": {
+      "of": [
+        "3D/Geometry/Ocean",
+        "3D/Materials/Materials",
+        "3D/Effects/PathTraced",
+        "3D/Raymarching/RaymarchedFractals"
+      ],
+      "image": "groups/3D.jpg?v=67781359",
+      "imageSmall": "groups/3D-640.jpg?v=93086923"
+    },
+    "3D/Camera": {
+      "of": [
+        "3D/Camera/CameraMoves",
+        "3D/Camera/CameraControl",
+        "3D/Camera/SceneViews"
+      ],
+      "image": "groups/3D-Camera.jpg?v=9e8a4133",
+      "imageSmall": "groups/3D-Camera-640.jpg?v=c76cca23"
+    },
+    "3D/Depth": {
+      "of": [
+        "3D/Depth/DepthCompositing",
+        "3D/Depth/ClosedLoopScan",
+        "3D/Depth/DepthCloud"
+      ],
+      "image": "groups/3D-Depth.jpg?v=7b19792a",
+      "imageSmall": "groups/3D-Depth-640.jpg?v=ba453c33"
+    },
+    "3D/Effects": {
+      "of": [
+        "3D/Effects/PathTraced",
+        "3D/Effects/ScreenSpaceReflections",
+        "3D/Effects/LensFlare",
+        "3D/Effects/SceneDefocus"
+      ],
+      "image": "groups/3D-Effects.jpg?v=c2e74058",
+      "imageSmall": "groups/3D-Effects-640.jpg?v=113e3b33"
+    },
+    "3D/Environments": {
+      "of": [
+        "3D/Environments/RemoteEnvironment",
+        "3D/Environments/EnvironmentGallery",
+        "3D/Environments/ImageBasedLighting",
+        "3D/Environments/Cloudscape"
+      ],
+      "image": "groups/3D-Environments.jpg?v=65053517",
+      "imageSmall": "groups/3D-Environments-640.jpg?v=fa8ce933"
+    },
+    "3D/Geometry": {
+      "of": [
+        "3D/Geometry/Solids",
+        "3D/Geometry/Ocean",
+        "3D/Geometry/Planet",
+        "3D/Geometry/MeshGrowth"
+      ],
+      "image": "groups/3D-Geometry.jpg?v=9af32983",
+      "imageSmall": "groups/3D-Geometry-640.jpg?v=d15e0d14"
+    },
+    "3D/Lighting": {
+      "of": [
+        "3D/Lighting/AreaLights",
+        "3D/Lighting/Caustics",
+        "3D/Lighting/PointShadow",
+        "3D/Lighting/VolumetricLight"
+      ],
+      "image": "groups/3D-Lighting.jpg?v=dd86209e",
+      "imageSmall": "groups/3D-Lighting-640.jpg?v=9ab2ae97"
+    },
+    "3D/Materials": {
+      "of": [
+        "3D/Materials/Materials",
+        "3D/Materials/Glass",
+        "3D/Materials/ThinFilm",
+        "3D/Materials/Matcap"
+      ],
+      "image": "groups/3D-Materials.jpg?v=495f268c",
+      "imageSmall": "groups/3D-Materials-640.jpg?v=58f2fd81"
+    },
+    "3D/Physics": {
+      "of": [
+        "3D/Physics/Contraption",
+        "3D/Physics/Rigging",
+        "3D/Physics/Crawler",
+        "3D/Physics/Tumble"
+      ],
+      "image": "groups/3D-Physics.jpg?v=89d8aa0d",
+      "imageSmall": "groups/3D-Physics-640.jpg?v=f964ce02"
+    },
+    "3D/Raymarching": {
+      "of": [
+        "3D/Raymarching/RaymarchedFractals",
+        "3D/Raymarching/RaymarchedDomain",
+        "3D/Raymarching/RaymarchedSculpt",
+        "3D/Raymarching/RaymarchedRadial"
+      ],
+      "image": "groups/3D-Raymarching.jpg?v=b3a0d1e1",
+      "imageSmall": "groups/3D-Raymarching-640.jpg?v=fb0b045e"
+    },
+    "Audio": {
+      "of": [
+        "Audio/OwnSampler",
+        "Audio/Spatial",
+        "Audio/Generative",
+        "Audio/Movement"
+      ],
+      "image": "groups/Audio.jpg?v=4f0e6479",
+      "imageSmall": "groups/Audio-640.jpg?v=40ac009a"
+    },
+    "Basic": {
+      "of": [
+        "Basic/Describing",
+        "Basic/NormalizedCoordinates",
+        "Basic/HelloCircle",
+        "Basic/Guides"
+      ],
+      "image": "groups/Basic.jpg?v=c69dc435",
+      "imageSmall": "groups/Basic-640.jpg?v=87cc5110"
+    },
+    "Color": {
+      "of": [
+        "Color/HSBWheel",
+        "Color/Gradients",
+        "Color/Colormaps",
+        "Color/ColorWaves"
+      ],
+      "image": "groups/Color.jpg?v=8b598582",
+      "imageSmall": "groups/Color-640.jpg?v=d25edf72"
+    },
+    "Compute": {
+      "of": [
+        "Compute/ReactionDiffusion",
+        "Compute/CurlField",
+        "Compute/NeighborSearch"
+      ],
+      "image": "groups/Compute.jpg?v=36dcd654",
+      "imageSmall": "groups/Compute-640.jpg?v=3598dc09"
+    },
+    "Data": {
+      "of": [
+        "Data/Places",
+        "Data/Readings",
+        "Data/Outside",
+        "Data/Quakes"
+      ],
+      "image": "groups/Data.jpg?v=9cc39310",
+      "imageSmall": "groups/Data-640.jpg?v=0a0bcb08"
+    },
+    "Effects": {
+      "of": [
+        "Effects/Droste",
+        "Effects/DiffusionCurves",
+        "Effects/NewtonBasins",
+        "Effects/MeshGradient"
+      ],
+      "image": "groups/Effects.jpg?v=31f9d827",
+      "imageSmall": "groups/Effects-640.jpg?v=fcc855ce"
+    },
+    "Export": {
+      "of": [
+        "Export/Cutout",
+        "Export/LineDrawing",
+        "Export/Hatching",
+        "Export/Drafting"
+      ],
+      "image": "groups/Export.jpg?v=81b52f69",
+      "imageSmall": "groups/Export-640.jpg?v=2db81306"
+    },
+    "Images": {
+      "of": [
+        "Images/PhotoMosaic",
+        "Images/PixelSort",
+        "Images/LuminanceMelt",
+        "Images/StringArt"
+      ],
+      "image": "groups/Images.jpg?v=5ee2305d",
+      "imageSmall": "groups/Images-640.jpg?v=7bf66de8"
+    },
+    "Input": {
+      "of": [
+        "Input/Drag",
+        "Input/Keys",
+        "Input/PanAndZoom",
+        "Input/RepelGrid"
+      ],
+      "image": "groups/Input.jpg?v=3a09db3a",
+      "imageSmall": "groups/Input-640.jpg?v=af47f1e4"
+    },
+    "Installation": {
+      "of": [
+        "Installation/ManyWindows",
+        "Installation/Fitted",
+        "Installation/Hours",
+        "Installation/Unattended"
+      ],
+      "image": "groups/Installation.jpg?v=4fc2fcb1",
+      "imageSmall": "groups/Installation-640.jpg?v=f10e701f"
+    },
+    "Integration": {
+      "of": [
+        "Integration/VirtualCamera"
+      ],
+      "image": "groups/Integration.jpg?v=9aef5021",
+      "imageSmall": "groups/Integration-640.jpg?v=b8331369"
+    },
+    "Live": {
+      "of": [
+        "Live/DragToEdit",
+        "Live/Cues",
+        "Live/Parameters"
+      ],
+      "image": "groups/Live.jpg?v=a7783b4a",
+      "imageSmall": "groups/Live-640.jpg?v=7773d6c6"
+    },
+    "Motion": {
+      "of": [
+        "Motion/Mandala",
+        "Motion/Spokes",
+        "Motion/EllipseField",
+        "Motion/Petals"
+      ],
+      "image": "groups/Motion.jpg?v=c8b6c709",
+      "imageSmall": "groups/Motion-640.jpg?v=e8371af0"
+    },
+    "Patterns": {
+      "of": [
+        "Patterns/Truchet",
+        "Patterns/FractalFlame",
+        "Patterns/Phyllotaxis",
+        "Patterns/Girih"
+      ],
+      "image": "groups/Patterns.jpg?v=d11d8032",
+      "imageSmall": "groups/Patterns-640.jpg?v=32f094b0"
+    },
+    "Physics": {
+      "of": [
+        "Physics/RigidBodies",
+        "Physics/Blobs",
+        "Physics/Packing",
+        "Physics/Chain"
+      ],
+      "image": "groups/Physics.jpg?v=40d6bfc7",
+      "imageSmall": "groups/Physics-640.jpg?v=df823330"
+    },
+    "Randomness": {
+      "of": [
+        "Randomness/Variations",
+        "Randomness/Ring",
+        "Randomness/Gaussian",
+        "Randomness/Walk"
+      ],
+      "image": "groups/Randomness.jpg?v=69a78d4e",
+      "imageSmall": "groups/Randomness-640.jpg?v=9d05d269"
+    },
+    "Recreations": {
+      "of": [
+        "Recreations/OsamuSato/Totem",
+        "Recreations/JaredTarbell/Substrate",
+        "Recreations/BridgetRiley/Current",
+        "Recreations/ManfredMohr/CubicLimit"
+      ],
+      "image": "groups/Recreations.jpg?v=85af6f4f",
+      "imageSmall": "groups/Recreations-640.jpg?v=96c0051c"
+    },
+    "Recreations/BridgetRiley": {
+      "of": [
+        "Recreations/BridgetRiley/Current",
+        "Recreations/BridgetRiley/Fragment3"
+      ],
+      "image": "groups/Recreations-BridgetRiley.jpg?v=b60256e3",
+      "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab"
+    },
+    "Recreations/FriederNake": {
+      "of": [
+        "Recreations/FriederNake/HommageAPaulKlee"
+      ],
+      "image": "groups/Recreations-FriederNake.jpg?v=6306d031",
+      "imageSmall": "groups/Recreations-FriederNake-640.jpg?v=61e41a0e"
+    },
+    "Recreations/GeorgNees": {
+      "of": [
+        "Recreations/GeorgNees/Schotter"
+      ],
+      "image": "groups/Recreations-GeorgNees.jpg?v=58be61c0",
+      "imageSmall": "groups/Recreations-GeorgNees-640.jpg?v=7288a62b"
+    },
+    "Recreations/JaredTarbell": {
+      "of": [
+        "Recreations/JaredTarbell/Substrate"
+      ],
+      "image": "groups/Recreations-JaredTarbell.jpg?v=f7e68731",
+      "imageSmall": "groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52"
+    },
+    "Recreations/JohnWhitney": {
+      "of": [
+        "Recreations/JohnWhitney/Permutations"
+      ],
+      "image": "groups/Recreations-JohnWhitney.jpg?v=159184a5",
+      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=1f957730"
+    },
+    "Recreations/JosefAlbers": {
+      "of": [
+        "Recreations/JosefAlbers/Homage"
+      ],
+      "image": "groups/Recreations-JosefAlbers.jpg?v=55db4dcb",
+      "imageSmall": "groups/Recreations-JosefAlbers-640.jpg?v=b6022648"
+    },
+    "Recreations/ManfredMohr": {
+      "of": [
+        "Recreations/ManfredMohr/CubicLimit",
+        "Recreations/ManfredMohr/DiagonalPath"
+      ],
+      "image": "groups/Recreations-ManfredMohr.jpg?v=6ac73115",
+      "imageSmall": "groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af"
+    },
+    "Recreations/ManuelFelguerez": {
+      "of": [
+        "Recreations/ManuelFelguerez/MaquinaEstetica"
+      ],
+      "image": "groups/Recreations-ManuelFelguerez.jpg?v=497089cb",
+      "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3"
+    },
+    "Recreations/OsamuSato": {
+      "of": [
+        "Recreations/OsamuSato/Totem",
+        "Recreations/OsamuSato/Alphabet"
+      ],
+      "image": "groups/Recreations-OsamuSato.jpg?v=8010bd2b",
+      "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=44f367b6"
+    },
+    "Recreations/SolLeWitt": {
+      "of": [
+        "Recreations/SolLeWitt/FiftyPoints",
+        "Recreations/SolLeWitt/ArcsCirclesGrids"
+      ],
+      "image": "groups/Recreations-SolLeWitt.jpg?v=cce123ae",
+      "imageSmall": "groups/Recreations-SolLeWitt-640.jpg?v=edcbd044"
+    },
+    "Recreations/VeraMolnar": {
+      "of": [
+        "Recreations/VeraMolnar/DesOrdres",
+        "Recreations/VeraMolnar/Interruptions"
+      ],
+      "image": "groups/Recreations-VeraMolnar.jpg?v=c373c0a1",
+      "imageSmall": "groups/Recreations-VeraMolnar-640.jpg?v=b217beb4"
+    },
+    "Rendering": {
+      "of": [
+        "Rendering/Grassland",
+        "Rendering/MeshField",
+        "Rendering/InstancedMesh",
+        "Rendering/ToneMapping"
+      ],
+      "image": "groups/Rendering.jpg?v=30c26399",
+      "imageSmall": "groups/Rendering-640.jpg?v=7445816c"
+    },
+    "Shaders": {
+      "of": [
+        "Shaders/VisualSynth",
+        "Shaders/DomainWarp",
+        "Shaders/ShaderBlend",
+        "Shaders/ShaderFilter"
+      ],
+      "image": "groups/Shaders.jpg?v=c1bb64df",
+      "imageSmall": "groups/Shaders-640.jpg?v=91f273a5"
+    },
+    "Shapes": {
+      "of": [
+        "Shapes/Primitives",
+        "Shapes/CombinatorsGradient",
+        "Shapes/Markers",
+        "Shapes/Superellipse"
+      ],
+      "image": "groups/Shapes.jpg?v=80b3c08b",
+      "imageSmall": "groups/Shapes-640.jpg?v=ee7af08f"
+    },
+    "Simulation": {
+      "of": [
+        "Simulation/GrayScott",
+        "Simulation/Physarum",
+        "Simulation/ParticleLife",
+        "Simulation/Fluid"
+      ],
+      "image": "groups/Simulation.jpg?v=cb6f895f",
+      "imageSmall": "groups/Simulation-640.jpg?v=5287eafb"
+    },
+    "Text": {
+      "of": [
+        "Text/TypeAsGeometry",
+        "Text/GlyphWave",
+        "Text/PlaydateFont",
+        "Text/TextVolume"
+      ],
+      "image": "groups/Text.jpg?v=47998753",
+      "imageSmall": "groups/Text-640.jpg?v=8ed01466"
+    },
+    "Video": {
+      "of": [
+        "Video/VideoPlayback",
+        "Video/SoundReactive"
+      ],
+      "image": "groups/Video.jpg?v=a8a23b4a",
+      "imageSmall": "groups/Video-640.jpg?v=76b194e7"
+    },
+    "Vision": {
+      "of": [
+        "Vision/BodyPose",
+        "Vision/HandTracking",
+        "Vision/SceneLabels",
+        "Vision/FaceTracking"
+      ],
+      "image": "groups/Vision.jpg?v=4f5465a3",
+      "imageSmall": "groups/Vision-640.jpg?v=cbe152e5"
+    },
+    "Web": {
+      "of": [
+        "Web/BreathingRing"
+      ],
+      "image": "groups/Web.jpg?v=7a143497",
+      "imageSmall": "groups/Web-640.jpg?v=fd88be70"
+    }
+  },
   "chapters": {
     "01-HelloOllin": {
       "clip": "guide/01-HelloOllin.mp4?v=310b645e",
@@ -193,240 +917,6 @@
       "still": "Images/32-Installations/WallPiece.jpg",
       "width": 1280
     }
-  },
-  "covers": {
-    "3D": [
-      "3D/Geometry/Ocean",
-      "3D/Materials/Materials",
-      "3D/Effects/PathTraced",
-      "3D/Raymarching/RaymarchedFractals"
-    ],
-    "3D/Camera": [
-      "3D/Camera/CameraMoves",
-      "3D/Camera/CameraControl",
-      "3D/Camera/SceneViews"
-    ],
-    "3D/Depth": [
-      "3D/Depth/DepthCompositing",
-      "3D/Depth/ClosedLoopScan",
-      "3D/Depth/DepthCloud"
-    ],
-    "3D/Effects": [
-      "3D/Effects/PathTraced",
-      "3D/Effects/ScreenSpaceReflections",
-      "3D/Effects/LensFlare",
-      "3D/Effects/SceneDefocus"
-    ],
-    "3D/Environments": [
-      "3D/Environments/RemoteEnvironment",
-      "3D/Environments/EnvironmentGallery",
-      "3D/Environments/ImageBasedLighting",
-      "3D/Environments/Cloudscape"
-    ],
-    "3D/Geometry": [
-      "3D/Geometry/Solids",
-      "3D/Geometry/Ocean",
-      "3D/Geometry/Planet",
-      "3D/Geometry/MeshGrowth"
-    ],
-    "3D/Lighting": [
-      "3D/Lighting/AreaLights",
-      "3D/Lighting/Caustics",
-      "3D/Lighting/PointShadow",
-      "3D/Lighting/VolumetricLight"
-    ],
-    "3D/Materials": [
-      "3D/Materials/Materials",
-      "3D/Materials/Glass",
-      "3D/Materials/ThinFilm",
-      "3D/Materials/Matcap"
-    ],
-    "3D/Physics": [
-      "3D/Physics/Contraption",
-      "3D/Physics/Rigging",
-      "3D/Physics/Crawler",
-      "3D/Physics/Tumble"
-    ],
-    "3D/Raymarching": [
-      "3D/Raymarching/RaymarchedFractals",
-      "3D/Raymarching/RaymarchedDomain",
-      "3D/Raymarching/RaymarchedSculpt",
-      "3D/Raymarching/RaymarchedRadial"
-    ],
-    "Audio": [
-      "Audio/OwnSampler",
-      "Audio/Spatial",
-      "Audio/Generative",
-      "Audio/Movement"
-    ],
-    "Basic": [
-      "Basic/Describing",
-      "Basic/NormalizedCoordinates",
-      "Basic/HelloCircle",
-      "Basic/Guides"
-    ],
-    "Color": [
-      "Color/HSBWheel",
-      "Color/Gradients",
-      "Color/Colormaps",
-      "Color/ColorWaves"
-    ],
-    "Compute": [
-      "Compute/ReactionDiffusion",
-      "Compute/CurlField",
-      "Compute/NeighborSearch"
-    ],
-    "Data": [
-      "Data/Places",
-      "Data/Readings",
-      "Data/Outside",
-      "Data/Quakes"
-    ],
-    "Effects": [
-      "Effects/Droste",
-      "Effects/DiffusionCurves",
-      "Effects/NewtonBasins",
-      "Effects/MeshGradient"
-    ],
-    "Export": [
-      "Export/Cutout",
-      "Export/LineDrawing",
-      "Export/Hatching",
-      "Export/Drafting"
-    ],
-    "Images": [
-      "Images/PhotoMosaic",
-      "Images/PixelSort",
-      "Images/LuminanceMelt",
-      "Images/StringArt"
-    ],
-    "Input": [
-      "Input/Drag",
-      "Input/Keys",
-      "Input/PanAndZoom",
-      "Input/RepelGrid"
-    ],
-    "Installation": [
-      "Installation/ManyWindows",
-      "Installation/Fitted",
-      "Installation/Hours",
-      "Installation/Unattended"
-    ],
-    "Integration": [
-      "Integration/VirtualCamera"
-    ],
-    "Live": [
-      "Live/DragToEdit",
-      "Live/Cues",
-      "Live/Parameters"
-    ],
-    "Motion": [
-      "Motion/Mandala",
-      "Motion/Spokes",
-      "Motion/EllipseField",
-      "Motion/Petals"
-    ],
-    "Patterns": [
-      "Patterns/Truchet",
-      "Patterns/FractalFlame",
-      "Patterns/Phyllotaxis",
-      "Patterns/Girih"
-    ],
-    "Physics": [
-      "Physics/RigidBodies",
-      "Physics/Blobs",
-      "Physics/Packing",
-      "Physics/Chain"
-    ],
-    "Randomness": [
-      "Randomness/Variations",
-      "Randomness/Ring",
-      "Randomness/Gaussian",
-      "Randomness/Walk"
-    ],
-    "Recreations": [
-      "Recreations/OsamuSato/Totem",
-      "Recreations/JaredTarbell/Substrate",
-      "Recreations/BridgetRiley/Current",
-      "Recreations/ManfredMohr/CubicLimit"
-    ],
-    "Recreations/BridgetRiley": [
-      "Recreations/BridgetRiley/Current",
-      "Recreations/BridgetRiley/Fragment3"
-    ],
-    "Recreations/FriederNake": [
-      "Recreations/FriederNake/HommageAPaulKlee"
-    ],
-    "Recreations/GeorgNees": [
-      "Recreations/GeorgNees/Schotter"
-    ],
-    "Recreations/JaredTarbell": [
-      "Recreations/JaredTarbell/Substrate"
-    ],
-    "Recreations/JohnWhitney": [
-      "Recreations/JohnWhitney/Permutations"
-    ],
-    "Recreations/JosefAlbers": [
-      "Recreations/JosefAlbers/Homage"
-    ],
-    "Recreations/ManfredMohr": [
-      "Recreations/ManfredMohr/CubicLimit",
-      "Recreations/ManfredMohr/DiagonalPath"
-    ],
-    "Recreations/ManuelFelguerez": [
-      "Recreations/ManuelFelguerez/MaquinaEstetica"
-    ],
-    "Recreations/OsamuSato": [
-      "Recreations/OsamuSato/Totem",
-      "Recreations/OsamuSato/Alphabet"
-    ],
-    "Recreations/VeraMolnar": [
-      "Recreations/VeraMolnar/DesOrdres",
-      "Recreations/VeraMolnar/Interruptions"
-    ],
-    "Rendering": [
-      "Rendering/Grassland",
-      "Rendering/MeshField",
-      "Rendering/InstancedMesh",
-      "Rendering/ToneMapping"
-    ],
-    "Shaders": [
-      "Shaders/VisualSynth",
-      "Shaders/DomainWarp",
-      "Shaders/ShaderBlend",
-      "Shaders/ShaderFilter"
-    ],
-    "Shapes": [
-      "Shapes/Primitives",
-      "Shapes/CombinatorsGradient",
-      "Shapes/Markers",
-      "Shapes/Superellipse"
-    ],
-    "Simulation": [
-      "Simulation/GrayScott",
-      "Simulation/Physarum",
-      "Simulation/ParticleLife",
-      "Simulation/Fluid"
-    ],
-    "Text": [
-      "Text/TypeAsGeometry",
-      "Text/GlyphWave",
-      "Text/PlaydateFont",
-      "Text/TextVolume"
-    ],
-    "Video": [
-      "Video/VideoPlayback",
-      "Video/SoundReactive"
-    ],
-    "Vision": [
-      "Vision/BodyPose",
-      "Vision/HandTracking",
-      "Vision/SceneLabels",
-      "Vision/FaceTracking"
-    ],
-    "Web": [
-      "Web/BreathingRing"
-    ]
   },
   "examples": {
     "3D/Camera/CameraControl": {
@@ -7697,6 +8187,48 @@
       "stillSmall": "examples/Recreations/OsamuSato/Totem/still-640.jpg?v=538b7d5a",
       "width": 1080
     },
+    "Recreations/SolLeWitt/ArcsCirclesGrids": {
+      "width": 1800,
+      "height": 1000,
+      "length": "lap",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 10.236,
+      "sound": false,
+      "source": "816fc892a78c0adc",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 18498359,
+        "loopSmall": 10971099,
+        "still": 358079,
+        "stillSmall": 107420
+      },
+      "loop": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/loop.mp4?v=c5e33c45",
+      "loopSmall": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/loop-640.mp4?v=bb65ac1e",
+      "still": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/still.jpg?v=fc69424a",
+      "stillSmall": "examples/Recreations/SolLeWitt/ArcsCirclesGrids/still-640.jpg?v=2133da44"
+    },
+    "Recreations/SolLeWitt/FiftyPoints": {
+      "width": 1080,
+      "height": 1080,
+      "length": "22.0s",
+      "seconds": 22.0,
+      "frame": 1080,
+      "motion": 4.174,
+      "sound": false,
+      "source": "586eeee6ce81066a",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 4843466,
+        "loopSmall": 1763066,
+        "still": 450472,
+        "stillSmall": 128716
+      },
+      "loop": "examples/Recreations/SolLeWitt/FiftyPoints/loop.mp4?v=a8c502e3",
+      "loopSmall": "examples/Recreations/SolLeWitt/FiftyPoints/loop-640.mp4?v=2949ddd8",
+      "still": "examples/Recreations/SolLeWitt/FiftyPoints/still.jpg?v=0eb54c27",
+      "stillSmall": "examples/Recreations/SolLeWitt/FiftyPoints/still-640.jpg?v=878f8441"
+    },
     "Recreations/VeraMolnar/DesOrdres": {
       "bytes": {
         "still": 206774,
@@ -9814,484 +10346,6 @@
       "still": "examples/Web/BreathingRing/still.jpg?v=c2d38b5d",
       "stillSmall": "examples/Web/BreathingRing/still-640.jpg?v=592802a2",
       "width": 1080
-    }
-  },
-  "groups": {
-    "3D": {
-      "image": "groups/3D.jpg?v=67781359",
-      "imageSmall": "groups/3D-640.jpg?v=93086923",
-      "of": [
-        "3D/Geometry/Ocean",
-        "3D/Materials/Materials",
-        "3D/Effects/PathTraced",
-        "3D/Raymarching/RaymarchedFractals"
-      ]
-    },
-    "3D/Camera": {
-      "image": "groups/3D-Camera.jpg?v=9e8a4133",
-      "imageSmall": "groups/3D-Camera-640.jpg?v=c76cca23",
-      "of": [
-        "3D/Camera/CameraMoves",
-        "3D/Camera/CameraControl",
-        "3D/Camera/SceneViews"
-      ]
-    },
-    "3D/Depth": {
-      "image": "groups/3D-Depth.jpg?v=7b19792a",
-      "imageSmall": "groups/3D-Depth-640.jpg?v=ba453c33",
-      "of": [
-        "3D/Depth/DepthCompositing",
-        "3D/Depth/ClosedLoopScan",
-        "3D/Depth/DepthCloud"
-      ]
-    },
-    "3D/Effects": {
-      "image": "groups/3D-Effects.jpg?v=c2e74058",
-      "imageSmall": "groups/3D-Effects-640.jpg?v=113e3b33",
-      "of": [
-        "3D/Effects/PathTraced",
-        "3D/Effects/ScreenSpaceReflections",
-        "3D/Effects/LensFlare",
-        "3D/Effects/SceneDefocus"
-      ]
-    },
-    "3D/Environments": {
-      "image": "groups/3D-Environments.jpg?v=65053517",
-      "imageSmall": "groups/3D-Environments-640.jpg?v=fa8ce933",
-      "of": [
-        "3D/Environments/RemoteEnvironment",
-        "3D/Environments/EnvironmentGallery",
-        "3D/Environments/ImageBasedLighting",
-        "3D/Environments/Cloudscape"
-      ]
-    },
-    "3D/Geometry": {
-      "image": "groups/3D-Geometry.jpg?v=9af32983",
-      "imageSmall": "groups/3D-Geometry-640.jpg?v=d15e0d14",
-      "of": [
-        "3D/Geometry/Solids",
-        "3D/Geometry/Ocean",
-        "3D/Geometry/Planet",
-        "3D/Geometry/MeshGrowth"
-      ]
-    },
-    "3D/Lighting": {
-      "image": "groups/3D-Lighting.jpg?v=dd86209e",
-      "imageSmall": "groups/3D-Lighting-640.jpg?v=9ab2ae97",
-      "of": [
-        "3D/Lighting/AreaLights",
-        "3D/Lighting/Caustics",
-        "3D/Lighting/PointShadow",
-        "3D/Lighting/VolumetricLight"
-      ]
-    },
-    "3D/Materials": {
-      "image": "groups/3D-Materials.jpg?v=495f268c",
-      "imageSmall": "groups/3D-Materials-640.jpg?v=58f2fd81",
-      "of": [
-        "3D/Materials/Materials",
-        "3D/Materials/Glass",
-        "3D/Materials/ThinFilm",
-        "3D/Materials/Matcap"
-      ]
-    },
-    "3D/Physics": {
-      "image": "groups/3D-Physics.jpg?v=89d8aa0d",
-      "imageSmall": "groups/3D-Physics-640.jpg?v=f964ce02",
-      "of": [
-        "3D/Physics/Contraption",
-        "3D/Physics/Rigging",
-        "3D/Physics/Crawler",
-        "3D/Physics/Tumble"
-      ]
-    },
-    "3D/Raymarching": {
-      "image": "groups/3D-Raymarching.jpg?v=b3a0d1e1",
-      "imageSmall": "groups/3D-Raymarching-640.jpg?v=fb0b045e",
-      "of": [
-        "3D/Raymarching/RaymarchedFractals",
-        "3D/Raymarching/RaymarchedDomain",
-        "3D/Raymarching/RaymarchedSculpt",
-        "3D/Raymarching/RaymarchedRadial"
-      ]
-    },
-    "Audio": {
-      "image": "groups/Audio.jpg?v=4f0e6479",
-      "imageSmall": "groups/Audio-640.jpg?v=40ac009a",
-      "of": [
-        "Audio/OwnSampler",
-        "Audio/Spatial",
-        "Audio/Generative",
-        "Audio/Movement"
-      ]
-    },
-    "Basic": {
-      "image": "groups/Basic.jpg?v=c69dc435",
-      "imageSmall": "groups/Basic-640.jpg?v=87cc5110",
-      "of": [
-        "Basic/Describing",
-        "Basic/NormalizedCoordinates",
-        "Basic/HelloCircle",
-        "Basic/Guides"
-      ]
-    },
-    "Color": {
-      "image": "groups/Color.jpg?v=8b598582",
-      "imageSmall": "groups/Color-640.jpg?v=d25edf72",
-      "of": [
-        "Color/HSBWheel",
-        "Color/Gradients",
-        "Color/Colormaps",
-        "Color/ColorWaves"
-      ]
-    },
-    "Compute": {
-      "image": "groups/Compute.jpg?v=36dcd654",
-      "imageSmall": "groups/Compute-640.jpg?v=3598dc09",
-      "of": [
-        "Compute/ReactionDiffusion",
-        "Compute/CurlField",
-        "Compute/NeighborSearch"
-      ]
-    },
-    "Data": {
-      "image": "groups/Data.jpg?v=9cc39310",
-      "imageSmall": "groups/Data-640.jpg?v=0a0bcb08",
-      "of": [
-        "Data/Places",
-        "Data/Readings",
-        "Data/Outside",
-        "Data/Quakes"
-      ]
-    },
-    "Effects": {
-      "image": "groups/Effects.jpg?v=31f9d827",
-      "imageSmall": "groups/Effects-640.jpg?v=fcc855ce",
-      "of": [
-        "Effects/Droste",
-        "Effects/DiffusionCurves",
-        "Effects/NewtonBasins",
-        "Effects/MeshGradient"
-      ]
-    },
-    "Export": {
-      "image": "groups/Export.jpg?v=81b52f69",
-      "imageSmall": "groups/Export-640.jpg?v=2db81306",
-      "of": [
-        "Export/Cutout",
-        "Export/LineDrawing",
-        "Export/Hatching",
-        "Export/Drafting"
-      ]
-    },
-    "Images": {
-      "image": "groups/Images.jpg?v=5ee2305d",
-      "imageSmall": "groups/Images-640.jpg?v=7bf66de8",
-      "of": [
-        "Images/PhotoMosaic",
-        "Images/PixelSort",
-        "Images/LuminanceMelt",
-        "Images/StringArt"
-      ]
-    },
-    "Input": {
-      "image": "groups/Input.jpg?v=3a09db3a",
-      "imageSmall": "groups/Input-640.jpg?v=af47f1e4",
-      "of": [
-        "Input/Drag",
-        "Input/Keys",
-        "Input/PanAndZoom",
-        "Input/RepelGrid"
-      ]
-    },
-    "Installation": {
-      "image": "groups/Installation.jpg?v=4fc2fcb1",
-      "imageSmall": "groups/Installation-640.jpg?v=f10e701f",
-      "of": [
-        "Installation/ManyWindows",
-        "Installation/Fitted",
-        "Installation/Hours",
-        "Installation/Unattended"
-      ]
-    },
-    "Integration": {
-      "image": "groups/Integration.jpg?v=9aef5021",
-      "imageSmall": "groups/Integration-640.jpg?v=b8331369",
-      "of": [
-        "Integration/VirtualCamera"
-      ]
-    },
-    "Live": {
-      "image": "groups/Live.jpg?v=a7783b4a",
-      "imageSmall": "groups/Live-640.jpg?v=7773d6c6",
-      "of": [
-        "Live/DragToEdit",
-        "Live/Cues",
-        "Live/Parameters"
-      ]
-    },
-    "Motion": {
-      "image": "groups/Motion.jpg?v=c8b6c709",
-      "imageSmall": "groups/Motion-640.jpg?v=e8371af0",
-      "of": [
-        "Motion/Mandala",
-        "Motion/Spokes",
-        "Motion/EllipseField",
-        "Motion/Petals"
-      ]
-    },
-    "Patterns": {
-      "image": "groups/Patterns.jpg?v=d11d8032",
-      "imageSmall": "groups/Patterns-640.jpg?v=32f094b0",
-      "of": [
-        "Patterns/Truchet",
-        "Patterns/FractalFlame",
-        "Patterns/Phyllotaxis",
-        "Patterns/Girih"
-      ]
-    },
-    "Physics": {
-      "image": "groups/Physics.jpg?v=40d6bfc7",
-      "imageSmall": "groups/Physics-640.jpg?v=df823330",
-      "of": [
-        "Physics/RigidBodies",
-        "Physics/Blobs",
-        "Physics/Packing",
-        "Physics/Chain"
-      ]
-    },
-    "Randomness": {
-      "image": "groups/Randomness.jpg?v=69a78d4e",
-      "imageSmall": "groups/Randomness-640.jpg?v=9d05d269",
-      "of": [
-        "Randomness/Variations",
-        "Randomness/Ring",
-        "Randomness/Gaussian",
-        "Randomness/Walk"
-      ]
-    },
-    "Recreations": {
-      "image": "groups/Recreations.jpg?v=85af6f4f",
-      "imageSmall": "groups/Recreations-640.jpg?v=96c0051c",
-      "of": [
-        "Recreations/OsamuSato/Totem",
-        "Recreations/JaredTarbell/Substrate",
-        "Recreations/BridgetRiley/Current",
-        "Recreations/ManfredMohr/CubicLimit"
-      ]
-    },
-    "Recreations/BridgetRiley": {
-      "image": "groups/Recreations-BridgetRiley.jpg?v=b60256e3",
-      "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab",
-      "of": [
-        "Recreations/BridgetRiley/Current",
-        "Recreations/BridgetRiley/Fragment3"
-      ]
-    },
-    "Recreations/FriederNake": {
-      "image": "groups/Recreations-FriederNake.jpg?v=6306d031",
-      "imageSmall": "groups/Recreations-FriederNake-640.jpg?v=61e41a0e",
-      "of": [
-        "Recreations/FriederNake/HommageAPaulKlee"
-      ]
-    },
-    "Recreations/GeorgNees": {
-      "image": "groups/Recreations-GeorgNees.jpg?v=58be61c0",
-      "imageSmall": "groups/Recreations-GeorgNees-640.jpg?v=7288a62b",
-      "of": [
-        "Recreations/GeorgNees/Schotter"
-      ]
-    },
-    "Recreations/JaredTarbell": {
-      "image": "groups/Recreations-JaredTarbell.jpg?v=f7e68731",
-      "imageSmall": "groups/Recreations-JaredTarbell-640.jpg?v=1f6afc52",
-      "of": [
-        "Recreations/JaredTarbell/Substrate"
-      ]
-    },
-    "Recreations/JohnWhitney": {
-      "image": "groups/Recreations-JohnWhitney.jpg?v=159184a5",
-      "imageSmall": "groups/Recreations-JohnWhitney-640.jpg?v=1f957730",
-      "of": [
-        "Recreations/JohnWhitney/Permutations"
-      ]
-    },
-    "Recreations/JosefAlbers": {
-      "image": "groups/Recreations-JosefAlbers.jpg?v=55db4dcb",
-      "imageSmall": "groups/Recreations-JosefAlbers-640.jpg?v=b6022648",
-      "of": [
-        "Recreations/JosefAlbers/Homage"
-      ]
-    },
-    "Recreations/ManfredMohr": {
-      "image": "groups/Recreations-ManfredMohr.jpg?v=6ac73115",
-      "imageSmall": "groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af",
-      "of": [
-        "Recreations/ManfredMohr/CubicLimit",
-        "Recreations/ManfredMohr/DiagonalPath"
-      ]
-    },
-    "Recreations/ManuelFelguerez": {
-      "image": "groups/Recreations-ManuelFelguerez.jpg?v=497089cb",
-      "imageSmall": "groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3",
-      "of": [
-        "Recreations/ManuelFelguerez/MaquinaEstetica"
-      ]
-    },
-    "Recreations/OsamuSato": {
-      "image": "groups/Recreations-OsamuSato.jpg?v=8010bd2b",
-      "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=44f367b6",
-      "of": [
-        "Recreations/OsamuSato/Totem",
-        "Recreations/OsamuSato/Alphabet"
-      ]
-    },
-    "Recreations/VeraMolnar": {
-      "image": "groups/Recreations-VeraMolnar.jpg?v=c373c0a1",
-      "imageSmall": "groups/Recreations-VeraMolnar-640.jpg?v=b217beb4",
-      "of": [
-        "Recreations/VeraMolnar/DesOrdres",
-        "Recreations/VeraMolnar/Interruptions"
-      ]
-    },
-    "Rendering": {
-      "image": "groups/Rendering.jpg?v=30c26399",
-      "imageSmall": "groups/Rendering-640.jpg?v=7445816c",
-      "of": [
-        "Rendering/Grassland",
-        "Rendering/MeshField",
-        "Rendering/InstancedMesh",
-        "Rendering/ToneMapping"
-      ]
-    },
-    "Shaders": {
-      "image": "groups/Shaders.jpg?v=c1bb64df",
-      "imageSmall": "groups/Shaders-640.jpg?v=91f273a5",
-      "of": [
-        "Shaders/VisualSynth",
-        "Shaders/DomainWarp",
-        "Shaders/ShaderBlend",
-        "Shaders/ShaderFilter"
-      ]
-    },
-    "Shapes": {
-      "image": "groups/Shapes.jpg?v=80b3c08b",
-      "imageSmall": "groups/Shapes-640.jpg?v=ee7af08f",
-      "of": [
-        "Shapes/Primitives",
-        "Shapes/CombinatorsGradient",
-        "Shapes/Markers",
-        "Shapes/Superellipse"
-      ]
-    },
-    "Simulation": {
-      "image": "groups/Simulation.jpg?v=cb6f895f",
-      "imageSmall": "groups/Simulation-640.jpg?v=5287eafb",
-      "of": [
-        "Simulation/GrayScott",
-        "Simulation/Physarum",
-        "Simulation/ParticleLife",
-        "Simulation/Fluid"
-      ]
-    },
-    "Text": {
-      "image": "groups/Text.jpg?v=47998753",
-      "imageSmall": "groups/Text-640.jpg?v=8ed01466",
-      "of": [
-        "Text/TypeAsGeometry",
-        "Text/GlyphWave",
-        "Text/PlaydateFont",
-        "Text/TextVolume"
-      ]
-    },
-    "Video": {
-      "image": "groups/Video.jpg?v=a8a23b4a",
-      "imageSmall": "groups/Video-640.jpg?v=76b194e7",
-      "of": [
-        "Video/VideoPlayback",
-        "Video/SoundReactive"
-      ]
-    },
-    "Vision": {
-      "image": "groups/Vision.jpg?v=4f5465a3",
-      "imageSmall": "groups/Vision-640.jpg?v=cbe152e5",
-      "of": [
-        "Vision/BodyPose",
-        "Vision/HandTracking",
-        "Vision/SceneLabels",
-        "Vision/FaceTracking"
-      ]
-    },
-    "Web": {
-      "image": "groups/Web.jpg?v=7a143497",
-      "imageSmall": "groups/Web-640.jpg?v=fd88be70",
-      "of": [
-        "Web/BreathingRing"
-      ]
-    }
-  },
-  "heroes": {
-    "guide": {
-      "across": 8,
-      "cell": 200,
-      "clip": "heroes/guide-hero.mp4?v=5903abc1",
-      "fps": 30,
-      "height": 800,
-      "image": "heroes/guide-hero.jpg?v=08c6ada7",
-      "kind": "guide-payoffs",
-      "lead": 6,
-      "leads": {
-        "10-Vectors/Swarm": 2,
-        "19-GridSimulations/Organism": 10,
-        "20-ParticleSimulations/Drift": 30
-      },
-      "of": "the sketch each chapter builds, in chapter order",
-      "seconds": 6,
-      "width": 1600
-    },
-    "readme": {
-      "across": 8,
-      "cell": 200,
-      "clip": "heroes/readme-hero.mp4?v=070642e7",
-      "height": 800,
-      "image": "heroes/readme-hero.jpg?v=d4678db0",
-      "kind": "example-clips",
-      "of": "thirty-two of the example sketches, from every area of the framework",
-      "sketches": [
-        "Patterns/Truchet",
-        "Patterns/FractalFlame",
-        "Patterns/Kaleidoscope",
-        "Patterns/Phyllotaxis",
-        "Motion/Mandala",
-        "Motion/Spokes",
-        "Motion/EllipseField",
-        "Motion/Petals",
-        "Effects/Droste",
-        "Effects/DiffusionCurves",
-        "Effects/NewtonBasins",
-        "Effects/Feedback",
-        "Simulation/GrayScott",
-        "Simulation/Physarum",
-        "Simulation/ParticleLife",
-        "Simulation/Fluid",
-        "3D/Geometry/Ocean",
-        "3D/Geometry/Planet",
-        "3D/Materials/Materials",
-        "3D/Effects/PathTraced",
-        "3D/Raymarching/RaymarchedFractals",
-        "3D/Lighting/AreaLights",
-        "3D/Physics/Contraption",
-        "3D/Geometry/MeshGrowth",
-        "Shapes/CombinatorsGradient",
-        "Shaders/VisualSynth",
-        "Rendering/Grassland",
-        "Text/GlyphWave",
-        "Images/LuminanceMelt",
-        "Physics/RigidBodies",
-        "Vision/PaintByClass",
-        "Web/BreathingRing"
-      ],
-      "width": 1600
     }
   },
   "passedOver": {

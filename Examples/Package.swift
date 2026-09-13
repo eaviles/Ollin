@@ -823,5 +823,10 @@ let package = Package(
         // after Josef Albers's "Homage to the Square".
         example("Recreations/JosefAlbers/Homage"),
         example("Recreations/JohnWhitney/Permutations"),
+        // A wall drawing is a written instruction that somebody else draws, after
+        // Sol LeWitt: fifty points all connected, and the compass alphabet's
+        // two-part combinations.
+        example("Recreations/SolLeWitt/FiftyPoints"),
+        example("Recreations/SolLeWitt/ArcsCirclesGrids"),
     ]
 )
