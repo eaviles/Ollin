@@ -46,6 +46,10 @@ public enum Effect: Sendable, Hashable, Codable {
     case limiter(Limiter)
     /// Silence between the notes. See ``Gate``.
     case gate(Gate)
+    /// The pitch moved without the length. See ``PitchShift``.
+    case pitchShift(PitchShift)
+    /// The sound of one instant, held for as long as you like. See ``Freeze``.
+    case freeze(Freeze)
     /// One you wrote yourself: a closure over the samples. See ``CustomEffect``.
     case custom(CustomEffect)
 
@@ -58,7 +62,7 @@ public enum Effect: Sendable, Hashable, Codable {
     /// runs on its own unit, so it reads as `.convolution` here.
     public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
         case delay, reverb, equalizer, distortion, chorus, flanger, phaser, tremolo
-        case compressor, limiter, gate, custom
+        case compressor, limiter, gate, pitchShift, freeze, custom
         /// A reverb of a recorded or drawn room, `Reverb(impulse)`.
         case convolution
     }
@@ -77,6 +81,8 @@ public enum Effect: Sendable, Hashable, Codable {
         case .compressor: return .compressor
         case .limiter:    return .limiter
         case .gate:       return .gate
+        case .pitchShift: return .pitchShift
+        case .freeze:     return .freeze
         case .custom:     return .custom
         }
     }
@@ -104,12 +110,23 @@ public enum Effect: Sendable, Hashable, Codable {
         }
     }
 
+    /// The spectral work this effect is, for the unit that carries one, or
+    /// nil for an effect that leaves the spectrum where it found it.
+    var spectral: SpectralEffect.Settings? {
+        switch self {
+        case .pitchShift(let shift): return .pitchShift(shift)
+        case .freeze(let freeze):    return .freeze(freeze)
+        default:                     return nil
+        }
+    }
+
     /// A unit that can do this kind of work. The settings are applied
     /// separately, so one unit serves every setting of its kind. For a custom
     /// effect the closure itself is the setting, which is what lets a sketch
-    /// swap the work without the chain being rewired; a convolution reverb
-    /// and the four motions ride the same unit, each prepared and swapped in
-    /// the same way.
+    /// swap the work without the chain being rewired; a convolution reverb,
+    /// the four motions, the three levels, and the two that work in the
+    /// spectrum ride the same unit, each prepared and swapped in the same
+    /// way.
     static func makeUnit(for kind: Kind) -> AVAudioUnit {
         switch kind {
         case .delay:       return AVAudioUnitDelay()
@@ -119,6 +136,8 @@ public enum Effect: Sendable, Hashable, Codable {
         case .chorus, .flanger, .phaser, .tremolo:
             return ClosureAudioUnit.makeUnit()
         case .compressor, .limiter, .gate:
+            return ClosureAudioUnit.makeUnit()
+        case .pitchShift, .freeze:
             return ClosureAudioUnit.makeUnit()
         case .custom:      return ClosureAudioUnit.makeUnit()
         case .convolution: return ClosureAudioUnit.makeUnit()
@@ -153,6 +172,10 @@ public enum Effect: Sendable, Hashable, Codable {
             guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit,
                   let dynamics else { return }
             closureUnit.setDynamics(dynamics, sampleRate: sampleRate)
+        case .pitchShift, .freeze:
+            guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit,
+                  let spectral else { return }
+            closureUnit.setSpectral(spectral, sampleRate: sampleRate)
         case .custom(let custom):
             guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit else { return }
             closureUnit.slot.set(custom.runner)

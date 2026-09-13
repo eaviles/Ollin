@@ -12,9 +12,11 @@ enum Effect: Decodable, Encodable, Equatable, Hashable, Sendable
   case distortion(Distortion)
   case equalizer(Equalizer)
   case flanger(Flanger)
+  case freeze(Freeze)
   case gate(Gate)
   case limiter(Limiter)
   case phaser(Phaser)
+  case pitchShift(PitchShift)
   case reverb(Reverb)
   case tremolo(Tremolo)
   enum Kind: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
@@ -26,9 +28,11 @@ enum Effect: Decodable, Encodable, Equatable, Hashable, Sendable
     case distortion
     case equalizer
     case flanger
+    case freeze
     case gate
     case limiter
     case phaser
+    case pitchShift
     case reverb
     case tremolo
   static func custom(_: String = default, _: (AudioBlock) -> Void) -> Effect
@@ -105,6 +109,7 @@ final class SampledInstrument: Sendable
   let name: String
   static let builtIn: SampledInstrument?
   struct Recording: Sendable
+    func stretched(by: Double) -> SampledInstrument.Recording
     init(frames: [Float], sampleRate: Double, rootKey: Int, lowKey: Int? = default, highKey: Int? = default)
     var frames: [Float] { get set }
     var highKey: Int { get set }
@@ -385,6 +390,9 @@ struct Flanger: Decodable, Encodable, Equatable, Hashable, Sendable
   var feedback: Double { get set }
   var mix: Double { get set }
   var rate: Double { get set }
+struct Freeze: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(amount: Double = default)
+  var amount: Double { get set }
 struct Gate: Decodable, Encodable, Equatable, Hashable, Sendable
   init(threshold: Double = default, attack: Double = default, hold: Double = default, release: Double = default, depth: Double = default)
   var attack: Double { get set }
@@ -394,6 +402,7 @@ struct Gate: Decodable, Encodable, Equatable, Hashable, Sendable
   var threshold: Double { get set }
 struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   func reversed() -> ImpulseResponse
+  func stretched(by: Double) -> ImpulseResponse
   init(_: [Float], sampleRate: Double)
   init(left: [Float], right: [Float], sampleRate: Double)
   init(seconds: Double, sampleRate: Double = default, seed: Int = default, _: (Double, Double) -> Double)
@@ -495,6 +504,10 @@ struct Pitch: Comparable, CustomStringConvertible, Equatable, ExpressibleByExten
   var description: String { get }
   var frequency: Double { get }
   var midi: Double { get set }
+struct PitchShift: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(semitones: Double = default, mix: Double = default)
+  var mix: Double { get set }
+  var semitones: Double { get set }
 struct PluckedString: Decodable, Encodable, Equatable, Hashable, Sendable
   init(position: Double = default, hardness: Double = default, decay: Double = default, damping: Double = default)
   static let harp: PluckedString

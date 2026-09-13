@@ -443,6 +443,18 @@ Ollin reads the opcodes that decide which file plays and at what pitch. They are
 
 `Examples/Audio/OwnSampler` is an instrument made rather than downloaded. It has three recordings generated beside the sketch and a three-region map, read with `SampledInstrument(sfz:in:)`. Each recording is drawn with its loop region shaded. `Examples/Audio/Sampler` plays the bundled one.
 
+#### Stretching a recording
+
+```swift
+let bar = SampledInstrument.builtIn!
+let slow = bar.recording(at: 0, over: 0...127).stretched(by: 4)
+synth.instrument = SampledInstrument(recordings: [slow])
+```
+
+A sampler moves pitch and length together, like a tape: a note an octave down lasts twice as long. `stretched(by:)` is the other axis. The recording comes back `factor` times as long at the same pitch, so it can be slowed into a drone or hurried into a grace note and still play at the note it was recorded at. The factor runs `0.25...16`, and 2 is twice as long. A [room](#a-room-of-your-own) stretches the same way, and a stretched room is a bigger room: every echo lands later, every resonance rings longer, and nothing moves in pitch.
+
+It changes the length, so it is a thing done to a recording rather than an effect in the chain. Do it in `setup()`: it costs about what the recording's own length costs to play. The two effects that do the same work live, without changing the length, are [the pitch shift and the freeze](#the-two-that-work-in-the-spectrum).
+
 #### Where to find instruments
 
 The licenses matter here, so each group below says what its terms are.
@@ -654,6 +666,8 @@ The voice side of this library is routing as a value. A [`Patch`](#patch) says w
 | `.compressor(Compressor)` | holding the loud parts down so the quiet ones can come up ([the three that hold a level](#the-three-that-hold-a-level)) |
 | `.limiter(Limiter)` | a ceiling nothing gets over |
 | `.gate(Gate)` | silence between the notes |
+| `.pitchShift(PitchShift)` | the pitch moved without the length ([the two that work in the spectrum](#the-two-that-work-in-the-spectrum)) |
+| `.freeze(Freeze)` | the sound of one instant, held for as long as you like |
 | `.custom(...)` | [one you wrote yourself](#an-effect-of-your-own), as a closure over the samples |
 
 #### The two that were here first
@@ -774,6 +788,26 @@ Where the four above move the sound, these three watch how loud it is and act on
 
 Two footnotes. The compressor follows the level from crest to crest rather than reading each sample, so a tone lands where its ratio says it should rather than a decibel short of it. And a key from somewhere else, the trick where one sound ducks another, is not here: each `Synth` runs its own engine, so there is nothing for a detector on one to listen to on another.
 
+#### The two that work in the spectrum
+
+```swift
+synth.effects = [.pitchShift(PitchShift(semitones: 7, mix: 0.5))]
+synth.effects = [.freeze(Freeze(amount: mouseIsPressed ? 1 : 0))]
+```
+
+Everything above works on the sound as a wave. These two take it apart first. The sound is read in frames of about forty milliseconds, each frame as the level and the exact frequency of every partial in it, and put back together with those partials moved or held. That is a phase vocoder. It is what lets the pitch move without the length, which a [sampler](#sampled-instruments) cannot do, since a recording played faster is shorter as well as higher.
+
+| Effect | What it does | Settings |
+|---|---|---|
+| `PitchShift` | moves the pitch by `semitones`, `-24...24`, with the length untouched. A fraction is a fine tuning. Under a `mix` of 1 the original sounds with the moved copy, which is a harmonizer: a fifth at half mix puts a second voice under every note | `semitones`, `mix` |
+| `Freeze` | the moment `amount` rises above 0, catches the spectrum of what is playing, every partial at its level and its frequency, and plays that instant for as long as the amount stays up. A struck chord becomes a pad. Back at 0 the instant is let go and the sound passes as it was. The amount is also the blend, so a freeze can be eased in rather than switched | `amount` |
+
+Both arrive one frame later than the sound went in, about forty milliseconds, and the unmoved half of a blend is delayed to match, so a harmonizer's two voices land together. Turn a setting while the sound plays and the frames in flight carry on: the pitch slides rather than jumps, and a held instant stays held while its amount moves.
+
+Two things to know. A pitch shift moves the whole spectrum, so a voice an octave up is a small voice rather than a high one, and keeping the shape of a voice in place while its pitch moves is not here. And put a `Freeze` in the chain at 0 and raise it when there is something to hold, since a freeze that starts at 1 holds the silence before the first note.
+
+The same taking apart, done once to a recording rather than live, is [stretching a recording](#stretching-a-recording). `Examples/Audio/Spectral` is both effects and the stretch behind a parameter, with the freeze on the mouse.
+
 #### An effect of your own
 
 ```swift
@@ -832,6 +866,7 @@ These limits are said plainly, so you can plan around them rather than go lookin
 - **No key from another sound.** A compressor or a gate listens to what passes through it and nothing else. Ducking a pad under a voice, or gating a sound off a drum, needs a detector on one instrument reading another, and each `Synth` owns its own engine.
 - **No sequencer.** You ask for notes from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) decides which notes and when. To run on someone else's clock, use [`TempoClock`](../Integration/MIDI.md).
 - **A sampler, but not a sample editor.** [Recordings](#sampled-instruments) are read and played. Nothing here trims them, loops them by ear, or lays out a map for you. The map is the `.sfz`.
+- **A pitch shift moves the whole spectrum.** A voice an octave up is a small voice rather than a high one. Keeping the shape of a voice where it is while the pitch moves, which is what makes a harmonizer sound like a singer rather than a cartoon, is not here.
 - **One recording at a time per note.** There is no crossfading between velocity layers, or between neighboring recordings. A change of layer is a step rather than a fade.
 - **A wavetable's position is read when the note starts.** The sweep moves it over the note. The position itself is not a live control, the way `pressure` is. To move a held note by hand, use the sweep or play a new note.
 - **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.

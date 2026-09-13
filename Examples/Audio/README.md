@@ -13,10 +13,10 @@
 | [OwnSampler](OwnSampler/) | [Patching](Patching/) | [Rooms](Rooms/) | [Sampler](Sampler/) |
 | [![Shaping](https://media.ollin.art/examples/Audio/Shaping/still-640.jpg?v=d6cb6131)](Shaping/) | [![Sonification](https://media.ollin.art/examples/Audio/Sonification/still-640.jpg?v=43ca6b0a)](Sonification/) | [![SoundInAnExport](https://media.ollin.art/examples/Audio/SoundInAnExport/still-640.jpg?v=7ecb82cc)](SoundInAnExport/) | [![Spatial](https://media.ollin.art/examples/Audio/Spatial/still-640.jpg?v=cdd4286a)](Spatial/) |
 | [Shaping](Shaping/) | [Sonification](Sonification/) | [SoundInAnExport](SoundInAnExport/) | [Spatial](Spatial/) |
-| [![Spectrum](https://media.ollin.art/examples/Audio/Spectrum/still-640.jpg?v=db294efb)](Spectrum/) | [![Strings](https://media.ollin.art/examples/Audio/Strings/still-640.jpg?v=eb5b447b)](Strings/) | [![StruckShapes](https://media.ollin.art/examples/Audio/StruckShapes/still-640.jpg?v=fdc7872a)](StruckShapes/) | [![Synth](https://media.ollin.art/examples/Audio/Synth/still-640.jpg?v=e056fd72)](Synth/) |
-| [Spectrum](Spectrum/) | [Strings](Strings/) | [StruckShapes](StruckShapes/) | [Synth](Synth/) |
-| [![Tunings](https://media.ollin.art/examples/Audio/Tunings/still-640.jpg?v=ce9b7f09)](Tunings/) | [![Wavetable](https://media.ollin.art/examples/Audio/Wavetable/still-640.jpg?v=93a2b8ee)](Wavetable/) |  |  |
-| [Tunings](Tunings/) | [Wavetable](Wavetable/) |  |  |
+| [![Spectral](https://media.ollin.art/examples/Audio/Spectral/still-640.jpg?v=315d8c30)](Spectral/) | [![Spectrum](https://media.ollin.art/examples/Audio/Spectrum/still-640.jpg?v=db294efb)](Spectrum/) | [![Strings](https://media.ollin.art/examples/Audio/Strings/still-640.jpg?v=eb5b447b)](Strings/) | [![StruckShapes](https://media.ollin.art/examples/Audio/StruckShapes/still-640.jpg?v=fdc7872a)](StruckShapes/) |
+| [Spectral](Spectral/) | [Spectrum](Spectrum/) | [Strings](Strings/) | [StruckShapes](StruckShapes/) |
+| [![Synth](https://media.ollin.art/examples/Audio/Synth/still-640.jpg?v=e056fd72)](Synth/) | [![Tunings](https://media.ollin.art/examples/Audio/Tunings/still-640.jpg?v=ce9b7f09)](Tunings/) | [![Wavetable](https://media.ollin.art/examples/Audio/Wavetable/still-640.jpg?v=93a2b8ee)](Wavetable/) |  |
+| [Synth](Synth/) | [Tunings](Tunings/) | [Wavetable](Wavetable/) |  |
 
 These sketches listen to sound or play it. Audio lives in a separate library, so add `import OllinAudio`.
 
@@ -35,6 +35,7 @@ The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/
 | [Rooms](Rooms/Sketch.swift) | a room of your own around an instrument: five rooms drawn from rules (fading noise at two sizes, the same noise run backward, a resonator, a dropped ball) as an `ImpulseResponse`, played through as a convolution `Reverb`, with the room's answer to a click drawn as a waveform and the instrument's trace under it |
 | [Movement](Movement/Sketch.swift) | the four effects that move a sound: chorus, flanger, phaser, and tremolo on one phrase, each setting on a parameter, the wave that drives the motion drawn over the instrument's trace (`Chorus`, `Flanger`, `Phaser`, `Tremolo`) |
 | [Levels](Levels/Sketch.swift) | the three effects that hold a level: a phrase with accents played through a compressor, a limiter, and a gate, with the threshold drawn across a meter of the last four seconds so the accents can be watched meeting it (`Compressor`, `Limiter`, `Gate`) |
+| [Spectral](Spectral/Sketch.swift) | the two effects that work in the spectrum, and the stretch beside them: a phrase with its pitch moved and its length untouched (a harmonizer under a full mix), the instant the mouse goes down caught and held as a pad, and the bundled bar's recording slowed four times at the pitch it was recorded at, drawn over the original on one time axis (`PitchShift`, `Freeze`, `stretched(by:)`) |
 | [Changes](Changes/Sketch.swift) | chords that come out of a key: the progression is written as scale degrees rather than chord names, because the degrees are what survive a change of key (`Chord`, `Scale`) |
 | [Generative](Generative/Sketch.swift) | music the sketch works out for itself from four small pieces: each ring is a `Rhythm`, and its strikes spread over the steps as evenly as whole steps allow |
 | [Strings](Strings/Sketch.swift) | six strings you pluck wherever you click: each is a delay line one period long with a filtered loop around it, so where you pluck decides the tone (`PluckedString`) |

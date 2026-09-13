@@ -227,7 +227,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`Weather`](./Helpers/Weather.md) - `Weather`, the sky over a place or a name as plain readings (temperature, clouds, wind, rain, the condition in a word), and `Place.sun(at:)` for where the sun is, with no network
 - [`Audio`](./Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 - [`Listening`](./Helpers/Listening.md) - speech as a caption you can draw and phrases you can act on, plus about 300 everyday sounds named as they happen, over any audio source
-- [`Synthesis`](./Helpers/Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, a wavetable read by position, delay and reverb, and a room of your own as a convolution reverb
+- [`Synthesis`](./Helpers/Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, a wavetable read by position, delay and reverb, a room of your own as a convolution reverb, and a pitch shift and a freeze that take the sound apart into its partials first
 - [`Composition`](./Helpers/Composition.md) - working out what to play: Euclidean rhythms, scales and chords, arpeggios, and Markov sequences, as pure values of a step number
 - [`Sonification`](./Helpers/Sonification.md) - numbers played as notes: a table column, a terrain profile, or a picture row, spread over a range of pitch and snapped to a scale
 

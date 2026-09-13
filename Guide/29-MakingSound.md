@@ -212,6 +212,32 @@ A **gate** works on what is under its threshold, and turns it down by `depth`. T
 
 The level is read from both sides at once, so a loud note on one side pulls the other down with it and the sound stays where you put it. Turn a setting while it plays and the gain carries on from where it is. One thing is not here: a key from somewhere else, the trick where one sound ducks another, needs a detector on one instrument listening to a different one, and each `Synth` runs its own engine. [`Examples/Audio/Levels`](../Examples/Audio/Levels/Sketch.swift) plays a phrase with accents in it through each of the three, with the threshold drawn across the meter so you can watch the accents meet it.
 
+### Something that takes the sound apart: pitch shift, freeze, stretch
+
+Every effect so far worked on the sound as a wave. These take it apart first.
+
+```swift
+synth.effects = [.pitchShift(PitchShift(semitones: 7, mix: 0.5))]
+synth.effects = [.freeze(Freeze(amount: mouseIsPressed ? 1 : 0))]
+let bar = SampledInstrument.builtIn!
+let slow = bar.recording(at: 0, over: 0...127).stretched(by: 4)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/Spectral-dark.jpg">
+  <img src="Images/29-MakingSound/Spectral.jpg" alt="Three panels: the partials of a note as bars on a frequency axis, with the same bars a fifth higher drawn over them; four partials fading over time until a line, and holding flat from the line to the edge; and the outline of a struck recording with the same recording drawn three times as long under it, on one time axis" width="680">
+</picture>
+
+The sound is read in frames of about forty milliseconds. Each frame is taken apart into the partials in it, every one with a level and an exact frequency, and put back together with those partials moved or held. That is a phase vocoder, and the taking apart is what buys three things a wave cannot do.
+
+A **pitch shift** moves the pitch and leaves the length. That sounds small until you remember the sampler: a recording played an octave down lasts twice as long, because pitch and length are one control on a tape. Here they are two. A chord a fifth up still ends when it ended. With `mix` under 1 the original plays under the moved copy, which is a harmonizer, and the first panel is that: the partials of a note, and the same partials a fifth higher over them.
+
+A **freeze** holds an instant. The moment `amount` rises above 0, the spectrum of whatever is sounding is caught, and from then on that instant plays for as long as the amount stays up. A struck chord becomes a pad. The second panel is a note fading until the freeze, and then not fading at all. The amount is also the blend, so a freeze can be eased in rather than switched, and back at 0 the instant is let go.
+
+A **stretch** is the same idea done once to a recording rather than live. `stretched(by: 4)` gives a recording four times as long at the same pitch, which the sampler then plays like any other. It changes the length, so it is a thing done in `setup()` rather than a link in the chain. The third panel is a struck recording and the same recording stretched, on one time axis.
+
+Two honest limits. Each of these arrives a frame late, about forty milliseconds, which you will not notice on a phrase and might on a drum. And a pitch shift moves the whole spectrum, so a voice an octave up is a small voice rather than a high one. [`Examples/Audio/Spectral`](../Examples/Audio/Spectral/Sketch.swift) is all three behind a parameter, with the freeze on the mouse.
+
 ## An instrument somebody recorded
 
 Everything in this chapter so far is worked out as it goes. The other way round is to start from a recording.
@@ -799,7 +825,7 @@ Then make it yours:
 
 Frequency modulation as a way of making sound is John Chowning's, worked out at Stanford in the late 1960s and published in 1973. It reached most people as the Yamaha DX7, whose bells and electric pianos are the sound of a decade. The plucked string is Kevin Karplus and Alex Strong's algorithm (1983), a discovery in the literal sense. They were building a wavetable synthesizer, and a bug which averaged the table as it played turned a burst of noise into a plucked string. They worked out afterwards why. David Jaffe and Julius Smith published the extensions the same year, and it is their version, tuned by an allpass and plucked at a position, that Ollin implements.
 
-Playing a sound through a recorded room is convolution, and it was too slow to be useful until Thomas Stockham showed in 1966 that the fast Fourier transform made it cheap. William Gardner worked out in 1995 how to do it with no delay at all, by running the first stretch of the room directly and the rest through the transform, which is the arrangement Ollin uses.
+Playing a sound through a recorded room is convolution, and it was too slow to be useful until Thomas Stockham showed in 1966 that the fast Fourier transform made it cheap. William Gardner worked out in 1995 how to do it with no delay at all, by running the first stretch of the room directly and the rest through the transform, which is the arrangement Ollin uses. Taking a sound apart into its partials and putting it back moved or held is the phase vocoder, James Flanagan and Roger Golden's at Bell Labs in 1966, which Mark Dolson's 1986 tutorial turned from a laboratory tool into something a musician could run. The way Ollin keeps each partial whole while it moves it is Jean Laroche and Mark Dolson's, from 1999.
 
 Hearing a shape has a mathematical name, from Mark Kac's 1966 question "Can one hear the shape of a drum?". It also has an answer. Not always, since two different outlines can ring identically, but you can certainly hear a great deal of it. Working the frequencies out from the outline is modal synthesis. Jean-Marie Adrien set it out for sound, and Kees van den Doel and Dinesh Pai developed it for struck objects.
 
@@ -808,6 +834,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 ## Go deeper
 
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb, [a room of your own](../Docs/Helpers/Synthesis.md#a-room-of-your-own), [the four that move](../Docs/Helpers/Synthesis.md#the-four-that-move), and the whole effects chain.
+- [The two that work in the spectrum](../Docs/Helpers/Synthesis.md#the-two-that-work-in-the-spectrum): the pitch shift and the freeze, what a frame late means, and [stretching a recording](../Docs/Helpers/Synthesis.md#stretching-a-recording).
 - [Patches](../Docs/Helpers/Synthesis.md#patch): what an operator is, the named patches, and why eight.
 - [Sampled instruments](../Docs/Helpers/Synthesis.md#sampled-instruments): loading an SFZ instrument, what a recording being moved costs, and where to find instruments you are allowed to ship.
 - [Wavetables](../Docs/Helpers/Synthesis.md#wavetables): the built-in tables, making one from harmonics, drawn cycles, or a rule, and why a high note reads a softer copy.
@@ -816,7 +843,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.
 - [Spatial audio](../Docs/Helpers/Synthesis.md#placing-a-sound): placing a source in the room, the listener, and what an export writes.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
+- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
 
 ---
 

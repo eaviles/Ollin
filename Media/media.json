@@ -3179,6 +3179,27 @@
       "stillSmall": "examples/Audio/Spatial/still-640.jpg?v=cdd4286a",
       "width": 1080
     },
+    "Audio/Spectral": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.236,
+      "sound": true,
+      "source": "6c90db46c4cd884d",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 968583,
+        "loopSmall": 161711,
+        "still": 72148,
+        "stillSmall": 31653
+      },
+      "loop": "examples/Audio/Spectral/loop.mp4?v=512204c9",
+      "loopSmall": "examples/Audio/Spectral/loop-640.mp4?v=b9da1dc6",
+      "still": "examples/Audio/Spectral/still.jpg?v=5aeb75f1",
+      "stillSmall": "examples/Audio/Spectral/still-640.jpg?v=315d8c30"
+    },
     "Audio/Spectrum": {
       "bytes": {
         "loop": 1955794,

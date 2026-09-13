@@ -252,36 +252,37 @@ cccb28333938  Guide/29-MakingSound.md:141  cannot find 'ImpulseResponse' in scop
 1bd976c3b98f  Guide/29-MakingSound.md:148  cannot find 'ImpulseResponse' in scope
 139bec613386  Guide/29-MakingSound.md:167  cannot find 'synth' in scope
 c69d07e83385  Guide/29-MakingSound.md:193  cannot find 'synth' in scope
-a3fc4eec84a0  Guide/29-MakingSound.md:219  cannot find 'synth' in scope
-5f7fa83f1394  Guide/29-MakingSound.md:231  cannot find 'synth' in scope
-587bb669d987  Guide/29-MakingSound.md:240  cannot find 'SampledInstrument' in scope
-639123956822  Guide/29-MakingSound.md:250  cannot find 'synth' in scope
-7fef9776e0fa  Guide/29-MakingSound.md:263  cannot find 'synth' in scope
-b824f8b6c9e5  Guide/29-MakingSound.md:271  cannot find 'synth' in scope
-91bac9c1605d  Guide/29-MakingSound.md:283  cannot find 'Synth' in scope
-6295ac12ab41  Guide/29-MakingSound.md:299  cannot find 'PluckedString' in scope
-22d8d5879111  Guide/29-MakingSound.md:319  cannot find 'Synth' in scope
-093c643ad086  Guide/29-MakingSound.md:326  missing argument for parameter 'at' in call
-9ccbda15d5b2  Guide/29-MakingSound.md:357  cannot find 'Synth' in scope
-64740ac6a66f  Guide/29-MakingSound.md:382  cannot find 'StepCounter' in scope
-da087516ad18  Guide/29-MakingSound.md:408  cannot find 'Rhythm' in scope
-f3a9e8d7c93b  Guide/29-MakingSound.md:422  cannot find type 'Rhythm' in scope
-ca4bb82278f4  Guide/29-MakingSound.md:428  cannot find 'Scale' in scope
-999a837dee98  Guide/29-MakingSound.md:437  cannot find 'synth' in scope
-3eebb33e602b  Guide/29-MakingSound.md:443  value of type 'Character?' has no member 'chord'
-a639d1c28616  Guide/29-MakingSound.md:457  cannot find 'Arpeggio' in scope
-39cd5602ed5e  Guide/29-MakingSound.md:466  cannot find 'MarkovChain' in scope
-61176ace1080  Guide/29-MakingSound.md:477  cannot find 'counter' in scope
-7ad878ee7d21  Guide/29-MakingSound.md:490  cannot find 'Progression' in scope
-4c4f3af85a7b  Guide/29-MakingSound.md:510  cannot find 'Progression' in scope
-6e023d5c7adb  Guide/29-MakingSound.md:518  cannot find 'Progression' in scope
-42e6f390edd0  Guide/29-MakingSound.md:529  cannot find 'Tuning' in scope
-3afd36744ea0  Guide/29-MakingSound.md:544  cannot find 'StepCounter' in scope
-47f783a8ac03  Guide/29-MakingSound.md:566  cannot find 'Sonification' in scope
-bcb4c0a45a0c  Guide/29-MakingSound.md:590  cannot find 'marker' in scope
-0b9d28d8a7a0  Guide/29-MakingSound.md:604  cannot find 'synth' in scope
-2e02aee3d33f  Guide/29-MakingSound.md:634  expected '}' in class
-60aef06efea1  Guide/29-MakingSound.md:723  extraneous '}' at top level
+1331fb3327dd  Guide/29-MakingSound.md:219  cannot find 'synth' in scope
+a3fc4eec84a0  Guide/29-MakingSound.md:245  cannot find 'synth' in scope
+5f7fa83f1394  Guide/29-MakingSound.md:257  cannot find 'synth' in scope
+587bb669d987  Guide/29-MakingSound.md:266  cannot find 'SampledInstrument' in scope
+639123956822  Guide/29-MakingSound.md:276  cannot find 'synth' in scope
+7fef9776e0fa  Guide/29-MakingSound.md:289  cannot find 'synth' in scope
+b824f8b6c9e5  Guide/29-MakingSound.md:297  cannot find 'synth' in scope
+91bac9c1605d  Guide/29-MakingSound.md:309  cannot find 'Synth' in scope
+6295ac12ab41  Guide/29-MakingSound.md:325  cannot find 'PluckedString' in scope
+22d8d5879111  Guide/29-MakingSound.md:345  cannot find 'Synth' in scope
+093c643ad086  Guide/29-MakingSound.md:352  missing argument for parameter 'at' in call
+9ccbda15d5b2  Guide/29-MakingSound.md:383  cannot find 'Synth' in scope
+64740ac6a66f  Guide/29-MakingSound.md:408  cannot find 'StepCounter' in scope
+da087516ad18  Guide/29-MakingSound.md:434  cannot find 'Rhythm' in scope
+f3a9e8d7c93b  Guide/29-MakingSound.md:448  cannot find type 'Rhythm' in scope
+ca4bb82278f4  Guide/29-MakingSound.md:454  cannot find 'Scale' in scope
+999a837dee98  Guide/29-MakingSound.md:463  cannot find 'synth' in scope
+3eebb33e602b  Guide/29-MakingSound.md:469  value of type 'Character?' has no member 'chord'
+a639d1c28616  Guide/29-MakingSound.md:483  cannot find 'Arpeggio' in scope
+39cd5602ed5e  Guide/29-MakingSound.md:492  cannot find 'MarkovChain' in scope
+61176ace1080  Guide/29-MakingSound.md:503  cannot find 'counter' in scope
+7ad878ee7d21  Guide/29-MakingSound.md:516  cannot find 'Progression' in scope
+4c4f3af85a7b  Guide/29-MakingSound.md:536  cannot find 'Progression' in scope
+6e023d5c7adb  Guide/29-MakingSound.md:544  cannot find 'Progression' in scope
+42e6f390edd0  Guide/29-MakingSound.md:555  cannot find 'Tuning' in scope
+3afd36744ea0  Guide/29-MakingSound.md:570  cannot find 'StepCounter' in scope
+47f783a8ac03  Guide/29-MakingSound.md:592  cannot find 'Sonification' in scope
+bcb4c0a45a0c  Guide/29-MakingSound.md:616  cannot find 'marker' in scope
+0b9d28d8a7a0  Guide/29-MakingSound.md:630  cannot find 'synth' in scope
+2e02aee3d33f  Guide/29-MakingSound.md:660  expected '}' in class
+60aef06efea1  Guide/29-MakingSound.md:749  extraneous '}' at top level
 cdc2a7f6ed3c  Guide/30-Seeing.md:35  cannot find 'Camera' in scope
 9f0265c15491  Guide/30-Seeing.md:52  cannot find 'FaceTracker' in scope
 096f6e921b2a  Guide/30-Seeing.md:99  cannot find 'BodyTracker3D' in scope

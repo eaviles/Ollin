@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **The pitch moves without the length, an instant can be held, and a recording can be stretched.** `.pitchShift(PitchShift(semitones:mix:))` and `.freeze(Freeze(amount:))` join the effect chain, both a phase vocoder that keeps every partial whole, and `stretched(by:)` on a `Recording` or an `ImpulseResponse` gives it back longer at the same pitch. [The two that work in the spectrum](Docs/Helpers/Synthesis.md#the-two-that-work-in-the-spectrum)
+
 ### Fixed
 
 - **The reference and the Guide named calls the code no longer spells.** Seventy-odd backticked names had gone stale behind a rename: `.bloom(threshold:intensity:radius:)` where the label is `amount:`, `hopfBases(spiral:)` for `spiralCount:`, `frameRendered(_:_:)` for `frameRendered(_:image:)`, `Mesh(resource:extension:in:)` for `withExtension:`, and their kin across the effects, physics, and 3D pages. A gate reads every name in backticks against the tree and the public surface now, so the next rename cannot leave a page behind.

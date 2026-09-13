@@ -82,7 +82,7 @@ import Testing
         // reads as its own kind; the rest of that story is in ConvolutionTests.
         let room = ImpulseResponse(seconds: 0.01, sampleRate: 48000) { time, _ in exp(-100 * time) }
         #expect(Effect.reverb(Reverb(room)).kind == .convolution)
-        #expect(Effect.Kind.allCases.count == 13)   // the four motions and the three levels included
+        #expect(Effect.Kind.allCases.count == 15)   // the four motions, the three levels, and the two in the spectrum
     }
 
     @MainActor

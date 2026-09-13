@@ -271,6 +271,24 @@ final class ClosureAudioUnit: AUAudioUnit {
         slot.set(CustomEffectRunner { block in made.process(block) })
     }
 
+    /// The spectral work a pitch shift or a freeze runs on this unit, kept
+    /// for the same reason the level is: a turn of the pitch or the amount
+    /// rides the frames in flight and the phases carried between them, and
+    /// a held instant stays held, rather than starting the effect over.
+    var spectral: SpectralEffect?
+
+    /// Puts a spectral effect's settings onto this unit: the standing one
+    /// when it is the same kind at the same rate, a new one otherwise.
+    func setSpectral(_ settings: SpectralEffect.Settings, sampleRate: Double) {
+        if let spectral, spectral.serves(settings, at: sampleRate) {
+            spectral.update(settings)
+            return
+        }
+        let made = SpectralEffect(settings, sampleRate: sampleRate)
+        spectral = made
+        slot.set(CustomEffectRunner { block in made.process(block) })
+    }
+
     private var inputBus: AUAudioUnitBus!
     private var outputBus: AUAudioUnitBus!
     private var inputBusArray: AUAudioUnitBusArray!
