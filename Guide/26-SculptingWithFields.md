@@ -355,7 +355,14 @@ camera(.orbiting(target: .zero, radius: 8, azimuth: time * 0.05, elevation: 0.3)
 temporalAntialiasing()      // any Metal GPU; edges refine as frames accumulate
 ```
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/SettledEdges-dark.jpg">
+  <img src="Images/26-SculptingWithFields/SettledEdges.jpg" alt="Two magnified crops of the same exported pixels: four thin bright rods at shallow tilts on black. On the left, with temporal anti-aliasing off, each rod is a run of uneven gray dashes with visible steps. On the right, with it on, each rod is one even line" width="680">
+</picture>
+
 Every 3D frame already takes eight samples per pixel, but always at the *same* eight positions. So a thin bright edge at a shallow angle still lands as a fixed staircase, and the steps crawl when the camera drifts. With the call on, the camera's projection is nudged by a sub-pixel offset that changes every frame, and the frames fold into a running average. Each pixel has soon been sampled at dozens of positions instead of eight. The staircase melts into a gradient, the crawling stops, and the leftover shimmer of the traced effects above calms down with it. It follows the camera, so orbiting keeps the accumulated detail. It leaves 2D drawing untouched, since that path is already exact. And like everything in this chapter, an export doesn't wait for frames. It renders the scene several times at fixed offsets inside each frame and averages, so a still is finished immediately and a video can't flicker. Unlike the mirrors and the bounce, it doesn't need a ray-tracing GPU, and any Mac that runs Ollin can do it.
+
+The figure is what that looks like in the pixels themselves. The same four rods were exported twice and magnified, one square per pixel. They are thinner than a pixel and tilted a few degrees, which is the case fixed positions handle worst. On the left, a rod catches two of the eight samples in one pixel and none in the next. It comes out as uneven dashes, and the thick one climbs in visible steps. On the right, the export averaged sixteen jittered passes, so each pixel carries the rod's true share of it. The dashes join into an even line, and the steps soften into a ramp. Live, that is the difference between a hairline that crawls as the camera drifts and one that holds still.
 
 One thing the average can't know on its own is where a *moving object* was last frame. The camera's motion is followed automatically. A mesh spinning or flying through the scene on its own refreshes its history instead, so there are no ghost trails, at the price of its edges reading rawer mid-flight. Wrap its drawing in `withMotion { }` and Ollin remembers the block's placement from frame to frame. That hands the average each mover's exact screen motion, so its edges keep their refinement while they move. Name the block, as in `withMotion("rotor") { }`, if the code path that draws it changes between frames.
 
@@ -371,6 +378,13 @@ A polished surface turns a light into one small bright spot. Where the surface c
 material(.metal(roughness: 0.1))
 specularAntialiasing()      // the sparkle stops running
 ```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/HeldHighlights-dark.jpg">
+  <img src="Images/26-SculptingWithFields/HeldHighlights.jpg" alt="Three magnified crops of the same exported pixels, a bed of tiny polished balls under one light. With the call off, the bed is dark with a scatter of hard white specks. The middle crop, rendered at sixteen samples a pixel, is denser and brighter with softer specks. With the call on, the bed is an even mid-gray with no specks at all" width="680">
+</picture>
+
+The figure is the bed from the example, each ball a few pixels across, exported three times and magnified. On the left the call is off. Most balls show nothing and a few show one hard white pixel, because the one shading sample either hits the highlight or misses it. The middle crop is the reference, the same frame at sixteen samples a pixel. It shows what the surface really scatters: a highlight on every ball, most of them faint. On the right the call is on. Every ball carries a broader, dimmer highlight, and the bed reads calm. It also reads a touch brighter than the reference, because a widened highlight spreads further than the surface does. That is the trade: steadiness, bought with a little accuracy. As the balls turn, the left crop would change from frame to frame, and the right one would not.
 
 The call widens the roughness of each pixel by how far its own surface direction turns across it. A wider highlight is broader and dimmer. It fills the pixel instead of hiding inside it, so it stays where it is while the surface moves. The cost is two small measurements per pixel. There is no extra pass and no history to build up, and any Mac that runs Ollin can do it.
 
@@ -457,9 +471,16 @@ rayTracedReflections()
 temporalUpscaling()      // render at two-thirds size, reconstruct the full canvas
 ```
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/FewerPixels-dark.jpg">
+  <img src="Images/26-SculptingWithFields/FewerPixels.jpg" alt="Two diagram panels. Left, a canvas grid of eight by eight thin cells under a four by four grid of thick cells, with four colored dots in every thick cell, one for each of four frames. Right, the canvas as a square with three smaller squares nested in its corner, labeled performance at half a side, default at two thirds, and detail at three quarters" width="680">
+</picture>
+
 The live window draws the whole frame at a fraction of the canvas. The platform's temporal scaler then rebuilds the full-size image from the same jittered history that "Edges that settle: temporal anti-aliasing" accumulates. You render fewer pixels, and the history remembers the rest. The tier picks how few. `.performance` renders at half size per side, a quarter of the pixels, `.default` at two-thirds, and `.detail` at three-quarters. It replaces `temporalAntialiasing()` while it runs, since it *is* that accumulation aimed at resolution. It reads the same `withMotion { }` declarations, so a mover reconstructs cleanly mid-flight. It needs Apple silicon, and anywhere else the call renders normally, with a note.
 
-What you keep is never the preview. Exports and snapshots render at full resolution with the deterministic average. So upscaling is purely a live-window trade, and the same sketch previews fast and exports full. The [`Upscaling` example](../Examples/3D/Effects/Upscaling/Sketch.swift) is a mirror floor tracing a ring of columns, with the toggle and the tier on parameters. Watch the FPS readout while you flip them, since that scene runs about twice as fast at `.performance` on an M2. Like temporal AA, the win is temporal and a still can't show it, so the example carries the demonstration.
+The left panel of the figure is why that works. At half size, one rendered pixel covers four canvas pixels. The projection is nudged a different way each frame, so the sample lands in a different one of the four each time. After four frames, every canvas pixel has been sampled once. The history holds those frames, and the scaler reads the full-size picture out of them. The right panel is how much each tier renders. Half a side is a quarter of the pixels, two thirds is four ninths, and three quarters is nine sixteenths.
+
+What you keep is never the preview. Exports and snapshots render at full resolution with the deterministic average. So upscaling is purely a live-window trade, and the same sketch previews fast and exports full. The [`Upscaling` example](../Examples/3D/Effects/Upscaling/Sketch.swift) is a mirror floor tracing a ring of columns, with the toggle and the tier on parameters. Watch the FPS readout while you flip them, since that scene runs about twice as fast at `.performance` on an M2. An export never upscales, so the FPS readout, not a still, is where the trade shows.
 
 ## Drawing fewer frames: the ones in between
 
@@ -470,7 +491,14 @@ rayTracedReflections()
 frameInterpolation()     // draw every other refresh, show a made frame between
 ```
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/EveryOtherRefresh-dark.jpg">
+  <img src="Images/26-SculptingWithFields/EveryOtherRefresh.jpg" alt="A timing diagram over twelve refreshes of a 60 Hz display. The top row, what draw() made, has a frame on every other refresh, lettered A to F. The bottom row, what the display showed, has each drawn frame one refresh later and, between them, made frames lettered AB, BC, and so on, each joined by lines to the two drawn frames it came from. The first frame is shown at once and repeated" width="680">
+</picture>
+
 `draw()` then runs on every other refresh. On the refresh between, the platform builds the picture that belongs in the middle out of the two frames either side of it, guided by the depth buffer and the same `withMotion { }` declarations everything else in this chapter reads. A scene that can hold thirty drawn frames a second moves at the display's sixty.
+
+The figure is a fifth of a second of that, refresh by refresh. The top row is what `draw()` made: six frames, one on every other refresh. The bottom row is what the display showed, and it is twelve. Each made frame sits on the refresh its second source was drawn, built from that frame and the one before it. Each drawn frame is shown on the refresh after its own, which is the wait described below. The first frame has nothing to pair with, so it is shown at once and then repeated.
 
 Your clock is untouched, which is the part that matters for a sketch. `time` still runs on real seconds, so the motion keeps its speed and only its sampling halves. The FPS readout counts frames you drew, so watch it fall to thirty while the picture on screen does not change pace. That gap between the two numbers *is* the feature.
 
