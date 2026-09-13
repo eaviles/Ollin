@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-13
+
 ### Added
 
 - **Chapter 26 of the Guide shows its temporal tier.** Four figures join *Sculpting with fields*. Two magnify the same exported pixels with temporal anti-aliasing and specular anti-aliasing off and on, beside a sixteen-sample reference for the second. Two are diagrams: what each tier of temporal upscaling renders and how four jittered frames cover the canvas, and which frames interpolation draws, makes, and shows. [Sculpting with fields](Guide/26-SculptingWithFields.md)
@@ -218,7 +220,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/eaviles/Ollin/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/eaviles/Ollin/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/eaviles/Ollin/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/eaviles/Ollin/compare/0.2.0...0.3.0
