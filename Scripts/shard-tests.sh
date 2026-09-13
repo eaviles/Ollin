@@ -67,8 +67,10 @@ single() {
 }
 
 # Nothing may need building once the shards start: they do not go through
-# SwiftPM and would find no bundle.
-if ! build=$(swift build --build-tests 2>&1); then
+# SwiftPM and would find no bundle. OLLIN_SWIFT_FLAGS is the runner's extra
+# compiler flags (build.yml sets it); the same flags on every compile keep
+# SwiftPM from rebuilding the world for a changed command line.
+if ! build=$(swift build --build-tests ${=OLLIN_SWIFT_FLAGS} 2>&1); then
     print -r -- "$build" >&2
     exit 1
 fi

@@ -84,6 +84,21 @@ jobs:
     # the test step 22 to 30 minutes in one process; see its note), and the
     # test step carries its own tighter one.
     timeout-minutes: 60
+    # Every SwiftPM compile on this runner (this job's build step, and the
+    # rebuilds inside Scripts/test.sh and Scripts/shard-tests.sh, which read
+    # the same variable) tells the driver that a changed dependency rebuilds
+    # every file that imports it, instead of only the files the driver
+    # believes use a changed declaration. That belief was wrong once
+    # (2026-09-13, run 34771805772): a test object compiled against
+    # `fps: Double` sat in the restored cache after the parameter became a
+    # `FrameRate`, the call site relying on the default argument, and the
+    # 6.3.3 driver never rescheduled the file, so the test bundle failed to
+    # link two commits later. A stale object that still links is the worse
+    # case (an old layout inlined into a test), so the judgment is off here.
+    # The cost is a fuller warm build on a commit that touches the framework;
+    # a cold build is still the ceiling. The desk keeps the default.
+    env:
+      OLLIN_SWIFT_FLAGS: -Xswiftc -disable-incremental-imports
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -130,7 +145,10 @@ jobs:
       # The newest cache for this toolchain, whatever commit built it: the
       # exact key only ever matches a re-run of the same commit, and the
       # prefix falls back to the last saved build, from which an incremental
-      # build finishes what changed. A run whose build step fails saves
+      # build finishes what changed. The number after `build-` is the cache
+      # generation: raise it when a saved build is known to hold a stale
+      # object (the 2026-09-13 link failure noted on the job's `env`), and
+      # the next run starts cold instead of inheriting it. A run whose build step fails saves
       # nothing (see the save step), and a miss costs only the cold build the
       # step paid before the cache existed. Caches saved on main serve every
       # branch; one saved on a pull request serves that pull request alone.
@@ -139,9 +157,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build
-          key: build-${{ steps.swift.outputs.version }}-${{ github.sha }}
+          key: build-2-${{ steps.swift.outputs.version }}-${{ github.sha }}
           restore-keys: |
-            build-${{ steps.swift.outputs.version }}-
+            build-2-${{ steps.swift.outputs.version }}-
 
       # Builds the library, the OllinLive/OllinExamples/OllinLiveCoding hosts,
       # and the test targets. `--build-tests` compiles the tests here, so
@@ -152,7 +170,7 @@ jobs:
       # Warnings stay warnings; this fails only on a compile error.
       - name: Build everything
         id: build
-        run: swift build --build-tests
+        run: swift build --build-tests $OLLIN_SWIFT_FLAGS
 
       # The run goes through Scripts/test.sh ci, so the runner's knowledge
       # lives in one place with the rest of the suite's: which suites want a
@@ -243,7 +261,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .build
-          key: build-${{ steps.swift.outputs.version }}-${{ github.sha }}
+          key: build-2-${{ steps.swift.outputs.version }}-${{ github.sha }}
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the

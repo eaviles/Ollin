@@ -158,7 +158,7 @@ ci)
     # third process drained its own queue (the heartbeat showed it sitting at
     # zero). Each line says which of the three wrote it.
     echo "test.sh: the runner's recipe; the suites that need the machine alone, then OllinTests as ${OLLIN_CI_SHARDS:-2} shards with the other targets beside them"
-    swift build --build-tests || exit 1
+    swift build --build-tests ${=OLLIN_SWIFT_FLAGS} || exit 1
     echo "test.sh: phase 1 of 2, the suites that need the machine to themselves"
     swift test --skip-build --filter "$loopback|$crowded" || exit 1
     echo "test.sh: phase 2 of 2, the shards and the rest"
