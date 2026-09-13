@@ -653,9 +653,9 @@ public extension OllinApp {
     /// Pass `hatching` to plot solid fills as line work: each fill becomes
     /// parallel (or cross-hatch) lines clipped to its outline, spaced by tone, so
     /// a pen plotter can shade it (see `Hatching`).
-    static func svg(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
+    static func svg(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60,
                     hatching: Hatching? = nil) -> String {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
+        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
         return serializeSVG(recording.commands, background: recording.background,
                             width: recording.width, height: recording.height,
                             skippedImages: recording.skippedImages, recipe: recording.recipe,
@@ -665,7 +665,7 @@ public extension OllinApp {
     /// Render one frame of `sketch` and write it as an SVG file — no window, no GPU.
     /// The vector counterpart of `export`; the basis for the `--export-svg` flag.
     /// Pass `hatching` to plot solid fills as pen line work (see `svg(of:)`).
-    static func exportSVG(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60,
+    static func exportSVG(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
                           hatching: Hatching? = nil) {
         let document = svg(of: sketch, frame: frame, fps: fps, hatching: hatching)
         do {

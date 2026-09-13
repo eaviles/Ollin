@@ -294,6 +294,21 @@ struct DXFExportTests {
         #expect(Document(text).sawEOF)
         try? FileManager.default.removeItem(atPath: path)
     }
+
+    @Test func aSheetHoldsTheDrawingInBothDirections() {
+        let square = Rectangle(x: 0, y: 0, width: 100, height: 100)
+        let tall = Rectangle(x: 0, y: 0, width: 100, height: 300)
+        let mark = [Contour([Vector2(0, 0), Vector2(100, 100)], closed: false)]
+        let a4 = DXF(paper: .a4)
+        #expect(a4.width == 190 && a4.margin == 10 && a4.paper == .a4)
+        let onSquare = a4.drafting(mark, in: square).size
+        #expect(abs(onSquare.width - 210) < 1e-9 && abs(onSquare.height - 210) < 1e-9)
+        let onTall = a4.drafting(mark, in: tall).size
+        #expect(abs(onTall.height - 297) < 1e-9)          // the sheet's own height, margins in
+        #expect(onTall.width < 210)                        // and narrower than the sheet
+        let byWidth = DXF(width: 190, margin: 10).drafting(mark, in: tall).size
+        #expect(abs(byWidth.height - 590) < 1e-9)          // what the width alone would have done
+    }
 }
 
 // MARK: - Probe sketches

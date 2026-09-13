@@ -25,12 +25,12 @@ extension OllinApp {
     /// `columns` defaults to the squarest grid; `tileWidth` is each thumbnail's
     /// width in pixels (height follows the canvas aspect).
     public static func contactSheet(of make: () -> Sketch, seeds: [Int],
-                                    frame: Int = 0, fps: Double = 60,
+                                    frame: Int = 0, fps: FrameRate = 60,
                                     columns: Int? = nil, tileWidth: Int = 320,
                                     quality: RenderQuality = .detail) -> CGImage? {
         renderSheet(of: make,
                     tiles: seeds.map { seed in ("\(seed)", { $0.seed(seed) }) },
-                    frame: frame, fps: fps, columns: columns,
+                    frame: frame, fps: fps.framesPerSecond, columns: columns,
                     tileWidth: tileWidth, quality: quality)
     }
 
@@ -51,7 +51,7 @@ extension OllinApp {
     public static func contactSheet(of make: () -> Sketch,
                                     sweeping name: String, values: [Double],
                                     seed: Int? = nil,
-                                    frame: Int = 0, fps: Double = 60,
+                                    frame: Int = 0, fps: FrameRate = 60,
                                     columns: Int? = nil, tileWidth: Int = 320,
                                     quality: RenderQuality = .detail) -> CGImage? {
         guard !values.isEmpty else { return nil }
@@ -73,7 +73,7 @@ extension OllinApp {
                                        .param.restore(.number(value))
                                })
                            },
-                           frame: frame, fps: fps, columns: columns,
+                           frame: frame, fps: fps.framesPerSecond, columns: columns,
                            tileWidth: tileWidth, quality: quality)
     }
 
@@ -87,7 +87,7 @@ extension OllinApp {
     public static func contactSheet<S: Sketch>(of make: () -> S,
                                                sweeping parameter: KeyPath<S, Param<Double>>,
                                                values: [Double], seed: Int? = nil,
-                                               frame: Int = 0, fps: Double = 60,
+                                               frame: Int = 0, fps: FrameRate = 60,
                                                columns: Int? = nil, tileWidth: Int = 320,
                                                quality: RenderQuality = .detail) -> CGImage? {
         guard let name = parameterName(of: make, at: parameter) else { return nil }
@@ -100,7 +100,7 @@ extension OllinApp {
     public static func contactSheet<S: Sketch>(of make: () -> S,
                                                sweeping parameter: KeyPath<S, Param<Int>>,
                                                values: [Int], seed: Int? = nil,
-                                               frame: Int = 0, fps: Double = 60,
+                                               frame: Int = 0, fps: FrameRate = 60,
                                                columns: Int? = nil, tileWidth: Int = 320,
                                                quality: RenderQuality = .detail) -> CGImage? {
         guard let name = parameterName(of: make, at: parameter) else { return nil }
@@ -206,7 +206,7 @@ extension OllinApp {
     /// PNG carrying the sheet's reproduction recipe (the seed list, frame, and
     /// fps), so the sheet itself records how to regenerate any tile.
     public static func exportContactSheet(_ make: () -> Sketch, to path: String, seeds: [Int],
-                                          frame: Int = 0, fps: Double = 60,
+                                          frame: Int = 0, fps: FrameRate = 60,
                                           columns: Int? = nil, tileWidth: Int = 320,
                                           quality: RenderQuality = .detail) {
         print("Ollin: rendering a contact sheet of \(seeds.count) seeds")
@@ -214,7 +214,7 @@ extension OllinApp {
                                        columns: columns, tileWidth: tileWidth, quality: quality) else {
             fatalError("Ollin: failed to render the contact sheet (no Metal device?)")
         }
-        let recipe = ExportMetadata.sheetRecipe(seeds: seeds, frame: frame, fps: fps)
+        let recipe = ExportMetadata.sheetRecipe(seeds: seeds, frame: frame, fps: fps.framesPerSecond)
         guard writePNG(sheet, to: path, recipe: recipe) else {
             fatalError("Ollin: failed to write \(path)")
         }
@@ -228,7 +228,7 @@ extension OllinApp {
     public static func exportContactSheet(_ make: () -> Sketch, to path: String,
                                           sweeping name: String, values: [Double],
                                           seed: Int? = nil,
-                                          frame: Int = 0, fps: Double = 60,
+                                          frame: Int = 0, fps: FrameRate = 60,
                                           columns: Int? = nil, tileWidth: Int = 320,
                                           quality: RenderQuality = .detail) {
         let pinned = seed ?? Int.random(in: 1 ... 99_999)
@@ -239,7 +239,7 @@ extension OllinApp {
             fatalError("Ollin: failed to render the sweep (unknown parameter, or no Metal device?)")
         }
         let recipe = ExportMetadata.sheetRecipe(sweep: name, values: values, seed: pinned,
-                                                frame: frame, fps: fps)
+                                                frame: frame, fps: fps.framesPerSecond)
         guard writePNG(sheet, to: path, recipe: recipe) else {
             fatalError("Ollin: failed to write \(path)")
         }
@@ -251,7 +251,7 @@ extension OllinApp {
     public static func exportContactSheet<S: Sketch>(_ make: () -> S, to path: String,
                                                      sweeping parameter: KeyPath<S, Param<Double>>,
                                                      values: [Double], seed: Int? = nil,
-                                                     frame: Int = 0, fps: Double = 60,
+                                                     frame: Int = 0, fps: FrameRate = 60,
                                                      columns: Int? = nil, tileWidth: Int = 320,
                                                      quality: RenderQuality = .detail) {
         guard let name = parameterName(of: make, at: parameter) else {
@@ -266,7 +266,7 @@ extension OllinApp {
     public static func exportContactSheet<S: Sketch>(_ make: () -> S, to path: String,
                                                      sweeping parameter: KeyPath<S, Param<Int>>,
                                                      values: [Int], seed: Int? = nil,
-                                                     frame: Int = 0, fps: Double = 60,
+                                                     frame: Int = 0, fps: FrameRate = 60,
                                                      columns: Int? = nil, tileWidth: Int = 320,
                                                      quality: RenderQuality = .detail) {
         guard let name = parameterName(of: make, at: parameter) else {

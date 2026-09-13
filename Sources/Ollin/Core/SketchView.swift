@@ -2547,7 +2547,7 @@ public enum OllinApp {
         }
     }
 
-    public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
+    public static func image(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60,
                              quality: RenderQuality = .detail) -> CGImage? {
         guard let device = MTLCreateSystemDefaultDevice(),
               let renderer = headlessRenderer(for: sketch, device: device) else {
@@ -2558,7 +2558,7 @@ public enum OllinApp {
         renderer.automaticQuality = quality
         renderer.pathTracing = pathTracedExport
         renderer.renderScale = exportRenderScale
-        return renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer)
+        return renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer)
     }
 
     /// The one-frame headless drive behind `image(of:)`, against a caller-owned
@@ -2622,12 +2622,12 @@ public enum OllinApp {
     /// which is the one that can keep brightness above white: an `extended`
     /// sketch's highlights ride along in an ISO gain map. Everything else writes
     /// a PNG, which stops at white.
-    public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60,
+    public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
                               quality: RenderQuality = .detail) {
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
             fatalError("Ollin: failed to render the frame for export (no Metal device?)")
         }
-        let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe
+        let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond).recipe
         let size = "\(cgImage.width)×\(cgImage.height)"
         switch URL(fileURLWithPath: path).pathExtension.lowercased() {
         case "heic", "heif":
@@ -2665,12 +2665,13 @@ public enum OllinApp {
     /// For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`);
     /// unseeded, it's internally consistent within a run but differs between runs.
     public static func exportSequence(_ sketch: Sketch, to directory: String,
-                                      frames: Int, fps: Double = 60,
+                                      frames: Int, fps: FrameRate = 60,
                                       startFrame: Int = 1, skipSeconds: Double = 0,
                                       quality: RenderQuality = .detail,
                                       slowMotion: SlowMotion? = nil,
                                       writesEXR: Bool = false) {
         guard frames > 0 else { return }
+        let fps = fps.framesPerSecond
         do {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         } catch {
@@ -3237,12 +3238,12 @@ public extension OllinApp {
                 return args[j + 1]
             }
             let dir = args[i + 1]
-            let fps = value("--fps").flatMap(Double.init) ?? 60
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
                 // `--seconds` counts the sketch's own time under slow motion too,
                 // so covering it takes the factor's worth of extra frames.
-                frames = Int((seconds * fps * (slowMotion?.factor ?? 1)).rounded())
+                frames = Int((seconds * fps.framesPerSecond * (slowMotion?.factor ?? 1)).rounded())
             }
             // Replaying with no length given renders the whole take.
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
@@ -3278,7 +3279,7 @@ public extension OllinApp {
             }
             let path = args[i + 1]
             let isGIF = path.lowercased().hasSuffix(".gif")
-            let fps = value("--fps").flatMap(Double.init) ?? (isGIF ? 25 : 60)
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? (isGIF ? 25 : 60)
             let skip = value("--skip").flatMap(Double.init) ?? 0
             let sketch = make()
             guard let duration = sketch.loopDuration, duration > 0 else {
@@ -3293,14 +3294,16 @@ public extension OllinApp {
             // GIF stores whole-centisecond frame delays, so exportGIF quantizes
             // the rate; compute the lap against the rate that will actually
             // play, or the frame count drifts off one period.
-            let loopFPS = isGIF ? 100 / Double(max(2, Int((100 / fps).rounded()))) : fps
+            let loopFPS = isGIF
+                ? FrameRate(100 / Double(max(2, Int((100 / fps.framesPerSecond).rounded()))))
+                : fps
             // One lap either way: slow motion covers the same period with the
             // factor's worth of extra frames, so the loop still closes.
-            let exact = duration * loopFPS * (slowMotion?.factor ?? 1)
+            let exact = duration * loopFPS.framesPerSecond * (slowMotion?.factor ?? 1)
             let frames = max(1, Int(exact.rounded()))
             if abs(exact - exact.rounded()) > 1e-6 {
                 FileHandle.standardError.write(Data(
-                    "note: a \(duration)s loop at \(loopFPS) fps is not a whole number of frames; the loop won't close exactly (pick an fps that divides the loop).\n".utf8))
+                    "note: a \(duration)s loop at \(loopFPS) is not a whole number of frames; the loop won't close exactly (pick an fps that divides the loop).\n".utf8))
             }
             if isGIF {
                 let width = value("--gif-width").flatMap(Int.init)
@@ -3334,11 +3337,11 @@ public extension OllinApp {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            let fps = value("--fps").flatMap(Double.init) ?? 60
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
                 // `--seconds` counts the sketch's own time under slow motion too.
-                frames = Int((seconds * fps * (slowMotion?.factor ?? 1)).rounded())
+                frames = Int((seconds * fps.framesPerSecond * (slowMotion?.factor ?? 1)).rounded())
             }
             // Replaying with no length given renders the whole take.
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
@@ -3378,10 +3381,10 @@ public extension OllinApp {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            let fps = value("--fps").flatMap(Double.init) ?? 30
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 30
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
-                frames = Int((seconds * fps).rounded())
+                frames = Int((seconds * fps.framesPerSecond).rounded())
             }
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
             let skip = value("--skip").flatMap(Double.init) ?? 0
@@ -3395,7 +3398,7 @@ public extension OllinApp {
             }
             let sketch = make()
             if frames <= 0, let lap = sketch.loopDuration, lap > 0 {
-                frames = Int((lap * fps).rounded())
+                frames = Int((lap * fps.framesPerSecond).rounded())
             }
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
@@ -3426,10 +3429,10 @@ public extension OllinApp {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            let fps = value("--fps").flatMap(Double.init) ?? 30
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 30
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
-                frames = Int((seconds * fps).rounded())
+                frames = Int((seconds * fps.framesPerSecond).rounded())
             }
             // Replaying with no length given renders the whole take.
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
@@ -3461,11 +3464,11 @@ public extension OllinApp {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
             }
-            let fps = value("--fps").flatMap(Double.init) ?? 25
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 25
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
                 // `--seconds` counts the sketch's own time under slow motion too.
-                frames = Int((seconds * fps * (slowMotion?.factor ?? 1)).rounded())
+                frames = Int((seconds * fps.framesPerSecond * (slowMotion?.factor ?? 1)).rounded())
             }
             // Replaying with no length given renders the whole take.
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
@@ -3502,7 +3505,7 @@ public extension OllinApp {
             let columns = value("--columns").flatMap(Int.init)
             let tile = value("--tile").flatMap(Int.init) ?? 320
             let frame = value("--frame").flatMap(Int.init) ?? 0
-            let fps = value("--fps").flatMap(Double.init) ?? 60
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
             OllinApp.exportContactSheet(makeSketch, to: args[i + 1], seeds: seeds,
                                         frame: frame, fps: fps, columns: columns,
                                         tileWidth: tile, quality: renderQuality)
@@ -3552,7 +3555,7 @@ public extension OllinApp {
             let columns = value("--columns").flatMap(Int.init)
             let tile = value("--tile").flatMap(Int.init) ?? 320
             let frame = value("--frame").flatMap(Int.init) ?? 0
-            let fps = value("--fps").flatMap(Double.init) ?? 60
+            let fps = value("--fps").flatMap(FrameRate.init(parsing:)) ?? 60
             OllinApp.exportContactSheet(makeSketch, to: args[i + 1],
                                         sweeping: name, values: values,
                                         seed: seedOverride,
@@ -3688,8 +3691,8 @@ public extension OllinApp {
         // of one frame and exits (no window, no GPU); `--export-pdf <path>` writes
         // the same recorded frame as a single-page PDF; `--export-gcode <path>`
         // writes it as a G-code program (`--gcode-machine plotter|laser|mill`,
-        // `--gcode-width MM`, `--gcode-margin MM`; any two may be passed at
-        // once). Add `--hatch` (or `--cross-hatch`) to plot solid fills as pen
+        // `--gcode-width MM` or `--gcode-paper a4`, `--gcode-margin MM`; any
+        // two may be passed at once). Add `--hatch` (or `--cross-hatch`) to plot solid fills as pen
         // line work: `--hatch-spacing N` and `--hatch-angle DEG` tune it.
         let svgFlag = args.firstIndex(of: "--export-svg")
         let pdfFlag = args.firstIndex(of: "--export-pdf")
@@ -3727,9 +3730,19 @@ public extension OllinApp {
                 case "mill": machine = .mill()
                 default: machine = .plotter()
                 }
-                let width = value("--gcode-width").flatMap(Double.init) ?? 150
-                let margin = value("--gcode-margin").flatMap(Double.init) ?? 0
-                let settings = GCode(machine, width: width, margin: margin)
+                let margin = value("--gcode-margin").flatMap(Double.init)
+                let settings: GCode
+                if let name = value("--gcode-paper") {
+                    guard let paper = paperSize(flag: name) else {
+                        FileHandle.standardError.write(Data(
+                            "--gcode-paper expects a sheet name (a4, a3, letter, ...), with -landscape to turn it\n".utf8))
+                        return true
+                    }
+                    settings = GCode(machine, paper: paper, margin: margin ?? 10)
+                } else {
+                    let width = value("--gcode-width").flatMap(Double.init) ?? 150
+                    settings = GCode(machine, width: width, margin: margin ?? 0)
+                }
                 OllinApp.exportGCode(make(), to: args[i + 1], settings: settings,
                                      frame: frame, hatching: hatching)
                 handled = true
@@ -3749,17 +3762,28 @@ public extension OllinApp {
             }
             if let i = dxfFlag, i + 1 < args.count {
                 // `--export-dxf <path.dxf>` writes the frame as a drawing a CAD program
-                // or a laser's software opens, a layer per color (`--dxf-width MM`,
-                // `--dxf-margin MM`, sharing `--hatch`).
-                let width = value("--dxf-width").flatMap(Double.init) ?? 150
-                let margin = value("--dxf-margin").flatMap(Double.init) ?? 0
-                OllinApp.exportDXF(make(), to: args[i + 1], settings: DXF(width: width, margin: margin),
+                // or a laser's software opens, a layer per color (`--dxf-width MM` or
+                // `--dxf-paper a3`, `--dxf-margin MM`, sharing `--hatch`).
+                let margin = value("--dxf-margin").flatMap(Double.init)
+                let settings: DXF
+                if let name = value("--dxf-paper") {
+                    guard let paper = paperSize(flag: name) else {
+                        FileHandle.standardError.write(Data(
+                            "--dxf-paper expects a sheet name (a4, a3, letter, ...), with -landscape to turn it\n".utf8))
+                        return true
+                    }
+                    settings = DXF(paper: paper, margin: margin ?? 10)
+                } else {
+                    let width = value("--dxf-width").flatMap(Double.init) ?? 150
+                    settings = DXF(width: width, margin: margin ?? 0)
+                }
+                OllinApp.exportDXF(make(), to: args[i + 1], settings: settings,
                                    frame: frame, hatching: hatching)
                 handled = true
             }
             if !handled {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> | --export-gcode <path.gcode> | --export-dxf <path.dxf> | --export-embroidery <path.dst> [--frame N] [--gcode-machine plotter|laser|mill] [--gcode-width MM] [--gcode-margin MM] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
+                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> | --export-gcode <path.gcode> | --export-dxf <path.dxf> | --export-embroidery <path.dst> [--frame N] [--gcode-machine plotter|laser|mill] [--gcode-width MM | --gcode-paper A4[-landscape]] [--gcode-margin MM] [--dxf-width MM | --dxf-paper A4[-landscape]] [--dxf-margin MM] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
             }
             return true
         }
@@ -4013,3 +4037,16 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
 }
 
 #endif
+
+/// A sheet named on the command line: a `PaperSize` name, optionally followed
+/// by `-landscape` or `-portrait` (a space works too), case-insensitively.
+private func paperSize(flag text: String) -> PaperSize? {
+    let parts = text.lowercased().split(whereSeparator: { $0 == "-" || $0 == " " || $0 == "_" })
+    guard let first = parts.first, let sheet = PaperSize(named: String(first)) else { return nil }
+    switch parts.dropFirst().first.map(String.init) {
+    case nil: return sheet
+    case "landscape": return sheet.landscape
+    case "portrait": return sheet.portrait
+    default: return nil
+    }
+}

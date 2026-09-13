@@ -121,7 +121,7 @@ struct LaserFrame: Sendable
   var paths: [LaserPath] { get set }
 struct LaserOptimizer: Sendable
   func stream(_: LaserFrame) -> LaserStream
-  init()
+  init(pointsPerSecond: Int = default, refreshRate: Double = default)
   var blankingDwell: Int { get set }
   var cornerAngle: Double { get set }
   var cornerDwell: Int { get set }

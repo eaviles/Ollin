@@ -16,7 +16,7 @@ The same export from code, with the full parameters:
 OllinApp.exportDXF(sketch, to: "panel.dxf", settings: DXF(width: 150))
 ```
 
-`DXF` takes a physical width in millimeters. The width is a required argument on purpose, the way [`GCode`](./GCode.md) asks for one. A drawing opened in a shop program has real millimeters, and a default would size the part silently.
+`DXF` takes a physical width in millimeters. The width is a required argument on purpose, the way [`GCode`](./GCode.md) asks for one. A drawing opened in a shop program has real millimeters, and a default would size the part silently. `DXF(paper: .a3)` sizes the drawing for a sheet or a board instead, with 10 mm clear on every side unless `margin:` says otherwise. It holds the drawing's height to the sheet as well as its width, exactly as the [G-code sheet](./GCode.md#a-named-sheet) does.
 
 ### Size and the flip
 
@@ -55,11 +55,12 @@ Every sketch and example takes the flag directly:
 ```sh
 swift run --package-path Examples Example-X --export-dxf out.dxf                               # 150 mm wide
 swift run --package-path Examples Example-X --export-dxf out.dxf --dxf-width 80 --dxf-margin 5
+swift run --package-path Examples Example-X --export-dxf out.dxf --dxf-paper a3
 swift run --package-path Examples Example-X --export-dxf out.dxf --hatch --hatch-spacing 6
 swift run --package-path Examples Example-X --export-dxf out.dxf --frame 120
 ```
 
-`--dxf-width` sets the physical width, which is 150 mm from the command line, and `--dxf-margin` the border. `--hatch`, `--cross-hatch`, `--hatch-spacing`, and `--hatch-angle` work the same way as they do for SVG.
+`--dxf-width` sets the physical width, which is 150 mm from the command line, `--dxf-paper` names a sheet instead (`a4`, `a3`, `letter`, with `-landscape` to turn it), and `--dxf-margin` the border. `--hatch`, `--cross-hatch`, `--hatch-spacing`, and `--hatch-angle` work the same way as they do for SVG.
 
 ### Before you cut
 

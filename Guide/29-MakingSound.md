@@ -148,7 +148,7 @@ The room does not have to be real. A room is a rule over time, so you can draw o
 ```swift
 let hall = ImpulseResponse.decay(seconds: 3, damping: 0.6)                     // fading noise
 let backward = hall.reversed()                                                // swelling toward the click
-let humming = ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(2 * .pi * 220 * t) }
+let humming = ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(.tau * 220 * t) }
 ```
 
 <picture>
@@ -296,7 +296,7 @@ The table is set on the synth, not inside the voice, for the reason you met a pa
 
 ```swift
 synth.wavetable = Wavetable(name: "bend", frameCount: 8) { phase, frame in
-    sin(2 * .pi * pow(phase, 1 + 2 * frame))     // a sine bent harder in every frame
+    sin(.tau * pow(phase, 1 + 2 * frame))         // a sine bent harder in every frame
 }
 ```
 

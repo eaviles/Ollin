@@ -516,7 +516,7 @@ Three tables are built in, and a table is easy to make:
 
 ```swift
 let bend = Wavetable(name: "bend", frameCount: 8) { phase, frame in
-    sin(2 * .pi * pow(phase, 1 + 2 * frame))       // a sine bent harder each frame
+    sin(.tau * pow(phase, 1 + 2 * frame))           // a sine bent harder each frame
 }
 let odd = Wavetable(harmonics: [[1], [1, 0, 1 / 3, 0, 1 / 5]])
 ```
@@ -721,7 +721,7 @@ A drawn room is whatever the rule says:
 
 ```swift
 ImpulseResponse(seconds: 3) { t, noise in exp(-2.3 * t) * noise }            // a hall
-ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(2 * .pi * 440 * t) }  // a room that hums at A
+ImpulseResponse(seconds: 2) { t, _ in exp(-3 * t) * sin(.tau * 440 * t) }  // a room that hums at A
 ```
 
 The noise differs between the two sides, which is what gives a room its width. It comes from a `seed`, so the same rule draws the same room every run. A response is two channels, and a mono recording is heard the same on both sides.

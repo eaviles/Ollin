@@ -240,8 +240,8 @@ public extension OllinApp {
     /// node carrying the transform that placed it, wearing the surface it was
     /// drawn with, under the frame's own camera and lights. Write it with
     /// `Scene.write(to:)`, or read it, edit it, and draw it back.
-    static func spatialScene(of sketch: Sketch, frame: Int = 0, fps: Double = 60) -> Scene {
-        recordSpatialFrame(of: sketch, frame: frame, fps: fps)
+    static func spatialScene(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60) -> Scene {
+        recordSpatialFrame(of: sketch, frame: frame, fps: fps.framesPerSecond)
     }
 
     /// Render one frame of `sketch` and write it as a spatial model: a `.usdz`
@@ -257,7 +257,7 @@ public extension OllinApp {
     /// `Scene.data(as:metersPerUnit:)`); the default of 1 reads scene units as
     /// meters.
     static func exportSpatial(_ sketch: Sketch, to path: String, frame: Int = 0,
-                              fps: Double = 60, metersPerUnit: Double = 1) {
+                              fps: FrameRate = 60, metersPerUnit: Double = 1) {
         let scene = spatialScene(of: sketch, frame: frame, fps: fps)
         let url = URL(fileURLWithPath: path)
         let format = SceneFileFormat(fileExtension: url.pathExtension) ?? .usdz

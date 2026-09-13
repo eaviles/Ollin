@@ -367,44 +367,44 @@ enum OllinApp: Sendable
   @discardableResult static func exportHEIC(_: CoreGraphics.CGImage, to: String) -> OllinApp.StillExport?
   @discardableResult static func handleCommandLine(_: [String] = default, makeSketch: () -> Sketch) -> Bool
   static func configureTransport(_: [String], for: Sketch)
-  static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
-  static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
-  static func contactSheet(of: () -> Sketch, seeds: [Int], frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
-  static func contactSheet(of: () -> Sketch, sweeping: String, values: [Double], seed: Int? = default, frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
-  static func drafting(of: Sketch, settings: DXF, frame: Int = default, fps: Double = default, hatching: Hatching? = default) -> Drafting
-  static func dxf(of: Sketch, settings: DXF, frame: Int = default, fps: Double = default, hatching: Hatching? = default) -> String
-  static func embroidery(of: Sketch, settings: Embroidery, frame: Int = default, fps: Double = default, label: String = default) -> Foundation.Data
-  static func export(_: Sketch, to: String, frame: Int = default, fps: Double = default, quality: RenderQuality = default)
-  static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
-  static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
-  static func exportContactSheet(_: () -> Sketch, to: String, seeds: [Int], frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
-  static func exportContactSheet(_: () -> Sketch, to: String, sweeping: String, values: [Double], seed: Int? = default, frame: Int = default, fps: Double = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
-  static func exportDXF(_: Sketch, to: String, settings: DXF, frame: Int = default, fps: Double = default, hatching: Hatching? = default)
-  static func exportEXR(_: Sketch, to: String, frame: Int = default, fps: Double = default, quality: RenderQuality = default)
-  static func exportEmbroidery(_: Sketch, to: String, settings: Embroidery, frame: Int = default, fps: Double = default)
-  static func exportGCode(_: Sketch, to: String, settings: GCode, frame: Int = default, fps: Double = default, hatching: Hatching? = default)
-  static func exportGIF(_: Sketch, to: String, frames: Int, fps: Double = default, width: Int? = default, skipSeconds: Double = default, renderQuality: RenderQuality = default, slowMotion: SlowMotion? = default)
-  static func exportPDF(_: Sketch, to: String, frame: Int = default, fps: Double = default, hatching: Hatching? = default)
-  static func exportPlates(_: Sketch, to: String, profile: ICCProfile? = default, intent: RenderingIntent = default, simulatesPaper: Bool = default, frame: Int = default, fps: Double = default, drawsRegistrationMarks: Bool = default, quality: RenderQuality = default, screen: (ProcessSeparation) -> ProcessSeparation = default)
-  static func exportSVG(_: Sketch, to: String, frame: Int = default, fps: Double = default, hatching: Hatching? = default)
-  static func exportSeparations(_: Sketch, to: String, inks: [Ink]? = default, paper: Color = default, frame: Int = default, fps: Double = default, drawsRegistrationMarks: Bool = default, quality: RenderQuality = default, screen: (PrintSeparation) -> PrintSeparation = default)
-  static func exportSequence(_: Sketch, to: String, frames: Int, fps: Double = default, startFrame: Int = default, skipSeconds: Double = default, quality: RenderQuality = default, slowMotion: SlowMotion? = default, writesEXR: Bool = default)
-  static func exportSpatial(_: Sketch, to: String, frame: Int = default, fps: Double = default, metersPerUnit: Double = default)
-  static func exportSpatialVideo(_: Sketch, to: String, frames: Int, fps: Double = default, stereo: StereoGeometry? = default, metersPerUnit: Double = default, bitsPerSecond: Int? = default, quality: Double? = default, renderQuality: RenderQuality = default, skipSeconds: Double = default)
-  static func exportVideo(_: Sketch, to: String, frames: Int, fps: Double = default, codec: VideoCodec = default, bitsPerSecond: Int? = default, encodeQuality: Double? = default, renderQuality: RenderQuality = default, skipSeconds: Double = default, slowMotion: SlowMotion? = default)
-  static func exportWeb(_: Sketch, to: String, frames: Int, fps: Double = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default)
-  static func gcode(of: Sketch, settings: GCode, frame: Int = default, fps: Double = default, hatching: Hatching? = default) -> String
-  static func image(of: Sketch, frame: Int = default, fps: Double = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
-  static func pdf(of: Sketch, frame: Int = default, fps: Double = default, hatching: Hatching? = default) -> Foundation.Data
-  static func plates(of: Sketch, profile: ICCProfile? = default, intent: RenderingIntent = default, frame: Int = default, fps: Double = default, quality: RenderQuality = default) -> ProcessSeparation?
+  static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
+  static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
+  static func contactSheet(of: () -> Sketch, seeds: [Int], frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
+  static func contactSheet(of: () -> Sketch, sweeping: String, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
+  static func drafting(of: Sketch, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> Drafting
+  static func dxf(of: Sketch, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
+  static func embroidery(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default, label: String = default) -> Foundation.Data
+  static func export(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default)
+  static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
+  static func exportContactSheet(_: () -> S, to: String, sweeping: KeyPath<S, Param<Int>>, values: [Int], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
+  static func exportContactSheet(_: () -> Sketch, to: String, seeds: [Int], frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
+  static func exportContactSheet(_: () -> Sketch, to: String, sweeping: String, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default)
+  static func exportDXF(_: Sketch, to: String, settings: DXF, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default)
+  static func exportEXR(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default)
+  static func exportEmbroidery(_: Sketch, to: String, settings: Embroidery, frame: Int = default, fps: FrameRate = default)
+  static func exportGCode(_: Sketch, to: String, settings: GCode, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default)
+  static func exportGIF(_: Sketch, to: String, frames: Int, fps: FrameRate = default, width: Int? = default, skipSeconds: Double = default, renderQuality: RenderQuality = default, slowMotion: SlowMotion? = default)
+  static func exportPDF(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default)
+  static func exportPlates(_: Sketch, to: String, profile: ICCProfile? = default, intent: RenderingIntent = default, simulatesPaper: Bool = default, frame: Int = default, fps: FrameRate = default, drawsRegistrationMarks: Bool = default, quality: RenderQuality = default, screen: (ProcessSeparation) -> ProcessSeparation = default)
+  static func exportSVG(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default)
+  static func exportSeparations(_: Sketch, to: String, inks: [Ink]? = default, paper: Color = default, frame: Int = default, fps: FrameRate = default, drawsRegistrationMarks: Bool = default, quality: RenderQuality = default, screen: (PrintSeparation) -> PrintSeparation = default)
+  static func exportSequence(_: Sketch, to: String, frames: Int, fps: FrameRate = default, startFrame: Int = default, skipSeconds: Double = default, quality: RenderQuality = default, slowMotion: SlowMotion? = default, writesEXR: Bool = default)
+  static func exportSpatial(_: Sketch, to: String, frame: Int = default, fps: FrameRate = default, metersPerUnit: Double = default)
+  static func exportSpatialVideo(_: Sketch, to: String, frames: Int, fps: FrameRate = default, stereo: StereoGeometry? = default, metersPerUnit: Double = default, bitsPerSecond: Int? = default, quality: Double? = default, renderQuality: RenderQuality = default, skipSeconds: Double = default)
+  static func exportVideo(_: Sketch, to: String, frames: Int, fps: FrameRate = default, codec: VideoCodec = default, bitsPerSecond: Int? = default, encodeQuality: Double? = default, renderQuality: RenderQuality = default, skipSeconds: Double = default, slowMotion: SlowMotion? = default)
+  static func exportWeb(_: Sketch, to: String, frames: Int, fps: FrameRate = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default)
+  static func gcode(of: Sketch, settings: GCode, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
+  static func image(of: Sketch, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
+  static func pdf(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> Foundation.Data
+  static func plates(of: Sketch, profile: ICCProfile? = default, intent: RenderingIntent = default, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) -> ProcessSeparation?
   static func run(_: Sketch)
   static func runAsWallpaper(_: () -> Sketch)
   static func runInMenuBar(width: Double = default, _: () -> Sketch)
-  static func separations(of: Sketch, inks: [Ink]? = default, paper: Color = default, frame: Int = default, fps: Double = default, quality: RenderQuality = default) -> PrintSeparation?
-  static func spatialScene(of: Sketch, frame: Int = default, fps: Double = default) -> Scene
-  static func stitching(of: Sketch, settings: Embroidery, frame: Int = default, fps: Double = default) -> Stitching
-  static func svg(of: Sketch, frame: Int = default, fps: Double = default, hatching: Hatching? = default) -> String
-  static func web(of: Sketch, frames: Int, fps: Double = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default) throws -> String
+  static func separations(of: Sketch, inks: [Ink]? = default, paper: Color = default, frame: Int = default, fps: FrameRate = default, quality: RenderQuality = default) -> PrintSeparation?
+  static func spatialScene(of: Sketch, frame: Int = default, fps: FrameRate = default) -> Scene
+  static func stitching(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default) -> Stitching
+  static func svg(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
+  static func web(of: Sketch, frames: Int, fps: FrameRate = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default) throws -> String
   static func windowSize(fitting: CoreFoundation.CGSize) -> CoreFoundation.CGSize
   static func windowSize(for: Sketch) -> CoreFoundation.CGSize
   static let maxWebPageBytes: Int
@@ -3216,9 +3216,11 @@ struct CuesCardView: Sendable, View
 struct DXF: Equatable, Sendable
   func drafting(_: [Contour], in: Rectangle) -> Drafting
   func text(_: [Contour], in: Rectangle) -> String
+  init(paper: PaperSize, margin: Double = default, joinTolerance: Double = default)
   init(width: Double, margin: Double = default, joinTolerance: Double = default)
   var joinTolerance: Double { get set }
   var margin: Double { get set }
+  var paper: PaperSize? { get set }
   var width: Double { get set }
 struct DampedSpring<Value where Value : Smoothable>: Sendable
   @discardableResult mutating func advance(toward: Value, by: Double) -> Value
@@ -3667,6 +3669,25 @@ struct FrameProfile: Equatable, Sendable
   var tessellatedVertices: Int { get }
   var triangleVertices: Int { get set }
   var waitMS: Double { get set }
+struct FrameRate: CustomStringConvertible, Equatable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, Hashable, Sendable
+  func frames(in: Double) -> Int
+  func seconds(for: Int) -> Double
+  init(_: Double)
+  init(_: Int, per: Int)
+  init(floatLiteral: Double)
+  init(integerLiteral: Int)
+  init?(named: String)
+  init?(parsing: String)
+  let frames: Int
+  let seconds: Int
+  static let film: FrameRate
+  static let ntsc: FrameRate
+  static let ntscDouble: FrameRate
+  static let ntscFilm: FrameRate
+  static let pal: FrameRate
+  var description: String { get }
+  var frameDuration: Double { get }
+  var framesPerSecond: Double { get }
 struct GCode: Equatable, Sendable
   enum LaserMode: Equatable, Hashable, Sendable
     case constant
@@ -3676,6 +3697,7 @@ struct GCode: Equatable, Sendable
     case zAxis(up: Double, down: Double)
   func program(_: [Contour], in: Rectangle) -> String
   func toolpath(_: [Contour], in: Rectangle) -> Toolpath
+  init(_: GCode.Machine, paper: PaperSize, margin: Double = default, optimizesTravel: Bool = default, joinTolerance: Double = default)
   init(_: GCode.Machine, width: Double, margin: Double = default, optimizesTravel: Bool = default, joinTolerance: Double = default)
   struct Machine: Equatable, Sendable
     static func laser(power: Double = default, mode: GCode.LaserMode = default, feed: Double = default, passes: Int = default, powerScale: Double = default) -> GCode.Machine
@@ -3685,6 +3707,7 @@ struct GCode: Equatable, Sendable
   var machine: GCode.Machine { get set }
   var margin: Double { get set }
   var optimizesTravel: Bool { get set }
+  var paper: PaperSize? { get set }
   var width: Double { get set }
 struct GaborNoise: Equatable, Sendable
   func signedValue(_: Double, _: Double) -> Double
@@ -4781,6 +4804,24 @@ struct Palette: ParamValue, Equatable, Sendable
   typealias Constraints = ParamSwatchConstraints
   var colors: [Color] { get set }
   var count: Int { get }
+struct PaperSize: Equatable, Hashable, Sendable
+  func canvasSize(dpi: Int = default) -> CanvasSize
+  init(width: Double, height: Double)
+  init?(named: String)
+  static let a0: PaperSize
+  static let a1: PaperSize
+  static let a2: PaperSize
+  static let a3: PaperSize
+  static let a4: PaperSize
+  static let a5: PaperSize
+  static let a6: PaperSize
+  static let usLegal: PaperSize
+  static let usLetter: PaperSize
+  static let usTabloid: PaperSize
+  var height: Double { get set }
+  var landscape: PaperSize { get }
+  var portrait: PaperSize { get }
+  var width: Double { get set }
 struct ParamColorStop: Decodable, Encodable, Equatable, Sendable
   init(position: Double, color: Color)
   init(position: Double, red: Double, green: Double, blue: Double, alpha: Double)
@@ -5020,6 +5061,7 @@ struct PrintSeparation
   let layers: [PrintSeparation.Layer]
   let paper: Color
   let width: Int
+  static func screenAngles(for: [Ink]) -> [Double]
   struct Layer
     let ink: Ink
     let master: Image
@@ -5034,6 +5076,7 @@ struct ProcessSeparation
   let plates: [ProcessSeparation.Plate]
   let proof: SoftProof
   let width: Int
+  static let screenAngles: [Double]
   struct Plate
     let averageInk: Double
     let master: Image

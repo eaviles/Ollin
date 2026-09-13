@@ -88,7 +88,7 @@ for tile in hyperbolicTiling(sides: 4, meeting: 5, minEdge: 2) {
 ```swift
 override func draw() {
     background(.white)
-    let t = loopProgress(over: 24) * 2 * .pi
+    let t = loopProgress(over: 24) * .tau
     let viewpoint = Vector2(cos(t), sin(t)) * 0.32
     for tile in hyperbolicTiling(sides: 5, meeting: 4, viewpoint: viewpoint) {
         fill(tile.parity == 0 ? .ivory : .indigo)

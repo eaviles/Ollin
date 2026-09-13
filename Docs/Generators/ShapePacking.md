@@ -96,7 +96,7 @@ Any `Shape` works, so you decide what goes in the bag. You can use regular polyg
 func polygon(_ sides: Int, star: Bool = false) -> Shape {
     let count = star ? sides * 2 : sides
     let points = (0..<count).map { i -> Vector2 in
-        let a = Double(i) / Double(count) * 2 * .pi - .pi / 2
+        let a = Double(i) / Double(count) * .tau - .pi / 2
         let r = (star && i % 2 == 1) ? 0.46 : 1.0
         return Vector2(cos(a) * r, sin(a) * r)
     }

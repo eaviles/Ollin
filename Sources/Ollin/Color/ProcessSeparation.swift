@@ -117,7 +117,7 @@ public struct ProcessSeparation {
     /// which is what keeps the overlap from turning into moire.
     public func halftoned(pitch: Double = 8, angles: [Double]? = nil) -> ProcessSeparation {
         let cell = max(2, pitch)
-        let assigned = angles ?? Self.screenAngles(count: plates.count)
+        let assigned = angles ?? Self.defaultAngles(count: plates.count)
         return screened { plane, index in
             let angle = index < assigned.count ? assigned[index] : Double(index) * .pi / 7
             PrintSeparation.halftonePlane(&plane, width: width, height: height,
@@ -125,13 +125,18 @@ public struct ProcessSeparation {
         }
     }
 
-    /// The conventional process screen angles, in the profile's channel order.
-    /// Yellow takes 0 degrees because it is the ink the eye least resents
-    /// seeing as a pattern, and black takes 45 because it is the one that
-    /// shows most.
-    static func screenAngles(count: Int) -> [Double] {
-        let cmyk: [Double] = [15, 75, 0, 45]
-        if count == 4 { return cmyk.map { $0 * .pi / 180 } }
+    /// The conventional four-color screen angles, in radians, in the order
+    /// the plates come back: cyan 15, magenta 75, yellow 0, black 45 degrees.
+    /// Yellow takes 0 because it is the ink the eye least resents seeing as a
+    /// pattern, and black takes 45 because it is the one that shows most.
+    /// What `halftoned(pitch:angles:)` uses for a four-plate separation when
+    /// no angles are passed.
+    public static let screenAngles: [Double] = [15, 75, 0, 45].map { $0 * .pi / 180 }
+
+    /// The angles a plate count gets by default: the rosette for four, the
+    /// single-ink 45 for one, and an even spread otherwise.
+    static func defaultAngles(count: Int) -> [Double] {
+        if count == 4 { return screenAngles }
         if count == 1 { return [45 * .pi / 180] }
         return (0 ..< count).map { Double($0) * .pi / Double(max(count, 1)) }
     }

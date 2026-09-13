@@ -20,7 +20,7 @@ extension OllinApp {
     @MainActor
     public static func plates(of sketch: Sketch, profile: ICCProfile? = nil,
                               intent: RenderingIntent = .relative,
-                              frame: Int = 0, fps: Double = 60,
+                              frame: Int = 0, fps: FrameRate = 60,
                               quality: RenderQuality = .detail) -> ProcessSeparation? {
         guard let press = profile ?? sketch.printProfile else { return nil }
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
@@ -51,7 +51,7 @@ extension OllinApp {
                                     profile: ICCProfile? = nil,
                                     intent: RenderingIntent = .relative,
                                     simulatesPaper: Bool = false,
-                                    frame: Int = 0, fps: Double = 60,
+                                    frame: Int = 0, fps: FrameRate = 60,
                                     drawsRegistrationMarks: Bool = true,
                                     quality: RenderQuality = .detail,
                                     screen: (ProcessSeparation) -> ProcessSeparation = { $0 }) {
@@ -78,7 +78,7 @@ extension OllinApp {
             fatalError("Ollin: the separation produced no plates (is \(press.name) readable?)")
         }
 
-        var metadata = ExportMetadata.capture(from: sketch, frame: frame, fps: fps)
+        var metadata = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond)
         metadata.inks = separation.plates.map(\.name)
         metadata.printingCondition = "\(press.name) / \(intent.rawValue)"
         let recipe = metadata.recipe

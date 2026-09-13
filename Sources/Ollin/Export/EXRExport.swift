@@ -211,7 +211,7 @@ extension OllinApp {
     /// The file is uncompressed, so it is large: a 1080 square frame with depth
     /// is about 14 MB.
     public static func exportEXR(_ sketch: Sketch, to path: String, frame: Int = 0,
-                                 fps: Double = 60, quality: RenderQuality = .detail) {
+                                 fps: FrameRate = 60, quality: RenderQuality = .detail) {
         guard let device = MTLCreateSystemDefaultDevice(),
               let renderer = headlessRenderer(for: sketch, device: device) else {
             fatalError("Ollin: failed to render the frame for export (no Metal device?)")
@@ -222,11 +222,11 @@ extension OllinApp {
         renderer.pathTracing = pathTracedExport
         renderer.renderScale = exportRenderScale
         renderer.capturesLinearFrame = true
-        _ = renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer)
+        _ = renderImage(of: sketch, frame: frame, fps: fps.framesPerSecond, renderer: renderer)
         guard let linear = renderer.lastLinearFrame else {
             fatalError("Ollin: failed to render the frame for export")
         }
-        let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe
+        let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond).recipe
         guard let written = writeEXR(linear, to: path, recipe: recipe) else {
             fatalError("Ollin: failed to write \(path)")
         }

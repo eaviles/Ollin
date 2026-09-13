@@ -267,7 +267,7 @@ world.connect(carriage, rail, .prismatic(at: p, axis: .unitX))
 ```swift
 world.connect(chest, upperArm,
               .swingTwist(at: shoulder, axis: Vector3(-1, 0, 0),
-                          swing: 80 * .pi / 180, twist: -0.6...0.6))
+                          swing: .degrees(80), twist: -0.6...0.6))
 ```
 
 A shoulder is a wide cone with a little twist, and a knee is a narrow one. `swing: 0` locks the bone straight, and `.pi` frees it entirely. Its `angle` reads how far the joint is bent right now, and `friction` gives it the stiffness of an old hinge. This is the joint `addRagdoll` hangs every limb on.
@@ -292,7 +292,7 @@ Hinges and sliders can do more than swing free. You can bound their travel, powe
 // A door that opens 100° one way from where it hangs now:
 let door = world.connect(frame, panel,
     .revolute(at: hingePoint, axis: .unitY,
-              limits: -0.01 ... (100 * .pi / 180)))    // radians; ±π at most
+              limits: -0.01 ... .degrees(100)))    // radians; ±π at most
 
 // A drawer that pulls out 2 units:
 let drawer = world.connect(cabinet, tray,
@@ -403,7 +403,7 @@ A rack and pinion ties a hinge to a slider, so turning drives sliding:
 
 ```swift
 let rack = world.connect(frame, bar, .prismatic(at: p, axis: .unitX))
-world.connect(big, rack, .rackAndPinion(travelPerTurn: 2 * .pi * pinionRadius))
+world.connect(big, rack, .rackAndPinion(travelPerTurn: .tau * pinionRadius))
 ```
 
 `travelPerTurn` is how far the bar runs, in world units, for one full turn of the pinion. For a pinion of radius `r` rolling along the bar, that is the pinion's own circumference. A negative value runs the bar the other way.
@@ -820,7 +820,7 @@ A two-wheeler is the same call with `balances: true`, which adds the controller 
 ```swift
 let front = Wheel3D.wheel(at: Vector3(0, -0.27, 0.75), radius: 0.31,
                           width: 0.05, steers: true)
-front.casterAngle = 30 * .pi / 180
+front.casterAngle = .degrees(30)
 let back = Wheel3D.wheel(at: Vector3(0, -0.27, -0.75), radius: 0.31,
                          width: 0.05, driven: true)
 let bike = world.addVehicle(.box(width: 0.4, height: 0.6, depth: 0.8),
@@ -934,8 +934,8 @@ Nothing drives the root, so a powered figure still falls as a whole. The motors 
 **Limits and joints.** Every joint is a `.swingTwist`. It opens at the `swing` and `twist` the call was given, and you can retune one joint at a time while the figure hangs:
 
 ```swift
-world.addRagdoll(from: figure, swing: 50 * .pi / 180, twist: -0.3...0.3)
-ragdoll.limit("forearmL", swing: 10 * .pi / 180)     // an elbow, not a shoulder
+world.addRagdoll(from: figure, swing: .degrees(50), twist: -0.3...0.3)
+ragdoll.limit("forearmL", swing: .degrees(10))     // an elbow, not a shoulder
 ```
 
 A dense rig, such as a hand with twenty finger bones, does not need twenty bodies. Name the joints that should get one. The rest ride rigidly on the nearest limb above them, keeping their pose and their share of the flesh:

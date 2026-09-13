@@ -72,7 +72,13 @@ public struct LaserOptimizer: Sendable {
     /// order the picture is drawn in, never the picture.
     public var reordersPaths: Bool = true
 
-    public init() {}
+    /// An optimizer for a projector's point clock and the refresh you want.
+    /// `pointsPerSecond` is the number on the projector's rating, or a little
+    /// under it; the defaults are the careful ones described above.
+    public init(pointsPerSecond: Int = 20_000, refreshRate: Double = 30) {
+        self.pointsPerSecond = pointsPerSecond
+        self.refreshRate = refreshRate
+    }
 
     /// How many points a frame may hold at the current rate and refresh.
     public var pointBudget: Int {

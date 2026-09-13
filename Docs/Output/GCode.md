@@ -19,6 +19,18 @@ OllinApp.exportGCode(sketch, to: "plot.gcode",
 
 `GCode` takes a machine and a physical width. The width is a required argument on purpose, in the same way that a mesh export asks for its size. A machine needs real units, and a default width would silently pick a size you never chose.
 
+<a name="a-named-sheet"></a>
+
+Most of the time the real unit is a sheet you already own, so the width can be a sheet instead:
+
+```swift
+GCode(.plotter(), paper: .a4)                       // 10 mm clear on every side
+GCode(.plotter(), paper: .a3.landscape, margin: 15)
+GCode(.laser(), paper: .usLetter)
+```
+
+`PaperSize` carries the ISO A series from `.a0` to `.a6` and the US `.usLetter`, `.usLegal`, and `.usTabloid`. All are in millimeters and portrait, like the sheet in the ream. `.landscape` turns one, and `PaperSize(width:height:)` spells a size that is not on the list. With a sheet, the drawn width is the sheet's less the margin on both sides. The planner also holds the drawing to the sheet's height. A canvas taller than the sheet's shape scales down to fit rather than running off the page, and comes out narrower than the sheet. The drawing keeps the margin corner as its origin either way. A narrower fit therefore sits at the left of the page rather than centered on it. The program's header names the sheet.
+
 ### The three machines
 
 Each factory sets its own defaults, and every number is a parameter you can set:
@@ -36,7 +48,7 @@ GCode(.mill(depth: 3, depthPerPass: 0.5), width: 150)  // six passes per path
 
 ### Size, origin, and the flip
 
-The canvas width maps to `width` millimeters, and the height follows the canvas aspect ratio. `margin` adds a border on all sides, so the footprint is `width + 2 * margin` across. The machine origin is the bottom-left corner of the canvas. A canvas grows downward and a bed grows upward, so the program flips the y axis. Every program is in absolute millimeters (`G90`, `G21`), and it ends with the head at home and `M2`.
+The canvas width maps to `width` millimeters, and the height follows the canvas aspect ratio. With a `paper`, the height is held to the sheet as well, and the width follows when the sheet is the tighter fit. `margin` adds a border on all sides, so the footprint is `width + 2 * margin` across. The machine origin is the bottom-left corner of the canvas. A canvas grows downward and a bed grows upward, so the program flips the y axis. Every program is in absolute millimeters (`G90`, `G21`), and it ends with the head at home and `M2`.
 
 ### What the planner does
 
@@ -73,10 +85,11 @@ Every sketch and example takes the flag directly:
 swift run --package-path Examples Example-X --export-gcode out.gcode                        # pen plotter, 150 mm wide
 swift run --package-path Examples Example-X --export-gcode out.gcode --gcode-machine laser
 swift run --package-path Examples Example-X --export-gcode out.gcode --gcode-machine mill --gcode-width 80 --gcode-margin 5
+swift run --package-path Examples Example-X --export-gcode out.gcode --gcode-paper a4-landscape --gcode-margin 15
 swift run --package-path Examples Example-X --export-gcode out.gcode --hatch --hatch-spacing 6
 ```
 
-`--gcode-machine` picks a profile with its defaults, and `--gcode-width` sets the physical width, which is 150 mm from the command line. The finer parameters live in the API. `--hatch`, `--cross-hatch`, `--hatch-spacing`, and `--hatch-angle` work the same way as they do for SVG.
+`--gcode-machine` picks a profile with its defaults, and `--gcode-width` sets the physical width, which is 150 mm from the command line. `--gcode-paper` names a sheet instead (`a4`, `a3`, `letter`, `tabloid`, and the rest of `PaperSize`, with `-landscape` to turn it), and the margin is then 10 mm unless `--gcode-margin` says otherwise. The finer parameters live in the API. `--hatch`, `--cross-hatch`, `--hatch-spacing`, and `--hatch-angle` work the same way as they do for SVG.
 
 ### Before you run it
 

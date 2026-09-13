@@ -295,7 +295,7 @@ Rectangle(covering size: Vector2, in container: Rectangle)
 `Rectangle(fitting:in:)` is the letterbox fit, the largest rectangle of `size`'s aspect ratio centered inside `container`. Draw an image or video frame into that box and it will not stretch, which is the fit behind `drawFrame` and `fittedRectangle(in:)`. `Rectangle(covering:in:)` works the other way. It is the *smallest* rectangle of that shape that covers the container, so it runs past two edges. What falls outside is meant to be cropped. The two are what [`drawImage`'s](Images.md#fit) `.contain` and `.cover` are built on.
 
 ```swift
-let box = Rectangle(center: Vector2(width / 2, height / 2), width: 200, height: 120)
+let box = Rectangle(center: center, width: 200, height: 120)
 drawRect(box)
 let p = randomVector(in: box)       // a random point inside it
 ```
@@ -409,7 +409,7 @@ Circle(x: Double, y: Double, radius: Double)
 - **Test:** `contains(_ point: Vector2)`.
 
 ```swift
-let dot = Circle(center: Vector2(width / 2, height / 2), radius: 60)
+let dot = Circle(center: center, radius: 60)
 drawCircle(dot)
 if dot.contains(Vector2(mouseX, mouseY)) { /* pointer is inside */ }
 ```

@@ -6,11 +6,18 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **A frame rate you can name.** Every export's `fps:` takes a `FrameRate`. A number still stands in, so `fps: 60` reads as before, and `.film`, `.pal`, `.ntsc`, `.ntscFilm`, and `.ntscDouble` name the rates whose numbers are awkward, kept as exact fractions so a clip at `.ntsc` lands every frame on 1001/30000 of a second. `--fps` takes a name, a number, or a fraction. [Frame rates](Docs/Output/Export.md#frame-rates)
+- **A sheet by name for the machine exports.** `GCode(.plotter(), paper: .a4)` and `DXF(paper: .a3)` size a drawing for a sheet with a margin clear on every side, holding its height as well as its width. `PaperSize` carries the ISO A series and the US three, turns with `.landscape`, and reaches the canvas presets through `canvasSize(dpi:)`; `--gcode-paper` and `--dxf-paper` do the same from the command line. [A named sheet](Docs/Output/GCode.md#a-named-sheet)
+- **The screen angles, said out loud.** `PrintSeparation.screenAngles(for:)` returns the angles a separation's halftone gives your inks, and `ProcessSeparation.screenAngles` is the four-color rosette in plate order, so a proof can label them or a sketch can screen its own masters at the same angles. `LaserOptimizer(pointsPerSecond:refreshRate:)` takes a projector's two numbers in one line.
 - **Two more automata on a field.** `.wireworld()` is Silverman's computing automaton, a circuit typed as text with `WireworldCell` naming its four states, and `.schelling(preference:vacancy:mobility:passes:seed:)` is Schelling's board of two kinds sorting itself from a mild preference, with `SchellingCell` for the brush; both join the `Simulation/Automata` picker. [Simulation fields](Docs/Drawing/Effects.md#simfield)
 - **A rule typed where the parameter is set.** In OllinLive, right-click a number's or a switch's diamond for *Write a Rule*, and a field opens under the row. Return drives the parameter from the rule, an emptied field takes it away, and a rule that cannot be read stays in the field with a caret under the character it went wrong at. The rule lands in the same automation file as the keys. [Writing a rule in the row](Docs/Tools/Timeline.md#writing-a-rule-in-the-row)
 - **A homage after Sol LeWitt.** `Examples/Recreations/SolLeWitt` carries out two of his instructions: *Wall Drawing 118*, fifty points at random all connected by straight lines, drawn wall after wall at a drafter's pace, and the forty-five two-part combinations of his 1972 compass alphabet on one sheet, with the spacing he left to the drafter breathing.
 - **A look from a `.cube` file.** `ColorLUT` reads the color table a grading tool exports, in both its forms, and `.lut(_:amount:)` applies it to a layer or the whole frame, a cube by tetrahedral interpolation. A look can also be built in code and written out as a `.cube`, and one warm print ships with the framework. [Looks](Docs/Drawing/Looks.md)
 - **The pitch moves without the length, an instant can be held, and a recording can be stretched.** `.pitchShift(PitchShift(semitones:mix:))` and `.freeze(Freeze(amount:))` join the effect chain, both a phase vocoder that keeps every partial whole, and `stretched(by:)` on a `Recording` or an `ImpulseResponse` gives it back longer at the same pitch. [The two that work in the spectrum](Docs/Helpers/Synthesis.md#the-two-that-work-in-the-spectrum)
+
+### Changed
+
+- **`fps:` is a `FrameRate` rather than a `Double`** on every export entry (`OllinApp.image`, `export`, `exportSequence`, `exportVideo`, `exportGIF`, the vector, spatial, web, sheet, and separation exports). A literal compiles unchanged; a `Double` variable needs `FrameRate(rate)`.
 
 ### Fixed
 

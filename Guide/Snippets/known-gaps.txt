@@ -151,7 +151,7 @@ cb35d3690101  Guide/24-WorldsWithWeight.md:246  cannot find 'world' in scope
 45e0e87274a1  Guide/24-WorldsWithWeight.md:273  cannot find 'world' in scope
 e10e73130c14  Guide/24-WorldsWithWeight.md:287  cannot find 'world' in scope
 01e202bd442c  Guide/24-WorldsWithWeight.md:297  cannot find 'world' in scope
-119308f48b0c  Guide/24-WorldsWithWeight.md:305  cannot find 'world' in scope
+ce51672c1b67  Guide/24-WorldsWithWeight.md:305  cannot find 'world' in scope
 db8431ac70a1  Guide/24-WorldsWithWeight.md:317  cannot find 'world' in scope
 8378d7a7198b  Guide/24-WorldsWithWeight.md:329  cannot find 'world' in scope
 5a7e6948dfec  Guide/24-WorldsWithWeight.md:342  cannot find 'world' in scope
@@ -163,7 +163,7 @@ ab56176ee878  Guide/24-WorldsWithWeight.md:410  cannot find 'island' in scope
 a2328aeea45a  Guide/24-WorldsWithWeight.md:427  cannot find 'world' in scope
 4b48a4fd78e8  Guide/25-CharactersAndCloth.md:19  cannot find 'walker' in scope
 53fd73cffbb5  Guide/25-CharactersAndCloth.md:25  cannot find 'walker' in scope
-67103fd950f6  Guide/25-CharactersAndCloth.md:42  cannot find 'walker' in scope
+7efa07787718  Guide/25-CharactersAndCloth.md:42  cannot find 'walker' in scope
 ff8f4ca0b8bd  Guide/25-CharactersAndCloth.md:52  cannot find 'walker' in scope
 53d9e47e66f9  Guide/25-CharactersAndCloth.md:59  cannot find 'lookout' in scope
 2cd2985c6a8e  Guide/25-CharactersAndCloth.md:69  cannot find 'car' in scope
@@ -250,7 +250,7 @@ a5d72ce127b9  Guide/29-MakingSound.md:17  cannot find 'Synth' in scope
 e9b03ad8c6f8  Guide/29-MakingSound.md:99  cannot find 'synth' in scope
 09d5961233f3  Guide/29-MakingSound.md:117  cannot find 'synth' in scope
 cccb28333938  Guide/29-MakingSound.md:141  cannot find 'ImpulseResponse' in scope
-1bd976c3b98f  Guide/29-MakingSound.md:148  cannot find 'ImpulseResponse' in scope
+d66ebfc13577  Guide/29-MakingSound.md:148  cannot find 'ImpulseResponse' in scope
 139bec613386  Guide/29-MakingSound.md:167  cannot find 'synth' in scope
 c69d07e83385  Guide/29-MakingSound.md:193  cannot find 'synth' in scope
 1331fb3327dd  Guide/29-MakingSound.md:219  cannot find 'synth' in scope
@@ -259,7 +259,7 @@ a3fc4eec84a0  Guide/29-MakingSound.md:245  cannot find 'synth' in scope
 587bb669d987  Guide/29-MakingSound.md:266  cannot find 'SampledInstrument' in scope
 639123956822  Guide/29-MakingSound.md:276  cannot find 'synth' in scope
 7fef9776e0fa  Guide/29-MakingSound.md:289  cannot find 'synth' in scope
-b824f8b6c9e5  Guide/29-MakingSound.md:297  cannot find 'synth' in scope
+91bf723abdcc  Guide/29-MakingSound.md:297  cannot find 'synth' in scope
 91bac9c1605d  Guide/29-MakingSound.md:309  cannot find 'Synth' in scope
 6295ac12ab41  Guide/29-MakingSound.md:325  cannot find 'PluckedString' in scope
 22d8d5879111  Guide/29-MakingSound.md:345  cannot find 'Synth' in scope
@@ -322,8 +322,8 @@ a854f5aabed2  Guide/31-SharingAndPerforming.md:565  cannot find 'sunBox' in scop
 161ff6887e4d  Guide/31-SharingAndPerforming.md:705  cannot find 'points' in scope
 2c60fc19e1c4  Guide/31-SharingAndPerforming.md:828  cannot find '$radius' in scope
 f51397a62393  Guide/31-SharingAndPerforming.md:882  cannot find '$radius' in scope
-2c5147e37054  Guide/31-SharingAndPerforming.md:897  cannot find '$radius' in scope
-f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:916  cannot find '$frame' in scope
+2c5147e37054  Guide/31-SharingAndPerforming.md:899  cannot find '$radius' in scope
+f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:918  cannot find '$frame' in scope
 b8ae9882bce8  Guide/32-Installations.md:41  cannot find 'DMXSender' in scope
 32976ec86c4b  Guide/32-Installations.md:161  cannot find type 'Tile' in scope
 770e5f193c3c  Guide/32-Installations.md:306  cannot find 'worldPoint' in scope

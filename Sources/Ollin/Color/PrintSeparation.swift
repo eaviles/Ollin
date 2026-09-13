@@ -250,10 +250,15 @@ public struct PrintSeparation {
         }
     }
 
-    /// The conventional screen angles, one per layer: the darkest ink takes
-    /// 45 degrees (the least visible screen), the rest fan out over the
-    /// offsets furthest from it and from each other.
-    static func screenAngles(for inks: [Ink]) -> [Double] {
+    /// The screen angles `halftoned(pitch:angles:)` uses by default, one per
+    /// ink in the order given, in radians: the darkest ink takes 45 degrees
+    /// (the screen the eye notices least), and the others fan out over the
+    /// conventional offsets furthest from it and from each other (15, 75, 0,
+    /// then 30 and 60 degrees); past six inks the rest spread evenly. Ask for
+    /// them to label a proof with each master's angle, or to draw your own
+    /// screens with `drawHalftone(_:pitch:angle:)` at the angles the
+    /// separation would have used.
+    public static func screenAngles(for inks: [Ink]) -> [Double] {
         let conventional: [Double] = [45, 15, 75, 0, 30, 60].map { $0 * .pi / 180 }
         // Rank by luminance: index of each ink in dark-to-light order.
         let order = inks.indices.sorted { inks[$0].color.luminance < inks[$1].color.luminance }

@@ -604,7 +604,7 @@ enum GuideFigures {
                     if directive.gif {
                         let frames = max(1, Int((directive.duration * directive.fps).rounded()))
                         OllinApp.exportGIF(sketch, to: writePath, frames: frames,
-                                           fps: directive.fps, width: directive.width)
+                                           fps: FrameRate(directive.fps), width: directive.width)
                     } else if directive.png {
                         OllinApp.export(sketch, to: writePath, frame: directive.frame)
                     } else {

@@ -265,6 +265,14 @@ struct LaserOptimizerTests {
         #expect(optimizer.stream(square()).pointBudget == 1_200)
     }
 
+    @Test func theInitializerTakesTheTwoNumbersAProjectorIsSetUpBy() {
+        let rated = LaserOptimizer(pointsPerSecond: 30_000, refreshRate: 25)
+        #expect(rated.pointBudget == 1_200)
+        let careful = LaserOptimizer()
+        #expect(careful.pointsPerSecond == 20_000 && careful.refreshRate == 30)
+        #expect(LaserOptimizer(pointsPerSecond: 40_000).refreshRate == 30)
+    }
+
     @Test func aHeavyFrameReportsTheOverrunAndKeepsEveryPath() {
         var optimizer = LaserOptimizer()
         optimizer.pointsPerSecond = 1_000

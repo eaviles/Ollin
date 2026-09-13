@@ -24,7 +24,9 @@ import simd
 /// millimeters, and a default would size the part silently.
 public struct DXF: Equatable, Sendable {
     /// The drawing's width in millimeters. The canvas width maps onto it, and
-    /// the height follows the canvas aspect ratio.
+    /// the height follows the canvas aspect ratio. When a `paper` is named,
+    /// the width is the sheet's less the margins, and the drawing may come out
+    /// narrower still to fit the sheet's height.
     public var width: Double
     /// Extra millimeters around the drawing on every side.
     public var margin: Double
@@ -32,11 +34,25 @@ public struct DXF: Equatable, Sendable {
     /// polyline, so a curve drawn as many calls arrives as one entity. Zero
     /// keeps every call its own entity.
     public var joinTolerance: Double
+    /// The sheet or board the drawing is planned for, when one was named: the
+    /// drawing then fits inside it less the margin on every side, scaling down
+    /// (never up) when the canvas is taller than `width` alone allows. `nil`
+    /// when only a width was given.
+    public var paper: PaperSize?
 
     public init(width: Double, margin: Double = 0, joinTolerance: Double = 0.1) {
         self.width = width
         self.margin = margin
         self.joinTolerance = joinTolerance
+    }
+
+    /// The same settings sized for a sheet: the drawing fits inside `paper`
+    /// with `margin` millimeters kept clear on every side, whatever the
+    /// canvas's shape.
+    public init(paper: PaperSize, margin: Double = 10, joinTolerance: Double = 0.1) {
+        self.init(width: max(0, paper.width - 2 * margin), margin: margin,
+                  joinTolerance: joinTolerance)
+        self.paper = paper
     }
 
     /// Plan the drawing for `paths` (canvas-space contours, drawn as line work
@@ -52,9 +68,16 @@ public struct DXF: Equatable, Sendable {
         drafting(paths, in: canvas).text
     }
 
-    /// Millimeters per canvas unit.
+    /// Millimeters per canvas unit: the width mapping, held down to the sheet's
+    /// height when a `paper` is named and the canvas is taller than the width
+    /// alone would allow.
     func scale(for canvas: Rectangle) -> Double {
-        width / max(canvas.width, 1e-9)
+        var scale = width / max(canvas.width, 1e-9)
+        if let paper {
+            let tallest = max(0, paper.height - 2 * margin)
+            scale = min(scale, tallest / max(canvas.height, 1e-9))
+        }
+        return scale
     }
 
     /// Shared planner behind the public `drafting` and the frame exporter (whose
@@ -375,8 +398,8 @@ public extension OllinApp {
     /// skipped. Draw the result's `entities` to preview what a shop program
     /// will open.
     static func drafting(of sketch: Sketch, settings: DXF, frame: Int = 0,
-                         fps: Double = 60, hatching: Hatching? = nil) -> Drafting {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
+                         fps: FrameRate = 60, hatching: Hatching? = nil) -> Drafting {
+        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
         let canvas = Rectangle(x: 0, y: 0, width: Double(recording.width),
                                height: Double(recording.height))
         let blocks = draftBlocks(recording.commands, canvas: canvas)
@@ -385,7 +408,7 @@ public extension OllinApp {
 
     /// Render one frame of `sketch` as the text of a DXF file.
     static func dxf(of sketch: Sketch, settings: DXF, frame: Int = 0,
-                    fps: Double = 60, hatching: Hatching? = nil) -> String {
+                    fps: FrameRate = 60, hatching: Hatching? = nil) -> String {
         drafting(of: sketch, settings: settings, frame: frame, fps: fps, hatching: hatching).text
     }
 
@@ -393,7 +416,7 @@ public extension OllinApp {
     /// drawing-exchange counterpart of `exportGCode`; the basis for the
     /// `--export-dxf` flag.
     static func exportDXF(_ sketch: Sketch, to path: String, settings: DXF,
-                          frame: Int = 0, fps: Double = 60, hatching: Hatching? = nil) {
+                          frame: Int = 0, fps: FrameRate = 60, hatching: Hatching? = nil) {
         let drawing = drafting(of: sketch, settings: settings, frame: frame, fps: fps,
                                hatching: hatching)
         do {

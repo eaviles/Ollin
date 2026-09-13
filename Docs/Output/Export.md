@@ -34,6 +34,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Path-traced render](PathTraced.md) - `--path-traced`, the offline light-tracing mode for 3D scenes (its own page)
 - [Sound](#sound) - a sketch's own music, in the file
 - [Video](#video) - `--export-video`, `OllinApp.exportVideo`
+- [Frame rates](#frame-rates) - `--fps` by number or by name, `FrameRate`, the broadcast fractions kept exact
 - [Transparent output](#transparent-output) - `background(.clear)` kept as alpha in the PNG, the sequence, the GIF, and a `proRes4444` / `hevcWithAlpha` clip
 - [Spatial video](Spatial.md#spatial-video) - `--export-spatial`, a stereo pair per frame for a headset (its own page)
 - [Web page](Web.md) - `--export-web`, a page that plays what the sketch drew back in a browser, standalone or inline (its own page)
@@ -200,6 +201,19 @@ Exported tracks are tagged Rec. 709, so what players show matches what the canva
 **HDR.** A sketch that declares [`colorOutput`](../Drawing/ColorOutput.md) `.extended` is written as **HDR10** instead, with no extra flag to pass. That means Rec. 2020 primaries, the PQ transfer, 10-bit HEVC, and the mastering-display and content-light metadata the format expects. If the codec was left at the `h264` default, it is forced to `hevc`, because eight bits cannot carry HDR. A `.wide` sketch's track is tagged P3-D65, which is the same standard range through wider primaries.
 
 **Spatial video.** A 3D sketch can be exported as [spatial video](Spatial.md#spatial-video) instead. It uses the same fixed-clock drive, but each frame is rendered from two eyes. The two views are muxed into the stereo format that Apple's platforms play with real depth.
+
+### Frame rates
+
+Every export that takes `--fps` takes a number, a broadcast name, or a fraction: `--fps 24`, `--fps ntsc`, `--fps 30000/1001`. In code the same parameter is a `FrameRate`, and a plain number still stands in for one, so `fps: 60` reads as it always did. The names are for the rates whose number is awkward to type and easy to get slightly wrong. `.film` is 24 and `.pal` is 25. `.ntsc` is 30000/1001, the 29.97 of broadcast. `.ntscFilm` is 24000/1001, which is 23.976, and `.ntscDouble` is 60000/1001, which is 59.94.
+
+A named rate is the exact fraction, not its decimal. The video writers put every frame on it. At `.ntsc` the frames sit at multiples of 1001/30000 of a second rather than of 1/29.97. That is the grid a broadcast timeline expects. `FrameRate(30000, per: 1001)` spells any other fraction. `FrameRate(29.97)` is the decimal as written, 2997/100, which differs from `.ntsc` by one part in a million. `rate.frameDuration` is one frame's length in seconds, and `rate.frames(in: 10)` is the count a ten-second export writes.
+
+```swift
+OllinApp.exportVideo(sketch, to: "spot.mp4", frames: FrameRate.ntsc.frames(in: 30), fps: .ntsc)
+OllinApp.exportVideo(sketch, to: "reel.mp4", frames: 240, fps: .film)
+```
+
+The rate a live window runs at is the display's, not one of these; `frameRate` on the sketch reads what it measured.
 
 ### Transparent output
 

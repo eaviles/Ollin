@@ -177,11 +177,13 @@ Beside the clock, the `Int` property `variation` names the seed this run's rando
 | Property | Type | Meaning |
 |---|---|---|
 | `width` / `height` | `Double` | canvas size in logical points, updated live on resize |
+| `center` | `Vector2` | the canvas middle, `Vector2(width / 2, height / 2)`, for the calls that take a point |
 | `canvasOnScreen` | `Rectangle?` | where this canvas sits on the desk, in screen points, or `nil` with no window |
 | `screenFrame` | `Rectangle?` | the screen it sits on, in the same coordinates |
 
 ```swift
 drawCircle(width / 2, height / 2, min(width, height) / 4)   // centered, proportional
+drawCircle(center: center, radius: min(width, height) / 4)  // the same, through the value
 ```
 
 `canvasOnScreen` is measured the same way the canvas is. The origin is the top-left corner of the main screen, and y grows downward. Every window on the desk reports its place in those same numbers, so several windows can show one shared world.

@@ -36,7 +36,7 @@ public extension OllinApp {
     /// platforms is; `.mp4` also carries it. Sound the sketch makes rides along,
     /// exactly as it does in an ordinary video export.
     static func exportSpatialVideo(_ sketch: Sketch, to path: String,
-                                   frames: Int, fps: Double = 30,
+                                   frames: Int, fps: FrameRate = 30,
                                    stereo: StereoGeometry? = nil,
                                    metersPerUnit: Double = 1,
                                    bitsPerSecond: Int? = nil,
@@ -44,6 +44,8 @@ public extension OllinApp {
                                    renderQuality: RenderQuality = .detail,
                                    skipSeconds: Double = 0) {
         guard frames > 0 else { return }
+        let rate = fps
+        let fps = rate.framesPerSecond
         guard VTIsStereoMVHEVCEncodeSupported() else {
             fatalError("Ollin: this Mac's video encoder cannot write spatial video (stereo MV-HEVC)")
         }
@@ -81,8 +83,9 @@ public extension OllinApp {
         }
         var receiver: AVAssetWriterInput.TaggedPixelBufferGroupReceiver?
         var input: AVAssetWriterInput?
-        // An exact integer clock at any fps: frame k presents at k·1000/(fps·1000).
-        let timescale = Int32((fps * 1000).rounded())
+        // An exact integer clock at any rate: frame k presents at k·tick/timescale,
+        // on the fraction the rate is (k·1001/30000 for NTSC, k·1000/30000 for 30).
+        let (timescale, tick) = rate.mediaClock
 
         print("Ollin: exporting \(frames) spatial frames at \(Int(fps)) fps → \(path) "
               + "(\(size.width)×\(size.height), stereo hevc)")
@@ -101,6 +104,9 @@ public extension OllinApp {
                                                     fps: fps, bitsPerSecond: bitsPerSecond,
                                                     quality: quality)
                 let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+                // The track keeps the rate's own clock, so a fractional rate's
+                // frames land on its fraction rather than the writer's default.
+                videoInput.mediaTimeScale = timescale
                 // Realtime, deliberately, and not because the data is. A
                 // file-paced input is interleaved in chunks of about a second,
                 // and a multi-layer one stops accepting frames at the end of the
@@ -169,7 +175,7 @@ public extension OllinApp {
                 CMTaggedDynamicBuffer(tags: [.videoLayerID(Int64(layer)), eye.tag],
                                       content: readOnlyBuffer(of: eye.image, from: pool, size: size))
             }
-            let time = CMTime(value: Int64(index) * 1000, timescale: timescale)
+            let time = CMTime(value: Int64(index) * tick, timescale: timescale)
             do {
                 guard try receiver.appendImmediately(buffers, with: time) else {
                     fatalError("Ollin: failed to encode spatial frame \(index): "

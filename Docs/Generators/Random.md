@@ -90,8 +90,7 @@ A random point in the ring between the two radii. The ring is centered on the or
 </picture>
 
 ```swift
-let center = Vector2(width / 2, height / 2)
-let p = center + ring(innerRadius: 50, outerRadius: 100)
+let p = center + ring(innerRadius: 50, outerRadius: 100)      // `center` is the canvas middle
 drawCircle(center: p, radius: 3)
 ```
 

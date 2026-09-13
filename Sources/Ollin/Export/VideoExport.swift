@@ -109,7 +109,7 @@ public extension OllinApp {
     /// stateful sketch settles into motion first. For a *reproducible* clip,
     /// seed the sketch (`seed(…)` in `setup()`).
     static func exportVideo(_ sketch: Sketch, to path: String,
-                            frames: Int, fps: Double = 60,
+                            frames: Int, fps: FrameRate = 60,
                             codec: VideoCodec = .h264,
                             bitsPerSecond: Int? = nil,
                             encodeQuality: Double? = nil,
@@ -117,6 +117,8 @@ public extension OllinApp {
                             skipSeconds: Double = 0,
                             slowMotion: SlowMotion? = nil) {
         guard frames > 0 else { return }
+        let rate = fps
+        let fps = rate.framesPerSecond
         // `frames` is what the file holds either way. Under slow motion the
         // sketch's own clock is a different rate, and the recipe carries that
         // one, so a still re-renders from it unchanged.
@@ -225,8 +227,15 @@ public extension OllinApp {
             settings[AVVideoCompressionPropertiesKey] = compression
         }
 
+        // An exact integer clock at any rate: frame k presents at k·tick/timescale,
+        // on the fraction the rate is (k·1001/30000 for NTSC, k·1000/60000 for 60).
+        let (timescale, tick) = rate.mediaClock
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
         input.expectsMediaDataInRealTime = false
+        // The track keeps the rate's own clock; left to the writer it picks a
+        // default the fractional rates do not sit on, and NTSC's 1001/30000
+        // lands on 1/30.
+        input.mediaTimeScale = timescale
         // HDR frames arrive as half-float PQ codes straight from the present
         // pass, so they are handed over as they are; everything else goes
         // through Core Graphics into an 8-bit buffer.
@@ -238,9 +247,6 @@ public extension OllinApp {
             kCVPixelBufferHeightKey as String: size.height,
         ])
         writer.add(input)
-
-        // An exact integer clock at any fps: frame k presents at k·1000/(fps·1000).
-        let timescale = Int32((fps * 1000).rounded())
 
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(path) (\(size.width)×\(size.height), \(codec.rawValue))")
         if let motion { print(motion.note(written: frames, fps: fps)) }
@@ -343,7 +349,7 @@ public extension OllinApp {
                 CVPixelBufferUnlockBaseAddress(buffer, [])
                 if cgImage.carriesAlpha { buffer.markPremultipliedAlpha() }
             }
-            let time = CMTime(value: Int64(index) * 1000, timescale: timescale)
+            let time = CMTime(value: Int64(index) * tick, timescale: timescale)
             if !adaptor.append(buffer, withPresentationTime: time) {
                 fatalError("Ollin: failed to encode frame \(index): \(writer.error?.localizedDescription ?? "unknown error")")
             }
@@ -377,12 +383,13 @@ public extension OllinApp {
     /// *that* rate, so motion plays back at true speed and the clip keeps its
     /// requested duration (the frame count is rescaled to match).
     static func exportGIF(_ sketch: Sketch, to path: String,
-                          frames: Int, fps: Double = 25,
+                          frames: Int, fps: FrameRate = 25,
                           width targetWidth: Int? = nil,
                           skipSeconds: Double = 0,
                           renderQuality: RenderQuality = .detail,
                           slowMotion: SlowMotion? = nil) {
         guard frames > 0 else { return }
+        let fps = fps.framesPerSecond
         let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
 
         let delay = Double(max(2, Int((100 / fps).rounded()))) / 100   // decoders clamp delays under 2cs

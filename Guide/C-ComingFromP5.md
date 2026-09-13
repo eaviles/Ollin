@@ -113,7 +113,7 @@ The catalog runs well past p5's. It holds stars, rings, hearts, n-gons, and a fe
 | `push()` … `pop()` around a block | `withState { }` | the scoped form; the pop can't be forgotten ([Chapter 6](06-GridsAndRepetition.md)) |
 | `angleMode(DEGREES)` | no equivalent | radians only; `.tau` is one full turn |
 | `TWO_PI`, `PI`, `HALF_PI` | `.tau`, `.pi`, `.pi / 2` | |
-| `radians(d)` / `degrees(r)` | `d * .pi / 180` / `r * 180 / .pi` | better: stay in radians and think in fractions of `.tau` |
+| `radians(d)` / `degrees(r)` | `.degrees(d)` / `r * 180 / .pi` | better: stay in radians and think in fractions of `.tau` |
 
 ### Randomness and noise
 

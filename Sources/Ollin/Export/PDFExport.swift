@@ -259,9 +259,9 @@ public extension OllinApp {
     /// Pass `hatching` to plot solid fills as line work: each fill becomes
     /// parallel (or cross-hatch) lines clipped to its outline, spaced by tone
     /// (see `Hatching`).
-    static func pdf(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
+    static func pdf(of sketch: Sketch, frame: Int = 0, fps: FrameRate = 60,
                     hatching: Hatching? = nil) -> Data {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
+        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
         return serializePDF(recording.commands, background: recording.background,
                             width: recording.width, height: recording.height,
                             pointWidth: recording.pointWidth, pointHeight: recording.pointHeight,
@@ -272,9 +272,9 @@ public extension OllinApp {
     /// GPU. The print-ready counterpart of `exportSVG`; the basis for the
     /// `--export-pdf` flag. Pass `hatching` to plot solid fills as pen line
     /// work (see `pdf(of:)`).
-    static func exportPDF(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60,
+    static func exportPDF(_ sketch: Sketch, to path: String, frame: Int = 0, fps: FrameRate = 60,
                           hatching: Hatching? = nil) {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
+        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: hatching)
         let document = serializePDF(recording.commands, background: recording.background,
                                     width: recording.width, height: recording.height,
                                     pointWidth: recording.pointWidth, pointHeight: recording.pointHeight,

@@ -149,7 +149,7 @@ curlNoise(_ p: Vector2) -> Vector2
 A divergence-free 2D flow vector, the curl of the Perlin field. It is the usual basis for flow fields. Take `.normalized` for the direction alone, and sample on scaled-down coordinates such as `x * 0.003` for broad swirls. See the `FlowField` example.
 
 ```swift
-var p = Vector2(width / 2, height / 2)
+var p = center
 for _ in 0..<100 {                         // trace a streamline through the field
     let next = p + curlNoise(p * 0.003).normalized * 4
     drawLine(p, next)

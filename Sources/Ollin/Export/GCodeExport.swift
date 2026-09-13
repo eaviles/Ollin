@@ -103,12 +103,22 @@ public struct GCode: Equatable, Sendable {
     /// Physical width of the drawn area, in millimeters: the canvas width maps
     /// to exactly this, and the height follows the canvas aspect. Explicit on
     /// purpose, the same way a mesh export asks for its size: a machine needs
-    /// real units, and a silent default would cut at a silent size.
+    /// real units, and a silent default would cut at a silent size. When a
+    /// `paper` is named, the width is the sheet's less the margins, and the
+    /// drawing may come out narrower still to fit the sheet's height.
     public var width: Double
 
     /// Extra border in millimeters between the machine origin and the drawing,
     /// added on all sides. The total footprint is `width + 2 * margin` across.
     public var margin: Double
+
+    /// The sheet the drawing is planned for, when one was named: the drawn area
+    /// then fits inside the sheet less the margin on every side, scaling down
+    /// (never up) when the canvas is taller than `width` alone allows, and the
+    /// program's header names the sheet. The drawing keeps the margin corner as
+    /// its origin, so a narrower fit sits at the left of the page rather than
+    /// centered on it. `nil` when only a width was given.
+    public var paper: PaperSize?
 
     /// Reorder the paths so pen-up travel between them is short (a greedy
     /// nearest-neighbor walk from the machine origin, free to reverse a path
@@ -130,6 +140,29 @@ public struct GCode: Equatable, Sendable {
         self.joinTolerance = joinTolerance
     }
 
+    /// The same settings sized for a sheet: the drawing fits inside `paper`
+    /// with `margin` millimeters kept clear on every side, so `.a4` with the
+    /// default margin draws at most 190 mm wide and 277 mm tall, whatever the
+    /// canvas's shape. `paper` is kept, and the header names it.
+    public init(_ machine: Machine, paper: PaperSize, margin: Double = 10,
+                optimizesTravel: Bool = true, joinTolerance: Double = 0.1) {
+        self.init(machine, width: max(0, paper.width - 2 * margin), margin: margin,
+                  optimizesTravel: optimizesTravel, joinTolerance: joinTolerance)
+        self.paper = paper
+    }
+
+    /// Millimeters per canvas unit for `canvas`: the width mapping, held down
+    /// to the sheet's height when a `paper` is named and the canvas is taller
+    /// than the width alone would allow.
+    func scale(for canvas: Rectangle) -> Double {
+        var scale = width / max(canvas.width, 1e-9)
+        if let paper {
+            let tallest = max(0, paper.height - 2 * margin)
+            scale = min(scale, tallest / max(canvas.height, 1e-9))
+        }
+        return scale
+    }
+
     /// Plan the machine's route through `paths` (canvas-space contours,
     /// treated as line work): clip to `canvas`, merge touching ends, order to
     /// shorten travel, and measure. The result previews and emits.
@@ -145,7 +178,7 @@ public struct GCode: Equatable, Sendable {
     /// Shared planner behind the public `toolpath` and the frame exporter
     /// (whose flattener has already clipped fills and strokes exactly).
     func plan(_ paths: [Contour], in canvas: Rectangle, alreadyClipped: Bool) -> Toolpath {
-        let scale = width / max(canvas.width, 1e-9)
+        let scale = scale(for: canvas)
         var work = paths.filter { $0.points.count >= 2 }
         if !alreadyClipped {
             let page = canvasShape(canvas)
@@ -424,7 +457,8 @@ extension Toolpath {
     /// Emit the program. The exporter passes the reproduction recipe and the
     /// skipped-image count; the public `program` passes neither.
     func text(recipe: String?, skippedImages: Int) -> String {
-        let scale = settings.width / max(canvas.width, 1e-9)
+        let scale = settings.scale(for: canvas)
+        let widthMM = canvas.width * scale
         let heightMM = canvas.height * scale
         func mapped(_ p: Vector2) -> Vector2 {
             Vector2(settings.margin + (p.x - canvas.x) * scale,
@@ -436,8 +470,9 @@ extension Toolpath {
             for line in recipe.split(separator: "\n") { lines.append("; \(line)") }
         }
         lines.append("; canvas \(num(canvas.width)) x \(num(canvas.height)) px maps to "
-                     + "\(num(settings.width)) x \(num(heightMM)) mm"
-                     + (settings.margin > 0 ? ", margin \(num(settings.margin)) mm" : ""))
+                     + "\(num(widthMM)) x \(num(heightMM)) mm"
+                     + (settings.margin > 0 ? ", margin \(num(settings.margin)) mm" : "")
+                     + (settings.paper.map { " on a \(num($0.width)) x \(num($0.height)) mm sheet" } ?? ""))
         lines.append("; \(machineDescription)")
         lines.append("; paths \(paths.count), draw \(num(drawnLength)) mm, travel \(num(travelLength)) mm")
         if skippedImages > 0 {
@@ -637,8 +672,8 @@ public extension OllinApp {
     /// centerlines, fills contribute their outlines (pass `hatching` to shade
     /// them as line work instead), raster images are skipped with a note.
     static func gcode(of sketch: Sketch, settings: GCode, frame: Int = 0,
-                      fps: Double = 60, hatching: Hatching? = nil) -> String {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps,
+                      fps: FrameRate = 60, hatching: Hatching? = nil) -> String {
+        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond,
                                           hatching: hatching)
         let canvas = Rectangle(x: 0, y: 0, width: Double(recording.width),
                                height: Double(recording.height))
@@ -652,7 +687,7 @@ public extension OllinApp {
     /// machine-facing counterpart of `exportSVG`; the basis for the
     /// `--export-gcode` flag.
     static func exportGCode(_ sketch: Sketch, to path: String, settings: GCode,
-                            frame: Int = 0, fps: Double = 60,
+                            frame: Int = 0, fps: FrameRate = 60,
                             hatching: Hatching? = nil) {
         let program = gcode(of: sketch, settings: settings, frame: frame,
                             fps: fps, hatching: hatching)

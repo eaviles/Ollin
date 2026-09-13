@@ -76,7 +76,7 @@ Cells lighter than the printable minimum are left out, so highlights stay clean 
 - **Newsprint.** Use a black fill on a warm white canvas, a `pitch` of 10 to 16, and the default 45-degree angle. Smooth tonal ramps suit the screen best, because every step of a gradient lands on its own dot size.
 - **The inverted poster.** Use `inverted: true` with a pale fill on a near-black canvas. It reads as light coming out of dark, the screen-print negative.
 - **Pop-art color.** Use `colored: true` with a large `pitch`. The picture keeps its own palette, in fat separate dots.
-- **The rosette.** Screen the same image several times at the conventional print angles of 45, 15, 75, and 0 degrees. Use one translucent ink per pass, so the overlap makes the traditional rosette instead of moire. For real spot-color work, split the image with [print separations](../Output/PrintSeparations.md) first, then screen each master.
+- **The rosette.** Screen the same image several times at the conventional print angles of 45, 15, 75, and 0 degrees. Use one translucent ink per pass, so the overlap makes the traditional rosette instead of moire. `ProcessSeparation.screenAngles` is that four-color set in radians, and `PrintSeparation.screenAngles(for:)` gives the angles a spot-ink separation would use for your own inks. For real spot-color work, split the image with [print separations](../Output/PrintSeparations.md) first, then screen each master.
 - **Other marks.** The data form turns the screen into a layout you draw yourself. Draw glyphs at `radius`, rings, squares rotated by `coverage`, or anything else that can scale with the tone.
 
 <a name="notes"></a>

@@ -3442,10 +3442,11 @@ public extension OllinApp {
     /// at, or a `WebWeightRefusal` when the page would weigh more than
     /// `maxBytes` (`maxWebPageBytes` unless said otherwise; `nil` lifts the
     /// limit); nothing partial is written.
-    static func web(of sketch: Sketch, frames: Int, fps: Double = 30, skipSeconds: Double = 0,
+    static func web(of sketch: Sketch, frames: Int, fps: FrameRate = 30, skipSeconds: Double = 0,
                     form: WebPageForm = .standalone, controls: Bool = true,
                     maxBytes: Int? = OllinApp.maxWebPageBytes,
                     remake: (() -> Sketch)? = nil) throws -> String {
+        let fps = fps.framesPerSecond
         let recording = try recordWebFrames(of: sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
                                             controls: controls, maxBytes: maxBytes, remake: remake)
         return try webPage(of: recording, form: form, panel: controls, maxBytes: maxBytes)
@@ -3460,10 +3461,11 @@ public extension OllinApp {
     /// Record `sketch` and write the page to `path`; the basis for the
     /// `--export-web` flag. A refusal is printed and the process exits nonzero,
     /// so a build step that runs the exporter sees it fail.
-    static func exportWeb(_ sketch: Sketch, to path: String, frames: Int, fps: Double = 30,
+    static func exportWeb(_ sketch: Sketch, to path: String, frames: Int, fps: FrameRate = 30,
                           skipSeconds: Double = 0, form: WebPageForm = .standalone,
                           controls: Bool = true, maxBytes: Int? = OllinApp.maxWebPageBytes,
                           remake: (() -> Sketch)? = nil) {
+        let fps = fps.framesPerSecond
         let recording: WebRecording
         let page: String
         do {

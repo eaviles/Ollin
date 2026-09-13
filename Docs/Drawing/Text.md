@@ -365,7 +365,7 @@ Wrap `string` into a [`Rectangle`](../Drawing/Geometry.md#rectangle). Words brea
 
 ```swift
 textSize(42); textAlign(.left, .top)
-let box = Rectangle(center: Vector2(width / 2, height / 2), width: 600, height: 700)
+let box = Rectangle(center: center, width: 600, height: 700)
 fill(.white)
 drawText(paragraph, in: box)
 ```

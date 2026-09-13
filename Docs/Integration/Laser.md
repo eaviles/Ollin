@@ -88,9 +88,8 @@ The optimizer measures everything in field units rather than pixels. Every dista
 `LaserOptimizer` turns a frame into a `LaserStream`. That stream is the list of positions, each one lit in a color or blanked.
 
 ```swift
-var optimizer = LaserOptimizer()
-optimizer.pointsPerSecond = 30_000   // what the projector is rated for
-optimizer.refreshRate = 30           // how often the frame should repeat
+var optimizer = LaserOptimizer(pointsPerSecond: 30_000,   // what the projector is rated for
+                               refreshRate: 30)           // how often the frame should repeat
 optimizer.spacing = 0.02             // field units between lit points
 optimizer.travelSpacing = 0.08       // and between blanked ones
 optimizer.cornerAngle = .pi / 6      // a turn sharper than this is held
@@ -109,6 +108,16 @@ Five things happen here, and each one is something a laser needs rather than som
 - **The budget.** `pointsPerSecond / refreshRate` is the number of points a frame may hold. `stream.pointBudget` reports that number, and `stream.isOverBudget` reports whether the frame went past it.
 
 **Nothing is dropped when a frame goes over budget.** The frame plays whole and repeats more slowly, which the eye reads as flicker. `stream.refreshRate` tells you the rate it will actually run at. Thinning the line work in silence would give you a wrong picture instead of a flickering one, so the choice is left to you. Draw less, or raise `spacing`.
+
+**What the projector is rated for.** A projector's speed is sold as a point rate measured on the ILDA test pattern at an eight-degree scan. The pattern is specified at two speeds, 12K and 30K. The higher figures on newer heads are the makers' own numbers, taken the same way. The rating is a number, so `pointsPerSecond` takes a number rather than a name. A wider throw is slower than the rating says, because the mirrors have further to swing between points. So the rate to start at is under the one on the box.
+
+| Rating | `pointsPerSecond` | Where you meet it |
+|---|---|---|
+| 12K | 12,000 | older and budget scanners; the slower of the two speeds the test pattern is specified at |
+| 20K | 20,000 | the default here, a rate a working projector plays without distortion |
+| 30K | 30,000 | the figure most consumer projectors are sold against |
+| 40K | 40,000 | better hobby heads and small professional ones |
+| 60K | 60,000 | professional scanners |
 
 The stream also reports what the frame cost: `points.count`, `litCount`, `blankedCount`, `drawnLength` and `travelLength` in field units, and `duration` in seconds.
 

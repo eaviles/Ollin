@@ -249,10 +249,13 @@ struct PrintColorTests {
     }
 
     @Test func processScreenAnglesAreTheConventionalRosette() {
-        let angles = ProcessSeparation.screenAngles(count: 4)
+        let angles = ProcessSeparation.defaultAngles(count: 4)
         let degrees = angles.map { ($0 * 180 / .pi).rounded() }
         #expect(degrees == [15, 75, 0, 45])
-        #expect(ProcessSeparation.screenAngles(count: 1) == [45 * .pi / 180])
+        #expect(ProcessSeparation.defaultAngles(count: 1) == [45 * .pi / 180])
+        // The public set is the four-plate default, in plate order.
+        #expect(ProcessSeparation.screenAngles == angles)
+        #expect(ProcessSeparation.screenAngles.map { ($0 * 180 / .pi).rounded() } == [15, 75, 0, 45])
     }
 
     @MainActor @Test func aPlateFileIsNamedAfterItsChannel() {

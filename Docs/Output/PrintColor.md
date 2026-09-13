@@ -97,6 +97,7 @@ The plates screen in the same way as the spot-ink masters, at the conventional f
 ```swift
 plates.halftoned(pitch: 8)      // cyan 15, magenta 75, yellow 0, black 45 degrees
 plates.dithered()               // blue-noise grain (or pass any Dither)
+ProcessSeparation.screenAngles  // those four angles in radians, in plate order
 ```
 
 Separation is per-pixel work on the CPU, so run it in `setup()` or offline and keep the result. A GPU-backed image has no CPU pixels, so it separates into nothing. Call `snapshot()` on it first. Separation also produces nothing when the system cannot read the profile. Everything is deterministic, so plates are safe to snapshot and export.

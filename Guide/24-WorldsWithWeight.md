@@ -303,7 +303,7 @@ world.connect(small, big, .gear(teeth: 20, and: 40))
 Turn either hinge now and the other turns, the opposite way, at the ratio you asked for. Its sibling ties a hinge to a slider, so turning becomes sliding:
 
 ```swift
-world.connect(big, rack, .rackAndPinion(travelPerTurn: 2 * .pi * pinionRadius))
+world.connect(big, rack, .rackAndPinion(travelPerTurn: .tau * pinionRadius))
 ```
 
 `travelPerTurn` is how far the bar runs for one full turn of the pinion, which for a pinion of radius `r` is its own circumference. Both links compose: the machine below is one motor, two links, and four bodies.

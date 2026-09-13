@@ -402,8 +402,8 @@ public extension OllinApp {
     /// outlines), each color in draw order as its own thread, and raster images
     /// are skipped. Draw the result's `stitches` to preview the sewing.
     static func stitching(of sketch: Sketch, settings: Embroidery, frame: Int = 0,
-                          fps: Double = 60) -> Stitching {
-        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: nil)
+                          fps: FrameRate = 60) -> Stitching {
+        let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps.framesPerSecond, hatching: nil)
         let canvas = Rectangle(x: 0, y: 0, width: Double(recording.width),
                                height: Double(recording.height))
         let blocks = stitchBlocks(recording.commands, canvas: canvas)
@@ -412,7 +412,7 @@ public extension OllinApp {
 
     /// Render one frame of `sketch` as the bytes of a `.dst` embroidery file.
     static func embroidery(of sketch: Sketch, settings: Embroidery, frame: Int = 0,
-                           fps: Double = 60, label: String = "OLLIN") -> Data {
+                           fps: FrameRate = 60, label: String = "OLLIN") -> Data {
         stitching(of: sketch, settings: settings, frame: frame, fps: fps).dst(label: label)
     }
 
@@ -420,7 +420,7 @@ public extension OllinApp {
     /// thread-facing counterpart of `exportGCode`; the basis for the
     /// `--export-embroidery` flag.
     static func exportEmbroidery(_ sketch: Sketch, to path: String, settings: Embroidery,
-                                 frame: Int = 0, fps: Double = 60) {
+                                 frame: Int = 0, fps: FrameRate = 60) {
         let label = String(((path as NSString).lastPathComponent as NSString)
             .deletingPathExtension.uppercased().prefix(16))
         let plan = stitching(of: sketch, settings: settings, frame: frame, fps: fps)

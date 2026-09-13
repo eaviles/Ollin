@@ -321,4 +321,44 @@ struct GCodeExportTests {
         #expect(abs(toolpath.drawnLength - 200 * 2.0.squareRoot()) < 1e-6)
         #expect(toolpath.travels.count == 2)                        // out and home again
     }
+
+    // MARK: A named sheet
+
+    @Test func aSheetSizesTheDrawingAndTheHeaderNamesIt() {
+        let square = Rectangle(x: 0, y: 0, width: 100, height: 100)
+        let frame = [Contour([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100), Vector2(0, 100)], closed: true)]
+        let a4 = GCode(.plotter(), paper: .a4)
+        #expect(a4.width == 190 && a4.margin == 10 && a4.paper == .a4)
+        let program = a4.program(frame, in: square)
+        #expect(program.contains("maps to 190 x 190 mm, margin 10 mm on a 210 x 297 mm sheet"))
+        // Every drawn move stays on the sheet, the margin in from its edges
+        // (the rapids run out from the home corner, which is on the margin).
+        let moves = Sim(program).planar.filter { !$0.rapid }.flatMap { [$0.from, $0.to] }
+        #expect(!moves.isEmpty)
+        for point in moves {
+            #expect(point.x >= 10 - 1e-9 && point.x <= 200 + 1e-9)
+            #expect(point.y >= 10 - 1e-9 && point.y <= 200 + 1e-9)
+        }
+        // Without a sheet the header says nothing about one.
+        #expect(!GCode(.plotter(), width: 190, margin: 10).program(frame, in: square).contains("sheet"))
+    }
+
+    @Test func aTallCanvasFitsTheSheetsHeightRatherThanRunningOffIt() {
+        let tall = Rectangle(x: 0, y: 0, width: 100, height: 300)
+        let spine = [Contour([Vector2(0, 0), Vector2(0, 300)], closed: false)]
+        // 277 mm is the tallest A4 allows with 10 mm margins; the width follows.
+        let onA4 = GCode(.plotter(), paper: .a4).toolpath(spine, in: tall)
+        #expect(abs(onA4.drawnLength - 277) < 1e-6)
+        #expect(onA4.program.contains("maps to 92.333 x 277 mm"))
+        // The same width alone would run 570 mm tall: the sheet is what held it.
+        let byWidth = GCode(.plotter(), width: 190, margin: 10).toolpath(spine, in: tall)
+        #expect(abs(byWidth.drawnLength - 570) < 1e-6)
+        // A landscape sheet turns the cap around: 190 mm tall.
+        let onWide = GCode(.plotter(), paper: .a4.landscape).toolpath(spine, in: tall)
+        #expect(abs(onWide.drawnLength - 190) < 1e-6)
+        // A canvas wider than the sheet's shape is held by the width, as before.
+        let flat = Rectangle(x: 0, y: 0, width: 300, height: 100)
+        let onFlat = GCode(.plotter(), paper: .a4).toolpath([Contour([Vector2(0, 0), Vector2(300, 0)], closed: false)], in: flat)
+        #expect(abs(onFlat.drawnLength - 190) < 1e-6)
+    }
 }

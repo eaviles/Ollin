@@ -629,7 +629,7 @@ import OllinWebGate
             let recording = try OllinApp.recordWebFrames(of: c.make(), frames: c.frames, fps: c.fps)
             let page = try OllinApp.webPage(of: recording, form: .inline)
             let played = try await Self.pagePixels(page, frame: c.probe)
-            let reference = try #require(OllinApp.image(of: c.make(), frame: c.probe, fps: c.fps))
+            let reference = try #require(OllinApp.image(of: c.make(), frame: c.probe, fps: FrameRate(c.fps)))
             let difference = try Self.meanDifference(played, reference)
             // Printed on every run, so a drift shows before it crosses the line.
             print("web page against the Mac: \(c.name) frame \(c.probe), mean difference \(String(format: "%.3f", difference))")

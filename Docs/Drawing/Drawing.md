@@ -52,7 +52,7 @@ Set the paint used by filled shapes, either a flat color or a gradient. `noFill(
 ```swift
 fill(.red)
 drawCircle(width / 2, height / 2, 80)   // solid red disc
-fill(.radial(center: Vector2(width / 2, height / 2), radius: 80, [.white, .red]))
+fill(.radial(center: center, radius: 80, [.white, .red]))
 drawCircle(width / 2, height / 2, 80)   // shaded disc
 noFill()                                // following shapes are outline-only
 ```
@@ -468,7 +468,7 @@ A rectangle, anchored by its top-left corner or by its center, or built from a `
 
 ```swift
 drawRect(40, 40, 120, 80)                                   // top-left corner
-drawRect(center: Vector2(width / 2, height / 2), width: 200, height: 120)
+drawRect(center: center, width: 200, height: 120)
 drawRect(40, 40, 120, 80, cornerRadius: 16)                 // rounded corners
 ```
 

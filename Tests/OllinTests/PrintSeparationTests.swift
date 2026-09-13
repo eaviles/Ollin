@@ -199,6 +199,31 @@ struct PrintSeparationTests {
         #expect(Set(angles.map { Int(($0 * 180 / .pi).rounded()) }).count == 3)
     }
 
+    /// The angles a sketch can ask for are the ones the default screens use,
+    /// so drawing your own screens at them matches the separation's.
+    @Test func thePublicAnglesAreTheOnesTheDefaultScreensUse() {
+        let inks: [Ink] = [.yellow, .black, .blue]
+        let sep = gradient(width: 24, height: 24).separated(into: inks)
+        let byDefault = sep.halftoned(pitch: 6)
+        let byName = sep.halftoned(pitch: 6, angles: PrintSeparation.screenAngles(for: inks))
+        #expect(byDefault.layers.count == 3)
+        for (a, b) in zip(byDefault.layers, byName.layers) {
+            #expect(a.master.premultipliedPixels() == b.master.premultipliedPixels())
+        }
+    }
+
+    /// An angle belongs to an ink, not to a slot: reorder the inks and the
+    /// angles reorder with them; past six inks the rest spread evenly.
+    @Test func screenAnglesFollowTheInksNotTheirOrder() {
+        let forward = PrintSeparation.screenAngles(for: [.yellow, .black, .blue])
+        let backward = PrintSeparation.screenAngles(for: [.blue, .black, .yellow])
+        #expect(forward == backward.reversed())
+        #expect(PrintSeparation.screenAngles(for: []).isEmpty)
+        let eight = PrintSeparation.screenAngles(for: Array(Ink.catalog.prefix(8)))
+        #expect(eight.count == 8)
+        #expect(Set(eight.map { Int(($0 * 180 / .pi).rounded()) }).count == 8)
+    }
+
     /// Screening twice gives the same dots: the passes carry no hidden state.
     @Test func screeningIsDeterministic() {
         let sep = gradient(width: 24, height: 24).separated(into: [.blue, .yellow])

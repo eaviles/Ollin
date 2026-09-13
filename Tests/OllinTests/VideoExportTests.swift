@@ -32,6 +32,23 @@ struct VideoExportTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal))
+    func aBroadcastRateLandsEveryFrameOnItsFraction() async throws {
+        let path = ollinTempPath("ollin-video-ntsc.mp4")
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        OllinApp.exportVideo(MovingDot(), to: path, frames: 30, fps: .ntsc)
+
+        let asset = AVURLAsset(url: URL(fileURLWithPath: path))
+        let track = try #require(try await asset.loadTracks(withMediaType: .video).first)
+        // One frame is 1001/30000 s on the track's own clock, not 1/29.97.
+        let step = try await track.load(.minFrameDuration)
+        #expect(abs(step.seconds - 1001.0 / 30000) < 1e-9)
+        let nominal = try await track.load(.nominalFrameRate)
+        #expect(abs(Double(nominal) - 30000.0 / 1001) < 0.01)
+        let duration = try await asset.load(.duration)
+        #expect(abs(duration.seconds - 30 * 1001.0 / 30000) < 0.01)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
     func hevcExportAtABitrateWritesQuickTime() async throws {
         let path = ollinTempPath("ollin-video-test.mov")
         defer { try? FileManager.default.removeItem(atPath: path) }

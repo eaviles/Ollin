@@ -41,7 +41,7 @@ Three numbers decide what the scenery does to it, and each is worth meeting by b
 
 ```swift
 walker.stepHeight = 0.4        // the tallest step it walks up: a kerb, a stair
-walker.maxSlope = 50 * .pi / 180  // the steepest hill it can climb
+walker.maxSlope = .degrees(50)    // the steepest hill it can climb
 walker.pushStrength = 100      // how hard it can shove a crate, in newtons
 ```
 

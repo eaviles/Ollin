@@ -20,7 +20,7 @@ extension OllinApp {
     @MainActor
     public static func separations(of sketch: Sketch, inks: [Ink]? = nil,
                                    paper: Color = .white,
-                                   frame: Int = 0, fps: Double = 60,
+                                   frame: Int = 0, fps: FrameRate = 60,
                                    quality: RenderQuality = .detail) -> PrintSeparation? {
         guard let inkSet = inks ?? sketch.printInks, !inkSet.isEmpty else { return nil }
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
@@ -46,7 +46,7 @@ extension OllinApp {
     @MainActor
     public static func exportSeparations(_ sketch: Sketch, to path: String,
                                          inks: [Ink]? = nil, paper: Color = .white,
-                                         frame: Int = 0, fps: Double = 60,
+                                         frame: Int = 0, fps: FrameRate = 60,
                                          drawsRegistrationMarks: Bool = true,
                                          quality: RenderQuality = .detail,
                                          screen: (PrintSeparation) -> PrintSeparation = { $0 }) {
@@ -70,7 +70,7 @@ extension OllinApp {
             fatalError("Ollin: the separation produced no layers")
         }
 
-        var metadata = ExportMetadata.capture(from: sketch, frame: frame, fps: fps)
+        var metadata = ExportMetadata.capture(from: sketch, frame: frame, fps: fps.framesPerSecond)
         metadata.inks = inkSet.map(\.name)
         let recipe = metadata.recipe
 
