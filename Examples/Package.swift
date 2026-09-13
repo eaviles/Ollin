@@ -620,6 +620,10 @@ let package = Package(
         // The bundled clip the sketch loads via Bundle.module (a launch path
         // overrides it). CC BY-SA, provenance in THIRD-PARTY-NOTICES.md.
         example("Audio/FilePlayer", [.audio], resources: [.copy("fandanguito.m4a")]),
+        // The same clip, followed for its pitch and its twelve classes.
+        example("Audio/Tuner", [.audio], resources: [.copy("fandanguito.m4a")]),
+        // Six strings and a needle; a pretend guitar until the microphone is allowed.
+        example("Audio/GuitarTuner", [.audio]),
         // Integration tier — OSC, and (later) MIDI/Syphon. Self-contained: the
         // sketch sends OSC to itself on loopback and visualizes what it receives,
         // so it needs no external app to run.

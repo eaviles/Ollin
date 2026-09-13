@@ -3459,6 +3459,27 @@
       "stillSmall": "examples/Audio/Generative/still-640.jpg?v=84388996",
       "width": 1080
     },
+    "Audio/GuitarTuner": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 1.819,
+      "sound": false,
+      "source": "3d471a6d09bdfff2",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 700237,
+        "loopSmall": 115401,
+        "still": 64272,
+        "stillSmall": 25607
+      },
+      "loop": "examples/Audio/GuitarTuner/loop.mp4?v=06aa2415",
+      "loopSmall": "examples/Audio/GuitarTuner/loop-640.mp4?v=3581ce0c",
+      "still": "examples/Audio/GuitarTuner/still.jpg?v=529aeffe",
+      "stillSmall": "examples/Audio/GuitarTuner/still-640.jpg?v=80113198"
+    },
     "Audio/Levels": {
       "bytes": {
         "loop": 852751,
@@ -3773,6 +3794,27 @@
       "still": "examples/Audio/Synth/still.jpg?v=748d0da4",
       "stillSmall": "examples/Audio/Synth/still-640.jpg?v=e056fd72",
       "width": 1080
+    },
+    "Audio/Tuner": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 8.149,
+      "sound": false,
+      "source": "2be1d61640a1a426",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 1421173,
+        "loopSmall": 336586,
+        "still": 127749,
+        "stillSmall": 50065
+      },
+      "loop": "examples/Audio/Tuner/loop.mp4?v=f3648c16",
+      "loopSmall": "examples/Audio/Tuner/loop-640.mp4?v=208d8ad3",
+      "still": "examples/Audio/Tuner/still.jpg?v=dfd248e8",
+      "stillSmall": "examples/Audio/Tuner/still-640.jpg?v=aed2f8d2"
     },
     "Audio/Tunings": {
       "bytes": {

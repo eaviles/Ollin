@@ -6,7 +6,7 @@
 
 This library lets a sketch react to sound, and it can also produce a small sound of its own. Audio lives in a separate library so the drawing core stays free of `AVFoundation`. Add `import OllinAudio` beside `import Ollin` to use it.
 
-There are two sides, **analysis** and **generation**. Analysis turns a stream of audio into a few values you read in `draw()`. The stream can be the microphone, a file, or a generated tone. The values are an overall `amplitude`, a frequency `spectrum`, and the band queries `bass`/`mid`/`treble`. Generation is a small oscillator, `Tone`, for audible feedback and self-contained demos. Both sides are a convenience layer over one typed core, the [`AudioAnalyzer`](#audioanalyzer).
+There are two sides, **analysis** and **generation**. Analysis turns a stream of audio into a few values you read in `draw()`. The stream can be the microphone, a file, or a generated tone. The values are an overall `amplitude`, a frequency `spectrum`, the band queries `bass`/`mid`/`treble`, beats, and the note being sung or played (`pitch`, `note`, `chroma`). Generation is a small oscillator, `Tone`, for audible feedback and self-contained demos. Both sides are a convenience layer over one typed core, the [`AudioAnalyzer`](#audioanalyzer).
 
 The usual pattern is to create a source in `setup()`, keep it in a property, and read its values in `draw()`.
 
@@ -36,6 +36,7 @@ final class Pulse: Sketch {
 - [Soundtrack](#soundtrack) - analyze the sound of a tappable source (a playing video)
 - [Reading audio](#reading-audio) - `amplitude`, `spectrum`, `waveform`, and band queries
 - [bands & beats](#bands-and-beats) - the ready-to-draw spectrum, and onset detection
+- [Pitch and pitch classes](#pitch) - the note heard (`pitch`, `note`) and the twelve classes (`chroma`)
 - [AudioAnalyzer](#audioanalyzer) - the typed DSP core every source feeds
 
 <a name="audioinput"></a>
@@ -209,6 +210,42 @@ The whole beat surface runs on the *sample clock*, so positions are counted in s
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/BeatTimeline-dark.jpg">
   <img src="../../Guide/Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
+</picture>
+
+<a name="pitch"></a>
+
+### Pitch and pitch classes
+
+```swift
+var pitch: DetectedPitch?      // the note heard, or nil when there is none
+var note: Pitch?               // its nearest note, the short form of pitch?.note
+var chroma: [Float]            // twelve pitch classes, C first, each 0...1, octaves folded
+```
+
+**`pitch`** follows the note being sung or played. It is nil when the window is silent or nothing in it repeats: noise, a room, a chord with no common period. That is why it reads with `if let`. When a note is heard, the `DetectedPitch` carries five values. `frequency` is the fundamental in Hz. `confidence` runs from 0 to 1: a pure tone reads 1, a sung or bowed note above 0.9, and noise never reaches 0.5, which is where reporting stops. `note` is the nearest equal-tempered note, with A4 at 440 Hz. `cents` is the offset from that note, `-50...50`. `midi` is `note.midi + cents / 100`. Map that onto a position, since equal steps of it are equal steps of pitch. The detector is YIN, the 2002 method of de Cheveigné and Kawahara. It finds the shortest delay after which the waveform repeats. A note with harmonics therefore reads at its fundamental even when the fundamental is the quiet part, or missing. It follows one note at a time, from about 40 Hz to 5 kHz. The window is about 50 ms, so a new note is heard that much after it starts. The reading is not smoothed: a held note holds steady on its own, and a sketch that wants a slow needle eases toward `midi` itself.
+
+```swift
+if let heard = mic.pitch {
+    drawText("\(heard.note)", width / 2, 80 * scale)         // "A4"
+    let y = map(heard.midi, 48, 84, height, 0)               // pitch as a height
+    drawCircle(width / 2, y, 30 * scale)
+}
+```
+
+**`chroma`** is the twelve pitch classes of the window, C first and B last, each `0...1` with the strongest at 1. Every octave is folded onto the same twelve. A chord shows its notes whatever octave they sound in, which is what `pitch` cannot do. A silent window reads all zeros. It follows the pitch class profile Fujishima described in 1999, read off the spectrum's peaks the way Gómez's 2006 harmonic profile does. A note therefore lands in one class rather than leaking into its neighbors. It is not smoothed either, so ease toward it in the sketch for a steady bar.
+
+```swift
+for (i, level) in source.chroma.enumerated() {          // C first
+    let h = Double(level) * 200 * scale
+    drawRect(Double(i) * 40 * scale, height - h, 36 * scale, h)
+}
+```
+
+The pitch side costs about a million multiplications a window. The analyzer therefore works it out only when a sketch reads one of the three, once per window. That happens on the thread that reads, never on the audio thread. Reading all three in one frame costs one pass. The **Tuner** example (`Examples/Audio/Tuner`) is all three on the bundled violin, with `--mic` to sing at it, and **GuitarTuner** (`Examples/Audio/GuitarTuner`) reads `midi` against the six open strings, the nearest lit and the needle on that string's own pitch.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/FollowingANote-dark.jpg">
+  <img src="../../Guide/Images/28-SoundAndControl/FollowingANote.jpg" alt="Three panels from four seconds of a violin recording: the pitch as dots on a strip of semitones, the twelve pitch classes as rows over the same seconds with the melody drawn through the note names, and a tuner face reading the note and cents at one marked instant" width="680">
 </picture>
 
 <a name="audioanalyzer"></a>

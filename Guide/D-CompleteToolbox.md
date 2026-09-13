@@ -326,6 +326,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 |---|---|---|---|
 | Audio analysis | Amplitude, spectrum, waveform, log-spaced bands ready to draw | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Beat detection | Onsets as events: `beat`, `beatCount`, `timeSinceBeat` | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
+| Pitch tracking | The note being sung or played as `pitch` (its hertz, confidence, nearest note, and cents) and `note`, and the twelve pitch classes as `chroma` with every octave folded | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md#pitch) |
 | Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 28](28-SoundAndControl.md), [Ch 30](30-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 28](28-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out, and every held note with its own bend, pressure, and slide from a polyphonic-expression surface (MPE) | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |

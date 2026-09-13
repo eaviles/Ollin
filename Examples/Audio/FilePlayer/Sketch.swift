@@ -29,9 +29,12 @@ final class FilePlayer: Sketch {
 
     /// A readable file path passed on launch overrides the bundled clip.
     private func makePlayer() -> AudioPlayer? {
-        if let path = CommandLine.arguments.dropFirst().first(where: {
-            !$0.hasPrefix("-") && FileManager.default.fileExists(atPath: $0)
-        }) {
+        let args = Array(CommandLine.arguments.dropFirst())
+        if let path = args.indices.first(where: { i in
+            // A bare path that exists, and not the value of a flag such as --export.
+            !args[i].hasPrefix("-") && (i == 0 || !args[i - 1].hasPrefix("-"))
+                && FileManager.default.fileExists(atPath: args[i])
+        }).map({ args[$0] }) {
             return try? AudioPlayer(path: path)
         }
         return try? AudioPlayer(resource: "fandanguito", withExtension: "m4a", in: .module)

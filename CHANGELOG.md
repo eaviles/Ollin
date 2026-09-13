@@ -6,6 +6,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Added
 
+- **The note being sung.** Every audio source now reads the note it hears: `pitch` is the fundamental in hertz with the detector's confidence, the nearest note, the cents off it, and the pitch as a fractional MIDI number, nil when nothing periodic is heard; `note` is the short form; and `chroma` is the twelve pitch classes with every octave folded, the read for a chord. The tracker is YIN and the classes a peak-based pitch class profile, both worked out only when a sketch asks. The `Audio/Tuner` example follows the bundled violin, or the microphone with `--mic`, and `Audio/GuitarTuner` is a guitar tuner, six strings and a needle, with a pretend guitar tuning itself until the microphone hears one. [Pitch and pitch classes](Docs/Helpers/Audio.md#pitch)
 - **Chapters 9 and 31 of the Guide teach six more of their tools.** Six figures join *Pictures* and *Sharing and performing*: what a take writes down beside the same frames it plays back, the timeline panel with its diamonds, lanes, handles, and footer, a cue called back over a fade with what eases and what flips, one sketch rendered three times under `--param` with each file's recipe, a file dropped on the window and what the sketch is told, and one bundled picture as loaded beside its working copy and its widest 3:2 piece.
 
 ## [0.6.0] - 2026-09-13

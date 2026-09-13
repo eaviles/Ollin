@@ -256,7 +256,7 @@ redistributed inside this repository.
 ## El Fandanguito (example audio)
 
 - **Used for:** the `FilePlayer` and `SoundReactive` example sketches only: a sample audio clip, to demonstrate `AudioPlayer` reacting to a file and `Soundtrack` analyzing a video's audio. Not part of the Ollin framework; Ollin (and `OllinAudio`) bundle no audio themselves.
-- **Location in this repo:** [`Examples/Audio/FilePlayer/fandanguito.m4a`](Examples/Audio/FilePlayer/fandanguito.m4a); it is also the audio track of [`Examples/Video/SoundReactive/voladores-fandanguito.mp4`](Examples/Video/SoundReactive/voladores-fandanguito.mp4) (see the *Voladores de Papantla* entry)
+- **Location in this repo:** [`Examples/Audio/FilePlayer/fandanguito.m4a`](Examples/Audio/FilePlayer/fandanguito.m4a), with a second copy beside the `Tuner` example at [`Examples/Audio/Tuner/fandanguito.m4a`](Examples/Audio/Tuner/fandanguito.m4a); it is also the audio track of [`Examples/Video/SoundReactive/voladores-fandanguito.mp4`](Examples/Video/SoundReactive/voladores-fandanguito.mp4) (see the *Voladores de Papantla* entry)
 - **Work:** *El Fandanguito*, a traditional Mexican *son huasteco* (the composition is traditional / public domain). Performed on violin by Cynthia Molina; recorded and edited by Wikimedia Commons users Emropa and ClawisJM (students of Tec de Monterrey).
 - **Upstream:** https://commons.wikimedia.org/wiki/File:Viol%C3%ADn_SonHuasteco_ELFandanguito.ogg
 - **License:** CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0

@@ -91,4 +91,12 @@ extension AudioSource {
         get { analyzer.beatSensitivity }
         set { analyzer.beatSensitivity = newValue }
     }
+
+    /// The note being sung or played (its Hz, confidence, nearest note, and
+    /// cents), or nil when nothing periodic is heard. See `AudioAnalyzer.pitch`.
+    public var pitch: DetectedPitch? { analyzer.pitch }
+    /// The nearest note to what is heard, or nil: the short form of `pitch?.note`.
+    public var note: Pitch? { analyzer.note }
+    /// The twelve pitch classes, C first, each `0...1`, octaves folded together.
+    public var chroma: [Float] { analyzer.chroma }
 }

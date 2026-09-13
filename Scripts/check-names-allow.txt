@@ -90,6 +90,9 @@ PAGER
 TERM
 STOP                            # the signal
 
+# Flags an example sketch reads for itself, spelled by no host or script.
+--mic                           # the Tuner example's microphone switch
+
 # Techniques and other libraries' function names, cited as the published
 # technique rather than as Ollin's code.
 snoise                          # simplex noise as the literature spells it

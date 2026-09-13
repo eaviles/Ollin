@@ -67,7 +67,10 @@ final class AudioAnalyzer: Sendable
   var beat: Float { get }
   var beatCount: Int { get }
   var beatSensitivity: Float { get set }
+  var chroma: [Float] { get }
   var mid: Float { get }
+  var note: Pitch? { get }
+  var pitch: DetectedPitch? { get }
   var smoothing: Float { get set }
   var spectrum: [Float] { get }
   var timeSinceBeat: Double { get }
@@ -224,7 +227,10 @@ protocol AudioSource where Self : AnyObject
   var beat: Float { get }
   var beatCount: Int { get }
   var beatSensitivity: Float { get set }
+  var chroma: [Float] { get }
   var mid: Float { get }
+  var note: Pitch? { get }
+  var pitch: DetectedPitch? { get }
   var smoothing: Float { get set }
   var spectrum: [Float] { get }
   var timeSinceBeat: Double { get }
@@ -352,6 +358,14 @@ struct Delay: Decodable, Encodable, Equatable, Hashable, Sendable
   var feedback: Double { get set }
   var mix: Double { get set }
   var time: Double { get set }
+struct DetectedPitch: Equatable, Hashable, Sendable
+  init(frequency: Double, confidence: Float)
+  var cents: Double { get set }
+  var confidence: Float { get set }
+  var frequency: Double { get set }
+  var midi: Double { get }
+  var note: Pitch { get set }
+  var pitch: Pitch { get }
 struct Distortion: Decodable, Encodable, Equatable, Hashable, Sendable
   enum Character: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
     case bitCrush

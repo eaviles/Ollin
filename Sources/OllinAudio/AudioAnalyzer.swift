@@ -4,8 +4,9 @@ import os
 
 /// The DSP behind every audio source: it turns a stream of audio samples into a
 /// few values a sketch reads in `draw()`: an overall `amplitude`, a frequency
-/// `spectrum`, the raw `waveform`, and band queries (`bass`/`mid`/`treble`,
-/// `magnitude(in:)`). It is the typed core; `AudioInput`, `AudioPlayer`, and
+/// `spectrum`, the raw `waveform`, band queries (`bass`/`mid`/`treble`,
+/// `magnitude(in:)`), beats, and the note being sung or played (`pitch`,
+/// `note`, `chroma`). It is the typed core; `AudioInput`, `AudioPlayer`, and
 /// `Tone` are thin sources that feed it.
 ///
 /// Samples arrive on the audio render thread (the tap callback), while a sketch
@@ -13,7 +14,10 @@ import os
 /// for the locking here: `process(...)` runs serially on the audio thread and
 /// owns the FFT scratch buffers exclusively; the results it publishes cross to
 /// the reader through `stateLock`. That serial-producer / locked-handoff
-/// invariant is what makes the `@unchecked Sendable` sound.
+/// invariant is what makes the `@unchecked Sendable` sound. The pitch side is
+/// the one exception to "worked out on the audio thread": it costs a million
+/// multiply-adds a window, so the audio thread only publishes the window and
+/// the reader works it out on first read, once per window, under `pitchLock`.
 ///
 /// Every clock in here is the *sample* clock: positions counted in samples
 /// since the analyzer started, divided by `sampleRate` when seconds are wanted.
@@ -44,15 +48,21 @@ public final class AudioAnalyzer: @unchecked Sendable {
     private var imagp: [Float]
     private var magnitudes: [Float]
 
-    // The analysis window is a *rolling* ring of the last `fftSize` samples:
-    // each incoming chunk slides it forward and the FFT re-runs over the full
-    // window. That keeps the frequency resolution of the whole window even when
-    // chunks are short (at 60 fps a chunk is ~735 samples), and it makes
-    // `waveform` exactly what it claims to be: the most recent window of raw
-    // samples. `fftSize` is a power of two, so wraparound is a mask.
+    // The analysis window is a *rolling* ring of the most recent samples: each
+    // incoming chunk slides it forward and the FFT re-runs over the last
+    // `fftSize` of them. That keeps the frequency resolution of the whole
+    // window even when chunks are short (at 60 fps a chunk is ~735 samples),
+    // and it makes `waveform` exactly what it claims to be: the most recent
+    // window of raw samples. The ring is a power of two at least as long as
+    // the FFT window and the pitch window (the latter is set by the lowest
+    // pitch reported, not by `fftSize`), so wraparound is a mask and each
+    // window is unrolled from its own distance behind the head.
+    private let ringSize: Int
     private var sampleRing: [Float]
-    private var sampleRingHead: Int = 0     // next write position == oldest sample
+    private var sampleRingHead: Int = 0     // next write position
     private var waveScratch: [Float]
+    private let pitchWindowSize: Int
+    private var pitchScratch: [Float]
 
     // Onset/beat-detection scratch (audio thread, serial). The detection
     // function is spectral flux (the per-window sum of positive bin-to-bin
@@ -101,8 +111,24 @@ public final class AudioAnalyzer: @unchecked Sendable {
         var bandEnvelope: [Float] = []
         var bandPeak: Float = 1e-4
         var bandCount: Int = 0
+        // The most recent pitch window, oldest first, for the reader to work
+        // out `pitch` and `chroma` from; `samplesSeen` stamps it.
+        var pitchWindow: [Float]
     }
     private let stateLock: OSAllocatedUnfairLock<State>
+
+    // The pitch side, owned by whoever reads it: the detector and the profile
+    // with their scratch, and the reading they last produced, stamped with the
+    // sample position of the window it came from so a frame that reads
+    // `pitch`, `note`, and `chroma` works the window out once.
+    private struct PitchSide: Sendable {
+        var detector: PitchDetector
+        var profile: ChromaProfile
+        var stamp: Int = -1
+        var pitch: DetectedPitch? = nil
+        var chroma: [Float] = [Float](repeating: 0, count: 12)
+    }
+    private let pitchLock: OSAllocatedUnfairLock<PitchSide>
 
     /// Creates an analyzer.
     ///
@@ -128,8 +154,20 @@ public final class AudioAnalyzer: @unchecked Sendable {
         self.realp = [Float](repeating: 0, count: size / 2)
         self.imagp = [Float](repeating: 0, count: size / 2)
         self.magnitudes = [Float](repeating: 0, count: size / 2)
-        self.sampleRing = [Float](repeating: 0, count: size)
+        let detector = PitchDetector(sampleRate: sampleRate)
+        let pitchSize = detector.windowSize
+        let ring = AudioAnalyzer.roundedUpToPowerOfTwo(max(size, pitchSize))
+        self.ringSize = ring
+        self.sampleRing = [Float](repeating: 0, count: ring)
         self.waveScratch = [Float](repeating: 0, count: size)
+        self.pitchWindowSize = pitchSize
+        self.pitchScratch = [Float](repeating: 0, count: pitchSize)
+        self.pitchLock = OSAllocatedUnfairLock(
+            initialState: PitchSide(
+                detector: detector,
+                profile: ChromaProfile(sampleRate: sampleRate, windowSize: pitchSize)
+            )
+        )
         self.logMagnitudes = [Float](repeating: 0, count: size / 2)
         self.prevLogMagnitudes = [Float](repeating: 0, count: size / 2)
         self.fluxRing = [Float](repeating: 0, count: fluxRingCapacity)
@@ -140,7 +178,8 @@ public final class AudioAnalyzer: @unchecked Sendable {
             initialState: State(
                 spectrum: [Float](repeating: 0, count: size / 2),
                 waveform: [Float](repeating: 0, count: size),
-                smoothing: max(0, min(1, smoothing))
+                smoothing: max(0, min(1, smoothing)),
+                pitchWindow: [Float](repeating: 0, count: pitchSize)
             )
         )
     }
@@ -272,6 +311,48 @@ public final class AudioAnalyzer: @unchecked Sendable {
         set { let v = max(0.1, newValue); stateLock.withLock { $0.beatSensitivity = v } }
     }
 
+    // MARK: Pitch (worked out on read, once per window)
+
+    /// The note being sung or played: its fundamental in Hz, how sure the
+    /// detector is, and the nearest note with the offset from it. Nil when the
+    /// window is silent or nothing in it repeats (noise, a room, a chord with
+    /// no common period), which is what makes `if let` the way to read it.
+    ///
+    /// It follows one note at a time, from about 40 Hz to 5 kHz, and it is
+    /// not smoothed: a note holds steady on its own, and a sketch that wants a
+    /// slow needle eases toward `midi` itself. The window is about 50 ms, so a
+    /// new note is heard that much after it starts.
+    public var pitch: DetectedPitch? { pitchSide().pitch }
+
+    /// The nearest note to what is being sung or played, or nil when no note
+    /// is heard. The short form of `pitch?.note`.
+    public var note: Pitch? { pitch?.note }
+
+    /// The twelve pitch classes of the window, C first (`C, C#, D, … B`), each
+    /// `0...1` with the strongest at 1, every octave folded onto the same
+    /// twelve. A chord shows its notes whatever octave they sound in, which is
+    /// what `pitch` cannot do; a silent window reads all zeros. Not smoothed.
+    public var chroma: [Float] { pitchSide().chroma }
+
+    /// The pitch side's reading for the most recent window, worked out on the
+    /// first read after the window moved and served from the cache until it
+    /// moves again. The window is copied out under the state lock and the
+    /// work happens under the pitch lock, so the audio thread never waits on
+    /// a million multiply-adds.
+    private func pitchSide() -> (pitch: DetectedPitch?, chroma: [Float]) {
+        let (window, stamp) = stateLock.withLock { ($0.pitchWindow, $0.samplesSeen) }
+        return pitchLock.withLock { side in
+            if side.stamp != stamp {
+                window.withUnsafeBufferPointer { w in
+                    side.pitch = side.detector.detect(w.baseAddress!)
+                    side.chroma = side.profile.profile(w.baseAddress!)
+                }
+                side.stamp = stamp
+            }
+            return (side.pitch, side.chroma)
+        }
+    }
+
     // MARK: Processing (audio thread, serial)
 
     /// Analyze a buffer of mono float samples. Drive this from one source only
@@ -280,22 +361,25 @@ public final class AudioAnalyzer: @unchecked Sendable {
     /// note on why that single writer is the safe contract.
     public func process(samples: UnsafePointer<Float>, count: Int) {
         guard count > 0 else { return }
-        // A chunk longer than the window contributes its most recent windowful;
+        // A chunk longer than the ring contributes its most recent ringful;
         // the sample clock still advances by everything that arrived.
-        let take = min(count, fftSize)
+        let take = min(count, ringSize)
         analyze(samples: samples + (count - take), take: take, advance: count)
     }
 
     private func analyze(samples: UnsafePointer<Float>, take: Int, advance: Int) {
         let n = fftSize
-        let mask = n - 1
+        let mask = ringSize - 1
 
-        // RMS over what arrived, before any windowing.
+        // RMS over what arrived (the most recent FFT windowful of it), before
+        // any windowing.
+        let rmsTake = min(take, n)
         var rms: Float = 0
-        vDSP_rmsqv(samples, 1, &rms, vDSP_Length(take))
+        vDSP_rmsqv(samples + (take - rmsTake), 1, &rms, vDSP_Length(rmsTake))
 
         // Slide the rolling window: write the new samples into the ring, then
-        // unroll it oldest-first (head points at the oldest sample).
+        // unroll the FFT window and the pitch window, each oldest-first from
+        // its own distance behind the head.
         var idx = sampleRingHead
         sampleRing.withUnsafeMutableBufferPointer { ring in
             for i in 0..<take {
@@ -304,13 +388,8 @@ public final class AudioAnalyzer: @unchecked Sendable {
             }
         }
         sampleRingHead = idx
-        let head = sampleRingHead
-        waveScratch.withUnsafeMutableBufferPointer { dst in
-            sampleRing.withUnsafeBufferPointer { src in
-                dst.baseAddress!.update(from: src.baseAddress! + head, count: n - head)
-                (dst.baseAddress! + (n - head)).update(from: src.baseAddress!, count: head)
-            }
-        }
+        unroll(n, into: &waveScratch)
+        unroll(pitchWindowSize, into: &pitchScratch)
 
         // Hann window over the full rolling window, so the FFT doesn't smear
         // energy across bins.
@@ -374,6 +453,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
         let rmsValue = rms
         let mags = magnitudes
         let waveSnapshot = waveScratch
+        let pitchSnapshot = pitchScratch
         let fluxValue = flux
         let samplesSeenValue = samplesSeen
 
@@ -387,6 +467,7 @@ public final class AudioAnalyzer: @unchecked Sendable {
                 state.spectrum[i] = a * state.spectrum[i] + (1 - a) * mags[i]
             }
             state.waveform = waveSnapshot
+            state.pitchWindow = pitchSnapshot
             state.samplesSeen = samplesSeenValue
 
             if canBeat && loudEnough && isLocalMax
@@ -412,9 +493,9 @@ public final class AudioAnalyzer: @unchecked Sendable {
             process(samples: channels[0], count: frames)
             return
         }
-        // Down-mix the most recent windowful to mono; the sample clock still
+        // Down-mix the most recent ringful to mono; the sample clock still
         // advances by the full buffer.
-        let take = min(frames, fftSize)
+        let take = min(frames, ringSize)
         let skip = frames - take
         var mono = [Float](repeating: 0, count: take)
         let inv = Float(1) / Float(channelCount)
@@ -423,6 +504,21 @@ public final class AudioAnalyzer: @unchecked Sendable {
             for i in 0..<take { mono[i] += src[i] * inv }
         }
         mono.withUnsafeBufferPointer { analyze(samples: $0.baseAddress!, take: take, advance: frames) }
+    }
+
+    /// Copies the most recent `count` samples out of the ring, oldest first.
+    private func unroll(_ count: Int, into dst: inout [Float]) {
+        let mask = ringSize - 1
+        let start = (sampleRingHead - count) & mask
+        let first = min(count, ringSize - start)
+        dst.withUnsafeMutableBufferPointer { d in
+            sampleRing.withUnsafeBufferPointer { s in
+                d.baseAddress!.update(from: s.baseAddress! + start, count: first)
+                if first < count {
+                    (d.baseAddress! + first).update(from: s.baseAddress!, count: count - first)
+                }
+            }
+        }
     }
 
     private static func roundedUpToPowerOfTwo(_ n: Int) -> Int {

@@ -84,6 +84,40 @@ source.timeSinceBeat   // seconds of audio since the last one
 
 `beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished sketch spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is. Onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want. When it isn't, `beatSensitivity` is the parameter, and a higher value asks for stronger arrivals before firing. The detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers. The same recording always beats in the same places.
 
+## The note being sung
+
+Loudness and beats are about *when*. Pitch is about *what*. A voice holding a note, a bowed string, a whistle: each shakes the air at one rate, and the analyzer can name it.
+
+```swift
+if let heard = mic.pitch {
+    drawText("\(heard.note)", width / 2, 80 * scale)             // "A4"
+    let y = map(heard.midi, 48, 84, height, 0)                   // pitch as a height
+    drawCircle(width / 2, y, (20 + Double(heard.confidence) * 40) * scale)
+}
+```
+
+`pitch` is nil when nothing is being sung: silence, a room, a noise with no repeating shape in it. That is why it reads with `if let`. When there is a note, it carries four things. `frequency` is the rate in hertz. `note` is the nearest name on the piano. `cents` is how far above or below that name the voice sits, where a hundred cents is one semitone. `confidence` is how sure the detector is. A pure tone reads 1, a sung or bowed note above 0.9, and noise never passes 0.5, which is where reporting stops. `midi` puts the note and the cents back together as one number. Map that onto a position rather than `frequency`. The ear hears equal steps of it as equal steps, and an octave is always twelve of them. A doubling in hertz is not a fixed distance on any ruler. `note` alone is the short read: `mic.note` is a `Pitch`, and a `Pitch` prints as its name.
+
+The detector does not look for the loudest frequency. It looks for the shortest delay after which the waveform repeats, a method called YIN. A note with harmonics repeats at its fundamental's period even when the fundamental is the quiet part, or missing altogether. That is also how the ear decides. So a bowed string reads at the string's note rather than at its brightest overtone. The window is about 50 ms, so a new note is heard that much after it starts. The reading is not smoothed, since a held note holds steady on its own. A sketch that wants a slow needle eases toward `midi` itself.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/FollowingANote-dark.jpg">
+  <img src="Images/28-SoundAndControl/FollowingANote.jpg" alt="Three panels from four seconds of a violin recording: the pitch as dots on a strip of semitones, the twelve pitch classes as rows over the same seconds with the melody drawn through the note names, and a tuner face reading the note and cents at one marked instant" width="680">
+</picture>
+
+The top strip is four seconds of the bundled violin, one dot per window. The dots sit on the semitone lines because the player is in tune, and each is as solid as the detector was sure. The few dots an octave or more below the melody are double stops. Two strings at once repeat only at the period both share, and the reading lands there. One note at a time is the promise. A chord has no single pitch.
+
+For a chord, read `chroma`. It is twelve values, C first, one per note name, each `0...1` with the loudest at 1, and every octave folded onto the same twelve. The middle strip is that read over the same four seconds, and the melody draws itself through the note names. A C major chord lights C, E, and G whatever octaves they sound in. It is the read for harmony: which notes are in the air, with the octave thrown away.
+
+```swift
+for (i, level) in source.chroma.enumerated() {                // C first
+    let h = Double(level) * 200 * scale
+    drawRect(Double(i) * 40 * scale, height - h, 36 * scale, h)
+}
+```
+
+The bottom of the figure is a tuner: the note and the cents at one instant. The `Audio/Tuner` example is that face, live, with the trace and the twelve classes under it. It follows the violin by default. Run it with `--mic` and sing at it. The `Audio/GuitarTuner` example is the six-string kind. It compares `midi` to each open string and lights the nearest. The cents are read against that string's own pitch, not the nearest piano key, so a string a semitone flat still points at its peg.
+
 ## Four places sound comes from
 
 Everything above reads the same off any source, so choosing a source is one line:
@@ -568,13 +602,13 @@ Then make it yours:
 
 The idea that any sound splits into pure vibrations is Joseph Fourier's (1822). The fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation.
 
-Detecting arrivals by spectral flux is a standard technique from music information retrieval. Bello and colleagues survey it well in their onset-detection tutorial (2005). The real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012).
+Detecting arrivals by spectral flux is a standard technique from music information retrieval. Bello and colleagues survey it well in their onset-detection tutorial (2005). The real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). The pitch tracker is YIN, the 2002 method of Alain de Cheveigné and Hideki Kawahara. It finds the delay after which a waveform repeats. It takes the first delay that repeats well enough rather than the best one, which is what keeps it from reporting an octave low. The twelve classes follow the pitch class profile Takuya Fujishima described in 1999. They are read off spectral peaks, the way Emilia Gómez's 2006 harmonic profile reads them.
 
 MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other. It was a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. The shared network beat is Ableton Link (2016), now the common tongue of tempo across music apps. Ollin speaks its session protocol through an independent implementation, written from published protocol documentation. The print-a-number serial loop is physical computing's lingua franca. Tom Igoe and Dan O'Sullivan's *Physical Computing* taught it. Wiring and then Arduino put a serial-printing board in every art student's hands. And the audio-reactive visual itself has a long lineage. It runs from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Audio](../Docs/Helpers/Audio.md): every source and read, `bands`, beats, and feeding the `AudioAnalyzer` yourself.
+- [Audio](../Docs/Helpers/Audio.md): every source and read, `bands`, beats, the note heard as `pitch` and `note` and the twelve classes as `chroma`, and feeding the `AudioAnalyzer` yourself.
 - [Listening](../Docs/Helpers/Listening.md): the caption and transcript reads, phrases as triggers, languages and their models, the sound vocabulary and its threshold, bringing your own classifier, and the deterministic one-shot forms.
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth` and its voices, which [Chapter 29](29-MakingSound.md) is about, since a sketch that listens usually ends up playing too.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
@@ -585,7 +619,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 - [Bluetooth](../Docs/Integration/Bluetooth.md): the room in range, the three ways to name a device, the formats that turn bytes into values, and the permission the first run has to get past.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.
 - Appendix B draws this chapter's math, one picture per idea: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples: [`Examples/Audio/Listening`](../Examples/Audio/Listening/Sketch.swift), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift), and the MIDI, OSC, serial, and controller examples in [`Examples/Integration/`](../Examples/Integration/).
+- Worked examples: [`Examples/Audio/Listening`](../Examples/Audio/Listening/Sketch.swift), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift), [`Examples/Audio/Tuner`](../Examples/Audio/Tuner/Sketch.swift), and the MIDI, OSC, serial, and controller examples in [`Examples/Integration/`](../Examples/Integration/).
 
 ---
 
