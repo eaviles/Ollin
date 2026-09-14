@@ -3,9 +3,13 @@
 // Guide diagram (Chapter 9): two ways to redraw a picture as marks on a grid.
 // Left, a glyph mosaic, where each cell picks the character whose measured
 // ink matches the cell's darkness. Right, a halftone screen, where each cell
-// keeps one dot and grows it until it covers the same fraction.
+// keeps one dot and grows it until it covers the same fraction. The picture
+// is one of the bundled photographs, an older face in a scarf, chosen for the
+// tonal range the two ramps are compared on: the mosaic steps through it and
+// the halftone runs smoothly.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
 
 final class PictureAsGlyphs: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
@@ -21,8 +25,7 @@ final class PictureAsGlyphs: Sketch {
     var source: Image?
 
     override func setup() {
-        noiseSeed(3)
-        source = makeSunset(size: 160)
+        source = SamplePhoto.scarf.load().resized(width: 300, height: 300)
     }
 
     override func draw() {
@@ -45,7 +48,7 @@ final class PictureAsGlyphs: Sketch {
         // The classic ramp, at a size where the characters stay readable and
         // with gutters wide enough that the dense end reads as marks rather
         // than a solid field.
-        drawGlyphMosaic(source, columns: 20, characters: GlyphSet.classic,
+        drawGlyphMosaic(source, columns: 40, characters: GlyphSet.classic,
                         in: left, glyphScale: 0.72)
 
         fill(glow)
@@ -74,38 +77,5 @@ final class PictureAsGlyphs: Sketch {
         textSize(17)
         textAlign(.left, .middle)
         drawText(title, r.x, r.y - 20)
-    }
-
-    /// The chapter's authored sunset, so every treatment reads the same image.
-    func makeSunset(size: Int) -> Image {
-        let image = Image(width: size, height: size)
-        let sky = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
-                        Color(hex: 0xE56B6F), Color(hex: 0xFFB703)])
-        let horizon = 0.62
-        let sunX = 0.58, sunY = 0.47
-        for py in 0..<size {
-            for px in 0..<size {
-                let u = Double(px) / Double(size - 1)
-                let v = Double(py) / Double(size - 1)
-                var color: Color
-                if v < horizon {
-                    color = sky.color(at: v / horizon)
-                    let d = ((u - sunX) * (u - sunX) + (v - sunY) * (v - sunY)).squareRoot()
-                    let disk = 1 - smoothstep(0.075, 0.095, d)
-                    let glow = (1 - smoothstep(0.04, 0.4, d)) * 0.5
-                    color = Color.mix(color, Color(hex: 0xFFF3D6), min(1, disk + glow))
-                } else {
-                    let w = (v - horizon) / (1 - horizon)
-                    let reflected = sky.color(at: max(0, 0.92 - w * 0.9))
-                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), 0.45 + w * 0.4)
-                    let streak = noise(u * 5, v * 120)
-                    let path = 1 - smoothstep(0.02, 0.16 + w * 0.3, abs(u - sunX))
-                    color = Color.mix(dark, Color(hex: 0xFFD98A),
-                                      min(1, path * (0.2 + streak * 0.8)))
-                }
-                image[px, py] = color
-            }
-        }
-        return image
     }
 }

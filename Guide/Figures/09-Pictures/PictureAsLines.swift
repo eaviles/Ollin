@@ -1,10 +1,13 @@
 // figure: frame=0 themed
 //
-// Guide diagram (Chapter 9): a picture turned into line work. The same
-// stipple of the chapter's sunset joined two ways: one closed tour that
-// never lifts the pen, and the minimum spanning tree, which branches.
+// Guide diagram (Chapter 9): a picture turned into line work. One stipple of
+// the bundled profile photograph joined two ways: one closed tour that never
+// lifts the pen, and the minimum spanning tree, which branches. The cutoff
+// calls the plain ground behind the profile paper, so every dot goes to the
+// face and the ground stays empty.
 import Ollin
 import OllinDiagram
+import OllinSamplePhotos
 
 final class PictureAsLines: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
@@ -20,12 +23,14 @@ final class PictureAsLines: Sketch {
     var tree: [Contour] = []
 
     override func setup() {
-        noiseSeed(3)
         seed(5)
-        let source = makeSunset(size: 160)
+        let source = SamplePhoto.profile.load().resized(width: 160, height: 160)
         let first = Rectangle(x: 25, y: 66, width: 262, height: 262)
-        dots = stipple(of: source, count: 1500, in: first, iterations: 24)
-        tour = singleLine(through: dots)
+        // The tour visits every dot once, so its points are the stipple
+        // itself, and the tree is built over those same dots.
+        let loop = singleLine(of: source, points: 2400, in: first, cutoff: 0.62)
+        dots = loop.points
+        tour = loop
         tree = spanningTree(through: dots)
     }
 
@@ -64,7 +69,7 @@ final class PictureAsLines: Sketch {
         fill(ink)
         textSize(21)
         textAlign(.center, .top)
-        drawText("the same 1,500 dots, joined into a loop and into branches",
+        drawText("the same 2,400 dots, joined into a loop and into branches",
                  width / 2, 364)
     }
 
@@ -78,38 +83,5 @@ final class PictureAsLines: Sketch {
         textSize(17)
         textAlign(.left, .middle)
         drawText(title, r.x, r.y - 20)
-    }
-
-    /// The chapter's authored sunset, so every treatment reads the same image.
-    func makeSunset(size: Int) -> Image {
-        let image = Image(width: size, height: size)
-        let sky = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
-                        Color(hex: 0xE56B6F), Color(hex: 0xFFB703)])
-        let horizon = 0.62
-        let sunX = 0.58, sunY = 0.47
-        for py in 0..<size {
-            for px in 0..<size {
-                let u = Double(px) / Double(size - 1)
-                let v = Double(py) / Double(size - 1)
-                var color: Color
-                if v < horizon {
-                    color = sky.color(at: v / horizon)
-                    let d = ((u - sunX) * (u - sunX) + (v - sunY) * (v - sunY)).squareRoot()
-                    let disk = 1 - smoothstep(0.075, 0.095, d)
-                    let glow = (1 - smoothstep(0.04, 0.4, d)) * 0.5
-                    color = Color.mix(color, Color(hex: 0xFFF3D6), min(1, disk + glow))
-                } else {
-                    let w = (v - horizon) / (1 - horizon)
-                    let reflected = sky.color(at: max(0, 0.92 - w * 0.9))
-                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), 0.45 + w * 0.4)
-                    let streak = noise(u * 5, v * 120)
-                    let path = 1 - smoothstep(0.02, 0.16 + w * 0.3, abs(u - sunX))
-                    color = Color.mix(dark, Color(hex: 0xFFD98A),
-                                      min(1, path * (0.2 + streak * 0.8)))
-                }
-                image[px, py] = color
-            }
-        }
-        return image
     }
 }

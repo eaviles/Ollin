@@ -348,7 +348,7 @@ You can find that out on paper, a week later, at your own expense. Or you can as
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ProofBeforePrint-dark.jpg">
-  <img src="Images/31-SharingAndPerforming/ProofBeforePrint.jpg" alt="Three panels of one poster: as the screen shows it, the same poster proofed for a four-ink press with the cyan and green gone flat, and the gamut check with those areas replaced by gray" width="680">
+  <img src="Images/31-SharingAndPerforming/ProofBeforePrint.jpg" alt="Three panels of one photograph of a woman before a wall of marigolds: as the screen shows it, the same picture proofed for a four-ink press with the orange gone duller, and the gamut check with most of the wall replaced by gray" width="680">
 </picture>
 
 A **profile** is a file that describes what one device does with color. Your shop hands you theirs for the press and paper the job will run on. Ollin carries a generic four-ink one for when you have not asked yet:
@@ -369,7 +369,7 @@ postProcess(.softProof(press, warning: .magenta, amount: 0))   // flag it, chang
 artwork.outOfGamutFraction(press)                              // 0…1, how much is at risk
 ```
 
-Print that fraction while you tune a palette. A few percent is ordinary. A third of the canvas means you are drawing in colors that will not survive, and it is easier to hear that now.
+Print that fraction while you tune a palette. A few percent is ordinary. A third of the canvas means you are drawing in colors that will not survive, and it is easier to hear that now. The marigolds above are past half. A wall of cempasúchil is exactly the orange four inks reach for and miss, which is why the third panel is mostly gray.
 
 When the sketch is ready, the same profile splits it into **plates**, one grayscale image per ink, black where that ink lands:
 

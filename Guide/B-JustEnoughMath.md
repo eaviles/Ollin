@@ -113,7 +113,7 @@ An animation loops invisibly when every time-driven term completes *whole* cycle
 
 ### Sampling one grid with another
 
-<img src="Images/09-Pictures/TypeMosaic.jpg" alt="A sunset over water built entirely from one word repeated in a grid, colored and sized by the image beneath" width="560">
+<img src="Images/09-Pictures/TypeMosaic.jpg" alt="A portrait built entirely from one word repeated in a grid, colored and sized by the image beneath" width="560">
 
 To read an image at any grid's resolution, use fractions as the go-between. A cell 30% across and 60% down the grid reads the pixel 30% across and 60% down the image. Nothing needs to match in size, because the fractions do the translation. This is how [Chapter 9](09-Pictures.md) rebuilds a photo as a mosaic of letters, and it's the same idea as normalized coordinates wearing work clothes.
 
@@ -454,7 +454,7 @@ Averaging two colors channel by channel gives the numeric midpoint, and your eye
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PixelSampling-dark.jpg">
-  <img src="Images/09-Pictures/PixelSampling.jpg" alt="A small sunset image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+  <img src="Images/09-Pictures/PixelSampling.jpg" alt="A photograph of a profile redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
 </picture>
 
 The eye doesn't weigh channels equally. Green counts most, red less, blue least, and the standard weights are 0.2126, 0.7152, 0.0722. Averaging r, g, and b calls a saturated blue as bright as a green, and it visibly isn't. The weighted sum, luminance, matches what you see. Any effect driven by "how bright is this pixel", like the dot sizes here, needs the weighted version. [Chapter 9](09-Pictures.md) meets this the first time it reads pixels.

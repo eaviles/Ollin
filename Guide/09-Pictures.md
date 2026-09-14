@@ -4,11 +4,11 @@
 
 # 9. Pictures and data
 
-<img src="Images/09-Pictures/TypeMosaic.jpg" alt="A sunset over water built entirely from the word OLLIN repeated in a grid, the letters large and cream-colored in the sun, amber along the horizon, and small and dark in the sky and sea" width="560">
+<img src="Images/09-Pictures/TypeMosaic.jpg" alt="A portrait of a young woman in a lace headdress built entirely from the word OLLIN repeated in a grid, the letters large and white where the lace is, smaller and warm across the face, and small and dark in the hair and the blouse" width="560">
 
 Two kinds of material arrive from outside your sketch, and both come in the same way. A picture is a grid of colors you can ask questions of, and a spreadsheet is a grid of numbers you can ask questions of. Neither is something to display. Both are something to *read*, one sample at a time, and turn into marks of your own choosing.
 
-The sunset above has no photograph in it. It is one image, sampled a few thousand times, with every sample answered by a letter, sized and colored by the pixel underneath it. By the end of the chapter you'll have built it, and you'll have a handful of other ways to answer a pixel: with a dot, with one unbroken line, with a thread wound between pins, by sorting the pixels the picture already has, or by taking pixels away until the picture fits the space you have.
+The portrait above is one photograph, sampled a few thousand times, with every sample answered by a letter, sized and colored by the pixel underneath it. By the end of the chapter you'll have built it, and you'll have a handful of other ways to answer a pixel: with a dot, with one unbroken line, with a thread wound between pins, by sorting the pixels the picture already has, or by taking pixels away until the picture fits the space you have.
 
 ## Pictures
 
@@ -47,7 +47,7 @@ Tint never edits the image itself, only how it's drawn, and `withState { }` scop
 
 ### Twenty pictures to start with
 
-For a picture to try right now, Ollin bundles twenty. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. `.headland` and `.boats` are two landscapes at dusk, the only wide ones. They share a shape, so either drops into the same box. `.page` is print under uneven light, `.hands` is a pair of open palms for the readers that track one, and `.talavera` and `.stone` are surfaces to wrap a form in. Every example in this chapter's territory reads one of them, and so do most of the figures from here on. [Sample photographs](../Docs/Drawing/SamplePhotos.md) shows all twenty on one page, each under its name.
+For a picture to try right now, Ollin bundles twenty. `import OllinSamplePhotos` and `SamplePhoto.portrait.load()` hands you a young woman in a lace headdress, at 1600 pixels square. `.scarf`, `.profile`, and `.marigolds` are the other faces. `.reaching`, `.wrestler`, `.dancer`, and `.handstand` are four whole figures, for the chapters that read a body. `.breakfast` and `.desk` are two tables from above, for the readers that name things or read print. `.alley`, `.street`, `.textiles`, and `.city` are four streets, for anything that wants a whole scene. `.headland` and `.boats` are two landscapes at dusk, the only wide ones. They share a shape, so either drops into the same box. `.page` is print under uneven light, `.hands` is a pair of open palms for the readers that track one, and `.talavera` and `.stone` are surfaces to wrap a form in. Every example in this chapter's territory reads one of them. So does every figure in this chapter that starts from a picture, and most of the figures from here on. [Sample photographs](../Docs/Drawing/SamplePhotos.md) shows all twenty on one page, each under its name.
 
 A picture arrives at one size, and the size you work at is the next choice:
 
@@ -108,7 +108,7 @@ The real gift of `Image` for generative work isn't drawing it, it's *reading* it
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PixelSampling-dark.jpg">
-  <img src="Images/09-Pictures/PixelSampling.jpg" alt="Left, a small sunset image; right, the same image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+  <img src="Images/09-Pictures/PixelSampling.jpg" alt="Left, a photograph of a woman in profile on a plain tan ground; right, the same picture redrawn as a grid of dots on a dark ground, each dot taking its pixel's color and sized by its brightness, so the ground is large tan dots and the face is small dark ones" width="680">
 </picture>
 
 The right panel asks the image one question per grid cell and draws the answer as a dot. The recipe has two small pieces. First, a cell's position maps to a pixel index by fractions. A cell at fraction `u` across the grid reads column `Int(u * Double(image.width - 1))`, and rows work the same way, so any grid samples any image size. Second, "how bright is this pixel" takes one more line than you might guess, because your eye does not weigh the three channels equally, with green counting most and blue least. The standard weights are
@@ -119,7 +119,7 @@ let brightness = c.red * 0.2126 + c.green * 0.7152 + c.blue * 0.0722
 
 and that single number is the handle generative artists pull most: size by it, choose by it, gate by it. ([Appendix B](B-JustEnoughMath.md#perceived-brightness) keeps this one, since averaging the channels instead makes yellows read too dark and blues too bright.) Ollin also carries the ask as a property, `c.luminance`, measured a touch more faithfully on the linearized components. The handwritten weights are the idea, and the property is the everyday spelling.
 
-You can also write pixels. `Image(width:height:)` makes a blank image, `image[x, y] = color` paints one pixel, and that's how the sunset in this chapter's figures is made. It is *authored*, about twenty lines of [Chapter 2](02-Color.md) ramps, one `smoothstep` sun, and [Chapter 5](05-Noise.md) noise for the water, written pixel by pixel in `setup()`, so you can see a picture come out of code before you read one in. The listing below contains the whole recipe, and everything in this section works identically on a photograph, the bundled ones included.
+You can also write pixels. `Image(width:height:)` makes a blank image and `image[x, y] = color` paints one pixel, so a picture can come out of code as readily as out of a file. A double loop over every pixel, a [Chapter 2](02-Color.md) ramp read by height, and a little [Chapter 5](05-Noise.md) noise is a sky or a field in twenty lines of `setup()`. The [`PixelField`](../Examples/Images/PixelField/Sketch.swift) example is that recipe in full, and everything in this section reads an authored image exactly as it reads a photograph.
 
 ## A picture as marks
 
@@ -127,7 +127,7 @@ Reading a pixel and drawing a mark is such a common move that Ollin ships two fi
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsGlyphs-dark.jpg">
-  <img src="Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
+  <img src="Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same photograph of an older woman in a scarf: on the left a mosaic of ASCII characters that get denser where the face and the scarf are lit, on the right a halftone screen of dots that grow in the same places" width="680">
 </picture>
 
 `drawGlyphMosaic` divides the picture into a grid and puts one character in each cell:
@@ -210,7 +210,7 @@ let dots = stipple(of: picture, count: 4000, in: frame)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsLines-dark.jpg">
-  <img src="Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into the branching chains of a spanning tree" width="680">
+  <img src="Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the profile photograph, dense in the face and hair and empty on the plain ground, the same dots joined into one maze-like unbroken tour, and the same dots joined into the branching chains of a spanning tree" width="680">
 </picture>
 
 Once you have the dots, two ways of joining them give two very different drawings:
@@ -229,7 +229,7 @@ let line = singleLine(of: picture, points: 4000, in: frame)
 let veins = spanningTree(of: picture, points: 4000, in: frame)
 ```
 
-In those forms `cutoff` is the parameter to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is exactly what the sun in the figure would have done.
+In those forms `cutoff` is the parameter to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is exactly what the plain ground behind the profile would have done. The figure was made with a cutoff of 0.62, low enough to call that tan ground paper. That is why the ground is empty and every dot went to the face.
 
 ## A picture wound from thread
 
@@ -258,7 +258,7 @@ Each chord is a greedy choice. From the pin the thread is on, `StringArt` scores
 
 It is a stepper you hold on to, like the growth systems of [Chapter 13](13-GrowingThings.md). Each `step` winds a few more chords onto a never-clearing canvas, so the figure knits itself over the first seconds of a run. And the result is honest thread: `art.thread` is one open polyline. `art.sequence` is the winding order itself, pin numbers you could follow on a real rim.
 
-One honest note, and it is why the figure gets the profile photograph instead of the sunset. Bold tonal masses knit into a clear figure. The sunset would wind into fuzz: its tone changes gently everywhere. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
+One honest note, and it is why the profile is the picture here rather than a street or a sky. Bold tonal masses knit into a clear figure. A picture whose tone changes gently everywhere, a dusk sky or a face lit flat, winds into fuzz. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
 
 ## Sorting the pixels
 
@@ -266,7 +266,7 @@ The last treatment doesn't add marks, it rearranges the ones already there. **Pi
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/SortedPixels-dark.jpg">
-  <img src="Images/09-Pictures/SortedPixels.jpg" alt="The sunset beside a version with its columns sorted: the sky bands reorganize into a dome around the sun, the water smears into vertical streaks, and the sun and horizon stay intact" width="680">
+  <img src="Images/09-Pictures/SortedPixels.jpg" alt="A photograph of a Guanajuato alley under a wide sky beside a version with its columns sorted: the clouds fall to the bottom of the sky in vertical streaks, the pastel walls pour downward, and the deepest doorways and the brightest clouds stay where they were" width="680">
 </picture>
 
 ```swift
@@ -274,9 +274,9 @@ let melted = picture.pixelSorted(.vertical, threshold: 0.2 ... 0.75)
 let glitched = picture.pixelSorted(.vertical).pixelSorted(.horizontal)
 ```
 
-The threshold is the whole technique. It decides which pixels are in play, and everything outside the band stays exactly where it was, which is why the sun and the horizon survive in the picture above while the sky reorganizes around them. Sort by `.brightness`, `.hue`, or `.saturation`, and `reversed` flips which end of the run the bright pixels pile up at.
+The threshold is the whole technique. It decides which pixels are in play, and everything outside the band stays exactly where it was, which is why the deepest doorways and the brightest clouds survive in the picture above while everything between them pours. Sort by `.brightness`, `.hue`, or `.saturation`, and `reversed` flips which end of the run the bright pixels pile up at.
 
-Two honest notes. The look needs some texture in the source, because run boundaries have to vary from line to line, and a perfectly clean gradient sorts almost invisibly. And on a picture that already runs dark to bright down the column, sorting ascending changes nearly nothing, so `reversed: true` is the direction with the drama there.
+Two honest notes. The look needs some texture in the source, because run boundaries have to vary from line to line, and a perfectly clean gradient sorts almost invisibly. And the direction matters against the picture's own gradient. The alley runs bright at the top and dark at the bottom. An ascending sort piles each run's dark pixels at its top, so it turns the picture inside out. On a picture that already runs dark to bright down the column, that same sort changes nearly nothing, and `reversed: true` is the direction with the drama.
 
 Everything in these three sections reads real pixels on the CPU, which means two practical things. A texture-backed image needs `snapshot()` first, and all of it is setup work: run it once, hold the result, and let `draw()` replay it.
 
@@ -288,7 +288,7 @@ Say a picture is 1200 wide and the space it has to fit is 800. You can squash it
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
-  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="The sunset at its own width, squeezed to 70% where the sun becomes a visible oval, and carved to 70% where the sun stays round because it was marked to hold" width="680">
+  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="A photograph of a Guanajuato alley at its own width, squeezed to 70% where the walls lean in and every window narrows, and carved to 70% where the walls keep their width and the sky between them has closed up" width="680">
 </picture>
 
 ```swift
@@ -297,9 +297,9 @@ let narrow = picture.seamCarved(toWidth: 800)
 
 A *seam* is a run of pixels, one per row, that never steps more than one pixel sideways from the row above. The cheapest one is the one whose removal changes the picture least, and finding it is the whole of the technique.
 
-Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a face costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the face keeps its width.
+Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a doorway costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the doorways keep their width.
 
-That also means a flat thing is not safe. The sun above is nearly one color inside, so the carve was happy to narrow it too, until it was told not to:
+That also means a flat thing is not safe. The pastel walls above are nearly one color each, and once the plain sky is spent they are the next cheapest thing in the picture. Carve the alley to half its width and they start to go too. A mask tells the carve what to leave alone:
 
 ```swift
 let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
@@ -499,15 +499,16 @@ The conditions come from Open-Meteo, an open service with no key and a limit far
 
 ## Putting it together: a picture painted with type
 
-This is the sketch from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness.
+This is the sketch from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the photograph at its own position, takes the pixel's color, and scales by its brightness.
 
 It is a glyph mosaic built by hand, and that's on purpose. `drawGlyphMosaic` would give you a better ramp in one line, but it chooses the character for you, and this sketch needs the characters to spell something. Building the grid yourself is what buys that. Make `MySketches/TypeMosaic.swift`:
 
 ```swift
 import Ollin
+import OllinSamplePhotos
 
 final class TypeMosaic: Sketch {
-    @Param("Columns", 24...80) var columns = 52
+    @Param("Columns", 24...80) var columns = 64
     @Param("Message") var message = "OLLIN "
     @Param("Breathe", 0...1) var breathe = 0.5
 
@@ -515,7 +516,7 @@ final class TypeMosaic: Sketch {
 
     override func setup() {
         noiseSeed(3)
-        source = makeSunset(size: 160)
+        source = SamplePhoto.portrait.load().resized(width: 160, height: 160)
         textFont(OutlineFont.systemBold)
         textMode(.atlas)                   // thousands of glyphs a frame
         textAlign(.center, .middle)
@@ -549,58 +550,26 @@ final class TypeMosaic: Sketch {
             }
         }
     }
-
-    func makeSunset(size: Int) -> Image {
-        let image = Image(width: size, height: size)
-        let sky = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),
-                        Color(hex: 0xE56B6F), Color(hex: 0xFFB703)])
-        let horizon = 0.62
-        let sunX = 0.58, sunY = 0.47
-        for py in 0..<size {
-            for px in 0..<size {
-                let u = Double(px) / Double(size - 1)
-                let v = Double(py) / Double(size - 1)
-                var color: Color
-                if v < horizon {
-                    color = sky.color(at: v / horizon)
-                    let d = ((u - sunX) * (u - sunX) + (v - sunY) * (v - sunY)).squareRoot()
-                    let disk = 1 - smoothstep(0.075, 0.095, d)
-                    let glow = (1 - smoothstep(0.04, 0.4, d)) * 0.5
-                    color = Color.mix(color, Color(hex: 0xFFF3D6), min(1, disk + glow))
-                } else {
-                    let w = (v - horizon) / (1 - horizon)
-                    let reflected = sky.color(at: max(0, 0.92 - w * 0.9))
-                    let dark = Color.mix(reflected, Color(hex: 0x0B1020), 0.45 + w * 0.4)
-                    let streak = noise(u * 5, v * 120)
-                    let path = 1 - smoothstep(0.02, 0.16 + w * 0.3, abs(u - sunX))
-                    color = Color.mix(dark, Color(hex: 0xFFD98A),
-                                      min(1, path * (0.2 + streak * 0.8)))
-                }
-                image[px, py] = color
-            }
-        }
-        return image
-    }
 }
 ```
 
 Run it with `swift run OllinLive MySketches/TypeMosaic.swift` and take it apart:
 
-- `makeSunset` is the "author an image" idea at full length, and every line of it is a tool you already own: the sky is a `Ramp` read by height, the sun is `smoothstep` on distance (a soft-edged disk plus a wider faint glow), and the water mirrors the sky darkened, with `noise` streaks brightening along the sun's reflection. It writes 160×160 pixels once, in `setup()`.
+- `resized(width:height:)` makes the 160-pixel working copy the grid reads, the habit from the top of the chapter. Each pixel of the copy is roughly the average of a ten-by-ten patch of the original. So a letter reads the whole of its cell, not whichever single pixel happens to sit under its center.
 - The double loop is [Chapter 6](06-GridsAndRepetition.md)'s grid chore done by hand, because what it loops over is the *message*: `k % chars.count` deals the letters out in reading order, so the rows spell the message over and over, and `u`/`v` fractions map each cell onto its pixel.
-- `brightness * brightness` is contrast shaping, since squaring pushes mid grays down so the sun pops. The `fill` mixes each pixel's color a step toward white in the brightest cells, which makes the sun read as light rather than paint.
-- `textMode(.atlas)` matters here, because fifty columns is a few thousand glyphs per frame, and the atlas mode draws each as one cheap textured quad instead of re-tessellating outlines. It's the volume switch for text, one line, and the chapter's one performance note.
-- `Breathe` feeds a slow `signedNoise` into the letter sizes, so the picture shimmers without changing what it says. The `Message` parameter is a text field in the live window, so type into it and the sunset respells itself as you watch.
+- `brightness * brightness` is contrast shaping, since squaring pushes mid grays down so the lace pops. The `fill` mixes each pixel's color a step toward white in the brightest cells, which makes the lit lace read as light rather than paint.
+- `textMode(.atlas)` matters here, because sixty-four columns is a few thousand glyphs per frame, and the atlas mode draws each as one cheap textured quad instead of re-tessellating outlines. It's the volume switch for text, one line, and the chapter's one performance note.
+- `Breathe` feeds a slow `signedNoise` into the letter sizes, so the picture shimmers without changing what it says. The `Message` parameter is a text field in the live window, so type into it and the portrait respells itself as you watch.
 
 > **Swift note.** `guard let source else { return }` is `if let` turned around, unwrapping the value or leaving the function right there. And `Array(message)` turns a string into a list of its characters, so `chars[k % chars.count]` can deal them out like [Chapter 1](01-HelloOllin.md)'s palette cycling.
 
 Then make it yours:
 
-- Swap the source for a photo: `source = SamplePhoto.portrait.load()` or `loadImage("/path/to/portrait.jpg")` is the whole change. Faces work beautifully at 60 to 80 columns.
+- Swap the picture: `SamplePhoto.scarf` or `loadImage("/path/to/yours.jpg")` in place of the portrait is the whole change. A face reads at 60 to 80 columns, a street wants more, and a picture you author with `Image(width:height:)` reads exactly the same way.
 - Change the alphabet. A message of `"·•●"` becomes halftone dots, and `textFont(BitmapFont.builtIn)` in `setup()` makes it a terminal.
 - Sample with an offset. Read the pixel at `u + time * 0.01` (wrapped with `fract`) and the picture slides through the words.
 - Recolor by replacing the sampled color with `Colormap.magma.color(at: brightness)` for a duotone poster.
-- Trade the letters for line work. Feed the same sunset to `singleLine(of:points:in:)` and the poster becomes one unbroken thread a plotter could draw.
+- Trade the letters for line work. Feed the same picture to `singleLine(of:points:in:)` and the poster becomes one unbroken thread a plotter could draw.
 
 ## Where this comes from
 
