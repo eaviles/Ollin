@@ -50,6 +50,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Captures that know their source](#captures-that-know-their-source) - `--capture-source`, keeping the exact code a file came from
 - [Rendering a chosen variation](#rendering-a-chosen-variation) - `--seed`, on every export path
 - [Setting a parameter for the run](#setting-a-parameter-for-the-run) - `--param name=value`, a declared `@Param` set from the command line
+- [Saying what a sketch declares](#saying-what-a-sketch-declares) - `--list-params`, every `@Param` with its kind, what it accepts, and what it holds
 - [Driving the parameters from a file](#driving-the-parameters-from-a-file) - `--automation`, keyframed parameters on every export path
 - [Contact sheets](#contact-sheets-proofing-a-variation-space) - `--export-grid` (seeds) and `--export-sweep` (a `@Param`), `OllinApp.contactSheet` / `exportContactSheet`
 - [Print separations](PrintSeparations.md) - `--export-separations`, per-ink masters for risograph and screen printing (its own page)
@@ -569,6 +570,34 @@ The value is read against the parameter's own kind:
 The value lands after `setup()` and before the first frame. It goes through the same restore path the live hosts use across a reload. So it clamps to the declared range the way dragging the row does. It also overrides a value the sketch set for itself in `setup()`, and the recipe then names what the frame was drawn with. Beside a `--replay`, it overrides the take's recorded parameters, the way `--seed` overrides the take's seed. So the same gestures land on a different setting. A parameter named twice ends on the last value given. A name the sketch does not have, or a value its kind cannot read, stops the run. The error says what value it expected, so the run never renders something you did not ask for.
 
 `--cue <name>` lands a saved [cue](../Helpers/Cues.md) the same way, every parameter it holds at once, after `setup()` and before any `--param`. `--cues <file>` names the sheet when the sketch is not carrying one; under OllinLive the `Sketch.cues.json` beside the sketch is installed first, so `--cue` alone finds it.
+
+---
+
+### Saying what a sketch declares
+
+`--list-params` prints the sketch's parameters and stops. It is the other half of `--param`: one sets a value, the other says what there is to set.
+
+```sh
+swift run --package-path Examples Example-Live-Parameters --list-params
+```
+
+```
+5 parameters, as --param takes them
+
+  radius  Double  120      20...300
+  rings   Int     5        1...12
+  paper   Color   #FFFFFF
+  style   menu    dots     Dots, Rings, Mesh Lines
+
+  Paper
+  grain   Double  0.35     0...1
+```
+
+The columns are the name, the kind of value it holds, the value it holds, and what it accepts. Groups are blocks under their own names, the way the inspector stacks its cards. A parameter a [show-rule](../Helpers/Parameters.md#show-rules) is currently hiding says so.
+
+The values are the ones the first frame would be drawn with. The sketch's `setup()` runs first, and any `--param`, `--cue`, and `--seed` given beside it land too. So the listing describes that run, not the file it was written in.
+
+Every value is printed in the spelling `--param` reads back, so a line can be pasted into a flag. That is exact for every kind but a color, which is said in hex and so comes back to the nearest eight-bit step.
 
 ---
 

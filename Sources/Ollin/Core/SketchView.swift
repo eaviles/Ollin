@@ -3230,6 +3230,23 @@ public extension OllinApp {
             installAutomation(args, on: sketch)
             return sketch
         }
+        // `--list-params` says what this sketch declares and stops: every
+        // `@Param` with its kind, what it accepts, and the value it holds,
+        // spelled the way `--param` reads it back. It runs `setup()` first (and
+        // so any `--param` and `--cue` given beside it), because the value a
+        // person wants listed is the value the first frame would be drawn with,
+        // not the one the property was declared with. No renderer is built: the
+        // drive is the vector exporter's, which runs `setup()` on its own.
+        if args.contains("--list-params") {
+            let sketch = make()
+            let size = sketch.canvasSize
+            sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
+            isRenderingHeadless = true
+            defer { isRenderingHeadless = false }
+            sketch.runSetup()
+            print(ParamListing.text(for: sketch))
+            return true
+        }
         // `--export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]`
         // renders a deterministic numbered PNG sequence and exits.
         if let i = args.firstIndex(of: "--export-sequence"), i + 1 < args.count {

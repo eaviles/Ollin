@@ -9,6 +9,7 @@
 - [`The sketch on the phone`](./OnThePhone.md) - `ollin phone`: run the sketch on a paired iPhone or iPad. Every save installs it again, and its clock and parameters carry across, and the parameters stay live on the Mac
 - [`Live coding`](./LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 - [`Bringing a shader over`](./ShaderImport.md) - `ollin new --from-shader`: translate a GLSL fragment shader into Metal, and get a project built around it
+- [`Checking the machine`](./Doctor.md) - `ollin doctor`: the toolchain, the GPU and what it supports, the command itself, and the permissions already decided, each with the one line that fixes it; plus shell completions and `--list-params`
 - [`Checking a shader`](./ShaderCheck.md) - `ollin check`: compile a `.metal` file on this machine's GPU. It reports the errors at your own line, what kind of shader it is, and the parameters it reads
 - [`Bringing a scene over`](./SceneImport.md) - `ollin new --from-scene`: write a glTF or USD scene out as the sketch that draws it
 - [`Writing an extension`](./Extensions.md) - `ollin new --kind extension`: a library that other sketches import, the `ollinx-` naming convention, and the seams to build on

@@ -79,6 +79,8 @@ ollin new dots.swift        # write a starter sketch
 ollin dots.swift            # open a live window; edit the file and save to reload
 ```
 
+That install also puts zsh completions in place. Press Tab after `ollin` for the subcommands, or after a `--` for the flags of whichever command you are typing. If something does not work, `ollin doctor` says what this machine can run and what to do about each answer. [Checking the machine](Docs/Tools/Doctor.md) covers it.
+
 Keep the clone: `ollin` links to it and uses its framework version. Its first run builds a release host, so allow a few minutes even if you already ran Hello Circle. To stay on a release rather than the tip, check out the newest tag in that clone, and read the [changelog](CHANGELOG.md) before moving to a later one. [Single-file sketches](Docs/Tools/SingleFile.md) covers assets, extra imports, directly executable files, and growing into a package.
 
 ### In an existing Swift package

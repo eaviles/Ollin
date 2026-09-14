@@ -374,6 +374,14 @@ let package = Package(
             name: "OllinDocs",
             dependencies: ["OllinReference"]
         ),
+        // `ollin doctor`: ask this machine what it can run. It links the framework
+        // because the report is the framework's own (Core/Doctor.swift), which is
+        // what lets the tests read exactly what the command prints, and because the
+        // shader check is a real compile on the real device.
+        .executableTarget(
+            name: "OllinDoctor",
+            dependencies: ["Ollin"]
+        ),
         // `ollin check`: compile a shader file on the real device and report what it
         // found. It links the framework because the point is to compile the shader
         // exactly the way a running sketch would, through the same compose path, so a

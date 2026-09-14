@@ -296,6 +296,43 @@ struct ParamTests {
         #expect(p.wrappedValue == .polishedMetal)
     }
 
+    /// A frame rate is a menu of the rates a file is written at, each named by
+    /// how the rate is said. The broadcast rates keep their exact fractions, so
+    /// the name a choice persists under is the same text the menu shows.
+    @Test func frameRatesPresentAMenuNamedAsRatesAreSaid() {
+        let p = Param(wrappedValue: FrameRate.film)
+        guard case .menu(let control) = p.control else {
+            Issue.record("FrameRate should present a menu")
+            return
+        }
+        #expect(control.options.contains("24 fps"))
+        #expect(control.options.contains("29.97 fps"))
+        #expect(p.stored == .option("24 fps"))
+        control.write(control.options.firstIndex(of: "29.97 fps") ?? 0)
+        #expect(p.wrappedValue == .ntsc)
+        #expect(p.wrappedValue.frames == 30000 && p.wrappedValue.seconds == 1001)
+        p.restore(.option("60 fps"))
+        #expect(p.wrappedValue == 60)
+    }
+
+    /// A sheet is a menu of the named sizes, the US ones by their bare names,
+    /// which is both what the row should read and what `PaperSize(named:)` takes.
+    @Test func paperSizesPresentAMenuOfTheNamedSheets() {
+        let p = Param(wrappedValue: PaperSize.a4)
+        guard case .menu(let control) = p.control else {
+            Issue.record("PaperSize should present a menu")
+            return
+        }
+        #expect(control.options.contains("A4"))
+        #expect(control.options.contains("Letter"))
+        #expect(p.stored == .option("a4"))
+        control.write(control.options.firstIndex(of: "Tabloid") ?? 0)
+        #expect(p.wrappedValue == .usTabloid)
+        p.restore(.option("a3"))
+        #expect(p.wrappedValue == .a3)
+        #expect(PaperSize(named: "letter") == .usLetter)     // the menu's own name reads back
+    }
+
     @Test func mismatchedRestoreIsIgnored() {
         let p = Param(wrappedValue: 50.0, 0...100)
         p.restore(.boolean(true))

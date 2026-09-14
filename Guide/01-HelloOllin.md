@@ -323,6 +323,24 @@ ollin NextIdea.swift --export-gif out.gif --seconds 4
 
 `ollin new` also writes `#!/usr/bin/env ollin` on the first line and marks the file executable, so `./NextIdea.swift` opens it as well. [Single-file sketches](../Docs/Tools/SingleFile.md) covers the rest, including how to do that to a file you wrote by hand.
 
+The install puts one more thing in place: zsh completions. Press Tab after `ollin` and the subcommands come up. Press it after a `--` and you get the flags of whichever command you are typing, each with the line that says what it does. There are a hundred and thirty-nine flags. So this is less a convenience than the only practical way to find the one you want.
+
+```
+$ ollin dots.swift --export-<TAB>
+--export-gif        -- write an animated GIF
+--export-grid       -- write a contact sheet of seeds
+--export-video      -- write a movie
+...
+```
+
+If any of this doesn't work, there is a command that says why:
+
+```sh
+ollin doctor
+```
+
+It asks the questions a broken setup otherwise answers by failing somewhere else. Whether macOS is new enough. Whether the Swift compiler is findable, and which one. What the GPU is, and which of the optional things it can do. Whether the shader compiler actually compiles. Whether the `ollin` on your path is this clone's. Whether the camera, the microphone, and screen recording have been allowed. Each answer that isn't settled comes with the one line that settles it. Nothing in it asks for a permission, so it is safe to run on a machine that is projecting. [Checking the machine](../Docs/Tools/Doctor.md) goes through the report.
+
 The guide keeps writing the full `swift run OllinLive` form so everything works whether or not you installed the shortcut. The next two sections use `ollin` commands, though, so skip ahead to [Putting it together](#putting-it-together-a-breathing-ring) if you'd rather not install it.
 
 ## When one file isn't enough
@@ -483,6 +501,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Single-file sketches](../Docs/Tools/SingleFile.md): installing `ollin`, running one loose `.swift` file, the hashbang form, and exporting from the command line.
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
+- [Checking the machine](../Docs/Tools/Doctor.md): `ollin doctor` answer by answer, installing the shell completions, and `--list-params` for everything a sketch declares.
 - [The reference offline](../Docs/Tools/Reference.md): `ollin docs` and `ollin examples` in full, including one section of a page, the search across everything, and what happens in a pipe.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
 - [Parameters](../Docs/Helpers/Parameters.md): the full parameter family, from toggles and menus to draggable pads, plus grouping them into cards, icons, smoothing, saving a tuned set back into the code, and driving parameters from MIDI or OSC hardware.

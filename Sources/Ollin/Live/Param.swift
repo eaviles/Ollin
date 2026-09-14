@@ -962,6 +962,37 @@ extension NoteLength: ParamChoices {
     }
 }
 
+// A frame rate is a menu of the rates a file is written at, slow to fast. The
+// broadcast rates are exact fractions, so each choice is named by how the rate
+// is said rather than by a spelling of its own: the name is the menu's label
+// and its persistence key at once, and a rate off the menu (`FrameRate(90)`)
+// reads as the first entry, the ParamChoices rule.
+extension FrameRate: ParamChoices {
+    public static var paramChoices: [(name: String, value: FrameRate)] {
+        [(FrameRate.ntscFilm.description, .ntscFilm),
+         (FrameRate.film.description, .film),
+         (FrameRate.pal.description, .pal),
+         (FrameRate.ntsc.description, .ntsc),
+         (FrameRate(30).description, 30),
+         (FrameRate(50).description, 50),
+         (FrameRate.ntscDouble.description, .ntscDouble),
+         (FrameRate(60).description, 60),
+         (FrameRate(120).description, 120)]
+    }
+}
+
+// A sheet is a menu of the named sizes, largest first, standing tall. The US
+// sizes go by their bare names, which is what a menu row should read and what
+// `PaperSize(named:)` already answers to; turning one is the sketch's own
+// `landscape`, so the menu stays one row per sheet.
+extension PaperSize: ParamChoices {
+    public static var paramChoices: [(name: String, value: PaperSize)] {
+        [("a0", .a0), ("a1", .a1), ("a2", .a2), ("a3", .a3),
+         ("a4", .a4), ("a5", .a5), ("a6", .a6),
+         ("letter", .usLetter), ("legal", .usLegal), ("tabloid", .usTabloid)]
+    }
+}
+
 // MARK: - The wrapper
 
 /// The inspector section a parameter belongs to. A plain string literal names an

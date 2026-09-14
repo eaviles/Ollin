@@ -309,6 +309,8 @@ swift run --package-path Examples Example-Live-Parameters --export keeper.png --
 
 `--param name=value` can repeat. The value is read against the parameter's own kind. You can pass a color, a vector, a menu choice, or a swatch strip as easily as a number. The value lands after `setup()`, through the same `restore` path described below. Every export writes its parameter values into the file's recipe, so this flag is how a frame re-renders from the recipe it carries. The kinds and their spellings are on the [Export](../Output/Export.md#setting-a-parameter-for-the-run) page.
 
+`--list-params` beside any sketch says what there is to set. Every parameter with its kind, what it accepts, and what it holds, each value in the spelling the flag reads back. See [Checking the machine](../Tools/Doctor.md#what-the-sketch-itself-declares).
+
 To build your own control surface, call `parameters()`. It returns the sketch's parameters as `[ParamHandle]`. Each handle carries a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI: the kind, the ranges, the options, and live get/set closures. `stored` and `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
 
 A parameter can also follow a curve instead of your hand on a control. An [`Automation`](../Core/Automation.md) writes a parameter's values down over time, and the sketch sets the parameter each frame from that track of keys. It is the same parameter, directed rather than tuned, and any export renders it exactly as the track sets it.

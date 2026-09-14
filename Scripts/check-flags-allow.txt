@@ -1,0 +1,11 @@
+# Flags spelled inside a file that reads the ollin command line, but belonging
+# to another program it runs. They are never part of the command's own surface
+# and never complete. One per line: the flag, then why it is here.
+#
+# A flag of Ollin's own is never listed here. It goes in the table
+# (Sources/OllinReference/CommandFlags.swift) instead, marked internalUse when
+# a host spells it and a person never does.
+
+--json-output   devicectl's, when ollin phone reads a build's result
+--terminate-existing   devicectl's, when ollin phone relaunches the app
+--quiet   xcodegen's, when ollin phone writes the phone project

@@ -298,6 +298,7 @@ These pages cover writing GPU code yourself. They describe fragment shaders that
 - [`The sketch on the phone`](./Tools/OnThePhone.md) - `ollin phone`: the sketch on a paired iPhone or iPad. It is installed again on every save, with its clock and parameters carried across, and the parameters stay live on the Mac.
 - [`Live coding`](./Tools/LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 - [`Bringing a shader over`](./Tools/ShaderImport.md) - `ollin new --from-shader`: translate a GLSL fragment shader into Metal and get a project around it
+- [`Checking the machine`](./Tools/Doctor.md) - `ollin doctor`: what this machine can run, with the line that fixes each answer; shell completions, and `--list-params` for what a sketch declares
 - [`Checking a shader`](./Tools/ShaderCheck.md) - `ollin check`: compile a `.metal` file on this machine's GPU and see the errors at your own line numbers, what kind of shader it is, and the parameters it reads
 - [`Bringing a scene over`](./Tools/SceneImport.md) - `ollin new --from-scene`: a glTF or USD scene written out as the camera, lights and placement calls that draw it
 - [`Writing an extension`](./Tools/Extensions.md) - `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on

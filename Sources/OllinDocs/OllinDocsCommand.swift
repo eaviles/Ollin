@@ -37,8 +37,27 @@ struct OllinDocsCommand {
         case "docs": docs(arguments, options: options)
         case "examples": examples(arguments, options: options)
         case "site": site(arguments)
+        case "completions": completions(options: options)
         case "help", "--help", "-h": printUsage()
-        default: fail("unknown command \"\(command)\". Try docs, examples, or site.")
+        default: fail("unknown command \"\(command)\". Try docs, examples, site, or completions.")
+        }
+    }
+
+    // MARK: - The shell
+
+    /// `ollin completions`: the zsh completion function, printed. It is written
+    /// from the flag table rather than kept by hand, and `Scripts/check-flags.sh`
+    /// holds the checked-in copy to what this prints.
+    ///
+    /// `--list` is the one machine-shaped thing this binary says, and it exists
+    /// for that gate: one line per flag, its scope beside it.
+    static func completions(options: Options) {
+        guard options.list else {
+            print(ShellCompletions.zsh(), terminator: "")
+            return
+        }
+        for flag in CommandFlag.all {
+            print("\(flag.name)\t\(flag.scope.rawValue)")
         }
     }
 
@@ -434,6 +453,9 @@ struct OllinDocsCommand {
                ollin site [folder]             the same pages as a website, written into
                                                a folder (default: .build/site);
                                                --domain <name> writes the CNAME for it
+
+               ollin completions               the zsh completion function, printed;
+                                               `ollin install` puts it on your fpath
 
         options:
           --width <n>   wrap to this many columns (default: the window, at most 100)

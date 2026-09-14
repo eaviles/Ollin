@@ -65,7 +65,13 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               how to run it, --source to read it
        ollin site [folder]                    the same pages as a website, written
                                               into a folder (.build/site by default)
-       ollin install [dir]                    symlink ollin onto your PATH
+       ollin doctor                           what this machine can run: the
+                                              toolchain, the GPU and what it
+                                              supports, this command, and the
+                                              permissions already decided
+       ollin completions                      the zsh completion function, printed
+       ollin install [dir]                    symlink ollin, and its zsh
+                                              completions, onto your PATH
        ollin help                             show this help
 
 flags: --debug (first flag) runs a debug build of the host; every other flag
@@ -151,6 +157,36 @@ cmd_site() {
     exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs "${kept[@]}"
 }
 
+# ollin doctor: what this machine can run. It links the framework, because the
+# shader check is a real compile on the real device, so it builds in the same
+# configuration a sketch would run in.
+cmd_doctor() {
+    exec swift run -c "${OLLIN_CONFIG:-release}" --package-path "$repo" OllinDoctor "$@"
+}
+
+# ollin completions: the zsh completion function, printed. Same binary as the
+# reference and no pager: it is meant to be redirected into a file on your
+# fpath, which is what `ollin install` does for you.
+cmd_completions() {
+    exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs completions "$@"
+}
+
+# Where zsh would look for a completion function. The first writable one that
+# already exists wins, so an install adds a file to a directory the shell reads
+# rather than asking anybody to edit their fpath.
+completion_dir() {
+    local candidate
+    for candidate in /opt/homebrew/share/zsh/site-functions /usr/local/share/zsh/site-functions \
+                     "$HOME/.zsh/completions" "$HOME/.oh-my-zsh/completions" \
+                     "$HOME/.local/share/zsh/site-functions"; do
+        if [[ -d "$candidate" && -w "$candidate" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # ollin install [dir]: symlink this script (symlink-resolved) onto the PATH.
 cmd_install() {
     local dir="${1:-}"
@@ -178,6 +214,18 @@ cmd_install() {
     if [[ ":$PATH:" != *":$dir:"* ]]; then
         echo "ollin: $dir isn't on your PATH; add it, e.g."
         echo "  echo 'export PATH=\"$dir:\$PATH\"' >> ~/.zshrc"
+    fi
+    # The completions are a checked-in file, so linking is the whole install
+    # and a `git pull` carries a new flag to the prompt with nothing to re-run.
+    local completions
+    if completions=$(completion_dir); then
+        ln -sf "$repo/Scripts/completions/_ollin" "$completions/_ollin"
+        echo "ollin: linked $completions/_ollin -> $repo/Scripts/completions/_ollin"
+        echo "ollin: open a new shell, or run: autoload -Uz compinit && compinit"
+    else
+        echo "ollin: no writable zsh completions folder found; to add them yourself:"
+        echo "  mkdir -p ~/.zsh/completions && ln -sf \"$repo/Scripts/completions/_ollin\" ~/.zsh/completions/_ollin"
+        echo "  echo 'fpath=(~/.zsh/completions \$fpath)' >> ~/.zshrc"
     fi
     echo "  try it:    ollin new Dots.swift && ollin Dots.swift"
 }
@@ -211,6 +259,10 @@ case "${1:-}" in
         shift; cmd_check "$@" ;;
     docs|examples)
         cmd_reference "$@" ;;
+    doctor)
+        shift; cmd_doctor "$@" ;;
+    completions)
+        shift; cmd_completions "$@" ;;
     site)
         cmd_site "$@" ;;
     install)

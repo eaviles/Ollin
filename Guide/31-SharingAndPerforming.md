@@ -597,6 +597,26 @@ The value lands after `setup()` and before the first frame. So it wins over a va
 
 Ask for a parameter the sketch does not have, or a value its kind cannot read, and the run stops and says so. It never renders something you did not ask for.
 
+Which raises the obvious question: what does a sketch have? A piece you wrote last year, or somebody else's file, does not announce its parameters anywhere. `--list-params` asks it.
+
+```sh
+ollin Rings.swift --list-params
+```
+
+```
+5 parameters, as --param takes them
+
+  radius  Double  120      20...300
+  rings   Int     5        1...12
+  paper   Color   #FFFFFF
+  style   menu    dots     Dots, Rings, Mesh Lines
+
+  Paper
+  grain   Double  0.35     0...1
+```
+
+The name, the kind, the value it holds, and what it will take. Every value is printed the way `--param` reads it back, so a line can be pasted straight into a flag. The listing runs `setup()` first and honors anything given beside it. So `--list-params --cue dusk` says what that cue holds, not what the file was written with.
+
 ## Saying what it shows: describable output
 
 <picture>

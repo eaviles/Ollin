@@ -19,6 +19,8 @@
 #   always
 #       -> the em-dash and invisible-character net over the added diff lines
 #       -> the parked-thread net over Tests/
+#       -> Scripts/check-flags.sh (the command's flags against the table the
+#          shell completes from, and the checked-in completion file)
 #       -> Scripts/check-api-names.sh (the public surface under API/ against
 #          the settled naming rules; a listing is recorded on purpose, so
 #          this reads the whole surface rather than the diff; under a second)
@@ -165,6 +167,12 @@ run "check-names" Scripts/check-names.sh
 # API/ are what a change to the surface records, so this reads them whole:
 # a name that broke a rule a week ago is as wrong as one in this diff.
 run "check-api-names" Scripts/check-api-names.sh
+
+# The command's flags against the table the shell completes from, both ways,
+# and the checked-in completion file against what the table generates. Not
+# scoped to the diff either: a flag dropped from a host stales the table
+# whether or not the table was touched.
+run "check-flags" Scripts/check-flags.sh
 
 # Navigation and coverage read the whole tree in seconds, so any prose or
 # image change buys both. A new example is a navigation change too: its folder

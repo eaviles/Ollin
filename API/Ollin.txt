@@ -3695,7 +3695,7 @@ struct FrameProfile: Equatable, Sendable
   var tessellatedVertices: Int { get }
   var triangleVertices: Int { get set }
   var waitMS: Double { get set }
-struct FrameRate: CustomStringConvertible, Equatable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, Hashable, Sendable
+struct FrameRate: ParamChoices, ParamValue, CustomStringConvertible, Equatable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, Hashable, Sendable
   func frames(in: Double) -> Int
   func seconds(for: Int) -> Double
   init(_: Double)
@@ -3711,6 +3711,7 @@ struct FrameRate: CustomStringConvertible, Equatable, ExpressibleByFloatLiteral,
   static let ntscDouble: FrameRate
   static let ntscFilm: FrameRate
   static let pal: FrameRate
+  static var paramChoices: [(name: String, value: FrameRate)] { get }
   var description: String { get }
   var frameDuration: Double { get }
   var framesPerSecond: Double { get }
@@ -4853,7 +4854,7 @@ struct Palette: ParamValue, Equatable, Sendable
   typealias Constraints = ParamSwatchConstraints
   var colors: [Color] { get set }
   var count: Int { get }
-struct PaperSize: Equatable, Hashable, Sendable
+struct PaperSize: ParamChoices, ParamValue, Equatable, Hashable, Sendable
   func canvasSize(dpi: Int = default) -> CanvasSize
   init(width: Double, height: Double)
   init?(named: String)
@@ -4867,6 +4868,7 @@ struct PaperSize: Equatable, Hashable, Sendable
   static let usLegal: PaperSize
   static let usLetter: PaperSize
   static let usTabloid: PaperSize
+  static var paramChoices: [(name: String, value: PaperSize)] { get }
   var height: Double { get set }
   var landscape: PaperSize { get }
   var portrait: PaperSize { get }
