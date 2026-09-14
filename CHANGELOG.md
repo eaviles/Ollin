@@ -4,6 +4,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-14
+
 ### Added
 
 - **Chapters 28, 30, and 32 of the Guide teach their last six tools.** Six figures, and three sections that were paragraphs. The eight quarter-frame messages that spell one timecode, with every nibble and the locate message's bytes read from the shipped encoder, so the figure cannot disagree with the wire. The notice a Mac with no camera shows, beside the bundled photograph the same `drawFrame` call draws once `Camera.orStill` stands in. A sketch's parameters beside the page they become on a phone, each control drawn from what the remote wire reports that parameter becomes. A piece running behind the icons, with the click that reaches the window and never the piece. The menu-bar strip among the status items at the size it really is, enlarged beside its own coordinates. And one rendered frame becoming an app's icon, with the two routes a signature decides. Timecode and OSC are now their own sections in Chapter 28, and the camera fallback its own in Chapter 30.
@@ -270,7 +272,8 @@ The first tagged release. Ollin grew in one repository from May 2026 to this tag
 
 - Tags begin at 0.1.0. A breaking change or a new feature bumps the minor, a fix bumps the patch, and each release names its breaking renames in this file. Deprecation shims and a settled surface arrive at 1.0. Until then, pin `.upToNextMinor(from: "0.1.0")`.
 
-[Unreleased]: https://github.com/eaviles/Ollin/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/eaviles/Ollin/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/eaviles/Ollin/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/eaviles/Ollin/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/eaviles/Ollin/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/eaviles/Ollin/compare/0.3.0...0.4.0
