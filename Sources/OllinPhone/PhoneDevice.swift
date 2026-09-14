@@ -55,6 +55,12 @@ import Darwin
 /// `latestSaliencyHeatMap` the tintable glow, and `latestSaliencyFrame` the
 /// camera frame they were read from.
 ///
+/// In **Flow** mode the phone measures how its picture is moving: `latestFlow`
+/// is a dense field of motion vectors between two consecutive frames, read the
+/// way the Mac's own optical-flow tracker is read (`vector(at:in:)`,
+/// `samples(in:every:)`, `averageFlow(in:)`, over the same `MotionField`), and
+/// `latestFlowFrame` is the camera frame it was measured on.
+///
 /// `latestLight` says how bright and how warm the room is. It arrives in every mode,
 /// so a sketch can match the light it is standing in.
 ///
@@ -102,6 +108,11 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     private var cachedSaliencyHeat: Image?
     private var cachedSaliencyFrameSequence: Int?
     private var cachedSaliencyFrame: Image?
+
+    // The flow reading's color frame, cached the same way: a sketch reading
+    // only the field never stands the picture up.
+    private var cachedFlowFrameSequence: Int?
+    private var cachedFlowFrame: Image?
 
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
@@ -336,6 +347,34 @@ public final class PhoneDevice: FrameSource, VideoFeed {
         return frame
     }
 
+    // MARK: - Flow mode (how the picture is moving)
+
+    /// The latest reading of how the phone's picture is moving, or `nil` before
+    /// one arrives. Populated in **Flow** mode (rear camera): the phone measures
+    /// optical flow between consecutive camera frames and streams the field,
+    /// which reads the way the Mac's own tracker's field does: `vector(at:in:)`
+    /// under a canvas point, `samples(in:every:)` as a grid of arrows,
+    /// `averageFlow(in:)` as the global drift; `field` is the same `MotionField`
+    /// value. `interval` is the time between the two frames measured, so a
+    /// vector over it is a speed. Needs no LiDAR.
+    public var latestFlow: PhoneFlow? { reader.latestFlow?.reading }
+
+    /// The camera frame the latest flow reading was measured on, upright for
+    /// how the phone was held, or `nil` before one arrives. Draw the field into
+    /// the same rectangle and the arrows land on what moved; built only when
+    /// read.
+    public var latestFlowFrame: Image? {
+        guard let box = reader.latestFlow, let color = box.color else { return nil }
+        if cachedFlowFrameSequence == box.sequence, let cachedFlowFrame {
+            return cachedFlowFrame
+        }
+        let upright = rotatedCGImage(color, quarterTurnsCW: Int(box.orientation)) ?? color
+        let frame = Image(cgImage: upright)
+        cachedFlowFrameSequence = box.sequence
+        cachedFlowFrame = frame
+        return frame
+    }
+
     // MARK: - Room mode (the reconstructed room surface)
 
     /// The room the phone has reconstructed so far, as a growing set of triangle
@@ -429,6 +468,8 @@ final class PhoneStreamReader: @unchecked Sendable {
         var segSequence = 0
         var latestSaliency: PhoneSaliencyBox?
         var saliencySequence = 0
+        var latestFlow: PhoneFlowBox?
+        var flowSequence = 0
         var sceneMesh = PhoneSceneMesh()
         var sceneMeshVersion: Int?
         var sceneMeshScan: UInt32?
@@ -466,6 +507,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
     var latestSaliency: PhoneSaliencyBox? { lock.withLock { $0.latestSaliency } }
+    var latestFlow: PhoneFlowBox? { lock.withLock { $0.latestFlow } }
     var latestPose3D: simd_float4x4? { lock.withLock { $0.latestDepth?.transform } }
     var sceneMesh: PhoneSceneMesh { lock.withLock { $0.sceneMesh } }
     var sceneMeshVersion: Int? { lock.withLock { $0.sceneMeshVersion } }
@@ -561,6 +603,14 @@ final class PhoneStreamReader: @unchecked Sendable {
                     if let box = decodePhoneSaliency(sample, sequence: seq) {
                         lock.withLock { $0.latestSaliency = box }
                     }
+                case .message(.flow(let sample)):
+                    // Stand the map upright, build the field, and JPEG-decode the
+                    // color on this thread (off the main actor); the frame image
+                    // is built lazily on the main actor when the sketch reads it.
+                    let seq = lock.withLock { state -> Int in state.flowSequence += 1; return state.flowSequence }
+                    if let box = decodePhoneFlow(sample, sequence: seq) {
+                        lock.withLock { $0.latestFlow = box }
+                    }
                 case .message(.sceneMesh(let sample)):
                     // Place the block into world space on this thread, off the main
                     // actor and outside the lock (a block carries thousands of
@@ -616,7 +666,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .markers(let m): state.latestMarkers = m
                         case .wand(let w): state.latestWand = w
                         case .light(let l): state.latestLight = l
-                        case .depth, .segmentation, .saliency, .sceneMesh, .plane, .sound:
+                        case .depth, .segmentation, .saliency, .flow, .sceneMesh, .plane, .sound:
                             break   // handled above
                         }
                     }

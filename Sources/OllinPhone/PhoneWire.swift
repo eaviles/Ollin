@@ -132,6 +132,14 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// threshold. Needs no camera, so it rides beside every mode, behind the
     /// app's own Hear switch (the microphone asks its own permission).
     case sound = 14
+    /// How the rear camera's picture is moving, everywhere at once: a dense
+    /// field of motion vectors between two consecutive frames, measured on the
+    /// phone, plus the matching color frame. The map is carried camera-native
+    /// at a bounded size (a texture, the first per-pixel payload after the
+    /// depth map and the matte) with the turn count that stands it upright, so
+    /// the Mac turns the grid and every vector in it by the same quarter turns.
+    /// Streams in Flow mode (rear camera); needs no LiDAR.
+    case flow = 15
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -975,6 +983,46 @@ public struct PhoneSoundSample: Sendable, Equatable {
     }
 }
 
+/// How the phone's picture moved between two consecutive camera frames: a
+/// dense field of motion vectors (`flowWidth × flowHeight`, row-major from the
+/// top-left of the camera-native buffer), each the motion of the picture at
+/// that cell in **flow-map pixels**, x to the right and y down the buffer, so a
+/// picture sliding right along the sensor reads as +x. `interval` is the time
+/// between the two frames the motion was measured across, and `confidence` is
+/// the model's trust in the field as a whole.
+///
+/// The map is bounded on the phone (the wire's cost is the grid's size, and a
+/// sketch samples it every few canvas points anyway), and the matching color
+/// frame rides beside it as a JPEG (decoded on the Mac side so this file stays
+/// free of ImageIO). Both are camera-native; `orientation` is the number of
+/// 90-degree **clockwise** turns the Mac applies to stand them upright for how
+/// the phone was held (0…3), turning the grid and every vector in it alike.
+public struct PhoneFlowSample: Sendable, Equatable {
+    public var isTracked: Bool
+    public var timestamp: Double
+    public var interval: Double
+    public var flowWidth: Int
+    public var flowHeight: Int
+    public var orientation: UInt8
+    public var confidence: Float
+    public var flow: [SIMD2<Float>]
+    public var colorJPEG: Data
+
+    public init(isTracked: Bool, timestamp: Double, interval: Double,
+                flowWidth: Int, flowHeight: Int, orientation: UInt8 = 0,
+                confidence: Float = 1, flow: [SIMD2<Float>], colorJPEG: Data = Data()) {
+        self.isTracked = isTracked
+        self.timestamp = timestamp
+        self.interval = interval
+        self.flowWidth = flowWidth
+        self.flowHeight = flowHeight
+        self.orientation = orientation
+        self.confidence = confidence
+        self.flow = flow
+        self.colorJPEG = colorJPEG
+    }
+}
+
 /// A decoded message of any kind, which the unit tests round-trip.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
@@ -1020,6 +1068,10 @@ public enum PhoneMessage: Sendable, Equatable {
     /// one reading per window of audio. Unlike the camera streams it needs no
     /// mode, so it arrives beside whichever one is running.
     case sound(PhoneSoundSample)
+    /// How the rear camera's picture is moving: the motion field between two
+    /// consecutive frames and the matching color frame, one reading per pair
+    /// the phone measured.
+    case flow(PhoneFlowSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -1037,6 +1089,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .wand: return .wand
         case .saliency: return .saliency
         case .sound: return .sound
+        case .flow: return .flow
         }
     }
 }
@@ -1092,6 +1145,7 @@ public extension PhoneWire {
         case .wand(let w): payload = encodeWandPayload(w)
         case .saliency(let s): payload = encodeSaliencyPayload(s)
         case .sound(let s): payload = encodeSoundPayload(s)
+        case .flow(let f): payload = encodeFlowPayload(f)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1460,6 +1514,25 @@ public extension PhoneWire {
         return p
     }
 
+    private static func encodeFlowPayload(_ f: PhoneFlowSample) -> Data {
+        var p = Data()
+        p.append(f.isTracked ? 1 : 0)
+        appendF64(&p, f.timestamp)
+        appendF64(&p, f.interval)
+        appendU32(&p, UInt32(max(0, f.flowWidth)))
+        appendU32(&p, UInt32(max(0, f.flowHeight)))
+        p.append(f.orientation)
+        appendF32(&p, f.confidence)
+        // Color: a JPEG byte count, then the JPEG bytes (decoded on the Mac side).
+        appendU32(&p, UInt32(f.colorJPEG.count))
+        p.append(f.colorJPEG)
+        // The field: a vector count, then that many (dx, dy) float pairs, raw.
+        appendU32(&p, UInt32(f.flow.count))
+        p.reserveCapacity(p.count + f.flow.count * 8)
+        for v in f.flow { appendF32(&p, v.x); appendF32(&p, v.y) }
+        return p
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -1492,6 +1565,7 @@ public extension PhoneWire {
         case .wand: return decodeWand(payload).map(PhoneMessage.wand)
         case .saliency: return decodeSaliency(payload).map(PhoneMessage.saliency)
         case .sound: return decodeSound(payload).map(PhoneMessage.sound)
+        case .flow: return decodeFlow(payload).map(PhoneMessage.flow)
         }
     }
 
@@ -2039,6 +2113,46 @@ private extension PhoneWire {
             labels.append(PhoneSoundClassification(label: label, confidence: confidence))
         }
         return PhoneSoundSample(timestamp: timestamp, duration: duration, classifications: labels)
+    }
+}
+
+// MARK: - The flow payload
+
+private extension PhoneWire {
+    static func decodeFlow(_ data: Data) -> PhoneFlowSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + interval(8) + dims(8) +
+        // orientation(1) + confidence(4) + jpegLen(4).
+        let prefix = 1 + 8 + 8 + 8 + 1 + 4 + 4
+        guard data.count >= prefix else { return nil }
+        let s = data.startIndex
+        let tracked = data[s] != 0
+        var o = 1
+        func u32() -> Int { defer { o += 4 }; return Int(readU32(data, s + o)) }
+        let timestamp = readF64(data, s + o); o += 8
+        let interval = readF64(data, s + o); o += 8
+        let flowWidth = u32()
+        let flowHeight = u32()
+        let orientation = data[s + o]; o += 1
+        let confidence = readF32(data, s + o); o += 4
+
+        let jpegLen = u32()
+        guard jpegLen >= 0, data.count >= o + jpegLen + 4 else { return nil }
+        let colorJPEG = Data(data[(s + o)..<(s + o + jpegLen)]); o += jpegLen
+
+        // A short buffer anywhere in the field drops the whole reading rather
+        // than half a map.
+        let count = u32()
+        guard count >= 0, count <= Int(UInt32.max) / 8, data.count >= o + count * 8 else { return nil }
+        var flow = [SIMD2<Float>](); flow.reserveCapacity(count)
+        for _ in 0..<count {
+            let x = readF32(data, s + o); o += 4
+            let y = readF32(data, s + o); o += 4
+            flow.append(SIMD2<Float>(x, y))
+        }
+        return PhoneFlowSample(isTracked: tracked, timestamp: timestamp, interval: interval,
+                               flowWidth: flowWidth, flowHeight: flowHeight,
+                               orientation: orientation, confidence: confidence,
+                               flow: flow, colorJPEG: colorJPEG)
     }
 }
 

@@ -401,6 +401,27 @@ if let attention = device.latestSaliency,
 
 The dots are `salience(at:in:)` sampled on a grid, one query per cell. That is the other way to read the map: not a picture but a field. Big values pull, small values leave alone, so the same surface drives stippling, particle drift, or where a brush is allowed to land. The frames are the model's regions, their line weight following its confidence. On a LiDAR phone each region's center also stands in ARKit world space. The thing being looked at keeps a place beside the room, the hands, and the words. The `3D/Phone/PhoneAttention` example is this section live: point the phone at anything, and a bead wanders the frame to wherever the picture draws the eye.
 
+### How the picture is moving
+
+The phone can also say how its picture is moving. In **Flow** mode it measures optical flow between consecutive frames of the rear camera, on the phone. Each reading arrives as a `PhoneFlow`: a dense field of motion vectors, and the frame it was measured on. [Chapter 30](30-Seeing.md#edges-and-motion) teaches the Mac's own `FlowTracker`, and the phone's field gives you the same reads over the same `MotionField`. A grid of samples, for drawing the motion as arrows, and a vector under any point, for pushing something with it:
+
+```swift
+if let motion = device.latestFlow {
+    for s in motion.samples(in: rect, every: 36) {
+        drawLine(s.position, s.position + s.flow * 3)     // the field as arrows
+    }
+    for i in dust.indices {
+        dust[i] += motion.vector(at: dust[i], in: rect)   // the field as a push
+    }
+}
+```
+
+<img src="Images/27-DepthAndThePhone/FlowAsField.jpg" alt="A staged flow reading on a dark panel: a grid of short streaks, blue where the picture barely moves and yellow to red where it moves fastest, turning in a ring around the left third and running to the right across the right third. White grains of dust with faint trails behind them have been carried by the same field, wound around the ring and streamed off to the right" width="680">
+
+The picture is one staged reading, a vortex and a drift written into the map, read the two ways. The streaks are `samples(in:every:)`, each the motion under one cell, its color following how fast the picture moves there against the reading's fastest motion. The dust is `vector(at:in:)` applied a few times over: every grain read the push under itself and moved, and its trail is where that took it. That is the whole use of a motion field. A hand waved in front of the phone becomes a wind, and anything you draw can be blown by it.
+
+One number the phone has that the Mac's tracker does not is `interval`, the time between the two frames a reading was measured across. The Mac analyzes frames as it can keep up, so its gap breathes with load, and its magnitudes are a signal to scale by a gain of your own. The phone measured both frames and knows how far apart they were, so a vector over `interval` is a speed. The caveat is the same on both: motion is only measurable where the picture has texture, and a blank wall reads as noise, not as stillness. The `3D/Phone/PhoneFlow` example is this section live. The streaks run over the camera frame, and five hundred grains of dust scatter when you wave and settle when you hold still.
+
 ### A picture it knows
 
 Reading is one way to recognize something. Knowing it by sight is the other. Give the capture app a picture and it will find that picture in the room. Drop the file into the app's own folder over the cable, in Finder, under Files, then Ollin Capture. Say how wide you printed it in the file's name, `poster@30cm.png`. ARKit places a print by its real width, and no image file carries one. Tap **Markers** and the phone starts looking.
@@ -541,11 +562,11 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 - [RGBD frames](../Docs/3D/RGBD.md): the frame type, unprojection, depth-lifted pose (a 2D-tracked skeleton placed at its true depth).
 - [3D](../Docs/3D/3D.md#point-clouds): `PointCloud` itself, its point sizing and colors, and how it sits beside the rest of the 3D path.
 - [Record3D](../Docs/3D/Record3D.md): recorded `.r3d` clips and the live USB stream, frame by frame.
-- [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, motion, what the phone hears, and world fusion.
+- [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, how the picture is moving, motion, what the phone hears, and world fusion.
 - [Depth compositing](../Docs/3D/DepthCompositing.md): `depth(at:)`, billboards, `drawDepthScene`, and the metric camera.
 - [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md): rebuilding a scanned cloud as a mesh, skinning particle sets, and the holes and orientation details.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
-- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
+- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Phone/PhoneSounds`](../Examples/3D/Phone/PhoneSounds/Sketch.swift), [`Examples/3D/Phone/PhoneFlow`](../Examples/3D/Phone/PhoneFlow/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
 
 ---
 

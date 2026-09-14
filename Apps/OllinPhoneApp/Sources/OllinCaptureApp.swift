@@ -7,7 +7,8 @@ import simd
 /// surface with the flat planes in it, and the room's own light) on its Neural
 /// Engine, plus the 21-joint hand skeletons, the readable text in view, and a map
 /// of where the picture draws the eye (Vision over the ARKit frames, lifted to 3D
-/// through the LiDAR depth), a front-camera
+/// through the LiDAR depth), how the picture is moving (Vision's optical flow
+/// between consecutive frames), a front-camera
 /// selfie matte (Vision, no ARKit), the sounds its microphone hears, named on the
 /// phone (SoundAnalysis, behind the Hear switch), and CoreMotion device motion, and
 /// streams them to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin
@@ -42,6 +43,10 @@ struct OllinCaptureApp: App {
 /// peaks in, and the matching color frame, with each region's center lifted to
 /// 3D through the LiDAR depth where the device has it.
 ///
+/// Flow measures how the rear camera's picture is moving (Vision's optical flow
+/// between consecutive ARKit frames): a dense field of motion vectors at a
+/// bounded size and the matching color frame, needing no LiDAR.
+///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
 ///
@@ -60,6 +65,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case markers = "Markers"
     case wand = "Wand"
     case attention = "Attention"
+    case flow = "Flow"
     var id: String { rawValue }
 }
 
@@ -94,6 +100,8 @@ final class SensorStreamer {
     var wandInfo = ""
     var attentionLive = false
     var attentionInfo = ""
+    var flowLive = false
+    var flowInfo = ""
     /// What the phone is looking for, and what it could not use, for the screen.
     var markerReferences: [MarkerReference] = []
     var markerNotes: [String] = []
@@ -148,6 +156,7 @@ final class SensorStreamer {
     /// under the thumb is part of this sensor, so the view reaches it directly.
     let wand = WandStreamer()
     private let attention = SaliencyStreamer()
+    private let flow = FlowStreamer()
     private let sound = SoundStreamer()
     private let motion = MotionStreamer()
 
@@ -308,6 +317,14 @@ final class SensorStreamer {
                 : "\(sample.regions.count) \(sample.regions.count == 1 ? "region" : "regions") · \(lifted ? "3D" : "2D")"
         }
 
+        flow.onFlow = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.flow(sample)))
+            self.flowLive = true
+            self.flowInfo = String(format: "%d×%d · %.0f ms apart", sample.flowWidth, sample.flowHeight,
+                                   sample.interval * 1000)
+        }
+
         markers.onLibrary = { [weak self] library in
             guard let self else { return }
             self.markerReferences = library.references
@@ -338,7 +355,7 @@ final class SensorStreamer {
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
         let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text,
-                                               markers, wand, attention]
+                                               markers, wand, attention, flow]
         for reporter in reporters {
             reporter.lightSampler.onLight = { [weak self] sample in
                 guard let self else { return }
@@ -415,6 +432,11 @@ final class SensorStreamer {
             status = attentionLift
                 ? "Streaming where the picture draws the eye, regions lifted to 3D through the LiDAR depth"
                 : "Streaming where the picture draws the eye (this device has no LiDAR to lift the regions)"
+        case .flow:
+            flowLive = false
+            flowInfo = ""
+            flow.start()
+            status = "Streaming how the picture is moving, measured between consecutive frames"
         case .room:
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
@@ -443,7 +465,7 @@ final class SensorStreamer {
     private func stopAllSessions() {
         ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
         room.stop(); hands.stop(); text.stop(); markers.stop(); wand.stop()
-        attention.stop()
+        attention.stop(); flow.stop()
     }
 
     /// Name the strongest-firing blendshape, for the status readout.
@@ -496,14 +518,14 @@ struct ContentView: View {
                 }
 
                 // Capture mode: one camera session at a time (rear: body/world/
-                // segment/room/hands/text/markers/wand/attention, front:
-                // face/selfie), so the modes are mutually exclusive. Eleven modes
+                // segment/room/hands/text/markers/wand/attention/flow, front:
+                // face/selfie), so the modes are mutually exclusive. Twelve modes
                 // outgrew the segmented control, so they wrap as four rows of chips.
                 VStack(spacing: 8) {
                     modeRow([.body, .face, .world])
                     modeRow([.segment, .selfie, .room])
                     modeRow([.hands, .text, .markers])
-                    modeRow([.wand, .attention], padTo: 3)
+                    modeRow([.wand, .attention, .flow])
                     // Hearing is a switch rather than a mode: it needs no camera,
                     // so it rides beside whichever mode is on. Drawn as a chip so
                     // it sits with the others, but it toggles rather than selects.
@@ -566,6 +588,11 @@ struct ContentView: View {
                             ? "mapping the picture…"
                             : "streaming · \(streamer.attentionInfo)",
                             ok: streamer.attentionLive)
+                    case .flow:
+                        row("Flow", streamer.flowInfo.isEmpty
+                            ? "measuring the first pair…"
+                            : "streaming · \(streamer.flowInfo)",
+                            ok: streamer.flowLive)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
@@ -719,7 +746,7 @@ struct ContentView: View {
     }
 
     /// One row of mode chips: the same one-of-many choice a segmented control
-    /// gives, drawn as capsules so ten modes fit across four rows. A short row
+    /// gives, drawn as capsules so twelve modes fit across four rows. A short row
     /// pads with empty space rather than stretching, so every chip keeps the same
     /// width down the whole list.
     private func modeRow(_ modes: [CaptureMode], padTo width: Int = 0) -> some View {

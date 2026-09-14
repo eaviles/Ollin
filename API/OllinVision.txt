@@ -492,17 +492,6 @@ struct ModelOutput: Sendable
   let labels: [Classification]
   let map: Image?
   let objects: [Detection]
-struct MotionField: Sendable
-  func averageFlow(in: Rectangle, mirrored: Bool = default) -> Vector2
-  func flowNormalized(at: Vector2) -> Vector2
-  func samples(in: Rectangle, every: Double = default, mirrored: Bool = default) -> [MotionField.Sample]
-  func vector(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Vector2
-  let averageFlowNormalized: Vector2
-  let confidence: Double
-  struct Sample: Sendable
-    let flow: Vector2
-    let position: Vector2
-  var size: Vector2 { get }
 struct Saliency: Sendable
   func salience(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Double
   func salienceNormalized(at: Vector2) -> Double

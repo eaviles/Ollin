@@ -375,6 +375,9 @@ let package = Package(
         // What the phone hears, named: every sound its classifier notices rings out
         // in its own place as it starts, and a few familiar ones run as levels.
         example("3D/Phone/PhoneSounds", [.phone]),
+        // How the phone's picture is moving: the motion field as a grid of streaks
+        // colored by speed over the live frame, and dust that rides it.
+        example("3D/Phone/PhoneFlow", [.phone]),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),

@@ -4,12 +4,14 @@ Ollin's own iPhone capture app: the phone runs **ARKit body tracking**, **face
 tracking**, **rear-LiDAR scene depth**, **person segmentation**, and **scene
 reconstruction** on its Neural Engine, plus **hand pose**, **text reading**, and an
 **attention map** of where the picture draws the eye
-(Vision over the ARKit frames, lifted to 3D through the LiDAR depth), a
+(Vision over the ARKit frames, lifted to 3D through the LiDAR depth), the
+**motion field** of how the picture is moving (Vision's optical flow between
+consecutive frames), a
 **front-camera selfie matte** (Vision over a plain capture session), the
 **sounds it hears, named** (SoundAnalysis over the microphone, behind a switch),
 and **CoreMotion** device motion, and streams them to a tethered Mac over USB. An Ollin
-sketch on the Mac reads the live skeleton, face, hands, text, attention map, depth
-cloud, person matte, room mesh, or motion in `draw()` through the
+sketch on the Mac reads the live skeleton, face, hands, text, attention map, motion
+field, depth cloud, person matte, room mesh, or motion in `draw()` through the
 [`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
 
 This is the own-app successor to borrowing the Record3D app's RGBD feed
@@ -24,11 +26,11 @@ Each body joint carries a position, an orientation, and a camera-observed flag; 
 body also carries its world anchor and the person's estimated scale.
 The chain is Ollin's end to end.
 
-Body, World, Segment, Room, Hands, Text, Markers, Wand, and Attention use the rear
-camera; Face
+Body, World, Segment, Room, Hands, Text, Markers, Wand, Attention, and Flow use the
+rear camera; Face
 (ARKit, TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera.
 Only one camera session runs at a time. The app has a **Body / Face / World /
-Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention** toggle and runs
+Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention / Flow** toggle and runs
 one mode at a
 time. Device motion
 streams in all of them; the room's light in every mode except Selfie, which has no
@@ -85,7 +87,7 @@ Requirements:
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
    then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room /
-   Hands / Text / Markers / Wand / Attention** toggle and live status.
+   Hands / Text / Markers / Wand / Attention / Flow** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -119,7 +121,10 @@ Requirements:
    up, sliding the thumb to push it away. On **Attention**:
    `swift run --package-path Examples Example-3D-Phone-PhoneAttention`, then point
    the rear camera at anything and the heat map glows over the live frame where the
-   picture draws the eye, a bead trailing the strongest region. With **Hear** switched
+   picture draws the eye, a bead trailing the strongest region. On **Flow**:
+   `swift run --package-path Examples Example-3D-Phone-PhoneFlow`, then wave a hand
+   in front of the rear camera and the motion field draws over the live frame as
+   streaks colored by speed, with dust that scatters and settles. With **Hear** switched
    on beside any mode:
    `swift run --package-path Examples Example-3D-Phone-PhoneSounds`, then clap, talk,
    or knock, and each sound the phone names rings out on the Mac's canvas as it

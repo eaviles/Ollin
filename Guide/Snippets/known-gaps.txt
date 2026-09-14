@@ -75,15 +75,15 @@ bac6f70b2c26  Guide/15-ShapesAsMaterial.md:524  cannot find 'circles' in scope
 9e5a2696fc73  Guide/15-ShapesAsMaterial.md:696  cannot find 'bath' in scope
 ff3aae35a44a  Guide/15-ShapesAsMaterial.md:767  cannot find 'art' in scope
 d06f4b81930b  Guide/16-LayersAndEffects.md:153  'module' is inaccessible due to 'internal' protection level
-54b8d0e8bcde  Guide/16-LayersAndEffects.md:181  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-ebf964e6cb2a  Guide/16-LayersAndEffects.md:204  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-030e9e03f6cb  Guide/16-LayersAndEffects.md:227  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-4de26771459c  Guide/16-LayersAndEffects.md:302  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
-2445b9b973de  Guide/16-LayersAndEffects.md:333  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
-9c093936bb4e  Guide/16-LayersAndEffects.md:380  cannot find 'bands' in scope
-00fa0d08039d  Guide/16-LayersAndEffects.md:465  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-4bab31797ad4  Guide/16-LayersAndEffects.md:481  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
-7d52b883f390  Guide/16-LayersAndEffects.md:514  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+54b8d0e8bcde  Guide/16-LayersAndEffects.md:203  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+ebf964e6cb2a  Guide/16-LayersAndEffects.md:226  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+030e9e03f6cb  Guide/16-LayersAndEffects.md:249  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
+4de26771459c  Guide/16-LayersAndEffects.md:324  cannot convert value of type 'RenderTarget?' to expected argument type 'Contour'
+2445b9b973de  Guide/16-LayersAndEffects.md:355  cannot convert value of type 'RenderTarget' to expected argument type 'Image'
+9c093936bb4e  Guide/16-LayersAndEffects.md:402  cannot find 'bands' in scope
+00fa0d08039d  Guide/16-LayersAndEffects.md:487  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+4bab31797ad4  Guide/16-LayersAndEffects.md:503  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
+7d52b883f390  Guide/16-LayersAndEffects.md:536  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 c32fa0ef7370  Guide/18-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
 4ec0ee8e2cd9  Guide/18-IteratedForms.md:168  cannot find 'start' in scope
 31bc91d6d2fb  Guide/18-IteratedForms.md:188  cannot find 'outline' in scope
@@ -217,13 +217,14 @@ feb0fef1800b  Guide/27-DepthAndThePhone.md:248  cannot find 'device' in scope
 5a785391f494  Guide/27-DepthAndThePhone.md:351  cannot find 'device' in scope
 a1f33f74fb89  Guide/27-DepthAndThePhone.md:368  cannot find 'device' in scope
 273e9c98d06c  Guide/27-DepthAndThePhone.md:388  cannot find 'device' in scope
-8ec9e9d7507e  Guide/27-DepthAndThePhone.md:410  cannot find 'device' in scope
-f3ae11ef787c  Guide/27-DepthAndThePhone.md:429  cannot find 'device' in scope
-d901f4c6af5b  Guide/27-DepthAndThePhone.md:435  cannot find 'balls' in scope
-1e7960fe4884  Guide/27-DepthAndThePhone.md:451  cannot find 'wand' in scope
-9fa02a3d86b8  Guide/27-DepthAndThePhone.md:468  cannot find 'device' in scope
-ec50b450c686  Guide/27-DepthAndThePhone.md:474  cannot find 'device' in scope
-6c724ab7c6e1  Guide/27-DepthAndThePhone.md:492  cannot find 'StageCamera' in scope
+a775cc47e012  Guide/27-DepthAndThePhone.md:408  cannot find 'device' in scope
+8ec9e9d7507e  Guide/27-DepthAndThePhone.md:431  cannot find 'device' in scope
+f3ae11ef787c  Guide/27-DepthAndThePhone.md:450  cannot find 'device' in scope
+d901f4c6af5b  Guide/27-DepthAndThePhone.md:456  cannot find 'balls' in scope
+1e7960fe4884  Guide/27-DepthAndThePhone.md:472  cannot find 'wand' in scope
+9fa02a3d86b8  Guide/27-DepthAndThePhone.md:489  cannot find 'device' in scope
+ec50b450c686  Guide/27-DepthAndThePhone.md:495  cannot find 'device' in scope
+6c724ab7c6e1  Guide/27-DepthAndThePhone.md:513  cannot find 'StageCamera' in scope
 8ebfa121735c  Guide/28-SoundAndControl.md:57  cannot find 'source' in scope
 6f439119170b  Guide/28-SoundAndControl.md:79  cannot find 'source' in scope
 5ab02072b47e  Guide/28-SoundAndControl.md:91  cannot find 'mic' in scope
@@ -236,15 +237,15 @@ ec50d5906661  Guide/28-SoundAndControl.md:184  cannot find 'caption' in scope
 276e3b8ed066  Guide/28-SoundAndControl.md:200  cannot find 'flash' in scope
 74d9da3205e1  Guide/28-SoundAndControl.md:225  cannot find 'TempoClock' in scope
 57b400834e4f  Guide/28-SoundAndControl.md:242  cannot find 'TimecodeClock' in scope
-8ea4b5f96cc5  Guide/28-SoundAndControl.md:299  cannot find 'midi' in scope
-8dea3820d51d  Guide/28-SoundAndControl.md:318  cannot find '$echoAmount' in scope
-65ccb9206470  Guide/28-SoundAndControl.md:331  cannot find 'TUIOReceiver' in scope
-33ba2742b7e1  Guide/28-SoundAndControl.md:357  cannot find 'surface' in scope
-c6da73302d67  Guide/28-SoundAndControl.md:377  cannot find 'ship' in scope
-909819c4a9dc  Guide/28-SoundAndControl.md:405  cannot find 'controllerMotion' in scope
-11884358e073  Guide/28-SoundAndControl.md:423  cannot find 'flash' in scope
-11984c91aed8  Guide/28-SoundAndControl.md:456  cannot find 'mark' in scope
-86d0417a42dc  Guide/28-SoundAndControl.md:489  cannot find 'StageMic' in scope
+8ea4b5f96cc5  Guide/28-SoundAndControl.md:312  cannot find 'midi' in scope
+8dea3820d51d  Guide/28-SoundAndControl.md:331  cannot find '$echoAmount' in scope
+65ccb9206470  Guide/28-SoundAndControl.md:344  cannot find 'TUIOReceiver' in scope
+33ba2742b7e1  Guide/28-SoundAndControl.md:370  cannot find 'surface' in scope
+c6da73302d67  Guide/28-SoundAndControl.md:390  cannot find 'ship' in scope
+909819c4a9dc  Guide/28-SoundAndControl.md:418  cannot find 'controllerMotion' in scope
+11884358e073  Guide/28-SoundAndControl.md:436  cannot find 'flash' in scope
+11984c91aed8  Guide/28-SoundAndControl.md:469  cannot find 'mark' in scope
+86d0417a42dc  Guide/28-SoundAndControl.md:502  cannot find 'StageMic' in scope
 a5d72ce127b9  Guide/29-MakingSound.md:17  cannot find 'Synth' in scope
 65dc6673aa04  Guide/29-MakingSound.md:29  cannot find 'synth' in scope
 34f5ea039a72  Guide/29-MakingSound.md:38  cannot find 'synth' in scope
@@ -309,27 +310,27 @@ c517bfa97332  Guide/30-Seeing.md:416  cannot find 'ScreenCapture' in scope
 5ed6e5e89ad1  Guide/30-Seeing.md:426  cannot find 'ScreenCapture' in scope
 ad5358257b7a  Guide/30-Seeing.md:435  cannot find 'screen' in scope
 6c7a3bff3785  Guide/30-Seeing.md:456  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
-fa6d3e0179f1  Guide/31-SharingAndPerforming.md:64  cannot find 'MySketch' in scope
-73e086e387cc  Guide/31-SharingAndPerforming.md:179  cannot find 'scene' in scope
-e7a70b196e04  Guide/31-SharingAndPerforming.md:247  cannot find 'sketch' in scope
-ebee99fca756  Guide/31-SharingAndPerforming.md:267  cannot find 'sketch' in scope
-62db79c04335  Guide/31-SharingAndPerforming.md:286  no exact matches in call to instance method 'add'
-2c3bd34c44a7  Guide/31-SharingAndPerforming.md:367  cannot find 'press' in scope
-09209a305964  Guide/31-SharingAndPerforming.md:388  cannot find 'sculpture' in scope
-426f110e9533  Guide/31-SharingAndPerforming.md:405  cannot find 'sculpture' in scope
-536e3667b864  Guide/31-SharingAndPerforming.md:430  cannot find 'scene' in scope
-3e5f18f0de86  Guide/31-SharingAndPerforming.md:436  cannot find 'sketch' in scope
-599fcfd334a3  Guide/31-SharingAndPerforming.md:455  cannot find 'scene' in scope
-a854f5aabed2  Guide/31-SharingAndPerforming.md:572  cannot find 'sunBox' in scope
-3263898003f5  Guide/31-SharingAndPerforming.md:581  cannot find 'x' in scope
-2176cb8d4354  Guide/31-SharingAndPerforming.md:641  cannot find 'ball' in scope
-29f2f3575884  Guide/31-SharingAndPerforming.md:655  cannot find 'HapticPattern' in scope
-3f87e906c5a4  Guide/31-SharingAndPerforming.md:684  cannot find 'MyWatermark' in scope
-161ff6887e4d  Guide/31-SharingAndPerforming.md:712  cannot find 'points' in scope
-2c60fc19e1c4  Guide/31-SharingAndPerforming.md:855  cannot find '$radius' in scope
-f51397a62393  Guide/31-SharingAndPerforming.md:916  cannot find '$radius' in scope
-2c5147e37054  Guide/31-SharingAndPerforming.md:933  cannot find '$radius' in scope
-f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:952  cannot find '$frame' in scope
+fa6d3e0179f1  Guide/31-SharingAndPerforming.md:71  cannot find 'MySketch' in scope
+73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
+e7a70b196e04  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
+ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
+62db79c04335  Guide/31-SharingAndPerforming.md:333  no exact matches in call to instance method 'add'
+2c3bd34c44a7  Guide/31-SharingAndPerforming.md:414  cannot find 'press' in scope
+09209a305964  Guide/31-SharingAndPerforming.md:435  cannot find 'sculpture' in scope
+426f110e9533  Guide/31-SharingAndPerforming.md:452  cannot find 'sculpture' in scope
+536e3667b864  Guide/31-SharingAndPerforming.md:477  cannot find 'scene' in scope
+3e5f18f0de86  Guide/31-SharingAndPerforming.md:483  cannot find 'sketch' in scope
+599fcfd334a3  Guide/31-SharingAndPerforming.md:502  cannot find 'scene' in scope
+a854f5aabed2  Guide/31-SharingAndPerforming.md:619  cannot find 'sunBox' in scope
+3263898003f5  Guide/31-SharingAndPerforming.md:628  cannot find 'x' in scope
+2176cb8d4354  Guide/31-SharingAndPerforming.md:688  cannot find 'ball' in scope
+29f2f3575884  Guide/31-SharingAndPerforming.md:702  cannot find 'HapticPattern' in scope
+3f87e906c5a4  Guide/31-SharingAndPerforming.md:731  cannot find 'MyWatermark' in scope
+161ff6887e4d  Guide/31-SharingAndPerforming.md:759  cannot find 'points' in scope
+2c60fc19e1c4  Guide/31-SharingAndPerforming.md:911  cannot find '$radius' in scope
+f51397a62393  Guide/31-SharingAndPerforming.md:972  cannot find '$radius' in scope
+2c5147e37054  Guide/31-SharingAndPerforming.md:989  cannot find '$radius' in scope
+f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1008  cannot find '$frame' in scope
 b8ae9882bce8  Guide/32-Installations.md:41  cannot find 'DMXSender' in scope
 32976ec86c4b  Guide/32-Installations.md:161  cannot find type 'Tile' in scope
 770e5f193c3c  Guide/32-Installations.md:306  cannot find 'worldPoint' in scope

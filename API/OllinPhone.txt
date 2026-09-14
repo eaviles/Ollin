@@ -111,6 +111,7 @@ enum PhoneMarkerKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable
 enum PhoneMessage: Equatable, Sendable
   case depth(PhoneDepthSample)
   case face([PhoneFaceSample])
+  case flow(PhoneFlowSample)
   case hands([PhoneHandSample])
   case light(PhoneLightSample)
   case markers([PhoneMarkerSample])
@@ -129,6 +130,7 @@ enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentabl
   case depth
   case deviceMotion
   case face
+  case flow
   case handPose
   case light
   case marker
@@ -184,6 +186,8 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   var latestBody: PhoneBody? { get }
   var latestFace: PhoneFace? { get }
   var latestFaces: [PhoneFace] { get }
+  var latestFlow: PhoneFlow? { get }
+  var latestFlowFrame: Image? { get }
   var latestFrame: RGBDFrame? { get }
   var latestFrameVersion: Int? { get }
   var latestHand: PhoneHand? { get }
@@ -289,6 +293,30 @@ struct PhoneFaceSample: Equatable, Sendable
   var textureCoordinates: [SIMD2<Float>] { get set }
   var timestamp: Double { get set }
   var triangleIndices: [UInt16] { get set }
+struct PhoneFlow: Sendable
+  func averageFlow(in: Rectangle, mirrored: Bool = default) -> Vector2
+  func flowNormalized(at: Vector2) -> Vector2
+  func samples(in: Rectangle, every: Double = default, mirrored: Bool = default) -> [MotionField.Sample]
+  func vector(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Vector2
+  init(_: PhoneFlowSample)
+  let field: MotionField
+  let interval: Double
+  let isTracked: Bool
+  let timestamp: Double
+  var averageFlowNormalized: Vector2 { get }
+  var confidence: Double { get }
+  var size: Vector2 { get }
+struct PhoneFlowSample: Equatable, Sendable
+  init(isTracked: Bool, timestamp: Double, interval: Double, flowWidth: Int, flowHeight: Int, orientation: UInt8 = default, confidence: Float = default, flow: [SIMD2<Float>], colorJPEG: Foundation.Data = default)
+  var colorJPEG: Foundation.Data { get set }
+  var confidence: Float { get set }
+  var flow: [SIMD2<Float>] { get set }
+  var flowHeight: Int { get set }
+  var flowWidth: Int { get set }
+  var interval: Double { get set }
+  var isTracked: Bool { get set }
+  var orientation: UInt8 { get set }
+  var timestamp: Double { get set }
 struct PhoneHand: Sendable
   enum Chirality: Equatable, Hashable, Sendable
     case left

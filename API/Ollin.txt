@@ -4683,6 +4683,19 @@ struct MosaicTile: Equatable, Sendable
   let picture: Int
   let row: Int
   let target: Color
+struct MotionField: Sendable
+  func averageFlow(in: Rectangle, mirrored: Bool = default) -> Vector2
+  func flowNormalized(at: Vector2) -> Vector2
+  func samples(in: Rectangle, every: Double = default, mirrored: Bool = default) -> [MotionField.Sample]
+  func vector(at: Vector2, in: Rectangle, mirrored: Bool = default) -> Vector2
+  init(width: Int, height: Int, confidence: Double, flowNormalized: (Vector2) -> Vector2)
+  let averageFlowNormalized: Vector2
+  let confidence: Double
+  let size: Vector2
+  struct Sample: Sendable
+    init(position: Vector2, flow: Vector2)
+    let flow: Vector2
+    let position: Vector2
 struct NoteLength: ParamChoices, ParamValue, Comparable, CustomStringConvertible, Decodable, Encodable, Equatable, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, Hashable, Sendable
   func seconds(at: Tempo) -> Double
   init(beats: Double)

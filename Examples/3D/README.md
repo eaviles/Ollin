@@ -31,6 +31,6 @@ The section is large, so the sketches are grouped by topic, one page each.
 | [Effects](Effects/) | This group covers the scene-wide realism passes over the 3D frame. (13 sketches) |
 | [Raymarching](Raymarching/) | This group covers the 3D SDF combinators: distance fields that merge, sphere-traced beside the meshes. (17 sketches) |
 | [Depth](Depth/) | This group covers depth feeds and depth-aware compositing: cameras, recordings, and metric space. (6 sketches) |
-| [Phone](Phone/) | These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB. (16 sketches) |
+| [Phone](Phone/) | These sketches read the **Ollin Capture** iPhone app, which streams ARKit perception, and what the phone hears, over USB. (17 sketches) |
 
 See [`Docs/3D/3D.md`](../../Docs/3D/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/3D/Record3D.md`](../../Docs/3D/Record3D.md). The Ollin Capture stream is documented in [`Docs/3D/Phone.md`](../../Docs/3D/Phone.md).

@@ -793,6 +793,8 @@ Two practical notes apply. First, magnitudes are conservative estimates, and the
 
 `flowNormalized(at:)` and `averageFlowNormalized` are the raw form, for working in normalized coordinates yourself. That space is `0…1` with a lower-left origin and +y up (see [coordinate mapping](#coordinate-mapping)). `size` is the flow map's resolution, and `confidence` is the tracker's confidence in the field as a whole.
 
+`MotionField` lives in the core rather than in this library, so every source of motion reports the same value. A tethered iPhone measuring its own camera gives one too, through [`PhoneDevice.latestFlow`](../3D/Phone.md#how-the-picture-is-moving), and a helper written against this tracker's field takes the phone's unchanged. A source of your own builds one with `init(width:height:confidence:flowNormalized:)`, handing over the read from a normalized point to the motion there.
+
 <a name="imageclassifier"></a>
 
 ### ImageClassifier
