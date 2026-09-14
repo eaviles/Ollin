@@ -88,7 +88,7 @@ package enum ShaderCheck {
                               modules: modules, diagnostics: diagnostics)
         }
         do {
-            let library = try device.makeLibrary(source: composed, options: nil)
+            let library = try device.makeLibrary(source: composed, options: ollinShaderCompileOptions())
             guard let vertex = library.makeFunction(name: "ollin_user_vertex"),
                   let fragment = library.makeFunction(name: "ollin_user_fragment") else {
                 return report("\(full):1: the shader has no "

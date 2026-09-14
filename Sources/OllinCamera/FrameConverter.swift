@@ -1,6 +1,7 @@
 import CoreMedia
 import CoreVideo
 import Metal
+import Ollin
 
 /// Turns the sketch's rendered canvas texture into camera frames: letterboxes
 /// it into a fixed-size BGRA pixel buffer (IOSurface-backed, so it crosses to
@@ -26,7 +27,7 @@ final class FrameConverter {
 
     init?(device: MTLDevice) {
         self.device = device
-        guard let library = try? device.makeLibrary(source: Self.shaderSource, options: nil),
+        guard let library = try? device.makeLibrary(source: Self.shaderSource, options: ollinShaderCompileOptions()),
               let vertexFunction = library.makeFunction(name: "ollin_camera_vertex"),
               let fragmentFunction = library.makeFunction(name: "ollin_camera_fragment"),
               let commandQueue = device.makeCommandQueue()

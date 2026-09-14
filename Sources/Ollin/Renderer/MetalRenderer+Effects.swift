@@ -2197,7 +2197,7 @@ extension MetalRenderer {
         do {
             let lib: MTLLibrary
             if let cached = userShaderLibraries[hash] { lib = cached }
-            else { lib = try device.makeLibrary(source: composed, options: nil); userShaderLibraries[hash] = lib }
+            else { lib = try device.makeLibrary(source: composed, options: ollinShaderCompileOptions()); userShaderLibraries[hash] = lib }
             guard let vfn = lib.makeFunction(name: "ollin_user_vertex"),
                   let ffn = lib.makeFunction(name: "ollin_user_fragment") else {
                 userShaderErrors[hash] = ShaderCompileError(

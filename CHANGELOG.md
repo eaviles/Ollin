@@ -41,6 +41,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **An iPad app running on the Mac.** The framework builds and runs under Mac Catalyst, which is how an App Project previews on the Mac: the reduced-motion reader no longer calls AppKit there, and every runtime shader compile names a Metal language version of at least 4.0, since that compiler defaults to 2.2 and the built-in library needs the ray-tracing namespace. The desk and the phone compile exactly as before.
+
 - **A cape sinking into the back it hangs on.** The back stop of a skeleton-carried surface is a sphere behind the surface's normal, and the solver reads that normal from the mesh's winding, so a sheet wound to face the figure was held off the wrong side and passed through. The faces the solver reads now cross reversed whenever the winding faces what carries the surface, decided from the rest shape and the binds alone, so behind is toward the figure whichever way the mesh is wound; the plane's winding fix in the same release had turned every written cape that way.
 
 - **`drawPlane` faces the way its normal says.** The plane generator named +y and wound its quads to face -y, which nothing culled and so nothing showed; the ink line's hull, which culls the faces toward the eye, drew every floor as a slab of ink. Its quads now wind counter-clockwise seen from above, and the plane joins the probe that checks every generator's winding against its normals.

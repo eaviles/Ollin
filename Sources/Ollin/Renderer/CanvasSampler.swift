@@ -105,7 +105,7 @@ package final class CanvasSampler {
         if pipeline != nil, device === textureDevice { return true }
         device = textureDevice
         do {
-            let library = try textureDevice.makeLibrary(source: Self.kernelSource, options: nil)
+            let library = try textureDevice.makeLibrary(source: Self.kernelSource, options: ollinShaderCompileOptions())
             guard let function = library.makeFunction(name: "ollin_canvas_sample") else {
                 throw NSError(domain: "Ollin", code: 1)
             }

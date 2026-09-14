@@ -1,4 +1,4 @@
-#if canImport(AppKit)
+#if os(macOS)
 import AppKit
 #elseif canImport(UIKit)
 import UIKit
@@ -7,6 +7,8 @@ import UIKit
 /// The system accessibility settings a sketch can read.
 ///
 /// Kept behind one seam so the platform difference lives in a single place.
+/// The seam keys on the operating system, not on whether AppKit imports: an
+/// iPad app running on the Mac can import AppKit and still may not call it.
 enum OllinAccessibility {
 
     /// Whether the person using the machine has asked for less movement.
@@ -16,7 +18,7 @@ enum OllinAccessibility {
     @MainActor
     static var prefersReducedMotion: Bool {
         if OllinApp.isRenderingHeadless { return false }
-        #if canImport(AppKit)
+        #if os(macOS)
         return NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         #elseif canImport(UIKit)
         return UIAccessibility.isReduceMotionEnabled

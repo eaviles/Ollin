@@ -46,7 +46,7 @@ extension MetalRenderer {
         if let cached = computeLibraries[hash] {
             lib = cached
         } else {
-            lib = try device.makeLibrary(source: composed, options: nil)
+            lib = try device.makeLibrary(source: composed, options: ollinShaderCompileOptions())
             computeLibraries[hash] = lib
         }
         guard let function = lib.makeFunction(name: kernel.entry) else {
@@ -1050,7 +1050,7 @@ extension MetalRenderer {
                                                  load: bundleShaderFile)
             // Let compile errors propagate: a bad shader should fail loudly here.
             return try device.makeLibrary(source: rayTracingDefine(rt) + assembled.source,
-                                          options: nil)
+                                          options: ollinShaderCompileOptions())
         }
         if !rt, let library = device.makeDefaultLibrary() {
             return library
