@@ -30,6 +30,8 @@ final class Mirror: Sketch {
 
 Run it and you're on the canvas. `drawFrame(camera)` draws the latest frame letterboxed into the canvas, fitted without stretching like a photo in a mat. It shows a standard "Waiting for camera…" notice until the first frame arrives. Then it returns the rectangle the picture landed in. Keep that rectangle, because it matters more than it looks. Using the camera needs permission, like the microphone did, and macOS asks once, the first time `start()` runs. `Camera(.continuity)` uses a nearby iPhone as the camera, and `.external` a USB webcam.
 
+### When there is no camera
+
 Not every Mac has a camera, and not every one that has a camera will lend it to you. `Camera.orStill(_:)` gives back a camera where there is one and a still picture where there is not, and everything after that line takes either, because both are a feed:
 
 ```swift
@@ -38,7 +40,14 @@ import OllinSamplePhotos
 let feed = Camera.orStill(SamplePhoto.reaching.load())
 ```
 
-Ollin bundles [twenty pictures and a short film](../Docs/Drawing/SamplePhotos.md) for exactly this. Four faces, four whole figures, two tables from above, four streets, two landscapes, a page, a pair of hands and two surfaces, so a sketch that reads people has people to read. The vision examples all do it this way, which is why they run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked, which is how you get a still of a sketch that is normally live.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/StandingIn-dark.jpg">
+  <img src="Images/30-Seeing/StandingIn.jpg" alt="Two black panels side by side: the left one empty but for the words Waiting for camera, the right one holding a bundled photograph of a dancer reaching upward, letterboxed into the same rectangle" width="680">
+</picture>
+
+Without that line, a Mac with no camera shows the notice on the left for as long as you leave it running. With it, the picture on the right arrives instead, drawn by the same `drawFrame` call, and the sketch never learns which one it got.
+
+Ollin bundles [twenty pictures and a short film](../Docs/Drawing/SamplePhotos.md) for exactly this. Four faces, four whole figures, two tables from above, four streets, two landscapes, a page, a pair of hands and two surfaces, so a sketch that reads people has people to read. A tracker attaches to the still feed exactly as it attaches to a camera, which is why the vision examples in this chapter run on a machine with nothing plugged in. `--photo` on launch takes the picture even where a camera would have worked, which is how you get a still of a sketch that is normally live.
 
 ## Trackers: attach, then read
 

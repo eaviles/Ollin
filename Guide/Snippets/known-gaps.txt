@@ -236,16 +236,17 @@ b2e388e46051  Guide/28-SoundAndControl.md:171  cannot find 'ears' in scope
 ec50d5906661  Guide/28-SoundAndControl.md:184  cannot find 'caption' in scope
 276e3b8ed066  Guide/28-SoundAndControl.md:200  cannot find 'flash' in scope
 74d9da3205e1  Guide/28-SoundAndControl.md:225  cannot find 'TempoClock' in scope
-57b400834e4f  Guide/28-SoundAndControl.md:242  cannot find 'TimecodeClock' in scope
-8ea4b5f96cc5  Guide/28-SoundAndControl.md:312  cannot find 'midi' in scope
-8dea3820d51d  Guide/28-SoundAndControl.md:331  cannot find '$echoAmount' in scope
-65ccb9206470  Guide/28-SoundAndControl.md:344  cannot find 'TUIOReceiver' in scope
-33ba2742b7e1  Guide/28-SoundAndControl.md:370  cannot find 'surface' in scope
-c6da73302d67  Guide/28-SoundAndControl.md:390  cannot find 'ship' in scope
-909819c4a9dc  Guide/28-SoundAndControl.md:418  cannot find 'controllerMotion' in scope
-11884358e073  Guide/28-SoundAndControl.md:436  cannot find 'flash' in scope
-11984c91aed8  Guide/28-SoundAndControl.md:469  cannot find 'mark' in scope
-86d0417a42dc  Guide/28-SoundAndControl.md:502  cannot find 'StageMic' in scope
+57b400834e4f  Guide/28-SoundAndControl.md:244  cannot find 'TimecodeClock' in scope
+0b47712d3d69  Guide/28-SoundAndControl.md:264  cannot find 'Timecode' in scope
+8ea4b5f96cc5  Guide/28-SoundAndControl.md:334  cannot find 'midi' in scope
+8dea3820d51d  Guide/28-SoundAndControl.md:353  cannot find '$echoAmount' in scope
+65ccb9206470  Guide/28-SoundAndControl.md:366  cannot find 'TUIOReceiver' in scope
+33ba2742b7e1  Guide/28-SoundAndControl.md:392  cannot find 'surface' in scope
+c6da73302d67  Guide/28-SoundAndControl.md:412  cannot find 'ship' in scope
+909819c4a9dc  Guide/28-SoundAndControl.md:440  cannot find 'controllerMotion' in scope
+11884358e073  Guide/28-SoundAndControl.md:458  cannot find 'flash' in scope
+11984c91aed8  Guide/28-SoundAndControl.md:491  cannot find 'mark' in scope
+86d0417a42dc  Guide/28-SoundAndControl.md:524  cannot find 'StageMic' in scope
 8ebfa121735c  Guide/28-SoundAndControl.md:57  cannot find 'source' in scope
 6f439119170b  Guide/28-SoundAndControl.md:79  cannot find 'source' in scope
 5ab02072b47e  Guide/28-SoundAndControl.md:91  cannot find 'mic' in scope
@@ -297,25 +298,25 @@ bcb4c0a45a0c  Guide/29-MakingSound.md:720  cannot find 'marker' in scope
 2e02aee3d33f  Guide/29-MakingSound.md:764  expected '}' in class
 60aef06efea1  Guide/29-MakingSound.md:853  extraneous '}' at top level
 e9b03ad8c6f8  Guide/29-MakingSound.md:99  cannot find 'synth' in scope
-373aa36a22f2  Guide/30-Seeing.md:118  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-757519a15935  Guide/30-Seeing.md:156  cannot find 'FlowTracker' in scope
-0a4a545ad1e5  Guide/30-Seeing.md:179  cannot find 'RectangleDetector' in scope
-57c048fa7576  Guide/30-Seeing.md:201  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-2fad2c6bc742  Guide/30-Seeing.md:227  cannot find 'tracker' in scope
-ae13e15d3a71  Guide/30-Seeing.md:252  cannot find 'ImageClassifier' in scope
-eece33d5c32c  Guide/30-Seeing.md:277  value of type '@MainActor (Camera3D) -> ()' has no member 'fittedRectangle'
-8cc50386387c  Guide/30-Seeing.md:304  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-72c4c6a3eb2f  Guide/30-Seeing.md:323  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-1bfe07bd584a  Guide/30-Seeing.md:344  cannot find type 'DepthClip' in scope
-cdc2a7f6ed3c  Guide/30-Seeing.md:35  cannot find 'Camera' in scope
-b207bebe3f14  Guide/30-Seeing.md:366  cannot find 'ConceptTracker' in scope
-17aefa356dd1  Guide/30-Seeing.md:389  call can throw, but errors cannot be thrown out of a property initializer
-c517bfa97332  Guide/30-Seeing.md:416  cannot find 'ScreenCapture' in scope
-5ed6e5e89ad1  Guide/30-Seeing.md:426  cannot find 'ScreenCapture' in scope
-ad5358257b7a  Guide/30-Seeing.md:435  cannot find 'screen' in scope
-6c7a3bff3785  Guide/30-Seeing.md:456  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
-9f0265c15491  Guide/30-Seeing.md:52  cannot find 'FaceTracker' in scope
-096f6e921b2a  Guide/30-Seeing.md:99  cannot find 'BodyTracker3D' in scope
+096f6e921b2a  Guide/30-Seeing.md:108  cannot find 'BodyTracker3D' in scope
+373aa36a22f2  Guide/30-Seeing.md:127  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+757519a15935  Guide/30-Seeing.md:165  cannot find 'FlowTracker' in scope
+0a4a545ad1e5  Guide/30-Seeing.md:188  cannot find 'RectangleDetector' in scope
+57c048fa7576  Guide/30-Seeing.md:210  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+2fad2c6bc742  Guide/30-Seeing.md:236  cannot find 'tracker' in scope
+ae13e15d3a71  Guide/30-Seeing.md:261  cannot find 'ImageClassifier' in scope
+eece33d5c32c  Guide/30-Seeing.md:286  value of type '@MainActor (Camera3D) -> ()' has no member 'fittedRectangle'
+8cc50386387c  Guide/30-Seeing.md:313  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+72c4c6a3eb2f  Guide/30-Seeing.md:332  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+1bfe07bd584a  Guide/30-Seeing.md:353  cannot find type 'DepthClip' in scope
+cdc2a7f6ed3c  Guide/30-Seeing.md:37  cannot find 'Camera' in scope
+b207bebe3f14  Guide/30-Seeing.md:375  cannot find 'ConceptTracker' in scope
+17aefa356dd1  Guide/30-Seeing.md:398  call can throw, but errors cannot be thrown out of a property initializer
+c517bfa97332  Guide/30-Seeing.md:425  cannot find 'ScreenCapture' in scope
+5ed6e5e89ad1  Guide/30-Seeing.md:435  cannot find 'ScreenCapture' in scope
+ad5358257b7a  Guide/30-Seeing.md:444  cannot find 'screen' in scope
+6c7a3bff3785  Guide/30-Seeing.md:465  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
+9f0265c15491  Guide/30-Seeing.md:61  cannot find 'FaceTracker' in scope
 2c5147e37054  Guide/31-SharingAndPerforming.md:1009  cannot find '$radius' in scope
 f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1028  cannot find '$frame' in scope
 73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
@@ -343,9 +344,9 @@ edf95f807bfe  Guide/32-Installations.md:375  cannot find 'speed' in scope
 836f9f851e0d  Guide/32-Installations.md:396  cannot find 'room' in scope
 b8ae9882bce8  Guide/32-Installations.md:41  cannot find 'DMXSender' in scope
 d203209dde1c  Guide/32-Installations.md:410  cannot find 'room' in scope
-2d729c353154  Guide/32-Installations.md:490  @objc attribute used without importing module 'Foundation'
-de4072a89e93  Guide/32-Installations.md:583  expected '}' in class
-99edf79cb997  Guide/32-Installations.md:629  extraneous '}' at top level
+2d729c353154  Guide/32-Installations.md:495  @objc attribute used without importing module 'Foundation'
+de4072a89e93  Guide/32-Installations.md:611  expected '}' in class
+99edf79cb997  Guide/32-Installations.md:657  extraneous '}' at top level
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand

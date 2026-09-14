@@ -454,7 +454,12 @@ override func setup() {
 }
 ```
 
-On launch the sketch prints `Remote surface: http://your-mac.local:9330`. Open that address in the phone's browser, on the same Wi-Fi. Every `@Param` appears as a touch control. Sliders take the width of the screen; a `style: .pad` vector becomes an XY pad; switches, menus, and a color picker cover the rest. The groups match the inspector sidebar. A strip at the top carries the frame rate, the clock, and the frame count. The piece's health is readable from the floor too.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/TuningFromTheFloor-dark.jpg">
+  <img src="Images/32-Installations/TuningFromTheFloor.jpg" alt="On the left a card of parameter declarations; on the right a phone holding the page they become, with a frame rate strip at the top and a slider, a switch, a color well, a menu, an XY pad and a stepper below it; two arrows between them, one each way" width="680">
+</picture>
+
+On launch the sketch prints `Remote surface: http://your-mac.local:9330`. Open that address in the phone's browser, on the same Wi-Fi. Every `@Param` appears as a touch control, and which control it becomes follows the property's type, exactly as it does in the inspector. Sliders take the width of the screen; a `style: .pad` vector becomes an XY pad; switches, menus, and a color picker cover the rest. The groups match the inspector sidebar. A strip at the top carries the frame rate, the clock, and the frame count. The piece's health is readable from the floor too.
 
 Edits go both ways. Drag a slider on the phone and the value lands before the next frame, exactly where the inspector's own edits land. Change a parameter on the Mac and the phone follows. Stand in front of the wall, look at the piece, and turn the speed until it breathes right.
 
@@ -534,7 +539,16 @@ ollin new Drift --kind wallpaper
 cd Drift && swift run Drift
 ```
 
-The desktop becomes the piece. Windows still stack over it, icons still sit on it, and clicks still land where they always did. The piece takes no input at all. A small sparkle appears at the right end of the menu bar, and its menu is the way out. Each display runs its own copy, edge to edge. `./build.sh --install` makes it an app in /Applications. Add that app to your Login Items and it is the machine's wallpaper for good.
+The desktop becomes the piece. Windows still stack over it, icons still sit on it, and clicks still land where they always did.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/BehindTheIcons-dark.jpg">
+  <img src="Images/32-Installations/BehindTheIcons.jpg" alt="On the left a screen with a drawing running edge to edge behind the file icons and an open window, a pointer resting on the window; on the right three cards, two small displays each running their own copy, a sparkle with its quit menu, and a note about what it costs to draw all day" width="680">
+</picture>
+
+The piece takes no input at all, which is the whole reason the desktop still works as a desktop. `mouseX`, `mouseY`, and `key` hold whatever they started at, and every click goes to the icon or the window under it. Write the piece to run on `time`, the way most of this guide's sketches already do.
+
+The sparkle at the right end of the menu bar is the way out, because a window-less program has no other one. Each display runs its own copy, edge to edge, and the copies are not in step: they started at different moments and share nothing. `./build.sh --install` makes it an app in /Applications. Add that app to your Login Items and it is the machine's wallpaper for good.
 
 It earns one honest note about cost. Wallpaper draws at the display's rate for as long as the machine is up, through every meeting and every compile. Calm pieces wear well here, and a still one can call `noLoop()` and cost nothing at all.
 
@@ -545,7 +559,14 @@ ollin new Pulse --kind menu-bar
 cd Pulse && swift run Pulse
 ```
 
-A strip 56 points wide appears among the status items and starts moving. It draws at 30 frames a second, a rate a surface that never goes away can afford. The sketch inside sees a canvas of the strip's own points, so `width / 2` is still the middle and everything this guide taught still works. It is simply the smallest canvas you will ever draw on. A click opens the strip's menu, and Quit is there.
+A strip 56 points wide appears among the status items and starts moving.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/SmallestCanvas-dark.jpg">
+  <img src="Images/32-Installations/SmallestCanvas.jpg" alt="A menu bar across the top with one status item outlined, a line leading down to the same strip enlarged five times with its canvas marked: the origin at the top left, width 56, height 22, and a line down the middle labeled width over two" width="680">
+</picture>
+
+It draws at 30 frames a second, a rate a surface that never goes away can afford. The sketch inside sees a canvas of the strip's own points, so `width / 2` is still the middle and everything this guide taught still works. It is simply the smallest canvas you will ever draw on. A click opens the strip's menu, and Quit is there.
 
 Both kinds write the same wrapper the next section describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width parameter among them.
 
@@ -558,7 +579,14 @@ ollin new Orbit --kind mac-app
 cd Orbit && ./build.sh
 ```
 
-`Orbit.app` appears beside the script. Double-click it and the sketch opens in its window, the same window `swift run` would have given you. Nothing about the sketch changed on the way in. It keeps its `@main`, its mouse, its keyboard, and every export flag. The app is a wrapper, not a port, so you keep working in a window (`ollin Sources/Orbit/Sketch.swift`) and wrap when it looks right.
+`Orbit.app` appears beside the script. Double-click it and the sketch opens in its window, the same window `swift run` would have given you.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/AppToHand-dark.jpg">
+  <img src="Images/32-Installations/AppToHand.jpg" alt="On the left one rendered frame of a sketch with an arrow to the same drawing as the app's rounded icon; on the right two cards, the plain build reaching this Mac and the signed and notarized build reaching any Mac" width="680">
+</picture>
+
+Nothing about the sketch changed on the way in. It keeps its `@main`, its mouse, its keyboard, and every export flag. The app is a wrapper, not a port, so you keep working in a window (`ollin Sources/Orbit/Sketch.swift`) and wrap when it looks right.
 
 Two of the wrapper's choices are worth knowing.
 
