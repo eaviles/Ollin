@@ -88,40 +88,40 @@ ebf964e6cb2a  Guide/16-LayersAndEffects.md:226  use of 'layer' refers to instanc
 31bc91d6d2fb  Guide/18-IteratedForms.md:188  cannot convert value of type '@MainActor (Double, Color) -> ()' to expected argument type 'Contour'
 2c491a2fae9f  Guide/18-IteratedForms.md:285  reference to member 'domainColoring' cannot be resolved without a contextual type
 c32fa0ef7370  Guide/18-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
-eec1a7fedd62  Guide/20-ParticleSimulations.md:117  cannot assign value of type 'ParticleLenia' to type 'SimField'
-af020a9ea16a  Guide/20-ParticleSimulations.md:141  cannot assign to immutable expression of type '(Int32, Int32) -> Int32'
-676903760389  Guide/20-ParticleSimulations.md:168  cannot assign value of type 'ParticleFluid' to type 'SimField'
-f5ca2a921568  Guide/20-ParticleSimulations.md:181  cannot assign value of type 'SoftBodies' to type 'Particles'
-eb2a383ca943  Guide/20-ParticleSimulations.md:199  cannot assign value of type 'Evolution' to type 'Particles'
-0ab599f3865b  Guide/20-ParticleSimulations.md:228  cannot assign value of type 'Population' to type 'SimField'
-67848be59f80  Guide/20-ParticleSimulations.md:259  cannot assign value of type 'SwarmChemistry' to type 'SimField'
+20fd462b88a1  Guide/20-ParticleSimulations.md:103  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
+eec1a7fedd62  Guide/20-ParticleSimulations.md:125  cannot assign value of type 'ParticleLenia' to type 'SimField'
+af020a9ea16a  Guide/20-ParticleSimulations.md:149  cannot assign to immutable expression of type '(Int32, Int32) -> Int32'
+676903760389  Guide/20-ParticleSimulations.md:176  cannot assign value of type 'ParticleFluid' to type 'SimField'
+f5ca2a921568  Guide/20-ParticleSimulations.md:189  cannot assign value of type 'SoftBodies' to type 'Particles'
+eb2a383ca943  Guide/20-ParticleSimulations.md:207  cannot assign value of type 'Evolution' to type 'Particles'
+0ab599f3865b  Guide/20-ParticleSimulations.md:236  cannot assign value of type 'Population' to type 'SimField'
+67848be59f80  Guide/20-ParticleSimulations.md:267  cannot assign value of type 'SwarmChemistry' to type 'SimField'
 de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '@MainActor (Light) -> ()' to expected argument type 'Accumulator'
-4bb9d03104bb  Guide/20-ParticleSimulations.md:63  cannot assign value of type 'ParticleLife' to type 'SimField'
-0a07e471de6b  Guide/20-ParticleSimulations.md:77  cannot assign value of type 'Physarum' to type 'Particles'
-20fd462b88a1  Guide/20-ParticleSimulations.md:95  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
+4bb9d03104bb  Guide/20-ParticleSimulations.md:71  cannot assign value of type 'ParticleLife' to type 'SimField'
+0a07e471de6b  Guide/20-ParticleSimulations.md:85  cannot assign value of type 'Physarum' to type 'Particles'
 4de6ac607cb1  Guide/21-3DGently.md:277  cannot find 'ringFile' in scope
-d3145c90ad5d  Guide/21-3DGently.md:363  cannot find 'knot' in scope
-3bdd590a4114  Guide/22-Meshes.md:156  cannot find 'color' in scope
-3cd0f225fa98  Guide/22-Meshes.md:191  cannot find 'dents' in scope
-2f43cec1c527  Guide/22-Meshes.md:207  cannot find 'paint' in scope
-f367a1b59231  Guide/22-Meshes.md:229  cannot find 'base' in scope
-7127874487ea  Guide/22-Meshes.md:271  cannot find 'block' in scope
-ecdb1d3adf45  Guide/22-Meshes.md:301  cannot find 'growth' in scope
-4c7567a53acf  Guide/22-Meshes.md:316  cannot convert value of type '@MainActor (Int) -> ()' to expected argument type 'Mesh'
-418686caff14  Guide/22-Meshes.md:344  cannot find 'grown' in scope
-8e060c522991  Guide/22-Meshes.md:354  cannot find 'u' in scope
-78501e6c6306  Guide/22-Meshes.md:371  cannot find 'boulder' in scope
-71f4c725d408  Guide/22-Meshes.md:390  cannot find 'dropPoint' in scope
-f0c8b217c2f5  Guide/22-Meshes.md:453  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
+d3145c90ad5d  Guide/21-3DGently.md:393  cannot find 'knot' in scope
+3bdd590a4114  Guide/22-Meshes.md:163  cannot find 'color' in scope
+3cd0f225fa98  Guide/22-Meshes.md:198  cannot find 'dents' in scope
+2f43cec1c527  Guide/22-Meshes.md:214  cannot find 'paint' in scope
+f367a1b59231  Guide/22-Meshes.md:236  cannot find 'base' in scope
+7127874487ea  Guide/22-Meshes.md:278  cannot find 'block' in scope
+ecdb1d3adf45  Guide/22-Meshes.md:308  cannot find 'growth' in scope
+4c7567a53acf  Guide/22-Meshes.md:323  cannot convert value of type '@MainActor (Int) -> ()' to expected argument type 'Mesh'
+418686caff14  Guide/22-Meshes.md:351  cannot find 'grown' in scope
+8e060c522991  Guide/22-Meshes.md:361  cannot find 'u' in scope
+78501e6c6306  Guide/22-Meshes.md:378  cannot find 'boulder' in scope
+71f4c725d408  Guide/22-Meshes.md:397  cannot find 'dropPoint' in scope
 e11a80c61786  Guide/22-Meshes.md:46  cannot find 'stage' in scope
-28114b5ebf72  Guide/22-Meshes.md:492  overriding declaration requires an 'override' keyword
-5846f636888f  Guide/22-Meshes.md:511  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
-81a0fe8a8940  Guide/22-Meshes.md:59  cannot find 'stage' in scope
-4a4c240b29b7  Guide/22-Meshes.md:633  expected '}' in class
-7357c1e61e81  Guide/22-Meshes.md:712  cannot find 'picture' in scope
-1f8436af0981  Guide/22-Meshes.md:73  cannot find 'teal' in scope
-313649b9e3e6  Guide/22-Meshes.md:796  extraneous '}' at top level
-aca544976321  Guide/22-Meshes.md:85  cannot find 'planks' in scope
+f0c8b217c2f5  Guide/22-Meshes.md:460  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
+28114b5ebf72  Guide/22-Meshes.md:499  overriding declaration requires an 'override' keyword
+5846f636888f  Guide/22-Meshes.md:518  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+4a4c240b29b7  Guide/22-Meshes.md:640  expected '}' in class
+81a0fe8a8940  Guide/22-Meshes.md:66  cannot find 'stage' in scope
+7357c1e61e81  Guide/22-Meshes.md:719  cannot find 'picture' in scope
+1f8436af0981  Guide/22-Meshes.md:80  cannot find 'teal' in scope
+313649b9e3e6  Guide/22-Meshes.md:803  extraneous '}' at top level
+aca544976321  Guide/22-Meshes.md:92  cannot find 'planks' in scope
 8680361babf9  Guide/23-Landscapes.md:117  cannot find 'seats' in scope
 eaa4d1a8ead3  Guide/23-Landscapes.md:151  cannot find 'island' in scope
 168a7381caef  Guide/23-Landscapes.md:167  cannot find 'terrain' in scope
@@ -222,7 +222,10 @@ d901f4c6af5b  Guide/27-DepthAndThePhone.md:456  cannot find 'balls' in scope
 1e7960fe4884  Guide/27-DepthAndThePhone.md:472  cannot find 'wand' in scope
 9fa02a3d86b8  Guide/27-DepthAndThePhone.md:489  cannot find 'device' in scope
 ec50b450c686  Guide/27-DepthAndThePhone.md:495  cannot find 'device' in scope
-6c724ab7c6e1  Guide/27-DepthAndThePhone.md:513  cannot find 'StageCamera' in scope
+b658493f6d6b  Guide/27-DepthAndThePhone.md:513  cannot find 'device' in scope
+97b49256ec7e  Guide/27-DepthAndThePhone.md:523  cannot find 'device' in scope
+d83cf87a7ec8  Guide/27-DepthAndThePhone.md:541  cannot find 'device' in scope
+6c724ab7c6e1  Guide/27-DepthAndThePhone.md:555  cannot find 'StageCamera' in scope
 b760d3343e21  Guide/27-DepthAndThePhone.md:62  cannot find 'frame' in scope
 1660684f91f0  Guide/27-DepthAndThePhone.md:87  cannot find 'anchor' in scope
 18268b55d215  Guide/28-SoundAndControl.md:112  cannot find 'source' in scope
@@ -313,7 +316,8 @@ ad5358257b7a  Guide/30-Seeing.md:435  cannot find 'screen' in scope
 6c7a3bff3785  Guide/30-Seeing.md:456  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
 9f0265c15491  Guide/30-Seeing.md:52  cannot find 'FaceTracker' in scope
 096f6e921b2a  Guide/30-Seeing.md:99  cannot find 'BodyTracker3D' in scope
-f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1008  cannot find '$frame' in scope
+2c5147e37054  Guide/31-SharingAndPerforming.md:1009  cannot find '$radius' in scope
+f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1028  cannot find '$frame' in scope
 73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
 e7a70b196e04  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
 ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
@@ -324,16 +328,15 @@ ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scop
 536e3667b864  Guide/31-SharingAndPerforming.md:477  cannot find 'scene' in scope
 3e5f18f0de86  Guide/31-SharingAndPerforming.md:483  cannot find 'sketch' in scope
 599fcfd334a3  Guide/31-SharingAndPerforming.md:502  cannot find 'scene' in scope
-a854f5aabed2  Guide/31-SharingAndPerforming.md:619  cannot find 'sunBox' in scope
-3263898003f5  Guide/31-SharingAndPerforming.md:628  cannot find 'x' in scope
-2176cb8d4354  Guide/31-SharingAndPerforming.md:688  cannot find 'ball' in scope
-29f2f3575884  Guide/31-SharingAndPerforming.md:702  cannot find 'HapticPattern' in scope
+a854f5aabed2  Guide/31-SharingAndPerforming.md:639  cannot find 'sunBox' in scope
+3263898003f5  Guide/31-SharingAndPerforming.md:648  cannot find 'x' in scope
+2176cb8d4354  Guide/31-SharingAndPerforming.md:708  cannot find 'ball' in scope
 fa6d3e0179f1  Guide/31-SharingAndPerforming.md:71  cannot find 'MySketch' in scope
-3f87e906c5a4  Guide/31-SharingAndPerforming.md:731  cannot find 'MyWatermark' in scope
-161ff6887e4d  Guide/31-SharingAndPerforming.md:759  cannot find 'points' in scope
-2c60fc19e1c4  Guide/31-SharingAndPerforming.md:911  cannot find '$radius' in scope
-f51397a62393  Guide/31-SharingAndPerforming.md:972  cannot find '$radius' in scope
-2c5147e37054  Guide/31-SharingAndPerforming.md:989  cannot find '$radius' in scope
+29f2f3575884  Guide/31-SharingAndPerforming.md:722  cannot find 'HapticPattern' in scope
+3f87e906c5a4  Guide/31-SharingAndPerforming.md:751  cannot find 'MyWatermark' in scope
+161ff6887e4d  Guide/31-SharingAndPerforming.md:779  cannot find 'points' in scope
+2c60fc19e1c4  Guide/31-SharingAndPerforming.md:931  cannot find '$radius' in scope
+f51397a62393  Guide/31-SharingAndPerforming.md:992  cannot find '$radius' in scope
 32976ec86c4b  Guide/32-Installations.md:161  cannot find type 'Tile' in scope
 770e5f193c3c  Guide/32-Installations.md:306  cannot find 'worldPoint' in scope
 edf95f807bfe  Guide/32-Installations.md:330  cannot find 'speed' in scope

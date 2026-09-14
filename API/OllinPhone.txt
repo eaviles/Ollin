@@ -109,6 +109,7 @@ enum PhoneMarkerKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable
   case image
   case object
 enum PhoneMessage: Equatable, Sendable
+  case air(PhoneAirSample)
   case depth(PhoneDepthSample)
   case face([PhoneFaceSample])
   case flow(PhoneFlowSample)
@@ -123,9 +124,11 @@ enum PhoneMessage: Equatable, Sendable
   case segmentation(PhoneSegmentationSample)
   case sound(PhoneSoundSample)
   case texts([PhoneTextSample])
+  case touch(PhoneTouchSample)
   case wand(PhoneWandSample)
   var kind: PhoneMessageKind { get }
 enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case air
   case bodyPose
   case depth
   case deviceMotion
@@ -140,6 +143,7 @@ enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentabl
   case sceneMesh
   case segmentation
   case sound
+  case touch
   case wand
 enum PhonePlaneAlignment: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case horizontal
@@ -177,11 +181,13 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   func stop()
   init(port: UInt16 = default)
   let sounds: PhoneSounds
+  let touches: PhoneTouches
   nonisolated static let streamPort: UInt16
   var frame: Image? { get }
   var frameSize: Vector2? { get }
   var frameTap: FrameTap? { get set }
   var isRunning: Bool { get }
+  var latestAir: PhoneAir? { get }
   var latestBodies: [PhoneBody] { get }
   var latestBody: PhoneBody? { get }
   var latestFace: PhoneFace? { get }
@@ -222,6 +228,30 @@ final class PhoneSounds: Sendable
   var readingCount: Int { get }
   var threshold: Double { get set }
   var topClassification: SoundClassification? { get }
+final class PhoneTouches: Sendable
+  func reset()
+  func taps() -> [PhoneTap]
+  func touch(id: Int) -> PhoneTouch?
+  init()
+  nonisolated func feel(_: [PhoneTouch], at: Double)
+  var down: [PhoneTouch] { get }
+  var isReporting: Bool { get }
+  var isTouching: Bool { get }
+  var readingCount: Int { get }
+  var tapCount: Int { get }
+  var timeSinceTap: Double { get }
+struct PhoneAir: Equatable, Sendable
+  init(_: PhoneAirSample)
+  init(timestamp: Double, pressure: Double, altitude: Double)
+  let altitude: Double
+  let pressure: Double
+  let timestamp: Double
+  var hectopascals: Double { get }
+struct PhoneAirSample: Equatable, Sendable
+  init(timestamp: Double, pressure: Float, altitude: Float)
+  var altitude: Float { get set }
+  var pressure: Float { get set }
+  var timestamp: Double { get set }
 struct PhoneBody: Sendable
   func bones() -> [(Vector3, Vector3)]
   func cloud(jointSize: Double = default, boneSize: Double = default, color: Color = default) -> PointCloud
@@ -579,6 +609,14 @@ struct PhoneSoundSample: Equatable, Sendable
   var classifications: [PhoneSoundClassification] { get set }
   var duration: Double { get set }
   var timestamp: Double { get set }
+struct PhoneTap: Equatable, Sendable
+  func point(in: Rectangle) -> Vector2
+  init(id: Int, position: Vector2, force: Double? = default, radius: Double = default, time: Double = default)
+  let force: Double?
+  let id: Int
+  let position: Vector2
+  let radius: Double
+  let time: Double
 struct PhoneText: Sendable
   func bounds(in: Rectangle) -> Rectangle
   func corners(in: Rectangle) -> [Vector2]
@@ -602,6 +640,27 @@ struct PhoneTextSample: Equatable, Sendable
   var text: String { get set }
   var timestamp: Double { get set }
   var worldCorners: [SIMD3<Float>] { get set }
+struct PhoneTouch: Equatable, Sendable
+  func point(in: Rectangle) -> Vector2
+  init(_: PhoneTouchPoint)
+  init(id: Int, position: Vector2, force: Double? = default, radius: Double = default, age: Double = default)
+  let age: Double
+  let force: Double?
+  let id: Int
+  let position: Vector2
+  let radius: Double
+struct PhoneTouchPoint: Equatable, Sendable
+  init(id: UInt32, position: SIMD2<Float>, hasForce: Bool = default, force: Float = default, radius: Float = default, age: Float = default)
+  var age: Float { get set }
+  var force: Float { get set }
+  var hasForce: Bool { get set }
+  var id: UInt32 { get set }
+  var position: SIMD2<Float> { get set }
+  var radius: Float { get set }
+struct PhoneTouchSample: Equatable, Sendable
+  init(timestamp: Double, touches: [PhoneTouchPoint])
+  var timestamp: Double { get set }
+  var touches: [PhoneTouchPoint] { get set }
 struct PhoneWand: Sendable
   func point(at: Double) -> Vector3
   init(_: PhoneWandSample)

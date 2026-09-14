@@ -380,6 +380,9 @@ let package = Package(
         // How the phone's picture is moving: the motion field as a grid of streaks
         // colored by speed over the live frame, and dust that rides it.
         example("3D/Phone/PhoneFlow", [.phone]),
+        // The phone played rather than watching: every finger on its screen lands
+        // on the canvas, each tap rings out, and lifting the phone warms it.
+        example("3D/Phone/PhoneTouches", [.phone]),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
         example("Motion/EasingGallery"),

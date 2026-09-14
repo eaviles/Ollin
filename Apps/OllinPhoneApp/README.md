@@ -29,15 +29,19 @@ The chain is Ollin's end to end.
 Body, World, Segment, Room, Hands, Text, Markers, Wand, Attention, and Flow use the
 rear camera; Face
 (ARKit, TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera.
-Only one camera session runs at a time. The app has a **Body / Face / World /
-Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention / Flow** toggle and runs
-one mode at a
+Only one camera session runs at a time. **Touch** runs no camera at all: the
+screen is the sensor there. The app has a **Body / Face / World /
+Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention / Flow /
+Touch** toggle and runs one mode at a
 time. Device motion
-streams in all of them; the room's light in every mode except Selfie, which has no
-ARKit session to measure it. **Hear** is a switch under the modes rather than a
+streams in all of them; the room's light in every mode except Selfie and Touch,
+the two with no ARKit session to measure it. **Hear** is a switch under the modes
+rather than a
 mode: it needs no camera, so it names the sounds around the phone beside whichever
 mode is on, and the phone asks for the microphone once. Only the labels and how
-sure it is cross the cable, never the audio.
+sure it is cross the cable, never the audio. **Air** is the second such switch:
+the barometer reads the pressure and how far the phone has risen since it started
+measuring, and the altimeter asks its own permission once.
 
 ## How it fits together
 
@@ -87,7 +91,8 @@ Requirements:
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
    then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room /
-   Hands / Text / Markers / Wand / Attention / Flow** toggle and live status.
+   Hands / Text / Markers / Wand / Attention / Flow / Touch** toggle and live
+   status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -124,11 +129,15 @@ Requirements:
    picture draws the eye, a bead trailing the strongest region. On **Flow**:
    `swift run --package-path Examples Example-3D-Phone-PhoneFlow`, then wave a hand
    in front of the rear camera and the motion field draws over the live frame as
-   streaks colored by speed, with dust that scatters and settles. With **Hear** switched
+   streaks colored by speed, with dust that scatters and settles. On **Touch**:
+   `swift run --package-path Examples Example-3D-Phone-PhoneTouches`, then play the
+   pad with both hands and every finger lands on the Mac's canvas, each tap ringing
+   out where it fell. With **Hear** switched
    on beside any mode:
    `swift run --package-path Examples Example-3D-Phone-PhoneSounds`, then clap, talk,
    or knock, and each sound the phone names rings out on the Mac's canvas as it
-   starts. Before tracking begins, the
+   starts. With **Air** on, lifting the phone off the table moves the gauge in that
+   same touch sketch. Before tracking begins, the
    gravity readout proves the USB wire is alive (tilt the phone and it moves), and
    the light row reads the room's brightness and color in every ARKit mode.
 
@@ -197,6 +206,19 @@ Requirements:
   hold's quarter-turn count beside it, so the Mac stands the landscape axes upright
   through the shared `PhoneWire.wandFrame` and a wrong convention is fixed there
   rather than by reinstalling the app.
+- The touch stream (`TouchStreamer`) is the one sensor here that is not a sensor:
+  the glass is. Touch mode starts no session at all, which is what keeps the phone
+  cool through a set. The pad is a plain `UIView` with multiple touches turned on,
+  since SwiftUI's own gestures follow one finger; all four phases funnel into one
+  report of the whole live set, and the streamer reconciles that set rather than
+  following phases. Each finger gets a rising number that is never reused, so the
+  Mac reads a number it has not seen as a landing and the wire carries no press
+  flag. A screen that cannot weigh a press reports a maximum force of zero, which
+  goes out as *nothing reported* rather than as zero.
+- The air stream (`AirStreamer`) is `CMAltimeter` relative-altitude updates behind
+  the **Air** switch, about one a second. CoreMotion's own units are the wire's
+  (kilopascals and meters), so there is no conversion to get wrong in two places,
+  and the altitude is relative to wherever the phone was when the switch went on.
 - The room stream (`RoomStreamer`) runs `ARWorldTrackingConfiguration` with scene
   reconstruction and sends the room one anchor block at a time: vertices, normals,
   triangles, the anchor's placement, and one label per triangle. Two rules shape it.

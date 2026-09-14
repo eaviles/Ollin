@@ -13,27 +13,27 @@
 # To shrink a page's share, add Docs/Snippets/<Group>-<Page>.swift declaring the
 # names its prose establishes; it is spliced into every probe from that page.
 
-344f7f4b3cc6  Docs/3D/3D.md:1366  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
 f120c3e411c4  Docs/3D/3D.md:137  cannot find 'x' in scope
-b315a31afeb9  Docs/3D/3D.md:1387  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1432  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1450  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1477  cannot find 'paint' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1506  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1522  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1542  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1573  cannot find 'rock' in scope
-c8abc89c9034  Docs/3D/3D.md:1597  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1643  cannot find 'blob' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1403  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1424  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1469  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1487  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1514  cannot find 'paint' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1543  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1559  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1579  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1610  cannot find 'rock' in scope
+c8abc89c9034  Docs/3D/3D.md:1634  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1680  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:190  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:229  cannot find 'block' in scope
-7de5e54328c1  Docs/3D/3D.md:393  'module' is inaccessible due to 'internal' protection level
-d1d9e1bb1524  Docs/3D/3D.md:406  cannot find 'eye' in scope
+7de5e54328c1  Docs/3D/3D.md:410  'module' is inaccessible due to 'internal' protection level
+d1d9e1bb1524  Docs/3D/3D.md:423  cannot find 'eye' in scope
 a0b9671c7ce3  Docs/3D/3D.md:58  '@main' attribute cannot be applied to this declaration
-a5b3460feb06  Docs/3D/3D.md:817  cannot find 'e' in scope
-59a8691ecc04  Docs/3D/3D.md:856  overriding declaration requires an 'override' keyword
-03e5bc13e5b1  Docs/3D/3D.md:873  cannot call value of non-function type 'Double'
+a5b3460feb06  Docs/3D/3D.md:854  cannot find 'e' in scope
 f0ec15e3ed0a  Docs/3D/3D.md:89  cannot find 'a' in scope
+59a8691ecc04  Docs/3D/3D.md:893  overriding declaration requires an 'override' keyword
+03e5bc13e5b1  Docs/3D/3D.md:910  cannot call value of non-function type 'Double'
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:134  cannot find 'stage' in scope
@@ -57,49 +57,55 @@ fec8f6d8ac5d  Docs/3D/Instancing.md:82  cannot find 'stone' in scope
 bec1cad205c6  Docs/3D/LineDrawing.md:53  for-in loop requires 'LineDrawing' to conform to 'Sequence'
 53deb147e8de  Docs/3D/LineDrawing.md:83  cannot find 'scene' in scope
 03afe1b01e53  Docs/3D/LineDrawing.md:9  for-in loop requires 'LineDrawing' to conform to 'Sequence'
-89e4d2ea37de  Docs/3D/Phone.md:105  cannot find 'device' in scope
-df2b7a61c936  Docs/3D/Phone.md:119  cannot find 'body' in scope
-5992515a7f38  Docs/3D/Phone.md:134  cannot find 'body' in scope
-2df9a5624ab5  Docs/3D/Phone.md:145  cannot find 'body' in scope
-4811875e3ea9  Docs/3D/Phone.md:170  cannot find 'device' in scope
-f4879e166444  Docs/3D/Phone.md:191  cannot find 'face' in scope
-56761869e16d  Docs/3D/Phone.md:204  cannot find 'face' in scope
-73ce2b7ca8b2  Docs/3D/Phone.md:226  cannot find 'device' in scope
-4af716674a1e  Docs/3D/Phone.md:254  cannot find 'device' in scope
-bcc28ace17b1  Docs/3D/Phone.md:280  cannot find 'device' in scope
-d44ab2303d71  Docs/3D/Phone.md:310  cannot find 'device' in scope
-99be21e026a2  Docs/3D/Phone.md:327  cannot find 'balls' in scope
-e5dc2ea249e1  Docs/3D/Phone.md:348  cannot find 'device' in scope
-09c01475e157  Docs/3D/Phone.md:372  cannot find 'device' in scope
-b052fb9b5d7e  Docs/3D/Phone.md:401  cannot find 'world' in scope
-cf3d32b543b2  Docs/3D/Phone.md:417  cannot find 'world' in scope
-f352b8be2546  Docs/3D/Phone.md:432  cannot find 'cameraCloud' in scope
-0916b30d362c  Docs/3D/Phone.md:448  cannot find 'update' in scope
-8b328b4bd70a  Docs/3D/Phone.md:474  cannot find 'device' in scope
-0fa742730514  Docs/3D/Phone.md:484  cannot find 'device' in scope
-47781ccd5094  Docs/3D/Phone.md:499  unary operator cannot be separated from its operand
-d4aeba848259  Docs/3D/Phone.md:510  cannot find 'scan' in scope
-f6f39e6371ff  Docs/3D/Phone.md:530  cannot find 'device' in scope
-64961a44b09d  Docs/3D/Phone.md:538  cannot find 'device' in scope
-47be1ad501f5  Docs/3D/Phone.md:552  unary operator cannot be separated from its operand
-3ada032ec232  Docs/3D/Phone.md:567  cannot find 'device' in scope
-4b39ac917156  Docs/3D/Phone.md:583  cannot find 'device' in scope
-5f30c7ac01bb  Docs/3D/Phone.md:595  cannot find 'device' in scope
-9fa280ebe85c  Docs/3D/Phone.md:603  value of type '@MainActor (Light) -> ()' has no member 'direction'
-73798537a0b5  Docs/3D/Phone.md:610  cannot find 'device' in scope
-6e76d190e7fe  Docs/3D/Phone.md:616  cannot find 'device' in scope
-a265e10930ee  Docs/3D/Phone.md:630  cannot find 'device' in scope
-90f5c5e41eec  Docs/3D/Phone.md:637  cannot find 'device' in scope
-ee28b75acc6f  Docs/3D/Phone.md:654  cannot find 'device' in scope
-da567f4e69a2  Docs/3D/Phone.md:681  cannot find 'device' in scope
-ef5ff4dcdc03  Docs/3D/Phone.md:696  cannot find 'device' in scope
-abd0d3efd585  Docs/3D/Phone.md:719  cannot find 'device' in scope
-dfcb15f63246  Docs/3D/Phone.md:727  cannot find 'device' in scope
-73f14e0e9d88  Docs/3D/Phone.md:73  cannot find 'PhoneDevice' in scope
-0efaf3e1b543  Docs/3D/Phone.md:736  cannot find 'device' in scope
-ce2562f59ad4  Docs/3D/Phone.md:746  cannot find 'device' in scope
-4d48cb586784  Docs/3D/Phone.md:754  cannot find 'PhoneSounds' in scope
-499b37412097  Docs/3D/Phone.md:766  cannot find 'device' in scope
+89e4d2ea37de  Docs/3D/Phone.md:109  cannot find 'device' in scope
+df2b7a61c936  Docs/3D/Phone.md:123  cannot find 'body' in scope
+5992515a7f38  Docs/3D/Phone.md:138  cannot find 'body' in scope
+2df9a5624ab5  Docs/3D/Phone.md:149  cannot find 'body' in scope
+4811875e3ea9  Docs/3D/Phone.md:174  cannot find 'device' in scope
+f4879e166444  Docs/3D/Phone.md:195  cannot find 'face' in scope
+56761869e16d  Docs/3D/Phone.md:208  cannot find 'face' in scope
+73ce2b7ca8b2  Docs/3D/Phone.md:230  cannot find 'device' in scope
+4af716674a1e  Docs/3D/Phone.md:258  cannot find 'device' in scope
+bcc28ace17b1  Docs/3D/Phone.md:284  cannot find 'device' in scope
+d44ab2303d71  Docs/3D/Phone.md:314  cannot find 'device' in scope
+99be21e026a2  Docs/3D/Phone.md:331  cannot find 'balls' in scope
+e5dc2ea249e1  Docs/3D/Phone.md:352  cannot find 'device' in scope
+09c01475e157  Docs/3D/Phone.md:376  cannot find 'device' in scope
+b052fb9b5d7e  Docs/3D/Phone.md:405  cannot find 'world' in scope
+cf3d32b543b2  Docs/3D/Phone.md:421  cannot find 'world' in scope
+f352b8be2546  Docs/3D/Phone.md:436  cannot find 'cameraCloud' in scope
+0916b30d362c  Docs/3D/Phone.md:452  cannot find 'update' in scope
+8b328b4bd70a  Docs/3D/Phone.md:478  cannot find 'device' in scope
+0fa742730514  Docs/3D/Phone.md:488  cannot find 'device' in scope
+47781ccd5094  Docs/3D/Phone.md:503  unary operator cannot be separated from its operand
+d4aeba848259  Docs/3D/Phone.md:514  cannot find 'scan' in scope
+f6f39e6371ff  Docs/3D/Phone.md:534  cannot find 'device' in scope
+64961a44b09d  Docs/3D/Phone.md:542  cannot find 'device' in scope
+47be1ad501f5  Docs/3D/Phone.md:556  unary operator cannot be separated from its operand
+3ada032ec232  Docs/3D/Phone.md:571  cannot find 'device' in scope
+4b39ac917156  Docs/3D/Phone.md:587  cannot find 'device' in scope
+5f30c7ac01bb  Docs/3D/Phone.md:599  cannot find 'device' in scope
+9fa280ebe85c  Docs/3D/Phone.md:607  value of type '@MainActor (Light) -> ()' has no member 'direction'
+73798537a0b5  Docs/3D/Phone.md:614  cannot find 'device' in scope
+6e76d190e7fe  Docs/3D/Phone.md:620  cannot find 'device' in scope
+a265e10930ee  Docs/3D/Phone.md:634  cannot find 'device' in scope
+90f5c5e41eec  Docs/3D/Phone.md:641  cannot find 'device' in scope
+ee28b75acc6f  Docs/3D/Phone.md:658  cannot find 'device' in scope
+da567f4e69a2  Docs/3D/Phone.md:685  cannot find 'device' in scope
+ef5ff4dcdc03  Docs/3D/Phone.md:700  cannot find 'device' in scope
+abd0d3efd585  Docs/3D/Phone.md:723  cannot find 'device' in scope
+dfcb15f63246  Docs/3D/Phone.md:731  cannot find 'device' in scope
+0efaf3e1b543  Docs/3D/Phone.md:740  cannot find 'device' in scope
+d3a2c54227d7  Docs/3D/Phone.md:75  cannot find 'PhoneDevice' in scope
+ce2562f59ad4  Docs/3D/Phone.md:750  cannot find 'device' in scope
+4d48cb586784  Docs/3D/Phone.md:758  cannot find 'PhoneSounds' in scope
+aa6b39505d99  Docs/3D/Phone.md:772  cannot find 'device' in scope
+cfacfcd36d59  Docs/3D/Phone.md:787  cannot find 'device' in scope
+c1dfed3638ac  Docs/3D/Phone.md:797  cannot find 'device' in scope
+77a761fca424  Docs/3D/Phone.md:811  cannot find 'PhoneTouches' in scope
+b6794226e9fd  Docs/3D/Phone.md:823  cannot find 'device' in scope
+e2d2e419cc1e  Docs/3D/Phone.md:838  cannot find 'PhoneAir' in scope
+499b37412097  Docs/3D/Phone.md:846  cannot find 'device' in scope
 cf446431401d  Docs/3D/RGBD.md:105  cannot find 'bodies' in scope
 afc9b452945e  Docs/3D/RGBD.md:54  expected ',' separator
 480ac8fd57b4  Docs/3D/RGBD.md:80  cannot find 'frame' in scope
@@ -289,7 +295,7 @@ c30f287a209e  Docs/Drawing/Effects.md:259  value of type '@MainActor (@escaping 
 69cf570bc684  Docs/Drawing/Effects.md:318  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'filtered'
 314af6ac5659  Docs/Drawing/Effects.md:546  cannot find 'horizon' in scope
 a8f0d552b0f0  Docs/Drawing/Effects.md:582  cannot find 'marks' in scope
-63ea4c842664  Docs/Drawing/Effects.md:846  cannot find 'photo' in scope
+63ea4c842664  Docs/Drawing/Effects.md:848  cannot find 'photo' in scope
 09c8e57cb7b7  Docs/Drawing/Effects.md:91  value of type '@MainActor (@escaping () -> Void) -> ComposeLayer' has no member 'image'
 eb9d4c173b18  Docs/Drawing/Envelopes.md:104  expected ',' separator
 3ba94f2cae8b  Docs/Drawing/Envelopes.md:111  cannot find 'shore' in scope
@@ -1012,16 +1018,16 @@ f6bc36d1218e  Docs/Output/DXF.md:15  cannot find 'sketch' in scope
 928afe067ea6  Docs/Output/DXF.md:40  cannot find 'contours' in scope
 da066775fa9e  Docs/Output/Embroidery.md:15  cannot find 'sketch' in scope
 a12a5cbc54b8  Docs/Output/Embroidery.md:42  cannot find 'contours' in scope
-c71aeda5d128  Docs/Output/Export.md:171  cannot find 'sketch' in scope
-9e462dad8137  Docs/Output/Export.md:211  cannot find 'sketch' in scope
-793786ace256  Docs/Output/Export.md:339  cannot find 'sketch' in scope
-2a1e64e9e42f  Docs/Output/Export.md:359  cannot find 'sketch' in scope
-f480df453d20  Docs/Output/Export.md:375  cannot find 'MySketch' in scope
-c1560bc3ed9b  Docs/Output/Export.md:395  'canvasSize' has already been overridden
-d7bc2e33fbb1  Docs/Output/Export.md:450  cannot find 'MySketch' in scope
-0ab55be9d1bf  Docs/Output/Export.md:457  cannot find 'someShape' in scope
-00955c273f6b  Docs/Output/Export.md:610  cannot find 'MySketch' in scope
-7b4f2a06de9c  Docs/Output/Export.md:637  cannot find 'MySketch' in scope
+c71aeda5d128  Docs/Output/Export.md:172  cannot find 'sketch' in scope
+9e462dad8137  Docs/Output/Export.md:212  cannot find 'sketch' in scope
+793786ace256  Docs/Output/Export.md:340  cannot find 'sketch' in scope
+2a1e64e9e42f  Docs/Output/Export.md:360  cannot find 'sketch' in scope
+f480df453d20  Docs/Output/Export.md:376  cannot find 'MySketch' in scope
+c1560bc3ed9b  Docs/Output/Export.md:396  'canvasSize' has already been overridden
+d7bc2e33fbb1  Docs/Output/Export.md:451  cannot find 'MySketch' in scope
+0ab55be9d1bf  Docs/Output/Export.md:458  cannot find 'someShape' in scope
+00955c273f6b  Docs/Output/Export.md:639  cannot find 'MySketch' in scope
+7b4f2a06de9c  Docs/Output/Export.md:666  cannot find 'MySketch' in scope
 a0541b6d0dfe  Docs/Output/Fabrication.md:104  expected expression in list of expressions
 bf331903d9bb  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 408662c0edcc  Docs/Output/Fabrication.md:62  cannot find 'sculpture' in scope

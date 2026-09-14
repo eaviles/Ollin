@@ -6,7 +6,7 @@
 
 A sketch that renders on the Mac can use what an iPhone connected by a cable detects on the phone itself. The phone side is **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)). The app runs ARKit on the phone's Neural Engine and streams the results over the USB cable. On the Mac, `PhoneDevice` reads them as typed values you use in `draw()`.
 
-Fifteen payloads come over the cable. The first is a **3D body skeleton**. Next are **faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view come as up to 4 skeletons of 21 joints each, lifted to metric 3D where the phone has LiDAR. The lines of **text** the phone can read arrive with their corners lifted the same way. The **pictures and objects it knows** each arrive as a named 6DoF placement in the room, with the real size. A map of **where the picture draws the eye** arrives as a heat map with the regions where it peaks. **How the picture is moving** arrives as a field of motion vectors between consecutive frames, read the way the Mac's own optical-flow field is read. A world-facing **RGBD depth frame** from the rear LiDAR unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh** is the space itself, reconstructed as a labeled triangle surface. The **flat surfaces** in that room arrive beside it, as somewhere to stand something. The **room's light** reports how bright and how warm the space is. A **person-segmentation matte** from the rear camera comes as a silhouette and a cutout. **Device motion** streams too. The phone itself **held as a pointer** is the one payload that describes the person rather than the room. The last payload is **what the phone hears**: every sound its classifier names, with how sure it is, from the phone's own microphone.
+Seventeen payloads come over the cable. The first is a **3D body skeleton**. Next are **faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view come as up to 4 skeletons of 21 joints each, lifted to metric 3D where the phone has LiDAR. The lines of **text** the phone can read arrive with their corners lifted the same way. The **pictures and objects it knows** each arrive as a named 6DoF placement in the room, with the real size. A map of **where the picture draws the eye** arrives as a heat map with the regions where it peaks. **How the picture is moving** arrives as a field of motion vectors between consecutive frames, read the way the Mac's own optical-flow field is read. A world-facing **RGBD depth frame** from the rear LiDAR unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh** is the space itself, reconstructed as a labeled triangle surface. The **flat surfaces** in that room arrive beside it, as somewhere to stand something. The **room's light** reports how bright and how warm the space is. A **person-segmentation matte** from the rear camera comes as a silhouette and a cutout. **Device motion** streams too. The phone itself **held as a pointer** is the one payload that describes the person rather than the room. **What the phone hears** is every sound its classifier names, with how sure it is, from the phone's own microphone. The last two need no camera at all: **every finger on its own screen**, which turns the phone into something you play, and **the air it is standing in**, read off its barometer.
 
 [`Record3D`](../3D/Record3D.md) reads the color-plus-depth feed from another app. Ollin Capture is Ollin's own app, so the stream carries ARKit's own results, and both ends of the link are Ollin code.
 
@@ -51,6 +51,8 @@ final class Pose: Sketch {
 - [Where the eye goes](#where-the-eye-goes) - `latestSaliency`, the heat map, the salient regions
 - [How the picture is moving](#how-the-picture-is-moving) - `latestFlow`, the motion field, read like the Mac's own
 - [What the phone hears](#what-the-phone-hears) - `sounds`, a level and a trigger for every sound the phone names
+- [The screen as a control surface](#the-screen-as-a-control-surface) - `touches`, every finger on the glass, and the taps you cannot miss
+- [The air around it](#the-air-around-it) - `latestAir`, the pressure and how far the phone has risen
 - [Device motion](#device-motion) - `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) - the wire, coordinate space, what's ahead
 
@@ -90,13 +92,15 @@ device.latestFlow                    // PhoneFlow?, how the picture is moving (F
 device.latestFrame              // RGBDFrame?, the latest depth frame (World mode)
 device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Room mode)
 device.planes                        // PhonePlanes, the flat surfaces found (Room mode)
+device.touches                       // PhoneTouches, every finger on the screen (Touch mode)
 device.latestLight                   // PhoneLight?, how bright and how warm the room is
+device.latestAir                     // PhoneAir?, the pressure and how far the phone has risen
 device.latestMotion                  // PhoneMotion?, the latest device-motion sample
 ```
 
 Each value is replaced each time the phone sends a new one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion usually arrives first, because it needs no camera or model. So it proves the wire works before ARKit has found a body, face, or depth.
 
-**The camera modes are mutually exclusive.** Only one camera session runs at a time. Body, World, Segment, Room, Hands, Text, Markers, Wand, Attention, and Flow use the rear camera. Face and Selfie use the front camera. The capture app has a mode toggle. Its positions are **Body / Face / World / Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention / Flow**. Only the selected mode updates its values. Those are `latestBody`, `latestFace`, `latestHands`, `latestTexts`, `latestMarkers`, `latestWand`, `latestSaliency`, `latestFlow`, and `latestFrame`, each for its own mode. The segmentation images update in Segment and Selfie (both feed them), and the room's `sceneMesh` and `planes` update in Room. The other values hold their last reading, so read the value for the mode you mean to drive. Motion streams in every mode. `latestLight` streams in every mode except Selfie, because Selfie is the one mode that runs no ARKit session.
+**The camera modes are mutually exclusive.** Only one camera session runs at a time. Body, World, Segment, Room, Hands, Text, Markers, Wand, Attention, and Flow use the rear camera. Face and Selfie use the front camera. **Touch** runs no camera at all: the screen is the sensor there, so the phone stays cool. The capture app has a mode toggle. Its positions are **Body / Face / World / Segment / Selfie / Room / Hands / Text / Markers / Wand / Attention / Flow / Touch**. Only the selected mode updates its values. Those are `latestBody`, `latestFace`, `latestHands`, `latestTexts`, `latestMarkers`, `latestWand`, `latestSaliency`, `latestFlow`, `latestFrame`, and `touches`, each for its own mode. The segmentation images update in Segment and Selfie (both feed them), and the room's `sceneMesh` and `planes` update in Room. The other values hold their last reading, so read the value for the mode you mean to drive. Motion streams in every mode, and so does `latestAir` once the **Air** switch is on. `latestLight` streams in every mode except Selfie and Touch, the two that run no ARKit session.
 
 ## The body
 
@@ -759,6 +763,84 @@ ears.events().first?.label      // "dog_bark"
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneSounds`: every sound that starts rings out in its own place on the canvas, and the levels of a few familiar ones run along the bottom.
 
+## The screen as a control surface
+
+Tap **Touch** and the phone stops watching. The screen under the modes becomes the surface, and no camera session runs at all. The phone reports every finger on the glass: where each one sits, how wide the contact is, how hard it presses where the glass can tell, and how long it has been down. Nothing to charge back up after a set.
+
+`device.touches` is the Mac's end, and it gives the two reads every input in Ollin gives. *Where are the fingers now?* is a state that comes and goes:
+
+```swift
+for touch in device.touches.down {
+    touch.id                          // Int, this finger's own number
+    touch.position                    // Vector2, -1…1 across and up, the middle at zero
+    touch.point(in: bounds)           // Vector2, the same place inside a rectangle on the canvas
+    touch.radius                      // Double, how wide the contact is, as a fraction of the screen's width
+    touch.force                       // Double?, 0…1, or nil on a screen that cannot tell
+    touch.age                         // Double, seconds this finger has been down
+}
+device.touches.isTouching             // Bool, anything on the glass
+device.touches.touch(id: held)        // PhoneTouch?, one finger you are following
+```
+
+*Did somebody just tap?* is an event that happens once:
+
+```swift
+for tap in device.touches.taps() {
+    ripples.append(Ripple(at: tap.point(in: bounds), born: time))
+}
+```
+
+**A finger keeps one `id` from landing to leaving, and the phone never hands that number to another finger.** That is the whole of how a tap is found: a number the Mac has not seen is a landing. It is also why a drag fires once rather than once a frame. And it is how a tap is followed into the drag it becomes: keep the `id` the tap gave you, and ask `touch(id:)` for it each frame.
+
+**Nothing is missed.** The phone sends a message every time the set of fingers changes, and `PhoneTouches` reads every one of them, while `draw()` sees only whatever is there when it looks. So a finger that lands and leaves between two frames is gone from `down` by the time you look, and its tap is still in `taps()`. `taps()` drains what it returns, so read it in one place per frame.
+
+If the cable comes out while a finger is down, that finger is let go rather than left on the glass. The phone sends only on a change, so without that a pulled cable would be a note that never ends.
+
+```swift
+device.touches.tapCount               // Int, landings since the device started; only ever rises
+device.touches.timeSinceTap           // Double, seconds since the last landing, for a mark that fades
+device.touches.isReporting            // Bool, readings have arrived
+device.touches.readingCount           // Int, readings since the device started
+device.touches.reset()                // forget the fingers, the pending taps, and the count
+```
+
+`tapCount` is the non-draining read of the same thing: keep last frame's number, compare, and you see a tap you were not watching for without taking it out of anybody else's hands.
+
+Force is `nil` on most iPhones, which dropped the pressure-sensing screen after the 3D Touch years. Read it as *nothing reported* rather than as no pressure, and reach for `radius` when you want an expressive axis. Every iPhone reports how wide the contact is, and a fingertip and a flat finger are far apart.
+
+`PhoneTouches` can be made on its own and fed by hand, so a sketch can be developed with no phone attached, and a test can say exactly which fingers were where:
+
+```swift
+let surface = PhoneTouches()
+surface.feel([PhoneTouch(id: 1, position: Vector2(-0.5, 0.25), radius: 0.06)], at: 2)
+surface.taps().first?.id       // 1
+```
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneTouches`: every finger lands on the canvas as a disc sized by its width, each tap rings out where it fell, and lifting the phone warms the color.
+
+## The air around it
+
+Every iPhone since the 6 has a barometer, and it is the one sensor here that reads the room without looking at it. Switch **Air** on, under the modes, and it arrives beside whichever mode is running, about once a second. The altimeter asks for motion once.
+
+```swift
+if let air = device.latestAir {
+    air.pressure                  // Double, kilopascals; about 101.3 at sea level
+    air.hectopascals              // Double, the same in a weather report's unit; about 1013
+    air.altitude                  // Double, meters above where the phone started measuring
+    air.timestamp                 // Double, seconds on the phone's clock
+}
+```
+
+**`altitude` is relative, and that is the useful part.** A barometer knows how the pressure has *changed* far better than it knows how high it is. So the number starts at zero where the phone was switched on, and answers "how much higher than that" to about a tenth of a meter. It goes below zero going down. Lift the phone off a table and it moves, which makes it a continuous control that costs no camera: a fader you play by standing up.
+
+The pressure itself is the weather's own number. A door opening in a sealed room moves it, and a storm arriving moves it over a day.
+
+`PhoneAir` can be made on its own, so a sketch can be developed with no phone attached:
+
+```swift
+let air = PhoneAir(timestamp: 0, pressure: 101.3, altitude: 0.42)
+```
+
 ## Device motion
 
 `PhoneMotion` is the CoreMotion sample: attitude as a quaternion, gravity, rotation rate, and user acceleration. It is the cheap payload that proves the USB transport works before any model runs:
@@ -780,5 +862,5 @@ Tilt the phone and `gravity` swings. That is a one-line check that the connectio
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338. Record3D uses port 1337. Wi-Fi is deliberately left out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, with its root at the lens. The skeleton is in model space, with its root at the origin. The [world fusion](#world-fusion) step lifts a sweep into one fixed world cloud by applying each frame's `latestPose`. It fuses the clouds from several poses into a single *registered* scene. Two more steps, [keeping a long sweep registered](#drift) and [recognizing a place already scanned](#loops), correct ARKit's own drift on top of that. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed. A 256×192 frame is ~196 KB, which is comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **The catalog is still growing.** Today's payloads are body pose, face, hands, the text in view, the pictures and objects it knows, where the eye goes, how the picture is moving, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, motion, the phone held as a pointer, and what the phone hears. Adding a richer sensor means the same app sends a new tagged payload, with no new pipeline.
+- **The catalog is still growing.** Today's payloads are body pose, face, hands, the text in view, the pictures and objects it knows, where the eye goes, how the picture is moving, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, motion, the phone held as a pointer, what the phone hears, every finger on its screen, and the air around it. Adding a richer sensor means the same app sends a new tagged payload, with no new pipeline.
 - **A mesh block is carried raw.** Sending is what is throttled. The phone reads a block's geometry the moment ARKit hands it over, because those buffers belong to the session. Then it queues the block and sends a few blocks at a time. A block too big for one payload is skipped, and the app counts it on its own screen.

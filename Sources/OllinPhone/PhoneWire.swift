@@ -140,6 +140,19 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// the Mac turns the grid and every vector in it by the same quarter turns.
     /// Streams in Flow mode (rear camera); needs no LiDAR.
     case flow = 15
+    /// Every finger on the phone's screen, one message each time they change:
+    /// where each one sits, how wide it is, how hard it presses where the glass
+    /// can tell, and how long it has been down. This is the phone as something
+    /// you play rather than something that watches, so **Touch** mode runs no
+    /// camera at all: the whole screen is the surface. A finger keeps one id
+    /// from landing to leaving, and an id is never reused, which is how the Mac
+    /// tells a finger that moved from one that just landed.
+    case touch = 16
+    /// The air the phone is standing in: how hard it presses, and how far the
+    /// phone has risen since it started measuring. The barometer needs no
+    /// camera, so it rides beside whichever mode is running, behind the app's
+    /// own Air switch (the altimeter asks its own permission).
+    case air = 17
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -1023,6 +1036,73 @@ public struct PhoneFlowSample: Sendable, Equatable {
     }
 }
 
+/// One finger on the phone's screen.
+///
+/// `id` belongs to this finger from the moment it lands until it leaves, and it
+/// is never handed to another one, so the Mac reads a finger it has not seen
+/// before as a landing and needs no separate press flag on the wire.
+///
+/// `position` is where it sits: -1 to 1 across, -1 to 1 up, the middle at zero,
+/// the same reading the wand's thumb carries. `radius` is how wide the contact
+/// is as a fraction of the screen's width, which every iPhone reports and which
+/// is what tells a fingertip from a flat finger. `force` is how hard it presses,
+/// 0 to 1, and `hasForce` is false on a screen that cannot tell (most iPhones
+/// since the 3D Touch years), so a sketch reads nothing rather than zero.
+/// `age` is how long the finger had been down when this reading was sent.
+public struct PhoneTouchPoint: Sendable, Equatable {
+    public var id: UInt32
+    public var position: SIMD2<Float>
+    public var hasForce: Bool
+    public var force: Float
+    public var radius: Float
+    public var age: Float
+
+    public init(id: UInt32, position: SIMD2<Float>, hasForce: Bool = false,
+                force: Float = 0, radius: Float = 0, age: Float = 0) {
+        self.id = id
+        self.position = position
+        self.hasForce = hasForce
+        self.force = force
+        self.radius = radius
+        self.age = age
+    }
+}
+
+/// Every finger on the screen at one instant, and when that was on the phone's
+/// clock (seconds since it booted, the same clock the camera frames carry).
+///
+/// The phone sends one of these each time the set changes, which is as often as
+/// the screen scans while a finger moves, so an empty list is a real message:
+/// it is the last finger leaving.
+public struct PhoneTouchSample: Sendable, Equatable {
+    public var timestamp: Double
+    public var touches: [PhoneTouchPoint]
+
+    public init(timestamp: Double, touches: [PhoneTouchPoint]) {
+        self.timestamp = timestamp
+        self.touches = touches
+    }
+}
+
+/// What the phone's barometer reads: `pressure` in kilopascals, and `altitude`
+/// in meters above wherever the phone was when it started measuring.
+///
+/// The altitude is relative on purpose. A barometer knows how the pressure has
+/// changed far better than it knows how high it is, so the number starts at zero
+/// and answers "how much higher than that" to about a tenth of a meter. It falls
+/// below zero going down. `timestamp` is seconds since the phone booted.
+public struct PhoneAirSample: Sendable, Equatable {
+    public var timestamp: Double
+    public var pressure: Float
+    public var altitude: Float
+
+    public init(timestamp: Double, pressure: Float, altitude: Float) {
+        self.timestamp = timestamp
+        self.pressure = pressure
+        self.altitude = altitude
+    }
+}
+
 /// A decoded message of any kind, which the unit tests round-trip.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
@@ -1072,6 +1152,14 @@ public enum PhoneMessage: Sendable, Equatable {
     /// consecutive frames and the matching color frame, one reading per pair
     /// the phone measured.
     case flow(PhoneFlowSample)
+    /// Every finger on the screen at one instant, one message per change.
+    /// Like the wand, this one carries the person rather than the room, and
+    /// unlike every other kind it runs no camera.
+    case touch(PhoneTouchSample)
+    /// What the barometer reads: the pressure, and how far the phone has risen
+    /// since it started measuring. It needs no camera, so it arrives beside
+    /// whichever mode is running.
+    case air(PhoneAirSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -1090,6 +1178,8 @@ public enum PhoneMessage: Sendable, Equatable {
         case .saliency: return .saliency
         case .sound: return .sound
         case .flow: return .flow
+        case .touch: return .touch
+        case .air: return .air
         }
     }
 }
@@ -1146,6 +1236,8 @@ public extension PhoneWire {
         case .saliency(let s): payload = encodeSaliencyPayload(s)
         case .sound(let s): payload = encodeSoundPayload(s)
         case .flow(let f): payload = encodeFlowPayload(f)
+        case .touch(let t): payload = encodeTouchPayload(t)
+        case .air(let a): payload = encodeAirPayload(a)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1533,6 +1625,33 @@ public extension PhoneWire {
         return p
     }
 
+    /// Every finger at one instant: the clock, a count, then one record each.
+    /// The count is a byte because a screen takes eleven fingers at the very
+    /// most; 255 is the defensive cap, not the real one.
+    private static func encodeTouchPayload(_ t: PhoneTouchSample) -> Data {
+        var p = Data()
+        appendF64(&p, t.timestamp)
+        p.append(UInt8(min(t.touches.count, 255)))
+        for touch in t.touches.prefix(255) {
+            appendU32(&p, touch.id)
+            appendF32(&p, touch.position.x); appendF32(&p, touch.position.y)
+            p.append(touch.hasForce ? 1 : 0)
+            appendF32(&p, touch.force)
+            appendF32(&p, touch.radius)
+            appendF32(&p, touch.age)
+        }
+        return p
+    }
+
+    /// One barometer reading: the clock, the pressure, the relative altitude.
+    private static func encodeAirPayload(_ a: PhoneAirSample) -> Data {
+        var p = Data()
+        appendF64(&p, a.timestamp)
+        appendF32(&p, a.pressure)
+        appendF32(&p, a.altitude)
+        return p
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -1566,6 +1685,8 @@ public extension PhoneWire {
         case .saliency: return decodeSaliency(payload).map(PhoneMessage.saliency)
         case .sound: return decodeSound(payload).map(PhoneMessage.sound)
         case .flow: return decodeFlow(payload).map(PhoneMessage.flow)
+        case .touch: return decodeTouch(payload).map(PhoneMessage.touch)
+        case .air: return decodeAir(payload).map(PhoneMessage.air)
         }
     }
 
@@ -2153,6 +2274,44 @@ private extension PhoneWire {
                                flowWidth: flowWidth, flowHeight: flowHeight,
                                orientation: orientation, confidence: confidence,
                                flow: flow, colorJPEG: colorJPEG)
+    }
+}
+
+// MARK: - The touch and air payloads
+
+private extension PhoneWire {
+    static func decodeTouch(_ data: Data) -> PhoneTouchSample? {
+        // Fixed prefix: timestamp(8) + count(1). A count of zero is a real
+        // reading: it is the last finger leaving the glass.
+        guard data.count >= 8 + 1 else { return nil }
+        let s = data.startIndex
+        var o = 0
+        let timestamp = readF64(data, s + o); o += 8
+        let count = Int(data[s + o]); o += 1
+        // Per touch: id(4) + position(8) + hasForce(1) + force(4) + radius(4) + age(4).
+        guard data.count >= o + count * 25 else { return nil }
+        var touches = [PhoneTouchPoint](); touches.reserveCapacity(count)
+        for _ in 0..<count {
+            func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+            let id = readU32(data, s + o); o += 4
+            let position = SIMD2<Float>(f32(), f32())
+            let hasForce = data[s + o] != 0; o += 1
+            let force = f32()
+            let radius = f32()
+            let age = f32()
+            touches.append(PhoneTouchPoint(id: id, position: position, hasForce: hasForce,
+                                           force: force, radius: radius, age: age))
+        }
+        return PhoneTouchSample(timestamp: timestamp, touches: touches)
+    }
+
+    static func decodeAir(_ data: Data) -> PhoneAirSample? {
+        // timestamp(8) + pressure(4) + altitude(4).
+        guard data.count >= 16 else { return nil }
+        let s = data.startIndex
+        return PhoneAirSample(timestamp: readF64(data, s),
+                              pressure: readF32(data, s + 8),
+                              altitude: readF32(data, s + 12))
     }
 }
 

@@ -506,6 +506,48 @@ That is the rule worth keeping: an event is a crossing **from below**. The phone
 
 `timeSinceHearing(_:)` is the third read, for a mark that fades: it says how long ago a sound last crossed, and it does not drain. The `3D/Phone/PhoneSounds` example is this section live. Every sound that starts rings out in its own place on the canvas, a place found by hashing its name. A room settles into a map of its sounds.
 
+### Playing the glass
+
+Tap **Touch** and the phone stops watching altogether. No camera runs. The screen under the modes becomes the surface, and the phone sends every finger on it.
+
+```swift
+for touch in device.touches.down {
+    drawCircle(center: touch.point(in: pad), radius: 16 + touch.radius * 500)
+}
+```
+
+`down` is the fingers on the glass right now. Each carries `position`, which runs `-1` to `1` across and up with the middle at zero, and `point(in:)` maps that onto a rectangle on your canvas. Each also carries `radius`: how wide the contact is, as a fraction of the screen's width. That is the axis worth reaching for. Every iPhone reports it, and a fingertip and a flat finger are far apart. `force` is `nil` on almost every phone made since the 3D Touch years.
+
+The other read is the one that happens once:
+
+```swift
+for tap in device.touches.taps() { rings.append(Ring(at: tap.point(in: pad), born: time)) }
+```
+
+<img src="Images/27-DepthAndThePhone/GlassAsPad.jpg" alt="Two panels on a dark ground. Left, a phone-shaped outline with two teal discs on it, a small one labelled 1 and a wide one labelled 2, and warm rings expanding from where each landed. Right, a timeline of the same two seconds: three rows labelled id 1, id 2, id 3, each a teal bar while that finger is down with a warm dot marked taps() where it landed. Pale vertical lines mark every draw. The id 3 bar sits entirely between two of them, noted as down and gone between two draws" width="680">
+
+Look at the third row. That finger landed and left inside a quarter of a second, between two of the draws marked along the top, so it was never in `down` when the sketch looked. Its tap is there anyway. The phone sends a message every time the set of fingers changes, and Ollin reads every one of them, while `draw()` only ever sees the latest.
+
+How it knows is worth a sentence, because it is the whole mechanism. A finger keeps one number from the moment it lands until it leaves, and the phone never gives that number to another finger. So a number the Mac has not seen is a landing. That is also why sliding a finger across the glass does not tap on every frame. And it is how you follow a tap into the drag it becomes: keep the `id` the tap gave you, and ask `device.touches.touch(id:)` for it each frame.
+
+`taps()` drains, so read it in one place. If two parts of your sketch need to know, `tapCount` is the same fact without taking it: it only ever rises, and comparing it with last frame's number is the habit from [the wand's button](#pointing-at-it-with-the-phone).
+
+The `3D/Phone/PhoneTouches` example is this section live, with the air below joining in.
+
+### The air it is standing in
+
+The last sensor reads the room without looking at it. Every iPhone since the 6 has a barometer. Switch **Air** on, beside Hear, and it arrives beside whichever mode is running.
+
+```swift
+if let air = device.latestAir {
+    lift += (air.altitude - lift) * min(1, deltaTime * 3)
+}
+```
+
+`altitude` is meters above wherever the phone was when it started measuring, not meters above the sea. That sounds like a limitation and it is the useful half. A barometer knows how the pressure changed far better than it knows where it is, and the change is good to about a tenth of a meter. Lift the phone off the table and the number moves.
+
+So it is a fader you play by standing up, and it costs no camera and no model. `pressure` is the weather's own number, about 101.3 kilopascals at sea level, and a door opening in a sealed room moves it.
+
 ## Putting it together: the ghost room
 
 The finished sketch turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/27-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/27-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):

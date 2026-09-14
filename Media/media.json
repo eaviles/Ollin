@@ -10700,6 +10700,11 @@
       "rendered": "2026-09-13",
       "source": "248e32c67c1edb39"
     },
+    "3D/Phone/PhoneTouches": {
+      "reason": "needs a device at the desk: imports OllinPhone",
+      "rendered": "2026-09-14",
+      "source": "6cb42c35285f2156"
+    },
     "3D/Phone/PhoneWorldScan": {
       "reason": "needs a device at the desk: imports OllinPhone",
       "rendered": "2026-09-10",

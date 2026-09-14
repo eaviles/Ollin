@@ -61,8 +61,17 @@ import Darwin
 /// `samples(in:every:)`, `averageFlow(in:)`, over the same `MotionField`), and
 /// `latestFlowFrame` is the camera frame it was measured on.
 ///
+/// In **Touch** mode the phone stops watching altogether and becomes something
+/// you play: the whole screen is a control surface, and `touches` carries every
+/// finger on the glass (`down`) beside every finger that landed since you last
+/// looked (`taps()`). No camera runs, so the phone stays cool.
+///
 /// `latestLight` says how bright and how warm the room is. It arrives in every mode,
 /// so a sketch can match the light it is standing in.
+///
+/// `latestAir` is the barometer: how hard the air presses, and how far the phone
+/// has risen since it started measuring. It needs no camera either, so it arrives
+/// beside whichever mode is running, once the app's **Air** switch is on.
 ///
 /// `sounds` is what the phone's microphone hears, named: the same level and
 /// trigger reads the Mac's own sound classifier gives, so a clap or a bark in the
@@ -87,6 +96,11 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// The phone listens only while its **Hear** switch is on; `isListening`
     /// says whether readings are arriving.
     public let sounds = PhoneSounds()
+
+    /// The phone's screen as a control surface: every finger on the glass, and
+    /// every finger that landed since you last looked. Populated in **Touch**
+    /// mode, which runs no camera at all.
+    public let touches = PhoneTouches()
 
     // Build the drawable `RGBDFrame` lazily and cache it by the box's sequence, so
     // repeated reads in one `draw()` (frame, frameSize, pointCloud) reuse it.
@@ -116,7 +130,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
 
     /// Create a device bound to the capture app's stream port.
     public init(port: UInt16 = PhoneDevice.streamPort) {
-        reader = PhoneStreamReader(port: port, sounds: sounds)
+        reader = PhoneStreamReader(port: port, sounds: sounds, touches: touches)
     }
 
     /// Begin connecting and streaming. Safe to call once; the reader retries on its
@@ -425,6 +439,14 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// from, which ARKit reads off the face itself.
     public var latestLight: PhoneLight? { reader.latestLight.map(PhoneLight.init) }
 
+    // MARK: - The air around it (every mode)
+
+    /// What the phone's barometer reads, or `nil` before the first reading: how
+    /// hard the air presses, and how far the phone has risen since it started
+    /// measuring. It needs no camera, so it arrives beside whichever mode is
+    /// running, once the capture app's **Air** switch is on.
+    public var latestAir: PhoneAir? { reader.latestAir.map(PhoneAir.init) }
+
     // MARK: - FrameSource / VideoFeed (the World-mode color feed)
 
     /// The analysis tap (`FrameSource`): the live color frame, delivered on the
@@ -477,6 +499,7 @@ final class PhoneStreamReader: @unchecked Sendable {
         var planesVersion: Int?
         var planesScan: UInt32?
         var latestLight: PhoneLightSample?
+        var latestAir: PhoneAirSample?
         var tap: FrameTap?
         var connected = false
         var message: String? = "Connecting to the phone…"
@@ -489,10 +512,13 @@ final class PhoneStreamReader: @unchecked Sendable {
     /// The device's ears, fed straight from the read thread: the object keeps
     /// its own lock and its reads happen on the main actor.
     private let sounds: PhoneSounds
+    /// The device's touch surface, fed the same way and for the same reason.
+    private let touches: PhoneTouches
 
-    init(port: UInt16, sounds: PhoneSounds) {
+    init(port: UInt16, sounds: PhoneSounds, touches: PhoneTouches) {
         self.port = port
         self.sounds = sounds
+        self.touches = touches
     }
 
     // MARK: Public surface (read from the main actor)
@@ -514,6 +540,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var planes: PhonePlanes { lock.withLock { $0.planes } }
     var planesVersion: Int? { lock.withLock { $0.planesVersion } }
     var latestLight: PhoneLightSample? { lock.withLock { $0.latestLight } }
+    var latestAir: PhoneAirSample? { lock.withLock { $0.latestAir } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
 
@@ -551,6 +578,7 @@ final class PhoneStreamReader: @unchecked Sendable {
             state.connected = false
             return fd
         }
+        touches.releaseAll()
         if fd >= 0 { close(fd) }   // breaks a blocking read
     }
 
@@ -636,6 +664,11 @@ final class PhoneStreamReader: @unchecked Sendable {
                     // The ears keep their own state under their own lock; the
                     // threshold crossing is judged there, off the main actor.
                     sounds.hear(sample)
+                case .message(.touch(let sample)):
+                    // The surface keeps its own state under its own lock, the
+                    // ears' shape: the landings are found there, off the main
+                    // actor, so a tap between two draws is never missed.
+                    touches.feel(sample)
                 case .message(.plane(let sample)):
                     // Place the surface into world space on this thread, off the main
                     // actor and outside the lock, the way a mesh block is.
@@ -666,7 +699,9 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .markers(let m): state.latestMarkers = m
                         case .wand(let w): state.latestWand = w
                         case .light(let l): state.latestLight = l
-                        case .depth, .segmentation, .saliency, .flow, .sceneMesh, .plane, .sound:
+                        case .air(let a): state.latestAir = a
+                        case .depth, .segmentation, .saliency, .flow, .sceneMesh, .plane,
+                             .sound, .touch:
                             break   // handled above
                         }
                     }
@@ -688,6 +723,9 @@ final class PhoneStreamReader: @unchecked Sendable {
                 if state.running { state.message = "Reconnecting to the phone…" }
                 return stillOurs
             }
+            // The phone sends touches only on a change, so a finger that was
+            // down when the cable came out would otherwise stay down forever.
+            touches.releaseAll()
             if stillOurs { close(fd) }
             if isRunning { Thread.sleep(forTimeInterval: 0.5) }
         }

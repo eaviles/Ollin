@@ -53,7 +53,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>With Hear switched on, Ollin Capture names the sounds around the phone on the phone itself. The audio never leaves it; only the names and how sure it is are sent to the tethered Mac.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Ollin Capture streams device motion to the tethered Mac.</string>
+	<string>Ollin Capture streams device motion to the tethered Mac, and with Air switched on, the air pressure and how far the phone has risen.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Ollin Capture streams sensor data to a tethered Mac over the USB connection.</string>
 </dict>

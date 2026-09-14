@@ -322,7 +322,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | RGBD frames | Color plus depth plus intrinsics; unproject any pixel to a metric point | [Ch 27](27-DepthAndThePhone.md) | [RGBD](../Docs/3D/RGBD.md) |
 | Recorded captures | Open `.r3d` depth recordings as point clouds with true intrinsics | [Ch 27](27-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
 | Live USB depth | A tethered phone's RGBD stream, frame by frame | [Ch 27](27-DepthAndThePhone.md) | [Record3D](../Docs/3D/Record3D.md) |
-| The capture app | Ollin's own iPhone app streams body, face, LiDAR depth, segmentation, how its picture is moving, motion, and the sounds it hears, named | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
+| The capture app | Ollin's own iPhone app streams body, face, LiDAR depth, segmentation, how its picture is moving, motion, the sounds it hears, named, every finger on its own screen, and the air it is standing in | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
 | World fusion | Sweep the phone; frames fuse into one fixed world cloud by pose, and a place the sweep comes back to is recognized, so the cloud closes rather than drifting | [Ch 27](27-DepthAndThePhone.md) | [Phone](../Docs/3D/Phone.md) |
 
 ## Sound and control

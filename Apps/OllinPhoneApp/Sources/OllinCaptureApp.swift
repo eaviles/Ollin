@@ -10,7 +10,9 @@ import simd
 /// through the LiDAR depth), how the picture is moving (Vision's optical flow
 /// between consecutive frames), a front-camera
 /// selfie matte (Vision, no ARKit), the sounds its microphone hears, named on the
-/// phone (SoundAnalysis, behind the Hear switch), and CoreMotion device motion, and
+/// phone (SoundAnalysis, behind the Hear switch), the air it is standing in
+/// (CoreMotion's barometer, behind the Air switch), every finger on its own screen
+/// (Touch mode, no camera at all), and CoreMotion device motion, and
 /// streams them to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin
 /// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
@@ -47,12 +49,19 @@ struct OllinCaptureApp: App {
 /// between consecutive ARKit frames): a dense field of motion vectors at a
 /// bounded size and the matching color frame, needing no LiDAR.
 ///
+/// Touch is the one mode that runs no sensor at all: the screen is the sensor.
+/// The pad under the modes takes every finger at once and streams where each
+/// one sits, how wide it is, how hard it presses where the glass can tell, and
+/// how long it has been down. No camera session runs, which is what keeps the
+/// phone cool and its battery alive through a long set.
+///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
 ///
 /// Hearing is not a mode either: the sound classifier needs no camera, so it runs
 /// beside whichever mode is on, behind its own switch, since the microphone asks
-/// its own permission.
+/// its own permission. The barometer is the second such switch, for the same
+/// reason: it needs no camera, and the altimeter asks its own permission.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case body = "Body"
     case face = "Face"
@@ -66,6 +75,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case wand = "Wand"
     case attention = "Attention"
     case flow = "Flow"
+    case touch = "Touch"
     var id: String { rawValue }
 }
 
@@ -102,6 +112,8 @@ final class SensorStreamer {
     var attentionInfo = ""
     var flowLive = false
     var flowInfo = ""
+    var touchLive = false
+    var touchInfo = ""
     /// What the phone is looking for, and what it could not use, for the screen.
     var markerReferences: [MarkerReference] = []
     var markerNotes: [String] = []
@@ -128,6 +140,27 @@ final class SensorStreamer {
     var soundLive = false
     var soundInfo = ""
     private static let hearingKey = "hearing"
+    /// Whether the phone is reading the air around it. A switch rather than a
+    /// mode for the same reason Hear is: it needs no camera, and the altimeter
+    /// asks its own permission. Remembered across launches.
+    var reading = false {
+        didSet {
+            guard reading != oldValue else { return }
+            UserDefaults.standard.set(reading, forKey: Self.airKey)
+            if reading {
+                airLive = false
+                airInfo = ""
+                air.start()
+            } else {
+                air.stop()
+                airLive = false
+                airInfo = ""
+            }
+        }
+    }
+    var airLive = false
+    var airInfo = ""
+    private static let airKey = "air"
     var gravity = SIMD3<Float>(0, 0, 0)
     var motionLive = false
     var status = "Starting…"
@@ -141,6 +174,7 @@ final class SensorStreamer {
     let handsLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
     let textLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
     let attentionLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+    let airSupported = AirStreamer.isSupported
 
     private var server: SensorServer?
     private let ar = ARStreamer()
@@ -157,7 +191,11 @@ final class SensorStreamer {
     let wand = WandStreamer()
     private let attention = SaliencyStreamer()
     private let flow = FlowStreamer()
+    /// The second streamer the screen writes into rather than only reading: in
+    /// Touch mode the glass *is* the sensor, so the pad reaches it directly.
+    let touch = TouchStreamer()
     private let sound = SoundStreamer()
+    private let air = AirStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
@@ -325,6 +363,20 @@ final class SensorStreamer {
                                    sample.interval * 1000)
         }
 
+        touch.onTouches = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.touch(sample)))
+            self.touchLive = true
+            if sample.touches.isEmpty {
+                self.touchInfo = "nothing on the glass"
+            } else {
+                let widest = sample.touches.map(\.radius).max() ?? 0
+                let count = sample.touches.count
+                self.touchInfo = "\(count) \(count == 1 ? "finger" : "fingers")"
+                    + String(format: " · widest %.0f%%", widest * 100)
+            }
+        }
+
         markers.onLibrary = { [weak self] library in
             guard let self else { return }
             self.markerReferences = library.references
@@ -351,6 +403,22 @@ final class SensorStreamer {
             }
         }
 
+        // The barometer needs no camera either, so it runs beside every mode
+        // and only its own switch starts and stops it.
+        air.onAir = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.air(sample)))
+            self.airLive = true
+            self.airInfo = String(format: "%.2f kPa · %+.2f m", sample.pressure, sample.altitude)
+        }
+        air.onStatus = { [weak self] reason in
+            guard let self else { return }
+            if let reason {
+                self.airLive = false
+                self.airInfo = reason
+            }
+        }
+
         // Every ARKit session estimates the light, so they all report to the same
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
@@ -369,6 +437,7 @@ final class SensorStreamer {
 
         applyMode()
         hearing = UserDefaults.standard.bool(forKey: Self.hearingKey)
+        reading = UserDefaults.standard.bool(forKey: Self.airKey)
     }
 
     /// Switch the active camera/tracker. Only one ARKit session runs at a time, so
@@ -437,6 +506,11 @@ final class SensorStreamer {
             flowInfo = ""
             flow.start()
             status = "Streaming how the picture is moving, measured between consecutive frames"
+        case .touch:
+            touchLive = false
+            touchInfo = ""
+            touch.start()
+            status = "Play the pad below. No camera runs in this mode"
         case .room:
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
@@ -460,12 +534,12 @@ final class SensorStreamer {
         markers.reload()
     }
 
-    /// Stop every camera session. Safe on one that never started, so a mode switch
-    /// calls it unconditionally.
+    /// Stop every camera session, and the touch pad with them. Safe on one that
+    /// never started, so a mode switch calls it unconditionally.
     private func stopAllSessions() {
         ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
         room.stop(); hands.stop(); text.stop(); markers.stop(); wand.stop()
-        attention.stop(); flow.stop()
+        attention.stop(); flow.stop(); touch.stop()
     }
 
     /// Name the strongest-firing blendshape, for the status readout.
@@ -519,17 +593,20 @@ struct ContentView: View {
 
                 // Capture mode: one camera session at a time (rear: body/world/
                 // segment/room/hands/text/markers/wand/attention/flow, front:
-                // face/selfie), so the modes are mutually exclusive. Twelve modes
-                // outgrew the segmented control, so they wrap as four rows of chips.
+                // face/selfie), so the modes are mutually exclusive; Touch runs no
+                // camera at all. Thirteen modes outgrew the segmented control, so
+                // they wrap as five rows of chips.
                 VStack(spacing: 8) {
                     modeRow([.body, .face, .world])
                     modeRow([.segment, .selfie, .room])
                     modeRow([.hands, .text, .markers])
                     modeRow([.wand, .attention, .flow])
-                    // Hearing is a switch rather than a mode: it needs no camera,
-                    // so it rides beside whichever mode is on. Drawn as a chip so
-                    // it sits with the others, but it toggles rather than selects.
-                    hearRow
+                    modeRow([.touch], padTo: 3)
+                    // Hearing and the air are switches rather than modes: neither
+                    // needs a camera, so both ride beside whichever mode is on.
+                    // Drawn as chips so they sit with the others, but they toggle
+                    // rather than select.
+                    switchRow
                 }
                 .padding(.horizontal, 28)
 
@@ -593,6 +670,11 @@ struct ContentView: View {
                             ? "measuring the first pair…"
                             : "streaming · \(streamer.flowInfo)",
                             ok: streamer.flowLive)
+                    case .touch:
+                        row("Touch", streamer.touchInfo.isEmpty
+                            ? "waiting for a finger…"
+                            : streamer.touchInfo,
+                            ok: streamer.touchLive)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
@@ -606,6 +688,10 @@ struct ContentView: View {
                         ? (streamer.soundInfo.isEmpty ? "listening…" : streamer.soundInfo)
                         : "off · tap Hear",
                         ok: streamer.hearing && streamer.soundLive)
+                    row("Air", streamer.reading
+                        ? (streamer.airInfo.isEmpty ? "reading…" : streamer.airInfo)
+                        : (streamer.airSupported ? "off · tap Air" : "no barometer"),
+                        ok: streamer.reading && streamer.airLive)
                     row("Light", streamer.mode == .selfie
                         ? "paused (Selfie runs no ARKit)"
                         : (streamer.lightLive ? streamer.lightInfo : "measuring…"),
@@ -622,6 +708,7 @@ struct ContentView: View {
                 .padding(.horizontal, 28)
 
                 if streamer.mode == .wand { wandPad }
+                if streamer.mode == .touch { touchPad }
 
                 Text(streamer.status)
                     .font(.footnote)
@@ -727,10 +814,45 @@ struct ContentView: View {
         return SIMD2<Float>(x, y)
     }
 
-    /// The Hear switch, in the chips' own clothes: lit while the phone is naming
-    /// what it hears, dim while the microphone is closed. Padded like a short
-    /// mode row so the chip keeps every other chip's width.
-    private var hearRow: some View {
+    /// The pad in Touch mode: the screen under the modes, taking every finger at
+    /// once. It is a plain UIKit view, because SwiftUI's own gestures follow one
+    /// finger and this mode is about all of them. A mark is drawn under each one
+    /// so the person can see the phone is answering, sized by how wide the
+    /// contact is, which is the axis every iPhone reports.
+    private var touchPad: some View {
+        GeometryReader { geometry in
+            ZStack {
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(Color.white.opacity(streamer.touch.marks.isEmpty ? 0.07 : 0.16))
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(Color.white.opacity(streamer.touch.marks.isEmpty ? 0.15 : 0.45),
+                                  lineWidth: 1.5)
+                if streamer.touch.marks.isEmpty {
+                    Text("PLAY WITH BOTH HANDS")
+                        .font(.system(.caption, design: .rounded).weight(.semibold))
+                        .tracking(3)
+                        .foregroundStyle(.white.opacity(0.35))
+                } else {
+                    ForEach(Array(streamer.touch.marks.enumerated()), id: \.offset) { _, mark in
+                        Circle()
+                            .fill(Color.white.opacity(0.9))
+                            .frame(width: 34, height: 34)
+                            .position(x: CGFloat(mark.x + 1) * 0.5 * geometry.size.width,
+                                      y: CGFloat(1 - (mark.y + 1) * 0.5) * geometry.size.height)
+                    }
+                }
+                TouchPad(streamer: streamer.touch)
+            }
+        }
+        .frame(minHeight: 200, maxHeight: .infinity)
+        .padding(.horizontal, 28)
+    }
+
+    /// The two switches, in the chips' own clothes: Hear while the phone is
+    /// naming what it hears, Air while it is reading the barometer. Both are lit
+    /// when on and dim when closed, and the row is padded like a short mode row
+    /// so the chips keep every other chip's width.
+    private var switchRow: some View {
         HStack(spacing: 8) {
             Button(streamer.hearing ? "Hear · on" : "Hear") { streamer.hearing.toggle() }
                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
@@ -739,9 +861,16 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
                 .background(streamer.hearing ? Color.white : Color.white.opacity(0.08),
                             in: Capsule())
-            ForEach(1..<3, id: \.self) { _ in
-                Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
-            }
+            Button(streamer.reading ? "Air · on" : "Air") { streamer.reading.toggle() }
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(streamer.reading ? Color.black : Color.white.opacity(0.85))
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(streamer.reading ? Color.white : Color.white.opacity(0.08),
+                            in: Capsule())
+                .disabled(!streamer.airSupported)
+                .opacity(streamer.airSupported ? 1 : 0.4)
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
         }
     }
 
