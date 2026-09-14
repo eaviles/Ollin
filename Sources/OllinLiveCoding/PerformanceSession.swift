@@ -103,6 +103,15 @@ final class PerformanceSession {
         }
         editor.setText(text)
         editor.onTextChange = { [weak self] in self?.markDirty() }
+        // Completion compiles the buffer as the document, with the modules a
+        // compile sees, so every framework name completes wherever the file
+        // lives; the path follows an open or a save.
+        editor.completion.request = { [weak self] in
+            guard let self else { return nil }
+            let path = self.effectivePath
+            let loader = SketchLoader(sketchPath: path, optimization: self.optimization)
+            return (path, loader.completionArguments(sourceFile: path))
+        }
         refreshTitle()
 
         // Offer recovery only for *this* document: an untitled buffer's crash
@@ -123,6 +132,7 @@ final class PerformanceSession {
 
         evaluate()
         controls.start()
+        editor.completion.warmUp()
     }
 
     /// What a control does when it reaches the host. The view settings live

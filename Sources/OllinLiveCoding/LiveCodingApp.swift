@@ -116,6 +116,15 @@ private struct SketchCommands: Commands {
 
             Divider()
 
+            // Escape does the same in the editor; the menu carries the
+            // discoverable spelling.
+            Button("Complete Name") {
+                ActivePerformance.session?.editor.toggleCompletion()
+            }
+            .keyboardShortcut(.escape, modifiers: .option)
+
+            Divider()
+
             Button(ActivePerformance.session?.isRecording == true
                    ? "Stop Recording" : "Start Recording") {
                 ActivePerformance.session?.toggleRecording()
@@ -161,6 +170,7 @@ private struct PerformanceViewCommands: Commands {
     @AppStorage(LiveCodingRootView.codeHiddenKey) private var codeHidden = false
     @AppStorage(LiveCodingRootView.fontSizeKey) private var fontSize = 15.0
     @AppStorage(LiveCodingRootView.backdropKey) private var backdrop = 0.55
+    @AppStorage(LiveCodingRootView.completesAsYouTypeKey) private var completesAsYouType = true
 
     var body: some Commands {
         CommandGroup(after: .sidebar) {
@@ -168,6 +178,7 @@ private struct PerformanceViewCommands: Commands {
                 .keyboardShortcut("/", modifiers: .command)
             Toggle("Hide Code", isOn: $codeHidden)
                 .keyboardShortcut("h", modifiers: [.control, .shift])
+            Toggle("Complete as You Type", isOn: $completesAsYouType)
             Divider()
             Button("Bigger Code") { fontSize = min(fontSize + 1, 32) }
                 .keyboardShortcut("=", modifiers: .command)

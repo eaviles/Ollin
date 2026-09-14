@@ -118,8 +118,75 @@ enum SelfTest {
             fail("canned log parsed as \(cannedParsed)")
         }
 
+        // Completion at the caret, against the toolchain's own service: a word
+        // typed after the canvas calls finds the framework's drawing methods,
+        // narrowing the same session keeps only what still matches, and a
+        // member dot on a value type lists its members with their types.
+        print("OllinLiveCoding selftest: complete a name in the buffer …")
+        guard let completer = CodeCompleter.load() else {
+            fail("the toolchain's completion service could not be loaded; looked at \(CodeCompleter.frameworkPaths)")
+        }
+        let partial = """
+        import Ollin
+        final class BufferSketch: Sketch {
+            override func draw() {
+                background(.white)
+                fill(Color.)
+                draw
+            }
+        }
+        """
+        let drawCaret = (partial as NSString).range(of: "draw\n").location + 4
+        let wordStart = CompletionText.wordStart(in: partial, caret: drawCaret)
+        guard wordStart == drawCaret - 4, CompletionText.prefix(in: partial, caret: drawCaret) == "draw" else {
+            fail("the word under the caret was read as starting at \(wordStart), expected \(drawCaret - 4)")
+        }
+        let arguments = loader.completionArguments(sourceFile: sketchFile)
+        let word = CodeCompleter.Session(
+            name: sketchFile, offset: CompletionText.utf8Offset(of: wordStart, in: partial))
+        do {
+            let started = Date()
+            let rows = try completer.open(word, source: partial, arguments: arguments, filter: "drawCi")
+            let seconds = Date().timeIntervalSince(started)
+            guard let circle = rows.first(where: { $0.label == "drawCircle(x: Double, y: Double, radius: Double)" }) else {
+                fail("`drawCi` did not offer drawCircle(x:y:radius:); the rows were \(rows.map(\.name))")
+            }
+            guard circle.insertion == "drawCircle(<#x: Double#>, <#y: Double#>, <#radius: Double#>)",
+                  circle.kind == .function, circle.typeName == "Void", circle.bytesToErase == 0 else {
+                fail("drawCircle came back as \(circle)")
+            }
+            guard rows.contains(where: { $0.name == "drawCircle(center:radius:)" }) else {
+                fail("the labeled overload drawCircle(center:radius:) was not offered")
+            }
+            let narrowed = try completer.update(word, filter: "drawCircles")
+            guard narrowed.contains(where: { $0.name == "drawCircles(:)" }),
+                  !narrowed.contains(where: { $0.name == "drawCircle(:::)" }) else {
+                fail("narrowing the session to `drawCircles` gave \(narrowed.map(\.name))")
+            }
+            completer.close(word)
+            print("  the first request took \(String(format: "%.2f", seconds)) s, "
+                + "\(rows.count) rows for `drawCi`, \(narrowed.count) for `drawCircles`")
+
+            let dotCaret = (partial as NSString).range(of: "Color.").location + 6
+            guard CompletionText.isMemberAccess(in: partial, caret: dotCaret) else {
+                fail("the caret after `Color.` was not read as a member access")
+            }
+            let member = CodeCompleter.Session(
+                name: sketchFile, offset: CompletionText.utf8Offset(of: dotCaret, in: partial))
+            let colors = try completer.open(member, source: partial, arguments: arguments, filter: "re")
+            guard let red = colors.first(where: { $0.name == "red" }) else {
+                fail("`Color.` filtered by `re` did not offer red; the rows were \(colors.map(\.name))")
+            }
+            guard red.typeName == "Color", red.kind == .property, red.insertion == "red" else {
+                fail("red came back as \(red)")
+            }
+            completer.close(member)
+        } catch {
+            fail("the completion service refused a request: \(error)")
+        }
+
         print("OllinLiveCoding selftest passed: buffer compile, swap render "
-            + "(\(a.count) vs \(b.count) bytes), and diagnostics all check out.")
+            + "(\(a.count) vs \(b.count) bytes), diagnostics, and completion all check out.")
         exit(0)
     }
 

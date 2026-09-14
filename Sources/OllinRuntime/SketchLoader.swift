@@ -204,7 +204,7 @@ public struct SketchLoader: Sendable {
             dylibPath: dylibPath, moduleName: "OllinRuntimeSketch_\(token)",
             sources: [sourceFile, factoryPath], optimization: optimization)
         args += moduleArguments()
-        let result = run("/usr/bin/xcrun", args)
+        let result = Self.run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
             let log = result.stderr.isEmpty ? result.stdout : result.stderr
             return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
@@ -263,13 +263,37 @@ public struct SketchLoader: Sendable {
             sourceFile,
         ]
         args += moduleArguments()
-        let result = run("/usr/bin/xcrun", args)
+        let result = Self.run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
             let log = result.stderr.isEmpty ? result.stdout : result.stderr
             return .failure(.compileFailed(log.trimmingCharacters(in: .whitespacesAndNewlines)))
         }
         return .success(())
     }
+
+    /// The compiler arguments a code-completion request over this sketch needs
+    /// (`CodeCompleter.open`): the same modules a compile sees, so every
+    /// framework name completes, plus what the service does not infer for
+    /// itself. `swiftc` finds the SDK on its own; the service is handed it.
+    /// The module name is spelled out for the same reason the compile spells
+    /// its own: a single file called `Sketch.swift` would otherwise name its
+    /// module `Sketch`, and the class the sketch extends would resolve to the
+    /// module instead of the type. `-parse-as-library` matches the compile,
+    /// where the factory shim beside the sketch makes it a library anyway.
+    /// `sourceFile` is the path the buffer stands for, which the request also
+    /// names; it need not exist, since the text travels with the request.
+    public func completionArguments(sourceFile: String) -> [String] {
+        var args = ["-sdk", Self.sdkPath, "-parse-as-library", "-module-name", "OllinRuntimeCompletion"]
+        args += moduleArguments()
+        args.append(sourceFile)
+        return args
+    }
+
+    /// The SDK `swiftc` would pick on its own, asked once per process.
+    private static let sdkPath: String = {
+        let result = run("/usr/bin/xcrun", ["--show-sdk-path"])
+        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    }()
 
     /// The module arguments every compile against the framework needs.
     ///
@@ -480,7 +504,7 @@ public struct SketchLoader: Sendable {
 
     /// Run a process to completion, draining stdout and stderr concurrently so a
     /// verbose compiler error can't fill a pipe buffer and deadlock us.
-    private func run(_ launchPath: String, _ args: [String])
+    private static func run(_ launchPath: String, _ args: [String])
         -> (status: Int32, stdout: String, stderr: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: launchPath)

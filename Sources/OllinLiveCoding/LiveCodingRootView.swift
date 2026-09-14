@@ -13,6 +13,7 @@ struct LiveCodingRootView: View {
     static let codeHiddenKey = "ollin.livecoding.codeHidden"
     static let fontSizeKey = "ollin.livecoding.fontSize"
     static let backdropKey = "ollin.livecoding.backdrop"
+    static let completesAsYouTypeKey = "ollin.livecoding.completesAsYouType"
 
     let session: PerformanceSession
     /// The shape drag over the stage, the same one the live host runs; here it
@@ -31,6 +32,7 @@ struct LiveCodingRootView: View {
     @AppStorage(Self.codeHiddenKey) private var codeHidden = false
     @AppStorage(Self.fontSizeKey) private var fontSize = 15.0
     @AppStorage(Self.backdropKey) private var backdrop = 0.55
+    @AppStorage(Self.completesAsYouTypeKey) private var completesAsYouType = true
     @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     @State private var showEvaluatedToast = false
@@ -112,7 +114,8 @@ struct LiveCodingRootView: View {
             // can be taken hold of through the text.
             CodeEditorView(controller: session.editor,
                            fontSize: fontSize,
-                           backdropOpacity: backdrop)
+                           backdropOpacity: backdrop,
+                           completesAsYouType: completesAsYouType)
                 .opacity(codeHidden ? 0 : 1)
                 .allowsHitTesting(!codeHidden && !shapeDrag.isArmed)
 

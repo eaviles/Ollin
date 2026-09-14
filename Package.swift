@@ -197,7 +197,17 @@ let package = Package(
         // than one executable.
         .target(
             name: "OllinRuntime",
-            dependencies: ["Ollin"]
+            dependencies: ["Ollin", "COllinSourceKit"]
+        ),
+        // Ollin's own C declarations of the toolchain's SourceKit interface: the
+        // handles, the one struct that crosses by value, and a typedef per entry
+        // point. Nothing links against the service; `CodeCompleter` opens the
+        // framework beside `swiftc` at runtime and binds each name with `dlsym`,
+        // which is why a header of our own is enough (the toolchain ships none).
+        .target(
+            name: "COllinSourceKit",
+            path: "Sources/COllinSourceKit",
+            publicHeadersPath: "include"
         ),
         // The Guide's diagram-support library: the shared figure theme (the
         // GitHub-matching palette both variants render against) and the panel,

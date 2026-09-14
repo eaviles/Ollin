@@ -24,6 +24,7 @@ OllinLiveCoding sits beside `OllinLive` rather than replacing it. OllinLive watc
 ### Contents
 
 - [The evaluate loop](#the-evaluate-loop) - ⌘↩, ⌘⇧↩, and what carries across a swap
+- [Completing a name](#completing-a-name) - the list under the caret, and the placeholders it leaves
 - [Errors during a set](#errors-during-a-set) - the diagnostics strip
 - [Files, saving, and recovery](#files-saving-and-recovery) - evaluate never saves
 - [Performance chrome](#performance-chrome) - hide code, fullscreen, the inspector
@@ -43,6 +44,14 @@ Type your edit, then press **⌘↩ (Sketch ▸ Evaluate)**. The buffer compiles
 - A compile takes a second or two, because Swift compiles the code rather than evaluating it directly. An amber chip in the corner shows that a compile is running. A green "Evaluated" toast then confirms the swap and gives the build time.
 
 Evaluation compiles the buffer exactly as it is on screen, unsaved changes included.
+
+### Completing a name
+
+Type the first letters of a name and a list opens under the caret. It holds what the Swift toolchain's own completion service knows at that point: every drawing call on `Sketch`, every value type and its members, and the properties and methods the buffer itself declares. Type more to narrow the list. Up and Down move through it, and Return or Tab takes the row. A call lands with its arguments as placeholders, the first one selected, so what you type replaces it. Tab moves to the next placeholder, and wraps to the first when it reaches the end. A member dot opens the same list: `Color.` lists the palette, and `background(.white)` starts from the same list after its dot, because the call wants a color.
+
+Escape closes the list, and opens it when it is closed. Escape never leaves fullscreen, so a stray press mid-set costs nothing; ⌃⌘F is how the stage leaves it. **View ▸ Complete as You Type** turns the automatic list off, for a set where the code should stay still until you ask. Escape and **Sketch ▸ Complete Name** open it either way. The list takes only the keys it uses, so a space, a bracket, or a comma goes into the code as typed and closes it.
+
+The names come from a check of the buffer against the framework, the same modules ⌘↩ compiles against, which is why the list knows the framework by name whatever the file is called and wherever it lives. A placeholder left in the code is an error on its own line at the next evaluation, reported in the strip like any other error, so nothing is silently wrong. The first list of a session takes a moment while the service reads the framework, and the host pays that in the background at launch. After that a new word answers in a few milliseconds, and narrowing it in about one.
 
 ### Errors during a set
 
@@ -106,6 +115,9 @@ The card's last line says what the host hears: the OSC port it is listening on, 
 | --- | --- |
 | ⌘↩ | Evaluate the buffer (clock carries) |
 | ⌘⇧↩ | Evaluate fresh (clock resets) |
+| Esc | Open the completion list at the caret, or close it |
+| ↑ / ↓, then ↩ or ⇥ | Move through the completion list, then take the row |
+| ⇥ | Move to the next placeholder, when no list is open |
 | ⌘N / ⌘O | New untitled buffer / open a sketch file |
 | ⌘S / ⌘⇧S | Save / save as |
 | ⌃⇧H | Hide or show the code |

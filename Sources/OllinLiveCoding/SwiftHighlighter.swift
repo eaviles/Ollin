@@ -11,6 +11,8 @@ import OllinRuntime
 ///   instead of filling the line), which keeps code readable over arbitrary
 ///   visuals without boxing it in a panel.
 /// - Diagnostic tints: a red-leaning backdrop across each error line.
+/// - Placeholders: a taken completion leaves `<#x: Double#>` slots, painted in
+///   the selection's violet so they read as the blanks they are.
 @MainActor
 struct SwiftHighlighter {
     var fontSize: Double = 15
@@ -34,6 +36,9 @@ struct SwiftHighlighter {
     /// source stage. This stage owns the one run its backdrop needs, and the
     /// colors.
     private static let glyphRuns = regex(#"[^\n]+"#)
+    private static let placeholders = regex(#"<#[^#\n]*#>"#)
+    private static let placeholderColor = NSColor(white: 0.98, alpha: 1)
+    private static let placeholderBackdrop = NSColor(red: 0.45, green: 0.32, blue: 0.85, alpha: 0.6)
 
     private static func color(for kind: SwiftTokens.Kind) -> NSColor {
         switch kind {
@@ -91,6 +96,12 @@ struct SwiftHighlighter {
 
         for range in Self.lineRanges(of: diagnostics, in: text) {
             storage.addAttribute(.backgroundColor, value: errorBackdrop, range: range)
+        }
+
+        Self.placeholders.enumerateMatches(in: storage.string, range: all) { match, _, _ in
+            guard let match else { return }
+            storage.addAttributes([.foregroundColor: Self.placeholderColor,
+                                   .backgroundColor: Self.placeholderBackdrop], range: match.range)
         }
         storage.endEditing()
     }

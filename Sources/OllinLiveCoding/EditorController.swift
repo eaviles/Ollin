@@ -15,15 +15,19 @@ final class EditorController {
     var onTextChange: (() -> Void)?
 
     private(set) var diagnostics: [CompileDiagnostic] = []
+    /// The list under the caret; see `CompletionController`.
+    let completion = CompletionController()
     private var highlighter = SwiftHighlighter()
     /// Buffer content handed over before the view mounted, applied on attach.
     private var pendingText: String?
     private var flashTask: Task<Void, Never>?
     private var isFlashing = false
 
-    /// Called by the representable once the `NSTextView` exists.
-    func attach(_ textView: NSTextView) {
+    /// Called by the representable once the `NSTextView` exists; `host` is
+    /// the view around its scroll view, where the completion list is laid.
+    func attach(_ textView: NSTextView, host: NSView) {
         self.textView = textView
+        completion.attach(textView: textView, host: host)
         textView.typingAttributes = highlighter.typingAttributes
         if let pendingText {
             self.pendingText = nil
@@ -45,6 +49,7 @@ final class EditorController {
             pendingText = string
             return
         }
+        completion.dismiss()
         textView.string = string
         textView.undoManager?.removeAllActions()
         textView.typingAttributes = highlighter.typingAttributes
@@ -66,6 +71,7 @@ final class EditorController {
         }
         let whole = NSRange(location: 0, length: (textView.string as NSString).length)
         guard textView.shouldChangeText(in: whole, replacementString: string) else { return }
+        completion.dismiss()
         let caret = textView.selectedRange().location
         let visible = textView.enclosingScrollView?.contentView.bounds.origin
         textView.textStorage?.replaceCharacters(in: whole, with: string)
@@ -81,6 +87,23 @@ final class EditorController {
     func handleTextChange() {
         onTextChange?()
         rehighlight()
+        completion.textDidChange()
+    }
+
+    /// The caret moved; the completion list follows or closes.
+    func handleSelectionChange() {
+        completion.selectionDidChange()
+    }
+
+    /// A key command the text view is about to run, offered to the completion
+    /// list first. `true` when the list took it.
+    func handle(command: Selector) -> Bool {
+        completion.handle(command)
+    }
+
+    /// Sketch ▸ Complete Name: open the list at the caret, or close it.
+    func toggleCompletion() {
+        completion.toggle()
     }
 
     /// Update the error-line tints from a compile result.
@@ -124,11 +147,13 @@ final class EditorController {
     /// Push the persisted style parameters (font size, backdrop opacity) into the
     /// highlighter; no-ops when nothing changed so SwiftUI update passes stay
     /// cheap.
-    func configure(fontSize: Double, backdropOpacity: Double) {
+    func configure(fontSize: Double, backdropOpacity: Double, completesAsYouType: Bool) {
+        completion.completesAsYouType = completesAsYouType
         guard highlighter.fontSize != fontSize
             || highlighter.backdropOpacity != backdropOpacity else { return }
         highlighter.fontSize = fontSize
         highlighter.backdropOpacity = backdropOpacity
+        completion.fontSize = fontSize
         textView?.typingAttributes = highlighter.typingAttributes
         rehighlight()
     }
@@ -139,6 +164,7 @@ final class EditorController {
     }
 
     func resignFocus() {
+        completion.dismiss()
         guard let textView, textView.window?.firstResponder === textView else { return }
         textView.window?.makeFirstResponder(nil)
     }
