@@ -320,6 +320,15 @@ Read the map honestly, because most of the parameter space is quiet. Life, in th
 
 The regime doesn't have to be one choice for the whole dish. Give the sim two settings: `.reactionDiffusion(feed: 0.046, kill: 0.065, toFeed: 0.055, toKill: 0.062)`. Then attach any layer as `dish.modulation`, and that layer's brightness picks the spot on the map for every texel: black runs the first pair, white the second. **A picture can choose the chemistry, place by place.** It stays one simulation, so the two patterns grow into each other instead of meeting at a mask's hard edge. The `Vision/TuringMirror` example draws the camera's person matte into that layer. The field grows maze walls on your silhouette and spots everywhere else, and it reorganizes as you move.
 
+Here is the same idea with a drawn layer instead of a camera, so the boundary can be looked at:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/ChemistryByPicture-dark.jpg">
+  <img src="Images/19-GridSimulations/ChemistryByPicture.jpg" alt="Three square panels. Left, a soft-edged white disc on black. Middle, one reaction-diffusion dish colored teal on blue: a maze of walls inside the disc's footprint thinning out into scattered spots beyond it, with wall ends reaching into the spot field. Right, two separate dishes, a maze cut into a spot field along a circle drawn in orange, the pattern stopping dead at the line" width="680">
+</picture>
+
+The disc is the map. Inside it the field runs the maze pair, outside it the spot pair, and across the soft edge the maze's walls thin out into dots instead of stopping. The right dish is what a mask gives instead: two separate simulations cut along the same circle, and the seam knows nothing about either. Draw the map every frame before you read the field, since a frame with no map runs the plain black-end pair.
+
 Seeding is drawing, same as before, and it's worth watching what one mark becomes:
 
 <picture>

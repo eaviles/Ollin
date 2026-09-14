@@ -793,7 +793,14 @@ swift run --package-path Examples Example-Rendering-ColorOutput --export lamp.he
 
 The picture inside that file is the PNG, so anything at all can open it. Beside it sits a record of the light that was clipped away, called a gain map. A display with headroom puts it back.
 
-You cannot see either one in this page's figures, which is the point. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop instead, and turn the screen brightness down while you watch.
+Neither the wider gamut nor the light above white survives a page like this one, so no figure can show them. What a figure can show is the record. Here are one still's two pictures, read back from the exported frame:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/WhatTheStillKeeps-dark.jpg">
+  <img src="Images/16-LayersAndEffects/WhatTheStillKeeps.jpg" alt="Two dark square panels with a plus sign between them. Left, a soft lamp whose center is a flat white plateau, beside a small white bar labeled white. Right, the same frame as a gain map: black everywhere except a small soft gray disc where the lamp's core was, labeled as reaching 2.7 times white" width="680">
+</picture>
+
+The left panel is the picture inside the file, the frame clamped at white, and the lamp's flat plateau is where everything above 1.0 went. The right panel is the gain map: black where the frame was within range, brighter the further above white a pixel went, up to the peak the export line reports. A display with headroom multiplies the two together and the plateau turns back into a lamp. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop to watch it happen, and turn the screen brightness down while you look.
 
 ## The canvas that remembers itself
 

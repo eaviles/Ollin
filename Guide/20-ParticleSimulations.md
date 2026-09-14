@@ -50,7 +50,15 @@ withAccumulator(light) {
 drawImage(light.developed(exposure: 20).image, 0, 0)
 ```
 
-The `Rendering/DepthOfField` example pushes this all the way to a photograph with a real lens: a million samples a frame, each pushed into a ball that grows with its distance from the plane of focus, projected through the sketch's own camera by a kernel (`cameraParams()` packs the matrices, `ballSample` scatters, `ollin_project_eye` lands the point), averaged until bokeh emerges. For a scene made of lines, `LineSpray` is that whole pipeline in one call, and the `Rendering/LineSpray` example is a sphere of a hundred and fifty rings seen through it. The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules; the [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, the multi-buffer dispatch, and the typed core underneath.
+The `Rendering/DepthOfField` example pushes this all the way to a photograph with a real lens: a million samples a frame, each pushed into a ball that grows with its distance from the plane of focus, projected through the sketch's own camera by a kernel (`cameraParams()` packs the matrices, `ballSample` scatters, `ollin_project_eye` lands the point), averaged until bokeh emerges. For a scene made of lines, `LineSpray` is that whole pipeline in one call, and the `Rendering/LineSpray` example is a sphere of a hundred and fifty rings seen through it.
+
+The lens is a `Bokeh`: a `focalDistance`, where things are sharp, and a `strength`, how fast the blur grows with distance from that plane. Here is the ring sphere through three of them:
+
+<img src="Images/20-ParticleSimulations/ThroughALens.jpg" alt="Three dark square panels of the same sphere made of rings of light, lit from the upper left with a burst of bright spokes at its center. Left, labeled strength 0, every ring is crisp near and far and the sphere reads as a wire model. Middle, at the example's setting, the near rim stays sharp while the far side melts into pale fog. Right, wide open, the sphere is a soft glowing ball with only a faint rim and the central burst still readable" width="680">
+
+With the strength at zero every ring is sharp, near and far, and the sphere reads as a wire model. At the example's own setting the near rim stays crisp while the far side dissolves, which is what a photograph of the thing would do. Opened wide, only the plane of focus survives. Nothing here is a blur laid over a picture. Each sample lands in a disc sized by its own distance from the focal plane, and the running mean adds those discs up until the bokeh emerges, so a print takes a few hundred passes to settle and an exported frame wants `--settle`.
+
+The [depth of field page](../Docs/Drawing/DepthOfField.md) has the lens and the rules; the [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, the multi-buffer dispatch, and the typed core underneath.
 
 ## Crowds that organize themselves: Physarum
 

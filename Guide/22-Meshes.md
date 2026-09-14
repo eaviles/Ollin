@@ -52,7 +52,14 @@ stage["sculpture"]?.rotate(deltaTime, axis: .unitY)
 drawScene(stage)                               // every node, in its authored place
 ```
 
-A scene is a tree of named nodes, and everything unpacks into things you already know. The file's camera is a `Camera3D`, its lights are `Light`s, and each node's geometry is a `Mesh`. `drawScene` draws the whole layout where the tool put it. `stage["sculpture"]` reaches one node by name, so a single piece moves while the rest holds still. Bring the set over from the design tool, and keep the choreography in the sketch. The `3D/Geometry/LoadedScene` example is a small stage to poke at, and [Scenes](../Docs/3D/Scenes.md) has the details.
+A scene is a tree of named nodes, and everything unpacks into things you already know. The file's camera is a `Camera3D`, its lights are `Light`s, and each node's geometry is a `Mesh`. `drawScene` draws the whole layout where the tool put it. `stage["sculpture"]` reaches one node by name, so a single piece moves while the rest holds still. Bring the set over from the design tool, and keep the choreography in the sketch. The `3D/Geometry/LoadedScene` example is a small stage to poke at, and [Scenes](../Docs/3D/Scenes.md) has the details. Here is that stage, and what the file actually hands over:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/22-Meshes/SceneTree-dark.jpg">
+  <img src="Images/22-Meshes/SceneTree.jpg" alt="Left, the scene file's node tree as a list: floor, pedestal with sculpture under it, orb, lamp with lampPost, lampShade, and lampLight under it, then camera, keySpot, and sun, each tagged as a mesh, a group, the camera, or a light. Middle, the stage drawn through its own camera: a gold torus on a pale pedestal, a lamp behind it, a teal orb in front. Right, the same stage with the lamp brought to the front by name, standing beside the pedestal" width="680">
+</picture>
+
+The tree on the left is the file as it was saved: every node by name, nested the way the tool nested them, each carrying a mesh, a light, the camera, or nothing but its children. `loadMesh` would have folded all of it into one shape. `drawScene` draws it as the middle panel, through the file's own camera and under its own lights. The right panel moves one node by name, `stage["lamp"]`, and the lamp's light moves with it, because a light rides the node that carries it. Move a group and everything under it, meshes and lights alike, comes along.
 
 If the file was animated in the tool, that motion carries over too. `stage.animations` holds the authored keyframe tracks, and applying one poses the scene at whatever moment you ask for:
 

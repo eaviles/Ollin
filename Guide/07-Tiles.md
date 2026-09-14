@@ -256,6 +256,15 @@ drawGirih(over: cells, angle: 60)   // 54° is the classic girih-tile angle
 
 One last kind of repetition bends the page itself. Only three regular tilings fit on flat paper: triangles, squares, hexagons. The corners meeting at a vertex must sum to a full turn, and no other shape obliges. Hyperbolic geometry has room for all the rest. Seven-sided tiles meeting three to a corner, pentagons meeting four to a corner, any pair you like, as long as `(sides - 2) * (meeting - 2) > 4`. The Poincaré disk shows the whole infinite tiling at once: every tile is the same true size, only drawn smaller as it nears the circular horizon.
 
+The counting is worth seeing once, because it is the whole reason the disk exists:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/CornersAtAVertex-dark.jpg">
+  <img src="Images/07-Tiles/CornersAtAVertex.jpg" alt="Five panels. Six triangles, four squares, and three hexagons each meet around a dot with no gap and no overlap, labeled as summing to 360 degrees. Four pentagons around the fourth dot overlap, the fourth one landing on the first, with the extra 72-degree wedge marked in orange. The last panel is a Poincaré disk with four pentagons meeting cleanly at its center, the rest of the tiling faded around them" width="680">
+</picture>
+
+Six triangles, four squares, or three hexagons use up a corner's one turn exactly. Four pentagons ask for 432 degrees, so the fourth lands on the first. In the disk the same four meet at right angles, because a hyperbolic polygon's corners shrink as the polygon grows, and there is always a size whose corners fit. That is the rule in the last panel: `(sides - 2) * (meeting - 2)` above 4 lives in the disk, exactly 4 is flat paper, and below 4 the corners close up into one of the five Platonic solids.
+
 ```swift
 for tile in hyperbolicTiling(sides: 5, meeting: 4) {
     fill(tile.parity == 0 ? .ivory : .indigo)
