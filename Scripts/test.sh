@@ -106,16 +106,23 @@ runner='OllinTests.SnapshotTests|FlowTrackerTests|measuresAPairInline|OllinScree
 # wall-clock suites above.
 loopback='OllinMIDITests.MIDILoopbackTests|OllinMIDITests.TempoClockLoopbackTests|OllinLinkTests.LinkLoopbackTests|OllinLaserTests.EtherDreamLoopbackTests'
 
-# The same phase for the same reason, one target over: two suites inside
-# OllinTests that cannot share three cores with two shards of themselves.
+# The same phase for the same reason, a target or two over: suites that cannot
+# share three cores with two shards of OllinTests.
 # PushFeedTests drives a real local HTTP server and measures what arrives
 # against deadlines, and beside the shards its tasks resume so late that seven
 # of them expired together at three minutes on a stopwatch none of them got to
 # read (2026-09-09, run 34299549773). MaterialSourceTests spawns a swiftc to
 # typecheck the source it prints, which is a minute of compiler on a quiet
-# machine and neither finished nor useful on a crowded one. Run alone they cost
+# machine and neither finished nor useful on a crowded one. PhoneTouchTests is
+# here for the combination no other suite in that phase has: it is the one
+# @MainActor suite out there carrying a per-test time limit, and a main-actor
+# hop is measured inside the test's own window, so its seventeen tests wait on
+# one actor while every drawing test in the phase holds it. The work itself is
+# 0.012 s on a quiet machine. The phase ran 255 s on 2026-09-14 and every test
+# passed; it ran 563 s on the next commit and all seventeen failed together at
+# 527 s against a one-minute limit, having done nothing. Run alone they cost
 # a couple of minutes and say what they mean.
-crowded='OllinTests.PushFeedTests|OllinTests.MaterialSourceTests'
+crowded='OllinTests.PushFeedTests|OllinTests.MaterialSourceTests|OllinPhoneTests.PhoneTouchTests'
 
 phases() {
     echo "test.sh: phase 1 of 2, the wall-clock and device suites alone"
