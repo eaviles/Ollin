@@ -80,7 +80,7 @@ final class SlowerThanItHappened: Sketch {
     /// with the bottom one gets the accent border, so the pairs read as pairs.
     private func drawFrame(_ probe: Sketch, frame: Int, fps: Double,
                            at origin: Vector2, marked: Bool) {
-        if let rendered = OllinApp.image(of: probe, frame: frame, fps: fps) {
+        if let rendered = OllinApp.image(of: probe, frame: frame, fps: FrameRate(fps)) {
             drawImage(Image(cgImage: rendered), origin.x, origin.y, tile, tile)
         }
         noFill()

@@ -53,6 +53,13 @@ swift run OllinLive MySketches/StillLife.swift --export poster.png --path-traced
 
 The number is light paths per pixel; more is smoother, and takes longer in step. The live window is the viewfinder, and the flag is the film back. Tune fast, then let the machine take its time. It needs an Apple-silicon Mac, and [the reference](../Docs/Output/PathTraced.md) lists exactly what the traced frame adds and what stays with the raster pipeline.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/TracedLight-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/TracedLight.jpg" alt="Three renders of the same set of three spheres on a pale floor under one softbox: rasterized, with a hard-edged shadow, a tinted glass shell, and a dark chrome ball; path-traced at 96 samples, with soft shadows, red bled onto the floor, the glass lit through, and grain; and the same trace denoised, the grain gone and the edges kept" width="680">
+</picture>
+
+The figure is one small set rendered three ways through the same call the flag wraps. The window rasterizes it. The softbox throws a hard-edged shadow, and the floor is lit by the lamp alone. The glass sphere is a tinted shell, and the chrome one is a dark ball with a highlight. Traced at 96 paths a pixel, the shadows soften as they fall away from each sphere. The red sphere warms the floor beside it. The light goes through the amber glass and lands as a tinted pool where the raster had a black shadow. The chrome shows the set. What is left at 96 is grain. The third panel is the same trace through the grain filter this section ends on. The grain is gone, and the edges of the spheres and of their shadows are where they were.
+
 Your light rig comes over as you left it. Here the tracer follows the light itself, so it needs no `castShadows()` and every lamp in the frame throws one. A light you told not to throw still throws nothing, which matters because the fill in a preset rig is exactly such a light. The shadows in the file are the shadows you framed.
 
 There is one more thing you can ask for before the file is written. What is left of the error in a traced render is grain. Buying it away costs the square: four times the paths for half the speckle. `--denoise` filters it out instead. The useful trick is that the tracer wrote down what it *hit*, not only what it saw. It kept the first surface's own color, the way it faces, and how far off it is. It also kept how much the pixel's own samples disagreed. The filter divides the light by that color, smooths the light alone, and multiplies the color back. A texture keeps its edges and a silhouette keeps its line, because neither was ever in the part being smoothed. And since the strength comes from the disagreement, a thin render is smoothed hard and a nearly finished one only a little. On the example scene, 64 filtered samples land about where 240 raw ones would have. It holds at the deep end too: even a 2048-sample render comes out closer to the truth, not merely smoother. It is off unless you ask, because a raw render is the honest one to hand you, and a real sparkle reads softer once the filter has been over it.
@@ -120,7 +127,33 @@ swift run OllinLive MySketches/Finale.swift --export-gif finale.gif --seconds 4 
 
 Reach for video first, because it's almost always the right choice. The default `h264` plays everywhere. `--codec hevc` is better quality per byte when the file needs to be smaller. The two ProRes profiles are for edit timelines rather than for sharing. `--bitrate` (in Mbit/s) is the file-size dial, and a 1080-square piece looks clean around 10 to 15 in `h264`. The GIF is for the short loop. It's palette-limited and heavy per second, so keep it a few seconds and downscale with `--gif-width`. A piece where *every* pixel changes every frame defeats GIF compression entirely and balloons the file. A drifting full-canvas field is that kind of piece. [Chapter 3](03-MotionAndTime.md)'s perfectly looping phase tricks are exactly what a GIF wants.
 
-A canvas that starts with `background(.clear)` leaves its background behind. The PNG gets an alpha channel, and so does the clip when the codec carries one. `--codec proRes4444` is the one for an edit timeline, and `hevcWithAlpha` makes a file a fraction of that size. The piece then lands over a camera feed or another layer in a compositing or VJ program rather than over black. `h264` has no alpha channel, so it composites over black and the export says so. The window paints the same frame over black too, so open the file to see the cut. `Examples/Export/Cutout` is a cluster of translucent lobes drawn that way.
+### Leaving the background behind
+
+A canvas that starts with `background(.clear)` leaves its background behind. The PNG gets an alpha channel, and so does the clip when the codec carries one. `--codec proRes4444` is the one for an edit timeline, and `hevcWithAlpha` makes a file a fraction of that size. The piece then lands over a camera feed or another layer in a compositing or VJ program rather than over black. `h264` has no alpha channel, so it composites over black and the export says so. The window paints the same frame over black too, so open the file to see the cut.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/LeavingTheBackground-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/LeavingTheBackground.jpg" alt="One export of a cluster of translucent lobes inside a white ring, drawn three times: over the checkerboard an image editor shows behind a see-through file, over a blue and teal layer with soft shapes, and over black" width="680">
+</picture>
+
+The figure is one export drawn three times. The first panel is the PNG as an image editor shows it, with the checkerboard standing for the alpha. The second is the same file over another layer, which is what a compositor does with a `proRes4444` or `hevcWithAlpha` clip. The third is over black, which is what the window showed while you drew it and what `h264`, `hevc`, and `proRes422` keep. Look at the edge of the white ring in the first two. A pixel the ring half covers keeps the ring's white at half the coverage rather than turning gray. The bytes are premultiplied, which is what every reader of an 8-bit image with alpha expects. A blur or any other frame filter runs on that premultiplied frame, so it spreads the coverage along with the color. A live feed keeps the alpha as well. A Syphon client and a recording of a see-through canvas receive the frame with its coverage. In code, `VideoCodec.carriesAlpha` tells the two kinds of codec apart. `Examples/Export/Cutout` is the cluster of translucent lobes the figure was drawn from.
+
+### The grid a broadcast asks for
+
+A clip for a broadcast, a title for an edit, or a loop for a wall has a frame rate somebody else chose. `--fps` takes a number, but it also takes a name, and the name is the safer thing to type when the number is a fraction:
+
+```sh
+swift run OllinLive MySketches/Spot.swift --export-video spot.mp4 --seconds 30 --fps ntsc
+```
+
+`ntsc` is 30000/1001, the 29.97 of broadcast. `film` is 24, `pal` is 25, `ntscFilm` is 24000/1001, and `ntscDouble` is 60000/1001. In code the same parameter is a `FrameRate`, and a plain number still stands in for one, so `fps: 60` reads as it always did. `FrameRate(30000, per: 1001)` spells any other fraction, `frameDuration` is one frame's length in seconds, and `frames(in:)` is the count an export of that many seconds writes.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/BroadcastGrid-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/BroadcastGrid.jpg" alt="A table of the five named frame rates with the fraction each keeps, its decimal, and the frames in ten seconds; under it one second of a clip at film, PAL, and NTSC rates with a tick per frame and a loupe on the second mark where the thirtieth NTSC frame lands a millisecond past it; and at the foot an hour of frames at 30, at .ntsc, and at FrameRate(29.97)" width="680">
+</picture>
+
+A name is the exact fraction, not its decimal. The video writer puts every frame on that fraction. At `.ntsc` the frames sit at multiples of 1001/30000 of a second rather than of 1/29.97. The loupe in the figure shows what that means. The thirtieth frame lands a millisecond past the second because that is where the grid puts it, and a broadcast timeline has the same grid. The foot of the figure is the failure a decimal invites. A writer that is not told the fraction rounds the frames onto a plain 30. A clip meant to run at 29.97 is then 3.6 seconds long by the end of an hour, 108 frames off its timeline. The named rate carries its fraction into the file's own clock, so nothing rounds. `FrameRate(29.97)` is the decimal as written, 2997/100, which differs from `.ntsc` by one part in a million. That is a tenth of a frame an hour, and a different rate, so name the broadcast rate when that is the one you mean. Every number in the figure is read from `FrameRate` itself. The live window runs at the display's rate, not one of these, and `frameRate` on the sketch reads what it measured.
 
 ## Slower than it happened
 
@@ -209,6 +242,13 @@ swift run OllinLive MySketches/Ring.swift --export-web ring.html --inline
 
 The recorder writes down the shape records the renderer would have received each frame. Nothing is rendered on the Mac, so nothing GPU-specific lands in the file. The page draws those records with the framework's own shape shader, carried from Metal to GLSL. The rewriter that does it is the one that brings [somebody else's shader](17-YourFirstShader.md#somebody-elses-shader) the other way. A frame on the page is the frame `--export` would have given you. A sketch that declares `loopDuration`, as [Chapter 3](03-MotionAndTime.md) taught, records one lap with no length given, and the page wraps it without a seam. On a lap, each motion is fitted to the sines it is made of, so the page evaluates it at any time from a few numbers. A parameter driven by a [formula](../Docs/Helpers/Formula.md) crosses as the formula, worked out live on the page's own clock and pointer. What fits neither travels as samples, and the page interpolates between them, so a slow motion records well at ten frames a second.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/PageFromRecords-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/PageFromRecords.jpg" alt="Three panels joined by arrows: the frame the Mac renders of a ring of twelve circles; a card listing what the recorder writes, the base stored once, the three moving columns fitted to sines, and the three parameters wired as controls; and the page as a browser window with the same ring on its canvas and a slider and two color wells under it" width="680">
+</picture>
+
+The figure follows one ring of circles across. On the left is the frame the Mac renders. In the middle is what the recorder wrote instead of pixels. Twelve circles a frame, at thirty numbers each. The parts that never change are stored once, and the three that move are kept as columns. The sketch declared a lap, so each column is fitted to the sines it is made of. The page then works the motion out at any instant rather than stepping between frames. On the right is the page. Its canvas is drawn from those records by the framework's own shape shader carried to GLSL. Under it are the three parameters the exporter found it could wire, offered as a slider and two color wells. The size on the arrow is measured by asking for the page and counting its bytes. Most of it is the player and its shaders rather than the ring.
+
 The first form is one self-contained file: open it, host it, drop it in an `iframe`. The second, `--inline`, is the canvas and one script block with no page around them, for a page you already have. Paste the two together where the picture belongs. The script leaves a handle on the canvas, `canvas.ollin`, that plays, pauses, and seeks. A reader whose system asks for less motion sees the first frame, still.
 
 The sketch's parameters cross as controls. After the recording, the exporter probes each `@Param`: it sets the parameter to a few other values on a fresh sketch, records again, and fits what moved to a line in it. Every parameter whose every effect fits is offered, a slider, a stepper, a switch, a color well, laid out under the canvas in the standalone page and reachable through the handle in the inline one, so a page can set the sketch's colors to its own theme. Moving one moves the picture the way the Mac would have drawn it at that setting. A parameter that changes what is drawn, or moves a number some other way than along a line, stays at its recorded value, and the exporter says which and why.
@@ -225,6 +265,13 @@ swift run OllinLive MySketches/Plot.swift --export-gcode cut.gcode --gcode-machi
 ```
 
 A machine needs real units, so the export asks for a physical width, the way a 3D print asks for its size. The flag maps the canvas to 150 mm wide unless `--gcode-width` says otherwise. In code, `GCode(.plotter(), width: 150)` carries the finer parameters: the pen lift, a laser's power and passes, a mill's depth per pass. A named sheet spares the arithmetic. `GCode(.plotter(), paper: .a4)` fits the drawing inside an A4 page with ten millimeters clear on every side, holding its height as well as its width. `--gcode-paper a4` does the same from the command line. Only line work travels. A stroke plots along its centerline and a fill contributes its outline, with `--hatch` shading fills exactly as it does for SVG.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/OnTheSheet-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/OnTheSheet.jpg" alt="Four sheets of paper drawn to one scale, A3 lying wide, A4, A4 again with a canvas twice as tall as it is wide, and US letter, each with the same rose curve planned inside its margin and the millimeters it came to printed under it: 267 by 267, 190 by 190, 156 by 277, and 196 by 196" width="680">
+</picture>
+
+The figure plans one rose curve onto four sheets through the same planner the flag uses, and prints the size each came to. On A4 with the default margin the drawing is 190 millimeters square, the sheet's width less ten on each side. On A3 lying wide with a fifteen-millimeter margin, the sheet's height is the tighter fit. The drawing comes to 267 and sits at the left. The third sheet shows the rule the other way. A canvas twice as tall as it is wide scales down to the 277 millimeters an A4 leaves for height and comes out 156 wide. The drawing keeps the margin corner as its origin either way. That is why a narrower fit sits at the left of the page rather than centered on it. The program's header names the sheet. `PaperSize` carries the ISO A series from `.a0` to `.a6` and the US `.usLetter`, `.usLegal`, and `.usTabloid`, all portrait like the sheet in the ream. `.landscape` turns one, and `PaperSize(width:height:)` spells a size that is not on the list. `DXF(paper:)` and `--dxf-paper` size a shop drawing the same way.
 
 The exporter plans the route before it writes a move. Open paths whose ends touch merge, so the pen stays down across them. Then a nearest-neighbor walk reorders the paths to keep the pen-up hops short:
 
@@ -745,6 +792,13 @@ The rings appear on the phone. Save the file, and under ten seconds later the ph
 
 A phone runs only code signed inside its app, so nothing can be swapped into it while it runs. Each save is a small build and a reinstall. That sounds slow and is not. The framework builds once, and after that a save recompiles one file.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/SaveToPhone-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/SaveToPhone.jpg" alt="A diagram of a save reaching the phone: the sketch file on the Mac with one line changed, three steps with their times, recompiled, installed again, and launched with the state read back, and two phones showing the rings before and after the save at the same radii in new colors, with a card of what the app writes down every second and the address the parameters open at on the Mac" width="680">
+</picture>
+
+The figure is the loop. The file on the Mac is saved with one line changed, the hue of the rings. The save recompiles that one file and relinks and signs the app, about five to seven seconds. It installs the app again over the cable or Wi-Fi, about two and a half, and launches it. The phone on the right is what launches: the rings in their new colors, at the radii the old version had reached, because the app writes its state down every second and reads it back at launch. That state is the clock and the seed, every `@Param` value, and every `@Saved` property. So the animation keeps its phase, and a value you tuned stays tuned. The framework itself is built for the phone once, about eighty seconds, and not again for that sketch.
+
 The phone's parameters open in a browser on the Mac, live in both directions. It is the [remote surface](../Docs/Integration/Remote.md) an installation is tuned from, pointed the other way.
 
 Two limits are the phone's. It has to be unlocked for the Mac to open the app. And it has to be on the cable, or awake on the same network. [The sketch on the phone](../Docs/Tools/OnThePhone.md) says what comes along, what stays on the desk, and how to write the app by hand.
@@ -1018,11 +1072,13 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 
 ## Go deeper
 
-- [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching.
+- [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching, the named frame rates, and transparent output.
+- [Path-traced export](../Docs/Output/PathTraced.md): what the traced frame adds and what stays raster, the sample count and its timings, the real lens, and the grain filter.
 - [Web page](../Docs/Output/Web.md): the flag and its length, what crosses and what stops the export, the two forms, the handle on the canvas, and what the page weighs.
 - [Recording](../Docs/Output/Recording.md): recording a live run in real time, what the sound modes hear, and how a take survives an evaluation.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
+- [G-code](../Docs/Output/GCode.md): the three machines and their parameters, a named sheet, what the planner does, previewing the route, and the dry run.
 - [DXF](../Docs/Output/DXF.md): a frame as the drawing a shop program opens, each color on its own layer, with circles kept as circles and touching paths merged.
 - [Line drawing](../Docs/3D/LineDrawing.md): a 3D scene as the line work a machine can follow, which edges are kept and why, placing several meshes so they hide each other, and what the hidden set is for.
 - [Embroidery](../Docs/Output/Embroidery.md): a frame as the stitches a machine sews, with strokes as running stitch, fills as rows, and each color as its own thread.
@@ -1030,6 +1086,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
+- [The sketch on the phone](../Docs/Tools/OnThePhone.md): what a save does, the parameters on the Mac, what comes along, the options, and an app of your own.
 - [Cues](../Docs/Helpers/Cues.md): looks you saved and call back, over a fade, from a key, the card, a program change, or `--cue`.
 - [Replay](../Docs/Core/Replay.md): what a take holds, the transport keys, re-rendering a take through any export, and what stays live.
 - [The parameter timeline](../Docs/Tools/Timeline.md): the panel, its lanes and keys, the rule field in the row, the transport, and the file it writes.
