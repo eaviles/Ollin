@@ -5,6 +5,7 @@
 ## Integration
 
 - [`OSC`](./OSC.md) - `import OllinOSC` sends and receives OSC messages over UDP, to and from TouchOSC, Max/MSP, TouchDesigner, and other apps. You read a message in `draw()` or bind it to a `@Param`.
+- [`OSCQuery`](./OSCQuery.md) - `import OllinOSC` publishes the sketch's `@Param` parameters as a namespace a control app finds on the network, reads, and builds its own controls from, with the values coming back over OSC at the same port number.
 - [`TUIO`](./TUIO.md) - `import OllinOSC` reads a tangible surface: touches, tagged pieces, and shapes arriving from a marker table, a touch wall, or a phone app over the protocol they all speak. Positions come in measured the way the canvas is, and each report keeps its id while it stays on the surface.
 - [`MIDI`](./MIDI.md) - `import OllinMIDI` reads from and sends to MIDI controllers and keyboards over Core MIDI. You read a control in `draw()` or bind it to a `@Param`. A `TempoClock` locks motion to MIDI clock.
 - [`Link`](./Link.md) - `import OllinLink` joins the shared tempo-and-phase session on the local network (the Link protocol most music apps support). The sketch then moves on the same beat and lands on the same downbeat as the whole rig, with no cabling or setup.

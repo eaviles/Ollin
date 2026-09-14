@@ -3,6 +3,7 @@
 enum OSCArgument: Equatable, ExpressibleByBooleanLiteral, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByFloatLiteral, ExpressibleByIntegerLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Sendable
   case blob(Foundation.Data)
   case bool(Bool)
+  case color(Color)
   case double(Double)
   case float(Float)
   case impulse
@@ -15,6 +16,7 @@ enum OSCArgument: Equatable, ExpressibleByBooleanLiteral, ExpressibleByExtendedG
   init(integerLiteral: Int32)
   init(stringLiteral: String)
   var bool: Bool? { get }
+  var color: Color? { get }
   var int: Int? { get }
   var number: Double? { get }
   var text: String? { get }
@@ -25,6 +27,26 @@ enum OSCPacket: Equatable, Sendable
   case message(OSCMessage)
   func encode() -> Foundation.Data
   init?(data: Foundation.Data)
+enum OSCQueryValue: Decodable, Encodable, Equatable, Sendable
+  case bool(Bool)
+  case null
+  case number(Double)
+  case text(String)
+  func encode(to: any Encoder) throws
+  init(from: any Decoder) throws
+final class OSCQueryServer: SketchExtension, Sendable
+  convenience init(port: Int = default, name: String? = default)
+  func afterFrame(_: Sketch, _: FrameInfo)
+  func beforeDraw(_: Sketch)
+  func namespace() -> OSCQueryNode
+  func setup(_: Sketch)
+  func stop()
+  init(receiver: OSCReceiver, port: Int? = default, name: String? = default)
+  let receiver: OSCReceiver
+  var advertises: Bool { get set }
+  var boundPort: Int? { get }
+  var name: String? { get }
+  var url: String? { get }
 final class OSCReceiver: Sendable
   func arguments(_: String) -> [OSCArgument]?
   func bind(_: String, to: Param<Double>, from: ClosedRange<Double> = default)
@@ -83,6 +105,29 @@ struct OSCMessage: Equatable, Sendable
   var int: Int? { get }
   var number: Double? { get }
   var text: String? { get }
+struct OSCQueryHostInfo: Decodable, Encodable, Equatable, Sendable
+  init(name: String, extensions: [String : Bool], oscPort: Int?, oscTransport: String = default)
+  var extensions: [String : Bool] { get set }
+  var name: String { get set }
+  var oscPort: Int? { get set }
+  var oscTransport: String { get set }
+struct OSCQueryNode: Decodable, Encodable, Equatable, Sendable
+  func node(at: String) -> OSCQueryNode?
+  init(fullPath: String, type: String? = default, access: Int = default, description: String? = default, value: [OSCQueryValue]? = default, range: [OSCQueryRange]? = default, contents: [String : OSCQueryNode]? = default)
+  var access: Int { get set }
+  var contents: [String : OSCQueryNode]? { get set }
+  var description: String? { get set }
+  var fullPath: String { get set }
+  var isContainer: Bool { get }
+  var methods: [OSCQueryNode] { get }
+  var range: [OSCQueryRange]? { get set }
+  var type: String? { get set }
+  var value: [OSCQueryValue]? { get set }
+struct OSCQueryRange: Decodable, Encodable, Equatable, Sendable
+  init(min: Double? = default, max: Double? = default, values: [String]? = default)
+  var max: Double? { get set }
+  var min: Double? { get set }
+  var values: [String]? { get set }
 struct OSCTimeTag: Equatable, Sendable
   init(_: Foundation.Date)
   init(raw: UInt64)

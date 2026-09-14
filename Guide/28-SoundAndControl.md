@@ -262,6 +262,19 @@ override func draw() {
 
 Point TouchOSC (or anything that speaks OSC) at your Mac's IP and port 8000, and its controls land in the sketch. There's an `OSCSender` for the other direction, so a sketch can drive a mixer or a lighting desk too. And you can rehearse all of it with no hardware at all. The `Integration/MIDILoopback` and `Integration/OSCLoopback` examples send to themselves, so the round-trip is visible on any bare Mac.
 
+That still means typing addresses into the phone by hand, and keeping them in step with the sketch. **OSCQuery** removes the typing. The sketch publishes its parameters as a tree an app can browse, and the app builds the controls itself:
+
+```swift
+import OllinOSC
+
+@Param(20...400, group: "Shape") var radius = 120.0
+@Param(group: "Shape") var spin = true
+
+override func setup() { extend(OSCQueryServer()) }
+```
+
+Now TouchOSC (or Chataigne, or ossia score) lists the sketch by name on the same Wi-Fi. It reads `/Shape/radius` as a number between 20 and 400 and `/Shape/spin` as a switch, and lays out a fader and a toggle with those ranges. Move the fader and the value arrives over plain OSC in the parameter's own units. It lands through the same control an inspector drag uses, so smoothing applies as it does there. One port number serves both halves, the tree over HTTP and the values over UDP. Open `http://your-mac.local:9000/` in a browser and the tree shows as JSON. The `Integration/OSCQuery` example serves a ring of marks and draws its own namespace down the left, so the picture and the listing are one thing seen twice.
+
 ## One beat for the whole room
 
 MIDI clock needs a cable, or at least a virtual one. Most music software today shares its beat over the network instead, through a protocol called Link. Every app that joins the session agrees on one tempo and lands the same downbeat. That includes a DAW, a drum machine app on a phone, and another sketch on another Mac. Nothing is configured. Being on the same network is the whole setup.
@@ -614,6 +627,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [Link](../Docs/Integration/Link.md): the network tempo session in full, tempo and transport, the quantum, and what discovery and clock sync do underneath.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
+- [OSCQuery](../Docs/Integration/OSCQuery.md): the parameters published as a tree, what each kind becomes, and what a client sends back.
 - [TUIO](../Docs/Integration/TUIO.md): touches, tagged pieces, and shapes from a tangible surface, the frame that commits them, and sharing one port with your own OSC.
 - [Serial](../Docs/Integration/Serial.md): finding a board, the three reads, writing lines back, and staying connected through unplugs, and `FirmataBoard`, a board running StandardFirmata driven pin by pin with no firmware of your own.
 - [Bluetooth](../Docs/Integration/Bluetooth.md): the room in range, the three ways to name a device, the formats that turn bytes into values, and the permission the first run has to get past.

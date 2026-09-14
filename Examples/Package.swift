@@ -633,6 +633,9 @@ let package = Package(
         // Listens for OSC and prints/draws every message — point a phone or any
         // OSC source at this Mac to discover what its controls send.
         example("Integration/OSCMonitor", [.osc]),
+        // The sketch's parameters published as an OSCQuery namespace, so a
+        // control app on the network builds its own controls for them.
+        example("Integration/OSCQuery", [.osc]),
         example("Integration/TUIOSurface", [.osc]),
         // Self-contained: a DMX sender drives a drawn rig of pars over sACN on
         // loopback and the receiver lights them from what arrives, so the stage

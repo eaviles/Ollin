@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import Ollin
 @testable import OllinOSC
 
 /// Wire-format correctness for the hand-written OSC 1.0 encoder/decoder: every
@@ -33,6 +34,15 @@ struct OSCCodingTests {
         roundTrip(OSCMessage("/F", .bool(false)))
         roundTrip(OSCMessage("/N", .null))
         roundTrip(OSCMessage("/I", .impulse))
+        // Byte-exact components (51/255 and 153/255), so the round trip is equality.
+        roundTrip(OSCMessage("/r", .color(Color(red: 1, green: 0, blue: 0.2, alpha: 0.6))))
+    }
+
+    @Test func aColorIsFourBytesRedFirst() {
+        let data = OSCMessage("/r", .color(Color(red: 1, green: 0.2, blue: 0, alpha: 0.6))).encode()
+        // "/r\0\0" ",r\0\0" then R G B A.
+        #expect(Array(data.suffix(4)) == [255, 51, 0, 153])
+        #expect(OSCMessage("/r", .color(.black)).arguments.first?.color == .black)
     }
 
     @Test func mixedArgumentsRoundTrip() {

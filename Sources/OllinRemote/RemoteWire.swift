@@ -186,32 +186,11 @@ public enum RemoteHTTP {
 
     /// Finds and parses a complete request head in `bytes`. Returns the request
     /// plus how many bytes the head consumed (through the blank line), or `nil`
-    /// while the head is still incomplete or malformed.
+    /// while the head is still incomplete or malformed. The parser itself is
+    /// the core's `HTTPRequestHead`, shared with the OSCQuery satellite.
     public static func parseHead(_ bytes: [UInt8]) -> (request: Request, consumed: Int)? {
-        guard let end = headEnd(bytes) else { return nil }
-        guard let text = String(bytes: bytes[..<end], encoding: .utf8) else { return nil }
-        var lines = text.split(separator: "\r\n", omittingEmptySubsequences: false)[...]
-        guard let requestLine = lines.popFirst() else { return nil }
-        let parts = requestLine.split(separator: " ")
-        guard parts.count >= 2 else { return nil }
-        var headers: [String: String] = [:]
-        for line in lines {
-            guard let colon = line.firstIndex(of: ":") else { continue }
-            let name = line[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
-            let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
-            headers[name] = value
-        }
-        let request = Request(method: String(parts[0]), path: String(parts[1]), headers: headers)
-        return (request, end + 4)
-    }
-
-    private static func headEnd(_ bytes: [UInt8]) -> Int? {
-        guard bytes.count >= 4 else { return nil }
-        for i in 0...(bytes.count - 4)
-        where bytes[i] == 13 && bytes[i + 1] == 10 && bytes[i + 2] == 13 && bytes[i + 3] == 10 {
-            return i
-        }
-        return nil
+        guard let (head, consumed) = HTTPRequestHead.parse(bytes) else { return nil }
+        return (Request(method: head.method, path: head.path, headers: head.headers), consumed)
     }
 
     /// Whether the request asks to switch to the WebSocket protocol.

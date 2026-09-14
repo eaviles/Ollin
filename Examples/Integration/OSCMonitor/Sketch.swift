@@ -83,6 +83,9 @@ final class OSCMonitor: Sketch {
             case .blob(let d): return "<\(d.count) bytes>"
             case .null: return "null"
             case .impulse: return "impulse"
+            case .color(let c):
+                return String(format: "#%02X%02X%02X%02X", Int(c.red * 255), Int(c.green * 255),
+                              Int(c.blue * 255), Int(c.alpha * 255))
             }
         }
         return message.address + "   " + parts.joined(separator: "  ")

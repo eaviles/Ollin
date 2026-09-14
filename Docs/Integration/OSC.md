@@ -154,6 +154,8 @@ override func setup() {
 
 A bound parameter updates on its own as messages arrive, so you do not need to read it each frame. The same parameter still works from the inspector slider and from code, and the most recent change is the one that takes effect.
 
+Binding still means typing each address into the other app and keeping it in step with the sketch. [OSCQuery](./OSCQuery.md) removes that step. One extension publishes every parameter as a tree a control app browses, and the app builds its own controls with the right ranges.
+
 <a name="bundles--time-tags"></a>
 
 ### Bundles & time tags

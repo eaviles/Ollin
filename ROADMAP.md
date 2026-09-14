@@ -73,7 +73,7 @@ See the [design notes](DESIGN-NOTES.md#sound-synthesis-and-spatial-audio).
 
 The integration tier reaches other software (Syphon, OSC, MIDI, the virtual camera). This tier reaches the hardware and the network around the machine. That is the physical-computing tradition of the frameworks Ollin comes from:
 
-- **NDI.** NDI is the network sibling of Syphon. It sends and receives live video between machines, and it is the standard in VJ and broadcast rigs. Its SDK is binary-only under its own license. So unlike the source-vendored tier, it needs a licensing review before any code is written. That review decides whether and how it ships.
+- **NDI.** NDI is the network sibling of Syphon. It sends and receives live video between machines, and it is the standard in VJ and broadcast rigs. It has no published protocol, so unlike the rest of this tier it cannot be written from a specification. It ships as a satellite over the runtime the user installs from NDI: nothing of NDI's in the repository but its MIT-licensed headers, sending first, then receiving. The reasoning against the SDK license is in the design notes.
 
 All of it follows the interop posture: play in someone's existing rig, do not replace it. See the [design notes](DESIGN-NOTES.md#live-rigs-physical-computing-lighting-and-network-video).
 

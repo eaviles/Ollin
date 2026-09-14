@@ -51,6 +51,19 @@ public final class OSCReceiver: @unchecked Sendable {
     // is plain and Sendable.
     private let listenerStore = OSAllocatedUnfairLock<NWListener?>(uncheckedState: nil)
     private let resolvedPort = OSAllocatedUnfairLock<UInt16?>(initialState: nil)
+    private let serviceNameStore = OSAllocatedUnfairLock<String?>(initialState: nil)
+
+    /// The name this port is advertised under on the local network as an OSC
+    /// server (`_osc._udp`), so an app that browses for one finds it; `nil`
+    /// advertises nothing. Read once, when `start()` opens the port; the
+    /// OSCQuery server sets it beside its own name.
+    var serviceName: String? {
+        get { serviceNameStore.withLock { $0 } }
+        set { serviceNameStore.withLock { $0 = newValue } }
+    }
+
+    /// The port the receiver was created for (`0` when the system picks one).
+    var requestedPort: Int { Int(desiredPort) }
 
     private struct ParamBinding: Sendable {
         let input: ClosedRange<Double>
@@ -103,6 +116,10 @@ public final class OSCReceiver: @unchecked Sendable {
         } else {
             guard let port = NWEndpoint.Port(rawValue: desiredPort) else { throw OSCError.invalidPort }
             listener = try NWListener(using: parameters, on: port)
+        }
+
+        if let serviceName {
+            listener.service = NWListener.Service(name: serviceName, type: "_osc._udp")
         }
 
         // Read the port back from the stored listener (set just below) rather than

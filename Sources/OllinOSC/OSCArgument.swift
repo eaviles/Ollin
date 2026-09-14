@@ -1,11 +1,13 @@
 import Foundation
+import Ollin
 
 /// A single typed value inside an `OSCMessage`. OSC carries each argument with a
 /// one-character type tag, and this enum is one case per tag Ollin speaks.
 ///
 /// The four everyday ones — `int`, `float`, `string`, `blob` — cover almost all
 /// traffic; the rest (`double`, `int64`, `bool`, `null`, `impulse`) round out the
-/// OSC 1.0 set so messages from other tools decode losslessly.
+/// OSC 1.0 set so messages from other tools decode losslessly, and `color` is
+/// the one OSC 1.1 tag a control surface sends (a color well over OSCQuery).
 ///
 /// Literals build arguments directly, so a message reads without ceremony:
 ///
@@ -31,6 +33,9 @@ public enum OSCArgument: Sendable, Equatable {
     case null
     /// "Bang" / infinitum (tag `I`), carrying no bytes — a bare trigger.
     case impulse
+    /// An RGBA color (tag `r`), four bytes on the wire; the value is read and
+    /// written as sRGB components in `0...1`, the way a `Color` is.
+    case color(Color)
 
     /// The OSC type-tag character for this argument.
     var typeTag: Character {
@@ -44,6 +49,7 @@ public enum OSCArgument: Sendable, Equatable {
         case .bool(let value): return value ? "T" : "F"
         case .null: return "N"
         case .impulse: return "I"
+        case .color: return "r"
         }
     }
 
@@ -80,6 +86,12 @@ public enum OSCArgument: Sendable, Equatable {
     /// The value as a `String` — the payload of a `string`, or `nil` otherwise.
     public var text: String? {
         if case .string(let value) = self { return value }
+        return nil
+    }
+
+    /// The value as a `Color`: the payload of a `color`, or `nil` otherwise.
+    public var color: Color? {
+        if case .color(let value) = self { return value }
         return nil
     }
 

@@ -10668,6 +10668,11 @@
       "rendered": "2026-09-10",
       "source": "80877b646365d82e"
     },
+    "Integration/OSCQuery": {
+      "reason": "needs a device at the desk: imports OllinOSC",
+      "rendered": "2026-09-14",
+      "source": "4a12f2c57af6d18a"
+    },
     "Integration/RemoteSurface": {
       "reason": "needs a device at the desk: imports OllinRemote",
       "rendered": "2026-09-10",

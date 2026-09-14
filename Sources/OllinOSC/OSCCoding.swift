@@ -1,4 +1,5 @@
 import Foundation
+import Ollin
 
 // The OSC 1.0 wire format, written from the specification rather than ported from
 // any library. Every value is big-endian; strings and blobs are null-padded to
@@ -36,6 +37,8 @@ extension OSCMessage {
             case .blob(let value): OSCCoding.writeBlob(value, into: &data)
             case .double(let value): OSCCoding.writeUInt64(value.bitPattern, into: &data)
             case .int64(let value): OSCCoding.writeUInt64(UInt64(bitPattern: value), into: &data)
+            case .color(let value):
+                OSCCoding.writeUInt32(OSCCoding.packColor(value), into: &data)
             case .bool, .null, .impulse: break   // carried by the tag alone
             }
         }
@@ -170,6 +173,20 @@ enum OSCCoding {
         }
     }
 
+    /// A color as its four wire bytes, R G B A from the high byte down, each
+    /// component rounded to `0...255`.
+    static func packColor(_ color: Color) -> UInt32 {
+        func byte(_ component: Double) -> UInt32 {
+            UInt32(Swift.min(255, Swift.max(0, (component * 255).rounded())))
+        }
+        return byte(color.red) << 24 | byte(color.green) << 16 | byte(color.blue) << 8 | byte(color.alpha)
+    }
+
+    static func unpackColor(_ packed: UInt32) -> Color {
+        func component(_ shift: UInt32) -> Double { Double((packed >> shift) & 0xFF) / 255 }
+        return Color(red: component(24), green: component(16), blue: component(8), alpha: component(0))
+    }
+
     static func decodePacket(_ reader: inout ByteReader) -> OSCPacket? {
         guard let head = reader.readString() else { return nil }
         if head == "#bundle" {
@@ -218,6 +235,9 @@ enum OSCCoding {
             case "F": arguments.append(.bool(false))
             case "N": arguments.append(.null)
             case "I": arguments.append(.impulse)
+            case "r":
+                guard let value = reader.readUInt32() else { return nil }
+                arguments.append(.color(OSCCoding.unpackColor(value)))
             default: return nil   // unknown tag: its byte width is unknowable
             }
         }
