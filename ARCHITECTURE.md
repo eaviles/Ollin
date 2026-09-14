@@ -8375,6 +8375,37 @@ assets resolve. The rest of the live-coding host's invariants (stage overlays,
 editor rules, recovery scoping, the headless gates) are enumerated in
 CLAUDE.md's *Live coding* block.
 
+**Two-speed evaluation** (`landsPlainBuildFirst`, the performance host's
+default) is the engine's, not a host's. `evaluate` starts the optimized
+compile and, beside it, a plain one, in the one `Task` that owns both, so a
+newer evaluation's `cancel()` refuses both of the older one's builds and the
+older optimized build can never land over newer code. The plain build is
+*the* landing as far as the host knows (`onSuccess` once, the reload count
+and the build time), and the optimized build behind it swaps in through the
+same `land` path with the clock always carried and no hook, `isOptimizing`
+up in between.
+
+The measurement that shaped it: a sketch compile is mostly fixed cost. On the
+loader's own `swiftc` line the driver ran one frontend job per source, the
+sketch and the factory shim, each loading the framework's module, so `-wmo`
+(one job) took a 20-line sketch from 1.00 s to 0.57 s plain and 0.95 s to
+0.61 s optimized, and a 470-line one from 0.96 to 0.74 and 1.48 to 1.09.
+What is left for the second speed to buy is the optimizer's share, which
+grows with the sketch. With the two compiles started together, the plain
+build is on stage at 0.63 s on 20 lines (the single optimized build alone:
+0.60 s), 0.68 s on 150 lines (0.76 s), and 0.78 s on 470 lines (1.09 s); the
+optimized build follows at 0.68 / 0.84 / 1.16 s, about 0.07 s later than it
+would alone, because the two share the machine.
+
+Two gotchas from the gates. The two builds of a small sketch land tens of
+milliseconds apart, so a poll never sees the plain one; the gates read the
+first landing through `onSuccess`, and start the superseding evaluation from
+inside it. And the pixel pin compares decoded pixels, because an exported PNG
+carries the recipe with the `@Param` values and the gate's sketch reads its
+build level into one on purpose, so the two files differ while the pictures
+do not (the optimizer does not fuse multiply-adds; probed, 0 of 100,000
+disagreeing).
+
 ---
 
 ## Live recording (the real-time recorder)

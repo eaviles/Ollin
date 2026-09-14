@@ -17,7 +17,7 @@ swift run OllinLiveCoding Examples/Basic/HelloCircle/Sketch.swift
 Scripts/OllinLiveCoding                                       # release build (performance speed)
 ```
 
-`Scripts/OllinLiveCoding` builds the host in release mode, which is what you want for a live set. Evaluations are quick either way, because each one recompiles the sketch and never the host. Release mode changes the speed the framework itself renders at. The buffer compiles optimized on every evaluation, whichever way the host was built. A sketch that moves fifty thousand points on the CPU each frame therefore runs at the speed a release build gets. `--no-optimize` compiles the buffer plain instead, which helps when you are debugging the sketch rather than performing it. Under that build, asserts fire and a crash names every frame.
+`Scripts/OllinLiveCoding` builds the host in release mode, which is what you want for a live set. Evaluations are quick either way, because each one recompiles the sketch and never the host. Release mode changes the speed the framework itself renders at. The buffer compiles optimized on every evaluation, whichever way the host was built, and it lands in two speeds: a plain build goes on stage the moment it compiles, and the optimized build replaces it when it is ready. A sketch that moves fifty thousand points on the CPU each frame therefore runs at the speed a release build gets, a moment after the edit shows. [The evaluate loop](#the-evaluate-loop) has the numbers. `--no-optimize` compiles the buffer plain instead, which helps when you are debugging the sketch rather than performing it. Under that build, asserts fire and a crash names every frame. `--single-build` keeps the optimized compile and waits for it alone, for a sketch that should not start over twice.
 
 OllinLiveCoding sits beside `OllinLive` rather than replacing it. OllinLive watches a file you edit in your own editor, which is the development loop. OllinLiveCoding is the performance host, and its editor is inside the window.
 
@@ -41,9 +41,21 @@ Type your edit, then press **⌘↩ (Sketch ▸ Evaluate)**. The buffer compiles
 - **The clock carries.** `time` and `frameCount` continue across the swap, so an animation driven by phase does not jump. Use **⌘⇧↩ (Evaluate Fresh)** instead when you want the piece to start over, because that resets the clock.
 - **Tuned parameters carry.** A `@Param` value you dragged in the inspector is applied again before the new sketch draws. A value bound over MIDI or OSC carries the same way. A parameter you did not touch takes whatever default the code now declares, so editing a default in the source still works.
 - **Instance state resets.** The swap builds a new instance. `setup()` runs again, stored properties start from their initial values, and the accumulation surface clears. `reloaded()` fires after that `setup()` if you need a hook.
-- A compile takes a second or two, because Swift compiles the code rather than evaluating it directly. An amber chip in the corner shows that a compile is running. A green "Evaluated" toast then confirms the swap and gives the build time.
+- **Two speeds.** The buffer compiles twice at once, plain and optimized, because Swift compiles the code rather than evaluating it directly. The plain build swaps in the moment it compiles, and the optimized build replaces it when it is ready, with the clock carried across that second swap too. An amber chip in the corner reads "Compiling…" until the code is on stage, then "Optimizing…" until the optimized build lands. A green "Evaluated" toast confirms the first swap and gives its time.
 
 Evaluation compiles the buffer exactly as it is on screen, unsaved changes included.
+
+What the second speed buys is the optimizer's share of the compile, which grows with the sketch. The rest is fixed, whatever the file holds: the compiler loads the framework's module and links. Measured on an M2, from the evaluation to the swap:
+
+| Sketch | Plain build on stage | Optimized build in | One optimized build (`--single-build`) |
+| --- | --- | --- | --- |
+| 20 lines | 0.63 s | 0.68 s | 0.60 s |
+| 150 lines | 0.68 s | 0.84 s | 0.76 s |
+| 470 lines | 0.78 s | 1.16 s | 1.09 s |
+
+On a small sketch the two builds land together, and the mode costs a few hundredths. On a sketch the size a set grows into, the edit shows about a third sooner than the optimized build alone would show it. That build arrives a few hundredths later than it would alone, since the two compiles share the machine.
+
+The second swap is a swap like any other. `setup()` runs again, stored properties start over, and `reloaded()` fires again. A sketch driven by `time` never shows it, because the clock carries. A sketch that accumulates state, a particle system or a growing structure, starts over twice, a fraction of a second apart. Run the host with `--single-build` for that sketch, and every evaluation waits for the one optimized build.
 
 ### Completing a name
 

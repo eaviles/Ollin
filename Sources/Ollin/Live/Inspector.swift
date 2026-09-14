@@ -26,13 +26,18 @@ import UIKit
 public enum InspectorStatus: Equatable, Sendable {
     case watching
     case compiling
+    /// The code is on stage as a plain build and its optimized build is
+    /// still compiling (two-speed evaluation): a compile is running, but
+    /// nothing is being waited for.
+    case optimizing
     case error
     case running
 
     var label: String {
         switch self {
         case .watching: return "Watching"
-        case .compiling: return "Compiling…"   // the only transient state takes the ellipsis
+        case .compiling: return "Compiling…"   // the transient states take the ellipsis
+        case .optimizing: return "Optimizing…"
         case .error: return "Compile error"
         case .running: return "Running"
         }
@@ -41,21 +46,23 @@ public enum InspectorStatus: Equatable, Sendable {
     var tint: SwiftUI.Color {
         switch self {
         case .watching, .running: return OllinInspector.green
-        case .compiling: return OllinInspector.amber
+        case .compiling, .optimizing: return OllinInspector.amber
         case .error: return OllinInspector.red
         }
     }
 
-    /// The chip's text color: muted for the steady states, tinted for the alerts.
+    /// The chip's text color: muted for the steady states, tinted for the
+    /// alerts. Optimizing is muted: the sketch is already on stage, and only
+    /// the dot says a compile is still running.
     var labelColor: SwiftUI.Color {
         switch self {
-        case .watching, .running: return .secondary
+        case .watching, .running, .optimizing: return .secondary
         case .compiling: return OllinInspector.amber
         case .error: return OllinInspector.red
         }
     }
 
-    var pulses: Bool { self == .compiling }
+    var pulses: Bool { self == .compiling || self == .optimizing }
 }
 
 // MARK: - Tokens & helpers

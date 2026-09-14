@@ -17,20 +17,27 @@ import Ollin
 /// - A failed compile leaves the running sketch untouched.
 /// - The sketch-compile error and the user-shader error are independent
 ///   channels: fixing one never clears the other.
+/// - Under two-speed evaluation (`landsPlainBuildFirst`) the plain build is
+///   the one the host hears about, and the optimized build behind it swaps
+///   in silently with the clock carried, so a set never sees it land.
 @MainActor
 @Observable
 public final class SketchSession {
-    /// The evaluation lifecycle. `.idle` means nothing is in flight (a sketch
-    /// may well be running); `.failed` carries the raw compiler log.
+    /// The evaluation lifecycle. `.idle` means nothing is in flight that the
+    /// host waits on (a sketch may well be running, and an optimized build may
+    /// still be on its way; see `isOptimizing`); `.failed` carries the raw
+    /// compiler log.
     public enum Phase: Equatable, Sendable {
         case idle
         case compiling
         case failed(String)
     }
 
-    /// The sketch to host. `nil` until the first compile lands; set once (the
-    /// host's view then builds the runner with it). Later evaluations swap
-    /// inside the runner, not through this.
+    /// The sketch to host. `nil` until the first compile lands; set by the
+    /// first build that lands (the host's view then builds the runner with
+    /// it), and again by an optimized build that lands behind a plain one
+    /// before any runner exists. Later evaluations swap inside the runner,
+    /// not through this.
     public private(set) var sketch: Sketch?
     /// The instance actually drawing right now: the runner's, once one exists,
     /// because later evaluations swap inside the runner while `sketch` stays
@@ -38,12 +45,37 @@ public final class SketchSession {
     /// recorder, a host control) goes through this.
     public var currentSketch: Sketch? { runner?.sketch ?? sketch }
     public private(set) var phase: Phase = .idle
-    /// Runner-reload count: bumped on every successful swap after the first
-    /// mount. `reloadCount == 0` inside `onSuccess` identifies the first mount.
+    /// Runner-reload count: bumped once per evaluation that lands after the
+    /// first mount (the optimized swap behind a plain build is the same
+    /// evaluation, so it does not count again). `reloadCount == 0` inside
+    /// `onSuccess` identifies the first mount.
     public private(set) var reloadCount = 0
-    /// Wall-clock seconds of the last successful hot reload (compile + load).
-    /// `nil` until the first reload (the initial mount doesn't count).
+    /// Wall-clock seconds from the evaluation to its first swap (compile +
+    /// load), the wait the performer saw. `nil` until the first reload (the
+    /// initial mount doesn't count).
     public private(set) var lastBuildSeconds: Double?
+    /// Whether an evaluation lands a plain build first. On, the buffer
+    /// compiles twice at once, plain (`-Onone`) and optimized (`-O`): the
+    /// plain build swaps in the moment it compiles and the optimized build
+    /// replaces it when it is ready, the clock carried across that second
+    /// swap whatever the first one did, so the edit is on stage before the
+    /// optimized compile alone would have put it there. Off, the one
+    /// optimized build swaps in when it is ready. Moot under a loader that
+    /// compiles plain (`--no-optimize`), where there is only the one build.
+    ///
+    /// What it buys is the gap between the two compiles, which is the
+    /// optimizer's own share of the time: about a third on a sketch of a few
+    /// hundred lines, and nothing on a small one, whose compile is all module
+    /// loading and linking. What it costs is a second fresh instance: the
+    /// second swap runs `setup()` again and fires `reloaded()` again, so a
+    /// sketch that accumulates state starts over twice, a fraction of a
+    /// second apart. The host's flag that turns it off is for that sketch.
+    public var landsPlainBuildFirst: Bool
+    /// Whether the optimized build of the sketch on stage is still compiling:
+    /// a plain build has swapped in and the optimized one has not yet replaced
+    /// it. False the moment it does, or when it fails (the plain build then
+    /// stays).
+    public private(set) var isOptimizing = false
     /// The running sketch's `@Param` parameters, for the host's inspector surface.
     public private(set) var params: [ParamHandle] = []
     /// A user shader's compile error, reported by the runner after a frame
@@ -87,8 +119,9 @@ public final class SketchSession {
     /// so an untouched session keeps rolling fresh variations per reload.
     @ObservationIgnored private var navigatedSeed: Int?
 
-    public init(keepClock: Bool = false) {
+    public init(keepClock: Bool = false, landsPlainBuildFirst: Bool = false) {
         self.keepClock = keepClock
+        self.landsPlainBuildFirst = landsPlainBuildFirst
     }
 
     /// The error a host's overlay should show: the Swift compile error first
@@ -197,43 +230,119 @@ public final class SketchSession {
     /// session default for this one evaluation. `onSuccess` runs after the
     /// swap (so a host can re-assert canvas size, retitle, print); `onFailure`
     /// runs with the running sketch left untouched.
+    ///
+    /// With `landsPlainBuildFirst` on and a loader that optimizes, the two
+    /// compiles start side by side (the optimized one takes a few percent
+    /// longer with the plain one beside it than alone, measured). The plain
+    /// build is the evaluation the host hears about: it swaps in with the
+    /// clock as asked and `onSuccess` runs once, then. The optimized build
+    /// replaces it silently when it lands, the clock always carried, the
+    /// tuned parameters re-applied as at any swap. A plain build that fails
+    /// to compile fails the evaluation at once; the optimized compile of the
+    /// same text fails the same way, and its result is refused. An optimized
+    /// build that fails on its own (a compiler fault at `-O`, which the plain
+    /// compile cannot see) leaves the plain build on stage and says so.
     public func evaluate(_ loader: SketchLoader,
                          input: SketchLoader.Input = .file,
                          keepClock: Bool? = nil,
                          onSuccess: (@MainActor (Sketch) -> Void)? = nil,
                          onFailure: (@MainActor (SketchLoader.LoadError) -> Void)? = nil) {
         phase = .compiling
+        isOptimizing = false
         let carryClock = keepClock ?? self.keepClock
+        let twoSpeed = landsPlainBuildFirst && loader.optimization == .speed
         // Supersede any in-flight compile so a newer evaluation always wins:
         // two evaluations within one swiftc run otherwise race, and a slower
-        // older compile could land last and swap in stale code.
+        // older compile could land last and swap in stale code. Cancelling
+        // the task refuses both of its builds; the detached compiles run to
+        // completion and nobody reads them.
         compileTask?.cancel()
         compileTask = Task {
             let started = Date()
-            let compiled = await Task.detached(priority: .userInitiated) {
+            let optimizedCompile = Task.detached(priority: .userInitiated) {
                 loader.compile(input)
-            }.value
-            if Task.isCancelled { return }   // a newer evaluation superseded this one
-            switch compiled {
-            case .success(let dylibPath):
-                switch loader.instantiate(dylibPath: dylibPath) {
-                case .success(let newSketch):
-                    self.syncParams(newSketch)   // re-apply tuned parameters before it draws
-                    if let runner = self.runner {
-                        self.lastBuildSeconds = Date().timeIntervalSince(started)
-                        runner.reload(to: newSketch, keepClock: carryClock)
-                        self.reloadCount += 1
-                    } else {
-                        self.sketch = newSketch   // first success: the view mounts the runner
+            }
+            var plainLanded = false
+            if twoSpeed {
+                var plainLoader = loader
+                plainLoader.optimization = .none
+                let plain = await Task.detached(priority: .userInitiated) {
+                    plainLoader.compile(input)
+                }.value
+                if Task.isCancelled { return }   // a newer evaluation superseded this one
+                switch plain {
+                case .success(let dylibPath):
+                    switch self.land(dylibPath, with: loader, keepClock: carryClock,
+                                     started: started, counts: true) {
+                    case .success(let newSketch):
+                        plainLanded = true
+                        self.isOptimizing = true
+                        self.phase = .idle
+                        onSuccess?(newSketch)
+                    case .failure(let error):
+                        self.fail(error, onFailure)
+                        return
                     }
-                    self.phase = .idle
-                    onSuccess?(newSketch)
                 case .failure(let error):
                     self.fail(error, onFailure)
+                    return
+                }
+            }
+            let optimized = await optimizedCompile.value
+            if Task.isCancelled { return }
+            switch optimized {
+            case .success(let dylibPath):
+                if plainLanded {
+                    // The silent second swap: the clock carries whatever the
+                    // first did, and the host is not told again.
+                    if case .failure(let error) = self.land(dylibPath, with: loader, keepClock: true,
+                                                            started: started, counts: false) {
+                        print("Ollin: the optimized build did not load, so the plain build stays: \(error)")
+                    }
+                    self.isOptimizing = false
+                } else {
+                    switch self.land(dylibPath, with: loader, keepClock: carryClock,
+                                     started: started, counts: true) {
+                    case .success(let newSketch):
+                        self.phase = .idle
+                        onSuccess?(newSketch)
+                    case .failure(let error):
+                        self.fail(error, onFailure)
+                    }
                 }
             case .failure(let error):
-                self.fail(error, onFailure)
+                if plainLanded {
+                    self.isOptimizing = false
+                    print("Ollin: the optimized build failed, so the plain build stays: \(error)")
+                } else {
+                    self.fail(error, onFailure)
+                }
             }
+        }
+    }
+
+    /// Load a compiled build and put it on stage: swapped into the runner
+    /// when one exists, else set as the sketch the host's view mounts. The
+    /// tuned parameters are re-applied before it draws. `counts` is whether
+    /// this swap is the evaluation's first, the one the reload count and the
+    /// build time record; the optimized swap behind a plain build is not.
+    /// Hands back the instance on stage, or the error when the dylib does
+    /// not load, with nothing changed.
+    private func land(_ dylibPath: String, with loader: SketchLoader, keepClock: Bool,
+                      started: Date, counts: Bool) -> Result<Sketch, SketchLoader.LoadError> {
+        switch loader.instantiate(dylibPath: dylibPath) {
+        case .success(let newSketch):
+            syncParams(newSketch)   // re-apply tuned parameters before it draws
+            if let runner {
+                if counts { lastBuildSeconds = Date().timeIntervalSince(started) }
+                runner.reload(to: newSketch, keepClock: keepClock)
+                if counts { reloadCount += 1 }
+            } else {
+                sketch = newSketch   // no runner yet: the view mounts this one
+            }
+            return .success(newSketch)
+        case .failure(let error):
+            return .failure(error)
         }
     }
 

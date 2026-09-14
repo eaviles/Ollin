@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Ollin
 import OllinRuntime
@@ -9,7 +10,10 @@ import OllinRuntime
 /// again, and assert the two frames differ. Then break the buffer and assert
 /// the failure parses into a line-accurate diagnostic carrying the sketch's
 /// own file name (what the editor keys on), plus a canned multi-diagnostic
-/// parse check.
+/// parse check. Then the two-speed evaluation through the shared engine: the
+/// plain build lands first and the optimized one replaces it, both timed
+/// against the single optimized build, and the two builds render the same
+/// bytes, so the second swap can never be seen.
 enum SelfTest {
     @MainActor
     static func run() -> Never {
@@ -185,9 +189,137 @@ enum SelfTest {
             fail("the completion service refused a request: \(error)")
         }
 
-        print("OllinLiveCoding selftest passed: buffer compile, swap render "
-            + "(\(a.count) vs \(b.count) bytes), diagnostics, and completion all check out.")
-        exit(0)
+        Task { @MainActor in
+            await checkTwoSpeed(loader: loader, dir: dir)
+            print("OllinLiveCoding selftest passed: buffer compile, swap render "
+                + "(\(a.count) vs \(b.count) bytes), diagnostics, completion, "
+                + "and the two-speed evaluation all check out.")
+            exit(0)
+        }
+        RunLoop.main.run()   // pumped until the check above exits
+        exit(1)
+    }
+
+    /// Two-speed evaluation, headless through `SketchSession` with no runner
+    /// (each build then lands as `sketch`): the plain build lands first and
+    /// reports the optimized one on its way, the optimized build replaces it
+    /// and is a different program (the sketch reads its own build level), the
+    /// two render byte-identical frames, and a single-build session lands its
+    /// one optimized build with nothing behind it. The three waits are
+    /// printed, since what the mode buys is the gap between them.
+    @MainActor
+    private static func checkTwoSpeed(loader: SketchLoader, dir: String) async {
+        // Drawing with arithmetic of its own, so the optimizer has something
+        // to work on and the byte-identity means what it says.
+        let source = """
+        import Ollin
+        final class TwoSpeedSketch: Sketch {
+            @Param(0...2) var build = 0.0
+            override func setup() {
+                build = _isDebugAssertConfiguration() ? 1 : 2   // plain 1, optimized 2
+            }
+            override func draw() {
+                background(.white)
+                fill(.black)
+                noStroke()
+                for i in 0..<1500 {
+                    let t = Double(i) * 0.0173
+                    let r = 120 + 300 * (0.5 + 0.5 * sin(t * 3.1 + cos(t * 7.5)))
+                    let x = width / 2 + cos(t * 41) * r
+                    let y = height / 2 + sin(t * 29) * r
+                    drawCircle(x, y, 3 + 5 * (0.5 + 0.5 * cos(t * 13)))
+                }
+            }
+        }
+        """
+        func build(of sketch: Sketch) -> Double {
+            guard let handle = sketch.parameters().first(where: { $0.name == "build" }),
+                  case .number(let v) = handle.param.stored else { return .nan }
+            return v
+        }
+        // Decoded pixels, never a file's bytes: an exported PNG carries the
+        // recipe with the parameter values, and `build` reads differently on
+        // purpose, so the two files would differ while the pictures do not.
+        func render(_ sketch: Sketch) -> [UInt8] {
+            guard let image = OllinApp.image(of: sketch) else { return [] }
+            let width = image.width, height = image.height
+            var pixels = [UInt8](repeating: 0, count: width * height * 4)
+            guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+                  let context = CGContext(data: &pixels, width: width, height: height,
+                                          bitsPerComponent: 8, bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return [] }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return pixels
+        }
+        func wait(_ what: String, until done: @MainActor () -> Bool) async {
+            for _ in 0..<6000 {   // a compile is a second or two; cap at a minute
+                if done() { return }
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+            fail("\(what) never happened")
+        }
+
+        print("OllinLiveCoding selftest: two-speed evaluation, the plain build first …")
+        let session = SketchSession(keepClock: true, landsPlainBuildFirst: true)
+        let started = Date()
+        // The host hears about the first landing through `onSuccess`, once;
+        // reading there is the only sure way to catch the plain build, since
+        // on a sketch this small the optimized one lands a few tens of
+        // milliseconds behind it, inside any poll.
+        var landings = 0
+        var plainSeconds = 0.0
+        var plain: Sketch?
+        var optimizingAtLanding = false
+        session.evaluate(loader, input: .source(source)) { sketch in
+            landings += 1
+            plainSeconds = Date().timeIntervalSince(started)
+            plain = sketch
+            optimizingAtLanding = session.isOptimizing
+        }
+        await wait("the evaluation settling") { session.phase != .compiling && !session.isOptimizing }
+        let optimizedSeconds = Date().timeIntervalSince(started)
+        guard case .idle = session.phase, let plain else {
+            fail("the two-speed evaluation failed: \(session.phase)")
+        }
+        guard landings == 1 else { fail("the host was told about \(landings) landings, expected one") }
+        guard optimizingAtLanding else {
+            fail("the plain build landed without an optimized build reported behind it")
+        }
+        let plainFrame = render(plain)
+        guard build(of: plain) == 1 else {
+            fail("the first build to land reads as build \(build(of: plain)), expected the plain one (1)")
+        }
+        guard let optimized = session.sketch, optimized !== plain else {
+            fail("the optimized build did not replace the plain one")
+        }
+        let optimizedFrame = render(optimized)
+        guard build(of: optimized) == 2 else {
+            fail("the second build to land reads as build \(build(of: optimized)), expected the optimized one (2)")
+        }
+        guard !plainFrame.isEmpty, plainFrame == optimizedFrame else {
+            fail("the plain and optimized builds rendered different pixels; the second swap would show")
+        }
+
+        print("OllinLiveCoding selftest: the single optimized build, for the comparison …")
+        let single = SketchSession(keepClock: true)
+        let singleStarted = Date()
+        single.evaluate(loader, input: .source(source))
+        await wait("the single build landing") { single.phase != .compiling }
+        let singleSeconds = Date().timeIntervalSince(singleStarted)
+        guard case .idle = single.phase, let only = single.sketch else {
+            fail("the single-build evaluation failed: \(single.phase)")
+        }
+        let singleFrame = render(only)   // runs its setup(), which reads the build level
+        guard !single.isOptimizing, build(of: only) == 2 else {
+            fail("the single-build session did not land one optimized build (optimizing \(single.isOptimizing), build \(build(of: only)))")
+        }
+        guard singleFrame == optimizedFrame else {
+            fail("the single optimized build rendered different pixels from the two-speed one")
+        }
+        print("  plain build on stage at \(String(format: "%.2f", plainSeconds)) s, "
+            + "optimized build in at \(String(format: "%.2f", optimizedSeconds)) s; "
+            + "the single optimized build alone took \(String(format: "%.2f", singleSeconds)) s")
     }
 
     private static func fail(_ message: String) -> Never {

@@ -5,15 +5,22 @@ import OllinRuntime
 /// `swift run OllinLiveCoding --sessiontest`: headless checks of the shared
 /// `SketchSession` semantics both live hosts depend on (no window; the swaps
 /// exercised here stop at the first mount, which is exactly where the
-/// param-carry and supersede logic live):
+/// param-carry and supersede logic live). The session runs two-speed, the
+/// performance host's default, so every invariant below holds across the
+/// plain build landing first and the optimized one replacing it:
 ///
+/// - A two-speed evaluation lands the plain build first, says the optimized
+///   one is on its way, and then replaces it with the optimized build.
 /// - A recorded (user-dragged) param value is re-applied to the next
 ///   evaluation's sketch, while an *untouched* param takes the buffer's edited
 ///   default.
 /// - A navigated variation seed carries the same way, so an edit doesn't
 ///   reshuffle the composition the user was working on.
 /// - Two back-to-back evaluations resolve to the newer one (supersede), never
-///   the stale one.
+///   the stale one, and an evaluation made while the older one's optimized
+///   build is still compiling refuses that build too.
+/// - A buffer that fails to compile fails the evaluation once, with nothing
+///   optimizing behind it and the sketch on stage untouched.
 /// - First-mount bookkeeping: `reloadCount` stays 0 and `lastBuildSeconds`
 ///   stays nil until a runner exists to reload into.
 enum SessionTest {
@@ -34,24 +41,49 @@ enum SessionTest {
         let loader = SketchLoader(
             sketchPath: (dir as NSString).appendingPathComponent("Sketch.swift"))
 
+        // `build` says which compile the instance came from, read in `init`
+        // because nothing here runs `setup()`: the plain build reads 1, the
+        // optimized one 2.
         func source(radiusDefault: Double, speedDefault: Double) -> String {
             """
             import Ollin
             final class SessionSketch: Sketch {
                 @Param(10...400) var radius = \(radiusDefault)
                 @Param(0...9) var speed = \(speedDefault)
+                @Param(0...2) var build = 0.0
+                required init() {
+                    super.init()
+                    build = _isDebugAssertConfiguration() ? 1 : 2
+                }
                 override func draw() { background(.white) }
             }
             """
         }
 
-        let session = SketchSession(keepClock: true)
+        let session = SketchSession(keepClock: true, landsPlainBuildFirst: true)
 
-        print("OllinLiveCoding sessiontest: first evaluation …")
-        session.evaluate(loader, input: .source(source(radiusDefault: 100, speedDefault: 1)))
+        print("OllinLiveCoding sessiontest: first evaluation, in two speeds …")
+        // The host hears about the first landing through `onSuccess`, once,
+        // which is where the plain build is caught: on a sketch this small
+        // the optimized one lands a few tens of milliseconds behind it.
+        var landings = 0
+        var plain: Sketch?
+        var optimizingAtLanding = false
+        session.evaluate(loader, input: .source(source(radiusDefault: 100, speedDefault: 1))) { sketch in
+            landings += 1
+            plain = sketch
+            optimizingAtLanding = session.isOptimizing
+        }
         await settle(session)
-        guard case .idle = session.phase, session.sketch != nil else {
+        guard case .idle = session.phase, let plain else {
             fail("first evaluation didn't land: \(session.phase)")
+        }
+        guard landings == 1, optimizingAtLanding, build(of: plain) == 1 else {
+            fail("the first build to land was not the plain one, told once, with the optimized one behind it "
+                + "(landings \(landings), optimizing \(optimizingAtLanding), build \(build(of: plain)))")
+        }
+        guard let optimized = session.sketch, optimized !== plain, value(of: "build", session) == 2 else {
+            fail("the optimized build did not replace the plain one (build \(value(of: "build", session) ?? .nan))")
         }
         guard session.reloadCount == 0, session.lastBuildSeconds == nil else {
             fail("first mount miscounted as a reload")
@@ -70,6 +102,9 @@ enum SessionTest {
         guard value(of: "speed", session) == 2 else {
             fail("the untouched param kept a stale default instead of the edited one")
         }
+        guard value(of: "build", session) == 2 else {
+            fail("the carry was read off the plain build, not the optimized one that replaced it")
+        }
 
         print("OllinLiveCoding sessiontest: variation carry across an evaluation …")
         session.recordSeed(777)                      // the user navigated the seed space
@@ -83,10 +118,51 @@ enum SessionTest {
         session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 5)))
         session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 7)))
         await settle(session)
-        // Grace for the superseded compile to finish and be refused.
+        // Grace for the superseded compiles to finish and be refused.
         try? await Task.sleep(for: .seconds(4))
-        guard value(of: "speed", session) == 7 else {
-            fail("a superseded evaluation landed last (speed = \(value(of: "speed", session) ?? .nan))")
+        guard value(of: "speed", session) == 7, value(of: "build", session) == 2, !session.isOptimizing else {
+            fail("a superseded evaluation landed last (speed = \(value(of: "speed", session) ?? .nan), "
+                + "build = \(value(of: "build", session) ?? .nan))")
+        }
+
+        print("OllinLiveCoding sessiontest: supersede against the optimized build of the older one …")
+        // The older evaluation's plain build is on stage and its optimized
+        // build still on its way when the newer one starts (from the older
+        // one's own landing hook, the one moment that is sure to be inside
+        // that window): that build must never land, or the stage would fall
+        // back to older code.
+        var olderBuild = Double.nan
+        var newerStartedWhileOptimizing = false
+        session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 3))) { sketch in
+            olderBuild = build(of: sketch)
+            newerStartedWhileOptimizing = session.isOptimizing
+            session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 8)))
+        }
+        await settle(session)
+        try? await Task.sleep(for: .seconds(4))
+        guard olderBuild == 1, newerStartedWhileOptimizing else {
+            fail("the older evaluation's plain build did not land first (build \(olderBuild), optimizing \(newerStartedWhileOptimizing))")
+        }
+        guard value(of: "speed", session) == 8, value(of: "build", session) == 2, !session.isOptimizing else {
+            fail("the older evaluation's optimized build landed over the newer one (speed = \(value(of: "speed", session) ?? .nan), "
+                + "build = \(value(of: "build", session) ?? .nan))")
+        }
+
+        print("OllinLiveCoding sessiontest: a broken buffer fails once and leaves the stage alone …")
+        let onStage = session.sketch
+        session.evaluate(loader, input: .source("import Ollin\nfinal class SessionSketch: Sketch {\n    override func draw() { wat() }\n}\n"))
+        await settle(session)
+        guard case .failed = session.phase, !session.isOptimizing, session.sketch === onStage else {
+            fail("the broken buffer did not fail cleanly (phase \(session.phase), optimizing \(session.isOptimizing))")
+        }
+        try? await Task.sleep(for: .seconds(3))   // its optimized compile fails too; refused, not reported twice
+        guard case .failed = session.phase, session.sketch === onStage else {
+            fail("the broken buffer's second compile changed the outcome")
+        }
+        session.evaluate(loader, input: .source(source(radiusDefault: 300, speedDefault: 8)))
+        await settle(session)
+        guard case .idle = session.phase, value(of: "build", session) == 2 else {
+            fail("a good evaluation after the broken one did not land: \(session.phase)")
         }
 
         print("OllinLiveCoding sessiontest: cue carry across an evaluation …")
@@ -116,18 +192,33 @@ enum SessionTest {
             fail("deleting the cue did not empty the list and the file")
         }
 
-        print("OllinLiveCoding sessiontest passed: param carry, variation carry, edited defaults, supersede, and the cue carry hold.")
+        print("OllinLiveCoding sessiontest passed: the two-speed landing, param carry, variation carry, "
+            + "edited defaults, supersede against both builds, the clean failure, and the cue carry hold.")
         exit(0)
     }
 
-    /// Wait for the in-flight evaluation to resolve.
+    /// Wait for the in-flight evaluation to resolve, its optimized build
+    /// included.
     @MainActor
     private static func settle(_ session: SketchSession) async {
-        for _ in 0..<600 {   // compile is seconds; cap at a minute
-            if session.phase != .compiling { return }
-            try? await Task.sleep(for: .milliseconds(100))
+        await wait("the evaluation settling") { session.phase != .compiling && !session.isOptimizing }
+    }
+
+    @MainActor
+    private static func wait(_ what: String, until done: @MainActor () -> Bool) async {
+        for _ in 0..<6000 {   // a compile is seconds; cap at a minute
+            if done() { return }
+            try? await Task.sleep(for: .milliseconds(10))
         }
-        fail("evaluation never settled")
+        fail("\(what) never happened")
+    }
+
+    /// The build level an instance reads in its `init`: 1 plain, 2 optimized.
+    @MainActor
+    private static func build(of sketch: Sketch) -> Double {
+        guard let handle = sketch.parameters().first(where: { $0.name == "build" }),
+              case .number(let v) = handle.param.stored else { return .nan }
+        return v
     }
 
     @MainActor

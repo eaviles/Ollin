@@ -119,7 +119,7 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier).
 **Later.** This section covers the editing experiences the live-reload core makes possible, and where Ollin draws its line on AI: nowhere in the work. The README says it ("It's a tool for making art … Ollin is not a generative-art model"), and it extends to any AI *feature*: **AI helped build the framework, and it plays no part in what you make with it.** Not as the author of a sketch, and not at the controls either, because in generative art the parameters are the work. A palette, a density, a speed chosen by hand is the hand. Models that read the world (the [perception tier](Docs/Vision/Vision.md), depth, listening) are input, like a camera, and stay. Within that line:
 
 - **A visual node editor** over the effect, SDF-combinator, and shader graphs. It lives in the live host and round-trips to Swift source.
-- **Deeper live-coding evaluation.** Per-block evaluation and sub-second turnaround on small edits for the OllinLiveCoding performance host. This refines its evaluate-on-command loop.
+- **Deeper live-coding evaluation.** Per-block evaluation for the OllinLiveCoding performance host: evaluate just the edited region on its own keystroke. This refines its evaluate-on-command loop.
 
 See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 

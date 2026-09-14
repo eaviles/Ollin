@@ -222,13 +222,20 @@ public struct SketchLoader: Sendable {
     /// optimization flag is always spelled out: `swiftc`'s own default is
     /// `-Onone`, and a sketch compiled that way ran its CPU work several
     /// times slower under the live window than under a release build.
+    ///
+    /// `-wmo` puts the two sources (the sketch and the factory shim) through
+    /// one frontend job. Without it the driver starts one job per file, and
+    /// each loads the framework's module on its own, which is most of what a
+    /// small sketch's compile costs. Measured here on the loader's own line:
+    /// a 20-line sketch went from 1.00 s to 0.57 s plain and 0.95 s to 0.61 s
+    /// optimized, a 470-line one from 0.96 s to 0.74 s and 1.48 s to 1.09 s.
     static func compileArguments(dylibPath: String, moduleName: String,
                                  sources: [String],
                                  optimization: Optimization) -> [String] {
         var args = [
             "swiftc", "-emit-library", "-o", dylibPath,
             "-module-name", moduleName,
-            optimization.flag,
+            optimization.flag, "-wmo",
         ]
         args += sources
         args += ["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"]

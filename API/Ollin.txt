@@ -310,6 +310,7 @@ enum ImageFit: CaseIterable, Equatable, Hashable, Sendable
 enum InspectorStatus: Equatable, Hashable, Sendable
   case compiling
   case error
+  case optimizing
   case running
   case watching
 enum IsingSpin: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable

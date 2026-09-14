@@ -47,10 +47,14 @@ struct LiveCodingApp: App {
         }
 
         // `--no-optimize` compiles the buffer plain (asserts fire, backtraces
-        // keep every frame); the default is the release-speed compile.
+        // keep every frame); the default is the release-speed compile, landed
+        // in two speeds: a plain build the moment it compiles, the optimized
+        // one behind it. `--single-build` waits for the optimized build alone,
+        // for a sketch that accumulates state and should not start over twice.
         let session = PerformanceSession(
             fileURL: fileURL,
-            optimization: arguments.contains("--no-optimize") ? .none : .speed)
+            optimization: arguments.contains("--no-optimize") ? .none : .speed,
+            landsPlainBuildFirst: !arguments.contains("--single-build"))
         _session = State(initialValue: session)
         ActivePerformance.session = session
     }

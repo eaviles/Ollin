@@ -64,11 +64,15 @@ final class PerformanceSession {
         return (fileURL.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
     }
 
-    /// The engine state mapped onto the shared status chip.
+    /// The engine state mapped onto the shared status chip. An optimized
+    /// build still on its way behind the plain one on stage keeps the chip
+    /// up, muted, until it lands.
     var chipStatus: InspectorStatus {
         switch core.phase {
         case .compiling: return .compiling
-        case .idle: return core.shaderError == nil ? .watching : .error
+        case .idle:
+            if core.shaderError != nil { return .error }
+            return core.isOptimizing ? .optimizing : .watching
         case .failed: return .error
         }
     }
@@ -83,11 +87,17 @@ final class PerformanceSession {
     /// How the buffer compiles; see `SketchLoader.Optimization`.
     @ObservationIgnored private let optimization: SketchLoader.Optimization
 
+    /// `landsPlainBuildFirst` is the two-speed evaluation the host performs
+    /// by default (`SketchSession.landsPlainBuildFirst`): a plain build on
+    /// stage the moment it compiles, the optimized one behind it; the
+    /// `--single-build` flag turns it off.
     init(fileURL: URL?, optimization: SketchLoader.Optimization = .speed,
+         landsPlainBuildFirst: Bool = true,
          supportDirectory: URL = PerformanceSession.defaultSupportDirectory) {
         self.fileURL = fileURL
         self.optimization = optimization
         self.supportDirectory = supportDirectory
+        core.landsPlainBuildFirst = landsPlainBuildFirst
     }
 
     /// Called once from the root view's `.task`: load the document (or the

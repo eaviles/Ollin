@@ -27,6 +27,21 @@ struct SketchCompileArgumentsTests {
         #expect(!args.contains("-O"))
     }
 
+    /// The sketch and its factory shim compile as one frontend job: a job per
+    /// file loads the framework's module twice, and that load is most of a
+    /// small sketch's compile.
+    @Test func theTwoSourcesCompileAsOneWholeModuleJob() {
+        for level in [SketchLoader.Optimization.speed, .none] {
+            let args = arguments(level)
+            #expect(args.filter { $0 == "-wmo" }.count == 1)
+            // The flag is a compiler flag, so it precedes the sources and the
+            // linker flags rather than riding among them.
+            let flag = args.firstIndex(of: "-wmo")!
+            let source = args.firstIndex(of: "/tmp/work/Sketch.swift")!
+            #expect(flag < source)
+        }
+    }
+
     @Test func theLevelIsSpelledOutOnceAndTheLinkerFlagsSurvive() {
         for level in [SketchLoader.Optimization.speed, .none] {
             let args = arguments(level)
