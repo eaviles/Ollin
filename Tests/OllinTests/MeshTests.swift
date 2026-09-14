@@ -130,7 +130,10 @@ struct MeshTests {
     /// side the light is not on: `parametricSurface` derived its normals as
     /// `du × dv` while winding its quads the other way round, which shaded the
     /// superellipsoid, the supershape, the Möbius band, and the Klein bottle
-    /// inside-out.
+    /// inside-out. An open surface can hide the same defect behind its own
+    /// normals: `Mesh.plane` named +y and wound its quads to face -y, which
+    /// nothing culled, until the ink line's hull (which culls the faces toward
+    /// the eye) drew every floor as a slab of ink.
     @Test func generatorNormalsAgreeWithTheirWinding() {
         // How many faces may disagree. Zero everywhere except a surface that
         // pinches to a point: a supershape's last ring before each tip has
@@ -141,6 +144,7 @@ struct MeshTests {
         let allowed = ["supershape": 80]
         let meshes: [(String, Mesh)] = [
             ("sphere", .sphere(radius: 1, segments: 12, rings: 8)),
+            ("plane", .plane(width: 2, depth: 2, segments: 3)),
             ("cylinder", .cylinder(radius: 1, height: 2, segments: 12)),
             ("cone", .cone(radius: 1, height: 2, segments: 12)),
             ("pyramid", .pyramid(width: 1, depth: 1, height: 1.5)),

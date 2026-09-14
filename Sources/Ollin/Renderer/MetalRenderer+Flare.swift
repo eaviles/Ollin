@@ -138,7 +138,7 @@ extension MetalRenderer {
         let viewProjection = projection * camera.viewMatrix
         let eye = camera.eye.simd3
         var sources: [FlareSource] = []
-        for light in drawer.lights {
+        for light in drawer.resolvedLights {
             let clip: SIMD4<Float>
             var pulledBack: SIMD3<Float>?
             switch light.kind {

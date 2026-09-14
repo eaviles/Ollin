@@ -356,6 +356,36 @@ drawSphere(radius: 0.62)
 
 There's a further tier, the physically based metals and plastics (`material(.metal(roughness: 0.2))`), that really comes alive once a scene has surroundings to reflect. That's the next chapter's territory, where environments light the scene, so treat it as a pointer for now.
 
+## The cartoon look: ink, and a light that rides with you
+
+`.toon` on its own is only half a cartoon. The other half is the line. A drawn figure has an outline around it, and so a `.toon` sphere wants one too:
+
+```swift
+material(.toon)
+outline(width: 3)                     // three pixels of ink around every shape
+fill(Color(hex: 0xE8553F))
+drawSphere(radius: 1)
+```
+
+<img src="Images/21-3DGently/Inked.gif" alt="A red sphere, a blue box, and a magenta torus in hard cel bands, each ringed by a thin dark line, turning under a light that keeps the bands still while the view goes round" width="480">
+
+The line comes from an old trick, and the trick explains what you see. Ollin draws the mesh a second time, every vertex pushed outward along its normal by the width you asked for, and throws away the faces that point at you. What survives of that slightly bigger, inside-out copy is the rim that peeks past the silhouette, in the ink color. That's why the line holds its width as a shape moves away (the push is measured in pixels on the screen, like a pen, not in world units), why a nearer shape hides a farther one's line (the copy takes the depth test like any surface), and why the box's corners show a small notch: each of its faces moved off along its own normal, and at a corner three of them part company. A smooth mesh takes a clean line. `outline` is drawing state like `material`, so some shapes can wear it and others not, and `noOutline()` takes it off.
+
+Now look at the bands in the figure while the view goes round. They stay put on each shape. That is not what a world-space light would do: under a sun, a sphere's lit side faces the sun wherever you stand, so as you orbit, the bands slide around it. Fine for a sun, wrong for a cartoon, whose light belongs to the drawing rather than to the world. The figure's rig is the same `.threePoint` preset from earlier, read in the camera's frame:
+
+```swift
+lightingPreset(.threePoint.relativeTo(.camera))   // key, fill, and rim placed around the eye
+```
+
+`relativeTo(.camera)` says the light's numbers are measured from the eye: `x` to its right, `y` up, and `z` back toward it, so a light down `Vector3(0, 0, -1)` shines the way the camera looks. The numbers on the light do not change, only what they mean, and Ollin resolves them against the frame's camera each time it draws, so the rig follows an orbit, a showcase move, and a drag alike. The everyday use is the fill. A shape's far side under a sun is dark, and if the camera wanders round to it the piece goes black. `headlight()` is a directional light from the eye down the view, read the same way, so whatever faces the camera is lit wherever the camera goes:
+
+```swift
+directionalLight(.white, direction: Vector3(-0.6, -1, -0.35))   // the sun, world space
+headlight(Color(white: 0.5), intensity: 0.4)                    // a fill that follows the eye
+```
+
+It throws no shadow, and it needs none: seen from the eye, every shadow a headlight would cast hides behind the thing that casts it. World space stays the default for everything else. A sun, a sky, and a product shot all want the light to stay put while you move. Reach for the camera's frame when the light belongs to the view, which is the cartoon's case and the fill's case.
+
 ## Shading from a picture: matcaps
 
 Matcaps are the shortcut of the sculpting world. Instead of lights and materials, the entire look, lighting included, is painted into one photograph of a sphere. Every surface point borrows the color the sphere would have there.

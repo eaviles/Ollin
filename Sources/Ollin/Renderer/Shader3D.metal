@@ -227,6 +227,52 @@ vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// MARK: - The ink line (inverted hull)
+//
+// A solid or textured mesh batch whose material carries an outline is drawn a
+// second time through this pair: every vertex moves out along its normal by the
+// line's width in *screen pixels* (the clip-space normal, scaled by the vertex's
+// own clip w, so the push survives the perspective divide as a constant number
+// of pixels at any distance, the way a pen line does), and the encoder culls the
+// faces toward the eye, so of the hull only the rim past the silhouette lands.
+// Depth-tested and written like the surface it rings, so a nearer shape hides a
+// farther one's line. A vertex whose normal points straight at the eye has no
+// screen direction to move in and stays put; its faces are the ones culled.
+// The line's color rides `OllinMaterial.outline` (rgb linear, w = the width);
+// alpha is the surface's own baked opacity, straight like the lit fragment's.
+
+struct OutlineOut {
+    float4 position [[position]];
+    float4 color;
+};
+
+vertex OutlineOut ollin_mesh_outline_vertex(uint vid [[vertex_id]],
+                                            const device OllinMeshVertex *verts [[buffer(0)]],
+                                            constant OllinMaterial &mat [[buffer(1)]],
+                                            constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    float4 clip = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    // The normal through the view's rotation and the projection's x/y scale is the
+    // direction the surface faces on screen; its length carries no meaning here.
+    float3 nView = (u.view * float4(v.normal.xyz, 0.0)).xyz;
+    float2 nClip = float2(u.projection[0][0] * nView.x, u.projection[1][1] * nView.y);
+    float len = length(nClip);
+    if (len > 1e-6) {
+        // NDC spans two units across the viewport, so `width` pixels is
+        // 2 * width / viewport of NDC; times clip w to survive the divide.
+        float2 pixels = 2.0 * mat.outline.w / max(u.viewport, float2(1.0));
+        clip.xy += (nClip / len) * pixels * clip.w;
+    }
+    OutlineOut out;
+    out.position = clip;
+    out.color = float4(mat.outline.rgb, v.color.a);
+    return out;
+}
+
+fragment float4 ollin_mesh_outline_fragment(OutlineOut in [[stage_in]]) {
+    return in.color;
+}
+
 // MARK: - Mover velocity (temporal AA)
 //
 // The velocity pass re-renders this frame's declared movers (`withMotion`) into

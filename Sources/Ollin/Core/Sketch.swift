@@ -1178,6 +1178,20 @@ open class Sketch {
     /// counts as lighting the scene (a flat, unshaded fill of the surface color).
     public func ambientLight(_ color: Color) { drawer.ambientLight(color) }
 
+    /// Add a headlight: a light shining from the eye along the view, so whatever
+    /// faces the camera is lit and the side facing away is what falls off, wherever
+    /// the camera goes. Camera-relative (`Light.headlight`, a directional light read
+    /// `relativeTo(.camera)`), so under an orbit the shading stays put on the shape
+    /// instead of turning with the world. A fill beside a world-space key keeps a
+    /// turned-away face from ever going black; on its own it is the flat, even look
+    /// of a flash. It casts no shadow: from the eye, every shadow it would throw
+    /// hides behind what throws it. Per-frame, like every light.
+    public func headlight(_ color: Color = .white, intensity: Double = 1,
+                          specular: Color? = nil, softness: Double = 0) {
+        drawer.addLight(.headlight(color, intensity: intensity,
+                                   specular: specular, softness: softness))
+    }
+
     /// Stamp a `Decal` onto the 3D scene: a projection box centered at `position`,
     /// `width x height` across and `depth` deep along `direction`, and every solid,
     /// textured, or mapped mesh surface inside it receives the picture, composited
@@ -1244,6 +1258,33 @@ open class Sketch {
     /// Set the material's Blinn-Phong specular exponent. Higher is a tighter,
     /// sharper highlight (default `32`). Drawing state, saved by `withState`.
     public func specularSharpness(_ exponent: Double) { drawer.specularSharpness(exponent) }
+
+    /// Draw subsequent meshes with an ink line around their silhouette, `width`
+    /// canvas pixels wide in `color` (black by default): the cartoon's outline,
+    /// at home over `material(.toon)` and welcome over any finish.
+    ///
+    /// ```swift
+    /// material(.toon)
+    /// outline(width: 3)
+    /// drawSphere(radius: 1)
+    /// ```
+    ///
+    /// The line holds its width at any distance, like a pen, and takes the depth
+    /// test, so a nearer shape hides a farther one's line. It is drawn as an
+    /// inverted hull (the mesh once more, pushed out along its normals, with the
+    /// faces toward the eye culled), so a hard-edged mesh such as a box opens a
+    /// small notch at each corner while a smooth one takes a clean line. Solid
+    /// and textured meshes take it; wireframe, matcap, instanced, and field draws
+    /// do not, and the path-traced export leaves it out. Drawing state, saved by
+    /// `withState`; `noOutline()` takes it off, and `Material.outlined(_:color:)`
+    /// is the same setting carried on a material value.
+    public func outline(width: Double, color: Color = .black) {
+        drawer.outline(width: width, color: color)
+    }
+
+    /// Draw subsequent meshes with no ink line (the default). Drawing state,
+    /// saved by `withState`.
+    public func noOutline() { drawer.noOutline() }
 
     /// Give subsequent meshes a whole `Material` finish at once — its specular,
     /// specularSharpness, and any iridescence, instead of setting those parameters one by one.

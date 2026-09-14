@@ -35,7 +35,27 @@ import Foundation
 /// A point or spot light can also be *shaped*: an `IESProfile` (a real
 /// fixture's measured angular throw) sculpts where the intensity goes, and a
 /// spot can project a `LightCookie` image through its cone (a gobo, a gel).
+///
+/// A light's position and direction are **world-space** by default, so the sun
+/// stays put as the camera orbits, which is what a sun, a sky, and a product
+/// shot all want. `relativeTo(.camera)` reads them in the camera's own frame
+/// instead (x right, y up, z back toward the eye, the eye at the origin), resolved
+/// against the active `Camera3D` each frame, so the light rides the view: a
+/// `headlight()` that keeps the side facing you from ever going black, or a
+/// whole rig (`LightingPreset.relativeTo(.camera)`) that holds its look under
+/// orbit instead of turning with the world.
 public struct Light: Equatable, Sendable {
+
+    /// The frame a light's `position`, `direction`, and `up` are read in.
+    public enum Frame: Equatable, Sendable {
+        /// World space (the default): the light stays put as the camera moves.
+        case world
+        /// The active camera's own space, the eye at the origin, x to its right,
+        /// y up, and z back toward it (the camera looks down −z). Resolved into
+        /// world space against the frame's `Camera3D` each time the lights pack,
+        /// so the light follows the view. With no camera set it reads as world.
+        case camera
+    }
 
     /// Which light model this is.
     public enum Kind: Equatable, Sendable {
@@ -104,6 +124,10 @@ public struct Light: Equatable, Sendable {
     /// a real fixture in its yoke turns both. Ignored with neither set.
     public var roll: Double
 
+    /// The frame `position`, `direction`, and `up` are read in: `.world` (the
+    /// default) or `.camera`, the view's own frame. See `relativeTo(_:)`.
+    public var frame: Frame
+
     /// Whether this light throws a shadow while the scene casts them
     /// (`castShadows()`); `true` by default.
     ///
@@ -130,7 +154,7 @@ public struct Light: Equatable, Sendable {
                 width: Double = 1, height: Double = 1, radius: Double = 0.5,
                 length: Double = 1, up: Vector3 = .unitY, isTwoSided: Bool = false,
                 profile: IESProfile? = nil, cookie: LightCookie? = nil,
-                roll: Double = 0, castsShadow: Bool = true) {
+                roll: Double = 0, castsShadow: Bool = true, frame: Frame = .world) {
         self.kind = kind
         self.color = color
         self.intensity = intensity
@@ -150,6 +174,53 @@ public struct Light: Equatable, Sendable {
         self.cookie = cookie
         self.roll = roll
         self.castsShadow = castsShadow
+        self.frame = frame
+    }
+
+    /// This light read in `frame`: `.relativeTo(.camera)` makes its `position`,
+    /// `direction`, and `up` camera-space, so it follows the view, and
+    /// `.relativeTo(.world)` puts it back. The numbers are left as they are; only
+    /// the frame they mean changes. In camera space the eye sits at the origin,
+    /// `Vector3(0, 0, -1)` is the direction the camera looks, and a point light at
+    /// `Vector3(2, 1, 0)` hangs two to the right of the eye and one above it.
+    public func relativeTo(_ frame: Frame) -> Light {
+        var copy = self
+        copy.frame = frame
+        return copy
+    }
+
+    /// A light shining from the eye along the view, the lamp on a miner's helmet:
+    /// a camera-relative directional light down `Vector3(0, 0, -1)`, so whatever
+    /// faces the camera is lit and the side facing away is what falls off. Use it
+    /// as a fill that follows an orbit, so a turned-away face never goes fully
+    /// black, or on its own for the flat, even look of a flash. It casts no
+    /// shadow: seen from the eye, every shadow it would throw hides behind what
+    /// throws it, so the pass would buy nothing.
+    public static func headlight(_ color: Color = .white, intensity: Double = 1,
+                                 specular: Color? = nil, softness: Double = 0) -> Light {
+        Light(kind: .directional, color: color, intensity: intensity,
+              specular: specular, softness: softness, direction: Vector3(0, 0, -1),
+              castsShadow: false, frame: .camera)
+    }
+
+    /// This light with its `position`, `direction`, and `up` in world space: a
+    /// world light comes back untouched (the same values, no arithmetic), a
+    /// camera-relative one is turned and moved by the camera's basis (its
+    /// `position` offset from the eye), and comes back marked `.world`. With no
+    /// camera the numbers are taken as world space as they stand.
+    func resolved(in camera: Camera3D?) -> Light {
+        guard frame == .camera else { return self }
+        var world = self
+        world.frame = .world
+        guard let camera else { return world }
+        let basis = camera.basis
+        func turned(_ v: Vector3) -> Vector3 {
+            basis.right * v.x + basis.up * v.y + basis.back * v.z
+        }
+        world.position = camera.eye + turned(position)
+        world.direction = turned(direction)
+        world.up = turned(up)
+        return world
     }
 
     /// This light with its shadow turned on or off: `Light.point(...).castingShadow(false)`

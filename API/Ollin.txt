@@ -2175,6 +2175,7 @@ open class Sketch: Sendable
   func groundGrid(_: Bool = default)
   func halftone(of: Image, pitch: Double = default, angle: Double = default, in: Rectangle? = default, inverted: Bool = default) -> [HalftoneDot]
   func haltonPoints(count: Int, in: Rectangle? = default, bases: (Int, Int) = default, startIndex: Int = default) -> [Vector2]
+  func headlight(_: Color = default, intensity: Double = default, specular: Color? = default, softness: Double = default)
   func hexGrid(columns: Int, rows: Int, orientation: HexGrid.Orientation = default, padding: Insets = default, gutter: Double = default) -> HexGrid
   func hitomezashi(in: Rectangle? = default, columns: Int, rows: Int, probability: Double = default) -> Hitomezashi
   func hollow(_: Double)
@@ -2274,6 +2275,7 @@ open class Sketch: Sendable
   func noLoop()
   func noMatcap()
   func noMotionBlur()
+  func noOutline()
   func noSceneThroughGlass()
   func noShadows()
   func noSpecularAntialiasing()
@@ -2297,6 +2299,7 @@ open class Sketch: Sendable
   func noiseField() -> Formula.NoiseField
   func noiseSeed(_: Int)
   func ortho(eye: Vector3, target: Vector3 = default, up: Vector3 = default, height: Double, near: Double = default, far: Double = default)
+  func outline(width: Double, color: Color = default)
   func packCircles(around: [Vector2], in: Rectangle? = default, minRadius: Double = default, maxRadius: Double = default, padding: Double = default) -> [Circle]
   func packCircles(in: Rectangle? = default, count: Int, minRadius: Double, maxRadius: Double = default, padding: Double = default, attemptsPerCircle: Int = default) -> [Circle]
   func packShapes(_: [Shape], around: [Vector2], in: Rectangle? = default, minRadius: Double = default, maxRadius: Double = default, padding: Double = default, rotation: ClosedRange<Double> = default, scale: Double = default) -> [Shape]
@@ -2874,6 +2877,7 @@ struct Camera3D: Equatable, Sendable
   static func perspective(eye: Vector3, target: Vector3 = default, up: Vector3 = default, fieldOfView: Double = default, near: Double = default, far: Double = default) -> Camera3D
   var aperture: Double { get set }
   var apertureBlades: Int { get set }
+  var basis: (right: Vector3, up: Vector3, back: Vector3) { get }
   var eye: Vector3 { get set }
   var far: Double { get set }
   var focusDistance: Double? { get set }
@@ -4289,6 +4293,9 @@ struct LensInterface: Equatable, Sendable
   var radius: Double { get set }
   var thickness: Double { get set }
 struct Light: Equatable, Sendable
+  enum Frame: Equatable, Hashable, Sendable
+    case camera
+    case world
   enum Kind: Equatable, Hashable, Sendable
     case directional
     case disk
@@ -4297,9 +4304,11 @@ struct Light: Equatable, Sendable
     case spot
     case tube
   func castingShadow(_: Bool = default) -> Light
-  init(kind: Light.Kind, color: Color, intensity: Double = default, specular: Color? = default, softness: Double = default, position: Vector3 = default, direction: Vector3 = default, coneAngle: Double = default, penumbra: Double = default, width: Double = default, height: Double = default, radius: Double = default, length: Double = default, up: Vector3 = default, isTwoSided: Bool = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, castsShadow: Bool = default)
+  func relativeTo(_: Light.Frame) -> Light
+  init(kind: Light.Kind, color: Color, intensity: Double = default, specular: Color? = default, softness: Double = default, position: Vector3 = default, direction: Vector3 = default, coneAngle: Double = default, penumbra: Double = default, width: Double = default, height: Double = default, radius: Double = default, length: Double = default, up: Vector3 = default, isTwoSided: Bool = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, castsShadow: Bool = default, frame: Light.Frame = default)
   static func directional(_: Color, direction: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, castsShadow: Bool = default) -> Light
   static func disk(_: Color, at: Vector3, direction: Vector3, radius: Double, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, castsShadow: Bool = default) -> Light
+  static func headlight(_: Color = default, intensity: Double = default, specular: Color? = default, softness: Double = default) -> Light
   static func point(_: Color, at: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, direction: Vector3 = default, roll: Double = default, castsShadow: Bool = default) -> Light
   static func rectangle(_: Color, at: Vector3, direction: Vector3, width: Double, height: Double, up: Vector3 = default, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, castsShadow: Bool = default) -> Light
   static func spot(_: Color, at: Vector3, direction: Vector3, coneAngle: Double = default, penumbra: Double = default, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, castsShadow: Bool = default) -> Light
@@ -4309,6 +4318,7 @@ struct Light: Equatable, Sendable
   var coneAngle: Double { get set }
   var cookie: LightCookie? { get set }
   var direction: Vector3 { get set }
+  var frame: Light.Frame { get set }
   var height: Double { get set }
   var intensity: Double { get set }
   var isTwoSided: Bool { get set }
@@ -4328,6 +4338,7 @@ struct LightCookie: Equatable, Sendable
   static func ==(_: LightCookie, _: LightCookie) -> Bool
 struct LightingPreset: ParamChoices, ParamValue, Equatable, Sendable
   func intensified(by: Double) -> LightingPreset
+  func relativeTo(_: Light.Frame) -> LightingPreset
   init(ambient: Color, lights: [Light])
   static let goldenHour: LightingPreset
   static let moonlight: LightingPreset
@@ -4395,7 +4406,8 @@ struct Material: ParamChoices, ParamValue, Equatable, Sendable
     case standard
     case toon
   func iridescent(by: Double) -> Material
-  init(shading: Material.Shading = default, toonBands: Double = default, metallic: Double = default, roughness: Double = default, anisotropy: Double = default, anisotropyRotation: Double = default, transmission: Double = default, ior: Double = default, thickness: Double = default, attenuationColor: Color = default, attenuationDistance: Double = default, dispersion: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default, sheen: Double = default, sheenColor: Color = default, sheenRoughness: Double = default, thinFilm: Double = default, thinFilmThickness: Double = default, thinFilmIOR: Double = default, specular: Double = default, specularSharpness: Double = default, iridescence: Double = default, iridescenceScale: Double = default, iridescenceFlow: Double = default, iridescencePhase: Double = default, iridescenceFlowSize: Double = default, sparkle: Double = default, sparkleSize: Double = default, sparkleSharpness: Double = default, sparkleColor: Color = default, rim: Double = default, rimSharpness: Double = default, rimColor: Color = default, subsurface: Double = default, subsurfaceColor: Color = default, scattering: Double = default, scatteringRadius: Double = default, scatteringColor: Color = default, goochWarm: Color = default, goochCool: Color = default)
+  func outlined(_: Double, color: Color = default) -> Material
+  init(shading: Material.Shading = default, toonBands: Double = default, metallic: Double = default, roughness: Double = default, anisotropy: Double = default, anisotropyRotation: Double = default, transmission: Double = default, ior: Double = default, thickness: Double = default, attenuationColor: Color = default, attenuationDistance: Double = default, dispersion: Double = default, clearcoat: Double = default, clearcoatRoughness: Double = default, sheen: Double = default, sheenColor: Color = default, sheenRoughness: Double = default, thinFilm: Double = default, thinFilmThickness: Double = default, thinFilmIOR: Double = default, specular: Double = default, specularSharpness: Double = default, iridescence: Double = default, iridescenceScale: Double = default, iridescenceFlow: Double = default, iridescencePhase: Double = default, iridescenceFlowSize: Double = default, sparkle: Double = default, sparkleSize: Double = default, sparkleSharpness: Double = default, sparkleColor: Color = default, rim: Double = default, rimSharpness: Double = default, rimColor: Color = default, subsurface: Double = default, subsurfaceColor: Color = default, scattering: Double = default, scatteringRadius: Double = default, scatteringColor: Color = default, goochWarm: Color = default, goochCool: Color = default, outlineWidth: Double = default, outlineColor: Color = default)
   static func carPaint(roughness: Double = default) -> Material
   static func dielectric(roughness: Double = default) -> Material
   static func glass(roughness: Double = default, ior: Double = default, thickness: Double = default, attenuationColor: Color = default, attenuationDistance: Double = default, dispersion: Double = default) -> Material
@@ -4452,6 +4464,8 @@ struct Material: ParamChoices, ParamValue, Equatable, Sendable
   var iridescencePhase: Double { get set }
   var iridescenceScale: Double { get set }
   var metallic: Double { get set }
+  var outlineColor: Color { get set }
+  var outlineWidth: Double { get set }
   var rim: Double { get set }
   var rimColor: Color { get set }
   var rimSharpness: Double { get set }

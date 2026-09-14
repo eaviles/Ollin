@@ -39,7 +39,7 @@ final class Raft: Sketch {
             let size = 0.46 + Double(index) * 0.06
             crates.append((world.addBody(.box(width: size, height: size, depth: size),
                                          at: Vector3(Double(index) * 0.9 + 0.1,
-                                                     1.2, Double(index) * 0.5 + 0.45),
+                                                     0.9, Double(index) * 0.5 + 0.45),
                                          density: 0.3, friction: 0.9),
                            size, color))
         }

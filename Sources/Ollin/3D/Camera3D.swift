@@ -249,6 +249,23 @@ public extension Camera3D {
         OllinCameraMatrices(view: viewMatrix, projection: projectionMatrix(aspect: aspect))
     }
 
+    /// The camera's own axes in world space, the frame `viewMatrix` rotates into:
+    /// `right` is the view's +x, `up` its +y (the `up` hint re-orthogonalized),
+    /// and `back` its +z, pointing from the target toward the eye (the camera
+    /// looks down −z). The same arithmetic as the view matrix, in doubles, so a
+    /// camera-relative light resolves through exactly the basis the picture is
+    /// drawn in. A degenerate camera (the eye on the target, or `up` along the
+    /// view) falls back to the world axes rather than a NaN.
+    var basis: (right: Vector3, up: Vector3, back: Vector3) {
+        let toEye = eye - target
+        guard toEye.length > 1e-12 else { return (.unitX, .unitY, .unitZ) }
+        let back = toEye.normalized
+        let side = up.cross(back)
+        guard side.length > 1e-9 else { return (.unitX, .unitY, .unitZ) }
+        let right = side.normalized
+        return (right, back.cross(right), back)
+    }
+
     /// Right-handed look-at: world → camera space, camera looking down −z.
     /// Column-major (Metal). Written from the standard formula.
     internal static func lookAt(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {

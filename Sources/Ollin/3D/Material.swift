@@ -26,6 +26,8 @@ import COllinShaders
 ///   (soap film, oil slick, beetle shell).
 /// - **sparkle** — tiny mirror flakes that flash as the view, object, or light moves
 ///   (glitter, metallic car paint, sequins).
+/// - **outlineWidth** / **outlineColor**: an ink line around the silhouette, in
+///   canvas pixels (the cartoon's outline; `.toon.outlined(3)`).
 ///
 /// Each finish is inert at its zero value, so they layer freely — a `.toon` material
 /// can still carry a rim, an iridescent one a touch of subsurface. Like
@@ -289,6 +291,21 @@ public struct Material: Equatable, Sendable {
     /// Gooch shading: the cool tone on the shadow side. Ignored unless `shading == .gooch`.
     public var goochCool: Color
 
+    /// An ink line around the surface, in **canvas pixels**; `0` (the default) draws
+    /// none. The line is drawn as an inverted hull: the mesh once more, every vertex
+    /// pushed out along its normal by this many pixels on screen and the faces toward
+    /// the eye culled, so only the rim past the silhouette shows. It holds its width at
+    /// any distance, like a pen, and takes the depth test, so a nearer shape hides a
+    /// farther one's line. Rides any shading model (`.toon` is the natural home, the
+    /// cartoon's outline), and never a wireframe, matcap, instanced, or field draw;
+    /// the path-traced export leaves the line out. A hard-edged mesh (a box) opens a
+    /// small notch at each corner, because each face's hull moves off along its own
+    /// normal; a smooth mesh takes a clean line. Set it with `outlined(_:color:)` or
+    /// the bare `outline(width:color:)`.
+    public var outlineWidth: Double
+    /// The ink line's color (`.black` by default). See `outlineWidth`.
+    public var outlineColor: Color
+
     /// Build a material. Every parameter defaults to an inert value, so
     /// `Material(specular: 0.5)` is a plain glossy surface and the finishes only appear
     /// when you set them.
@@ -314,7 +331,8 @@ public struct Material: Equatable, Sendable {
                 scattering: Double = 0, scatteringRadius: Double = 0,
                 scatteringColor: Color = Color(red: 1.0, green: 0.37, blue: 0.3),
                 goochWarm: Color = Color(red: 0.7, green: 0.5, blue: 0.15),
-                goochCool: Color = Color(red: 0.05, green: 0.1, blue: 0.35)) {
+                goochCool: Color = Color(red: 0.05, green: 0.1, blue: 0.35),
+                outlineWidth: Double = 0, outlineColor: Color = .black) {
         self.shading = shading
         self.toonBands = max(1, toonBands)
         self.metallic = min(1, max(0, metallic))
@@ -356,6 +374,18 @@ public struct Material: Equatable, Sendable {
         self.scatteringColor = scatteringColor
         self.goochWarm = goochWarm
         self.goochCool = goochCool
+        self.outlineWidth = max(0, outlineWidth)
+        self.outlineColor = outlineColor
+    }
+
+    /// A copy with an ink line of `width` canvas pixels in `color` around the surface
+    /// (everything else left alone): `material(.toon.outlined(3))` is the cartoon
+    /// look with its outline. `0` takes the line off. See `outlineWidth`.
+    public func outlined(_ width: Double, color: Color = .black) -> Material {
+        var m = self
+        m.outlineWidth = max(0, width)
+        m.outlineColor = color
+        return m
     }
 
     /// A copy with the iridescence strength scaled by `factor` (everything else left
@@ -427,6 +457,8 @@ public struct Material: Equatable, Sendable {
         m.anisotropy = SIMD4<Float>(Float(anisotropy),
                                     Float(cos(anisotropyRotation)),
                                     Float(sin(anisotropyRotation)), 0)
+        // The ink line: its color and, in w, its width in canvas pixels (the gate).
+        m.outline = Material.linear(outlineColor, alpha: outlineWidth)
         return m
     }
 

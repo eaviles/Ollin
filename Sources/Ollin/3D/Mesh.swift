@@ -366,7 +366,13 @@ public extension Mesh {
             for j in 0..<segs {
                 let a = UInt32(i * stride + j)
                 let down = UInt32((i + 1) * stride + j)
-                b.gridQuad(a, a + 1, down + 1, down)
+                // Counter-clockwise seen from +y, the side the normal names: with
+                // z growing down the rows, that walk goes down the left edge first.
+                // A quad listed the other way round faces -y while its normal says
+                // +y, which nothing culls and so nothing shows, except in a pass
+                // that reads the winding: the ink line's hull draws such a floor
+                // as a solid slab of ink.
+                b.gridQuad(a, down, down + 1, a + 1)
             }
         }
         return b.mesh()

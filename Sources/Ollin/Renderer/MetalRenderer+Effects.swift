@@ -3573,6 +3573,31 @@ extension MetalRenderer {
                 }
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+                // The ink line (`Material.outlineWidth`): the same run once more as an
+                // inverted hull, every vertex pushed out along its normal by the width
+                // in screen pixels and the faces toward the eye culled, so only the rim
+                // past the silhouette lands, depth-tested like the surface it rings (a
+                // nearer shape hides a farther one's line). The generator meshes wind
+                // counter-clockwise seen from outside, which is what makes `.front`
+                // the faces toward the eye. Nothing else in the frame culls, so the
+                // cull mode goes back to none before the next batch.
+                if batch.finish.outline.w > 0, !meshWireframe, !meshGrid, !meshMatcap {
+                    var outlineKey = PipelineKey.meshOutline(batch.blendMode, depth: depthFormat)
+                    if hasStencil { outlineKey.stencilFormat = .stencil8 }
+                    if let passColorFormat { outlineKey.colorFormat = passColorFormat }
+                    if let outlineState = try? pipeline(outlineKey) {
+                        encoder.setRenderPipelineState(outlineState)
+                        var finish = batch.finish
+                        encoder.setVertexBytes(&finish, length: MemoryLayout<OllinMaterial>.stride,
+                                               index: 1)
+                        encoder.setFrontFacing(.counterClockwise)
+                        encoder.setCullMode(.front)
+                        profile.drawCalls += 1
+                        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+                        encoder.setCullMode(.none)
+                        encoder.setFrontFacing(.clockwise)
+                    }
+                }
             case .meshInstanced:
                 // One mesh, many placements: the local-space base run at vertex
                 // buffer 0 and the per-copy matrices at 4, placed per vertex on
@@ -4090,7 +4115,7 @@ extension MetalRenderer {
         // The sun of this scene: the first directional light, pointed back at
         // where it comes from. With none set the sparkle is off and the water is
         // body color and reflection alone.
-        if let sun = drawer.lights.first(where: { $0.kind == .directional }) {
+        if let sun = drawer.resolvedLights.first(where: { $0.kind == .directional }) {
             let toLight = (-sun.direction).normalized
             params.sun = SIMD4<Float>(Float(toLight.x), Float(toLight.y), Float(toLight.z), 1)
             let tint = sun.specular ?? sun.color

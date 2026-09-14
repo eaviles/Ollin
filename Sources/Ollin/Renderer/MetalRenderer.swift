@@ -243,6 +243,12 @@ final class MetalRenderer {
         static func mesh(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_mesh_fragment", blend: blend, depthFormat: depth)
         }
+        // the ink line around a solid/textured mesh (`Material.outlineWidth`): the
+        // same vertex run drawn as an inverted hull, unlit, in the line's color
+        static func meshOutline(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_outline_vertex", fragment: "ollin_mesh_outline_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // instanced 3D triangle mesh: one local-space base mesh + a per-copy
         // placement buffer, placed per vertex on the GPU. Shares the solid lit
         // fragment, so copies shade exactly like solid meshes.

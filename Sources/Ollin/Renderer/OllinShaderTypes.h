@@ -652,8 +652,17 @@ typedef struct {
                                   // caustics pass's own index spread, so a body's fringe and
                                   // its caustic agree. 0 = one read for all three channels
                                   // (the gate; every dispersion-free frame is untouched).
+    simd_float4 outline;          // the ink line around the surface (`Material.outlineWidth` /
+                                  // `outlineColor`): rgb = the line's linear color, w = its width
+                                  // in canvas pixels (0 = no line, the gate; every other batch keeps
+                                  // this zero, so unlined frames are untouched). Read only by the
+                                  // outline pass, which draws the batch once more as an inverted
+                                  // hull: every vertex pushed along its normal by that many pixels
+                                  // in screen space and the faces toward the eye culled, so only
+                                  // the rim past the silhouette shows. The lit fragments never
+                                  // read it.
                                   // (Both sides round the struct up to its 16-byte alignment, so
-                                  // the trailing float needs no hand-written padding.)
+                                  // a trailing float would need no hand-written padding either.)
 } OllinMaterial;
 
 // A projected decal (see `Sketch.decal(_:at:...)`): a picture stamped onto whatever

@@ -813,6 +813,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("motion-blur", frame: 2,
                  note: "A sphere mover crossing a still colonnade under a panning camera with motionBlur() on, captured at frame 2 (frame k reads frame k-1's camera and movers, so the streak is a pure function of the frame pair). Pins the whole chain: the full-screen velocity fill (the mover texture over the depth-reprojected camera motion), the tile/neighbor dominant-velocity pyramid, the three-case reconstruction gather with its position-pure jitter, and the shutter scale. Runs on any Metal GPU.",
                  make: { MotionBlurScene() }),
+    SnapshotCase("inked-solids",
+                 note: "A sphere, a box, and a torus in the toon material with a 3 px ink line, lit by the three-point rig read relativeTo(.camera). Pins the inverted-hull outline pass (the screen-pixel push along the normal, the front-face cull with counter-clockwise winding, the depth test against the surfaces it rings, the corner notch a hard-edged box opens) and the camera-relative resolve through the packer (the rig's key, fill, and rim placed around the eye). Fixed camera, no time, deterministic.",
+                 make: { InkedSolidsScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -1811,6 +1814,38 @@ private final class MeshMaterialsScene: Sketch {
 /// A metal / mixed / dielectric × roughness grid in the physically-based shading model
 /// under a fixed camera and custom lights — pins the metallic/roughness fields and the
 /// Cook-Torrance branch (no IBL: the smooth metals read dark, which is correct). No `time`.
+/// Toon solids with an ink line under a rig that rides the camera: pins the outline
+/// pass and the camera-relative light resolve together. No `time`.
+private final class InkedSolidsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.92))
+        camera(.orbiting(target: .zero, radius: 7,
+                         azimuth: 0.6, elevation: 0.3, fieldOfView: .pi / 3.2))
+        lightingPreset(.threePoint.relativeTo(.camera))
+        material(.toon)
+        outline(width: 3)
+        withState {
+            translate(-1.9, 0, 0)
+            fill(Color(hue: 0.07, saturation: 0.8, brightness: 0.95))
+            drawSphere(radius: 1, segments: 48, rings: 32)
+        }
+        withState {
+            translate(0.2, 0, 0.4)
+            rotateY(0.5); rotateX(0.35)
+            fill(Color(hue: 0.55, saturation: 0.7, brightness: 0.9))
+            drawBox(size: 1.4)
+        }
+        withState {
+            translate(2.2, 0, -0.3)
+            rotateX(1.1); rotateY(0.4)
+            fill(Color(hue: 0.85, saturation: 0.6, brightness: 0.9))
+            drawTorus(radius: 0.7, tube: 0.3)
+        }
+    }
+}
+
 private final class AnisotropyScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

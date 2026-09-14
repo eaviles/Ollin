@@ -85,7 +85,7 @@ ebf964e6cb2a  Guide/16-LayersAndEffects.md:226  use of 'layer' refers to instanc
 4bab31797ad4  Guide/16-LayersAndEffects.md:503  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 7d52b883f390  Guide/16-LayersAndEffects.md:536  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
 4ec0ee8e2cd9  Guide/18-IteratedForms.md:168  cannot find 'start' in scope
-31bc91d6d2fb  Guide/18-IteratedForms.md:188  cannot find 'outline' in scope
+31bc91d6d2fb  Guide/18-IteratedForms.md:188  cannot convert value of type '@MainActor (Double, Color) -> ()' to expected argument type 'Contour'
 2c491a2fae9f  Guide/18-IteratedForms.md:285  reference to member 'domainColoring' cannot be resolved without a contextual type
 c32fa0ef7370  Guide/18-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
 eec1a7fedd62  Guide/20-ParticleSimulations.md:117  cannot assign value of type 'ParticleLenia' to type 'SimField'

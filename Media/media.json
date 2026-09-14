@@ -2336,6 +2336,27 @@
       "stillSmall": "examples/3D/Materials/Glass/still-640.jpg?v=155ce580",
       "width": 1080
     },
+    "3D/Materials/Inked": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 9.781,
+      "sound": false,
+      "source": "40905bdfa65acf2b",
+      "rendered": "2026-09-14",
+      "bytes": {
+        "loop": 2106530,
+        "loopSmall": 349138,
+        "still": 79251,
+        "stillSmall": 28733
+      },
+      "loop": "examples/3D/Materials/Inked/loop.mp4?v=5cd69af6",
+      "loopSmall": "examples/3D/Materials/Inked/loop-640.mp4?v=6207f039",
+      "still": "examples/3D/Materials/Inked/still.jpg?v=e2ed6ab1",
+      "stillSmall": "examples/3D/Materials/Inked/still-640.jpg?v=f376a7db"
+    },
     "3D/Materials/LiveSurface": {
       "bytes": {
         "loop": 1776744,

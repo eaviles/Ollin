@@ -18,8 +18,10 @@ import Foundation
 ///
 /// There's no registry to add to; a preset is just a value you pass in, the same
 /// construct-or-mutate shape the material library uses. Lights are world-space (the
-/// sun stays put as the camera orbits) and the preset is applied as *this frame's*
-/// lighting, so call `lightingPreset(_:)` in `draw()` like the individual light calls.
+/// sun stays put as the camera orbits) unless the rig is read `relativeTo(.camera)`,
+/// which makes every light ride the view so the look holds under an orbit. The
+/// preset is applied as *this frame's* lighting, so call `lightingPreset(_:)` in
+/// `draw()` like the individual light calls.
 public struct LightingPreset: Equatable, Sendable {
 
     /// The flat ambient term added to every lit surface, so faces turned away from
@@ -45,6 +47,14 @@ public struct LightingPreset: Equatable, Sendable {
     public func intensified(by factor: Double) -> LightingPreset {
         LightingPreset(ambient: ambient,
                        lights: lights.map { var l = $0; l.intensity *= factor; return l })
+    }
+
+    /// A copy with every light read in `frame` (see `Light.relativeTo(_:)`): a rig
+    /// `relativeTo(.camera)` keeps its key, fill, and rim where they sit around the
+    /// eye as the camera orbits, so the look holds instead of turning with the world.
+    /// The ambient has no frame and is left alone.
+    public func relativeTo(_ frame: Light.Frame) -> LightingPreset {
+        LightingPreset(ambient: ambient, lights: lights.map { $0.relativeTo(frame) })
     }
 }
 

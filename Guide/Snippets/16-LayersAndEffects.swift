@@ -21,5 +21,9 @@ var trail: Feedback!
 let lamps: [Vector2] = [.zero, Vector2(40, 40)]
 var mask: RenderTarget!
 let ink = Color.black
-let outline = Shape([Vector2(0, 0), Vector2(40, 0), Vector2(20, 40)])
+// A property rather than a global: inside a sketch a global named `outline`
+// loses to the `outline(width:color:)` call, while a property stands beside it.
+extension Sketch {
+    var outline: Shape { Shape([Vector2(0, 0), Vector2(40, 0), Vector2(20, 40)]) }
+}
 var myShader: Shader!

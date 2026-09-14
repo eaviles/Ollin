@@ -779,8 +779,20 @@ final class Drawer {
         switch lightingMode {
         case .off: []
         case .auto: environment != nil ? [] : Drawer.defaultLights
-        case .custom: lights
+        case .custom: resolvedLights
         }
+    }
+
+    /// The sketch's own lights with every camera-relative one (`Light.Frame.camera`)
+    /// turned into world space against this frame's `camera3D`. A world light passes
+    /// through as the same value, no arithmetic, so a frame with none of the other
+    /// kind packs byte-identically. Every reader that wants a light's *place* reads
+    /// this (the packer through `activeLights`, the lens flare, the ocean's sun);
+    /// a reader that only asks a light's kind may read `lights` as set.
+    var resolvedLights: [Light] {
+        lights.contains { $0.frame == .camera }
+            ? lights.map { $0.resolved(in: camera3D) }
+            : lights
     }
 
     /// Whether a depth scene (`drawDepthScene`) was recorded this frame. Like an
@@ -2277,6 +2289,18 @@ final class Drawer {
     /// Set the material's Blinn-Phong specular exponent (higher = tighter, sharper
     /// highlight). Drawing state, saved by `withState`.
     func specularSharpness(_ exponent: Double) { currentMaterial.specularSharpness = max(1, exponent) }
+
+    /// Give subsequent meshes an ink line of `width` canvas pixels in `color` (see
+    /// `Material.outlineWidth`). Drawing state, saved by `withState`; `noOutline()`
+    /// takes it off. A width change breaks the solid mesh batch, since the line's
+    /// width and color ride the per-batch material uniform.
+    func outline(width: Double, color: Color) {
+        currentMaterial.outlineWidth = max(0, width)
+        currentMaterial.outlineColor = color
+    }
+
+    /// Draw subsequent meshes with no ink line (the default).
+    func noOutline() { currentMaterial.outlineWidth = 0 }
 
     /// Apply a whole `Material` finish at once — its shading model and every finish
     /// (specular, rim, subsurface, iridescence). The surface color stays the current

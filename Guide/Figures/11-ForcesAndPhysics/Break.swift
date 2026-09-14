@@ -56,7 +56,9 @@ final class Break: Sketch {
 
     override func draw() {
         background(Color(hex: 0x14161C))
-        world.advance(by: deltaTime)
+        // A fixed step, so the figure lands on the same frame every render (a
+        // wall-clock step would move the shards a little with each run).
+        world.advance(by: 1.0 / 60)
 
         // At the top of the arc it is on its way down, and that is when it goes.
         for body in world.bodies {

@@ -24,7 +24,11 @@ var held: Joint?
 let cursor = Vector2.zero
 
 // The shape the fracture section breaks, and one of its pieces.
-let outline = Shape([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100), Vector2(0, 100)])
+// A property rather than a global: inside a sketch a global named `outline`
+// loses to the `outline(width:color:)` call, while a property stands beside it.
+extension Sketch {
+    var outline: Shape { Shape([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100), Vector2(0, 100)]) }
+}
 let hit = Vector2(50, 50)
 let here = Vector2.zero
 let piece = Shape([Vector2(0, 0), Vector2(10, 0), Vector2(10, 10), Vector2(0, 10)])

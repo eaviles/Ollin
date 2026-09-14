@@ -9,7 +9,11 @@ let wave: [Vector2] = [.zero, Vector2(10, 0), Vector2(20, 4)]
 let waypoints: [Vector2] = [.zero, Vector2(10, 0), Vector2(20, 4)]
 let samplePoints: [Vector2] = [.zero, Vector2(10, 0)]
 
-let outline = Shape([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100)])
+// A property rather than a global: inside a sketch a global named `outline`
+// loses to the `outline(width:color:)` call, while a property stands beside it.
+extension Sketch {
+    var outline: Shape { Shape([Vector2(0, 0), Vector2(100, 0), Vector2(100, 100)]) }
+}
 let star = Shape([Vector2(0, 0), Vector2(80, 10), Vector2(40, 90)])
 let emblem = Shape([Vector2(0, 0), Vector2(60, 0), Vector2(30, 60)])
 // `shore` and `wall` are point lists, which is what the optics calls take.

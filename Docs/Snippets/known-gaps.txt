@@ -543,7 +543,7 @@ c8c08a7d89af  Docs/Generators/Fractals.md:59  cannot convert value of type '[Fra
 309870d0cbdf  Docs/Generators/Fractals.md:89  cannot convert value of type '()' to expected argument type '[Int]'
 cfee70a4db0b  Docs/Generators/Fracture.md:115  expected ',' separator
 ca46594965eb  Docs/Generators/Fracture.md:31  expected ',' separator
-767eb9a3cf7f  Docs/Generators/Fracture.md:36  cannot find 'outline' in scope
+767eb9a3cf7f  Docs/Generators/Fracture.md:36  cannot convert value of type '@MainActor (Double, Color) -> ()' to expected argument type '[Vector2]'
 9dd10912df1e  Docs/Generators/Fracture.md:54  expected ',' separator
 829e94421388  Docs/Generators/Fracture.md:59  cannot find 'corner' in scope
 e4552e096f31  Docs/Generators/Fracture.md:78  cannot find 'piece' in scope
@@ -695,7 +695,7 @@ b119a01eba61  Docs/Generators/Walks.md:27  expected ',' separator
 31170c245968  Docs/Generators/Walks.md:70  expected expression in list of expressions
 e8988eec65ca  Docs/Generators/Walks.md:81  cannot find 'ramp' in scope
 892c6c95f163  Docs/Generators/Walks.md:97  use of 'randomWalk' refers to instance method rather than global function 'randomWalk(from:steps:stepLength:using:)' in module 'Ollin'
-b4b98752c6bf  Docs/Generators/Watercolor.md:27  cannot find 'outline' in scope
+b4b98752c6bf  Docs/Generators/Watercolor.md:27  cannot convert value of type '@MainActor (Double, Color) -> ()' to expected argument type '[Vector2]'
 0761f3a4d9e8  Docs/Generators/Watercolor.md:47  cannot find 'pigment' in scope
 bbbb769ec593  Docs/Generators/WaveFunctionCollapse.md:105  overriding non-open instance method outside of its defining module
 5543bac49283  Docs/Generators/WaveFunctionCollapse.md:112  cannot find 'sample' in scope
