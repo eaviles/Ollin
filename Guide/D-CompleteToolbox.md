@@ -214,6 +214,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Inverse kinematics | `IKChain`: a segmented limb that reaches for a target, or a rope dragged by its tip | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Double pendulum | `DoublePendulum`: the classic chaos machine, deterministic and wildly sensitive | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Gravity at scale | `NBody`: thousands of bodies pulling on each other, with seeded disk and cluster scenes | [Ch 11](11-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
+| Coupled oscillators | `Kuramoto`: a crowd of oscillators falling into step past a critical coupling, with the order parameter to watch it happen | [Ch 12](12-FlocksAndSwarms.md) | [Coupled oscillators](../Docs/Simulation/Oscillators.md) |
 | Force-directed layout | `ForceLayout`: a graph untangling itself into an even web you can grow, pin, and drag | [Ch 11](11-ForcesAndPhysics.md) | [ForceLayout](../Docs/Generators/ForceLayout.md) |
 | Artificial life | `ParticleLife`, `PPS`, `Physarum`, `ParticleLenia`, `SwarmChemistry` on the public `SpatialHash` neighbor search | [Ch 20](20-ParticleSimulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
 | Ant colony | A pheromone-trail colony condensing a web of possibilities onto a short tour | [Ch 20](20-ParticleSimulations.md) | [AntColony](../Docs/Generators/AntColony.md) |
@@ -246,7 +247,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Simulation fields | Game of Life, Gray-Scott reaction-diffusion, Lenia, the ripple pool, and real-time fluid, all seeded by drawing into them | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
-| Grid automata | `.cyclic`, `.excitable`, `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, and `.schelling`: the classic state automata as fields, from spirals and gliders to a circuit and a neighborhood sorting itself | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| Grid automata | `.cyclic`, `.excitable`, `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, `.schelling`, and `.ising`: the classic state automata as fields, from spirals and gliders to a circuit, a neighborhood sorting itself, and a magnet against the heat | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 | Watercolor wash | `watercolor(pigments:)`: wet paint on rough paper, with real pigment behavior, darkened edges, backruns, dry-brush, and optical glazing | [Ch 19](19-GridSimulations.md) | [Watercolor](../Docs/Simulation/Watercolor.md) |
 | Chladni figures | The standing-wave patterns of a driven plate in closed form, as a field, a generator, or nodal contours | [Ch 17](17-YourFirstShader.md) | [Chladni](../Docs/Generators/Chladni.md) |
 

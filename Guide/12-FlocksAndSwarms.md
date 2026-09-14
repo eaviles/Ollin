@@ -294,6 +294,39 @@ Passing the point's *index* rather than its position is what leaves the point it
 
 Build it fresh each frame when the points move. That costs one pass over them, which is nothing next to the work it saves.
 
+## Falling into step
+
+A flock agrees about where to go. There is a second kind of agreement a crowd can reach, about *when*. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks on the same wall had come to beat together, and went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in 1975, and it fits in a sentence: every oscillator runs at its own natural pace, and every oscillator is pulled a little toward the phase of the crowd.
+
+```swift
+let sync = Kuramoto(count: 300, coupling: 2, seed: 7)
+var spots: [Vector2] = []
+
+override func setup() {
+    spots = (0 ..< 300).map { _ in Vector2(random(width), random(height)) }
+}
+
+override func draw() {
+    sync.advance()
+    background(.black)
+    for (i, phase) in sync.phases.enumerated() {
+        fill(Color(white: (1 + cos(phase)) / 2))
+        drawCircle(center: spots[i], radius: 6)
+    }
+}
+```
+
+Each firefly is a phase, an angle going round, and it glows when the angle comes past the top. `spread` is how different their natural paces are, and `coupling` is the pull. The thing to watch is the crowd's *coherence*, the order parameter Kuramoto called r. Put every phase on a circle as a dot, average the dots as points, and r is how far that average sits from the center. Scattered dots average to the middle, and r is near 0. Dots bunched together average near the rim, and r is near 1. `sync.coherence` reads it, and `sync.meanPhase` is the direction of the bunch.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/Fireflies-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/Fireflies.jpg" alt="Left, three wheels of small dots on a circle at three moments, the dots scattered around the first, gathering on the second, and bunched together on the third, each wheel with an orange arrow from its center growing longer. Right, three curves of coherence over twelve seconds: one staying near the floor, one wandering low, and one climbing to nearly one" width="880">
+</picture>
+
+The left of the figure is one crowd at three moments, with the pull three times what it needs. The dots start everywhere, gather, and end in a bunch, and the arrow from the center grows with them. The right is what made the model famous. Below a critical coupling the crowd never locks, however long it runs, and r wanders near the floor. Above it a locked group forms and grows, and r climbs toward 1. The threshold is sharp, and Kuramoto found it exactly. `sync.criticalCoupling` names it for the spread you gave the crowd, and a slider taken across it is the whole demonstration: on one side of it nothing happens, and on the other side everything does, from a pull that changed by a few percent.
+
+The model is cheap in a way a flock is not. Nobody looks at anybody in particular. Each oscillator is pulled toward the crowd's own mean phase, so a frame is one pass over the crowd rather than a neighbor search, and thousands cost nothing you notice. Give it a `range` and each oscillator listens only to its neighbors on a ring instead, which locks locally and can keep a twist. [Chapter 19](19-GridSimulations.md)'s grids are neighbors in space. This is neighbors in time, with the same lesson: a local rule, a global result, and a threshold where the result appears.
+
 ## Putting it together: the living flock
 
 The sketch at the top of the chapter is the flock with its temperament on parameters and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which [Chapter 16](16-LayersAndEffects.md) explores, and this is a first taste.)
@@ -363,15 +396,16 @@ Then make it yours:
 
 ## Where this comes from
 
-Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules, and his 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on (his term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants). Daniel Shiffman's *The Nature of Code* made this material a rite of passage for creative coders, and its chapters on agents remain the warmest long-form treatment. The chase curves are older than all of it. Pierre Bouguer studied one ship pursuing another in 1732. Edouard Lucas posed the four-dogs question in 1877, and Henri Brocard answered it: the paths are logarithmic spirals, meeting in one point. Differential growth as a generative technique owes its popularity to Anders Hoff's explorations at inconvergent.net and Jason Webb's tutorials. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules, and his 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on (his term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants). Daniel Shiffman's *The Nature of Code* made this material a rite of passage for creative coders, and its chapters on agents remain the warmest long-form treatment. The chase curves are older than all of it. Pierre Bouguer studied one ship pursuing another in 1732. Edouard Lucas posed the four-dogs question in 1877, and Henri Brocard answered it: the paths are logarithmic spirals, meeting in one point. Differential growth as a generative technique owes its popularity to Anders Hoff's explorations at inconvergent.net and Jason Webb's tutorials. The synchronization model is Yoshiki Kuramoto's, from a 1975 conference paper, and Steven Strogatz's 2003 book *Sync* is where most people met it, fireflies and Huygens's clocks included. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and parameter, including pursuit, evasion, and path following.
 - [Flocking](../Docs/Generators/Boids.md): the full `Boids` reference, including flow-field following.
 - [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's exact laws, and the parameters (`maxTurn`, `catchDistance`, the kept chase lines).
+- [Coupled oscillators](../Docs/Simulation/Oscillators.md): the `Kuramoto` reference, the order parameter, the critical coupling, the lag, and the ring.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), and [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth).
+- Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth), and [`Examples/Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) (a meadow of fireflies falling into step).
 - [Spatial index](../Docs/Drawing/SpatialIndex.md): the neighbor search behind the flock, on its own, with the k-d tree for clumped sets and the growing form for sets you build point by point ([`Examples/Shapes/Neighbors`](../Examples/Shapes/Neighbors/Sketch.swift)).
 - [Accumulation](../Docs/Drawing/Accumulation.md): what `noClear()` really does, ahead of [Chapter 16](16-LayersAndEffects.md).
 

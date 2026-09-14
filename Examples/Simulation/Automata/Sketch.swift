@@ -1,6 +1,6 @@
 import Ollin
 
-/// Ten classic **cellular automata** on one `SimField`, behind a rule picker.
+/// Twelve classic **cellular automata** on one `SimField`, behind a rule picker.
 /// Each rule is one entry in a table: its sim and parameters, its ramp, its
 /// seeding recipe, and its parameters. Switching rules starts a fresh field with that
 /// rule's classic opening. One shared brush works everywhere: drag to paint the
@@ -37,6 +37,10 @@ import Ollin
 ///   • **schelling**: Schelling's segregation; two kinds on a board with empty
 ///     cells, each content with a share of like neighbors, the unhappy moving
 ///     nearby, and a mild preference sorts the whole board into patches.
+///   • **ising**: the Ising model; every cell a spin that wants to agree with
+///     its neighbors, flipped by Metropolis coins against the heat, so cold it
+///     magnetizes into growing domains, hot it is noise, and at the critical
+///     temperature (the opening setting) clusters come in every size.
 ///   • **sand**: the falling-sand automaton; grains fall, roll off each other
 ///     into heaps, sink through water that spreads flat, and stop at walls; the
 ///     brush pours whichever material the parameter names, `friction` sets how steep
@@ -47,7 +51,7 @@ import Ollin
 final class Automata: Sketch {
 
     enum Rule: String, CaseIterable, ParamOption {
-        case life, brain, wire, cyclic, excitable, hodgepodge, forest, schelling, sandpile, lenia, sand
+        case life, brain, wire, cyclic, excitable, hodgepodge, forest, schelling, ising, sandpile, lenia, sand
     }
 
     /// What the Wireworld pen lays down: wire, or an electron on it.
@@ -98,6 +102,11 @@ final class Automata: Sketch {
     @Param("Vacancy", 0.05 ... 0.6, icon: "square.dashed", group: "Schelling") var vacancy = 0.25
     /// The chance an unhappy agent moves in a pass: the pace of the sort.
     @Param("Mobility", 0.002 ... 1, icon: "figure.walk", group: "Schelling") var mobility = 0.02
+    /// The heat, in units of the coupling between neighbors. The critical value is
+    /// about 2.27: below it domains grow, above it the heat wins.
+    @Param("Temperature", 0.5 ... 4, icon: "thermometer.medium", group: "Ising") var temperature = 2.27
+    /// An outside field pulling every spin one way: positive up, negative down.
+    @Param("Field", -1 ... 1, icon: "magnet", group: "Ising") var magneticField = 0.0
     @Param("Growth center", 0.05 ... 0.3, icon: "target", group: "Lenia") var growthCenter = 0.15
     @Param("Growth width", 0.005 ... 0.05, icon: "slider.horizontal.below.rectangle", group: "Lenia") var growthWidth = 0.015
     @Param("Pour", icon: "paintbrush.pointed", group: "Sand") var grain: Grain = .sand
@@ -186,6 +195,10 @@ final class Automata: Sketch {
                                      (0.5, Color(hex: 0xE4572E)),
                                      (1.0, Color(hex: 0x17BEBB))])
 
+    /// Ising: a tone per spin, down and up, at the two levels the field stores.
+    private let spins = Ramp(stops: [(0.0, Color(hex: 0x1B2A4A)),
+                                     (1.0, Color(hex: 0xF4E9D3))])
+
     /// Falling sand: one tone per material, at the thirds the field stores them
     /// on (empty, water, sand, wall).
     private let materials = Ramp(stops: [(0.000, Color(hex: 0x14161C)),
@@ -237,6 +250,8 @@ final class Automata: Sketch {
                                         seed: Double(variation))
         case .schelling: return .schelling(preference: preference, vacancy: vacancy,
                                            mobility: mobility, seed: Double(variation))
+        case .ising: return .ising(temperature: temperature, field: magneticField, sweeps: 2,
+                                   seed: Double(variation))
         case .sandpile: return .sandpile(pour: 1024, topplings: Int(pace))
         case .lenia: return .lenia(growthCenter: growthCenter, growthWidth: growthWidth)
         case .sand: return .fallingSand(passes: 16, friction: friction)
@@ -250,14 +265,14 @@ final class Automata: Sketch {
         case .life: return Double(cells) / width
         case .wire: return Double(wireCells) / width
         case .brain: return 0.15
-        case .cyclic, .excitable, .hodgepodge, .forest, .schelling: return 0.25
+        case .cyclic, .excitable, .hodgepodge, .forest, .schelling, .ising: return 0.25
         case .sandpile, .lenia, .sand: return 0.5
         }
     }
 
     /// The table's seeding column, run inside the paint block: each rule's classic
-    /// opening at the age it calls for. Cyclic, hodgepodge, and Schelling need
-    /// nothing (they start from seeded random states picked by `variation`).
+    /// opening at the age it calls for. Cyclic, hodgepodge, Schelling, and Ising
+    /// need nothing (they start from seeded random states picked by `variation`).
     private func seedIfDue() {
         switch rule {
         case .wire where fieldAge == 1:
@@ -373,6 +388,11 @@ final class Automata: Sketch {
             // key clears a block, and the movers find the room.
             fill(keyIsPressed ? SchellingCell.empty.color : SchellingCell.first.color)
             drawCircle(mouseX, mouseY, 50)
+        case .ising:
+            // A patch magnetized up, which the heat then works on; a held key
+            // flips a patch down.
+            fill(keyIsPressed ? IsingSpin.down.color : IsingSpin.up.color)
+            drawCircle(mouseX, mouseY, 50)
         case .sandpile:
             // Sand cannot be unpoured (a dark mark adds no grains), so the held
             // key simply holds the torrent.
@@ -414,6 +434,7 @@ final class Automata: Sketch {
         case .hodgepodge: return field.filtered(.gradientMap(.turbo)).image
         case .forest: return field.filtered(.gradientMap(woods)).image
         case .schelling: return field.filtered(.gradientMap(kinds)).image
+        case .ising: return field.filtered(.gradientMap(spins)).image
         case .sandpile: return field.filtered(.gradientMap(counts)).image
         case .lenia: return field.filtered(.gradientMap(.magma)).image
         case .sand: return field.filtered(.gradientMap(materials)).image
@@ -438,6 +459,8 @@ final class Automata: Sketch {
             return "forest fire · trees grow, lightning strikes · drag to set fires, hold a key to cut a break"
         case .schelling:
             return "Schelling's neighborhood · a mild preference sorts the board · drag to settle a block, hold a key to clear one"
+        case .ising:
+            return "Ising model · spins against the heat · drag to magnetize a patch, hold a key to flip it back"
         case .sandpile:
             return "Abelian sandpile · four grains at a time · hold to pour another mountain"
         case .lenia:

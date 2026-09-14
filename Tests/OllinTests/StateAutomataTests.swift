@@ -3,8 +3,8 @@ import Ollin
 import Testing
 
 /// Behavioral probes for the state automata (`.cyclic`, `.excitable`,
-/// `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, `.schelling`), run
-/// headless on a 64-texel field and compared
+/// `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, `.schelling`,
+/// `.ising`), run headless on a 64-texel field and compared
 /// **cell for cell** against a plain sequential CPU reference stepping the same
 /// published rule from the same start. The match pins the shared state encoding
 /// (s/(levels-1) in .r, decoded with rint), the exact neighbor counts under both
@@ -421,6 +421,111 @@ struct StateAutomataTests {
         return (total / max(1, counted), unhappy / max(1, agents))
     }
 
+    // MARK: The Ising model
+
+    /// At a temperature of 0 no coin is thrown: a flip that lowers or keeps the
+    /// energy is taken and no other, so the checkerboard Metropolis step is fully
+    /// deterministic and matches a sequential reference cell for cell, the pass
+    /// parity, the four wrapped neighbors, and the tie rule included.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func isingAtZeroTemperatureMatchesTheSequentialReference() throws {
+        let start = randomGrid(levels: 2, seed: 9)
+        let sketch = probe(.ising(temperature: 0, sweeps: 1),
+                           stamps: levelStamps(start, levels: 2))
+        let gpu = try grid(sketch, generations: 6, levels: 2)
+        var reference = start
+        for _ in 0 ..< 6 {
+            for pass in 0 ..< 2 { reference = isingPass(reference, pass: pass, field: 0) }
+        }
+        #expect(gpu == reference)
+        #expect(gpu != start)
+    }
+
+    /// Cold, an ordered field stays ordered: at a temperature of 1 a flip against
+    /// four agreeing neighbors comes under exp(-8), so thirty sweeps leave the
+    /// magnetization within a hair of 1 (the prototype reads 0.999).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aColdOrderedFieldStaysMagnetized() throws {
+        let up = [[Int]](repeating: [Int](repeating: 1, count: 64), count: 64)
+        let later = try grid(probe(.ising(temperature: 1, sweeps: 1),
+                                   stamps: levelStamps(up, levels: 2)),
+                             generations: 30, levels: 2)
+        #expect(magnetization(later) > 0.95)
+    }
+
+    /// Hot, the same ordered field forgets: at a temperature of 5 the heat wins in
+    /// a few sweeps and the magnetization falls to the noise of the count (the
+    /// prototype reads under 0.03 after thirty).
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aHotFieldForgetsItsOrder() throws {
+        let up = [[Int]](repeating: [Int](repeating: 1, count: 64), count: 64)
+        let later = try grid(probe(.ising(temperature: 5, sweeps: 1),
+                                   stamps: levelStamps(up, levels: 2)),
+                             generations: 30, levels: 2)
+        #expect(magnetization(later) < 0.15)
+        #expect(later.joined().contains(0) && later.joined().contains(1))
+    }
+
+    /// A quench coarsens: from the seeded random start, where half the bonds
+    /// disagree, forty sweeps at a temperature of 1 leave almost none (the
+    /// prototype reads 0.5 falling to 0.02), the domains having grown.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aQuenchCoarsens() throws {
+        let early = try grid(probe(.ising(temperature: 1, sweeps: 1, seed: 3), stamps: []),
+                             generations: 1, levels: 2)
+        let late = try grid(probe(.ising(temperature: 1, sweeps: 1, seed: 3), stamps: []),
+                            generations: 40, levels: 2)
+        #expect(disagreement(early) > 0.15)
+        #expect(disagreement(late) < 0.1)
+        #expect(disagreement(late) < disagreement(early))
+    }
+
+    /// The seeded start is an even mix, which one deterministic sweep keeps within
+    /// a few percent of half (the sweep is symmetric between the two spins), and
+    /// a strong outside field magnetizes every spin one way in two sweeps.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSeededStartIsAnEvenMixAndAFieldOverridesIt() throws {
+        let mixed = try grid(probe(.ising(temperature: 0, seed: 5), stamps: []),
+                             generations: 1, levels: 2)
+        let ups = Double(mixed.joined().count { $0 == 1 }) / 4096
+        #expect(ups > 0.4 && ups < 0.6)
+        let pulledUp = try grid(probe(.ising(temperature: 0, field: 4, seed: 5), stamps: []),
+                                generations: 3, levels: 2)
+        #expect(pulledUp.allSatisfy { $0.allSatisfy { $0 == 1 } })
+        let pulledDown = try grid(probe(.ising(temperature: 0, field: -4, seed: 5), stamps: []),
+                                  generations: 3, levels: 2)
+        #expect(pulledDown.allSatisfy { $0.allSatisfy { $0 == 0 } })
+    }
+
+    /// The coins are a hash of the cell, the pass, and the seed: the same seed
+    /// replays a hot run cell for cell, and another seed is another run.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSameSeedReplaysAndAnotherDoesNot() throws {
+        let first = try grid(probe(.ising(seed: 8), stamps: []), generations: 10, levels: 2)
+        let again = try grid(probe(.ising(seed: 8), stamps: []), generations: 10, levels: 2)
+        let other = try grid(probe(.ising(seed: 9), stamps: []), generations: 10, levels: 2)
+        #expect(first == again)
+        #expect(first != other)
+    }
+
+    /// The mean spin, up as +1 and down as -1, as a magnitude.
+    private func magnetization(_ g: [[Int]]) -> Double {
+        abs(Double(g.joined().reduce(0) { $0 + ($1 * 2 - 1) })) / 4096
+    }
+
+    /// The share of neighboring pairs (each cell's right and lower neighbor,
+    /// wrapping) that disagree.
+    private func disagreement(_ g: [[Int]]) -> Double {
+        var unlike = 0
+        for y in 0 ..< 64 {
+            for x in 0 ..< 64 {
+                if g[y][x] != g[y][(x + 1) % 64] { unlike += 1 }
+                if g[y][x] != g[(y + 1) % 64][x] { unlike += 1 }
+            }
+        }
+        return Double(unlike) / 8192
+    }
+
     // MARK: Probes and readback
 
     private func probe(_ sim: Sim, stamps: [(x: Int, y: Int, white: Double)])
@@ -615,6 +720,23 @@ struct StateAutomataTests {
     /// unhappy agents, in raster order, each take the first free empty cell where
     /// they would be content with their own cell vacated, else the first free empty
     /// cell. The board has edges: off it nobody lives.
+    /// One checkerboard pass of the Ising rule at a temperature of 0: the cells
+    /// whose x + y parity matches the pass flip when the flip lowers or keeps the
+    /// energy 2 s (neighbors + field), the four edge neighbors read wrapped from
+    /// the grid as it stands (they are all of the other color, so unchanged).
+    private func isingPass(_ g: [[Int]], pass: Int, field: Double) -> [[Int]] {
+        var next = g
+        for y in 0 ..< 64 {
+            for x in 0 ..< 64 where (x + y) % 2 == pass % 2 {
+                let spin = Double(g[y][x] * 2 - 1)
+                let around = Double((g[y][(x + 1) % 64] + g[y][(x + 63) % 64]
+                                     + g[(y + 1) % 64][x] + g[(y + 63) % 64][x]) * 2 - 4)
+                if 2 * spin * (around + field) <= 0 { next[y][x] = 1 - g[y][x] }
+            }
+        }
+        return next
+    }
+
     private func stepSchelling(_ g: [[Int]], generation: Int, passes: Int, preference: Float) -> [[Int]] {
         var g = g
         for i in 0 ..< passes { g = schellingPass(g, pass: generation * passes + i, preference: preference) }

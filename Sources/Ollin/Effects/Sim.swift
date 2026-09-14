@@ -52,6 +52,7 @@ public struct Sim: Sendable {
         case wireworld
         case schelling(preference: Double, vacancy: Double, mobility: Double,
                        passes: Int, seed: Double)
+        case ising(temperature: Double, field: Double, sweeps: Int, seed: Double)
         case selfWarp(SelfWarpConfig)
     }
 
@@ -608,6 +609,55 @@ public struct Sim: Sendable {
                              passes: max(1, min(64, passes)), seed: seed))
     }
 
+    /// The critical temperature of the square-lattice Ising model, in the units
+    /// `ising(temperature:)` reads: `2 / ln(1 + sqrt 2)`, about 2.269, the value
+    /// Onsager worked out exactly. Below it the field magnetizes, above it the heat
+    /// wins, and at it the clusters come in every size.
+    public static let isingCriticalTemperature = 2 / log(1 + 2.0.squareRoot())
+
+    /// The **Ising model**, the oldest model of a magnet and the simplest system with
+    /// a phase transition. Every cell is a spin, up or down, and each spin wants to
+    /// agree with its four neighbors. The field runs Metropolis Monte Carlo: a spin
+    /// whose flip would lower the energy (more of its neighbors disagree than agree)
+    /// flips, and one whose flip would raise it flips anyway with probability
+    /// `exp(-change / temperature)`, so heat shakes the order loose. Cold, the field
+    /// magnetizes into domains that coarsen until one wins; hot, it is noise; at the
+    /// critical temperature between them (`isingCriticalTemperature`, about 2.27)
+    /// clusters appear at every size, the famous picture of a phase transition. One
+    /// sweep visits every spin once, as two checkerboard passes: a pass updates the
+    /// cells of one color from the other color's spins, so no spin reads a neighbor
+    /// that is changing under it. The coins are a hash of the cell, the pass, and the
+    /// seed, so **a run replays exactly** under the same seed, and a different seed
+    /// is a different run.
+    ///
+    /// The field **needs no seeding**: it starts as a seeded random mix, which is the
+    /// field at infinite temperature, and cooling it is the picture. Drawing stamps
+    /// spins, snapped to two levels: white stamps a patch up and black stamps it down
+    /// (`IsingSpin` names them), and the field answers the patch. Edges wrap.
+    ///
+    /// The raw `image` is black for down and white for up, made for `.gradientMap`
+    /// with a color per spin. One texel is one spin (`scale` sets the size).
+    ///
+    /// - Parameters:
+    ///   - temperature: The heat, in units of the coupling between neighbors (0 and
+    ///     up; the critical value is `isingCriticalTemperature`). At 0 only a flip
+    ///     that lowers or keeps the energy happens and the rule is deterministic;
+    ///     around 1 the domains are clean and coarsen slowly; at 4 the field is
+    ///     nearly noise.
+    ///   - field: An outside field pulling every spin one way, in the same units
+    ///     (-4...4; 0 is the plain model). Positive favors up, negative down, and at
+    ///     4 it overrides any neighborhood.
+    ///   - sweeps: How many sweeps run per frame (1...32), each every spin once: the
+    ///     pace. One a frame shows the heat working; more settles a cold field
+    ///     faster.
+    ///   - seed: Picks the random start and the coins, so the same seed replays the
+    ///     same run.
+    public static func ising(temperature: Double = isingCriticalTemperature, field: Double = 0,
+                             sweeps: Int = 1, seed: Double = 1) -> Sim {
+        Sim(kind: .ising(temperature: max(0, temperature), field: max(-4, min(4, field)),
+                         sweeps: max(1, min(32, sweeps)), seed: seed))
+    }
+
     // MARK: Renderer hooks (internal)
 
     /// The seeded random start a state automaton needs, or `nil` for sims that rest
@@ -621,6 +671,7 @@ public struct Sim: Sendable {
         case let .cyclic(states, _, _, _, seed): return (states, seed, -1)
         case let .hodgepodge(states, _, _, _, _, seed): return (states + 1, seed, -1)
         case let .schelling(_, vacancy, _, _, seed): return (3, seed, vacancy)
+        case let .ising(_, _, _, seed): return (2, seed, -1)
         default: return nil
         }
     }
@@ -679,6 +730,8 @@ public struct Sim: Sendable {
         case let .schelling(_, _, _, passes, _):
             return passes                   // the blocks walk one origin per pass, so
                                             // four passes reach every neighbor once
+        case let .ising(_, _, sweeps, _):
+            return sweeps * 2               // two checkerboard passes make one sweep
         case .selfWarp:          return 1   // unused: self-warp runs its own pipeline
         }
     }
@@ -711,6 +764,8 @@ public struct Sim: Sendable {
         case .wireworld:         return SIMD4(0, 0, 0, 1)   // no wire anywhere
         case .schelling:         return SIMD4(0, 0, 0, 1)   // unused: starts as a seeded
                                                             // random mix (stateSeedFill)
+        case .ising:             return SIMD4(0, 0, 0, 1)   // unused: starts as a seeded
+                                                            // random mix (stateSeedFill)
         case .selfWarp:          return SIMD4(0, 0, 0, 0)   // unused: runSelfWarp clears
                                                             // and primes its own state
         }
@@ -735,6 +790,7 @@ public struct Sim: Sendable {
         case .hodgepodge:        return "ollin_sim_hodgepodge"
         case .wireworld:         return "ollin_sim_wireworld"
         case .schelling:         return "ollin_sim_schelling"
+        case .ising:             return "ollin_sim_ising"
         case .selfWarp:          return ""   // unused: self-warp dispatches its own fragments
         }
     }
@@ -768,6 +824,7 @@ public struct Sim: Sendable {
         case .briansBrain:      return "ollin_sim_inject_brain"
         case .wireworld:        return "ollin_sim_inject_wire"     // four levels, snapped
         case .schelling:        return "ollin_sim_inject_kinds"    // three levels, snapped
+        case .ising:            return "ollin_sim_inject_spins"    // two levels, snapped
         default:                return "ollin_sim_inject"
         }
     }
@@ -821,6 +878,9 @@ public struct Sim: Sendable {
         case let .schelling(preference, _, mobility, passes, seed):
             // The vacancy is read by the seed fill, not the step.
             return [SIMD4(Float(preference), Float(mobility), Float(seed), Float(passes))]
+        case let .ising(temperature, field, sweeps, seed):
+            // The sweeps per frame let the step count passes across frames for its coin.
+            return [SIMD4(Float(temperature), Float(field), Float(seed), Float(sweeps))]
         case .selfWarp:
             return []   // unused: self-warp binds per-pass parameters itself
         }
@@ -897,6 +957,22 @@ public enum SchellingCell: Int, Sendable, CaseIterable {
     /// The gray a mark uses to stamp this state (the level the field stores).
     public var color: Color {
         Color(white: Double(rawValue) / Double(SchellingCell.allCases.count - 1))
+    }
+}
+
+/// What a cell of a `Sim.ising` field holds, and the gray that stamps it: a spin
+/// down or up. `fill(IsingSpin.up.color)` before a mark magnetizes a patch up,
+/// black flips one down, and the raw `image` reads back the same two levels (down
+/// black, up white).
+public enum IsingSpin: Int, Sendable, CaseIterable {
+    /// A spin pointing down, the black level.
+    case down = 0
+    /// A spin pointing up, the white level.
+    case up = 1
+
+    /// The gray a mark uses to stamp this spin (the level the field stores).
+    public var color: Color {
+        Color(white: Double(rawValue))
     }
 }
 

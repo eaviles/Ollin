@@ -291,6 +291,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("schelling", frame: 3,
                  note: "Schelling's board from its seeded random start (a quarter empty, the rest an even mix, seed 4) at a preference of 0.3 and full mobility, one pass a frame, caught at frame 3 with the sort half done and recoloured with a color per kind. Pins the seeded three-level fill with its vacancy share, the eight-by-eight block walk, the raster pairing of unhappy agents with empty cells (content ones first), and the bounded board's edges.",
                  make: { SchellingScene() }),
+    SnapshotCase("ising", frame: 60,
+                 note: "The Ising model at its critical temperature from its seeded random start (seed 4), one sweep a frame, caught at frame 60 with clusters at every size and recoloured with a tone per spin. Pins the two-level seeded fill, the checkerboard Metropolis step (the parity alternating with the pass, the four wrapped neighbors, the hashed coin against exp(-change / temperature)), and the two-level inject's rest.",
+                 make: { IsingScene() }),
     SnapshotCase("watercolor-sim", frame: 140,
                  note: "A watercolor SimField painted by a fixed script: an ultramarine wash laid on frame 1 (its edge darkening as it sits), rose charged into it wet-in-wet on frame 30, the sheet dried on frame 60, and a hansa-yellow band glazed across everything on frame 62, caught at frame 140. Pins the whole three-layer wash pipeline: the staggered-grid shallow-water step with the paper's slope, the divergence relaxation, the blurred-mask edge darkening, upwind pigment advection, the density/staining/granulation exchange with the deposit layer, the capillary re-wet of damp paper, the dry() bake into the glaze stack, and the Kubelka-Munk rendering (wet wash over dried glazes over paper) whose optical mixing the crossing shows. WatercolorSimTests pins the behaviors a mean diff averages away.",
                  make: { WatercolorSimScene() }),
@@ -9726,6 +9729,25 @@ private final class SchellingScene: Sketch {
     override func draw() {
         background(.black)
         drawImage(field.filtered(.gradientMap(kinds)).image, 0, 0)
+    }
+}
+
+/// The Ising model at its critical temperature from its seeded random start, one
+/// sweep a frame, caught with clusters at every size. Deterministic: the start is
+/// the seeded fill and every coin is a hash of the cell, the pass, and the seed.
+private final class IsingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+    private let spins = Ramp(stops: [(0.0, Color(hex: 0x1B2A4A)),
+                                     (1.0, Color(hex: 0xF4E9D3))])
+
+    override func setup() {
+        field = makeSimField(.ising(seed: 4), scale: 0.5)
+    }
+
+    override func draw() {
+        background(.black)
+        drawImage(field.filtered(.gradientMap(spins)).image, 0, 0)
     }
 }
 

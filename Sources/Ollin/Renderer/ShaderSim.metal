@@ -144,6 +144,16 @@ fragment float4 ollin_sim_inject_kinds(PresentOut in [[stage_in]],
     return ollin_sim_inject_levels(state, seed, samp, in.uv, 3.0);
 }
 
+// The Ising inject: two levels, snapped, so a white mark magnetizes a patch up
+// and a black one flips it down (`IsingSpin` names the two grays).
+fragment float4 ollin_sim_inject_spins(PresentOut in [[stage_in]],
+                                       texture2d<float> state [[texture(0)]],
+                                       texture2d<float> seed [[texture(1)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    return ollin_sim_inject_levels(state, seed, samp, in.uv, 2.0);
+}
+
 // The interactive-water step: state is (height, velocity), both signed about
 // zero. Velocity accelerates toward the four-neighbor average (the coupling
 // gain is the wave speed), is damped a little so waves die away, and moves the
@@ -710,6 +720,49 @@ fragment float4 ollin_sim_schelling(PresentOut in [[stage_in]],
     return float4(float3(ns * 0.5), 1.0);
 }
 #undef OLLIN_SCHELLING_COUNT
+
+// The Ising model, by Metropolis on a checkerboard: every cell a spin, down (0) or
+// up (1), each wanting to agree with its four edge neighbors. A pass updates the
+// cells of one checkerboard color (the parity of x + y matching the pass's) from
+// the other color's spins, which no pass writes while it reads them, so two passes
+// are one sweep with every spin visited once and no spin reading a neighbor that
+// is changing under it. The energy change of a flip is 2 s (sum of the neighbors'
+// spins + field) with the spins as -1/+1: a flip that lowers or keeps the energy is
+// taken, and one that raises it is taken when a coin comes under
+// exp(-change / temperature). The coin is a hash of the cell, the pass count
+// (running on across frames: params[0].w is the field age, params[1].w the sweeps
+// per frame, two passes each), and the seed, so a run replays exactly. At a
+// temperature of 0 no coin is thrown and the rule is deterministic. Edges wrap.
+// params[1] = (temperature, field, seed, sweeps).
+fragment float4 ollin_sim_ising(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float pass = params[0].w * max(1.0, params[1].w) * 2.0 + params[0].z;
+    float temperature = max(params[1].x, 0.0);
+    float field = params[1].y;
+    float seed = params[1].z;
+    float2 uv = in.uv;
+    float s = ollin_cell_state(src, samp, uv, 1.0);
+    float2 cell = floor(uv / max(t, float2(1e-6)));
+    bool mine = fmod(cell.x + cell.y, 2.0) == fmod(params[0].z, 2.0);
+    float spin = s * 2.0 - 1.0;
+    float around = 0.0;
+    around += ollin_cell_state(src, samp, fract(uv + float2(t.x, 0.0)), 1.0) * 2.0 - 1.0;
+    around += ollin_cell_state(src, samp, fract(uv - float2(t.x, 0.0)), 1.0) * 2.0 - 1.0;
+    around += ollin_cell_state(src, samp, fract(uv + float2(0.0, t.y)), 1.0) * 2.0 - 1.0;
+    around += ollin_cell_state(src, samp, fract(uv - float2(0.0, t.y)), 1.0) * 2.0 - 1.0;
+    float change = 2.0 * spin * (around + field);
+    bool flip = change <= 0.0;
+    if (!flip && temperature > 0.0) {
+        float roll = hash12(cell + float2(pass * 0.7331 + seed * 37.13 + 11.13,
+                                          pass * 1.3197 + seed * 11.71 + 3.71));
+        flip = roll < exp(-change / temperature);
+    }
+    float ns = (mine && flip) ? 1.0 - s : s;
+    return float4(float3(ns), 1.0);
+}
 
 // Lenia: the continuous Game of Life. The state is a smooth 0…1 mass in .r. Each step
 // convolves the state with a soft ring kernel to get the neighborhood potential U (an

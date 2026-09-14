@@ -289,6 +289,36 @@ import OllinWebGate
         }
     }
 
+    /// The Ising model at a temperature of 0 from a stamped start (so the page
+    /// and the Mac share it exactly), where no coin is thrown and the quench is
+    /// deterministic.
+    final class Quenched: Sketch {
+        override var canvasSize: CanvasSize { .square(96) }
+        var field: SimField!
+        override func setup() {
+            field = makeSimField(.ising(temperature: 0, sweeps: 1), scale: 0.5)
+        }
+        override func draw() {
+            background(.black)
+            withField(field) {
+                noStroke()
+                if frameCount == 1 {
+                    var state: UInt64 = 77
+                    for y in 0 ..< 48 {
+                        for x in 0 ..< 48 {
+                            state = state &* 6364136223846793005 &+ 1442695040888963407
+                            let spin: IsingSpin = (state >> 33) % 2 == 0 ? .down : .up
+                            fill(spin.color)
+                            drawRect(Double(x) * 2, Double(y) * 2, 2, 2)
+                        }
+                    }
+                }
+            }
+            let spins = Ramp(stops: [(0.0, Color(hex: 0x1B2A4A)), (1.0, Color(hex: 0xF4E9D3))])
+            drawImage(field.filtered(.gradientMap(spins)).image, 0, 0)
+        }
+    }
+
     /// Schelling's board from a stamped start (so the page and the Mac share it
     /// exactly) at full mobility, sorting itself.
     final class Sorted: Sketch {
@@ -571,6 +601,7 @@ import OllinWebGate
             ("Living", { Living() }, 16, 15),
             ("Wired", { Wired() }, 30, 28),
             ("Sorted", { Sorted() }, 8, 6),
+            ("Quenched", { Quenched() }, 8, 6),
             ("Posted", { Posted() }, 4, 2),
             ("Blurred and bloomed", { Blurred() }, 4, 2),
             ("Filmed", { Filmed() }, 4, 2),

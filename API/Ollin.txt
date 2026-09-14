@@ -312,6 +312,10 @@ enum InspectorStatus: Equatable, Hashable, Sendable
   case error
   case running
   case watching
+enum IsingSpin: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case down
+  case up
+  var color: Color { get }
 enum IsosurfaceMethod: Equatable, Hashable, Sendable
   case dualContouring
   case marchingCubes
@@ -1154,6 +1158,20 @@ final class Image
   let width: Int
   subscript(_: Int, _: Int) -> Color { get set }
   var size: Vector2 { get }
+final class Kuramoto
+  func advance(by: Double = default)
+  init(count: Int, coupling: Double = default, frequency: Double = default, spread: Double = default, lag: Double = default, range: Int = default, seed: UInt64 = default)
+  let frequency: Double
+  let spread: Double
+  var coherence: Double { get }
+  var count: Int { get }
+  var coupling: Double { get set }
+  var criticalCoupling: Double { get }
+  var frequencies: [Double] { get set }
+  var lag: Double { get set }
+  var meanPhase: Double { get }
+  var phases: [Double] { get set }
+  var range: Int { get set }
 final class LineSpray: Sendable
   enum Sampling: Equatable, Sendable
     case byLength(pointsPerPass: Int)
@@ -5543,6 +5561,7 @@ struct Sim: Sendable
   static func forestFire(growth: Double = default, lightning: Double = default, neighborhood: CellNeighborhood = default, seed: Double = default) -> Sim
   static func gameOfLife() -> Sim
   static func hodgepodge(states: Int = default, infectedDivisor: Int = default, illDivisor: Int = default, infectionRate: Int = default, neighborhood: CellNeighborhood = default, seed: Double = default) -> Sim
+  static func ising(temperature: Double = default, field: Double = default, sweeps: Int = default, seed: Double = default) -> Sim
   static func lenia(radius: Int = default, growthCenter: Double = default, growthWidth: Double = default, timeScale: Double = default, rings: [Double] = default) -> Sim
   static func multiScaleTuring(scales: [TuringScale] = default, seed: Double = default) -> Sim
   static func reactionDiffusion(feed: Double = default, kill: Double = default) -> Sim
@@ -5553,6 +5572,7 @@ struct Sim: Sendable
   static func selfWarp(amount: Double = default, refresh: Double = default, decay: Double = default, smoothing: Double = default) -> Sim
   static func watercolor(pigments: [WatercolorPigment] = default, edgeDarkening: Double = default, backruns: Bool = default, dryBrush: Double = default, absorbency: Double = default, grain: Double = default, paperSeed: Double = default, paperColor: Color = default, substeps: Int = default) -> Sim
   static func wireworld() -> Sim
+  static let isingCriticalTemperature: Double
 struct SketchDescription: Equatable, Sendable
   init(summary: String? = default, elements: [DescribedElement] = default)
   static func ==(_: SketchDescription, _: SketchDescription) -> Bool
