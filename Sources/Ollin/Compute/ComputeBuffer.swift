@@ -94,7 +94,7 @@ public final class ComputeBuffer<Element>: ComputeRealizable, @unchecked Sendabl
 }
 
 /// A pair of `ComputeBuffer`s swapped each step: the kernel reads `read` (last
-/// frame's state) and writes `write` (this frame's), then `advance()` makes the
+/// frame's state) and writes `write` (this frame's), then `swap()` makes the
 /// freshly written buffer the new `read`. Two buffers (not one read-modify-write)
 /// so a step's reads can't see its own partial writes and so consecutive frames
 /// render different buffers — letting the GPU overlap one frame's render with the
@@ -125,8 +125,8 @@ public final class PingPong<Element>: @unchecked Sendable {
     public var read: ComputeBuffer<Element> { flipped ? b : a }
     /// The buffer the next step writes into.
     public var write: ComputeBuffer<Element> { flipped ? a : b }
-    /// Swap which buffer is current — call once after recording a step.
-    public func advance() { flipped.toggle() }
+    /// Swap which buffer is current; call once after recording a step.
+    public func swap() { flipped.toggle() }
 }
 
 /// An ordered byte-packer for a kernel's custom parameters, bound at buffer index

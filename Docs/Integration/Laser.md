@@ -149,7 +149,7 @@ laser.disarm()     // dark again, connection kept, rig still live
 Below that gate, `LaserSafety` guards every stream on its way out:
 
 ```swift
-laser.safety.maximumBrightness = 0.5   // a ceiling on every channel
+laser.safety.maxBrightness = 0.5   // a ceiling on every channel
 laser.safety.stationaryRadius = 0.004  // how far counts as moving
 laser.safety.stationaryLimit = 24      // lit points allowed to stand still
 laser.safety.stallTimeout = 0.5        // seconds before a stale frame is blanked

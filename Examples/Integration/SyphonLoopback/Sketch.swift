@@ -44,7 +44,7 @@ final class SyphonLoopback: Sketch {
 
         // Reconnect to our own source once it's been announced (the server starts
         // on the first published frame, so the client connects a frame or two in).
-        if !feed.isActive { feed.connect(named: sourceName) }
+        if !feed.isConnected { feed.connect(named: sourceName) }
 
         // Draw the received frame as a slightly inset, slightly rotated panel — the
         // recursion makes a feedback tunnel that proves the loop is live.
@@ -60,7 +60,7 @@ final class SyphonLoopback: Sketch {
 
         fill(Color(white: 0.6))
         textSize(22 * scale)
-        let status = feed.isActive ? "live" : "connecting…"
+        let status = feed.isConnected ? "live" : "connecting…"
         drawText("Syphon ↺ \"\(sourceName)\" — \(status)", 30 * scale, 50 * scale)
     }
 }

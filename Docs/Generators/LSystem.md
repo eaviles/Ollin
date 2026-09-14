@@ -298,14 +298,14 @@ Ordinary `lSystem(…)` returns `[Contour]` exactly as the symbolic form does. T
 
 ```swift
 .taperedTree(contraction1: 0.65, contraction2: 0.71, angle1: 27, angle2: -68,
-             width: 20, split: 0.53, exponent: 0.5, minimumLength: 1.7)   // 12 passes
+             width: 20, split: 0.53, exponent: 0.5, minLength: 1.7)   // 12 passes
 .taperedTree(contraction1: 0.50, contraction2: 0.85, angle1: 25, angle2: -15,
-             roll1: 180, width: 20, split: 0.45, exponent: 0.5, minimumLength: 0.5)  // 9
+             roll1: 180, width: 20, split: 0.45, exponent: 0.5, minLength: 0.5)  // 9
 .taperedTree(contraction1: 0.92, contraction2: 0.37, angle1: 0, angle2: 60,
-             roll1: 180, width: 2, split: 0.5, exponent: 0, minimumLength: 0.5)      // 15
+             roll1: 180, width: 2, split: 0.5, exponent: 0, minLength: 0.5)      // 15
 ```
 
-`minimumLength` is the termination guard. Growth stops in a branch once that branch would be shorter than the guard, so the form settles instead of running out of passes.
+`minLength` is the termination guard. Growth stops in a branch once that branch would be shorter than the guard, so the form settles instead of running out of passes.
 
 ### Reading the word yourself
 

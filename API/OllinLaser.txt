@@ -14,11 +14,12 @@ enum EtherDreamWire
   static let controlPort: Int
 enum ILDAFile
   @discardableResult static func write(_: [LaserStream], to: Foundation.URL, name: String = default, company: String = default, projector: Int = default) throws -> Int
+  @discardableResult static func write(_: [LaserStream], to: String, name: String = default, company: String = default, projector: Int = default) throws -> Int
   static func data(_: LaserStream, name: String = default, company: String = default, projector: Int = default) -> Foundation.Data
   static func data(_: [LaserStream], name: String = default, company: String = default, projector: Int = default) -> Foundation.Data
   static func frames(_: [[LaserPoint]], name: String = default, company: String = default, projector: Int = default) -> Foundation.Data
   static let formatCode: UInt8
-  static let maximumPointsPerFrame: Int
+  static let maxPointsPerFrame: Int
 enum ProjectorSpace
   static func clamped(_: Vector2) -> Vector2
   static func inverse(to: Rectangle) -> (Vector2) -> Vector2
@@ -35,7 +36,7 @@ final class EtherDreamDAC: Sendable
   var headroom: Double { get set }
   var isPlaying: Bool { get }
   var lastError: String? { get }
-  var maximumBatch: Int { get set }
+  var maxBatch: Int { get set }
   var pointsPerSecond: Int { get set }
   var pointsSent: Int { get }
   var stallTimeout: Double { get set }
@@ -72,7 +73,7 @@ struct EtherDreamDevice: Equatable, Sendable
   var hardwareRevision: Int { get set }
   var host: String { get set }
   var macAddress: String { get set }
-  var maximumPointRate: Int { get set }
+  var maxPointRate: Int { get set }
   var softwareRevision: Int { get set }
   var status: EtherDreamStatus { get set }
 struct EtherDreamResponse: Equatable, Sendable
@@ -150,7 +151,7 @@ struct LaserSafety: Sendable
   init()
   static func blankHold(count: Int = default) -> [LaserPoint]
   static var unguarded: LaserSafety { get }
-  var maximumBrightness: Double { get set }
+  var maxBrightness: Double { get set }
   var stallTimeout: Double { get set }
   var stationaryLimit: Int { get set }
   var stationaryRadius: Double { get set }

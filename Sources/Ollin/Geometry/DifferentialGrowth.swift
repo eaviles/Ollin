@@ -60,7 +60,7 @@ public final class DifferentialGrowth {
     /// An optional rectangle the nodes are kept inside.
     public var bounds: Rectangle?
     /// For an open path, whether the two endpoints are pinned in place.
-    public var fixedEnds: Bool
+    public var hasFixedEnds: Bool
 
     private var rng: SplitMix64
 
@@ -79,10 +79,10 @@ public final class DifferentialGrowth {
     ///   - growthRate: Extra random node injections per step.
     ///   - maxNodes: The node-count ceiling.
     ///   - bounds: An optional rectangle to keep nodes inside.
-    ///   - fixedEnds: For an open path, whether to pin the endpoints.
+    ///   - hasFixedEnds: For an open path, whether to pin the endpoints.
     public init(nodes: [Vector2],
                 isClosed: Bool = true,
-                seed: UInt64 = 0,
+                seed: Int = 0,
                 maxSegmentLength: Double = 9,
                 repulsionRadius: Double = 18,
                 attraction: Double = 0.2,
@@ -92,10 +92,10 @@ public final class DifferentialGrowth {
                 growthRate: Double = 0,
                 maxNodes: Int = 6000,
                 bounds: Rectangle? = nil,
-                fixedEnds: Bool = false) {
+                hasFixedEnds: Bool = false) {
         self.nodes = nodes
         self.isClosed = isClosed
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         self.maxSegmentLength = maxSegmentLength
         self.repulsionRadius = repulsionRadius
         self.attraction = attraction
@@ -105,7 +105,7 @@ public final class DifferentialGrowth {
         self.growthRate = growthRate
         self.maxNodes = maxNodes
         self.bounds = bounds
-        self.fixedEnds = fixedEnds
+        self.hasFixedEnds = hasFixedEnds
     }
 
     /// The number of nodes currently in the line.
@@ -161,7 +161,7 @@ public final class DifferentialGrowth {
         }
 
         for i in 0 ..< n {
-            if fixedEnds, !isClosed, i == 0 || i == n - 1 { continue }
+            if hasFixedEnds, !isClosed, i == 0 || i == n - 1 { continue }
             nodes[i] = nodes[i] + delta[i]
         }
         if let bounds { for i in nodes.indices { nodes[i] = clampInside(nodes[i], bounds) } }
@@ -224,7 +224,7 @@ public extension DifferentialGrowth {
     static func ring(center: Vector2,
                      radius: Double,
                      count: Int = 24,
-                     seed: UInt64 = 0,
+                     seed: Int = 0,
                      maxSegmentLength: Double = 9,
                      repulsionRadius: Double = 18,
                      attraction: Double = 0.2,
@@ -249,7 +249,7 @@ public extension DifferentialGrowth {
     static func line(from start: Vector2,
                      to end: Vector2,
                      count: Int = 8,
-                     seed: UInt64 = 0,
+                     seed: Int = 0,
                      maxSegmentLength: Double = 9,
                      repulsionRadius: Double = 18,
                      attraction: Double = 0.2,
@@ -267,7 +267,7 @@ public extension DifferentialGrowth {
                                         maxSegmentLength: maxSegmentLength, repulsionRadius: repulsionRadius,
                                         attraction: attraction, repulsion: repulsion, alignment: alignment,
                                         jitter: jitter, growthRate: growthRate, maxNodes: maxNodes, bounds: bounds)
-        growth.fixedEnds = true
+        growth.hasFixedEnds = true
         return growth
     }
 }

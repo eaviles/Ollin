@@ -15,7 +15,7 @@ final class DistantAir: Sketch {
     override func setup() {
         for i in 0 ..< 9 {
             let land = Heightfield.diamondSquare(size: 129, roughness: 0.74,
-                                                 seed: UInt64(20 + i))
+                                                 seed: 20 + i)
             let height = 4.0 + Double(i) * 2.6
             ridges.append(land.mesh(width: 380, depth: 22, height: height)
                 .colored(by: { p, _ in

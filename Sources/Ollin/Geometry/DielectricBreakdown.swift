@@ -77,7 +77,7 @@ public final class DielectricBreakdown {
     /// filaments and cost more per step.
     public init(seeds: [Vector2], in bounds: Rectangle, resolution: Int = 140,
                 eta: Double = 1.7, ground: Ground = .border,
-                maxSites: Int = 3000, seed: UInt64 = 0) {
+                maxSites: Int = 3000, seed: Int = 0) {
         self.bounds = bounds
         let columns = Swift.max(16, resolution)
         self.columns = columns
@@ -85,7 +85,7 @@ public final class DielectricBreakdown {
         self.rows = Swift.max(16, Int((bounds.height / cellSize).rounded()))
         self.eta = Swift.max(0, eta)
         self.maxSites = maxSites
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let cells = columns * rows
         self.state = [UInt8](repeating: 0, count: cells)
         self.potential = [Double](repeating: 1, count: cells)

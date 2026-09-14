@@ -321,8 +321,8 @@ public final class SwarmChemistry {
                 buffers: [read, write, hash.sortedIndices, hash.cellStart, hash.cellCount,
                           hash.gridBuffer, recipes.read, recipes.write],
                 params: paramBytes()))
-            pingpong.advance()
-            recipes.advance()
+            pingpong.swap()
+            recipes.swap()
             stepCount &+= 1
         }
     }

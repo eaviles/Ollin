@@ -95,7 +95,7 @@ struct DiffusionLimitedAggregationTests {
 
     /// The same seed freezes the same cluster; a different seed differs.
     @Test func clusterIsSeeded() {
-        func grown(_ seed: UInt64) -> [Vector2] {
+        func grown(_ seed: Int) -> [Vector2] {
             let cluster = DiffusionLimitedAggregation(seeds: [.zero], particleRadius: 4, seed: seed)
             cluster.step(50)
             return cluster.positions

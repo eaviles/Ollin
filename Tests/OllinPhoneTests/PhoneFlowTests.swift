@@ -233,7 +233,35 @@ import Ollin
     /// the two requests do not agree, which is why this is pinned here.) If
     /// Vision ever reports the other way, this goes red and `wireField` in the
     /// phone's streamer is the one place to flip.
-    @Test(arguments: [VNGenerateOpticalFlowRequest.ComputationAccuracy.medium, .high])
+    /// Whether Vision can run its optical-flow request on this machine at all.
+    /// A CI runner's paravirtual GPU has no compute device for it ("No available
+    /// compute device for VNComputeStageMain", run 34834525008, 2026-09-14), so
+    /// the request throws there instead of reporting a sign; this asks once,
+    /// over two tiny frames, and the sign test refuses itself where the answer
+    /// is no. Vision's own failure is the probe, so nothing else can stand in.
+    static let visionComputesFlow: Bool = {
+        func frame(shift: Double) -> CGImage? {
+            let ctx = CGContext(data: nil, width: 64, height: 48, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            ctx?.setFillColor(CGColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1))
+            ctx?.fill(CGRect(x: 0, y: 0, width: 64, height: 48))
+            ctx?.setFillColor(CGColor(red: 0.9, green: 0.6, blue: 0.2, alpha: 1))
+            for i in 0..<6 {
+                ctx?.fill(CGRect(x: 6 + Double(i) * 9 + shift, y: 8 + Double(i % 3) * 12, width: 5, height: 5))
+            }
+            return ctx?.makeImage()
+        }
+        guard let older = frame(shift: 0), let newer = frame(shift: 3) else { return false }
+        let request = VNGenerateOpticalFlowRequest(targetedCGImage: newer, options: [:])
+        request.computationAccuracy = .low
+        let handler = VNImageRequestHandler(cgImage: older, options: [:])
+        guard (try? handler.perform([request])) != nil else { return false }
+        return request.results?.first is VNPixelBufferObservation
+    }()
+
+    @Test(.enabled(if: Self.visionComputesFlow, "Vision has no compute device for optical flow here"),
+          arguments: [VNGenerateOpticalFlowRequest.ComputationAccuracy.medium, .high])
     func visionsFlowRequestReportsTheMotionOfThePicture(accuracy: VNGenerateOpticalFlowRequest.ComputationAccuracy) throws {
         let older = confetti(shiftRight: 0)
         let newer = confetti(shiftRight: 8)

@@ -289,7 +289,7 @@ public final class Vehicle3D {
         // This happens before the wheels are adopted, while `driven` is still
         // the build spec rather than something to push at the solver.
         for (index, wheel) in wheels.enumerated() {
-            wheel.driven = layout.driven[index]
+            wheel.isDriven = layout.driven[index]
             wheel.adopt(by: self, index: index)
         }
     }
@@ -449,7 +449,7 @@ public final class Vehicle3D {
             guard !side.isEmpty else { continue }
             // Real tracks are turned at one sprocket, so one wheel per band is
             // driven: the one asked for, else the rearmost.
-            let sprocket = side.filter { wheels[$0].driven }.min {
+            let sprocket = side.filter { wheels[$0].isDriven }.min {
                 wheels[$0].position.z < wheels[$1].position.z
             } ?? side.min { wheels[$0].position.z < wheels[$1].position.z }!
             driven[sprocket] = true
@@ -500,7 +500,7 @@ public final class Vehicle3D {
         // Report back what the drivetrain settled on. The guard above swallows
         // the echo these assignments would otherwise send back through here.
         for (index, wheel) in wheels.enumerated() {
-            wheel.driven = layout.driven[index]
+            wheel.isDriven = layout.driven[index]
         }
     }
 
@@ -544,8 +544,8 @@ public final class Vehicle3D {
                 var axle = CJoltAxleDesc()
                 axle.leftWheel = Int32(left)
                 axle.rightWheel = right
-                axle.driven = wheels[left].driven
-                    || (right >= 0 && wheels[Int(right)].driven)
+                axle.driven = wheels[left].isDriven
+                    || (right >= 0 && wheels[Int(right)].isDriven)
                 axles.append(axle)
             }
         }
@@ -603,9 +603,9 @@ public final class Wheel3D {
     /// the drive on the next step: the vehicle keeps its top speed, which is
     /// re-geared against whatever is now driven. Set the whole list, then step,
     /// and read these back to see what the drivetrain settled on.
-    public var driven: Bool {
+    public var isDriven: Bool {
         didSet {
-            guard driven != oldValue else { return }
+            guard isDriven != oldValue else { return }
             vehicle?.driveNeedsRebuild = true
         }
     }
@@ -685,7 +685,7 @@ public final class Wheel3D {
         self.radius = radius
         self.width = width
         self.steers = steers
-        self.driven = driven
+        self.isDriven = driven
         if handBrake { handBrakeTorque = 4000 }
     }
 

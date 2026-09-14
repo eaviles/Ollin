@@ -1,5 +1,5 @@
-// The Guide's code gate: every Swift block a reader could type is compiled, and
-// every name the prose points at is resolved.
+// The code gate for the Guide and the reference pages: every Swift block a
+// reader could type is compiled, and every name the prose points at is resolved.
 //
 // The three navigation gates (check-links, guide-coverage, prose-lint) verify
 // that a page can be reached and reads well. None of them opens a code block.
@@ -75,13 +75,19 @@ enum Shape {
 func liftImports(_ body: String) -> (imports: [String], rest: String) {
     var imports: [String] = []
     var lines = body.components(separatedBy: "\n")
+    var kept: [String] = []       // comment and blank lines above the imports, put back in front
     while let first = lines.first {
         let trimmed = first.trimmingCharacters(in: .whitespaces)
         if trimmed.hasPrefix("import ") { imports.append(trimmed); lines.removeFirst(); continue }
         if trimmed.isEmpty && !imports.isEmpty { lines.removeFirst(); continue }
+        // A file that opens with a header comment (an attribution, a doc
+        // comment) and then imports is still a whole file; without this the
+        // import stayed in the body, the block read as a fragment, and the
+        // probe wrapped a whole sketch inside another class.
+        if imports.isEmpty && (trimmed.isEmpty || trimmed.hasPrefix("//")) { kept.append(first); lines.removeFirst(); continue }
         break
     }
-    return (imports, lines.joined(separator: "\n"))
+    return (imports, (kept + lines).joined(separator: "\n"))
 }
 
 /// Pseudo-code: a bare `...` stands for the part the prose is not showing, and
@@ -96,12 +102,17 @@ func isElided(_ body: String) -> Bool {
 
 func shape(of body: String) -> Shape {
     let source = liftImports(body).rest.trimmingCharacters(in: .whitespacesAndNewlines)
-    let head = source.components(separatedBy: "\n")
+    var head = source.components(separatedBy: "\n")
         .first(where: {
             let t = $0.trimmingCharacters(in: .whitespaces)
             return !t.hasPrefix("//") && !t.isEmpty
         })?.trimmingCharacters(in: .whitespaces) ?? ""
-    for keyword in ["final class ", "class ", "struct ", "enum ", "extension ", "protocol ", "actor "]
+    // An access level or an attribute in front of the type keyword does not
+    // change what the line declares: a page that opens with `private struct`
+    // or `@MainActor final class` is a declaration block all the same.
+    head = head.replacingOccurrences(of: #"^(?:(?:public|private|fileprivate|internal|package|open|final|@\w+(?:\([^)]*\))?)\s+)+"#,
+                                     with: "", options: .regularExpression)
+    for keyword in ["class ", "struct ", "enum ", "extension ", "protocol ", "actor "]
     where head.hasPrefix(keyword) { return .declaration }
     return .body
 }

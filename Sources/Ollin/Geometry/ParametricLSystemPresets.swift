@@ -179,14 +179,14 @@ public extension ParametricLSystem {
     ///   - split: How the width is shared between the two children, 0 to 1.
     ///   - exponent: How sharply width falls off. At 0.5 the two children carry
     ///     as much cross-section as their parent.
-    ///   - minimumLength: Growth stops in a branch once it would be shorter than
+    ///   - minLength: Growth stops in a branch once it would be shorter than
     ///     this, so a form can settle before it runs out of passes.
     static func taperedTree(contraction1: Double = 0.75, contraction2: Double = 0.77,
                             angle1: Double = 35, angle2: Double = -35,
                             roll1: Double = 0, roll2: Double = 0,
                             width: Double = 30, split: Double = 0.5,
                             exponent: Double = 0.4,
-                            minimumLength: Double = 0) -> ParametricLSystem {
+                            minLength: Double = 0) -> ParametricLSystem {
         // p1 : A(s,w) : s >= min -> !(w)F(s)
         //                           [+(a1)/(f1)A(s*r1, w*q^e)]
         //                           [+(a2)/(f2)A(s*r2, w*(1-q)^e)]
@@ -198,7 +198,7 @@ public extension ParametricLSystem {
                         "a1": angle1, "a2": angle2,
                         "f1": roll1, "f2": roll2,
                         "w0": width, "q": split, "e": exponent,
-                        "min": minimumLength])
+                        "min": minLength])
     }
 
     /// A branch that leans a different way each time it forks, so every seed

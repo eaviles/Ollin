@@ -134,7 +134,7 @@ drawCircle(best.values[0], best.values[1], best.values[2])
 | `tolerance` | the walk settles once a step improves the cost by less than this |
 
 The result carries the best setting found, its cost, and how many steps it took. It also
-tells you whether it `settled` on its own rather than running out of steps. A walk that used
+tells you whether it `isSettled` on its own rather than running out of steps. A walk that used
 every step may need more steps, or a larger `rate`.
 
 Two things are worth knowing. First, each parameter moves by about `rate` per step, whatever

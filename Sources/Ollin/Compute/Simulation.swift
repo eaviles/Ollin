@@ -98,7 +98,7 @@ public final class Simulation {
             drawer.recordDispatch(RecordedDispatch(
                 kernel: kernel, gridWidth: width, gridHeight: height,
                 textures: [read, write], params: bytes))
-            pingpong.advance()
+            pingpong.swap()
         }
     }
 

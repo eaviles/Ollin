@@ -112,14 +112,14 @@ private struct TimelineTransportRow: View {
         HStack(spacing: 5) {
             TransportButton(systemName: "backward.end") { model.toStart() }
                 .help("To the start")
-            TransportButton(systemName: "backward.frame") { model.step(byFrames: -1) }
+            TransportButton(systemName: "backward.frame") { model.step(-1) }
                 .keyboardShortcut(.leftArrow, modifiers: [])
                 .help("Back one frame")
             TransportButton(systemName: model.isPaused ? "play.fill" : "pause.fill",
                             prominent: true) { model.togglePlay() }
                 .keyboardShortcut(.space, modifiers: [])
                 .help(model.isPaused ? "Play" : "Pause")
-            TransportButton(systemName: "forward.frame") { model.step(byFrames: 1) }
+            TransportButton(systemName: "forward.frame") { model.step(1) }
                 .keyboardShortcut(.rightArrow, modifiers: [])
                 .help("Forward one frame")
             TransportButton(systemName: "forward.end") { model.toEnd() }

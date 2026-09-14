@@ -266,7 +266,7 @@ enum Fit
   static func minimize(from: [Double], bounds: [ClosedRange<Double>]? = default, steps: Int = default, rate: Double = default, tolerance: Double = default, _: ([Double]) -> Double) -> Fit.Result
   struct Result: Sendable
     let cost: Double
-    let settled: Bool
+    let isSettled: Bool
     let steps: Int
     let values: [Double]
 enum Girih
@@ -852,7 +852,7 @@ final class AntColony
   func pheromone(between: Int, and: Int) -> Double
   func step()
   func step(_: Int)
-  init(cities: [Vector2], ants: Int? = default, alpha: Double = default, beta: Double = default, evaporation: Double = default, elitism: Double = default, seed: UInt64 = default)
+  init(cities: [Vector2], ants: Int? = default, alpha: Double = default, beta: Double = default, evaporation: Double = default, elitism: Double = default, seed: Int = default)
   let cities: [Vector2]
   var alpha: Double { get set }
   var bestLength: Double { get }
@@ -880,7 +880,7 @@ final class Boids
   func heading(_: Int) -> Double
   func step()
   func step(_: Int)
-  init(count: Int, in: Rectangle, seed: UInt64 = default, maxSpeed: Double = default, maxForce: Double = default, perceptionRadius: Double = default, separationRadius: Double = default, margin: Double = default)
+  init(count: Int, in: Rectangle, seed: Int = default, maxSpeed: Double = default, maxForce: Double = default, perceptionRadius: Double = default, separationRadius: Double = default, margin: Double = default)
   let bounds: Rectangle
   var alignment: Double { get set }
   var cohesion: Double { get set }
@@ -910,7 +910,7 @@ final class ComputeTexture: Sendable
 final class ContinuousPacking
   func step()
   func step(_: Int)
-  init(shapes: [Shape] = default, in: Rectangle, seed: UInt64 = default, minRadius: Double, maxRadius: Double, padding: Double = default, rotation: ClosedRange<Double> = default, scale: Double = default, attemptsPerStep: Int = default)
+  init(shapes: [Shape] = default, in: Rectangle, seed: Int = default, minRadius: Double, maxRadius: Double, padding: Double = default, rotation: ClosedRange<Double> = default, scale: Double = default, attemptsPerStep: Int = default)
   var attemptsPerStep: Int { get set }
   var circles: [Circle] { get }
   var count: Int { get }
@@ -923,7 +923,7 @@ final class ContinuousPacking
 final class CrackGrowth
   @discardableResult func step() -> [CrackGrowth.Mark]
   @discardableResult func step(_: Int) -> [CrackGrowth.Mark]
-  init(width: Double, height: Double, cracks: Int = default, seedAngles: Int = default, maxCracks: Int = default, seed: UInt64 = default)
+  init(width: Double, height: Double, cracks: Int = default, seedAngles: Int = default, maxCracks: Int = default, seed: Int = default)
   let maxCracks: Int
   static func grains(from: Vector2, to: Vector2, gain: Double, count: Int = default) -> [CrackGrowth.Grain]
   struct Grain
@@ -970,7 +970,7 @@ final class DielectricBreakdown
   func step()
   func step(_: Int)
   func thicknesses(tipWidth: Double = default, exponent: Double = default) -> [Double]
-  init(seeds: [Vector2], in: Rectangle, resolution: Int = default, eta: Double = default, ground: DielectricBreakdown.Ground = default, maxSites: Int = default, seed: UInt64 = default)
+  init(seeds: [Vector2], in: Rectangle, resolution: Int = default, eta: Double = default, ground: DielectricBreakdown.Ground = default, maxSites: Int = default, seed: Int = default)
   struct Site
     let parent: Int?
     let position: Vector2
@@ -984,17 +984,17 @@ final class DielectricBreakdown
 final class DifferentialGrowth
   func step()
   func step(_: Int)
-  init(nodes: [Vector2], isClosed: Bool = default, seed: UInt64 = default, maxSegmentLength: Double = default, repulsionRadius: Double = default, attraction: Double = default, repulsion: Double = default, alignment: Double = default, jitter: Double = default, growthRate: Double = default, maxNodes: Int = default, bounds: Rectangle? = default, fixedEnds: Bool = default)
+  init(nodes: [Vector2], isClosed: Bool = default, seed: Int = default, maxSegmentLength: Double = default, repulsionRadius: Double = default, attraction: Double = default, repulsion: Double = default, alignment: Double = default, jitter: Double = default, growthRate: Double = default, maxNodes: Int = default, bounds: Rectangle? = default, hasFixedEnds: Bool = default)
   let isClosed: Bool
-  static func line(from: Vector2, to: Vector2, count: Int = default, seed: UInt64 = default, maxSegmentLength: Double = default, repulsionRadius: Double = default, attraction: Double = default, repulsion: Double = default, alignment: Double = default, jitter: Double = default, growthRate: Double = default, maxNodes: Int = default, bounds: Rectangle? = default) -> DifferentialGrowth
-  static func ring(center: Vector2, radius: Double, count: Int = default, seed: UInt64 = default, maxSegmentLength: Double = default, repulsionRadius: Double = default, attraction: Double = default, repulsion: Double = default, alignment: Double = default, jitter: Double = default, growthRate: Double = default, maxNodes: Int = default, bounds: Rectangle? = default) -> DifferentialGrowth
+  static func line(from: Vector2, to: Vector2, count: Int = default, seed: Int = default, maxSegmentLength: Double = default, repulsionRadius: Double = default, attraction: Double = default, repulsion: Double = default, alignment: Double = default, jitter: Double = default, growthRate: Double = default, maxNodes: Int = default, bounds: Rectangle? = default) -> DifferentialGrowth
+  static func ring(center: Vector2, radius: Double, count: Int = default, seed: Int = default, maxSegmentLength: Double = default, repulsionRadius: Double = default, attraction: Double = default, repulsion: Double = default, alignment: Double = default, jitter: Double = default, growthRate: Double = default, maxNodes: Int = default, bounds: Rectangle? = default) -> DifferentialGrowth
   var alignment: Double { get set }
   var attraction: Double { get set }
   var bounds: Rectangle? { get set }
   var contour: Contour { get }
   var count: Int { get }
-  var fixedEnds: Bool { get set }
   var growthRate: Double { get set }
+  var hasFixedEnds: Bool { get set }
   var jitter: Double { get set }
   var maxNodes: Int { get set }
   var maxSegmentLength: Double { get set }
@@ -1004,7 +1004,7 @@ final class DifferentialGrowth
 final class DiffusionLimitedAggregation
   @discardableResult func step() -> Int?
   func step(_: Int)
-  init(seeds: [Vector2], particleRadius: Double = default, stickiness: Double = default, bounds: Rectangle? = default, maxParticles: Int = default, seed: UInt64 = default)
+  init(seeds: [Vector2], particleRadius: Double = default, stickiness: Double = default, bounds: Rectangle? = default, maxParticles: Int = default, seed: Int = default)
   let particleRadius: Double
   struct Particle
     let parent: Int?
@@ -1075,7 +1075,7 @@ final class ForceLayout
   func settle()
   func step()
   func step(_: Int)
-  init(count: Int, edges: [(Int, Int)] = default, in: Rectangle, idealDistance: Double? = default, seed: UInt64 = default)
+  init(count: Int, edges: [(Int, Int)] = default, in: Rectangle, idealDistance: Double? = default, seed: Int = default)
   init(positions: [Vector2], edges: [(Int, Int)] = default, in: Rectangle, idealDistance: Double? = default)
   let bounds: Rectangle
   struct Edge: Sendable
@@ -1160,7 +1160,7 @@ final class Image
   var size: Vector2 { get }
 final class Kuramoto
   func advance(by: Double = default)
-  init(count: Int, coupling: Double = default, frequency: Double = default, spread: Double = default, lag: Double = default, range: Int = default, seed: UInt64 = default)
+  init(count: Int, coupling: Double = default, frequency: Double = default, spread: Double = default, lag: Double = default, range: Int = default, seed: Int = default)
   let frequency: Double
   let spread: Double
   var coherence: Double { get }
@@ -1190,8 +1190,8 @@ final class LineSpray: Sendable
 final class Meander
   func step()
   func step(_: Int)
-  init(centerline: [Vector2], seed: UInt64 = default, width: Double = default, migrationRate: Double? = default, memoryLength: Double? = default, spacing: Double? = default, cutoffDistance: Double? = default, fixedEndCount: Int = default, oxbowShrink: Double = default, recordEvery: Int = default, maxScars: Int = default)
-  static func line(from: Vector2, to: Vector2, seed: UInt64 = default, width: Double = default, migrationRate: Double? = default, memoryLength: Double? = default, spacing: Double? = default, cutoffDistance: Double? = default, recordEvery: Int = default) -> Meander
+  init(centerline: [Vector2], seed: Int = default, width: Double = default, migrationRate: Double? = default, memoryLength: Double? = default, spacing: Double? = default, cutoffDistance: Double? = default, fixedEndCount: Int = default, oxbowShrink: Double = default, recordEvery: Int = default, maxScars: Int = default)
+  static func line(from: Vector2, to: Vector2, seed: Int = default, width: Double = default, migrationRate: Double? = default, memoryLength: Double? = default, spacing: Double? = default, cutoffDistance: Double? = default, recordEvery: Int = default) -> Meander
   struct Oxbow
     var age: Int { get set }
     var points: [Vector2] { get set }
@@ -1220,7 +1220,7 @@ final class MeshField
   var tracedCopyBudget: Int { get set }
 final class MeshGrowth
   func step(_: Int = default)
-  init(mesh: Mesh, driver: GrowthDriver = default, edgeLength: Double? = default, maxVertices: Int = default, seed: UInt64 = default)
+  init(mesh: Mesh, driver: GrowthDriver = default, edgeLength: Double? = default, maxVertices: Int = default, seed: Int = default)
   var chemistry: [Double] { get }
   var chemistrySteps: Int { get set }
   var driver: GrowthDriver { get set }
@@ -1243,7 +1243,7 @@ final class MeshReactionDiffusion
   func seedPatches(count: Int, radius: Double = default)
   func step(_: Int = default)
   func value(at: Int) -> Double
-  init(mesh: Mesh, chemistry: SurfaceChemistry = default, patches: Int = default, patchRadius: Double = default, seed: UInt64 = default)
+  init(mesh: Mesh, chemistry: SurfaceChemistry = default, patches: Int = default, patchRadius: Double = default, seed: Int = default)
   let mesh: Mesh
   var chemistry: SurfaceChemistry { get set }
   var substrate: [Double] { get }
@@ -1251,8 +1251,8 @@ final class MeshReactionDiffusion
 final class NBody
   func advance(by: Double = default)
   init(bodies: [NBody.Body], gravity: Double = default, theta: Double = default, softening: Double = default)
-  static func cluster(count: Int, center: Vector2, radius: Double, bodyMass: Double = default, seed: UInt64 = default) -> NBody
-  static func disk(count: Int, center: Vector2, radius: Double, innerRadius: Double? = default, centralMass: Double = default, bodyMass: Double = default, spin: Double = default, jitter: Double = default, velocity: Vector2 = default, seed: UInt64 = default) -> NBody
+  static func cluster(count: Int, center: Vector2, radius: Double, bodyMass: Double = default, seed: Int = default) -> NBody
+  static func disk(count: Int, center: Vector2, radius: Double, innerRadius: Double? = default, centralMass: Double = default, bodyMass: Double = default, spin: Double = default, jitter: Double = default, velocity: Vector2 = default, seed: Int = default) -> NBody
   struct Body: Sendable
     init(position: Vector2, velocity: Vector2 = default, mass: Double = default)
     var mass: Double { get set }
@@ -1329,13 +1329,13 @@ final class Physarum: Sendable
   var stepSize: Double { get set }
   var turnAngle: Double { get set }
 final class PingPong<Element>: Sendable
-  func advance()
+  func swap()
   init(_: [Element])
   init(count: Int)
   var read: ComputeBuffer<Element> { get }
   var write: ComputeBuffer<Element> { get }
 final class PingPongTexture: Sendable
-  func advance()
+  func swap()
   init(width: Int, height: Int, format: ComputeTextureFormat = default)
   var read: ComputeTexture { get }
   var write: ComputeTexture { get }
@@ -1598,7 +1598,7 @@ final class TimelineModel: Observable, Sendable
   func scrub(to: Double)
   func setCurve(track: String, at: Int, _: Automation.Curve)
   func setFile(_: Foundation.URL?)
-  func step(byFrames: Int)
+  func step(_: Int)
   func toEnd()
   func toStart()
   func toggleKey(param: String)
@@ -1668,7 +1668,7 @@ final class Vehicle
   func steer(toward: Vector2) -> Vector2
   func step()
   func wander(radius: Double = default, distance: Double = default, jitter: Double = default) -> Vector2
-  init(at: Vector2, velocity: Vector2 = default, maxSpeed: Double = default, maxForce: Double = default, seed: UInt64 = default)
+  init(at: Vector2, velocity: Vector2 = default, maxSpeed: Double = default, maxForce: Double = default, seed: Int = default)
   var heading: Double { get }
   var maxForce: Double { get set }
   var maxSpeed: Double { get set }
@@ -2312,7 +2312,7 @@ open class Sketch: Sendable
   func pointSize(_: Double)
   func poissonDisk(in: Rectangle? = default, radius: Double, candidates: Int = default, maxCount: Int? = default) -> [Vector2]
   func popState()
-  func population(count: Int, genes: Int, seed: UInt64? = default) -> Population
+  func population(count: Int, genes: Int, seed: Int? = default) -> Population
   func postProcess(_: Filter)
   func powerDiagram(of: [Circle], in: Rectangle? = default) -> PowerDiagram
   func powerDiagram(sites: [WeightedSite], in: Rectangle? = default) -> PowerDiagram
@@ -2709,6 +2709,7 @@ struct Automation: Decodable, Encodable, Equatable, Sendable
   func track(named: String) -> Automation.Track?
   func value(of: String, at: Double) -> ParamStored?
   func write(to: Foundation.URL) throws
+  func write(to: String) throws
   init(tracks: [Automation.Track] = default, loops: Bool = default, speed: Double = default, start: Double = default, length: Double? = default)
   mutating func setTrack(_: Automation.Track)
   static func applying(_: [String : Double], to: ParamStored) -> ParamStored
@@ -2953,9 +2954,9 @@ struct CloudAlignment: Sendable
     var passes: Int { get set }
     var range: Double { get set }
     var samples: Int { get set }
-  var applied: Bool { get set }
   var correction: simd.simd_float4x4 { get set }
   var error: Double { get set }
+  var isApplied: Bool { get set }
   var overlap: Double { get set }
   var passes: Int { get set }
   var pose: simd.simd_float4x4 { get set }
@@ -3783,7 +3784,7 @@ struct Generator: Sendable
   static func filaments(color: Color = default, highlight: Color = default, background: Color = default, scale: Double = default, brightness: Double = default, contrast: Double = default, phase: Double = default) -> Generator
   static func gaborNoise(wavelength: Double = default, bandwidth: Double = default, angle: Double = default, spread: Double = default, impulses: Int = default, phase: Double = default, seed: Int = default, foreground: Color = default, background: Color = default) -> Generator
   static func godRays(colors: [Color] = default, background: Color = default, center: Vector2 = default, density: Double = default, breakup: Double = default, coreSize: Double = default, coreIntensity: Double = default, intensity: Double = default, bloom: Double = default, bloomTint: Color = default, phase: Double = default) -> Generator
-  static func grainGradient(colors: [Color] = default, background: Color = default, shape: Generator.GrainShape = default, softness: Double = default, intensity: Double = default, noise: Double = default, phase: Double = default) -> Generator
+  static func grainGradient(colors: [Color] = default, background: Color = default, shape: Generator.GrainShape = default, softness: Double = default, amount: Double = default, noise: Double = default, phase: Double = default) -> Generator
   static func gridLines(scale: Double = default, weight: Double = default, foreground: Color = default, background: Color = default) -> Generator
   static func gyroid(foreground: Color = default, background: Color = default, scale: Double = default, thickness: Double = default, phase: Double = default) -> Generator
   static func hexPulse(colors: [Color] = default, background: Color = default, scale: Double = default, gap: Double = default, phase: Double = default) -> Generator
@@ -3795,7 +3796,7 @@ struct Generator: Sendable
   static func noise(scale: Double = default, sharpness: Double = default, warp: Double = default, foreground: Color = default, background: Color = default) -> Generator
   static func orbitTrap(_: Generator.OrbitTrap = default, c: Vector2? = default, colors: [Color] = default, center: Vector2? = default, zoom: Double = default, iterations: Double = default, glow: Double = default, angle: Double = default) -> Generator
   static func phyllotaxis(colors: [Color] = default, background: Color = default, count: Double = default, dotSize: Double = default, phase: Double = default) -> Generator
-  static func pulsingBorder(colors: [Color] = default, background: Color = default, roundness: Double = default, thickness: Double = default, softness: Double = default, intensity: Double = default, bloom: Double = default, spots: Double = default, spotSize: Double = default, pulse: Double = default, smoke: Double = default, smokeScale: Double = default, margins: Insets = default, phase: Double = default) -> Generator
+  static func pulsingBorder(colors: [Color] = default, background: Color = default, roundness: Double = default, thickness: Double = default, softness: Double = default, amount: Double = default, bloom: Double = default, spots: Double = default, spotSize: Double = default, pulse: Double = default, smoke: Double = default, smokeScale: Double = default, margins: Insets = default, phase: Double = default) -> Generator
   static func quasicrystal(colors: [Color] = default, background: Color = default, symmetry: Double = default, scale: Double = default, contrast: Double = default, phase: Double = default) -> Generator
   static func shader(_: Shader) -> Generator
   static func smokeRing(colors: [Color] = default, background: Color = default, radius: Double = default, thickness: Double = default, fill: Double = default, scale: Double = default, detail: Double = default, phase: Double = default) -> Generator
@@ -3900,7 +3901,7 @@ struct Hatching: Equatable, Sendable
 struct Heightfield: Sendable
   func coloredMesh(width: Double = default, depth: Double = default, height: Double = default, _: Ramp, in: ClosedRange<Double> = default) -> Mesh
   func drainage(fillingHollows: Bool = default, minDrop: Double = default) -> Drainage
-  func eroded(_: Erosion, seed: UInt64 = default) -> Heightfield
+  func eroded(_: Erosion, seed: Int = default) -> Heightfield
   func eroded(_: Erosion, using: R) -> Heightfield
   func filled(minDrop: Double = default) -> Heightfield
   func image() -> Image
@@ -3913,7 +3914,7 @@ struct Heightfield: Sendable
   init(columns: Int, rows: Int, values: [Double])
   let columns: Int
   let rows: Int
-  static func diamondSquare(size: Int, roughness: Double = default, seed: UInt64 = default) -> Heightfield
+  static func diamondSquare(size: Int, roughness: Double = default, seed: Int = default) -> Heightfield
   static func diamondSquare(size: Int, roughness: Double = default, using: R) -> Heightfield
   subscript(_: Int, _: Int) -> Double { get set }
   var values: [Double] { get set }
@@ -4929,7 +4930,7 @@ struct ParametricLSystem: Sendable
   let angle: Double
   let axiom: String
   let errors: [String]
-  static func taperedTree(contraction1: Double = default, contraction2: Double = default, angle1: Double = default, angle2: Double = default, roll1: Double = default, roll2: Double = default, width: Double = default, split: Double = default, exponent: Double = default, minimumLength: Double = default) -> ParametricLSystem
+  static func taperedTree(contraction1: Double = default, contraction2: Double = default, angle1: Double = default, angle2: Double = default, roll1: Double = default, roll2: Double = default, width: Double = default, split: Double = default, exponent: Double = default, minLength: Double = default) -> ParametricLSystem
   static var alternatingLeaf: ParametricLSystem { get }
   static var compoundLeaf: ParametricLSystem { get }
   static var delayedTriangleCurve: ParametricLSystem { get }
@@ -4983,8 +4984,8 @@ struct Path: Equatable, Sendable
   var contour: Contour { get }
   var shape: Shape { get }
 struct PathTracing: Equatable, Sendable
-  init(samplesPerPixel: Int = default, maxDepth: Int = default, denoise: Bool = default)
-  var denoise: Bool { get set }
+  init(samplesPerPixel: Int = default, maxDepth: Int = default, denoises: Bool = default)
+  var denoises: Bool { get set }
   var maxDepth: Int { get set }
   var samplesPerPixel: Int { get set }
 struct Percolation: Equatable, Hashable, Sendable
@@ -5065,8 +5066,8 @@ struct Population: BidirectionalCollection, Collection, RandomAccessCollection, 
     case blend
     case independent
     case split
-  init(_: [Genome], seed: UInt64)
-  init(count: Int, genes: Int, seed: UInt64)
+  init(_: [Genome], seed: Int)
+  init(count: Int, genes: Int, seed: Int)
   mutating func breed(from: some Sequence<Int>)
   mutating func breed(scoredBy: (Genome) -> Double)
   mutating func reroll()
@@ -5447,11 +5448,11 @@ struct SceneNode: Sendable
   var wearsSeveralMaterials: Bool { get }
   var weights: [Double] { get set }
 struct SchottkyPairing: Equatable, Sendable
-  init(from: Circle, to: Circle, twist: Double = default, fromExterior: Bool = default, toExterior: Bool = default)
+  init(from: Circle, to: Circle, twist: Double = default, mapsFromExterior: Bool = default, mapsToExterior: Bool = default)
   var from: Circle { get set }
-  var fromExterior: Bool { get set }
+  var mapsFromExterior: Bool { get set }
+  var mapsToExterior: Bool { get set }
   var to: Circle { get set }
-  var toExterior: Bool { get set }
   var twist: Double { get set }
 struct SeamMap: Sendable
   func image(_: Int) -> Image?
@@ -5921,6 +5922,7 @@ struct Take: Decodable, Encodable, Equatable, Sendable
     case stylus(Stylus)
   func install(on: Sketch)
   func write(to: Foundation.URL) throws
+  func write(to: String) throws
   static func load(from: Foundation.URL) throws -> Take
   static let currentVersion: Int
   struct Change: Decodable, Encodable, Equatable, Sendable

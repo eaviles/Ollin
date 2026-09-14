@@ -73,7 +73,7 @@ final class Substrate: Sketch {
 
     private func regrow() {
         seed(citySeed)
-        field = CrackGrowth(width: width, height: height, seed: UInt64(citySeed))
+        field = CrackGrowth(width: width, height: height, seed: citySeed)
         needsGround = true
     }
 }

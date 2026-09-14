@@ -85,12 +85,12 @@ SyphonClient(named: String?, appName: String?)  // match by name and/or app
 SyphonClient(source: SyphonServerInfo)          // a specific discovered source
 
 var frame: Image?             // the latest frame, or nil if none yet
-var isActive: Bool            // connected to a live source?
+var isConnected: Bool         // connected to a live source?
 var hasNewFrame: Bool         // a new frame since the last read of frame?
 var serverName: String?
 var appName: String?
 func connect(named: String?, appName: String?)
-func stop()
+func disconnect()
 ```
 
 Make a client, then read its frames in `draw()`. `frame` gives you the latest frame as an [`Image`](../Drawing/Images.md), backed by the source's live GPU texture. You draw it like any other image, so it scales, fits into a `Rectangle`, takes a tint, and follows the transform stack:

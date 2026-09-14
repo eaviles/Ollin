@@ -26,7 +26,7 @@ final class SyphonViewer: Sketch {
 
         // Keep trying to (re)connect while there's nothing live (gently — each
         // attempt opens and drops a connection).
-        if !feed.isActive, time - lastSeen > 1.5 {
+        if !feed.isConnected, time - lastSeen > 1.5 {
             feed.connect()
             lastSeen = time
         }

@@ -51,17 +51,17 @@ public struct SchottkyPairing: Equatable, Sendable {
     public var to: Circle
     public var twist: Double
     /// Whether the `from` disc is its circle's exterior.
-    public var fromExterior: Bool
+    public var mapsFromExterior: Bool
     /// Whether the `to` disc is its circle's exterior.
-    public var toExterior: Bool
+    public var mapsToExterior: Bool
 
     public init(from: Circle, to: Circle, twist: Double = 0,
-                fromExterior: Bool = false, toExterior: Bool = false) {
+                mapsFromExterior: Bool = false, mapsToExterior: Bool = false) {
         self.from = from
         self.to = to
         self.twist = twist
-        self.fromExterior = fromExterior
-        self.toExterior = toExterior
+        self.mapsFromExterior = mapsFromExterior
+        self.mapsToExterior = mapsToExterior
     }
 }
 
@@ -99,13 +99,13 @@ private func schottkyWalk(_ pairings: [SchottkyPairing],
     var generators: [MobiusMap] = []
     bases.reserveCapacity(n * 2)
     generators.reserveCapacity(n * 2)
-    for pairing in pairings { bases.append((pairing.to, pairing.toExterior)) }
-    for pairing in pairings { bases.append((pairing.from, pairing.fromExterior)) }
+    for pairing in pairings { bases.append((pairing.to, pairing.mapsToExterior)) }
+    for pairing in pairings { bases.append((pairing.from, pairing.mapsFromExterior)) }
     for pairing in pairings {
         generators.append(MobiusMap.pairing(from: pairing.from,
-                                            fromExterior: pairing.fromExterior,
+                                            fromExterior: pairing.mapsFromExterior,
                                             to: pairing.to,
-                                            toExterior: pairing.toExterior,
+                                            toExterior: pairing.mapsToExterior,
                                             twist: pairing.twist))
     }
     for i in 0 ..< n { generators.append(generators[i].inverse) }

@@ -182,7 +182,7 @@ public final class ParticleLenia {
                 buffers: [read, write, hash.sortedIndices, hash.cellStart, hash.cellCount,
                           hash.gridBuffer],
                 params: paramBytes(dt: dt)))
-            pingpong.advance()
+            pingpong.swap()
         }
     }
 

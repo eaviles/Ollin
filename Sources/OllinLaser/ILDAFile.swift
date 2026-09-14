@@ -28,7 +28,7 @@ public enum ILDAFile {
     /// The most points one frame can hold: the record count on the wire is two
     /// bytes. A longer frame is written truncated rather than refused, and the
     /// truncation is reported by `write`.
-    public static let maximumPointsPerFrame = 65_535
+    public static let maxPointsPerFrame = 65_535
 
     /// One or more streams as an ILDA file's bytes.
     ///
@@ -55,7 +55,7 @@ public enum ILDAFile {
         var data = Data()
         let total = UInt16(clamping: frames.count)
         for (index, points) in frames.enumerated() {
-            let records = Array(points.prefix(maximumPointsPerFrame))
+            let records = Array(points.prefix(maxPointsPerFrame))
             data.append(header(records: records.count, frame: index, total: Int(total),
                                name: name, company: company, projector: projector))
             for (i, point) in records.enumerated() {
@@ -75,6 +75,14 @@ public enum ILDAFile {
         let bytes = data(streams, name: name, company: company, projector: projector)
         try bytes.write(to: url)
         return bytes.count
+    }
+
+    /// Write the streams to a file path.
+    @discardableResult
+    public static func write(_ streams: [LaserStream], to path: String, name: String = "OLLIN",
+                             company: String = "OLLIN", projector: Int = 0) throws -> Int {
+        try write(streams, to: URL(fileURLWithPath: path), name: name, company: company,
+                  projector: projector)
     }
 
     // MARK: The bytes

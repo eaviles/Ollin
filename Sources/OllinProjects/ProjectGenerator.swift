@@ -305,7 +305,7 @@ public enum ProjectGenerator {
             resources.append(".copy(\"\(ImportedShader.resourceName).metal\")")
         }
 
-        // The scene file itself, copied flat so `Scene(resource:extension:in:)`
+        // The scene file itself, copied flat so `Scene(resource:withExtension:in:)`
         // finds it at the bundle root the way a copied `.metal` is found.
         if let file = request.importedScene?.sourceFile,
            let name = request.importedScene?.resourceFileName {

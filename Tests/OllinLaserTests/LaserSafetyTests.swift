@@ -13,7 +13,7 @@ struct LaserSafetyTests {
 
     @Test func theCeilingDimsEveryChannel() {
         var safety = LaserSafety()
-        safety.maximumBrightness = 0.25
+        safety.maxBrightness = 0.25
         let guarded = safety.guarded([LaserPoint(Vector2(0, 0), color: Color(red: 1, green: 0.8, blue: 0.4))])
         #expect(abs(guarded[0].color.red - 0.25) < 1e-9)
         #expect(abs(guarded[0].color.green - 0.2) < 1e-9)
@@ -22,7 +22,7 @@ struct LaserSafetyTests {
 
     @Test func aFullCeilingLeavesTheColorAlone() {
         var safety = LaserSafety()
-        safety.maximumBrightness = 1
+        safety.maxBrightness = 1
         let color = Color(red: 0.3, green: 0.6, blue: 0.9)
         #expect(safety.guarded([LaserPoint(.zero, color: color)])[0].color == color)
     }
@@ -89,7 +89,7 @@ struct LaserSafetyTests {
 
     @Test func blankedPointsAreLeftDark() {
         var safety = LaserSafety()
-        safety.maximumBrightness = 1
+        safety.maxBrightness = 1
         let travel = (0..<20).map { LaserPoint(blankedAt: Vector2(Double($0) * 0.05, 0)) }
         let guarded = safety.guarded(travel)
         #expect(guarded.allSatisfy { $0.isBlanked && $0.color == .black })

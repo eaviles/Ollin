@@ -16,7 +16,7 @@ import Ollin
 ///
 /// ```swift
 /// var safety = LaserSafety()
-/// safety.maximumBrightness = 0.3      // quieter still
+/// safety.maxBrightness = 0.3      // quieter still
 /// safety.stallTimeout = 0.25          // blank sooner if the sketch stops
 /// ```
 public struct LaserSafety: Sendable {
@@ -24,7 +24,7 @@ public struct LaserSafety: Sendable {
     /// A ceiling on every color channel, `0…1`. The default halves the drive,
     /// because a projector at full power is the wrong way to find out that the
     /// geometry is wrong.
-    public var maximumBrightness: Double = 0.5
+    public var maxBrightness: Double = 0.5
 
     /// How far the beam has to move, in field units, to count as moving.
     public var stationaryRadius: Double = 0.004
@@ -48,7 +48,7 @@ public struct LaserSafety: Sendable {
     /// Nothing in the framework selects this for you.
     public static var unguarded: LaserSafety {
         var safety = LaserSafety()
-        safety.maximumBrightness = 1
+        safety.maxBrightness = 1
         safety.stationaryLimit = .max
         safety.stallTimeout = .infinity
         return safety
@@ -66,7 +66,7 @@ public struct LaserSafety: Sendable {
 
     /// The point list as it may actually be played.
     public func guarded(_ points: [LaserPoint]) -> [LaserPoint] {
-        let ceiling = min(max(maximumBrightness, 0), 1)
+        let ceiling = min(max(maxBrightness, 0), 1)
         var out: [LaserPoint] = []
         out.reserveCapacity(points.count)
 

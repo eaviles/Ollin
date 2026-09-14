@@ -27,7 +27,7 @@ You provide only a node count and index pairs for the edges. Positions start at 
 
 ```swift
 ForceLayout(count: Int, edges: [(Int, Int)] = [], in bounds: Rectangle,
-            idealDistance: Double? = nil, seed: UInt64 = 1)
+            idealDistance: Double? = nil, seed: Int = 1)
 ForceLayout(positions: [Vector2], edges: [(Int, Int)] = [], in bounds: Rectangle,
             idealDistance: Double? = nil)
 ```

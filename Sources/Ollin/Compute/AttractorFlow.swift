@@ -318,7 +318,7 @@ public final class AttractorFlow {
         drawer.recordDispatch(RecordedDispatch(
             kernel: kernel, threadCount: count,
             buffers: [read, write], params: paramBytes(frameDt: frameDt)))
-        pingpong.advance()
+        pingpong.swap()
     }
 
     // MARK: Measuring the system

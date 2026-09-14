@@ -45,7 +45,7 @@ import COllinShaders   // OllinParticle, OllinSpatialGrid (the shared GPU struct
 ///
 /// override func draw() {
 ///     neighborStep(step, over: hash, reading: pp.read, writing: pp.write)
-///     drawParticles(pp.read); pp.advance()
+///     drawParticles(pp.read); pp.swap()
 /// }
 /// ```
 ///

@@ -51,7 +51,7 @@ struct SteeringTests {
 
     /// Two vehicles with the same seed wander identically; different seeds diverge.
     @Test func wanderIsSeeded() {
-        func path(seed: UInt64) -> [Vector2] {
+        func path(seed: Int) -> [Vector2] {
             let v = Vehicle(at: Vector2(200, 200), velocity: Vector2(1, 0), seed: seed)
             var points: [Vector2] = []
             for _ in 0 ..< 50 {

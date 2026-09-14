@@ -22,7 +22,7 @@ final class HandTracking: Sketch {
     // not, so there are always hands to find. `--photo` takes the picture even
     // where a camera would have worked, which is how a still of this sketch is made.
     let feed = Camera.orStill(SamplePhoto.hands.load())
-    lazy var hands = HandTracker(feed, maximumHandCount: 2)
+    lazy var hands = HandTracker(feed, maxHandCount: 2)
 
     override func draw() {
         background(Color(white: 0.06))

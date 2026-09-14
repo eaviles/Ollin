@@ -40,7 +40,7 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
 
     /// How many hands the model looks for. Two people's worth: the pass costs more
     /// per hand, and four is where a stage duet still tracks.
-    private let maximumHandCount = 4
+    private let maxHandCount = 4
 
     /// Joints below this confidence are dropped (occluded or guessed).
     private let minimumJointConfidence: Float = 0.3
@@ -103,7 +103,7 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
     private func findHands(in pixelBuffer: CVPixelBuffer, timestamp: Double,
                            isTracked: Bool, turns: UInt8, lift: LiftContext?) -> [PhoneHandSample]? {
         let request = VNDetectHumanHandPoseRequest()
-        request.maximumHandCount = maximumHandCount
+        request.maximumHandCount = maxHandCount
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer,
                                             orientation: visionOrientation(forQuarterTurnsCW: turns),
                                             options: [:])

@@ -31,7 +31,7 @@ struct PackingTests {
 
     /// The same seed grows the same packing, a different seed does not.
     @Test func continuousPackingIsReproducible() {
-        func run(seed: UInt64) -> [Circle] {
+        func run(seed: Int) -> [Circle] {
             let packer = ContinuousPacking(in: bounds, seed: seed, minRadius: 4, maxRadius: 60,
                                            attemptsPerStep: 30)
             packer.step(40)

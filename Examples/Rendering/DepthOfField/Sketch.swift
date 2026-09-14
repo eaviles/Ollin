@@ -171,7 +171,7 @@ final class DepthOfField_Example: Sketch {
                                    Float(ribbonLight * 9 / Double(samplesPerPass))))
         let out = samples.write
         compute(scatter, buffers: [ribbons, out], count: count, params: params)
-        samples.advance()
+        samples.swap()
         withAccumulator(light, passes: passes) {
             blendMode(.add)
             drawParticles(out, count: count, style: .light)

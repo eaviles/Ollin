@@ -27,7 +27,7 @@ final class ForceGraph: Sketch {
         let frame = canvasRectangle.inset(by: .all(100 * scale))
         if layout == nil {
             let seeded = ForceLayout(count: 3, edges: [(0, 1), (1, 2), (2, 0)],
-                                     in: frame, seed: UInt64(variation))
+                                     in: frame, seed: variation)
             seeded.idealDistance = spacing(for: 3, in: frame)
             seeded.gravity = 0.008
             layout = seeded

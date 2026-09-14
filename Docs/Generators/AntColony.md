@@ -38,7 +38,7 @@ override func draw() {
 ```swift
 AntColony(cities: [Vector2], ants: Int? = nil, alpha: Double = 1,
           beta: Double = 4, evaporation: Double = 0.5,
-          elitism: Double = 0, seed: UInt64 = 0)
+          elitism: Double = 0, seed: Int = 0)
 ```
 
 `cities` are the points to tour, and a few dozen of them make a readable web. `ants` defaults to one ant per city. `alpha` sets how strongly the trail counts when an ant chooses, and `beta` sets how strongly closeness counts. Raise `beta` and the ants become close to greedy, and drop it to `0` and they follow pheromone alone. `evaporation` is the rate at which the colony forgets. High values keep the ants exploring, and low values commit early, sometimes to a route the colony cannot get out of. `elitism` gives the best tour so far that many extra deposits per iteration, which sharpens the web onto the current answer.

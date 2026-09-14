@@ -88,7 +88,7 @@ Three trackers carry most interactive pieces, and they all speak in named parts:
   <img src="Images/30-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face of 76 dots grouped into contour, brows, eyes, nose and lips regions, and a body skeleton of 19 dots" width="680">
 </picture>
 
-**`HandTracker`** finds up to two hands, and `maximumHandCount:` asks for more. Each is a `Hand` of 21 joints, the wrist plus four joints per finger, base to tip. `hand.point(.indexTip, in: rect)` is a fingertip as a canvas point. `finger(.index, in: rect)` gives one finger as a polyline, and `bones(in: rect)` the whole skeleton as line segments. Gestures fall out of arithmetic on a few joints. Thumb tip near index tip is a pinch. Five spread tips are an open hand. The index tip alone is a cursor that needs no mouse.
+**`HandTracker`** finds up to two hands, and `maxHandCount:` asks for more. Each is a `Hand` of 21 joints, the wrist plus four joints per finger, base to tip. `hand.point(.indexTip, in: rect)` is a fingertip as a canvas point. `finger(.index, in: rect)` gives one finger as a polyline, and `bones(in: rect)` the whole skeleton as line segments. Gestures fall out of arithmetic on a few joints. Thumb tip near index tip is a pinch. Five spread tips are an open hand. The index tip alone is a cursor that needs no mouse.
 
 **`FaceTracker`** finds every face with its head pose (`roll`/`yaw`/`pitch`) and 76 landmark points grouped into named regions: `.faceContour`, the brows, the eyes, `.nose`, the lips, the pupils. Each region comes back ready to `drawPolyline`, which is why the five-minute face overlay is a creative-coding classic.
 

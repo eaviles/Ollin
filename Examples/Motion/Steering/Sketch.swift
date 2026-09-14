@@ -29,12 +29,12 @@ final class Steering: Sketch {
             let start = path[i * 20]
             return Vehicle(at: start, velocity: Vector2(angle: Double(i), length: 2),
                            maxSpeed: (3.4 + 0.2 * Double(i % 3)) * scale, maxForce: 0.16 * scale,
-                           seed: UInt64(i))
+                           seed: i)
         }
         wanderers = (0 ..< 5).map { i in
             Vehicle(at: center + Vector2(angle: Double(i) * 1.3, length: 120 * scale),
                     velocity: Vector2(angle: Double(i) * 2.1, length: 2),
-                    maxSpeed: 2.6 * scale, maxForce: 0.1 * scale, seed: UInt64(100 + i))
+                    maxSpeed: 2.6 * scale, maxForce: 0.1 * scale, seed: 100 + i)
         }
         trails = wanderers.map { _ in [] }
         pursuer = Vehicle(at: center, maxSpeed: 3.1 * scale, maxForce: 0.09 * scale, seed: 42)

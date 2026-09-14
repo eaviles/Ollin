@@ -853,7 +853,7 @@ struct SnapshotTierTests {
         #expect(wheel.brakeTorque == 1234)
         #expect(wheel.handBrakeTorque == 567)
         #expect(wheel.grip == 1.4)
-        #expect(back.wheels[1].driven, "and which wheels the engine turns")
+        #expect(back.wheels[1].isDriven, "and which wheels the engine turns")
         #expect(back.engineTorque == 640)
         #expect(back.topSpeed == 22)
         #expect(back.body.mass == 900)

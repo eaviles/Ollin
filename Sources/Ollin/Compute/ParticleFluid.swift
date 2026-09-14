@@ -172,7 +172,7 @@ public final class ParticleFluid {
                 buffers: [scratch, write, hash.sortedIndices, hash.cellStart,
                           hash.cellCount, hash.gridBuffer, densities, read],
                 params: bytes))
-            pingpong.advance()
+            pingpong.swap()
         }
         interactionStrength = 0   // the pull/push lasts one frame
     }

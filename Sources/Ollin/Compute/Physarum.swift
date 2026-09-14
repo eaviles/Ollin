@@ -132,7 +132,7 @@ public final class Physarum {
             kernel: diffuseKernel, gridWidth: width, gridHeight: height,
             textures: [read, write], buffers: [nil, nil, deposit],
             params: packed(SIMD4<Float>(Float(evaporation), 0, 0, 0))))
-        trail.advance()
+        trail.swap()
         // 4. Colorize the fresh trail into the display texture.
         drawer.recordDispatch(RecordedDispatch(
             kernel: colorizeKernel, gridWidth: width, gridHeight: height,

@@ -71,7 +71,7 @@ final class MeshGrowthDemo: Sketch {
         switch driver {
         case .chemistry:
             let growth = MeshGrowth(mesh: seedMesh, driver: .chemical(.coral),
-                                    edgeLength: coarseness, seed: UInt64(variation))
+                                    edgeLength: coarseness, seed: variation)
             // The chemistry's pattern covers only part of the surface where the
             // other drivers push everywhere, so it earns a faster rate; the
             // settle hands it a formed pattern to grow from on the first step.
@@ -81,7 +81,7 @@ final class MeshGrowthDemo: Sketch {
 
         case .curvature:
             return MeshGrowth(mesh: seedMesh, driver: .curvature,
-                              edgeLength: coarseness, seed: UInt64(variation))
+                              edgeLength: coarseness, seed: variation)
 
         case .rim:
             // Grow only near the equator. The band is soft-edged so the folds
@@ -90,13 +90,13 @@ final class MeshGrowthDemo: Sketch {
                                     driver: .field { position, _ in
                                         1 - smoothstep(0.05, 0.45, abs(position.y))
                                     },
-                                    edgeLength: coarseness, seed: UInt64(variation))
+                                    edgeLength: coarseness, seed: variation)
             growth.growthRate = 0.9
             return growth
 
         case .even:
             return MeshGrowth(mesh: seedMesh, driver: .uniform,
-                              edgeLength: coarseness, seed: UInt64(variation))
+                              edgeLength: coarseness, seed: variation)
         }
     }
 }

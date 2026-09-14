@@ -57,14 +57,14 @@ public final class AntColony {
     /// on closeness and the web differentiates as tours come in.
     public init(cities: [Vector2], ants: Int? = nil, alpha: Double = 1,
                 beta: Double = 4, evaporation: Double = 0.5,
-                elitism: Double = 0, seed: UInt64 = 0) {
+                elitism: Double = 0, seed: Int = 0) {
         self.cities = cities
         self.ants = Swift.max(1, ants ?? cities.count)
         self.alpha = alpha
         self.beta = beta
         self.evaporation = Swift.min(Swift.max(evaporation, 0), 1)
         self.elitism = Swift.max(0, elitism)
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
 
         let n = cities.count
         self.pheromone = [Double](repeating: 1, count: n * n)

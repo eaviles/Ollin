@@ -129,8 +129,8 @@ public final class NBody {
                             centralMass: Double = 500_000, bodyMass: Double = 1,
                             spin: Double = 1, jitter: Double = 0.08,
                             velocity: Vector2 = .zero,
-                            seed: UInt64 = 1) -> NBody {
-        var rng = SplitMix64(seed: seed)
+                            seed: Int = 1) -> NBody {
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let outer = max(radius, 1)
         let inner = min(max(innerRadius ?? outer * 0.12, 0), outer * 0.95)
         let mass = max(bodyMass, 0)
@@ -170,8 +170,8 @@ public final class NBody {
     /// motion, so the whole thing collapses inward, swings through itself,
     /// and puffs into a bound swarm.
     public static func cluster(count: Int, center: Vector2, radius: Double,
-                               bodyMass: Double = 40, seed: UInt64 = 1) -> NBody {
-        var rng = SplitMix64(seed: seed)
+                               bodyMass: Double = 40, seed: Int = 1) -> NBody {
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         var bodies = [Body]()
         bodies.reserveCapacity(count)
         for _ in 0 ..< max(count, 0) {

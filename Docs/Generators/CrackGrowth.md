@@ -26,7 +26,7 @@ Each crack also lays a translucent **wash** across the open space on one side of
 ```swift
 CrackGrowth(width: Double, height: Double,
             cracks: Int = 3, seedAngles: Int = 16,
-            maxCracks: Int = 200, seed: UInt64 = 0)
+            maxCracks: Int = 200, seed: Int = 0)
 ```
 
 `CrackGrowth` is a stateful stepper that you hold across frames. `cracks` sets how many start moving at once over a grid seeded with `seedAngles` phantom angles, and the population then grows to `maxCracks`. The same `seed` always grows the same pattern.
@@ -40,7 +40,7 @@ override func draw() {
     if frameCount == 1 { background(.white) }
     for mark in field.step(4) {
         fill(Color.black.withAlpha(0.33))
-        drawPoint(mark.point)
+        drawPoint(at: mark.point)
     }
 }
 ```

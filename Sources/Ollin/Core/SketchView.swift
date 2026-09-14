@@ -3194,7 +3194,7 @@ public extension OllinApp {
             pathTracedExport = PathTracing(
                 samplesPerPixel: n ?? PathTracing.tierSamples(for: renderQuality),
                 maxDepth: depth ?? 8,
-                denoise: args.contains("--denoise"))
+                denoises: args.contains("--denoise"))
         }
         // `--seed N` reseeds the sketch before its `setup()` on every export
         // path, so a variation found in the inspector or on a contact sheet

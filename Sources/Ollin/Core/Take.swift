@@ -108,6 +108,11 @@ public struct Take: Codable, Equatable, Sendable {
         try encoder.encode(self).write(to: url, options: .atomic)
     }
 
+    /// Write the take to a file path, atomically, as sorted JSON.
+    public func write(to path: String) throws {
+        try write(to: URL(fileURLWithPath: path))
+    }
+
     // MARK: Replay
 
     /// Prepare a fresh sketch to play this take back: seed it, restore the

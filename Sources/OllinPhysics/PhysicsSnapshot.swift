@@ -69,7 +69,7 @@ public struct PhysicsSnapshot: Sendable, Equatable {
 
     /// Reads a snapshot bundled as a resource. Pass the bundle explicitly
     /// (`.module` from a sketch's own target).
-    public init?(resource name: String, extension ext: String = "physics",
+    public init?(resource name: String, withExtension ext: String = "physics",
                  in bundle: Bundle) {
         guard let url = bundle.url(forResource: name, withExtension: ext),
               let snapshot = try? PhysicsSnapshot(contentsOf: url) else {
@@ -81,6 +81,11 @@ public struct PhysicsSnapshot: Sendable, Equatable {
     /// Writes the snapshot to a file.
     public func write(to url: URL) throws {
         try data.write(to: url)
+    }
+
+    /// Writes the snapshot to a file path.
+    public func write(to path: String) throws {
+        try write(to: URL(fileURLWithPath: path))
     }
 
     /// What goes wrong reading a snapshot.
@@ -319,6 +324,11 @@ extension World3D {
     /// Take a snapshot and write it to a file.
     public func save(to url: URL) throws {
         try snapshot().write(to: url)
+    }
+
+    /// Take a snapshot and write it to a file path.
+    public func save(to path: String) throws {
+        try save(to: URL(fileURLWithPath: path))
     }
 
     /// Read a snapshot from a file and restore it. Returns false, leaving the
@@ -1339,7 +1349,7 @@ private struct SnapshotWriter {
         f64(wheel.radius)
         f64(wheel.width)
         bool(wheel.steers)
-        bool(wheel.driven)
+        bool(wheel.isDriven)
         f64(wheel.maxSteerAngle)
         f64(wheel.casterAngle)
         f64(wheel.suspensionLength)

@@ -93,7 +93,7 @@ public final class PPS {
             kernel: kernel, threadCount: count,
             buffers: [read, write, hash.sortedIndices, hash.cellStart, hash.cellCount,
                       hash.gridBuffer], params: bytes))
-        pingpong.advance()
+        pingpong.swap()
     }
 
     /// The turn + move kernel. `custom` carries α (rad), β (rad), and the step speed;

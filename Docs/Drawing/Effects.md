@@ -427,10 +427,10 @@ drawImage(generate(.meshGradient(phase: time)).image, 0, 0)
   wavy-line stripes, where `shape` (0…3) morphs zigzag → sine → irregular mixes.
 - **`.dotOrbit(colors:background:scale:size:sizeVariation:spread:steps:phase:)`** a grid of
   dots, each orbiting its own cell on its own phase, colors quantized to flat print-like shades.
-- **`.grainGradient(colors:background:shape:softness:intensity:noise:phase:)`** poster-style
+- **`.grainGradient(colors:background:shape:softness:amount:noise:phase:)`** poster-style
   banded gradients over an animated field (`GrainShape`: `.wave` / `.dots` / `.truchet` /
   `.corners` / `.ripple` / `.blob` / `.sphere`), the band edges chewed by film grain.
-- **`.pulsingBorder(colors:background:roundness:thickness:softness:intensity:bloom:spots:spotSize:pulse:smoke:smokeScale:margins:phase:)`**
+- **`.pulsingBorder(colors:background:roundness:thickness:softness:amount:bloom:spots:spotSize:pulse:smoke:smokeScale:margins:phase:)`**
   a glowing rounded border hugging the layer edge (inset by `margins`, in layer pixels),
   up to eight light spots per color racing the perimeter, with a heartbeat `pulse` and
   smoke wisps.
@@ -804,7 +804,7 @@ override func draw() {
             drawCircle(width / 2, height / 2, 300)
         }
         .post(.gaussianBlur(radius: 40))
-        .scale(0.5)                              // half-res: the blur hides it
+        .scaled(0.5)                             // half-res: the blur hides it
 
         layer {                                  // on top: marks that glow…
             noStroke(); fill(.cyan)

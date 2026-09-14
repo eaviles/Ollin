@@ -306,7 +306,7 @@ public func packShapes<R: RandomNumberGenerator>(
     using rng: inout R
 ) -> [Shape] {
     guard !shapes.isEmpty, count > 0 else { return [] }
-    let packer = ContinuousPacking(shapes: shapes, in: bounds, seed: rng.next(),
+    let packer = ContinuousPacking(shapes: shapes, in: bounds, seed: Int(truncatingIfNeeded: rng.next()),
                                    minRadius: minRadius, maxRadius: maxRadius, padding: padding,
                                    rotation: rotation, scale: scale, attemptsPerStep: 20)
     var stalledSteps = 0
@@ -423,13 +423,13 @@ public final class ContinuousPacking {
     ///   - rotation: The random rotation range for shapes (radians).
     ///   - scale: How much of its circle each shape fills.
     ///   - attemptsPerStep: Placement attempts per `step()`.
-    public init(shapes: [Shape] = [], in bounds: Rectangle, seed: UInt64 = 0,
+    public init(shapes: [Shape] = [], in bounds: Rectangle, seed: Int = 0,
                 minRadius: Double, maxRadius: Double, padding: Double = 0,
                 rotation: ClosedRange<Double> = 0 ... Double.tau, scale: Double = 1,
                 attemptsPerStep: Int = 10) {
         self.bag = shapes
         self.bounds = bounds
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         self.minRadius = minRadius
         self.maxRadius = maxRadius
         self.padding = padding

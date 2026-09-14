@@ -41,12 +41,12 @@ public final class Vehicle {
 
     /// A creature at `position`, still by default.
     public init(at position: Vector2, velocity: Vector2 = .zero,
-                maxSpeed: Double = 3, maxForce: Double = 0.12, seed: UInt64 = 0) {
+                maxSpeed: Double = 3, maxForce: Double = 0.12, seed: Int = 0) {
         self.position = position
         self.velocity = velocity
         self.maxSpeed = maxSpeed
         self.maxForce = maxForce
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
     }
 
     /// The heading (radians), from the velocity.

@@ -327,7 +327,7 @@ struct TextureFilteringTests {
     /// arithmetic had nowhere to land.
     @Test(.enabled(if: Snapshot.hasMetal))
     func theTracedExportReadsTheSameLevels() throws {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 16, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 16, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let smooth = spread(try #require(OllinApp.image(of: { let s = Wall(); s.texture = Self.loaded(); return s }(), frame: 1)))
         let noisy = spread(try #require(OllinApp.image(of: { let s = Wall(); s.texture = Self.authored(); return s }(), frame: 1)))

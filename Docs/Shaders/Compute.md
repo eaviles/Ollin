@@ -269,7 +269,7 @@ compute(sim, over: buffer)
 // Ping-pong, read one and write the other (swap between frames). The two may
 // hold different element types: a segment list read, a particle buffer written.
 compute(sim, reading: pp.read, writing: pp.write)
-pp.advance()
+pp.swap()
 
 // Up to ten buffers of any element types, bound at indices 0, 1, 2, … in order;
 // the thread count defaults to the first buffer's element count.
@@ -349,7 +349,7 @@ kernel void my_step(
 
 override func draw() {
     neighborStep(step, over: hash, reading: particles.read, writing: particles.write)
-    particles.advance()
+    particles.swap()
     drawParticles(particles.read)
 }
 ```

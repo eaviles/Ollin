@@ -199,7 +199,7 @@ struct LaserWireTests {
     @Test func anAnnouncementNamesTheMachineAndItsBuffer() {
         let device = EtherDreamDevice(host: "10.0.0.7", macAddress: "00:11:22:aa:bb:cc",
                                       hardwareRevision: 1, softwareRevision: 2,
-                                      bufferCapacity: 1_799, maximumPointRate: 100_000,
+                                      bufferCapacity: 1_799, maxPointRate: 100_000,
                                       status: .idle)
         let bytes = device.encode()
         #expect(bytes.count == 36)
@@ -210,7 +210,7 @@ struct LaserWireTests {
     @Test func aDacIsBuiltFromWhatItSaidAboutItself() {
         let device = EtherDreamDevice(host: "10.0.0.7", macAddress: "00:11:22:aa:bb:cc",
                                       hardwareRevision: 1, softwareRevision: 2,
-                                      bufferCapacity: 900, maximumPointRate: 12_000,
+                                      bufferCapacity: 900, maxPointRate: 12_000,
                                       status: .idle)
         let dac = EtherDreamDAC(device: device)
         #expect(dac.host == "10.0.0.7")

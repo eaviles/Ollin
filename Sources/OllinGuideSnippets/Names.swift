@@ -78,10 +78,10 @@ func anchorKey(_ text: String) -> String {
 func exampleNameProblems(page: String, text: String, repo: String) -> [NameProblem] {
     var out: [NameProblem] = []
     for (index, line) in text.components(separatedBy: "\n").enumerated() {
-        guard let range = line.range(of: #"\(\.\./Examples/([A-Za-z0-9]+)/\)"#,
+        guard let range = line.range(of: #"\((?:\.\./)+Examples/([A-Za-z0-9]+)/\)"#,
                                      options: .regularExpression) else { continue }
         let group = String(line[range])
-            .replacingOccurrences(of: "(../Examples/", with: "")
+            .replacingOccurrences(of: #"^\((?:\.\./)+Examples/"#, with: "", options: .regularExpression)
             .replacingOccurrences(of: "/)", with: "")
         let folder = repo + "/Examples/" + group
         let present = Set((try? FileManager.default.contentsOfDirectory(atPath: folder)) ?? [])

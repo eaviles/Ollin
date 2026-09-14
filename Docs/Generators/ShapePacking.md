@@ -50,7 +50,7 @@ Compute the packing once and hold it in a stored property. Then animate somethin
 `packShapes` fills the region in one call. `ContinuousPacking` runs the same packing, but it stays open across frames. You call `step()` on it each frame, so the packing *fills in over time*. Big gaps fill first, so each new shape is smaller than the last. The region therefore grows denser over time, from a few large shapes to a scatter of tiny ones.
 
 ```swift
-ContinuousPacking(shapes: [Shape] = [], in: Rectangle, seed: UInt64 = 0,
+ContinuousPacking(shapes: [Shape] = [], in: Rectangle, seed: Int = 0,
                   minRadius: Double, maxRadius: Double, padding: Double = 0,
                   rotation: ClosedRange<Double> = 0 ... Double.tau, scale: Double = 1,
                   attemptsPerStep: Int = 10)

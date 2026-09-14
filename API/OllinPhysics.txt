@@ -301,11 +301,11 @@ final class Wheel3D
   var brakeTorque: Double { get set }
   var casterAngle: Double { get set }
   var center: Vector3 { get }
-  var driven: Bool { get set }
   var grip: Double { get set }
   var groundBody: Body3D? { get }
   var groundNormal: Vector3 { get }
   var handBrakeTorque: Double { get set }
+  var isDriven: Bool { get set }
   var isOnGround: Bool { get }
   var maxSteerAngle: Double { get set }
   var position: Vector3 { get set }
@@ -382,6 +382,7 @@ final class World3D
   func removeAll()
   func restore(_: PhysicsSnapshot, resolving: PhysicsAssetResolver? = default)
   func save(to: Foundation.URL) throws
+  func save(to: String) throws
   func snapshot() -> PhysicsSnapshot
   func sweep(_: Collider3D, from: Vector3, to: Vector3, rotated: Double = default, axis: Vector3 = default, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> Hit3D?
   func sweepAll(_: Collider3D, from: Vector3, to: Vector3, rotated: Double = default, axis: Vector3 = default, ignoring: [any Colliding3D] = default, includingSensors: Bool = default, as: CollisionGroup = default) -> [Hit3D]
@@ -472,9 +473,10 @@ struct PhysicsSnapshot: Equatable, Sendable
   enum Failure: Equatable, Error, Hashable, Sendable
     case unreadable
   func write(to: Foundation.URL) throws
+  func write(to: String) throws
   init(contentsOf: Foundation.URL) throws
   init?(data: Foundation.Data)
-  init?(resource: String, extension: String = default, in: Foundation.Bundle)
+  init?(resource: String, withExtension: String = default, in: Foundation.Bundle)
   let bodyCount: Int
   let data: Foundation.Data
   let jointCount: Int

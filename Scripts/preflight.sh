@@ -19,13 +19,16 @@
 #   always
 #       -> the em-dash and invisible-character net over the added diff lines
 #       -> the parked-thread net over Tests/
+#       -> Scripts/check-api-names.sh (the public surface under API/ against
+#          the settled naming rules; a listing is recorded on purpose, so
+#          this reads the whole surface rather than the diff; under a second)
 #       -> Scripts/check-names.sh (every backticked name in the prose is real,
 #          every labeled call matches a public overload, every pointer from
 #          the contributor files lands; a rename in Sources/ stales prose the
 #          diff never touched, so this one is not scoped to the diff; ~2 s)
 #   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
-#     a Guide prose or framework change
+#     a Guide or Docs prose change, or a framework change
 #       -> Scripts/check-snippets.sh (the code in the prose, compiled)
 #   Guide/ or Docs/ prose changed
 #       -> Scripts/prose-lint.sh over just those files
@@ -158,6 +161,11 @@ fi
 # Docs page the diff never touched, and that is the case it exists for.
 run "check-names" Scripts/check-names.sh
 
+# The public surface against the settled naming rules. The listings under
+# API/ are what a change to the surface records, so this reads them whole:
+# a name that broke a rule a week ago is as wrong as one in this diff.
+run "check-api-names" Scripts/check-api-names.sh
+
 # Navigation and coverage read the whole tree in seconds, so any prose or
 # image change buys both. A new example is a navigation change too: its folder
 # appears and the group README does not follow it by itself.
@@ -168,14 +176,15 @@ else
     skip "check-links and guide-coverage" "no prose, image, or example change"
 fi
 
-# The code inside the prose. A Guide change can break a snippet outright, and a
-# framework change can rename what every snippet in the book calls, so both buy
-# this one. About 35 seconds for the whole Guide, so it runs whole rather than
-# scoped: a rename in Sources/ shows up in a chapter the diff never touched.
-if [[ -n "$guide_prose" || -n "$framework" || $milestone -eq 1 ]]; then
+# The code inside the prose, the Guide's and the reference pages'. A prose
+# change can break a snippet outright, and a framework change can rename what
+# every snippet calls, so both buy this one. About two minutes for both trees
+# on the M2, so it runs whole rather than scoped: a rename in Sources/ shows
+# up in a page the diff never touched.
+if [[ -n "$reader_prose" || -n "$framework" || $milestone -eq 1 ]]; then
     run "check-snippets" Scripts/check-snippets.sh
 else
-    skip "check-snippets" "no Guide prose or framework change"
+    skip "check-snippets" "no Guide or Docs prose change, and no framework change"
 fi
 
 # Vale, scoped to the reader-facing files actually touched.

@@ -342,7 +342,7 @@ public struct ScanGraph {
 
         let alignment = patch.align(keyframes[index].cloud, from: rough.pose,
                                     settings: settings.matching)
-        guard alignment.applied,
+        guard alignment.isApplied,
               alignment.overlap >= settings.minOverlap,
               alignment.error <= settings.maxError else { return nil }
         // However it got there, the answer still has to be a place this keyframe could

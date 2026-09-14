@@ -38,7 +38,7 @@ A **flock of boids** is a crowd of simple agents that each follow local rules. T
 #### Building and stepping
 
 ```swift
-Boids(count: Int, in bounds: Rectangle, seed: UInt64 = 0,
+Boids(count: Int, in bounds: Rectangle, seed: Int = 0,
       maxSpeed: Double = 3, maxForce: Double = 0.12,
       perceptionRadius: Double = 50, separationRadius: Double = 22, margin: Double = 60)
 ```

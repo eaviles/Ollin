@@ -463,7 +463,7 @@ extension Scene {
     /// Load a scene from a file `path`. Sugar over `Scene(contentsOf:)`.
     public init?(path: String) { self.init(contentsOf: URL(fileURLWithPath: path)) }
 
-    /// Load a scene bundled as a resource. Mirrors `Mesh(resource:extension:in:)`;
+    /// Load a scene bundled as a resource. Mirrors `Mesh(resource:withExtension:in:)`;
     /// `in:` has no default, since a default argument would resolve to *Ollin's*
     /// bundle, not the caller's.
     public init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {

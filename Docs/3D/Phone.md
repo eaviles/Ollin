@@ -404,7 +404,7 @@ let fix = world.add(cameraCloud, correcting: pose)
 fix.pose          // the pose the cloud actually went in at
 fix.error         // what is left between the frame and the scan, in meters
 fix.overlap       // how much of the frame found a surface to match, 0 to 1
-fix.applied       // false when the fit was held back
+fix.isApplied       // false when the fit was held back
 world.correction  // the whole fix so far: placed = correction * reported
 ```
 

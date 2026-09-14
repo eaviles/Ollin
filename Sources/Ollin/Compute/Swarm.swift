@@ -175,7 +175,7 @@ public final class Swarm {
             buffers: [read, write, hash.sortedIndices, hash.cellStart, hash.cellCount,
                       hash.gridBuffer],
             params: paramBytes(frameDt: frameDt)))
-        pingpong.advance()
+        pingpong.swap()
     }
 
     private func paramBytes(frameDt: Double) -> [UInt8] {

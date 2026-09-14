@@ -102,7 +102,7 @@ public final class ForceLayout {
     /// A layout of `count` nodes joined by `edges` (pairs of node indices),
     /// placed at seeded random positions inside `bounds`.
     public init(count: Int, edges: [(Int, Int)] = [], in bounds: Rectangle,
-                idealDistance: Double? = nil, seed: UInt64 = 1) {
+                idealDistance: Double? = nil, seed: Int = 1) {
         let n = Swift.max(count, 0)
         self.bounds = bounds
         self.edges = edges.map { Edge($0.0, $0.1) }
@@ -113,7 +113,7 @@ public final class ForceLayout {
         self.initialTemperature = start
         self.temperature = start
         self.coolingSteps = 250
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         self.positions = (0 ..< n).map { _ in
             Vector2(bounds.x + Double.random(in: 0 ..< 1, using: &rng) * bounds.width,
                     bounds.y + Double.random(in: 0 ..< 1, using: &rng) * bounds.height)

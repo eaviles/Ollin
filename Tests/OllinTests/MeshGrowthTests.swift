@@ -281,7 +281,7 @@ struct MeshGrowthTests {
     /// symmetry break rather than being ignored.
     @Test
     func differentSeedsDiverge() {
-        func run(_ seed: UInt64) -> [Vector3] {
+        func run(_ seed: Int) -> [Vector3] {
             let growth = MeshGrowth(mesh: .icosphere(subdivisions: 2), driver: .curvature, seed: seed)
             growth.maxVertices = 1500
             growth.step(25)

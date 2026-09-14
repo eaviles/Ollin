@@ -112,8 +112,8 @@ public extension Heightfield {
     /// high values stay jagged at every scale (0.5 is a natural landscape).
     /// The result is normalized to `0…1` and reproduces exactly from `seed`.
     static func diamondSquare(size: Int, roughness: Double = 0.5,
-                              seed: UInt64 = 1) -> Heightfield {
-        var rng = SplitMix64(seed: seed)
+                              seed: Int = 1) -> Heightfield {
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         return diamondSquare(size: size, roughness: roughness, using: &rng)
     }
 
@@ -253,8 +253,8 @@ public extension Heightfield {
     /// field, parameters, and `seed` always erode identically (thermal
     /// relaxation uses no randomness at all). Heights never drop below 0, so
     /// runoff cannot dig unbounded drains at the borders.
-    func eroded(_ erosion: Erosion, seed: UInt64 = 1) -> Heightfield {
-        var rng = SplitMix64(seed: seed)
+    func eroded(_ erosion: Erosion, seed: Int = 1) -> Heightfield {
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         return eroded(erosion, using: &rng)
     }
 

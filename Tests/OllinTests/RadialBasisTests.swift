@@ -216,7 +216,7 @@ struct FitTests {
     /// A walk that has arrived says so, rather than spending every step it was given.
     @Test func itSaysWhenItHasSettled() {
         let result = Fit.minimize(from: [1], steps: 5000, rate: 0.1) { p in p[0] * p[0] }
-        #expect(result.settled)
+        #expect(result.isSettled)
         #expect(result.steps < 5000, "it used all \(result.steps) steps")
     }
 }

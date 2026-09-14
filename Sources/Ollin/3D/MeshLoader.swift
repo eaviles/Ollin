@@ -43,7 +43,7 @@ extension Mesh {
     /// Load a model from a file `path`. Sugar over `Mesh(contentsOf:)`.
     public init?(path: String) { self.init(contentsOf: URL(fileURLWithPath: path)) }
 
-    /// Load a model bundled as a resource. Mirrors `Image(resource:extension:in:)`
+    /// Load a model bundled as a resource. Mirrors `Image(resource:withExtension:in:)`
     /// and the font loaders, `in:` has no default, since a default argument would
     /// resolve to *Ollin's* bundle, not the caller's.
     public init?(resource name: String, withExtension ext: String?, in bundle: Bundle) {

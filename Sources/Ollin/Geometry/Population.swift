@@ -154,11 +154,11 @@ public struct Population: Sendable, RandomAccessCollection {
 
     /// Build `count` random genomes of `genes` genes each. `seed` makes the opening
     /// generation, and everything bred from it, reproducible.
-    public init(count: Int, genes: Int, seed: UInt64) {
+    public init(count: Int, genes: Int, seed: Int) {
         precondition(count > 0, "A Population needs at least one genome")
         precondition(genes > 0, "A Population needs at least one gene")
         geneCount = genes
-        var generator = SplitMix64(seed: seed)
+        var generator = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         genomes = (0..<count).map { _ in Genome(count: genes, using: &generator) }
         rng = generator
     }
@@ -166,14 +166,14 @@ public struct Population: Sendable, RandomAccessCollection {
     /// Build a population from genomes you already have: the ones you kept from a run,
     /// or a starting point you wrote out by hand. They must all be the same length; a
     /// shorter one is padded and a longer one trimmed to the first genome's.
-    public init(_ genomes: [Genome], seed: UInt64) {
+    public init(_ genomes: [Genome], seed: Int) {
         precondition(!genomes.isEmpty, "A Population needs at least one genome")
         let width = genomes[0].count
         geneCount = width
         self.genomes = genomes.map { g in
             g.count == width ? g : Genome((0..<width).map { g[$0] })
         }
-        rng = SplitMix64(seed: seed)
+        rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
     }
 
     public var startIndex: Int { 0 }
@@ -278,7 +278,7 @@ public extension Sketch {
     /// `seed` (this sketch's `variation` by default). Build it in `setup()`, draw its
     /// genomes however you like, and `breed` when someone has picked their favorites.
     /// See `Population`.
-    func population(count: Int, genes: Int, seed: UInt64? = nil) -> Population {
-        Population(count: count, genes: genes, seed: seed ?? UInt64(variation))
+    func population(count: Int, genes: Int, seed: Int? = nil) -> Population {
+        Population(count: count, genes: genes, seed: seed ?? variation)
     }
 }

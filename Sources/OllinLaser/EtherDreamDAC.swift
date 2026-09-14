@@ -61,9 +61,9 @@ public final class EtherDreamDAC: @unchecked Sendable {
     }
 
     /// The most points to put in one command.
-    public var maximumBatch: Int {
-        get { settings.withLock { $0.maximumBatch } }
-        set { settings.withLock { $0.maximumBatch = max(1, newValue) } }
+    public var maxBatch: Int {
+        get { settings.withLock { $0.maxBatch } }
+        set { settings.withLock { $0.maxBatch = max(1, newValue) } }
     }
 
     /// How long the last frame may keep playing before the beam is blanked.
@@ -82,7 +82,7 @@ public final class EtherDreamDAC: @unchecked Sendable {
         var pointsPerSecond = 20_000
         var bufferCapacity = 1_799
         var headroom = 0.25
-        var maximumBatch = 400
+        var maxBatch = 400
         var stallTimeout = 0.5
     }
     private let settings = OSAllocatedUnfairLock(initialState: Settings())
@@ -118,8 +118,8 @@ public final class EtherDreamDAC: @unchecked Sendable {
     public convenience init(device: EtherDreamDevice) {
         self.init(host: device.host)
         bufferCapacity = max(1, device.bufferCapacity)
-        if device.maximumPointRate > 0 {
-            pointsPerSecond = min(pointsPerSecond, device.maximumPointRate)
+        if device.maxPointRate > 0 {
+            pointsPerSecond = min(pointsPerSecond, device.maxPointRate)
         }
     }
 
@@ -290,7 +290,7 @@ public final class EtherDreamDAC: @unchecked Sendable {
             askAgain(after: 0.002)
             return
         }
-        let points = take(min(room, settings.maximumBatch), stallTimeout: settings.stallTimeout)
+        let points = take(min(room, settings.maxBatch), stallTimeout: settings.stallTimeout)
         guard !points.isEmpty else {
             askAgain(after: 0.02)
             return

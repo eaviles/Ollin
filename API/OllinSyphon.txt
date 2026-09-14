@@ -3,14 +3,14 @@
 final class SyphonClient: Sendable
   convenience init()
   func connect(named: String? = default, appName: String? = default)
-  func stop()
+  func disconnect()
   init(named: String? = default, appName: String? = default)
   init(source: SyphonServerInfo)
   static func availableServers() -> [SyphonServerInfo]
   var appName: String? { get }
   var frame: Image? { get }
   var hasNewFrame: Bool { get }
-  var isActive: Bool { get }
+  var isConnected: Bool { get }
   var serverName: String? { get }
 final class SyphonServer: SketchExtension, Sendable
   func frameRendered(_: Sketch, texture: any Metal.MTLTexture)

@@ -96,15 +96,15 @@ struct TrackedVehicle3DTests {
     /// with nothing marked it is the rearmost.
     @Test func eachBandIsTurnedAtOneSprocket() {
         let (_, byDefault) = standing()
-        let driven = byDefault.wheels.filter(\.driven)
+        let driven = byDefault.wheels.filter(\.isDriven)
         #expect(driven.count == 2)
         #expect(driven.allSatisfy { $0.position.z == -1.8 })
 
         let world = World3D()
         world.ground = 0
         let asked = Self.crawler(in: world, sprocket: 4)!
-        #expect(asked.wheels.filter(\.driven).count == 2)
-        #expect(asked.wheels.filter(\.driven).allSatisfy { $0.position.z == 1.8 })
+        #expect(asked.wheels.filter(\.isDriven).count == 2)
+        #expect(asked.wheels.filter(\.isDriven).allSatisfy { $0.position.z == 1.8 })
     }
 
     /// Both bands are needed: a machine whose wheels all sit on one side of the
@@ -351,14 +351,14 @@ struct TrackedVehicle3DTests {
     /// flags report what it settled on.
     @Test func movingTheSprocketRebuildsTheDrive() {
         let (world, crawler) = standing()
-        #expect(crawler.wheels.filter(\.driven).allSatisfy { $0.position.z == -1.8 })
+        #expect(crawler.wheels.filter(\.isDriven).allSatisfy { $0.position.z == -1.8 })
 
         // Which wheels drive is set a list at a time, so the drivetrain is
         // rebuilt on the step rather than on each assignment.
-        for wheel in crawler.wheels { wheel.driven = wheel.position.z == 1.8 }
+        for wheel in crawler.wheels { wheel.isDriven = wheel.position.z == 1.8 }
         run(world, steps: 1)
-        #expect(crawler.wheels.filter(\.driven).count == 2)
-        #expect(crawler.wheels.filter(\.driven).allSatisfy { $0.position.z == 1.8 })
+        #expect(crawler.wheels.filter(\.isDriven).count == 2)
+        #expect(crawler.wheels.filter(\.isDriven).allSatisfy { $0.position.z == 1.8 })
 
         crawler.throttle = 1
         run(world, steps: 300)
@@ -376,10 +376,10 @@ struct TrackedVehicle3DTests {
             let car = Vehicle3DTests.car(in: world, drive: .rear, frontGrip: 0.02)
             for _ in 0 ..< 90 { world.advance(by: 1.0 / 60) }
             if switchToFront {
-                for wheel in car.wheels { wheel.driven = wheel.position.z > 0 }
+                for wheel in car.wheels { wheel.isDriven = wheel.position.z > 0 }
                 world.advance(by: 1.0 / 60)
-                #expect(car.wheels.filter(\.driven).count == 2)
-                #expect(car.wheels.filter(\.driven).allSatisfy { $0.position.z > 0 })
+                #expect(car.wheels.filter(\.isDriven).count == 2)
+                #expect(car.wheels.filter(\.isDriven).allSatisfy { $0.position.z > 0 })
             }
             car.throttle = 1
             for _ in 0 ..< 300 { world.advance(by: 1.0 / 60) }

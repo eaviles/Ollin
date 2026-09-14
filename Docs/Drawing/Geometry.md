@@ -190,8 +190,8 @@ What the axes mean, which way is up and where the origin sits, belongs to whatev
 
 ```swift
 let joint = Vector3(0.2, 1.4, -0.3)          // meters, say
-drawCircle(center + joint.xy * 200, 6)        // front view: drop the z
-drawCircle(center + Vector2(joint.z, -joint.y) * 200, 6)   // side view: look along x
+drawCircle(center: center + joint.xy * 200, radius: 6)        // front view: drop the z
+drawCircle(center: center + Vector2(joint.z, -joint.y) * 200, radius: 6)   // side view: look along x
 ```
 
 <a name="rotation3d"></a>

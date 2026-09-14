@@ -14,7 +14,7 @@ final class Wanderer: Sketch {
         creatures = (0 ..< 3).map { i in
             Vehicle(at: Vector2(540, 340 + Double(i) * 200),
                     velocity: Vector2(angle: Double(i) * 2.1, length: 2),
-                    maxSpeed: 4, maxForce: 0.15, seed: UInt64(i * 3 + 2))
+                    maxSpeed: 4, maxForce: 0.15, seed: i * 3 + 2)
         }
         trails = creatures.map { _ in [] }
     }

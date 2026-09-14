@@ -27,12 +27,12 @@ public struct PathTracing: Equatable, Sendable {
     /// of a second against minutes of tracing, and it keeps texture and silhouette
     /// edges, which it is told about separately from the light. What it cannot keep
     /// is a true sparkle: glitter and grain are the same signal to it.
-    public var denoise: Bool
+    public var denoises: Bool
 
-    public init(samplesPerPixel: Int = 256, maxDepth: Int = 8, denoise: Bool = false) {
+    public init(samplesPerPixel: Int = 256, maxDepth: Int = 8, denoises: Bool = false) {
         self.samplesPerPixel = max(1, samplesPerPixel)
         self.maxDepth = max(1, maxDepth)
-        self.denoise = denoise
+        self.denoises = denoises
     }
 
     /// The tier default sample count the bare `--path-traced` flag resolves to.

@@ -277,7 +277,7 @@ struct ThinFilmRenderProbes {
     func theFilmSurvivesIntoAPathTracedFrame() throws {
         // An offline frame shades through its own path, so the film has to be there
         // too, or an export would quietly drop the color the window shows.
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 24, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 24, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let plain = try #require(OllinApp.image(of: FilmProbe.make(.plainMetal), frame: 1))
         let filmed = try #require(OllinApp.image(of: FilmProbe.make(.film(550)), frame: 1))

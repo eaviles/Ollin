@@ -119,8 +119,8 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
     private let lock = OSAllocatedUnfairLock(initialState: State())
     private let status = VisionStatus("trajectory detection")
     private let trajectoryLength: Int
-    private let minimumObjectRadius: Double?
-    private let maximumObjectRadius: Double?
+    private let minObjectRadius: Double?
+    private let maxObjectRadius: Double?
 
     /// The trajectories in the most recent analyzed frame — empty while nothing
     /// is flying. An arc keeps its `id` across frames, so accumulate by `id` to
@@ -142,10 +142,10 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
     /// set a maximum to ignore large movers like a person crossing the scene.
     @MainActor
     public init(_ source: any FrameSource, trajectoryLength: Int = 10,
-                minimumObjectRadius: Double? = nil, maximumObjectRadius: Double? = nil) {
+                minObjectRadius: Double? = nil, maxObjectRadius: Double? = nil) {
         self.trajectoryLength = trajectoryLength
-        self.minimumObjectRadius = minimumObjectRadius
-        self.maximumObjectRadius = maximumObjectRadius
+        self.minObjectRadius = minObjectRadius
+        self.maxObjectRadius = maxObjectRadius
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
@@ -191,11 +191,11 @@ public final class TrajectoryTracker: VisionTracking, @unchecked Sendable {
         let (request, seconds): (DetectTrajectoriesRequest, Double) = lock.withLock { state in
             if state.request == nil {
                 let request = DetectTrajectoriesRequest(trajectoryLength: trajectoryLength)
-                if let minimumObjectRadius {
-                    request.objectMinimumNormalizedRadius = Float(minimumObjectRadius)
+                if let minObjectRadius {
+                    request.objectMinimumNormalizedRadius = Float(minObjectRadius)
                 }
-                if let maximumObjectRadius {
-                    request.objectMaximumNormalizedRadius = Float(maximumObjectRadius)
+                if let maxObjectRadius {
+                    request.objectMaximumNormalizedRadius = Float(maxObjectRadius)
                 }
                 state.request = request
                 state.startUptime = ProcessInfo.processInfo.systemUptime

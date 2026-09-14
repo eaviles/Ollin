@@ -99,7 +99,7 @@ public final class Particles {
         withUnsafeBytes(of: custom) { bytes.append(contentsOf: $0) }
         drawer.recordDispatch(RecordedDispatch(
             kernel: kernel, threadCount: count, buffers: [read, write], params: bytes))
-        pingpong.advance()   // at record time, so the following draw reads the output
+        pingpong.swap()   // at record time, so the following draw reads the output
     }
 
     /// Wrap a body snippet into a complete particle-step kernel: bind the ping-pong

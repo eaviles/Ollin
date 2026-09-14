@@ -1,0 +1,26 @@
+# Exceptions to Scripts/check-api-names.sh, one per line: `<rule> <Owner.member>`
+# (`Owner.*` for every member, a bare name for a top-level declaration), with
+# the reason after a `#`. An entry that matches nothing fails the check, so
+# this list cannot outlive what it excuses. A name that is Ollin's own drift
+# is never listed: the source is renamed instead.
+
+# magnitude: `intensity` is light emission. These are light, under a type
+# whose name does not say so, or the platform's own word for a physical
+# quantity that is not light.
+magnitude Environment.*            # the image-based light: its intensity scales the light the environment casts
+magnitude Generator.godRays        # shafts of light; coreIntensity and intensity are the light's
+magnitude SprayLine.*              # a line of light for a LineSpray; each end has an intensity
+magnitude HapticEvent.*            # Core Haptics' own vocabulary (hapticIntensity beside hapticSharpness), a physical quantity
+magnitude HapticPattern.*          # the same: a pattern's intensity is the haptic engine's own dial
+
+# time: advance(by:) is for seconds; this is typography's noun, a glyph's advance width.
+time BitmapFont.advance            # advance(for:) returns a glyph's advance width in pixels, the type's own term
+
+# resource: the two built-in font loaders default `in:` to `.main`, the app's
+# own bundle, never `.module`; the initializer's doc comment says so, and a
+# loose sketch has no module bundle of its own.
+resource BitmapFont.init           # `in: Bundle = .main`, documented on the initializer
+resource StrokeFont.init           # `in: Bundle = .main`, documented on the initializer
+
+# boolean: the wire protocol's own field name.
+boolean WebSocketFraming.Frame.fin # RFC 6455's FIN bit, read and written under its own name

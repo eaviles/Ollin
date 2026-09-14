@@ -315,7 +315,7 @@ public final class LineSpray {
         drawer.recordDispatch(RecordedDispatch(
             kernel: LineSpray.kernel, threadCount: count,
             buffers: [lineBuffer, pointLines, write], params: params.bytes))
-        points.advance()
+        points.swap()
         drawer.withAccumulator(accumulator, passes: passesPerFrame) {
             drawer.blendMode(.add)
             drawer.recordParticles(write, count: count, style: .light)

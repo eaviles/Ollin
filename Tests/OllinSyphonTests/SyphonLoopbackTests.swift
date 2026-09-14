@@ -66,8 +66,8 @@ import CSyphon
         }
 
         let client = SyphonClient(named: name)
-        defer { client.stop() }
-        #expect(await waitFor({ client.isActive ? true : nil }) == true)
+        defer { client.disconnect() }
+        #expect(await waitFor({ client.isConnected ? true : nil }) == true)
 
         // Keep publishing and confirm a frame comes back as an Image of the right size.
         let frame = await waitFor { () -> Image? in

@@ -53,13 +53,13 @@ public final class DiffusionLimitedAggregation {
 
     /// A cluster started from `seeds` (one frozen particle each).
     public init(seeds: [Vector2], particleRadius: Double = 4, stickiness: Double = 1,
-                bounds: Rectangle? = nil, maxParticles: Int = 20000, seed: UInt64 = 0) {
+                bounds: Rectangle? = nil, maxParticles: Int = 20000, seed: Int = 0) {
         let radius = Swift.max(particleRadius, 0.5)
         self.particleRadius = radius
         self.stickiness = Swift.min(Swift.max(stickiness, 0.01), 1)
         self.bounds = bounds
         self.maxParticles = maxParticles
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         self.index = SpatialIndex(bounds: bounds ?? Rectangle(x: 0, y: 0, width: 0, height: 0),
                                   cellSize: radius * 4)
         self.particles = []

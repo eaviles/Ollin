@@ -155,7 +155,7 @@ textWidth(_ string: String) -> Double
 The on-screen width of `string`'s widest line, in points, at the current `textFont` / `textSize`. Use it to lay text out yourself, for centering by hand, wrapping, and marquees.
 
 ```swift
-let size = 42; textSize(size)
+let size = 42.0; textSize(size)
 let w = textWidth(label)
 drawRect(center: Vector2(x, y), width: w + 24, height: size + 16)   // a padded backing
 ```

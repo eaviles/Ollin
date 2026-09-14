@@ -167,7 +167,7 @@ final class ContourDetector: VisionAvailability, Sendable
   init(_: any FrameSource, detectsDarkOnLight: Bool = default, contrastAdjustment: Float = default)
   let contrastAdjustment: Float
   let detectsDarkOnLight: Bool
-  static func detect(in: Image, detectsDarkOnLight: Bool = default, contrastAdjustment: Float = default, maximumDimension: Int = default) throws -> DetectedContours
+  static func detect(in: Image, detectsDarkOnLight: Bool = default, contrastAdjustment: Float = default, maxDimension: Int = default) throws -> DetectedContours
   var contourTree: DetectedContours { get }
   var count: Int { get }
   var isAvailable: Bool { get }
@@ -225,9 +225,9 @@ final class FlowTracker: VisionAvailability, Sendable
   var isAvailable: Bool { get }
   var unavailableReason: String? { get }
 final class HandTracker: VisionAvailability, Sendable
-  init(_: any FrameSource, maximumHandCount: Int = default)
-  let maximumHandCount: Int
-  static func detect(in: Image, maximumHandCount: Int = default) throws -> [Hand]
+  init(_: any FrameSource, maxHandCount: Int = default)
+  let maxHandCount: Int
+  static func detect(in: Image, maxHandCount: Int = default) throws -> [Hand]
   var count: Int { get }
   var hands: [Hand] { get }
   var isAvailable: Bool { get }
@@ -352,7 +352,7 @@ final class TextRecognizer: VisionAvailability, Sendable
   var unavailableReason: String? { get }
 final class TrajectoryTracker: VisionAvailability, Sendable
   func reset()
-  init(_: any FrameSource, trajectoryLength: Int = default, minimumObjectRadius: Double? = default, maximumObjectRadius: Double? = default)
+  init(_: any FrameSource, trajectoryLength: Int = default, minObjectRadius: Double? = default, maxObjectRadius: Double? = default)
   static func detect(across: [Image], frameRate: Double = default, trajectoryLength: Int = default) throws -> [[DetectedTrajectory]]
   var isAvailable: Bool { get }
   var trajectories: [DetectedTrajectory] { get }

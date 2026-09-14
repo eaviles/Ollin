@@ -70,13 +70,24 @@ struct FrameRingProbes {
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
 
         #expect(runner.canStartFrame, "a renderer that has drawn nothing has room")
-        for _ in 0..<8 { runner.draw(in: view) }
-        #expect(!runner.canStartFrame, "eight heavy frames in a row must fill the ring")
+        // Draw until the ring reports full, reading the state after every draw
+        // rather than once after a fixed count. Eight heavy frames fill it on
+        // any desk, but a starved runner (three processes on three cores) can
+        // take long enough to encode one frame that the GPU has finished the
+        // first before the fourth is asked for, and a single read after the
+        // eighth then finds room again (2026-09-14, one red shard on the
+        // runner with the suite green everywhere else).
+        var filled = false
+        for _ in 0..<24 where !filled {
+            runner.draw(in: view)
+            filled = !runner.canStartFrame
+        }
+        #expect(filled, "a burst of heavy frames must fill the ring")
 
         // Poll rather than sleep a fixed span, and poll for the state itself:
         // the GPU hands slots back on its own thread and a full machine can be
-        // late. Ten seconds is a ceiling, not an expectation.
-        let deadline = CACurrentMediaTime() + 10
+        // late. Thirty seconds is a ceiling, not an expectation.
+        let deadline = CACurrentMediaTime() + 30
         while !runner.canStartFrame, CACurrentMediaTime() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.005))
         }

@@ -555,8 +555,8 @@ struct ParametricLSystemTests {
     /// stop below almost its own trunk length puts out one segment and stops,
     /// however many passes it is given.
     @Test func theLengthGuardArrestsGrowth() {
-        let free = ParametricLSystem.taperedTree(minimumLength: 0)
-        let arrested = ParametricLSystem.taperedTree(minimumLength: 90)
+        let free = ParametricLSystem.taperedTree(minLength: 0)
+        let arrested = ParametricLSystem.taperedTree(minLength: 90)
         #expect(arrested.contours(iterations: 10).count < 5)
         #expect(free.contours(iterations: 10).count > 200)
         // And it has genuinely settled: more passes change nothing.

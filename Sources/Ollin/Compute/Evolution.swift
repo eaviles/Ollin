@@ -256,8 +256,8 @@ public final class Evolution {
                 kernel: breedKernel, threadCount: count,
                 buffers: [particlesIn, particlesOut, nil, nil, nil, nil, genesIn, genesOut],
                 params: paramBytes(dt: dt)))
-            pingpong.advance()
-            genePingpong.advance()
+            pingpong.swap()
+            genePingpong.swap()
             generation += 1
             elapsed = 0
             return
@@ -267,7 +267,7 @@ public final class Evolution {
             kernel: stepKernel, threadCount: count,
             buffers: [particlesIn, particlesOut, nil, nil, nil, nil, genePingpong.read],
             params: paramBytes(dt: dt)))
-        pingpong.advance()
+        pingpong.swap()
         elapsed += dt
     }
 

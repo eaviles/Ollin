@@ -779,7 +779,7 @@ front.grip = 0.4                      // and a slick tire
 Everything on a wheel can be changed while the vehicle drives. A slider on the springs or the grip is felt on the next step. `driven` belongs to the gearbox rather than to the wheel, so it is the one change that costs something. Changing it rebuilds the drive on the next step and re-gears it against whatever is now driven. Set the whole list, then step, then read the flags back to see what the drivetrain settled on:
 
 ```swift
-for wheel in car.wheels { wheel.driven = wheel.position.z > 0 }   // front drive
+for wheel in car.wheels { wheel.isDriven = wheel.position.z > 0 }   // front drive
 world.advance(by: deltaTime)
 ```
 

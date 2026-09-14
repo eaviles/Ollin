@@ -74,7 +74,7 @@ final class RiversSketch: Sketch {
         guard key != built else { return }
         built = key
 
-        let seed = UInt64(landSeed.rounded())
+        let seed = Int(landSeed.rounded())
         var field = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: seed)
         if weathered {
             field = field.eroded(.hydraulic(drops: 50_000), seed: seed)

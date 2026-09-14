@@ -241,7 +241,7 @@ public struct EtherDreamDevice: Equatable, Sendable {
     public var bufferCapacity: Int
 
     /// The fastest point rate the DAC will accept.
-    public var maximumPointRate: Int
+    public var maxPointRate: Int
 
     /// What it was doing when it announced itself.
     public var status: EtherDreamStatus
@@ -258,7 +258,7 @@ public struct EtherDreamDevice: Equatable, Sendable {
         let mac = bytes[0..<6].map { String(format: "%02x", $0) }.joined(separator: ":")
         return EtherDreamDevice(host: host, macAddress: mac,
                                 hardwareRevision: Int(u16(6)), softwareRevision: Int(u16(8)),
-                                bufferCapacity: Int(u16(10)), maximumPointRate: Int(u32(12)),
+                                bufferCapacity: Int(u16(10)), maxPointRate: Int(u32(12)),
                                 status: status)
     }
 
@@ -270,7 +270,7 @@ public struct EtherDreamDevice: Equatable, Sendable {
         data.append(littleEndian: UInt16(clamping: hardwareRevision))
         data.append(littleEndian: UInt16(clamping: softwareRevision))
         data.append(littleEndian: UInt16(clamping: bufferCapacity))
-        data.append(littleEndian: UInt32(clamping: maximumPointRate))
+        data.append(littleEndian: UInt32(clamping: maxPointRate))
         data.append(status.encode())
         return data
     }

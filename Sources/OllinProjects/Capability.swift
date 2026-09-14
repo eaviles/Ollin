@@ -66,9 +66,9 @@ extension Capability {
         summary: "A folder to load pictures from, drawn with drawImage.",
         assetFolders: [.init(
             name: "Images",
-            note: "Pictures the sketch loads. Reach one with `loadImage(resource: \"name\", withExtension: \"png\", in: .module)`."
+            note: "Pictures the sketch loads. Reach one with `Image(resource: \"name\", withExtension: \"png\", in: .module)`."
         )],
-        starterHint: "let picture = loadImage(resource: \"photo\", withExtension: \"jpg\", in: .module)"
+        starterHint: "let picture = Image(resource: \"photo\", withExtension: \"jpg\", in: .module)"
     )
 
     public static let text = Capability(

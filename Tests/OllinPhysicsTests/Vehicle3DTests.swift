@@ -151,8 +151,8 @@ struct Vehicle3DTests {
         let car = world.addVehicle(.box(width: 1.8, height: 0.7, depth: 4),
                                    at: Vector3(0, 1, 0), wheels: wheels)!
 
-        #expect(car.wheels[3].driven)
-        #expect(!car.wheels[0].driven)
+        #expect(car.wheels[3].isDriven)
+        #expect(!car.wheels[0].isDriven)
     }
 
     @Test func aLowerTopSpeedGearsItDownToASlowerCeiling() {

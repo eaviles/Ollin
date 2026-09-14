@@ -197,7 +197,7 @@ public final class SoftBodies {
                 kernel: stepKernel, threadCount: count,
                 buffers: [read, write, hash.sortedIndices, hash.cellStart,
                           hash.cellCount, hash.gridBuffer, bodyBuffer], params: bytes))
-            pingpong.advance()
+            pingpong.swap()
         }
         interactionStrength = 0
     }

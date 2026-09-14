@@ -34,7 +34,7 @@ final class Rockslide: Sketch {
     /// the rocks, then handed whole to the collider.
     func rebuild() {
         builtSeed = terrainSeed.rounded()
-        let seed = UInt64(builtSeed)
+        let seed = Int(builtSeed)
 
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.55, seed: seed)
         land = Heightfield(columns: 129, rows: 129) { u, v in

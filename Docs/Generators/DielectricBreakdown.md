@@ -38,7 +38,7 @@ override func draw() {
 ```swift
 DielectricBreakdown(seeds: [Vector2], in bounds: Rectangle, resolution: Int = 140,
                     eta: Double = 1.7, ground: Ground = .border,
-                    maxSites: Int = 3000, seed: UInt64 = 0)
+                    maxSites: Int = 3000, seed: Int = 0)
 ```
 
 `seeds` are the points where the discharge starts, snapped to lattice cells. One center point grows a radial Lichtenberg figure, and a row along the top grows lightning that reaches down. `ground` is the far electrode the discharge grows toward. `.border` puts ground on the rim of `bounds`, which gives the classic radial figure. `.points(_:)` instead holds specific cells at full potential, such as a wire, a plate, or one far point, and the rim then insulates. `resolution` is the lattice's cell count across the width, so a finer lattice gives finer filaments and costs more per step. `eta` is the character parameter. At `1` you get the aggregation regime, around `2` the lightning regime, and higher values approach a single channel.

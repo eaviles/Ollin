@@ -420,19 +420,19 @@ public struct Generator: Sendable {
 
     /// Poster-style banded gradients over an animated scalar field, the band
     /// edges chewed by film grain. `shape` picks the field, `softness` runs the
-    /// bands from hard posterized cuts (0) to a smooth gradient (1), `intensity`
+    /// bands from hard posterized cuts (0) to a smooth gradient (1), `amount`
     /// is how far the grain tears the band boundaries, `noise` adds granular
     /// sparkle, and `phase` animates the field (feed it your `time`).
     public static func grainGradient(colors: [Color] = [Color(hex: 0x7300FF), Color(hex: 0xEBA8FF),
                                                         Color(hex: 0x00BFFF), Color(hex: 0x2A00FF)],
                                      background: Color = .black,
                                      shape: GrainShape = .corners,
-                                     softness: Double = 0.5, intensity: Double = 0.5,
+                                     softness: Double = 0.5, amount: Double = 0.5,
                                      noise: Double = 0.25, phase: Double = 0) -> Generator {
         Generator(kind: .grainGradient(colors: colorRows(colors, max: 7),
                                        background: background.linearRGBA, shape: shape,
                                        softness: min(max(softness, 0), 1),
-                                       intensity: min(max(intensity, 0), 1),
+                                       intensity: min(max(amount, 0), 1),
                                        noise: min(max(noise, 0), 1), phase: phase))
     }
 
@@ -440,13 +440,13 @@ public struct Generator: Sendable {
     /// in layer pixels), with up to eight light
     /// spots per color racing the perimeter, an optional heartbeat `pulse`,
     /// additive `bloom`, and smoke wisps bleeding inward. `roundness` and
-    /// `thickness` shape the border, `softness` feathers it, `intensity` scales
+    /// `thickness` shape the border, `softness` feathers it, `amount` scales
     /// the glow, and `phase` drives the motion (feed it your `time`).
     public static func pulsingBorder(colors: [Color] = [Color(hex: 0x0DC1FD), Color(hex: 0xD915EF),
                                                         Color(hex: 0xFF3F2E, alpha: 0.8)],
                                      background: Color = .black,
                                      roundness: Double = 0.25, thickness: Double = 0.1,
-                                     softness: Double = 0.75, intensity: Double = 0.2,
+                                     softness: Double = 0.75, amount: Double = 0.2,
                                      bloom: Double = 0.25, spots: Double = 4,
                                      spotSize: Double = 0.5, pulse: Double = 0.25,
                                      smoke: Double = 0.3, smokeScale: Double = 0.6,
@@ -457,7 +457,7 @@ public struct Generator: Sendable {
                                        roundness: min(max(roundness, 0), 1),
                                        thickness: min(max(thickness, 0.01), 1),
                                        softness: min(max(softness, 0), 1),
-                                       intensity: min(max(intensity, 0), 1),
+                                       intensity: min(max(amount, 0), 1),
                                        bloom: min(max(bloom, 0), 1),
                                        spots: min(max(spots, 1), 8),
                                        spotSize: min(max(spotSize, 0), 1),

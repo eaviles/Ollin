@@ -248,7 +248,7 @@ import Testing
         let inner = Circle(center: Vector2(250, 130), radius: 60)
         let side = Circle(center: Vector2(150, 320), radius: 70)
         let other = Circle(center: Vector2(350, 320), radius: 70)
-        let pairings = [SchottkyPairing(from: outer, to: inner, fromExterior: true),
+        let pairings = [SchottkyPairing(from: outer, to: inner, mapsFromExterior: true),
                         SchottkyPairing(from: side, to: other)]
         let circles = schottkyCircles(pairing: pairings, minRadius: 1, maxDepth: 30)
         #expect(circles.count > 100)

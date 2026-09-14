@@ -4948,7 +4948,7 @@ private final class SteeringScene: Sketch {
     override func setup() {
         followers = (0 ..< 4).map { i in
             Vehicle(at: path[i * 24], velocity: Vector2(angle: Double(i), length: 1),
-                    maxSpeed: 1.6, maxForce: 0.08, seed: UInt64(i))
+                    maxSpeed: 1.6, maxForce: 0.08, seed: i)
         }
     }
 

@@ -99,7 +99,7 @@ final class NeighborSearch_Example: Sketch {
 
         background(Color(white: 0.05))
         neighborStep(stepKernel, over: hash, reading: particles.read, writing: particles.write)
-        particles.advance()
+        particles.swap()
         drawParticles(particles.read)
 
         drawCaption("SpatialHash · \(particleCount) particles colored by neighbor count")

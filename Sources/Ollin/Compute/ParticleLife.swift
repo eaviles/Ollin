@@ -104,7 +104,7 @@ public final class ParticleLife {
             kernel: kernel, threadCount: count,
             buffers: [read, write, hash.sortedIndices, hash.cellStart, hash.cellCount,
                       hash.gridBuffer, matrix], params: bytes))
-        pingpong.advance()
+        pingpong.swap()
     }
 
     /// A random `kinds × kinds` interaction matrix in [-1, 1], row-major (`m[i*kinds+j]`

@@ -55,7 +55,7 @@ public struct CloudAlignment: Sendable {
     /// in at `pose`, but with the fix carried over from earlier frames rather than a
     /// new one: too little overlap, too few points, or a jump big enough to look like
     /// a mistake.
-    public var applied: Bool
+    public var isApplied: Bool
 
     /// The parameters on the fit. The defaults suit a hand-held room sweep at a few
     /// centimeters per voxel; nothing here has to be set for that case.
@@ -100,7 +100,7 @@ public struct CloudAlignment: Sendable {
     /// The result for a frame nothing could be done with, where the pose passes through.
     static func unchanged(_ pose: simd_float4x4, correction: simd_float4x4) -> CloudAlignment {
         CloudAlignment(pose: pose, correction: correction, overlap: 0, error: 0,
-                       passes: 0, stability: 0, applied: false)
+                       passes: 0, stability: 0, isApplied: false)
     }
 }
 
@@ -200,12 +200,12 @@ extension WorldCloud {
         guard !refused else {
             return CloudAlignment(pose: carried, correction: correction, overlap: overlap,
                                   error: error, passes: passes, stability: stability,
-                                  applied: false)
+                                  isApplied: false)
         }
 
         return CloudAlignment(pose: current, correction: current * reportedPose.inverse,
                               overlap: overlap, error: error, passes: passes,
-                              stability: stability, applied: true)
+                              stability: stability, isApplied: true)
     }
 
     /// Line `source` up against what is already fused, then merge it: the drift
@@ -228,7 +228,7 @@ extension WorldCloud {
                              correcting reportedPose: simd_float4x4,
                              settings: CloudAlignment.Settings = .init()) -> CloudAlignment {
         let alignment = align(source, from: reportedPose, settings: settings)
-        if alignment.applied { correction = alignment.correction }
+        if alignment.isApplied { correction = alignment.correction }
         add(source, transformedBy: alignment.pose)
         return alignment
     }

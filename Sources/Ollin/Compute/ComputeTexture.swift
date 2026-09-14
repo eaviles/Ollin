@@ -158,7 +158,7 @@ public final class ComputeTexture: ComputeTextureBindable, @unchecked Sendable {
 
 /// A pair of `ComputeTexture`s swapped each step — the texture-half companion to
 /// `PingPong`: the kernel reads `read` (last step's state) and writes `write` (this
-/// step's), then `advance()` makes the freshly written texture the new `read`. Two
+/// step's), then `swap()` makes the freshly written texture the new `read`. Two
 /// textures, not one, so a step's reads can't see its own partial writes and the
 /// render path can sample a stable frame. `Simulation` owns one of these; reach for
 /// it directly when you drive the raw `compute(_:reading:writing:)` form yourself.
@@ -177,6 +177,6 @@ public final class PingPongTexture: @unchecked Sendable {
     public var read: ComputeTexture { flipped ? b : a }
     /// The texture the next step writes into.
     public var write: ComputeTexture { flipped ? a : b }
-    /// Swap which texture is current — call once after recording a step.
-    public func advance() { flipped.toggle() }
+    /// Swap which texture is current; call once after recording a step.
+    public func swap() { flipped.toggle() }
 }

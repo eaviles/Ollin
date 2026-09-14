@@ -132,10 +132,10 @@ public final class ContourDetector: VisionTracking, @unchecked Sendable {
     public static func detect(in image: Image,
                               detectsDarkOnLight: Bool = true,
                               contrastAdjustment: Float = 1,
-                              maximumDimension: Int = 1024) async throws -> DetectedContours {
+                              maxDimension: Int = 1024) async throws -> DetectedContours {
         let request = ContourDetector.makeRequest(darkOnLight: detectsDarkOnLight,
                                                   contrast: contrastAdjustment,
-                                                  maxDimension: maximumDimension)
+                                                  maxDimension: maxDimension)
         let observation = try await request.perform(on: image.currentCGImage())
         return decode(observation)
     }

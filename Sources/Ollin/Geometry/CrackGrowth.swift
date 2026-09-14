@@ -113,11 +113,11 @@ public final class CrackGrowth {
     ///   - maxCracks: the population cap.
     ///   - seed: the whole run repeats from the same seed.
     public init(width: Double, height: Double, cracks startCount: Int = 3,
-                seedAngles: Int = 16, maxCracks: Int = 200, seed: UInt64 = 0) {
+                seedAngles: Int = 16, maxCracks: Int = 200, seed: Int = 0) {
         self.width = Swift.max(Int(width), 1)
         self.height = Swift.max(Int(height), 1)
         self.maxCracks = Swift.max(maxCracks, 1)
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         self.grid = Array(repeating: .infinity, count: self.width * self.height)
         for _ in 0 ..< Swift.max(seedAngles, 1) {
             let i = Int.random(in: 0 ..< grid.count, using: &rng)

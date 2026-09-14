@@ -188,7 +188,7 @@ Both halves are the same nine captures, seen from the same angle. On the left th
 
 The correction that worked is kept. The next frame starts from it, so the fit only has to find the newest error. That is why it costs so little. Apply `world.correction` to anything else the camera reports in that space.
 
-One thing it will not do. A frame that finds too little to match is held back rather than guessed at, and `fix.applied` says so.
+One thing it will not do. A frame that finds too little to match is held back rather than guessed at, and `fix.isApplied` says so.
 
 ### Coming back to where you started
 

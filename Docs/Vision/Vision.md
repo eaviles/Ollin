@@ -308,10 +308,10 @@ struct DetectedContours {
 ### HandTracker
 
 ```swift
-HandTracker(_ source: any FrameSource, maximumHandCount: Int = 2)
+HandTracker(_ source: any FrameSource, maxHandCount: Int = 2)
 var hands: [Hand] { get }
 var count: Int { get }
-static func detect(in: Image, maximumHandCount: Int = 2) async throws -> [Hand]
+static func detect(in: Image, maxHandCount: Int = 2) async throws -> [Hand]
 ```
 
 `HandTracker` finds hands and their 21-joint skeletons. It is the tracker to use for gesture work. Read `hands` in `draw()`. Joints that Vision is not confident about (occluded, or off-frame) are dropped, so what you get back is what it actually saw.
@@ -689,7 +689,7 @@ func center(in: Rectangle, mirrored: Bool = false) -> Vector2
 
 ```swift
 TrajectoryTracker(_ source: any FrameSource, trajectoryLength: Int = 10,
-                  minimumObjectRadius: Double? = nil, maximumObjectRadius: Double? = nil)
+                  minObjectRadius: Double? = nil, maxObjectRadius: Double? = nil)
 var trajectories: [DetectedTrajectory] { get }
 func reset()
 static func detect(across: [Image], frameRate: Double = 30,
@@ -711,7 +711,7 @@ override func draw() {
 }
 ```
 
-The optional radius bounds are fractions of the frame, `0…1`, and they filter what counts as a moving object. Set `maximumObjectRadius` to ignore large movers, like a person crossing the scene. Call `reset()` after the scene jumps (a video loop, a seek), so the jump is not read as motion. The static `detect(across:frameRate:)` finds the arcs in an ordered array of frames with no camera. The frames are a recorded clip's, paced at `frameRate`.
+The optional radius bounds are fractions of the frame, `0…1`, and they filter what counts as a moving object. Set `maxObjectRadius` to ignore large movers, like a person crossing the scene. Call `reset()` after the scene jumps (a video loop, a seek), so the jump is not read as motion. The static `detect(across:frameRate:)` finds the arcs in an ordered array of frames with no camera. The frames are a recorded clip's, paced at `frameRate`.
 
 <a name="detectedtrajectory"></a>
 

@@ -106,7 +106,7 @@ extension MetalRenderer {
         // own color plus the running square of each sample's brightness (which is
         // what measures the grain), and the first hit's normal plus its distance.
         // With the filter off they are a single pixel the kernel never writes.
-        let wantsGuides = settings.denoise && total > 1
+        let wantsGuides = settings.denoises && total > 1
         let guideDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba32Float, width: wantsGuides ? width : 1,
             height: wantsGuides ? height : 1, mipmapped: false)

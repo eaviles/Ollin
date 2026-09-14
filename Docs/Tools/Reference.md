@@ -35,7 +35,7 @@ An exact match wins over a loose one, so `color` gives you the color page rather
 Add a heading to go straight to one part of a long page:
 
 ```sh
-ollin docs Color#ramps
+ollin docs Color#ramp
 ollin docs Drawing/Drawing#strokeAlign
 ```
 

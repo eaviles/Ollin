@@ -33,7 +33,7 @@ final class GardenMotion: Sketch {
         for x in [220.0, 620, 890] {
             tufts.append(DiffusionLimitedAggregation(
                 seeds: [Vector2(x, groundY)], particleRadius: 2.2,
-                maxParticles: 280, seed: UInt64(x)))
+                maxParticles: 280, seed: Int(x)))
         }
     }
 

@@ -195,10 +195,10 @@ public final class MeshGrowth {
                 driver: GrowthDriver = .curvature,
                 edgeLength: Double? = nil,
                 maxVertices: Int = 12000,
-                seed: UInt64 = 0) {
+                seed: Int = 0) {
         self.driver = driver
         self.maxVertices = Swift.max(maxVertices, 4)
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
 
         let welded = WeldedMesh(mesh)
         self.positions = welded.positions

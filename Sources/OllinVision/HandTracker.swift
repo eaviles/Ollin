@@ -112,7 +112,7 @@ public struct Hand: Sendable {
 public final class HandTracker: VisionTracking, @unchecked Sendable {
 
     /// How many hands to look for (Vision's `maximumHandCount`).
-    public let maximumHandCount: Int
+    public let maxHandCount: Int
 
     /// Joints below this confidence are dropped (occluded or guessed).
     private static let minimumJointConfidence: Float = 0.3
@@ -133,15 +133,15 @@ public final class HandTracker: VisionTracking, @unchecked Sendable {
 
     /// Track hands in `source`'s frames — the live camera, or a playing video.
     @MainActor
-    public init(_ source: any FrameSource, maximumHandCount: Int = 2) {
-        self.maximumHandCount = max(1, maximumHandCount)
+    public init(_ source: any FrameSource, maxHandCount: Int = 2) {
+        self.maxHandCount = max(1, maxHandCount)
         SourceAnalyzers.analyzer(for: source).register(self)
     }
 
     /// Detect hands in a still image, once.
-    public static func detect(in image: Image, maximumHandCount: Int = 2) async throws -> [Hand] {
+    public static func detect(in image: Image, maxHandCount: Int = 2) async throws -> [Hand] {
         var request = DetectHumanHandPoseRequest()
-        request.maximumHandCount = max(1, maximumHandCount)
+        request.maximumHandCount = max(1, maxHandCount)
         let observations = try await request.perform(on: image.currentCGImage())
         return decode(observations)
     }
@@ -151,7 +151,7 @@ public final class HandTracker: VisionTracking, @unchecked Sendable {
     func analyze(_ cgImage: CGImage, size: CGSize) async {
         guard status.isAvailable else { return }
         var request = DetectHumanHandPoseRequest()
-        request.maximumHandCount = maximumHandCount
+        request.maximumHandCount = maxHandCount
         do {
             let observations = try await request.perform(on: cgImage)
             status.recordSuccess()

@@ -30,7 +30,7 @@ final class TracedLight: Sketch {
          ["a hard-edged shadow", "no light bounced off the spheres"]),
         ("--path-traced 96", PathTracing(samplesPerPixel: 96),
          ["soft shadows, red bled onto the floor", "light bent through the glass"]),
-        ("--path-traced 96 --denoise", PathTracing(samplesPerPixel: 96, denoise: true),
+        ("--path-traced 96 --denoise", PathTracing(samplesPerPixel: 96, denoises: true),
          ["the grain filtered out", "the edges kept"]),
     ]
 

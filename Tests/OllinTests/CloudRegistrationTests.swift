@@ -180,7 +180,7 @@ struct CloudRegistrationTests {
         let wrong = pose(0.54, 0.58, 0.71, turn: 0.2 + 0.035)
         let fix = world.align(seen(points, from: truth), from: wrong)
 
-        #expect(fix.applied)
+        #expect(fix.isApplied)
         #expect(fix.overlap > 0.9)
         #expect(disagreement(wrong, truth) > 0.03)          // the error was real
         #expect(disagreement(fix.pose, truth) < 0.006)      // and it is gone
@@ -195,7 +195,7 @@ struct CloudRegistrationTests {
         world.add(seen(points, from: truth), transformedBy: truth)
         let fix = world.align(seen(points, from: truth), from: truth)
 
-        #expect(fix.applied)
+        #expect(fix.isApplied)
         #expect(disagreement(fix.pose, truth) < 0.002)
         #expect(fix.passes <= 3)                            // it stops as soon as it can
     }
@@ -205,7 +205,7 @@ struct CloudRegistrationTests {
         let reported = pose(1, 2, 3, turn: 0.3)
         let fix = world.add(seen(roomPoints(), from: reported), correcting: reported)
 
-        #expect(!fix.applied)                               // nothing to line up against
+        #expect(!fix.isApplied)                               // nothing to line up against
         #expect(fix.pose == reported)
         #expect(world.correction == matrix_identity_float4x4)
         #expect(!world.isEmpty)
@@ -273,7 +273,7 @@ struct CloudRegistrationTests {
         let lost = pose(40, 40, 40)
         let fix = world.align(seen(points, from: truth), from: lost)
 
-        #expect(!fix.applied)
+        #expect(!fix.isApplied)
         #expect(fix.overlap < 0.3)
         #expect(fix.pose == world.correction * lost)        // the earlier fix survives
     }
@@ -289,7 +289,7 @@ struct CloudRegistrationTests {
         let wrong = pose(0.53, 0.5, 0.5)
         let fix = world.align(seen(points, from: truth), from: wrong, settings: settings)
 
-        #expect(!fix.applied)
+        #expect(!fix.isApplied)
         #expect(fix.pose == wrong)
     }
 
@@ -355,8 +355,8 @@ struct CloudRegistrationTests {
         let first = world.add(seen(points, from: truth), correcting: wrong)
         let second = world.add(seen(points, from: truth), correcting: wrong)
 
-        #expect(first.applied)
-        #expect(second.applied)
+        #expect(first.isApplied)
+        #expect(second.isApplied)
         #expect(second.passes <= first.passes)
         #expect(second.error <= first.error + 1e-6)
         #expect(disagreement(second.pose, truth) < 0.006)

@@ -475,6 +475,11 @@ public struct Automation: Codable, Equatable, Sendable {
         try encoder.encode(self).write(to: url, options: .atomic)
     }
 
+    /// Write the automation to a file path, atomically, as sorted JSON.
+    public func write(to path: String) throws {
+        try write(to: URL(fileURLWithPath: path))
+    }
+
     // MARK: Building a track in code
 
     /// Collects one parameter's keys in the sketch's own value type, so a track is

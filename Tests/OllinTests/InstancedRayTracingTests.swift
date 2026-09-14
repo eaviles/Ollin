@@ -511,7 +511,7 @@ struct InstancedPathTracedTests {
     /// Red minus blue over the mirror band, rendered through the path-traced export.
     private func mirroredBoxMean(_ how: InstancedReflectionProbe.How,
                                  samples: Int = 24) throws -> Double {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let image = try #require(OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1))
         let w = image.width, h = image.height
@@ -534,7 +534,7 @@ struct InstancedPathTracedTests {
     /// traced layer does not carry has to keep rastering, or it leaves a hole.
     private func boxBodyRed(_ how: InstancedReflectionProbe.How,
                             samples: Int = 24) throws -> Double {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let image = try #require(OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1))
         let w = image.width, h = image.height
@@ -619,7 +619,7 @@ struct InstancedPathTracedMaterialTests {
     /// near zero on a white surface.
     private func bodies(_ how: InstancedMaterialProbe.How,
                         samples: Int = 32) throws -> (glass: Double, opaque: Double) {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let image = try #require(OllinApp.image(of: InstancedMaterialProbe.make(how), frame: 1))
         let w = image.width, h = image.height

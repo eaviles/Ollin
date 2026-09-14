@@ -120,10 +120,10 @@ public final class MeshReactionDiffusion {
                 chemistry: SurfaceChemistry = .coral,
                 patches: Int = 12,
                 patchRadius: Double = 0.06,
-                seed: UInt64 = 0) {
+                seed: Int = 0) {
         self.mesh = mesh
         self.chemistry = chemistry
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
 
         let welded = WeldedMesh(mesh)
         self.welded = welded

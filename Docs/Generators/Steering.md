@@ -33,7 +33,7 @@ override func draw() {
 
 ```swift
 Vehicle(at: Vector2, velocity: Vector2 = .zero,
-        maxSpeed: Double = 3, maxForce: Double = 0.12, seed: UInt64 = 0)
+        maxSpeed: Double = 3, maxForce: Double = 0.12, seed: Int = 0)
 ```
 
 `maxSpeed` is the top speed. `maxForce` caps how sharply the creature can turn on each step, so a low value turns smoothly and slowly, and a high value snaps around. The steering move itself is public:

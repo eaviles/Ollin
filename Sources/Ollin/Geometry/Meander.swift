@@ -109,7 +109,7 @@ public final class Meander {
     ///   - recordEvery: Steps between `scars` records (0 = never).
     ///   - maxScars: The scar-count ceiling.
     public init(centerline: [Vector2],
-                seed: UInt64 = 0,
+                seed: Int = 0,
                 width: Double = 24,
                 migrationRate: Double? = nil,
                 memoryLength: Double? = nil,
@@ -120,7 +120,7 @@ public final class Meander {
                 recordEvery: Int = 0,
                 maxScars: Int = 120) {
         self.centerline = centerline
-        self.rng = SplitMix64(seed: seed)
+        self.rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         self.width = width
         self.migrationRate = migrationRate ?? width / 4
         self.memoryLength = memoryLength ?? width * 1.5
@@ -377,14 +377,14 @@ public extension Meander {
     /// the pinned ends. The migration takes it from there.
     static func line(from start: Vector2,
                      to end: Vector2,
-                     seed: UInt64 = 0,
+                     seed: Int = 0,
                      width: Double = 24,
                      migrationRate: Double? = nil,
                      memoryLength: Double? = nil,
                      spacing: Double? = nil,
                      cutoffDistance: Double? = nil,
                      recordEvery: Int = 0) -> Meander {
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let along = end - start
         let length = along.length
         let waves = (0 ..< 3).map { _ -> (wavelength: Double, phase: Double, amplitude: Double) in

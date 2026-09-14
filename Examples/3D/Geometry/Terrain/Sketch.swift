@@ -33,7 +33,7 @@ final class Terrain3D: Sketch {
 
     private func rebuild() {
         builtSeed = terrainSeed.rounded()
-        let seed = UInt64(builtSeed)
+        let seed = Int(builtSeed)
 
         let land = Heightfield.diamondSquare(size: 257, roughness: 0.55, seed: seed)
         let eroded = land

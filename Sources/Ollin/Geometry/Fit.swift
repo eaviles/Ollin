@@ -34,7 +34,7 @@ public enum Fit {
         public let steps: Int
         /// Whether it settled on its own rather than running out of steps. A walk that
         /// used every step may simply need more of them, or a larger `rate`.
-        public let settled: Bool
+        public let isSettled: Bool
     }
 
     /// Walk `start` downhill on `cost` and hand back the best setting found.
@@ -58,7 +58,7 @@ public enum Fit {
                                 tolerance: Double = 1e-9,
                                 _ cost: ([Double]) -> Double) -> Result {
         let n = start.count
-        guard n > 0 else { return Result(values: start, cost: 0, steps: 0, settled: true) }
+        guard n > 0 else { return Result(values: start, cost: 0, steps: 0, isSettled: true) }
 
         func held(_ values: [Double]) -> [Double] {
             guard let bounds else { return values }
@@ -119,6 +119,6 @@ public enum Fit {
             }
             currentCost = stepped
         }
-        return Result(values: best, cost: bestCost, steps: taken, settled: settled)
+        return Result(values: best, cost: bestCost, steps: taken, isSettled: settled)
     }
 }

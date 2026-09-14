@@ -9,7 +9,7 @@ import Testing
 @Suite struct DielectricBreakdownTests {
     private let frame = Rectangle(x: 0, y: 0, width: 240, height: 240)
 
-    private func bolt(eta: Double, seed: UInt64 = 7,
+    private func bolt(eta: Double, seed: Int = 7,
                       maxSites: Int = 220) -> DielectricBreakdown {
         DielectricBreakdown(seeds: [frame.center], in: frame, resolution: 60,
                             eta: eta, maxSites: maxSites, seed: seed)

@@ -89,7 +89,7 @@ Two things to know about it:
 Sampling is a pure function of the pixel, the sample index, and the bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. You can also set the mode in code, with the same options the flag carries:
 
 ```swift
-OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8, denoise: true)  // the flag's `--denoise`
+OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8, denoises: true)  // the flag's `--denoise`
 OllinApp.export(sketch, to: "out.png", frame: 120)
 OllinApp.pathTracedExport = nil
 ```

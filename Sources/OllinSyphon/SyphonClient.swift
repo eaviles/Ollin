@@ -83,7 +83,7 @@ public final class SyphonClient {
     /// Whether the client has a live connection to a source. Once `false`, no
     /// further frames will arrive (the source went away); call
     /// ``connect(named:appName:)``.
-    public var isActive: Bool { client?.isValid ?? false }
+    public var isConnected: Bool { client?.isValid ?? false }
 
     /// Whether a new frame has arrived since the last read of ``frame``.
     public var hasNewFrame: Bool { client?.hasNewFrame ?? false }
@@ -111,9 +111,9 @@ public final class SyphonClient {
         open(named: name, appName: appName)
     }
 
-    /// Stop receiving frames and release the connection. Optional — releasing the
+    /// Stop receiving frames and release the connection. Optional: releasing the
     /// client has the same effect.
-    public func stop() {
+    public func disconnect() {
         client?.stop()
         client = nil
     }

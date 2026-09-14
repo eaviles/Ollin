@@ -9,7 +9,7 @@ struct ForceLayoutTests {
     private let frame = Rectangle(x: 0, y: 0, width: 400, height: 400)
 
     /// A cycle of `n` nodes, the graph whose settled form is unambiguous.
-    private func ring(_ n: Int, seed: UInt64 = 3) -> ForceLayout {
+    private func ring(_ n: Int, seed: Int = 3) -> ForceLayout {
         ForceLayout(count: n, edges: (0 ..< n).map { ($0, ($0 + 1) % n) },
                     in: frame, seed: seed)
     }

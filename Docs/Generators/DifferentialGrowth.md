@@ -49,8 +49,8 @@ final class Coral: Sketch {
 Two starting shapes are built in. Both take the same tuning parameters, which are described below.
 
 ```swift
-DifferentialGrowth.ring(center: Vector2, radius: Double, count: Int = 24, seed: UInt64 = 0, …) -> DifferentialGrowth
-DifferentialGrowth.line(from: Vector2, to: Vector2, count: Int = 8, seed: UInt64 = 0, …) -> DifferentialGrowth
+DifferentialGrowth.ring(center: Vector2, radius: Double, count: Int = 24, seed: Int = 0, …) -> DifferentialGrowth
+DifferentialGrowth.line(from: Vector2, to: Vector2, count: Int = 8, seed: Int = 0, …) -> DifferentialGrowth
 ```
 
 - `ring` seeds a closed circle that buckles into folds as it grows. This is the classic differential-growth shape.

@@ -94,7 +94,7 @@ Every default is derived from `width`, so setting only the channel width scales 
 | `memoryLength` | how far upstream the curvature still pushes a point (default `width * 1.5`); a longer value stretches the bends |
 | `spacing` | the resample spacing (default `width / 4`); a finer spacing follows tighter bends |
 | `cutoffDistance` | how close two reaches may come before the loop between them cuts off (default `width * 2`) |
-| `fixedEnds` | the number of points pinned at each end (default 3), so the river stays anchored |
+| `fixedEndCount` | the number of points pinned at each end (default 3), so the river stays anchored |
 | `oxbowShrink` | the fraction of its size a lake loses per step |
 | `recordEvery` / `maxScars` | how often a scar is recorded, and the most scars kept |
 

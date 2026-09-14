@@ -48,10 +48,10 @@ struct ComputeTests {
         let pp = PingPong<Float>(count: 8)
         let a = pp.read, b = pp.write
         #expect(a !== b)                 // two distinct buffers
-        pp.advance()
+        pp.swap()
         #expect(pp.read === b)           // the freshly written buffer is now current
         #expect(pp.write === a)
-        pp.advance()
+        pp.swap()
         #expect(pp.read === a)           // and back
     }
 
@@ -81,10 +81,10 @@ struct ComputeTests {
         let pp = PingPongTexture(width: 8, height: 8)
         let a = pp.read, b = pp.write
         #expect(a !== b)                          // two distinct textures
-        pp.advance()
+        pp.swap()
         #expect(pp.read === b)                     // the freshly written texture is current
         #expect(pp.write === a)
-        pp.advance()
+        pp.swap()
         #expect(pp.read === a)                     // and back
     }
 

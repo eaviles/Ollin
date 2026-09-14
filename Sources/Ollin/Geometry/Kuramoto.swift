@@ -78,14 +78,14 @@ public final class Kuramoto {
     ///   - seed: Picks the phases and the frequencies, so the same seed replays
     ///     the same crowd.
     public init(count: Int, coupling: Double = 1, frequency: Double = 1, spread: Double = 0.5,
-                lag: Double = 0, range: Int = 0, seed: UInt64 = 0) {
+                lag: Double = 0, range: Int = 0, seed: Int = 0) {
         let sigma = max(0, spread)
         self.coupling = coupling
         self.frequency = frequency
         self.spread = sigma
         self.lag = lag
         self.range = max(0, range)
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         let n = Swift.max(count, 0)
         self.phases = (0 ..< n).map { _ in Double.random(in: 0 ..< 2 * .pi, using: &rng) }
         self.frequencies = (0 ..< n).map { _ in frequency + sigma * Kuramoto.gaussian(using: &rng) }

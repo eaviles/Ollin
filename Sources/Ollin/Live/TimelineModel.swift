@@ -172,7 +172,7 @@ public final class TimelineModel {
         scrub(to: end)
     }
 
-    public func step(byFrames frames: Int) {
+    public func step(_ frames: Int) {
         runner?.stepClock(byFrames: frames)
         syncFromRunner()
     }

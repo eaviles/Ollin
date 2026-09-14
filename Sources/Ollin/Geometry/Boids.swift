@@ -56,7 +56,7 @@ public final class Boids {
     private var rng: SplitMix64
 
     /// A flock of `count` boids placed at random inside `bounds`.
-    public init(count: Int, in bounds: Rectangle, seed: UInt64 = 0,
+    public init(count: Int, in bounds: Rectangle, seed: Int = 0,
                 maxSpeed: Double = 3, maxForce: Double = 0.12,
                 perceptionRadius: Double = 50, separationRadius: Double = 22,
                 margin: Double = 60) {
@@ -66,7 +66,7 @@ public final class Boids {
         self.perceptionRadius = perceptionRadius
         self.separationRadius = separationRadius
         self.margin = margin
-        var rng = SplitMix64(seed: seed)
+        var rng = SplitMix64(seed: UInt64(bitPattern: Int64(seed)))
         self.positions = (0 ..< Swift.max(count, 0)).map { _ in
             Vector2(bounds.x + Double.random(in: 0 ..< 1, using: &rng) * bounds.width,
                     bounds.y + Double.random(in: 0 ..< 1, using: &rng) * bounds.height)

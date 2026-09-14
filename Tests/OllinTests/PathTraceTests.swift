@@ -96,11 +96,11 @@ struct PathTraceTests {
     }
 
     /// The integrator probes read the raw estimate: they measure what the sampling
-    /// returns, and the filter is pinned separately below. Each names `denoise`
+    /// returns, and the filter is pinned separately below. Each names `denoises`
     /// rather than leaning on its default, so changing that default later cannot
     /// quietly re-aim them.
     private func pathTraced(_ kind: Probe.Kind, samples: Int = 96) -> CGImage? {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: Probe.make(kind), frame: 1)
     }
@@ -187,7 +187,7 @@ struct PathTraceTests {
     /// tolerance only absorbs cross-GPU float drift.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theTracedFrameMatchesItsReference() throws {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 48, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 48, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let diff = try Snapshot.meanDifference(of: SnapshotScene(), against: "path-traced-3d",
                                                frame: 1)
@@ -409,7 +409,7 @@ struct PathTraceTests {
     private func pathTracedSlice(_ kind: SliceProbe.Kind, samples: Int = 96,
                                  depth: Int = 8) -> CGImage? {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth,
-                                                denoise: false)
+                                                denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: SliceProbe.make(kind), frame: 1)
     }
@@ -685,7 +685,7 @@ struct PathTraceTests {
     private func pathTracedMaps(_ kind: MapsProbe.Kind, samples: Int = 96,
                                 depth: Int = 8) -> CGImage? {
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth,
-                                                denoise: false)
+                                                denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: MapsProbe.make(kind), frame: 1)
     }
@@ -858,8 +858,8 @@ struct PathTraceTests {
     }
 
     private func pathTracedGrain(_ kind: GrainProbe.Kind, samples: Int,
-                                 denoise: Bool) -> CGImage? {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: denoise)
+                                 denoises: Bool) -> CGImage? {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: denoises)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: GrainProbe.make(kind), frame: 1)
     }
@@ -885,11 +885,11 @@ struct PathTraceTests {
     /// existed rendering what it always did.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theFilterIsOffUnlessAskedFor() throws {
-        #expect(PathTracing(samplesPerPixel: 8).denoise == false)
+        #expect(PathTracing(samplesPerPixel: 8).denoises == false)
         OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 8)
         let byDefault = OllinApp.image(of: GrainProbe.make(.room), frame: 1)
         OllinApp.pathTracedExport = nil
-        let named = try #require(pathTracedGrain(.room, samples: 8, denoise: false))
+        let named = try #require(pathTracedGrain(.room, samples: 8, denoises: false))
         #expect(pixels(of: try #require(byDefault)) == pixels(of: named))
     }
 
@@ -898,9 +898,9 @@ struct PathTraceTests {
     /// A blur that lost the picture would move away from the reference instead.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theFilterMovesAThinRenderTowardTheTruth() throws {
-        let reference = try #require(pathTracedGrain(.room, samples: 384, denoise: false))
-        let raw = try #require(pathTracedGrain(.room, samples: 8, denoise: false))
-        let filtered = try #require(pathTracedGrain(.room, samples: 8, denoise: true))
+        let reference = try #require(pathTracedGrain(.room, samples: 384, denoises: false))
+        let raw = try #require(pathTracedGrain(.room, samples: 8, denoises: false))
+        let filtered = try #require(pathTracedGrain(.room, samples: 8, denoises: true))
         let rawError = rootMeanSquare(raw, reference)
         let filteredError = rootMeanSquare(filtered, reference)
         #expect(filteredError < rawError * 0.7,
@@ -915,16 +915,16 @@ struct PathTraceTests {
     /// filter moves a thin render far and a deep one only a little.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theFilterStillHelpsANearlyConvergedRender() throws {
-        let reference = try #require(pathTracedGrain(.room, samples: 2048, denoise: false))
-        let deepRaw = try #require(pathTracedGrain(.room, samples: 256, denoise: false))
-        let deepFiltered = try #require(pathTracedGrain(.room, samples: 256, denoise: true))
+        let reference = try #require(pathTracedGrain(.room, samples: 2048, denoises: false))
+        let deepRaw = try #require(pathTracedGrain(.room, samples: 256, denoises: false))
+        let deepFiltered = try #require(pathTracedGrain(.room, samples: 256, denoises: true))
         let rawError = rootMeanSquare(deepRaw, reference)
         let filteredError = rootMeanSquare(deepFiltered, reference)
         #expect(filteredError < rawError,
                 "deep raw \(rawError) vs deep filtered \(filteredError)")
 
-        let thinRaw = try #require(pathTracedGrain(.room, samples: 8, denoise: false))
-        let thinFiltered = try #require(pathTracedGrain(.room, samples: 8, denoise: true))
+        let thinRaw = try #require(pathTracedGrain(.room, samples: 8, denoises: false))
+        let thinFiltered = try #require(pathTracedGrain(.room, samples: 8, denoises: true))
         let thinMove = rootMeanSquare(thinRaw, thinFiltered)
         let deepMove = rootMeanSquare(deepRaw, deepFiltered)
         #expect(thinMove > deepMove * 3,
@@ -943,8 +943,8 @@ struct PathTraceTests {
             let right = regionMean(image, x0: 0.51, x1: 0.56, y0: 0.35, y1: 0.65)
             return left - right
         }
-        let raw = try #require(pathTracedGrain(.splitFace, samples: 16, denoise: false))
-        let filtered = try #require(pathTracedGrain(.splitFace, samples: 16, denoise: true))
+        let raw = try #require(pathTracedGrain(.splitFace, samples: 16, denoises: false))
+        let filtered = try #require(pathTracedGrain(.splitFace, samples: 16, denoises: true))
         let rawStep = step(raw), filteredStep = step(filtered)
         #expect(rawStep > 60, "the probe's own edge only reads \(rawStep) levels")
         #expect(filteredStep > rawStep * 0.9,
@@ -956,7 +956,7 @@ struct PathTraceTests {
     /// which is what says the pass conserves energy rather than merely hiding error.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theFurnaceSurvivesTheFilter() throws {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 96, denoise: true)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 96, denoises: true)
         defer { OllinApp.pathTracedExport = nil }
         let image = try #require(OllinApp.image(of: Probe.make(.furnaceMatte), frame: 1))
         let m = centerMean(image)
@@ -968,8 +968,8 @@ struct PathTraceTests {
     /// same bytes.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theFilteredFrameStaysDeterministic() throws {
-        let a = try #require(pathTracedGrain(.room, samples: 12, denoise: true))
-        let b = try #require(pathTracedGrain(.room, samples: 12, denoise: true))
+        let a = try #require(pathTracedGrain(.room, samples: 12, denoises: true))
+        let b = try #require(pathTracedGrain(.room, samples: 12, denoises: true))
         #expect(pixels(of: a) == pixels(of: b))
     }
 
@@ -1016,7 +1016,7 @@ struct PathTraceTests {
     }
 
     private func casterProbe(_ throwsShadow: Bool, samples: Int = 24) -> CGImage? {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: CasterProbe.make(throwsShadow), frame: 1)
     }

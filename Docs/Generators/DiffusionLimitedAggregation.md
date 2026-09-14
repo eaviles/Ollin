@@ -38,7 +38,7 @@ override func draw() {
 ```swift
 DiffusionLimitedAggregation(seeds: [Vector2], particleRadius: Double = 4,
                             stickiness: Double = 1, bounds: Rectangle? = nil,
-                            maxParticles: Int = 20000, seed: UInt64 = 0)
+                            maxParticles: Int = 20000, seed: Int = 0)
 ```
 
 `seeds` are the frozen starting particles, and their arrangement decides the shape. One center point grows a radial snowflake. A row of points along the bottom edge grows frost that creeps up, and a ring grows inward and outward at once. `stickiness` is the density parameter. At `1` a walker freezes on first contact, which gives wispy, open fingers. A lower value lets walkers slide deeper into the cluster before they freeze, so the cluster grows denser and rounder. `bounds` keeps the walkers inside a rectangle, and growth that reaches that edge crawls along it.

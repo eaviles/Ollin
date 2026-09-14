@@ -153,7 +153,7 @@ struct TextureWrapTests {
     /// from the one on screen.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theTracedExportTilesTheSameWay() throws {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 8, denoise: false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 8, denoises: false)
         defer { OllinApp.pathTracedExport = nil }
         let q = quarters(try #require(render(.tile)))
         #expect(q[0] < 60 && q[2] < 60, "the traced black halves: \(q)")
