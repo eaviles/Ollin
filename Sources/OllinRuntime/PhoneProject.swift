@@ -24,6 +24,7 @@ package struct PhoneProject: Sendable, Equatable {
     package static let satellitesOnThePhone: Set<String> = [
         "OllinRemote", "OllinPhysics", "OllinOSC", "OllinMIDI", "OllinController",
         "OllinVideo", "OllinBluetooth", "OllinAudio", "OllinVision", "OllinHaptics",
+        "OllinMQTT",
     ]
 
     /// The satellites that cannot reach a phone by nature: each wraps a service

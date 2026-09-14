@@ -101,11 +101,11 @@ ce2562f59ad4  Docs/3D/Phone.md:750  cannot find 'device' in scope
 4d48cb586784  Docs/3D/Phone.md:758  cannot find 'PhoneSounds' in scope
 aa6b39505d99  Docs/3D/Phone.md:772  cannot find 'device' in scope
 cfacfcd36d59  Docs/3D/Phone.md:787  cannot find 'device' in scope
-c1dfed3638ac  Docs/3D/Phone.md:797  cannot find 'device' in scope
-77a761fca424  Docs/3D/Phone.md:811  cannot find 'PhoneTouches' in scope
-b6794226e9fd  Docs/3D/Phone.md:823  cannot find 'device' in scope
-e2d2e419cc1e  Docs/3D/Phone.md:838  cannot find 'PhoneAir' in scope
-499b37412097  Docs/3D/Phone.md:846  cannot find 'device' in scope
+c1dfed3638ac  Docs/3D/Phone.md:799  cannot find 'device' in scope
+77a761fca424  Docs/3D/Phone.md:813  cannot find 'PhoneTouches' in scope
+b6794226e9fd  Docs/3D/Phone.md:825  cannot find 'device' in scope
+e2d2e419cc1e  Docs/3D/Phone.md:840  cannot find 'PhoneAir' in scope
+499b37412097  Docs/3D/Phone.md:848  cannot find 'device' in scope
 cf446431401d  Docs/3D/RGBD.md:105  cannot find 'bodies' in scope
 afc9b452945e  Docs/3D/RGBD.md:54  expected ',' separator
 480ac8fd57b4  Docs/3D/RGBD.md:80  cannot find 'frame' in scope
@@ -846,7 +846,7 @@ ce617da83e59  Docs/Helpers/Synthesis.md:111  cannot find type 'PlayingNote' in s
 7061a94dbb81  Docs/Helpers/Synthesis.md:214  cannot find 'Synth' in scope
 46b862c2cf56  Docs/Helpers/Synthesis.md:233  cannot find 'PluckedString' in scope
 af59bd54d5b2  Docs/Helpers/Synthesis.md:258  cannot find 'Synth' in scope
-18a9f63e8409  Docs/Helpers/Synthesis.md:285  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
+18a9f63e8409  Docs/Helpers/Synthesis.md:285  missing argument for parameter 'at' in call
 883a650f2006  Docs/Helpers/Synthesis.md:325  cannot find 'Synth' in scope
 43fbd5e77cc0  Docs/Helpers/Synthesis.md:356  cannot find 'Synth' in scope
 99c65b5ae548  Docs/Helpers/Synthesis.md:381  cannot find 'synth' in scope

@@ -50,6 +50,7 @@ enum Satellite: String, CaseIterable {
     case controller = "OllinController"
     case haptics = "OllinHaptics"
     case bluetooth = "OllinBluetooth"
+    case mqtt = "OllinMQTT"
     case samplePhotos = "OllinSamplePhotos"
 
     var dependency: Target.Dependency { .product(name: rawValue, package: "Ollin") }
@@ -723,6 +724,10 @@ let package = Package(
         // the parameter and every value it offers appears as it arrives, with a
         // heart rate driving the disc.
         example("Integration/BluetoothSensor", [.bluetooth]),
+        // A building's message bus drawn as a wall of dials: every topic the
+        // sketch hears becomes a dial, and it publishes a wave of its own so
+        // the round trip shows with no sensor in the house. Needs a broker.
+        example("Integration/MQTTRoom", [.mqtt]),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         example("Physics/Packing", [.physics]),

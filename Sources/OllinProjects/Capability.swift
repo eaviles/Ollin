@@ -167,6 +167,14 @@ extension Capability {
         starterHint: "let sensor = BluetoothDevice(service: .heartRate)   // then sensor.connect()"
     )
 
+    public static let mqtt = Capability(
+        id: "mqtt",
+        title: "MQTT",
+        summary: "The message bus a building speaks: a house's sensors read in draw(), and its lamps driven back.",
+        module: "OllinMQTT",
+        starterHint: "let bus = MQTTClient(host: \"localhost\")   // then bus.connect() and bus.subscribe(to:)"
+    )
+
     public static let dmx = Capability(
         id: "dmx",
         title: "DMX lighting",
@@ -233,7 +241,7 @@ extension Capability {
     public static let all: [Capability] = [
         .images, .text, .shaders, .params,
         .audio, .vision, .video, .physics,
-        .midi, .osc, .serial, .bluetooth, .dmx, .syphon, .controller, .screen, .virtualCamera,
+        .midi, .osc, .serial, .bluetooth, .mqtt, .dmx, .syphon, .controller, .screen, .virtualCamera,
         .phone, .record3D,
     ]
 

@@ -266,7 +266,7 @@ a3fc4eec84a0  Guide/29-MakingSound.md:245  cannot find 'synth' in scope
 91bac9c1605d  Guide/29-MakingSound.md:309  cannot find 'Synth' in scope
 6295ac12ab41  Guide/29-MakingSound.md:325  cannot find 'PluckedString' in scope
 22d8d5879111  Guide/29-MakingSound.md:345  cannot find 'Synth' in scope
-093c643ad086  Guide/29-MakingSound.md:352  missing argument for parameter 'at' in call
+093c643ad086  Guide/29-MakingSound.md:352  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
 34f5ea039a72  Guide/29-MakingSound.md:38  cannot find 'synth' in scope
 9ccbda15d5b2  Guide/29-MakingSound.md:383  cannot find 'Synth' in scope
 160d2675aacd  Guide/29-MakingSound.md:408  cannot find 'Synth' in scope
@@ -337,15 +337,15 @@ fa6d3e0179f1  Guide/31-SharingAndPerforming.md:71  cannot find 'MySketch' in sco
 161ff6887e4d  Guide/31-SharingAndPerforming.md:779  cannot find 'points' in scope
 2c60fc19e1c4  Guide/31-SharingAndPerforming.md:931  cannot find '$radius' in scope
 f51397a62393  Guide/31-SharingAndPerforming.md:992  cannot find '$radius' in scope
-32976ec86c4b  Guide/32-Installations.md:161  cannot find type 'Tile' in scope
-770e5f193c3c  Guide/32-Installations.md:306  cannot find 'worldPoint' in scope
-edf95f807bfe  Guide/32-Installations.md:330  cannot find 'speed' in scope
-836f9f851e0d  Guide/32-Installations.md:351  cannot find 'room' in scope
-d203209dde1c  Guide/32-Installations.md:365  cannot find 'room' in scope
+32976ec86c4b  Guide/32-Installations.md:206  cannot find type 'Tile' in scope
+770e5f193c3c  Guide/32-Installations.md:351  cannot find 'worldPoint' in scope
+edf95f807bfe  Guide/32-Installations.md:375  cannot find 'speed' in scope
+836f9f851e0d  Guide/32-Installations.md:396  cannot find 'room' in scope
 b8ae9882bce8  Guide/32-Installations.md:41  cannot find 'DMXSender' in scope
-2d729c353154  Guide/32-Installations.md:445  @objc attribute used without importing module 'Foundation'
-de4072a89e93  Guide/32-Installations.md:538  expected '}' in class
-99edf79cb997  Guide/32-Installations.md:584  extraneous '}' at top level
+d203209dde1c  Guide/32-Installations.md:410  cannot find 'room' in scope
+2d729c353154  Guide/32-Installations.md:490  @objc attribute used without importing module 'Foundation'
+de4072a89e93  Guide/32-Installations.md:583  expected '}' in class
+99edf79cb997  Guide/32-Installations.md:629  extraneous '}' at top level
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand

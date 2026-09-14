@@ -33,6 +33,7 @@ enum Satellite: String, CaseIterable {
     case midi = "OllinMIDI"
     case link = "OllinLink"
     case serial = "OllinSerial"
+    case mqtt = "OllinMQTT"
     case remote = "OllinRemote"
     case room = "OllinRoom"
     case physics = "OllinPhysics"
@@ -93,6 +94,12 @@ let package = Package(
         // documentation (no vendored SDK). Kept out of `Ollin` so the drawing
         // core stays free of networking.
         .library(name: "OllinLink", targets: ["OllinLink"]),
+        // MQTT as a satellite library: `import OllinMQTT` to join the message bus
+        // a building speaks, so a sketch reads the sensors around it and drives
+        // the lamps and machines on the same bus. The 3.1.1 wire format is
+        // implemented from the published specification over Network.framework
+        // (TCP). Kept out of `Ollin` so the drawing core stays free of networking.
+        .library(name: "OllinMQTT", targets: ["OllinMQTT"]),
         // Haptics as a satellite library: `import OllinHaptics` to send a felt
         // pattern out beside the frame, on a trackpad that knocks or on a full
         // haptic engine. Kept out of `Ollin` so the drawing core stays free of
@@ -640,6 +647,15 @@ let package = Package(
         .target(
             name: "OllinLink"
         ),
+        // MQTT: publish to and subscribe on a broker over TCP, with the MQTT
+        // 3.1.1 wire format written from its published specification (no vendored
+        // library). A satellite (like OllinOSC) so the drawing core stays free of
+        // networking; sketches opt in with `import OllinMQTT`. Depends on Ollin
+        // only to bind an incoming topic onto a `@Param` parameter.
+        .target(
+            name: "OllinMQTT",
+            dependencies: ["Ollin"]
+        ),
         // Haptics: a designed pattern of taps and hums played beside the frame,
         // so touch joins pixels and sound as an output. Two back ends behind one
         // seam: the window system's trackpad performer (three feelings, one
@@ -948,6 +964,16 @@ let package = Package(
         .testTarget(
             name: "OllinLinkTests",
             dependencies: ["OllinLink"]
+        ),
+        // MQTT correctness: wire round-trips for every packet kind against the
+        // published layouts, the remaining-length field at its boundaries, the
+        // topic-filter matching table from the specification, payload readings,
+        // and a full session (connect, subscribe, both service levels, the will
+        // on a dropped socket, keep-alive, reconnection and resend) against an
+        // in-process broker on the loopback. GPU-independent, so it runs in CI.
+        .testTarget(
+            name: "OllinMQTTTests",
+            dependencies: ["Ollin", "OllinMQTT"]
         ),
         // Haptics correctness, hardware-free on purpose: the pattern algebra
         // (composing, moving, scaling, reversing), the trackpad plan as a pure

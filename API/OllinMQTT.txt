@@ -1,0 +1,68 @@
+// OllinMQTT: the public surface, written by Scripts/api-surface.sh.
+// Change the source, then run it with --record; never edit this file by hand.
+enum MQTTError: Equatable, Error, Hashable, Sendable
+  case invalidPort
+enum MQTTQoS: Int, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case atLeastOnce
+  case atMostOnce
+enum MQTTTopic
+  static func isValid(_: String) -> Bool
+  static func matches(_: String, filter: String) -> Bool
+final class MQTTClient: Sendable
+  func bind(_: String, to: Param<Double>, from: ClosedRange<Double> = default)
+  func bool(_: String) -> Bool?
+  func bool(_: String, default: Bool) -> Bool
+  func connect() throws
+  func disconnect()
+  func int(_: String) -> Int?
+  func int(_: String, default: Int) -> Int
+  func message(_: String) -> MQTTMessage?
+  func messages() -> [MQTTMessage]
+  func messages(matching: String) -> [MQTTMessage]
+  func number(_: String) -> Double?
+  func number(_: String, default: Double) -> Double
+  func publish(_: String, _: Bool, qos: MQTTQoS = default, retains: Bool = default)
+  func publish(_: String, _: Double, qos: MQTTQoS = default, retains: Bool = default)
+  func publish(_: String, _: String, qos: MQTTQoS = default, retains: Bool = default)
+  func publish(_: String, payload: Foundation.Data, qos: MQTTQoS = default, retains: Bool = default)
+  func subscribe(to: String, qos: MQTTQoS = default)
+  func text(_: String) -> String?
+  func text(_: String, default: String) -> String
+  func topics(matching: String) -> [String]
+  func unbind(_: String)
+  func unsubscribe(from: String)
+  init(host: String, port: Int = default, clientID: String = default, username: String? = default, password: String? = default, will: MQTTWill? = default, keepAlive: Double = default, reconnects: Bool = default)
+  let clientID: String
+  let host: String
+  let keepAlive: Double
+  let port: Int
+  let reconnects: Bool
+  static func randomClientID() -> String
+  var connectionCount: Int { get }
+  var isConnected: Bool { get }
+  var lastError: String? { get }
+  var subscriptions: [String] { get }
+  var topics: [String] { get }
+struct MQTTMessage: Equatable, Hashable, Sendable
+  func bool(named: String) -> Bool?
+  func int(named: String) -> Int?
+  func number(named: String) -> Double?
+  func text(named: String) -> String?
+  init(topic: String, payload: Foundation.Data, qos: MQTTQoS = default, isRetained: Bool = default, isDuplicate: Bool = default)
+  init(topic: String, text: String, qos: MQTTQoS = default, isRetained: Bool = default)
+  let isDuplicate: Bool
+  let isRetained: Bool
+  let payload: Foundation.Data
+  let qos: MQTTQoS
+  let topic: String
+  var bool: Bool? { get }
+  var int: Int? { get }
+  var number: Double? { get }
+  var text: String? { get }
+struct MQTTWill: Equatable, Hashable, Sendable
+  init(topic: String, payload: Foundation.Data, qos: MQTTQoS = default, retains: Bool = default)
+  init(topic: String, text: String, qos: MQTTQoS = default, retains: Bool = default)
+  var payload: Foundation.Data { get set }
+  var qos: MQTTQoS { get set }
+  var retains: Bool { get set }
+  var topic: String { get set }

@@ -84,7 +84,8 @@ RENDER_LIMIT=300             # seconds before a sketch is given up on and drawn 
 # on a real picture with nothing plugged in.
 DEVICE_MODULES=(OllinPhone OllinRecord3D OllinScreen OllinMIDI
                 OllinOSC OllinSerial OllinBluetooth OllinDMX OllinLaser OllinSyphon
-                OllinRoom OllinRemote OllinLink OllinHaptics OllinController)
+                OllinRoom OllinRemote OllinLink OllinHaptics OllinController
+                OllinMQTT)
 # The ones that need a device without importing a library for it.
 DEVICE_SKETCHES=(Input/Pen Audio/Listening Audio/PlayAlong)
 

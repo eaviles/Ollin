@@ -57,6 +57,51 @@ After `extend(leds)` you draw as if the wall didn't exist. Whatever lands under 
   <img src="Images/32-Installations/LEDWall.jpg" alt="A diagram in two rows: a colorful gradient picture with a wavy strip of small rings and a bracketed grid of rings mapped over it, and below, the same LEDs lit for real: the strip laid out straight in wire order and the panel beside it, each labeled with the universe it occupies" width="680">
 </picture>
 
+## What the building already says: MQTT
+
+Lights are one thing a room has. Most rooms have more, and a lot of it is already on a network talking to itself. A thermostat, a door sensor, a power meter, a smart plug, an air quality board somebody screwed to a wall: on almost every one of those, the protocol underneath is **MQTT**. A sensor publishes a reading to a named topic, a broker in the middle holds the whole thing together, and anything that subscribed to that topic gets the reading. Neither end knows the other exists. That is the point of it, and it is why a sketch can join a building it had nothing to do with.
+
+```swift
+import OllinMQTT
+
+let bus = MQTTClient(host: "192.168.1.20")     // the broker, wherever it lives
+
+override func setup() {
+    try? bus.connect()
+    bus.subscribe(to: "home/+/temperature")
+}
+
+override func draw() {
+    let warmth = bus.number("home/kitchen/temperature", default: 20)
+    background(Color.blue.mixed(with: .red, (warmth - 15) / 15))
+}
+```
+
+You need a broker somewhere. A house running Home Assistant or Zigbee2MQTT already has one and its address is what goes in `host:`. On your own Mac, `brew install mosquitto` and `mosquitto -v` gives you one in a second, which is enough to build against.
+
+The one thing worth getting right before you write a filter is the wildcards, because a subscription is a filter rather than a topic. `+` stands for exactly one level and `#` for every level from there down, and the two surprises are that a trailing `#` also matches its own parent, and that no wildcard reaches a topic starting with `$`, which is where a broker keeps its own statistics.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/TopicsAndFilters-dark.jpg">
+  <img src="Images/32-Installations/TopicsAndFilters.jpg" alt="A matrix diagram: five topics a house publishes written vertically across the top, four subscription filters down the left side, and a filled mark where a filter matches a topic, with the dollar-prefixed topic unmatched by every wildcard row" width="680">
+</picture>
+
+Reading works the way [Chapter 28](28-SoundAndControl.md)'s controllers did, because it is the same problem. A reading that keeps coming is read at its latest with `bus.number(topic, default:)`, something that happens once is drained from `bus.messages()` every frame, and `bus.bind("home/dial/level", to: $radius)` puts a dial on a wall onto a parameter. Payloads are just bytes and the protocol says nothing about them, so `MQTTMessage` reads the three things devices actually write: a decimal number, a switch word like `ON` or `offline`, and a small JSON object whose fields come out through `message.number(named: "temperature")`.
+
+The traffic goes both ways, and that is what makes this an installation feature rather than an input one. `bus.publish("home/lamp/set", true)` sends the word a relay expects. Publish with `retains: true` and the broker keeps that as the topic's stored value, so the next thing to subscribe learns it immediately instead of waiting for the next reading: a piece that starts up already knowing the room.
+
+Two pieces of the protocol are built for exactly the job this chapter is about. The first is the **will**. You hand the broker a message when you connect, and it publishes that message if your client vanishes without saying goodbye:
+
+```swift
+let bus = MQTTClient(host: "192.168.1.20",
+                     will: MQTTWill(topic: "gallery/piece/status",
+                                    text: "gone", retains: true))
+```
+
+Pull the plug on the machine and `gallery/piece/status` reads `gone` a moment later, everywhere on the bus. Call `disconnect()` on the way out and the broker throws the will away instead, because leaving is not the same as being cut off. That difference is the whole feature, and it is the cheapest watchdog a piece will ever have: the building can now tell whether your sketch is alive without anyone walking to the wall.
+
+The second is what happens when the network blinks, which over a month it will. The client reconnects on its own, after a delay that starts at a quarter second and doubles up to eight so a rebooting broker is waited out rather than hammered, and it puts every subscription back up when it returns. Anything you published at `.atLeastOnce` and that was never acknowledged goes out again, marked as a resend. That level is worth paying for on a command, since a lamp that never heard `OFF` stays on all night, and not worth it on a reading that will be published again in a moment. `bus.connectionCount` counts how many times the broker has accepted you, which is a better thing for a log to watch than a boolean that is only false for a second.
+
 ## When it gets slow: the cost row
 
 The night before an opening is a bad time to discover that a piece runs at 24 frames a second. Sooner or later one will, and the useful question is not "is it slow" but "which half is slow".
@@ -639,9 +684,10 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 - [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
+- [MQTT](../Docs/Integration/MQTT.md): the broker and the client, topics and their wildcards, what the devices write in a payload, the two service levels, retained values, the last will, and the reconnection.
 - [Remote](../Docs/Integration/Remote.md): the `@Param` parameters served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.
 - [Room](../Docs/Integration/Room.md): several machines joining by name, the three ways to read what arrives, shared parameters, the clock they agree on and what it costs, seats, and who can join.
-- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
+- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/MQTTRoom`](../Examples/Integration/MQTTRoom/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
 
 ---
 

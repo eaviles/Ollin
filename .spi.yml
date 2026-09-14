@@ -15,6 +15,7 @@ builder:
         - OllinLaser
         - OllinLink
         - OllinMIDI
+        - OllinMQTT
         - OllinOSC
         - OllinPhone
         - OllinPhysics
