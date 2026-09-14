@@ -250,6 +250,10 @@
       "Recreations/OsamuSato/Totem",
       "Recreations/OsamuSato/Alphabet"
     ],
+    "Recreations/RyszardWiniarski": [
+      "Recreations/RyszardWiniarski/Obszar",
+      "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"
+    ],
     "Recreations/SolLeWitt": [
       "Recreations/SolLeWitt/FiftyPoints",
       "Recreations/SolLeWitt/ArcsCirclesGrids"
@@ -635,6 +639,14 @@
       ],
       "image": "groups/Recreations-OsamuSato.jpg?v=8010bd2b",
       "imageSmall": "groups/Recreations-OsamuSato-640.jpg?v=44f367b6"
+    },
+    "Recreations/RyszardWiniarski": {
+      "of": [
+        "Recreations/RyszardWiniarski/Obszar",
+        "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"
+      ],
+      "image": "groups/Recreations-RyszardWiniarski.jpg?v=23aeac9e",
+      "imageSmall": "groups/Recreations-RyszardWiniarski-640.jpg?v=0da31836"
     },
     "Recreations/SolLeWitt": {
       "of": [
@@ -8308,6 +8320,48 @@
       "still": "examples/Recreations/OsamuSato/Totem/still.jpg?v=cb35af55",
       "stillSmall": "examples/Recreations/OsamuSato/Totem/still-640.jpg?v=538b7d5a",
       "width": 1080
+    },
+    "Recreations/RyszardWiniarski/LosowanieDwiemaKostkami": {
+      "width": 1080,
+      "height": 1080,
+      "length": "19.0s",
+      "seconds": 19.0,
+      "frame": 960,
+      "motion": 6.46,
+      "sound": false,
+      "source": "d4e3628c847121bf",
+      "rendered": "2026-09-14",
+      "bytes": {
+        "loop": 1454517,
+        "loopSmall": 411108,
+        "still": 197182,
+        "stillSmall": 83735
+      },
+      "loop": "examples/Recreations/RyszardWiniarski/LosowanieDwiemaKostkami/loop.mp4?v=98454779",
+      "loopSmall": "examples/Recreations/RyszardWiniarski/LosowanieDwiemaKostkami/loop-640.mp4?v=746b366f",
+      "still": "examples/Recreations/RyszardWiniarski/LosowanieDwiemaKostkami/still.jpg?v=9e109055",
+      "stillSmall": "examples/Recreations/RyszardWiniarski/LosowanieDwiemaKostkami/still-640.jpg?v=3ec0655a"
+    },
+    "Recreations/RyszardWiniarski/Obszar": {
+      "width": 1080,
+      "height": 1080,
+      "length": "12.0s",
+      "seconds": 12.0,
+      "frame": 600,
+      "motion": 10.068,
+      "sound": false,
+      "source": "724c34a021d38e03",
+      "rendered": "2026-09-14",
+      "bytes": {
+        "loop": 824538,
+        "loopSmall": 255575,
+        "still": 148841,
+        "stillSmall": 71343
+      },
+      "loop": "examples/Recreations/RyszardWiniarski/Obszar/loop.mp4?v=f790c75d",
+      "loopSmall": "examples/Recreations/RyszardWiniarski/Obszar/loop-640.mp4?v=3179a991",
+      "still": "examples/Recreations/RyszardWiniarski/Obszar/still.jpg?v=34095fef",
+      "stillSmall": "examples/Recreations/RyszardWiniarski/Obszar/still-640.jpg?v=c16d4630"
     },
     "Recreations/SolLeWitt/ArcsCirclesGrids": {
       "width": 1800,

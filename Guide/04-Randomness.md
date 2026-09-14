@@ -319,6 +319,7 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 - Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Variations` (a whole composition per seed), `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the ring roll).
 - The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you'll meet in [Chapter 5](05-Noise.md)).
 - The LeWitt homage [`FiftyPoints`](../Examples/Recreations/SolLeWitt/FiftyPoints/Sketch.swift): an instruction from 1971 that asks for fifty points "at random" and "evenly distributed" at once. Plain chance cannot give both, so the drafter keeps the farthest of a handful of throws for each point.
+- The Winiarski homages in [`Examples/Recreations/RyszardWiniarski/`](../Examples/Recreations/RyszardWiniarski/): `Obszar` is the program behind his areas, a coin or a die deciding every square of a grid from a drawn corner, the rule written under it and the count of black against what the distribution promised. `LosowanieDwiemaKostkami` lays black and white runs whose lengths are the sums of two dice, so the histogram of two dice is painted out as bars.
 
 ---
 

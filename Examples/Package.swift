@@ -855,5 +855,10 @@ let package = Package(
         // and rain falling across a square, after Vicente Rojo.
         example("Recreations/VicenteRojo/Negaciones"),
         example("Recreations/VicenteRojo/MexicoBajoLaLluvia"),
+        // Fields of black and white squares that a coin or a die decided, painted
+        // from a drawn corner area after area, and runs whose lengths are the sums
+        // of two dice, after Ryszard Winiarski.
+        example("Recreations/RyszardWiniarski/Obszar"),
+        example("Recreations/RyszardWiniarski/LosowanieDwiemaKostkami"),
     ]
 )
