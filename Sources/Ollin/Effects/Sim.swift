@@ -31,9 +31,13 @@ public struct Sim: Sendable {
     /// builds a `Sim` through the static factories below.
     enum Kind: Sendable {
         case reactionDiffusion(feed: Double, kill: Double, toFeed: Double, toKill: Double)
+        case predatorPrey(halfSaturation: Double, predatorGrowth: Double, predatorDeath: Double,
+                          steps: Int)
         case gameOfLife
         case lenia(radius: Int, growthCenter: Double, growthWidth: Double,
                    timeScale: Double, rings: [Double])
+        case smoothLife(radius: Int, birth: ClosedRange<Double>, survival: ClosedRange<Double>,
+                        intervalSoftness: Double, cellSoftness: Double)
         case ripples(speed: Double, damping: Double)
         case fluid(FluidConfig)
         case multiScaleTuring(scales: [TuringScale], seed: Double)
@@ -109,6 +113,52 @@ public struct Sim: Sendable {
                                      toFeed: max(0, toFeed), toKill: max(0, toKill)))
     }
 
+    /// A **predator-prey** field: two populations spreading over one land and eating
+    /// each other, the Lotka-Volterra idea in the form Rosenzweig and MacArthur gave
+    /// it. Prey (red) breed toward the land's capacity and predators (green) eat
+    /// them at a rate that saturates when prey are plentiful (a full predator eats
+    /// no faster), then die off at their own rate. Both wander by diffusion. Where
+    /// predators arrive on full prey the two chase each other around a cycle, boom
+    /// and crash, and because neighbors run a little behind each other the cycle
+    /// becomes waves: an invasion front, then rotating spiral waves in its wake, the
+    /// picture of spatial ecology.
+    ///
+    /// The field rests at prey everywhere and no predators, so **draw green to
+    /// release predators**: a mark's red is the prey level it sets and its green the
+    /// predator level, both read in linear light like every sim's marks
+    /// (`fill(.green)` drops predators onto bare ground, and a black mark clears
+    /// both). A few dots are enough; the waves make themselves. The raw
+    /// `image` reads prey in red and predators in green, already a picture, and
+    /// `.filtered(.gradientMap(...))` on it reads the prey alone.
+    ///
+    /// The defaults sit past the model's oscillation threshold, the regime that
+    /// makes spirals. Raising `halfSaturation` toward the capacity, or the death
+    /// rate toward the growth rate, calms the cycle into a steady coexistence and
+    /// the waves die out, the model's own paradox of enrichment run backwards.
+    ///
+    /// - Parameters:
+    ///   - halfSaturation: The prey density, as a share of the land's capacity, at
+    ///     which a predator eats at half its top speed (0.01...1). Lower is a more
+    ///     voracious predator and a wilder cycle.
+    ///   - predatorGrowth: How fast a full predator population grows, in units of the
+    ///     prey's own growth rate (0.1...8). It must exceed `predatorDeath`, or the
+    ///     predators cannot live at any prey density.
+    ///   - predatorDeath: How fast predators die off without prey, in the same units
+    ///     (0.01...8).
+    ///   - steps: Integration steps a frame (1...32), the pace: each advances the
+    ///     model by a twentieth of the prey's characteristic growth time.
+    public static func predatorPrey(halfSaturation: Double = 0.4, predatorGrowth: Double = 2,
+                                    predatorDeath: Double = 0.6, steps: Int = 8) -> Sim {
+        Sim(kind: .predatorPrey(halfSaturation: min(1, max(0.01, halfSaturation)),
+                                predatorGrowth: min(8, max(0.1, predatorGrowth)),
+                                predatorDeath: min(8, max(0.01, predatorDeath)),
+                                steps: min(32, max(1, steps))))
+    }
+
+    /// The model time one `.predatorPrey` integration step advances, in units of
+    /// the prey's characteristic growth time; `steps` of them run each frame.
+    static let predatorPreyTimeStep = 0.05
+
     /// Conway's **Game of Life**: each cell lives or dies by its eight neighbors
     /// (B3/S23). Draw white to make cells alive, black to kill them, then watch the
     /// gliders and oscillators evolve. A cell is read alive where its red channel is
@@ -148,6 +198,50 @@ public struct Sim: Sendable {
                                 growthWidth: max(0.0001, growthWidth),
                                 timeScale: max(1, timeScale),
                                 rings: clamped))
+    }
+
+    /// **SmoothLife**: the Game of Life's own rule carried to a continuous field, the
+    /// generalization Stephan Rafler found the smooth glider in. A cell is no longer
+    /// one texel but a disc, and its neighborhood the ring around that disc, out to
+    /// `radius` texels with the ring three times the disc's width. Each step reads
+    /// how full the disc is (is the cell alive) and how full the ring is (how many
+    /// neighbors), and Life's birth and survival counts become two *intervals* of
+    /// ring filling: a dead cell is born when the ring's filling lands in `birth`,
+    /// a live one survives when it lands in `survival`, and the step edges are soft
+    /// sigmoids rather than cliffs, so the field stays smooth and the rule can run
+    /// at any radius. The defaults are the paper's glider regime: blobs that hold
+    /// their shape and slide in any direction, rings that pulse, colonies that
+    /// split. Draw white to add living matter (a solid disc a little smaller than
+    /// `radius` with a notch in one side is the classic glider seed); black erases.
+    ///
+    /// The raw `image` is grayscale life, made to be recolored with
+    /// `.filtered(.gradientMap(...))`. Each step reads every texel within `radius`,
+    /// so the field `scale` is the cost lever, and the glider is about two radii
+    /// across, so `scale` also sets how big a creature is on the canvas.
+    ///
+    /// - Parameters:
+    ///   - radius: The neighborhood's outer radius in field texels (3...48). The
+    ///     paper's is 21; smaller runs faster and breeds smaller creatures.
+    ///   - birth: The ring fillings, each 0...1, at which a dead cell comes alive.
+    ///   - survival: The ring fillings at which a living cell stays alive (the
+    ///     paper's death interval).
+    ///   - intervalSoftness: How gradually an interval's edges take effect, the
+    ///     width of their sigmoid steps. Near 0 the rule snaps like Life.
+    ///   - cellSoftness: How gradually a half-full disc counts as alive rather
+    ///     than dead, the same width for the cell's own step.
+    public static func smoothLife(radius: Int = 21,
+                                  birth: ClosedRange<Double> = 0.278 ... 0.365,
+                                  survival: ClosedRange<Double> = 0.267 ... 0.445,
+                                  intervalSoftness: Double = 0.028,
+                                  cellSoftness: Double = 0.147) -> Sim {
+        func unit(_ range: ClosedRange<Double>) -> ClosedRange<Double> {
+            let lo = min(1, max(0, range.lowerBound))
+            return lo ... min(1, max(lo, range.upperBound))
+        }
+        return Sim(kind: .smoothLife(radius: min(48, max(3, radius)),
+                                     birth: unit(birth), survival: unit(survival),
+                                     intervalSoftness: max(0.001, intervalSoftness),
+                                     cellSoftness: max(0.001, cellSoftness)))
     }
 
     /// A water surface: the 2D wave equation on a height field, the classic
@@ -705,8 +799,11 @@ public struct Sim: Sendable {
     var substeps: Int {
         switch kind {
         case .reactionDiffusion: return 14
+        case let .predatorPrey(_, _, _, steps):
+            return steps                    // the pace: each is one fixed kinetic step
         case .gameOfLife:        return 1
         case .lenia:             return 1
+        case .smoothLife:        return 1   // one generation per frame, like Life
         case .ripples:           return 6   // rings cross the field at a usable pace:
                                             // wave speed scales as the square root of
                                             // the coupling gain, so a gain held well
@@ -742,8 +839,10 @@ public struct Sim: Sendable {
     var restState: SIMD4<Float> {
         switch kind {
         case .reactionDiffusion: return SIMD4(1, 0, 0, 1)
+        case .predatorPrey:      return SIMD4(1, 0, 0, 1)   // prey at capacity, no predators
         case .gameOfLife:        return SIMD4(0, 0, 0, 1)
         case .lenia:             return SIMD4(0, 0, 0, 1)
+        case .smoothLife:        return SIMD4(0, 0, 0, 1)
         case .ripples:           return SIMD4(0, 0, 0, 1)   // a still surface
         case .fluid:             return SIMD4(0, 0, 0, 1)   // unused: runFluid clears its own fields
         case .multiScaleTuring:  return SIMD4(0, 0, 0, 1)   // unused: the field starts as noise,
@@ -775,8 +874,10 @@ public struct Sim: Sendable {
     var stepFragment: String {
         switch kind {
         case .reactionDiffusion: return "ollin_sim_reaction_diffusion"
+        case .predatorPrey:      return "ollin_sim_predator_prey"
         case .gameOfLife:        return "ollin_sim_life"
         case .lenia:             return "ollin_sim_lenia"
+        case .smoothLife:        return "ollin_sim_smooth_life"
         case .ripples:           return "ollin_sim_ripples"
         case .fluid:             return ""   // unused: the fluid dispatches its own fragments
         case .multiScaleTuring:  return ""   // unused: Turing dispatches its own fragments
@@ -838,6 +939,9 @@ public struct Sim: Sendable {
             // toKill == kill) binds the same bytes as the plain form; z/w feed the
             // modulated step's per-texel lerp.
             return [SIMD4(Float(feed), Float(kill), Float(toFeed), Float(toKill))]
+        case let .predatorPrey(halfSaturation, predatorGrowth, predatorDeath, _):
+            return [SIMD4(Float(halfSaturation), Float(predatorGrowth), Float(predatorDeath),
+                          Float(Sim.predatorPreyTimeStep))]
         case .gameOfLife:
             return []
         case let .lenia(radius, growthCenter, growthWidth, timeScale, rings):
@@ -846,6 +950,11 @@ public struct Sim: Sendable {
             return [SIMD4(Float(radius), Float(1 / timeScale),
                           Float(growthCenter), Float(growthWidth)),
                     ringRow]
+        case let .smoothLife(radius, birth, survival, intervalSoftness, cellSoftness):
+            return [SIMD4(Float(radius), Float(birth.lowerBound), Float(birth.upperBound),
+                          Float(intervalSoftness)),
+                    SIMD4(Float(survival.lowerBound), Float(survival.upperBound),
+                          Float(cellSoftness), 0)]
         case let .ripples(speed, damping):
             return [SIMD4(Float(speed), Float(damping), 0, 0)]
         case .fluid:

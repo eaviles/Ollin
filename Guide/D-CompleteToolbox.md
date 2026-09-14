@@ -201,6 +201,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Chaotic maps & bifurcation | The logistic route to chaos: bifurcation diagrams, cobweb staircases, Lyapunov exponents | [Ch 18](18-IteratedForms.md) | [Bifurcation](../Docs/Generators/Bifurcation.md) |
 | Cellular automata | `elementaryCA` / `totalisticCA` rules and `Turmite` ants: tiny rules, long runs | [Ch 19](19-GridSimulations.md) | [Cellular automata](../Docs/Generators/CellularAutomata.md) |
 | Lenia | `.lenia`: the continuous Game of Life, smooth mass that grows colonies and creatures | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
+| SmoothLife | `.smoothLife`: Life's own rule on a continuous field, a disc for the cell and a ring for its neighbors, with the paper's glider as the default regime | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 
 ## Physics and simulation
 
@@ -246,6 +247,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Combines | Two-layer ops: mask, displace, mix, depth-of-field, SSAO, reflections | [Ch 16](16-LayersAndEffects.md), [Ch 21](21-3DGently.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Simulation fields | Game of Life, Gray-Scott reaction-diffusion, Lenia, the ripple pool, and real-time fluid, all seeded by drawing into them | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Predator-prey field | `.predatorPrey`: prey and predators on one land, an invasion front and the spiral waves in its wake, released by drawing green | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 | Ripple pool | `.ripples`: the wave equation as an interactive water surface; drawn marks add height, rings spread and reflect | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 | Grid automata | `.cyclic`, `.excitable`, `.briansBrain`, `.hodgepodge`, `.forestFire`, `.wireworld`, `.schelling`, and `.ising`: the classic state automata as fields, from spirals and gliders to a circuit, a neighborhood sorting itself, and a magnet against the heat | [Ch 19](19-GridSimulations.md) | [Effects](../Docs/Drawing/Effects.md#simfield) |
 | Watercolor wash | `watercolor(pigments:)`: wet paint on rough paper, with real pigment behavior, darkened edges, backruns, dry-brush, and optical glazing | [Ch 19](19-GridSimulations.md) | [Watercolor](../Docs/Simulation/Watercolor.md) |

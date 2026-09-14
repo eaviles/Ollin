@@ -5,5 +5,6 @@
 // chapter declares them optional and so does this.
 var life: SimField!
 var dish: SimField!
+var land: SimField!
 var medium: SimField!
 var field: SimField!

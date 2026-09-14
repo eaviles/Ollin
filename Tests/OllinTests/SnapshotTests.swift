@@ -264,6 +264,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("lenia", frame: 60,
                  note: "A Lenia SimField seeded with a fixed grid of graded-alpha dots, evolved to frame 60 and recoloured. Pins the continuous-CA step end to end: the ring-kernel convolution with in-loop normalization, the bell-curve growth mapping, the dt integration and clip, and the params rows riding after the texel size.",
                  make: { LeniaScene() }),
+    SnapshotCase("smooth-life", frame: 60,
+                 note: "A SmoothLife SimField seeded with a fixed row of notched discs (the paper's glider seed) at radius 12, evolved to frame 60 and recolored. Pins the continuous-Life step end to end: the disc and ring fillings with the one-texel rim ramps, the sigmoid transition under the birth and survival intervals, the discrete time-stepping, and the two params rows. SmoothLifeTests pins the rule itself against a CPU reference and the glider's travel, which a whole-frame mean diff cannot.",
+                 make: { SmoothLifeScene() }),
+    SnapshotCase("predator-prey", frame: 150,
+                 note: "A predator-prey SimField at full resolution (a wavelength is about fifty texels, so a half-scale field synchronizes into one phase) with three fixed dots of predators dropped on full prey at frame 1, run to frame 150 and drawn raw (prey red, predators green): the rings have met and the wake is breaking up. Pins the two-species step end to end: the shared 9-point diffusion, the saturating predation and the logistic prey, the fixed kinetic step and the eight substeps, the prey-at-capacity rest state, and the replace inject that reads a mark's red as prey and green as predators. PredatorPreyTests pins the period against the model's own linearization, which a mean diff cannot.",
+                 make: { PredatorPreyScene() }),
     SnapshotCase("multi-scale-turing", frame: 150,
                  note: "A multi-scale Turing SimField, unseeded (it self-organizes from its own noise) and read without a withField block, run to frame 150 and shaded as relief. Pins the whole dedicated pipeline: the seeded noise fill a fresh field starts from, the Gaussian blur pyramid and the disc gather that reads it two rungs finer (the rectilinear-lattice fix), the per-scale variation chain that lets coarse scales hold ground, the least-variation scale selection, the 4x4 min/max extent chain and the renormalization that keeps the field from running away, and the read-registers-the-field path that steps a sim nothing is drawn into.",
                  make: { MultiScaleTuringScene() }),
@@ -9810,6 +9816,56 @@ private final class LeniaScene: Sketch {
             }
         }
         drawImage(life.filtered(.gradientMap(.magma)).image, 0, 0)
+    }
+}
+
+/// A SmoothLife `SimField` at radius 12, seeded once with a fixed row of notched
+/// discs (no random/time), run to frame 60 and recolored. Pins the continuous-Life
+/// fragment: the disc and ring fillings, the rim ramps, the sigmoid transition.
+private final class SmoothLifeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var life: SimField!
+
+    override func setup() { life = makeSimField(.smoothLife(radius: 12), scale: 0.5) }
+
+    override func draw() {
+        withField(life) {
+            if frameCount == 1 {
+                noStroke()
+                for i in 0 ..< 3 {
+                    let x = 44.0 + Double(i) * 84, y = 70.0 + Double(i) * 58
+                    fill(.white)
+                    drawCircle(x, y, 20)
+                    fill(.black)
+                    drawCircle(x + 10 * Double(i % 2 == 0 ? 1 : -1), y + 4, 8)
+                }
+            }
+        }
+        drawImage(life.filtered(.gradientMap(.viridis)).image, 0, 0)
+    }
+}
+
+/// A predator-prey `SimField` with three fixed dots of predators dropped on full
+/// prey at frame 1 (no random/time), run to frame 150 and drawn raw. Pins the
+/// two-species fragment: the shared diffusion, the saturating predation, the
+/// logistic prey, and the rest state the dots invade.
+private final class PredatorPreyScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var land: SimField!
+
+    override func setup() { land = makeSimField(.predatorPrey(), scale: 1) }
+
+    override func draw() {
+        withField(land) {
+            if frameCount == 1 {
+                noStroke()
+                fill(Color(red: 0, green: 1, blue: 0))
+                drawCircle(64, 80, 4)
+                drawCircle(176, 60, 4)
+                drawCircle(120, 190, 4)
+            }
+        }
+        drawImage(land.image, 0, 0)
     }
 }
 

@@ -135,6 +135,7 @@ let package = Package(
         example("Effects/Light"),
         example("Effects/Dispersion"),
         example("Simulation/GrayScott"),
+        example("Simulation/PredatorPrey"),
         example("Simulation/Automata"),
         example("Simulation/Kuramoto"),
         example("Simulation/LifeQuilt"),

@@ -233,6 +233,34 @@ fragment float4 ollin_sim_reaction_diffusion_modulated(PresentOut in [[stage_in]
     return float4(clamp(na, 0.0, 1.0), clamp(nb, 0.0, 1.0), 0.0, 1.0);
 }
 
+// predator-prey: prey u in .r, predators v in .g, the Rosenzweig-MacArthur kinetics
+// in the dimensionless form where the prey's growth rate and the land's capacity
+// are both 1. Prey breed logistically, predators eat them at the saturating rate
+// u/(u+h) (Holling's type II response: a full predator eats no faster), grow by k
+// of what they eat, and die at rate m. Both diffuse by the same 9-point stencil
+// the reaction-diffusion step uses, and one explicit Euler step of dt advances the
+// kinetics; a state clamped to 0...4 keeps a stray negative from feeding NaN back.
+// params[1] = (h, k, m, dt).
+fragment float4 ollin_sim_predator_prey(PresentOut in [[stage_in]],
+                                        texture2d<float> src [[texture(0)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float h = max(params[1].x, 0.001), k = params[1].y, m = params[1].z, dt = params[1].w;
+    float2 uv = in.uv;
+#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).xy
+    float2 c = src.sample(samp, uv).xy;
+    float2 lap = -c
+        + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
+        + 0.05 * (TAP(-1, -1) + TAP(1, -1) + TAP(-1, 1) + TAP(1, 1));
+#undef TAP
+    float u = c.x, v = c.y;
+    float eaten = u * v / (u + h);
+    float nu = u + lap.x + dt * (u * (1.0 - u) - eaten);
+    float nv = v + lap.y + dt * (k * eaten - m * v);
+    return float4(clamp(nu, 0.0, 4.0), clamp(nv, 0.0, 4.0), 0.0, 1.0);
+}
+
 // Conway's Game of Life: a cell is alive where its red channel > 0.5; it survives on
 // 2-3 live neighbors, is born on exactly 3 (B3/S23). Sampling at exact texel-center
 // offsets returns each neighbor's value exactly, so the integer counts are exact.
@@ -800,6 +828,57 @@ fragment float4 ollin_sim_lenia(PresentOut in [[stage_in]],
     float growth = 2.0 * exp(-(u - mu) * (u - mu) / (2.0 * sigma * sigma)) - 1.0;
     float a = clamp(src.sample(samp, in.uv).r + dt * growth, 0.0, 1.0);
     return float4(float3(a), 1.0);
+}
+
+// SmoothLife's soft step: a sigmoid of width `alpha` rising through 0.5 at `a`. An
+// argument far past the width overflows exp to infinity, which divides to 0, the
+// right limit, so no clamp is needed.
+static inline float ollin_smooth_life_step(float x, float a, float alpha) {
+    return 1.0 / (1.0 + exp(-(x - a) * 4.0 / alpha));
+}
+
+// SmoothLife (Rafler): the cell is a disc of radius ra/3 and its neighborhood the
+// ring from there out to ra. Each step reads the disc's filling m and the ring's
+// filling n, both area-normalized averages of the field, with a one-texel
+// anti-aliasing ramp at each rim (a texel's weight falls linearly across the
+// half-texel on either side of the true circle), and maps them through the
+// transition s(n, m): the sigmoid of m at 0.5 (width alpha_m) says how alive the
+// cell is, that mixes the birth interval's edges toward the survival interval's,
+// and the product of a rising step at the lower edge and a falling one at the upper
+// (width alpha_n) says whether the ring's filling lands inside. The discrete
+// time-stepping: the new state is s itself. params[1] = (ra, b1, b2, alpha_n);
+// params[2] = (d1, d2, alpha_m).
+fragment float4 ollin_sim_smooth_life(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float ra = max(3.0, params[1].x);
+    float b1 = params[1].y, b2 = params[1].z, alphaN = max(params[1].w, 0.001);
+    float d1 = params[2].x, d2 = params[2].y, alphaM = max(params[2].z, 0.001);
+    float ri = ra / 3.0;
+    int r = int(ceil(ra + 0.5));
+    float inner = 0.0, innerWeight = 0.0, outer = 0.0, outerWeight = 0.0;
+    for (int dy = -r; dy <= r; dy += 1) {
+        for (int dx = -r; dx <= r; dx += 1) {
+            float l = length(float2(dx, dy));
+            if (l >= ra + 0.5) continue;
+            float ring = clamp(l - ri + 0.5, 0.0, 1.0);          // 0 in the disc, 1 in the ring
+            float rim = 1.0 - clamp(l - ra + 0.5, 0.0, 1.0);     // 1 inside the outer circle
+            float wi = 1.0 - ring, wo = ring * rim;
+            float f = src.sample(samp, fract(in.uv + float2(float(dx), float(dy)) * t),
+                                 level(0.0)).r;   // wrapped: see ollin_cell_state
+            inner += wi * f; innerWeight += wi;
+            outer += wo * f; outerWeight += wo;
+        }
+    }
+    float m = innerWeight > 0.0 ? inner / innerWeight : 0.0;
+    float n = outerWeight > 0.0 ? outer / outerWeight : 0.0;
+    float alive = ollin_smooth_life_step(m, 0.5, alphaM);
+    float lower = mix(b1, d1, alive), upper = mix(b2, d2, alive);
+    float s = ollin_smooth_life_step(n, lower, alphaN)
+            * (1.0 - ollin_smooth_life_step(n, upper, alphaN));
+    return float4(float3(saturate(s)), 1.0);
 }
 
 // MARK: - Fluid simulation (a real-time, splat-driven fluid on the SimField path)

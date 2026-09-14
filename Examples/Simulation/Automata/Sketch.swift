@@ -1,6 +1,6 @@
 import Ollin
 
-/// Twelve classic **cellular automata** on one `SimField`, behind a rule picker.
+/// Thirteen classic **cellular automata** on one `SimField`, behind a rule picker.
 /// Each rule is one entry in a table: its sim and parameters, its ramp, its
 /// seeding recipe, and its parameters. Switching rules starts a fresh field with that
 /// rule's classic opening. One shared brush works everywhere: drag to paint the
@@ -31,6 +31,10 @@ import Ollin
 ///   • **lenia**: Lenia, the continuous Game of Life; a mass field convolved
 ///     with a soft ring kernel, blobs that pulse, split, and swim, the growth
 ///     rule tunable live.
+///   • **smooth**: SmoothLife, Life's own birth and survival rule carried to a
+///     continuous field, a disc for the cell and a ring for its neighbors; the
+///     opening is a scatter of notched discs, the seed the paper's glider grows
+///     from, and the brush drops another wherever it lands.
 ///   • **forest**: the Drossel-Schwabl forest fire; trees grow at random, a
 ///     rare strike lights one, and the fire runs the stand it can reach, so the
 ///     field settles at its own density and throws fires of every size.
@@ -51,7 +55,8 @@ import Ollin
 final class Automata: Sketch {
 
     enum Rule: String, CaseIterable, ParamOption {
-        case life, brain, wire, cyclic, excitable, hodgepodge, forest, schelling, ising, sandpile, lenia, sand
+        case life, brain, wire, cyclic, excitable, hodgepodge, forest, schelling, ising, sandpile, lenia,
+             smooth, sand
     }
 
     /// What the Wireworld pen lays down: wire, or an electron on it.
@@ -109,6 +114,12 @@ final class Automata: Sketch {
     @Param("Field", -1 ... 1, icon: "magnet", group: "Ising") var magneticField = 0.0
     @Param("Growth center", 0.05 ... 0.3, icon: "target", group: "Lenia") var growthCenter = 0.15
     @Param("Growth width", 0.005 ... 0.05, icon: "slider.horizontal.below.rectangle", group: "Lenia") var growthWidth = 0.015
+    /// The neighborhood's outer radius in field texels; the glider is about two of
+    /// them across. Changing it starts a fresh field.
+    @Param("Radius", 6 ... 24, icon: "circle.dashed", group: "SmoothLife") var reach = 14
+    /// How soft the birth and survival intervals' edges are. Near zero the rule
+    /// snaps like Life and the field goes to grain; wider melts the creatures.
+    @Param("Softness", 0.01 ... 0.08, icon: "slider.horizontal.below.rectangle", group: "SmoothLife") var softness = 0.028
     @Param("Pour", icon: "paintbrush.pointed", group: "Sand") var grain: Grain = .sand
     /// How often a grain that could roll off a slope stays put: 0 slumps flat,
     /// 1 stacks straight up.
@@ -254,6 +265,7 @@ final class Automata: Sketch {
                                    seed: Double(variation))
         case .sandpile: return .sandpile(pour: 1024, topplings: Int(pace))
         case .lenia: return .lenia(growthCenter: growthCenter, growthWidth: growthWidth)
+        case .smooth: return .smoothLife(radius: reach, intervalSoftness: softness)
         case .sand: return .fallingSand(passes: 16, friction: friction)
         }
     }
@@ -267,6 +279,7 @@ final class Automata: Sketch {
         case .brain: return 0.15
         case .cyclic, .excitable, .hodgepodge, .forest, .schelling, .ising: return 0.25
         case .sandpile, .lenia, .sand: return 0.5
+        case .smooth: return 0.35   // every step reads a disc of radius texels
         }
     }
 
@@ -318,6 +331,13 @@ final class Automata: Sketch {
             for _ in 0 ..< 350 {
                 fill(Color(white: 1, alpha: random(0.2, 0.8)))
                 drawCircle(random(width), random(height), random(15, 70))
+            }
+        case .smooth where fieldAge == 1:
+            // A scatter of the paper's glider seeds, each a disc a little under
+            // the radius with a notch bitten out of one side, facing every way.
+            for _ in 0 ..< 14 {
+                let c = Vector2(random(width), random(height))
+                glider(at: c, facing: random(.pi * 2))
             }
         case .sand where fieldAge == 1:
             // Two shelves and a pool: the stream piles on the upper shelf,
@@ -403,12 +423,31 @@ final class Automata: Sketch {
         case .lenia:
             fill(keyIsPressed ? .black : Color(white: 1, alpha: 0.85))
             drawCircle(mouseX, mouseY, 42)
+        case .smooth:
+            // A glider seed under the mouse, or a held key erases a patch.
+            if keyIsPressed {
+                fill(.black)
+                drawCircle(mouseX, mouseY, 80)
+            } else {
+                glider(at: Vector2(mouseX, mouseY), facing: time)
+            }
         case .sand:
             // The brush pours the chosen material; a held key clears a hole
             // (an empty mark is a material too, so it also cuts through walls).
             fill(keyIsPressed ? SandMaterial.empty.color : grain.material.color)
             drawCircle(mouseX, mouseY, grain == .wall ? 12 : 24)
         }
+    }
+
+    /// The paper's glider seed: a disc a little under the radius with a smaller
+    /// disc bitten out of its side, the notch on the side the glider will lead
+    /// with. In canvas points, so it follows the field's scale.
+    private func glider(at center: Vector2, facing angle: Double) {
+        let r = Double(reach) / fieldScale(for: .smooth)
+        fill(.white)
+        drawCircle(center.x, center.y, r * 0.86)
+        fill(.black)
+        drawCircle(center.x + cos(angle) * r * 0.43, center.y + sin(angle) * r * 0.43, r * 0.33)
     }
 
     /// A pinch of random soup: loose single cells at the density that boils. One
@@ -437,6 +476,7 @@ final class Automata: Sketch {
         case .ising: return field.filtered(.gradientMap(spins)).image
         case .sandpile: return field.filtered(.gradientMap(counts)).image
         case .lenia: return field.filtered(.gradientMap(.magma)).image
+        case .smooth: return field.filtered(.gradientMap(.viridis)).image
         case .sand: return field.filtered(.gradientMap(materials)).image
         }
     }
@@ -465,6 +505,8 @@ final class Automata: Sketch {
             return "Abelian sandpile · four grains at a time · hold to pour another mountain"
         case .lenia:
             return "Lenia · a continuous automaton · drag to add mass, hold a key to erase"
+        case .smooth:
+            return "SmoothLife · Life's rule on a continuous field · drag to drop gliders, hold a key to erase"
         case .sand:
             return "falling sand · grains fall, roll, and sink through water · drag to pour, hold a key to erase"
         }

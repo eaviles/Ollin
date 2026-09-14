@@ -57,7 +57,8 @@ struct WebFragmentTranslatorTests {
         "ollin_sim_inject", "ollin_sim_inject_height", "ollin_sim_inject_sand",
         "ollin_sim_inject_grains", "ollin_sim_inject_excite", "ollin_sim_inject_brain",
         "ollin_sim_reaction_diffusion", "ollin_sim_reaction_diffusion_modulated",
-        "ollin_sim_life", "ollin_sim_lenia", "ollin_sim_ripples", "ollin_sim_sandpile",
+        "ollin_sim_life", "ollin_sim_lenia", "ollin_sim_smooth_life", "ollin_sim_ripples",
+        "ollin_sim_sandpile", "ollin_sim_predator_prey",
         "ollin_sim_falling_sand", "ollin_sim_cyclic", "ollin_sim_excitable", "ollin_sim_brain",
         "ollin_sim_hodgepodge", "ollin_sim_state_seed",
     ]

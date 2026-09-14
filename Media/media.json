@@ -9407,25 +9407,25 @@
       "width": 1080
     },
     "Simulation/Automata": {
-      "bytes": {
-        "loop": 5035870,
-        "loopSmall": 1665858,
-        "still": 75877,
-        "stillSmall": 33481
-      },
-      "frame": 480,
+      "width": 1080,
       "height": 1080,
       "length": "10.0s",
-      "loop": "examples/Simulation/Automata/loop.mp4?v=a8cc00b8",
-      "loopSmall": "examples/Simulation/Automata/loop-640.mp4?v=4db3d702",
-      "motion": 62.162,
-      "rendered": "2026-09-13",
       "seconds": 10.0,
+      "frame": 480,
+      "motion": 64.92,
       "sound": false,
-      "source": "5783f5ba25ea4ab8",
-      "still": "examples/Simulation/Automata/still.jpg?v=0937d975",
-      "stillSmall": "examples/Simulation/Automata/still-640.jpg?v=287bbe70",
-      "width": 1080
+      "source": "432f73a681536efd",
+      "rendered": "2026-09-14",
+      "bytes": {
+        "loop": 5823600,
+        "loopSmall": 1931253,
+        "still": 102145,
+        "stillSmall": 44930
+      },
+      "loop": "examples/Simulation/Automata/loop.mp4?v=54ed196c",
+      "loopSmall": "examples/Simulation/Automata/loop-640.mp4?v=e40be250",
+      "still": "examples/Simulation/Automata/still.jpg?v=84528e47",
+      "stillSmall": "examples/Simulation/Automata/still-640.jpg?v=a84844fd"
     },
     "Simulation/Breeding": {
       "bytes": {
@@ -9642,6 +9642,27 @@
       "still": "examples/Simulation/Physarum/still.jpg?v=e3c92709",
       "stillSmall": "examples/Simulation/Physarum/still-640.jpg?v=f458ed86",
       "width": 1080
+    },
+    "Simulation/PredatorPrey": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 25.209,
+      "sound": false,
+      "source": "dae5aca68213534e",
+      "rendered": "2026-09-14",
+      "bytes": {
+        "loop": 5105047,
+        "loopSmall": 1480040,
+        "still": 121586,
+        "stillSmall": 47068
+      },
+      "loop": "examples/Simulation/PredatorPrey/loop.mp4?v=c9b3d0bf",
+      "loopSmall": "examples/Simulation/PredatorPrey/loop-640.mp4?v=6babb9a1",
+      "still": "examples/Simulation/PredatorPrey/still.jpg?v=1929463f",
+      "stillSmall": "examples/Simulation/PredatorPrey/still-640.jpg?v=19e4583a"
     },
     "Simulation/PrimordialParticles": {
       "bytes": {

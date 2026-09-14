@@ -5593,12 +5593,14 @@ struct Sim: Sendable
   static func ising(temperature: Double = default, field: Double = default, sweeps: Int = default, seed: Double = default) -> Sim
   static func lenia(radius: Int = default, growthCenter: Double = default, growthWidth: Double = default, timeScale: Double = default, rings: [Double] = default) -> Sim
   static func multiScaleTuring(scales: [TuringScale] = default, seed: Double = default) -> Sim
+  static func predatorPrey(halfSaturation: Double = default, predatorGrowth: Double = default, predatorDeath: Double = default, steps: Int = default) -> Sim
   static func reactionDiffusion(feed: Double = default, kill: Double = default) -> Sim
   static func reactionDiffusion(feed: Double = default, kill: Double = default, toFeed: Double, toKill: Double) -> Sim
   static func ripples(speed: Double = default, damping: Double = default) -> Sim
   static func sandpile(pour: Int = default, topplings: Int = default) -> Sim
   static func schelling(preference: Double = default, vacancy: Double = default, mobility: Double = default, passes: Int = default, seed: Double = default) -> Sim
   static func selfWarp(amount: Double = default, refresh: Double = default, decay: Double = default, smoothing: Double = default) -> Sim
+  static func smoothLife(radius: Int = default, birth: ClosedRange<Double> = default, survival: ClosedRange<Double> = default, intervalSoftness: Double = default, cellSoftness: Double = default) -> Sim
   static func watercolor(pigments: [WatercolorPigment] = default, edgeDarkening: Double = default, backruns: Bool = default, dryBrush: Double = default, absorbency: Double = default, grain: Double = default, paperSeed: Double = default, paperColor: Color = default, substeps: Int = default) -> Sim
   static func wireworld() -> Sim
   static let isingCriticalTemperature: Double
