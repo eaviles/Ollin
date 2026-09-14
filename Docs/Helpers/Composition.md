@@ -33,10 +33,12 @@ final class Loop: Sketch {
 - [StepCounter](#stepcounter) - musical time in, step numbers out
 - [Tempo and note lengths](#tempo-and-note-lengths) - seconds into beats, and a note's length back into seconds
 - [Rhythm](#rhythm) - a cycle of strikes, spread as evenly as the numbers allow
+- [StepSequencer](#stepsequencer) - a bar of steps with a velocity, a chance, and a ratchet each, and swing on the bar
 - [Scale](#scale) - whole numbers in, notes in key out
 - [Chord](#chord) - notes meant to sound together
 - [Progression](#progression) - a cycle of chords, built out of a key
 - [Arpeggio](#arpeggio) - a chord played one note at a time
+- [Arpeggiator](#arpeggiator) - the notes held right now, played one at a time against the beat
 - [MarkovChain](#markovchain) - new elements that continue a sequence the way it was shown
 - [Tuning](#tuning) - pitches described by ratios rather than by semitones
 - [BeatFollower](#beatfollower) - the beat in what the sketch hears, so it can play along
@@ -143,6 +145,52 @@ To read one:
 | `description` | written out, `x` and `.` |
 
 `intervals` is the compact way to compare two rhythms. The tresillo is `[3, 3, 2]` whichever step it starts on, so two rhythms that share their gaps but start in different places are close relatives. Several of the named ones are rotations. For example, `.bellPattern` is `Rhythm(7, in: 12)` started at its third strike.
+
+---
+
+### StepSequencer
+
+A `StepSequencer` is a bar of steps, each with its own note, loudness, and chance of playing, read out against the beat. It is the drum machine's grid.
+
+```swift
+var drums: StepSequencer = "36 . . 36 . . 36 . 38 . . 36 . 38 . ."
+drums.swing = 0.58
+
+override func draw() {
+    let now = tempo.beats(at: time)
+    let ahead = tempo.beats(at: time + deltaTime)
+    synth.play(drums.events(upTo: ahead), tempo: tempo, from: now)
+}
+```
+
+Write a bar out with one token per step: a note name (`C3`), a MIDI number (`36`), or `.` for a rest. `init(pattern:)` returns nil for a token it cannot read, and the literal form leaves an empty bar and says so once. `StepSequencer(.tresillo, pitch: 36)` puts one note on every strike of a rhythm, and `StepSequencer(count: 16)` is an empty bar to fill in.
+
+Each step is a `Step` with a `pitch` (nil for a rest), a `velocity`, a `probability`, and a `ratchet`. The subscript reads and writes them and wraps, so `drums[17]` is the second step of a sixteen-step bar:
+
+```swift
+drums[7] = StepSequencer.Step(42, velocity: 0.6, ratchet: 3)   // three strikes in the time of one
+drums[13] = StepSequencer.Step(42, probability: 0.5)           // plays on half the bars
+```
+
+The settings on the bar as a whole:
+
+| Setting | What it does |
+|---|---|
+| `rate` | how long one step lasts, a [`NoteLength`](#tempo-and-note-lengths). `.sixteenth` by default |
+| `swing` | how far the second step of each pair leans late, `0...1`. 0.5 is straight, and two thirds is the shuffle. The first step of a pair never moves |
+| `gate` | how much of a step a note sounds for, as a fraction. Half is short and separate, and one runs the notes together |
+| `seed` | which bars the steps left to chance play on. The same seed plays the same bars the same way |
+| `maxCatchUp` | the most steps to hand out in one frame, as on the [`StepCounter`](#stepcounter) inside |
+
+`events(upTo:)` hands back a [`ScheduledNote`](#schedulednote) for every note that falls before the beat you give it. A ratchet's strikes come back as separate notes on one step, and a step left to chance comes back or not. The chance is a pure function of the step and the seed. A bar replays the same way, and the sketch's own randomness is untouched.
+
+**Ask for the notes ahead of time.** Hand `events(upTo:)` where the music will be at the end of the frame, and hand `Synth.play(_:tempo:from:)` where it is now. A note whose beat is still ahead then waits for it, to the sample. A swung offbeat lands on its own moment rather than on the frame that asked. Leave `from:` out and every note plays with its frame, which is where every other call on this page lands. That is fine for a straight pattern and not for a swung one, because a frame is longer than the lean.
+
+`reset(to:)` moves the sequencer without playing the steps in between. `nextStep` is where it has got to, so `nextStep % length` is the playhead. Changing `rate` mid-bar carries on from where the music is.
+
+#### ScheduledNote
+
+What a sequencer or an arpeggiator hands back. It is a [`Note`](#note) (pitch, velocity, and a length in beats), the `beat` it lands on, and the `step` that asked for it. `Synth.play(_:tempo:from:)` turns the beat into a wait. `play(_:tempo:)` on the note alone plays it at once.
 
 ---
 
@@ -287,6 +335,32 @@ The patterns are: `.up` `.down` `.upDown` `.downUp` `.asPlayed` `.converge` `.di
 `.upDown` and `.downUp` do not play either end note twice in a row, so the turn sounds like a turn and not a stutter. `.asPlayed` is the only pattern that keeps the notes in the order they were given. Every other pattern sorts the notes into a ladder, so `.asPlayed` is the only way to hear a voicing you arranged by hand. `.random` is seeded and is a pure function of the step. The same seed always gives the same sequence, and adding one cannot shift anything else the sketch does at random.
 
 `order` returns one full pass of the pattern, so a sketch can draw the figure it is about to play. `notes` is the pool of notes, spread over the octaves the arpeggio covers.
+
+---
+
+### Arpeggiator
+
+An `Arpeggiator` is an `Arpeggio` that follows the notes as they change: whatever is held right now, played one note a step, against the beat.
+
+```swift
+var arp = Arpeggiator(.upDown, octaves: 2, rate: .sixteenth)
+
+override func draw() {
+    arp.notes = midi.heldNotes.map { Pitch(Double($0.note)) }
+    let now = tempo.beats(at: time)
+    synth.play(arp.events(upTo: tempo.beats(at: time + deltaTime)), tempo: tempo, from: now)
+}
+```
+
+Set `notes` to the keys a controller reports each frame, or `hold(_:)` and `release(_:)` one at a time. The pattern, `octaves`, and `seed` are the arpeggio's own. `rate`, `gate`, and `swing` are the [sequencer's](#stepsequencer), with the same meanings. `figure` is the `Arpeggio` it is playing right now, so a sketch can draw the ladder, and `next` is the note the next step will play.
+
+Three rules decide what happens when the notes change:
+
+- **A new chord after silence starts from its first note.**
+- **A note added or taken away while the others are held keeps the figure's place.** The note joins the ladder where it belongs on the next pass, and nothing restarts.
+- **`latches` keeps the last chord playing after every key goes up**, until a new key starts a new chord. Off, silence follows the last release. Either way the count goes on underneath, so the next note lands on the grid.
+
+`events(upTo:)` hands back [`ScheduledNote`](#schedulednote)s the same way the sequencer does. It wants the same look-ahead: the notes up to the end of the frame, played from now.
 
 ---
 
@@ -450,7 +524,7 @@ override func draw() {
 
 This section lists what is missing, so you can plan around it rather than go looking:
 
-- **No sequencer.** There is no type that holds a piece and plays it back. A step number goes in and notes come out, and the arrangement is the sketch's own code. That is deliberate. A sequencer would need a clock, and a clock of its own would stop this tier from running on somebody else's clock.
+- **No arrangement.** A [`StepSequencer`](#stepsequencer) holds a bar and an [`Arpeggiator`](#arpeggiator) holds a figure, and both read the beat you hand them. Nothing holds a whole piece with sections and plays it back. The arrangement is the sketch's own code, and that is deliberate. A piece with a clock of its own would stop this tier from running on somebody else's clock.
 - **A `Scale` is still twelve-tone.** `Scale(intervals:)` takes whole semitones. Anything else is a [`Tuning`](#tuning), which is a separate type rather than a setting on a scale. Chords are not built out of a tuning.
 - **Following a beat is not following a bar.** A [`BeatFollower`](#beatfollower) knows where the beat is but not where the downbeat is. So a pattern locks to the pulse rather than to the phrase.
 

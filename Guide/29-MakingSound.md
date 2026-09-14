@@ -566,6 +566,53 @@ for step in counter.steps(upTo: time * 104 / 60) {
 
 That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count. The key, the figure, and the tempo are parameters you move while it plays. All of it repeats. The same seed gives the same melody, and the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
 
+## Steps with a feel: the sequencer and the arpeggiator
+
+The counter and a rhythm give you a grid. A drum machine gives you a grid with a feel. One step is struck harder than its neighbor. One plays some bars and not others. One is split into a roll, and the whole bar leans late on its offbeats. `StepSequencer` is that grid. Write one out, one token per step, and give it the beat:
+
+```swift
+var drums: StepSequencer = "36 . . 36 . . 36 . 38 . . 36 . 38 . ."
+drums.swing = 0.58
+
+override func draw() {
+    let now = tempo.beats(at: time)
+    let ahead = tempo.beats(at: time + deltaTime)
+    synth.play(drums.events(upTo: ahead), tempo: tempo, from: now)
+}
+```
+
+That loop differs from the one above in one way. The sequencer is asked for the notes up to where the music will be at the *end* of the frame. The synth is told where the music is *now*. The difference is a wait, and the synth waits it out to the sample. Without the wait, a note asked for in `draw()` lands with the frame that asked. That is fine for a note on the beat and not for swing. At 120 beats a minute a frame is 17 milliseconds, and a shuffle moves a note by 42. `play(_:velocity:for:after:)` is the piece underneath. Any note can take an `after:` in seconds, and a strum is three notes and three waits.
+
+Each step is a `Step`: a pitch or a rest, a `velocity`, a `probability`, and a `ratchet`. Set them through the subscript, which wraps like a rhythm's:
+
+```swift
+drums[7] = StepSequencer.Step(42, velocity: 0.6, ratchet: 3)     // a roll of three
+drums[13] = StepSequencer.Step(42, probability: 0.5)             // plays half the bars
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/Sequencer-dark.jpg">
+  <img src="Images/29-MakingSound/Sequencer.jpg" alt="Three blocks. Top: one bar of sixteen steps as dots on a line, three rows for straight, swing 0.58, and swing 0.67, the offbeat dots pushed right by a growing amount while the downbeat dots stay on their ticks. Middle: one lane over four bars as rows of cells, one cell shorter for a low velocity, one cell drawn as an outline on two of the four bars where a chance step stayed quiet, and one cell split into three narrow strikes for a ratchet. Bottom: two pitch ladders, the first climbing C4 E4 G4 with a B4 joining the ladder after a marked step, the second running up and down over two octaves" width="680">
+</picture>
+
+Read the top block across. Swing moves only the second step of each pair, and by the same fraction every time. At 0.67 the offbeat lands on the last triplet of its pair, which is the shuffle. The downbeats never move, so the bar keeps its grid however hard it leans. The middle block is one lane over four bars. The chance step shows as an outline on the bars it stayed quiet, and the ratchet is three strikes in the time of one. The chance is a coin the seed tosses. The same seed plays the same bars the same way, so a pattern left partly to chance still repeats.
+
+An `Arpeggiator` is the same idea for a chord: whatever is held right now, played one note a step in an order. Hold notes from a keyboard over the wire or from the sketch's own hand:
+
+```swift
+var arp = Arpeggiator(.upDown, octaves: 2, rate: .sixteenth)
+
+override func draw() {
+    arp.notes = midi.heldNotes.map { Pitch(Double($0.note)) }
+    let now = tempo.beats(at: time)
+    synth.play(arp.events(upTo: tempo.beats(at: time + deltaTime)), tempo: tempo, from: now)
+}
+```
+
+An `Arpeggio` earlier in the chapter was a figure worked out once from a fixed set of notes. The arpeggiator follows the notes as they change. The bottom block of the figure shows two rules. A note added while the others are still held joins the ladder where it belongs, without the figure starting again. A new chord after silence starts from its first note. Turn `latches` on and letting go of every key keeps the last chord playing, which is the hold switch on the hardware. Nothing held means nothing played, but the count goes on underneath, so the next note lands on the grid.
+
+`Examples/Audio/Sequencer` is a drum machine's grid with an arpeggiator under it. Three lanes, a swing slider, the hat's offbeats on a chance, two ratchets, and a chord that changes every bar from a progression. Click a cell to turn it on or off.
+
 ## Chords that come out of a key
 
 The scale gave every number somewhere safe to land. Chords are the same idea one level up, and the useful way to write them down is as *degrees* rather than as names.
@@ -897,11 +944,11 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Sampled instruments](../Docs/Helpers/Synthesis.md#sampled-instruments): loading an SFZ instrument, what a recording being moved costs, and where to find instruments you are allowed to ship.
 - [Wavetables](../Docs/Helpers/Synthesis.md#wavetables): the built-in tables, making one from harmonics, drawn cycles, or a rule, and why a high note reads a softer copy.
 - [Physical models](../Docs/Helpers/Synthesis.md#physical-models): all four models, their settings, why the tuning is exact, and how a shape is measured for its modes.
-- [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, progressions, arpeggios, chains, tunings, following a beat, and the step counter under all of them.
+- [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, progressions, arpeggios, chains, tunings, following a beat, the step counter under all of them, and the [step sequencer](../Docs/Helpers/Composition.md#stepsequencer) and [arpeggiator](../Docs/Helpers/Composition.md#arpeggiator) that read the beat you hand them.
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.
 - [Spatial audio](../Docs/Helpers/Synthesis.md#placing-a-sound): placing a source in the room, the listener, and what an export writes.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Expression` (a surface where each note is bent, pressed, and slid on its own), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
+- Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Spectral` (the pitch moved, an instant held, a recording stretched), `Expression` (a surface where each note is bent, pressed, and slid on its own), `Sampler`, `OwnSampler` (an instrument made from your own `.sfz`), `Wavetable` (a row of cycles read by position, the frames stacked on screen), `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with parameters), `Sequencer` (a drum machine's grid with an arpeggiator under it), `Changes`, `ChordSymbols` (the same changes written as symbols instead of degrees), `Tunings` (one triad held through all seven), `PlayAlong` (a beat followed off the microphone), `Sonification`, `Spatial`, and `SoundInAnExport`.
 
 ---
 

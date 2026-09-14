@@ -100,6 +100,8 @@ The rest of the surface:
 
 **Notes start on the next block of audio**, a few milliseconds after you ask. That comes from the hardware, not from a queue. The wait is shorter than a frame, so a note asked for in `draw()` lands with the frame that asked for it.
 
+**A note can wait.** `play("C4", for: 0.4, after: 0.03)` starts the note 30 milliseconds from now, on its own sample rather than on the next block. Notes asked for together can then be closer than a frame apart. A strum is three notes and three waits, and a [sequencer's](./Composition.md#stepsequencer) swing and ratchets are waits worked out from the beat. Zero, the default, lands the note on the next block. In an export the wait becomes the note's place on the clock. Letting everything go with `allNotesOff()` drops a note still waiting to start.
+
 ---
 
 <a name="expression"></a>
@@ -108,7 +110,7 @@ The rest of the surface:
 
 ```swift
 @discardableResult func noteOn(_ pitch: Pitch, velocity: Double = 0.8) -> PlayingNote
-@discardableResult func play(_ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil) -> PlayingNote
+@discardableResult func play(_ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil, after delay: Double = 0) -> PlayingNote
 func noteOff(_ note: PlayingNote)
 
 func bend(_ note: PlayingNote, semitones: Double)   // this note's pitch, on top of pitchBend

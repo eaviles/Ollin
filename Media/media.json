@@ -3618,6 +3618,27 @@
       "stillSmall": "examples/Audio/Sampler/still-640.jpg?v=6df8895e",
       "width": 1080
     },
+    "Audio/Sequencer": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.917,
+      "sound": true,
+      "source": "dcf157a2153bfbcf",
+      "rendered": "2026-09-14",
+      "bytes": {
+        "loop": 1171670,
+        "loopSmall": 297806,
+        "still": 87548,
+        "stillSmall": 37401
+      },
+      "loop": "examples/Audio/Sequencer/loop.mp4?v=fa8d275c",
+      "loopSmall": "examples/Audio/Sequencer/loop-640.mp4?v=25bb4c85",
+      "still": "examples/Audio/Sequencer/still.jpg?v=57a9d137",
+      "stillSmall": "examples/Audio/Sequencer/still-640.jpg?v=060bd8d9"
+    },
     "Audio/Shaping": {
       "bytes": {
         "loop": 922723,

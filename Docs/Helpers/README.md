@@ -15,4 +15,4 @@
 - [`Audio`](./Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources. Ollin analyzes each source into `amplitude`, `spectrum`, and band values that you read in `draw()`
 - [`Listening`](./Listening.md) - speech as a caption you can draw and phrases you can act on, and about 300 everyday sounds named as they happen. Both work from any audio source
 - [`Synthesis`](./Synthesis.md) - `Synth`, the instrument a sketch plays. It gives you notes by name or number, `Voice` presets over a shaped and filtered oscillator, delay and reverb effects, and a room of your own as a convolution reverb
-- [`Composition`](./Composition.md) - ways to work out what to play: Euclidean rhythms, scales and chords, arpeggios, and Markov sequences. Each one computes its result as a pure value from a step number
+- [`Composition`](./Composition.md) - ways to work out what to play: Euclidean rhythms, scales and chords, arpeggios, and Markov sequences. Each one computes its result as a pure value from a step number. A step sequencer with swing, chance, and ratchets and an arpeggiator over held notes read the beat you hand them

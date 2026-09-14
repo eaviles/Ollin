@@ -68,6 +68,12 @@ final class SynthRenderer: @unchecked Sendable {
     }
 
     private var voices: [RenderVoice]
+    /// Events asked for with a wait on them, each holding the clock reading
+    /// it is due at. Fixed memory, taken once, because the render thread may
+    /// not allocate; past its size an event lands at once rather than late.
+    private let pending: UnsafeMutablePointer<SynthEvent>
+    private var pendingCount = 0
+    private static let pendingCapacity = 256
     private let sampleRate: Double
     private let events: EventRing
     /// Every string voice's delay line, taken in one piece before the first
@@ -155,6 +161,9 @@ final class SynthRenderer: @unchecked Sendable {
         self.drivenMemory = .allocate(capacity: perDriven * count * 2)
         self.drivenMemory.initialize(repeating: 0, count: perDriven * count * 2)
 
+        self.pending = .allocate(capacity: SynthRenderer.pendingCapacity)
+        self.pending.initialize(repeating: SynthEvent(), count: SynthRenderer.pendingCapacity)
+
         let memory = stringMemory
         let driven = drivenMemory
         // Each voice gets its own noise stream so a render replays exactly.
@@ -198,6 +207,8 @@ final class SynthRenderer: @unchecked Sendable {
     deinit {
         stringMemory.deallocate()
         drivenMemory.deallocate()
+        pending.deinitialize(count: SynthRenderer.pendingCapacity)
+        pending.deallocate()
     }
 
     /// The lowest note a string voice can be tuned to, which is what sizes the
@@ -223,6 +234,10 @@ final class SynthRenderer: @unchecked Sendable {
         }
 
         for frame in 0..<frameCount {
+            // An event with a wait on it starts on its own sample, in the
+            // middle of the block if that is where it falls. One comparison a
+            // sample while nothing is waiting, which is nearly always.
+            if pendingCount > 0 { startDue() }
             var mix = 0.0
             for index in voices.indices where voices[index].isSounding {
                 mix += nextSample(&voices[index], pressure: driving)
@@ -453,20 +468,65 @@ final class SynthRenderer: @unchecked Sendable {
 
     private func drainEvents() {
         while let event = events.pop() {
-            switch event.kind {
-            case .noteOn:      start(event)
-            case .noteOff:
-                if event.noteID != 0 { release(id: event.noteID) } else { release(pitch: event.pitch) }
-            case .allNotesOff: for index in voices.indices { releaseVoice(&voices[index]) }
-            case .changeVoice: currentVoice = event.voice
-            case .bend, .press, .slide:
-                // A bend with no note is the whole instrument's.
-                if event.kind == .bend, event.noteID == 0 { bendAll = event.amount } else { express(event) }
-            }
+            if event.delaySamples > 0 { hold(event) } else { apply(event) }
         }
     }
 
-    private func start(_ event: SynthEvent) {
+    private func apply(_ event: SynthEvent) {
+        switch event.kind {
+        case .noteOn:      start(event)
+        case .noteOff:
+            if event.noteID != 0 { release(id: event.noteID) } else { release(pitch: event.pitch) }
+        case .allNotesOff:
+            for index in voices.indices { releaseVoice(&voices[index]) }
+            // A note still waiting to start is more held than a tail is, so
+            // letting everything go drops it too.
+            pendingCount = 0
+        case .changeVoice: currentVoice = event.voice
+        case .bend, .press, .slide:
+            // A bend with no note is the whole instrument's.
+            if event.kind == .bend, event.noteID == 0 { bendAll = event.amount } else { express(event) }
+        }
+    }
+
+    /// Puts an event aside until its sample comes round, the wait rewritten
+    /// as the clock reading it is due at.
+    private func hold(_ event: SynthEvent) {
+        guard pendingCount < SynthRenderer.pendingCapacity else {
+            apply(event)
+            return
+        }
+        var due = event
+        due.delaySamples = clock + event.delaySamples
+        pending[pendingCount] = due
+        pendingCount += 1
+    }
+
+    /// Applies every waiting event whose sample has arrived, keeping the rest
+    /// in the order they came.
+    private func startDue() {
+        var kept = 0
+        for index in 0..<pendingCount {
+            let event = pending[index]
+            if event.delaySamples <= clock {
+                if event.kind == .noteOn {
+                    // The block's settle has already run, so the voice that
+                    // starts here folds the instrument's bend in itself.
+                    let voice = start(event)
+                    settle(&voices[voice], step: 1)
+                } else {
+                    apply(event)
+                }
+            } else {
+                pending[kept] = event
+                kept += 1
+            }
+        }
+        pendingCount = kept
+    }
+
+    @discardableResult
+    private func start(_ event: SynthEvent) -> Int {
         let index = claimVoice()
         var voice = voices[index]
 
@@ -594,6 +654,7 @@ final class SynthRenderer: @unchecked Sendable {
         voice.filterEnvelope.noteOn()
 
         voices[index] = voice
+        return index
     }
 
     /// Picks the voice a new note should use.

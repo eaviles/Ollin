@@ -260,12 +260,26 @@ extension Synth {
         // A sketch playing thousands of notes into an export should not grow
         // without bound; past this it is a stuck loop rather than music.
         guard recorded.count < 200_000 else { return }
-        let note = RecordedNote(at: exportClock, event: event)
+        // A wait becomes the note's place on the clock, and is then cleared
+        // so the renderer does not count it a second time.
+        var placed = event
+        let at = exportClock + max(0, event.delaySeconds)
+        placed.delaySamples = 0
+        placed.delaySeconds = 0
+        let note = RecordedNote(at: at, event: placed)
         recorded.append(note)
 
         // The soundtrack is rendered while the frames are still being drawn, so
         // anything asked for after the machine was built has to reach it too.
-        // It arrives in order, because the clock only moves forward.
-        offline?.pending.append(note)
+        // The clock only moves forward, but a note with a wait on it can be
+        // asked for before one without that lands earlier, so it goes in by
+        // its place rather than on the end. The list is short: the renderer
+        // takes from its front as the frames go by.
+        guard let offline else { return }
+        var index = offline.pending.endIndex
+        while index > offline.pending.startIndex, offline.pending[index - 1].at > at {
+            index -= 1
+        }
+        offline.pending.insert(note, at: index)
     }
 }

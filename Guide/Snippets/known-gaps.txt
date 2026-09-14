@@ -1,6 +1,6 @@
 # Guide blocks that cannot compile on their own, and the error each one gives.
 #
-# Written by `swift run OllinGuideSnippets --record`; never edited by hand. Each
+# Written by `Scripts/check-snippets.sh --record`; never edited by hand. Each
 # line is <fingerprint> <page>:<line> <first error>, keyed on the block's own
 # text so editing the prose around it changes nothing here.
 #
@@ -10,29 +10,26 @@
 # whose error becomes a different one, or one that now compiles and should be
 # dropped from here. That is how a public rename shows up as a broken snippet.
 #
-# To shrink a chapter's share, add Guide/Snippets/<chapter>.swift declaring the
+# To shrink a page's share, add Guide/Snippets/<chapter>.swift declaring the
 # names its prose establishes; it is spliced into every probe from that page.
 
-c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
-04660022f6ba  Guide/02-Color.md:87  cannot find 'ink' in scope
 bb59795f7264  Guide/02-Color.md:115  cannot find 'blue' in scope
 71ac473ad4ff  Guide/02-Color.md:142  cannot find 'i' in scope
 85865279977f  Guide/02-Color.md:152  cannot find 't' in scope
 de51c37794a2  Guide/02-Color.md:212  cannot find 'photo' in scope
 9e13835542ce  Guide/02-Color.md:247  cannot find 'dusk' in scope
 67e891dcb1e2  Guide/02-Color.md:287  cannot find 'myPalette' in scope
-e06710580a51  Guide/06-GridsAndRepetition.md:72  cannot find 'cell' in scope
+c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
+04660022f6ba  Guide/02-Color.md:87  cannot find 'ink' in scope
 a66bdc0e1bb2  Guide/06-GridsAndRepetition.md:182  cannot find 'star' in scope
 070c1141fb23  Guide/06-GridsAndRepetition.md:201  cannot find 'cell' in scope
 a3a4dacf7c92  Guide/06-GridsAndRepetition.md:227  cannot find 'drawTheWholePiece' in scope
 60af001c8df1  Guide/06-GridsAndRepetition.md:302  cannot find 'spiral' in scope
 e31a147f6780  Guide/06-GridsAndRepetition.md:343  cannot find 'seen' in scope
+e06710580a51  Guide/06-GridsAndRepetition.md:72  cannot find 'cell' in scope
 38c291053d5e  Guide/07-Tiles.md:180  unary operator cannot be separated from its operand
 09c0b7adbc3a  Guide/08-Words.md:201  cannot find 'passage' in scope
 962894dbf017  Guide/08-Words.md:217  cannot find 'passage' in scope
-5b3e1eedfb8d  Guide/09-Pictures.md:38  cannot find 'photo' in scope
-11094141044f  Guide/09-Pictures.md:67  cannot find 'pictures' in scope
-399caa239353  Guide/09-Pictures.md:95  cannot find 'photo' in scope
 ae33653cb376  Guide/09-Pictures.md:116  cannot find 'c' in scope
 91f49fa6cea0  Guide/09-Pictures.md:135  cannot find 'picture' in scope
 10c5114223ae  Guide/09-Pictures.md:145  cannot find 'picture' in scope
@@ -49,10 +46,13 @@ ed123e551581  Guide/09-Pictures.md:304  cannot find 'picture' in scope
 0533e34b97c1  Guide/09-Pictures.md:339  'module' is inaccessible due to 'internal' protection level
 428ac43c50bf  Guide/09-Pictures.md:362  cannot find 'table' in scope
 9ba42f97f571  Guide/09-Pictures.md:374  'module' is inaccessible due to 'internal' protection level
+5b3e1eedfb8d  Guide/09-Pictures.md:38  cannot find 'photo' in scope
 4d8c82448b2b  Guide/09-Pictures.md:420  cannot find 'tide' in scope
 f862abae779c  Guide/09-Pictures.md:444  cannot find 'splash' in scope
-7856a82b5957  Guide/10-Vectors.md:94  cannot find 'target' in scope
+11094141044f  Guide/09-Pictures.md:67  cannot find 'pictures' in scope
+399caa239353  Guide/09-Pictures.md:95  cannot find 'photo' in scope
 d7900de9175f  Guide/10-Vectors.md:158  cannot find 'target' in scope
+7856a82b5957  Guide/10-Vectors.md:94  cannot find 'target' in scope
 766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:271  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 903bd8f5d681  Guide/11-ForcesAndPhysics.md:279  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
@@ -84,14 +84,10 @@ ebf964e6cb2a  Guide/16-LayersAndEffects.md:226  use of 'layer' refers to instanc
 00fa0d08039d  Guide/16-LayersAndEffects.md:487  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 4bab31797ad4  Guide/16-LayersAndEffects.md:503  cannot convert value of type '[Vector2]' to expected argument type 'RenderTarget'
 7d52b883f390  Guide/16-LayersAndEffects.md:536  use of 'layer' refers to instance method rather than var 'layer' in module 'the probe'
-c32fa0ef7370  Guide/18-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
 4ec0ee8e2cd9  Guide/18-IteratedForms.md:168  cannot find 'start' in scope
 31bc91d6d2fb  Guide/18-IteratedForms.md:188  cannot find 'outline' in scope
 2c491a2fae9f  Guide/18-IteratedForms.md:285  reference to member 'domainColoring' cannot be resolved without a contextual type
-de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '@MainActor (Light) -> ()' to expected argument type 'Accumulator'
-4bb9d03104bb  Guide/20-ParticleSimulations.md:63  cannot assign value of type 'ParticleLife' to type 'SimField'
-0a07e471de6b  Guide/20-ParticleSimulations.md:77  cannot assign value of type 'Physarum' to type 'Particles'
-20fd462b88a1  Guide/20-ParticleSimulations.md:95  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
+c32fa0ef7370  Guide/18-IteratedForms.md:79  cannot convert value of type '[Vector2]' to expected argument type '[Circle]'
 eec1a7fedd62  Guide/20-ParticleSimulations.md:117  cannot assign value of type 'ParticleLenia' to type 'SimField'
 af020a9ea16a  Guide/20-ParticleSimulations.md:141  cannot assign to immutable expression of type '(Int32, Int32) -> Int32'
 676903760389  Guide/20-ParticleSimulations.md:168  cannot assign value of type 'ParticleFluid' to type 'SimField'
@@ -99,12 +95,12 @@ f5ca2a921568  Guide/20-ParticleSimulations.md:181  cannot assign value of type '
 eb2a383ca943  Guide/20-ParticleSimulations.md:199  cannot assign value of type 'Evolution' to type 'Particles'
 0ab599f3865b  Guide/20-ParticleSimulations.md:228  cannot assign value of type 'Population' to type 'SimField'
 67848be59f80  Guide/20-ParticleSimulations.md:259  cannot assign value of type 'SwarmChemistry' to type 'SimField'
+de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '@MainActor (Light) -> ()' to expected argument type 'Accumulator'
+4bb9d03104bb  Guide/20-ParticleSimulations.md:63  cannot assign value of type 'ParticleLife' to type 'SimField'
+0a07e471de6b  Guide/20-ParticleSimulations.md:77  cannot assign value of type 'Physarum' to type 'Particles'
+20fd462b88a1  Guide/20-ParticleSimulations.md:95  cannot convert value of type 'Particles?' to expected argument type '[Vector2]'
 4de6ac607cb1  Guide/21-3DGently.md:277  cannot find 'ringFile' in scope
 d3145c90ad5d  Guide/21-3DGently.md:363  cannot find 'knot' in scope
-e11a80c61786  Guide/22-Meshes.md:46  cannot find 'stage' in scope
-81a0fe8a8940  Guide/22-Meshes.md:59  cannot find 'stage' in scope
-1f8436af0981  Guide/22-Meshes.md:73  cannot find 'teal' in scope
-aca544976321  Guide/22-Meshes.md:85  cannot find 'planks' in scope
 3bdd590a4114  Guide/22-Meshes.md:156  cannot find 'color' in scope
 3cd0f225fa98  Guide/22-Meshes.md:191  cannot find 'dents' in scope
 2f43cec1c527  Guide/22-Meshes.md:207  cannot find 'paint' in scope
@@ -117,25 +113,25 @@ ecdb1d3adf45  Guide/22-Meshes.md:301  cannot find 'growth' in scope
 78501e6c6306  Guide/22-Meshes.md:371  cannot find 'boulder' in scope
 71f4c725d408  Guide/22-Meshes.md:390  cannot find 'dropPoint' in scope
 f0c8b217c2f5  Guide/22-Meshes.md:453  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Mesh'
+e11a80c61786  Guide/22-Meshes.md:46  cannot find 'stage' in scope
 28114b5ebf72  Guide/22-Meshes.md:492  overriding declaration requires an 'override' keyword
 5846f636888f  Guide/22-Meshes.md:511  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
+81a0fe8a8940  Guide/22-Meshes.md:59  cannot find 'stage' in scope
 4a4c240b29b7  Guide/22-Meshes.md:633  expected '}' in class
 7357c1e61e81  Guide/22-Meshes.md:712  cannot find 'picture' in scope
+1f8436af0981  Guide/22-Meshes.md:73  cannot find 'teal' in scope
 313649b9e3e6  Guide/22-Meshes.md:796  extraneous '}' at top level
-23a8d134e7ca  Guide/23-Landscapes.md:26  cannot find 'land' in scope
-eb3855f38a62  Guide/23-Landscapes.md:51  cannot find 'land' in scope
+aca544976321  Guide/22-Meshes.md:85  cannot find 'planks' in scope
 8680361babf9  Guide/23-Landscapes.md:117  cannot find 'seats' in scope
 eaa4d1a8ead3  Guide/23-Landscapes.md:151  cannot find 'island' in scope
 168a7381caef  Guide/23-Landscapes.md:167  cannot find 'terrain' in scope
 01120bc4f4e6  Guide/23-Landscapes.md:177  cannot find 'stone' in scope
 18e21e73ea13  Guide/23-Landscapes.md:202  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
+23a8d134e7ca  Guide/23-Landscapes.md:26  cannot find 'land' in scope
 6d9111b25b76  Guide/23-Landscapes.md:273  expected '}' in class
 9363c3e4c076  Guide/23-Landscapes.md:368  cannot find 'floorLevel' in scope
 b4b177e28123  Guide/23-Landscapes.md:457  extraneous '}' at top level
-ec7989d78e47  Guide/24-WorldsWithWeight.md:50  cannot find 'world' in scope
-7df97e94d8b3  Guide/24-WorldsWithWeight.md:74  cannot find 'world' in scope
-de01483cf250  Guide/24-WorldsWithWeight.md:87  cannot find 'world' in scope
-0adc8b169179  Guide/24-WorldsWithWeight.md:98  cannot find 'world' in scope
+eb3855f38a62  Guide/23-Landscapes.md:51  cannot find 'land' in scope
 d6c043a4e525  Guide/24-WorldsWithWeight.md:120  cannot find 'world' in scope
 1e386b77da73  Guide/24-WorldsWithWeight.md:130  cannot find 'world' in scope
 9746777865da  Guide/24-WorldsWithWeight.md:136  cannot find 'world' in scope
@@ -161,13 +157,10 @@ ba741ed44437  Guide/24-WorldsWithWeight.md:399  cannot find 'world' in scope
 ab56176ee878  Guide/24-WorldsWithWeight.md:410  cannot find 'island' in scope
 02698ee714d5  Guide/24-WorldsWithWeight.md:417  cannot find 'world' in scope
 a2328aeea45a  Guide/24-WorldsWithWeight.md:427  cannot find 'world' in scope
-4b48a4fd78e8  Guide/25-CharactersAndCloth.md:19  cannot find 'walker' in scope
-53fd73cffbb5  Guide/25-CharactersAndCloth.md:25  cannot find 'walker' in scope
-7efa07787718  Guide/25-CharactersAndCloth.md:42  cannot find 'walker' in scope
-ff8f4ca0b8bd  Guide/25-CharactersAndCloth.md:52  cannot find 'walker' in scope
-53d9e47e66f9  Guide/25-CharactersAndCloth.md:59  cannot find 'lookout' in scope
-2cd2985c6a8e  Guide/25-CharactersAndCloth.md:69  cannot find 'car' in scope
-c10ff351dd09  Guide/25-CharactersAndCloth.md:84  cannot find 'car' in scope
+ec7989d78e47  Guide/24-WorldsWithWeight.md:50  cannot find 'world' in scope
+7df97e94d8b3  Guide/24-WorldsWithWeight.md:74  cannot find 'world' in scope
+de01483cf250  Guide/24-WorldsWithWeight.md:87  cannot find 'world' in scope
+0adc8b169179  Guide/24-WorldsWithWeight.md:98  cannot find 'world' in scope
 7ff359543b63  Guide/25-CharactersAndCloth.md:105  cannot find 'wheel' in scope
 15cb65133557  Guide/25-CharactersAndCloth.md:120  cannot find 'world' in scope
 966c62e5d1c6  Guide/25-CharactersAndCloth.md:137  cannot find 'crawler' in scope
@@ -175,11 +168,13 @@ f7e7df7712cf  Guide/25-CharactersAndCloth.md:146  cannot find 'crawler' in scope
 be6a2cd456e5  Guide/25-CharactersAndCloth.md:163  cannot find 'figure' in scope
 94fba7b9e938  Guide/25-CharactersAndCloth.md:172  cannot find 'world' in scope
 2f38c4b11af4  Guide/25-CharactersAndCloth.md:182  cannot find 'target' in scope
+4b48a4fd78e8  Guide/25-CharactersAndCloth.md:19  cannot find 'walker' in scope
 9a7b0d19f580  Guide/25-CharactersAndCloth.md:207  cannot find 'cloth' in scope
 aa17eb972ebd  Guide/25-CharactersAndCloth.md:214  cannot find 'world' in scope
 e99e6b150018  Guide/25-CharactersAndCloth.md:224  consecutive statements on a line must be separated by ';'
 7b23b6918cf2  Guide/25-CharactersAndCloth.md:233  labeled block needs 'do'
 5b54aa9e8493  Guide/25-CharactersAndCloth.md:241  cannot find 'ball' in scope
+53fd73cffbb5  Guide/25-CharactersAndCloth.md:25  cannot find 'walker' in scope
 dee0a1efaea9  Guide/25-CharactersAndCloth.md:252  cannot find 'banner' in scope
 4e6a38ca9ad1  Guide/25-CharactersAndCloth.md:262  cannot find 'cape' in scope
 e63def96d4af  Guide/25-CharactersAndCloth.md:272  cannot find 'figure' in scope
@@ -194,20 +189,22 @@ c863fba0a7c9  Guide/25-CharactersAndCloth.md:348  cannot find 'world' in scope
 34f063de9594  Guide/25-CharactersAndCloth.md:386  cannot find 'world' in scope
 a31dbcbf4113  Guide/25-CharactersAndCloth.md:406  cannot find 'raft' in scope
 bc882c038a58  Guide/25-CharactersAndCloth.md:418  cannot find 'world' in scope
+7efa07787718  Guide/25-CharactersAndCloth.md:42  cannot find 'walker' in scope
 50ebedf565e1  Guide/25-CharactersAndCloth.md:426  cannot find 'contact' in scope
-36e9225ffcf6  Guide/26-SculptingWithFields.md:65  cannot find 'a' in scope
+ff8f4ca0b8bd  Guide/25-CharactersAndCloth.md:52  cannot find 'walker' in scope
+53d9e47e66f9  Guide/25-CharactersAndCloth.md:59  cannot find 'lookout' in scope
+2cd2985c6a8e  Guide/25-CharactersAndCloth.md:69  cannot find 'car' in scope
+c10ff351dd09  Guide/25-CharactersAndCloth.md:84  cannot find 'car' in scope
 ed348ec0d2b1  Guide/26-SculptingWithFields.md:158  cannot find 'box' in scope
 b17151cd7343  Guide/26-SculptingWithFields.md:182  cannot find 'cross' in scope
 2d71f427f291  Guide/26-SculptingWithFields.md:225  cannot find 'cluster' in scope
 e3dcf33a7fc7  Guide/26-SculptingWithFields.md:424  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Vector3'
-73c7f4064ea5  Guide/27-DepthAndThePhone.md:24  cannot find 'color' in scope
-d2508b320c31  Guide/27-DepthAndThePhone.md:44  cannot find 'StageCamera' in scope
-b760d3343e21  Guide/27-DepthAndThePhone.md:62  cannot find 'frame' in scope
-1660684f91f0  Guide/27-DepthAndThePhone.md:87  cannot find 'anchor' in scope
+36e9225ffcf6  Guide/26-SculptingWithFields.md:65  cannot find 'a' in scope
 07246d9df10a  Guide/27-DepthAndThePhone.md:161  cannot find 'StageCamera' in scope
 be9a2123e4c1  Guide/27-DepthAndThePhone.md:181  cannot find 'world' in scope
 569e7c8b005c  Guide/27-DepthAndThePhone.md:199  cannot find 'cloud' in scope
 2ea9865ab333  Guide/27-DepthAndThePhone.md:223  cannot find 'world' in scope
+73c7f4064ea5  Guide/27-DepthAndThePhone.md:24  cannot find 'color' in scope
 feb0fef1800b  Guide/27-DepthAndThePhone.md:248  cannot find 'device' in scope
 570fa3bca637  Guide/27-DepthAndThePhone.md:267  cannot find 'device' in scope
 87577910add5  Guide/27-DepthAndThePhone.md:286  cannot find 'device' in scope
@@ -219,15 +216,15 @@ a1f33f74fb89  Guide/27-DepthAndThePhone.md:368  cannot find 'device' in scope
 273e9c98d06c  Guide/27-DepthAndThePhone.md:388  cannot find 'device' in scope
 a775cc47e012  Guide/27-DepthAndThePhone.md:408  cannot find 'device' in scope
 8ec9e9d7507e  Guide/27-DepthAndThePhone.md:431  cannot find 'device' in scope
+d2508b320c31  Guide/27-DepthAndThePhone.md:44  cannot find 'StageCamera' in scope
 f3ae11ef787c  Guide/27-DepthAndThePhone.md:450  cannot find 'device' in scope
 d901f4c6af5b  Guide/27-DepthAndThePhone.md:456  cannot find 'balls' in scope
 1e7960fe4884  Guide/27-DepthAndThePhone.md:472  cannot find 'wand' in scope
 9fa02a3d86b8  Guide/27-DepthAndThePhone.md:489  cannot find 'device' in scope
 ec50b450c686  Guide/27-DepthAndThePhone.md:495  cannot find 'device' in scope
 6c724ab7c6e1  Guide/27-DepthAndThePhone.md:513  cannot find 'StageCamera' in scope
-8ebfa121735c  Guide/28-SoundAndControl.md:57  cannot find 'source' in scope
-6f439119170b  Guide/28-SoundAndControl.md:79  cannot find 'source' in scope
-5ab02072b47e  Guide/28-SoundAndControl.md:91  cannot find 'mic' in scope
+b760d3343e21  Guide/27-DepthAndThePhone.md:62  cannot find 'frame' in scope
+1660684f91f0  Guide/27-DepthAndThePhone.md:87  cannot find 'anchor' in scope
 18268b55d215  Guide/28-SoundAndControl.md:112  cannot find 'source' in scope
 4b84fec505da  Guide/28-SoundAndControl.md:125  cannot find 'AudioInput' in scope
 559fe782d362  Guide/28-SoundAndControl.md:138  cannot find 'AudioInput' in scope
@@ -246,17 +243,14 @@ c6da73302d67  Guide/28-SoundAndControl.md:390  cannot find 'ship' in scope
 11884358e073  Guide/28-SoundAndControl.md:436  cannot find 'flash' in scope
 11984c91aed8  Guide/28-SoundAndControl.md:469  cannot find 'mark' in scope
 86d0417a42dc  Guide/28-SoundAndControl.md:502  cannot find 'StageMic' in scope
-a5d72ce127b9  Guide/29-MakingSound.md:17  cannot find 'Synth' in scope
-65dc6673aa04  Guide/29-MakingSound.md:29  cannot find 'synth' in scope
-34f5ea039a72  Guide/29-MakingSound.md:38  cannot find 'synth' in scope
-98b1519dc15d  Guide/29-MakingSound.md:53  cannot find 'Envelope' in scope
-5540a03a196f  Guide/29-MakingSound.md:61  cannot find 'synth' in scope
-05dd2989e104  Guide/29-MakingSound.md:71  cannot find 'Patch' in scope
-e9b03ad8c6f8  Guide/29-MakingSound.md:99  cannot find 'synth' in scope
+8ebfa121735c  Guide/28-SoundAndControl.md:57  cannot find 'source' in scope
+6f439119170b  Guide/28-SoundAndControl.md:79  cannot find 'source' in scope
+5ab02072b47e  Guide/28-SoundAndControl.md:91  cannot find 'mic' in scope
 09d5961233f3  Guide/29-MakingSound.md:117  cannot find 'synth' in scope
 cccb28333938  Guide/29-MakingSound.md:141  cannot find 'ImpulseResponse' in scope
 d66ebfc13577  Guide/29-MakingSound.md:148  cannot find 'ImpulseResponse' in scope
 139bec613386  Guide/29-MakingSound.md:167  cannot find 'synth' in scope
+a5d72ce127b9  Guide/29-MakingSound.md:17  cannot find 'Synth' in scope
 c69d07e83385  Guide/29-MakingSound.md:193  cannot find 'synth' in scope
 1331fb3327dd  Guide/29-MakingSound.md:219  cannot find 'synth' in scope
 a3fc4eec84a0  Guide/29-MakingSound.md:245  cannot find 'synth' in scope
@@ -264,11 +258,13 @@ a3fc4eec84a0  Guide/29-MakingSound.md:245  cannot find 'synth' in scope
 587bb669d987  Guide/29-MakingSound.md:266  cannot find 'SampledInstrument' in scope
 639123956822  Guide/29-MakingSound.md:276  cannot find 'synth' in scope
 7fef9776e0fa  Guide/29-MakingSound.md:289  cannot find 'synth' in scope
+65dc6673aa04  Guide/29-MakingSound.md:29  cannot find 'synth' in scope
 91bf723abdcc  Guide/29-MakingSound.md:297  cannot find 'synth' in scope
 91bac9c1605d  Guide/29-MakingSound.md:309  cannot find 'Synth' in scope
 6295ac12ab41  Guide/29-MakingSound.md:325  cannot find 'PluckedString' in scope
 22d8d5879111  Guide/29-MakingSound.md:345  cannot find 'Synth' in scope
 093c643ad086  Guide/29-MakingSound.md:352  missing argument for parameter 'at' in call
+34f5ea039a72  Guide/29-MakingSound.md:38  cannot find 'synth' in scope
 9ccbda15d5b2  Guide/29-MakingSound.md:383  cannot find 'Synth' in scope
 160d2675aacd  Guide/29-MakingSound.md:408  cannot find 'Synth' in scope
 987031fe875c  Guide/29-MakingSound.md:432  cannot find 'Synth' in scope
@@ -278,22 +274,26 @@ f3a9e8d7c93b  Guide/29-MakingSound.md:505  cannot find type 'Rhythm' in scope
 ca4bb82278f4  Guide/29-MakingSound.md:511  cannot find 'Scale' in scope
 999a837dee98  Guide/29-MakingSound.md:520  cannot find 'synth' in scope
 3eebb33e602b  Guide/29-MakingSound.md:526  value of type 'Character?' has no member 'chord'
+98b1519dc15d  Guide/29-MakingSound.md:53  cannot find 'Envelope' in scope
 a639d1c28616  Guide/29-MakingSound.md:540  cannot find 'Arpeggio' in scope
 39cd5602ed5e  Guide/29-MakingSound.md:549  cannot find 'MarkovChain' in scope
 61176ace1080  Guide/29-MakingSound.md:560  cannot find 'counter' in scope
-7ad878ee7d21  Guide/29-MakingSound.md:573  cannot find 'Progression' in scope
-4c4f3af85a7b  Guide/29-MakingSound.md:593  cannot find 'Progression' in scope
-6e023d5c7adb  Guide/29-MakingSound.md:601  cannot find 'Progression' in scope
-42e6f390edd0  Guide/29-MakingSound.md:612  cannot find 'Tuning' in scope
-3afd36744ea0  Guide/29-MakingSound.md:627  cannot find 'StepCounter' in scope
-47f783a8ac03  Guide/29-MakingSound.md:649  cannot find 'Sonification' in scope
-bcb4c0a45a0c  Guide/29-MakingSound.md:673  cannot find 'marker' in scope
-0b9d28d8a7a0  Guide/29-MakingSound.md:687  cannot find 'synth' in scope
-2e02aee3d33f  Guide/29-MakingSound.md:717  expected '}' in class
-60aef06efea1  Guide/29-MakingSound.md:806  extraneous '}' at top level
-cdc2a7f6ed3c  Guide/30-Seeing.md:35  cannot find 'Camera' in scope
-9f0265c15491  Guide/30-Seeing.md:52  cannot find 'FaceTracker' in scope
-096f6e921b2a  Guide/30-Seeing.md:99  cannot find 'BodyTracker3D' in scope
+e7b69a939f08  Guide/29-MakingSound.md:573  cannot find type 'StepSequencer' in scope
+daee9e15952e  Guide/29-MakingSound.md:588  cannot find 'drums' in scope
+9304eb8a964c  Guide/29-MakingSound.md:602  cannot find 'Arpeggiator' in scope
+5540a03a196f  Guide/29-MakingSound.md:61  cannot find 'synth' in scope
+7ad878ee7d21  Guide/29-MakingSound.md:620  cannot find 'Progression' in scope
+4c4f3af85a7b  Guide/29-MakingSound.md:640  cannot find 'Progression' in scope
+6e023d5c7adb  Guide/29-MakingSound.md:648  cannot find 'Progression' in scope
+42e6f390edd0  Guide/29-MakingSound.md:659  cannot find 'Tuning' in scope
+3afd36744ea0  Guide/29-MakingSound.md:674  cannot find 'StepCounter' in scope
+47f783a8ac03  Guide/29-MakingSound.md:696  cannot find 'Sonification' in scope
+05dd2989e104  Guide/29-MakingSound.md:71  cannot find 'Patch' in scope
+bcb4c0a45a0c  Guide/29-MakingSound.md:720  cannot find 'marker' in scope
+0b9d28d8a7a0  Guide/29-MakingSound.md:734  cannot find 'synth' in scope
+2e02aee3d33f  Guide/29-MakingSound.md:764  expected '}' in class
+60aef06efea1  Guide/29-MakingSound.md:853  extraneous '}' at top level
+e9b03ad8c6f8  Guide/29-MakingSound.md:99  cannot find 'synth' in scope
 373aa36a22f2  Guide/30-Seeing.md:118  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 757519a15935  Guide/30-Seeing.md:156  cannot find 'FlowTracker' in scope
 0a4a545ad1e5  Guide/30-Seeing.md:179  cannot find 'RectangleDetector' in scope
@@ -304,13 +304,16 @@ eece33d5c32c  Guide/30-Seeing.md:277  value of type '@MainActor (Camera3D) -> ()
 8cc50386387c  Guide/30-Seeing.md:304  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 72c4c6a3eb2f  Guide/30-Seeing.md:323  type '@MainActor (Camera3D) -> ()' cannot conform to 'VideoFeed' [#ProtocolTypeNonConformance]
 1bfe07bd584a  Guide/30-Seeing.md:344  cannot find type 'DepthClip' in scope
+cdc2a7f6ed3c  Guide/30-Seeing.md:35  cannot find 'Camera' in scope
 b207bebe3f14  Guide/30-Seeing.md:366  cannot find 'ConceptTracker' in scope
 17aefa356dd1  Guide/30-Seeing.md:389  call can throw, but errors cannot be thrown out of a property initializer
 c517bfa97332  Guide/30-Seeing.md:416  cannot find 'ScreenCapture' in scope
 5ed6e5e89ad1  Guide/30-Seeing.md:426  cannot find 'ScreenCapture' in scope
 ad5358257b7a  Guide/30-Seeing.md:435  cannot find 'screen' in scope
 6c7a3bff3785  Guide/30-Seeing.md:456  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
-fa6d3e0179f1  Guide/31-SharingAndPerforming.md:71  cannot find 'MySketch' in scope
+9f0265c15491  Guide/30-Seeing.md:52  cannot find 'FaceTracker' in scope
+096f6e921b2a  Guide/30-Seeing.md:99  cannot find 'BodyTracker3D' in scope
+f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1008  cannot find '$frame' in scope
 73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
 e7a70b196e04  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
 ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
@@ -325,24 +328,24 @@ a854f5aabed2  Guide/31-SharingAndPerforming.md:619  cannot find 'sunBox' in scop
 3263898003f5  Guide/31-SharingAndPerforming.md:628  cannot find 'x' in scope
 2176cb8d4354  Guide/31-SharingAndPerforming.md:688  cannot find 'ball' in scope
 29f2f3575884  Guide/31-SharingAndPerforming.md:702  cannot find 'HapticPattern' in scope
+fa6d3e0179f1  Guide/31-SharingAndPerforming.md:71  cannot find 'MySketch' in scope
 3f87e906c5a4  Guide/31-SharingAndPerforming.md:731  cannot find 'MyWatermark' in scope
 161ff6887e4d  Guide/31-SharingAndPerforming.md:759  cannot find 'points' in scope
 2c60fc19e1c4  Guide/31-SharingAndPerforming.md:911  cannot find '$radius' in scope
 f51397a62393  Guide/31-SharingAndPerforming.md:972  cannot find '$radius' in scope
 2c5147e37054  Guide/31-SharingAndPerforming.md:989  cannot find '$radius' in scope
-f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1008  cannot find '$frame' in scope
-b8ae9882bce8  Guide/32-Installations.md:41  cannot find 'DMXSender' in scope
 32976ec86c4b  Guide/32-Installations.md:161  cannot find type 'Tile' in scope
 770e5f193c3c  Guide/32-Installations.md:306  cannot find 'worldPoint' in scope
 edf95f807bfe  Guide/32-Installations.md:330  cannot find 'speed' in scope
 836f9f851e0d  Guide/32-Installations.md:351  cannot find 'room' in scope
 d203209dde1c  Guide/32-Installations.md:365  cannot find 'room' in scope
+b8ae9882bce8  Guide/32-Installations.md:41  cannot find 'DMXSender' in scope
 2d729c353154  Guide/32-Installations.md:445  @objc attribute used without importing module 'Foundation'
 de4072a89e93  Guide/32-Installations.md:538  expected '}' in class
 99edf79cb997  Guide/32-Installations.md:584  extraneous '}' at top level
-fb1301305c01  Guide/A-JustEnoughSwift.md:60  cannot assign to value: 'radius' is a 'let' constant
 ef2be2e2e16b  Guide/A-JustEnoughSwift.md:124  cannot find 'meteors' in scope
 d4f956b692d5  Guide/A-JustEnoughSwift.md:134  unary operator cannot be separated from its operand
 82432bb8795f  Guide/A-JustEnoughSwift.md:145  unary operator cannot be separated from its operand
 c670a48d1240  Guide/A-JustEnoughSwift.md:156  cannot find 'trail' in scope
 8e8dab88fb40  Guide/A-JustEnoughSwift.md:207  cannot find 'source' in scope
+fb1301305c01  Guide/A-JustEnoughSwift.md:60  cannot assign to value: 'radius' is a 'let' constant

@@ -25,6 +25,14 @@ struct SynthEvent {
     /// The same length in seconds, which is what an offline render needs: it
     /// may run at a different rate from the hardware the note was asked on.
     var durationSeconds: Double = 0
+    /// How long to wait before the event takes effect, in samples. Zero is
+    /// the next block, where an event with no wait lands. A sequencer's swing
+    /// and its ratchets are a few milliseconds apart, which is less than a
+    /// frame, so they are asked for together and land here one by one.
+    var delaySamples: Int = 0
+    /// The same wait in seconds, for an export, which folds it into the note's
+    /// place on its own clock rather than counting samples at another rate.
+    var delaySeconds: Double = 0
 }
 
 /// A one-writer, one-reader queue of events between the sketch and the render

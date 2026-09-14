@@ -307,17 +307,26 @@ public final class Synth: AudioSource {
     ///   - pitch: a MIDI number (`60`), a name (`"C4"`), or a `Pitch`.
     ///   - velocity: how hard the note is struck, `0...1`.
     ///   - duration: seconds to hold it, or nil to hold it until let go.
+    ///   - delay: seconds to wait before it starts. Zero starts it on the
+    ///     next block of audio, with the frame that asked. A wait lands the
+    ///     note on its own sample instead, so notes asked for together can
+    ///     be closer than a frame apart: a sequencer's swing and its
+    ///     ratchets, a strum.
     /// - Returns: the note, for bending, pressing, or sliding it while it
     ///   sounds. Ignore it to play the note and forget it.
     @discardableResult
-    public func play(_ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil) -> PlayingNote {
+    public func play(
+        _ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil, after delay: Double = 0
+    ) -> PlayingNote {
         // A duration is kept in seconds for an export, which may render at a
         // different rate from the one the hardware happens to be running at.
         let seconds = duration.map { max(0.001, $0) } ?? 0
+        let wait = max(0, delay)
         let note = nextNote(pitch)
         emit(SynthEvent(
             kind: .noteOn, pitch: pitch.midi, velocity: velocity, noteID: note.id,
-            durationSamples: seconds > 0 ? max(1, Int(seconds * sampleRate)) : 0
+            durationSamples: seconds > 0 ? max(1, Int(seconds * sampleRate)) : 0,
+            delaySamples: Int((wait * sampleRate).rounded()), delaySeconds: wait
         ), seconds: seconds)
         return note
     }
@@ -435,9 +444,11 @@ public final class Synth: AudioSource {
         events.push(event)
     }
 
-    /// Plays several notes at once.
-    public func play(chord pitches: [Pitch], velocity: Double = 0.8, for duration: Double? = nil) {
-        for pitch in pitches { play(pitch, velocity: velocity, for: duration) }
+    /// Plays several notes at once, or after a wait, the way one note is.
+    public func play(
+        chord pitches: [Pitch], velocity: Double = 0.8, for duration: Double? = nil, after delay: Double = 0
+    ) {
+        for pitch in pitches { play(pitch, velocity: velocity, for: duration, after: delay) }
     }
 
     // MARK: Engine

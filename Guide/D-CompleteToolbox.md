@@ -350,7 +350,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, the four effects that move a sound and the three that hold its level, a room of your own from a recording or a rule (the convolution reverb), a wavetable read by position, four physical models (a plucked string, a struck shape, a bowed string, and a blown tube), an effect of your own in the chain, each note bent, pressed, and slid on its own while it sounds (per-note expression), sound placed in the 3D scene, and a soundtrack in an export | [Ch 29](29-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
-| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number, with a tempo and named note lengths to turn beats into seconds | [Ch 29](29-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
+| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number, with a tempo and named note lengths to turn beats into seconds, and a step sequencer with swing, chance, and ratchets and an arpeggiator over held notes that read the beat you hand them | [Ch 29](29-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
 | Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 29](29-MakingSound.md) | [Sonification](../Docs/Helpers/Sonification.md) |
 
 ## Seeing and video

@@ -11,14 +11,14 @@
 | [FilePlayer](FilePlayer/) | [Generative](Generative/) | [GuitarTuner](GuitarTuner/) | [Levels](Levels/) |
 | [![Movement](https://media.ollin.art/examples/Audio/Movement/still-640.jpg?v=eb5c98b5)](Movement/) | [![OwnSampler](https://media.ollin.art/examples/Audio/OwnSampler/still-640.jpg?v=b108e67e)](OwnSampler/) | [![Patching](https://media.ollin.art/examples/Audio/Patching/still-640.jpg?v=cb1749a4)](Patching/) | [![Rooms](https://media.ollin.art/examples/Audio/Rooms/still-640.jpg?v=6d3036ed)](Rooms/) |
 | [Movement](Movement/) | [OwnSampler](OwnSampler/) | [Patching](Patching/) | [Rooms](Rooms/) |
-| [![Sampler](https://media.ollin.art/examples/Audio/Sampler/still-640.jpg?v=6df8895e)](Sampler/) | [![Shaping](https://media.ollin.art/examples/Audio/Shaping/still-640.jpg?v=d6cb6131)](Shaping/) | [![Sonification](https://media.ollin.art/examples/Audio/Sonification/still-640.jpg?v=43ca6b0a)](Sonification/) | [![SoundInAnExport](https://media.ollin.art/examples/Audio/SoundInAnExport/still-640.jpg?v=7ecb82cc)](SoundInAnExport/) |
-| [Sampler](Sampler/) | [Shaping](Shaping/) | [Sonification](Sonification/) | [SoundInAnExport](SoundInAnExport/) |
-| [![Spatial](https://media.ollin.art/examples/Audio/Spatial/still-640.jpg?v=cdd4286a)](Spatial/) | [![Spectral](https://media.ollin.art/examples/Audio/Spectral/still-640.jpg?v=315d8c30)](Spectral/) | [![Spectrum](https://media.ollin.art/examples/Audio/Spectrum/still-640.jpg?v=db294efb)](Spectrum/) | [![Strings](https://media.ollin.art/examples/Audio/Strings/still-640.jpg?v=eb5b447b)](Strings/) |
-| [Spatial](Spatial/) | [Spectral](Spectral/) | [Spectrum](Spectrum/) | [Strings](Strings/) |
-| [![StruckShapes](https://media.ollin.art/examples/Audio/StruckShapes/still-640.jpg?v=fdc7872a)](StruckShapes/) | [![Synth](https://media.ollin.art/examples/Audio/Synth/still-640.jpg?v=e056fd72)](Synth/) | [![Tuner](https://media.ollin.art/examples/Audio/Tuner/still-640.jpg?v=aed2f8d2)](Tuner/) | [![Tunings](https://media.ollin.art/examples/Audio/Tunings/still-640.jpg?v=ce9b7f09)](Tunings/) |
-| [StruckShapes](StruckShapes/) | [Synth](Synth/) | [Tuner](Tuner/) | [Tunings](Tunings/) |
-| [![Wavetable](https://media.ollin.art/examples/Audio/Wavetable/still-640.jpg?v=93a2b8ee)](Wavetable/) |  |  |  |
-| [Wavetable](Wavetable/) |  |  |  |
+| [![Sampler](https://media.ollin.art/examples/Audio/Sampler/still-640.jpg?v=6df8895e)](Sampler/) | [![Sequencer](https://media.ollin.art/examples/Audio/Sequencer/still-640.jpg?v=060bd8d9)](Sequencer/) | [![Shaping](https://media.ollin.art/examples/Audio/Shaping/still-640.jpg?v=d6cb6131)](Shaping/) | [![Sonification](https://media.ollin.art/examples/Audio/Sonification/still-640.jpg?v=43ca6b0a)](Sonification/) |
+| [Sampler](Sampler/) | [Sequencer](Sequencer/) | [Shaping](Shaping/) | [Sonification](Sonification/) |
+| [![SoundInAnExport](https://media.ollin.art/examples/Audio/SoundInAnExport/still-640.jpg?v=7ecb82cc)](SoundInAnExport/) | [![Spatial](https://media.ollin.art/examples/Audio/Spatial/still-640.jpg?v=cdd4286a)](Spatial/) | [![Spectral](https://media.ollin.art/examples/Audio/Spectral/still-640.jpg?v=315d8c30)](Spectral/) | [![Spectrum](https://media.ollin.art/examples/Audio/Spectrum/still-640.jpg?v=db294efb)](Spectrum/) |
+| [SoundInAnExport](SoundInAnExport/) | [Spatial](Spatial/) | [Spectral](Spectral/) | [Spectrum](Spectrum/) |
+| [![Strings](https://media.ollin.art/examples/Audio/Strings/still-640.jpg?v=eb5b447b)](Strings/) | [![StruckShapes](https://media.ollin.art/examples/Audio/StruckShapes/still-640.jpg?v=fdc7872a)](StruckShapes/) | [![Synth](https://media.ollin.art/examples/Audio/Synth/still-640.jpg?v=e056fd72)](Synth/) | [![Tuner](https://media.ollin.art/examples/Audio/Tuner/still-640.jpg?v=aed2f8d2)](Tuner/) |
+| [Strings](Strings/) | [StruckShapes](StruckShapes/) | [Synth](Synth/) | [Tuner](Tuner/) |
+| [![Tunings](https://media.ollin.art/examples/Audio/Tunings/still-640.jpg?v=ce9b7f09)](Tunings/) | [![Wavetable](https://media.ollin.art/examples/Audio/Wavetable/still-640.jpg?v=93a2b8ee)](Wavetable/) |  |  |
+| [Tunings](Tunings/) | [Wavetable](Wavetable/) |  |  |
 
 These sketches listen to sound or play it. Audio lives in a separate library, so add `import OllinAudio`.
 
@@ -53,6 +53,7 @@ The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/
 | [PlayAlong](PlayAlong/Sketch.swift) | playing along with the room: onsets heard at the microphone become a tempo and a beat position, the ring carries the musical beat between them, and once the follower is steady the sketch joins in (`BeatFollower`, `steadiness`, `isFollowing`) |
 | [Tunings](Tunings/Sketch.swift) | twelve notes to the octave is a choice: one melody played in just, Pythagorean, quarter-tone, 19-tone, 31-tone, and Bohlen-Pierce tunings. Each degree is placed on a ladder by its `cents` and labeled with how far it is from the nearest equal-tempered note (`Tuning`, `snap(_:)`) |
 | [ChordSymbols](ChordSymbols/Sketch.swift) | chords written the way they are written on paper: a chart of symbols you can retype plays as changes, each card spells out the pitches it returns, and slash chords show their changed bass note. The sibling `Changes` writes the same idea as scale degrees (`Chord`, `Progression(symbols:)`) |
+| [Sequencer](Sequencer/Sketch.swift) | a drum machine's grid: three lanes of sixteen steps with a swing slider, the hat's offbeats left to chance, two ratchets, and an arpeggiator climbing the chord of the bar under them. Click a cell to turn it on or off (`StepSequencer`, `Arpeggiator`, `play(_:tempo:from:)`) |
 | [Sonification](Sonification/Sketch.swift) | numbers you can hear: a line across a landscape is drawn as a profile and read out as a tune from the same numbers, and the playhead is the note sounding (`Sonification`) |
 | [Spatial](Spatial/Sketch.swift) | sound that comes from somewhere: three chimes stand around you and one walks a circle past them. The camera is the listener (`place(at:heardFrom:)`) |
 | [SoundInAnExport](SoundInAnExport/Sketch.swift) | a piece whose sound goes into the export: the same score is rendered offline into the exported video rather than played to the room |

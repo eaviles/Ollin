@@ -162,7 +162,7 @@ final class SpeechListener: Sendable
   var unavailableReason: String? { get }
 final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, TransportMutable, AudioSource, Sendable
   @discardableResult func noteOn(_: Pitch, velocity: Double = default) -> PlayingNote
-  @discardableResult func play(_: Pitch, velocity: Double = default, for: Double? = default) -> PlayingNote
+  @discardableResult func play(_: Pitch, velocity: Double = default, for: Double? = default, after: Double = default) -> PlayingNote
   func advance(by: Double)
   func allNotesOff()
   func bend(_: PlayingNote, semitones: Double)
@@ -172,7 +172,8 @@ final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, Transp
   func play(_: Note, tempo: Tempo = default)
   func play(_: Sonification, step: Int, tempo: Tempo = default)
   func play(_: [Note], tempo: Tempo = default)
-  func play(chord: [Pitch], velocity: Double = default, for: Double? = default)
+  func play(_: [ScheduledNote], tempo: Tempo = default, from: Double? = default)
+  func play(chord: [Pitch], velocity: Double = default, for: Double? = default, after: Double = default)
   func press(_: PlayingNote, _: Double)
   func slide(_: PlayingNote, _: Double)
   func start()
@@ -236,6 +237,28 @@ protocol AudioSource where Self : AnyObject
   var timeSinceBeat: Double { get }
   var treble: Float { get }
   var waveform: [Float] { get }
+struct Arpeggiator: Equatable, Hashable, Sendable
+  init(_: Arpeggio.Pattern = default, octaves: Int = default, rate: NoteLength = default, gate: Double = default, swing: Double = default, velocity: Double = default, latches: Bool = default, seed: Int = default)
+  init(_: Chord, _: Arpeggio.Pattern = default, octaves: Int = default, rate: NoteLength = default, gate: Double = default, swing: Double = default, velocity: Double = default, latches: Bool = default, seed: Int = default)
+  init(_: [Pitch], _: Arpeggio.Pattern = default, octaves: Int = default, rate: NoteLength = default, gate: Double = default, swing: Double = default, velocity: Double = default, latches: Bool = default, seed: Int = default)
+  mutating func events(upTo: Double) -> [ScheduledNote]
+  mutating func hold(_: Pitch)
+  mutating func release(_: Pitch)
+  mutating func reset(to: Double = default)
+  var figure: Arpeggio { get }
+  var gate: Double { get set }
+  var latches: Bool { get set }
+  var maxCatchUp: Int { get set }
+  var next: Pitch? { get }
+  var nextStep: Int { get }
+  var notes: [Pitch] { get set }
+  var octaves: Int { get set }
+  var pattern: Arpeggio.Pattern { get set }
+  var playing: [Pitch] { get }
+  var rate: NoteLength { get set }
+  var seed: Int { get set }
+  var swing: Double { get set }
+  var velocity: Double { get set }
 struct Arpeggio: Equatable, Hashable, Sendable
   enum Pattern: String, ParamOption, ParamValue, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
     case asPlayed
@@ -642,6 +665,14 @@ struct Scale: Equatable, Hashable, Sendable
   var degreeCount: Int { get }
   var intervals: [Int] { get }
   var root: Pitch { get set }
+struct ScheduledNote: Equatable, Hashable, Sendable
+  init(_: Note, beat: Double, step: Int)
+  var beat: Double { get set }
+  var length: NoteLength { get }
+  var note: Note { get set }
+  var pitch: Pitch { get }
+  var step: Int { get set }
+  var velocity: Double { get }
 struct Sonification: Equatable, Sendable
   enum Bounds: Equatable, Sendable
     case extremes
@@ -687,6 +718,33 @@ struct StepCounter: Equatable, Hashable, Sendable
   var maxCatchUp: Int { get set }
   var nextStep: Int { get }
   var perBeat: Double { get set }
+struct StepSequencer: CustomStringConvertible, Equatable, ExpressibleByExtendedGraphemeClusterLiteral, ExpressibleByStringLiteral, ExpressibleByUnicodeScalarLiteral, Hashable, Sendable
+  init(_: Rhythm, pitch: Pitch, velocity: Double = default, rate: NoteLength = default, swing: Double = default, gate: Double = default, seed: Int = default)
+  init(_: [Pitch?], velocity: Double = default, rate: NoteLength = default, swing: Double = default, gate: Double = default, seed: Int = default)
+  init(count: Int = default, rate: NoteLength = default, swing: Double = default, gate: Double = default, seed: Int = default)
+  init(steps: [StepSequencer.Step], rate: NoteLength = default, swing: Double = default, gate: Double = default, seed: Int = default)
+  init(stringLiteral: String)
+  init?(pattern: String, velocity: Double = default, rate: NoteLength = default, swing: Double = default, gate: Double = default, seed: Int = default)
+  mutating func events(upTo: Double) -> [ScheduledNote]
+  mutating func reset(to: Double = default)
+  struct Step: Equatable, Hashable, Sendable
+    init(_: Pitch?, velocity: Double = default, probability: Double = default, ratchet: Int = default)
+    static let rest: StepSequencer.Step
+    var isRest: Bool { get }
+    var pitch: Pitch? { get set }
+    var probability: Double { get set }
+    var ratchet: Int { get set }
+    var velocity: Double { get set }
+  subscript(_: Int) -> StepSequencer.Step { get set }
+  var description: String { get }
+  var gate: Double { get set }
+  var length: Int { get }
+  var maxCatchUp: Int { get set }
+  var nextStep: Int { get }
+  var rate: NoteLength { get set }
+  var seed: Int { get set }
+  var steps: [StepSequencer.Step] { get set }
+  var swing: Double { get set }
 struct StruckShape: Sendable
   func body(struckAt: Vector2? = default, decay: Double = default, damping: Double = default, hardness: Double = default) -> ModalBody
   func gains(struckAt: Vector2) -> [Double]
