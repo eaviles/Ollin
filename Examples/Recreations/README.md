@@ -9,8 +9,8 @@
 | [BridgetRiley](BridgetRiley/) | [FriederNake](FriederNake/) | [GeorgNees](GeorgNees/) | [JaredTarbell](JaredTarbell/) |
 | [![JohnWhitney](https://media.ollin.art/groups/Recreations-JohnWhitney-640.jpg?v=1f957730)](JohnWhitney/) | [![JosefAlbers](https://media.ollin.art/groups/Recreations-JosefAlbers-640.jpg?v=b6022648)](JosefAlbers/) | [![ManfredMohr](https://media.ollin.art/groups/Recreations-ManfredMohr-640.jpg?v=28d6a0af)](ManfredMohr/) | [![ManuelFelguerez](https://media.ollin.art/groups/Recreations-ManuelFelguerez-640.jpg?v=ef2eb1d3)](ManuelFelguerez/) |
 | [JohnWhitney](JohnWhitney/) | [JosefAlbers](JosefAlbers/) | [ManfredMohr](ManfredMohr/) | [ManuelFelguerez](ManuelFelguerez/) |
-| [![OsamuSato](https://media.ollin.art/groups/Recreations-OsamuSato-640.jpg?v=44f367b6)](OsamuSato/) | [![SolLeWitt](https://media.ollin.art/groups/Recreations-SolLeWitt-640.jpg?v=edcbd044)](SolLeWitt/) | [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) |  |
-| [OsamuSato](OsamuSato/) | [SolLeWitt](SolLeWitt/) | [VeraMolnar](VeraMolnar/) |  |
+| [![OsamuSato](https://media.ollin.art/groups/Recreations-OsamuSato-640.jpg?v=44f367b6)](OsamuSato/) | [![SolLeWitt](https://media.ollin.art/groups/Recreations-SolLeWitt-640.jpg?v=edcbd044)](SolLeWitt/) | [![VeraMolnar](https://media.ollin.art/groups/Recreations-VeraMolnar-640.jpg?v=b217beb4)](VeraMolnar/) | [![VicenteRojo](https://media.ollin.art/groups/Recreations-VicenteRojo-640.jpg?v=8659ae06)](VicenteRojo/) |
+| [OsamuSato](OsamuSato/) | [SolLeWitt](SolLeWitt/) | [VeraMolnar](VeraMolnar/) | [VicenteRojo](VicenteRojo/) |
 
 These sketches **recreate the work of past computer artists**. Each one rebuilds a piece to learn from it, and shows what a modern framework brings to it.
 
@@ -34,4 +34,5 @@ Each sketch is a **recreation and homage** made after the artist. It is not a re
 - [**Josef Albers**](JosefAlbers/). Three or four nested squares set low in the panel, and a new set of colors on them every few seconds, each chosen so the squares change one another.
 - [**John Whitney**](JohnWhitney/). Points on concentric circles, each turning at a whole-number multiple of the first, so the fan gathers into a star at every simple fraction of the cycle and comes back to one spoke at the end of it.
 - [**Sol LeWitt**](SolLeWitt/). Instructions written for other people to draw: fifty random points all connected by straight lines, carried out wall after wall, and the two-part combinations of arcs, circles, and grids from his compass alphabet.
+- [**Vicente Rojo**](VicenteRojo/). The letter T painted only as the shadow it casts, a wall of them painted over one at a time, and rain falling across a square as a grid of small marks in diagonal streaks.
 

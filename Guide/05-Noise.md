@@ -280,6 +280,7 @@ Noise has a birthplace. Ken Perlin built it in 1983, fresh from working on the c
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Noise](B-JustEnoughMath.md#noise), [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).
 - Worked examples: [`Randomness/NoiseField`](../Examples/Randomness/NoiseField/Sketch.swift) (the cloud field, scrubbed by the mouse), [`Randomness/NoiseWave`](../Examples/Randomness/NoiseWave/Sketch.swift) (1D noise as a wave, beside its jagged twin [`RandomBand`](../Examples/Randomness/RandomBand/Sketch.swift)), [`Motion/EllipseField`](../Examples/Motion/EllipseField/Sketch.swift) (`signedNoise` driving a whole field of shapes: ellipses in one column, chord-closed arcs in the other), and [`Randomness/NoiseKinds`](../Examples/Randomness/NoiseKinds/Sketch.swift) (simplex, its signed reading, `worley`, and `turbulence` on one set of coordinates).
 - The Molnár homage [`Interruptions`](../Examples/Recreations/VeraMolnar/Interruptions/Sketch.swift): a field of ticks like the meadow's ancestor, its gaps carved by noise.
+- The Rojo homage [`MexicoBajoLaLluvia`](../Examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/Sketch.swift): rain as a grid of small marks, colored by noise read along one diagonal. The streaks lean the way the rain falls, and slide down it over time.
 
 ---
 

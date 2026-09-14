@@ -463,6 +463,7 @@ The circles on the number line are Lester Ford's, from a 1938 paper about approx
 - [Tiling and layout](../Docs/Drawing/Tiling.md): every parameter for `HexGrid`, `TriangleGrid`, `Subdivision`, `Maze`, and `apollonianGasket`, including hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
 - Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Moving the paper](B-JustEnoughMath.md#moving-the-paper).
 - Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour) and the two named above.
+- The Rojo homages in [`Examples/Recreations/VicenteRojo/`](../Examples/Recreations/VicenteRojo/): `Negaciones` is one letter on a grid of panels, each a different negation of it, painted over one at a time. `MexicoBajoLaLluvia` is a grid that covers the square, every cell painted and one mark set on it, with the diagonal deciding the kind.
 - Next door: [Chapter 7](07-Tiles.md) keeps the grid and changes what goes in the cells, so that neighboring cells have to agree with each other.
 
 ---

@@ -258,6 +258,10 @@
       "Recreations/VeraMolnar/DesOrdres",
       "Recreations/VeraMolnar/Interruptions"
     ],
+    "Recreations/VicenteRojo": [
+      "Recreations/VicenteRojo/Negaciones",
+      "Recreations/VicenteRojo/MexicoBajoLaLluvia"
+    ],
     "Rendering": [
       "Rendering/Grassland",
       "Rendering/MeshField",
@@ -647,6 +651,14 @@
       ],
       "image": "groups/Recreations-VeraMolnar.jpg?v=c373c0a1",
       "imageSmall": "groups/Recreations-VeraMolnar-640.jpg?v=b217beb4"
+    },
+    "Recreations/VicenteRojo": {
+      "of": [
+        "Recreations/VicenteRojo/Negaciones",
+        "Recreations/VicenteRojo/MexicoBajoLaLluvia"
+      ],
+      "image": "groups/Recreations-VicenteRojo.jpg?v=4afe3aa1",
+      "imageSmall": "groups/Recreations-VicenteRojo-640.jpg?v=8659ae06"
     },
     "Rendering": {
       "of": [
@@ -8328,6 +8340,48 @@
       "stillBecause": "holds still",
       "stillSmall": "examples/Recreations/VeraMolnar/Interruptions/still-640.jpg?v=45d718bd",
       "width": 1080
+    },
+    "Recreations/VicenteRojo/MexicoBajoLaLluvia": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 16.299,
+      "sound": false,
+      "source": "ed3e36da58d1e459",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 7989089,
+        "loopSmall": 3133847,
+        "still": 656027,
+        "stillSmall": 234060
+      },
+      "loop": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/loop.mp4?v=92a24a6f",
+      "loopSmall": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/loop-640.mp4?v=7d8c2c70",
+      "still": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/still.jpg?v=d442da94",
+      "stillSmall": "examples/Recreations/VicenteRojo/MexicoBajoLaLluvia/still-640.jpg?v=f1be86b3"
+    },
+    "Recreations/VicenteRojo/Negaciones": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 4.598,
+      "sound": false,
+      "source": "483814dd3250b20d",
+      "rendered": "2026-09-13",
+      "bytes": {
+        "loop": 468036,
+        "loopSmall": 78578,
+        "still": 65294,
+        "stillSmall": 27087
+      },
+      "loop": "examples/Recreations/VicenteRojo/Negaciones/loop.mp4?v=8afa69b5",
+      "loopSmall": "examples/Recreations/VicenteRojo/Negaciones/loop-640.mp4?v=3108053f",
+      "still": "examples/Recreations/VicenteRojo/Negaciones/still.jpg?v=cc0414e3",
+      "stillSmall": "examples/Recreations/VicenteRojo/Negaciones/still-640.jpg?v=49392fc3"
     },
     "Rendering/Accumulation": {
       "bytes": {

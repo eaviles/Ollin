@@ -840,5 +840,9 @@ let package = Package(
         // two-part combinations.
         example("Recreations/SolLeWitt/FiftyPoints"),
         example("Recreations/SolLeWitt/ArcsCirclesGrids"),
+        // The letter T painted only as the shadow it casts, panel after panel,
+        // and rain falling across a square, after Vicente Rojo.
+        example("Recreations/VicenteRojo/Negaciones"),
+        example("Recreations/VicenteRojo/MexicoBajoLaLluvia"),
     ]
 )
