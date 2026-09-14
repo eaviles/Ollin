@@ -36,6 +36,8 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ### Fixed
 
+- **A cape sinking into the back it hangs on.** The back stop of a skeleton-carried surface is a sphere behind the surface's normal, and the solver reads that normal from the mesh's winding, so a sheet wound to face the figure was held off the wrong side and passed through. The faces the solver reads now cross reversed whenever the winding faces what carries the surface, decided from the rest shape and the binds alone, so behind is toward the figure whichever way the mesh is wound; the plane's winding fix in the same release had turned every written cape that way.
+
 - **`drawPlane` faces the way its normal says.** The plane generator named +y and wound its quads to face -y, which nothing culled and so nothing showed; the ink line's hull, which culls the faces toward the eye, drew every floor as a slab of ink. Its quads now wind counter-clockwise seen from above, and the plane joins the probe that checks every generator's winding against its normals.
 
 

@@ -594,7 +594,8 @@ public final class World3D {
     ///     `.infinity` (the default) leaves it free to swing.
     ///   - backStop: how far behind the carried surface a particle may be
     ///     pushed before it is held back out, in world units, which is what
-    ///     keeps a cape from sinking into the back it hangs on.
+    ///     keeps a cape from sinking into the back it hangs on. "Behind" is
+    ///     toward what carries the surface, whichever way its mesh is wound.
     ///   - maxStretch: how far the surface may reach from what holds it, as a
     ///     multiple of its own rest distance along the cloth: `1` is
     ///     inextensible, `1.05` allows 5%. `nil` (the default) lets the springs

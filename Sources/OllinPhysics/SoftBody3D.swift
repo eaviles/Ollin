@@ -366,13 +366,24 @@ public class SoftBody3D {
                                rotation: rotation, unitsPerMeter: scale)
         skinning = skin
         isSkinned = !skin.vertices.isEmpty
+
+        // The faces the solver reads a skinned vertex's normal from, and the
+        // back stop is a sphere *behind* that normal. A surface wound to face
+        // what carries it would be held off the wrong side, a cape free to sink
+        // into the back it hangs on, so the faces cross reversed in that case:
+        // "behind" is toward the figure whichever way the mesh was wound.
+        let faces = SoftBody3D.windingFacesCarriers(skin, positions: welding.positions,
+                                                    indices: welding.indices,
+                                                    unitsPerMeter: scale)
+            ? SoftBody3D.reversedWinding(welding.indices)
+            : welding.indices
         if maxStretch != nil {
             desc.lraType = Int32(CJOLT_SOFT_LRA_GEODESIC.rawValue)
             desc.lraStretch = Float(max(1, maxStretch ?? 1))
         }
 
         let created: OpaquePointer? = restPositions.withUnsafeBufferPointer { points in
-            welding.indices.withUnsafeBufferPointer { indices in
+            faces.withUnsafeBufferPointer { indices in
                 inverseMasses.withUnsafeBufferPointer { masses in
                     skin.flatBinds.withUnsafeBufferPointer { binds in
                         skin.vertices.withUnsafeBufferPointer { skinned in
@@ -1070,6 +1081,43 @@ public class SoftBody3D {
             }
         }
         return sums
+    }
+
+    /// Whether the winding's normals point toward the joints that carry the
+    /// surface, summed over every carried particle in the rest shape.
+    ///
+    /// Decided from the rest shape and the inverse binds alone: a bind's
+    /// inverse puts its joint's origin in the surface's own frame, which is
+    /// the frame the rest positions are in, so a surface restored from a file
+    /// decides the same way with no skeleton in sight. A surface nobody
+    /// carries has no side to prefer and keeps its winding.
+    static func windingFacesCarriers(_ skin: Skin, positions: [Vector3], indices: [UInt32],
+                                     unitsPerMeter: Double) -> Bool {
+        guard !skin.vertices.isEmpty, !skin.binds.isEmpty else { return false }
+        let normals = normals(positions: positions, indices: indices, fallback: [])
+        let carriers: [Vector3] = skin.binds.map { bind in
+            let origin = bind.inverse.columns.3
+            return Vector3(Double(origin.x), Double(origin.y), Double(origin.z)) * unitsPerMeter
+        }
+        var agreement = 0.0
+        for entry in skin.vertices {
+            let particle = Int(entry.vertex), slot = Int(entry.joints.0)
+            guard particle < positions.count, slot < carriers.count else { continue }
+            agreement += normals[particle].dot(carriers[slot] - positions[particle])
+        }
+        return agreement > 0
+    }
+
+    /// The same triangles facing the other way: the last two corners of each
+    /// swapped, the face order kept.
+    static func reversedWinding(_ indices: [UInt32]) -> [UInt32] {
+        var out = indices
+        var i = 0
+        while i + 2 < out.count {
+            out.swapAt(i + 1, i + 2)
+            i += 3
+        }
+        return out
     }
 
     /// An undirected edge of the welded surface, for the closed-surface test.

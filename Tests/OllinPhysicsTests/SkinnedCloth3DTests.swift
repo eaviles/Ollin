@@ -34,11 +34,24 @@ struct SkinnedCloth3DTests {
                        Double(joint.world.columns.3.z))
     }
 
+    /// The same sheet wound the other way, so its winding normal faces the
+    /// figure instead of away from it.
+    static let sheetWoundTheOtherWay: Mesh = {
+        var flipped = sheet
+        var i = 0
+        while i + 2 < flipped.indices.count {
+            flipped.indices.swapAt(i + 1, i + 2)
+            i += 3
+        }
+        return flipped
+    }()
+
     /// Hang a cape on a figure, clasped along its collar.
     func cape(in world: World3D, on scene: Scene?, sway: Double? = nil,
-              backStop: Double? = nil, maxStretch: Double? = nil) throws -> SoftBody3D {
+              backStop: Double? = nil, maxStretch: Double? = nil,
+              sheet: Mesh = SkinnedCloth3DTests.sheet) throws -> SoftBody3D {
         try #require(world.addSoftBody(
-            from: Self.sheet, at: Vector3(0, 0.9, -0.13),
+            from: sheet, at: Vector3(0, 0.9, -0.13),
             rotated: .pi / 2, axis: Vector3(1, 0, 0),
             mass: 0.6, stiffness: 0.9, bend: 0.02, damping: 0.2,
             pinned: { $0.z < -0.5 },
@@ -233,6 +246,34 @@ struct SkinnedCloth3DTests {
                 "a back stop of 0.04 let the cloth \(pushed[1]) past the skin")
         #expect(pushed[0] > 0.3,
                 "with no back stop the cloth only reached \(pushed[0]) past the skin")
+    }
+
+    /// The solver reads a skinned vertex's normal from the winding, and the
+    /// back stop sits behind that normal, so the same cape built from the
+    /// sheet wound the other way must be held off the figure just the same:
+    /// behind is toward what carries it, not whichever side the mesh faces.
+    @Test func theBackStopHoldsWhicheverWayTheSheetIsWound() throws {
+        var pushed: [Double] = []
+        for sheet in [Self.sheet, Self.sheetWoundTheOtherWay] {
+            let figure = try Self.figure()
+            let world = World3D()
+            world.ground = 0
+            let cape = try cape(in: world, on: figure, backStop: 0.04, sheet: sheet)
+            let rest = cape.particlePositions
+            var deepest = -Double.infinity
+            for step in 0 ..< 300 {
+                cape.applyForce(Vector3(0, 0, 8))
+                cape.follow(figure)
+                world.advance(by: 1.0 / 60)
+                guard step > 120 else { continue }
+                for (index, point) in cape.particlePositions.enumerated() {
+                    deepest = max(deepest, point.z - rest[index].z)
+                }
+            }
+            pushed.append(deepest)
+        }
+        #expect(pushed[0] < 0.05, "wound one way, the cloth got \(pushed[0]) past the skin")
+        #expect(pushed[1] < 0.05, "wound the other way, the cloth got \(pushed[1]) past the skin")
     }
 
     // MARK: Long range attachments
