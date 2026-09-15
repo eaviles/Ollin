@@ -32,6 +32,11 @@ import Foundation
 /// less of the sky as it recedes), and its `color` × `intensity` is the
 /// surface's *radiance*, so a bigger panel casts more light into the scene.
 ///
+/// Any light with a position can be given a `reach`: the distance past which it
+/// contributes exactly nothing. A frame may carry as many of those as it likes
+/// (`OLLIN_MAX_SCENE_LIGHTS`); past eight the renderer shades each pixel against
+/// the lights that actually arrive there rather than all of them.
+///
 /// A point or spot light can also be *shaped*: an `IESProfile` (a real
 /// fixture's measured angular throw) sculpts where the intensity goes, and a
 /// spot can project a `LightCookie` image through its cone (a gobo, a gel).
@@ -124,6 +129,21 @@ public struct Light: Equatable, Sendable {
     /// a real fixture in its yoke turns both. Ignored with neither set.
     public var roll: Double
 
+    /// How far this light carries, in world units. `nil` (the default) is the
+    /// unbounded model: a point or spot light reaches equally far forever, and an
+    /// area light falls off physically but never quite reaches zero.
+    ///
+    /// Give it a number and the light is full strength at the source, a quarter of
+    /// that halfway out, and *exactly* nothing at `reach` and beyond. (Real light
+    /// thins as the inverse square of the distance. That curve has no finite edge
+    /// and blows up at the source, and this is the same shape with both ends made
+    /// usable.) The bound is what makes a courtyard of lamps read as lamps rather
+    /// than one flat wash, and it is also what lets a frame carry many of them: a
+    /// light that cannot arrive somewhere is not shaded there.
+    ///
+    /// Ignored by a directional light, which has no position to measure from.
+    public var reach: Double?
+
     /// The frame `position`, `direction`, and `up` are read in: `.world` (the
     /// default) or `.camera`, the view's own frame. See `relativeTo(_:)`.
     public var frame: Frame
@@ -154,7 +174,8 @@ public struct Light: Equatable, Sendable {
                 width: Double = 1, height: Double = 1, radius: Double = 0.5,
                 length: Double = 1, up: Vector3 = .unitY, isTwoSided: Bool = false,
                 profile: IESProfile? = nil, cookie: LightCookie? = nil,
-                roll: Double = 0, castsShadow: Bool = true, frame: Frame = .world) {
+                roll: Double = 0, reach: Double? = nil,
+                castsShadow: Bool = true, frame: Frame = .world) {
         self.kind = kind
         self.color = color
         self.intensity = intensity
@@ -173,6 +194,7 @@ public struct Light: Equatable, Sendable {
         self.profile = profile
         self.cookie = cookie
         self.roll = roll
+        self.reach = reach.map { max(0, $0) }
         self.castsShadow = castsShadow
         self.frame = frame
     }
@@ -231,6 +253,15 @@ public struct Light: Equatable, Sendable {
         return copy
     }
 
+    /// This light carried only so far: `Light.point(...).reaching(30)` lights its own
+    /// neighborhood and nothing past 30 world units. `nil` puts it back to unbounded.
+    /// See `reach`.
+    public func reaching(_ distance: Double?) -> Light {
+        var copy = self
+        copy.reach = distance.map { max(0, $0) }
+        return copy
+    }
+
     /// A directional light (parallel rays, like sunlight). `direction` is the way
     /// the light travels — `Vector3(0, -1, 0)` shines straight down. `specular`
     /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) wraps the
@@ -248,16 +279,17 @@ public struct Light: Equatable, Sendable {
     /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) softens the
     /// terminator. An IES `profile` shapes the falloff by angle, aimed along
     /// `axis` (the fixture's hanging direction, straight down by default) and
-    /// spun about it by `roll`.
+    /// spun about it by `roll`. `reach` bounds how far it carries (see `reach`).
     public static func point(_ color: Color, at position: Vector3,
                              intensity: Double = 1,
                              specular: Color? = nil, softness: Double = 0,
                              profile: IESProfile? = nil,
                              direction: Vector3 = Vector3(0, -1, 0),
-                             roll: Double = 0, castsShadow: Bool = true) -> Light {
+                             roll: Double = 0, reach: Double? = nil,
+                             castsShadow: Bool = true) -> Light {
         Light(kind: .point, color: color, intensity: intensity,
               specular: specular, softness: softness, position: position,
-              direction: direction, profile: profile, roll: roll,
+              direction: direction, profile: profile, roll: roll, reach: reach,
               castsShadow: castsShadow)
     }
 
@@ -265,18 +297,20 @@ public struct Light: Equatable, Sendable {
     /// `direction`, with a `penumbra` soft edge (`0` hard, up to `1`). `specular`
     /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) softens the
     /// terminator. An IES `profile` shapes the throw inside the cone, a
-    /// `cookie` projects an image through it, and `roll` spins both about
-    /// the beam.
+    /// `cookie` projects an image through it, `roll` spins both about the beam,
+    /// and `reach` bounds how far it carries (see `reach`).
     public static func spot(_ color: Color, at position: Vector3, direction: Vector3,
                             coneAngle: Double = .pi / 6, penumbra: Double = 0.2,
                             intensity: Double = 1,
                             specular: Color? = nil, softness: Double = 0,
                             profile: IESProfile? = nil, cookie: LightCookie? = nil,
-                            roll: Double = 0, castsShadow: Bool = true) -> Light {
+                            roll: Double = 0, reach: Double? = nil,
+                            castsShadow: Bool = true) -> Light {
         Light(kind: .spot, color: color, intensity: intensity,
               specular: specular, softness: softness,
               position: position, direction: direction, coneAngle: coneAngle, penumbra: penumbra,
-              profile: profile, cookie: cookie, roll: roll, castsShadow: castsShadow)
+              profile: profile, cookie: cookie, roll: roll, reach: reach,
+              castsShadow: castsShadow)
     }
 
     /// A rect area light: a glowing `width` × `height` panel centered at `position`,
@@ -284,42 +318,48 @@ public struct Light: Equatable, Sendable {
     /// axis oriented by the `up` hint. `isTwoSided` makes both faces emit. Highlights
     /// stretch into the panel's reflection and brightness falls off with distance;
     /// `color` × `intensity` is the panel's radiance, so a bigger panel casts more
-    /// light. `specular` (default `nil` = `color`) tints its highlight.
+    /// light. `specular` (default `nil` = `color`) tints its highlight, and
+    /// `reach` bounds how far it carries (see `reach`).
     public static func rectangle(_ color: Color, at position: Vector3, direction: Vector3,
                             width: Double, height: Double, up: Vector3 = .unitY,
                             isTwoSided: Bool = false, intensity: Double = 1,
-                            specular: Color? = nil, castsShadow: Bool = true) -> Light {
+                            specular: Color? = nil, reach: Double? = nil,
+                            castsShadow: Bool = true) -> Light {
         Light(kind: .rectangle, color: color, intensity: intensity, specular: specular,
               position: position, direction: direction,
               width: width, height: height, up: up, isTwoSided: isTwoSided,
-              castsShadow: castsShadow)
+              reach: reach, castsShadow: castsShadow)
     }
 
     /// A disk area light: a glowing circular panel of `radius` centered at `position`,
     /// facing along `direction`. `isTwoSided` makes both faces emit. Falls off with
     /// distance like the rect; `color` × `intensity` is the disk's radiance.
-    /// `specular` (default `nil` = `color`) tints its highlight.
+    /// `specular` (default `nil` = `color`) tints its highlight, and `reach`
+    /// bounds how far it carries (see `reach`).
     public static func disk(_ color: Color, at position: Vector3, direction: Vector3,
                             radius: Double, isTwoSided: Bool = false, intensity: Double = 1,
-                            specular: Color? = nil, castsShadow: Bool = true) -> Light {
+                            specular: Color? = nil, reach: Double? = nil,
+                            castsShadow: Bool = true) -> Light {
         Light(kind: .disk, color: color, intensity: intensity, specular: specular,
               position: position, direction: direction,
-              radius: radius, isTwoSided: isTwoSided, castsShadow: castsShadow)
+              radius: radius, isTwoSided: isTwoSided, reach: reach,
+              castsShadow: castsShadow)
     }
 
     /// A tube area light: a glowing cylinder of `radius` running `from` one point `to`
     /// another (a fluorescent or neon tube), emitting radially all around. Falls off
     /// with distance; `color` × `intensity` is the tube surface's radiance, so a thin
     /// tube wants a high intensity (a real neon is a very bright surface). `specular`
-    /// (default `nil` = `color`) tints its highlight.
+    /// (default `nil` = `color`) tints its highlight, and `reach` bounds how far it
+    /// carries (see `reach`).
     public static func tube(_ color: Color, from: Vector3, to: Vector3,
                             radius: Double = 0.1, intensity: Double = 1,
-                            specular: Color? = nil) -> Light {
+                            specular: Color? = nil, reach: Double? = nil) -> Light {
         let axis = to - from
         let len = axis.length
         return Light(kind: .tube, color: color, intensity: intensity, specular: specular,
                      position: (from + to) * 0.5,
                      direction: len > 0 ? axis * (1 / len) : Vector3(1, 0, 0),
-                     radius: radius, length: len)
+                     radius: radius, length: len, reach: reach)
     }
 }

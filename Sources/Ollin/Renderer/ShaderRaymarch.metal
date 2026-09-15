@@ -703,7 +703,12 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  texture2d<float> ltcAmp [[texture(9)]],
                                                  texture2d_array<float> iesProfiles [[texture(10)]],
                                                  texture2d_array<float> cookies [[texture(11)]],
-                                                 texture2d<float> sheenLUT [[texture(12)]]
+                                                 texture2d<float> sheenLUT [[texture(12)]],
+                                                 // The frame's whole light set and the per-tile
+                                                 // lists the cull wrote, read only past
+                                                 // OLLIN_MAX_LIGHTS; stand-ins otherwise.
+                                                 const device OllinLight *sceneLights [[buffer(8)]],
+                                                 const device uint *lightTiles [[buffer(9)]]
 #if OLLIN_RT_SHADOWS
                                                  , instance_acceleration_structure accel [[buffer(5)]]
                                                  // The reflection-trace inputs (see ollin_rt_reflection),
@@ -877,7 +882,11 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // Shade through the shared mesh tail (returns the surface flat when no light is set, so an
     // unlit field shows its colors). The marched field's own shadow factors (`fieldShadow`,
     // slot 0 >= 0) stand in for the map sampling there; pass lit (1.0) ray-traced factors.
-    float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
+    // The field marches at its own resolution, so its tile lookup divides the
+    // position by that scale and lands on the tile the full-res frame would.
+    OllinLightSet lightSet = ollin_light_set(light, sceneLights, lightTiles, in.position.xy,
+                                             max(u.raymarchScale.x, 1e-6));
+    float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light, lightSet,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                               ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF
 #if OLLIN_RT_SHADOWS

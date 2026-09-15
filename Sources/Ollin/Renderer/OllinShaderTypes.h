@@ -740,7 +740,14 @@ typedef struct {
 // emitting surface's radiance, so a bigger panel casts more light.
 typedef struct {
     simd_float4 color;       // rgb = linear *diffuse* color × intensity; a unused
-    simd_float4 position;    // point/spot: world-space position; rect/disk/tube: the shape's center; w unused
+    simd_float4 position;    // point/spot: world-space position; rect/disk/tube: the shape's center.
+                             // w = the light's *reach*: the world-space distance past which it
+                             // contributes nothing (`Light.reach`), 0 = unbounded (the shipped
+                             // default, byte-identical). Inside it the light is windowed by
+                             // `ollin_light_reach`, which is exactly 1 at the source, a quarter
+                             // of that halfway out, and exactly 0 at the reach, so a lamp lights
+                             // its own neighborhood and no further. That bound is also what the
+                             // light grid culls against.
     simd_float4 direction;   // directional: unit direction *to* the light; spot: unit cone axis (light's
                              // travel direction); rect/disk: the panel's unit normal (the way it faces);
                              // tube: unused. w: rect/disk two-sided flag (1 = emits both faces, 0 = front only)
@@ -1060,7 +1067,59 @@ typedef struct {
                                   // about it. Every dependent system loops to this count, so a
                                   // one-caster frame does exactly the work it always did.
     OllinShadowCaster shadowCasters[OLLIN_MAX_SHADOW_CASTERS];
+    // Tiled forward lighting (the "many lights" path). `lights` above holds the
+    // frame's first `OLLIN_MAX_LIGHTS`, which is the whole set for almost every
+    // frame and the only thing the volumetric, probe, and traced paths read. Past
+    // that count the frame's *whole* light set is uploaded to a device buffer
+    // (fragment buffer 8) and a compute pass writes, for each screen tile, the
+    // indices of the lights whose reach touches that tile (fragment buffer 9), so
+    // a lit mesh fragment shades against its own neighborhood's lights instead of
+    // every lamp in the room.
+    //
+    // `sceneLightCount` is the gate: 0 (a frame of eight lights or fewer) leaves
+    // every lit fragment looping `lights[0 ... lightCount]` exactly as before, so
+    // the shipped path is byte-identical and the two buffers are never read.
+    simd_float4 lightTileGrid;    // x, y = tiles across / down the render target;
+                                  // z, w = 1 / render width, 1 / render height (a
+                                  // fragment finds its tile from `position.xy · zw`,
+                                  // which is free of any points-vs-pixels mismatch).
+    int   sceneLightCount;        // lights in the device buffer (0 = the inline path)
+    int   lightTileStride;        // uints per tile in the list buffer: one count word
+                                  // followed by up to `sceneLightCount` indices.
 } OllinLighting;
+
+// The per-tile light cull (`ollin_light_cull`). One thread per screen tile: it
+// builds the tile's own frustum from the frame's view-projection rows and keeps
+// every light whose bounding volume reaches into it. The rows travel rather than
+// the matrix because a tile plane is a row combination (the left plane at NDC x0
+// is `rowX - x0 · rowW`), so no per-tile matrix multiply is needed.
+typedef struct {
+    simd_float4 rowX;         // the view-projection's first row  (columns' .x)
+    simd_float4 rowY;         // its second row (columns' .y)
+    simd_float4 rowZ;         // its third row  (columns' .z)
+    simd_float4 rowW;         // its fourth row (columns' .w)
+    simd_float2 renderSize;   // the render target in pixels (the tile grid's domain)
+    unsigned int tilesX;      // tiles across
+    unsigned int tilesY;      // tiles down
+    unsigned int tileSize;    // one tile's edge, in pixels
+    unsigned int lightCount;  // lights in the light buffer
+    unsigned int tileStride;  // uints per tile (1 count word + the index capacity)
+    unsigned int culls;       // 1 = cull; 0 = every tile takes every light, which is
+                              // the brute-force baseline the cost A/B measures against
+                              // and shades identically (the grid only decides *which*
+                              // lights a tile lists, never how one shades).
+} OllinLightCullParams;
+
+// One tile's edge in pixels. 16 is the usual forward-plus choice: small enough that
+// a lamp's screen footprint lands in few tiles, large enough that the list buffer
+// stays a megabyte at canvas size. Shared because the fragment derives its tile from
+// the same number the cull dispatched with.
+#define OLLIN_LIGHT_TILE_SIZE 16
+
+// The ceiling on a frame's light set once it goes tiled. Past it the extra lights
+// are dropped with a one-time note, the way the decal cap works: the list buffer is
+// tiles x this x 4 bytes, so an unbounded count would be unbounded memory.
+#define OLLIN_MAX_SCENE_LIGHTS 256
 
 // One deposited caustic photon (`caustics()`): written by the photon-trace kernel
 // when a light path through glass or polished metal lands on a rough opaque surface,

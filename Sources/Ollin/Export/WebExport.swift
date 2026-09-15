@@ -1145,6 +1145,11 @@ struct WebShaders {
     vec3 pbrEnergyComp(vec3 F0, float ess) {
         return 1.0 + F0 * (1.0 / max(ess, 0.1) - 1.0);
     }
+    float lightReach(float dist, float reach) {
+        if (reach <= 0.0) { return 1.0; }
+        float t = clamp(1.0 - dist / reach, 0.0, 1.0);
+        return t * t;
+    }
     float sssTranslucency(vec3 viewDir, vec3 toLight, vec3 n) {
         vec3 bent = normalize(toLight + n * 0.35);
         float through = pow(max(dot(viewDir, -bent), 0.0), 3.0);
@@ -1195,6 +1200,10 @@ struct WebShaders {
                     float cosA = dot(-toLight, Ldir.xyz);
                     atten = smoothstep(Lp.z, Lp.y, cosA);
                 }
+                // How far this light carries (Light.reach, in Lpos.w). Zero is the
+                // unbounded model and returns exactly 1, so a page whose lights have
+                // no reach is unchanged.
+                atten *= lightReach(length(Lpos.xyz - worldPos), Lpos.w);
             }
             if (cs >= 0) {
                 float lit01 = fieldShadow[cs];

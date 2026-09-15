@@ -291,6 +291,7 @@ let package = Package(
                 resources: [.copy("downlight.ies"), .copy("batwing.ies"), .copy("wallwash.ies")]),
         example("3D/Lighting/VolumetricLight"),
         example("3D/Lighting/LightingPresets"),
+        example("3D/Lighting/ManyLights"),
         example("3D/Materials/Materials"),
         example("3D/Materials/Inked"),
         example("3D/Materials/Explorer"),

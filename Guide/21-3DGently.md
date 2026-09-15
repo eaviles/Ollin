@@ -295,6 +295,31 @@ The window on the right is the second shaper, a **cookie**, an image a spot proj
 
 Two habits worth keeping. A profile ends where its measurements end, so a downlight file that stops at 90° sends nothing above the fixture's own horizon. To wash a wall, tilt the light's `axis:` at it, the way the real fixture would be aimed. And both shapers are made-once values. The profile parses its file and the cookie resamples its image at construction, so build them in `setup()` and hand the same value to the light every frame. The `3D/Lighting/LightShaping` example stages a downlight, a batwing, a wallwasher, and this same window over one floor. Its three `.ies` files ride beside the sketch as bundled resources.
 
+## A courtyard of lamps
+
+Every light so far has been one of a handful, placed by hand. A lamp is a different animal. You don't place one lamp, you place forty, and the moment you try it in Ollin two things go wrong at once.
+
+The first is a look. A point light in Ollin reaches equally far forever. That is what a key light or a sun wants, and it means forty lamps are forty washes laid over each other. The courtyard goes pale and even, and the night you were lighting is gone. The fix is one parameter:
+
+```swift
+for i in 0 ..< 64 {
+    let angle = Double(i) * 2.4, radius = 4 + Double(i) * 0.3
+    pointLight(Color(hue: Double(i) / 64, saturation: 0.75, brightness: 1),
+               at: Vector3(cos(angle) * radius, 2.4, sin(angle) * radius),
+               intensity: 1.7, reach: 11)
+}
+```
+
+<img src="Images/21-3DGently/LampsAtNight.jpg" alt="Three panels of the same block courtyard seen from above. Left, twelve lamps with no reach: a pale even wash with no shadows between the blocks. Middle, the same twelve with a reach of 14: each lamp owns a colored pool of floor and the gaps between them are dark. Right, sixty-four lamps with a reach of 10: dense overlapping pools of green, magenta, and cyan over the whole courtyard, still with dark seams between the blocks" width="680">
+
+`reach:` is how far a light carries, in world units. Inside it the lamp is full strength at the source and a quarter of that halfway out. At `reach` and beyond it is *exactly* nothing. That is the part that matters. The dark between the pools is real dark, not a very dim wash. (Real light thins as the inverse square of the distance. That curve has no end, and it blows up at the source. This is the same shape with both ends made usable.) Every light with a position takes it, the area panels included. `Light.reaching(_:)` sets or clears it on a light you have already built. Leave it off and the light is exactly what it was before.
+
+The second thing that goes wrong is cost. Forward lighting shades every pixel against every light, which is why the plain path stops at eight. **A frame carries up to 256 lights.** Past eight, the renderer divides the screen into small squares. It works out, once per square, which lamps can possibly arrive there. A pixel then shades against the four or five standing over it instead of the sixty-four in the courtyard. You write the same calls either way, and the picture is identical either way. On an M2 at a 1080-pixel canvas, sixty-four lamps cost 16.9 ms a frame instead of 42.7.
+
+The `reach` is what did that. A lamp with no bound can arrive anywhere, so it stays in every square and costs full price. A hundred unbounded lights are a hundred lights on every pixel. The number that makes the courtyard read is the same number that makes it affordable, which is a rare and pleasant thing.
+
+A few things stay on the frame's first eight lights on purpose. Shadows are the big one. A frame casts from at most four lights, chosen among those eight, because each caster is its own pass over the whole scene. Sixty-four shadow-casting lamps is not a feature, it's a stall. Visible air, bounced light, and the path-traced export read those same eight. `3D/Lighting/ManyLights` is a courtyard at night with the count and the reach on sliders. Pull the reach down until the lamps are fireflies and up until the courtyard floods, and you will have the parameter by feel.
+
 ## Air you can see
 
 Everything so far shows a light only where it lands. Real air shows the light on its way. Dust and haze catch a beam mid-flight, which is why a projector's cone hangs visibly over a cinema audience. It's why sun through a window is a slanted block of bright air. Two calls give a scene that air.

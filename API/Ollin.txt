@@ -1919,7 +1919,7 @@ open class Sketch: Sendable
   func describe(_: String)
   func describe(_: String, as: String, in: Rectangle? = default)
   func directionalLight(_: Color, direction: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, castsShadow: Bool = default)
-  func diskLight(_: Color, at: Vector3, direction: Vector3, radius: Double, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, castsShadow: Bool = default)
+  func diskLight(_: Color, at: Vector3, direction: Vector3, radius: Double, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, reach: Double? = default, castsShadow: Bool = default)
   func drawArc(_: Double, _: Double, _: Double, _: Double, start: Double, stop: Double, mode: ArcMode = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawArc(center: Vector2, radiusX: Double, radiusY: Double, start: Double, stop: Double, mode: ArcMode = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawArrow(_: Double, _: Double, _: Double, _: Double, headLength: Double? = default, headWidth: Double? = default, file: StaticString = default, line: Int = default, column: Int = default)
@@ -2311,7 +2311,7 @@ open class Sketch: Sendable
   func percolation(columns: Int, rows: Int, probability: Double) -> Percolation
   func perspective(eye: Vector3, target: Vector3 = default, up: Vector3 = default, fieldOfView: Double = default, near: Double = default, far: Double = default)
   func pingPong(over: Double, phase: Double = default) -> Double
-  func pointLight(_: Color, at: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, direction: Vector3 = default, roll: Double = default, castsShadow: Bool = default)
+  func pointLight(_: Color, at: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, direction: Vector3 = default, roll: Double = default, reach: Double? = default, castsShadow: Bool = default)
   func pointMarker(_: PointMarker)
   func pointSize(_: Double)
   func poissonDisk(in: Rectangle? = default, radius: Double, candidates: Int = default, maxCount: Int? = default) -> [Vector2]
@@ -2337,7 +2337,7 @@ open class Sketch: Sendable
   func raymarchResolution(_: Double)
   func raymarchSteps(_: Int)
   func record(into: StrokeMark)
-  func rectangleLight(_: Color, at: Vector3, direction: Vector3, width: Double, height: Double, up: Vector3 = default, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, castsShadow: Bool = default)
+  func rectangleLight(_: Color, at: Vector3, direction: Vector3, width: Double, height: Double, up: Vector3 = default, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, reach: Double? = default, castsShadow: Bool = default)
   func reflectionBounces(_: Int = default)
   func reflectionQuality(_: RenderQuality = default)
   func relaxCircles(_: [Circle], in: Rectangle? = default, iterations: Int = default, padding: Double = default) -> [Circle]
@@ -2406,7 +2406,7 @@ open class Sketch: Sendable
   func specular(_: Double)
   func specularAntialiasing(_: Bool = default, strength: Double = default)
   func specularSharpness(_: Double)
-  func spotLight(_: Color, at: Vector3, direction: Vector3, coneAngle: Double = default, penumbra: Double = default, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, castsShadow: Bool = default)
+  func spotLight(_: Color, at: Vector3, direction: Vector3, coneAngle: Double = default, penumbra: Double = default, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, reach: Double? = default, castsShadow: Bool = default)
   func stairsIntersect(radius: Double, steps: Int, _: () -> Void)
   func stairsSubtract(radius: Double, steps: Int, _: () -> Void)
   func stairsUnion(radius: Double, steps: Int, _: () -> Void)
@@ -2467,7 +2467,7 @@ open class Sketch: Sendable
   func translate(_: Vector3)
   func triangleGrid(columns: Int, rows: Int, padding: Insets = default, gutter: Double = default) -> TriangleGrid
   func truchet(in: Rectangle? = default, columns: Int, rows: Int, tile: Truchet.Tile = default) -> [Contour]
-  func tubeLight(_: Color, from: Vector3, to: Vector3, radius: Double = default, intensity: Double = default, specular: Color? = default)
+  func tubeLight(_: Color, from: Vector3, to: Vector3, radius: Double = default, intensity: Double = default, specular: Color? = default, reach: Double? = default)
   func turbulence(_: Double, _: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, loop: Double, radius: Double = default, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
   func turbulence(_: Double, _: Double, octaves: Int = default, gain: Double = default, lacunarity: Double = default) -> Double
@@ -4306,15 +4306,16 @@ struct Light: Equatable, Sendable
     case spot
     case tube
   func castingShadow(_: Bool = default) -> Light
+  func reaching(_: Double?) -> Light
   func relativeTo(_: Light.Frame) -> Light
-  init(kind: Light.Kind, color: Color, intensity: Double = default, specular: Color? = default, softness: Double = default, position: Vector3 = default, direction: Vector3 = default, coneAngle: Double = default, penumbra: Double = default, width: Double = default, height: Double = default, radius: Double = default, length: Double = default, up: Vector3 = default, isTwoSided: Bool = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, castsShadow: Bool = default, frame: Light.Frame = default)
+  init(kind: Light.Kind, color: Color, intensity: Double = default, specular: Color? = default, softness: Double = default, position: Vector3 = default, direction: Vector3 = default, coneAngle: Double = default, penumbra: Double = default, width: Double = default, height: Double = default, radius: Double = default, length: Double = default, up: Vector3 = default, isTwoSided: Bool = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, reach: Double? = default, castsShadow: Bool = default, frame: Light.Frame = default)
   static func directional(_: Color, direction: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, castsShadow: Bool = default) -> Light
-  static func disk(_: Color, at: Vector3, direction: Vector3, radius: Double, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, castsShadow: Bool = default) -> Light
+  static func disk(_: Color, at: Vector3, direction: Vector3, radius: Double, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, reach: Double? = default, castsShadow: Bool = default) -> Light
   static func headlight(_: Color = default, intensity: Double = default, specular: Color? = default, softness: Double = default) -> Light
-  static func point(_: Color, at: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, direction: Vector3 = default, roll: Double = default, castsShadow: Bool = default) -> Light
-  static func rectangle(_: Color, at: Vector3, direction: Vector3, width: Double, height: Double, up: Vector3 = default, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, castsShadow: Bool = default) -> Light
-  static func spot(_: Color, at: Vector3, direction: Vector3, coneAngle: Double = default, penumbra: Double = default, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, castsShadow: Bool = default) -> Light
-  static func tube(_: Color, from: Vector3, to: Vector3, radius: Double = default, intensity: Double = default, specular: Color? = default) -> Light
+  static func point(_: Color, at: Vector3, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, direction: Vector3 = default, roll: Double = default, reach: Double? = default, castsShadow: Bool = default) -> Light
+  static func rectangle(_: Color, at: Vector3, direction: Vector3, width: Double, height: Double, up: Vector3 = default, isTwoSided: Bool = default, intensity: Double = default, specular: Color? = default, reach: Double? = default, castsShadow: Bool = default) -> Light
+  static func spot(_: Color, at: Vector3, direction: Vector3, coneAngle: Double = default, penumbra: Double = default, intensity: Double = default, specular: Color? = default, softness: Double = default, profile: IESProfile? = default, cookie: LightCookie? = default, roll: Double = default, reach: Double? = default, castsShadow: Bool = default) -> Light
+  static func tube(_: Color, from: Vector3, to: Vector3, radius: Double = default, intensity: Double = default, specular: Color? = default, reach: Double? = default) -> Light
   var castsShadow: Bool { get set }
   var color: Color { get set }
   var coneAngle: Double { get set }
@@ -4330,6 +4331,7 @@ struct Light: Equatable, Sendable
   var position: Vector3 { get set }
   var profile: IESProfile? { get set }
   var radius: Double { get set }
+  var reach: Double? { get set }
   var roll: Double { get set }
   var softness: Double { get set }
   var specular: Color? { get set }

@@ -1090,6 +1090,11 @@ final class WebGraphRecorder {
             }
         }
         if lights.contains(where: { $0.kind >= 3 }) { throw refuse("an area light (a panel or a tube) on a raymarched field") }
+        // The page shades against a fixed eight-light block; the Mac's tiled grid has
+        // no counterpart there, so say so rather than quietly drop the rest.
+        if drawer.activeLights.count > Int(OLLIN_MAX_LIGHTS) {
+            throw refuse("more than \(Int(OLLIN_MAX_LIGHTS)) lights on a raymarched field")
+        }
 
         let viewport = SIMD2<Float>(Float(width), Float(height))
         let aspect = Double(viewport.x / viewport.y)

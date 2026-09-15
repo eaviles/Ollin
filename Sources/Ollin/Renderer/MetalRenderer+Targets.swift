@@ -1362,8 +1362,12 @@ extension MetalRenderer {
         // upsample magnifies the aliasing into a staircase).
         u3.raymarchScale = SIMD2<Float>(Float(scale), 0)
         var lit = lighting
+        // Many lights: the grid was culled over the full-res target, and the fragment
+        // divides its own reduced position by `raymarchScale` to land on the same tile.
+        applyLightGrid(to: &lit, width: fullWidth, height: fullHeight)
         enc.setFragmentBuffer(nodeBuffer, offset: 0, index: 1)
         enc.setFragmentBytes(&lit, length: MemoryLayout<OllinLighting>.stride, index: 2)
+        bindLightGrid(enc)
         enc.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 4)
         enc.setFragmentTexture(shadowTexture, index: 1)
         enc.setFragmentTexture(shadowCubeTexture, index: 2)

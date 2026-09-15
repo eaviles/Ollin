@@ -516,6 +516,14 @@ final class Drawer {
     /// order (`shaping.y`); the cookie-array sibling of `usedIESProfiles`.
     private(set) var usedLightCookies: [LightCookie] = []
 
+    /// Whether the frame's lights are culled per screen tile once there are more of
+    /// them than the inline set holds. Always true in a sketch: it is the internal
+    /// switch the cost measurement and the correctness law flip, since the culled and
+    /// unculled frames must be the same picture, and the only honest way to show that
+    /// is to render both. Off, every tile lists every light, which is brute-force
+    /// forward lighting with the same shading code.
+    var cullsLightTiles = true
+
     /// The frame's placed decals as packed GPU structs, in call order (a later
     /// decal composites over an earlier one), capped at `OLLIN_MAX_DECALS`.
     /// Per-frame state like `lights`; the encode routes every solid/textured
@@ -2726,39 +2734,22 @@ final class Drawer {
         u.ambient = SIMD4<Float>(Float(Color.srgbToLinear(ambient.red)),
                                  Float(Color.srgbToLinear(ambient.green)),
                                  Float(Color.srgbToLinear(ambient.blue)), 0)
-        let count = min(activeLights.count, Int(OLLIN_MAX_LIGHTS))
+        let packed = packedLights()
+        let count = min(packed.count, Int(OLLIN_MAX_LIGHTS))
         u.lightCount = Int32(count)
         // A C fixed-size array imports as a homogeneous tuple; fill it through a
         // typed pointer rather than naming each element.
         withUnsafeMutablePointer(to: &u.lights) { tuplePtr in
             tuplePtr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
-                for i in 0..<count {
-                    let light = activeLights[i]
-                    // Light shaping rides two texture arrays; the packed layer
-                    // index is the profile/cookie's position in the frame's
-                    // deduped list (the renderer bakes the arrays from these).
-                    var profileLayer = -1, cookieLayer = -1
-                    if light.kind == .point || light.kind == .spot, let p = light.profile {
-                        if let found = usedIESProfiles.firstIndex(of: p) {
-                            profileLayer = found
-                        } else {
-                            usedIESProfiles.append(p)
-                            profileLayer = usedIESProfiles.count - 1
-                        }
-                    }
-                    if light.kind == .spot, let c = light.cookie {
-                        if let found = usedLightCookies.firstIndex(of: c) {
-                            cookieLayer = found
-                        } else {
-                            usedLightCookies.append(c)
-                            cookieLayer = usedLightCookies.count - 1
-                        }
-                    }
-                    buf[i] = Drawer.packLight(light, profileLayer: profileLayer,
-                                              cookieLayer: cookieLayer)
-                }
+                for i in 0..<count { buf[i] = packed[i] }
             }
         }
+        // `sceneLightCount` (the tiled path's gate) and the grid beside it stay 0
+        // here: the renderer fills them in for the passes that actually bind the
+        // grid, since the tiles are the render target's rather than the canvas's and
+        // only the renderer knows that size. Every other pass therefore reads the
+        // inline `lights` array, which is what it always read.
+
         // Shadow casters. A frame casts from a small ordered list of lights, so a key
         // light and a spot both throw a shadow. Slot 0 is the
         // *primary* caster: it keeps the priority the single caster had (a directional,
@@ -2974,6 +2965,50 @@ final class Drawer {
         return u
     }
 
+    /// The frame's lights packed for the GPU, in the order the sketch set them and
+    /// capped at `OLLIN_MAX_SCENE_LIGHTS`. One packing path: `makeLighting` takes the
+    /// first `OLLIN_MAX_LIGHTS` of this for the inline array every shading path reads,
+    /// and the renderer uploads the whole thing as the tiled path's device buffer, so
+    /// the two can never disagree about what a light is. Assigning the profile and
+    /// cookie layers here is what keeps the frame's texture arrays in step with it;
+    /// the assignment only ever appends, so calling this twice in a frame is the same
+    /// as calling it once.
+    func packedLights() -> [OllinLight] {
+        let active = activeLights
+        if active.count > Int(OLLIN_MAX_SCENE_LIGHTS) {
+            noteOnce("a frame holds up to \(Int(OLLIN_MAX_SCENE_LIGHTS)) lights; the extras were skipped.")
+        }
+        let count = min(active.count, Int(OLLIN_MAX_SCENE_LIGHTS))
+        var packed: [OllinLight] = []
+        packed.reserveCapacity(count)
+        for i in 0..<count {
+            let light = active[i]
+            // Light shaping rides two texture arrays; the packed layer index is the
+            // profile/cookie's position in the frame's deduped list (the renderer
+            // bakes the arrays from these).
+            var profileLayer = -1, cookieLayer = -1
+            if light.kind == .point || light.kind == .spot, let p = light.profile {
+                if let found = usedIESProfiles.firstIndex(of: p) {
+                    profileLayer = found
+                } else {
+                    usedIESProfiles.append(p)
+                    profileLayer = usedIESProfiles.count - 1
+                }
+            }
+            if light.kind == .spot, let c = light.cookie {
+                if let found = usedLightCookies.firstIndex(of: c) {
+                    cookieLayer = found
+                } else {
+                    usedLightCookies.append(c)
+                    cookieLayer = usedLightCookies.count - 1
+                }
+            }
+            packed.append(Drawer.packLight(light, profileLayer: profileLayer,
+                                           cookieLayer: cookieLayer))
+        }
+        return packed
+    }
+
     /// Convert a `Light` into its GPU form: linearized intensity-scaled color, the
     /// vectors a directional/point/spot light needs, and a spot's cone cosines.
     private static func packLight(_ light: Light, profileLayer: Int = -1,
@@ -2998,6 +3033,10 @@ final class Drawer {
                                   Float(Color.srgbToLinear(s.green) * i),
                                   Float(Color.srgbToLinear(s.blue) * i), 0)
         l.softness = Float(light.softness)   // 0 = hard Lambert (unchanged)
+        // How far this light carries, riding the position's free lane. 0 is the
+        // unbounded model every light had before, and the shader's window returns
+        // exactly 1 for it, so a light without a reach packs and shades identically.
+        let reach = Float(max(0, light.reach ?? 0))
         switch light.kind {
         case .directional:
             l.kind = 0
@@ -3007,7 +3046,7 @@ final class Drawer {
         case .point:
             l.kind = 1
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
-                                      Float(light.position.z), 0)
+                                      Float(light.position.z), reach)
             // The fixture axis an IES profile aims along (straight down by
             // default) rides the otherwise-unused direction slot.
             let axis = light.direction.length > 0 ? light.direction.normalized
@@ -3016,7 +3055,7 @@ final class Drawer {
         case .spot:
             l.kind = 2
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
-                                      Float(light.position.z), 0)
+                                      Float(light.position.z), reach)
             // The cone axis is the light's travel direction (source → lit surface).
             let axis = light.direction.normalized
             l.direction = SIMD4<Float>(Float(axis.x), Float(axis.y), Float(axis.z), 0)
@@ -3032,7 +3071,7 @@ final class Drawer {
             // the shader's corner winding depends on for its one-sided front test.
             l.kind = light.kind == .rectangle ? 3 : 4
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
-                                      Float(light.position.z), 0)
+                                      Float(light.position.z), reach)
             let n = simd_normalize(light.direction.normalized.simd3)
             var up = light.up.simd3
             // Degenerate up hint (zero, or parallel to the normal): fall back to an axis
@@ -3054,7 +3093,7 @@ final class Drawer {
             // tube radius in axisB.w. Emits radially, so there's no facing normal.
             l.kind = 5
             l.position = SIMD4<Float>(Float(light.position.x), Float(light.position.y),
-                                      Float(light.position.z), 0)
+                                      Float(light.position.z), reach)
             let axis = simd_normalize(light.direction.normalized.simd3)
             l.axisA = SIMD4<Float>(axis.x, axis.y, axis.z, Float(light.length / 2))
             l.axisB = SIMD4<Float>(0, 0, 0, Float(max(light.radius, 1e-4)))

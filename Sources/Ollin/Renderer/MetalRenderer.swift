@@ -726,6 +726,23 @@ final class MetalRenderer {
     var meshBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     var meshExportBuffer: MTLBuffer?
 
+    /// Parallel rings + export buffers for the tiled light grid: the frame's whole
+    /// light set (`OllinLight`) and the per-tile index lists the cull kernel writes.
+    /// Allocated only once a frame carries more than `OLLIN_MAX_LIGHTS`, so an
+    /// ordinary 3D frame pays nothing for them. `lightGridStandIn` is the never-read
+    /// one-element buffer the fragments' declared arguments take otherwise.
+    var lightBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    var lightExportBuffer: MTLBuffer?
+    var lightTileBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    var lightTileExportBuffer: MTLBuffer?
+    var lightGridStandIn: MTLBuffer?
+
+    /// The tiled light grid this frame resolved (nil on the inline path), set by
+    /// `encodeLightCull` at the top of the frame and read by every lit pass that
+    /// binds it. Frame state, like the resolved IBL: one cull, one grid, every pass
+    /// of that size shading against the same lists.
+    var currentLightGrid: LightGrid?
+
     /// Parallel rings + export buffers for instanced mesh draws: the local-space
     /// base-mesh vertices (`OllinMeshVertex`) and the per-copy placements
     /// (`OllinMeshInstance`), advanced with `frameIndex` like the others.
@@ -1941,6 +1958,12 @@ final class MetalRenderer {
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         encodeMeshFieldCulling(drawer, into: commandBuffer,
                                viewport: SIMD2<Float>(Float(width), Float(height)))
+        // Many lights: cull the frame's light set into the screen tile grid, ahead of
+        // everything that shades. Returns nil (and leaves every lit pass inline) for a
+        // frame of `OLLIN_MAX_LIGHTS` or fewer.
+        _ = encodeLightCull(drawer, into: commandBuffer,
+                            renderWidth: renderWidth, renderHeight: renderHeight,
+                            frameIndex: frameIndex)
         // Bake the IBL environment maps (once, cached) ahead of the geometry pass, so the
         // mesh fragments can sample them. A no-op when no environment is set.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer)
@@ -2096,7 +2119,8 @@ final class MetalRenderer {
             frameBoundary.signal()
         }
 
-        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)), into: geomEncoder,
+        encode(drawer, viewport: viewport, attachment: SIMD2<Float>(Float(width), Float(height)),
+               renderSize: SIMD2<Float>(Float(renderWidth), Float(renderHeight)), into: geomEncoder,
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -2238,6 +2262,11 @@ final class MetalRenderer {
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        // The accumulating path culls its own lights too. Even a frame that has none
+        // has to make the call, or a lit pass here would read whatever grid the last
+        // frame through another path left behind.
+        _ = encodeLightCull(drawer, into: commandBuffer, renderWidth: width, renderHeight: height,
+                            frameIndex: frameIndex)
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating)") else {
             returnFrameSlot()      // nothing encoded; hand the slot back
             return
@@ -2571,6 +2600,8 @@ final class MetalRenderer {
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         encodeMeshFieldCulling(drawer, into: commandBuffer,
                                viewport: SIMD2<Float>(Float(width), Float(height)))
+        _ = encodeLightCull(drawer, into: commandBuffer, renderWidth: width, renderHeight: height,
+                            frameIndex: nil)
         // Export blocks on a remote-environment download so the exported frame is full-res.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer, blocking: true)
         ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
@@ -2922,6 +2953,8 @@ final class MetalRenderer {
             encodeCompute(drawer, into: cb)
             encodeMeshFieldCulling(drawer, into: cb,
                                    viewport: SIMD2<Float>(Float(width), Float(height)))
+            _ = encodeLightCull(drawer, into: cb, renderWidth: width, renderHeight: height,
+                                frameIndex: nil)
             _ = resolveIBL(for: drawer.environment, commandBuffer: cb)   // bake IBL once
             ensureSheenLUT(for: drawer, commandBuffer: cb)
             ensureBRDFLUT(for: drawer, commandBuffer: cb)

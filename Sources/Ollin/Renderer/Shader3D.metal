@@ -2868,6 +2868,159 @@ static inline void ollin_aniso_frame(float3 n, float4 vertexTangent,
     b = b * cr - t0 * sr;
 }
 
+
+// MARK: - Many lights: the reach window and the per-tile light grid
+//
+// Two halves of one idea. A punctual light in Ollin has no distance attenuation, so
+// a lamp reaches the whole room; giving it a `reach` (packed in `position.w`) draws
+// a bound around it, which is both what makes a wall of lamps read as lamps and what
+// lets a cull decide that a lamp cannot matter here. Past `OLLIN_MAX_LIGHTS` the
+// frame's whole light set moves into a device buffer and `ollin_light_cull` writes,
+// per screen tile, the list of lights whose bound reaches into it. `OllinLightSet`
+// is what the lit fragments then walk: with no tiling it is the inline `lights`
+// array read straight through, instruction for instruction as before.
+
+// The window inside a light's reach: exactly 1 at the source, a quarter of that at
+// half the reach (which is about how light really thins with distance, without the
+// singularity an inverse square has at the source), and exactly 0 at the reach and
+// beyond. `reach <= 0` is unbounded and returns exactly 1.0, so a light without one
+// multiplies through unchanged.
+static inline float ollin_light_reach(float distance, float reach) {
+    if (reach <= 0.0) return 1.0;
+    float t = saturate(1.0 - distance / reach);
+    return t * t;
+}
+
+// The bounding sphere the grid culls a light against, in world space. Returns false
+// for a light that cannot be bounded (a directional one, or any light with no
+// reach), which every tile therefore keeps.
+static inline bool ollin_light_bounds(OllinLight L, thread float3 &center,
+                                      thread float &radius) {
+    float reach = L.position.w;
+    if (L.kind == 0 || reach <= 0.0) return false;
+    center = L.position.xyz;
+    radius = reach;
+    if (L.kind == 2) {
+        // A spot reaches a spherical sector, not a ball: apex at the light, axis
+        // along its travel direction, `reach` as the slant. Its smallest enclosing
+        // sphere is the sector's cap alone once the half-angle passes 45 degrees,
+        // and the apex-and-rim sphere below that.
+        float c = L.cosOuter;
+        if (c <= 0.0) {
+            // A cone of a half-turn or wider: the whole ball is the tight answer.
+        } else if (c >= 0.70710678) {
+            float zc = reach / (2.0 * c);
+            center = L.position.xyz + L.direction.xyz * zc;
+            radius = zc;
+        } else {
+            float s = sqrt(max(0.0, 1.0 - c * c));
+            center = L.position.xyz + L.direction.xyz * (reach * c);
+            radius = reach * s;
+        }
+    } else if (L.kind == 3 || L.kind == 4) {
+        radius = reach + max(L.axisA.w, L.axisB.w);   // the panel's own half-extent
+    } else if (L.kind == 5) {
+        radius = reach + L.axisA.w + L.axisB.w;       // half-length plus thickness
+    }
+    return true;
+}
+
+// The lights one fragment shades against. `tiled` false is the shipped path: walk
+// `light.lights[0 ... count - 1]` with the index as written.
+struct OllinLightSet {
+    device const OllinLight *scene;    // the frame's whole set (tiled only)
+    device const uint *indices;        // this tile's list (tiled only)
+    int count;                         // lights this fragment shades against
+    bool tiled;
+};
+
+// Resolve the set for a fragment at `pixel` (its `[[position]].xy`, in render-target
+// pixels). `scale` divides that position when the caller shades at a reduced
+// resolution, so a half-res pass lands on the same tile the full-res one would.
+static inline OllinLightSet ollin_light_set(constant OllinLighting &light,
+                                            device const OllinLight *scene,
+                                            device const uint *tiles,
+                                            float2 pixel, float scale = 1.0) {
+    OllinLightSet set;
+    set.scene = scene;
+    set.indices = tiles;
+    if (light.sceneLightCount <= 0) {
+        set.count = light.lightCount;
+        set.tiled = false;
+        return set;
+    }
+    float2 uv = saturate(pixel * light.lightTileGrid.zw / max(scale, 1e-6));
+    uint2 grid = uint2(light.lightTileGrid.xy);
+    uint2 tile = min(uint2(uv * light.lightTileGrid.xy), max(grid, uint2(1)) - 1);
+    uint slot = (tile.y * grid.x + tile.x) * uint(light.lightTileStride);
+    set.count = int(tiles[slot]);
+    set.indices = tiles + slot + 1;
+    set.tiled = true;
+    return set;
+}
+
+// The k-th light of the set, and its index in the frame's list (which is what the
+// shadow-caster lookup matches against, tiled or not).
+static inline int ollin_light_index(OllinLightSet set, int k) {
+    return set.tiled ? int(set.indices[k]) : k;
+}
+static inline OllinLight ollin_light_at(OllinLightSet set, constant OllinLighting &light, int i) {
+    return set.tiled ? set.scene[i] : light.lights[i];
+}
+
+// One thread per screen tile: keep every light whose bound reaches into this tile's
+// frustum. The tile's six planes are row combinations of the view-projection (the
+// left plane at NDC x0 is rowX - x0 * rowW, inside positive), which is the same
+// Gribb-Hartmann extraction the mesh fields cull with, restricted to a sub-rect of
+// the screen. The rect is grown by a pixel so that temporal jitter and multisample
+// positions cannot land a fragment in a tile whose list was built without them.
+kernel void ollin_light_cull(device const OllinLight *lights [[buffer(0)]],
+                             device uint *tiles [[buffer(1)]],
+                             constant OllinLightCullParams &p [[buffer(2)]],
+                             uint2 tid [[thread_position_in_grid]]) {
+    if (tid.x >= p.tilesX || tid.y >= p.tilesY) return;
+    device uint *slot = tiles + (tid.y * p.tilesX + tid.x) * p.tileStride;
+    uint capacity = p.tileStride - 1u;
+
+    float px0 = float(tid.x * p.tileSize) - 1.0;
+    float px1 = float((tid.x + 1u) * p.tileSize) + 1.0;
+    float py0 = float(tid.y * p.tileSize) - 1.0;
+    float py1 = float((tid.y + 1u) * p.tileSize) + 1.0;
+    float x0 = 2.0 * px0 / p.renderSize.x - 1.0;
+    float x1 = 2.0 * px1 / p.renderSize.x - 1.0;
+    // Pixel y runs down the target and clip y runs up it, so the top edge is the
+    // larger NDC value.
+    float y1 = 1.0 - 2.0 * py0 / p.renderSize.y;
+    float y0 = 1.0 - 2.0 * py1 / p.renderSize.y;
+
+    float4 planes[6] = {
+        p.rowX - x0 * p.rowW,   // left
+        x1 * p.rowW - p.rowX,   // right
+        p.rowY - y0 * p.rowW,   // bottom
+        y1 * p.rowW - p.rowY,   // top
+        p.rowZ,                 // near (Metal clip z in [0, w])
+        p.rowW - p.rowZ         // far
+    };
+    for (uint i = 0; i < 6u; i++) {
+        float n = length(planes[i].xyz);
+        if (n > 0.0) planes[i] /= n;
+    }
+
+    uint n = 0u;
+    for (uint i = 0u; i < p.lightCount && n < capacity; i++) {
+        bool keep = true;
+        float3 center = float3(0.0);
+        float radius = 0.0;
+        if (p.culls != 0u && ollin_light_bounds(lights[i], center, radius)) {
+            for (uint f = 0u; f < 6u; f++) {
+                if (dot(planes[f].xyz, center) + planes[f].w < -radius) { keep = false; break; }
+            }
+        }
+        if (keep) { slot[1u + n] = i; n++; }
+    }
+    slot[0] = n;
+}
+
 // One light's contribution to the fake-subsurface bleed. Two terms: light coming
 // through from behind (the view-against-light lobe, bent toward the normal so the
 // glow spreads across the form instead of pinching to a point), plus a small
@@ -2897,6 +3050,11 @@ static inline float ollin_sss_translucency(float3 viewDir, float3 toLight, float
 static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
+                                  // The lights this fragment shades against: the frame's
+                                  // inline set read straight through, or, past
+                                  // OLLIN_MAX_LIGHTS, this pixel's own tile of the light
+                                  // grid (`ollin_light_set`).
+                                  OllinLightSet set,
                                   depth2d_array<float> shadowMap, sampler shadowSamp,
                                   texturecube_array<float> shadowCube, sampler shadowCubeSamp,
                                   // The two LTC lookup tables (fragment textures 8/9),
@@ -3018,8 +3176,20 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     float3 keyToLight = float3(0.0, 1.0, 0.0);   // the primary light dir (Gooch tone axis)
     bool haveKey = false;
 
-    for (int i = 0; i < light.lightCount; i++) {
-        OllinLight L = light.lights[i];
+    for (int k = 0; k < set.count; k++) {
+        int i = ollin_light_index(set, k);
+        OllinLight L = ollin_light_at(set, light, i);
+
+        // Outside its own reach a light contributes nothing at all: the per-pixel
+        // complement of what the grid does per tile, and what keeps a wall of lamps
+        // a wall of lamps rather than one flat wash. A light with no reach packs a
+        // zero here, never enters the branch, and leaves every value below as it was.
+        if (L.position.w > 0.0) {
+            float within = ollin_light_reach(length(L.position.xyz - worldPos), L.position.w);
+            if (within <= 0.0) continue;
+            L.color.rgb *= within;
+            L.specular.rgb *= within;
+        }
 
         // Which caster this light is, if any. The slot index is also the layer of the
         // shadow-map array this caster rendered into, and slot 0 is the primary caster.
@@ -3458,6 +3628,11 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                                   float pxMetal, float pxRough, float pxAO,
                                   constant OllinMaterial &mat,
                                   constant OllinLighting &light,
+                                  // The lights this fragment shades against: the frame's
+                                  // inline set read straight through, or, past
+                                  // OLLIN_MAX_LIGHTS, this pixel's own tile of the light
+                                  // grid (`ollin_light_set`).
+                                  OllinLightSet set,
                                   depth2d_array<float> shadowMap, sampler shadowSamp,
                                   texturecube_array<float> shadowCube, sampler shadowCubeSamp,
                                   // The two LTC lookup tables (fragment textures 8/9),
@@ -3576,8 +3751,20 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
     float3 keyToLight = float3(0.0, 1.0, 0.0);   // the primary light dir (Gooch tone axis)
     bool haveKey = false;
 
-    for (int i = 0; i < light.lightCount; i++) {
-        OllinLight L = light.lights[i];
+    for (int k = 0; k < set.count; k++) {
+        int i = ollin_light_index(set, k);
+        OllinLight L = ollin_light_at(set, light, i);
+
+        // Outside its own reach a light contributes nothing at all: the per-pixel
+        // complement of what the grid does per tile, and what keeps a wall of lamps
+        // a wall of lamps rather than one flat wash. A light with no reach packs a
+        // zero here, never enters the branch, and leaves every value below as it was.
+        if (L.position.w > 0.0) {
+            float within = ollin_light_reach(length(L.position.xyz - worldPos), L.position.w);
+            if (within <= 0.0) continue;
+            L.color.rgb *= within;
+            L.specular.rgb *= within;
+        }
 
         // Which caster this light is, if any. The slot index is also the layer of the
         // shadow-map array this caster rendered into, and slot 0 is the primary caster.
@@ -5293,6 +5480,12 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     sampler shadowCubeSamp [[sampler(2)]],
                                     const device SDF3DGroupInstance *fields [[buffer(4)]],
                                     const device SDFNode3D *fieldNodes [[buffer(5)]],
+                                    // The frame's whole light set and the per-tile lists the
+                                    // cull wrote (buffers 8/9), read only past OLLIN_MAX_LIGHTS
+                                    // (`light.sceneLightCount` gates it); one-element stand-ins
+                                    // otherwise, so an ordinary frame never touches them.
+                                    const device OllinLight *sceneLights [[buffer(8)]],
+                                    const device uint *lightTiles [[buffer(9)]],
                                     texture2d<float> fieldShadowTex [[texture(3)]],
                                     texturecube<float> iblIrradiance [[texture(4)]],
                                     texturecube<float> iblPrefilter [[texture(5)]],
@@ -5346,6 +5539,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     // which asks for control flow every pixel of it takes together. Zero while the
     // frame is not filtering, and every read below is then what it always was.
     float roughKernel = ollin_ndf_filter_kernel(normalize(in.normal), light.specularFilter);
+    // Which lights this pixel shades against: the frame's inline set (an ordinary
+    // frame, unchanged), or this pixel's own tile of the light grid.
+    OllinLightSet lightSet = ollin_light_set(light, sceneLights, lightTiles, in.position.xy);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     // Contact shadows: the pre-marched screen-space visibility toward each caster,
@@ -5369,14 +5565,14 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
     float4 c = meshLitColor(base, in.color.a, in.normal,
-                            in.worldPos, mat, light, shadowMap, shadowSamp,
+                            in.worldPos, mat, light, lightSet, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
                             iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness,
                             float4(0.0), roughKernel);   // no per-vertex tangent here
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
-                            in.worldPos, mat, light, shadowMap, shadowSamp,
+                            in.worldPos, mat, light, lightSet, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
                             iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), float4(0.0),
@@ -5675,6 +5871,12 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              sampler shadowCubeSamp [[sampler(2)]],
                                              const device SDF3DGroupInstance *fields [[buffer(4)]],
                                              const device SDFNode3D *fieldNodes [[buffer(5)]],
+                                             // The frame's whole light set and the per-tile lists the
+                                             // cull wrote (buffers 8/9), read only past OLLIN_MAX_LIGHTS
+                                             // (`light.sceneLightCount` gates it); one-element stand-ins
+                                             // otherwise, so an ordinary frame never touches them.
+                                             const device OllinLight *sceneLights [[buffer(8)]],
+                                             const device uint *lightTiles [[buffer(9)]],
                                              texture2d<float> fieldShadowTex [[texture(3)]],
                                              texturecube<float> iblIrradiance [[texture(4)]],
                                              texturecube<float> iblPrefilter [[texture(5)]],
@@ -5718,6 +5920,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     // The normal spread under this pixel, taken at the top of the fragment as on the
     // solid path (`specularAntialiasing()`; zero while the frame is not filtering).
     float roughKernel = ollin_ndf_filter_kernel(normalize(in.normal), light.specularFilter);
+    // Which lights this pixel shades against: the frame's inline set (an ordinary
+    // frame, unchanged), or this pixel's own tile of the light grid.
+    OllinLightSet lightSet = ollin_light_set(light, sceneLights, lightTiles, in.position.xy);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     // Contact shadows, folded into the caster dimmer exactly as on the solid path.
@@ -5734,13 +5939,13 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     if (mat.scatterStrength > 0.0 && mat.scatter.w > 0.0) {
         rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
-    float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
+    float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light, lightSet,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness,
                             float4(0.0), roughKernel);   // no per-vertex tangent here
 #else
-    float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
+    float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light, lightSet,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), float4(0.0),
@@ -5872,6 +6077,12 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        sampler shadowCubeSamp [[sampler(2)]],
                                        const device SDF3DGroupInstance *fields [[buffer(4)]],
                                        const device SDFNode3D *fieldNodes [[buffer(5)]],
+                                       // The frame's whole light set and the per-tile lists the
+                                       // cull wrote (buffers 8/9), read only past OLLIN_MAX_LIGHTS
+                                       // (`light.sceneLightCount` gates it); one-element stand-ins
+                                       // otherwise, so an ordinary frame never touches them.
+                                       const device OllinLight *sceneLights [[buffer(8)]],
+                                       const device uint *lightTiles [[buffer(9)]],
                                        texture2d<float> fieldShadowTex [[texture(3)]],
                                        texturecube<float> iblIrradiance [[texture(4)]],
                                        texturecube<float> iblPrefilter [[texture(5)]],
@@ -5925,6 +6136,9 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     // a map is what turns the surface fastest, so this is the path the widening was
     // written for (`specularAntialiasing()`; zero while the frame is not filtering).
     float roughKernel = ollin_ndf_filter_kernel(N, light.specularFilter);
+    // Which lights this pixel shades against: the frame's inline set (an ordinary
+    // frame, unchanged), or this pixel's own tile of the light grid.
+    OllinLightSet lightSet = ollin_light_set(light, sceneLights, lightTiles, in.position.xy);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {
@@ -5939,13 +6153,13 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     if (mat.scatterStrength > 0.0 && mat.scatter.w > 0.0) {
         rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
-    float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
+    float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light, lightSet,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent,
                             roughKernel);
 #else
-    float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
+    float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light, lightSet,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), in.tangent, roughKernel);
@@ -6209,6 +6423,12 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          sampler shadowCubeSamp [[sampler(2)]],
                                          const device SDF3DGroupInstance *fields [[buffer(4)]],
                                          const device SDFNode3D *fieldNodes [[buffer(5)]],
+                                         // The frame's whole light set and the per-tile lists the
+                                         // cull wrote (buffers 8/9), read only past OLLIN_MAX_LIGHTS
+                                         // (`light.sceneLightCount` gates it); one-element stand-ins
+                                         // otherwise, so an ordinary frame never touches them.
+                                         const device OllinLight *sceneLights [[buffer(8)]],
+                                         const device uint *lightTiles [[buffer(9)]],
                                          texture2d<float> fieldShadowTex [[texture(3)]],
                                          texturecube<float> iblIrradiance [[texture(4)]],
                                          texturecube<float> iblPrefilter [[texture(5)]],
@@ -6404,6 +6624,9 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     // pixels of a quad and so belong in control flow every pixel of it reaches. Zero
     // while the frame is not filtering (`specularAntialiasing()`).
     float roughKernel = ollin_ndf_filter_kernel(N, light.specularFilter);
+    // Which lights this pixel shades against: the frame's inline set (an ordinary
+    // frame, unchanged), or this pixel's own tile of the light grid.
+    OllinLightSet lightSet = ollin_light_set(light, sceneLights, lightTiles, in.position.xy);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {
@@ -6418,13 +6641,13 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     if (mat.scatterStrength > 0.0 && mat.scatter.w > 0.0) {
         rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
-    float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
+    float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light, lightSet,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent,
                             roughKernel);
 #else
-    float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
+    float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light, lightSet,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT, iblBRDF,
                             float4(-1.0), meshFieldShadow, float4(0.0), in.tangent, roughKernel);

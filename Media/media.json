@@ -2148,6 +2148,27 @@
       "stillSmall": "examples/3D/Lighting/ManyCasters/still-640.jpg?v=df8f82ec",
       "width": 1080
     },
+    "3D/Lighting/ManyLights": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 13.517,
+      "sound": false,
+      "source": "afe9ea934896d53b",
+      "rendered": "2026-09-15",
+      "bytes": {
+        "loop": 3171438,
+        "loopSmall": 690021,
+        "still": 173900,
+        "stillSmall": 64777
+      },
+      "loop": "examples/3D/Lighting/ManyLights/loop.mp4?v=203f8bfd",
+      "loopSmall": "examples/3D/Lighting/ManyLights/loop-640.mp4?v=bf8d35f0",
+      "still": "examples/3D/Lighting/ManyLights/still.jpg?v=9621fe8d",
+      "stillSmall": "examples/3D/Lighting/ManyLights/still-640.jpg?v=7e7b9fae"
+    },
     "3D/Lighting/PointShadow": {
       "bytes": {
         "loop": 2850837,

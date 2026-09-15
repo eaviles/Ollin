@@ -1104,16 +1104,18 @@ open class Sketch {
     /// (default `nil` = `color`) tints its highlight; `softness` (`0…1`) softens the
     /// terminator. An IES `profile` shapes the falloff by angle, aimed along `axis`
     /// (the fixture's hanging direction, straight down by default) and spun about
-    /// it by `roll`.
+    /// it by `roll`. `reach` is the distance past which it lights nothing at all
+    /// (`nil`, the default, carries forever); many lights with a reach are what a
+    /// room full of lamps is made of. See `Light.reach`.
     public func pointLight(_ color: Color, at position: Vector3, intensity: Double = 1,
                            specular: Color? = nil, softness: Double = 0,
                            profile: IESProfile? = nil,
                            direction: Vector3 = Vector3(0, -1, 0), roll: Double = 0,
-                           castsShadow: Bool = true) {
+                           reach: Double? = nil, castsShadow: Bool = true) {
         drawer.addLight(.point(color, at: position, intensity: intensity,
                                specular: specular, softness: softness,
                                profile: profile, direction: direction, roll: roll,
-                               castsShadow: castsShadow))
+                               reach: reach, castsShadow: castsShadow))
     }
 
     /// Add a spot light: a point source at `position` aimed along `direction`,
@@ -1121,17 +1123,18 @@ open class Sketch {
     /// edge (`0` hard … `1` very soft). `specular` (default `nil` = `color`) tints its
     /// highlight; `softness` (`0…1`) softens the terminator. An IES `profile`
     /// shapes the throw inside the cone, a `cookie` projects an image through it
-    /// (a gobo, a gel), and `roll` spins both about the beam.
+    /// (a gobo, a gel), and `roll` spins both about the beam. `reach` is the
+    /// distance past which it lights nothing (see `Light.reach`).
     public func spotLight(_ color: Color, at position: Vector3, direction: Vector3,
                           coneAngle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1,
                           specular: Color? = nil, softness: Double = 0,
                           profile: IESProfile? = nil, cookie: LightCookie? = nil,
-                          roll: Double = 0, castsShadow: Bool = true) {
+                          roll: Double = 0, reach: Double? = nil, castsShadow: Bool = true) {
         drawer.addLight(.spot(color, at: position, direction: direction,
                               coneAngle: coneAngle, penumbra: penumbra, intensity: intensity,
                               specular: specular, softness: softness,
                               profile: profile, cookie: cookie, roll: roll,
-                              castsShadow: castsShadow))
+                              reach: reach, castsShadow: castsShadow))
     }
 
     /// Add a rect area light: a glowing `width` × `height` panel centered at `position`,
@@ -1143,11 +1146,12 @@ open class Sketch {
     public func rectangleLight(_ color: Color, at position: Vector3, direction: Vector3,
                           width: Double, height: Double, up: Vector3 = .unitY,
                           isTwoSided: Bool = false, intensity: Double = 1,
-                          specular: Color? = nil, castsShadow: Bool = true) {
+                          specular: Color? = nil, reach: Double? = nil,
+                          castsShadow: Bool = true) {
         drawer.addLight(.rectangle(color, at: position, direction: direction,
                               width: width, height: height, up: up,
                               isTwoSided: isTwoSided, intensity: intensity, specular: specular,
-                              castsShadow: castsShadow))
+                              reach: reach, castsShadow: castsShadow))
     }
 
     /// Add a disk area light: a glowing circular panel of `radius` centered at
@@ -1155,11 +1159,12 @@ open class Sketch {
     /// can). Shades and falls off like the rectangle panel; `isTwoSided` makes both faces emit.
     public func diskLight(_ color: Color, at position: Vector3, direction: Vector3,
                           radius: Double, isTwoSided: Bool = false, intensity: Double = 1,
-                          specular: Color? = nil, castsShadow: Bool = true) {
+                          specular: Color? = nil, reach: Double? = nil,
+                          castsShadow: Bool = true) {
         drawer.addLight(.disk(color, at: position, direction: direction,
                               radius: radius, isTwoSided: isTwoSided,
                               intensity: intensity, specular: specular,
-                              castsShadow: castsShadow))
+                              reach: reach, castsShadow: castsShadow))
     }
 
     /// Add a tube area light: a glowing cylinder of `radius` running `from` one point
@@ -1168,9 +1173,9 @@ open class Sketch {
     /// high intensity (a real neon is a very bright surface).
     public func tubeLight(_ color: Color, from: Vector3, to: Vector3,
                           radius: Double = 0.1, intensity: Double = 1,
-                          specular: Color? = nil) {
+                          specular: Color? = nil, reach: Double? = nil) {
         drawer.addLight(.tube(color, from: from, to: to, radius: radius,
-                              intensity: intensity, specular: specular))
+                              intensity: intensity, specular: specular, reach: reach))
     }
 
     /// Set the ambient light — a flat term added to every lit surface, so the side

@@ -2652,6 +2652,12 @@ extension MetalRenderer {
     /// off-screen (export) paths.
     func encode(_ drawer: Drawer, viewport: SIMD2<Float>,
                         attachment: SIMD2<Float>? = nil,
+                        // The pixel size of the attachment this pass actually renders
+                        // into, when that differs from `attachment` (a temporal upscale
+                        // renders the geometry smaller than the drawable). Only the
+                        // light grid reads it, and only to check that the grid it would
+                        // take was culled over the view this pass is drawing.
+                        renderSize: SIMD2<Float>? = nil,
                         into encoder: MTLRenderCommandEncoder,
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
@@ -2792,6 +2798,13 @@ extension MetalRenderer {
         // below. `enabled` is 0 when the sketch set no light, so the mesh fragment
         // keeps the byte-identical normal-as-color path.
         var lighting = drawer.makeLighting()
+        // Many lights: turn the tiled path on for this pass when the frame culled a
+        // grid over exactly this view. A render target of its own proportions draws
+        // its own camera view, so unless it happens to be the same size it falls
+        // through to the frame's first `OLLIN_MAX_LIGHTS` instead.
+        let gridSize = passTarget.map { SIMD2<Float>(Float($0.pixelWidth), Float($0.pixelHeight)) }
+            ?? renderSize ?? attachmentSize
+        applyLightGrid(to: &lighting, width: Int(gridSize.x), height: Int(gridSize.y))
         // Image-based lighting: when an environment baked successfully this frame (resolved
         // by the caller before this pass), light the physically-based materials through its
         // maps. Otherwise leave iblEnabled 0 — the flat-ambient path, byte-identical.
@@ -3036,6 +3049,11 @@ extension MetalRenderer {
             if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
             if let shadowCubeSampler { encoder.setFragmentSamplerState(shadowCubeSampler, index: 2) }
             encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
+            // Many lights: the frame's whole light set (buffer 8) and the per-tile
+            // index lists (buffer 9). Read only past `OLLIN_MAX_LIGHTS`
+            // (`lighting.sceneLightCount` gates it); a one-element stand-in otherwise,
+            // so the declared arguments are never missing.
+            bindLightGrid(encoder)
             // The surface finish (shading model + Blinn-Phong/rim/subsurface/
             // iridescence) is one uniform bound per batch.
             var finish = batchFinish
@@ -3336,6 +3354,7 @@ extension MetalRenderer {
                 var fieldLighting = lighting
                 fieldLighting.rtReflectionDeferred = 0
                 encoder.setFragmentBytes(&fieldLighting, length: MemoryLayout<OllinLighting>.stride, index: 2)
+                bindLightGrid(encoder)   // many lights, exactly as the mesh carriers
                 var finish3D = batch.finish
                 encoder.setFragmentBytes(&finish3D, length: MemoryLayout<OllinMaterial>.stride, index: 3)
                 encoder.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 4)

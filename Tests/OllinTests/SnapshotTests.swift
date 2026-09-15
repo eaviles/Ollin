@@ -351,6 +351,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("mesh-lighting",
                  note: "Custom lighting on solids. Pins the directional/point/spot light kinds, ambient, the spot cone, and the specular highlight (the Blinn-Phong material the auto-lit default scene doesn't exercise).",
                  make: { MeshLightingScene() }),
+    SnapshotCase("many-lights",
+                 note: "Forty lamps over a block courtyard, each bounded by its own reach. Pins the tiled forward path: the reach window's falloff and its exact zero at the edge, and the per-tile light grid a frame past OLLIN_MAX_LIGHTS shades through.",
+                 make: { ManyLightsScene() }),
     SnapshotCase("textured-mesh",
                  note: "A UV-gridded sphere through a fixed camera. Pins the textured-mesh pipeline: UVs on the sphere generator, the base-color texture sampled per fragment, and the shared Blinn-Phong tail (textured surface, auto-lit default rig).",
                  make: { TexturedMesh3DScene() }),
@@ -1506,7 +1509,10 @@ private final class GlobalIlluminationScene: Sketch {
     }
 }
 
-private final class MeshLightingScene: Sketch {
+// Internal rather than private: `ManyLightsTests` renders this same scene against
+// this same committed reference to assert it is byte-for-byte unmoved, which is the
+// proof that the tiled lighting work left the inline path alone.
+final class MeshLightingScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
     override func draw() {
@@ -1527,6 +1533,37 @@ private final class MeshLightingScene: Sketch {
             translate(1.6, 0, 0); rotateY(0.5); rotateX(0.3); drawBox(size: 1.5)
         }
         withState { fill(Color(white: 0.4)); translate(0, -1.4, 0); drawPlane(width: 6, depth: 6) }
+    }
+}
+
+/// A courtyard of forty lamps, each bounded by its own `reach`. Pins the tiled
+/// lighting path end to end: the reach window on the floor and the blocks, and the
+/// per-tile light grid that lets a frame past `OLLIN_MAX_LIGHTS` shade at all. The
+/// lamps sit on a fixed spiral and the scene has no `time`, so it is deterministic.
+private final class ManyLightsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x05060A))
+        ambientLight(Color(white: 0.02))
+        camera(.perspective(eye: Vector3(0, 30, 40), target: Vector3(0, 1, 0),
+                            fieldOfView: .pi / 4.4))
+        for i in 0..<40 {
+            let turn = Double(i) * 2.399963            // the golden angle, so any count spreads
+            let radius = 4.0 + 22.0 * (Double(i) / 39.0).squareRoot()
+            let hue = Double(i) * 0.137
+            pointLight(Color(hue: hue - hue.rounded(.down), saturation: 0.8, brightness: 1),
+                       at: Vector3(cos(turn) * radius, 3.0, sin(turn) * radius),
+                       intensity: 1.7, reach: 12)
+        }
+        fill(Color(white: 0.52))
+        withState { translate(0, -0.05, 0); drawBox(width: 120, height: 0.1, depth: 120) }
+        fill(Color(white: 0.64))
+        for row in stride(from: -24.0, through: 24.0, by: 6.0) {
+            for column in stride(from: -24.0, through: 24.0, by: 6.0) {
+                withState { translate(column, 1.1, row); drawBox(width: 3.0, height: 2.2, depth: 3.0) }
+            }
+        }
     }
 }
 
