@@ -302,6 +302,49 @@ synth.wavetable = Wavetable(name: "bend", frameCount: 8) { phase, frame in
 
 The bottom of the picture is the quiet part of the design. A sawtooth has a corner, and a corner holds harmonics past any sampling limit. Read it fast enough and those fold back down as a gritty ring that gets *worse* as the note goes up. So every frame is kept at eleven strengths, each with half the harmonics of the one before, and a note reads the strongest one whose top harmonic still fits under half the sample rate. The three panels are the same sawtooth as a low, a middle, and a high note read it. The corner softens and the note stays clean. Every strength is built from the same harmonics, so nothing shifts when a note moves from one to the next.
 
+## A sound in pieces: grains
+
+Every instrument so far reads a sound from one end to the other. A sampler does it most plainly: play a recording a note higher and it comes out shorter, because moving faster through it moves both. Pitch and time are one number.
+
+A grain is how they come apart. Cut a few thousandths of a second out of a sound and put an envelope on it so it does not click at either end. What you have is too short to carry a pitch of its own. Pile hundreds of those up a second and what you hear is the statistics of the pile. Now there are two clocks instead of one. The grains are read at whatever speed the note asks for. The place they are cut from travels at its own `speed`.
+
+```swift
+synth.grainSource = GrainSource(recording: SampledInstrument.builtIn!.recording(at: 2, over: 0...127))
+synth.voice = Voice(granular: GrainCloud(size: 0.08, density: 40, speed: 0))
+synth.play("C4", for: 8)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/29-MakingSound/GrainClouds-dark.jpg">
+  <img src="Images/29-MakingSound/GrainClouds.jpg" alt="Three panels of dots, time across and place in the sound up: at speed 1 the dots run diagonally, at 0.25 they climb slowly, at 0 they lie flat; below them the six envelope shapes a grain is cut with" width="680">
+</picture>
+
+Time runs across each panel and where in the sound a grain was cut from runs up it. At `speed: 1` the dots run diagonally, which is just a recording playing. At 0.25 the same sound is crawled through at a quarter of the speed, and nothing has moved in pitch. At 0 they lie flat: the reading has stopped and the note has not. That last one is the sound nothing else in this chapter can make, one moment of a recording held for as long as you like.
+
+And you can pull it about while it sounds:
+
+```swift
+override func draw() {
+    synth.grainScrub = mouseX / width         // drag the reading through the sound
+}
+```
+
+That reaches notes that are already playing, the way `pressure` does, because it is read every sample rather than once at the start. Everything else about a cloud is read when the note begins.
+
+The rest of a `GrainCloud` is how the pile is made. `size` is how long one grain lasts. Under about 10 ms a grain carries no pitch and the cloud is pure texture. Over about 100 ms each one is heard as a recognizable fragment. `density` is how many start each second. `positionJitter` is how far each one strays from the reading. A little of it stops a dense cloud sounding like one sound played very loudly. `pitchSpread` scatters the grains either side of the note, so an octave of it makes the cloud a chord of itself. `panSpread` throws them across the stereo picture, which is most of why a cloud sounds like a space rather than a point.
+
+Two of the numbers have a catch in them.
+
+**Loudness goes up with the square root of the density, not with the density.** Grains land on each other at random times, so what adds up is power rather than amplitude. Four times as many grains is twice as loud. That is not a quirk of this implementation; it is what independent things do.
+
+**`scatter` at 0 gives you a pitch you did not ask for.** With no scatter the grains arrive on a strict clock. If the reading is frozen they all repeat the same piece of sound, so the output is exactly periodic at `density` hertz, whatever the sound was. Set `density` to 220 and you hear an A, made out of a recording of something else. It is a real instrument rather than a fault, and turning `scatter` back up is how you stop hearing it.
+
+The bottom row of the picture is the shape each grain is cut with, and at these lengths it is most of the character. `.bell` adds nothing and is the one to reach for. `.plateau` is flat in the middle, so the middle of the grain is the sound exactly as it was recorded. Reach for it when the cloud should sound like the source rather than like grains. `.tick` is sharp at the front and gone, so a cloud of them is a rattle. `shape.level(at:)` hands the curve back, so you can draw the cut you chose.
+
+Three presets come ready to play with before you build your own. `Voice.cloud` is a held moment spread wide, `Voice.smear` is the sound crawling past in pieces, and `Voice.rain` is short sharp grains one at a time. `Examples/Audio/Grains` draws the sound with the band the grains come from lit over it and lets you drag that band through by hand.
+
+The sound goes on the synth and the cut goes in the voice, for the reason you have now met three times. A voice travels to the audio thread inside a note; a few seconds of sound does not fit in one.
+
 ## A string, worked out rather than drawn: the plucked string
 
 Every voice so far starts with a wave, a shape an oscillator traces over and over. You then carve it with an envelope and a filter until it sounds like something. That works, and it is what most synthesizers are. But it is a description of a result, and there is another way in.
@@ -943,6 +986,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Patches](../Docs/Helpers/Synthesis.md#patch): what an operator is, the named patches, and why eight.
 - [Sampled instruments](../Docs/Helpers/Synthesis.md#sampled-instruments): loading an SFZ instrument, what a recording being moved costs, and where to find instruments you are allowed to ship.
 - [Wavetables](../Docs/Helpers/Synthesis.md#wavetables): the built-in tables, making one from harmonics, drawn cycles, or a rule, and why a high note reads a softer copy.
+- [Grains](../Docs/Helpers/Synthesis.md#grains): the whole cloud setting by setting, the six shapes, where a sound can come from, and what a strict clock and a full pile do.
 - [Physical models](../Docs/Helpers/Synthesis.md#physical-models): all four models, their settings, why the tuning is exact, and how a shape is measured for its modes.
 - [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, progressions, arpeggios, chains, tunings, following a beat, the step counter under all of them, and the [step sequencer](../Docs/Helpers/Composition.md#stepsequencer) and [arpeggiator](../Docs/Helpers/Composition.md#arpeggiator) that read the beat you hand them.
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.

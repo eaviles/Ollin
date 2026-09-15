@@ -27,11 +27,19 @@ final class SynthRenderer: @unchecked Sendable {
         var sampler = SamplerVoice()
         var table = WavetableVoice()
         var secondTable = WavetableVoice()
+        var grain: GrainVoice
         var amplitude = EnvelopeRunner()
         var filterEnvelope = EnvelopeRunner()
         /// The envelope a wavetable scan moves its position by.
         var scanEnvelope = EnvelopeRunner()
         var filter = StateVariableFilter()
+        /// The right channel's own filter, used only by a cloud that throws
+        /// its grains to the sides: one filter cannot carry two channels, and
+        /// every other voice is one stream.
+        var rightFilter = StateVariableFilter()
+        /// The right channel of the sample just produced, when this voice
+        /// pans. Equal to the left one otherwise.
+        var right = 0.0
 
         var spec = Voice()
         var pitch: Double = 60
@@ -82,6 +90,9 @@ final class SynthRenderer: @unchecked Sendable {
     private let stringCapacity: Int
     /// Every driven voice's delay lines, taken in one piece for the same reason.
     private let drivenMemory: UnsafeMutablePointer<Double>
+    /// Every grain cloud's sounding grains, taken in one piece for the same
+    /// reason: the render thread starts and retires them.
+    private let grainMemory: UnsafeMutablePointer<GrainSlot>
     /// Samples rendered so far, used only to order voices by age.
     private var clock = 0
     /// The recordings a sampled voice plays, if a sketch has set any.
@@ -96,6 +107,10 @@ final class SynthRenderer: @unchecked Sendable {
     /// Held here for the same reason `instrument` is: it is a reference to
     /// something large, set before the note that needs it and only read after.
     var wavetable: Wavetable?
+
+    /// The sound a grain cloud cuts its grains out of, if a sketch has set
+    /// one. Held here for the same reason the two above are.
+    var grainSource: GrainSource?
 
     /// The voice every new note is built from. Changed between notes.
     private var currentVoice: Voice
@@ -129,12 +144,29 @@ final class SynthRenderer: @unchecked Sendable {
     }
     private let pressureBits = Atomic<UInt64>((1.0 as Double).bitPattern)
 
+    /// How far a sounding grain cloud's reading is moved through its source,
+    /// in source lengths.
+    ///
+    /// Read every sample for the reason `pressure` is: a cloud dragged by hand
+    /// is a control that has to move while the note sounds, and a block is a
+    /// few milliseconds. One atomic word, so a torn read cannot jump it.
+    var grainScrub: Double {
+        get { Double(bitPattern: scrubBits.load(ordering: .relaxed)) }
+        set { scrubBits.store(newValue.bitPattern, ordering: .relaxed) }
+    }
+    private let scrubBits = Atomic<UInt64>((0.0 as Double).bitPattern)
+
     /// How many voices are sounding, published for the sketch to read.
     ///
     /// Written once per block by the render thread rather than read off the
     /// voice array, which only that thread may touch.
     var activeVoiceCount: Int { activeCount.load(ordering: .relaxed) }
     private let activeCount = Atomic<Int>(0)
+
+    /// How many grains are sounding across every voice, published the same way
+    /// and for the same reason.
+    var grainCount: Int { grains.load(ordering: .relaxed) }
+    private let grains = Atomic<Int>(0)
 
     init(voice: Voice, polyphony: Int, sampleRate: Double, events: EventRing, seed: UInt64 = 0x5EED) {
         self.currentVoice = voice
@@ -161,11 +193,21 @@ final class SynthRenderer: @unchecked Sendable {
         self.drivenMemory = .allocate(capacity: perDriven * count * 2)
         self.drivenMemory.initialize(repeating: 0, count: perDriven * count * 2)
 
+        // A cloud's sounding grains, one block per voice, for the same reason:
+        // the render thread starts and retires them and may not allocate.
+        let perCloud = GrainVoice.memoryNeeded()
+        self.grainMemory = .allocate(capacity: perCloud * count)
+        self.grainMemory.initialize(repeating: GrainSlot(), count: perCloud * count)
+        // The grain envelopes are a table built on first use, so it is built
+        // here rather than by whichever note reaches it first.
+        GrainVoice.warm()
+
         self.pending = .allocate(capacity: SynthRenderer.pendingCapacity)
         self.pending.initialize(repeating: SynthEvent(), count: SynthRenderer.pendingCapacity)
 
         let memory = stringMemory
         let driven = drivenMemory
+        let clouds = grainMemory
         // Each voice gets its own noise stream so a render replays exactly.
         // The closure says what it takes and returns, and the index appears once
         // as a number rather than ten times as a conversion, because working all
@@ -199,7 +241,9 @@ final class SynthRenderer: @unchecked Sendable {
                     seed: seed &+ step &* 0xD3A2646C &+ 1
                 ),
                 patch: PatchVoice(seed: seed &+ step &* 0x2545F491),
-                secondPatch: PatchVoice(seed: seed &+ step &* 0x94D049BB &+ 1)
+                secondPatch: PatchVoice(seed: seed &+ step &* 0x94D049BB &+ 1),
+                grain: GrainVoice(buffer: clouds + perCloud * index,
+                                  seed: seed &+ step &* 0x6C8E_9CF5 &+ 1)
             )
         }
     }
@@ -207,6 +251,7 @@ final class SynthRenderer: @unchecked Sendable {
     deinit {
         stringMemory.deallocate()
         drivenMemory.deallocate()
+        grainMemory.deallocate()
         pending.deinitialize(count: SynthRenderer.pendingCapacity)
         pending.deallocate()
     }
@@ -219,11 +264,29 @@ final class SynthRenderer: @unchecked Sendable {
     /// Fills `output` with the next `frameCount` samples, applying anything the
     /// sketch has asked for since the last block.
     func render(into output: UnsafeMutableBufferPointer<Float>, frameCount: Int) {
+        renderFrames(left: output, right: nil, frameCount: frameCount)
+    }
+
+    /// The same, in two channels.
+    ///
+    /// Every voice here is one stream, so the two are the same samples unless
+    /// a grain cloud is throwing its grains to the sides. A block with nothing
+    /// panning takes the one-channel path and writes it to both, so the sound
+    /// is what it always was to the bit.
+    func render(into left: UnsafeMutableBufferPointer<Float>,
+                right: UnsafeMutableBufferPointer<Float>, frameCount: Int) {
+        renderFrames(left: left, right: right, frameCount: frameCount)
+    }
+
+    private func renderFrames(left: UnsafeMutableBufferPointer<Float>,
+                              right: UnsafeMutableBufferPointer<Float>?,
+                              frameCount: Int) {
         drainEvents()
         let level = gain
         // Read once for the block rather than once a sample: it is a control,
         // not a signal, and a block is a few milliseconds.
         let driving = pressure
+        let scrub = grainScrub
 
         // A note's own expression glides toward where the sketch put it, one
         // step a block: a controller speaks every few milliseconds and a
@@ -233,24 +296,47 @@ final class SynthRenderer: @unchecked Sendable {
             settle(&voices[index], step: step)
         }
 
+        // Whether anything in this block has a side to be on. Asked once a
+        // block rather than once a sample, and false for every sketch that
+        // never spreads a cloud, which is the path that must not change.
+        var panning = right != nil
+            && voices.contains { $0.isSounding && $0.grain.isPanning }
+
         for frame in 0..<frameCount {
             // An event with a wait on it starts on its own sample, in the
             // middle of the block if that is where it falls. One comparison a
             // sample while nothing is waiting, which is nearly always.
-            if pendingCount > 0 { startDue() }
-            var mix = 0.0
-            for index in voices.indices where voices[index].isSounding {
-                mix += nextSample(&voices[index], pressure: driving)
+            if pendingCount > 0 {
+                startDue()
+                // A note that starts here may be the first thing in the block
+                // with a side to be on, and it would play the left channel in
+                // both until the next one otherwise. Asked only where a note
+                // actually started, which is rare.
+                if right != nil, !panning {
+                    panning = voices.contains { $0.isSounding && $0.grain.isPanning }
+                }
             }
-            output[frame] = Float(softClip(mix * level))
+            var mix = 0.0
+            var mixRight = 0.0
+            for index in voices.indices where voices[index].isSounding {
+                mix += nextSample(&voices[index], pressure: driving, scrub: scrub)
+                if panning { mixRight += voices[index].right }
+            }
+            let value = Float(softClip(mix * level))
+            left[frame] = value
+            if let right { right[frame] = panning ? Float(softClip(mixRight * level)) : value }
             clock += 1
         }
 
         activeCount.store(voices.count { $0.isSounding }, ordering: .relaxed)
+        grains.store(voices.reduce(0) { $0 + $1.grain.soundingCount }, ordering: .relaxed)
     }
 
-    /// One sample from one voice.
-    private func nextSample(_ voice: inout RenderVoice, pressure: Double) -> Double {
+    /// One sample from one voice. The right channel of it, which differs only
+    /// for a cloud that pans, is left on the voice rather than returned, so
+    /// every other voice's path is what it was.
+    private func nextSample(_ voice: inout RenderVoice, pressure: Double,
+                            scrub: Double) -> Double {
         // A note given a length releases itself when it runs out.
         if let remaining = voice.remaining {
             if remaining <= 0 {
@@ -336,6 +422,12 @@ final class SynthRenderer: @unchecked Sendable {
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondTable.next(travel: travel))
             }
+        case .granular:
+            // The sound was chosen when the note started; here the cloud only
+            // moves its position along and starts whatever grains are due.
+            // The detune is inside it, as every other grain, so there is no
+            // second copy of a cloud to run.
+            sample = voice.grain.next(scrub: scrub)
         }
 
         if let spec = voice.spec.filter {
@@ -351,7 +443,17 @@ final class SynthRenderer: @unchecked Sendable {
                 cutoff *= pow(2, spec.slideAmount * (voice.slide - 0.5) * 2)
             }
             voice.filter.setCoefficients(cutoff: cutoff, resonance: spec.resonance, sampleRate: sampleRate)
+            if voice.grain.isPanning {
+                // Two channels need two filters: one filter carries one
+                // stream's memory, and running the right channel through the
+                // left's would smear them together.
+                voice.rightFilter.setCoefficients(cutoff: cutoff, resonance: spec.resonance,
+                                                  sampleRate: sampleRate)
+                voice.right = voice.rightFilter.next(voice.grain.right, mode: spec.mode)
+            }
             sample = voice.filter.next(sample, mode: spec.mode)
+        } else if voice.grain.isPanning {
+            voice.right = voice.grain.right
         }
 
         // A sampled voice has already taken the note's velocity into account,
@@ -367,7 +469,15 @@ final class SynthRenderer: @unchecked Sendable {
         } else if voice.hasOwnPressure, !voice.spec.source.isDriven, voice.spec.pressureAmount > 0 {
             struck += (1 - struck) * voice.spec.pressureAmount * voice.pressure
         }
-        return sample * amplitude * struck * voice.spec.gain
+        // Spelled out the same way on both channels rather than through a
+        // shared factor: the two orders of multiplication do not give the same
+        // bits, and every voice but a panned cloud must land on the left
+        // channel exactly as a one-channel render leaves it.
+        let out = sample * amplitude * struck * voice.spec.gain
+        voice.right = voice.grain.isPanning
+            ? voice.right * amplitude * struck * voice.spec.gain
+            : out
+        return out
     }
 
     // MARK: Expression
@@ -431,6 +541,11 @@ final class SynthRenderer: @unchecked Sendable {
             if detune != 0 {
                 voice.secondTable.retune(frequency: frequency(of: played + detune), sampleRate: sampleRate)
             }
+        case .granular:
+            // Grains started from here on are read at the new pitch. The ones
+            // already sounding keep theirs, the way a note already sounding
+            // keeps the recording it started on.
+            voice.grain.retune(semitones: played - Double(grainSource?.rootKey ?? 60))
         }
     }
 
@@ -591,6 +706,12 @@ final class SynthRenderer: @unchecked Sendable {
             voice.scanEnvelope.prepare(scan.envelope, sampleRate: sampleRate)
             voice.scanEnvelope.noteOn()
         }
+        voice.grain.reset()
+        if case .granular(let cloud) = currentVoice.source, let grainSource {
+            voice.grain.start(source: grainSource, cloud: cloud, pitch: event.pitch,
+                              detune: currentVoice.detune, sampleRate: sampleRate,
+                              seed: UInt64(truncatingIfNeeded: index) &* 0x9E37_79B9 &+ 0x6C8E_9CF5)
+        }
         voice.patch.reset()
         voice.secondPatch.reset()
         if case .patch(let spec) = currentVoice.source {
@@ -648,6 +769,8 @@ final class SynthRenderer: @unchecked Sendable {
             }
         }
         voice.filter.reset()
+        voice.rightFilter.reset()
+        voice.right = 0
         voice.amplitude.prepare(currentVoice.envelope, sampleRate: sampleRate)
         voice.amplitude.noteOn()
         voice.filterEnvelope.prepare(currentVoice.filter?.envelope ?? currentVoice.envelope, sampleRate: sampleRate)

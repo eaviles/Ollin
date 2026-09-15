@@ -46,6 +46,14 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                 offline.pendingPoses.removeFirst()
             }
 
+            // A drag through a grain cloud is a control too, quantized to the
+            // same block for the same reason.
+            while let next = offline.pendingScrubs.first,
+                  Int(next.at * sampleRate) <= offline.rendered {
+                offline.renderer.grainScrub = next.value
+                offline.pendingScrubs.removeFirst()
+            }
+
             // Rendered up to the next note rather than in fixed blocks, so a
             // note starts on the sample it was asked for rather than at the
             // next block boundary. An export has no deadline, so it can be
@@ -113,17 +121,22 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
         var pending: [RecordedNote]
         /// Where the instrument was and where it was heard from, still to come.
         var pendingPoses: [RecordedPose]
+        var pendingScrubs: [RecordedScrub]
         var rendered = 0
         private var started = false
         /// The listener, built only for an instrument the sketch actually
         /// placed. Nil leaves the chain exactly the shape it has always been.
         private let environment: AVAudioEnvironmentNode?
         private let source: AVAudioSourceNode
+        /// The export's own renderer, kept so a control written down while the
+        /// frames went by can be applied to it as the soundtrack is rendered.
+        let renderer: SynthRenderer
 
         init?(synth: Synth, sampleRate: Double) {
             self.sampleRate = sampleRate
             pending = synth.recorded.sorted { $0.at < $1.at }
             pendingPoses = synth.recordedPoses.sorted { $0.at < $1.at }
+            pendingScrubs = synth.recordedScrubs.sorted { $0.at < $1.at }
 
             guard let stereo = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2),
                   let mono = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
@@ -137,9 +150,10 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
             )
             renderer.gain = synth.gain
             // What the live renderer holds by reference travels here too, or
-            // a sampled or wavetable note in the export renders as silence.
+            // a sampled, wavetable, or granular note renders as silence.
             renderer.instrument = synth.instrument
             renderer.wavetable = synth.wavetable
+            renderer.grainSource = synth.grainSource
 
             // A placed instrument has to reach the listener as a single stream,
             // because turning one into two is the listener's whole job. An
@@ -149,6 +163,7 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
             // Fed in as mono it reaches only the first of them.
             let placing = !pendingPoses.isEmpty
             source = makeSynthSourceNode(format: placing ? mono : stereo, renderer: renderer)
+            self.renderer = renderer
             engine.attach(source)
             // The same chain the output has, built the same way from the same
             // list. An export that ran a different set of effects from the one

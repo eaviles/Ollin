@@ -39,6 +39,7 @@ Two things in that sketch are worth noticing. Nothing starts the audio, because 
 - [Patch](#patch) - an instrument you build rather than pick
 - [Sampled instruments](#sampled-instruments) - an instrument made of recordings, and where to find more
 - [Wavetables](#wavetables) - a row of cycles a note reads by position and moves through
+- [Grains](#grains) - a sound cut into pieces and piled back up, with time and pitch apart
 - [Placing a sound](#placing-a-sound) - where it comes from in the 3D scene
 - [Sound in an export](#sound-in-an-export) - carrying the music into the exported file
 - [Envelope](#envelope) - how a note arrives and how it goes
@@ -573,6 +574,85 @@ let odd = Wavetable(harmonics: [[1], [1, 0, 1 / 3, 0, 1 / 5]])
 
 A cycle with a corner holds harmonics past any sampling limit. Read fast enough, those harmonics fold back down the spectrum as a gritty ring that tracks pitch the wrong way. So every frame is kept at eleven strengths, each with half the harmonics of the one before. A note reads the strongest one whose top harmonic still fits under half the sample rate. That is how a sawtooth stays a sawtooth at the top of the keyboard. Every strength is built from the same harmonics, so nothing shifts when a note moves from one to the next. `frame(_:harmonicsUpTo:)` shows what a given pitch actually reads.
 
+### Grains
+
+A grain is a piece of sound too short to have a pitch of its own, a few thousandths of a second, worn with an envelope so it does not click at either end. Pile enough of them up and what you hear is the statistics of the pile rather than any one of them. That is the whole technique, and it buys one thing nothing else here can do: **how fast the sound is read and how high it sounds stop being the same number.**
+
+Everything else that plays a recording moves both together, the way a tape does. A grain cloud has two clocks. The grains are read at whatever speed the note's pitch asks for. The place they are cut from travels at `speed`, which is its own control. Set `speed` to 0 and the position stops while the note keeps going: one moment of a sound, held, for as long as you like.
+
+```swift
+synth.grainSource = GrainSource(contentsOf: url)
+synth.voice = Voice(granular: GrainCloud(size: 0.08, density: 40, speed: 0))
+synth.play("C4", for: 8)                            // that moment, held
+
+synth.grainScrub = mouseX / width                   // and dragged through by hand
+```
+
+You set the sound on the `Synth`, and the voice says how to cut it up. That is the same split a sampled instrument and a wavetable use, and for the same reason: a voice travels to the audio thread inside a note and has to be copyable a word at a time, where a few seconds of sound is hundreds of kilobytes. A cloud played with no sound set reads `GrainSource.builtIn`.
+
+| Member | What it does |
+|---|---|
+| `Synth.grainSource` | which sound. Set it before the notes that need it; notes already sounding keep theirs |
+| `Synth.grainScrub` | how far every sounding note's reading is moved through the sound, in source lengths. Read every sample, so it drags a note that is already playing |
+| `Synth.grainCount` | how many grains are sounding, for drawing the cloud |
+| `Voice(granular:)` | how a note cuts it, as a `GrainCloud` |
+
+| `GrainCloud` | What it does |
+|---|---|
+| `size` | how long one grain lasts, in seconds, `0.001...1`. Under about 0.01 a grain carries no pitch and the cloud is texture; over about 0.1 each one is heard as a fragment |
+| `density` | how many start each second, `0.1...1000`. Under about 10 you hear them one at a time; past 1 / `size` they overlap into something continuous |
+| `position` | where in the sound a note starts cutting, `0` to `1` |
+| `positionJitter` | how far each grain strays from that, as a fraction of the whole sound |
+| `speed` | how fast the position travels, as a multiple of the sound's own speed, `-4...4`. 0 holds it still; negative runs backward |
+| `pitchSpread` | how far each grain's pitch strays from the note, in semitones either way, `0...24` |
+| `panSpread` | how far each grain is thrown to one side, `0...1` |
+| `scatter` | how irregularly they start, `0...1`. At 0 they are on a strict clock, at 1 the gap is random with the same average |
+| `shape` | the envelope one grain wears, a `GrainShape` |
+| `seed` | which scatter this is. The same seed is the same cloud |
+| `.frozen(at:size:density:)` | a cloud held at one place, which is what this is here for |
+
+Three presets are worth starting from. `Voice.cloud` is a held moment spread wide, `Voice.smear` is the sound crawling past at a fraction of its speed in pieces, and `Voice.rain` is short sharp grains heard one at a time.
+
+#### The shape a grain is cut with
+
+At these lengths the envelope is most of the character. The same sound through a soft bell and through a sharp tick is two instruments.
+
+| `GrainShape` | What it sounds like |
+|---|---|
+| `.bell` | a raised cosine: no corner anywhere, nothing added. The default |
+| `.gaussian` | a narrower bell, softer still, overlapping further into its neighbors |
+| `.triangle` | straight up and straight down, a little brighter than the bell |
+| `.plateau` | flat in the middle with a short fade at each end, so the middle of the grain is the sound exactly as it was recorded |
+| `.tick` | sharp at the front and falling away: a rattle or a rain |
+| `.swell` | the same backward, a swell into a sudden stop |
+
+`shape.level(at:)` hands back the curve, the same table the grains are read through, so a sketch can draw the cut it chose the way [`Envelope.level(at:heldFor:)`](#envelope) draws the note.
+
+#### Where the sound comes from
+
+| Maker | What it reads |
+|---|---|
+| `GrainSource(frames:sampleRate:rootKey:)` | samples already in hand |
+| `GrainSource(recording:)` | one of a [sampled instrument's](#sampled-instruments) recordings, which is also what [`stretched(by:)`](#stretching-a-recording) hands back |
+| `GrainSource(contentsOf:)` | an audio file, folded to one channel |
+| `GrainSource(named:withExtension:in:)` | an audio file bundled with a sketch |
+| `GrainSource(waveform:frequency:seconds:)` | a wave drawn rather than recorded |
+| `GrainSource.builtIn` | the bundled struck bar, so a cloud can be heard with nothing loaded |
+
+`rootKey` is the note the sound reads at its own speed. A note above it reads each grain that much faster, which moves the pitch without touching how fast the cloud travels.
+
+#### Things worth knowing
+
+- **The sound loops.** A cloud travelling past the end comes round to the start, so position 1 is position 0 and a note does not go quiet part way through.
+- **Loudness rises with the square root of the density.** Grains land on each other at random, so what adds is power rather than amplitude: four times as many is twice as loud.
+- **A strict clock is a pitch.** With `scatter` at 0 the grains arrive on a clock, and a frozen cloud repeats the same piece of sound at that rate. The output is then periodic at `density` hertz, whatever the sound was. That is a real instrument rather than a fault, and turning `scatter` up is how you stop hearing it.
+- **A cloud drops grains rather than waiting for room.** A note may have 48 sounding at once. Past that a new one is dropped, the same bargain everything on the audio thread makes. A cloud dense enough to reach it is already a texture, and one missing grain in it cannot be heard.
+- **`detune` runs two streams rather than two copies.** Every other grain takes the offset, so two interleaved streams a fraction apart beat against each other the way two oscillators do.
+- **A cloud is read when the note starts.** Changing the settings takes the next note, the way every other voice works. What does move a sounding note is `grainScrub`, which is read every sample.
+- **`panSpread` needs two channels to spread into.** A `Synth` [placed in the 3D scene](#placing-a-sound) is one stream by definition, because turning one into two is the listener's whole job, so a placed instrument folds the spread back to the middle.
+
+`Examples/Audio/Grains` draws the sound with the band the grains are being cut from lit over it, and lets you drag that band through by hand.
+
 ### Placing a sound
 
 A sound can come from somewhere in the 3D scene, with the camera as the listener.
@@ -915,6 +995,8 @@ These limits are said plainly, so you can plan around them rather than go lookin
 - **A sampler, but not a sample editor.** [Recordings](#sampled-instruments) are read and played. Nothing here trims them, loops them by ear, or lays out a map for you. The map is the `.sfz`.
 - **A pitch shift moves the whole spectrum.** A voice an octave up is a small voice rather than a high one. Keeping the shape of a voice where it is while the pitch moves, which is what makes a harmonizer sound like a singer rather than a cartoon, is not here.
 - **One recording at a time per note.** There is no crossfading between velocity layers, or between neighboring recordings. A change of layer is a step rather than a fade.
+- **A grain cloud's density does not follow the note.** Grains arrive at `density` hertz whatever is played. Tying the grain rate to the note's own pitch, so the rate is the pitch and the grain's content is a formant, is a different instrument and is not here.
+- **One sound at a time per instrument.** A `Synth` has one `grainSource`, the way it has one `instrument`. Clouds over two different sounds means two `Synth`s, which is fine and cheap.
 - **A wavetable's position is read when the note starts.** The sweep moves it over the note. The position itself is not a live control, the way `pressure` is. To move a held note by hand, use the sweep or play a new note.
 - **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.
 - **One position per instrument.** A `Synth` is placed as a whole. Several sounds in several places means several `Synth`s, which is fine and cheap.

@@ -45,6 +45,9 @@ public final class Synth: AudioSource {
     /// changed. Empty unless the sketch placed it, which is what keeps an
     /// export of an unplaced instrument exactly what it was before.
     var recordedPoses: [RecordedPose] = []
+    /// Where a grain cloud's reading was dragged to, whenever it moved. Empty
+    /// unless the sketch scrubbed one, for the same reason the poses are.
+    var recordedScrubs: [RecordedScrub] = []
     var exportClock: Double = 0
     /// The offline machine, once an export has asked for a soundtrack.
     var offline: OfflineRender?
@@ -100,6 +103,11 @@ public final class Synth: AudioSource {
             if voice.wavetable != nil, renderer.wavetable == nil {
                 renderer.wavetable = .basic
             }
+            // And a grain cloud with nothing to cut grains out of reads the
+            // bundled sound, for the same reason: silence is not a first note.
+            if voice.granular != nil, renderer.grainSource == nil {
+                renderer.grainSource = GrainSource.builtIn
+            }
             emit(SynthEvent(kind: .changeVoice, voice: voice))
         }
     }
@@ -124,6 +132,63 @@ public final class Synth: AudioSource {
         set { renderer.wavetable = newValue }
     }
 
+    /// The sound a grain cloud cuts its grains out of.
+    ///
+    /// Set separately from ``voice`` for the same reason ``instrument`` is: a
+    /// voice travels to the audio thread inside a note and has to be copyable
+    /// a word at a time, where a few seconds of sound is hundreds of kilobytes.
+    /// So the voice says how to cut it up and this says what.
+    ///
+    /// ```swift
+    /// synth.grainSource = GrainSource(contentsOf: url)
+    /// synth.voice = Voice(granular: GrainCloud(size: 0.08, speed: 0))
+    /// ```
+    ///
+    /// Set it before the notes that need it. Notes already sounding keep the
+    /// sound they started on. A grain cloud played with none set reads the
+    /// bundled ``GrainSource/builtIn``.
+    public var grainSource: GrainSource? {
+        get { renderer.grainSource }
+        set { renderer.grainSource = newValue }
+    }
+
+    /// How far a sounding grain cloud's reading is moved through its source,
+    /// in source lengths.
+    ///
+    /// Where a note's own ``GrainCloud/position`` says where it starts and
+    /// ``GrainCloud/speed`` says how fast it travels from there, this moves
+    /// every sounding note away from wherever it has reached. With `speed` at
+    /// 0, where a note stays put, that makes this simply where in the sound it
+    /// is reading, so dragging it is dragging a playhead through a held note.
+    ///
+    /// ```swift
+    /// synth.grainScrub = mouseX / width
+    /// ```
+    ///
+    /// Read every sample rather than once a note, so it moves a note that is
+    /// already sounding. Leaving it at 0 is what every note does by itself.
+    public var grainScrub: Double {
+        get { renderer.grainScrub }
+        set {
+            renderer.grainScrub = newValue
+            // An export drives the sketch on a clock of its own with nothing
+            // playing, so a drag made while the frames go by has to be written
+            // down to be heard, exactly as a placing is.
+            if OllinApp.isRenderingHeadless { recordScrub(newValue) }
+        }
+    }
+
+    /// Writes down where the reading was dragged to, if it moved.
+    private func recordScrub(_ value: Double) {
+        if let last = recordedScrubs.last, last.value == value { return }
+        // A sketch dragging every frame for an hour should not grow without
+        // bound; past this it is a stuck loop rather than a drag.
+        guard recordedScrubs.count < 200_000 else { return }
+        let scrub = RecordedScrub(at: exportClock, value: value)
+        recordedScrubs.append(scrub)
+        offline?.pendingScrubs.append(scrub)
+    }
+
     /// Overall level, `0...1`.
     public var gain: Double {
         get { renderer.gain }
@@ -132,6 +197,14 @@ public final class Synth: AudioSource {
 
     /// How many notes are sounding right now, tails included.
     public var activeVoiceCount: Int { renderer.activeVoiceCount }
+
+    /// How many grains are sounding right now, across every note.
+    ///
+    /// What a sketch draws to show a cloud working: it rises with
+    /// ``GrainCloud/density`` and with ``GrainCloud/size``, since a grain is
+    /// counted for as long as it lasts, and it stops rising where a note runs
+    /// out of room and starts dropping grains.
+    public var grainCount: Int { renderer.grainCount }
 
     /// How hard a driven voice is being bowed or blown, `0...1`.
     ///
@@ -276,6 +349,7 @@ public final class Synth: AudioSource {
         // A synth made with a wavetable voice reads the plain table until a
         // sketch sets another, the same rule the `voice` setter keeps.
         if voice.wavetable != nil { renderer.wavetable = .basic }
+        if voice.granular != nil { renderer.grainSource = GrainSource.builtIn }
 
         // The chain runs in the output's own channel layout, not in mono. The
         // effect units refuse a format the hardware end of the graph does not
@@ -728,12 +802,24 @@ func makeSynthSourceNode(format: AVAudioFormat, renderer: SynthRenderer) -> AVAu
         let output = UnsafeMutableBufferPointer(
             start: data.assumingMemoryBound(to: Float.self), count: frames
         )
-        renderer.render(into: output, frameCount: frames)
 
-        // Any further channels get the same samples.
-        for buffer in buffers.dropFirst() {
-            guard let other = buffer.mData else { continue }
-            other.assumingMemoryBound(to: Float.self).update(from: output.baseAddress!, count: frames)
+        // Two channels are rendered as two, because a grain cloud can throw
+        // its grains to the sides and that is the only thing here that has a
+        // side to be on. Everything else is one stream, which the renderer
+        // writes to both.
+        if buffers.count > 1, let second = buffers[1].mData {
+            let right = UnsafeMutableBufferPointer(
+                start: second.assumingMemoryBound(to: Float.self), count: frames
+            )
+            renderer.render(into: output, right: right, frameCount: frames)
+            // Any further channels get the left one, as they always did.
+            for buffer in buffers.dropFirst(2) {
+                guard let other = buffer.mData else { continue }
+                other.assumingMemoryBound(to: Float.self)
+                    .update(from: output.baseAddress!, count: frames)
+            }
+        } else {
+            renderer.render(into: output, frameCount: frames)
         }
         return noErr
     }

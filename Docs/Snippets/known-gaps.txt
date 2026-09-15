@@ -839,43 +839,44 @@ c1fdf39373c0  Docs/Helpers/Sonification.md:114  cannot find 'Sonification' in sc
 3343e913935a  Docs/Helpers/Sonification.md:53  cannot find 'Sonification' in scope
 306833112ab4  Docs/Helpers/Sonification.md:72  cannot infer contextual base in reference to member 'extremes'
 f04e1f957599  Docs/Helpers/Sonification.md:9  cannot find 'table' in scope
-ce617da83e59  Docs/Helpers/Synthesis.md:111  cannot find type 'PlayingNote' in scope
-69561a5ccbb1  Docs/Helpers/Synthesis.md:124  cannot find 'synth' in scope
-0325ad3f60c8  Docs/Helpers/Synthesis.md:152  cannot find 'synth' in scope
-456d01440e84  Docs/Helpers/Synthesis.md:169  cannot find 'Synth' in scope
-7061a94dbb81  Docs/Helpers/Synthesis.md:214  cannot find 'Synth' in scope
-46b862c2cf56  Docs/Helpers/Synthesis.md:233  cannot find 'PluckedString' in scope
-af59bd54d5b2  Docs/Helpers/Synthesis.md:258  cannot find 'Synth' in scope
-18a9f63e8409  Docs/Helpers/Synthesis.md:285  missing argument for parameter 'at' in call
-883a650f2006  Docs/Helpers/Synthesis.md:325  cannot find 'Synth' in scope
-43fbd5e77cc0  Docs/Helpers/Synthesis.md:356  cannot find 'Synth' in scope
-99c65b5ae548  Docs/Helpers/Synthesis.md:381  cannot find 'synth' in scope
-16966f9a8316  Docs/Helpers/Synthesis.md:397  cannot find 'Patch' in scope
-c1f052f4e696  Docs/Helpers/Synthesis.md:455  cannot find 'synth' in scope
-31b379e5f09d  Docs/Helpers/Synthesis.md:479  cannot find 'SampledInstrument' in scope
-bd33866b4087  Docs/Helpers/Synthesis.md:494  cannot find 'SampledInstrument' in scope
-62e4396a9788  Docs/Helpers/Synthesis.md:53  expected ',' separator
-24dde6741b45  Docs/Helpers/Synthesis.md:531  cannot find 'synth' in scope
-e9c718de9c52  Docs/Helpers/Synthesis.md:563  cannot find 'Wavetable' in scope
-17733d0868da  Docs/Helpers/Synthesis.md:580  cannot find 'synth' in scope
-71128f7d3f0d  Docs/Helpers/Synthesis.md:61  cannot find 'synth' in scope
-f4786d659208  Docs/Helpers/Synthesis.md:637  cannot find 'Envelope' in scope
-8094d9793ee0  Docs/Helpers/Synthesis.md:666  cannot find 'Voice' in scope
-704965646449  Docs/Helpers/Synthesis.md:69  cannot find 'synth' in scope
-c23316c59aa8  Docs/Helpers/Synthesis.md:691  cannot find 'synth' in scope
-6ec305c76a35  Docs/Helpers/Synthesis.md:722  cannot find 'synth' in scope
-b7224671e713  Docs/Helpers/Synthesis.md:731  cannot find 'Delay' in scope
-a225fd492d30  Docs/Helpers/Synthesis.md:744  cannot find 'Reverb' in scope
-03eb878f64f8  Docs/Helpers/Synthesis.md:752  cannot find 'ImpulseResponse' in scope
-7ac3cbca95d8  Docs/Helpers/Synthesis.md:769  cannot find 'ImpulseResponse' in scope
-a0885de8f8fa  Docs/Helpers/Synthesis.md:77  cannot find 'wasDown' in scope
-5b6c5d04a165  Docs/Helpers/Synthesis.md:784  cannot find 'Equalizer' in scope
-20c352650fbd  Docs/Helpers/Synthesis.md:793  cannot find 'Distortion' in scope
-2f022144c85f  Docs/Helpers/Synthesis.md:801  cannot find 'synth' in scope
-4673980e7486  Docs/Helpers/Synthesis.md:821  cannot find 'synth' in scope
-b011e4ff81ce  Docs/Helpers/Synthesis.md:840  cannot find 'synth' in scope
-f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:860  cannot find 'synth' in scope
-5ecdb5057d19  Docs/Helpers/Synthesis.md:878  reference to member 'custom' cannot be resolved without a contextual type
+ce617da83e59  Docs/Helpers/Synthesis.md:112  cannot find type 'PlayingNote' in scope
+69561a5ccbb1  Docs/Helpers/Synthesis.md:125  cannot find 'synth' in scope
+0325ad3f60c8  Docs/Helpers/Synthesis.md:153  cannot find 'synth' in scope
+456d01440e84  Docs/Helpers/Synthesis.md:170  cannot find 'Synth' in scope
+7061a94dbb81  Docs/Helpers/Synthesis.md:215  cannot find 'Synth' in scope
+46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'PluckedString' in scope
+af59bd54d5b2  Docs/Helpers/Synthesis.md:259  cannot find 'Synth' in scope
+18a9f63e8409  Docs/Helpers/Synthesis.md:286  missing argument for parameter 'at' in call
+883a650f2006  Docs/Helpers/Synthesis.md:326  cannot find 'Synth' in scope
+43fbd5e77cc0  Docs/Helpers/Synthesis.md:357  cannot find 'Synth' in scope
+99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope
+16966f9a8316  Docs/Helpers/Synthesis.md:398  cannot find 'Patch' in scope
+c1f052f4e696  Docs/Helpers/Synthesis.md:456  cannot find 'synth' in scope
+31b379e5f09d  Docs/Helpers/Synthesis.md:480  cannot find 'SampledInstrument' in scope
+bd33866b4087  Docs/Helpers/Synthesis.md:495  cannot find 'SampledInstrument' in scope
+24dde6741b45  Docs/Helpers/Synthesis.md:532  cannot find 'synth' in scope
+62e4396a9788  Docs/Helpers/Synthesis.md:54  expected ',' separator
+e9c718de9c52  Docs/Helpers/Synthesis.md:564  cannot find 'Wavetable' in scope
+1f7e4eaa6eb9  Docs/Helpers/Synthesis.md:583  cannot find 'synth' in scope
+71128f7d3f0d  Docs/Helpers/Synthesis.md:62  cannot find 'synth' in scope
+17733d0868da  Docs/Helpers/Synthesis.md:660  cannot find 'synth' in scope
+704965646449  Docs/Helpers/Synthesis.md:70  cannot find 'synth' in scope
+f4786d659208  Docs/Helpers/Synthesis.md:717  cannot find 'Envelope' in scope
+8094d9793ee0  Docs/Helpers/Synthesis.md:746  cannot find 'Voice' in scope
+c23316c59aa8  Docs/Helpers/Synthesis.md:771  cannot find 'synth' in scope
+a0885de8f8fa  Docs/Helpers/Synthesis.md:78  cannot find 'wasDown' in scope
+6ec305c76a35  Docs/Helpers/Synthesis.md:802  cannot find 'synth' in scope
+b7224671e713  Docs/Helpers/Synthesis.md:811  cannot find 'Delay' in scope
+a225fd492d30  Docs/Helpers/Synthesis.md:824  cannot find 'Reverb' in scope
+03eb878f64f8  Docs/Helpers/Synthesis.md:832  cannot find 'ImpulseResponse' in scope
+7ac3cbca95d8  Docs/Helpers/Synthesis.md:849  cannot find 'ImpulseResponse' in scope
+5b6c5d04a165  Docs/Helpers/Synthesis.md:864  cannot find 'Equalizer' in scope
+20c352650fbd  Docs/Helpers/Synthesis.md:873  cannot find 'Distortion' in scope
+2f022144c85f  Docs/Helpers/Synthesis.md:881  cannot find 'synth' in scope
+4673980e7486  Docs/Helpers/Synthesis.md:901  cannot find 'synth' in scope
+b011e4ff81ce  Docs/Helpers/Synthesis.md:920  cannot find 'synth' in scope
+f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:940  cannot find 'synth' in scope
+5ecdb5057d19  Docs/Helpers/Synthesis.md:958  reference to member 'custom' cannot be resolved without a contextual type
 c190ec5bfb0a  Docs/Helpers/Weather.md:123  expected ',' separator
 9b223ddfebe9  Docs/Helpers/Weather.md:129  cannot find 'place' in scope
 6a7b53bf1b5a  Docs/Helpers/Weather.md:150  cannot find 'sky' in scope

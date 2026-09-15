@@ -122,6 +122,10 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     /// between, and moved while the note sounds. The table itself lives on
     /// the ``Synth``. See ``Wavetable``.
     case wavetable(WavetableScan)
+    /// Short pieces cut out of a sound and piled up, where the sound is read
+    /// at one speed and travelled through at another. The sound itself lives
+    /// on the ``Synth``. See ``GrainCloud``.
+    case granular(GrainCloud)
 
     /// Whether this source has to be driven to keep sounding.
     ///
@@ -129,7 +133,7 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     public var isDriven: Bool {
         switch self {
         case .bowed, .blown: return true
-        case .wave, .plucked, .struck, .patch, .sampled, .wavetable: return false
+        case .wave, .plucked, .struck, .patch, .sampled, .wavetable, .granular: return false
         }
     }
 }

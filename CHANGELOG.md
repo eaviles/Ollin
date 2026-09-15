@@ -4,6 +4,10 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+### Added
+
+- **A sound cut into pieces and piled back up.** `synth.grainSource = GrainSource(contentsOf: url)` and `Voice(granular: GrainCloud(size: 0.08, density: 40, speed: 0))` play a sound as a cloud of grains, each a few thousandths of a second long and worn with an envelope. The point is that the two things every other source moves together come apart: the grains are read at the note's pitch while the place they are cut from travels at `speed` alone, so `speed: 0` holds one moment of a recording for as long as the note lasts and `synth.grainScrub` drags that moment through the sound while it is still sounding. `size`, `density`, `positionJitter`, `pitchSpread`, `panSpread` and `scatter` are the rest of the cloud, `GrainShape` is the cut each grain is made with, and `.cloud`, `.smear` and `.rain` are three places to start. `GrainShape.level(at:)` and `Synth.grainCount` draw it. A cloud that spreads its grains needs two channels to spread into, so the renderer now fills both where it has them; a sketch that spreads nothing sounds exactly as it did. [Synthesis](Docs/Helpers/Synthesis.md#grains); Guide Ch 29 § *A sound in pieces: grains*; `Examples/Audio/Grains`.
+
 ## [0.7.0] - 2026-09-14
 
 ### Added

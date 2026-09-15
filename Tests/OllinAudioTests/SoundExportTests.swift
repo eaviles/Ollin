@@ -172,4 +172,52 @@ import Testing
         let bass = Synth(.bass)
         let lead = Synth(.bell)
     }
+
+    // MARK: - A grain cloud
+
+    @MainActor
+    @Test func aCloudReachesTheExportInTwoChannels() throws {
+        let synth = Synth(Voice(granular: GrainCloud(size: 0.05, density: 60,
+                                                     position: 0.4, positionJitter: 0.05,
+                                                     speed: 0, panSpread: 1),
+                                envelope: .sustained, gain: 0.9))
+        synth.grainSource = try #require(GrainSource.builtIn)
+        let samples = record(synth, notes: [(at: 0.1, pitch: 60, length: 1.2)], seconds: 1.6)
+        #expect(samples.contains { abs($0) > 0.02 }, "the cloud is in the file")
+
+        // The two channels are not one stream: grains thrown to the sides land
+        // on the sides, all the way through an export.
+        let left = stride(from: 0, to: samples.count, by: 2).map { samples[$0] }
+        let right = stride(from: 1, to: samples.count, by: 2).map { samples[$0] }
+        #expect(left != right)
+        var gap = [Float]()
+        for index in left.indices { gap.append(left[index] - right[index]) }
+        #expect(rms(gap[...]) > 0.2 * rms(left[...]), "and audibly so")
+    }
+
+    @MainActor
+    @Test func aDragMadeWhileTheFramesWentByIsInTheFile() throws {
+        // A scrub is a control rather than a note, so it has to be written
+        // down as the frames go by or an exported drag comes out frozen.
+        let bar = try #require(GrainSource.builtIn)
+        func exported(dragging: Bool) -> [Float] {
+            let synth = Synth(Voice(granular: GrainCloud(size: 0.05, density: 70,
+                                                         positionJitter: 0.004, speed: 0),
+                                    envelope: .sustained, gain: 0.9))
+            synth.grainSource = bar
+            exporting {
+                synth.play(60, velocity: 0.9, for: 1.4)
+                for frame in 0..<90 {
+                    if dragging { synth.grainScrub = Double(frame) / 90 * 0.7 }
+                    synth.advance(by: 1.0 / 60)
+                }
+            }
+            return synth.renderExportAudio(upTo: 1.5, sampleRate: Self.sampleRate)
+        }
+        let still = exported(dragging: false)
+        let dragged = exported(dragging: true)
+        #expect(still.count == dragged.count)
+        #expect(still != dragged, "the drag is in the file")
+        #expect(dragged.contains { abs($0) > 0.02 })
+    }
 }

@@ -38,9 +38,18 @@ enum Effect: Decodable, Encodable, Equatable, Hashable, Sendable
   static func custom(_: String = default, _: (AudioBlock) -> Void) -> Effect
   static func custom(_: String = default, state: State, _: (AudioBlock, inout State) -> Void) -> Effect
   var kind: Effect.Kind { get }
+enum GrainShape: String, CaseIterable, Decodable, Encodable, Equatable, Hashable, RawRepresentable, Sendable
+  case bell
+  case gaussian
+  case plateau
+  case swell
+  case tick
+  case triangle
+  func level(at: Double) -> Double
 enum VoiceSource: Decodable, Encodable, Equatable, Hashable, Sendable
   case blown(BlownTube)
   case bowed(BowedString)
+  case granular(GrainCloud)
   case patch(Patch)
   case plucked(PluckedString)
   case sampled(Sampler)
@@ -103,6 +112,19 @@ final class BeatFollower: Sendable
   var isFollowing: Bool { get }
   var steadiness: Double { get }
   var tempo: Double { get }
+final class GrainSource: Sendable
+  convenience init(name: String = default, recording: SampledInstrument.Recording)
+  convenience init(waveform: Waveform, frequency: Double = default, seconds: Double = default, sampleRate: Double = default, seed: Int = default)
+  convenience init?(contentsOf: Foundation.URL, rootKey: Int = default)
+  convenience init?(named: String, withExtension: String = default, in: Foundation.Bundle, rootKey: Int = default)
+  init(name: String = default, frames: [Float], sampleRate: Double, rootKey: Int = default)
+  let frames: [Float]
+  let name: String
+  let rootKey: Int
+  let sampleRate: Double
+  static let builtIn: GrainSource?
+  var duration: Double { get }
+  var isEmpty: Bool { get }
 final class SampledInstrument: Sendable
   convenience init?(sfz: String, in: Foundation.Bundle)
   func recording(at: Int, over: ClosedRange<Int>) -> SampledInstrument.Recording
@@ -185,6 +207,9 @@ final class Synth: CaptureAudioSource, ExportAudioSource, FrameAdvancing, Transp
   var delay: Delay? { get set }
   var effects: [Effect] { get set }
   var gain: Double { get set }
+  var grainCount: Int { get }
+  var grainScrub: Double { get set }
+  var grainSource: GrainSource? { get set }
   var hearingRange: ClosedRange<Double> { get set }
   var instrument: SampledInstrument? { get set }
   var isRunning: Bool { get }
@@ -442,6 +467,19 @@ struct Gate: Decodable, Encodable, Equatable, Hashable, Sendable
   var hold: Double { get set }
   var release: Double { get set }
   var threshold: Double { get set }
+struct GrainCloud: Decodable, Encodable, Equatable, Hashable, Sendable
+  init(size: Double = default, density: Double = default, position: Double = default, positionJitter: Double = default, speed: Double = default, pitchSpread: Double = default, panSpread: Double = default, scatter: Double = default, shape: GrainShape = default, seed: Int = default)
+  static func frozen(at: Double, size: Double = default, density: Double = default) -> GrainCloud
+  var density: Double { get set }
+  var panSpread: Double { get set }
+  var pitchSpread: Double { get set }
+  var position: Double { get set }
+  var positionJitter: Double { get set }
+  var scatter: Double { get set }
+  var seed: Int { get set }
+  var shape: GrainShape { get set }
+  var size: Double { get set }
+  var speed: Double { get set }
 struct ImpulseResponse: Decodable, Encodable, Equatable, Hashable, Sendable
   func reversed() -> ImpulseResponse
   func stretched(by: Double) -> ImpulseResponse
@@ -778,6 +816,7 @@ struct Tuning: Equatable, Hashable, Sendable
 struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
   init(blown: BlownTube, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
   init(bowed: BowedString, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
+  init(granular: GrainCloud, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
   init(patch: Patch, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
   init(plucked: PluckedString, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
   init(sampled: Sampler, envelope: Envelope = default, filter: Voice.Filter? = default, detune: Double = default, gain: Double = default)
@@ -793,6 +832,7 @@ struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
   static let cello: Voice
   static let chime: Voice
   static let clarinet: Voice
+  static let cloud: Voice
   static let drum: Voice
   static let fmBell: Voice
   static let fmBrass: Voice
@@ -805,8 +845,10 @@ struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
   static let nylon: Voice
   static let pad: Voice
   static let pluck: Voice
+  static let rain: Voice
   static let reed: Voice
   static let sine: Voice
+  static let smear: Voice
   static let stab: Voice
   static let steel: Voice
   static let violin: Voice
@@ -830,6 +872,7 @@ struct Voice: Decodable, Encodable, Equatable, Hashable, Sendable
   var envelope: Envelope { get set }
   var filter: Voice.Filter? { get set }
   var gain: Double { get set }
+  var granular: GrainCloud? { get set }
   var patch: Patch? { get set }
   var plucked: PluckedString? { get set }
   var pressureAmount: Double { get set }
