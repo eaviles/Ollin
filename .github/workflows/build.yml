@@ -84,21 +84,19 @@ jobs:
     # the test step 22 to 30 minutes in one process; see its note), and the
     # test step carries its own tighter one.
     timeout-minutes: 60
-    # Every SwiftPM compile on this runner (this job's build step, and the
-    # rebuilds inside Scripts/test.sh and Scripts/shard-tests.sh, which read
-    # the same variable) tells the driver that a changed dependency rebuilds
-    # every file that imports it, instead of only the files the driver
-    # believes use a changed declaration. That belief was wrong once
-    # (2026-09-13, run 34771805772): a test object compiled against
-    # `fps: Double` sat in the restored cache after the parameter became a
-    # `FrameRate`, the call site relying on the default argument, and the
-    # 6.3.3 driver never rescheduled the file, so the test bundle failed to
-    # link two commits later. A stale object that still links is the worse
-    # case (an old layout inlined into a test), so the judgment is off here.
-    # The cost is a fuller warm build on a commit that touches the framework;
-    # a cold build is still the ceiling. The desk keeps the default.
-    env:
-      OLLIN_SWIFT_FLAGS: -Xswiftc -disable-incremental-imports
+    # OLLIN_SWIFT_FLAGS is the seam for compiler flags this runner wants and
+    # the desk does not; Scripts/test.sh and Scripts/shard-tests.sh read the
+    # same variable, so every compile in the job carries the same command line
+    # and SwiftPM has no reason to rebuild the world between them. It is empty
+    # today. It held `-Xswiftc -disable-incremental-imports` from 2026-09-13,
+    # meaning to tell the driver that a changed dependency rebuilds every file
+    # that imports it rather than the files it believes use a changed
+    # declaration. The driver here never accepted it: every invocation
+    # answered `warning: ignoring obseleted option`, 55 of them in the run
+    # that failed, so the guard was never in force and the failure it was
+    # added for happened again the same way (see the step that discards what a
+    # changed framework invalidates, which is that guard built where this
+    # toolchain cannot ignore it).
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -160,6 +158,94 @@ jobs:
           key: build-2-${{ steps.swift.outputs.version }}-${{ github.sha }}
           restore-keys: |
             build-2-${{ steps.swift.outputs.version }}-
+
+      # What a restored build cannot be trusted with. A cache saved at one
+      # commit holds, for every target, objects compiled against the
+      # declarations the framework had then. When a later commit changes one
+      # of those declarations, SwiftPM is supposed to recompile every file
+      # that read it, and twice now it has not: the test bundle failed to
+      # link against a signature the framework no longer has (2026-09-13, run
+      # 34771805772, `fps: Double` become a `FrameRate`; 2026-09-15, run
+      # 34929272327, the five light calls having gained a `reach:`). Both
+      # times the call site relied on a default argument, so the target's own
+      # source was untouched and its whole compile was skipped: the library
+      # OllinOSC was rebuilt in that run and OllinOSCTests beside it was not.
+      # A stale object that still links is the worse case of the same thing,
+      # an old memory layout inlined into a test that then passes.
+      #
+      # So the trust is withdrawn here, where no toolchain has a say. Each
+      # target's sources are hashed by content (their blob names, so no
+      # history is needed, as with the times above) and the digests ride along
+      # in the cache. On restore, a target whose own sources changed keeps its
+      # objects, because incremental compilation inside one module is the part
+      # that works; every other Swift target is discarded and compiled again
+      # against whatever the framework now says. A change to the manifest or
+      # to the resolved dependencies discards all of them, and so does a cache
+      # with no digests in it, which is how a cache saved before this step
+      # stops being inherited. Two kinds of target are never touched: the
+      # vendored C and C++ ones, since nothing in Swift can stale them and
+      # they are the slowest part of a cold build, and every target at all
+      # when the commit touched only Tests/, since nothing may depend on a
+      # test target. The cost is a full compile of the dependent targets on a
+      # commit that touches the framework, which is most of them; the whole
+      # cold build is still the ceiling.
+      - name: Discard what a changed framework invalidates
+        run: |
+          git ls-files -s -z Sources Tests External Package.swift Package.resolved | python3 -c '
+          import glob, hashlib, os, shutil, sys
+
+          digests, tests = {}, set()
+          for entry in sys.stdin.buffer.read().split(b"\0"):
+              if not entry:
+                  continue
+              meta, path = entry.split(b"\t", 1)
+              parts = path.split(b"/")
+              # Sources/<target>/…, Tests/<target>/… and External/<target>/…
+              # name a target; Package.swift and Package.resolved stand for
+              # all of them at once.
+              name = parts[1].decode() if len(parts) > 1 else "the manifest"
+              if parts[0] == b"Tests":
+                  tests.add(name)
+              digests.setdefault(name, hashlib.sha1()).update(meta.split()[1] + b"\n")
+          now = {name: digest.hexdigest() for name, digest in digests.items()}
+
+          marker = ".build/ollin-target-sources"
+          before = {}
+          if os.path.exists(marker):
+              with open(marker) as file:
+                  before = dict(line.rsplit(None, 1) for line in file)
+
+          changed = {name for name, digest in now.items() if before.get(name) != digest}
+          everything = not before or "the manifest" in changed
+          # Nothing depends on a test target: SwiftPM refuses to let a library
+          # do it, and no test target here names another. So a commit that
+          # touches only Tests/ stales nothing, and the objects all stand.
+          discarding = everything or bool(changed - tests)
+
+          discarded = []
+          for built in sorted(glob.glob(".build/*/*/*.build")):
+              target = os.path.basename(built)[: -len(".build")]
+              if not discarding or (not everything and target in changed):
+                  continue
+              # A directory holding Swift objects is a Swift target; the C and
+              # C++ ones hold .c.o and .cpp.o and stay.
+              if any(name.endswith(".swift.o") for name in os.listdir(built)):
+                  shutil.rmtree(built)
+                  discarded.append(target)
+
+          os.makedirs(".build", exist_ok=True)
+          with open(marker, "w") as file:
+              for name in sorted(now):
+                  file.write(f"{name} {now[name]}\n")
+
+          if not before:
+              print("no digests in the restored build: every Swift target compiles again")
+          elif discarded:
+              print("changed: " + (", ".join(sorted(changed)) or "nothing"))
+              print("discarded " + str(len(discarded)) + ": " + ", ".join(discarded))
+          else:
+              print("nothing to discard")
+          '
 
       # Builds the library, the OllinLive/OllinExamples/OllinLiveCoding hosts,
       # and the test targets. `--build-tests` compiles the tests here, so
