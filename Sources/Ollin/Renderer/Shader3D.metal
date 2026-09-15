@@ -2965,7 +2965,15 @@ static inline int ollin_light_index(OllinLightSet set, int k) {
     return set.tiled ? int(set.indices[k]) : k;
 }
 static inline OllinLight ollin_light_at(OllinLightSet set, constant OllinLighting &light, int i) {
-    return set.tiled ? set.scene[i] : light.lights[i];
+    // Two returns rather than one conditional: the two sides are a light in
+    // `device` memory and a light in `constant` memory, and asking a ternary
+    // to choose between them is ambiguous to a Metal compiler a version back,
+    // which reads them as convertible to each other in both directions. It
+    // fails where the library is compiled, so the whole renderer refuses to
+    // start rather than one pass misdrawing. Each return converts to the
+    // value on its own.
+    if (set.tiled) { return set.scene[i]; }
+    return light.lights[i];
 }
 
 // One thread per screen tile: keep every light whose bound reaches into this tile's
