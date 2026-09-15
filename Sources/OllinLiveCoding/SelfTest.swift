@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import Metal
+import MetalKit
 import Ollin
 import OllinRuntime
 
@@ -189,11 +191,15 @@ enum SelfTest {
             fail("the completion service refused a request: \(error)")
         }
 
+        checkRegionsAndChange()
+
         Task { @MainActor in
             await checkTwoSpeed(loader: loader, dir: dir)
+            checkCarryingTheRun(loader: loader)
             print("OllinLiveCoding selftest passed: buffer compile, swap render "
                 + "(\(a.count) vs \(b.count) bytes), diagnostics, completion, "
-                + "and the two-speed evaluation all check out.")
+                + "the two-speed evaluation, and carrying the run across an edit "
+                + "all check out.")
             exit(0)
         }
         RunLoop.main.run()   // pumped until the check above exits
@@ -320,6 +326,151 @@ enum SelfTest {
         print("  plain build on stage at \(String(format: "%.2f", plainSeconds)) s, "
             + "optimized build in at \(String(format: "%.2f", optimizedSeconds)) s; "
             + "the single optimized build alone took \(String(format: "%.2f", singleSeconds)) s")
+    }
+
+    // MARK: - Evaluating what changed
+
+    /// The reading half, on text alone: the block under the caret at several
+    /// places in one buffer, and what each kind of edit does to the run. The
+    /// laws themselves are pinned in `SourceRegionsTests`; what this phase adds
+    /// is that the host's own evaluate path is looking at the same answers.
+    @MainActor
+    private static func checkRegionsAndChange() {
+        print("OllinLiveCoding selftest: the block under the caret, and what an edit changed …")
+        let source = """
+        import Ollin
+        final class Live: Sketch {
+            @Saved var walked = 0.0
+            override func setup() {
+                noClear()
+            }
+            override func draw() {
+                walked += 1
+                drawCircle(walked, height / 2, 20)
+            }
+        }
+        """
+        let text = source as NSString
+        for (needle, expected) in [("noClear()", "setup()"), ("walked += 1", "draw()"),
+                                   ("@Saved var walked", "walked"),
+                                   ("final class Live", "Live"), ("import Ollin", "Ollin")] {
+            let caret = text.range(of: needle).location + 2
+            let found = SourceRegions.region(in: source, containingOffset: caret)?.name
+            guard found == expected else {
+                fail("the caret in `\(needle)` found \(found ?? "nothing"), expected \(expected)")
+            }
+        }
+
+        let bodyEdit = source.replacingOccurrences(of: "height / 2, 20", with: "height / 2, 60")
+        guard SourceRegions.change(from: source, to: bodyEdit) == .bodies(["draw()"]) else {
+            fail("a body edit read as \(SourceRegions.change(from: source, to: bodyEdit))")
+        }
+        let declarationEdit = source.replacingOccurrences(of: "@Saved var walked = 0.0",
+                                                         with: "@Saved var walked = 40.0")
+        guard !SourceRegions.change(from: source, to: declarationEdit).keepsTheRun else {
+            fail("a stored-property edit must start the run over")
+        }
+        let setupEdit = source.replacingOccurrences(of: "noClear()", with: "noClear()\n        seed(3)")
+        guard !SourceRegions.change(from: source, to: setupEdit).keepsTheRun else {
+            fail("an edit to setup() must start the run over")
+        }
+    }
+
+    /// The swapping half, through a real runner with no window: a sketch that
+    /// piles onto its canvas, swapped once carrying the run and once not.
+    ///
+    /// Carrying it, the pile is still there and `setup()` did not run (its
+    /// `background` would have wiped the pile), the `@Saved` state came across,
+    /// and the clock kept going. Starting over, the canvas is back to one
+    /// frame's worth and the state is back to its declared value, which is what
+    /// a swap has always done.
+    @MainActor
+    private static func checkCarryingTheRun(loader: SketchLoader) {
+        print("OllinLiveCoding selftest: carrying the run across a swap …")
+        func load(_ text: String) -> Sketch {
+            switch loader.compile(.source(text)) {
+            case .success(let dylib):
+                switch loader.instantiate(dylibPath: dylib) {
+                case .success(let sketch): return sketch
+                case .failure(let error): fail("the probe did not load: \(error)")
+                }
+            case .failure(let error): fail("the probe did not compile: \(error)")
+            }
+        }
+        guard let view = HeadlessStage.view(side: 256), let device = view.device else {
+            fail("no Metal device")
+        }
+        let sink = FrameSink()
+        // Attached to the first instance only: a swap that carries the run must
+        // bring it across, because the `extend` call that installed it lives in
+        // a `setup()` that is not going to run again.
+        let counter = FrameCounter()
+        let first = load(HeadlessStage.pilingProbe(mark: 8))
+        first.extend(sink)
+        first.extend(counter)
+        let runner = SketchRunner(sketch: first, view: view, device: device)
+        for _ in 0..<5 where !HeadlessStage.step(runner, view, first) {
+            fail("the runner never drew a frame")
+        }
+        let clockBeforeSwap = first.time
+        let framesCountedBeforeSwap = counter.frames
+        guard HeadlessStage.saved("frames", of: first) == 5 else {
+            fail("the probe drew \(HeadlessStage.saved("frames", of: first) ?? -1) frames "
+                + "before the swap, expected five")
+        }
+
+        // The same text with one number moved inside `draw()`: the edit the
+        // classification calls a body edit, so the run carries on. The frame
+        // that shows it is the one grabbed, so it is the sixth and no other.
+        let carried = load(HeadlessStage.pilingProbe(mark: 12))
+        carried.extend(sink)
+        runner.reload(to: carried, keepClock: true, keepRun: true)
+        guard let carriedFrame = HeadlessStage.grab(sink, runner, view, carried) else {
+            fail("no frame came back from the carried run")
+        }
+        guard HeadlessStage.saved("frames", of: carried) == 6 else {
+            fail("the carried run is at frame \(HeadlessStage.saved("frames", of: carried) ?? -1), "
+                + "expected the sixth: the `@Saved` state did not come across")
+        }
+        guard carried.time >= clockBeforeSwap else {
+            fail("the carried run restarted its clock (\(carried.time) vs \(clockBeforeSwap))")
+        }
+        let carriedBars = HeadlessStage.bars(of: carriedFrame)
+        guard carriedBars == 6 else {
+            fail("the carried run shows \(carriedBars) bars, expected the six it has drawn "
+                + "(a wiped canvas means setup() ran again)")
+        }
+        let countedAfterCarry = counter.frames
+        guard countedAfterCarry > framesCountedBeforeSwap else {
+            fail("the extension the sketch installed for itself was lost in the swap "
+                + "(still at \(countedAfterCarry) frames)")
+        }
+        // And the one the fresh instance already held was not doubled: a grab
+        // delivers one frame, not one per copy of the extension.
+        guard sink.images.count == 1 else {
+            fail("the grab arrived \(sink.images.count) times; an adopted extension was doubled")
+        }
+
+        // The same swap without carrying it, the clock held either way so the
+        // one difference is the one being read: `setup()` runs, its background
+        // wipes the pile, and the state is back where the file puts it.
+        let restarted = load(HeadlessStage.pilingProbe(mark: 12))
+        restarted.extend(sink)
+        runner.reload(to: restarted, keepClock: true)
+        guard let restartedFrame = HeadlessStage.grab(sink, runner, view, restarted) else {
+            fail("no frame came back from the restarted run")
+        }
+        guard HeadlessStage.saved("frames", of: restarted) == 1 else {
+            fail("the restarted run is at frame "
+                + "\(HeadlessStage.saved("frames", of: restarted) ?? -1), expected its first")
+        }
+        let restartedBars = HeadlessStage.bars(of: restartedFrame)
+        guard restartedBars == 1 else {
+            fail("the restarted run shows \(restartedBars) bars, expected the one it has drawn")
+        }
+        print("  six bars carried across the swap, one after a restart; the clock went on "
+            + "from \(String(format: "%.3f", clockBeforeSwap)) s, and the sketch's own "
+            + "extension counted \(counter.frames) frames through it")
     }
 
     private static func fail(_ message: String) -> Never {

@@ -72,12 +72,13 @@ struct SwiftHighlighter {
     }
 
     /// Restyle the whole document: base attributes, token colors, the glyph
-    /// backdrop, and the diagnostic line tints. Attribute-only edits inside
-    /// `beginEditing`/`endEditing` don't re-enter the text-change delegate.
-    func apply(to storage: NSTextStorage, diagnostics: [CompileDiagnostic], flashing: Bool) {
+    /// backdrop, and the diagnostic line tints. `flashing` is the range of the
+    /// evaluate pulse, which lights the block that ran rather than the page.
+    /// Attribute-only edits inside `beginEditing`/`endEditing` don't re-enter
+    /// the text-change delegate.
+    func apply(to storage: NSTextStorage, diagnostics: [CompileDiagnostic], flashing: NSRange?) {
         let text = storage.string as NSString
         let all = NSRange(location: 0, length: text.length)
-        let strip = flashing ? flashBackdrop : backdrop
 
         storage.beginEditing()
         storage.setAttributes([.font: font, .foregroundColor: Self.textColor], range: all)
@@ -91,7 +92,9 @@ struct SwiftHighlighter {
         // carry short strips rather than full-width bars.
         Self.glyphRuns.enumerateMatches(in: storage.string, range: all) { match, _, _ in
             guard let match else { return }
-            storage.addAttribute(.backgroundColor, value: strip, range: match.range)
+            let lit = flashing.map { NSIntersectionRange($0, match.range).length > 0 } ?? false
+            storage.addAttribute(.backgroundColor, value: lit ? flashBackdrop : backdrop,
+                                 range: match.range)
         }
 
         for range in Self.lineRanges(of: diagnostics, in: text) {

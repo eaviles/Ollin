@@ -30,6 +30,14 @@ final class PerformanceSession {
     private(set) var diagnostics: [CompileDiagnostic] = []
     /// Bumped per successful evaluation; drives the editor flash + toast.
     private(set) var evaluateCount = 0
+    /// What the last evaluation did to the run: which block moved, or that the
+    /// swap started the piece over. The toast reads it, so the performer can
+    /// tell a continued run from a restarted one without watching for the
+    /// canvas to clear.
+    private(set) var lastChange: SourceRegions.SourceChange?
+    /// The block the caret stood in when the last evaluation was sent, named
+    /// for the toast (the editor lights the same one).
+    private(set) var lastBlock: String?
     /// Stage geometry, updated per successful evaluation: the canvas aspect the
     /// letterbox preserves, or fill-the-window for `.resizable` sketches.
     private(set) var stageAspect: Double = 1
@@ -62,6 +70,22 @@ final class PerformanceSession {
     var folderDisplay: String {
         guard let fileURL else { return "unsaved buffer" }
         return (fileURL.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+    }
+
+    /// What the last evaluation did, in the few words the toast has room for:
+    /// the block that ran when the run carried on, or that it started over.
+    /// `nil` before anything has been evaluated against a text on stage.
+    var evaluationSummary: String? {
+        guard let lastChange else { return nil }
+        switch lastChange {
+        case .restarts: return "restarted"
+        case .nothing: return lastBlock ?? "no change"
+        case .bodies(let names):
+            // The block the caret was in, when the edit actually touched it,
+            // reads better than a list: it is the one the editor just lit.
+            if let lastBlock, names.contains(lastBlock) { return lastBlock }
+            return lastChange.shortDescription
+        }
     }
 
     /// The engine state mapped onto the shared status chip. An optimized
@@ -176,13 +200,29 @@ final class PerformanceSession {
 
     /// Compile the buffer and hot-swap. `fresh` restarts the clock (⌘⇧↩);
     /// the default carries `time`/`frameCount` so motion doesn't jump.
+    ///
+    /// It also reads what the edit *was*, against the text the stage was built
+    /// from: when nothing but method bodies moved, and nothing `setup()` runs
+    /// was among them, the run underneath carries on through the swap instead
+    /// of starting over, so a long exposure keeps its ink and a piece mid-set
+    /// does not go back to its first frame. Anything else is the swap this host
+    /// has always done. ⌘⇧↩ is the way to ask for that on purpose.
     func evaluate(fresh: Bool = false) {
         let text = editor.text()
         autosave(text)
+        // The classification is made here, against the text on stage, because
+        // this is the only place both texts exist. A first evaluation and a
+        // deliberate fresh one have no run to carry.
+        let change: SourceRegions.SourceChange? = fresh
+            ? nil : sourceOnStage.map { SourceRegions.change(from: $0, to: text) }
+        let block = editor.evaluatedRegion()?.name
         let loader = SketchLoader(sketchPath: effectivePath, optimization: optimization)
-        core.evaluate(loader, input: .source(text), keepClock: fresh ? false : nil) { [weak self] sketch in
+        core.evaluate(loader, input: .source(text), keepClock: fresh ? false : nil,
+                      keepRun: change?.keepsTheRun ?? false) { [weak self] sketch in
             guard let self else { return }
             self.sourceOnStage = text
+            self.lastChange = change
+            self.lastBlock = block
             self.diagnostics = []
             self.editor.setDiagnostics([])
             self.evaluateCount += 1
@@ -242,6 +282,7 @@ final class PerformanceSession {
 
     func newBuffer() {
         confirmDiscardIfNeeded {
+            self.sourceOnStage = nil   // another document: nothing to carry from
             self.fileURL = nil
             self.editor.setText(SketchTemplate.source)
             self.clearDirty()
@@ -266,6 +307,7 @@ final class PerformanceSession {
             presentError("Couldn't read \(url.lastPathComponent).")
             return
         }
+        sourceOnStage = nil        // another document: nothing to carry from
         fileURL = url
         adoptCueFile(beside: url)
         editor.setText(text)

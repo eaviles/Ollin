@@ -21,7 +21,8 @@ final class EditorController {
     /// Buffer content handed over before the view mounted, applied on attach.
     private var pendingText: String?
     private var flashTask: Task<Void, Never>?
-    private var isFlashing = false
+    /// The range the evaluate pulse is lighting up, or nil between pulses.
+    private var flashing: NSRange?
 
     /// Called by the representable once the `NSTextView` exists; `host` is
     /// the view around its scroll view, where the completion list is laid.
@@ -131,17 +132,31 @@ final class EditorController {
         focus()
     }
 
-    /// A brief accent pulse of the text backdrop, the "that ran" cue.
+    /// A brief accent pulse of the text backdrop, the "that ran" cue, over the
+    /// block the caret stands in rather than the whole buffer. The whole buffer
+    /// still compiles and the whole instance is still replaced, so the pulse
+    /// says where the performer was working, not what the compiler saw; a caret
+    /// standing between declarations lights everything, which is honest about
+    /// having nothing narrower to point at.
     func flashEvaluate() {
         flashTask?.cancel()
-        isFlashing = true
+        flashing = evaluatedRegion()?.range
+            ?? NSRange(location: 0, length: (textView?.string as NSString?)?.length ?? 0)
         rehighlight()
         flashTask = Task {
             try? await Task.sleep(for: .milliseconds(180))
             guard !Task.isCancelled else { return }
-            isFlashing = false
+            flashing = nil
             rehighlight()
         }
+    }
+
+    /// The declaration the caret stands in, for the pulse and for a host that
+    /// wants to name it.
+    func evaluatedRegion() -> SourceRegions.Region? {
+        guard let textView else { return nil }
+        return SourceRegions.region(in: textView.string,
+                                    containingOffset: textView.selectedRange().location)
     }
 
     /// Push the persisted style parameters (font size, backdrop opacity) into the
@@ -171,6 +186,6 @@ final class EditorController {
 
     private func rehighlight() {
         guard let storage = textView?.textStorage else { return }
-        highlighter.apply(to: storage, diagnostics: diagnostics, flashing: isFlashing)
+        highlighter.apply(to: storage, diagnostics: diagnostics, flashing: flashing)
     }
 }

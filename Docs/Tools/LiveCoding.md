@@ -24,6 +24,7 @@ OllinLiveCoding sits beside `OllinLive` rather than replacing it. OllinLive watc
 ### Contents
 
 - [The evaluate loop](#the-evaluate-loop) - ⌘↩, ⌘⇧↩, and what carries across a swap
+- [What the edit changed](#what-the-edit-changed) - when the run carries on instead of starting over
 - [Completing a name](#completing-a-name) - the list under the caret, and the placeholders it leaves
 - [Errors during a set](#errors-during-a-set) - the diagnostics strip
 - [Files, saving, and recovery](#files-saving-and-recovery) - evaluate never saves
@@ -40,7 +41,7 @@ Type your edit, then press **⌘↩ (Sketch ▸ Evaluate)**. The buffer compiles
 
 - **The clock carries.** `time` and `frameCount` continue across the swap, so an animation driven by phase does not jump. Use **⌘⇧↩ (Evaluate Fresh)** instead when you want the piece to start over, because that resets the clock.
 - **Tuned parameters carry.** A `@Param` value you dragged in the inspector is applied again before the new sketch draws. A value bound over MIDI or OSC carries the same way. A parameter you did not touch takes whatever default the code now declares, so editing a default in the source still works.
-- **Instance state resets.** The swap builds a new instance. `setup()` runs again, stored properties start from their initial values, and the accumulation surface clears. `reloaded()` fires after that `setup()` if you need a hook.
+- **The run carries on when it can.** If the edit moved nothing but the inside of a method, and left `setup()` alone, the piece keeps going: `setup()` does not run again, the canvas keeps whatever is piled on it, and the state you marked `@Saved` comes across. Anything else starts the run over, which is what a swap has always done. [What the edit changed](#what-the-edit-changed) has the whole rule.
 - **Two speeds.** The buffer compiles twice at once, plain and optimized, because Swift compiles the code rather than evaluating it directly. The plain build swaps in the moment it compiles, and the optimized build replaces it when it is ready, with the clock carried across that second swap too. An amber chip in the corner reads "Compiling…" until the code is on stage, then "Optimizing…" until the optimized build lands. A green "Evaluated" toast confirms the first swap and gives its time.
 
 Evaluation compiles the buffer exactly as it is on screen, unsaved changes included.
@@ -55,7 +56,53 @@ What the second speed buys is the optimizer's share of the compile, which grows 
 
 On a small sketch the two builds land together, and the mode costs a few hundredths. On a sketch the size a set grows into, the edit shows about a third sooner than the optimized build alone would show it. That build arrives a few hundredths later than it would alone, since the two compiles share the machine.
 
-The second swap is a swap like any other. `setup()` runs again, stored properties start over, and `reloaded()` fires again. A sketch driven by `time` never shows it, because the clock carries. A sketch that accumulates state, a particle system or a growing structure, starts over twice, a fraction of a second apart. Run the host with `--single-build` for that sketch, and every evaluation waits for the one optimized build.
+Both swaps of one evaluation do the same thing to the run, since they are the same code: an edit that carries the run carries it across both, and an edit that starts it over starts it over twice, a fraction of a second apart. That second case is what `--single-build` is for. Run the host that way and every evaluation waits for the one optimized build.
+
+### What the edit changed
+
+A swap always brings a fresh instance, because the code lives in a new library and there is no way to keep the old object and change what its methods do. What *can* be kept is everything the running instance had become. So each evaluation is read against the text the stage was built from, and the answer decides what the swap does to the run.
+
+**The run carries on** when nothing but the inside of a method moved. Then:
+
+- `setup()` does not run again, so the background it paints does not wipe the canvas.
+- The canvas keeps what is piled on it, which is the whole point for a piece drawn with `noClear()`.
+- `time` and `frameCount` go on, as they do across any swap.
+- `random()` and the noise fields carry on where they were, rather than restarting their sequence.
+- The `@Saved` properties come across, matched by name. This is the same mark that carries state across a relaunch, so one annotation covers both.
+- The extensions the sketch installed for itself and the automation it wrote come across, since the `extend` and `automate` calls that made them are not going to run again.
+- `reloaded()` fires, as it does after any swap.
+- Everything else is a fresh instance's declared value: a stored property you did not mark is back where the file puts it.
+
+**The run starts over** in every other case, exactly as it always did. The cases:
+
+- A declaration changed: a property added, removed, renamed, retyped, or given a different initial value; a signature changed; a type renamed.
+- `setup()` itself changed, or anything `setup()` calls, however far down. Editing `setup()` is asking for `setup()` to run, and a swap that skips it could never show that.
+- `setup()` builds state the swap cannot carry: it names a stored property that is not `@Saved`. A sketch whose particles are made in `setup()` would come back with none of them, so it restarts instead.
+- ⌘⇧↩, the first evaluation of a session, and the first after opening another file.
+
+Whitespace, comments and a rewrapped signature are not declaration changes, so writing a note above `draw()` costs nothing.
+
+The green toast names what happened: the block that ran, or "restarted". The editor lights the block the caret was standing in when you pressed ⌘↩, which is where you were working; the whole buffer still compiles, and the whole instance is still replaced.
+
+**To keep more across an edit**, mark it `@Saved`:
+
+```swift
+final class Field: Sketch {
+    @Saved var walkers: [Vector2] = []
+
+    override func setup() {
+        noClear()
+        background(.black)
+    }
+
+    override func draw() {
+        if walkers.isEmpty { walkers = (0..<200).map { _ in Vector2(random(width), random(height)) } }
+        ...
+    }
+}
+```
+
+Anything `Codable` can be saved. What cannot is anything living on the GPU, which is why the canvas is carried separately. Note where the walkers are built: filling them in `draw()` rather than `setup()` is what lets the edit carry the run, since `setup()` then names nothing the swap would lose.
 
 ### Completing a name
 

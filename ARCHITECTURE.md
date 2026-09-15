@@ -8303,6 +8303,70 @@ never on first launch. `SketchRunner.reload(to:)` honors the *new* sketch's
 declared `canvasSize` for non-`.resizable` modes, so an edited resolution
 takes effect on the swap.
 
+### Carrying a run across a swap
+
+`reload(to:keepClock:keepRun:)`'s third argument is the performance host's
+one, and it exists because "evaluate this block" cannot mean in Swift what it
+means in a language that interprets. The code lives in a freshly compiled
+dylib, so there is no object whose method could be replaced: the buffer is
+compiled whole and the instance is replaced whole, every time. What *can* be
+kept is everything the running instance had become by the moment of the swap,
+and the decision of whether keeping it is safe is a question about the text.
+
+`keepRun` skips `renderer.resetAccumulation()` and leaves `didSetup` alone, so
+`setup()` never runs on the fresh instance; `didReload` is then consumed by a
+branch of its own in the draw loop, which is where `reloaded()` fires for a
+carried swap. `Sketch.carryRun(from:)` (Core/RunCarry.swift) does the rest.
+Its one design decision worth stating: it **adopts the running `Drawer`
+whole** rather than copying fields out of it. A `Drawer` holds no reference
+back to a `Sketch`, so handing the object over brings the accumulated canvas,
+the fill and stroke, the blend mode, the text settings, the loaded fonts and
+images and the retained batches across in one assignment, including whatever
+is added to the drawer later; enumerating them would drift the day a field is
+added, and a missed one reads as a subtle difference between a run that
+carried and one that restarted. Beside it come the four generators and their
+recorded seeds (carrying the seed alone would restart the sequence, which a
+`random()`-driven piece shows as a jump), `view2D`, `isLooping`, and the
+`@Saved` properties matched by name through their own JSON, so one property
+that will not travel is named and skipped rather than costing the rest. That
+`@Saved` is also what a checkpoint carries is the point: a sketch marks what
+it would hate to lose once, and the mark covers a relaunch and an edit both.
+
+Two of the things it carries are not state at all but registrations, and they
+are the ones a first cut loses in silence: the extensions a sketch installed
+for itself and the automation it wrote, both put there by an `extend` or an
+`automate` call inside a `setup()` that is not going to run again.
+`adoptExtensions(from:)` lives on `Sketch` rather than in `RunCarry.swift`
+because the list is private, and it skips anything the fresh instance already
+holds so the runner re-attaching the stats observer and a running recorder
+never doubles them; `extensionsDidSetup` is left false, so every carried
+extension hears `setup` again against the instance now drawing, which is what
+the carried session recorder already relied on. The third of the kind is the
+pointer: the `else if didReload` branch seeds it the way the setup branch
+does, or a cursor-following sketch reads (0, 0) until the mouse next moves.
+
+A still sketch is why the camera snap's holdover flag is now named
+`pauseHoldover`: the `noLoop()`
+that paused it stands in a `setup()` that is not going to run again, so the
+swap un-pauses the view for the frame that shows the edit and hands the pause
+back once it settles, which is the same shape the camera snap already needed.
+
+`SourceRegions` (in `OllinRuntime`, so both hosts could use it) is the reading
+half. It is a bracket-counting line scan rather than a parser, on the same
+reasoning as `SourceReorder`: declarations are all the decision needs, a
+grammar is far more to keep right, and every way the scan can be wrong falls
+back to a restart. A comment or a bare attribute or modifier line joins the
+declaration under it, strings (raw literals included) and comments are
+skipped, and headers are compared with whitespace collapsed and comments
+dropped, so a reworded note or a rewrapped signature is the same declaration.
+The refusals are what make it safe rather than merely clever: a changed
+declaration, a changed `setup()` or anything reachable from it by a
+fixed-point name walk, and a `setup()` that names a stored property which is
+not `@Saved`. That last one is the `Examples/Patterns/Cracks` shape, where the
+field is built in `setup()` and an implicitly-unwrapped optional: skipping
+`setup()` there would crash the piece on stage, while being wrong the other
+way costs one unnecessary restart.
+
 ### `@Param` parameters and the inspector
 
 The generic `@Param` wrapper/registry in the core (`Param.swift`) drives the

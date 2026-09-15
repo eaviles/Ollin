@@ -446,8 +446,10 @@ open class Sketch {
     /// `draw()` instead.
     open func filesDropped() {}
     /// Called once after this sketch is hot-swapped in by the live-reload host,
-    /// right after its `setup()`. Override to do reload-specific work (the
-    /// default does nothing). Not called on the first launch — only on reloads.
+    /// right after its `setup()`, or on its first frame when the swap carried
+    /// the run and `setup()` did not run at all. Override to do reload-specific
+    /// work (the default does nothing). Not called on the first launch, only on
+    /// reloads.
     open func reloaded() {}
 
     // MARK: Extensions (the extend(...) seam)
@@ -459,6 +461,20 @@ open class Sketch {
     public func extend(_ ext: SketchExtension) {
         extensions.append(ext)
         if extensionsDidSetup { ext.setup(self) }
+    }
+
+    /// Take over the extensions `other` is running, for a swap that carries the
+    /// run (see ``carryRun(from:)``). They were registered in a `setup()` that
+    /// is not going to run again, so without this an overlay or a recorder a
+    /// sketch installed for itself would quietly disappear on an edit. One the
+    /// fresh instance already holds is left alone, so the runner re-attaching
+    /// its own never doubles them, and `extensionsDidSetup` stays false, so
+    /// every one of them hears `setup` again against the instance now drawing:
+    /// the same thing a carried recorder already relied on.
+    func adoptExtensions(from other: Sketch) {
+        for ext in other.extensions where !extensions.contains(where: { $0 === ext }) {
+            extensions.append(ext)
+        }
     }
 
     // MARK: Loop control
@@ -2365,7 +2381,7 @@ open class Sketch {
     // MARK: - Internals
 
     /// The state machine + per-frame geometry recorder the bare API forwards to.
-    let drawer = Drawer()
+    var drawer = Drawer()
 
     /// Remember which line of the sketch is drawing, so a host can find the
     /// shape under a pointer and the numbers that placed it (see `SourcePick`).

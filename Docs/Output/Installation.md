@@ -104,6 +104,8 @@ override var installation: Installation { Installation(checkpoint: .every(second
 
 That is the whole API. Every `@Saved` property is written at that interval, along with the seed, the clock, and every `@Param` value. A relaunch restores them all, and the piece carries on.
 
+The same mark does a second job at the desk. When you evaluate an edit in the live-coding host and the run carries on rather than starting over, the `@Saved` properties are what comes across: see [what the edit changed](../Tools/LiveCoding.md#what-the-edit-changed).
+
 Checkpointing is off until you ask for it, even under `.on`, because restoring changes what a piece does on launch. That is right for a wall and confusing at a desk.
 
 Nothing is ever written before the run has read the file it replaces. This matters because a quit or a stop signal can arrive before the first frame. A save at that point would replace a piece that had been growing for days with an empty run.

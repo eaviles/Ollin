@@ -32,7 +32,7 @@
   func beginInstallation(_: Installation)
   func beginTake(writingTo: Foundation.URL? = default)
   func invalidateUserShaders()
-  func reload(to: Sketch, keepClock: Bool = default)
+  func reload(to: Sketch, keepClock: Bool = default, keepRun: Bool = default)
   func reloadShaderLibrary(fromDirectory: String) throws
   func reloadShaderLibrary(source: String) throws
   func replay(_: Take)

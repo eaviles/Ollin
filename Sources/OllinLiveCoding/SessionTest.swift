@@ -192,9 +192,101 @@ enum SessionTest {
             fail("deleting the cue did not empty the list and the file")
         }
 
+        await checkSupersedeAcrossARunner(loader: loader)
+
         print("OllinLiveCoding sessiontest passed: the two-speed landing, param carry, variation carry, "
-            + "edited defaults, supersede against both builds, the clean failure, and the cue carry hold.")
+            + "edited defaults, supersede against both builds, the clean failure, the cue carry, and "
+            + "supersede across a run being carried all hold.")
         exit(0)
+    }
+
+    /// Supersede with a runner under it, against both kinds of evaluation: one
+    /// that carries the run and one that starts it over.
+    ///
+    /// The three things this pins that nothing without a runner can:
+    ///
+    /// - A newer evaluation wins whether or not either asked to carry the run,
+    ///   so the older one's optimized build never swaps stale code onto a stage
+    ///   that is mid-piece.
+    /// - Both swaps of a two-speed evaluation carry it, so the silent second
+    ///   one does not quietly restart the piece a fraction of a second after
+    ///   the first one did not.
+    /// - An evaluation that does not ask to carry the run still starts it over,
+    ///   which is what every swap did before this and what a declaration edit
+    ///   still does.
+    @MainActor
+    private static func checkSupersedeAcrossARunner(loader: SketchLoader) async {
+        print("OllinLiveCoding sessiontest: supersede across a run being carried …")
+        guard let view = HeadlessStage.view(side: 256), let device = view.device else {
+            fail("no Metal device")
+        }
+        let session = SketchSession(keepClock: true, landsPlainBuildFirst: true)
+        session.evaluate(loader, input: .source(HeadlessStage.pilingProbe(mark: 8)))
+        await settle(session)
+        guard let mounted = session.sketch else { fail("the probe did not mount") }
+        let sink = FrameSink()
+        mounted.extend(sink)
+        let runner = SketchRunner(sketch: mounted, view: view, device: device)
+        session.attach(runner)
+        for _ in 0..<5 where !HeadlessStage.step(runner, view, mounted) {
+            fail("the runner never drew a frame")
+        }
+        guard HeadlessStage.saved("frames", of: mounted) == 5 else {
+            fail("the probe drew \(HeadlessStage.saved("frames", of: mounted) ?? -1) frames, expected five")
+        }
+
+        // Two carrying evaluations back to back. The newer one must be the one
+        // on stage when the dust settles, through both of its builds.
+        session.evaluate(loader, input: .source(HeadlessStage.pilingProbe(mark: 10)), keepRun: true)
+        session.evaluate(loader, input: .source(HeadlessStage.pilingProbe(mark: 14)), keepRun: true)
+        await settle(session)
+        try? await Task.sleep(for: .seconds(4))   // let the superseded compiles finish and be refused
+        guard let onStage = session.currentSketch else { fail("nothing on stage after the supersede") }
+        onStage.extend(sink)
+        guard mark(of: onStage) == 14 else {
+            fail("a superseded evaluation landed last (the bar is \(mark(of: onStage) ?? .nan) wide)")
+        }
+        guard build(of: onStage) == 2 else {
+            fail("the optimized build did not replace the plain one (build \(build(of: onStage)))")
+        }
+        // The run carried through both swaps: the state kept counting and the
+        // pile is still on the canvas.
+        guard HeadlessStage.saved("frames", of: onStage) == 5 else {
+            fail("the run did not carry through both swaps (frame "
+                + "\(HeadlessStage.saved("frames", of: onStage) ?? -1), expected the fifth)")
+        }
+        guard let frame = HeadlessStage.grab(sink, runner, view, onStage) else {
+            fail("no frame came back after the supersede")
+        }
+        let carriedBars = HeadlessStage.bars(of: frame)
+        guard carriedBars == 6 else {
+            fail("the carried run shows \(carriedBars) bars after the supersede, expected six")
+        }
+
+        // And the other kind: an evaluation that does not ask to carry the run
+        // starts it over, runner and all.
+        session.evaluate(loader, input: .source(HeadlessStage.pilingProbe(mark: 18)))
+        await settle(session)
+        guard let restarted = session.currentSketch else { fail("nothing on stage after the restart") }
+        restarted.extend(sink)
+        guard let restartedFrame = HeadlessStage.grab(sink, runner, view, restarted) else {
+            fail("no frame came back from the restarted run")
+        }
+        guard HeadlessStage.bars(of: restartedFrame) == 1,
+              HeadlessStage.saved("frames", of: restarted) == 1 else {
+            fail("an evaluation that did not ask to carry the run did not start it over "
+                + "(\(HeadlessStage.bars(of: restartedFrame)) bars, frame "
+                + "\(HeadlessStage.saved("frames", of: restarted) ?? -1))")
+        }
+    }
+
+    /// The bar width the sketch on stage was compiled with, which is what tells
+    /// two evaluations of the same probe apart.
+    @MainActor
+    private static func mark(of sketch: Sketch) -> Double? {
+        guard let handle = sketch.parameters().first(where: { $0.name == "mark" }),
+              case .number(let v) = handle.param.stored else { return nil }
+        return v
     }
 
     /// Wait for the in-flight evaluation to resolve, its optimized build

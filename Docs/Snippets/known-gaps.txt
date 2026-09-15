@@ -846,7 +846,7 @@ ce617da83e59  Docs/Helpers/Synthesis.md:112  cannot find type 'PlayingNote' in s
 7061a94dbb81  Docs/Helpers/Synthesis.md:215  cannot find 'Synth' in scope
 46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'PluckedString' in scope
 af59bd54d5b2  Docs/Helpers/Synthesis.md:259  cannot find 'Synth' in scope
-18a9f63e8409  Docs/Helpers/Synthesis.md:286  missing argument for parameter 'at' in call
+18a9f63e8409  Docs/Helpers/Synthesis.md:286  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
 883a650f2006  Docs/Helpers/Synthesis.md:326  cannot find 'Synth' in scope
 43fbd5e77cc0  Docs/Helpers/Synthesis.md:357  cannot find 'Synth' in scope
 99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope

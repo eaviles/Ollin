@@ -109,15 +109,18 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var lastAxisFlag: Bool?
     private var lastGridFlag: Bool?
 
-    /// True while a camera snap or axis-widget drag has un-paused a `noLoop()`
-    /// sketch so the glide can animate. The pause must be handed back once the
-    /// camera settles: the sketch itself can't re-pause (its one-shot `noLoop()`
-    /// already ran, and `setLooping` only reacts to changes), so without this a
-    /// single ⌘-view press would leave a still sketch redrawing at full refresh
-    /// forever. `cameraHoldoverPose` is the previous frame's resolved camera; two
-    /// equal consecutive poses (with no pending snap or drag) mean settled.
-    private var cameraHoldover = false
-    private var cameraHoldoverPose: Camera3D?
+    /// True while something has un-paused a `noLoop()` sketch for one piece of
+    /// work: a camera snap or an axis-widget drag so the glide can animate, or
+    /// a swap that carried the run so the frame showing the edit is drawn. The
+    /// pause must be handed back once that work settles: the sketch itself
+    /// can't re-pause (its one-shot `noLoop()` already ran, and `setLooping`
+    /// only reacts to changes), so without this a single ⌘-view press would
+    /// leave a still sketch redrawing at full refresh forever.
+    /// `holdoverPose` is the previous frame's resolved camera; two equal
+    /// consecutive poses (with no pending snap or drag) mean settled, and a 2D
+    /// sketch has none, so it settles on the frame it drew.
+    private var pauseHoldover = false
+    private var holdoverPose: Camera3D?
 
     /// The longest step the sketch clock takes in one frame, however long the
     /// frame actually took. The clock is the sum of its steps rather than the
@@ -687,7 +690,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// doesn't use the rig (or is 2D) simply ignores it.
     func requestCameraView(_ view: CameraView) {
         pendingCameraView = view
-        if !sketch.isLooping { cameraHoldover = true }   // hand the pause back once settled
+        if !sketch.isLooping { pauseHoldover = true }   // hand the pause back once settled
         self.view?.isPaused = false   // a noLoop() sketch must still snap on demand
     }
 
@@ -739,12 +742,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             sketch.setMouseButtonState(false)
             widgetDragBase = nil
         }
-        if !sketch.isLooping { cameraHoldover = true }   // hand the pause back once settled
+        if !sketch.isLooping { pauseHoldover = true }   // hand the pause back once settled
         view?.isPaused = false
     }
 
     /// Swap in a freshly loaded sketch without tearing down the window or GPU
-    /// resources — the heart of live reload. The new instance starts clean:
+    /// resources, the heart of live reload. The new instance starts clean:
     /// `setup()` runs again and the clock resets on the next frame. **Call on the
     /// main thread**, since the draw callback runs there and reads `sketch`.
     /// - Parameters:
@@ -753,7 +756,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     ///     `time`/`frameCount` advancing across the swap instead of resetting to
     ///     zero, so an animation's phase doesn't visibly jump on reload. Instance
     ///     state still resets (it's a fresh instance either way).
-    public func reload(to newSketch: Sketch, keepClock: Bool = false) {
+    ///   - keepRun: when `true`, the run underneath the swap carries on instead
+    ///     of starting over: `setup()` does not run again, the canvas keeps
+    ///     what is piled on it, and the drawing state, the random streams, the
+    ///     `@Saved` properties, and the extensions and automation the sketch
+    ///     registered all come across. It implies `keepClock`, since a run that
+    ///     continues keeps its clock. Only ask for it when the fresh instance
+    ///     can stand without its own `setup()`: the live host decides that by
+    ///     reading what the edit changed, and starts the run over whenever it
+    ///     cannot tell.
+    public func reload(to newSketch: Sketch, keepClock: Bool = false, keepRun: Bool = false) {
         // A reload ends the take on either side of the transport: an edited
         // sketch is a different run (its take is written out, so nothing is
         // lost), and a replay's recorded inputs belong to the code they drove.
@@ -773,12 +785,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             newSketch.setCanvasSize(width: Double(newSketch.canvasSize.width),
                                     height: Double(newSketch.canvasSize.height))
         }
-        if keepClock {
+        if keepClock || keepRun {
             newSketch.frameCount = sketch.frameCount
             clockCarry = sketch.time      // continue `time` from here (see draw)
         } else {
             clockCarry = nil
         }
+        // The run itself, when the edit could not have changed what it is made
+        // of: the drawing (and with it the pile on the canvas), the random
+        // streams, and the state the sketch marked as worth keeping.
+        if keepRun { newSketch.carryRun(from: sketch) }
         // The drawable and the present pipeline were built for the running
         // sketch's `colorOutput` and can't be swapped under a live frame, so an
         // edited one is honored on the next launch. Said out loud, because
@@ -798,14 +814,20 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             newSketch.sessionRecorder = recorder
             newSketch.extend(recorder)
         }
-        renderer.resetAccumulation()   // a reloaded sketch starts on a clean canvas
-        didSetup = false            // re-run setup() next frame
+        if !keepRun {
+            renderer.resetAccumulation()   // a reloaded sketch starts on a clean canvas
+            didSetup = false        // re-run setup() next frame
+        }
         didReload = true            // ...then call reloaded() once
         lastAxisFlag = nil          // re-assert the fresh sketch's axis/grid defaults
         lastGridFlag = nil
-        cameraHoldover = false      // any camera-snap holdover belonged to the old sketch
-        cameraHoldoverPose = nil
+        pauseHoldover = false       // any holdover belonged to the sketch being replaced
+        holdoverPose = nil
         view?.isPaused = false      // a prior noLoop() must not freeze the reload
+        // A run that carries on keeps a still sketch still: the `noLoop()` that
+        // paused it is in a `setup()` that is not going to run again, so the
+        // pause is handed back once the frame that shows the edit is drawn.
+        if keepRun, !newSketch.isLooping { pauseHoldover = true }
     }
 
     /// Start feeding per-frame stats into `stats` (for the overlay and the live
@@ -1005,6 +1027,17 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         } else if pendingSetupRerun {
             pendingSetupRerun = false
             sketch.setup()            // in-place asset reload; clock keeps running
+        } else if didReload {
+            // A swap that carried the run: `setup()` did not run, so this is
+            // where the fresh instance hears that it was the one swapped in,
+            // and where it learns where the pointer is. Without the second
+            // one a mouse-driven sketch reads (0, 0) until the pointer next
+            // moves, and whatever follows the cursor jumps to the corner.
+            didReload = false
+            #if os(macOS)
+            (view as? OllinMTKView)?.seedPointer()
+            #endif
+            sketch.reloaded()
         }
 
         // A refresh the GPU has no room for is dropped whole, here, before the
@@ -1299,25 +1332,25 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
 
         // Hand the pause back to a `noLoop()` sketch once the camera work that
-        // un-paused it has settled (see `cameraHoldover`). A 2D or hand-`camera()`
+        // un-paused it has settled (see `pauseHoldover`). A 2D or hand-`camera()`
         // sketch has no rig-resolved camera, so it settles right away; a glide or
         // release momentum keeps the pose changing frame to frame and holds the
         // view running until it comes to rest.
-        if cameraHoldover {
+        if pauseHoldover {
             if sketch.isLooping {
-                cameraHoldover = false          // the sketch runs continuously anyway
-                cameraHoldoverPose = nil
+                pauseHoldover = false          // the sketch runs continuously anyway
+                holdoverPose = nil
             } else if pendingCameraView == nil, widgetDragBase == nil {
                 let pose = sketch.activeCamera
-                let settled = pose == nil || (cameraHoldoverPose.map { poseSettled($0, pose!) } ?? false)
-                cameraHoldoverPose = pose
+                let settled = pose == nil || (holdoverPose.map { poseSettled($0, pose!) } ?? false)
+                holdoverPose = pose
                 if settled {
-                    cameraHoldover = false
-                    cameraHoldoverPose = nil
+                    pauseHoldover = false
+                    holdoverPose = nil
                     view.isPaused = true
                 }
             } else {
-                cameraHoldoverPose = sketch.activeCamera
+                holdoverPose = sketch.activeCamera
             }
         }
 

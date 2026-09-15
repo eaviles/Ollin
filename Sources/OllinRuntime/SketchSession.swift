@@ -69,7 +69,9 @@ public final class SketchSession {
     /// loading and linking. What it costs is a second fresh instance: the
     /// second swap runs `setup()` again and fires `reloaded()` again, so a
     /// sketch that accumulates state starts over twice, a fraction of a
-    /// second apart. The host's flag that turns it off is for that sketch.
+    /// second apart, unless the evaluation carried the run (`keepRun`), which
+    /// the second swap carries too. The host's flag that turns it off is for
+    /// the sketch that cannot.
     public var landsPlainBuildFirst: Bool
     /// Whether the optimized build of the sketch on stage is still compiling:
     /// a plain build has swapped in and the optimized one has not yet replaced
@@ -231,6 +233,14 @@ public final class SketchSession {
     /// swap (so a host can re-assert canvas size, retitle, print); `onFailure`
     /// runs with the running sketch left untouched.
     ///
+    /// `keepRun` asks for the run underneath to carry on rather than start
+    /// over (`SketchRunner.reload(to:keepClock:keepRun:)`): `setup()` does not
+    /// run again, the canvas keeps its pile, and the drawing state, the random
+    /// streams and the `@Saved` properties come across. It is the host's call,
+    /// not this one's, because only the host has the text the edit was made
+    /// against; `SourceRegions.change(from:to:)` is what decides it. It applies
+    /// to both swaps of a two-speed evaluation, since they run the same code.
+    ///
     /// With `landsPlainBuildFirst` on and a loader that optimizes, the two
     /// compiles start side by side (the optimized one takes a few percent
     /// longer with the plain one beside it than alone, measured). The plain
@@ -245,6 +255,7 @@ public final class SketchSession {
     public func evaluate(_ loader: SketchLoader,
                          input: SketchLoader.Input = .file,
                          keepClock: Bool? = nil,
+                         keepRun: Bool = false,
                          onSuccess: (@MainActor (Sketch) -> Void)? = nil,
                          onFailure: (@MainActor (SketchLoader.LoadError) -> Void)? = nil) {
         phase = .compiling
@@ -273,7 +284,7 @@ public final class SketchSession {
                 switch plain {
                 case .success(let dylibPath):
                     switch self.land(dylibPath, with: loader, keepClock: carryClock,
-                                     started: started, counts: true) {
+                                     keepRun: keepRun, started: started, counts: true) {
                     case .success(let newSketch):
                         plainLanded = true
                         self.isOptimizing = true
@@ -296,13 +307,14 @@ public final class SketchSession {
                     // The silent second swap: the clock carries whatever the
                     // first did, and the host is not told again.
                     if case .failure(let error) = self.land(dylibPath, with: loader, keepClock: true,
-                                                            started: started, counts: false) {
+                                                            keepRun: keepRun, started: started,
+                                                            counts: false) {
                         print("Ollin: the optimized build did not load, so the plain build stays: \(error)")
                     }
                     self.isOptimizing = false
                 } else {
                     switch self.land(dylibPath, with: loader, keepClock: carryClock,
-                                     started: started, counts: true) {
+                                     keepRun: keepRun, started: started, counts: true) {
                     case .success(let newSketch):
                         self.phase = .idle
                         onSuccess?(newSketch)
@@ -329,13 +341,14 @@ public final class SketchSession {
     /// Hands back the instance on stage, or the error when the dylib does
     /// not load, with nothing changed.
     private func land(_ dylibPath: String, with loader: SketchLoader, keepClock: Bool,
-                      started: Date, counts: Bool) -> Result<Sketch, SketchLoader.LoadError> {
+                      keepRun: Bool, started: Date,
+                      counts: Bool) -> Result<Sketch, SketchLoader.LoadError> {
         switch loader.instantiate(dylibPath: dylibPath) {
         case .success(let newSketch):
             syncParams(newSketch)   // re-apply tuned parameters before it draws
             if let runner {
                 if counts { lastBuildSeconds = Date().timeIntervalSince(started) }
-                runner.reload(to: newSketch, keepClock: keepClock)
+                runner.reload(to: newSketch, keepClock: keepClock, keepRun: keepRun)
                 if counts { reloadCount += 1 }
             } else {
                 sketch = newSketch   // no runner yet: the view mounts this one

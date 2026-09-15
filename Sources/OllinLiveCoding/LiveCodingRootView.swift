@@ -143,7 +143,8 @@ struct LiveCodingRootView: View {
                 }
                 if showEvaluatedToast {
                     EvaluatedToast(count: session.evaluateCount,
-                                   buildSeconds: session.core.lastBuildSeconds)
+                                   buildSeconds: session.core.lastBuildSeconds,
+                                   what: session.evaluationSummary)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
@@ -281,16 +282,23 @@ private struct SavedRecordingToast: View {
     }
 }
 
-/// A brief "that ran" confirmation: check, evaluation number, build seconds.
+/// A brief "that ran" confirmation: check, what it did to the run, evaluation
+/// number, build seconds.
 private struct EvaluatedToast: View {
     let count: Int
     var buildSeconds: Double?
+    /// The block that ran, or that the run started over; nil on the first
+    /// evaluation, where there is nothing to have changed.
+    var what: String?
 
     @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     private var subtitle: String {
-        if let buildSeconds { return String(format: "%.2fs · #%d", buildSeconds, count) }
-        return "#\(count)"
+        var parts: [String] = []
+        if let what { parts.append(what) }
+        if let buildSeconds { parts.append(String(format: "%.2fs", buildSeconds)) }
+        parts.append("#\(count)")
+        return parts.joined(separator: " · ")
     }
 
     var body: some View {
