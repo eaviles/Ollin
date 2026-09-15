@@ -14,26 +14,26 @@
 # names its prose establishes; it is spliced into every probe from that page.
 
 f120c3e411c4  Docs/3D/3D.md:137  cannot find 'x' in scope
-344f7f4b3cc6  Docs/3D/3D.md:1403  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
-b315a31afeb9  Docs/3D/3D.md:1424  cannot find 'planks' in scope
-e0187f40506d  Docs/3D/3D.md:1469  cannot find 'rockColor' in scope
-677c77a8c73e  Docs/3D/3D.md:1487  cannot find 'h' in scope
-d51355214a9e  Docs/3D/3D.md:1514  cannot find 'paint' in scope
-2a67d7fc8d2c  Docs/3D/3D.md:1543  cannot find 'brickColor' in scope
-5193d7f3850b  Docs/3D/3D.md:1559  cannot find 'reliefImage' in scope
-124899510ce1  Docs/3D/3D.md:1579  cannot find 'rock' in scope
-d1a6a8c0f0eb  Docs/3D/3D.md:1610  cannot find 'rock' in scope
-c8abc89c9034  Docs/3D/3D.md:1634  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
-945a0d5a84a5  Docs/3D/3D.md:1680  cannot find 'blob' in scope
+344f7f4b3cc6  Docs/3D/3D.md:1430  cannot convert value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' to expected argument type 'Image'
+b315a31afeb9  Docs/3D/3D.md:1451  cannot find 'planks' in scope
+e0187f40506d  Docs/3D/3D.md:1496  cannot find 'rockColor' in scope
+677c77a8c73e  Docs/3D/3D.md:1514  cannot find 'h' in scope
+d51355214a9e  Docs/3D/3D.md:1541  cannot find 'paint' in scope
+2a67d7fc8d2c  Docs/3D/3D.md:1570  cannot find 'brickColor' in scope
+5193d7f3850b  Docs/3D/3D.md:1586  cannot find 'reliefImage' in scope
+124899510ce1  Docs/3D/3D.md:1606  cannot find 'rock' in scope
+d1a6a8c0f0eb  Docs/3D/3D.md:1637  cannot find 'rock' in scope
+c8abc89c9034  Docs/3D/3D.md:1661  cannot use instance member 'loadImage' within property initializer; property initializers run before 'self' is available
+945a0d5a84a5  Docs/3D/3D.md:1707  cannot find 'blob' in scope
 7d5e1e905641  Docs/3D/3D.md:190  cannot find 'x' in scope
 f6d0fb32d6d9  Docs/3D/3D.md:229  cannot find 'block' in scope
 7de5e54328c1  Docs/3D/3D.md:410  'module' is inaccessible due to 'internal' protection level
 d1d9e1bb1524  Docs/3D/3D.md:423  cannot find 'eye' in scope
 a0b9671c7ce3  Docs/3D/3D.md:58  '@main' attribute cannot be applied to this declaration
-a5b3460feb06  Docs/3D/3D.md:854  cannot find 'e' in scope
+a5b3460feb06  Docs/3D/3D.md:881  cannot find 'e' in scope
 f0ec15e3ed0a  Docs/3D/3D.md:89  cannot find 'a' in scope
-59a8691ecc04  Docs/3D/3D.md:893  overriding declaration requires an 'override' keyword
-03e5bc13e5b1  Docs/3D/3D.md:910  cannot call value of non-function type 'Double'
+59a8691ecc04  Docs/3D/3D.md:920  overriding declaration requires an 'override' keyword
+03e5bc13e5b1  Docs/3D/3D.md:937  cannot call value of non-function type 'Double'
 1fbb55b7ead2  Docs/3D/Atmosphere.md:13  cannot convert value of type '(UnboundedRange_) -> ()' to expected argument type 'Camera3D'
 c58bc0d079e5  Docs/3D/Atmosphere.md:94  cannot find 'gobo' in scope
 1eefcecfecc2  Docs/3D/Camera.md:134  cannot find 'stage' in scope
@@ -1035,7 +1035,7 @@ bf331903d9bb  Docs/Output/Fabrication.md:21  cannot find 'sculpture' in scope
 35d445a4a864  Docs/Output/Fabrication.md:9  cannot find 'sculpture' in scope
 5445c40f9d09  Docs/Output/GCode.md:15  cannot find 'sketch' in scope
 4489554dc4f1  Docs/Output/GCode.md:68  cannot find 'contours' in scope
-12359ddcd771  Docs/Output/Installation.md:401  cannot find 'worldPoint' in scope
+12359ddcd771  Docs/Output/Installation.md:403  cannot find 'worldPoint' in scope
 a40222f7916b  Docs/Output/MenuBar.md:30  '@main' attribute cannot be applied to this declaration
 826ef6fcd6ec  Docs/Output/MenuBar.md:48  cannot find 'Pulse' in scope
 5b5406a3551d  Docs/Output/PathTraced.md:91  cannot find 'sketch' in scope
@@ -1075,6 +1075,7 @@ d6df8fe7b65e  Docs/Shaders/Visuals.md:42  cannot find 'target' in scope
 d63ce2fae9b8  Docs/Shaders/Visuals.md:58  cannot infer contextual base in reference to member 'rotated'
 95db289f31d7  Docs/Shaders/Visuals.md:73  cannot infer contextual base in reference to member 'brightness'
 23046807924e  Docs/Shaders/Visuals.md:90  cannot find 'a' in scope
+be18b69eb292  Docs/Simulation/Crowds.md:90  cannot find 'crowd' in scope
 c21e65b9ae05  Docs/Simulation/Evolution.md:100  cannot find 'run' in scope
 3573a79f65aa  Docs/Simulation/Evolution.md:123  cannot find 'drawOrnament' in scope
 81876aa5dc17  Docs/Simulation/Evolution.md:154  cannot find 'pool' in scope

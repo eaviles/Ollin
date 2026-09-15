@@ -937,6 +937,35 @@ final class CrackGrowth
     let washExtent: Vector2
   var count: Int { get }
   var segments: [(Vector2, Vector2)] { get }
+final class Crowd
+  @discardableResult func add(at: Vector2, goal: Vector2? = default, radius: Double = default, maxSpeed: Double = default, group: Int = default) -> Int
+  func addObstacle(_: Rectangle)
+  func addObstacle(_: [Vector2])
+  func addWall(_: [Vector2])
+  func addWall(from: Vector2, to: Vector2)
+  func advance(by: Double = default)
+  func removeAllObstacles()
+  init(timeHorizon: Double = default, obstacleTimeHorizon: Double = default, perceptionRadius: Double = default, maxNeighbors: Int = default, seed: Int = default)
+  struct Agent: Equatable, Sendable
+    init(at: Vector2, goal: Vector2? = default, radius: Double = default, maxSpeed: Double = default, group: Int = default)
+    var goal: Vector2? { get set }
+    var group: Int { get set }
+    var isJammed: Bool { get }
+    var maxSpeed: Double { get set }
+    var position: Vector2 { get set }
+    var radius: Double { get set }
+    var velocity: Vector2 { get set }
+  var agents: [Crowd.Agent] { get set }
+  var count: Int { get }
+  var jitter: Double { get set }
+  var maxNeighbors: Int { get set }
+  var obstacleTimeHorizon: Double { get set }
+  var obstacles: [[Vector2]] { get }
+  var perceptionRadius: Double { get set }
+  var preferredVelocity: ((Crowd.Agent) -> Vector2)? { get set }
+  var slowingRadius: Double { get set }
+  var timeHorizon: Double { get set }
+  var walls: [[Vector2]] { get }
 final class DataFeed: Sendable
   convenience init(_: Foundation.URL, every: Double = default, as: DataFeed.Content = default, headers: [String : String] = default)
   convenience init(_: String, every: Double = default, as: DataFeed.Content = default, headers: [String : String] = default)
@@ -1951,6 +1980,7 @@ open class Sketch: Sendable
   func drawCreases(_: CreasePattern, _: CreasePattern.Assignment)
   func drawCross(_: Double, _: Double, _: Double, _: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
   func drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Double = default, file: StaticString = default, line: Int = default, column: Int = default)
+  func drawCrowd(_: Crowd)
   func drawCurve(_: [Vector2], closed: Bool = default, spline: Spline = default)
   func drawCutDisk(_: Double, _: Double, _: Double, _: Double, file: StaticString = default, line: Int = default, column: Int = default)
   func drawCutDisk(center: Vector2, radius: Double, cut: Double, file: StaticString = default, line: Int = default, column: Int = default)

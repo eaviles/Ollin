@@ -56,6 +56,7 @@ d7900de9175f  Guide/10-Vectors.md:158  cannot find 'target' in scope
 766fbe6bd4ab  Guide/11-ForcesAndPhysics.md:271  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 903bd8f5d681  Guide/11-ForcesAndPhysics.md:279  cannot convert value of type '@MainActor (Vector2, World3D) -> (body: Body3D, point: Vector3)?' to expected argument type 'Body'
 ffa12e764a7d  Guide/12-FlocksAndSwarms.md:17  cannot find 'position' in scope
+c75eb2a20310  Guide/12-FlocksAndSwarms.md:334  cannot find 'crowd' in scope
 4bd9e3101756  Guide/13-GrowingThings.md:308  missing argument label 'at:' in call
 750461323d36  Guide/14-FieldsAndFlow.md:156  cannot find 'x' in scope
 b4305a9b13a0  Guide/15-ShapesAsMaterial.md:218  cannot convert value of type 'Shape' to expected argument type 'Contour'
@@ -100,7 +101,7 @@ de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '
 4bb9d03104bb  Guide/20-ParticleSimulations.md:71  cannot assign value of type 'ParticleLife' to type 'SimField'
 0a07e471de6b  Guide/20-ParticleSimulations.md:85  cannot assign value of type 'Physarum' to type 'Particles'
 4de6ac607cb1  Guide/21-3DGently.md:277  cannot find 'ringFile' in scope
-d3145c90ad5d  Guide/21-3DGently.md:393  cannot find 'knot' in scope
+d3145c90ad5d  Guide/21-3DGently.md:418  cannot find 'knot' in scope
 3bdd590a4114  Guide/22-Meshes.md:163  cannot find 'color' in scope
 3cd0f225fa98  Guide/22-Meshes.md:198  cannot find 'dents' in scope
 2f43cec1c527  Guide/22-Meshes.md:214  cannot find 'paint' in scope
@@ -319,8 +320,8 @@ c517bfa97332  Guide/30-Seeing.md:425  cannot find 'ScreenCapture' in scope
 ad5358257b7a  Guide/30-Seeing.md:444  cannot find 'screen' in scope
 6c7a3bff3785  Guide/30-Seeing.md:465  value of type '@MainActor (Camera3D) -> ()' has no member 'snapshot'
 9f0265c15491  Guide/30-Seeing.md:61  cannot find 'FaceTracker' in scope
-2c5147e37054  Guide/31-SharingAndPerforming.md:1009  cannot find '$radius' in scope
-f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1028  cannot find '$frame' in scope
+2c5147e37054  Guide/31-SharingAndPerforming.md:1011  cannot find '$radius' in scope
+f5e5c4b1c27b  Guide/31-SharingAndPerforming.md:1030  cannot find '$frame' in scope
 73e086e387cc  Guide/31-SharingAndPerforming.md:212  cannot find 'scene' in scope
 e7a70b196e04  Guide/31-SharingAndPerforming.md:294  cannot find 'sketch' in scope
 ebee99fca756  Guide/31-SharingAndPerforming.md:314  cannot find 'sketch' in scope
@@ -338,8 +339,8 @@ fa6d3e0179f1  Guide/31-SharingAndPerforming.md:71  cannot find 'MySketch' in sco
 29f2f3575884  Guide/31-SharingAndPerforming.md:722  cannot find 'HapticPattern' in scope
 3f87e906c5a4  Guide/31-SharingAndPerforming.md:751  cannot find 'MyWatermark' in scope
 161ff6887e4d  Guide/31-SharingAndPerforming.md:779  cannot find 'points' in scope
-2c60fc19e1c4  Guide/31-SharingAndPerforming.md:931  cannot find '$radius' in scope
-f51397a62393  Guide/31-SharingAndPerforming.md:992  cannot find '$radius' in scope
+2c60fc19e1c4  Guide/31-SharingAndPerforming.md:933  cannot find '$radius' in scope
+f51397a62393  Guide/31-SharingAndPerforming.md:994  cannot find '$radius' in scope
 32976ec86c4b  Guide/32-Installations.md:206  cannot find type 'Tile' in scope
 770e5f193c3c  Guide/32-Installations.md:351  cannot find 'worldPoint' in scope
 edf95f807bfe  Guide/32-Installations.md:375  cannot find 'speed' in scope

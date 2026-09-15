@@ -294,6 +294,59 @@ Passing the point's *index* rather than its position is what leaves the point it
 
 Build it fresh each frame when the points move. That costs one pass over them, which is nothing next to the work it saves.
 
+## A crowd that makes room
+
+A flock keeps its distance by pushing. Separation only acts once two boids are already too close, so nothing stops a fast boid from sliding into another for a frame. People walking through a crowd do something else. They look ahead, see a collision coming, and pick a path that misses it, and they expect the other person to move a little too.
+
+`Crowd` works that way. Give each walker a place to go and advance the crowd once a frame:
+
+```swift
+let crowd = Crowd()
+
+override func setup() {
+    for i in 0 ..< 60 {
+        let spot = center + Vector2(angle: Double(i) / 60 * .tau, length: 440)
+        crowd.add(at: spot, goal: center - (spot - center))
+    }
+}
+
+override func draw() {
+    crowd.advance()
+    background(.white)
+    fill(.black)
+    drawCrowd(crowd)
+}
+```
+
+Sixty walkers stand in a ring, and each one wants the spot straight across. Every frame, each walker asks one question about each neighbor: which velocities would bring the two of us together within the next second? Those velocities form a cone. The walker finds the smallest change that gets the pair out of the cone and takes only half of it. It trusts the neighbor to take the other half, and the neighbor, running the same rule, does. Then the walker picks the velocity closest to what it wants that keeps all of those promises at once. The method is called optimal reciprocal collision avoidance.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/MakingRoom-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/MakingRoom.jpg" alt="Three panels. Top left, two walkers head on: two paths bowing apart by the same amount around a dashed center line, with both discs touching where they pass. Top right, a room with a wall and one door, gray walkers funneling toward the gap and passing through in a file, several of those pressed against the door marked orange. Below, a corridor of walkers going both ways, gray ones right and orange ones left, with faint trails that run in horizontal bands of one color each" width="880">
+</picture>
+
+The first panel is the half-and-half on its own. Two walkers head straight at each other, and each bows out by exactly the same amount, in opposite directions. They touch at the moment they pass and never overlap. Because both sides move by half, nobody overcorrects, and there's none of the shoving a pushed-apart flock does.
+
+The second panel is where the promise ends. Pack a room and send everyone at one door. Near the door there may be no velocity that keeps a walker clear of everyone around it. Then it takes the velocity that breaks the promises least, and its `isJammed` is true for that frame. That's the only time two walkers can overlap, and then only by a small part of a radius. Walls are stricter. A walker never walks through one, jammed or not.
+
+Walls only keep walkers out, though. They don't lead anyone around them. A walker on the wrong side of a wall needs a goal that takes it where it has to go. For a door, that means aiming at the door until you're through:
+
+```swift
+crowd.addObstacle(Rectangle(x: 530, y: 0, width: 20, height: 500))
+crowd.addObstacle(Rectangle(x: 530, y: 580, width: 20, height: 500))
+crowd.preferredVelocity = { walker in
+    let p = walker.position
+    let target = p.x < 540 ? Vector2(540, 540) : Vector2(1200, p.y)
+    return (target - p).normalized * walker.maxSpeed
+}
+```
+
+`preferredVelocity` replaces every goal with a rule of your own. It's handed each walker, so it can also read `group`, a number you give each walker to use however you like.
+
+The third panel is the one nobody plans. Feed a corridor from both ends and the two streams sort themselves into lanes. No walker is told to follow anyone. A walker that falls in behind another going its way just meets fewer people, and the lanes build up from that. Pedestrians in a busy station do the same thing.
+
+Now change `timeHorizon`. It's how far ahead a walker looks, in seconds, and it starts at one. Look further and walkers turn earlier and more smoothly, until the crowd is dense enough that everyone sees everyone coming at once. Put 96 walkers in that ring and look four seconds ahead, and they stall a third of the way in and never arrive. Look less far and walkers keep straighter and swerve at the last moment.
+
 ## Falling into step
 
 A flock agrees about where to go. There is a second kind of agreement a crowd can reach, about *when*. Fireflies along a riverbank in Southeast Asia flash together, thousands of them, with nobody conducting. Crickets fall into a shared chirp. In 1665 Christiaan Huygens noticed that two pendulum clocks on the same wall had come to beat together, and went back to beating together when he disturbed one. Yoshiki Kuramoto wrote the model for all of it in 1975, and it fits in a sentence: every oscillator runs at its own natural pace, and every oscillator is pulled a little toward the phase of the crowd.
@@ -396,16 +449,17 @@ Then make it yours:
 
 ## Where this comes from
 
-Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules, and his 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on (his term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants). Daniel Shiffman's *The Nature of Code* made this material a rite of passage for creative coders, and its chapters on agents remain the warmest long-form treatment. The chase curves are older than all of it. Pierre Bouguer studied one ship pursuing another in 1732. Edouard Lucas posed the four-dogs question in 1877, and Henri Brocard answered it: the paths are logarithmic spirals, meeting in one point. Differential growth as a generative technique owes its popularity to Anders Hoff's explorations at inconvergent.net and Jason Webb's tutorials. The synchronization model is Yoshiki Kuramoto's, from a 1975 conference paper, and Steven Strogatz's 2003 book *Sync* is where most people met it, fireflies and Huygens's clocks included. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules, and his 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on (his term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants). Daniel Shiffman's *The Nature of Code* made this material a rite of passage for creative coders, and its chapters on agents remain the warmest long-form treatment. The chase curves are older than all of it. Pierre Bouguer studied one ship pursuing another in 1732. Edouard Lucas posed the four-dogs question in 1877, and Henri Brocard answered it: the paths are logarithmic spirals, meeting in one point. Differential growth as a generative technique owes its popularity to Anders Hoff's explorations at inconvergent.net and Jason Webb's tutorials. The crowd is Jur van den Berg, Stephen Guy, Ming Lin, and Dinesh Manocha's optimal reciprocal collision avoidance, from their 2011 paper "Reciprocal n-Body Collision Avoidance", and their RVO2 library is its reference implementation. The synchronization model is Yoshiki Kuramoto's, from a 1975 conference paper, and Steven Strogatz's 2003 book *Sync* is where most people met it, fireflies and Huygens's clocks included. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and parameter, including pursuit, evasion, and path following.
 - [Flocking](../Docs/Generators/Boids.md): the full `Boids` reference, including flow-field following.
 - [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's exact laws, and the parameters (`maxTurn`, `catchDistance`, the kept chase lines).
+- [Crowds](../Docs/Simulation/Crowds.md): the `Crowd` reference, what the walkers promise and where the promise ends, obstacles and walls, and every setting.
 - [Coupled oscillators](../Docs/Simulation/Oscillators.md): the `Kuramoto` reference, the order parameter, the critical coupling, the lag, and the ring.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth), and [`Examples/Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) (a meadow of fireflies falling into step).
+- Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth), [`Examples/Simulation/Kuramoto`](../Examples/Simulation/Kuramoto/Sketch.swift) (a meadow of fireflies falling into step), and [`Examples/Simulation/Crowd`](../Examples/Simulation/Crowd/Sketch.swift) (a door, a corridor, four crossing streams, and the ring).
 - [Spatial index](../Docs/Drawing/SpatialIndex.md): the neighbor search behind the flock, on its own, with the k-d tree for clumped sets and the growing form for sets you build point by point ([`Examples/Shapes/Neighbors`](../Examples/Shapes/Neighbors/Sketch.swift)).
 - The Reas homages in [`Examples/Recreations/CaseyReas/`](../Examples/Recreations/CaseyReas/): two written instructions that give elements their behaviors and leave the picture to what the elements do to each other. `Touching` never draws its circles at all, only a line between two of them while they touch, kept forever. `Planes` is a flock made of lines that turn toward what they touch and wander on their own, and it carries the lesson this chapter's rules are built on: a behavior that reads every neighbor has to *average* what they ask for, since adding them up makes a crowd pull harder the bigger it gets, and the flocks then gather into three knots and leave the surface bare.
 - [Accumulation](../Docs/Drawing/Accumulation.md): what `noClear()` really does, ahead of [Chapter 16](16-LayersAndEffects.md).

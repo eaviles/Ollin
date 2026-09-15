@@ -597,6 +597,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("pursuit",
                  note: "Three finished pursuit chases: a triangle, a hexagon, and eight runners each chasing the third one along. Pins the simultaneous step (a ring that stays regular is the only way the spirals stay even), the equal-angle spiral each runner leaves, the kept chase lines, and the arrival that stops a runner on its target. No rng and no time, so it is deterministic.",
                  make: { PursuitScene() }),
+    SnapshotCase("crowd",
+                 note: "Three crowds run to a fixed moment on the CPU and drawn: two walkers head on with every center each passed through (the equal and opposite swerve), a room draining through a door after three seconds with the walkers whose program was infeasible marked (a rectangle obstacle and an outline given the other way round, the least-intrusive fallback), and five walkers crossing to the far side of a ring with their paths, swirling past each other and home by six seconds. Pins the reciprocal half-planes, the incremental linear program and its fallback, the obstacle corners with either winding, the seeded jitter that keeps a symmetric start from knotting, and the fixed sixtieth-of-a-second steps. No time and no unseeded random, so it is deterministic.",
+                 make: { CrowdScene() }),
     SnapshotCase("clothoid",
                  note: "Four panels of the clothoid: the Cornu double spiral both arms, a fan of G1 fits leaving one point at one heading and arriving at another with seven different headings, and the same three-point corner rounded with an easement and then with none, each with its bend combed off the route. Pins the Fresnel quadrature, the single-unknown fit (including the straight and arc members of the fan), the easement/arc/easement corner and its tangent setback, and the counterfactual the whole curve exists for: the comb ramps on the eased corner and steps on the plain arc. No rng and no time, so it is deterministic.",
                  make: { ClothoidScene() }),
@@ -7746,6 +7749,72 @@ private final class PursuitScene: Sketch {
                 stroke(Color.mix(chalk, warm, Double(runner) / spread))
                 drawPolyline(trail.points)
             }
+        }
+    }
+}
+
+/// Three crowds at a fixed moment: two walkers head on, a room draining through a
+/// door, and five walkers crossing to the far side of a ring.
+private final class CrowdScene: Sketch {
+    override var canvasSize: CanvasSize { .size(384, 128) }
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+        let chalk = Color(hex: 0xF2ECDD), warm = Color(hex: 0xE0724A), stone = Color(hex: 0x5A6070)
+        noStroke()
+
+        // Head on: every center each walker passed through.
+        let pair = Crowd(seed: 2)
+        pair.add(at: Vector2(8, 64), goal: Vector2(120, 64), radius: 6, maxSpeed: 40)
+        pair.add(at: Vector2(120, 64), goal: Vector2(8, 64), radius: 6, maxSpeed: 40)
+        for _ in 0 ..< 180 {
+            pair.advance()
+            fill(chalk.withAlpha(0.5))
+            drawCircle(center: pair.agents[0].position, radius: 1)
+            fill(warm.withAlpha(0.5))
+            drawCircle(center: pair.agents[1].position, radius: 1)
+        }
+
+        // A room with a door, three seconds in.
+        let room = Crowd(seed: 3)
+        room.addObstacle(Rectangle(x: 190, y: -10, width: 6, height: 66))
+        room.addObstacle([Vector2(190, 72), Vector2(190, 140), Vector2(196, 140), Vector2(196, 72)])
+        var rng = SplitMix64(seed: 8)
+        while room.count < 40 {
+            let p = Vector2(136 + Double.random(in: 0 ..< 1, using: &rng) * 48, 6 + Double.random(in: 0 ..< 1, using: &rng) * 116)
+            if room.agents.allSatisfy({ $0.position.distance(to: p) > 9 }) { room.add(at: p, radius: 4, maxSpeed: 30) }
+        }
+        room.preferredVelocity = { agent in
+            let target = agent.position.x < 190 ? Vector2(193, 64) : Vector2(300, agent.position.y)
+            return (target - agent.position).normalized * agent.maxSpeed
+        }
+        for _ in 0 ..< 180 { room.advance() }
+        withClip(Rectangle(x: 128, y: 0, width: 128, height: 128)) {
+            fill(stone)
+            for outline in room.obstacles { drawPolygon(outline) }
+            for agent in room.agents {
+                fill(agent.isJammed ? warm : chalk)
+                drawCircle(center: agent.position, radius: agent.radius)
+            }
+        }
+
+        // Five walkers crossing to the far side of a ring: every center each passed through.
+        let ring = Crowd(seed: 5)
+        let middle = Vector2(320, 64)
+        for k in 0 ..< 5 {
+            let spot = middle + Vector2(angle: Double(k) / 5 * .tau, length: 54)
+            ring.add(at: spot, goal: middle - (spot - middle), radius: 5, maxSpeed: 26, group: k)
+        }
+        for _ in 0 ..< 360 {
+            ring.advance()
+            for agent in ring.agents {
+                fill(Color.mix(chalk, warm, Double(agent.group) / 4).withAlpha(0.5))
+                drawCircle(center: agent.position, radius: 0.8)
+            }
+        }
+        for agent in ring.agents {
+            fill(Color.mix(chalk, warm, Double(agent.group) / 4))
+            drawCircle(center: agent.position, radius: agent.radius)
         }
     }
 }

@@ -139,6 +139,7 @@ let package = Package(
         example("Simulation/PredatorPrey"),
         example("Simulation/Automata"),
         example("Simulation/Kuramoto"),
+        example("Simulation/Crowd"),
         example("Simulation/LifeQuilt"),
         example("Simulation/MultiScaleTuring"),
         example("Simulation/Fluid"),
