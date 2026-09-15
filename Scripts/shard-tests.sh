@@ -180,8 +180,14 @@ typeset -a failures
 for i in {0..$((shards - 1))}; do
     count=$(grep -oE 'Test run with [0-9]+ tests' "$work/shard$i.log" | grep -oE '[0-9]+' | head -1)
     ran=$((ran + ${count:-0}))
-    # The per-test lines, not the run summary, which also says "failed after".
-    failures+=(${(f)"$(grep '✘ Test .*failed after' "$work/shard$i.log" | grep -v 'Test run with')"})
+    # The per-test lines, not the run summary, which also says "failed after",
+    # and with them the issues each failing test recorded. Without those the
+    # job log carries the name of a test and nothing about why it failed, and
+    # the shard's own log is a temp dir nobody keeps: a runner failure then
+    # cannot be told from a real one without running it again somewhere else
+    # (2026-09-15, a browser page that needs 90 seconds and was given a
+    # starved machine).
+    failures+=(${(f)"$(grep -E '✘ Test .*failed after|recorded an issue' "$work/shard$i.log" | grep -v 'Test run with')"})
     printf 'shard-tests: shard %d ran %s tests\n' $i "${count:-none}"
 done
 
