@@ -224,6 +224,10 @@
       "Recreations/BridgetRiley/Current",
       "Recreations/BridgetRiley/Fragment3"
     ],
+    "Recreations/CaseyReas": [
+      "Recreations/CaseyReas/Touching",
+      "Recreations/CaseyReas/Planes"
+    ],
     "Recreations/FriederNake": [
       "Recreations/FriederNake/HommageAPaulKlee"
     ],
@@ -581,6 +585,14 @@
       ],
       "image": "groups/Recreations-BridgetRiley.jpg?v=b60256e3",
       "imageSmall": "groups/Recreations-BridgetRiley-640.jpg?v=6e87eeab"
+    },
+    "Recreations/CaseyReas": {
+      "of": [
+        "Recreations/CaseyReas/Touching",
+        "Recreations/CaseyReas/Planes"
+      ],
+      "image": "groups/Recreations-CaseyReas.jpg?v=63108829",
+      "imageSmall": "groups/Recreations-CaseyReas-640.jpg?v=b8690208"
     },
     "Recreations/FriederNake": {
       "of": [
@@ -8170,6 +8182,48 @@
       "still": "examples/Recreations/BridgetRiley/Fragment3/still.jpg?v=1ff4ea60",
       "stillSmall": "examples/Recreations/BridgetRiley/Fragment3/still-640.jpg?v=bf51efdf",
       "width": 1080
+    },
+    "Recreations/CaseyReas/Planes": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 15.431,
+      "sound": false,
+      "source": "6288a67e1bb124d2",
+      "rendered": "2026-09-15",
+      "bytes": {
+        "loop": 8078566,
+        "loopSmall": 2324578,
+        "still": 132571,
+        "stillSmall": 47700
+      },
+      "loop": "examples/Recreations/CaseyReas/Planes/loop.mp4?v=da2d5514",
+      "loopSmall": "examples/Recreations/CaseyReas/Planes/loop-640.mp4?v=0ce65cc2",
+      "still": "examples/Recreations/CaseyReas/Planes/still.jpg?v=fe25dd13",
+      "stillSmall": "examples/Recreations/CaseyReas/Planes/still-640.jpg?v=b205d97f"
+    },
+    "Recreations/CaseyReas/Touching": {
+      "width": 1080,
+      "height": 1080,
+      "length": "10.0s",
+      "seconds": 10.0,
+      "frame": 480,
+      "motion": 2.489,
+      "sound": false,
+      "source": "ae8a63ad5c69cd58",
+      "rendered": "2026-09-15",
+      "bytes": {
+        "loop": 1374951,
+        "loopSmall": 509712,
+        "still": 144982,
+        "stillSmall": 50849
+      },
+      "loop": "examples/Recreations/CaseyReas/Touching/loop.mp4?v=52bb89ad",
+      "loopSmall": "examples/Recreations/CaseyReas/Touching/loop-640.mp4?v=ddb47149",
+      "still": "examples/Recreations/CaseyReas/Touching/still.jpg?v=b4cd3d05",
+      "stillSmall": "examples/Recreations/CaseyReas/Touching/still-640.jpg?v=d3527730"
     },
     "Recreations/FriederNake/HommageAPaulKlee": {
       "bytes": {

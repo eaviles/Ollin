@@ -862,6 +862,10 @@ let package = Package(
         // two-part combinations.
         example("Recreations/SolLeWitt/FiftyPoints"),
         example("Recreations/SolLeWitt/ArcsCirclesGrids"),
+        // A written instruction, elements given behaviors, and the surface
+        // left to record what they did to each other, after Casey Reas.
+        example("Recreations/CaseyReas/Touching"),
+        example("Recreations/CaseyReas/Planes"),
         // The letter T painted only as the shadow it casts, panel after panel,
         // and rain falling across a square, after Vicente Rojo.
         example("Recreations/VicenteRojo/Negaciones"),
