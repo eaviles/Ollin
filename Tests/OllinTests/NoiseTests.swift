@@ -259,3 +259,128 @@ struct NoiseVariantTests {
         #expect(sketch.warpedFbm(3.2, 1.7, loop: 1) == sketch.warpedFbm(3.2, 1.7, loop: 0))
     }
 }
+
+/// The curl forms: the 2D curl is the slope of the field turned a quarter turn,
+/// the 3D curl is the curl of three offset copies of it, both worked out in
+/// closed form, so both are checked against differences taken through the
+/// public field and against the one law a curl has to keep: no divergence.
+@MainActor
+@Suite
+struct CurlNoiseTests {
+
+    /// Points where the stencil stays clear of the calibration's clip, since
+    /// the field's slope jumps there and no difference can be trusted across it.
+    private func clearOfTheClip(_ values: [Double]) -> Bool {
+        values.allSatisfy { $0 > 0.02 && $0 < 0.98 }
+    }
+
+    /// The 2D curl matches central differences of `noise(x, y)`.
+    @Test func curl2DIsTheSlopeOfTheField() {
+        let sketch = Sketch()
+        sketch.noiseSeed(7)
+        let eps = 1e-4
+        var checked = 0
+        for i in 0 ..< 200 {
+            let x = Double(i) * 0.731 + 0.37, y = Double(i % 37) * 0.529 + 0.11
+            let samples = [sketch.noise(x + eps, y), sketch.noise(x - eps, y),
+                           sketch.noise(x, y + eps), sketch.noise(x, y - eps)]
+            guard clearOfTheClip(samples) else { continue }
+            let dfdx = (samples[0] - samples[1]) / (2 * eps)
+            let dfdy = (samples[2] - samples[3]) / (2 * eps)
+            let curl = sketch.curlNoise(x, y)
+            #expect(abs(curl.x - dfdy) < 1e-6 && abs(curl.y + dfdx) < 1e-6,
+                    "at (\(x), \(y)): \(curl) vs (\(dfdy), \(-dfdx))")
+            checked += 1
+        }
+        #expect(checked > 150)
+    }
+
+    /// The 3D curl matches central differences of the same three offset
+    /// copies of `noise(x, y, z)`, which pins the closed-form gradient.
+    @Test func curl3DIsTheCurlOfThreeOffsetFields() {
+        let sketch = Sketch()
+        sketch.noiseSeed(7)
+        let eps = 1e-4
+        func potential(_ x: Double, _ y: Double, _ z: Double) -> [Double] {
+            [sketch.noise(x, y, z),
+             sketch.noise(x + 31.4, y - 47.2, z + 12.9),
+             sketch.noise(x - 71.1, y + 23.6, z - 58.3)]
+        }
+        var checked = 0
+        for i in 0 ..< 200 {
+            let x = Double(i) * 0.613 + 0.29, y = Double(i % 41) * 0.457 + 0.83, z = Double(i % 23) * 0.377 + 0.51
+            let xp = potential(x + eps, y, z), xm = potential(x - eps, y, z)
+            let yp = potential(x, y + eps, z), ym = potential(x, y - eps, z)
+            let zp = potential(x, y, z + eps), zm = potential(x, y, z - eps)
+            guard clearOfTheClip(xp + xm + yp + ym + zp + zm) else { continue }
+            let expected = Vector3((yp[2] - ym[2] - zp[1] + zm[1]) / (2 * eps),
+                                   (zp[0] - zm[0] - xp[2] + xm[2]) / (2 * eps),
+                                   (xp[1] - xm[1] - yp[0] + ym[0]) / (2 * eps))
+            let curl = sketch.curlNoise(x, y, z)
+            #expect(curl.distance(to: expected) < 1e-6, "at (\(x), \(y), \(z)): \(curl) vs \(expected)")
+            checked += 1
+        }
+        #expect(checked > 100)
+    }
+
+    /// A curl has no divergence: the flow neither gathers nor drains anywhere
+    /// the field is smooth.
+    @Test func curl3DIsDivergenceFree() {
+        let sketch = Sketch()
+        sketch.noiseSeed(11)
+        let eps = 1e-4
+        var checked = 0, largest = 0.0
+        for i in 0 ..< 200 {
+            let p = Vector3(Double(i) * 0.371 + 0.17, Double(i % 29) * 0.611 + 0.43, Double(i % 17) * 0.293 + 0.77)
+            // Stay clear of the clip on every copy the curl reads.
+            var values: [Double] = []
+            for offset in [Vector3.zero, Vector3(31.4, -47.2, 12.9), Vector3(-71.1, 23.6, -58.3)] {
+                let q = p + offset
+                values.append(sketch.noise(q.x, q.y, q.z))
+            }
+            guard clearOfTheClip(values) else { continue }
+            let dx = sketch.curlNoise(p + Vector3(eps, 0, 0)).x - sketch.curlNoise(p - Vector3(eps, 0, 0)).x
+            let dy = sketch.curlNoise(p + Vector3(0, eps, 0)).y - sketch.curlNoise(p - Vector3(0, eps, 0)).y
+            let dz = sketch.curlNoise(p + Vector3(0, 0, eps)).z - sketch.curlNoise(p - Vector3(0, 0, eps)).z
+            let divergence = (dx + dy + dz) / (2 * eps)
+            largest = max(largest, abs(divergence))
+            checked += 1
+        }
+        #expect(checked > 100)
+        #expect(largest < 1e-5, "largest divergence \(largest)")
+    }
+
+    /// The field is seeded like every other, and the vector forms are the
+    /// scalar forms.
+    @Test func curlIsSeededAndTheVectorFormsMatch() {
+        let a = Sketch(); a.noiseSeed(3)
+        let b = Sketch(); b.noiseSeed(3)
+        let c = Sketch(); c.noiseSeed(4)
+        var differs = false
+        for i in 0 ..< 32 {
+            let p = Vector3(Double(i) * 0.41, Double(i) * 0.23 + 1, Double(i) * 0.17 + 2)
+            #expect(a.curlNoise(p) == b.curlNoise(p))
+            #expect(a.curlNoise(p) == a.curlNoise(p.x, p.y, p.z))
+            #expect(a.curlNoise(p.xy) == a.curlNoise(p.x, p.y))
+            if a.curlNoise(p) != c.curlNoise(p) { differs = true }
+        }
+        #expect(differs, "a different seed reads a different flow")
+    }
+
+    /// The 3D flow has real size in every axis: not a 2D field in disguise,
+    /// and not normalized.
+    @Test func curl3DMovesInEveryAxis() {
+        let sketch = Sketch()
+        sketch.noiseSeed(5)
+        var sum = Vector3.zero, lengths: [Double] = []
+        for i in 0 ..< 512 {
+            let p = Vector3(Double(i) * 0.137, Double(i % 61) * 0.211, Double(i % 47) * 0.173)
+            let v = sketch.curlNoise(p)
+            sum += Vector3(abs(v.x), abs(v.y), abs(v.z))
+            lengths.append(v.length)
+        }
+        #expect(sum.x > 10 && sum.y > 10 && sum.z > 10, "every axis carries flow: \(sum)")
+        let spread = lengths.max()! - lengths.min()!
+        #expect(spread > 0.5, "the magnitude varies, so it is not normalized (spread \(spread))")
+    }
+}

@@ -400,6 +400,25 @@ static inline float2 curlNoise(float2 p) {
     return float2(dpsidy, -dpsidx);
 }
 
+// The 3D form: the curl of a vector potential made of three copies of the 3D
+// value noise, each read at its own offset, by the same central differences.
+// Divergence-free like the 2D one, so a particle it carries swirls and never
+// gathers, and geometry it bends bends as if a fluid had passed through.
+// Mirrors the CPU curlNoise(x, y, z).
+static inline float3 ollin_curl_potential(float3 p) {
+    return float3(valueNoise(p),
+                  valueNoise(p + float3(31.4, -47.2, 12.9)),
+                  valueNoise(p + float3(-71.1, 23.6, -58.3)));
+}
+static inline float3 curlNoise(float3 p) {
+    const float e = 0.1;
+    float3 dx = (ollin_curl_potential(p + float3(e, 0.0, 0.0)) - ollin_curl_potential(p - float3(e, 0.0, 0.0))) / (2.0 * e);
+    float3 dy = (ollin_curl_potential(p + float3(0.0, e, 0.0)) - ollin_curl_potential(p - float3(0.0, e, 0.0))) / (2.0 * e);
+    float3 dz = (ollin_curl_potential(p + float3(0.0, 0.0, e)) - ollin_curl_potential(p - float3(0.0, 0.0, e))) / (2.0 * e);
+    // Each component is a difference of two partials: (dpsi3/dy - dpsi2/dz, ...).
+    return float3(dy.z - dz.y, dz.x - dx.z, dx.y - dy.x);
+}
+
 // The Chladni standing-wave field of a square plate: two mirrored plate modes
 // superposed, a*cos(n*pi*x)*cos(m*pi*y) + b*cos(m*pi*x)*cos(n*pi*y) over plate
 // coordinates 0...1, normalized to [-1, 1]. Sand gathers on the zero set.

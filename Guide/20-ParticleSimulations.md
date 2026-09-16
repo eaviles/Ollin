@@ -50,7 +50,7 @@ withAccumulator(light) {
 drawImage(light.developed(exposure: 20).image, 0, 0)
 ```
 
-The `Rendering/DepthOfField` example pushes this all the way to a photograph with a real lens: a million samples a frame, each pushed into a ball that grows with its distance from the plane of focus, projected through the sketch's own camera by a kernel (`cameraParams()` packs the matrices, `ballSample` scatters, `ollin_project_eye` lands the point), averaged until bokeh emerges. For a scene made of lines, `LineSpray` is that whole pipeline in one call, and the `Rendering/LineSpray` example is a sphere of a hundred and fifty rings seen through it.
+The `Rendering/DepthOfField` example pushes this all the way to a photograph with a real lens: a million samples a frame, each pushed into a ball that grows with its distance from the plane of focus, projected through the sketch's own camera by a kernel (`cameraParams()` packs the matrices, `ballSample` scatters, `ollin_project_eye` lands the point), averaged until bokeh emerges. For a scene made of lines, `LineSpray` is that whole pipeline in one call, and the `Rendering/LineSpray` example is a sphere of a hundred and fifty rings seen through it. The rings are bent by `curlNoise` in its three-coordinate form, [Chapter 14](14-FieldsAndFlow.md)'s swirling field taken into space. A curl never gathers or drains, so the rings wave as if a current had passed through the sphere rather than tearing.
 
 The lens is a `Bokeh`: a `focalDistance`, where things are sharp, and a `strength`, how fast the blur grows with distance from that plane. Here is the ring sphere through three of them:
 

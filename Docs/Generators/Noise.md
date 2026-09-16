@@ -144,9 +144,11 @@ The example is [`Randomness/TilingNoise`](../../Examples/Randomness/TilingNoise/
 ```swift
 curlNoise(_ x: Double, _ y: Double) -> Vector2
 curlNoise(_ p: Vector2) -> Vector2
+curlNoise(_ x: Double, _ y: Double, _ z: Double) -> Vector3
+curlNoise(_ p: Vector3) -> Vector3
 ```
 
-A divergence-free 2D flow vector, the curl of the Perlin field. It is the usual basis for flow fields. Take `.normalized` for the direction alone, and sample on scaled-down coordinates such as `x * 0.003` for broad swirls. See the `FlowField` example.
+A divergence-free flow vector, the curl of the Perlin field. The flow only ever swirls. It never gathers into a sink or drains from a source, so points carried by it stay evenly spread however long they ride, which is what makes it the usual basis for flow fields. Take `.normalized` for the direction alone, and sample on scaled-down coordinates such as `x * 0.003` for broad swirls. See the `FlowField` example.
 
 ```swift
 var p = center
@@ -156,6 +158,15 @@ for _ in 0..<100 {                         // trace a streamline through the fie
     p = next
 }
 ```
+
+The three-coordinate form is the same idea in space. Its potential is three copies of the field, each read at its own offset, and the curl of that is a flow that swirls in every direction. It is the field to bend geometry with, since a shape it pushes bends as if a fluid had passed through it rather than tearing:
+
+```swift
+let bent = p + curlNoise(p * 0.5) * 0.3                     // a vertex nudged along the flow
+let lean = curlNoise(p * 0.15).normalized * 0.7             // a direction with its own strength
+```
+
+Neither form is normalized, and neither is bounded the way `noise` is. The vector is the field's slope, so it grows with the frequency you sample at: multiply the coordinates by 2 and the vectors double. Scale it to the distance you mean, or take `.normalized` and scale that. Both forms are worked out in closed form, from the slope of the field itself rather than by sampling the field on either side, so a curl costs about the same as three reads of `noise`. The `Rendering/LineSpray` example bends a sphere of rings with the three-coordinate form.
 
 <a name="simplexNoise"></a>
 

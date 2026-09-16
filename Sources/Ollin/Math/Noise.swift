@@ -56,6 +56,74 @@ struct PerlinNoise {
                 lerp(u, grad(perm[ab + 1], xf, yf - 1, zf - 1), grad(perm[bb + 1], xf - 1, yf - 1, zf - 1))))
     }
 
+    // MARK: The field with its slope
+
+    /// The calibrated field at `(x, y, z)` together with its gradient, worked
+    /// out in closed form rather than by sampling the field on either side.
+    /// The curl forms read this: a curl needs six partial derivatives, and a
+    /// difference per derivative costs two evaluations each, where one pass
+    /// through the lattice gives the value and all three slopes at once.
+    ///
+    /// The gradient is of `value(_:_:_:)` exactly: `0...1`, gain applied, and
+    /// zero wherever the calibration clips the field flat, so the curl of the
+    /// field is the curl of the field a sketch reads, not of some other one.
+    func valueAndGradient(_ x: Double, _ y: Double, _ z: Double) -> (value: Double, gradient: SIMD3<Double>) {
+        let (raw, slope) = rawValueAndGradient(x, y, z)
+        let scaled = raw * PerlinNoise.gain
+        if scaled <= -1 { return (0, .zero) }
+        if scaled >= 1 { return (1, .zero) }
+        return ((scaled + 1) / 2, slope * (PerlinNoise.gain / 2))
+    }
+
+    /// The raw value and its gradient, from one walk of the cell's eight
+    /// corners. The interpolation is trilinear in the faded offsets, so its
+    /// derivative along an axis has two parts: the same interpolation over the
+    /// corner gradients' components (the dot products' own slopes), plus the
+    /// fade curve's slope times the difference the interpolation takes across
+    /// that axis.
+    private func rawValueAndGradient(_ x: Double, _ y: Double, _ z: Double) -> (Double, SIMD3<Double>) {
+        let xi = Int(floor(x)) & 255, yi = Int(floor(y)) & 255, zi = Int(floor(z)) & 255
+        let xf = x - floor(x), yf = y - floor(y), zf = z - floor(z)
+        let u = fade(xf), v = fade(yf), w = fade(zf)
+        let du = fadeSlope(xf), dv = fadeSlope(yf), dw = fadeSlope(zf)
+
+        let a = perm[xi] + yi, aa = perm[a] + zi, ab = perm[a + 1] + zi
+        let b = perm[xi + 1] + yi, ba = perm[b] + zi, bb = perm[b + 1] + zi
+
+        // The corner gradients, and each one's pull at the sample point.
+        let g000 = gradVector(perm[aa]),     g100 = gradVector(perm[ba])
+        let g010 = gradVector(perm[ab]),     g110 = gradVector(perm[bb])
+        let g001 = gradVector(perm[aa + 1]), g101 = gradVector(perm[ba + 1])
+        let g011 = gradVector(perm[ab + 1]), g111 = gradVector(perm[bb + 1])
+        let n000 = g000.x * xf + g000.y * yf + g000.z * zf
+        let n100 = g100.x * (xf - 1) + g100.y * yf + g100.z * zf
+        let n010 = g010.x * xf + g010.y * (yf - 1) + g010.z * zf
+        let n110 = g110.x * (xf - 1) + g110.y * (yf - 1) + g110.z * zf
+        let n001 = g001.x * xf + g001.y * yf + g001.z * (zf - 1)
+        let n101 = g101.x * (xf - 1) + g101.y * yf + g101.z * (zf - 1)
+        let n011 = g011.x * xf + g011.y * (yf - 1) + g011.z * (zf - 1)
+        let n111 = g111.x * (xf - 1) + g111.y * (yf - 1) + g111.z * (zf - 1)
+
+        // Trilinear weights, once, shared by the value and every slope.
+        let w000 = (1 - u) * (1 - v) * (1 - w), w100 = u * (1 - v) * (1 - w)
+        let w010 = (1 - u) * v * (1 - w),       w110 = u * v * (1 - w)
+        let w001 = (1 - u) * (1 - v) * w,       w101 = u * (1 - v) * w
+        let w011 = (1 - u) * v * w,             w111 = u * v * w
+
+        let value = n000 * w000 + n100 * w100 + n010 * w010 + n110 * w110
+                  + n001 * w001 + n101 * w101 + n011 * w011 + n111 * w111
+        var gradient = g000 * w000 + g100 * w100 + g010 * w010 + g110 * w110
+                     + g001 * w001 + g101 * w101 + g011 * w011 + g111 * w111
+        // The fade's own slope along each axis, weighted by the other two.
+        gradient.x += du * ((n100 - n000) * (1 - v) * (1 - w) + (n110 - n010) * v * (1 - w)
+                            + (n101 - n001) * (1 - v) * w + (n111 - n011) * v * w)
+        gradient.y += dv * ((n010 - n000) * (1 - u) * (1 - w) + (n110 - n100) * u * (1 - w)
+                            + (n011 - n001) * (1 - u) * w + (n111 - n101) * u * w)
+        gradient.z += dw * ((n001 - n000) * (1 - u) * (1 - v) + (n101 - n100) * u * (1 - v)
+                            + (n011 - n010) * (1 - u) * v + (n111 - n110) * u * v)
+        return (value, gradient)
+    }
+
     // MARK: 4D lattice (for looping noise)
 
     /// Contrast gain for the 4D lattice, calibrated empirically so the spread
@@ -107,12 +175,26 @@ struct PerlinNoise {
     }
 
     private func fade(_ t: Double) -> Double { t * t * t * (t * (t * 6 - 15) + 10) }
+    /// The fade curve's derivative, `30 t^2 (t - 1)^2`.
+    private func fadeSlope(_ t: Double) -> Double { 30 * t * t * (t - 1) * (t - 1) }
     private func lerp(_ t: Double, _ a: Double, _ b: Double) -> Double { a + t * (b - a) }
     private func grad(_ hash: Int, _ x: Double, _ y: Double, _ z: Double) -> Double {
         let h = hash & 15
         let u = h < 8 ? x : y
         let v = h < 4 ? y : (h == 12 || h == 14 ? x : z)
         return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v)
+    }
+    /// The gradient `grad(_:_:_:_:)` dots with, as a vector: the same twelve
+    /// cube-edge directions (plus the four repeats that pad the set to sixteen),
+    /// picked by the same hash bits, so the two agree corner for corner.
+    private func gradVector(_ hash: Int) -> SIMD3<Double> {
+        let h = hash & 15
+        let su: Double = (h & 1) == 0 ? 1 : -1
+        let sv: Double = (h & 2) == 0 ? 1 : -1
+        var g = SIMD3<Double>.zero
+        if h < 8 { g.x += su } else { g.y += su }
+        if h < 4 { g.y += sv } else if h == 12 || h == 14 { g.x += sv } else { g.z += sv }
+        return g
     }
     /// The 4D gradient: the low 5 hash bits pick one of the 32 standard
     /// directions (a zero component and three unit components, signed).
@@ -436,19 +518,39 @@ public extension Sketch {
         return sum / weight
     }
 
-    /// A divergence-free 2D flow vector at `(x, y)` — the curl of the Perlin
+    /// A divergence-free 2D flow vector at `(x, y)`: the curl of the Perlin
     /// field. Because it has no sources or sinks, it reads as smooth, swirling
     /// flow, which makes it the go-to for flow fields. The returned `Vector2`
     /// points along the flow; take `.normalized` for just the direction. Sample
     /// on scaled-down coordinates (e.g. `x * 0.003`) for broad, gentle swirls.
     func curlNoise(_ x: Double, _ y: Double) -> Vector2 {
-        let eps = 0.0001
-        let dfdx = (perlin.value(x + eps, y, 0) - perlin.value(x - eps, y, 0)) / (2 * eps)
-        let dfdy = (perlin.value(x, y + eps, 0) - perlin.value(x, y - eps, 0)) / (2 * eps)
-        return Vector2(dfdy, -dfdx)   // gradient rotated 90° = curl of a 2D field
+        let slope = perlin.valueAndGradient(x, y, 0).gradient
+        return Vector2(slope.y, -slope.x)   // gradient rotated 90° = curl of a 2D field
     }
     /// `curlNoise` sampled at the point `p`.
     func curlNoise(_ p: Vector2) -> Vector2 { curlNoise(p.x, p.y) }
+
+    /// A divergence-free 3D flow vector at `(x, y, z)`: the curl of a vector
+    /// potential made of three copies of the Perlin field, each read at its own
+    /// offset. The same construction as the 2D form one dimension up, and the
+    /// same promise: the flow only ever swirls, never gathers or drains, so
+    /// points carried by it stay evenly spread, and geometry bent by it bends
+    /// as if a fluid had passed through. Not normalized, like the 2D form; take
+    /// `.normalized` for the direction alone, and scale the coordinates down
+    /// (`p * 0.5` on a scene a few units across) for broad, gentle swirls.
+    ///
+    /// ```swift
+    /// let bent = p + curlNoise(p * 0.5) * 0.3       // nudge a vertex along the flow
+    /// ```
+    func curlNoise(_ x: Double, _ y: Double, _ z: Double) -> Vector3 {
+        let a = perlin.valueAndGradient(x, y, z).gradient
+        let b = perlin.valueAndGradient(x + 31.4, y - 47.2, z + 12.9).gradient
+        let c = perlin.valueAndGradient(x - 71.1, y + 23.6, z - 58.3).gradient
+        // ∇ × (ψa, ψb, ψc), each component a difference of two partials.
+        return Vector3(c.y - b.z, a.z - c.x, b.x - a.y)
+    }
+    /// `curlNoise` sampled at the point `p`.
+    func curlNoise(_ p: Vector3) -> Vector3 { curlNoise(p.x, p.y, p.z) }
 }
 
 public extension Sketch {

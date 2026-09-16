@@ -104,6 +104,7 @@ To mix in OKLab or OKLCH, interpolate there and then convert back. That gives yo
 | `float turbulence(float2 p)` | four octaves of folded (absolute-value) noise, which gives billows with creased seams, in `[0, 1]`. This is the basis for clouds and marble. Mirrors the CPU `turbulence`. |
 | `float warpedFbm(float2 p, float warp)` | domain-warped fbm, where the field displaces its own coordinates twice over. A `warp` of 0 is exactly `fbm(p)`, and 1 is the classic strength. Mirrors the CPU `warpedFbm`. The `DomainWarp` example takes the recipe apart. |
 | `float2 curlNoise(float2 p)` | the divergence-free curl of a value-noise potential, a flow field whose streams swirl and never converge into sinks. |
+| `float3 curlNoise(float3 p)` | the same in space: the curl of three offset copies of the 3D value noise, a flow that swirls in every direction and never gathers. Mirrors the CPU `curlNoise(x, y, z)`. |
 | `float chladni(float2 p, float m, float n)` | the Chladni standing-wave field of a square plate over plate coordinates `0…1`, in `[-1, 1]`. Sand gathers on the zero set. An `(a, b)` overload mixes the two mirrored modes unevenly. Mirrors the CPU `chladni`. See [Chladni figures](../Generators/Chladni.md). |
 
 ## Signed-distance functions

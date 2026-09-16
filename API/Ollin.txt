@@ -1943,7 +1943,9 @@ open class Sketch: Sendable
   func contactShadows(_: Bool = default, length: Double? = default)
   func curlField(scale: Double = default, z: Double = default) -> FlowField
   func curlNoise(_: Double, _: Double) -> Vector2
+  func curlNoise(_: Double, _: Double, _: Double) -> Vector3
   func curlNoise(_: Vector2) -> Vector2
+  func curlNoise(_: Vector3) -> Vector3
   func delaunay(_: [Vector2]) -> Delaunay
   func deleteCue(_: String)
   func depth(_: Double)

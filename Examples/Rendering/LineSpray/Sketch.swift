@@ -5,7 +5,6 @@
 //  technique is Anders Hoff's (https://inconvergent.net/2019/depth-of-field/).
 
 import Ollin
-import simd
 
 /// Lines of light through a real lens: `LineSpray` on a sphere of a hundred
 /// and fifty rings of latitude, nudged by a curl field, lit from one side, with
@@ -75,7 +74,7 @@ final class LineSpray_Example: Sketch {
         var lines: [SprayLine] = []
         let rings = 150
         let sphereRadius = 5.75
-        let light = simd.normalize(SIMD3<Double>(0.2, 0.35, 0.5))
+        let light = Vector3(0.2, 0.35, 0.5).normalized
 
         for j in 0 ..< rings {
             let latitude = Double(j) / Double(rings) * .pi
@@ -87,13 +86,13 @@ final class LineSpray_Example: Sketch {
                 let a1 = Double(i) / Double(segments) * .tau
                 let a2 = Double(i + 1) / Double(segments) * .tau
                 let r = random() > 0.92 ? sphereRadius + 0.15 : sphereRadius
-                let p1 = SIMD3(cos(a1) * ringRadius * r, sin(a1) * ringRadius * r, z * r)
-                let p2 = SIMD3(cos(a2) * ringRadius * r, sin(a2) * ringRadius * r, z * r)
+                let p1 = Vector3(cos(a1) * ringRadius * r, sin(a1) * ringRadius * r, z * r)
+                let p2 = Vector3(cos(a2) * ringRadius * r, sin(a2) * ringRadius * r, z * r)
                 let q1 = p1 + displacement(p1)
                 let q2 = p2 + displacement(p2)
 
-                let normal = simd.normalize(p1)
-                let diffuse = pow(max(simd.dot(normal, light), 0), 3)
+                let normal = p1.normalized
+                let diffuse = pow(max(normal.dot(light), 0), 3)
                 let radiance = 0.1 * diffuse + 0.002
                 lines.append(line(q1, q2, radiance))
 
@@ -108,37 +107,18 @@ final class LineSpray_Example: Sketch {
         return lines
     }
 
-    /// The nudge a vertex takes: the curl field at the point, scaled by a slower
-    /// field of the same kind so the strength varies across the sphere.
-    private func displacement(_ p: SIMD3<Double>) -> SIMD3<Double> {
-        let strength = 0.1 + curl(p * 0.15).x * 0.7
-        return curl(p * 0.5) * strength
-    }
-
-    /// A divergence-free direction field: the curl of three offset simplex
-    /// potentials, by central differences, normalized.
-    private func curl(_ p: SIMD3<Double>) -> SIMD3<Double> {
-        let e = 0.1
-        func potential(_ q: SIMD3<Double>) -> SIMD3<Double> {
-            SIMD3(signedSimplexNoise(q.x, q.y, q.z),
-                  signedSimplexNoise(q.x + 31.4, q.y - 47.2, q.z + 12.9),
-                  signedSimplexNoise(q.x - 71.1, q.y + 23.6, q.z - 58.3))
-        }
-        let dx = SIMD3<Double>(e, 0, 0), dy = SIMD3<Double>(0, e, 0), dz = SIMD3<Double>(0, 0, e)
-        let x0 = potential(p - dx), x1 = potential(p + dx)
-        let y0 = potential(p - dy), y1 = potential(p + dy)
-        let z0 = potential(p - dz), z1 = potential(p + dz)
-        let c = SIMD3(y1.z - y0.z - z1.y + z0.y,
-                      z1.x - z0.x - x1.z + x0.z,
-                      x1.y - x0.y - y1.x + y0.x)
-        let length = simd.length(c)
-        return length > 0 ? c / length : c
+    /// The nudge a vertex takes: the direction of the curl field at the point,
+    /// scaled by a slower field of the same kind so the strength varies across
+    /// the sphere. A curl only ever swirls, so the rings bend as if a current
+    /// had passed through them rather than tearing.
+    private func displacement(_ p: Vector3) -> Vector3 {
+        let strength = 0.1 + curlNoise(p * 0.15).normalized.x * 0.7
+        return curlNoise(p * 0.5).normalized * strength
     }
 
     /// A white line of the given radiance: the tone is white and the intensity
     /// carries the light.
-    private func line(_ a: SIMD3<Double>, _ b: SIMD3<Double>, _ radiance: Double) -> SprayLine {
-        SprayLine(from: Vector3(a.x, a.y, a.z), to: Vector3(b.x, b.y, b.z),
-                  color: .white, intensity: radiance)
+    private func line(_ a: Vector3, _ b: Vector3, _ radiance: Double) -> SprayLine {
+        SprayLine(from: a, to: b, color: .white, intensity: radiance)
     }
 }

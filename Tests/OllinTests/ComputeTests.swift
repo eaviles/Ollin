@@ -165,6 +165,29 @@ struct ComputeTests {
         #expect(data.allSatisfy { $0 == 6 })             // every channel stepped 6 times
     }
 
+    /// The shader library's 3D `curlNoise` is a curl: its divergence vanishes
+    /// while the flow itself has real size. The probe takes its differences at
+    /// the curl's own step, where the two difference operators commute exactly
+    /// and the residual is float rounding; a sign slipped in any component, or
+    /// two partials paired wrongly, leaves a divergence of the flow's own order.
+    /// (The value noise under it is only once differentiable, so a finer step
+    /// reads its kinks at cell edges as divergence, which says nothing about
+    /// the wiring.)
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func shaderCurl3DIsDivergenceFree() throws {
+        let sketch = CurlProbeSketch()
+        _ = OllinApp.image(of: sketch, frame: 0)
+        let readings = try #require(sketch.out.snapshot())
+        let divergence = readings.map { Double(abs($0.x)) }
+        let flows = readings.map { SIMD3<Double>(Double($0.y), Double($0.z), Double($0.w)) }
+        let meanMagnitude = flows.map { simd_length($0) }.reduce(0, +) / Double(flows.count)
+        let worst = divergence.max() ?? 0
+        #expect(meanMagnitude > 0.1, "the flow has size: mean |curl| \(meanMagnitude)")
+        #expect(worst < meanMagnitude * 1e-3, "largest divergence \(worst) against mean |curl| \(meanMagnitude)")
+        let perAxis = flows.reduce(SIMD3<Double>.zero) { $0 + simd_abs($1) } / Double(flows.count)
+        #expect(perAxis.x > 0.05 && perAxis.y > 0.05 && perAxis.z > 0.05, "every axis carries flow: \(perAxis)")
+    }
+
     /// Peak luma across the image, 0…1 — enough to tell "something drew" from black.
     private func maxLuma(of image: CGImage) -> Double {
         let w = image.width, h = image.height
@@ -232,5 +255,33 @@ private final class SimProbeSketch: Sketch {
     override func draw() {
         background(.black)
         stepSimulation(sim)
+    }
+}
+
+/// Reads the shader library's 3D curl at a spread of points: x is the flow's
+/// divergence by central differences at the curl's own step (0.1), and yzw
+/// the flow itself.
+@MainActor
+private final class CurlProbeSketch: Sketch {
+    let out = ComputeBuffer<SIMD4<Float>>(count: 1024)
+    override var canvasSize: CanvasSize { .square(16) }
+    private let kernel = ComputeKernel(entry: "curl_probe", """
+        kernel void curl_probe(device float4 *out [[buffer(0)]],
+                               constant OllinComputeUniforms &u [[buffer(10)]],
+                               uint id [[thread_position_in_grid]]) {
+            if (id >= u.particleCount) { return; }
+            float3 p = float3(float(id) * 0.37 + 0.13, float(id % 29) * 0.61 + 0.43, float(id % 17) * 0.29 + 0.77);
+            const float d = 0.1;   // the step curlNoise itself differences at
+            float3 c = curlNoise(p);
+            float dx = curlNoise(p + float3(d, 0, 0)).x - curlNoise(p - float3(d, 0, 0)).x;
+            float dy = curlNoise(p + float3(0, d, 0)).y - curlNoise(p - float3(0, d, 0)).y;
+            float dz = curlNoise(p + float3(0, 0, d)).z - curlNoise(p - float3(0, 0, d)).z;
+            float divergence = (dx + dy + dz) / (2.0 * d);
+            out[id] = float4(divergence, c.x, c.y, c.z);
+        }
+    """)
+    override func draw() {
+        background(.black)
+        compute(kernel, over: out)
     }
 }

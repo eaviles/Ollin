@@ -12,7 +12,6 @@
 // `class …: Sketch` it finds, so the probe comes after it.
 import Ollin
 import OllinDiagram
-import simd
 
 final class ThroughALens: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
@@ -88,7 +87,7 @@ final class RingProbe: Sketch {
 
     private func buildScene() -> [SprayLine] {
         var lines: [SprayLine] = []
-        let light = simd.normalize(SIMD3<Double>(0.2, 0.35, 0.5))
+        let light = Vector3(0.2, 0.35, 0.5).normalized
         for j in 0 ..< 150 {
             let latitude = Double(j) / 150 * .pi
             let ringRadius = -sin(latitude), z = cos(latitude)
@@ -97,10 +96,10 @@ final class RingProbe: Sketch {
                 let a1 = Double(i) / Double(segments) * .tau
                 let a2 = Double(i + 1) / Double(segments) * .tau
                 let r = random() > 0.92 ? 5.9 : 5.75
-                let p1 = SIMD3(cos(a1) * ringRadius * r, sin(a1) * ringRadius * r, z * r)
-                let p2 = SIMD3(cos(a2) * ringRadius * r, sin(a2) * ringRadius * r, z * r)
+                let p1 = Vector3(cos(a1) * ringRadius * r, sin(a1) * ringRadius * r, z * r)
+                let p2 = Vector3(cos(a2) * ringRadius * r, sin(a2) * ringRadius * r, z * r)
                 let q1 = p1 + displacement(p1), q2 = p2 + displacement(p2)
-                let diffuse = pow(max(simd.dot(simd.normalize(p1), light), 0), 3)
+                let diffuse = pow(max(p1.normalized.dot(light), 0), 3)
                 let radiance = 0.1 * diffuse + 0.002
                 lines.append(line(q1, q2, radiance))
                 if random() > 0.975 {
@@ -114,28 +113,12 @@ final class RingProbe: Sketch {
         return lines
     }
 
-    private func displacement(_ p: SIMD3<Double>) -> SIMD3<Double> {
-        let strength = 0.1 + curl(p * 0.15).x * 0.7
-        return curl(p * 0.5) * strength
+    private func displacement(_ p: Vector3) -> Vector3 {
+        let strength = 0.1 + curlNoise(p * 0.15).normalized.x * 0.7
+        return curlNoise(p * 0.5).normalized * strength
     }
 
-    private func curl(_ p: SIMD3<Double>) -> SIMD3<Double> {
-        let e = 0.1
-        func potential(_ q: SIMD3<Double>) -> SIMD3<Double> {
-            SIMD3(signedSimplexNoise(q.x, q.y, q.z),
-                  signedSimplexNoise(q.x + 31.4, q.y - 47.2, q.z + 12.9),
-                  signedSimplexNoise(q.x - 71.1, q.y + 23.6, q.z - 58.3))
-        }
-        let dx = SIMD3<Double>(e, 0, 0), dy = SIMD3<Double>(0, e, 0), dz = SIMD3<Double>(0, 0, e)
-        let x0 = potential(p - dx), x1 = potential(p + dx)
-        let y0 = potential(p - dy), y1 = potential(p + dy)
-        let z0 = potential(p - dz), z1 = potential(p + dz)
-        let c = SIMD3(y1.z - y0.z - z1.y + z0.y, z1.x - z0.x - x1.z + x0.z, x1.y - x0.y - y1.x + y0.x)
-        let length = simd.length(c)
-        return length > 0 ? c / length : c
-    }
-
-    private func line(_ a: SIMD3<Double>, _ b: SIMD3<Double>, _ radiance: Double) -> SprayLine {
-        SprayLine(from: Vector3(a.x, a.y, a.z), to: Vector3(b.x, b.y, b.z), color: .white, intensity: radiance)
+    private func line(_ a: Vector3, _ b: Vector3, _ radiance: Double) -> SprayLine {
+        SprayLine(from: a, to: b, color: .white, intensity: radiance)
     }
 }

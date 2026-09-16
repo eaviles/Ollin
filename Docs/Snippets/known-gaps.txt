@@ -591,19 +591,20 @@ e0fc5d99186d  Docs/Generators/MedialAxis.md:26  expected ',' separator
 7b0056342e56  Docs/Generators/Noise.md:107  cannot find 'x' in scope
 70f63f323bc3  Docs/Generators/Noise.md:119  expected ',' separator
 70081d8ef017  Docs/Generators/Noise.md:130  cannot find 'x' in scope
-4f7ec70c3ea8  Docs/Generators/Noise.md:144  expected ',' separator
-e7146dea4fe1  Docs/Generators/Noise.md:164  expected ',' separator
-16ff39be874f  Docs/Generators/Noise.md:171  cannot find 'x' in scope
-a64542220ed4  Docs/Generators/Noise.md:189  expected ',' separator
-be2607cb8267  Docs/Generators/Noise.md:209  cannot find 'x' in scope
-aa7fbb2117db  Docs/Generators/Noise.md:222  expected ',' separator
-88eb529b55b2  Docs/Generators/Noise.md:234  cannot find 'x' in scope
-5145b20174ad  Docs/Generators/Noise.md:246  expected ',' separator
-c2c8471ece96  Docs/Generators/Noise.md:254  cannot find 'x' in scope
-1b783e195485  Docs/Generators/Noise.md:265  expected ',' separator
-9967d3065c0c  Docs/Generators/Noise.md:291  cannot find 'x' in scope
-e13ed241945a  Docs/Generators/Noise.md:326  expected ',' separator
-5510c621a005  Docs/Generators/Noise.md:340  expected ',' separator
+a2c382c85729  Docs/Generators/Noise.md:144  expected ',' separator
+72dd2efe43d8  Docs/Generators/Noise.md:164  cannot find 'p' in scope
+e7146dea4fe1  Docs/Generators/Noise.md:175  expected ',' separator
+16ff39be874f  Docs/Generators/Noise.md:182  cannot find 'x' in scope
+a64542220ed4  Docs/Generators/Noise.md:200  expected ',' separator
+be2607cb8267  Docs/Generators/Noise.md:220  cannot find 'x' in scope
+aa7fbb2117db  Docs/Generators/Noise.md:233  expected ',' separator
+88eb529b55b2  Docs/Generators/Noise.md:245  cannot find 'x' in scope
+5145b20174ad  Docs/Generators/Noise.md:257  expected ',' separator
+c2c8471ece96  Docs/Generators/Noise.md:265  cannot find 'x' in scope
+1b783e195485  Docs/Generators/Noise.md:276  expected ',' separator
+9967d3065c0c  Docs/Generators/Noise.md:302  cannot find 'x' in scope
+e13ed241945a  Docs/Generators/Noise.md:337  expected ',' separator
+5510c621a005  Docs/Generators/Noise.md:351  expected ',' separator
 fdeea8fbb768  Docs/Generators/Noise.md:37  expected ',' separator
 6836c883722c  Docs/Generators/Noise.md:43  cannot find 'x' in scope
 537a333e4b20  Docs/Generators/Noise.md:52  expected ',' separator
