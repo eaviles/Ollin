@@ -333,15 +333,36 @@ $ ollin dots.swift --export-<TAB>
 ...
 ```
 
+The guide keeps writing the full `swift run OllinLive` form so everything works whether or not you installed the shortcut. The next three sections use `ollin` commands, though, so skip ahead to [Putting it together](#putting-it-together-a-breathing-ring) if you'd rather not install it.
+
+## Asking the machine what it has
+
 If any of this doesn't work, there is a command that says why:
 
 ```sh
 ollin doctor
 ```
 
-It asks the questions a broken setup otherwise answers by failing somewhere else. Whether macOS is new enough. Whether the Swift compiler is findable, and which one. What the GPU is, and which of the optional things it can do. Whether the shader compiler actually compiles. Whether the `ollin` on your path is this clone's. Whether the camera, the microphone, and screen recording have been allowed. Each answer that isn't settled comes with the one line that settles it. Nothing in it asks for a permission, so it is safe to run on a machine that is projecting. [Checking the machine](../Docs/Tools/Doctor.md) goes through the report.
+Everything Ollin needs is either on this machine or it isn't, and when it isn't, the failure shows up somewhere else entirely. That is what makes a broken setup slow to fix. A shader library that won't compile reads as a window that never opens. A camera nobody granted reads as a black frame. So the report reads as a list of the failures you are being spared:
 
-The guide keeps writing the full `swift run OllinLive` form so everything works whether or not you installed the shortcut. The next two sections use `ollin` commands, though, so skip ahead to [Putting it together](#putting-it-together-a-breathing-ring) if you'd rather not install it.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/CheckingTheMachine-dark.jpg">
+  <img src="Images/01-HelloOllin/CheckingTheMachine.jpg" alt="The doctor report in a panel on the left, five answers each with a mark, and to the right of each one the failure that answer would otherwise have arrived as; underneath, what the three marks mean" width="680">
+</picture>
+
+Read the mark column first. `ok` is settled. `--` is worth knowing and nothing is waiting on it, which is the usual state of a permission nobody has needed yet. `no` is something that would stop a sketch from running. The command exits nonzero when there is one, so you can put it in a script that sets up a machine.
+
+Each line that isn't settled carries the one line that settles it, as those two `fix:` lines do. There are a few more questions than the figure shows. Which macOS this is, and whether the `ollin` on your path belongs to this clone rather than another one you forgot about. That last one is the confusing case the report exists to name.
+
+Nothing here asks for a permission. The three permission lines read a decision already made, so running the report can never raise a dialog on somebody's screen. That is deliberate. A doctor gets run on machines that are already projecting.
+
+The report answers for the machine. The other half of the question is what a particular sketch expects, and there's a flag for that:
+
+```sh
+ollin Rings.swift --list-params
+```
+
+It prints every `@Param` the sketch declares, its kind, what it accepts, and what it holds right now, in the spelling `--param` reads back. So a line of the listing can be pasted straight into a flag. [Checking the machine](../Docs/Tools/Doctor.md) goes through the whole report answer by answer, and through installing the completions by hand.
 
 ## When one file isn't enough
 

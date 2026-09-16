@@ -284,18 +284,44 @@ override func draw() {
 
 Point TouchOSC (or anything that speaks OSC) at your Mac's IP and port 8000, and its controls land in the sketch. There's an `OSCSender` for the other direction, so a sketch can drive a mixer or a lighting desk too. And you can rehearse all of it with no hardware at all. The `Integration/MIDILoopback` and `Integration/OSCLoopback` examples send to themselves, so the round-trip is visible on any bare Mac.
 
-That still means typing addresses into the phone by hand, and keeping them in step with the sketch. **OSCQuery** removes the typing. The sketch publishes its parameters as a tree an app can browse, and the app builds the controls itself:
+### The sketch that says what it takes: OSCQuery
+
+That still means typing addresses into the phone by hand, and keeping them in step with the sketch. Rename a parameter and the fader that moved it is pointing at nothing, silently. **OSCQuery** removes the typing. The sketch publishes its parameters as a tree an app can browse, and the app builds its own controls from what it reads:
 
 ```swift
 import OllinOSC
 
-@Param(20...400, group: "Shape") var radius = 120.0
-@Param(group: "Shape") var spin = true
+final class Wall: Sketch {
+    enum Style: String, CaseIterable, ParamOption { case petals, rings, spokes }
 
-override func setup() { extend(OSCQueryServer()) }
+    @Param(20...400, group: "Shape") var radius = 180.0
+    @Param(3...24, group: "Shape") var count = 9
+    @Param(group: "Shape") var style = Style.petals
+    @Param(group: "Motion") var spin = true
+    @Param(group: "Color") var tint = Color(hex: 0xFF9E3D)
+
+    override func setup() { extend(OSCQueryServer()) }
+}
 ```
 
-Now TouchOSC (or Chataigne, or ossia score) lists the sketch by name on the same Wi-Fi. It reads `/Shape/radius` as a number between 20 and 400 and `/Shape/spin` as a switch, and lays out a fader and a toggle with those ranges. Move the fader and the value arrives over plain OSC in the parameter's own units. It lands through the same control an inspector drag uses, so smoothing applies as it does there. One port number serves both halves, the tree over HTTP and the values over UDP. Open `http://your-mac.local:9000/` in a browser and the tree shows as JSON. The `Integration/OSCQuery` example serves a ring of marks and draws its own namespace down the left, so the picture and the listing are one thing seen twice.
+The `extend` line is all of it. Here is what it puts on the network:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/PublishedParameters-dark.jpg">
+  <img src="Images/28-SoundAndControl/PublishedParameters.jpg" alt="Three columns: five parameter declarations on the left, the node each is served as in the middle with its address, type letter and range, and the control an app lays out on the right; a return arrow along the bottom carries one OSC message back" width="680">
+</picture>
+
+Each parameter becomes a node at its own address. The group you declared becomes the folder in front of the name, which is why `radius` serves at `/Shape/radius`. The node carries what the parameter is (a number, a switch, a color) and what it accepts (`20 ... 400`). So the app is not guessing. It reads a range and lays out a fader that ends where your parameter ends.
+
+The control follows the kind, the same way the inspector's does. A `Double` becomes a fader over its range, an `Int` a stepper, an enum a menu carrying your own option names. A `Bool` becomes a toggle, a `Color` a color well, and a `Palette` a well per stop. Anything you have already given the inspector is published without another word from you.
+
+Values come back the plain way. The app sends `/Shape/radius 240.0` to the address the tree named, as ordinary OSC. It sends 240 rather than a fraction, because the tree told it the units. The value lands through the same control an inspector drag uses, so smoothing and clamping apply exactly as they do there. One port number serves both halves, the tree over HTTP and the values over UDP, so there is one number to tell anybody.
+
+Nothing about this needs the app. Open `http://your-mac.local:9000/` in a browser and the tree is there as JSON, and `curl 'http://localhost:9000/Shape/radius?VALUE'` reads one node. That makes it a good way to see what a sketch exposes without running a control surface at all.
+
+Anyone on the network who has the address can move your parameters while the server is up. Treat it as a studio and stage tool rather than something to leave open on café Wi-Fi. `advertises = false` keeps the ports open while taking the sketch off the browse list, and `stop()` closes both.
+
+The `Integration/OSCQuery` example serves a ring of marks and draws its own namespace down the left, so the picture and the listing are one thing seen twice.
 
 ## One beat for the whole room
 
