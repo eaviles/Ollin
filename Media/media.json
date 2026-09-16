@@ -8668,20 +8668,20 @@
       "width": 1080
     },
     "Rendering/LineSpray": {
-      "bytes": {
-        "still": 29403,
-        "stillSmall": 10507
-      },
-      "frame": 480,
+      "width": 1919,
       "height": 1003,
       "length": "still",
-      "motion": 0.018,
-      "rendered": "2026-09-10",
-      "source": "44feca85bc68ae89",
-      "still": "examples/Rendering/LineSpray/still.jpg?v=a4d3e42c",
       "stillBecause": "holds still",
-      "stillSmall": "examples/Rendering/LineSpray/still-640.jpg?v=4033c15e",
-      "width": 1919
+      "frame": 480,
+      "motion": 0.016,
+      "source": "509195a0fd90e790",
+      "rendered": "2026-09-16",
+      "bytes": {
+        "still": 28229,
+        "stillSmall": 10221
+      },
+      "still": "examples/Rendering/LineSpray/still.jpg?v=2e69e0d9",
+      "stillSmall": "examples/Rendering/LineSpray/still-640.jpg?v=9a01e745"
     },
     "Rendering/MeshField": {
       "bytes": {
