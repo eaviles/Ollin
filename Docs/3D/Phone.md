@@ -8,6 +8,8 @@ A sketch that renders on the Mac can use what an iPhone connected by a cable det
 
 Seventeen payloads come over the cable. The first is a **3D body skeleton**. Next are **faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view come as up to 4 skeletons of 21 joints each, lifted to metric 3D where the phone has LiDAR. The lines of **text** the phone can read arrive with their corners lifted the same way. The **pictures and objects it knows** each arrive as a named 6DoF placement in the room, with the real size. A map of **where the picture draws the eye** arrives as a heat map with the regions where it peaks. **How the picture is moving** arrives as a field of motion vectors between consecutive frames, read the way the Mac's own optical-flow field is read. A world-facing **RGBD depth frame** from the rear LiDAR unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh** is the space itself, reconstructed as a labeled triangle surface. The **flat surfaces** in that room arrive beside it, as somewhere to stand something. The **room's light** reports how bright and how warm the space is. A **person-segmentation matte** from the rear camera comes as a silhouette and a cutout. **Device motion** streams too. The phone itself **held as a pointer** is the one payload that describes the person rather than the room. **What the phone hears** is every sound its classifier names, with how sure it is, from the phone's own microphone. The last two need no camera at all: **every finger on its own screen**, which turns the phone into something you play, and **the air it is standing in**, read off its barometer.
 
+Traffic runs the other way too. The sketch can say [which mode to run and what to look for](#saying-what-to-look-for-from-the-sketch), sending the reference pictures down the cable, and the phone answers with what it is doing and what it made of them.
+
 [`Record3D`](../3D/Record3D.md) reads the color-plus-depth feed from another app. Ollin Capture is Ollin's own app, so the stream carries ARKit's own results, and both ends of the link are Ollin code.
 
 `PhoneDevice` lives in a separate library, which keeps the drawing core small. Add `import OllinPhone` beside `import Ollin`. The transport is the standard `usbmuxd` device tunnel, the same mechanism Xcode uses. There is no third-party dependency and no Wi-Fi pairing, so the cable is the whole setup.
@@ -41,6 +43,7 @@ final class Pose: Sketch {
 - [The hands](#the-hands) - `PhoneHand`, 21 joints, the 3D lift, `pinchDistance`
 - [The text in view](#the-text-in-view) - `PhoneText`, the corners, `worldTransform`
 - [The pictures and objects it knows](#the-pictures-and-objects-it-knows) - `PhoneMarker`, the reference folder, `placement`
+- [Saying what to look for, from the sketch](#saying-what-to-look-for-from-the-sketch) - `look(for:)`, `use(_:)`, `PhoneReference`, `latestState`
 - [The phone as a pointer](#the-phone-as-a-pointer) - `PhoneWand`, the beam, the button, the thumb
 - [World depth](#world-depth) - `latestFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
@@ -275,7 +278,7 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 
 ## The pictures and objects it knows
 
-In **Markers** mode the phone looks for things you have given it. A reference is a file in the capture app's own folder. It can be any picture, or an `.arobject` that a scan produced. To add one, connect the cable, open the phone in Finder, then Files, then Ollin Capture, and drop the file in. AirDrop and the Files app work the same way. The app reads the folder when the mode starts. The **Read the folder again** button picks up a file dropped in later.
+In **Markers** mode the phone looks for things you have given it. There are two ways to give it one. The sketch can [say what to look for](#saying-what-to-look-for-from-the-sketch) and send the file down the cable, which is what keeps the piece in one `.swift` file. Or a reference can be a file in the capture app's own folder, which is the rest of this section. It can be any picture, or an `.arobject` that a scan produced. To add one, connect the cable, open the phone in Finder, then Files, then Ollin Capture, and drop the file in. AirDrop and the Files app work the same way. The app reads the folder when the mode starts. The **Read the folder again** button picks up a file dropped in later.
 
 A picture needs its printed width in meters. No image file carries that, so the file name states it. `poster@30cm.png`, `card-50mm.jpg`, `plate 12in.heic`, and `tile_0.4m.png` all state a size. The units are centimeters, millimeters, inches, and meters. A name that states no size gets 15 cm, and the app says so on its screen. What is left after the size is the marker's **name**, so `poster@30cm.png` is the marker `poster`.
 
@@ -304,6 +307,59 @@ Three things decide whether this works in a room:
 - **An object is found, not followed.** ARKit tracks a picture while it stays in view. A scanned object gets one placement where it was found and keeps it. So an object marks a place, and a picture marks a moving thing.
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneMarkers`.
+
+## Saying what to look for, from the sketch
+
+Everything above runs one way: the phone broadcasts and the Mac reads. This is the one thing that runs the other way. The sketch tells the phone which mode to run, and gives it the pictures to look for, so the `.swift` file carries the whole piece. A phone that has never seen your sketch knows what to find the moment the cable goes in.
+
+```swift
+override func setup() {
+    device.use(.markers)                                    // which mode to run
+    device.look(for: [                                      // and what to look for
+        .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3)!,
+    ])
+    device.start()
+}
+```
+
+Both are *declarations*, not commands fired once. The device remembers them and says them again every time it connects, so plugging in the cable, or launching the capture app, after the sketch is already running works exactly like doing it first.
+
+A reference is a file plus the one measurement no image file carries: how wide you printed it, in meters. Build one from a bundled resource, from a path, or from a picture the sketch already holds:
+
+```swift
+PhoneReference.picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3)
+PhoneReference.picture(path: "~/Pictures/card@50mm.jpg", printedWidth: 0.05)
+PhoneReference.picture(photo, printedWidth: 0.21, named: "blankets")    // an Image you loaded
+PhoneReference.object(resource: "teapot", in: .module)                  // a scan; it knows its own size
+```
+
+Each returns `nil` when the file is not there or its pixels will not read, so the compiler makes you decide what to do about a missing picture. Left out, `named:` is the file's own name with any stated size taken off, the same rule the [reference folder](#the-pictures-and-objects-it-knows) uses: `poster@30cm.png` declares the marker `poster` either way.
+
+### What the phone says back
+
+`use(_:)` and `look(for:)` are answered. `latestState` is what the phone says it is doing, and it is worth reading, because the failure here is otherwise silent: ARKit judges on the phone whether a picture has enough detail to be found at all, and a print it refuses would simply never arrive.
+
+```swift
+if let state = device.latestState {
+    state.mode                       // PhoneCaptureMode, what it is running
+    state.isSupported                // false when the hardware isn't there
+    state.referenceCount             // how many things it is looking for
+    state.referencesAreDeclared      // true when the sketch sent them
+    state.status                     // the sentence on the phone's own screen
+    state.notes                      // what it could not use, in plain sentences
+}
+```
+
+It arrives when something changes rather than every frame, so read it as standing state.
+
+Four things are worth knowing:
+
+- **The person keeps the last word.** `use(_:)` moves the phone as if somebody had tapped the mode, and a tap afterwards moves it back. Nothing here forces a mode, which is what lets somebody take over a running piece. Read `state.mode` rather than assuming the ask landed.
+- **A declared library replaces the folder.** While a sketch is declaring, the phone stops reading the files somebody dropped into its own folder, and its screen says so. When the sketch disconnects the folder takes over again. A sketch that declares nothing leaves the folder in charge, which is still the way to give the phone a picture without writing one into the sketch.
+- **A picture is fitted to the cable.** ARKit wants detail, not size. A picture wider than `PhoneReference.maxPictureEdge` (1024 px) is redrawn to fit and re-encoded as JPEG; one already within that, and small enough for a single frame, travels byte for byte, so a hand-made PNG arrives exactly as you shipped it. At most `PhoneWire.maxReferences` (32) references travel.
+- **Declaring nothing is not the same as declaring an empty list.** `look(for: [])` says "look for nothing", and the folder stays out. Never calling `look(for:)` leaves the folder in charge.
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneMarkers`, which sends a bundled photograph and asks for Markers mode, so the only setup is to print the picture.
 
 <a name="the-phone-as-a-pointer"></a>
 
@@ -741,7 +797,7 @@ The threshold lives on the Mac, and you can set it while the phone listens:
 device.sounds.threshold = 0.4
 ```
 
-The phone sends its whole judgment and the Mac decides what counts as a sound starting. The wire runs one way, and the sketch is where a threshold belongs, so two sketches can read the same phone with different ideas of what is loud enough.
+The phone sends its whole judgment and the Mac decides what counts as a sound starting. The readings run one way, and the sketch is where a threshold belongs, so two sketches can read the same phone with different ideas of what is loud enough.
 
 Times run on the phone's audio clock, in seconds since it began listening. An event's `time` is the end of the window it crossed in. Between readings the Mac carries that clock forward with its own, so a fade runs smoothly rather than stepping once a window.
 
@@ -858,6 +914,7 @@ Tilt the phone and `gravity` swings. That is a one-line check that the connectio
 
 ## Notes
 
+- **The wire runs both ways, in two tag spaces.** Sensor frames go up; requests (a mode, a library of references) come back down. Both use the same 12-byte framing, and both number their kinds from 1, because a frame's direction is decided by which end reads it rather than by its bytes. The one place the two framings part is the magic word, so a frame written the wrong way down the cable fails at its header instead of decoding as whatever happens to share its number.
 - **The wire is Ollin's own, shared verbatim.** Both ends are Swift, so the protocol skips the packed-image trick that cross-language tools use. It is a length-prefixed stream of tagged binary messages, `PhoneWire`. That one source file is compiled into *both* the Mac satellite and the iOS app, so the framing cannot drift between them.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338. Record3D uses port 1337. Wi-Fi is deliberately left out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, with its root at the lens. The skeleton is in model space, with its root at the origin. The [world fusion](#world-fusion) step lifts a sweep into one fixed world cloud by applying each frame's `latestPose`. It fuses the clouds from several poses into a single *registered* scene. Two more steps, [keeping a long sweep registered](#drift) and [recognizing a place already scanned](#loops), correct ARKit's own drift on top of that. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.

@@ -26,8 +26,8 @@ import os
 /// ```
 ///
 /// The phone sends the whole judgment and the Mac decides what counts as a
-/// sound starting, because the wire runs one way and the sketch is where a
-/// threshold belongs. A label crossing `threshold` from below is an event; a
+/// sound starting, because the readings run one way and the sketch is where
+/// a threshold belongs. A label crossing `threshold` from below is an event; a
 /// sound that keeps going is therefore one event, not one per window. The
 /// classifier judges about a second and a half of audio at a time, so a short
 /// sound is named a moment after it happens, and it is happy to guess:
@@ -126,7 +126,8 @@ public final class PhoneSounds {
 
     /// Whether readings are arriving: `true` while the phone's Hear switch is
     /// on and the cable is in, `false` before the first reading and once they
-    /// stop. The wire runs one way, so this is read off the readings themselves.
+    /// stop. The phone says nothing when it goes quiet, so this is read off the
+    /// readings themselves.
     public var isListening: Bool {
         let now = Date.timeIntervalSinceReferenceDate
         return state.withLock { state in

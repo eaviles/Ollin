@@ -2,6 +2,7 @@ import Foundation
 import simd
 import Ollin
 import OllinPhone
+import OllinSamplePhotos
 
 /// A sketch that lives on a printed picture. The capture app holds a small library
 /// of reference pictures and scanned objects, finds them in the room on its own
@@ -10,11 +11,22 @@ import OllinPhone
 /// wave, framed by the print's own edge. A scanned object arrives as the box its
 /// scan measured, drawn as a cage around the real thing.
 ///
+/// The sketch says what to look for. It sends the phone a bundled photograph and
+/// the width it is printed at, and asks for Markers mode, so the `.swift` file
+/// carries the whole piece: nothing has to be dropped into the phone's folder, and
+/// a phone that has never seen this sketch knows what to find the moment the cable
+/// goes in.
+///
 /// Setup: build + run the Ollin capture app (Apps/OllinPhoneApp) on the iPhone,
-/// choose **Markers**, and drop a picture into its folder (connect the cable, open
-/// the phone in Finder, Files, then Ollin Capture). Name the file with the width you
-/// printed it at, like `poster@30cm.png`, so the room's measurements are right. A
-/// picture with plenty of detail is found from further away than a flat one.
+/// print the woven-blankets photograph at `printedWidth` across (A4 width by
+/// default, so a full-page print is right), and point the rear camera at it. Change
+/// `printedWidth` to whatever you actually printed: a wrong width puts the picture
+/// at the wrong distance rather than losing it.
+///
+/// A sketch that declares nothing leaves the phone's own folder in charge, which is
+/// the other way to give it a picture: drop the file in over the cable and name it
+/// with its size, like `poster@30cm.png`. A picture with plenty of detail is found
+/// from further away than a flat one.
 @main
 final class PhoneMarkers: Sketch {
 
@@ -29,6 +41,9 @@ final class PhoneMarkers: Sketch {
     /// How fast the wave under the columns travels.
     @Param(0...2) var speed = 0.45
 
+    /// How wide the photograph is printed, in meters. A4 is 21 cm across.
+    let printedWidth = 0.21
+
     /// Where the orbit looks, eased frame to frame so live noise does not jitter it.
     var orbitCenter: Vector3?
 
@@ -38,6 +53,15 @@ final class PhoneMarkers: Sketch {
     let cageColor = Color(hex: 0xC98BFF)
 
     override func setup() {
+        // The second direction: ask for the mode, and send the picture to look for.
+        // Both are remembered rather than fired once, so plugging the cable in
+        // later, or launching the capture app later, works the same as doing it first.
+        device.use(.markers)
+        if let reference = PhoneReference.picture(SamplePhoto.textiles.load(),
+                                                  printedWidth: printedWidth,
+                                                  named: "blankets") {
+            device.look(for: [reference])
+        }
         device.start()
     }
 
@@ -151,14 +175,17 @@ final class PhoneMarkers: Sketch {
         // has found nothing, which is a different thing to say than "connecting".
         var text = device.isRunning
             ? "Connected. Nothing it knows is in view.\n\n" +
-              "Choose Markers on the phone, drop a picture into its folder,\n" +
-              "and point the rear camera at the print."
+              String(format: "Print the woven blankets at %.0f cm across\n", printedWidth * 100) +
+              "and point the rear camera at it."
             : device.waitingMessage + "\n\n" +
-              "Run the Ollin capture app on the iPhone in Markers mode,\n" +
-              "drop a picture into its folder, and point the rear camera at the print."
-        if let motion = device.latestMotion {
-            text += String(format: "\n\nmotion live · gravity (% .2f, % .2f, % .2f)",
-                           motion.gravity.x, motion.gravity.y, motion.gravity.z)
+              "Run the Ollin capture app on the iPhone. The sketch asks for\n" +
+              "Markers mode and sends the picture to look for by itself."
+        // What the phone made of what it was sent. This is the only place a refused
+        // picture is heard about: ARKit judges detail on the phone, and a print it
+        // finds too plain would otherwise simply never arrive.
+        if let state = device.latestState {
+            text += "\n\nphone: \(state.mode.title) · looking for \(state.referenceCount)"
+            for note in state.notes { text += "\n\(note)" }
         }
         drawStatus(text, style: .info)
     }

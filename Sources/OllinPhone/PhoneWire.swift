@@ -39,7 +39,9 @@ public enum PhoneWire {
 
     /// Defensive upper bound on a single payload, so a garbage header can't steer
     /// a huge read (a body pose is well under a kilobyte; motion is 60 bytes).
-    static let maxPayloadBytes = 1 << 20
+    /// Both framings hold to it, so it is also what bounds a picture travelling
+    /// down the cable in one reference frame.
+    public static let maxPayloadBytes = 1 << 20
 }
 
 /// Which sensor a frame carries.
@@ -128,7 +130,7 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// audio, every label the on-device sound classifier knows with how sure it
     /// is of each, strongest first, on the phone's own audio clock. The phone
     /// sends the whole judgment and the Mac decides what counts as a sound
-    /// starting, since the wire runs one way and a sketch sets its own
+    /// starting, since the readings run one way and a sketch sets its own
     /// threshold. Needs no camera, so it rides beside every mode, behind the
     /// app's own Hear switch (the microphone asks its own permission).
     case sound = 14
@@ -153,6 +155,12 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// camera, so it rides beside whichever mode is running, behind the app's
     /// own Air switch (the altimeter asks its own permission).
     case air = 17
+    /// What the phone is doing, and what it made of what the sketch asked for:
+    /// the mode it is running, whether the device can do it, how many references
+    /// it is looking for, and the sentences its own screen is showing. It is the
+    /// answer to the traffic that runs the other way (`PhoneRequest`), so a
+    /// sketch that declares a picture learns whether the phone could use it.
+    case state = 18
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -1103,6 +1111,107 @@ public struct PhoneAirSample: Sendable, Equatable {
     }
 }
 
+/// Which sensor the capture app is running. One camera session runs at a time, so
+/// the modes are mutually exclusive and the app is in exactly one of them.
+///
+/// Lives here, in the file both ends share, because the mode now travels both
+/// ways: the phone reports which one it is in (`PhoneStateSample`), and a sketch
+/// on the Mac can ask for one (`PhoneRequest.mode`). The raw value is the wire
+/// byte, so a case keeps its number for ever; `title` is what the phone's own
+/// screen shows, kept beside the case rather than spelled again in the app.
+public enum PhoneCaptureMode: UInt8, CaseIterable, Sendable, Identifiable {
+    /// The rear camera through ARKit, following a person's skeleton.
+    case body = 1
+    /// The front TrueDepth camera through ARKit: the deforming face mesh and the
+    /// 52 expression blendshapes.
+    case face = 2
+    /// The rear LiDAR: a world-facing RGBD frame, which unprojects into a cloud.
+    case world = 3
+    /// The rear camera: a person matte for a silhouette or a cutout.
+    case segment = 4
+    /// The front camera: the same matte, mirrored like the preview, with no ARKit.
+    case selfie = 5
+    /// The rear LiDAR: the room rebuilt as a labeled surface, block by block, with
+    /// the flat planes found beside it.
+    case room = 6
+    /// The rear camera: the 21-joint hand skeletons in view.
+    case hands = 7
+    /// The rear camera: the lines of text it can read.
+    case text = 8
+    /// The rear camera: the pictures and objects it knows, each where it stands.
+    case markers = 9
+    /// The phone as a pointer rather than an observer.
+    case wand = 10
+    /// The rear camera: where the picture draws the eye.
+    case attention = 11
+    /// The rear camera: how the picture is moving, frame to frame.
+    case flow = 12
+    /// No camera at all: the screen is the sensor.
+    case touch = 13
+
+    public var id: UInt8 { rawValue }
+
+    /// The name the phone's screen shows, and the one a sketch reads back.
+    public var title: String {
+        switch self {
+        case .body: return "Body"
+        case .face: return "Face"
+        case .world: return "World"
+        case .segment: return "Segment"
+        case .selfie: return "Selfie"
+        case .room: return "Room"
+        case .hands: return "Hands"
+        case .text: return "Text"
+        case .markers: return "Markers"
+        case .wand: return "Wand"
+        case .attention: return "Attention"
+        case .flow: return "Flow"
+        case .touch: return "Touch"
+        }
+    }
+}
+
+/// What the phone is doing, and what it made of what the sketch asked for.
+///
+/// This is the only message that answers the traffic running the other way. A
+/// sketch asks for a mode and declares the pictures to look for; the phone says
+/// which mode it is in, whether the device can do it at all, how many references
+/// it is holding, and the sentences its own screen is showing. Without it the
+/// second direction fails in silence: a poster that ARKit finds too plain to
+/// recognize would simply never arrive, with nothing on the Mac to say why.
+///
+/// `notes` is what the phone could not use and what it assumed, one plain
+/// sentence each, exactly as its screen reads them.
+public struct PhoneStateSample: Sendable, Equatable {
+    public var timestamp: Double
+    /// The mode the phone is running right now.
+    public var mode: PhoneCaptureMode
+    /// Whether the device can do that mode. False means the phone switched but the
+    /// hardware is not there (no LiDAR for the room, no TrueDepth for the face).
+    public var isSupported: Bool
+    /// How many reference pictures and objects the phone is looking for.
+    public var referenceCount: Int
+    /// Whether those references came from a sketch over the wire, rather than from
+    /// the files somebody dropped into the app's own folder.
+    public var referencesAreDeclared: Bool
+    /// The sentence the phone's own screen is showing.
+    public var status: String
+    /// What the phone could not use and what it assumed, in plain sentences.
+    public var notes: [String]
+
+    public init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = true,
+                referenceCount: Int = 0, referencesAreDeclared: Bool = false,
+                status: String = "", notes: [String] = []) {
+        self.timestamp = timestamp
+        self.mode = mode
+        self.isSupported = isSupported
+        self.referenceCount = referenceCount
+        self.referencesAreDeclared = referencesAreDeclared
+        self.status = status
+        self.notes = notes
+    }
+}
+
 /// A decoded message of any kind, which the unit tests round-trip.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
@@ -1160,6 +1269,10 @@ public enum PhoneMessage: Sendable, Equatable {
     /// since it started measuring. It needs no camera, so it arrives beside
     /// whichever mode is running.
     case air(PhoneAirSample)
+    /// What the phone is doing, and what it made of what the sketch asked for.
+    /// The one message that answers the traffic running the other way, sent
+    /// whenever any of it changes rather than per frame.
+    case state(PhoneStateSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -1180,6 +1293,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .flow: return .flow
         case .touch: return .touch
         case .air: return .air
+        case .state: return .state
         }
     }
 }
@@ -1238,6 +1352,7 @@ public extension PhoneWire {
         case .flow(let f): payload = encodeFlowPayload(f)
         case .touch(let t): payload = encodeTouchPayload(t)
         case .air(let a): payload = encodeAirPayload(a)
+        case .state(let s): payload = encodeStatePayload(s)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1652,6 +1767,24 @@ public extension PhoneWire {
         return p
     }
 
+    /// What the phone is doing: the clock, the mode, the support flag, the count
+    /// of references and where they came from, then the status sentence and the
+    /// notes, each as a length-prefixed UTF-8 string.
+    private static func encodeStatePayload(_ st: PhoneStateSample) -> Data {
+        var p = Data()
+        appendF64(&p, st.timestamp)
+        p.append(st.mode.rawValue)
+        p.append(st.isSupported ? 1 : 0)
+        appendU16(&p, UInt16(min(st.referenceCount, Int(UInt16.max))))
+        p.append(st.referencesAreDeclared ? 1 : 0)
+        appendString(&p, st.status)
+        // A note count, then that many strings (capped defensively; the screen
+        // shows a handful).
+        p.append(UInt8(min(st.notes.count, 255)))
+        for note in st.notes.prefix(255) { appendString(&p, note) }
+        return p
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -1687,6 +1820,7 @@ public extension PhoneWire {
         case .flow: return decodeFlow(payload).map(PhoneMessage.flow)
         case .touch: return decodeTouch(payload).map(PhoneMessage.touch)
         case .air: return decodeAir(payload).map(PhoneMessage.air)
+        case .state: return decodeState(payload).map(PhoneMessage.state)
         }
     }
 
@@ -2313,6 +2447,30 @@ private extension PhoneWire {
                               pressure: readF32(data, s + 8),
                               altitude: readF32(data, s + 12))
     }
+
+    static func decodeState(_ data: Data) -> PhoneStateSample? {
+        // timestamp(8) + mode(1) + supported(1) + referenceCount(2) + declared(1).
+        guard data.count >= 13 else { return nil }
+        let s = data.startIndex
+        var o = 0
+        let timestamp = readF64(data, s); o += 8
+        guard let mode = PhoneCaptureMode(rawValue: data[s + o]) else { return nil }
+        o += 1
+        let supported = data[s + o] != 0; o += 1
+        let count = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+        let declared = data[s + o] != 0; o += 1
+        guard let status = readString(data, &o) else { return nil }
+        guard data.count >= o + 1 else { return nil }
+        let noteCount = Int(data[s + o]); o += 1
+        var notes = [String](); notes.reserveCapacity(noteCount)
+        for _ in 0..<noteCount {
+            guard let note = readString(data, &o) else { return nil }
+            notes.append(note)
+        }
+        return PhoneStateSample(timestamp: timestamp, mode: mode, isSupported: supported,
+                                referenceCount: count, referencesAreDeclared: declared,
+                                status: status, notes: notes)
+    }
 }
 
 // MARK: - Little-endian byte helpers
@@ -2361,5 +2519,294 @@ private extension PhoneWire {
         var bits: UInt64 = 0
         for k in 0..<8 { bits |= UInt64(d[i + k]) << (8 * k) }
         return Double(bitPattern: bits)
+    }
+    /// A string as UTF-8: a 16-bit byte count, then the bytes. The cap is
+    /// defensive; every string on this wire is a name or a short sentence.
+    static func appendString(_ d: inout Data, _ text: String) {
+        let utf8 = Data(text.utf8.prefix(Int(UInt16.max)))
+        appendU16(&d, UInt16(utf8.count))
+        d.append(utf8)
+    }
+    /// Read a length-prefixed UTF-8 string at offset `o`, advancing past it.
+    /// Returns `nil` when the buffer is short, so a truncated payload is a
+    /// skipped frame rather than a wrong answer.
+    static func readString(_ d: Data, _ o: inout Int) -> String? {
+        let s = d.startIndex
+        guard d.count >= o + 2 else { return nil }
+        let count = Int(UInt16(d[s + o]) | (UInt16(d[s + o + 1]) << 8)); o += 2
+        guard d.count >= o + count else { return nil }
+        let text = String(decoding: d[(s + o)..<(s + o + count)], as: UTF8.self)
+        o += count
+        return text
+    }
+}
+
+// MARK: - The second direction: what the Mac asks of the phone
+
+/*
+ Everything above runs one way: the phone broadcasts, the Mac reads. What follows
+ runs the other way, and it is the first traffic to do so.
+
+ Three decisions, made once here.
+
+ **The framing is the same.** A request is a 12-byte header and a payload, magic
+ and version and kind and length in the same places, so one reader shape serves
+ both directions and the version byte stays a single number for the whole wire.
+
+ **The tag space is its own.** A request kind is numbered from 1 beside a sensor
+ kind numbered from 1, because nothing ever has to tell them apart by their
+ bytes: a frame's direction is decided by which end is reading it. Sharing one
+ enum would have meant one list where half the cases are illegal for whoever
+ holds it.
+
+ **The magic differs.** `requestMagic` is the one place the two framings part,
+ and it buys a loud failure for the mistake the shared tag space makes possible:
+ a sensor frame written down the cable, or somebody else's tool writing where it
+ should be reading, fails at the header instead of decoding as whatever request
+ carries that number. It costs four bytes a frame, on a stream that carries a
+ handful of frames per connection.
+ */
+
+public extension PhoneWire {
+    /// Frame marker for the Mac-to-phone direction: "OLNR" (a request) as a
+    /// little-endian `UInt32`, deliberately unlike `magic` so a frame written the
+    /// wrong way down the cable fails at the header instead of decoding as
+    /// whichever request happens to share its kind byte.
+    static let requestMagic: UInt32 = 0x4F4C_4E52
+
+    /// How many references one declaration may carry. A library beyond this is
+    /// refused whole rather than truncated, since a sketch that asked for 500
+    /// pictures has a bug, and staging them would cost the phone its memory.
+    static let maxReferences = 32
+}
+
+/// What the Mac is asking the phone to do.
+public enum PhoneRequestKind: UInt8, Sendable, CaseIterable {
+    /// Run this mode. The phone switches as if somebody had tapped it, so the
+    /// person keeps the last word: a tap on the phone overrides what arrived.
+    case mode = 1
+    /// A library of this many references is coming. The phone clears whatever it
+    /// was staging and waits for exactly that many `reference` frames. A count of
+    /// zero commits an empty library at once, which means "look for nothing".
+    case library = 2
+    /// One reference of the library now open: a picture to look for, or a scanned
+    /// object. The stream is ordered, so the frames need no index.
+    case reference = 3
+}
+
+/// One picture or object a sketch asks the phone to look for: its name, what kind
+/// of thing it is, how wide it is printed, and the file's own bytes.
+///
+/// This is the file that would otherwise have to live in the phone's own folder.
+/// Sending it means the `.swift` sketch carries the whole piece: the picture it
+/// stands on travels with it, and a phone that has never seen the sketch before
+/// learns what to look for the moment the cable goes in.
+///
+/// `printedWidth` is in meters and belongs to a picture: ARKit places a print by
+/// its real width, and no image file carries one. A scanned object already knows
+/// its own size, so its width is zero and unread.
+public struct PhoneReference: Sendable, Equatable {
+    /// What the sketch matches the find on, and what the phone's screen shows.
+    public var name: String
+    public var kind: PhoneMarkerKind
+    /// How wide the picture is printed, in meters. Zero for an object.
+    public var printedWidth: Double
+    /// The file's own bytes: an image file, or an `.arobject` archive.
+    public var contents: Data
+
+    public init(name: String, kind: PhoneMarkerKind, printedWidth: Double, contents: Data) {
+        self.name = name
+        self.kind = kind
+        self.printedWidth = printedWidth
+        self.contents = contents
+    }
+}
+
+/// One decoded request, which the unit tests round-trip the way they do a message.
+public enum PhoneRequest: Sendable, Equatable {
+    case mode(PhoneCaptureMode)
+    /// A library of `count` references is coming; zero means look for nothing.
+    case library(count: Int)
+    case reference(PhoneReference)
+
+    public var kind: PhoneRequestKind {
+        switch self {
+        case .mode: return .mode
+        case .library: return .library
+        case .reference: return .reference
+        }
+    }
+}
+
+/// The parsed header of a Mac-to-phone frame: the same 12 bytes as a sensor
+/// frame, read against `PhoneWire.requestMagic` and the request tag space.
+public struct PhoneRequestHeader: Sendable, Equatable {
+    public var kind: PhoneRequestKind
+    public var payloadLength: Int
+
+    public init(kind: PhoneRequestKind, payloadLength: Int) {
+        self.kind = kind
+        self.payloadLength = payloadLength
+    }
+
+    /// Parse a 12-byte request header. Returns `nil` for a short buffer, the wrong
+    /// magic (which a sensor frame written down the cable trips), a version or kind
+    /// this build does not know, or an implausible length. All of them mean drop
+    /// the connection rather than guess.
+    public static func parse(_ data: Data) -> PhoneRequestHeader? {
+        guard data.count >= PhoneWire.headerByteCount else { return nil }
+        let s = data.startIndex
+        func u32(_ off: Int) -> UInt32 {
+            UInt32(data[s + off]) | (UInt32(data[s + off + 1]) << 8)
+                | (UInt32(data[s + off + 2]) << 16) | (UInt32(data[s + off + 3]) << 24)
+        }
+        guard u32(0) == PhoneWire.requestMagic else { return nil }
+        guard data[s + 4] == PhoneWire.version else { return nil }
+        guard let kind = PhoneRequestKind(rawValue: data[s + 5]) else { return nil }
+        let length = Int(u32(8))
+        guard length >= 0, length <= PhoneWire.maxPayloadBytes else { return nil }
+        return PhoneRequestHeader(kind: kind, payloadLength: length)
+    }
+}
+
+public extension PhoneWire {
+
+    /// Encode a full request frame (header + payload) ready to write to the socket.
+    static func encode(_ request: PhoneRequest) -> Data {
+        var payload = Data()
+        switch request {
+        case .mode(let mode):
+            payload.append(mode.rawValue)
+        case .library(let count):
+            appendU32(&payload, UInt32(max(0, min(count, maxReferences))))
+        case .reference(let reference):
+            appendString(&payload, reference.name)
+            payload.append(reference.kind.rawValue)
+            appendF64(&payload, reference.printedWidth)
+            appendU32(&payload, UInt32(reference.contents.count))
+            payload.append(reference.contents)
+        }
+        var out = Data()
+        appendU32(&out, requestMagic)
+        out.append(version)
+        out.append(request.kind.rawValue)
+        out.append(0); out.append(0)             // reserved
+        appendU32(&out, UInt32(payload.count))
+        out.append(payload)
+        return out
+    }
+
+    /// Decode a request payload of the given kind. Returns `nil` on a short or
+    /// malformed payload, which the phone treats as a frame to skip.
+    static func decode(header: PhoneRequestHeader, payload: Data) -> PhoneRequest? {
+        let s = payload.startIndex
+        switch header.kind {
+        case .mode:
+            guard payload.count >= 1, let mode = PhoneCaptureMode(rawValue: payload[s]) else {
+                return nil
+            }
+            return .mode(mode)
+        case .library:
+            guard payload.count >= 4 else { return nil }
+            let count = Int(readU32(payload, s))
+            guard count <= maxReferences else { return nil }
+            return .library(count: count)
+        case .reference:
+            var o = 0
+            guard let name = readString(payload, &o) else { return nil }
+            guard payload.count >= o + 1 + 8 + 4 else { return nil }
+            guard let kind = PhoneMarkerKind(rawValue: payload[s + o]) else { return nil }
+            o += 1
+            let width = readF64(payload, s + o); o += 8
+            let byteCount = Int(readU32(payload, s + o)); o += 4
+            guard payload.count >= o + byteCount else { return nil }
+            let contents = payload.subdata(in: (s + o)..<(s + o + byteCount))
+            return .reference(PhoneReference(name: name, kind: kind,
+                                             printedWidth: width, contents: contents))
+        }
+    }
+}
+
+public extension PhoneWire {
+
+    /// Pull every whole request out of a growing buffer, leaving the partial tail
+    /// behind for the next read.
+    ///
+    /// TCP promises an ordered stream and nothing about where one read ends, so the
+    /// reading end holds a buffer and asks this after every chunk. It lives here, in
+    /// the file both ends share, so a Mac test pins the arithmetic the phone runs.
+    ///
+    /// Returns `nil` when the bytes are not this framing at all (a bad magic, a
+    /// version or kind this build does not know), which means drop the connection
+    /// rather than hunt for a magic word further along. A frame that is framed
+    /// correctly but will not decode is **skipped**, not fatal, the same split the
+    /// sensor reader makes: the stream is still in step.
+    static func takeRequests(from buffer: inout Data) -> [PhoneRequest]? {
+        var requests: [PhoneRequest] = []
+        while buffer.count >= headerByteCount {
+            guard let header = PhoneRequestHeader.parse(buffer) else { return nil }
+            let total = headerByteCount + header.payloadLength
+            guard buffer.count >= total else { break }        // the rest is still coming
+            let start = buffer.startIndex + headerByteCount
+            let payload = buffer.subdata(in: start ..< (buffer.startIndex + total))
+            buffer.removeSubrange(buffer.startIndex ..< (buffer.startIndex + total))
+            if let request = decode(header: header, payload: payload) {
+                requests.append(request)
+            }
+        }
+        return requests
+    }
+}
+
+/// Assembles a declared library out of the frames that carry it.
+///
+/// The rule is the whole of the library protocol, so it lives here in the file
+/// both ends share and a Mac test pins it, the way the printed-width arithmetic
+/// does. A `library` frame opens a declaration of a known size and throws away
+/// whatever was half-staged; each `reference` after it is added; the set commits
+/// on the frame that completes it. Nothing is keyed by a generation number,
+/// because the stream is ordered: a later declaration always arrives after the
+/// references of the one before it.
+///
+/// A half-received library never commits, so a cable pulled mid-declaration
+/// leaves the phone looking for what it was looking for before.
+public struct PhoneLibraryInbox: Sendable, Equatable {
+
+    /// The references received so far, for the declaration now open.
+    public private(set) var staged: [PhoneReference] = []
+
+    /// How many references the open declaration promised, or `nil` when none is.
+    public private(set) var expected: Int?
+
+    public init() {}
+
+    /// Whether a declaration is open and still waiting on references.
+    public var isReceiving: Bool { expected != nil }
+
+    /// Take one request. Returns the finished library on the frame that completes
+    /// a declaration, and `nil` otherwise, including for a `mode` request, which
+    /// is not library traffic and leaves a declaration in progress alone.
+    public mutating func apply(_ request: PhoneRequest) -> [PhoneReference]? {
+        switch request {
+        case .mode:
+            return nil
+        case .library(let count):
+            guard count >= 0, count <= PhoneWire.maxReferences else { return nil }
+            staged.removeAll(keepingCapacity: true)
+            guard count > 0 else {
+                expected = nil
+                return []            // "look for nothing", committed at once
+            }
+            expected = count
+            return nil
+        case .reference(let reference):
+            guard let expected else { return nil }   // nothing open: a stray frame
+            staged.append(reference)
+            guard staged.count >= expected else { return nil }
+            let library = staged
+            staged.removeAll(keepingCapacity: true)
+            self.expected = nil
+            return library
+        }
     }
 }

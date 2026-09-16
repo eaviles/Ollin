@@ -7,8 +7,8 @@ import SoundAnalysis
 /// knows, with how sure it is of each, strongest first, on the audio clock.
 ///
 /// The phone sends the whole judgment and the Mac decides what counts as a
-/// sound starting, because the wire runs one way and the sketch is where a
-/// threshold belongs. The built-in classifier (three hundred-odd everyday
+/// sound starting, because the readings run one way and the sketch is where
+/// a threshold belongs. The built-in classifier (three hundred-odd everyday
 /// sounds) judges a second and a half of audio at a time, half overlapped, so a
 /// reading goes out about every three quarters of a second: a few kilobytes,
 /// nothing beside a depth frame.

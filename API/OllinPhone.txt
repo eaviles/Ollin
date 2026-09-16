@@ -53,6 +53,22 @@ enum PhoneBlendShape: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable
   case noseSneerLeft
   case noseSneerRight
   case tongueOut
+enum PhoneCaptureMode: UInt8, CaseIterable, Equatable, Hashable, Identifiable, RawRepresentable, Sendable
+  case attention
+  case body
+  case face
+  case flow
+  case hands
+  case markers
+  case room
+  case segment
+  case selfie
+  case text
+  case touch
+  case wand
+  case world
+  var id: UInt8 { get }
+  var title: String { get }
 enum PhoneEye: CaseIterable, Equatable, Hashable, Sendable
   case left
   case right
@@ -123,6 +139,7 @@ enum PhoneMessage: Equatable, Sendable
   case sceneMesh(PhoneSceneMeshSample)
   case segmentation(PhoneSegmentationSample)
   case sound(PhoneSoundSample)
+  case state(PhoneStateSample)
   case texts([PhoneTextSample])
   case touch(PhoneTouchSample)
   case wand(PhoneWandSample)
@@ -143,11 +160,21 @@ enum PhoneMessageKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentabl
   case sceneMesh
   case segmentation
   case sound
+  case state
   case touch
   case wand
 enum PhonePlaneAlignment: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case horizontal
   case vertical
+enum PhoneRequest: Equatable, Sendable
+  case library(count: Int)
+  case mode(PhoneCaptureMode)
+  case reference(PhoneReference)
+  var kind: PhoneRequestKind { get }
+enum PhoneRequestKind: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
+  case library
+  case mode
+  case reference
 enum PhoneSurface: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, Sendable
   case ceiling
   case door
@@ -160,25 +187,33 @@ enum PhoneSurface: UInt8, CaseIterable, Equatable, Hashable, RawRepresentable, S
 enum PhoneWire
   static func bufferPoint(fromUpright: SIMD2<Float>, quarterTurnsCW: UInt8) -> SIMD2<Float>
   static func decode(header: PhoneHeader, payload: Foundation.Data) -> PhoneMessage?
+  static func decode(header: PhoneRequestHeader, payload: Foundation.Data) -> PhoneRequest?
   static func encode(_: PhoneMessage) -> Foundation.Data
+  static func encode(_: PhoneRequest) -> Foundation.Data
   static func markerName(fromFileName: String) -> String
   static func markerStem(_: String) -> String
   static func markerWidth(fromName: String, fallback: Double = default) -> (meters: Double, stated: Bool)
   static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int, surfaceCount: Int) -> Int
+  static func takeRequests(from: Foundation.Data) -> [PhoneRequest]?
   static func wandFrame(fromCamera: simd.simd_float4x4, quarterTurnsCW: UInt8) -> simd.simd_float4x4
   static let headerByteCount: Int
   static let magic: UInt32
   static let markerImageExtensions: Set<String>
   static let markerObjectExtension: String
+  static let maxPayloadBytes: Int
+  static let maxReferences: Int
+  static let requestMagic: UInt32
   static let streamPort: UInt16
   static let version: UInt8
 final class PhoneDevice: FrameSource, VideoFeed, Sendable
+  func look(for: [PhoneReference])
   func marker(named: String) -> PhoneMarker?
   func pointCloud(minConfidence: DepthConfidence = default, depthRange: ClosedRange<Double>? = default, step: Int = default, pointSize: Double = default) -> PointCloud?
   func resetPlanes()
   func resetSceneMesh()
   func start()
   func stop()
+  func use(_: PhoneCaptureMode)
   init(port: UInt16 = default)
   let sounds: PhoneSounds
   let touches: PhoneTouches
@@ -208,6 +243,7 @@ final class PhoneDevice: FrameSource, VideoFeed, Sendable
   var latestSaliencyHeatMap: Image? { get }
   var latestSegmentationCutout: Image? { get }
   var latestSegmentationMatte: Image? { get }
+  var latestState: PhoneState? { get }
   var latestText: PhoneText? { get }
   var latestTexts: [PhoneText] { get }
   var latestWand: PhoneWand? { get }
@@ -394,6 +430,12 @@ struct PhoneJointSample: Equatable, Sendable
   var isTracked: Bool { get set }
   var orientation: SIMD4<Float> { get set }
   var position: SIMD3<Float> { get set }
+struct PhoneLibraryInbox: Equatable, Sendable
+  init()
+  mutating func apply(_: PhoneRequest) -> [PhoneReference]?
+  var expected: Int? { get }
+  var isReceiving: Bool { get }
+  var staged: [PhoneReference] { get }
 struct PhoneLight: Sendable
   init(lumens: Double, kelvin: Double, direction: Vector3? = default, keyIntensity: Double? = default, sphericalHarmonics: [Float]? = default, timestamp: Double = default)
   let color: Color
@@ -516,6 +558,23 @@ struct PhonePoseSample: Equatable, Sendable
   var joints: [PhoneJoint : PhoneJointSample] { get set }
   var scaleFactor: Float { get set }
   var timestamp: Double { get set }
+struct PhoneReference: Equatable, Sendable
+  init(name: String, kind: PhoneMarkerKind, printedWidth: Double, contents: Foundation.Data)
+  static func object(path: String, named: String? = default) -> PhoneReference?
+  static func object(resource: String, in: Foundation.Bundle, named: String? = default) -> PhoneReference?
+  static func picture(_: Image, printedWidth: Double, named: String) -> PhoneReference?
+  static func picture(path: String, printedWidth: Double, named: String? = default) -> PhoneReference?
+  static func picture(resource: String, withExtension: String, in: Foundation.Bundle, printedWidth: Double, named: String? = default) -> PhoneReference?
+  static let maxPictureEdge: Int
+  var contents: Foundation.Data { get set }
+  var kind: PhoneMarkerKind { get set }
+  var name: String { get set }
+  var printedWidth: Double { get set }
+struct PhoneRequestHeader: Equatable, Sendable
+  init(kind: PhoneRequestKind, payloadLength: Int)
+  static func parse(_: Foundation.Data) -> PhoneRequestHeader?
+  var kind: PhoneRequestKind { get set }
+  var payloadLength: Int { get set }
 struct PhoneSaliency: Sendable
   func salience(at: Vector2, in: Rectangle) -> Double
   func salienceNormalized(at: Vector2) -> Double
@@ -608,6 +667,26 @@ struct PhoneSoundSample: Equatable, Sendable
   init(timestamp: Double, duration: Double, classifications: [PhoneSoundClassification])
   var classifications: [PhoneSoundClassification] { get set }
   var duration: Double { get set }
+  var timestamp: Double { get set }
+struct PhoneState: Equatable, Sendable
+  init(_: PhoneStateSample)
+  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, status: String = default, notes: [String] = default)
+  let isSupported: Bool
+  let mode: PhoneCaptureMode
+  let notes: [String]
+  let referenceCount: Int
+  let referencesAreDeclared: Bool
+  let status: String
+  let timestamp: Double
+  var isLookingForAnything: Bool { get }
+struct PhoneStateSample: Equatable, Sendable
+  init(timestamp: Double, mode: PhoneCaptureMode, isSupported: Bool = default, referenceCount: Int = default, referencesAreDeclared: Bool = default, status: String = default, notes: [String] = default)
+  var isSupported: Bool { get set }
+  var mode: PhoneCaptureMode { get set }
+  var notes: [String] { get set }
+  var referenceCount: Int { get set }
+  var referencesAreDeclared: Bool { get set }
+  var status: String { get set }
   var timestamp: Double { get set }
 struct PhoneTap: Equatable, Sendable
   func point(in: Rectangle) -> Vector2

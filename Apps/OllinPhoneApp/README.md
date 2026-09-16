@@ -52,11 +52,20 @@ measuring, and the altimeter asks its own permission once.
 - **Transport is the standard usbmuxd USB tunnel.** The app opens an `NWListener` on
   TCP `PhoneWire.streamPort` (1338, distinct from Record3D's 1337); the Mac's
   `PhoneDevice` tunnels to it through usbmuxd. No Wi-Fi, no pairing — just the cable.
-- **One-way push.** Each ARKit body/face/depth update and motion sample is encoded
-  with `PhoneWire` and broadcast to the connected Mac. The device-motion payload is
-  the cheap transport smoke-test: it moves the instant the wire is alive, before ARKit
-  has found a body, face, or depth. The depth payload is by far the heaviest (a
-  256×192 LiDAR frame + a JPEG color image), so it streams only in World mode.
+- **Readings push out.** Each ARKit body/face/depth update and motion sample is
+  encoded with `PhoneWire` and broadcast to the connected Mac. The device-motion
+  payload is the cheap transport smoke-test: it moves the instant the wire is alive,
+  before ARKit has found a body, face, or depth. The depth payload is by far the
+  heaviest (a 256×192 LiDAR frame + a JPEG color image), so it streams only in World
+  mode.
+- **Requests come back.** A sketch on the Mac can ask for a mode and declare the
+  reference pictures to look for (`PhoneRequest`), framed the same length-prefixed
+  way against its own magic word. The app switches as if somebody had tapped the
+  chip, and rebuilds the marker library out of what arrives, which replaces the
+  Documents folder for as long as that sketch is connected. It answers with
+  `PhoneMessage.state`: the mode it is in, whether the device can do it, how many
+  references it holds, and the sentences on its own screen, so a picture ARKit
+  refuses is heard about on the Mac rather than nowhere.
 
 ## Build & deploy
 

@@ -35,6 +35,10 @@ struct MarkerLibrary {
     /// What the phone could not read, and what it assumed, in plain sentences for
     /// the app's own screen.
     var notes: [String] = []
+    /// Whether a sketch on the Mac sent these, rather than somebody dropping files
+    /// into the folder. A declared library replaces the folder for as long as the
+    /// sketch is connected.
+    var isDeclared = false
 
     var isEmpty: Bool { images.isEmpty && objects.isEmpty }
 
@@ -98,6 +102,61 @@ struct MarkerLibrary {
         return library
     }
 
+    /// Build a library out of what a sketch declared over the cable. Same shape as
+    /// reading the folder, and the same forgiveness: a reference the phone cannot
+    /// use is noted and skipped rather than failing the whole set.
+    ///
+    /// A picture arrives as the file's own bytes and the width it is printed at,
+    /// which is the one measurement no image file carries. An object arrives as an
+    /// `.arobject` archive, and ARKit reads one only from a file, so it is written
+    /// to the app's temporary folder and read back from there.
+    static func declared(_ references: [PhoneReference]) -> MarkerLibrary {
+        var library = MarkerLibrary()
+        library.isDeclared = true
+        for reference in references {
+            switch reference.kind {
+            case .image:
+                guard let image = UIImage(data: reference.contents),
+                      let cgImage = Self.upright(image) else {
+                    library.notes.append("The sketch sent \(reference.name), but its picture would not read.")
+                    continue
+                }
+                let width = max(0.01, reference.printedWidth)
+                let arImage = ARReferenceImage(cgImage, orientation: .up,
+                                               physicalWidth: CGFloat(width))
+                arImage.name = reference.name
+                library.images.insert(arImage)
+                library.references.append(MarkerReference(name: reference.name,
+                                                          fileName: reference.name,
+                                                          kind: .image, width: width,
+                                                          statedWidth: true))
+            case .object:
+                // The name came off the wire, so it is not a file name until it is
+                // made one: a separator in it would write outside the folder.
+                let stem = reference.name
+                    .components(separatedBy: CharacterSet(charactersIn: "/:")).joined(separator: "-")
+                let url = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("\(stem.isEmpty ? "object" : stem).\(PhoneWire.markerObjectExtension)")
+                guard (try? reference.contents.write(to: url)) != nil,
+                      let object = try? ARReferenceObject(archiveURL: url) else {
+                    library.notes.append("The sketch sent \(reference.name), but it would not read as a scanned object.")
+                    continue
+                }
+                try? FileManager.default.removeItem(at: url)
+                object.name = reference.name
+                library.objects.insert(object)
+                library.references.append(MarkerReference(name: reference.name,
+                                                          fileName: reference.name,
+                                                          kind: .object, width: 0,
+                                                          statedWidth: true))
+            }
+        }
+        if library.isEmpty && !references.isEmpty {
+            library.notes.append("The sketch sent references, but none of them could be used.")
+        }
+        return library
+    }
+
     /// The picture's pixels the way a person sees them. A camera records which way it
     /// was held beside the pixels rather than turning them, so a photo's own bitmap
     /// is often on its side. Redrawing it once here means the reference is upright by
@@ -148,18 +207,40 @@ final class MarkerStreamer: NSObject, ARSessionDelegate, LightReporting, @unchec
     private let session = ARSession()
     private(set) var library = MarkerLibrary()
 
+    /// What a sketch on the Mac declared, or `nil` when none has. A declaration
+    /// replaces the folder for as long as it stands; dropping it (the sketch
+    /// disconnected) hands the folder back.
+    private var declared: [PhoneReference]?
+
+    /// Whether this mode is the one running. A paused session keeps its delegate,
+    /// so asking the session is not the question; without this a library arriving
+    /// while another mode is on would start a second camera session.
+    private var isRunning = false
+
     /// How long the stream may stay quiet while nothing is being followed.
     private let quietInterval: TimeInterval = 0.2
     private var lastSent: TimeInterval = -.greatestFiniteMagnitude
 
     func start() {
         session.delegate = self
+        isRunning = true
         reload()
     }
 
-    func stop() { session.pause() }
+    func stop() {
+        isRunning = false
+        session.pause()
+    }
 
-    /// Read the folder again and restart the session with what is in it. This is how
+    /// Take a library a sketch declared, or `nil` to go back to the folder, and
+    /// start looking for it right away if this mode is running.
+    func use(_ references: [PhoneReference]?) {
+        declared = references
+        guard isRunning else { return }   // not this mode: it will be read on entry
+        reload()
+    }
+
+    /// Read the library again and restart the session with what is in it. This is how
     /// a file dropped in while the app is running gets picked up.
     ///
     /// Reading is a one-shot on mode entry and on the button, and the session wants
@@ -167,7 +248,7 @@ final class MarkerStreamer: NSObject, ARSessionDelegate, LightReporting, @unchec
     /// queue whose only job is to hand the result back. A large picture takes a
     /// moment to decode, which shows as a pause on that one tap.
     func reload() {
-        library = MarkerLibrary.load()
+        library = declared.map(MarkerLibrary.declared) ?? MarkerLibrary.load()
         onLibrary?(library)
 
         let config = ARWorldTrackingConfiguration()

@@ -62,22 +62,11 @@ struct OllinCaptureApp: App {
 /// beside whichever mode is on, behind its own switch, since the microphone asks
 /// its own permission. The barometer is the second such switch, for the same
 /// reason: it needs no camera, and the altimeter asks its own permission.
-enum CaptureMode: String, CaseIterable, Identifiable {
-    case body = "Body"
-    case face = "Face"
-    case world = "World"
-    case segment = "Segment"
-    case selfie = "Selfie"
-    case room = "Room"
-    case hands = "Hands"
-    case text = "Text"
-    case markers = "Markers"
-    case wand = "Wand"
-    case attention = "Attention"
-    case flow = "Flow"
-    case touch = "Touch"
-    var id: String { rawValue }
-}
+///
+/// The list itself lives in `PhoneWire.swift`, the file this app and the Mac
+/// satellite share, because the mode now travels both ways: it rides home in the
+/// state message, and a sketch on the Mac can ask for one.
+typealias CaptureMode = PhoneCaptureMode
 
 /// Owns the network server and the sensor streamers, and publishes the live status
 /// the screen shows. `@MainActor` — the AR/motion callbacks land on main.
@@ -117,6 +106,9 @@ final class SensorStreamer {
     /// What the phone is looking for, and what it could not use, for the screen.
     var markerReferences: [MarkerReference] = []
     var markerNotes: [String] = []
+    /// Whether a sketch on the Mac declared that library, rather than somebody
+    /// dropping files into the app's own folder.
+    var markersAreDeclared = false
     var lightInfo = ""
     var lightLive = false
     /// Whether the phone is naming the sounds it hears. The switch on the screen
@@ -207,6 +199,12 @@ final class SensorStreamer {
     private var planesSent = 0
     private var livePlanes: Set<UUID> = []
     private var started = false
+    /// Assembles a declared library out of the frames that carry it. The rule is
+    /// in the shared wire file, so the Mac's tests pin what the phone does here.
+    private var inbox = PhoneLibraryInbox()
+    /// The last state sent, so the answer goes out when something changes rather
+    /// than on a timer.
+    private var lastState: PhoneStateSample?
 
     func start() {
         guard !started else { return }
@@ -215,7 +213,22 @@ final class SensorStreamer {
 
         do {
             let server = try SensorServer(port: PhoneWire.streamPort) { [weak self] count in
-                Task { @MainActor in self?.clientCount = count }
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.clientCount = count
+                    // A sketch that just connected has not heard anything yet, so
+                    // say where the phone stands before anything changes.
+                    if count > 0 {
+                        self.sendState(force: true)
+                    } else {
+                        // Nobody is declaring any more, so the folder takes the
+                        // library back and a half-received declaration is dropped.
+                        self.inbox = PhoneLibraryInbox()
+                        self.markers.use(nil)
+                    }
+                }
+            } onRequest: { [weak self] request in
+                Task { @MainActor in self?.apply(request) }
             }
             self.server = server
         } catch {
@@ -381,6 +394,8 @@ final class SensorStreamer {
             guard let self else { return }
             self.markerReferences = library.references
             self.markerNotes = library.notes
+            self.markersAreDeclared = library.isDeclared
+            self.sendState()
         }
 
         // The ears need no camera, so they run beside every mode and are never
@@ -446,6 +461,65 @@ final class SensorStreamer {
         guard newMode != mode else { return }
         mode = newMode
         applyMode()
+    }
+
+    // MARK: What the Mac asks for
+
+    /// Take one request from a connected sketch.
+    ///
+    /// A mode request moves the app as if somebody had tapped the chip, and a tap
+    /// afterwards moves it back: whoever acted last wins, which is what lets a
+    /// person take over a running piece. A library is assembled by the shared
+    /// inbox and handed to the marker streamer when it is complete, so a cable
+    /// pulled halfway through a declaration leaves the phone looking for what it
+    /// was looking for before.
+    func apply(_ request: PhoneRequest) {
+        if case .mode(let wanted) = request {
+            setMode(wanted)
+            // Say so even when it changed nothing, so a sketch asking for the mode
+            // the phone is already in still hears an answer.
+            sendState(force: true)
+            return
+        }
+        guard let library = inbox.apply(request) else { return }
+        markers.use(library)
+        // A sketch that declared pictures means them for Markers mode, but it is
+        // the mode request that switches; reading the library here means the set
+        // is ready whichever order the two arrive in.
+        sendState()
+    }
+
+    /// Say what the phone is doing, if it has changed since the last time (or
+    /// always, when `force`). The answer is the only way a sketch learns that a
+    /// picture it sent was refused, so it carries the library notes with it.
+    private func sendState(force: Bool = false) {
+        let state = PhoneStateSample(timestamp: ProcessInfo.processInfo.systemUptime,
+                                     mode: mode, isSupported: supports(mode),
+                                     referenceCount: markerReferences.count,
+                                     referencesAreDeclared: markersAreDeclared,
+                                     status: status, notes: markerNotes)
+        // The clock moves on every call, so hold it level to ask the real question:
+        // has anything the sketch cares about changed since the last answer?
+        var probe = state
+        probe.timestamp = lastState?.timestamp ?? -1
+        guard force || probe != lastState else { return }
+        lastState = state
+        server?.send(PhoneWire.encode(.state(state)))
+    }
+
+    /// Whether this device can do a mode's headline sensor. Room reports the
+    /// surface, since its flat planes arrive on any phone; the status sentence
+    /// carries that nuance for the screen.
+    private func supports(_ mode: CaptureMode) -> Bool {
+        switch mode {
+        case .body: return bodySupported
+        case .face: return faceSupported
+        case .world: return depthSupported
+        case .segment: return segSupported
+        case .selfie: return selfieSupported
+        case .room: return meshSupported
+        case .hands, .text, .markers, .wand, .attention, .flow, .touch: return true
+        }
     }
 
     private func applyMode() {
@@ -525,6 +599,9 @@ final class SensorStreamer {
                 ? "Streaming the room surface and its flat planes"
                 : "Streaming flat planes (this device has no LiDAR to build a surface)"
         }
+        // Every path above lands here, so a tap on the phone and a request from the
+        // Mac both report the same way.
+        sendState()
     }
 
     /// Read the reference folder again, so a picture dropped in over the cable while
@@ -726,11 +803,21 @@ struct ContentView: View {
         .onAppear { streamer.start() }
     }
 
-    /// What the phone is looking for: one line per reference file, what it assumed
-    /// about a picture with no size in its name, and the button that reads the
-    /// folder again after somebody drops a file in.
+    /// What the phone is looking for: one line per reference, what it assumed about
+    /// a picture with no size in its name, and the button that reads the folder
+    /// again after somebody drops a file in.
+    ///
+    /// A sketch on the Mac can declare the library instead, and then the screen
+    /// says so: the files came down the cable, the folder is not being read, and
+    /// the button would only take the library away until the sketch says it again.
     private var markerLibrary: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if streamer.markersAreDeclared {
+                Text("The connected sketch is saying what to look for.")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             ForEach(streamer.markerReferences) { reference in
                 row(reference.kind == .object ? "Object" : "Picture",
                     reference.kind == .object
@@ -745,12 +832,14 @@ struct ContentView: View {
                     .foregroundStyle(.orange.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button("Read the folder again") { streamer.reloadMarkers() }
-                .font(.system(.caption, design: .rounded).weight(.semibold))
-                .foregroundStyle(.white.opacity(0.9))
-                .padding(.vertical, 6)
-                .padding(.horizontal, 14)
-                .background(Color.white.opacity(0.12), in: Capsule())
+            if !streamer.markersAreDeclared {
+                Button("Read the folder again") { streamer.reloadMarkers() }
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 14)
+                    .background(Color.white.opacity(0.12), in: Capsule())
+            }
         }
     }
 
@@ -882,7 +971,7 @@ struct ContentView: View {
         HStack(spacing: 8) {
             ForEach(modes) { mode in
                 let selected = streamer.mode == mode
-                Button(mode.rawValue) { streamer.setMode(mode) }
+                Button(mode.title) { streamer.setMode(mode) }
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     .foregroundStyle(selected ? Color.black : Color.white.opacity(0.85))
                     .padding(.vertical, 8)

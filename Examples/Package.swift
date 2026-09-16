@@ -368,7 +368,7 @@ let package = Package(
         example("3D/Phone/PhoneWorldText", [.phone]),
         // The pictures and objects the phone knows, found in the room: a city of
         // columns rises off every print it recognizes, framed by the print's edge.
-        example("3D/Phone/PhoneMarkers", [.phone]),
+        example("3D/Phone/PhoneMarkers", [.phone, .samplePhotos]),
         // The phone held as a pointer: a beam out of the back of it lands on a ball,
         // a press picks it up, the thumb pushes it away. The one mode that carries
         // the person rather than the room.

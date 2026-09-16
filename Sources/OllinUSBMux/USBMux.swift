@@ -142,7 +142,7 @@ package enum USBMux {
         appendU32(1)                             // protocol version (plist)
         appendU32(8)                             // message type (plist)
         appendU32(1)                             // tag (echoed back; one round trip)
-        writeAll(fd, header + payload)
+        writeFully(fd, header + payload)
     }
 
     private static func recv(_ fd: Int32) -> [String: Any]? {
@@ -174,15 +174,20 @@ package enum USBMux {
         return out
     }
 
-    private static func writeAll(_ fd: Int32, _ data: Data) {
-        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-            guard let base = raw.baseAddress else { return }
+    /// Write every byte of `data`, reporting whether all of them went. A short
+    /// write means the connection is gone or the send timed out, which is what
+    /// tells a caller to drop it rather than keep writing into a dead socket.
+    @discardableResult
+    package static func writeFully(_ fd: Int32, _ data: Data) -> Bool {
+        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> Bool in
+            guard let base = raw.baseAddress else { return data.isEmpty }
             var offset = 0
             while offset < data.count {
                 let written = write(fd, base.advanced(by: offset), data.count - offset)
-                if written <= 0 { break }
+                if written <= 0 { return false }
                 offset += written
             }
+            return true
         }
     }
 }

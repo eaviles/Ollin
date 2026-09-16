@@ -78,6 +78,13 @@ import Darwin
 /// room can drive the sketch. It needs no camera, so it arrives beside whichever
 /// mode is running, once the app's **Hear** switch is on.
 ///
+/// Traffic runs the other way too, and it is the only thing that does. `use(_:)`
+/// asks the phone for a mode and `look(for:)` hands it the pictures to look for,
+/// so the sketch carries its own references instead of leaving them in a folder on
+/// one particular phone. Both are remembered and said again on every connect.
+/// `latestState` is what the phone answers: where it landed, and what it could not
+/// use.
+///
 /// Launch the Ollin capture app on the iPhone and connect the cable; the device
 /// keeps retrying, so plugging in or starting the app mid-run just works. The
 /// transport is the standard `usbmuxd` tunnel (port 1338); the wire format is
@@ -447,6 +454,55 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// running, once the capture app's **Air** switch is on.
     public var latestAir: PhoneAir? { reader.latestAir.map(PhoneAir.init) }
 
+    // MARK: - Asking the phone (the Mac-to-phone direction)
+
+    /// Ask the phone to run a mode, so the sketch does not need somebody to tap it.
+    ///
+    /// Call it in `setup()` beside `start()`. The ask is remembered rather than
+    /// fired once, so it is said again every time the phone connects: plugging the
+    /// cable in, or launching the capture app, after the sketch started is the same
+    /// as having done it first.
+    ///
+    /// The person keeps the last word. A tap on the phone's own screen moves it,
+    /// and nothing here moves it back, which is what lets somebody take over a
+    /// running piece. `latestState` is how the sketch learns where it ended up.
+    public func use(_ mode: PhoneCaptureMode) { reader.declare(mode: mode) }
+
+    /// Tell the phone what to look for in **Markers** mode: the pictures and the
+    /// scanned objects, each with the width it was printed at.
+    ///
+    /// The files travel down the cable, so the `.swift` sketch carries the whole
+    /// piece and a phone that has never seen it before knows what to look for the
+    /// moment it connects. Like `use(_:)` the declaration is remembered and said
+    /// again on every connect.
+    ///
+    /// ```swift
+    /// override func setup() {
+    ///     device.use(.markers)
+    ///     device.look(for: [.picture(resource: "poster", withExtension: "png",
+    ///                                in: .module, printedWidth: 0.3)!])
+    ///     device.start()
+    /// }
+    /// ```
+    ///
+    /// A declared library replaces whatever the phone was looking for, including
+    /// the files somebody dropped into the app's own folder. Declaring an empty
+    /// list means "look for nothing"; a sketch that never declares one leaves the
+    /// folder in charge, and the phone goes back to it when the cable comes out.
+    /// At most `PhoneWire.maxReferences` travel; the rest are dropped.
+    public func look(for references: [PhoneReference]) {
+        reader.declare(references: references)
+    }
+
+    /// What the phone says it is doing, or `nil` before it has said anything: the
+    /// mode it is running, whether the device can do it at all, how many references
+    /// it is looking for, and the sentences its own screen is showing.
+    ///
+    /// This is the answer to `use(_:)` and `look(for:)`, and it is worth reading
+    /// after either. A picture ARKit finds too plain to recognize is refused on the
+    /// phone, and `notes` is the only place the Mac hears about it.
+    public var latestState: PhoneState? { reader.latestState.map(PhoneState.init) }
+
     // MARK: - FrameSource / VideoFeed (the World-mode color feed)
 
     /// The analysis tap (`FrameSource`): the live color frame, delivered on the
@@ -500,6 +556,14 @@ final class PhoneStreamReader: @unchecked Sendable {
         var planesScan: UInt32?
         var latestLight: PhoneLightSample?
         var latestAir: PhoneAirSample?
+        var latestState: PhoneStateSample?
+        /// What the sketch has asked for, kept whether or not a phone is attached.
+        /// The declarations are the durable intent; the connection is not, so both
+        /// are re-sent on every connect and a cable plugged in later just works.
+        var declaredMode: PhoneCaptureMode?
+        var declaredReferences: [PhoneReference]?
+        /// Framed request bytes waiting to go out, drained by the read thread.
+        var pending: [Data] = []
         var tap: FrameTap?
         var connected = false
         var message: String? = "Connecting to the phone…"
@@ -541,8 +605,49 @@ final class PhoneStreamReader: @unchecked Sendable {
     var planesVersion: Int? { lock.withLock { $0.planesVersion } }
     var latestLight: PhoneLightSample? { lock.withLock { $0.latestLight } }
     var latestAir: PhoneAirSample? { lock.withLock { $0.latestAir } }
+    var latestState: PhoneStateSample? { lock.withLock { $0.latestState } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
+
+    // MARK: Declaring (the Mac-to-phone direction)
+
+    /// Remember the mode the sketch wants and send it, now if a phone is attached
+    /// and otherwise on the next connect.
+    ///
+    /// Saying the same thing twice sends nothing. That is what makes a call from
+    /// `draw()` harmless, and it is also the person keeping the last word: once the
+    /// ask has been made, a tap on the phone is not argued with.
+    func declare(mode: PhoneCaptureMode) {
+        lock.withLock { state in
+            guard state.declaredMode != mode else { return }
+            state.declaredMode = mode
+            state.pending.append(PhoneWire.encode(.mode(mode)))
+        }
+    }
+
+    /// Remember the library the sketch declared and send it, now or on the next
+    /// connect. An empty list is a declaration too: it tells the phone to look for
+    /// nothing rather than to fall back to its own folder.
+    ///
+    /// Declaring the same set twice sends nothing, which matters more here than it
+    /// does for a mode: a reference picture is most of what this wire ever carries,
+    /// and a `look(for:)` left in `draw()` would otherwise send it every frame.
+    func declare(references: [PhoneReference]) {
+        let unchanged = lock.withLock { $0.declaredReferences == references }
+        guard !unchanged else { return }
+        let frames = Self.frames(for: references)
+        lock.withLock { state in
+            state.declaredReferences = references
+            state.pending.append(contentsOf: frames)
+        }
+    }
+
+    /// The frames one declaration takes: the count, then the references in order.
+    private static func frames(for references: [PhoneReference]) -> [Data] {
+        let capped = Array(references.prefix(PhoneWire.maxReferences))
+        return [PhoneWire.encode(.library(count: capped.count))]
+            + capped.map { PhoneWire.encode(.reference($0)) }
+    }
 
     func setTap(_ tap: FrameTap?) { lock.withLock { $0.tap = tap } }
 
@@ -596,12 +701,37 @@ final class PhoneStreamReader: @unchecked Sendable {
                 Thread.sleep(forTimeInterval: 1.0)
                 continue
             }
-            // A read timeout so the loop re-checks `running` even when frames stall.
+            // A read timeout so the loop re-checks `running` even when frames stall,
+            // and a send timeout so a phone that stops reading can't park this
+            // thread inside a write it will never finish.
             var tv = timeval(tv_sec: 2, tv_usec: 0)
             setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
-            lock.withLock { $0.fd = fd; $0.connected = true; $0.message = nil }
+            setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+            // Say again what the sketch asked for. The declarations outlive any one
+            // connection, so plugging the cable in (or launching the app) after the
+            // sketch started is the same as having done it first.
+            lock.withLock { state in
+                state.fd = fd
+                state.connected = true
+                state.message = nil
+                // Replace rather than append: anything queued while there was no
+                // connection is part of a declaration this rebuilds in full, and a
+                // reference picture is the heaviest thing on the wire to send twice.
+                state.pending.removeAll(keepingCapacity: true)
+                if let mode = state.declaredMode {
+                    state.pending.append(PhoneWire.encode(.mode(mode)))
+                }
+                if let references = state.declaredReferences {
+                    state.pending.append(contentsOf: Self.frames(for: references))
+                }
+            }
 
             readLoop: while isRunning {
+                // Requests go out on this thread, between reads, so the socket is
+                // touched by exactly one thread and the second direction adds no
+                // lifetime hazard of its own. A declaration is a handful of frames
+                // on connect, so the wait it costs a read is paid once.
+                guard sendPending(fd) else { break readLoop }
                 switch readMessage(fd) {
                 case .message(.depth(let sample)):
                     // Decode the RGBD frame (JPEG + intrinsics) on this thread, off
@@ -700,6 +830,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .wand(let w): state.latestWand = w
                         case .light(let l): state.latestLight = l
                         case .air(let a): state.latestAir = a
+                        case .state(let st): state.latestState = st
                         case .depth, .segmentation, .saliency, .flow, .sceneMesh, .plane,
                              .sound, .touch:
                             break   // handled above
@@ -720,6 +851,11 @@ final class PhoneStreamReader: @unchecked Sendable {
                 let stillOurs = state.fd == fd
                 if stillOurs { state.fd = -1 }
                 state.connected = false
+                // What the phone said it was doing describes a phone that is no
+                // longer there, and the frames waiting to go out belong to a socket
+                // that is closing; the reconnect says all of it again.
+                state.latestState = nil
+                state.pending.removeAll(keepingCapacity: true)
                 if state.running { state.message = "Reconnecting to the phone…" }
                 return stillOurs
             }
@@ -729,6 +865,19 @@ final class PhoneStreamReader: @unchecked Sendable {
             if stillOurs { close(fd) }
             if isRunning { Thread.sleep(forTimeInterval: 0.5) }
         }
+    }
+
+    /// Write whatever the sketch has declared since the last look. Returns false
+    /// when a write could not finish, which means the connection is gone.
+    private func sendPending(_ fd: Int32) -> Bool {
+        let frames = lock.withLock { state -> [Data] in
+            defer { state.pending.removeAll(keepingCapacity: true) }
+            return state.pending
+        }
+        for frame in frames {
+            guard USBMux.writeFully(fd, frame) else { return false }
+        }
+        return true
     }
 
     private enum ReadOutcome { case message(PhoneMessage), skip, desync }

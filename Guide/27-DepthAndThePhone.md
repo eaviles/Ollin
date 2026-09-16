@@ -441,7 +441,52 @@ for marker in device.latestMarkers where marker.isTracked {
 
 <img src="Images/27-DepthAndThePhone/PrintAsStage.jpg" alt="Two printed pictures on a dark ground, each carrying the same little city of pale green columns inside an orange frame: one card lying face up on a table slab, one poster standing on the wall behind it" width="680">
 
-The card lies flat and the poster hangs upright, and one loop drew both cities. `width` and `height` are meters, so a piece written for a business card fits a poster by itself. Two things are worth knowing before you print. A picture is found by its detail, so a photograph or a dense drawing works where a flat logo does not. The app checks each reference as it loads, and says on its own screen when one is too plain. And a scanned object, an `.arobject` file in the same folder, is *found* once rather than followed. It marks a place, where a picture marks a moving thing. The `3D/Phone/PhoneMarkers` example is this section live.
+The card lies flat and the poster hangs upright, and one loop drew both cities. `width` and `height` are meters, so a piece written for a business card fits a poster by itself. Two things are worth knowing before you print. A picture is found by its detail, so a photograph or a dense drawing works where a flat logo does not. The app checks each reference as it loads, and says on its own screen when one is too plain. And a scanned object, an `.arobject` file in the same folder, is *found* once rather than followed. It marks a place, where a picture marks a moving thing.
+
+### Saying it from the sketch
+
+Dropping a file into the phone's folder works, but it leaves the piece in two halves. The sketch is in one place and the picture it stands on is in another, on a particular phone. Hand somebody the `.swift` file and they get half a piece.
+
+So traffic runs the other way too, and this is the only thing that does. The sketch says which mode to run and hands over the pictures to look for, and the phone rebuilds its library from what arrives.
+
+```swift
+override func setup() {
+    device.use(.markers)
+    device.look(for: [
+        .picture(resource: "poster", withExtension: "png", in: .module, printedWidth: 0.3)!,
+    ])
+    device.start()
+}
+```
+
+`printedWidth` is in meters, and it is the one measurement no image file carries. Say what you actually printed. A wrong width does not lose the picture. It puts it at the wrong distance, which is harder to notice and worse to debug.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/27-DepthAndThePhone/DownTheCable-dark.jpg">
+  <img src="Images/27-DepthAndThePhone/DownTheCable.jpg" alt="A sequence diagram with two vertical lifelines, the sketch on the Mac at the left and Ollin Capture on the iPhone at the right: four orange arrows going right for the mode, the library count and two reference pictures with their sizes on the wire, one gray arrow coming back with the phone's state, then a dashed break reading that the cable comes out and goes back in, and the same three orange arrows again underneath" width="680">
+</picture>
+
+The top half is one declaration. The mode goes first, then a count, then one frame per picture. The sizes are what those frames really weigh: a photograph is most of the cable's work, and everything else is a handful of bytes.
+
+The bottom half is the part worth remembering. Neither call is a command fired once. Both are *declarations* the device keeps, and it says them again every time it connects. So plugging in the cable, or launching the capture app, ten minutes after the sketch started works exactly like doing it first. You write it once in `setup()` and stop thinking about it.
+
+Three more things are worth knowing.
+
+The person keeps the last word. `use(_:)` moves the phone as if somebody had tapped the mode, and a tap afterwards moves it back. Nothing forces a mode, which is what lets somebody take over a piece while it runs.
+
+A declared library replaces the folder. While your sketch is connected the phone stops reading the files somebody dropped in, and its own screen says so. When the sketch disconnects the folder takes over again.
+
+And read the answer. `device.latestState` is what the phone says it is doing, and it is the only place a refused picture is ever heard about:
+
+```swift
+if let state = device.latestState {
+    state.mode                       // what it is actually running
+    state.referenceCount             // how many things it is looking for
+    state.notes                      // what it could not use, in sentences
+}
+```
+
+ARKit decides on the phone whether a picture has enough detail to be found at all. A print it refuses simply never arrives. Without `notes` you are left pointing a camera at a poster, wondering why nothing happens. The `3D/Phone/PhoneMarkers` example is both of these sections live. It sends a bundled photograph and asks for Markers mode, so the only setup is to print the picture.
 
 ### Pointing at it with the phone
 
