@@ -315,7 +315,7 @@ Vectors are the physics notation the 1880s settled on, mostly at the hands of Jo
 
 ## Go deeper
 
-- [Geometry](../Docs/Drawing/Geometry.md#vector2): the full `Vector2` tour, with a picture per operation, including the ones this chapter saved for later: `dot` (same way or opposite?), `cross` (which side?), `lerp(to:)` (the smooth follow), `rotated(by:around:)`, and `projected(onto:)`.
+- [Geometry](../Docs/Drawing/Geometry.md#vector): the full vector tour, with a picture per operation, including the ones this chapter saved for later: `dot` (same way or opposite?), `cross` (which side?), `lerp(to:)` (the smooth follow), `rotated(by:around:)`, and `projected(onto:)`. Most of it is the shared `Vector` surface, so it reads the same for `Vector3`.
 - [Math helpers](../Docs/Helpers/Math.md): `map`, `dist`, and the scalar kit the vector calls sit beside.
 - [Values and bare calls](../Docs/Concepts/Values.md): one screen on why every call takes both bare numbers and a typed value, and what the value gives you that the numbers cannot.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).

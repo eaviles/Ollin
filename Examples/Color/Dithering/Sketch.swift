@@ -75,8 +75,8 @@ final class Dithering: Sketch {
         // The four colors every panel but the first is built from.
         let swatch = totalW / Double(palette.count)
         let swatchY = originY + totalH + 40
-        for i in 0..<palette.count {
-            fill(palette[i])
+        for (i, color) in palette.enumerated() {
+            fill(color)
             drawRect(originX + Double(i) * swatch, swatchY, swatch, 34)
         }
 

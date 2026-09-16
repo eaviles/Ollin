@@ -48,7 +48,7 @@ private extension Palette {
     static func samples(of image: Image, maxSamples: Int = 16_384) -> [Sample] {
         guard image.width > 0, image.height > 0 else { return [] }
         let total = image.width * image.height
-        let stride = max(1, Int((Double(total) / Double(maxSamples)).squareRoot().rounded(.up)))
+        let stride = Swift.max(1, Int((Double(total) / Double(maxSamples)).squareRoot().rounded(.up)))
 
         // Merge identical pixels as we go: photographs repeat colors heavily,
         // and flat art repeats them almost entirely.
@@ -150,7 +150,7 @@ private extension Palette {
             }
             centers.append(samples[chosen].lab)
             for i in samples.indices {
-                distances[i] = min(distances[i], squaredDistance(samples[i].lab, centers[centers.count - 1]))
+                distances[i] = Swift.min(distances[i], squaredDistance(samples[i].lab, centers[centers.count - 1]))
             }
         }
         return centers

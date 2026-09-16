@@ -183,13 +183,14 @@ bc263aff0c18  Docs/Drawing/Color.md:165  cannot find 'energy' in scope
 ce8340e46df2  Docs/Drawing/Color.md:182  cannot find 'sky' in scope
 04196cfd36c7  Docs/Drawing/Color.md:199  cannot find 'beat' in scope
 a289bd896621  Docs/Drawing/Color.md:217  cannot find 'x' in scope
-47ccf99dc7f7  Docs/Drawing/Color.md:226  cannot find 'base' in scope
-973e03e20d17  Docs/Drawing/Color.md:243  'module' is inaccessible due to 'internal' protection level
+9e7fb1cec3a6  Docs/Drawing/Color.md:226  cannot find 'palette' in scope
+47ccf99dc7f7  Docs/Drawing/Color.md:238  cannot find 'base' in scope
+973e03e20d17  Docs/Drawing/Color.md:255  'module' is inaccessible due to 'internal' protection level
 47665411f9b3  Docs/Drawing/Color.md:27  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-512f523c5b16  Docs/Drawing/Color.md:297  cannot find 'photo' in scope
-fa294f1f47c0  Docs/Drawing/Color.md:351  cannot find 'photo' in scope
-d6862f064245  Docs/Drawing/Color.md:370  cannot find 't' in scope
-0d4d6656f396  Docs/Drawing/Color.md:392  cannot find 'x' in scope
+512f523c5b16  Docs/Drawing/Color.md:309  cannot find 'photo' in scope
+fa294f1f47c0  Docs/Drawing/Color.md:363  cannot find 'photo' in scope
+d6862f064245  Docs/Drawing/Color.md:382  cannot find 't' in scope
+0d4d6656f396  Docs/Drawing/Color.md:404  cannot find 'x' in scope
 c708de778678  Docs/Drawing/Color.md:58  cannot find 'userString' in scope
 3340ea233772  Docs/Drawing/Color.md:71  cannot find 'base' in scope
 2c556ffcbf3d  Docs/Drawing/Color.md:90  cannot find 'ink' in scope
@@ -314,35 +315,35 @@ e7f00e72aff0  Docs/Drawing/Epicycles.md:85  expected ',' separator
 886cada6cd4c  Docs/Drawing/Fitting.md:117  cannot find 'marks' in scope
 0ece64b5f13f  Docs/Drawing/Fitting.md:86  cannot find 'pins' in scope
 cf65e5c6f914  Docs/Drawing/Fourier.md:73  cannot find 'plate' in scope
-fc185020b5b5  Docs/Drawing/Geometry.md:179  expected ',' separator
-0bdba7d24932  Docs/Drawing/Geometry.md:203  cannot convert value of type 'Double.Type' to expected argument type 'Double'
-c9abb7d3d7a5  Docs/Drawing/Geometry.md:216  cannot find 'crate' in scope
-fdcf3efae578  Docs/Drawing/Geometry.md:229  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-ce8f3399f803  Docs/Drawing/Geometry.md:240  cannot find 'eye' in scope
-7e1e37f3022c  Docs/Drawing/Geometry.md:256  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
-f0183ad35e80  Docs/Drawing/Geometry.md:266  cannot find 'scan' in scope
-a26850bfb449  Docs/Drawing/Geometry.md:281  expected ',' separator
-873b3abaf9b5  Docs/Drawing/Geometry.md:309  cannot find 'Distribution' in scope
-f0b0c6b3213b  Docs/Drawing/Geometry.md:318  cannot find 'filters' in scope
-02e6dae30b9f  Docs/Drawing/Geometry.md:332  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
-ff6c8a6ce068  Docs/Drawing/Geometry.md:360  cannot find 'thumbnails' in scope
-b75f4ac15c49  Docs/Drawing/Geometry.md:383  cannot infer contextual base in reference to member 'all'
-23b6891ea8c2  Docs/Drawing/Geometry.md:403  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
-2d61f4619826  Docs/Drawing/Geometry.md:41  expected ',' separator
-4875c0c14dcf  Docs/Drawing/Geometry.md:423  expected ',' separator
-4fdce137d56e  Docs/Drawing/Geometry.md:443  expected ',' separator
-fae7a0c26a4e  Docs/Drawing/Geometry.md:461  cannot find 'shape' in scope
-ad8b1f537c9c  Docs/Drawing/Geometry.md:468  cannot find 'shape' in scope
-e2d750ef54f7  Docs/Drawing/Geometry.md:474  cannot find 'shape' in scope
-1eb6f12247fb  Docs/Drawing/Geometry.md:487  expected '{' in body of function declaration
-c02c77676873  Docs/Drawing/Geometry.md:501  cannot find 'star' in scope
-c4ec6c299218  Docs/Drawing/Geometry.md:513  expected '{' in body of function declaration
-a1b0bb4e8556  Docs/Drawing/Geometry.md:519  cannot find 'blob' in scope
-7fa1c7078690  Docs/Drawing/Geometry.md:537  expected '{' in body of function declaration
-a70a7ea27883  Docs/Drawing/Geometry.md:544  function produces expected type '[Vector2]'; did you mean to call it with '()'?
-eb39bc6e25d9  Docs/Drawing/Geometry.md:557  expected '{' in body of function declaration
-ef0ca3825a40  Docs/Drawing/Geometry.md:571  expected ',' separator
-0551b7294c44  Docs/Drawing/Geometry.md:613  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
+4089dff1acc6  Docs/Drawing/Geometry.md:173  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+0bdba7d24932  Docs/Drawing/Geometry.md:225  cannot convert value of type 'Double.Type' to expected argument type 'Double'
+c9abb7d3d7a5  Docs/Drawing/Geometry.md:238  cannot find 'crate' in scope
+fdcf3efae578  Docs/Drawing/Geometry.md:251  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+ce8f3399f803  Docs/Drawing/Geometry.md:262  cannot find 'eye' in scope
+7e1e37f3022c  Docs/Drawing/Geometry.md:278  cannot convert value of type 'Vector3.Type' to expected argument type 'Vector3'
+f0183ad35e80  Docs/Drawing/Geometry.md:288  cannot find 'scan' in scope
+a26850bfb449  Docs/Drawing/Geometry.md:303  expected ',' separator
+873b3abaf9b5  Docs/Drawing/Geometry.md:331  cannot find 'Distribution' in scope
+f0b0c6b3213b  Docs/Drawing/Geometry.md:340  cannot find 'filters' in scope
+02e6dae30b9f  Docs/Drawing/Geometry.md:354  value of type '@MainActor (Int, Int, Insets, Double, Grid.Distribution) -> Grid' has no member 'points'
+ff6c8a6ce068  Docs/Drawing/Geometry.md:382  cannot find 'thumbnails' in scope
+b75f4ac15c49  Docs/Drawing/Geometry.md:405  cannot infer contextual base in reference to member 'all'
+754645c0ed85  Docs/Drawing/Geometry.md:42  expected ',' separator
+23b6891ea8c2  Docs/Drawing/Geometry.md:425  cannot convert value of type 'Vector2.Type' to expected argument type 'Vector2'
+4875c0c14dcf  Docs/Drawing/Geometry.md:445  expected ',' separator
+4fdce137d56e  Docs/Drawing/Geometry.md:465  expected ',' separator
+fae7a0c26a4e  Docs/Drawing/Geometry.md:483  cannot find 'shape' in scope
+ad8b1f537c9c  Docs/Drawing/Geometry.md:490  cannot find 'shape' in scope
+e2d750ef54f7  Docs/Drawing/Geometry.md:496  cannot find 'shape' in scope
+1eb6f12247fb  Docs/Drawing/Geometry.md:509  expected '{' in body of function declaration
+c02c77676873  Docs/Drawing/Geometry.md:523  cannot find 'star' in scope
+c4ec6c299218  Docs/Drawing/Geometry.md:535  expected '{' in body of function declaration
+a1b0bb4e8556  Docs/Drawing/Geometry.md:541  cannot find 'blob' in scope
+7fa1c7078690  Docs/Drawing/Geometry.md:559  expected '{' in body of function declaration
+a70a7ea27883  Docs/Drawing/Geometry.md:566  function produces expected type '[Vector2]'; did you mean to call it with '()'?
+eb39bc6e25d9  Docs/Drawing/Geometry.md:579  expected '{' in body of function declaration
+ef0ca3825a40  Docs/Drawing/Geometry.md:593  expected ',' separator
+0551b7294c44  Docs/Drawing/Geometry.md:635  cannot convert value of type '[Vector2].Type' to expected argument type '[Vector2]'
 336a733604c7  Docs/Drawing/GlyphMosaic.md:29  expected ',' separator
 cb89fe7408d3  Docs/Drawing/GlyphMosaic.md:41  cannot find 'picture' in scope
 f7a401ec53bc  Docs/Drawing/GlyphMosaic.md:53  expected ',' separator
@@ -623,16 +624,18 @@ d3fe3995c966  Docs/Generators/Polyominoes.md:54  expected '{' in body of functio
 ab7e012a71fa  Docs/Generators/Polyominoes.md:60  cannot find 'piece' in scope
 13b924352d3f  Docs/Generators/Polyominoes.md:72  expected ',' separator
 b1f4940d8cdd  Docs/Generators/Polyominoes.md:87  cannot find 'palette' in scope
-5e04a9b57049  Docs/Generators/Random.md:103  expected ',' separator
-2be403eae386  Docs/Generators/Random.md:115  cannot find 'palette' in scope
-fb4f62830a44  Docs/Generators/Random.md:125  expected ',' separator
-93267df2dfd9  Docs/Generators/Random.md:131  cannot find 'palette' in scope
-d94faad4c27d  Docs/Generators/Random.md:142  expected ',' separator
-22af6d1a2ac4  Docs/Generators/Random.md:156  expected ',' separator
-792947ff89bb  Docs/Generators/Random.md:26  expected ',' separator
-9d8d63608afc  Docs/Generators/Random.md:45  expected type before '->'
-1c51516556c8  Docs/Generators/Random.md:66  expected expression in list of expressions
-d106b67c60a2  Docs/Generators/Random.md:81  expected type before '->'
+5e04a9b57049  Docs/Generators/Random.md:104  expected ',' separator
+2be403eae386  Docs/Generators/Random.md:116  cannot find 'palette' in scope
+fb4f62830a44  Docs/Generators/Random.md:126  expected ',' separator
+93267df2dfd9  Docs/Generators/Random.md:132  cannot find 'palette' in scope
+d94faad4c27d  Docs/Generators/Random.md:143  expected ',' separator
+22af6d1a2ac4  Docs/Generators/Random.md:157  expected ',' separator
+2d014c6541ba  Docs/Generators/Random.md:187  cannot find 'palette' in scope
+76d77e8db9f4  Docs/Generators/Random.md:199  reference to member 'solve' cannot be resolved without a contextual type
+792947ff89bb  Docs/Generators/Random.md:27  expected ',' separator
+9d8d63608afc  Docs/Generators/Random.md:46  expected type before '->'
+1c51516556c8  Docs/Generators/Random.md:67  expected expression in list of expressions
+d106b67c60a2  Docs/Generators/Random.md:82  expected type before '->'
 fd24309c1943  Docs/Generators/ShadowArt.md:40  expected ',' separator
 51ce8472de9c  Docs/Generators/ShadowArt.md:62  cannot find type 'Side' in scope
 81c164e78112  Docs/Generators/ShadowArt.md:9  cannot find 'cross' in scope
@@ -849,7 +852,7 @@ ce617da83e59  Docs/Helpers/Synthesis.md:112  cannot find type 'PlayingNote' in s
 7061a94dbb81  Docs/Helpers/Synthesis.md:215  cannot find 'Synth' in scope
 46b862c2cf56  Docs/Helpers/Synthesis.md:234  cannot find 'PluckedString' in scope
 af59bd54d5b2  Docs/Helpers/Synthesis.md:259  cannot find 'Synth' in scope
-18a9f63e8409  Docs/Helpers/Synthesis.md:286  cannot use instance member 'textToShapes' within property initializer; property initializers run before 'self' is available
+18a9f63e8409  Docs/Helpers/Synthesis.md:286  missing argument for parameter 'at' in call
 883a650f2006  Docs/Helpers/Synthesis.md:326  cannot find 'Synth' in scope
 43fbd5e77cc0  Docs/Helpers/Synthesis.md:357  cannot find 'Synth' in scope
 99c65b5ae548  Docs/Helpers/Synthesis.md:382  cannot find 'synth' in scope

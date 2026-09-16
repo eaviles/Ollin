@@ -16,6 +16,7 @@
 - [shuffled](#shuffled)
 - [randomSeed](#randomSeed)
 - [seed](#seed)
+- [randomness](#randomness)
 
 ### Generators
 
@@ -170,3 +171,34 @@ override func draw() {
     drawCaption("Variation \(variation)")
 }
 ```
+
+### The generator itself
+
+<a name="randomness"></a>
+
+#### randomness
+
+```swift
+var randomness: SplitMix64
+```
+
+The sketch's own generator, for anything that takes a `using:` generator of its own. That is the whole standard library's randomness, and passing this is what keeps those calls on the sketch's seed.
+
+```swift
+randomSeed(3)
+let pick = palette.randomElement(using: &randomness)
+let order = points.shuffled(using: &randomness)
+let roll = Int.random(in: 1 ... 6, using: &randomness)
+let coin = Bool.random(using: &randomness)
+```
+
+Written without `using:`, `points.shuffled()` and `Int.random(in: 1 ... 6)` roll the system's dice instead and differ every run. That is the one quiet way a seeded sketch stops reproducing, because nothing about the call looks wrong.
+
+It is one stream, not a second generator beside `random()`, so a draw through either spelling advances the other. It is also what the seedable generators take, which is how the sketch's [`variation`](../Core/Variations.md) reaches them:
+
+```swift
+let tiles = wfc.solve(using: &randomness)
+let word = plant.expanded(iterations: 5, using: &randomness)
+```
+
+To *seed* it, call [`randomSeed`](#randomSeed) or [`seed`](#seed). Those also record the seed an export embeds in its recipe, where assigning a generator here does not, so a sketch seeded that way exports without a way back to the picture.

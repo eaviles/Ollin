@@ -3,9 +3,14 @@ import Foundation
 /// A 2D point or vector with `Double` components, in sketch points
 /// (top-left origin, y-down).
 ///
-/// `Vector2` is Ollin's geometry currency — the type primitives like
-/// `polyline` take, and the value you pass around, transform, and compose.
-public struct Vector2: Equatable, Hashable, Sendable, Codable {
+/// `Vector2` is Ollin's geometry currency: the type primitives like
+/// `drawPolyline` take, and the value you pass around, transform, and compose.
+///
+/// Most of what you call on one is the shared [`Vector`](Vector) surface, which
+/// `Vector3` has too. What this file adds is the part that needs a plane: a
+/// direction is a single `angle` here, there is exactly one `perpendicular`, a
+/// turn needs no axis, and `cross` comes back as a `Double` rather than a vector.
+public struct Vector2: Vector, Hashable, Codable {
     public let x: Double
     public let y: Double
 
@@ -28,22 +33,19 @@ public struct Vector2: Equatable, Hashable, Sendable, Codable {
     /// The y-axis unit vector, `(0, 1)`.
     public static let unitY = Vector2(0, 1)
 
-    /// Euclidean length (distance from the origin).
-    public var length: Double { (x * x + y * y).squareRoot() }
-
-    /// Squared length — cheaper than `length` when you only need to compare.
+    /// Squared length: cheaper than `length` when you only need to compare.
     public var lengthSquared: Double { x * x + y * y }
 
-    /// This vector scaled to length 1, or `.zero` if it has no length.
-    public var normalized: Vector2 {
-        let len = length
-        return len > 0 ? self / len : .zero
-    }
-
     /// The angle from the positive x-axis, in radians (`atan2(y, x)`).
+    ///
+    /// A direction in the plane is one number, which is why this is 2D's own. In
+    /// space it takes two, so `Vector3` has no `angle`.
     public var angle: Double { atan2(y, x) }
 
-    /// This vector turned 90° counter-clockwise (a left-hand normal).
+    /// This vector turned 90 degrees counter-clockwise (a left-hand normal).
+    ///
+    /// Unique to the plane: in space a vector has a whole disc of perpendiculars
+    /// and you pick one with `cross`.
     public var perpendicular: Vector2 { Vector2(-y, x) }
 }
 
@@ -63,19 +65,8 @@ public extension Vector2 {
     static prefix func - (v: Vector2) -> Vector2 { Vector2(-v.x, -v.y) }
     /// Scale by a scalar.
     static func * (v: Vector2, s: Double) -> Vector2 { Vector2(v.x * s, v.y * s) }
-    /// Scale by a scalar.
-    static func * (s: Double, v: Vector2) -> Vector2 { Vector2(v.x * s, v.y * s) }
     /// Divide each component by a scalar.
     static func / (v: Vector2, s: Double) -> Vector2 { Vector2(v.x / s, v.y / s) }
-
-    /// Add `b` in place (the `pos += vel` idiom).
-    static func += (a: inout Vector2, b: Vector2) { a = a + b }
-    /// Subtract `b` in place.
-    static func -= (a: inout Vector2, b: Vector2) { a = a - b }
-    /// Scale in place.
-    static func *= (v: inout Vector2, s: Double) { v = v * s }
-    /// Divide in place.
-    static func /= (v: inout Vector2, s: Double) { v = v / s }
 }
 
 public extension Vector2 {
@@ -84,21 +75,18 @@ public extension Vector2 {
 
     /// 2D cross product (the z of the 3D cross): the signed parallelogram area.
     /// Positive when `other` lies counter-clockwise from `self`.
+    ///
+    /// This is where the two vector types part. A cross in the plane has nowhere
+    /// perpendicular to point, so what survives is the signed magnitude, one
+    /// number answering "which side?". `Vector3.cross(_:)` returns the
+    /// perpendicular vector instead.
     func cross(_ other: Vector2) -> Double { x * other.y - y * other.x }
 
-    /// Euclidean distance to `other`.
-    func distance(to other: Vector2) -> Double { (self - other).length }
-
-    /// Squared distance to `other` — cheaper for comparisons.
-    func distanceSquared(to other: Vector2) -> Double { (self - other).lengthSquared }
-
     /// The signed angle from `self` to `other`, in radians (`-π…π`).
+    ///
+    /// Signed only because the plane has two turn directions. In space there is
+    /// no sign without an axis to measure it against.
     func angle(to other: Vector2) -> Double { atan2(cross(other), dot(other)) }
-
-    /// Linear interpolation toward `other` by `t` (`0` = self, `1` = other).
-    func lerp(to other: Vector2, _ t: Double) -> Vector2 {
-        Vector2(x + (other.x - x) * t, y + (other.y - y) * t)
-    }
 
     /// This vector rotated by `angle` radians about the origin.
     func rotated(by angle: Double) -> Vector2 {
@@ -111,33 +99,8 @@ public extension Vector2 {
         (self - pivot).rotated(by: angle) + pivot
     }
 
-    /// This vector clamped to at most `maxLength`, preserving direction.
-    func limited(to maxLength: Double) -> Vector2 {
-        let lsq = lengthSquared
-        guard lsq > maxLength * maxLength, lsq > 0 else { return self }
-        return self * (maxLength / lsq.squareRoot())
-    }
-
-    /// The component of this vector in the direction of `other` (vector projection).
-    func projected(onto other: Vector2) -> Vector2 {
-        let lsq = other.lengthSquared
-        return lsq > 0 ? other * (dot(other) / lsq) : .zero
-    }
-
     /// A copy with `x` replaced.
     func with(x newX: Double) -> Vector2 { Vector2(newX, y) }
     /// A copy with `y` replaced.
     func with(y newY: Double) -> Vector2 { Vector2(x, newY) }
-}
-
-public extension Collection where Element == Vector2 {
-    /// The centroid (arithmetic mean) of the points, or `nil` when empty.
-    ///
-    /// This is the mean of the points *themselves*: where vertices crowd, the
-    /// centroid is pulled toward them, so for a polygon outline it is not the
-    /// same as the area's center of mass.
-    var centroid: Vector2? {
-        guard !isEmpty else { return nil }
-        return reduce(.zero, +) / Double(count)
-    }
 }

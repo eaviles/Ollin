@@ -73,4 +73,69 @@ struct RandomTests {
         #expect(a.random(5, 5) == 5)
         #expect(a.random() == b.random())   // the zero-width call drew nothing
     }
+
+    // MARK: The generator itself
+
+    @Test func randomnessCarriesTheSketchSeedIntoTheStandardLibrary() {
+        let a = Sketch(), b = Sketch()
+        a.randomSeed(11)
+        b.randomSeed(11)
+        let items = ["ink", "coral", "gold", "teal"]
+        for _ in 0..<50 {
+            #expect(items.randomElement(using: &a.randomness)
+                == items.randomElement(using: &b.randomness))
+            #expect(Int.random(in: 1 ... 6, using: &a.randomness)
+                == Int.random(in: 1 ... 6, using: &b.randomness))
+        }
+        #expect(items.shuffled(using: &a.randomness) == items.shuffled(using: &b.randomness))
+    }
+
+    @Test func randomnessIsTheSameStreamTheSketchDrawsFrom() {
+        // Not a second generator beside `random()`: one stream, so a draw
+        // through either spelling advances the other.
+        let a = Sketch(), b = Sketch()
+        a.randomSeed(3)
+        b.randomSeed(3)
+        _ = Double.random(in: 0 ..< 1, using: &a.randomness)
+        _ = b.random()
+        #expect(a.random() == b.random())
+    }
+
+    @Test func randomnessDrivesTheSeedableGenerators() {
+        // The point of exposing it: Ollin's own `using:` generators land on the
+        // sketch's seed rather than on a separate one the sketch has to keep.
+        let a = Sketch(), b = Sketch()
+        a.seed(5)
+        b.seed(5)
+        let rule = LSystem(axiom: "F", choices: ["F": ["F+F", "F-F", "FF"]], angle: 25)
+        #expect(rule.expanded(iterations: 5, using: &a.randomness)
+            == rule.expanded(iterations: 5, using: &b.randomness))
+        // And a different seed reaches it, so it is genuinely the sketch's.
+        let c = Sketch()
+        c.seed(6)
+        #expect(rule.expanded(iterations: 5, using: &c.randomness)
+            != rule.expanded(iterations: 5, using: &a.randomness))
+    }
+
+    @Test func aPaletteTakesTheSketchSeededGenerator() {
+        // Here rather than in PaletteTests, which is deliberately off the main
+        // actor: a hop into it costs the whole run more than the test is worth.
+        let a = Sketch(), b = Sketch()
+        a.randomSeed(4)
+        b.randomSeed(4)
+        let p = Palette(.red, .green, .blue, .white)
+        for _ in 0..<40 {
+            #expect(p.randomElement(using: &a.randomness)
+                == p.randomElement(using: &b.randomness))
+        }
+        #expect(p.shuffled(using: &a.randomness) == p.shuffled(using: &b.randomness))
+    }
+
+    @Test func assigningAGeneratorReplacesTheStream() {
+        let sketch = Sketch()
+        sketch.randomSeed(1)
+        let first = sketch.random()
+        sketch.randomness = SplitMix64(seed: 1)
+        #expect(sketch.random() == first)
+    }
 }

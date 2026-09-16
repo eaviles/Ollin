@@ -15,12 +15,13 @@
 
 bb59795f7264  Guide/02-Color.md:115  cannot find 'blue' in scope
 71ac473ad4ff  Guide/02-Color.md:142  cannot find 'i' in scope
-85865279977f  Guide/02-Color.md:152  cannot find 't' in scope
-de51c37794a2  Guide/02-Color.md:212  cannot find 'photo' in scope
-9e13835542ce  Guide/02-Color.md:247  cannot find 'dusk' in scope
-67e891dcb1e2  Guide/02-Color.md:287  cannot find 'myPalette' in scope
+85865279977f  Guide/02-Color.md:154  cannot find 't' in scope
+de51c37794a2  Guide/02-Color.md:214  cannot find 'photo' in scope
+9e13835542ce  Guide/02-Color.md:249  cannot find 'dusk' in scope
+67e891dcb1e2  Guide/02-Color.md:289  cannot find 'myPalette' in scope
 c896c6da23a4  Guide/02-Color.md:67  cannot find 'blue' in scope
 04660022f6ba  Guide/02-Color.md:87  cannot find 'ink' in scope
+34bad064ce01  Guide/04-Randomness.md:63  cannot find 'colors' in scope
 a66bdc0e1bb2  Guide/06-GridsAndRepetition.md:182  cannot find 'star' in scope
 070c1141fb23  Guide/06-GridsAndRepetition.md:201  cannot find 'cell' in scope
 a3a4dacf7c92  Guide/06-GridsAndRepetition.md:227  cannot find 'drawTheWholePiece' in scope
@@ -100,8 +101,8 @@ eb2a383ca943  Guide/20-ParticleSimulations.md:207  cannot assign value of type '
 de43f5fca89d  Guide/20-ParticleSimulations.md:45  cannot convert value of type '@MainActor (Light) -> ()' to expected argument type 'Accumulator'
 4bb9d03104bb  Guide/20-ParticleSimulations.md:71  cannot assign value of type 'ParticleLife' to type 'SimField'
 0a07e471de6b  Guide/20-ParticleSimulations.md:85  cannot assign value of type 'Physarum' to type 'Particles'
-4de6ac607cb1  Guide/21-3DGently.md:277  cannot find 'ringFile' in scope
-d3145c90ad5d  Guide/21-3DGently.md:418  cannot find 'knot' in scope
+4de6ac607cb1  Guide/21-3DGently.md:288  cannot find 'ringFile' in scope
+d3145c90ad5d  Guide/21-3DGently.md:429  cannot find 'knot' in scope
 3bdd590a4114  Guide/22-Meshes.md:163  cannot find 'color' in scope
 3cd0f225fa98  Guide/22-Meshes.md:198  cannot find 'dents' in scope
 2f43cec1c527  Guide/22-Meshes.md:214  cannot find 'paint' in scope

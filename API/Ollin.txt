@@ -807,7 +807,7 @@ extension ClosedRange
   static func stored(_: ClosedRange<Double>) -> ParamStored
   typealias Constraints = ParamRangeConstraints
 extension Collection
-  var centroid: Vector2? { get }
+  var centroid: Self.Element? { get }
 extension Double
   init(channels: [Double])
   static func clamped(_: Double, by: Double.Constraints) -> Double
@@ -2600,6 +2600,7 @@ open class Sketch: Sendable
   var pressure: Double { get }
   var pressureIsAvailable: Bool { get }
   var previousMouse: Vector2 { get }
+  var randomness: SplitMix64 { get set }
   var recordingElapsed: Double { get }
   var rightMouseIsPressed: Bool { get }
   var scale: Double { get }
@@ -2689,6 +2690,32 @@ protocol Smoothable: Sendable where Self : Sendable
   var smoothingSpeed: Double { get }
 protocol Tweenable
   static func lerp(_: Self, _: Self, _: Double) -> Self
+protocol Vector: Sendable, Equatable where Self : Equatable, Self : Sendable
+  func distance(to: Self) -> Double
+  func distanceSquared(to: Self) -> Double
+  func dot(_: Self) -> Double
+  func lerp(to: Self, _: Double) -> Self
+  func limited(to: Double) -> Self
+  func projected(onto: Self) -> Self
+  func with(x: Double) -> Self
+  func with(y: Double) -> Self
+  static func *(_: Double, _: Self) -> Self
+  static func *(_: Self, _: Double) -> Self
+  static func *=(_: Self, _: Double)
+  static func +(_: Self, _: Self) -> Self
+  static func +=(_: Self, _: Self)
+  static func -(_: Self, _: Self) -> Self
+  static func -=(_: Self, _: Self)
+  static func /(_: Self, _: Double) -> Self
+  static func /=(_: Self, _: Double)
+  static prefix func -(_: Self) -> Self
+  static var one: Self { get }
+  static var unitX: Self { get }
+  static var unitY: Self { get }
+  static var zero: Self { get }
+  var length: Double { get }
+  var lengthSquared: Double { get }
+  var normalized: Self { get }
 protocol VideoFeed where Self : AnyObject
   func fittedRectangle(in: Rectangle) -> Rectangle?
   var frame: Image? { get }
@@ -4847,7 +4874,7 @@ struct OverlappingWFC: Sendable
   static let maxColors: Int
   static let maxPatterns: Int
   var patternCount: Int { get }
-struct Palette: ParamValue, Equatable, Sendable
+struct Palette: ParamValue, BidirectionalCollection, Collection, Equatable, RandomAccessCollection, Sendable, Sequence
   func color(at: Double) -> Color
   func confusions(tolerance: Double = default) -> [ColorConfusion]
   func confusions(under: ColorVision, tolerance: Double = default) -> [ColorConfusion]
@@ -4886,6 +4913,8 @@ struct Palette: ParamValue, Equatable, Sendable
   typealias Constraints = ParamSwatchConstraints
   var colors: [Color] { get set }
   var count: Int { get }
+  var endIndex: Int { get }
+  var startIndex: Int { get }
 struct PaperSize: ParamChoices, ParamValue, Equatable, Hashable, Sendable
   func canvasSize(dpi: Int = default) -> CanvasSize
   init(width: Double, height: Double)
@@ -6125,16 +6154,11 @@ struct UlamSpiral: Equatable, Sendable
 struct VariationCardView: Sendable, View
   init(stats: FrameStats, onNavigate: (Int) -> Void = default)
   var body: some SwiftUI.View { get }
-struct Vector2: ParamValue, RadialBasisPoint, RadialBasisValue, Smoothable, Tweenable, Decodable, Encodable, Equatable, Hashable, Sendable
+struct Vector2: ParamValue, RadialBasisPoint, RadialBasisValue, Smoothable, Tweenable, Vector, Decodable, Encodable, Equatable, Hashable, Sendable
   func angle(to: Vector2) -> Double
   func component(_: Int) -> Double
   func cross(_: Vector2) -> Double
-  func distance(to: Vector2) -> Double
-  func distanceSquared(to: Vector2) -> Double
   func dot(_: Vector2) -> Double
-  func lerp(to: Vector2, _: Double) -> Vector2
-  func limited(to: Double) -> Vector2
-  func projected(onto: Vector2) -> Vector2
   func rotated(by: Double) -> Vector2
   func rotated(by: Double, around: Vector2) -> Vector2
   func with(x: Double) -> Vector2
@@ -6145,15 +6169,10 @@ struct Vector2: ParamValue, RadialBasisPoint, RadialBasisValue, Smoothable, Twee
   init(x: Double, y: Double)
   let x: Double
   let y: Double
-  static func *(_: Double, _: Vector2) -> Vector2
   static func *(_: Vector2, _: Double) -> Vector2
-  static func *=(_: Vector2, _: Double)
   static func +(_: Vector2, _: Vector2) -> Vector2
-  static func +=(_: Vector2, _: Vector2)
   static func -(_: Vector2, _: Vector2) -> Vector2
-  static func -=(_: Vector2, _: Vector2)
   static func /(_: Vector2, _: Double) -> Vector2
-  static func /=(_: Vector2, _: Double)
   static func clamped(_: Vector2, by: Vector2.Constraints) -> Vector2
   static func control(for: Param<Vector2>) -> ParamControl
   static func lerp(_: Vector2, _: Vector2, _: Double) -> Vector2
@@ -6169,20 +6188,13 @@ struct Vector2: ParamValue, RadialBasisPoint, RadialBasisValue, Smoothable, Twee
   typealias Constraints = ParamVectorConstraints
   var angle: Double { get }
   var channels: [Double] { get }
-  var length: Double { get }
   var lengthSquared: Double { get }
-  var normalized: Vector2 { get }
   var perpendicular: Vector2 { get }
   var smoothingSpeed: Double { get }
-struct Vector3: ParamValue, RadialBasisPoint, RadialBasisValue, Tweenable, Decodable, Encodable, Equatable, Hashable, Sendable
+struct Vector3: ParamValue, RadialBasisPoint, RadialBasisValue, Tweenable, Vector, Decodable, Encodable, Equatable, Hashable, Sendable
   func component(_: Int) -> Double
   func cross(_: Vector3) -> Vector3
-  func distance(to: Vector3) -> Double
-  func distanceSquared(to: Vector3) -> Double
   func dot(_: Vector3) -> Double
-  func lerp(to: Vector3, _: Double) -> Vector3
-  func limited(to: Double) -> Vector3
-  func projected(onto: Vector3) -> Vector3
   func rotated(by: Rotation3D) -> Vector3
   func transformed(by: simd.simd_float4x4) -> Vector3
   func with(x: Double) -> Vector3
@@ -6194,15 +6206,10 @@ struct Vector3: ParamValue, RadialBasisPoint, RadialBasisValue, Tweenable, Decod
   let x: Double
   let y: Double
   let z: Double
-  static func *(_: Double, _: Vector3) -> Vector3
   static func *(_: Vector3, _: Double) -> Vector3
-  static func *=(_: Vector3, _: Double)
   static func +(_: Vector3, _: Vector3) -> Vector3
-  static func +=(_: Vector3, _: Vector3)
   static func -(_: Vector3, _: Vector3) -> Vector3
-  static func -=(_: Vector3, _: Vector3)
   static func /(_: Vector3, _: Double) -> Vector3
-  static func /=(_: Vector3, _: Double)
   static func clamped(_: Vector3, by: Vector3.Constraints) -> Vector3
   static func control(for: Param<Vector3>) -> ParamControl
   static func lerp(_: Vector3, _: Vector3, _: Double) -> Vector3
@@ -6218,9 +6225,7 @@ struct Vector3: ParamValue, RadialBasisPoint, RadialBasisValue, Tweenable, Decod
   static var channelCount: Int { get }
   typealias Constraints = ParamVector3Constraints
   var channels: [Double] { get }
-  var length: Double { get }
   var lengthSquared: Double { get }
-  var normalized: Vector3 { get }
   var xy: Vector2 { get }
 struct Visual
   enum Channel: Equatable, Hashable, Sendable

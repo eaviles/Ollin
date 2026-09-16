@@ -221,6 +221,18 @@ fill(p.color(at: noise(x * 0.01)))         // band-quantized
 fill(p.ramp(in: .oklch).color(at: t))      // smooth
 ```
 
+A palette is a set of colors in order, so it reads as one. `for color in palette`, `palette.enumerated()`, `map`, `first`, `isEmpty`, `reversed()` and `Array(palette)` all work without reaching for `colors`, and so does a seeded pick through the sketch's [`randomness`](../Generators/Random.md#randomness):
+
+```swift
+for (i, color) in palette.enumerated() {
+    fill(color)
+    drawRect(x + Double(i) * step, y, step, 40)
+}
+fill(palette.randomElement(using: &randomness) ?? .black)
+```
+
+The wrapping `palette[i]` goes further than that: it takes any integer, where iteration stays inside the set. It stays read-only for the same reason, since `palette[-1] = color` could as easily mean the last swatch as a mistake. Change the set through `colors`.
+
 **Harmonies** build a palette from one base color. They are computed in OKLCH, so the companion colors keep the base's lightness and chroma:
 
 ```swift

@@ -16,6 +16,17 @@ Every sketch so far lived on a flat canvas. This chapter adds the third axis, an
 let p = Vector3(2, 1, -3)     // 2 right, 1 up, 3 away
 ```
 
+"Exactly" is meant literally. `length`, `normalized`, `distance(to:)`, `lerp(to:_:)`, `limited(to:)`, `projected(onto:)`, the arithmetic and the constants are one shared surface both types conform to, called `Vector`. So everything Chapter 10 taught reads the same out here. It also means a helper you write once takes either kind of point:
+
+```swift
+func midpoint<V: Vector>(_ a: V, _ b: V) -> V { a.lerp(to: b, 0.5) }
+
+let onCanvas = midpoint(Vector2(0, 0), Vector2(10, 4))
+let inWorld = midpoint(Vector3(0, 0, 0), Vector3(10, 4, 2))
+```
+
+What doesn't carry over is what needed a flat page to mean anything. A direction in space isn't one angle, and a line has a whole ring of perpendiculars rather than one. `cross` is the one to watch, because it keeps its name and changes its answer. In the plane it hands back a number, which tells you which side of you something is on. Here it hands back a direction, the one perpendicular to two others, which is how a surface gets its normal.
+
 Two habits from the canvas need resetting. First, in the world **y goes up**, the opposite of the canvas, where y grows downward, so a tower rises toward positive y. Second, there are no pixels here. World distances are **world units**, and a unit means whatever your scene wants it to mean. That's a meter for a room, or a sphere-width for an abstract piece. Sizes on screen come from where the camera stands.
 
 ## A camera and a sphere

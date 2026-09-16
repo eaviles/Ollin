@@ -43,8 +43,8 @@ final class PaletteFromImage: Sketch {
         // the picture is most made of.
         let barY = frame.y + frame.height + 44
         let step = side / Double(palette.count)
-        for i in 0..<palette.count {
-            fill(palette[i])
+        for (i, color) in palette.enumerated() {
+            fill(color)
             drawRect(90 + Double(i) * step, barY, step, 130, cornerRadius: 4)
         }
 

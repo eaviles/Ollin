@@ -145,6 +145,8 @@ fill(p[i])                            // wraps: p[9] is p[1]
 fill(p.color(at: t))                  // 0...1 quantized into eight bands
 ```
 
+It is also a collection, so you can walk it the way you walk an array. `for (i, color) in p.enumerated()` is how the swatch strips in this chapter's figures are drawn, and `map`, `first`, `reversed()` and `Array(p)` are all there.
+
 Eight classic sets ship built in, from `.set1` through `.accent`. The **harmony builders** grow a whole palette out of one base color, and because they work in OKLCH the companions keep the base's weight rather than drifting lighter or darker: `Palette.complementary(of: base)`, `.triadic(of: base)`, `.analogous(of: base)`, and `.splitComplementary(of: base)`.
 
 A **`Ramp`** is the continuous version, a gradient you can sample anywhere along its length. Give it a list of colors to spread evenly, or explicit stops if you want to place them yourself, and read it with `color(at:)`. Blending runs through OKLab by default, so the in-betweens stay clean. Every mixing space from earlier is on the menu, `.paint` included, so `Ramp([blue, yellow], in: .paint)` travels through green:

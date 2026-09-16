@@ -78,6 +78,7 @@ colorSpaceConversion            # its option
 iframe                          # the inline form of the exported page
 stream_side_data                # ffprobe's field
 refname                         # git for-each-ref's field
+shuffled(using:)                # the standard library's own, the point of Sketch.randomness
 
 # Tools, shells, and environment variables.
 exiftool

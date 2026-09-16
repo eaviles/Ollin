@@ -96,7 +96,7 @@ final class ColorVisionSketch: Sketch {
         let confused = Set(palette.confusions(under: vision).flatMap { [$0.first, $0.second] })
         let size = height / Double(palette.count) - 8
 
-        for (i, color) in palette.colors.enumerated() {
+        for (i, color) in palette.enumerated() {
             let top = y + Double(i) * (size + 8)
             fill(color.simulated(vision))
             drawRect(x, top, cell, size)

@@ -133,4 +133,28 @@ public extension Sketch {
     func shuffled<T>(_ array: [T]) -> [T] {
         array.shuffled(using: &rng)
     }
+
+    /// The sketch's own generator, for anything that takes a `using:`
+    /// generator of its own. That is the whole standard library's randomness,
+    /// and passing this is what keeps those calls on the sketch's seed:
+    ///
+    /// ```swift
+    /// let pick = palette.randomElement(using: &randomness)
+    /// let order = points.shuffled(using: &randomness)
+    /// let roll = Int.random(in: 1 ... 6, using: &randomness)
+    /// ```
+    ///
+    /// Written without `using:`, each of those rolls the system's dice and
+    /// differs every run, which is the one quiet way a seeded sketch stops
+    /// reproducing. It is also what the seedable generators take
+    /// (`WaveFunctionCollapse.solve`, `LSystem.expanded`, `ShapeGrammar.run`,
+    /// `WangTiles.fill`), so `variation` reaches them too.
+    ///
+    /// To *seed* it, call `randomSeed(_:)` or `seed(_:)`. Those also record
+    /// the seed an export embeds in its recipe, where assigning a generator
+    /// here does not.
+    var randomness: SplitMix64 {
+        get { rng }
+        set { rng = newValue }
+    }
 }

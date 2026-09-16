@@ -15,6 +15,33 @@ struct PaletteTests {
             && close(a.blue, b.blue, eps) && close(a.alpha, b.alpha, eps)
     }
 
+    // MARK: Palette as a collection
+
+    @Test func aPaletteReadsAsACollection() {
+        let p = Palette(.red, .green, .blue)
+        #expect(Array(p) == [.red, .green, .blue])
+        #expect(p.map { $0 } == [.red, .green, .blue])
+        #expect(p.first == .red)
+        #expect(p.last == .blue)
+        #expect(!p.isEmpty)
+        #expect(Palette([]).isEmpty)
+        #expect(p.contains(.green))
+        #expect(Array(p.reversed()) == [.blue, .green, .red])
+        #expect(p.enumerated().map(\.offset) == [0, 1, 2])
+        // count keeps answering what it always did, through the requirement.
+        #expect(p.count == 3)
+    }
+
+    @Test func iterationStaysInsideTheSetTheWrappingSubscriptLeaves() {
+        // `palette[i]` takes any integer, which is more than a collection's own
+        // subscript promises. Iteration must not inherit the wrap.
+        let p = Palette(.red, .green, .blue)
+        #expect(p[-1] == .blue)
+        #expect(p[3] == .red)
+        #expect(Array(p).count == 3)
+        #expect(p.indices.map { p[$0] } == [.red, .green, .blue])
+    }
+
     // MARK: Ramp
 
     @Test func rampEvenSpacingMatchesMix() {

@@ -4,18 +4,19 @@
 
 ## Geometry
 
-`Vector2`, `Vector3`, `Rotation3D`, `Ray3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types. Primitives take them as data, and you pass them around and compose them. Canvas coordinates use a top-left origin, with y increasing downward.
+`Vector2`, `Vector3`, `Rotation3D`, `Ray3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types. Primitives take them as data, and you pass them around and compose them. Canvas coordinates use a top-left origin, with y increasing downward. The two vector types share most of their surface through the `Vector` protocol, so it is documented once below and each type's own section is short.
 
 ### Contents
 
-- [Vector2](#vector2)
-  - [Constants](#v2-constants)
-  - [Length & direction](#v2-length)
-  - [Arithmetic](#v2-arithmetic)
-  - [Measuring between two vectors](#v2-measuring)
-  - [Producing new vectors](#v2-producing)
-  - [Putting it together](#v2-together)
-- [Vector3](#vector3)
+- [Vectors](#vector)
+  - [Constants](#v-constants)
+  - [Length & direction](#v-length)
+  - [Arithmetic](#v-arithmetic)
+  - [Measuring between two vectors](#v-measuring)
+  - [Producing new vectors](#v-producing)
+  - [Putting it together](#v-together)
+- [What `Vector2` adds](#vector2)
+- [What `Vector3` adds](#vector3)
 - [Rotation3D](#rotation3d)
 - [Ray3](#ray3)
 - [Box3](#box3)
@@ -32,21 +33,33 @@
 - [Path](#path)
 - [HobbySpline](#hobby)
 
-<a name="vector2"></a>
+<a name="vector"></a>
 
-### `Vector2`
+### Vectors
 
-An `(x, y)` point in sketch points. Primitives like `drawPolyline`, `drawCircle(center:)`, and `drawLine` take this type. A `Vector2` is both a **point** (a location) and a **vector** (an arrow with a direction and a length). Each method below uses whichever reading fits.
+`Vector2` is an `(x, y)` point in sketch points, and `Vector3` an `(x, y, z)` point in space. Primitives like `drawPolyline`, `drawCircle(center:)`, and `drawLine` take a `Vector2`. A value that lives in space, such as a 3D body joint in meters or a point of a depth cloud, arrives as a `Vector3`. Either one is both a **point** (a location) and a **vector** (an arrow with a direction and a length). Each method below uses whichever reading fits.
 
 ```swift
 Vector2(_ x: Double, _ y: Double)
 Vector2(x: Double, y: Double)
-Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle` radians
+Vector3(_ x: Double, _ y: Double, _ z: Double)
+Vector3(x: Double, y: Double, z: Double)
 ```
 
-<a name="v2-constants"></a>
+Nearly everything you call on one means the same thing on the other, so it is written once, on a `Vector` protocol the two share. This section is that shared surface, and a helper you write against `Vector` takes either type:
 
-**Constants:** `.zero` `(0, 0)`, `.one` `(1, 1)`, `.unitX` `(1, 0)`, `.unitY` `(0, 1)`.
+```swift
+func midpoint<V: Vector>(_ a: V, _ b: V) -> V { a.lerp(to: b, 0.5) }
+
+midpoint(Vector2(0, 0), Vector2(10, 4))         // Vector2(5, 2)
+midpoint(Vector3(0, 0, 0), Vector3(10, 4, 2))   // Vector3(5, 2, 1)
+```
+
+Two short sections follow it: [what `Vector2` adds](#vector2) and [what `Vector3` adds](#vector3). The one to know is `cross`, which comes back as a different *kind* of value in each.
+
+<a name="v-constants"></a>
+
+**Constants:** `.zero` (every component `0`), `.one`, `.unitX`, `.unitY`, plus `.unitZ` on `Vector3`.
 
 **A note on orientation.** Ollin's y-axis points down, because the origin sits at the top left. That is the opposite of the math-class convention, where y points up. The formulas are the same, but the direction of rotation looks flipped on screen. A positive angle turns clockwise as you watch it, and so does anything the usual math convention calls "counter-clockwise". The diagrams below are drawn in screen space, with y down, to match what you see. See [Where a point is](../Concepts/Coordinates.md) for this frame, its units, and how to convert a point that arrived in some other frame.
 
@@ -55,32 +68,21 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
   <img src="../../Guide/Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
 </picture>
 
-<a name="v2-length"></a>
+<a name="v-length"></a>
 
 #### Length & direction
 
 **`length` / `lengthSquared`** measure how far the point is from the origin, which is how long the arrow is. The formula is the Pythagorean theorem, the hypotenuse of the right triangle with sides `x` and `y`, so `(3, 4)` has length `√(3² + 4²) = 5`. `lengthSquared` leaves out the square root, giving `25` here, and you use it when you only need to compare.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../Images/VectorHeading-dark.jpg">
-  <img src="../Images/VectorHeading.jpg" alt="Three panels in screen space with y down: the vector (3, 4) as the hypotenuse of its 3-4-5 right triangle, the angle measured from the positive x-axis and growing clockwise, and perpendicular turning (3, 0) a quarter turn into (0, 3)" width="680">
-</picture>
+**In a sketch:** turn a distance or a speed into something you can see. A dot can grow as the mouse nears, or a trail can react to how fast it moves (`velocity.length`). The first panel of the figure under [what `Vector2` adds](#vector2) draws that triangle.
 
-**In a sketch:** turn a distance or a speed into something you can see. A dot can grow as the mouse nears, or a trail can react to how fast it moves (`velocity.length`).
-
-**`normalized`** is the same direction rescaled to length exactly 1, a "unit vector". Each component is divided by the length, so `(3, 4)` becomes `(0.6, 0.8)`. Use it when you want a direction on its own and will set the length yourself. It returns `.zero` if `v` has no length to scale.
+**`normalized`** is the same direction rescaled to length exactly 1, a "unit vector". Each component is divided by the length, so `(3, 4)` becomes `(0.6, 0.8)`. Use it when you want a direction on its own and will set the length yourself. It returns `.zero` if the vector has no length to scale.
 
 **In a sketch:** this is how you move toward a target. `pos += (target - pos).normalized * speed` steps a fixed amount in the right direction, however far the target is.
 
-**`angle`** gives the direction as one number, the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`). It grows clockwise on screen, because `+y` points down. `Vector2(angle:length:)` is the inverse, and builds an arrow from an angle and a length.
+Naming a direction as one number, and turning by one angle, need a plane to happen in, so `angle`, `perpendicular`, and `rotated(by:)` are [what `Vector2` adds](#vector2). In space a turn takes an axis as well, which is [`Rotation3D`](#rotation3d).
 
-**In a sketch:** point a shape the way it's heading. Call `rotate(velocity.angle)` before you draw, so an arrow or a fish faces where it's going.
-
-**`perpendicular`** is a quarter turn. It swaps and negates the components, so `(x, y)` becomes `(−y, x)`, and `(3, 0)` becomes `(0, 3)`. That turn is clockwise on screen, with y down. Use it to offset to the side of a line, for example to give a stroke its width.
-
-**In a sketch:** this is the sideways direction. Step out both ways from a freehand line to give it thickness, or use it to make something strafe or orbit.
-
-<a name="v2-arithmetic"></a>
+<a name="v-arithmetic"></a>
 
 #### Arithmetic
 
@@ -97,7 +99,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** set how big a step is. Use `direction * speed` to go faster, or `* deltaTime` so motion runs the same on any machine.
 
-<a name="v2-measuring"></a>
+<a name="v-measuring"></a>
 
 #### Measuring between two vectors
 
@@ -105,24 +107,13 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** this drives proximity effects. Connect dots closer than N, fade things by how near they are, or push neighbors apart when they crowd. Use the squared form inside big loops to skip the slow `√`.
 
-**`dot(_:)`** is one number measuring how much two vectors point the *same way*. It is `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. The sign alone tells you the rough relationship: positive under 90° (aiming similar ways), zero at exactly 90°, and negative past it (aiming opposite ways).
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../Images/VectorMeasures-dark.jpg">
-  <img src="../Images/VectorMeasures.jpg" alt="Three panels in screen space with y down: the dot product's sign for headings aiming with, square to, and against a reference vector, the cross product as the area of the parallelogram two vectors span with b clockwise from a giving a positive sign, and angle(to:) as a signed turn from a to b where positive turns clockwise" width="680">
-</picture>
+**`dot(_:)`** is one number measuring how much two vectors point the *same way*. It is `ax·bx + ay·by` (with `+ az·bz` in space), which equals `|a|·|b|·cos θ`. The sign alone tells you the rough relationship: positive under 90° (aiming similar ways), zero at exactly 90°, and negative past it (aiming opposite ways).
 
 **In a sketch:** this answers "same way or opposite?" and "in front of me or behind?". Simple lighting is built on it, since it measures how squarely a surface faces the light, and so are field-of-view checks.
 
-**`cross(_:)`** is the 2D "perp-dot", `ax·by − ay·bx`, and it is also one number. Its *magnitude* is the area of the parallelogram the two vectors span. Its *sign* gives the turn direction from `a` to `b`. It is positive when `b` is clockwise from `a`, as seen on screen with y down. It is negative when `b` is counter-clockwise, and zero when the two are parallel and the area collapses.
+The first panel of the second figure under [what `Vector2` adds](#vector2) draws the sign. The other classic measure, `cross(_:)`, is the one that does not generalize: it is a number in the plane and a vector in space. Both are below.
 
-**In a sketch (2D):** the sign answers "is the target on my left or my right?". A creature can then turn the short way toward it. Summed around a shape's points, it gives the area and the direction the shape winds.
-
-**`angle(to:)`** is the *signed* angle from `a` to `b`, in `−π…π`. It is `atan2(cross, dot)`. Unlike `b.angle − a.angle`, it never wraps, and it tells you which way to turn. A positive result turns clockwise on screen, and a negative one turns the other way.
-
-**In a sketch:** swivel to face something smoothly. Rotate by a fraction of `heading.angle(to: toTarget)` each frame and a creature tracks the mouse.
-
-<a name="v2-producing"></a>
+<a name="v-producing"></a>
 
 #### Producing new vectors
 
@@ -135,10 +126,6 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** this is the simplest smooth follow. `pos = pos.lerp(to: target, 0.1)` makes anything glide after the mouse with a soft lag. It also gives you midpoints and in-betweens.
 
-**`rotated(by:)` / `rotated(by:around:)`** spin the arrow by an angle (positive turns clockwise, y-down), about the origin or about a given pivot point.
-
-**In a sketch:** lay things out in a ring, orbit a moon around a planet, or swing a clock hand with `rotated(by:around:)` about its pivot.
-
 **`limited(to:)`** clamps the length to a maximum and keeps the direction. Shorter vectors pass through untouched, which is what makes it a velocity cap.
 
 **In a sketch:** keep speeds from growing without bound. `vel = vel.limited(to: maxSpeed)` is what keeps flocking and steering stable.
@@ -147,15 +134,15 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** snap a point onto a guide line, or find the nearest spot on a path. It also splits a bounce into "along the wall" and "into the wall".
 
-**`with(x:)` / `with(y:)`** return a copy with one component replaced and the other kept. `p.with(y: 0)` flattens a point onto the top edge.
+**`with(x:)` / `with(y:)`** return a copy with one component replaced and the others kept, and `Vector3` adds `with(z:)`. `p.with(y: 0)` flattens a point onto the top edge.
 
 **In a sketch:** pin one axis. Drop points to the top edge with `.with(y: 0)`, or let x scroll while y holds still.
 
-**`points.centroid`** works on any collection of `Vector2`. It gives the centroid, the arithmetic mean of the points, or `nil` when the collection is empty. It averages the points themselves, so the centroid is pulled toward wherever the vertices crowd. For a polygon outline, that means it is not the area's center of mass.
+**`points.centroid`** works on any collection of vectors, of either type. It gives the centroid, the arithmetic mean of the points, or `nil` when the collection is empty. It averages the points themselves, so the centroid is pulled toward wherever the vertices crowd. For a polygon outline, that means it is not the area's center of mass.
 
 **In a sketch:** find the center of a cluster, or a flock's middle to steer toward. It also gives the center of a tracker's landmark points, such as an eye region's loop or a quad's corners.
 
-<a name="v2-together"></a>
+<a name="v-together"></a>
 
 #### Putting it together
 
@@ -170,21 +157,56 @@ var p = a
 p += dir * 10                       // step 10 units toward b
 ```
 
-<a name="vector3"></a>
+<a name="vector2"></a>
 
-### `Vector3`
+### What `Vector2` adds
 
-An `(x, y, z)` point or vector. Ollin draws in 2D, but some values live in space, such as a 3D body joint in meters or a point of a depth cloud. `Vector3` carries them, with `Vector2`'s arithmetic plus a `z`.
+The members that need a plane to mean anything. A direction there is a single number, there is exactly one perpendicular, a turn needs no axis to name it, and a cross product has nowhere perpendicular to point.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/VectorHeading-dark.jpg">
+  <img src="../Images/VectorHeading.jpg" alt="Three panels in screen space with y down: the vector (3, 4) as the hypotenuse of its 3-4-5 right triangle, the angle measured from the positive x-axis and growing clockwise, and perpendicular turning (3, 0) a quarter turn into (0, 3)" width="680">
+</picture>
+
+**`angle`** gives the direction as one number, the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`). It grows clockwise on screen, because `+y` points down. `Vector2(angle:length:)` is the inverse, and builds an arrow from an angle and a length.
 
 ```swift
-Vector3(_ x: Double, _ y: Double, _ z: Double)
-Vector3(x: Double, y: Double, z: Double)
+Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle` radians
 ```
 
-- **Constants:** `.zero`, `.one`, `.unitX`, `.unitY`, `.unitZ`.
-- **Same surface as `Vector2`** where it generalizes: `length` / `lengthSquared` / `normalized`, the `+ - * /` operators and their in-place forms, `dot`, `distance(to:)` / `distanceSquared(to:)`, `lerp(to:_:)`, `limited(to:)`, `projected(onto:)`, and `with(x:)` / `with(y:)` / `with(z:)`.
-- **3D-specific:** `cross(_:)` returns the perpendicular `Vector3`, where the 2D version returns a scalar. `xy` drops the depth, which projects the value back onto the canvas plane.
-- **Turning one:** `rotated(by:)` takes a [`Rotation3D`](#rotation3d), because a turn in space needs an axis as well as an angle. The single-angle helpers on `Vector2` stay 2D.
+**In a sketch:** point a shape the way it's heading. Call `rotate(velocity.angle)` before you draw, so an arrow or a fish faces where it's going.
+
+**`perpendicular`** is a quarter turn. It swaps and negates the components, so `(x, y)` becomes `(−y, x)`, and `(3, 0)` becomes `(0, 3)`. That turn is clockwise on screen, with y down. Use it to offset to the side of a line, for example to give a stroke its width.
+
+**In a sketch:** this is the sideways direction. Step out both ways from a freehand line to give it thickness, or use it to make something strafe or orbit.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/VectorMeasures-dark.jpg">
+  <img src="../Images/VectorMeasures.jpg" alt="Three panels in screen space with y down: the dot product's sign for headings aiming with, square to, and against a reference vector, the cross product as the area of the parallelogram two vectors span with b clockwise from a giving a positive sign, and angle(to:) as a signed turn from a to b where positive turns clockwise" width="680">
+</picture>
+
+**`cross(_:)`** is the 2D "perp-dot", `ax·by − ay·bx`, and it is one number, not a vector. Its *magnitude* is the area of the parallelogram the two vectors span. Its *sign* gives the turn direction from `a` to `b`. It is positive when `b` is clockwise from `a`, as seen on screen with y down. It is negative when `b` is counter-clockwise, and zero when the two are parallel and the area collapses. This is the same quantity [`Vector3.cross`](#vector3) puts in its `z`, which is the whole of the 2D answer once there is no third axis to point along.
+
+**In a sketch:** the sign answers "is the target on my left or my right?". A creature can then turn the short way toward it. Summed around a shape's points, it gives the area and the direction the shape winds.
+
+**`angle(to:)`** is the *signed* angle from `a` to `b`, in `−π…π`. It is `atan2(cross, dot)`. Unlike `b.angle − a.angle`, it never wraps, and it tells you which way to turn. A positive result turns clockwise on screen, and a negative one turns the other way. There is no sign to give in space without an axis to measure against, which is why this one is 2D's.
+
+**In a sketch:** swivel to face something smoothly. Rotate by a fraction of `heading.angle(to: toTarget)` each frame and a creature tracks the mouse.
+
+**`rotated(by:)` / `rotated(by:around:)`** spin the arrow by an angle (positive turns clockwise, y-down), about the origin or about a given pivot point. The second panel of [Producing new vectors](#v-producing) draws the pivot form.
+
+**In a sketch:** lay things out in a ring, orbit a moon around a planet, or swing a clock hand with `rotated(by:around:)` about its pivot.
+
+<a name="vector3"></a>
+
+### What `Vector3` adds
+
+A third axis, and what comes with it.
+
+- **`.unitZ`**, `(0, 0, 1)`, beside the shared constants.
+- **`cross(_:)`** returns a `Vector3` perpendicular to both, with length the area of the parallelogram they span. In space there *is* somewhere perpendicular to point, so the answer is a direction: a surface normal, a frame's third axis, a torque. The 2D version keeps only the signed magnitude.
+- **`xy`** drops the depth, which projects the value back onto the canvas plane.
+- **Turning one:** `rotated(by:)` takes a [`Rotation3D`](#rotation3d), because a turn in space needs an axis as well as an angle. The single-angle helpers stay on `Vector2`.
 
 What the axes mean, which way is up and where the origin sits, belongs to whatever produced the value. A producer like [`Body3D`](../Vision/Vision.md#body3d) documents its own spaces.
 

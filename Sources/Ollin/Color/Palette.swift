@@ -41,8 +41,10 @@ public struct Palette: Equatable, Sendable {
     /// steps (`t` clamps, an empty palette reads `.clear`).
     public func color(at t: Double) -> Color {
         guard !colors.isEmpty else { return .clear }
-        let clamped = min(max(t, 0), 1)
-        return colors[min(Int(clamped * Double(colors.count)), colors.count - 1)]
+        // Qualified: `Collection` puts `min()`/`max()` on the palette itself,
+        // which shadows the global two-argument forms inside this type.
+        let clamped = Swift.min(Swift.max(t, 0), 1)
+        return colors[Swift.min(Int(clamped * Double(colors.count)), colors.count - 1)]
     }
 
     /// The palette as a smooth gradient: the colors spread evenly over
@@ -50,6 +52,21 @@ public struct Palette: Equatable, Sendable {
     public func ramp(in space: ColorSpace = .oklab) -> Ramp {
         Ramp(colors, in: space)
     }
+}
+
+/// A palette is a set of colors in order, so it reads as one: `for color in
+/// palette`, `palette.enumerated()`, `map`, `first`, `isEmpty`, `reversed()`,
+/// `Array(palette)`, and `palette.randomElement(using: &randomness)` all work
+/// without reaching for `colors`.
+///
+/// The wrapping `palette[i]` above is the one thing that goes further than a
+/// collection's own subscript, and it still answers the same color for every
+/// index a collection asks about, so iterating stays inside the set. Reading
+/// only: a wrapping index makes a setter ambiguous (`palette[-1] = x` could
+/// mean the last color or a mistake), so a change goes through `colors`.
+extension Palette: RandomAccessCollection {
+    public var startIndex: Int { 0 }
+    public var endIndex: Int { colors.count }
 }
 
 // MARK: - Harmonies

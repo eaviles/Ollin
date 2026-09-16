@@ -58,6 +58,16 @@ This is the working rhythm of generative art. The code decides everything the pi
 
 One relative comes with it. `seed(5)`, without the `random` prefix, seeds `random` *and* its smooth cousin `noise` in one go. Noise is [Chapter 5](05-Noise.md)'s whole subject, and until then the two calls do the same job.
 
+One thing can break all of this quietly. Swift brings randomness of its own, and it is not yours: `colors.randomElement()` and `points.shuffled()` roll the system's dice, so a seeded sketch that calls either stops reproducing while every line of it still looks right. Hand those calls your generator instead, and they fall back in line:
+
+```swift
+let pick = colors.randomElement(using: &randomness)
+let order = points.shuffled(using: &randomness)
+let roll = Int.random(in: 1 ... 6, using: &randomness)
+```
+
+`randomness` is the sketch's own generator, the same stream `random()` draws from, and `using:` is how the standard library asks which dice to roll. Anything that takes it lands on your seed.
+
 ## Finding a seed worth keeping
 
 Flipping through seeds by editing the number and rebuilding gets tiring, so Ollin does the flipping for you. Every sketch is born on a seed, called its `variation`, and you can read it while the sketch runs. `drawCaption` prints a line of text along the bottom of the canvas, which is all you need to see the number:
