@@ -61,7 +61,8 @@ SprayLine(from: a, to: b, color: .orange, endColor: .white, intensity: 2, weight
 - A line's light per pass is its `light`, however many points draw it. Every point carries its share of that light. This keeps the exposure the same under either sampling mode.
 - `sampling` picks how a pass divides its points among the lines. `.byLength(pointsPerPass:)` gives every line points in proportion to its length times its `weight`, and never fewer than one. So a long line is drawn as densely as a short one. `.perLine(n)` gives every line the same count.
 - `pointSize` is the diameter that each sample's light spreads over, in canvas points. The total light is the same at any size, so a larger size softens the grain without changing the exposure. The default of 1 is a one-pixel point, which is the cheapest to draw.
-- `spray.image` is the running mean as an `Image` in linear light, for when you would rather print it yourself. `spray.setLines(_:)` swaps in a new scene and restarts the average.
+- `spray.image` is the running mean as an `Image` in linear light, for when you would rather print it yourself.
+- `spray.setLines(_:)` swaps in a new scene and restarts the average. It is built to be called every frame. The same lines again cost nothing and leave the average alone, which is what lets a sketch that rebuilds its scene each draw converge under `--settle`. Lines that moved restart it, and while every line keeps its point count (always under `.perLine`) nothing is allocated: the point table is kept and the records are rewritten into a ring of buffers the frames in flight are not reading. A scene whose point counts change, a different number of lines or `.byLength` shares that rounded differently, rebuilds the table.
 
 The `Rendering/LineSpray` example draws a whole scene through it, with the camera, the lens, and the print settings as parameters.
 

@@ -116,7 +116,10 @@ public struct Bokeh: Sendable, Equatable {
 ///
 /// Moving the camera or turning the lens restarts the average on its own: the
 /// samples drawn before no longer describe the picture. `passes` says how far
-/// the picture has converged.
+/// the picture has converged. A scene that moves hands its new lines to
+/// `setLines(_:)` each frame; that restarts the average too, and it is built to
+/// be called every frame (nothing is allocated while the lines keep their point
+/// counts, and the same lines again cost nothing at all).
 ///
 /// Persistent, like the `Accumulator` it owns: create it once in `setup()` and
 /// hold it.
@@ -170,20 +173,42 @@ public final class LineSpray {
     /// lines, or the point size change.
     public func reset() { accumulator.reset() }
 
-    /// Replace the lines (a scene that moves between frames). Restarts the average.
+    /// Replace the lines (a scene that moves between frames). Restarts the
+    /// average when the lines changed; the same lines again leave it alone, so
+    /// a sketch that rebuilds its scene every draw still converges under a
+    /// settled export. Cheap to call every frame: while every line keeps its
+    /// point count (always under `.perLine`, and under `.byLength` while the
+    /// lengths round to the same shares) the point table is kept and the line
+    /// records are rewritten into a ring of buffers rather than allocated.
     public func setLines(_ lines: [SprayLine]) {
+        guard lines != self.lines else { return }
         self.lines = lines
-        rebuild()
+        linesChanged = true
         reset()
     }
 
     // The GPU side: the line records, one line index per point, and the points.
-    private var lineBuffer: ComputeBuffer<OllinSprayLine>?
+    //
+    // The records live in a ring of `MetalRenderer.maxFramesInFlight` buffers,
+    // one slot written per frame at most, so a slot is only ever rewritten after
+    // every frame that read it has completed; the live path's ring of vertex
+    // buffers rests on the same count. A scene that changes its point counts
+    // (a new line count, or `.byLength` shares that moved) rebuilds everything.
+    private var lineBuffers: [ComputeBuffer<OllinSprayLine>] = []
+    private var lineSlot = 0
+    private var lineBuffer: ComputeBuffer<OllinSprayLine>? { lineBuffers.isEmpty ? nil : lineBuffers[lineSlot] }
     private var pointLines: ComputeBuffer<UInt32>?
+    private var counts: [Int] = []
     private var pointsPerPass = 0
     private var points: PingPong<OllinParticle>?
     private var pointsAllocated = 0
     private var lastSignature: Signature?
+    /// Set by `setLines`, consumed by the next `record`, which is what bounds the
+    /// writes to one per frame however many times the lines are set between draws.
+    private var linesChanged = false
+    /// The frame the ring last advanced in, so a second draw of the same frame
+    /// rewrites the same slot rather than one a frame in flight may be reading.
+    private var lastWriteFrame = -1
 
     /// What a pass depends on; a change to any of it restarts the average.
     private struct Signature: Equatable {
@@ -204,33 +229,70 @@ public final class LineSpray {
         rebuild()
     }
 
-    /// Lay the lines out for the GPU: each line's record with its share, and the
-    /// point-to-line table a thread reads to find its line.
+    /// Lay the lines out for the GPU from scratch: each line's record with its
+    /// share, and the point-to-line table a thread reads to find its line.
     private func rebuild() {
         guard !lines.isEmpty else {
-            lineBuffer = nil; pointLines = nil; pointsPerPass = 0
+            lineBuffers = []; lineSlot = 0; counts = []; pointLines = nil; pointsPerPass = 0
             return
         }
-        let counts = LineSpray.pointCounts(for: lines, sampling: sampling)
-        var records: [OllinSprayLine] = []
-        records.reserveCapacity(lines.count)
+        counts = LineSpray.pointCounts(for: lines, sampling: sampling)
         var table: [UInt32] = []
         table.reserveCapacity(counts.reduce(0, +))
-        for (i, line) in lines.enumerated() {
-            let n = counts[i]
-            let a = line.light, b = line.endLight
-            records.append(OllinSprayLine(
-                start: SIMD4<Float>(Float(line.start.x), Float(line.start.y), Float(line.start.z),
-                                    1 / Float(n)),
-                end: SIMD4<Float>(Float(line.end.x), Float(line.end.y), Float(line.end.z), 0),
-                startColor: SIMD4<Float>(Float(a.x), Float(a.y), Float(a.z), 0),
-                endColor: SIMD4<Float>(Float(b.x), Float(b.y), Float(b.z), 0)))
+        for (i, n) in counts.enumerated() {
             table.append(contentsOf: repeatElement(UInt32(i), count: n))
         }
-        lineBuffer = ComputeBuffer(records)
+        lineBuffers = [ComputeBuffer(LineSpray.records(for: lines, counts: counts))]
+        lineSlot = 0
         pointLines = ComputeBuffer(table)
         pointsPerPass = table.count
     }
+
+    /// Bring the GPU side up to date with lines set since the last pass, at
+    /// most once per frame: the records are rewritten into the ring's next slot
+    /// while the layout holds, and everything is rebuilt when it does not.
+    private func refresh(frame: Int) {
+        guard linesChanged else { return }
+        linesChanged = false
+        let newCounts = lines.isEmpty ? [] : LineSpray.pointCounts(for: lines, sampling: sampling)
+        guard newCounts == counts, !lineBuffers.isEmpty else {
+            rebuild()
+            lastWriteFrame = frame
+            return
+        }
+        let records = LineSpray.records(for: lines, counts: counts)
+        if frame != lastWriteFrame {
+            lineSlot = (lineSlot + 1) % MetalRenderer.maxFramesInFlight
+            lastWriteFrame = frame
+        }
+        if lineSlot < lineBuffers.count {
+            lineBuffers[lineSlot].replaceContents(records)
+        } else {
+            lineBuffers.append(ComputeBuffer(records))
+        }
+    }
+
+    /// The GPU records: each line's ends, its light at each, and its share of a
+    /// pass (`start.w`, one over its point count).
+    static func records(for lines: [SprayLine], counts: [Int]) -> [OllinSprayLine] {
+        var records: [OllinSprayLine] = []
+        records.reserveCapacity(lines.count)
+        for (i, line) in lines.enumerated() {
+            let a = line.light, b = line.endLight
+            records.append(OllinSprayLine(
+                start: SIMD4<Float>(Float(line.start.x), Float(line.start.y), Float(line.start.z),
+                                    1 / Float(counts[i])),
+                end: SIMD4<Float>(Float(line.end.x), Float(line.end.y), Float(line.end.z), 0),
+                startColor: SIMD4<Float>(Float(a.x), Float(a.y), Float(a.z), 0),
+                endColor: SIMD4<Float>(Float(b.x), Float(b.y), Float(b.z), 0)))
+        }
+        return records
+    }
+
+    /// What the tests read: how many record buffers the ring holds, and the
+    /// point table's identity, so a rewrite in place can be told from a rebuild.
+    var ringDepth: Int { lineBuffers.count }
+    var pointTable: AnyObject? { pointLines }
 
     /// Points per line for one pass: the same for every line, or shared by length.
     static func pointCounts(for lines: [SprayLine], sampling: Sampling) -> [Int] {
@@ -305,7 +367,9 @@ public final class LineSpray {
 
     /// One frame: reset if anything the picture depends on changed, scatter
     /// `passesPerFrame` passes of points, and add them into the accumulator.
-    func record(into drawer: Drawer, camera: Camera3D, width: Double, height: Double, seed: Float) {
+    func record(into drawer: Drawer, camera: Camera3D, width: Double, height: Double,
+                seed: Float, frame: Int) {
+        refresh(frame: frame)
         guard let lineBuffer, let pointLines, pointsPerPass > 0 else { return }
         let signature = Signature(camera: camera, bokeh: bokeh, pointSize: pointSize,
                                   width: Int(width), height: Int(height), lines: lines.count)

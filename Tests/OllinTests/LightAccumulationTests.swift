@@ -237,6 +237,44 @@ struct LightAccumulationTests {
         #expect(moved.spray.passes == 3 * moved.spray.passesPerFrame, "a lens change restarts the average")
     }
 
+    /// A moving scene: `setLines` every frame with the same lines leaves the
+    /// average alone (a settled export converges), moved lines restart it and
+    /// reach the GPU (the light's centroid follows them), and while the point
+    /// counts hold the point table is kept and the records ride a ring of at
+    /// most `maxFramesInFlight` buffers rather than a fresh one per frame.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func setLinesEveryFrameKeepsOrRestartsTheAverageAsTheLinesAsk() throws {
+        let still = MovingSpraySketch()
+        still.shift = { _ in 0 }
+        _ = try #require(OllinApp.image(of: still, frame: 5))
+        #expect(still.spray.passes == 6 * still.spray.passesPerFrame, "the same lines again keep the average")
+        #expect(still.spray.ringDepth == 1, "nothing was rewritten")
+
+        let moving = MovingSpraySketch()
+        moving.shift = { frame in Double(frame) * 0.2 }
+        let image = try #require(OllinApp.image(of: moving, frame: 5))
+        #expect(moving.spray.passes == moving.spray.passesPerFrame, "moved lines restart the average")
+        #expect(moving.spray.ringDepth <= MetalRenderer.maxFramesInFlight && moving.spray.ringDepth >= 2,
+                "the records ride a ring: \(moving.spray.ringDepth) buffers")
+        #expect(moving.spray.pointTable === moving.tableAtFirstDraw, "the point table is kept while the counts hold")
+        // The sixth frame's lines sit 1.0 unit to the right of the still scene's,
+        // about 14 px through this camera and still on the canvas, so the light's
+        // centroid has moved that far: the rewrite reached the GPU. A slot the
+        // write never reached would still hold a frame from three draws back, at
+        // most 0.4 units (6 px), which is why the bar sits at 10 and not merely
+        // above zero.
+        let stillImage = try #require(OllinApp.image(of: MovingSpraySketch(), frame: 5))
+        let movedX = centroidX(of: image), stillX = centroidX(of: stillImage)
+        #expect(movedX > stillX + 10, "centroid moved from \(stillX) to \(movedX)")
+
+        // Under length sampling, lines that change their shares rebuild the table.
+        let stretching = MovingSpraySketch()
+        stretching.sampling = .byLength(pointsPerPass: 2000)
+        stretching.stretch = { frame in 1 + Double(frame) * 0.5 }
+        _ = try #require(OllinApp.image(of: stretching, frame: 2))
+        #expect(stretching.spray.pointTable !== stretching.tableAtFirstDraw, "changed shares rebuild the point table")
+    }
+
     /// `exportSettle` draws a written frame several times with the clock held: a
     /// still counts N passes for its frame (and one for each run-up frame), the
     /// mean stays the mean, and a sequence settles every written frame.
@@ -311,6 +349,21 @@ struct LightAccumulationTests {
             }
         }
         return out
+    }
+
+    /// The x of the light's centroid, in pixels: where the picture's brightness sits.
+    private func centroidX(of image: CGImage) -> Double {
+        let d = pixels(of: image)
+        var sum = 0.0, weight = 0.0
+        for y in 0 ..< image.height {
+            for x in 0 ..< image.width {
+                let i = (y * image.width + x) * 4
+                let v = linear(d[i]) + linear(d[i + 1]) + linear(d[i + 2])
+                sum += Double(x) * v
+                weight += v
+            }
+        }
+        return weight > 0 ? sum / weight : 0
     }
 
     private func centerByte(of image: CGImage) -> UInt8 {
@@ -514,6 +567,46 @@ private final class SpraySketch: Sketch {
         if let refocusAtFrame, frameCount >= refocusAtFrame {
             spray.bokeh = Bokeh(focalDistance: 6, strength: 0.05, minSize: 0.02)
         }
+        drawLineSpray(spray)
+        drawImage(spray.developed(exposure: 40).image, 0, 0)
+    }
+}
+
+/// The ring of twelve lines, rebuilt every draw: shifted along x by `shift(frame)`,
+/// the even ones stretched by `stretch(frame)` (only some, so the shares under
+/// length sampling move), then handed to `setLines`. With both at their rest
+/// values the lines are the same every frame.
+@MainActor
+private final class MovingSpraySketch: Sketch {
+    var spray: LineSpray!
+    var sampling: LineSpray.Sampling = .perLine(200)
+    var shift: (Int) -> Double = { _ in 0 }
+    var stretch: (Int) -> Double = { _ in 1 }
+    /// The point table as built in `setup()`, read on the first draw.
+    var tableAtFirstDraw: AnyObject?
+    override var canvasSize: CanvasSize { .square(96) }
+
+    private func lines(frame: Int) -> [SprayLine] {
+        let dx = shift(frame)
+        return (0 ..< 12).map { i in
+            let a = Double(i) / 12 * .tau
+            let s = i % 2 == 0 ? stretch(frame) : 1
+            return SprayLine(from: Vector3(cos(a) * 2 + dx, sin(a) * 2, 0),
+                             to: Vector3(cos(a + 0.5) * 2 * s + dx, sin(a + 0.5) * 2 * s, 0.5),
+                             light: SIMD3(repeating: 0.4))
+        }
+    }
+
+    override func setup() {
+        spray = makeLineSpray(lines(frame: 0), sampling: sampling, passesPerFrame: 3,
+                              bokeh: Bokeh(focalDistance: 8, strength: 0.02, minSize: 0.02))
+    }
+
+    override func draw() {
+        background(.black)
+        camera(.perspective(eye: Vector3(0, 0, 8), target: .zero, fieldOfView: .pi / 4))
+        if frameCount == 1 { tableAtFirstDraw = spray.pointTable }
+        spray.setLines(lines(frame: frameCount - 1))
         drawLineSpray(spray)
         drawImage(spray.developed(exposure: 40).image, 0, 0)
     }

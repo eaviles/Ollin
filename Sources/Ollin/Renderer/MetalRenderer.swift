@@ -642,7 +642,11 @@ final class MetalRenderer {
     /// every frame with no synchronization tears the on-screen geometry (e.g.
     /// gaps in a stroked ring) because the next frame stomps it mid-draw. Each
     /// slot is grown on demand to keep steady-state frames allocation-free.
-    private static let maxFramesInFlight = 3
+    /// How many frames the GPU may hold at once. Not private: an effect that
+    /// rewrites a shared buffer every frame (`LineSpray`) sizes its own ring
+    /// by it, since a slot written once per frame is then read only by frames
+    /// that have completed.
+    static let maxFramesInFlight = 3
     private let frameBoundary = DispatchSemaphore(value: MetalRenderer.maxFramesInFlight)
     /// How many of those slots the GPU still holds, kept beside the semaphore
     /// because a semaphore cannot be asked: waiting on it is the only way to

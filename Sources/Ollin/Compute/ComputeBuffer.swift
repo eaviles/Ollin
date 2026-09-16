@@ -77,6 +77,19 @@ public final class ComputeBuffer<Element>: ComputeRealizable, @unchecked Sendabl
         return b
     }
 
+    /// Overwrite the whole buffer with `contents` (the same count) from the CPU.
+    /// Before the Metal buffer exists the new contents simply become the seed;
+    /// once it does, the bytes are copied in now, into memory a frame still in
+    /// flight may be reading, so the caller owns the timing: write a buffer at
+    /// most once per frame and keep `MetalRenderer.maxFramesInFlight` of them in
+    /// a ring, which is what `LineSpray` does, and a slot is only ever rewritten
+    /// after every frame that read it has completed. Internal for that reason.
+    func replaceContents(_ contents: [Element]) {
+        precondition(contents.count == count, "replaceContents needs the buffer's own count")
+        guard let buffer else { seed = contents; return }
+        contents.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
+    }
+
     /// Snapshot the buffer's current contents back to the CPU. Only valid once the GPU
     /// work that wrote it has completed, so it's `@MainActor`: read it on the frame loop
     /// after the render, mainly for tests and debugging (a per-frame sim never needs

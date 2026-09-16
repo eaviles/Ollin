@@ -676,7 +676,7 @@ open class Sketch {
     public func drawLineSpray(_ spray: LineSpray) {
         guard let camera = drawer.camera3D else { return }
         spray.record(into: drawer, camera: camera, width: width, height: height,
-                     seed: Float(random(100)))
+                     seed: Float(random(100)), frame: frameCount)
     }
 
     // MARK: Compute (spatial hash & artificial life)

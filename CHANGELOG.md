@@ -14,6 +14,7 @@ Notable changes to Ollin, newest first. The format follows [Keep a Changelog](ht
 ### Changed
 
 - **`SprayLine` stores light, not a color and an intensity.** Its `color`, `endColor`, `intensity` and `endIntensity` properties are gone; `light` and `endLight` hold the linear RGB radiance they used to be multiplied into. The `color:intensity:` initializer is unchanged and converts on the way in, so a line written that way builds as before and draws the same pixels.
+- **`LineSpray.setLines` is built for a scene that moves every frame.** Handing it the lines it already has leaves the running average alone, so a sketch that rebuilds its scene each draw converges under `--settle` instead of restarting on every settle draw. Moved lines restart it as before, and while every line keeps its point count nothing is allocated: the point table is kept and the line records are rewritten into a ring of buffers the frames in flight are not reading, where every call used to allocate a fresh copy of both. [Depth of field from light](Docs/Drawing/DepthOfField.md#linespray).
 
 ## [0.8.0] - 2026-09-16
 
