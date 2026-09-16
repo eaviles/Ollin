@@ -599,6 +599,80 @@ struct GeneratedProjectBuildTests {
                 "the bundled binary rendered nothing")
     }
 
+    /// The widget kind is the one whose generated code has to name types that
+    /// mean two things at once (a `Timeline` and a `Color` that belong to two
+    /// frameworks each), and the one that puts a sketch in a library two
+    /// programs reach. Neither is provable by reading the text, so it builds.
+    @Test("A generated widget project builds, both programs and the library")
+    func aGeneratedWidgetProjectBuilds() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Ripple",
+            kind: .widget,
+            template: .motion,
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let result = try Self.swiftBuild(in: project.root)
+        #expect(result.succeeded, "a generated widget project did not build:\n\(result.output)")
+    }
+
+    /// What a bundle build proves here and the package build above cannot: the
+    /// extension lands inside the app where the system looks for it, it is
+    /// signed as a sandboxed extension (one that is not is refused rather than
+    /// sandboxed), the app's signature still verifies with it inside, and the
+    /// app renders the run a widget would show.
+    @Test("A generated widget builds into an app with a signed extension inside it",
+          .enabled(if: buildsBundles, bundlesSkipped))
+    func aGeneratedWidgetBuildsAndRuns() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Ripple",
+            kind: .widget,
+            template: .motion,
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let built = try Self.run([project.root.appendingPathComponent("build.sh").path])
+        #expect(built.succeeded, "the widget's own build script failed:\n\(built.output)")
+
+        let app = project.root.appendingPathComponent("Ripple.app")
+        let appex = app.appendingPathComponent("Contents/PlugIns/RippleWidget.appex")
+        #expect(FileManager.default.fileExists(atPath: appex.path),
+                "the extension is not inside the app, where the system looks for it")
+
+        let bundle = try #require(Bundle(url: appex), "the .appex is not a bundle")
+        let extensionPoint = (bundle.infoDictionary?["NSExtension"] as? [String: Any])?["NSExtensionPointIdentifier"] as? String
+        #expect(extensionPoint == "com.apple.widgetkit-extension",
+                "the system would not know what kind of extension this is")
+
+        let entitled = try Self.run(["codesign", "-d", "--entitlements", ":-", appex.path])
+        #expect(entitled.output.contains("com.apple.security.app-sandbox"),
+                "the extension is not signed as sandboxed, so the system refuses it:\n\(entitled.output)")
+        let signed = try Self.run(["codesign", "--verify", "--strict", app.path])
+        #expect(signed.succeeded, "the signature does not verify with the extension inside:\n\(signed.output)")
+
+        // The same call the extension makes, from the app that carries it.
+        let frames = destination.appendingPathComponent("run")
+        let ran = try Self.run([app.appendingPathComponent("Contents/MacOS/RippleApp").path,
+                                "--export-widget", frames.path, "--size", "120x120"])
+        #expect(ran.succeeded, "the bundled binary could not draw the run:\n\(ran.output)")
+        let written = (try? FileManager.default.contentsOfDirectory(atPath: frames.path)) ?? []
+        #expect(written.count == 4, "the run wrote \(written.count) pictures, not the four the sketch declared")
+    }
+
     // MARK: - Support
 
     /// Walk up from this file to the folder holding the framework's manifest.

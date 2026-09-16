@@ -376,6 +376,7 @@ enum OllinNewCommand {
                ollin new <name> --kind screen-saver   this machine's screen saver
                ollin new <name> --kind wallpaper      the desktop wallpaper, live
                ollin new <name> --kind menu-bar       a small live strip in the menu bar
+               ollin new <name> --kind widget         a widget on the desktop
                ollin new <name> --kind extension      a library other sketches import
                ollin new <name> --kind ios-app        an app for the phone and the tablet
                ollin new --list              every kind, template, seam, and extra

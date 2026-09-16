@@ -30,8 +30,9 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
     /// than into a window sized to the canvas.
     ///
     /// A screen saver and the wallpaper take a whole display, the menu-bar
-    /// strip is the same fact at a smaller size, and a phone's screen is the
-    /// canvas of an app on it. The sketch is written to suit:
+    /// strip is the same fact at a smaller size, a widget is drawn at whatever
+    /// size the system asks for, and a phone's screen is the canvas of an app
+    /// on it. The sketch is written to suit:
     /// it declares its window mode as `.resizable`, so `width` and `height` are
     /// the surface's. Data rather than a code path, because it is the same fact
     /// for every kind that has no window of its own.
@@ -176,6 +177,18 @@ extension ProjectKind {
         fillsTheDisplay: true
     )
 
+    /// A sketch shown as a widget on the desktop and in the notification
+    /// panel: an app with a widget extension inside it, drawing one picture
+    /// per moment of the run the sketch declares.
+    public static let widget = ProjectKind(
+        id: "widget",
+        title: "Desktop widget",
+        summary: "A sketch shown as a widget, redrawn a few times an hour, so the piece changes through the day rather than moving.",
+        availability: .available,
+        carriesEntryPoint: false,
+        fillsTheDisplay: true
+    )
+
     public static let arEffect = ProjectKind(
         id: "ar-effect",
         title: "AR effect",
@@ -187,7 +200,7 @@ extension ProjectKind {
     /// should show them.
     public static let all: [ProjectKind] = [
         .singleFile, .macSketch, .macApp, .inPackage, .extensionPackage,
-        .iOSApp, .visionOSApp, .screenSaver, .wallpaper, .menuBar, .arEffect,
+        .iOSApp, .visionOSApp, .screenSaver, .wallpaper, .menuBar, .widget, .arEffect,
     ]
 
     /// The kinds that can be generated today.

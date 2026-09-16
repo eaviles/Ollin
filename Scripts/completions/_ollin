@@ -125,6 +125,7 @@ _ollin() {
             '--export-pdf[write the frame as PDF]:file:_files' \
             '--export-exr[write the linear frame, before the tone map]:file:_files' \
             '--export-web[write a page that plays the run back in a browser]:file:_files' \
+            '--export-widget[write the run a widget would show, one picture per moment]:directory:_files -/' \
             '--export-grid[write a contact sheet of seeds]:file:_files' \
             '--export-sweep[write a contact sheet sweeping one parameter]:file:_files' \
             '--export-separations[write a master per ink, for printing]:file:_files' \
@@ -152,6 +153,7 @@ _ollin() {
             '--bitrate[the encoder'\''s bitrate]:MBPS:' \
             '--codec[the encoder]:h264|hevc|hevcWithAlpha|proRes422|proRes4444:' \
             '--gif-width[downscale the GIF to this width]:PX:' \
+            '--size[the pixel size a widget'\''s run is drawn at]:WxH:' \
             '--exr[write a sequence in linear light instead of PNG]' \
             '--inline[write a page fragment instead of a whole file]' \
             '--no-controls[leave a page'\''s parameters at their recorded values]' \

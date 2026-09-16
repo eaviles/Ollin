@@ -13,6 +13,7 @@
 - [`Screen saver`](./ScreenSaver.md) - wrap a sketch as the machine's screen saver, so the work runs when nobody is at the desk
 - [`Wallpaper`](./Wallpaper.md) - run a sketch as the desktop wallpaper. It sits behind the icons on every display and moves all day while the machine is used for everything else
 - [`Menu bar`](./MenuBar.md) - run a sketch as a small live strip among the menu bar's status items. It sits beside the clock for the whole working day
+- [`Widget`](./Widget.md) - show a sketch as a widget on the desktop. The system asks for a handful of pictures an hour, so the piece changes through the day rather than moving
 - [`Fabrication`](./Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`G-code`](./GCode.md) - write a frame's line work as a program that a pen plotter, laser cutter, or CNC router runs directly. Ollin orders the paths to keep travel short
 - [`Embroidery`](./Embroidery.md) - write a frame as the stitches an embroidery machine sews: a `.dst` file, with strokes as running stitch, fills as rows, and each color as its own thread in draw order

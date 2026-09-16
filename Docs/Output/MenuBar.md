@@ -82,6 +82,7 @@ The file is the same file either way.
 ## See also
 
 - [Wallpaper](./Wallpaper.md) - the same idea at the other size, with the whole desktop as the piece
+- [Widget](./Widget.md) - a small surface too, but stepped: a picture a quarter of an hour rather than a moving one
 - [Screen saver](./ScreenSaver.md) - the piece that runs when nobody is at the desk
 - [Sketch as an app](./App.md) - the wrapper this kind shares, and how to hand an app to someone else
 - [The project generator](../Tools/ProjectGenerator.md) - the kinds of project `ollin new` writes, this one among them

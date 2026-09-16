@@ -34,6 +34,7 @@ public enum ProjectGenerator {
         case ProjectKind.screenSaver.id: return planScreenSaver(request)
         case ProjectKind.wallpaper.id:   return planWallpaper(request)
         case ProjectKind.menuBar.id:     return planMenuBar(request)
+        case ProjectKind.widget.id:      return planWidget(request)
         case ProjectKind.iOSApp.id:      return try planIOSApp(request)
         default:
             throw ProjectGeneratorError.kindUnavailable(request.kind)
@@ -627,7 +628,31 @@ public enum ProjectGenerator {
         if request.kind.fillsTheDisplay, request.canvas.expression == nil {
             text = fillingTheDisplay(text, typeName: request.typeName)
         }
+        // A widget is drawn a few times an hour rather than sixty times a
+        // second, and how far apart those times sit is the sketch's own say.
+        if request.kind.id == ProjectKind.widget.id {
+            text = declaringTheRun(text, typeName: request.typeName)
+        }
         return text
+    }
+
+    /// Declare a widget's run on the line under the class opening. Left alone
+    /// if the sketch already says something about it, since that is a sketch
+    /// that has thought about it.
+    private static func declaringTheRun(_ source: String, typeName: String) -> String {
+        guard !source.contains("override var widgetTimeline") else { return source }
+        var lines = source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard let opening = lines.firstIndex(where: {
+            $0.contains("class \(typeName)") && $0.contains(": Sketch") && $0.hasSuffix("{")
+        }) else { return source }
+        lines.insert("""
+                // Four pictures a quarter of an hour apart, which covers the next
+                // hour. The system decides when it comes back for more, so this is
+                // a wish rather than a promise, and it will not come back every
+                // minute for anybody.
+                override var widgetTimeline: WidgetTimeline { .every(minutes: 15, count: 4) }
+            """, at: opening + 1)
+        return lines.joined(separator: "\n")
     }
 
     /// Declare `.resizable` on the line under the class opening, so `width` and
@@ -852,8 +877,10 @@ public enum ProjectGenerator {
     // MARK: - The app's own files
 
     private static func appInfoPlist(_ request: ProjectRequest, target: String,
+                                     executable: String? = nil,
                                      accessory: Bool = false) -> String {
         let identifier = "com.example.\(target.lowercased())"
+        let binary = executable ?? target
 
         // A piece that lives on the desktop or in the menu bar has no window
         // of its own to stand behind a Dock icon, so the app stays out of the
@@ -910,7 +937,7 @@ public enum ProjectGenerator {
             <key>CFBundleDevelopmentRegion</key>
             <string>en</string>
             <key>CFBundleExecutable</key>
-            <string>\(target)</string>
+            <string>\(binary)</string>
             <!-- The icon build.sh renders from the sketch, or your own AppIcon.icns. -->
             <key>CFBundleIconFile</key>
             <string>AppIcon</string>
@@ -1223,6 +1250,481 @@ public enum ProjectGenerator {
         ## Where things go
 
         The sketch and everything it loads live in `Sources/\(target)/`. `Main.swift` is the whole program: it hands the sketch to the menu-bar host. `Info.plist` and `build.sh` are the same self-contained wrapper the Mac app kind writes, plus the one line that keeps the app out of the Dock.
+        """
+    }
+
+    /// A sketch shown as a widget: an app with a widget extension packed
+    /// inside it.
+    ///
+    /// The shape is forced by what a widget is. The system finds a widget
+    /// through the app it is inside, so there are two programs here rather
+    /// than one, and two programs cannot share a folder of sources. So the
+    /// sketch moves into a library of its own that both of them reach through
+    /// one small public door (`Piece.swift`), and stays an ordinary sketch,
+    /// internal and unadorned like every other kind's.
+    private static func planWidget(_ request: ProjectRequest) -> GeneratedProject {
+        let root = request.destination.appendingPathComponent(request.folderName)
+        let target = request.typeName
+        let sourceDir = "Sources/\(target)"
+        let app = "\(target)App"
+        let widget = "\(target)Widget"
+        var (files, resources) = sketchFiles(request, sourceDir: sourceDir)
+
+        files.append(GeneratedFile(path: "\(sourceDir)/Piece.swift",
+                                   contents: piecePublicDoor(target: target)))
+        files.append(GeneratedFile(path: "Sources/\(app)/Main.swift",
+                                   contents: widgetContainerMain(target: target, app: app)))
+        files.append(GeneratedFile(path: "Sources/\(widget)/Widget.swift",
+                                   contents: widgetExtensionSource(request, target: target)))
+        files.append(GeneratedFile(path: "Package.swift",
+                                   contents: widgetManifest(request, target: target, app: app,
+                                                            widget: widget, resources: resources),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "Info.plist",
+                                   contents: appInfoPlist(request, target: target, executable: app),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "Widget-Info.plist",
+                                   contents: widgetInfoPlist(request, target: target, widget: widget),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "Widget.entitlements",
+                                   contents: widgetEntitlements,
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "build.sh",
+                                   contents: widgetBuildScript(request, target: target, app: app, widget: widget),
+                                   isExecutable: true))
+        files.append(GeneratedFile(path: "README.md",
+                                   contents: widgetReadme(request, target: target, app: app),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: ".gitignore", contents: appGitignore, isExecutable: false))
+
+        return GeneratedProject(
+            root: root,
+            files: files.sorted { $0.path < $1.path },
+            runCommand: "\(root.path)/build.sh --install",
+            nextSteps: [
+                "See the whole run now:  cd \(root.path) && swift run \(app) --export-widget frames --size 720x720",
+                "Put it on this machine:  ./build.sh --install   then open the app once.",
+                "Then right-click the desktop, Edit Widgets, and look for \(request.folderName).",
+                "Edit in a window instead:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
+            ]
+        )
+    }
+
+    // MARK: - The widget's own files
+
+    /// The one public name in the sketch's library.
+    ///
+    /// A library's types are only reachable when something is public, and
+    /// making the sketch itself public would make every `override func draw()`
+    /// in it public too, which is a sketch written differently from every
+    /// other kind's. One door instead, so the sketch stays ordinary.
+    private static func piecePublicDoor(target: String) -> String {
+        """
+        import Ollin
+
+        // The door the two programs around this sketch come in by: the app you
+        // double-click, and the widget the system draws. The sketch next door is
+        // an ordinary sketch, exactly as it would be in a window.
+        public enum \(target)Piece {
+            @MainActor public static func make() -> Sketch { \(target)() }
+        }
+        """
+    }
+
+    /// The app the widget is packed inside.
+    ///
+    /// It has to exist, because the system finds a widget through its app, and
+    /// it has to be somewhere the system looks. What it does while it is open
+    /// is the piece itself, which is also how `build.sh` renders the icon.
+    private static func widgetContainerMain(target: String, app: String) -> String {
+        """
+        import Ollin
+        import \(target)
+
+        // The app the widget is packed inside. The system finds a widget through
+        // its app, so this program exists to hold one; while it is open it runs
+        // the piece in a window, which is also how build.sh renders the icon.
+        //
+        // The export flags all work here, `--export-widget <dir>` among them,
+        // which writes the run the widget would show without waiting for it.
+        @main
+        enum \(app)Main {
+            @MainActor static func main() {
+                if OllinApp.handleCommandLine(makeSketch: { \(target)Piece.make() }) { return }
+                OllinApp.run(\(target)Piece.make())
+            }
+        }
+        """
+    }
+
+    /// The widget itself: a run of pictures, and a view that shows one.
+    private static func widgetExtensionSource(_ request: ProjectRequest, target: String) -> String {
+        """
+        import CoreGraphics
+        import Ollin
+        import SwiftUI
+        import WidgetKit
+        import \(target)
+
+        // The widget. The system asks for a handful of pictures at a time and
+        // puts each one up when its moment comes, so the drawing happens here a
+        // few times an hour rather than sixty times a second. How far apart the
+        // moments sit is the sketch's own `widgetTimeline`.
+
+        struct Moment: TimelineEntry {
+            let date: Date
+            let picture: CGImage?
+        }
+
+        struct Run: TimelineProvider {
+
+            /// What the system shows while it has nothing yet.
+            func placeholder(in context: Context) -> Moment {
+                Moment(date: Date(), picture: nil)
+            }
+
+            /// One picture, for the gallery the widget is picked from.
+            func getSnapshot(in context: Context, completion: @escaping @Sendable (Moment) -> Void) {
+                let size = pixels(context)
+                Task { @MainActor in
+                    let frames = OllinApp.widgetFrames(size: size, count: 1) { \(target)Piece.make() }
+                    completion(Moment(date: frames.first?.date ?? Date(), picture: frames.first?.image))
+                }
+            }
+
+            /// The whole run. `WidgetKit.Timeline` is spelled out because Ollin
+            /// has a `Timeline` of its own, the one that moves a value through
+            /// keyframes, and both are in scope in this file.
+            func getTimeline(in context: Context,
+                             completion: @escaping @Sendable (WidgetKit.Timeline<Moment>) -> Void) {
+                let size = pixels(context)
+                Task { @MainActor in
+                    let spacing = \(target)Piece.make().widgetTimeline.spacing
+                    let frames = OllinApp.widgetFrames(size: size) { \(target)Piece.make() }
+                    let moments = frames.map { Moment(date: $0.date, picture: $0.image) }
+                    // Come back once the last picture has been up for one step.
+                    // Asking sooner does not make the system come sooner.
+                    let again = (moments.last?.date ?? Date()).addingTimeInterval(spacing)
+                    completion(WidgetKit.Timeline(entries: moments, policy: .after(again)))
+                }
+            }
+
+            /// The widget's own size in pixels. The system measures it in
+            /// points, and a picture drawn at points is soft on these screens.
+            private func pixels(_ context: Context) -> CanvasSize {
+                .size(Int(context.displaySize.width * 2), Int(context.displaySize.height * 2))
+            }
+        }
+
+        struct MomentView: View {
+            let moment: Moment
+
+            var body: some View {
+                Group {
+                    if let picture = moment.picture {
+                        Image(decorative: picture, scale: 2)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        // Spelled out for the same reason `WidgetKit.Timeline`
+                        // is: Ollin has a `Color` too, and both are in scope.
+                        SwiftUI.Color.black
+                    }
+                }
+                .containerBackground(.black, for: .widget)
+            }
+        }
+
+        @main
+        struct SketchWidget: Widget {
+            var body: some WidgetConfiguration {
+                StaticConfiguration(kind: "\(target)Widget", provider: Run()) { moment in
+                    MomentView(moment: moment)
+                }
+                .configurationDisplayName("\(request.folderName)")
+                .description("\(request.template.summary)")
+                .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+            }
+        }
+        """
+    }
+
+    /// Three targets: the sketch as a library, the app, and the widget.
+    ///
+    /// The split is not a preference. Two programs need the same sketch, and
+    /// two targets cannot share a folder of sources, so the sketch is a library
+    /// both of them depend on.
+    private static func widgetManifest(_ request: ProjectRequest, target: String, app: String,
+                                       widget: String, resources: [String]) -> String {
+        let products = productLines(request)
+        let resourceLine = resourceLine(resources)
+
+        return """
+        // swift-tools-version: 6.0
+        import PackageDescription
+
+        // \(request.folderName): an Ollin sketch, shown as a widget.
+        //
+        // Build and install it:  ./build.sh --install
+        // See the run first:     swift run \(app) --export-widget frames --size 720x720
+        //
+        // Three targets, because a widget is two programs: the app the system
+        // finds the widget through, and the widget itself. They cannot share a
+        // folder of sources, so the sketch is the library both of them use.
+        let package = Package(
+            name: "\(target)",
+            platforms: [
+                .macOS("26.0")
+            ],
+            dependencies: [
+                \(request.framework.manifestEntry),
+            ],
+            targets: [
+                .target(
+                    name: "\(target)",
+                    dependencies: [
+        \(products)
+                    ],
+                    path: "Sources/\(target)"\(resourceLine)
+                ),
+                .executableTarget(
+                    name: "\(app)",
+                    dependencies: [
+                        "\(target)",
+        \(products)
+                    ],
+                    path: "Sources/\(app)"
+                ),
+                .executableTarget(
+                    name: "\(widget)",
+                    dependencies: [
+                        "\(target)",
+        \(products)
+                    ],
+                    path: "Sources/\(widget)"
+                ),
+            ],
+            swiftLanguageModes: [.v6]
+        )
+        """
+    }
+
+    /// The extension's property list. Two lines carry it: what kind of
+    /// extension this is, and an identifier under the app's own.
+    private static func widgetInfoPlist(_ request: ProjectRequest, target: String,
+                                        widget: String) -> String {
+        let identifier = "com.example.\(target.lowercased())"
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleExecutable</key>
+            <string>\(widget)</string>
+            <!-- Under the app's own identifier, which is how the system knows
+                 which app this extension belongs to. -->
+            <key>CFBundleIdentifier</key>
+            <string>\(identifier).widget</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>\(request.folderName)</string>
+            <key>CFBundlePackageType</key>
+            <string>XPC!</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>26.0</string>
+            <!-- What kind of extension this is. Without this line the system
+                 has no idea what it is holding and never asks it for anything. -->
+            <key>NSExtension</key>
+            <dict>
+                <key>NSExtensionPointIdentifier</key>
+                <string>com.apple.widgetkit-extension</string>
+            </dict>
+        </dict>
+        </plist>
+        """
+    }
+
+    /// An extension on this system runs in a sandbox, and one signed without
+    /// saying so is refused rather than sandboxed.
+    private static let widgetEntitlements = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+        <key>com.apple.security.app-sandbox</key>
+        <true/>
+    </dict>
+    </plist>
+    """
+
+    private static func widgetBuildScript(_ request: ProjectRequest, target: String,
+                                          app: String, widget: String) -> String {
+        """
+        #!/bin/sh
+        # Build the sketch, put the .app folder around it, and pack the widget inside.
+        #
+        #   ./build.sh              build it here, signed for this machine
+        #   ./build.sh --install    build it and put it in /Applications
+        #   ./build.sh --sign "Developer ID Application: Name (TEAMID)"
+        #                           sign it so it can travel
+        #
+        set -e
+        cd "$(dirname "$0")"
+
+        NAME="\(request.folderName)"
+        APP_TARGET="\(app)"
+        WIDGET_TARGET="\(widget)"
+        APP="$NAME.app"
+        APPEX="$APP/Contents/PlugIns/$WIDGET_TARGET.appex"
+
+        IDENTITY="-"
+        INSTALL=0
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --install) INSTALL=1 ;;
+                --sign)    IDENTITY="$2"; shift ;;
+                *) echo "build.sh: unknown option $1" >&2; exit 2 ;;
+            esac
+            shift
+        done
+
+        swift build -c release
+        # Asked for, not assumed: the two build systems the toolchain ships put
+        # the binary in different places.
+        BIN="$(swift build -c release --show-bin-path)"
+
+        rm -rf "$APP"
+        mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+        mkdir -p "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
+        cp "$BIN/$APP_TARGET" "$APP/Contents/MacOS/$APP_TARGET"
+        cp "$BIN/$WIDGET_TARGET" "$APPEX/Contents/MacOS/$WIDGET_TARGET"
+        cp Info.plist "$APP/Contents/Info.plist"
+        cp Widget-Info.plist "$APPEX/Contents/Info.plist"
+        printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+        # The framework's own files: shader segments, fonts, tables. They are
+        # looked for beside the running program, and there are two running
+        # programs here, so both get a copy.
+        for bundle in "$BIN"/*.bundle; do
+            [ -e "$bundle" ] || continue
+            cp -R "$bundle" "$APP/Contents/Resources/"
+            cp -R "$bundle" "$APPEX/Contents/Resources/"
+        done
+
+        # The icon is the sketch: the app renders one frame of itself. An
+        # AppIcon.icns of your own beside this script wins.
+        if [ -f AppIcon.icns ]; then
+            cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+        else
+            ICONWORK="$(mktemp -d)"
+            if "$BIN/$APP_TARGET" --export "$ICONWORK/frame.png" --frame 120 >/dev/null 2>&1; then
+                W="$(sips -g pixelWidth  "$ICONWORK/frame.png" | awk '/pixelWidth/  {print $2}')"
+                H="$(sips -g pixelHeight "$ICONWORK/frame.png" | awk '/pixelHeight/ {print $2}')"
+                S="$W"
+                if [ "$H" -lt "$S" ]; then S="$H"; fi
+                sips -c "$S" "$S" "$ICONWORK/frame.png" --out "$ICONWORK/square.png" >/dev/null
+                mkdir "$ICONWORK/AppIcon.iconset"
+                for SIZE in 16 32 128 256 512; do
+                    sips -z "$SIZE" "$SIZE" "$ICONWORK/square.png" \\
+                         --out "$ICONWORK/AppIcon.iconset/icon_${SIZE}x${SIZE}.png" >/dev/null
+                    sips -z "$((SIZE * 2))" "$((SIZE * 2))" "$ICONWORK/square.png" \\
+                         --out "$ICONWORK/AppIcon.iconset/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
+                done
+                iconutil -c icns -o "$APP/Contents/Resources/AppIcon.icns" "$ICONWORK/AppIcon.iconset"
+            else
+                echo "build.sh: could not render the icon frame; the app keeps the stock icon" >&2
+            fi
+            rm -rf "$ICONWORK"
+        fi
+
+        # The extension is signed first and the app around it second: signing the
+        # app seals what is inside it, so anything signed afterwards breaks the
+        # seal. The sandbox line is what makes the system willing to load an
+        # extension at all.
+        if [ "$IDENTITY" = "-" ]; then
+            codesign --force --sign - --timestamp=none --entitlements Widget.entitlements "$APPEX"
+            codesign --force --sign - --timestamp=none "$APP"
+            echo "Built $APP, signed for this machine only."
+            echo "Another Mac will refuse it. To make one that travels:"
+            echo "  ./build.sh --sign \\"Developer ID Application: Your Name (TEAMID)\\""
+        else
+            codesign --force --options runtime --timestamp --sign "$IDENTITY" \\
+                     --entitlements Widget.entitlements "$APPEX"
+            codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
+            echo "Built $APP, signed as $IDENTITY."
+        fi
+
+        if [ "$INSTALL" = 1 ]; then
+            rm -rf "/Applications/$APP"
+            cp -R "$APP" /Applications/
+            echo "Installed to /Applications/$APP"
+            echo "Open it once so the system sees the widget, then right-click the"
+            echo "desktop, choose Edit Widgets, and look for $NAME."
+        fi
+        """
+    }
+
+    private static func widgetReadme(_ request: ProjectRequest, target: String, app: String) -> String {
+        """
+        # \(request.folderName)
+
+        \(request.template.summary)
+
+        An Ollin sketch shown as a widget, so the piece sits on the desktop and changes through the day.
+
+        ## Putting it on this machine
+
+        ```sh
+        ./build.sh --install
+        ```
+
+        Open the app once, so the system sees what is inside it. Then right-click the desktop, choose **Edit Widgets**, and look for **\(request.folderName)**.
+
+        ## What a widget is, and what it does to a sketch
+
+        A widget is not a window. The system asks for a handful of pictures at a time, keeps them, and puts each one up when its moment comes. Nothing runs in between. So the piece here is one that **changes** rather than one that moves: each picture is drawn on its own, from the moment it stands for, and what a viewer sees is the difference between two of them.
+
+        Three things follow, and all three are in the sketch rather than in the wrapper.
+
+        **The clock is the time of day.** `time` is seconds since midnight of the moment being drawn, so `time / 3600` is the hour and the piece reads the same at four this afternoon as at four tomorrow. An elapsed clock could not do that: the system throws a run away and asks for a new one, and a piece counting from zero would jump back every time it did.
+
+        **How far apart the pictures sit is yours.** The sketch says so:
+
+        ```swift
+        override var widgetTimeline: WidgetTimeline { .every(minutes: 15, count: 4) }
+        ```
+
+        Four pictures a quarter of an hour apart, which covers the next hour. It is a wish rather than a promise: the system decides when it comes back, and it will not come back every minute for anybody.
+
+        **Nothing carries from one picture to the next.** Each gets its own sketch, set up and drawn once. A moment therefore always draws the same picture, whether it opened a run or closed one.
+
+        ## Working on it
+
+        Waiting a quarter of an hour to see a change is no way to work. Two faster ways:
+
+        ```sh
+        ollin Sources/\(target)/Sketch.swift                                  # a window, reloading as you save
+        swift run \(app) --export-widget frames --size 720x720    # the whole run, as files
+        ```
+
+        The second writes one picture per moment into `frames/`, named by the moment. It is exactly what the widget will show.
+
+        ## Where things go
+
+        `Sources/\(target)/` is the sketch and everything it loads. `Piece.swift` beside it is one public line, the door the two programs come in by. `Sources/\(app)/` is the app the widget is packed inside, and `Sources/\(target)Widget/` is the widget itself: the run it asks for, and the view that shows one picture of it.
+
+        The split into three is what a widget costs. The system finds a widget through the app it is inside, so there are two programs here, and two programs cannot share a folder of sources.
+
+        ## Giving it to somebody else
+
+        `build.sh` signs the app for this machine. Another Mac will refuse it: for that it needs a Developer ID signature and a trip through notarization.
         """
     }
 

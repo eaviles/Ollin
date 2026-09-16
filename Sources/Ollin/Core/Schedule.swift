@@ -196,14 +196,17 @@ public extension Sketch {
     /// ```
     ///
     /// It reads the same at a desk as on a wall, so a piece that changes through
-    /// the day can be worked on at any hour of it.
+    /// the day can be worked on at any hour of it. It reads the frame's own
+    /// moment (``Sketch/date``) rather than the clock, so a surface that draws
+    /// a picture before its moment comes, a widget, asks about the moment it is
+    /// drawing for.
     var scheduledPeriod: String? {
-        installation.schedule.period(at: Date())?.name
+        installation.schedule.period(at: date)?.name
     }
 
     /// How far through its part of the day the piece is, from 0 at its start to
     /// 1 at the next one. Zero when the piece declared no parts.
     var scheduledProgress: Double {
-        installation.schedule.progress(at: Date())
+        installation.schedule.progress(at: date)
     }
 }

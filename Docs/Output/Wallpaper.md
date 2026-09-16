@@ -83,6 +83,7 @@ It is the same file either way.
 ## See also
 
 - [Menu bar](./MenuBar.md) - the same idea at a smaller size, a live strip beside the clock
+- [Widget](./Widget.md) - a desktop surface too, stepped rather than live: one picture a quarter of an hour
 - [Screen saver](./ScreenSaver.md) - the piece that runs when nobody is at the desk
 - [Sketch as an app](./App.md) - the wrapper this kind shares, and how to hand an app to someone else
 - [Installation](./Installation.md) - a piece left running on a wall rather than a desk

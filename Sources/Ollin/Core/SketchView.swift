@@ -3509,6 +3509,38 @@ public extension OllinApp {
             }
             return true
         }
+        // `--export-widget <dir> [--size WxH] [--frames N]` writes the run a
+        // widget would show, one picture per moment, and exits. A surface that
+        // changes every quarter of an hour cannot be worked on by waiting for
+        // it, so this is how to look at the whole run now. The size is the
+        // widget's own in pixels when it is given, and the sketch's canvas
+        // otherwise.
+        if let i = args.firstIndex(of: "--export-widget"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            var size: CanvasSize?
+            if let text = value("--size") {
+                let parts = text.lowercased().split(separator: "x").compactMap { Int($0) }
+                guard parts.count == 2, parts[0] > 0, parts[1] > 0 else {
+                    FileHandle.standardError.write(Data(
+                        "usage: --export-widget <dir> [--size WxH] [--frames N]\n".utf8))
+                    return true
+                }
+                size = .size(parts[0], parts[1])
+            }
+            let count = value("--frames").flatMap(Int.init)
+            withoutActuallyEscaping(makeSketch) { factory -> Void in
+                OllinApp.exportWidget(to: args[i + 1], size: size, count: count, of: {
+                    let fresh = factory()
+                    if let seedOverride { fresh.seed(seedOverride) }
+                    installAutomation(args, on: fresh)
+                    return fresh
+                })
+            }
+            return true
+        }
         // `--export-spatial <path.mov> (--frames N | --seconds S) [--fps F] [--skip S]
         // [--interocular X] [--convergence D] [--meters-per-unit U] [--bitrate MBPS]
         // [--quality 0..1]` writes stereo spatial video and exits.

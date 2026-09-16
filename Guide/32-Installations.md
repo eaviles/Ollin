@@ -570,6 +570,62 @@ It draws at 30 frames a second, a rate a surface that never goes away can afford
 
 Both kinds write the same wrapper the next section describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width parameter among them.
 
+## A widget, and what it does to a sketch
+
+There is a fourth place in the system, and it is the one that changes what a sketch is. A widget sits on the desktop and in the notification panel, beside the weather and the calendar. Two commands again.
+
+```sh
+ollin new Ripple --kind widget
+cd Ripple && ./build.sh --install
+```
+
+Open the app once, so the system sees what is inside it. Then right-click the desktop, choose Edit Widgets, and look for **Ripple**.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/AQuarterHourApart-dark.jpg">
+  <img src="Images/32-Installations/AQuarterHourApart.jpg" alt="Four square tiles in a row, each a dark disc with a colored ring filled to a different amount, labeled 14:00, 14:15, 14:30 and 14:45, with arrows between them marked 15 min and nothing runs here; below, two cards, one listing what time, deltaTime and date mean here, the other explaining why the clock is the day" width="680">
+</picture>
+
+A screen saver, the wallpaper, and the menu bar all draw. A widget does not. The system asks for a handful of pictures at a time, keeps them, and puts each one up when its moment comes. Nothing runs in between. There is no frame rate on this surface. There are four draws an hour, and what somebody sees is the difference between two pictures rather than the motion between them.
+
+So the piece has to be one that **changes** rather than one that moves. A dial that turns through the day works. A color that drifts from morning to evening works. A ball bouncing does not. By the time the next picture goes up, that ball has been somewhere else a thousand times, and nobody saw any of it.
+
+### The clock is the time of day
+
+`time` here is seconds since midnight of the moment being drawn. `time / 3600` is the hour, and the number runs from 0 to 86400 and starts over.
+
+That is not the clock the rest of this guide uses, and the reason is worth a minute. The system throws a run of pictures away and asks for another whenever it likes. If `time` counted from the start of a run, the piece would jump back to the beginning every time it did. Reading the day instead, a quarter past two draws the same picture today as it will tomorrow, whichever run happened to draw it.
+
+The rest follows from that. `deltaTime` is the spacing, which is what really passed since the picture before this one. `frameCount` is 1 every time, because each picture is the first frame of a sketch of its own. Nothing carries from one to the next, which is exactly what makes a moment reliable.
+
+One more, and it is the one that catches people. A widget's pictures are drawn *before* their moments arrive, sometimes an hour before. A piece that asks `Date()` is asking about the wrong time. `date` is the moment being drawn, and at a desk it is simply now, so a piece written against it is right in both places.
+
+### How far apart the pictures sit
+
+The sketch says so, the same way it says how big its canvas is:
+
+```swift
+override var widgetTimeline: WidgetTimeline { .every(minutes: 15, count: 4) }
+```
+
+Four pictures a quarter of an hour apart, which covers the next hour. It is a wish rather than a promise. The system decides when it comes back, and it will not come back every minute for anybody. A quarter of an hour is the shortest spacing worth asking for.
+
+The moments land on a grid counted from midnight, not from whenever the system happened to ask. A quarter-hour piece therefore steps at the quarter hours. The next run carries on that same grid rather than starting one of its own.
+
+That grid has a consequence worth knowing before it puzzles you. A piece whose own period divides the spacing is caught in the same place every time, so it never appears to move at all. A run every fifteen minutes cannot show you anything that repeats every fifteen minutes. Pick a period that does not divide the day evenly, or read the day directly, as the piece in the figure does.
+
+### Seeing the run without waiting for it
+
+Waiting a quarter of an hour to judge a change is no way to work. The window still works, and there is one more command that matters more here than anywhere else:
+
+```sh
+swift run RippleApp --export-widget frames --size 360x360
+```
+
+That writes the whole run into `frames/`, one picture per moment, named by the moment. It is exactly what the widget will show, drawn by exactly the same call, and it takes a second. The flag works on any sketch, so you can try a piece on this surface before you wrap it for one.
+
+The generated project has more in it than the others: three targets rather than one. A widget is two programs, the app the system finds it through and the widget itself, and two programs cannot share a folder of sources. [The reference page](../Docs/Output/Widget.md) has the split and the one public line that keeps your sketch an ordinary sketch.
+
 ## An app to hand somebody
 
 The screen saver lives on your own machine. The other thing a finished sketch wants is to leave. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.
@@ -710,6 +766,7 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 
 - [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the checkpoint file's shape, the schedule's parts, projection and blending, and several displays.
 - [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
+- [Widget](../Docs/Output/Widget.md): the three targets a widget needs and why, the run and its grid, the clock a picture is drawn on, `--export-widget`, and the signing order the extension depends on.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
 - [MQTT](../Docs/Integration/MQTT.md): the broker and the client, topics and their wildcards, what the devices write in a payload, the two service levels, retained values, the last will, and the reconnection.

@@ -400,6 +400,31 @@ open class Sketch {
     /// `Docs/Output/Installation.md` for the whole surface.
     open var installation: Installation { .off }
 
+    /// How far apart the pictures sit when this piece is shown as a widget.
+    ///
+    /// ```swift
+    /// override var widgetTimeline: WidgetTimeline { .every(minutes: 15, count: 4) }
+    /// ```
+    ///
+    /// A widget is drawn a handful of pictures at a time and shows them
+    /// minutes apart, so the piece is one that changes rather than one that
+    /// moves. See ``WidgetTimeline`` for what that costs and what it buys, and
+    /// `Docs/Output/Widget.md` for the whole surface.
+    open var widgetTimeline: WidgetTimeline { WidgetTimeline() }
+
+    /// The moment this frame stands for.
+    ///
+    /// At a desk that is now, read fresh every time. On a surface that draws a
+    /// picture before its moment comes, a widget being the one the framework
+    /// has, it is the moment the picture will be shown, which is in the future
+    /// while it is being drawn. A piece that is about the time reads this
+    /// rather than `Date()`, and then reads the same on both.
+    public var date: Date { heldDate ?? Date() }
+
+    /// The moment a driver has pinned this frame to, or nil when the frame is
+    /// simply now. Only a driver that draws ahead of the clock sets it.
+    var heldDate: Date?
+
     /// The clock a shader reads, which is the sketch clock until an
     /// installation asks for it to start over.
     ///

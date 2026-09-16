@@ -370,6 +370,7 @@ enum ModelUnit: String, CaseIterable, Equatable, Hashable, RawRepresentable, Sen
   var millimeters: Double { get }
 enum OllinApp: Sendable
   @discardableResult static func exportHEIC(_: CoreGraphics.CGImage, to: String) -> OllinApp.StillExport?
+  @discardableResult static func exportWidget(to: String, from: Foundation.Date = default, size: CanvasSize? = default, count: Int? = default, of: () -> Sketch) -> [String]
   @discardableResult static func handleCommandLine(_: [String] = default, makeSketch: () -> Sketch) -> Bool
   static func configureTransport(_: [String], for: Sketch)
   static func contactSheet(of: () -> S, sweeping: KeyPath<S, Param<Double>>, values: [Double], seed: Int? = default, frame: Int = default, fps: FrameRate = default, columns: Int? = default, tileWidth: Int = default, quality: RenderQuality = default) -> CoreGraphics.CGImage?
@@ -410,6 +411,7 @@ enum OllinApp: Sendable
   static func stitching(of: Sketch, settings: Embroidery, frame: Int = default, fps: FrameRate = default) -> Stitching
   static func svg(of: Sketch, frame: Int = default, fps: FrameRate = default, hatching: Hatching? = default) -> String
   static func web(of: Sketch, frames: Int, fps: FrameRate = default, skipSeconds: Double = default, form: WebPageForm = default, controls: Bool = default, maxBytes: Int? = default, remake: (() -> Sketch)? = default) throws -> String
+  static func widgetFrames(from: Foundation.Date = default, size: CanvasSize? = default, count: Int? = default, of: () -> Sketch) -> [WidgetFrame]
   static func windowSize(fitting: CoreFoundation.CGSize) -> CoreFoundation.CGSize
   static func windowSize(for: Sketch) -> CoreFoundation.CGSize
   static let maxWebPageBytes: Int
@@ -2566,6 +2568,7 @@ open class Sketch: Sendable
   open var printProfile: ICCProfile? { get }
   open var stereoGeometry: StereoGeometry { get }
   open var title: String { get }
+  open var widgetTimeline: WidgetTimeline { get }
   open var windowMode: WindowMode { get }
   required init()
   var accessibleDescription: SketchDescription { get }
@@ -2577,6 +2580,7 @@ open class Sketch: Sendable
   var center: Vector2 { get }
   var cueSheet: CueSheet { get set }
   var currentCue: String? { get }
+  var date: Foundation.Date { get }
   var deltaTime: Double { get }
   var displayHeadroom: Double { get }
   var frameCount: Int { get }
@@ -6366,6 +6370,20 @@ struct WeightedSite: Equatable, Sendable
   init(_: Vector2, weight: Double = default)
   var point: Vector2 { get set }
   var weight: Double { get set }
+struct WidgetFrame
+  init(date: Foundation.Date, image: CoreGraphics.CGImage)
+  let date: Foundation.Date
+  let image: CoreGraphics.CGImage
+struct WidgetTimeline: Equatable, Sendable
+  func gridMoment(atOrBefore: Foundation.Date, calendar: Foundation.Calendar = default) -> Foundation.Date
+  func moments(from: Foundation.Date, calendar: Foundation.Calendar = default) -> [Foundation.Date]
+  init(spacing: Double = default, count: Int = default)
+  static func every(hours: Double, count: Int = default) -> WidgetTimeline
+  static func every(minutes: Double, count: Int = default) -> WidgetTimeline
+  static func timeOfDay(at: Foundation.Date, calendar: Foundation.Calendar = default) -> Double
+  var count: Int { get set }
+  var spacing: Double { get set }
+  var span: Double { get }
 struct WindowCustomizer: Sendable, NSViewRepresentable, View
   func makeNSView(context: WindowCustomizer.Context) -> AppKit.NSView
   func updateNSView(_: AppKit.NSView, context: WindowCustomizer.Context)

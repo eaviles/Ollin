@@ -28,6 +28,7 @@ A **kind** is the sort of thing the generator makes for you.
 | `screen-saver` | A sketch wrapped as the machine's [screen saver](../Output/ScreenSaver.md), with the script that builds and installs it. |
 | `wallpaper` | A sketch that runs as the [desktop wallpaper](../Output/Wallpaper.md), drawn across every display behind the icons. |
 | `menu-bar` | A sketch that runs as a small live strip [in the menu bar](../Output/MenuBar.md), beside the clock all day. |
+| `widget` | A sketch shown as a [widget](../Output/Widget.md) on the desktop: an app with a widget extension inside it, drawing one picture per moment rather than sixty a second. |
 | `extension` | A library that other people's sketches import, named and laid out by the [shared convention](Extensions.md). |
 | `ios-app` | A sketch wrapped as an app for [the phone and the tablet](OnThePhone.md#in-an-app-of-your-own): an Xcode project spec rather than a package, with the signing team as its one extra question. |
 
